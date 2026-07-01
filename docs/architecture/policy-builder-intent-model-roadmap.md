@@ -3145,6 +3145,14 @@ Implementation status:
   unknown buckets/sources, unsafe source-to-bucket ownership, raw payloads, live
   lookup markers, UI diagnostic language, metadata-owned identity, and
   non-operator hard-limit or avoid evidence.
+- The evidence projection now includes a generated summary with bucket counts,
+  source IDs, authority-source IDs, blocking bucket IDs, and review bucket IDs
+  so later engines can consume deterministic evidence state without reusing
+  replay, impact, provider, or UI diagnostic payloads.
+- Replay and impact reducer artifacts are explicitly classified as delete,
+  rewrite-as-evidence-reducer, or maintainer-only migration material; all are
+  blocked from normal operator flow until rewritten into Phase 6R evidence
+  contracts or deleted.
 - Existing replay/impact reducers are not wired into the normal product flow in
   this slice; future Phase 6R migration work must either extract deterministic
   reducers into the evidence engine or delete the abandoned diagnostic surfaces.

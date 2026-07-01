@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Evidence Summary And Reducer Cutlines** — hardened
+  the Phase 6R evidence engine with generated projection summaries for bucket
+  counts, source IDs, authority-source IDs, blocking evidence, and review
+  evidence; added audit coverage that rejects missing or stale summaries; and
+  classified legacy replay/impact reducers as delete, rewrite-as-evidence, or
+  maintainer-only migration material so diagnostic reducers cannot return to
+  the normal operator workflow.
 - **Policy Builder Phase 8R Legacy Write Path Shutdown** — added a
   side-effect-free write-boundary service, architecture record, and audit suite
   that blocks converted policies from accepting legacy preset/custom-signal

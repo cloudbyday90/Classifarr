@@ -7,7 +7,9 @@ import {
 import {
   PHASE6R_EVIDENCE_AUDIT_RISK_IDS,
   PHASE6R_EVIDENCE_BUCKET_IDS,
+  PHASE6R_EVIDENCE_BUCKET_READINESS_IDS,
   PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS,
+  PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS,
   PHASE6R_EVIDENCE_SOURCE_IDS,
   buildPolicyBuilderPhase6EvidenceEngineAudit,
   buildPolicyBuilderPhase6EvidenceProjection,
@@ -15,7 +17,9 @@ import {
   getPolicyBuilderPhase6EvidenceBucket,
   getPolicyBuilderPhase6EvidenceSource,
   listPolicyBuilderPhase6EvidenceBuckets,
+  listPolicyBuilderPhase6EvidenceReducerCutlines,
   listPolicyBuilderPhase6EvidenceSources,
+  summarizePolicyBuilderPhase6EvidenceProjection,
   validatePolicyBuilderPhase6EvidenceBucket,
   validatePolicyBuilderPhase6EvidenceProjectionEntry,
   validatePolicyBuilderPhase6EvidenceSource,
@@ -143,6 +147,51 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
     expect(JSON.stringify(projection)).not.toContain('providerPayload');
     expect(JSON.stringify(projection)).not.toContain('quotaState');
     expect(JSON.stringify(projection)).not.toContain('uiChipLabel');
+    expect(projection.summary).toEqual(expect.objectContaining({
+      version: 'phase6r.evidence.summary.v1',
+      totalEntryCount: 9,
+      hasBlockingEvidence: true,
+      hasReviewEvidence: true,
+    }));
+    expect(projection.summary.bucketSummaries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
+        entryCount: 1,
+        readinessId: PHASE6R_EVIDENCE_BUCKET_READINESS_IDS.BLOCKING,
+      }),
+      expect.objectContaining({
+        bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
+        entryCount: 1,
+        readinessId: PHASE6R_EVIDENCE_BUCKET_READINESS_IDS.REVIEW,
+      }),
+    ]));
+  });
+
+  test('builds a bounded evidence summary for downstream engines', () => {
+    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animation'],
+        compatibilityCandidates: ['Family'],
+      },
+      operatorIntent: {
+        hardLimits: ['No NC-17'],
+      },
+    });
+
+    const summary = summarizePolicyBuilderPhase6EvidenceProjection(projection);
+
+    expect(summary).toEqual(projection.summary);
+    expect(summary.sourceIds).toEqual([
+      PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+      PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    ]);
+    expect(summary.authoritySourceIds).toEqual([
+      AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    ]);
+    expect(summary.blockingBucketIds).toEqual([
+      PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
+    ]);
   });
 
   test('treats stale profiles and missing input as insufficient evidence instead of exclusions', () => {
@@ -177,10 +226,26 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedBucketCount).toBe(8);
     expect(audit.checkedSourceCount).toBe(8);
+    expect(audit.checkedReducerCutlineCount).toBe(4);
     expect(audit.nextPhase).toEqual(expect.objectContaining({
       phaseId: '6r_2',
       label: 'Intent Engine',
     }));
+  });
+
+  test('tracks replay and impact reducers as rewrite or deletion candidates outside normal flow', () => {
+    const cutlines = listPolicyBuilderPhase6EvidenceReducerCutlines();
+
+    expect(cutlines.map(cutline => cutline.dispositionId)).toEqual(expect.arrayContaining([
+      PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
+      PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.REWRITE_AS_EVIDENCE_REDUCER,
+      PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.KEEP_OUT_OF_NORMAL_FLOW,
+    ]));
+    cutlines.forEach(cutline => {
+      expect(cutline.normalFlowAllowed).toBe(false);
+      expect(cutline.replacementTarget).toEqual(expect.any(String));
+      expect(cutline.reason).toEqual(expect.any(String));
+    });
   });
 
   test('audits generated evidence projections as safe contract instances', () => {
@@ -226,6 +291,7 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
       sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
       authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
     });
+    projection.summary.totalEntryCount = 1;
 
     const riskIds = buildPolicyBuilderPhase6EvidenceProjectionAudit(projection)
       .issues
@@ -241,7 +307,24 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
       PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_LIVE_LOOKUP,
       PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_HARD_LIMIT_WITHOUT_OPERATOR_AUTHORITY,
       PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_METADATA_OWNS_IDENTITY,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_SUMMARY_COUNT_MISMATCH,
     ]));
+  });
+
+  test('rejects projections without generated summaries', () => {
+    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animation'],
+      },
+    });
+    delete projection.summary;
+
+    expect(buildPolicyBuilderPhase6EvidenceProjectionAudit(projection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_MISSING_SUMMARY,
+        }),
+      ]));
   });
 
   test('rejects individual projection entries with unknown source or authority', () => {

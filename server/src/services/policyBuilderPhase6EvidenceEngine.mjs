@@ -38,6 +38,19 @@ const PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS = Object.freeze({
   IMPACT_PREVIEW_PAYLOAD: 'impact_preview_payload',
 });
 
+const PHASE6R_EVIDENCE_BUCKET_READINESS_IDS = Object.freeze({
+  EMPTY: 'empty',
+  SUPPORTING: 'supporting',
+  REVIEW: 'review',
+  BLOCKING: 'blocking',
+});
+
+const PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS = Object.freeze({
+  REWRITE_AS_EVIDENCE_REDUCER: 'rewrite_as_evidence_reducer',
+  DELETE_DIAGNOSTIC_SURFACE: 'delete_diagnostic_surface',
+  KEEP_OUT_OF_NORMAL_FLOW: 'keep_out_of_normal_flow',
+});
+
 const PHASE6R_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_BUCKET: 'unknown_bucket',
   UNKNOWN_SOURCE: 'unknown_source',
@@ -73,6 +86,11 @@ const PHASE6R_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   PROJECTION_HARD_LIMIT_WITHOUT_OPERATOR_AUTHORITY: 'projection_hard_limit_without_operator_authority',
   PROJECTION_AVOID_WITHOUT_OPERATOR_AUTHORITY: 'projection_avoid_without_operator_authority',
   PROJECTION_METADATA_OWNS_IDENTITY: 'projection_metadata_owns_identity',
+  PROJECTION_MISSING_SUMMARY: 'projection_missing_summary',
+  PROJECTION_SUMMARY_COUNT_MISMATCH: 'projection_summary_count_mismatch',
+  REDUCER_CUTLINE_MISSING_DISPOSITION: 'reducer_cutline_missing_disposition',
+  REDUCER_CUTLINE_USES_NORMAL_FLOW: 'reducer_cutline_uses_normal_flow',
+  REDUCER_CUTLINE_EXPOSES_UI_DIAGNOSTIC: 'reducer_cutline_exposes_ui_diagnostic',
 });
 
 function deepFreeze(value) {
@@ -378,12 +396,55 @@ const PHASE6R_EVIDENCE_SOURCES = deepFreeze([
   },
 ]);
 
+const PHASE6R_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
+  {
+    id: 'impact_preview_service',
+    path: 'server/src/services/policyIntentImpactPreview.mjs',
+    dispositionId: PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
+    normalFlowAllowed: false,
+    exposesUiDiagnostic: true,
+    replacementTarget: 'Phase 6R evidence summary and Phase 6R/7R migration verifier output.',
+    reason: 'Impact preview exists to compare legacy policy paths; it should not become destination evidence UI.',
+  },
+  {
+    id: 'replay_preview_service',
+    path: 'server/src/services/policyIntentReplayPreview.mjs',
+    dispositionId: PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
+    normalFlowAllowed: false,
+    exposesUiDiagnostic: true,
+    replacementTarget: 'Phase 6R evidence projection plus migration-only replay verifier.',
+    reason: 'Representative replay is useful verification material, not the normal operator workflow.',
+  },
+  {
+    id: 'replay_scoring_service',
+    path: 'server/src/services/policyIntentReplayScoring.mjs',
+    dispositionId: PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.REWRITE_AS_EVIDENCE_REDUCER,
+    normalFlowAllowed: false,
+    exposesUiDiagnostic: false,
+    replacementTarget: 'Deterministic Phase 6R evidence reducers for outlier and compatibility buckets.',
+    reason: 'Scoring math can be reused only after it emits source-authorized evidence entries instead of replay UI scores.',
+  },
+  {
+    id: 'replay_sample_diagnostics_service',
+    path: 'server/src/services/policyIntentReplaySampleDiagnostics.mjs',
+    dispositionId: PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.KEEP_OUT_OF_NORMAL_FLOW,
+    normalFlowAllowed: false,
+    exposesUiDiagnostic: true,
+    replacementTarget: 'Maintainer-only migration diagnostics until Phase 8R deletion gates.',
+    reason: 'Sample diagnostics can help migration verification, but they are not policy meaning.',
+  },
+]);
+
 function listPolicyBuilderPhase6EvidenceBuckets() {
   return PHASE6R_EVIDENCE_BUCKETS;
 }
 
 function listPolicyBuilderPhase6EvidenceSources() {
   return PHASE6R_EVIDENCE_SOURCES;
+}
+
+function listPolicyBuilderPhase6EvidenceReducerCutlines() {
+  return PHASE6R_EVIDENCE_REDUCER_CUTLINES;
 }
 
 function getPolicyBuilderPhase6EvidenceBucket(bucketId) {
@@ -533,7 +594,61 @@ function createEmptyEvidenceProjection() {
     exposesRawProviderPayloads: false,
     exposesUiChipLanguage: false,
     buckets,
+    summary: null,
     warnings: [],
+  };
+}
+
+function summarizePolicyBuilderPhase6EvidenceProjection(projection = {}) {
+  const buckets = isNonEmptyObject(projection.buckets) ? projection.buckets : {};
+  const sourceIds = new Set();
+  const authoritySourceIds = new Set();
+  const blockingBucketIds = [];
+  const reviewBucketIds = [];
+
+  const bucketSummaries = PHASE6R_EVIDENCE_BUCKETS.map(bucket => {
+    const entries = Array.isArray(buckets[bucket.id]) ? buckets[bucket.id] : [];
+    entries.forEach(entry => {
+      if (entry?.sourceId) sourceIds.add(entry.sourceId);
+      if (entry?.authoritySourceId) authoritySourceIds.add(entry.authoritySourceId);
+    });
+
+    let readinessId = entries.length === 0
+      ? PHASE6R_EVIDENCE_BUCKET_READINESS_IDS.EMPTY
+      : PHASE6R_EVIDENCE_BUCKET_READINESS_IDS.SUPPORTING;
+
+    if (entries.length > 0 && bucket.canBlockAutomation === true) {
+      readinessId = PHASE6R_EVIDENCE_BUCKET_READINESS_IDS.BLOCKING;
+      blockingBucketIds.push(bucket.id);
+    } else if ([
+      PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
+      PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+      PHASE6R_EVIDENCE_BUCKET_IDS.FRESHNESS,
+    ].includes(bucket.id) && entries.length > 0) {
+      readinessId = PHASE6R_EVIDENCE_BUCKET_READINESS_IDS.REVIEW;
+      reviewBucketIds.push(bucket.id);
+    }
+
+    return {
+      bucketId: bucket.id,
+      label: bucket.label,
+      entryCount: entries.length,
+      canBlockAutomation: bucket.canBlockAutomation === true,
+      readinessId,
+      traceAttribute: bucket.traceAttribute,
+    };
+  });
+
+  return {
+    version: 'phase6r.evidence.summary.v1',
+    totalEntryCount: bucketSummaries.reduce((count, bucket) => count + bucket.entryCount, 0),
+    bucketSummaries,
+    sourceIds: [...sourceIds].sort(),
+    authoritySourceIds: [...authoritySourceIds].sort(),
+    blockingBucketIds,
+    reviewBucketIds,
+    hasBlockingEvidence: blockingBucketIds.length > 0,
+    hasReviewEvidence: reviewBucketIds.length > 0 || Array.isArray(projection.warnings) && projection.warnings.length > 0,
   };
 }
 
@@ -650,6 +765,8 @@ function buildPolicyBuilderPhase6EvidenceProjection(input = {}) {
       message: 'No Phase 6R evidence inputs were provided.',
     });
   }
+
+  projection.summary = summarizePolicyBuilderPhase6EvidenceProjection(projection);
 
   return projection;
 }
@@ -858,6 +975,63 @@ function pushProjectionIssue(issues, riskId, message, details = {}) {
   });
 }
 
+function validatePolicyBuilderPhase6EvidenceProjectionSummary(projection = {}) {
+  const issues = [];
+  const expectedSummary = summarizePolicyBuilderPhase6EvidenceProjection(projection);
+  const summary = isNonEmptyObject(projection.summary) ? projection.summary : null;
+
+  if (!summary) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_MISSING_SUMMARY,
+      'Evidence projection must include a generated summary for downstream engines.'
+    );
+    return {
+      ok: false,
+      issues,
+      expectedSummary,
+    };
+  }
+
+  if (summary.totalEntryCount !== expectedSummary.totalEntryCount) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_SUMMARY_COUNT_MISMATCH,
+      'Evidence projection summary must match bucket entry counts.',
+      {
+        expectedTotalEntryCount: expectedSummary.totalEntryCount,
+        actualTotalEntryCount: summary.totalEntryCount,
+      }
+    );
+  }
+
+  const actualBucketCounts = new Map(
+    (Array.isArray(summary.bucketSummaries) ? summary.bucketSummaries : [])
+      .map(bucket => [bucket.bucketId, bucket.entryCount])
+  );
+
+  expectedSummary.bucketSummaries.forEach(bucket => {
+    if (actualBucketCounts.get(bucket.bucketId) !== bucket.entryCount) {
+      pushProjectionIssue(
+        issues,
+        PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_SUMMARY_COUNT_MISMATCH,
+        `Evidence projection summary count for "${bucket.bucketId}" must match bucket entries.`,
+        {
+          bucketId: bucket.bucketId,
+          expectedEntryCount: bucket.entryCount,
+          actualEntryCount: actualBucketCounts.get(bucket.bucketId) ?? null,
+        }
+      );
+    }
+  });
+
+  return {
+    ok: issues.length === 0,
+    issues,
+    expectedSummary,
+  };
+}
+
 function validatePolicyBuilderPhase6EvidenceProjectionEntry(entry = {}, bucketId) {
   const issues = [];
   const bucket = getPolicyBuilderPhase6EvidenceBucket(bucketId);
@@ -974,6 +1148,7 @@ function validatePolicyBuilderPhase6EvidenceProjectionEntry(entry = {}, bucketId
 function buildPolicyBuilderPhase6EvidenceProjectionAudit(projection = {}) {
   const issues = [];
   const buckets = isNonEmptyObject(projection.buckets) ? projection.buckets : null;
+  const summaryResult = validatePolicyBuilderPhase6EvidenceProjectionSummary(projection);
 
   if (!buckets) {
     pushProjectionIssue(
@@ -1040,18 +1215,59 @@ function buildPolicyBuilderPhase6EvidenceProjectionAudit(projection = {}) {
     });
   }
 
+  summaryResult.issues.forEach(issue => issues.push(issue));
+
   return {
     ok: issues.length === 0,
     issueCount: issues.length,
     checkedEntryCount: entryResults.length,
     issues,
     entryResults,
+    summaryResult,
+  };
+}
+
+function validatePolicyBuilderPhase6EvidenceReducerCutline(cutline = {}) {
+  const issues = [];
+
+  if (!Object.values(PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS).includes(cutline.dispositionId)) {
+    issues.push({
+      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.REDUCER_CUTLINE_MISSING_DISPOSITION,
+      cutlineId: cutline.id || null,
+      message: 'Legacy replay/impact reducers must have an explicit Phase 6R disposition.',
+    });
+  }
+
+  if (cutline.normalFlowAllowed === true) {
+    issues.push({
+      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.REDUCER_CUTLINE_USES_NORMAL_FLOW,
+      cutlineId: cutline.id || null,
+      message: 'Legacy replay/impact reducers must not remain in the normal operator workflow.',
+    });
+  }
+
+  if (
+    cutline.exposesUiDiagnostic === true &&
+    cutline.dispositionId === PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.REWRITE_AS_EVIDENCE_REDUCER
+  ) {
+    issues.push({
+      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.REDUCER_CUTLINE_EXPOSES_UI_DIAGNOSTIC,
+      cutlineId: cutline.id || null,
+      message: 'Reducers rewritten into evidence must not expose UI diagnostic language.',
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    cutlineId: cutline.id || null,
+    issues,
   };
 }
 
 function buildPolicyBuilderPhase6EvidenceEngineAudit({
   buckets = PHASE6R_EVIDENCE_BUCKETS,
   sources = PHASE6R_EVIDENCE_SOURCES,
+  reducerCutlines = PHASE6R_EVIDENCE_REDUCER_CUTLINES,
 } = {}) {
   const bucketResults = buckets.map(bucket =>
     validatePolicyBuilderPhase6EvidenceBucket(bucket, sources)
@@ -1059,7 +1275,10 @@ function buildPolicyBuilderPhase6EvidenceEngineAudit({
   const sourceResults = sources.map(source =>
     validatePolicyBuilderPhase6EvidenceSource(source, buckets)
   );
-  const issueCount = [...bucketResults, ...sourceResults]
+  const reducerCutlineResults = reducerCutlines.map(cutline =>
+    validatePolicyBuilderPhase6EvidenceReducerCutline(cutline)
+  );
+  const issueCount = [...bucketResults, ...sourceResults, ...reducerCutlineResults]
     .reduce((count, result) => count + result.issues.length, 0);
 
   return {
@@ -1067,8 +1286,10 @@ function buildPolicyBuilderPhase6EvidenceEngineAudit({
     issueCount,
     checkedBucketCount: bucketResults.length,
     checkedSourceCount: sourceResults.length,
+    checkedReducerCutlineCount: reducerCutlineResults.length,
     bucketResults,
     sourceResults,
+    reducerCutlineResults,
     nextPhase: {
       phaseId: '6r_2',
       label: 'Intent Engine',
@@ -1080,7 +1301,9 @@ function buildPolicyBuilderPhase6EvidenceEngineAudit({
 export {
   PHASE6R_EVIDENCE_AUDIT_RISK_IDS,
   PHASE6R_EVIDENCE_BUCKET_IDS,
+  PHASE6R_EVIDENCE_BUCKET_READINESS_IDS,
   PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS,
+  PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS,
   PHASE6R_EVIDENCE_SOURCE_IDS,
   buildPolicyBuilderPhase6EvidenceEngineAudit,
   buildPolicyBuilderPhase6EvidenceProjection,
@@ -1088,7 +1311,9 @@ export {
   getPolicyBuilderPhase6EvidenceBucket,
   getPolicyBuilderPhase6EvidenceSource,
   listPolicyBuilderPhase6EvidenceBuckets,
+  listPolicyBuilderPhase6EvidenceReducerCutlines,
   listPolicyBuilderPhase6EvidenceSources,
+  summarizePolicyBuilderPhase6EvidenceProjection,
   validatePolicyBuilderPhase6EvidenceBucket,
   validatePolicyBuilderPhase6EvidenceProjectionEntry,
   validatePolicyBuilderPhase6EvidenceSource,
