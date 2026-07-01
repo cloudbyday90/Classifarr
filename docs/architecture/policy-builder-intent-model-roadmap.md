@@ -4451,6 +4451,45 @@ Implementation status:
 - Focused backup/export, restore-helper, and backup lifecycle integration tests
   cover the new wiring.
 
+### 8R.11 Post-Upgrade Dry-Run Wiring
+
+Intent: connect real policy storage to Phase 8R candidate reporting during
+post-upgrade without applying native conversion.
+
+Tasks:
+
+- Load bounded policy, library, ARR mapping, and preset input for post-upgrade
+  reporting.
+- Run the Phase 8R migration candidate report against that input.
+- Select ready policies for a plan-only explicit conversion workflow using the
+  approved `post_upgrade_apply` actor source.
+- Return operator-safe status, counts, selected policy IDs, bounded error IDs,
+  and validation state.
+- Keep conversion apply disabled until transaction, rollback snapshot, and
+  operator failure gates are implemented.
+
+Acceptance criteria:
+
+- Dry-run uses the same Phase 8R candidate and explicit workflow contracts as
+  manual conversion planning.
+- Dry-run performs no policy, native storage, migration event, rollback
+  snapshot, or legacy deletion side effects.
+- No-policy and no-ready-candidate states report clearly without forcing an
+  invalid empty-selection conversion workflow.
+- Post-upgrade logs contain only bounded status/count/error identifiers, not raw
+  policy payloads.
+
+Implementation status:
+
+- Phase 8R post-upgrade dry-run wiring is documented in
+  [Policy Builder Phase 8R Post-Upgrade Dry-Run Wiring](policy-builder-phase-8r-post-upgrade-dry-run-wiring.md).
+- The dry-run service lives in
+  `server/src/services/policyBuilderPhase8PostUpgradeDryRun.mjs`.
+- The `phase8r_native_intent_dry_run` action is wired into
+  `postUpgradeService`.
+- Focused service tests cover ready, review-required, no-policy, loader mapping,
+  and orchestration paths.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -4478,6 +4517,10 @@ Implement Phase 8R in this order:
 11. **8R.11 Post-Upgrade Dry-Run Wiring**
     Connects candidate reporting to post-upgrade dry-run without applying
     conversion.
+12. **8R.12 Post-Upgrade Apply Gate**
+    Consumes current dry-run output, creates rollback snapshots, writes native
+    intent records and migration events atomically, and reports rollback-safe
+    operator failure IDs.
 
 Current starting point:
 

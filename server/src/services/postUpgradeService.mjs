@@ -12,6 +12,7 @@ import path from 'node:path';
 import * as db from '../config/database.mjs';
 import { persistRagAuditLog } from './ragAuditLogService.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
+import { runPolicyBuilderPhase8PostUpgradeDryRun } from './policyBuilderPhase8PostUpgradeDryRun.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
@@ -238,6 +239,9 @@ class PostUpgradeService {
             case 'reset_stale_normalizations':
                 return await this.resetStaleNormalizations();
 
+            case 'phase8r_native_intent_dry_run':
+                return await this.runPhase8rNativeIntentDryRun();
+
             default:
                 throw new Error(`Unknown task action: ${task.action}`);
         }
@@ -397,6 +401,35 @@ class PostUpgradeService {
 
         logger.info(`Reset original_rating to NULL for ${result.rowCount} stale items`);
         return { resetCount: result.rowCount };
+    }
+
+    /**
+     * Task Action: report native intent conversion readiness without applying.
+     */
+    async runPhase8rNativeIntentDryRun() {
+        logger.info('Running Phase 8R native intent post-upgrade dry-run...');
+
+        const dryRun = await runPolicyBuilderPhase8PostUpgradeDryRun({
+            dbClient: db
+        });
+
+        logger.info('Phase 8R native intent post-upgrade dry-run complete', {
+            statusId: dryRun.statusId,
+            summary: dryRun.summary,
+            operatorErrorIds: dryRun.operatorErrorIds
+        });
+
+        return {
+            skipped: false,
+            mode: dryRun.mode,
+            statusId: dryRun.statusId,
+            summary: dryRun.summary,
+            operatorErrorIds: dryRun.operatorErrorIds,
+            validation: {
+                ok: dryRun.validation?.ok === true,
+                issueCount: dryRun.validation?.issueCount ?? 0
+            }
+        };
     }
 
     async needsLibraryProfileRatingRegeneration() {

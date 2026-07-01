@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Post-Upgrade Dry-Run Wiring** — added a bounded
+  native intent post-upgrade dry-run service that loads policy, library, ARR
+  mapping, and preset inputs; runs the existing Phase 8R migration candidate
+  report and explicit conversion workflow in plan-only mode; reports ready,
+  review-required, and no-policy states with bounded operator error IDs; wires a
+  `phase8r_native_intent_dry_run` post-upgrade action; and keeps native
+  conversion apply disabled until transaction and rollback gates are
+  implemented.
 - **Policy Builder Phase 8R Native Backup And Restore Wiring** — wired native
   policy intent tables into the live backup/export and transactional restore
   path; backup payloads now include native intent headers, rules, routing
