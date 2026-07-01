@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Controlled Compatibility Path Removal** — added a
+  side-effect-free removal-batch contract that consumes a ready deletion
+  execution plan and final gate output, limits selected manifest paths to a
+  narrow reviewed batch, requires removal reason and reviewer metadata, blocks
+  empty, unknown, or too-broad selections, and defers destructive application to
+  a later controlled apply step.
 - **Policy Builder Phase 8R Compatibility Path Deletion Execution Gate** —
   added a final side-effect-free preflight gate that consumes the deletion
   execution plan and blocks controlled deletion unless the worktree, backup and

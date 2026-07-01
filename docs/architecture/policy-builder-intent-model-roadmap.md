@@ -4699,6 +4699,44 @@ Implementation status:
   stances, manifest freshness, and validates that no deletion side effects
   occur.
 
+### 8R.17 Controlled Compatibility Path Removal
+
+Intent: consume a ready Phase 8R.15 execution plan and Phase 8R.16 final gate,
+then produce a small, reviewable compatibility path removal batch without
+performing destructive changes.
+
+Tasks:
+
+- Consume Phase 8R.15 approved manifest entries.
+- Consume Phase 8R.16 final preflight gate output.
+- Require selected paths to exist in the approved manifest.
+- Require selected manifest entries to include replacement evidence.
+- Require a narrow maximum batch size.
+- Require removal reason and reviewing actor.
+- Preserve a side-effect-free output for the later apply step.
+
+Acceptance criteria:
+
+- Removal batch is blocked unless the execution plan is ready and valid.
+- Removal batch is blocked unless the execution gate is ready and valid.
+- Empty selections and paths outside the approved manifest are blocked.
+- Batches broader than the configured maximum are blocked.
+- Missing review reason or reviewer blocks the batch.
+- Service never deletes files, archives files, removes routes, removes tests,
+  mutates storage, writes manifests, or runs Git commands.
+
+Implementation status:
+
+- Phase 8R.17 controlled compatibility path removal is documented in
+  [Policy Builder Phase 8R Controlled Compatibility Path Removal](policy-builder-phase-8r-controlled-compatibility-path-removal.md).
+- The removal-batch contract lives in
+  `server/src/services/policyBuilderPhase8ControlledCompatibilityPathRemoval.mjs`.
+- The focused removal-batch test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8ControlledCompatibilityPathRemoval.test.mjs`.
+- Current implementation builds a side-effect-free removal review batch from
+  selected manifest paths and defers destructive application to Phase 8R.18
+  because candidate paths still have live imports.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -4746,8 +4784,13 @@ Implement Phase 8R in this order:
     approval, manifest freshness, and final rollback/support stance immediately
     before any compatibility path deletion is allowed.
 17. **8R.17 Controlled Compatibility Path Removal**
-    Performs the first narrow compatibility path removals only after consuming a
-    ready Phase 8R.16 gate output and preserving a reviewable deletion scope.
+    Builds the first narrow compatibility path removal batch only after
+    consuming a ready Phase 8R.16 gate output, selected approved manifest paths,
+    and review metadata.
+18. **8R.18 Controlled Compatibility Path Removal Apply**
+    Applies one reviewed Phase 8R.17 removal batch, updates imports and tests,
+    and proves focused plus full validation still pass before additional
+    compatibility paths are removed.
 
 Current starting point:
 
