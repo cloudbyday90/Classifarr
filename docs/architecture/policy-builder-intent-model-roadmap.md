@@ -3140,6 +3140,17 @@ Implementation status:
   audit that blocks live provider lookups, raw provider payloads, UI chip
   language, provider quota/cooldown state, metadata-owned identity, and direct
   learning from final outcomes.
+- Phase 6R.1 evidence input gate hardening is documented in
+  [Policy Builder Phase 6R Evidence Input Gate](policy-builder-phase-6r-evidence-input-gate.md).
+- The evidence input gate lives in
+  `server/src/services/policyBuilderPhase6EvidenceInputGate.mjs`.
+- The evidence input gate defines the allowed input envelope before projection:
+  library profile, operator intent, final outcomes, manual corrections,
+  pending-item answers, Arr routing outcomes, metadata evidence, and profile
+  freshness.
+- The evidence input gate rejects unknown sections, raw provider payload
+  markers, live lookup markers, provider quota/cooldown state, UI diagnostic
+  labels, and replay/impact preview payloads before evidence projection.
 - The evidence engine now includes a projection-instance audit that validates
   generated or tampered evidence projections after construction, blocking
   unknown buckets/sources, unsafe source-to-bucket ownership, raw payloads, live

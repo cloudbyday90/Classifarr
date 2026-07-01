@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Evidence Input Gate** — added a server-side evidence
+  input envelope gate that maps allowed Phase 6R.1 input sections to evidence
+  sources and authority sources, rejects unknown sections plus raw provider
+  payloads, live lookup markers, quota/cooldown state, UI diagnostic labels,
+  and replay/impact preview payloads before projection, and documents the
+  secure evidence-boundary design.
 - **Policy Builder Phase 8R Native Runtime Cutover Verification** — added a
   native policy read loader that attaches active native intent rows before
   detailed policy projection; detailed `GET /api/policies/:id` now returns
