@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Runtime Metrics And Decision Trace** — added a
+  server-owned metrics/trace projection contract, architecture record, and audit
+  suite that counts Phase 7R automation, question, request-learning, rebuild,
+  migration-verifier, and rebuild lifecycle outcomes; emits bounded
+  `classifarr.phase7r.trace.*` records with reason codes and stable component
+  ids; suppresses raw payloads, prompts, embeddings, provider payloads, and
+  diagnostic internals; and keeps operator summaries action-oriented without
+  persisting or exporting telemetry yet.
 - **Policy Builder Phase 7R Migration Verifier And Rollback Path** — added a
   server-owned migration verifier contract, architecture record, and audit suite
   that compares Phase 7R rebuild proposals against sanitized representative

@@ -3855,6 +3855,30 @@ Acceptance criteria:
 - Metrics do not leak secrets, raw provider payloads, prompts, or embeddings.
 - Operator UI remains action-oriented.
 
+Implementation status:
+
+- Phase 7R.8 runtime metrics and decision trace is documented in
+  [Policy Builder Phase 7R Runtime Metrics And Decision Trace](policy-builder-phase-7r-runtime-metrics-trace.md).
+- The server-owned metrics/trace projection lives in
+  `server/src/services/policyBuilderPhase7RuntimeMetricsTrace.mjs`.
+- The focused metrics/trace test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase7RuntimeMetricsTrace.test.mjs`.
+- Current implementation counts Phase 7R automation, question, learning,
+  rebuild, migration verifier, and rebuild lifecycle outcomes into bounded
+  counters for auto-routed, classified-not-routed, review, hard-limit block,
+  missing routing, stale profile, learning allowed/blocked/downgraded, rebuild
+  accepted/rejected, and rollback events.
+- Trace records use stable `classifarr.phase7r.trace.*` attributes, bounded
+  component ids, bounded reason codes, and a configurable `maxTraceRecords`
+  limit.
+- Raw provider payloads, raw replay/impact payloads, prompts, embeddings,
+  provider payloads, and diagnostic internals are suppressed from trace output.
+- Operator summaries are limited to action-oriented next steps such as configure
+  routing, review pending items, refresh profile, review rebuild verifier, or no
+  action required.
+- Metrics persistence and OpenTelemetry export remain future integration work;
+  this slice is a side-effect-free projection contract.
+
 ### 7R.9 Runtime And Rebuild Test Reset
 
 Intent: protect the new runtime behavior instead of preserving old classification
