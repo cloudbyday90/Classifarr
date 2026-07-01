@@ -4243,6 +4243,28 @@ Acceptance criteria:
   and rollback tools are proven.
 - Legacy write support has a removal checklist.
 
+Implementation status:
+
+- Phase 8R.6 legacy write shutdown behavior is documented in
+  [Policy Builder Phase 8R Legacy Write Path Shutdown](policy-builder-phase-8r-legacy-write-path-shutdown.md).
+- Current implementation adds a side-effect-free server write-boundary service
+  that classifies policy write operations before route mutation or SQL writes.
+- Converted policies block legacy behavior writes for preset attachments,
+  preset-level `customSignals`, legacy scoring weights, trust flags, decision
+  thresholds, combination mode, preset attach/delete/replace operations, preset
+  custom-signal updates, and reset flows that would recreate legacy behavior.
+- Converted policies allow metadata-only maintenance such as name, description,
+  enabled state, priority, and sort order.
+- Unconverted policies can continue compatibility writes during migration, but
+  the boundary emits time-bounded warnings and a removal checklist.
+- Native intent payloads are blocked until native write persistence is marked
+  ready.
+- New policy legacy defaults are blocked once native default gates are ready.
+- Validation rejects converted legacy writes that are marked allowed, converted
+  reset-to-legacy allowance, native writes without readiness, unconverted
+  compatibility writes without warnings, native-ready new-policy legacy
+  defaults, missing removal checklist items, and planning side effects.
+
 ### 8R.7 Legacy Code Deletion Gates
 
 Intent: remove replaced compatibility code after migration proves stable.

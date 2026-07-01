@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Legacy Write Path Shutdown** — added a
+  side-effect-free write-boundary service, architecture record, and audit suite
+  that blocks converted policies from accepting legacy preset/custom-signal
+  behavior writes; allows converted metadata-only edits; keeps unconverted
+  compatibility writes time-bounded with warnings and a removal checklist;
+  requires native write readiness before native intent payloads are allowed; and
+  gates new policy legacy defaults once native default readiness is proven.
 - **Policy Builder Phase 8R Rollback Snapshot And Reversion Window** — added a
   side-effect-free rollback-window service, architecture record, and audit suite
   that plans bounded rollback snapshots before native conversion or accepted
