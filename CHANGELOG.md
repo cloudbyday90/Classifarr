@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Compatibility Path Deletion Execution Plan** —
+  added a side-effect-free manifest builder that consumes deletion readiness and
+  legacy deletion categories, enumerates exact compatibility paths with action
+  IDs and replacement evidence, and blocks execution planning without rollback
+  stance, support stance, and explicit approval.
 - **Policy Builder Phase 8R Compatibility Path Deletion Readiness** — added a
   side-effect-free readiness report that composes native runtime cutover
   verification with legacy deletion gates, blocks on residual compatibility
