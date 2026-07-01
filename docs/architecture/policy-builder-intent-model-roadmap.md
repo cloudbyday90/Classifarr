@@ -3760,6 +3760,28 @@ Acceptance criteria:
 - Rebuild does not automatically delete or replace existing policies.
 - Explicit operator constraints are preserved unless the operator changes them.
 
+Implementation status:
+
+- Phase 7R.6 library-derived policy rebuild is documented in
+  [Policy Builder Phase 7R Library-Derived Policy Rebuild](policy-builder-phase-7r-library-policy-rebuild.md).
+- The server-owned rebuild proposal contract lives in
+  `server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs`.
+- The focused rebuild test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase7LibraryPolicyRebuild.test.mjs`.
+- Current implementation consumes observed library profile evidence, guarded
+  outcomes, explicit constraints, routing configuration, observed outliers,
+  observed absences, and profile freshness.
+- Rebuild output reuses Phase 6R evidence projection, intent draft, and
+  readiness contracts instead of inventing a separate policy schema.
+- Proposals include evidence source summaries, confidence, assumptions,
+  warnings, an explicit operator acceptance gate, and a rollback snapshot gate.
+- Observed absence is warning-only review context and cannot become avoid or
+  exclusion evidence.
+- Explicit hard limits and avoid rules are preserved as operator-declared
+  constraints unless a later operator action changes them.
+- Proposal side effects remain disabled: no activation, replacement, deletion,
+  learning write, or routing write happens in this slice.
+
 ### 7R.7 Migration Verifier And Rollback Path
 
 Intent: verify generated intent behavior before replacing legacy behavior.

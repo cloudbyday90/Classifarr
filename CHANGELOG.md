@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Library-Derived Policy Rebuild** — added a
+  server-owned rebuild proposal contract, architecture record, and audit suite
+  that converts observed library profile evidence, guarded outcomes, explicit
+  constraints, routing configuration, outliers, observed absences, and profile
+  freshness into a Phase 6R evidence/intent/readiness proposal; explains source
+  counts, confidence, assumptions, and warnings; preserves explicit
+  constraints; keeps observed absence as warning-only context; requires
+  operator acceptance and rollback snapshot gates; and blocks activation,
+  replacement, deletion, learning, and routing side effects until a later
+  verifier/replacement slice.
 - **Policy Builder Phase 7R Request-Time Learning And Destination Selection** —
   added a server-owned request-time learning contract, architecture record, and
   audit suite that normalizes user-requested destinations, operator manual
