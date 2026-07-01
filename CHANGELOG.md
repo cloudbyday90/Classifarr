@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Execution Plan Artifact Exporter** — added a
+  machine-readable execution-plan artifact contract and
+  `npm run policy:phase8r:execution-plan` to generate Phase 8R.15
+  execution-plan JSON from explicit readiness, deletion-gate, replacement,
+  rollback, support, approval, and actor evidence without fabricating readiness
+  or applying compatibility removals.
 - **Policy Builder Phase 8R Final Removal Audit Exporter** — added a
   machine-readable final-removal-audit evidence contract and
   `npm run policy:phase8r:final-removal-audit` to compose the Phase 8R.21 audit

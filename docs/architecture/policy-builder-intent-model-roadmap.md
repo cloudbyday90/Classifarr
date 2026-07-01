@@ -5123,6 +5123,53 @@ Implementation status:
   the Phase 8R.23 evidence run; completion remains dependent on the real
   execution-plan artifact and current checkout removal state.
 
+### 8R.26 Execution Plan Artifact Exporter
+
+Intent: generate the machine-readable Phase 8R.15 execution-plan JSON that the
+Phase 8R.25 final-removal audit exporter requires, without fabricating deletion
+readiness or performing compatibility path removal.
+
+Tasks:
+
+- Require explicit input evidence for readiness, deletion gates, replacement
+  evidence, rollback stance, support stance, manifest approval, and approving
+  actor.
+- Build the nested Phase 8R.15 execution plan through the existing
+  execution-plan contract.
+- Wrap the generated plan with bounded artifact metadata, risks, validation,
+  and no-side-effect evidence.
+- Write the nested execution-plan JSON for downstream Phase 8R.25 tooling.
+- Optionally write the wrapper artifact for audit trails.
+- Block by default when the generated execution plan is not ready.
+- Avoid deleting files, archiving files, mutating storage, running Git, or
+  applying compatibility-removal batches.
+
+Acceptance criteria:
+
+- The exporter refuses to run without explicit input evidence.
+- Missing approval or blocked readiness prevents ready output.
+- Ready input writes a valid Phase 8R.15 execution-plan JSON artifact.
+- Blocked diagnostic output requires explicit `--allow-blocked`.
+- The generated execution-plan JSON can be passed to
+  `npm run policy:phase8r:final-removal-audit`.
+- The exporter does not delete files, archive files, mutate storage, run Git, or
+  apply removal batches.
+
+Implementation status:
+
+- Phase 8R.26 execution-plan artifact export is documented in
+  [Policy Builder Phase 8R Execution Plan Artifact Exporter](policy-builder-phase-8r-execution-plan-artifact-exporter.md).
+- The execution-plan artifact contract lives in
+  `server/src/services/policyBuilderPhase8ExecutionPlanArtifact.mjs`.
+- The exporter script lives in
+  `scripts/generate-policy-builder-phase-8r-execution-plan.mjs`.
+- The root runner is exposed as `npm run policy:phase8r:execution-plan`.
+- The focused execution-plan artifact test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8ExecutionPlanArtifact.test.mjs`.
+- Current implementation generates the execution-plan JSON input required by
+  the Phase 8R.25 final-removal audit exporter while keeping deletion readiness
+  caller-owned and explicit.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -5205,6 +5252,10 @@ Implement Phase 8R in this order:
     Generates machine-readable Phase 8R.21 final-removal-audit evidence from an
     explicit execution-plan manifest, current path state, source reference scan,
     and validation JSON.
+26. **8R.26 Execution Plan Artifact Exporter**
+    Generates the machine-readable Phase 8R.15 execution-plan JSON from
+    explicit readiness, manifest, replacement, approval, rollback, and support
+    evidence for downstream final-removal-audit tooling.
 
 Current starting point:
 

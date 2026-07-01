@@ -124,11 +124,13 @@ Implemented:
 Validation command set:
 
 - `focused`: focused Phase 8R Jest suites for current evidence, evidence run,
-  checkpoint, compatibility-removal completion audit, and final-removal audit
-  evidence contracts, plus the validation-evidence contract itself.
+  checkpoint, compatibility-removal completion audit, execution-plan artifact,
+  and final-removal audit evidence contracts, plus the validation-evidence
+  contract itself.
 - `lint`: server lint.
 - `markdown`: changelog, Phase 8R roadmap, completion evidence, validation
-  evidence, and final-removal audit architecture markdown lint.
+  evidence, execution-plan artifact, and final-removal audit architecture
+  markdown lint.
 - `full`: full server unit and integration test suites.
 
 Current-state run:
