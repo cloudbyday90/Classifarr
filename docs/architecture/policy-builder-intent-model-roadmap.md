@@ -3561,6 +3561,25 @@ Acceptance criteria:
 - Broad genres can help but cannot decide specialized destinations alone.
 - Evidence projection can explain why automation was allowed or blocked.
 
+Implementation status:
+
+- Phase 7R.2 runtime evidence projection is documented in
+  [Policy Builder Phase 7R Runtime Evidence Projection](policy-builder-phase-7r-runtime-evidence-projection.md).
+- The server-owned runtime evidence projection lives in
+  `server/src/services/policyBuilderPhase7RuntimeEvidenceProjection.mjs`.
+- The focused runtime-evidence test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase7RuntimeEvidenceProjection.test.mjs`.
+- Current implementation maps runtime library profile, operator intent,
+  classification history, manual corrections, pending answers, RAG neighbors,
+  metadata signals, Arr routing outcomes, and profile freshness into Phase 6R
+  evidence buckets.
+- Low-trust RAG neighbors, unknown-library evidence, stale profile state,
+  failed routing, raw provider payloads, and unsupported broad genre overlap are
+  demoted with bounded reason codes instead of becoming destination authority.
+- The projection is deterministic, side-effect-free, does not call live
+  providers, suppresses raw payloads, and emits bounded trace attributes for
+  later runtime decision tracing.
+
 ### 7R.3 Automation Decision Contract
 
 Intent: decide when Classifarr can classify and route automatically without

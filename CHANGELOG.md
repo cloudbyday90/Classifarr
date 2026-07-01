@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Runtime Evidence Projection** — added a
+  server-owned runtime evidence projection, architecture record, and audit suite
+  that maps runtime library-profile, operator-intent, history, manual answer,
+  RAG, metadata, Arr-routing, and profile-freshness inputs into Phase 6R
+  evidence buckets; demotes low-trust RAG neighbors, unknown-library evidence,
+  stale profiles, failed routing, raw provider payloads, and unsupported broad
+  genre overlap with bounded reason codes; and keeps the projection
+  deterministic, side-effect-free, and free of live provider lookups.
 - **Policy Builder Phase 7R Runtime Decision Inventory** — added a
   server-owned runtime inventory contract, architecture record, and audit suite
   that classifies classification, policy-path, signal, AI/RAG, question,
