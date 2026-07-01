@@ -810,4 +810,3 @@ Package version: `0.45.3-beta`
 - **Copyright compliance** — `swaggerSpec.js` was missing its GPL-3.0 header; all 803 source files now pass.
 
 - **VS Code TS server errors** — `.tmp/` excluded from workspace file tracking so the TS server no longer scans `node_modules` under `.tmp/pr-verify/`. (`.vscode/settings.json`)
-

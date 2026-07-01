@@ -136,9 +136,9 @@ Not implemented in this component:
 - no scheduled release-version task registration,
 - no apply mode.
 
-## Next Step
+## Follow-Up
 
-Proceed with **Phase 8R.12 Post-Upgrade Apply Gate**. That task should consume
-the dry-run output, require a current dry-run, create rollback snapshots, insert
-native records and migration events in one transaction, and return clear
-operator-facing failure IDs if anything blocks or rolls back.
+Phase 8R.12 now consumes this dry-run output through the post-upgrade apply
+gate. The remaining follow-up is **Phase 8R.13 Native Runtime Cutover
+Verification**, which should prove converted policies read from native intent in
+real route/service paths before compatibility paths are deleted.

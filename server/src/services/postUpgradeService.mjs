@@ -12,6 +12,7 @@ import path from 'node:path';
 import * as db from '../config/database.mjs';
 import { persistRagAuditLog } from './ragAuditLogService.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
+import { runPolicyBuilderPhase8PostUpgradeApplyGate } from './policyBuilderPhase8PostUpgradeApplyGate.mjs';
 import { runPolicyBuilderPhase8PostUpgradeDryRun } from './policyBuilderPhase8PostUpgradeDryRun.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
@@ -242,6 +243,9 @@ class PostUpgradeService {
             case 'phase8r_native_intent_dry_run':
                 return await this.runPhase8rNativeIntentDryRun();
 
+            case 'phase8r_native_intent_apply_gate':
+                return await this.runPhase8rNativeIntentApplyGate();
+
             default:
                 throw new Error(`Unknown task action: ${task.action}`);
         }
@@ -428,6 +432,38 @@ class PostUpgradeService {
             validation: {
                 ok: dryRun.validation?.ok === true,
                 issueCount: dryRun.validation?.issueCount ?? 0
+            }
+        };
+    }
+
+    /**
+     * Task Action: apply native intent conversion only through the Phase 8R gate.
+     */
+    async runPhase8rNativeIntentApplyGate() {
+        logger.info('Running Phase 8R native intent post-upgrade apply gate...');
+
+        const result = await runPolicyBuilderPhase8PostUpgradeApplyGate({
+            dbClient: db
+        });
+
+        logger.info('Phase 8R native intent post-upgrade apply gate complete', {
+            statusId: result.statusId,
+            appliedPolicyCount: result.appliedPolicyCount,
+            alreadyConvertedCount: result.alreadyConvertedCount,
+            operatorErrorIds: result.operatorErrorIds
+        });
+
+        return {
+            skipped: result.applied !== true,
+            reason: result.applied === true ? undefined : result.statusId,
+            mode: result.mode,
+            statusId: result.statusId,
+            appliedPolicyCount: result.appliedPolicyCount,
+            alreadyConvertedCount: result.alreadyConvertedCount,
+            operatorErrorIds: result.operatorErrorIds,
+            validation: {
+                ok: result.validation?.ok === true,
+                issueCount: result.validation?.issueCount ?? 0
             }
         };
     }

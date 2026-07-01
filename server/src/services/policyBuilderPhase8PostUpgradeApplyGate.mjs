@@ -1,0 +1,788 @@
+import { buildPolicyIntentContract } from './policyIntentContract.mjs';
+import {
+  PHASE8R_CONVERSION_STEP_STATUS_IDS,
+} from './policyBuilderPhase8ExplicitConversionWorkflow.mjs';
+import {
+  DRY_RUN_CURRENT_WINDOW_MINUTES,
+  PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS,
+  PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS,
+  buildPolicyBuilderPhase8PostUpgradeDryRun,
+  loadPolicyBuilderPhase8PostUpgradePolicies,
+} from './policyBuilderPhase8PostUpgradeDryRun.mjs';
+
+const PHASE8R_POST_UPGRADE_APPLY_GATE_VERSION = 'phase8r.post_upgrade_apply_gate.v1';
+const DEFAULT_TARGET_VERSION = 1;
+const DEFAULT_ROLLBACK_WINDOW_DAYS = 14;
+
+const PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS = Object.freeze({
+  READY_TO_APPLY: 'ready_to_apply',
+  APPLIED: 'applied',
+  BLOCKED_BY_DRY_RUN: 'blocked_by_dry_run',
+  BLOCKED_BY_STALE_DRY_RUN: 'blocked_by_stale_dry_run',
+  BLOCKED_BY_NO_READY_STEPS: 'blocked_by_no_ready_steps',
+  BLOCKED_BY_TRANSACTION_BOUNDARY: 'blocked_by_transaction_boundary',
+  FAILED_ROLLED_BACK: 'failed_rolled_back',
+});
+
+const PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS = Object.freeze({
+  DRY_RUN_REQUIRED: 'dry_run_required',
+  DRY_RUN_INVALID: 'dry_run_invalid',
+  DRY_RUN_STALE: 'dry_run_stale',
+  NO_READY_STEPS: 'no_ready_steps',
+  TRANSACTION_BOUNDARY_REQUIRED: 'transaction_boundary_required',
+  APPLY_FAILED_ROLLED_BACK: 'apply_failed_rolled_back',
+  POLICY_INPUT_MISSING: 'policy_input_missing',
+  CONTRACT_VALIDATION_FAILED: 'contract_validation_failed',
+});
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function normalizeTimestamp(value) {
+  const date = value ? new Date(value) : new Date();
+  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+}
+
+function addDays(timestamp, days) {
+  const date = new Date(timestamp);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString();
+}
+
+function isTimestampExpired(expiresAt, now) {
+  const expiresAtDate = new Date(expiresAt);
+  const nowDate = new Date(now);
+  if (Number.isNaN(expiresAtDate.getTime()) || Number.isNaN(nowDate.getTime())) {
+    return true;
+  }
+  return expiresAtDate.getTime() < nowDate.getTime();
+}
+
+function getReadySteps(dryRun = {}) {
+  const normalizedDryRun = asObject(dryRun);
+  return asArray(normalizedDryRun.conversionWorkflow?.steps)
+    .filter(step => step.statusId === PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY);
+}
+
+function unique(values) {
+  return [...new Set(asArray(values).filter(Boolean))];
+}
+
+function getDryRunOperatorErrors(dryRun = {}) {
+  return asArray(dryRun.operatorErrorIds)
+    .filter(errorId => errorId !== PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.OPERATOR_REVIEW_REQUIRED);
+}
+
+function determineApplyGateStatus({ dryRun, now, readySteps, hasTransactionBoundary }) {
+  if (!dryRun) {
+    return PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_DRY_RUN;
+  }
+
+  if (
+    dryRun.validation?.ok !== true ||
+    dryRun.statusId !== PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE ||
+    getDryRunOperatorErrors(dryRun).length > 0
+  ) {
+    return PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_DRY_RUN;
+  }
+
+  if (isTimestampExpired(dryRun.expiresAt, now)) {
+    return PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_STALE_DRY_RUN;
+  }
+
+  if (readySteps.length === 0) {
+    return PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_NO_READY_STEPS;
+  }
+
+  if (!hasTransactionBoundary) {
+    return PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_TRANSACTION_BOUNDARY;
+  }
+
+  return PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.READY_TO_APPLY;
+}
+
+function buildApplyGateOperatorErrorIds({ dryRun, statusId }) {
+  const errors = [];
+
+  if (!dryRun) {
+    errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_REQUIRED);
+  } else {
+    if (dryRun.validation?.ok !== true ||
+        dryRun.statusId !== PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE) {
+      errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_INVALID);
+    }
+
+    if (getDryRunOperatorErrors(dryRun).length > 0) {
+      errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_INVALID);
+    }
+  }
+
+  if (statusId === PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_STALE_DRY_RUN) {
+    errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_STALE);
+  }
+
+  if (statusId === PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_NO_READY_STEPS) {
+    errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.NO_READY_STEPS);
+  }
+
+  if (statusId === PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_TRANSACTION_BOUNDARY) {
+    errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.TRANSACTION_BOUNDARY_REQUIRED);
+  }
+
+  return unique(errors);
+}
+
+function buildPolicyBuilderPhase8PostUpgradeApplyGate({
+  dryRun = null,
+  hasTransactionBoundary = false,
+  now = null,
+} = {}) {
+  const evaluatedAt = normalizeTimestamp(now);
+  const readySteps = getReadySteps(dryRun);
+  const statusId = determineApplyGateStatus({
+    dryRun,
+    now: evaluatedAt,
+    readySteps,
+    hasTransactionBoundary,
+  });
+  const operatorErrorIds = buildApplyGateOperatorErrorIds({
+    dryRun,
+    statusId,
+  });
+  const gate = {
+    version: PHASE8R_POST_UPGRADE_APPLY_GATE_VERSION,
+    mode: 'apply_gate',
+    statusId,
+    evaluatedAt,
+    dryRunGeneratedAt: dryRun?.generatedAt ?? null,
+    dryRunExpiresAt: dryRun?.expiresAt ?? null,
+    dryRunWindowMinutes: DRY_RUN_CURRENT_WINDOW_MINUTES,
+    readyPolicyIds: readySteps.map(step => step.policyId),
+    operatorErrorIds,
+    summary: {
+      readyToApplyCount: readySteps.length,
+      dryRunStatusId: dryRun?.statusId ?? null,
+      dryRunValidationOk: dryRun?.validation?.ok === true,
+      transactionBoundaryAvailable: hasTransactionBoundary === true,
+    },
+    sideEffects: {
+      rollbackSnapshotsWritten: false,
+      nativeRowsInserted: false,
+      migrationEventsWritten: false,
+      legacyPathsDeleted: false,
+      policyStorageMutated: false,
+    },
+    nextPhase: {
+      phaseId: '8r_13',
+      label: 'Native Runtime Cutover Verification',
+      reason: 'Post-upgrade apply can now be transaction-gated, so the next step is proving converted runtime reads and support rollback behavior before deleting compatibility paths.',
+    },
+  };
+
+  return {
+    ...gate,
+    validation: validatePolicyBuilderPhase8PostUpgradeApplyGate(gate),
+  };
+}
+
+function validatePolicyBuilderPhase8PostUpgradeApplyGate(gate = {}) {
+  const issues = [];
+
+  if (gate.mode !== 'apply_gate') {
+    issues.push({
+      riskId: 'apply_gate_wrong_mode',
+      message: 'Phase 8R post-upgrade apply must run through an apply gate.',
+    });
+  }
+
+  if (
+    gate.statusId === PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.READY_TO_APPLY &&
+    gate.summary?.transactionBoundaryAvailable !== true
+  ) {
+    issues.push({
+      riskId: 'ready_without_transaction_boundary',
+      message: 'Apply gate cannot be ready without an available transaction boundary.',
+    });
+  }
+
+  if (
+    gate.statusId === PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.READY_TO_APPLY &&
+    asArray(gate.readyPolicyIds).length === 0
+  ) {
+    issues.push({
+      riskId: 'ready_without_ready_policies',
+      message: 'Apply gate cannot be ready without ready policy IDs.',
+    });
+  }
+
+  Object.entries(asObject(gate.sideEffects)).forEach(([key, value]) => {
+    if (value === true && gate.statusId !== PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.APPLIED) {
+      issues.push({
+        riskId: 'apply_gate_side_effect_before_apply',
+        message: `Apply gate cannot report side effect "${key}" before successful apply.`,
+      });
+    }
+  });
+
+  return {
+    ok: issues.length === 0,
+    issueCount: issues.length,
+    issues,
+  };
+}
+
+function buildPolicyMap(policies) {
+  return new Map(asArray(policies).map(policy => [String(policy.id), policy]));
+}
+
+function mapTemplateLinkState(linkState) {
+  return ['applied', 'removed', 'replaced', 'ignored'].includes(linkState)
+    ? linkState
+    : 'applied';
+}
+
+function buildRulesFromContract(contract = {}) {
+  const collections = [
+    ['purpose', 'purpose'],
+    ['hard_limits', 'hard_limit'],
+    ['helpful_hints', 'helpful_hint'],
+    ['avoid', 'avoid'],
+  ];
+
+  return collections.flatMap(([collection, intentRole]) =>
+    asArray(contract[collection]).map((entry, index) => ({
+      intent_role: intentRole,
+      collection,
+      signal_type: entry.signal_type,
+      operator: entry.operator,
+      values: asObject(entry.values),
+      constraint_mode: entry.constraint_mode ?? null,
+      semantics: entry.semantics ?? null,
+      source: entry.source ?? null,
+      inference_state: entry.inference_state ?? contract.inference_state,
+      sort_order: index,
+    }))
+  );
+}
+
+function buildRollbackSnapshotPayload({ policy, contract, step, appliedAt }) {
+  return {
+    policy_id: policy.id ?? null,
+    library_id: policy.library_id ?? null,
+    captured_at: appliedAt,
+    payload_redacted: false,
+    restore_sections: [
+      'preset_attachments',
+      'weights',
+      'thresholds',
+      'custom_signals',
+      'routing_mapping_references',
+      'migration_actor',
+      'migration_reason',
+    ],
+    legacy_policy: {
+      name: policy.name ?? null,
+      description: policy.description ?? null,
+      auto_classify_threshold: policy.auto_classify_threshold ?? null,
+      prompt_threshold: policy.prompt_threshold ?? null,
+      require_ai_validation: policy.require_ai_validation ?? null,
+      trust_patterns: policy.trust_patterns ?? null,
+      trust_rag: policy.trust_rag ?? null,
+      trust_history: policy.trust_history ?? null,
+      preset_weight: policy.preset_weight ?? null,
+      profile_weight: policy.profile_weight ?? null,
+      pattern_weight: policy.pattern_weight ?? null,
+      rag_weight: policy.rag_weight ?? null,
+      history_weight: policy.history_weight ?? null,
+      combination_mode: policy.combination_mode ?? null,
+    },
+    presets: asArray(policy.presets).map(preset => ({
+      preset_id: preset.preset_id ?? preset.id ?? null,
+      preset_key: preset.key ?? null,
+      preset_name: preset.name ?? null,
+      weight: preset.weight ?? null,
+      custom_signals: preset.custom_signals ?? preset.customSignals ?? null,
+      sort_order: preset.sort_order ?? null,
+    })),
+    routing_target: step.routingTarget ?? null,
+    contract_summary: {
+      schema_version: contract.schema_version,
+      source: contract.source,
+      inference_state: contract.inference_state,
+      purpose_count: asArray(contract.purpose).length,
+      hard_limit_count: asArray(contract.hard_limits).length,
+      helpful_hint_count: asArray(contract.helpful_hints).length,
+      avoid_count: asArray(contract.avoid).length,
+    },
+  };
+}
+
+async function queryAlreadyConvertedIntent(client, policyId, targetVersion) {
+  const result = await client.query(
+    `SELECT id
+     FROM policy_intents
+     WHERE policy_id = $1
+       AND intent_version = $2
+       AND active = TRUE
+     LIMIT 1`,
+    [policyId, targetVersion]
+  );
+
+  return result.rows?.[0]?.id ?? null;
+}
+
+async function insertPolicyIntentHeader({ client, policy, contract, targetVersion, appliedAt, actorId }) {
+  await client.query(
+    `UPDATE policy_intents
+     SET active = FALSE, updated_at = $2
+     WHERE policy_id = $1
+       AND active = TRUE`,
+    [policy.id, appliedAt]
+  );
+
+  const result = await client.query(
+    `INSERT INTO policy_intents (
+       policy_id,
+       library_id,
+       schema_version,
+       intent_version,
+       active,
+       source,
+       inference_state,
+       review_behavior,
+       validation_status,
+       created_by,
+       accepted_at,
+       accepted_by
+     )
+     VALUES ($1, $2, $3, $4, TRUE, $5, $6, $7::jsonb, $8, $9, $10, $9)
+     RETURNING id`,
+    [
+      policy.id,
+      policy.library_id,
+      contract.schema_version,
+      targetVersion,
+      contract.source,
+      contract.inference_state,
+      JSON.stringify(asObject(contract.review_behavior)),
+      contract.validation?.warning_count > 0 ? 'warning' : 'valid',
+      actorId,
+      appliedAt,
+    ]
+  );
+
+  return result.rows?.[0]?.id;
+}
+
+async function insertMigrationEvent({
+  client,
+  intentId,
+  policyId,
+  eventType,
+  actorId,
+  reasonCode,
+  summary,
+  metadata,
+  targetVersion = DEFAULT_TARGET_VERSION,
+}) {
+  await client.query(
+    `INSERT INTO policy_intent_migration_events (
+       intent_id,
+       policy_id,
+       event_type,
+       actor_type,
+       actor_id,
+       source_version,
+       target_version,
+       reason_code,
+       summary,
+       metadata
+     )
+     VALUES ($1, $2, $3, 'post_upgrade', $4, NULL, $5, $6, $7, $8::jsonb)`,
+    [
+      intentId,
+      policyId,
+      eventType,
+      actorId,
+      targetVersion,
+      reasonCode,
+      summary,
+      JSON.stringify(asObject(metadata)),
+    ]
+  );
+}
+
+async function insertRollbackSnapshot({ client, intentId, policy, contract, step, appliedAt }) {
+  const payload = buildRollbackSnapshotPayload({
+    policy,
+    contract,
+    step,
+    appliedAt,
+  });
+  const expiresAt = step.rollbackSnapshot?.expiresAt || addDays(appliedAt, DEFAULT_ROLLBACK_WINDOW_DAYS);
+
+  await client.query(
+    `INSERT INTO policy_intent_rollback_snapshots (
+       intent_id,
+       policy_id,
+       snapshot_version,
+       snapshot_payload,
+       payload_redacted,
+       restore_path,
+       expires_at
+     )
+     VALUES ($1, $2, $3, $4::jsonb, FALSE, $5, $6)`,
+    [
+      intentId,
+      policy.id,
+      DEFAULT_TARGET_VERSION,
+      JSON.stringify(payload),
+      step.rollbackSnapshot?.restorePath || `phase8r/rollback/policies/${policy.id}/v${DEFAULT_TARGET_VERSION}`,
+      expiresAt,
+    ]
+  );
+}
+
+async function insertIntentRules({ client, intentId, contract }) {
+  const rules = buildRulesFromContract(contract);
+
+  for (const rule of rules) {
+    await client.query(
+      `INSERT INTO policy_intent_rules (
+         intent_id,
+         intent_role,
+         collection,
+         signal_type,
+         operator,
+         values,
+         constraint_mode,
+         semantics,
+         source,
+         inference_state,
+         sort_order
+       )
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11)`,
+      [
+        intentId,
+        rule.intent_role,
+        rule.collection,
+        rule.signal_type,
+        rule.operator,
+        JSON.stringify(rule.values),
+        rule.constraint_mode,
+        rule.semantics,
+        rule.source,
+        rule.inference_state,
+        rule.sort_order,
+      ]
+    );
+  }
+
+  return rules.length;
+}
+
+async function insertRoutingTarget({ client, intentId, policy, step }) {
+  const routingTarget = step.routingTarget || {};
+
+  await client.query(
+    `INSERT INTO policy_intent_routing_targets (
+       intent_id,
+       library_id,
+       arr_type,
+       arr_config_id,
+       arr_root_folder_id,
+       arr_root_folder_path,
+       quality_profile_id,
+       target_status
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'configured')`,
+    [
+      intentId,
+      policy.library_id,
+      routingTarget.arrType ?? routingTarget.arr_type ?? null,
+      routingTarget.arrConfigId ?? routingTarget.arr_config_id ?? null,
+      policy.libraryMapping?.arr_root_folder_id ?? null,
+      routingTarget.rootFolderPath ?? routingTarget.arr_root_folder_path ?? null,
+      policy.libraryMapping?.quality_profile_id ?? policy.quality_profile_id ?? null,
+    ]
+  );
+}
+
+async function insertTemplateApplications({ client, intentId, contract }) {
+  const links = asArray(contract.template_links);
+
+  for (const link of links) {
+    await client.query(
+      `INSERT INTO policy_intent_template_applications (
+         intent_id,
+         preset_id,
+         preset_key,
+         preset_name,
+         weight,
+         signal_count,
+         link_state
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        intentId,
+        link.preset_id ?? null,
+        link.preset_key ?? null,
+        link.preset_name ?? null,
+        link.weight ?? null,
+        link.signal_count ?? 0,
+        mapTemplateLinkState(link.link_state),
+      ]
+    );
+  }
+
+  return links.length;
+}
+
+async function insertValidationStatus({ client, intentId, contract }) {
+  await client.query(
+    `INSERT INTO policy_intent_validation_status (
+       intent_id,
+       schema_version,
+       status,
+       validator_version,
+       error_count,
+       warning_count,
+       errors,
+       warnings
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)`,
+    [
+      intentId,
+      contract.schema_version,
+      contract.validation?.warning_count > 0 ? 'warning' : 'valid',
+      'policy_intent_contract',
+      contract.validation?.error_count ?? 0,
+      contract.validation?.warning_count ?? 0,
+      JSON.stringify(asArray(contract.validation?.errors)),
+      JSON.stringify(asArray(contract.validation?.warnings)),
+    ]
+  );
+}
+
+async function applyReadyStep({ client, policy, step, actorId, appliedAt, targetVersion }) {
+  const existingIntentId = await queryAlreadyConvertedIntent(client, policy.id, targetVersion);
+  if (existingIntentId) {
+    return {
+      policyId: policy.id,
+      intentId: Number(existingIntentId),
+      alreadyConverted: true,
+      rulesInserted: 0,
+      templateApplicationsInserted: 0,
+    };
+  }
+
+  const contract = buildPolicyIntentContract(policy);
+  if (contract.validation?.valid !== true) {
+    const error = new Error(`Policy ${policy.id} failed native intent validation during apply.`);
+    error.operatorErrorId = PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.CONTRACT_VALIDATION_FAILED;
+    throw error;
+  }
+
+  const intentId = await insertPolicyIntentHeader({
+    client,
+    policy,
+    contract,
+    targetVersion,
+    appliedAt,
+    actorId,
+  });
+
+  await insertMigrationEvent({
+    client,
+    intentId,
+    policyId: policy.id,
+    eventType: 'conversion_started',
+    actorId,
+    reasonCode: 'phase8r_post_upgrade_apply',
+    summary: 'Phase 8R post-upgrade native intent conversion started.',
+    metadata: { idempotencyKey: step.idempotencyKey },
+    targetVersion,
+  });
+  await insertRollbackSnapshot({ client, intentId, policy, contract, step, appliedAt });
+  await insertMigrationEvent({
+    client,
+    intentId,
+    policyId: policy.id,
+    eventType: 'rollback_snapshot_created',
+    actorId,
+    reasonCode: 'phase8r_post_upgrade_apply',
+    summary: 'Rollback snapshot created before native intent conversion.',
+    metadata: { restorePath: step.rollbackSnapshot?.restorePath ?? null },
+    targetVersion,
+  });
+  const rulesInserted = await insertIntentRules({ client, intentId, contract });
+  await insertRoutingTarget({ client, intentId, policy, step });
+  const templateApplicationsInserted = await insertTemplateApplications({ client, intentId, contract });
+  await insertValidationStatus({ client, intentId, contract });
+  await insertMigrationEvent({
+    client,
+    intentId,
+    policyId: policy.id,
+    eventType: 'conversion_applied',
+    actorId,
+    reasonCode: 'phase8r_post_upgrade_apply',
+    summary: 'Phase 8R post-upgrade native intent conversion applied.',
+    metadata: {
+      idempotencyKey: step.idempotencyKey,
+      rulesInserted,
+      templateApplicationsInserted,
+    },
+    targetVersion,
+  });
+
+  return {
+    policyId: policy.id,
+    intentId: Number(intentId),
+    alreadyConverted: false,
+    rulesInserted,
+    templateApplicationsInserted,
+  };
+}
+
+async function applyPolicyBuilderPhase8PostUpgradeApplyGate({
+  dbClient,
+  dryRun,
+  policies = [],
+  now = null,
+  actorId = null,
+  targetVersion = DEFAULT_TARGET_VERSION,
+} = {}) {
+  const appliedAt = normalizeTimestamp(now);
+  const gate = buildPolicyBuilderPhase8PostUpgradeApplyGate({
+    dryRun,
+    hasTransactionBoundary: typeof dbClient?.withTransaction === 'function',
+    now: appliedAt,
+  });
+
+  if (gate.statusId !== PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.READY_TO_APPLY) {
+    return {
+      ...gate,
+      applied: false,
+      appliedPolicyCount: 0,
+      results: [],
+    };
+  }
+
+  const policyMap = buildPolicyMap(policies);
+
+  try {
+    const results = await dbClient.withTransaction(async (client) => {
+      const readySteps = getReadySteps(dryRun);
+      const applied = [];
+
+      for (const step of readySteps) {
+        const policy = policyMap.get(String(step.policyId));
+        if (!policy) {
+          const error = new Error(`Policy input missing for Phase 8R apply: ${step.policyId}`);
+          error.operatorErrorId = PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.POLICY_INPUT_MISSING;
+          throw error;
+        }
+
+        applied.push(await applyReadyStep({
+          client,
+          policy,
+          step,
+          actorId,
+          appliedAt,
+          targetVersion,
+        }));
+      }
+
+      return applied;
+    });
+
+    return {
+      ...gate,
+      statusId: PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.APPLIED,
+      applied: true,
+      appliedPolicyCount: results.filter(result => result.alreadyConverted !== true).length,
+      alreadyConvertedCount: results.filter(result => result.alreadyConverted === true).length,
+      results,
+      sideEffects: {
+        rollbackSnapshotsWritten: results.some(result => result.alreadyConverted !== true),
+        nativeRowsInserted: results.some(result => result.alreadyConverted !== true),
+        migrationEventsWritten: results.some(result => result.alreadyConverted !== true),
+        legacyPathsDeleted: false,
+        policyStorageMutated: false,
+      },
+      validation: {
+        ok: true,
+        issueCount: 0,
+        issues: [],
+      },
+    };
+  } catch (error) {
+    return {
+      ...gate,
+      statusId: PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.FAILED_ROLLED_BACK,
+      applied: false,
+      appliedPolicyCount: 0,
+      results: [],
+      operatorErrorIds: unique([
+        ...asArray(gate.operatorErrorIds),
+        error.operatorErrorId || PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.APPLY_FAILED_ROLLED_BACK,
+      ]),
+      rollback: {
+        assumedComplete: true,
+        reason: 'db.withTransaction rejected and is expected to roll back the transaction.',
+      },
+      sideEffects: {
+        rollbackSnapshotsWritten: false,
+        nativeRowsInserted: false,
+        migrationEventsWritten: false,
+        legacyPathsDeleted: false,
+        policyStorageMutated: false,
+      },
+      validation: {
+        ok: true,
+        issueCount: 0,
+        issues: [],
+      },
+    };
+  }
+}
+
+async function runPolicyBuilderPhase8PostUpgradeApplyGate({
+  dbClient,
+  maxPolicies,
+  now = null,
+  actorId = null,
+} = {}) {
+  const policies = await loadPolicyBuilderPhase8PostUpgradePolicies({
+    dbClient,
+    maxPolicies,
+  });
+  const dryRun = buildPolicyBuilderPhase8PostUpgradeDryRun({
+    policies,
+    maxPolicies,
+    now,
+  });
+
+  return applyPolicyBuilderPhase8PostUpgradeApplyGate({
+    dbClient,
+    dryRun,
+    policies,
+    now,
+    actorId,
+  });
+}
+
+export {
+  PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS,
+  PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS,
+  PHASE8R_POST_UPGRADE_APPLY_GATE_VERSION,
+  applyPolicyBuilderPhase8PostUpgradeApplyGate,
+  buildPolicyBuilderPhase8PostUpgradeApplyGate,
+  runPolicyBuilderPhase8PostUpgradeApplyGate,
+  validatePolicyBuilderPhase8PostUpgradeApplyGate,
+};

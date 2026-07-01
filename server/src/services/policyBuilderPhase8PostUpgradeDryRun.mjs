@@ -10,6 +10,7 @@ import {
 const PHASE8R_POST_UPGRADE_DRY_RUN_VERSION = 'phase8r.post_upgrade_dry_run.v1';
 const MAX_POST_UPGRADE_DRY_RUN_POLICIES = 100;
 const MAX_OPERATOR_ERROR_IDS = 12;
+const DRY_RUN_CURRENT_WINDOW_MINUTES = 15;
 
 const PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS = Object.freeze({
   READY_FOR_APPLY_GATE: 'ready_for_apply_gate',
@@ -38,6 +39,17 @@ function normalizePolicyLimit(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return MAX_POST_UPGRADE_DRY_RUN_POLICIES;
   return Math.max(1, Math.min(Math.trunc(numeric), MAX_POST_UPGRADE_DRY_RUN_POLICIES));
+}
+
+function normalizeTimestamp(value) {
+  const date = value ? new Date(value) : new Date();
+  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+}
+
+function addMinutes(timestamp, minutes) {
+  const date = new Date(timestamp);
+  date.setUTCMinutes(date.getUTCMinutes() + minutes);
+  return date.toISOString();
 }
 
 function parseJsonValue(value, fallback) {
@@ -203,6 +215,7 @@ function buildPolicyBuilderPhase8PostUpgradeDryRun({
   now = null,
 } = {}) {
   const normalizedMaxPolicies = normalizePolicyLimit(maxPolicies);
+  const generatedAt = normalizeTimestamp(now);
   const report = candidateReport || buildPolicyBuilderPhase8MigrationCandidateReport({
     policies,
     maxPolicies: normalizedMaxPolicies,
@@ -233,6 +246,8 @@ function buildPolicyBuilderPhase8PostUpgradeDryRun({
   const dryRun = {
     version: PHASE8R_POST_UPGRADE_DRY_RUN_VERSION,
     mode: 'dry_run',
+    generatedAt,
+    expiresAt: addMinutes(generatedAt, DRY_RUN_CURRENT_WINDOW_MINUTES),
     statusId,
     candidateReport: report,
     conversionWorkflow,
@@ -341,6 +356,7 @@ async function runPolicyBuilderPhase8PostUpgradeDryRun({
 }
 
 export {
+  DRY_RUN_CURRENT_WINDOW_MINUTES,
   MAX_POST_UPGRADE_DRY_RUN_POLICIES,
   PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS,
   PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS,

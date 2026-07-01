@@ -4490,6 +4490,43 @@ Implementation status:
 - Focused service tests cover ready, review-required, no-policy, loader mapping,
   and orchestration paths.
 
+### 8R.12 Post-Upgrade Apply Gate
+
+Intent: allow native intent conversion only after a current dry-run proves ready
+and a transaction boundary is available.
+
+Tasks:
+
+- Consume current Phase 8R.11 dry-run output.
+- Block missing, invalid, stale, or no-ready-step dry-run reports.
+- Require `db.withTransaction` before native apply writes.
+- Write native intent header, rollback snapshot, rules, routing target,
+  starter-template applications, validation status, and migration events in one
+  transaction.
+- Keep legacy preset/custom-signal storage and bridge code undeleted until
+  runtime cutover and deletion gates pass.
+
+Acceptance criteria:
+
+- Apply cannot run without a valid current dry-run.
+- Apply cannot run without transaction rollback semantics.
+- Failed apply reports rollback-safe operator error IDs.
+- Successful apply records rollback snapshot and migration events before native
+  intent is treated as applied.
+- Legacy behavior remains available until later cutover/deletion gates.
+
+Implementation status:
+
+- Phase 8R post-upgrade apply gate is documented in
+  [Policy Builder Phase 8R Post-Upgrade Apply Gate](policy-builder-phase-8r-post-upgrade-apply-gate.md).
+- The apply-gate service lives in
+  `server/src/services/policyBuilderPhase8PostUpgradeApplyGate.mjs`.
+- The `phase8r_native_intent_apply_gate` action is wired into
+  `postUpgradeService` but is not registered as an automatic release-version
+  task.
+- Focused tests cover missing dry-run, stale dry-run, successful transaction
+  apply, and rollback-safe failure reporting.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -4521,6 +4558,9 @@ Implement Phase 8R in this order:
     Consumes current dry-run output, creates rollback snapshots, writes native
     intent records and migration events atomically, and reports rollback-safe
     operator failure IDs.
+13. **8R.13 Native Runtime Cutover Verification**
+    Proves converted policies read from native intent in real runtime paths and
+    keeps rollback available before compatibility paths are deleted.
 
 Current starting point:
 

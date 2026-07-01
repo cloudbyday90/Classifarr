@@ -179,4 +179,3 @@ curl -s "http://<host>:21324/api/rag/retrieval/recall-audit?sample_size=3&limit=
    Why it fits next: our Office Romance investigation showed broad genre signals can over-influence specialized destinations. Preset semantics are the durable data-side complement to scoring hardening.
 
    Platform benefit: cleaner policy configuration, fewer false positives, and better explainability for niche libraries.
-

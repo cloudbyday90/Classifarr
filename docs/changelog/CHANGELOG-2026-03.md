@@ -50,4 +50,3 @@
 
 > [!NOTE]
 > Older changelog entries have been moved to [CHANGELOG_backup.md](CHANGELOG_backup.md) to keep this file concise.
-

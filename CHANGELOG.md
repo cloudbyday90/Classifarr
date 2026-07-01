@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Post-Upgrade Apply Gate** — added a native intent
+  apply-gate service that requires a current dry-run and database transaction
+  boundary before conversion; writes native intent headers, rollback snapshots,
+  rules, routing targets, starter-template provenance, validation status, and
+  migration events atomically; reports rollback-safe operator error IDs on
+  failure; skips already-active target-version native intents; wires a
+  `phase8r_native_intent_apply_gate` post-upgrade action without registering it
+  as an automatic release-version task; and keeps legacy paths undeleted until
+  later cutover/deletion gates pass.
 - **Policy Builder Phase 8R Post-Upgrade Dry-Run Wiring** — added a bounded
   native intent post-upgrade dry-run service that loads policy, library, ARR
   mapping, and preset inputs; runs the existing Phase 8R migration candidate

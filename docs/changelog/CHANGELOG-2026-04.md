@@ -527,4 +527,3 @@ Package version: `0.44.1-a.beta`
 - **`metadata_enrichment` source key regression** — Added regression test: enriched item carries `source: 'metadata_enrichment'` after the second `content_analysis` assignment so `refillQueue()` does not re-select it. (`queueService.test.js`)
 
 ---
-
