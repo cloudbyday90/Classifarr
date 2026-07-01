@@ -11,6 +11,17 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Migration Candidate Report** — added a server-owned
+  dry-run migration readiness report, architecture record, and audit suite that
+  classifies each emitted policy as ready to convert, needing operator review,
+  partial legacy inference, unsupported legacy shape, missing routing target,
+  stale profile dependency, or blocked by server contract validation; uses the
+  existing policy intent compatibility contract as the projection authority;
+  includes bounded explainable reasons, affected policy details, routing/profile
+  status, unsupported-signal summaries, and estimated legacy deletion impact;
+  and rejects reports that mutate storage, omit deletion-impact details, hide
+  blockers behind generic statuses, or expose raw legacy JSON outside explicit
+  maintainer mode.
 - **Policy Builder Phase 8R Native Schema Contract** — added a server-owned
   native intent schema contract, architecture record, and audit suite that
   defines side-effect-free storage boundaries for native policy headers, intent

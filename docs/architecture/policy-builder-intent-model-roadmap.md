@@ -4073,6 +4073,22 @@ Acceptance criteria:
 - Report output is bounded and does not expose raw legacy JSON unless explicitly
   requested by maintainer tooling.
 
+Implementation status:
+
+- Phase 8R.2 migration candidate report is documented in
+  [Policy Builder Phase 8R Migration Candidate Report](policy-builder-phase-8r-migration-candidate-report.md).
+- Current implementation adds a server-owned dry-run report that classifies each
+  emitted policy as ready to convert, needing operator review, partial legacy
+  inference, unsupported legacy shape, missing routing target, stale profile
+  dependency, or blocked by server contract validation.
+- The report uses the existing policy intent compatibility contract as the
+  projection authority, then adds routing-target, profile-freshness,
+  unsupported-shape, validation, bounded-reason, and deletion-impact checks.
+- Validation rejects reports that mutate storage, omit affected policy details,
+  hide unsupported/routing/stale/validation blockers behind generic statuses,
+  omit deletion-impact estimates, or expose raw legacy JSON outside explicit
+  maintainer mode.
+
 ### 8R.3 Explicit Conversion Workflow
 
 Intent: convert policies only when the operator or post-upgrade process has a
