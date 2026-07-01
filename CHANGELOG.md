@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Compatibility Removal Completion Audit** — added a
+  side-effect-free audit service that consumes Phase 8R.20 completion
+  authorization, the approved deletion manifest, verified removal evidence,
+  final import/reference scan evidence, and focused/full validation results;
+  reports remaining compatibility inventory separately from failed evidence and
+  blocks completion claims when coverage, scans, validation, or side-effect
+  invariants are not proven.
 - **Policy Builder Phase 8R Next Compatibility Removal Batch Authorization** —
   added a side-effect-free authorizer that consumes verified post-removal
   runtime evidence and the approved deletion manifest, calculates remaining

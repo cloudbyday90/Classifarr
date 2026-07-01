@@ -4863,6 +4863,54 @@ Implementation status:
   blocks already removed or unknown paths, caps batch size, requires operator
   context, and advances to a completion audit.
 
+### 8R.21 Compatibility Removal Completion Audit
+
+Intent: consume verified removal-loop evidence and prove whether all approved
+compatibility manifest paths are gone, or report the bounded remaining
+inventory that still needs another 8R.17 through 8R.20 loop.
+
+Tasks:
+
+- Require Phase 8R.20 completion authorization evidence.
+- Require the approved Phase 8R.15 execution manifest.
+- Require verified Phase 8R.19 removal verification evidence.
+- Prove every approved manifest path is covered by verified removal evidence.
+- Require final import/reference scan evidence for every approved manifest
+  path.
+- Block if any final scan reference remains.
+- Require focused and full validation evidence to pass.
+- Report remaining inventory separately from failed evidence.
+- Reject file, archive, route, test, storage, manifest, or Git side effects
+  inside the audit.
+
+Acceptance criteria:
+
+- Completion is blocked unless Phase 8R.20 reports no remaining paths.
+- Completion is blocked unless the execution manifest is ready and valid.
+- Completion is blocked unless verified removal evidence covers every approved
+  manifest path.
+- Completion is blocked if final import/reference scan evidence is missing or
+  reports references.
+- Completion is blocked if focused or full validation evidence is missing or
+  failed.
+- If remaining manifest paths exist, the audit reports `remaining_inventory`
+  rather than claiming completion.
+- The component does not run source searches, tests, Git commands, storage
+  mutation, manifest writes, archive writes, or removals itself.
+
+Implementation status:
+
+- Phase 8R.21 compatibility removal completion audit is documented in
+  [Policy Builder Phase 8R Compatibility Removal Completion Audit](policy-builder-phase-8r-compatibility-removal-completion-audit.md).
+- The audit contract lives in
+  `server/src/services/policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs`.
+- The focused audit test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8CompatibilityRemovalCompletionAudit.test.mjs`.
+- Current implementation consumes completion authorization, execution manifest,
+  verified removal evidence, final scan evidence, and focused/full validation
+  evidence; reports remaining inventory separately; blocks incomplete
+  completion claims; and advances to a Phase 8R completion checkpoint.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -4929,6 +4977,10 @@ Implement Phase 8R in this order:
     Consumes verified removal loop evidence, proves whether all approved
     compatibility manifest paths are gone, and reports any bounded remaining
     inventory before Phase 8R exits compatibility-removal mode.
+22. **8R.22 Phase 8R Completion Checkpoint**
+    Audits the complete Phase 8R roadmap, service contracts, tests, docs,
+    changelog coverage, and validation evidence before Phase 8R is considered
+    fully implemented.
 
 Current starting point:
 
