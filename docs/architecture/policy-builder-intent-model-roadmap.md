@@ -3510,6 +3510,26 @@ Acceptance criteria:
 - No runtime path can be changed before its authority source is identified.
 - Known bad question-generation paths are explicitly listed for replacement.
 
+Implementation status:
+
+- Phase 7R.1 runtime decision inventory is documented in
+  [Policy Builder Phase 7R Runtime Decision Inventory And Cutline](policy-builder-phase-7r-runtime-decision-inventory.md).
+- The server-owned runtime inventory lives in
+  `server/src/services/policyBuilderPhase7RuntimeDecisionInventory.mjs`.
+- The focused runtime-inventory test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase7RuntimeDecisionInventory.test.mjs`.
+- Current implementation classifies runtime artifacts as
+  `keep_runtime_engine_primitive`, `rewrite_around_phase5_6_contracts`,
+  `replace_with_readiness_question_contract`, or `delete_after_migration`.
+- Every runtime artifact identifies an authority source before behavior changes:
+  media-server contents, declared operator intent, manual outcome, AI output,
+  metadata provider evidence, or legacy template compatibility.
+- Known bad question paths are listed for replacement: genre-priority
+  questions, AI invalid-response questions, AI disagreement questions, and
+  pending resolution rule-generation flags.
+- Classification/routing conflation and broad-genre authority risks are
+  explicit cutline risks before Phase 7R.2 evidence projection work begins.
+
 ### 7R.2 Runtime Evidence Projection
 
 Intent: ensure runtime classification uses the same evidence buckets as policy

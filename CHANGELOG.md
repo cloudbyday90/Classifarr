@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Runtime Decision Inventory** — added a
+  server-owned runtime inventory contract, architecture record, and audit suite
+  that classifies classification, policy-path, signal, AI/RAG, question,
+  manual-resolution, learning, Arr-routing, media-profile, queue, and retry
+  artifacts as runtime primitives, Phase 5R/6R rewrites, readiness/question
+  replacements, or migration deletion targets; requires authority-source
+  ownership before runtime behavior changes; and explicitly flags broad-genre
+  authority risk, bad question-generation paths, and classification/routing
+  conflation for replacement.
 - **Policy Builder Phase 6R Completion Audit** — added a server-owned
   completion gate, architecture record, and audit suite that verifies all seven
   Phase 6R records have docs, services, tests, passing component audits, and
