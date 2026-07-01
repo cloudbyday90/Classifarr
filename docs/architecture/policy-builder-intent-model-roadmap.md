@@ -4911,6 +4911,56 @@ Implementation status:
   evidence; reports remaining inventory separately; blocks incomplete
   completion claims; and advances to a Phase 8R completion checkpoint.
 
+### 8R.22 Phase 8R Completion Checkpoint
+
+Intent: consume current-state evidence for the full Phase 8R sequence and prove
+whether the phase can close, without relying on narrative confidence or the
+latest component alone.
+
+Tasks:
+
+- Enumerate expected Phase 8R components from 8R.1 through 8R.21.
+- Require implementation evidence for every expected component.
+- Require design/outcome document evidence for every expected component.
+- Require service, route, migration, or wiring contract evidence for every
+  expected component.
+- Require focused test evidence for every expected component.
+- Require roadmap sequence and implementation-status evidence for every
+  expected phase ID.
+- Require a complete and valid Phase 8R.21 compatibility removal completion
+  audit.
+- Require focused, lint, markdown, and full validation evidence to pass.
+- Require changelog coverage for every expected component.
+- Reject file-write, storage, command-execution, and Git side effects inside
+  the checkpoint.
+
+Acceptance criteria:
+
+- Checkpoint completion is blocked when any expected component lacks
+  implementation, design-doc, contract, or test evidence.
+- Checkpoint completion is blocked when the roadmap sequence or implementation
+  status omits an expected phase ID.
+- Checkpoint completion is blocked unless Phase 8R.21 removal audit evidence is
+  complete and valid.
+- Checkpoint completion is blocked when focused, lint, markdown, or full
+  validation evidence is missing or failed.
+- Checkpoint completion is blocked when changelog coverage is missing for any
+  expected phase.
+- The checkpoint does not scan files, run commands, mutate storage, write
+  docs/changelog, or run Git itself.
+
+Implementation status:
+
+- Phase 8R.22 completion checkpoint is documented in
+  [Policy Builder Phase 8R Completion Checkpoint](policy-builder-phase-8r-completion-checkpoint.md).
+- The checkpoint contract lives in
+  `server/src/services/policyBuilderPhase8CompletionCheckpoint.mjs`.
+- The focused checkpoint test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8CompletionCheckpoint.test.mjs`.
+- Current implementation consumes component evidence, roadmap evidence, final
+  removal audit evidence, validation evidence, and changelog evidence; blocks
+  incomplete coverage; and emits `8r_complete` only when all evidence passes.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -4981,6 +5031,10 @@ Implement Phase 8R in this order:
     Audits the complete Phase 8R roadmap, service contracts, tests, docs,
     changelog coverage, and validation evidence before Phase 8R is considered
     fully implemented.
+23. **8R Completion Evidence Run**
+    Runs the Phase 8R.22 checkpoint against current-state evidence and resolves
+    any missing component, roadmap, validation, or changelog proof before the
+    Phase 8R objective is marked complete.
 
 Current starting point:
 

@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Completion Checkpoint** — added a
+  side-effect-free phase completion checkpoint that consumes component,
+  roadmap, final-removal-audit, validation, and changelog evidence for the full
+  Phase 8R sequence; blocks closure when any expected phase lacks
+  implementation, design-doc, contract, focused-test, roadmap, changelog, or
+  validation proof.
 - **Policy Builder Phase 8R Compatibility Removal Completion Audit** — added a
   side-effect-free audit service that consumes Phase 8R.20 completion
   authorization, the approved deletion manifest, verified removal evidence,
