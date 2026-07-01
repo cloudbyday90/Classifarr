@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Runtime Question Reduction** — added a
+  server-owned runtime question reducer, architecture record, and audit suite
+  that consumes Phase 7R automation decisions and suppresses unnecessary
+  questions, turns routing gaps into configuration actions, routes stale or
+  legacy pending questions through cleanup, limits persisted prompts to accepted
+  Phase 5R frames, rewrites broad-genre/AI/provider/replay diagnostic frames
+  before persistence, and marks planned answers as learning-ineligible by
+  default so durable learning remains guarded.
 - **Policy Builder Phase 7R Automation Decision Contract** — added a
   server-owned automation decision contract, architecture record, and audit
   suite that converts Phase 7R runtime evidence into explicit

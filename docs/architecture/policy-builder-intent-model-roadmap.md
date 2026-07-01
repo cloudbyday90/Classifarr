@@ -3655,6 +3655,28 @@ Acceptance criteria:
 - Questions include learning eligibility metadata.
 - Manual answers resolve outcomes without automatically mutating policy.
 
+Implementation status:
+
+- Phase 7R.4 runtime question reduction is documented in
+  [Policy Builder Phase 7R Runtime Question Reduction](policy-builder-phase-7r-runtime-question-reduction.md).
+- The server-owned runtime question reducer lives in
+  `server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs`.
+- The focused runtime-question test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase7RuntimeQuestionReduction.test.mjs`.
+- Current implementation consumes `phase7r.automation_decision.v1` and returns
+  a disposition instead of directly creating questions: `suppress_question`,
+  `create_operator_question`, `configure_routing`, `refresh_profile`,
+  `block_automation`, `gather_evidence`, or `stale_question_cleanup`.
+- `auto_route_ready` suppresses questions; `classified_not_routed` and
+  `needs_routing_mapping` become routing actions; stale profiles become refresh
+  actions; stale or legacy pending questions must go through cleanup before
+  answer or learning.
+- Operator questions are limited to accepted Phase 5R frames and include
+  learning eligibility metadata with durable learning disabled by default.
+- Rejected legacy frames such as broad-genre priority, AI-authored policy edit,
+  provider-specific diagnostic, and replay parity interpretation are rewritten
+  before persistence.
+
 ### 7R.5 Request-Time Learning And Destination Selection
 
 Intent: treat media requests and manual destination choices as meaningful but
