@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Next Compatibility Removal Batch Authorization** —
+  added a side-effect-free authorizer that consumes verified post-removal
+  runtime evidence and the approved deletion manifest, calculates remaining
+  compatibility paths, blocks unknown or already removed path selections,
+  bounds the next batch size, requires operator authorization context, and
+  advances to a completion audit when no approved manifest paths remain.
 - **Policy Builder Phase 8R Post-Removal Runtime Verification** — added a
   side-effect-free verifier that consumes controlled-removal apply evidence,
   import/reference scan evidence, focused runtime checks, and focused/full

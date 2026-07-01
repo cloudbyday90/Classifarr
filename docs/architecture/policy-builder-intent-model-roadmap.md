@@ -4819,6 +4819,50 @@ Implementation status:
   checks; rejects storage/Git side effects; and advances to next-batch
   authorization.
 
+### 8R.20 Next Compatibility Removal Batch Authorization
+
+Intent: consume verified Phase 8R.19 evidence and the approved compatibility
+deletion manifest, calculate remaining manifest paths, prevent already removed
+paths from re-entering a batch, and authorize only the next narrow removal
+batch.
+
+Tasks:
+
+- Require Phase 8R.19 status to be verified and valid.
+- Require Phase 8R.15 execution-plan evidence to be ready and valid.
+- Calculate remaining manifest paths from approved entries minus applied paths.
+- Block unknown requested paths.
+- Block requested paths that were already removed.
+- Block empty requested batches while remaining paths exist.
+- Block batches wider than the configured maximum batch size.
+- Require authorizing operator and reason while remaining paths exist.
+- Emit a side-effect-free authorization payload for the next controlled
+  removal batch.
+
+Acceptance criteria:
+
+- Authorization is blocked unless post-removal verification passed.
+- Authorization is blocked unless the approved manifest is available and valid.
+- Already removed paths cannot re-enter a removal batch.
+- Unknown paths cannot enter a removal batch.
+- Batch size is bounded.
+- If no approved manifest paths remain, the component reports completion
+  instead of requiring another batch.
+- The component does not delete files, write manifests, mutate storage, run
+  tests, or run Git commands.
+
+Implementation status:
+
+- Phase 8R.20 next compatibility removal batch authorization is documented in
+  [Policy Builder Phase 8R Next Compatibility Removal Batch Authorization](policy-builder-phase-8r-next-compatibility-removal-batch-authorization.md).
+- The authorization contract lives in
+  `server/src/services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.mjs`.
+- The focused authorization test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.test.mjs`.
+- Current implementation authorizes only requested remaining manifest paths,
+  blocks already removed or unknown paths, caps batch size, requires operator
+  context, and advances to a completion audit.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -4881,6 +4925,10 @@ Implement Phase 8R in this order:
     Consumes verified Phase 8R.19 evidence, calculates remaining approved
     manifest paths, prevents already-removed paths from re-entering a batch, and
     authorizes only the next narrow removal batch.
+21. **8R.21 Compatibility Removal Completion Audit**
+    Consumes verified removal loop evidence, proves whether all approved
+    compatibility manifest paths are gone, and reports any bounded remaining
+    inventory before Phase 8R exits compatibility-removal mode.
 
 Current starting point:
 
