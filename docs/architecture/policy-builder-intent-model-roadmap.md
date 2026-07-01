@@ -4579,6 +4579,43 @@ Implementation status:
   converted/unconverted cutover verification, rollback blocking, and deletion
   blocking.
 
+### 8R.14 Compatibility Path Deletion Readiness
+
+Intent: prove compatibility paths are ready for deletion execution planning
+without deleting files, removing routes, dropping tests, or mutating storage.
+
+Tasks:
+
+- Compose Phase 8R.7 legacy code deletion gates with Phase 8R.13 native runtime
+  cutover verification.
+- Block readiness when converted/native runtime cutover is not ready.
+- Block readiness when deletion gates are not ready.
+- Block readiness while residual compatibility references remain.
+- Require backup/restore verification, rollback support, support diagnostics,
+  and deletion-manifest approval.
+- Keep readiness output side-effect-free.
+
+Acceptance criteria:
+
+- Readiness is blocked by default unless all prior gates and confirmations are
+  provided.
+- Readiness does not delete files, archive files, remove routes, remove tests,
+  mutate storage, or write deletion manifests.
+- Ready output only advances to an execution-plan phase, not immediate deletion.
+- Residual compatibility references are surfaced as bounded risk records.
+
+Implementation status:
+
+- Phase 8R.14 compatibility path deletion readiness is documented in
+  [Policy Builder Phase 8R Compatibility Path Deletion Readiness](policy-builder-phase-8r-compatibility-path-deletion-readiness.md).
+- The deletion-readiness contract lives in
+  `server/src/services/policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs`.
+- The focused deletion-readiness test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8CompatibilityPathDeletionReadiness.test.mjs`.
+- Current implementation composes Phase 8R.7 deletion gates and Phase 8R.13
+  cutover verification, blocks residual references and missing safety
+  confirmations, and validates that no deletion side effects occur.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -4617,6 +4654,10 @@ Implement Phase 8R in this order:
     Proves every replaced compatibility path has native/runtime parity,
     rollback coverage, support diagnostics, and explicit deletion criteria
     before code is removed.
+15. **8R.15 Compatibility Path Deletion Execution Plan**
+    Creates an explicit manifest of exact compatibility files or code paths to
+    remove, replacement evidence, rollback/support stance, and execution
+    prerequisites before any deletion occurs.
 
 Current starting point:
 

@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Compatibility Path Deletion Readiness** — added a
+  side-effect-free readiness report that composes native runtime cutover
+  verification with legacy deletion gates, blocks on residual compatibility
+  references and missing backup/rollback/support/manifest confirmations, and
+  advances only to a deletion execution-plan step rather than deleting code.
 - **Policy Builder Phase 6R Evidence Input Gate** — added a server-side evidence
   input envelope gate that maps allowed Phase 6R.1 input sections to evidence
   sources and authority sources, rejects unknown sections plus raw provider
