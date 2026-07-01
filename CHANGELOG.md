@@ -11,6 +11,17 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Legacy Code Deletion Gates** — added a
+  side-effect-free deletion-gate service, architecture record, and audit suite
+  that classifies client bridge UI, legacy serializer/deserializer paths,
+  custom-signal mutation helpers, preset-as-policy runtime behavior, old
+  preview/replay diagnostics, and stale compatibility tests; requires native
+  read/write, runtime decision, conversion/reversion, backup/restore,
+  post-upgrade dry-run/apply, and deletion-gate coverage; blocks deletion while
+  unconverted policy count is unknown or non-zero; requires an explicit support
+  stance; rejects hiding or preserving replaced code permanently; and validates
+  that this planning slice performs no file, route, test, or storage side
+  effects.
 - **Policy Builder Phase 6R Evidence Summary And Reducer Cutlines** — hardened
   the Phase 6R evidence engine with generated projection summaries for bucket
   counts, source IDs, authority-source IDs, blocking evidence, and review

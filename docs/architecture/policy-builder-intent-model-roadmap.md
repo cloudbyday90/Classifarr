@@ -4302,6 +4302,21 @@ Acceptance criteria:
 - The repository no longer carries two full policy models after migration gates
   pass.
 
+Implementation status:
+
+- Phase 8R.7 legacy code deletion gates are documented in
+  [Policy Builder Phase 8R Legacy Code Deletion Gates](policy-builder-phase-8r-legacy-code-deletion-gates.md).
+- The side-effect-free deletion-gate contract lives in
+  `server/src/services/policyBuilderPhase8LegacyCodeDeletionGates.mjs`.
+- The focused deletion-gate test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8LegacyCodeDeletionGates.test.mjs`.
+- Current implementation consumes the existing legacy compatibility boundary
+  inventory, defines all required deletion categories and coverage gates, blocks
+  deletion while unconverted policy count is unknown or non-zero, requires an
+  explicit support stance, rejects permanent hiding/archiving as the cleanup
+  strategy, and validates that this component performs no file, route, test, or
+  storage side effects.
+
 ### 8R.8 Backup, Restore, And Post-Upgrade Safety
 
 Intent: make native storage operationally safe before it becomes default.
