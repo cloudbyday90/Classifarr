@@ -202,8 +202,11 @@ Current-state run:
 
 - `node scripts/run-policy-builder-phase-8r-evidence.mjs` reports all mapped
   Phase 8R artifacts present in the current checkout.
-- The run currently blocks Phase 8R closure because no machine-readable
-  Phase 8R.21 final removal audit JSON or validation evidence JSON was supplied.
+- Validation evidence can now be generated with
+  `npm run policy:phase8r:validation-evidence`.
+- After supplying generated validation evidence, the run currently blocks Phase
+  8R closure only because no machine-readable Phase 8R.21 final-removal-audit
+  JSON was supplied.
 - The expected closure invocation is:
 
 ```bash
@@ -215,8 +218,8 @@ node scripts/run-policy-builder-phase-8r-evidence.mjs \
 
 ## Next Step
 
-Generate machine-readable Phase 8R.21 final removal audit evidence and
-validation evidence, then run the current-state evidence script with
+Generate machine-readable Phase 8R.21 final removal audit evidence, then run
+the current-state evidence script with validation evidence and
 `--require-complete`. If the evidence run reports complete, Phase 8R can be
 closed; otherwise, continue with the exact missing phase, artifact, validation,
 or changelog evidence reported by the run.

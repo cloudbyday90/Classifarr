@@ -5029,6 +5029,54 @@ Implementation status:
   correctly blocks closure until machine-readable Phase 8R.21 final removal
   audit evidence and validation evidence are supplied.
 
+### 8R.24 Validation Evidence Generator
+
+Intent: generate the machine-readable validation JSON required by the Phase
+8R.23 evidence run without moving validation execution into the completion
+checkpoint.
+
+Tasks:
+
+- Define fixed validation command specs for focused Phase 8R tests, server lint,
+  markdown validation, and full server validation.
+- Execute those commands from a root script with array arguments and no
+  user-controlled shell command construction.
+- Record bounded command evidence with command string, pass/fail state, exit
+  code, signal, duration, timestamps, and failure message.
+- Continue running later checks after failures by default so one failure does
+  not hide other broken gates.
+- Emit checkpoint-compatible JSON with `focused`, `lint`, `markdown`, and
+  `full` entries.
+- Keep the Phase 8R.23 evidence run responsible for final closure decisions.
+
+Acceptance criteria:
+
+- Validation evidence is complete only when every configured check result is
+  present and passed.
+- Failed checks preserve bounded failure metadata without storing full logs in
+  the JSON artifact.
+- Unknown check IDs and reported file/storage/Git side effects are rejected.
+- The generator can write JSON to `.tmp/phase8r/validation-evidence.json`.
+- The generator does not mutate policy storage, run Git, or change checkpoint
+  semantics.
+
+Implementation status:
+
+- Phase 8R.24 validation evidence generation is documented in
+  [Policy Builder Phase 8R Validation Evidence Generator](policy-builder-phase-8r-validation-evidence-generator.md).
+- The validation evidence contract lives in
+  `server/src/services/policyBuilderPhase8ValidationEvidence.mjs`.
+- The generator script lives in
+  `scripts/generate-policy-builder-phase-8r-validation-evidence.mjs`.
+- The root runner is exposed as `npm run policy:phase8r:validation-evidence`.
+- The focused validation evidence test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8ValidationEvidence.test.mjs`.
+- Current implementation generates the validation JSON input still required by
+  the Phase 8R.23 evidence run.
+- Current execution produced complete validation evidence and cleared validation
+  blockers in the Phase 8R.23 evidence run; final-removal-audit JSON remains
+  the next closure input.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -5103,6 +5151,10 @@ Implement Phase 8R in this order:
     Runs the Phase 8R.22 checkpoint against current-state evidence and resolves
     any missing component, roadmap, validation, or changelog proof before the
     Phase 8R objective is marked complete.
+24. **8R.24 Validation Evidence Generator**
+    Generates machine-readable focused, lint, markdown, and full validation
+    evidence for the Phase 8R.23 closure run without changing checkpoint
+    semantics.
 
 Current starting point:
 

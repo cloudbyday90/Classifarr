@@ -21,6 +21,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   gather mapped artifact, roadmap, and changelog evidence from the checkout
   while requiring caller-supplied final-removal-audit and validation JSON before
   completion can pass.
+- **Policy Builder Phase 8R Validation Evidence Generator** — added a fixed
+  command-spec validation evidence contract and
+  `npm run policy:phase8r:validation-evidence` to generate checkpoint-compatible
+  focused, lint, markdown, and full server validation JSON for the Phase 8R
+  closure evidence run.
 - **Policy Builder Phase 8R Completion Checkpoint** — added a
   side-effect-free phase completion checkpoint that consumes component,
   roadmap, final-removal-audit, validation, and changelog evidence for the full

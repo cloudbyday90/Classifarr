@@ -1,3 +1,11 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
+ */
+
 -- Phase 8R native policy intent storage.
 -- This migration creates the durable native intent tables defined by the
 -- Phase 8R.1 schema contract. It intentionally stores final intent authority,
