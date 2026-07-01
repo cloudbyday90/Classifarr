@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Post-Removal Runtime Verification** — added a
+  side-effect-free verifier that consumes controlled-removal apply evidence,
+  import/reference scan evidence, focused runtime checks, and focused/full
+  validation results; blocks additional compatibility removal batches when
+  removed paths remain referenced, runtime checks fail, validation evidence is
+  missing, or storage/Git side effects are reported.
 - **Policy Builder Phase 8R Controlled Compatibility Path Removal Apply** —
   added an adapter-driven apply boundary that consumes a ready removal review
   batch, requires explicit execute confirmation with a confirming actor, applies

@@ -4778,6 +4778,47 @@ Implementation status:
   storage, and Git-command side effects, and advances to post-removal runtime
   verification.
 
+### 8R.19 Post-Removal Runtime Verification
+
+Intent: consume Phase 8R.18 apply evidence and prove the removed compatibility
+paths are no longer imported, runtime checks still pass, and focused plus full
+validation evidence exists before another removal batch can proceed.
+
+Tasks:
+
+- Consume completed Phase 8R.18 apply evidence.
+- Require apply evidence to be valid and complete.
+- Require import/reference scan evidence for every applied removal path.
+- Block if any removed path is still referenced.
+- Require focused runtime/import checks to pass.
+- Require focused and full validation evidence to pass.
+- Reject storage or Git-command side effects inside the verifier.
+- Emit authorization context for the next removal batch.
+
+Acceptance criteria:
+
+- Verification is blocked unless Phase 8R.18 apply evidence is applied and
+  valid.
+- Missing import scan evidence blocks verification.
+- Any lingering reference to a removed path blocks verification.
+- Missing or failed runtime checks block verification.
+- Missing or failed focused/full validation blocks verification.
+- Verifier does not run source searches, tests, Git commands, storage mutation,
+  or additional removals itself.
+
+Implementation status:
+
+- Phase 8R.19 post-removal runtime verification is documented in
+  [Policy Builder Phase 8R Post-Removal Runtime Verification](policy-builder-phase-8r-post-removal-runtime-verification.md).
+- The verifier contract lives in
+  `server/src/services/policyBuilderPhase8PostRemovalRuntimeVerification.mjs`.
+- The focused verifier test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8PostRemovalRuntimeVerification.test.mjs`.
+- Current implementation consumes apply, import scan, runtime check, and
+  focused/full validation evidence; blocks lingering references or failed
+  checks; rejects storage/Git side effects; and advances to next-batch
+  authorization.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -4836,6 +4877,10 @@ Implement Phase 8R in this order:
     Consumes Phase 8R.18 apply evidence, verifies removed paths are no longer
     imported or required, runs focused runtime/import checks, and blocks
     additional batches until validation passes.
+20. **8R.20 Next Compatibility Removal Batch Authorization**
+    Consumes verified Phase 8R.19 evidence, calculates remaining approved
+    manifest paths, prevents already-removed paths from re-entering a batch, and
+    authorizes only the next narrow removal batch.
 
 Current starting point:
 
