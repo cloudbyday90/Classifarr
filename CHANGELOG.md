@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Backup, Restore, And Post-Upgrade Safety** — added a
+  side-effect-free operational safety service, architecture record, and audit
+  suite that enumerates native intent tables from the Phase 8R schema contract;
+  requires native table backup and restore coverage; requires restore validation
+  for native policy recovery, rollback snapshots, migration events, and schema
+  version checks; blocks post-upgrade apply without current dry-run reporting;
+  requires atomic rollback-safe apply semantics that prevent mixed partial
+  native/legacy writes; and validates clear operator-facing migration error IDs
+  before native storage can be treated as operationally ready.
 - **Policy Builder Phase 8R Legacy Code Deletion Gates** — added a
   side-effect-free deletion-gate service, architecture record, and audit suite
   that classifies client bridge UI, legacy serializer/deserializer paths,

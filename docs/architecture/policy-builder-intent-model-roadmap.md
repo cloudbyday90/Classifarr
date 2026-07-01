@@ -4335,6 +4335,27 @@ Acceptance criteria:
 - Backup/restore proves native policy recovery.
 - Post-upgrade can report and apply conversion candidates safely.
 
+Implementation status:
+
+- Phase 8R.8 backup, restore, and post-upgrade safety is documented in
+  [Policy Builder Phase 8R Backup, Restore, And Post-Upgrade Safety](policy-builder-phase-8r-backup-restore-post-upgrade-safety.md).
+- The side-effect-free operational safety contract lives in
+  `server/src/services/policyBuilderPhase8BackupRestoreSafety.mjs`.
+- The focused safety test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8BackupRestoreSafety.test.mjs`.
+- Current implementation enumerates native intent tables from the Phase 8R.1
+  schema contract, requires every native table in backup and restore coverage,
+  requires restore validation for native policy recovery, rollback snapshots,
+  migration events, and schema versions, and blocks readiness until
+  fresh-install/upgraded-install schema parity is proven.
+- Post-upgrade apply mode is blocked unless dry-run reporting is current,
+  conversion is atomic, failure rolls back, legacy behavior stays active until
+  commit, mixed partial native/legacy writes are prevented, and clear
+  operator-facing migration error IDs are present.
+- Validation rejects missing backup/restore coverage, missing restore
+  validations, schema mismatch, apply without dry-run, mixed partial writes,
+  missing operator errors, and any planning side effects.
+
 ### 8R.9 Native Storage Test Reset
 
 Intent: protect native intent behavior and deletion gates.
