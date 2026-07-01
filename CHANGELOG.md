@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Rollback Snapshot And Reversion Window** — added a
+  side-effect-free rollback-window service, architecture record, and audit suite
+  that plans bounded rollback snapshots before native conversion or accepted
+  rebuilds; requires restore coverage for preset attachments, weights,
+  thresholds, `customSignals`, routing/mapping references, migration actor, and
+  reason; limits rollback windows to a default 14 days with a one-to-thirty-day
+  validation boundary; blocks ordinary reads and unrelated saves from triggering
+  revert; and requires bulky legacy snapshot payload deletion after expiry while
+  retaining only minimal support/compliance audit metadata.
 - **Policy Builder Phase 8R Native Runtime Read Path** — added a focused
   server read-path service and mapper integration that prefers attached active
   native intent for converted policies, keeps unconverted policies on the

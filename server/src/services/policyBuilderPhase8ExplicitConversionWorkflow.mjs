@@ -11,6 +11,7 @@ import {
 } from './policyBuilderPhase8NativeSchemaContract.mjs';
 
 const PHASE8R_EXPLICIT_CONVERSION_WORKFLOW_VERSION = 'phase8r.explicit_conversion_workflow.v1';
+const PHASE8R_CONVERSION_ROLLBACK_WINDOW_DAYS = 14;
 
 const PHASE8R_CONVERSION_ACTOR_SOURCE_IDS = Object.freeze({
   MANUAL_OPERATOR: 'manual_operator',
@@ -95,6 +96,15 @@ function buildIdempotencyKey(policyId, targetVersion = 1) {
   return `phase8r:convert:${policyId}:v${targetVersion}`;
 }
 
+function buildDefaultRollbackExpiry(options = {}) {
+  if (options.rollbackSnapshot?.expiresAt) return options.rollbackSnapshot.expiresAt;
+
+  const createdAt = options.now ? new Date(options.now) : new Date();
+  const validCreatedAt = Number.isNaN(createdAt.getTime()) ? new Date() : createdAt;
+  validCreatedAt.setUTCDate(validCreatedAt.getUTCDate() + PHASE8R_CONVERSION_ROLLBACK_WINDOW_DAYS);
+  return validCreatedAt.toISOString();
+}
+
 function getVerifierReport(verifierReports, policyId) {
   return asArray(verifierReports).find(report =>
     String(report.policyId ?? report.policy_id) === String(policyId)
@@ -119,7 +129,8 @@ function buildRollbackSnapshotPlan(candidate, options = {}) {
     snapshotVersion: targetVersion,
     payloadRedacted: true,
     restorePath: `phase8r/rollback/policies/${candidate.policyId}/v${targetVersion}`,
-    expiresAt: options.rollbackSnapshot?.expiresAt || null,
+    expiresAt: buildDefaultRollbackExpiry(options),
+    retentionWindowDays: PHASE8R_CONVERSION_ROLLBACK_WINDOW_DAYS,
     reasonId: PHASE8R_CONVERSION_REASON_IDS.ROLLBACK_SNAPSHOT_PLANNED,
   };
 }
@@ -340,6 +351,7 @@ function buildPolicyBuilderPhase8ExplicitConversionWorkflow({
   behaviorSensitivePolicyIds = [],
   rollbackSnapshot = {},
   targetVersion = 1,
+  now = null,
 } = {}) {
   const report = candidateReport || buildPolicyBuilderPhase8MigrationCandidateReport({ policies });
   const selected = new Set(asArray(selectedPolicyIds).map(policyId => String(policyId)));
@@ -359,6 +371,7 @@ function buildPolicyBuilderPhase8ExplicitConversionWorkflow({
     options: {
       rollbackSnapshot,
       targetVersion,
+      now,
     },
   }));
   const workflow = {
@@ -471,6 +484,14 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
           riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_ROLLBACK,
           policyId: step.policyId,
           message: 'Ready conversion steps must plan rollback snapshot creation.',
+        });
+      }
+
+      if (!normalizeString(step.rollbackSnapshot?.expiresAt)) {
+        issues.push({
+          riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_ROLLBACK,
+          policyId: step.policyId,
+          message: 'Ready conversion steps must include a bounded rollback snapshot expiry.',
         });
       }
 

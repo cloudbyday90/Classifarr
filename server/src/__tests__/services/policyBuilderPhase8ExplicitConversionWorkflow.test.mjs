@@ -75,6 +75,7 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
         actorId: 3,
       },
       targetVersion: 2,
+      now: '2026-06-01T00:00:00.000Z',
     });
     const [step] = workflow.steps;
 
@@ -91,6 +92,8 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
       planned: true,
       tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
       restorePath: 'phase8r/rollback/policies/14/v2',
+      expiresAt: '2026-06-15T00:00:00.000Z',
+      retentionWindowDays: 14,
     }));
     expect(step.migrationEvent).toEqual(expect.objectContaining({
       planned: true,

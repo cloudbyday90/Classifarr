@@ -4199,6 +4199,28 @@ Acceptance criteria:
 - Rollback snapshots are not permanent alternate policy storage.
 - Retention behavior is documented and testable.
 
+Implementation status:
+
+- Phase 8R.5 rollback snapshot and reversion-window behavior is documented in
+  [Policy Builder Phase 8R Rollback Snapshot And Reversion Window](policy-builder-phase-8r-rollback-snapshot-window.md).
+- Current implementation adds a side-effect-free server service that builds a
+  rollback snapshot manifest, revert eligibility contract, and post-window
+  retention plan for native policy conversion/rebuild work.
+- Required restore sections cover preset attachments, weights, thresholds,
+  `customSignals`, routing/mapping references, migration actor, and migration
+  reason.
+- Rollback windows default to 14 days and validate to a one-to-thirty-day
+  boundary so snapshots cannot become permanent alternate legacy storage.
+- Revert is allowed only during the window and only for approved manual
+  operator, post-upgrade apply, test fixture, or maintainer migration actions;
+  ordinary policy reads and unrelated saves are blocked.
+- Post-window retention requires bulky payload deletion and keeps only minimal
+  audit metadata needed for support/compliance.
+- Validation rejects missing restore sections, missing actor/reason data,
+  unbounded snapshots, raw payload exposure, permanent alternate storage,
+  ordinary read/write revert, missing retention policy, bulky payload retention
+  after expiry, and planning side effects.
+
 ### 8R.6 Legacy Write Path Shutdown
 
 Intent: stop writing new policy behavior through legacy preset/custom-signal
