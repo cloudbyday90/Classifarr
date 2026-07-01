@@ -2,6 +2,12 @@ import {
   buildPolicyIntentProjection,
   withPolicyIntentProjection,
 } from '../../services/policyIntentMapper.mjs';
+import {
+  POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
+  POLICY_INTENT_INFERENCE_STATES,
+  POLICY_INTENT_ROLES,
+  POLICY_INTENT_SOURCES,
+} from '../../services/policyIntentSchema.mjs';
 
 function policy(overrides = {}) {
   return {
@@ -69,6 +75,11 @@ describe('policyIntentMapper', () => {
         error_count: 0,
       }),
     }));
+    expect(projectedPolicy.policy_intent_read_trace).toEqual(expect.objectContaining({
+      source: 'compatibility_bridge',
+      status: 'compatibility_bridge_fallback',
+      policy_id: 14,
+    }));
   });
 
   test('reuses precomputed projection objects when a caller already has them', () => {
@@ -90,10 +101,13 @@ describe('policyIntentMapper', () => {
       policy_intent_contract: policyIntentContract,
     }));
 
-    expect(projection).toEqual({
+    expect(projection).toEqual(expect.objectContaining({
       configuration_view: configurationView,
       policy_intent_contract: policyIntentContract,
-    });
+      policy_intent_read_trace: expect.objectContaining({
+        source: 'compatibility_bridge',
+      }),
+    }));
     expect(projection.configuration_view).toBe(configurationView);
     expect(projection.policy_intent_contract).toBe(policyIntentContract);
   });
@@ -116,5 +130,59 @@ describe('policyIntentMapper', () => {
         link_state: 'attached',
       }),
     ]);
+  });
+
+  test('projects active native intent through the same product contract shape', () => {
+    const projection = buildPolicyIntentProjection(policy({
+      native_intent: {
+        active: true,
+        intent_version: 2,
+        contract: {
+          schema_version: POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
+          policy_id: 14,
+          library_id: 14,
+          library_name: 'Family',
+          library_media_type: 'movie',
+          source: POLICY_INTENT_SOURCES.NATIVE_INTENT,
+          inference_state: POLICY_INTENT_INFERENCE_STATES.INFERRED,
+          model: {
+            mode: 'native_intent',
+            intent_supported: true,
+            native_intent: true,
+            conversion_available: false,
+          },
+          purpose: [{
+            intent_role: POLICY_INTENT_ROLES.PURPOSE,
+            signal_type: 'genres',
+            operator: 'require_any',
+            values: { require_any: ['Family'] },
+            constraint_mode: 'advisory',
+            semantics: 'identity',
+            source: 'native',
+            inference_state: POLICY_INTENT_INFERENCE_STATES.INFERRED,
+          }],
+          hard_limits: [],
+          helpful_hints: [],
+          avoid: [],
+          review_behavior: {},
+          template_links: [],
+          warnings: [],
+          unsupported_signals: [],
+        },
+      },
+    }));
+
+    expect(projection.policy_intent_contract).toEqual(expect.objectContaining({
+      source: POLICY_INTENT_SOURCES.NATIVE_INTENT,
+      validation: expect.objectContaining({
+        valid: true,
+      }),
+    }));
+    expect(projection.policy_intent_read_trace).toEqual(expect.objectContaining({
+      source: 'native_intent',
+      status: 'native_intent_active',
+      intent_version: 2,
+    }));
+    expect(projection.configuration_view.source).toBe('native_intent');
   });
 });

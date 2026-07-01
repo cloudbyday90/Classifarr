@@ -8,18 +8,17 @@
  * (at your option) any later version.
  */
 
-import { buildPolicyConfigurationView } from './policyConfigurationView.mjs';
-import { buildPolicyIntentContract } from './policyIntentContract.mjs';
+import {
+  buildPolicyBuilderPhase8NativeRuntimeReadPath,
+} from './policyBuilderPhase8NativeRuntimeReadPath.mjs';
 
 export function buildPolicyIntentProjection(policy = {}) {
-  const configurationView = policy.configuration_view || buildPolicyConfigurationView(policy);
-  const policyIntentContract = policy.policy_intent_contract || buildPolicyIntentContract(policy, {
-    configurationView,
-  });
+  const readPath = buildPolicyBuilderPhase8NativeRuntimeReadPath({ policy });
 
   return {
-    configuration_view: configurationView,
-    policy_intent_contract: policyIntentContract,
+    configuration_view: readPath.configuration_view,
+    policy_intent_contract: readPath.policy_intent_contract,
+    policy_intent_read_trace: readPath.trace,
   };
 }
 

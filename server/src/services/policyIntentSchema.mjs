@@ -13,6 +13,7 @@ export const POLICY_INTENT_CONTRACT_SCHEMA_VERSION = 1;
 export const POLICY_INTENT_SOURCES = Object.freeze({
   EMPTY: 'empty',
   LEGACY_PRESETS: 'legacy_presets',
+  NATIVE_INTENT: 'native_intent',
 });
 
 export const POLICY_INTENT_INFERENCE_STATES = Object.freeze({

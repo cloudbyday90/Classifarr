@@ -80,6 +80,21 @@ describe('policyIntentSchema', () => {
     });
   });
 
+  test('accepts native intent as a valid contract source', () => {
+    expect(validatePolicyIntentContract(validContract({
+      source: POLICY_INTENT_SOURCES.NATIVE_INTENT,
+      model: {
+        mode: 'native_intent',
+        intent_supported: true,
+        native_intent: true,
+        conversion_available: false,
+      },
+    }))).toEqual(expect.objectContaining({
+      valid: true,
+      error_count: 0,
+    }));
+  });
+
   test('rejects unsupported contract metadata and collection shapes', () => {
     const validation = validatePolicyIntentContract(validContract({
       schema_version: 999,

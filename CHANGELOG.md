@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Native Runtime Read Path** — added a focused
+  server read-path service and mapper integration that prefers attached active
+  native intent for converted policies, keeps unconverted policies on the
+  compatibility bridge, returns a stable `configuration_view`,
+  `policy_intent_contract`, and `policy_intent_read_trace` shape for both
+  sources, surfaces invalid active native intent without falling back to legacy
+  custom signals, and emits bounded `classifarr.phase8r.read.*` source trace
+  metadata with validation that rejects custom-signal-dependent native reads or
+  read-path storage side effects.
 - **Policy Builder Phase 6R Evidence Projection Audit** — hardened the Phase 6R
   evidence engine with a server-owned projection-instance audit that validates
   generated or tampered evidence projections after construction; blocks unknown
