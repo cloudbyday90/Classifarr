@@ -4737,6 +4737,47 @@ Implementation status:
   selected manifest paths and defers destructive application to Phase 8R.18
   because candidate paths still have live imports.
 
+### 8R.18 Controlled Compatibility Path Removal Apply
+
+Intent: apply one reviewed Phase 8R.17 compatibility path removal batch through
+an explicit adapter boundary and record structured apply evidence for
+post-removal verification.
+
+Tasks:
+
+- Consume a ready Phase 8R.17 removal review batch.
+- Require `executeApply=true`.
+- Require explicit operator confirmation with confirming actor.
+- Require an injected apply adapter with `applyEntry(entry)`.
+- Apply only reviewed batch entries through the adapter.
+- Require apply result count, path, and action parity with the reviewed batch.
+- Reject archive, storage, and Git-command side effects inside the service.
+- Emit apply evidence for the next runtime/import verification step.
+
+Acceptance criteria:
+
+- Apply is blocked unless Phase 8R.17 removal batch is ready and valid.
+- Apply is blocked without explicit execute flag and named confirmation actor.
+- Apply is blocked without an adapter.
+- Adapter failures are captured as bounded risks.
+- Mismatched paths, mismatched actions, or `applied=false` results block apply.
+- Service does not run Git commands or mutate storage.
+- Apply output identifies bounded removal side effects and validates that
+  unexpected side effects did not occur.
+
+Implementation status:
+
+- Phase 8R.18 controlled compatibility path removal apply is documented in
+  [Policy Builder Phase 8R Controlled Compatibility Path Removal Apply](policy-builder-phase-8r-controlled-compatibility-path-removal-apply.md).
+- The apply contract lives in
+  `server/src/services/policyBuilderPhase8ControlledCompatibilityPathRemovalApply.mjs`.
+- The focused apply test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8ControlledCompatibilityPathRemovalApply.test.mjs`.
+- Current implementation applies reviewed batches through an injected adapter,
+  requires explicit confirmation, verifies result parity, rejects archive,
+  storage, and Git-command side effects, and advances to post-removal runtime
+  verification.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -4788,9 +4829,13 @@ Implement Phase 8R in this order:
     consuming a ready Phase 8R.16 gate output, selected approved manifest paths,
     and review metadata.
 18. **8R.18 Controlled Compatibility Path Removal Apply**
-    Applies one reviewed Phase 8R.17 removal batch, updates imports and tests,
-    and proves focused plus full validation still pass before additional
-    compatibility paths are removed.
+    Applies one reviewed Phase 8R.17 removal batch through an explicit adapter,
+    verifies result parity, and emits evidence for import/runtime validation
+    before additional compatibility paths are removed.
+19. **8R.19 Post-Removal Runtime Verification**
+    Consumes Phase 8R.18 apply evidence, verifies removed paths are no longer
+    imported or required, runs focused runtime/import checks, and blocks
+    additional batches until validation passes.
 
 Current starting point:
 

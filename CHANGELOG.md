@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Controlled Compatibility Path Removal Apply** —
+  added an adapter-driven apply boundary that consumes a ready removal review
+  batch, requires explicit execute confirmation with a confirming actor, applies
+  entries only through an injected adapter, verifies result path/action parity,
+  captures adapter failures as bounded risks, and rejects archive, storage, or
+  Git-command side effects inside the service.
 - **Policy Builder Phase 8R Controlled Compatibility Path Removal** — added a
   side-effect-free removal-batch contract that consumes a ready deletion
   execution plan and final gate output, limits selected manifest paths to a
