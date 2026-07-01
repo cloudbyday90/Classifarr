@@ -110,6 +110,7 @@ The server module exports:
 - evidence source IDs,
 - prohibited payload IDs,
 - an evidence projection builder,
+- an evidence projection audit for generated/tampered contract instances,
 - bucket/source lookup helpers,
 - bucket/source validation helpers,
 - a full evidence-engine audit.
@@ -135,10 +136,23 @@ liveLookupPerformed = false
 This shape is safe to pass into future intent/readiness work without exposing
 raw provider payloads or UI-specific labels.
 
+The projection audit validates the generated instance after construction. It
+fails when a projection:
+
+- marks itself as generated from live provider data,
+- exposes raw provider payloads or UI chip language,
+- contains unknown buckets, sources, or authority sources,
+- lets a source populate a bucket it is not allowed to own,
+- lets metadata enrichment own destination identity,
+- lets hard-limit or avoid evidence bypass operator-declared intent,
+- contains individual entries that claim raw payloads or live lookup behavior.
+
 ## Security Outcome
 
 - Live provider calls are prohibited in evidence projection.
 - Raw provider payloads are not copied into projection entries.
+- Generated projections are independently auditable so future code cannot
+  bypass the constructor by mutating or assembling unsafe evidence entries.
 - Provider quota/cooldown state is not evidence.
 - Manual outcomes can describe evidence, but cannot create learning directly.
 - Hard limits and avoid evidence require operator-declared intent.

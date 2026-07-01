@@ -11,11 +11,13 @@ import {
   PHASE6R_EVIDENCE_SOURCE_IDS,
   buildPolicyBuilderPhase6EvidenceEngineAudit,
   buildPolicyBuilderPhase6EvidenceProjection,
+  buildPolicyBuilderPhase6EvidenceProjectionAudit,
   getPolicyBuilderPhase6EvidenceBucket,
   getPolicyBuilderPhase6EvidenceSource,
   listPolicyBuilderPhase6EvidenceBuckets,
   listPolicyBuilderPhase6EvidenceSources,
   validatePolicyBuilderPhase6EvidenceBucket,
+  validatePolicyBuilderPhase6EvidenceProjectionEntry,
   validatePolicyBuilderPhase6EvidenceSource,
 } from '../../services/policyBuilderPhase6EvidenceEngine.mjs';
 
@@ -179,6 +181,81 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
       phaseId: '6r_2',
       label: 'Intent Engine',
     }));
+  });
+
+  test('audits generated evidence projections as safe contract instances', () => {
+    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animation'],
+        compatibilityCandidates: ['Family'],
+      },
+      operatorIntent: {
+        hardLimits: ['No NC-17'],
+      },
+    });
+
+    const audit = buildPolicyBuilderPhase6EvidenceProjectionAudit(projection);
+
+    expect(audit).toEqual(expect.objectContaining({
+      ok: true,
+      issueCount: 0,
+      checkedEntryCount: 3,
+      issues: [],
+    }));
+  });
+
+  test('rejects tampered projections that leak payloads, live lookups, or invalid authority', () => {
+    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+      },
+    });
+    projection.generatedFromLiveProvider = true;
+    projection.exposesRawProviderPayloads = true;
+    projection.exposesUiChipLanguage = true;
+    projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY].push({
+      label: 'Provider gate identity chip',
+      sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
+      includesRawPayload: true,
+      liveLookupPerformed: true,
+      raw: { providerPayload: { id: 16 } },
+    });
+    projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT].push({
+      label: 'Provider hard limit',
+      sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
+    });
+
+    const riskIds = buildPolicyBuilderPhase6EvidenceProjectionAudit(projection)
+      .issues
+      .map(issue => issue.riskId);
+
+    expect(riskIds).toEqual(expect.arrayContaining([
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_USED_LIVE_PROVIDER,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_RAW_PAYLOAD,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_UI_LANGUAGE,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_SOURCE_NOT_ALLOWED,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_AUTHORITY_NOT_ALLOWED,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_RAW_PAYLOAD,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_LIVE_LOOKUP,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_HARD_LIMIT_WITHOUT_OPERATOR_AUTHORITY,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_METADATA_OWNS_IDENTITY,
+    ]));
+  });
+
+  test('rejects individual projection entries with unknown source or authority', () => {
+    const result = validatePolicyBuilderPhase6EvidenceProjectionEntry({
+      label: 'Mystery signal',
+      sourceId: 'unknown_source',
+      authoritySourceId: 'unknown_authority',
+    }, PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY);
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_UNKNOWN_SOURCE,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_UNKNOWN_AUTHORITY_SOURCE,
+    ]));
   });
 
   test('rejects metadata evidence as destination identity authority', () => {

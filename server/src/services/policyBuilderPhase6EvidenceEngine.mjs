@@ -3,6 +3,7 @@ import {
   getPolicyAuthoritySource,
 } from './policyAuthorityVocabulary.mjs';
 import {
+  includesInternalPolicyLanguage,
   POLICY_UX_TERM_IDS,
 } from './policyUserMentalModel.mjs';
 
@@ -56,6 +57,22 @@ const PHASE6R_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   SOURCE_MISSING_PROHIBITED_PAYLOAD: 'source_missing_prohibited_payload',
   METADATA_OWNS_POLICY_MEANING: 'metadata_owns_policy_meaning',
   FINAL_OUTCOME_LEARNS_DIRECTLY: 'final_outcome_learns_directly',
+  PROJECTION_MISSING_BUCKETS: 'projection_missing_buckets',
+  PROJECTION_UNKNOWN_BUCKET: 'projection_unknown_bucket',
+  PROJECTION_BUCKET_NOT_ARRAY: 'projection_bucket_not_array',
+  PROJECTION_ENTRY_MISSING_LABEL: 'projection_entry_missing_label',
+  PROJECTION_ENTRY_UNKNOWN_SOURCE: 'projection_entry_unknown_source',
+  PROJECTION_ENTRY_SOURCE_NOT_ALLOWED: 'projection_entry_source_not_allowed',
+  PROJECTION_ENTRY_UNKNOWN_AUTHORITY_SOURCE: 'projection_entry_unknown_authority_source',
+  PROJECTION_ENTRY_AUTHORITY_NOT_ALLOWED: 'projection_entry_authority_not_allowed',
+  PROJECTION_ENTRY_RAW_PAYLOAD: 'projection_entry_raw_payload',
+  PROJECTION_ENTRY_LIVE_LOOKUP: 'projection_entry_live_lookup',
+  PROJECTION_EXPOSES_RAW_PAYLOAD: 'projection_exposes_raw_payload',
+  PROJECTION_EXPOSES_UI_LANGUAGE: 'projection_exposes_ui_language',
+  PROJECTION_USED_LIVE_PROVIDER: 'projection_used_live_provider',
+  PROJECTION_HARD_LIMIT_WITHOUT_OPERATOR_AUTHORITY: 'projection_hard_limit_without_operator_authority',
+  PROJECTION_AVOID_WITHOUT_OPERATOR_AUTHORITY: 'projection_avoid_without_operator_authority',
+  PROJECTION_METADATA_OWNS_IDENTITY: 'projection_metadata_owns_identity',
 });
 
 function deepFreeze(value) {
@@ -833,6 +850,205 @@ function validatePolicyBuilderPhase6EvidenceSource(candidate, buckets = PHASE6R_
   };
 }
 
+function pushProjectionIssue(issues, riskId, message, details = {}) {
+  issues.push({
+    riskId,
+    message,
+    ...details,
+  });
+}
+
+function validatePolicyBuilderPhase6EvidenceProjectionEntry(entry = {}, bucketId) {
+  const issues = [];
+  const bucket = getPolicyBuilderPhase6EvidenceBucket(bucketId);
+  const source = getPolicyBuilderPhase6EvidenceSource(entry.sourceId);
+
+  if (!normalizeString(entry.label)) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_MISSING_LABEL,
+      'Evidence projection entries must expose a bounded label.',
+      { bucketId, sourceId: entry.sourceId || null }
+    );
+  }
+
+  if (!source) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_UNKNOWN_SOURCE,
+      'Evidence projection entry source must be part of the Phase 6R evidence vocabulary.',
+      { bucketId, sourceId: entry.sourceId || null }
+    );
+  } else if (bucket && !bucket.allowedSourceIds.includes(entry.sourceId)) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_SOURCE_NOT_ALLOWED,
+      `Evidence source "${entry.sourceId}" is not allowed to populate bucket "${bucketId}".`,
+      { bucketId, sourceId: entry.sourceId }
+    );
+  }
+
+  if (!getPolicyAuthoritySource(entry.authoritySourceId)) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_UNKNOWN_AUTHORITY_SOURCE,
+      'Evidence projection entry authority source must be known.',
+      { bucketId, authoritySourceId: entry.authoritySourceId || null }
+    );
+  } else if (bucket && !bucket.authoritySourceIds.includes(entry.authoritySourceId)) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_AUTHORITY_NOT_ALLOWED,
+      `Authority source "${entry.authoritySourceId}" is not allowed to populate bucket "${bucketId}".`,
+      { bucketId, authoritySourceId: entry.authoritySourceId }
+    );
+  }
+
+  if (entry.includesRawPayload === true || Object.prototype.hasOwnProperty.call(entry, 'raw')) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_RAW_PAYLOAD,
+      'Evidence projection entries must not expose raw provider, replay, or impact payloads.',
+      { bucketId, sourceId: entry.sourceId || null }
+    );
+  }
+
+  if (entry.liveLookupPerformed === true) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_LIVE_LOOKUP,
+      'Evidence projection entries must not be generated from live provider lookups.',
+      { bucketId, sourceId: entry.sourceId || null }
+    );
+  }
+
+  if (includesInternalPolicyLanguage(entry.label) ||
+      includesInternalPolicyLanguage(entry.reasonCode) ||
+      includesInternalPolicyLanguage(entry.value)) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_UI_LANGUAGE,
+      'Evidence projection entries must not expose diagnostic or UI chip language.',
+      { bucketId, sourceId: entry.sourceId || null }
+    );
+  }
+
+  if (bucketId === PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT &&
+      entry.authoritySourceId !== AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_HARD_LIMIT_WITHOUT_OPERATOR_AUTHORITY,
+      'Hard-limit projection entries must come from operator-declared intent.',
+      { bucketId, authoritySourceId: entry.authoritySourceId || null }
+    );
+  }
+
+  if (bucketId === PHASE6R_EVIDENCE_BUCKET_IDS.AVOID &&
+      entry.authoritySourceId !== AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_AVOID_WITHOUT_OPERATOR_AUTHORITY,
+      'Avoid projection entries must come from operator-declared intent.',
+      { bucketId, authoritySourceId: entry.authoritySourceId || null }
+    );
+  }
+
+  if (bucketId === PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY &&
+      entry.sourceId === PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_METADATA_OWNS_IDENTITY,
+      'Metadata enrichment cannot own destination identity in the evidence projection.',
+      { bucketId, sourceId: entry.sourceId }
+    );
+  }
+
+  return {
+    ok: issues.length === 0,
+    bucketId,
+    sourceId: entry.sourceId || null,
+    issues,
+  };
+}
+
+function buildPolicyBuilderPhase6EvidenceProjectionAudit(projection = {}) {
+  const issues = [];
+  const buckets = isNonEmptyObject(projection.buckets) ? projection.buckets : null;
+
+  if (!buckets) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_MISSING_BUCKETS,
+      'Evidence projection must include a buckets object.'
+    );
+  }
+
+  if (projection.generatedFromLiveProvider === true) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_USED_LIVE_PROVIDER,
+      'Evidence projection must not perform live provider lookups.'
+    );
+  }
+
+  if (projection.exposesRawProviderPayloads === true) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_RAW_PAYLOAD,
+      'Evidence projection must not expose raw provider payloads.'
+    );
+  }
+
+  if (projection.exposesUiChipLanguage === true) {
+    pushProjectionIssue(
+      issues,
+      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_UI_LANGUAGE,
+      'Evidence projection must not expose UI chip language.'
+    );
+  }
+
+  const entryResults = [];
+  if (buckets) {
+    Object.keys(buckets)
+      .filter(bucketId => !getPolicyBuilderPhase6EvidenceBucket(bucketId))
+      .forEach(bucketId => {
+        pushProjectionIssue(
+          issues,
+          PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_UNKNOWN_BUCKET,
+          `Evidence projection contains unknown bucket "${bucketId}".`,
+          { bucketId }
+        );
+      });
+
+    PHASE6R_EVIDENCE_BUCKETS.forEach(bucket => {
+      const entries = buckets[bucket.id];
+      if (!Array.isArray(entries)) {
+        pushProjectionIssue(
+          issues,
+          PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_BUCKET_NOT_ARRAY,
+          `Evidence projection bucket "${bucket.id}" must be an array.`,
+          { bucketId: bucket.id }
+        );
+        return;
+      }
+
+      entries.forEach(entry => {
+        const result = validatePolicyBuilderPhase6EvidenceProjectionEntry(entry, bucket.id);
+        entryResults.push(result);
+        result.issues.forEach(issue => issues.push(issue));
+      });
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    issueCount: issues.length,
+    checkedEntryCount: entryResults.length,
+    issues,
+    entryResults,
+  };
+}
+
 function buildPolicyBuilderPhase6EvidenceEngineAudit({
   buckets = PHASE6R_EVIDENCE_BUCKETS,
   sources = PHASE6R_EVIDENCE_SOURCES,
@@ -868,10 +1084,12 @@ export {
   PHASE6R_EVIDENCE_SOURCE_IDS,
   buildPolicyBuilderPhase6EvidenceEngineAudit,
   buildPolicyBuilderPhase6EvidenceProjection,
+  buildPolicyBuilderPhase6EvidenceProjectionAudit,
   getPolicyBuilderPhase6EvidenceBucket,
   getPolicyBuilderPhase6EvidenceSource,
   listPolicyBuilderPhase6EvidenceBuckets,
   listPolicyBuilderPhase6EvidenceSources,
   validatePolicyBuilderPhase6EvidenceBucket,
+  validatePolicyBuilderPhase6EvidenceProjectionEntry,
   validatePolicyBuilderPhase6EvidenceSource,
 };

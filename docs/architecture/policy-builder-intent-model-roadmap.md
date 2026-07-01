@@ -3140,6 +3140,11 @@ Implementation status:
   audit that blocks live provider lookups, raw provider payloads, UI chip
   language, provider quota/cooldown state, metadata-owned identity, and direct
   learning from final outcomes.
+- The evidence engine now includes a projection-instance audit that validates
+  generated or tampered evidence projections after construction, blocking
+  unknown buckets/sources, unsafe source-to-bucket ownership, raw payloads, live
+  lookup markers, UI diagnostic language, metadata-owned identity, and
+  non-operator hard-limit or avoid evidence.
 - Existing replay/impact reducers are not wired into the normal product flow in
   this slice; future Phase 6R migration work must either extract deterministic
   reducers into the evidence engine or delete the abandoned diagnostic surfaces.

@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Evidence Projection Audit** — hardened the Phase 6R
+  evidence engine with a server-owned projection-instance audit that validates
+  generated or tampered evidence projections after construction; blocks unknown
+  buckets, sources, authority sources, unsafe source-to-bucket ownership, raw
+  payload leakage, live provider lookup markers, UI diagnostic language,
+  metadata-owned destination identity, and non-operator hard-limit or avoid
+  evidence; and updates the Phase 6R evidence design record and roadmap.
 - **Policy Builder Phase 8R Explicit Conversion Workflow** — added a
   side-effect-free conversion workflow contract, architecture record, and audit
   suite that plans selected native policy conversions only from approved manual
