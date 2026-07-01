@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Explicit Conversion Workflow** — added a
+  side-effect-free conversion workflow contract, architecture record, and audit
+  suite that plans selected native policy conversions only from approved manual
+  operator, post-upgrade apply, test fixture, or maintainer migration actions;
+  blocks conversion from ordinary policy reads and unrelated saves; requires a
+  ready Phase 8R.2 candidate, server validation, rollback snapshot plan,
+  migration event plan, native intent record plan, deterministic idempotency
+  key, and legacy behavior retained until commit; and requires passing or
+  operator-accepted Phase 7R migration verifier output before
+  behavior-sensitive policies can be marked ready.
 - **Policy Builder Phase 8R Migration Candidate Report** — added a server-owned
   dry-run migration readiness report, architecture record, and audit suite that
   classifies each emitted policy as ready to convert, needing operator review,

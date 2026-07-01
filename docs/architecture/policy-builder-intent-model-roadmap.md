@@ -4113,6 +4113,23 @@ Acceptance criteria:
 - Converted policies have native intent records and migration events.
 - Failed conversion leaves the old active policy behavior intact.
 
+Implementation status:
+
+- Phase 8R.3 explicit conversion workflow is documented in
+  [Policy Builder Phase 8R Explicit Conversion Workflow](policy-builder-phase-8r-explicit-conversion-workflow.md).
+- Current implementation adds a side-effect-free server workflow plan that
+  accepts selected policy IDs, an approved actor/source, a Phase 8R.2 candidate
+  report, optional Phase 7R migration verifier output, and rollback snapshot
+  options.
+- Conversion planning is allowed only for manual operator actions,
+  post-upgrade apply mode, test fixtures, or maintainer migration tooling; it is
+  rejected for ordinary policy reads and unrelated saves.
+- Ready conversion steps must have a ready candidate, server validation,
+  rollback snapshot plan, migration event plan, native intent record plan,
+  deterministic idempotency key, and legacy behavior retained until commit.
+- Behavior-sensitive policies must have passing or accepted Phase 7R migration
+  verifier output before the workflow can mark them ready.
+
 ### 8R.4 Native Runtime Read Path
 
 Intent: make converted policies use native intent as the runtime authority.
