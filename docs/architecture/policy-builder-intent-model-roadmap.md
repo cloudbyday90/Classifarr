@@ -3908,6 +3908,22 @@ Acceptance criteria:
 - Tests distinguish classification success from routing success.
 - Tests protect rebuild safety without freezing old preview UI.
 
+Implementation status:
+
+- Phase 7R.9 runtime and rebuild test reset is documented in
+  [Policy Builder Phase 7R Runtime And Rebuild Test Reset](policy-builder-phase-7r-runtime-rebuild-test-reset.md).
+- Current implementation adds a server-owned reset manifest that classifies
+  runtime/rebuild tests as kept regressions, Phase 7R contract rewrites, or
+  abandoned impact/replay diagnostic deletion candidates.
+- Required reset coverage now explicitly includes broad genre no specialized
+  auto-route, missing routing as `classified_not_routed`, stale questions unable
+  to learn, guarded request-time choices, explicit constraint preservation, and
+  rollback snapshot requirements.
+- Validation rejects runtime/rebuild rewrites that bypass server authority,
+  missing-routing coverage that conflates classification and routing success,
+  missing replacement contracts, missing trace reasons, and old preview UI frozen
+  as the migration contract.
+
 ## Phase 7R Work Sequence
 
 Implement Phase 7R in this order:

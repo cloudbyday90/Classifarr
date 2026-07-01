@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Runtime And Rebuild Test Reset** — added a
+  server-owned test reset manifest, architecture record, and audit suite that
+  classifies runtime/rebuild tests as retained regressions, Phase 7R contract
+  rewrites, or abandoned impact/replay diagnostic deletion candidates; requires
+  coverage for broad genre no specialized auto-route, missing routing as
+  `classified_not_routed`, stale questions unable to learn, guarded request-time
+  choices, explicit constraint preservation, and rollback snapshots; and rejects
+  rewrites that bypass server authority, conflate classification success with
+  routing success, or freeze old preview UI as the migration contract.
 - **Policy Builder Phase 7R Runtime Metrics And Decision Trace** — added a
   server-owned metrics/trace projection contract, architecture record, and audit
   suite that counts Phase 7R automation, question, request-learning, rebuild,
