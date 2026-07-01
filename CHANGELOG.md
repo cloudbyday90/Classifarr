@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Automation Decision Contract** — added a
+  server-owned automation decision contract, architecture record, and audit
+  suite that converts Phase 7R runtime evidence into explicit
+  `auto_route_ready`, `classified_not_routed`, `needs_operator_review`,
+  `blocked_by_hard_limit`, `needs_routing_mapping`, `stale_profile_retry`, and
+  `insufficient_evidence` states; requires strong identity, concrete Arr route
+  mapping, fresh profile evidence, and no high-risk conflicts before automatic
+  routing; and keeps classification success distinct from route success with
+  bounded runtime decision traces and no side effects.
 - **Policy Builder Phase 7R Runtime Evidence Projection** — added a
   server-owned runtime evidence projection, architecture record, and audit suite
   that maps runtime library-profile, operator-intent, history, manual answer,

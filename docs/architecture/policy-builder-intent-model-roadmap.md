@@ -3612,6 +3612,28 @@ Acceptance criteria:
 - Missing route mapping cannot look like a completed route.
 - Automatic decisions are explainable from server-owned evidence and intent.
 
+Implementation status:
+
+- Phase 7R.3 automation decision contract is documented in
+  [Policy Builder Phase 7R Automation Decision Contract](policy-builder-phase-7r-automation-decision-contract.md).
+- The server-owned automation decision contract lives in
+  `server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs`.
+- The focused automation-decision test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase7AutomationDecisionContract.test.mjs`.
+- Current implementation defines the runtime states `auto_route_ready`,
+  `classified_not_routed`, `needs_operator_review`,
+  `blocked_by_hard_limit`, `needs_routing_mapping`, `stale_profile_retry`,
+  and `insufficient_evidence`.
+- `auto_route_ready` requires strong destination identity, concrete route
+  mapping, fresh profile evidence, no hard-limit block, no avoid-rule conflict,
+  and no high-risk evidence conflict.
+- Successful classification without a mapped Arr route becomes
+  `classified_not_routed`; it cannot claim route success or perform route
+  side effects.
+- The decision contract is deterministic, side-effect-free, rejects invalid
+  runtime evidence, and emits bounded `classifarr.runtime.decision.*` trace
+  attributes for later audit and telemetry wiring.
+
 ### 7R.4 Runtime Question Reduction
 
 Intent: ask fewer, better questions only when automation cannot proceed safely.
