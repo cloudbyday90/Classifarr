@@ -4383,6 +4383,30 @@ Acceptance criteria:
   path.
 - Deletion gates are testable.
 
+Implementation status:
+
+- Phase 8R.9 native storage test reset is documented in
+  [Policy Builder Phase 8R Native Storage Test Reset](policy-builder-phase-8r-native-storage-test-reset.md).
+- The side-effect-free test reset contract lives in
+  `server/src/services/policyBuilderPhase8NativeStorageTestReset.mjs`.
+- The focused reset test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8NativeStorageTestReset.test.mjs`.
+- Current implementation inventories Phase 8R native schema contract,
+  dry-run candidate report, explicit conversion, native runtime read path,
+  rollback/reversion, legacy write-blocking, backup/restore safety, and
+  deletion-gate tests.
+- The reset contract intentionally reports native SQL migration coverage as a
+  named blocker because Phase 8R has a schema contract but does not yet have an
+  actual native SQL migration with fresh-install and upgraded-install coverage.
+- Legacy payload preservation tests are allowed only for unconverted policy
+  compatibility, rollback snapshot restore, or maintainer migration fixtures.
+- Abandoned diagnostic impact/replay tests must be deletion-scoped and cannot
+  count as final native-storage product coverage.
+- Validation rejects missing required coverage, unscoped legacy preservation,
+  diagnostic tests not marked for deletion, diagnostic tests remaining after
+  deletion gates pass, abandoned diagnostics marked as final coverage, and any
+  planning side effects.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:

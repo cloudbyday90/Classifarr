@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Native Storage Test Reset** — added a
+  side-effect-free test reset service, architecture record, and audit suite that
+  inventories Phase 8R schema contract, migration candidate, explicit
+  conversion, native runtime read, rollback/reversion, legacy write-blocking,
+  backup/restore safety, and deletion-gate tests; makes native SQL migration
+  coverage a named blocker instead of inferring it from schema-contract tests;
+  scopes legacy payload preservation tests to unconverted policies, rollback
+  snapshots, or maintainer fixtures; and marks abandoned impact/replay
+  diagnostic tests as deletion-scoped rather than final native-storage product
+  coverage.
 - **Policy Builder Phase 8R Backup, Restore, And Post-Upgrade Safety** — added a
   side-effect-free operational safety service, architecture record, and audit
   suite that enumerates native intent tables from the Phase 8R schema contract;
