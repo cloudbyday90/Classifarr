@@ -69,9 +69,9 @@ enable apply mode.
    Schema mismatch, backup/restore gaps, dry-run-required state, rolled-back
    apply failures, and mixed-write blocks must be exposed as clear error IDs.
 
-7. **Keep this slice side-effect-free.**
-   This component defines and validates safety. Actual backup/restore and
-   post-upgrade mutation stay in later implementation work.
+7. **Keep this safety contract side-effect-free.**
+   This component defines and validates safety. Live backup/restore wiring is
+   implemented separately, while post-upgrade conversion apply remains gated.
 
 ## Pros And Cons
 
@@ -87,10 +87,10 @@ Pros:
 
 Cons:
 
-- Does not yet wire native tables into the live backup/restore implementation.
-- Requires later tests to provide real schema parity and restore evidence.
-- Keeps apply mode blocked until transaction and operator-error coverage is
-  intentionally supplied.
+- The safety contract itself remains plan-only; operators still need the live
+  backup service for actual export/restore.
+- Keeps post-upgrade conversion apply blocked until transaction and
+  operator-error coverage is intentionally supplied.
 
 ## Final Recommendation Stack
 
@@ -102,6 +102,8 @@ Cons:
   `server/src/services/policyBuilderPhase8NativeSchemaContract.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-8r-backup-restore-post-upgrade-safety.md`
+- Live backup/restore wiring:
+  `docs/architecture/policy-builder-phase-8r-native-backup-restore-wiring.md`
 - Roadmap owner:
   Phase 8R.8 in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
@@ -148,9 +150,20 @@ parity and backup/restore coverage are not assumed. A plan becomes
 - Operator-facing errors are explicit and bounded.
 - The contract validates that Phase 8R.8 performs no operational mutation.
 
+## Live Wiring Outcome
+
+Native intent tables are now included in the real backup/export and
+transactional restore flow. The implementation is documented in
+[Policy Builder Phase 8R Native Backup And Restore Wiring](policy-builder-phase-8r-native-backup-restore-wiring.md).
+
+Live backup export includes native intent headers, rules, routing targets,
+starter-template provenance, migration events, rollback snapshots, and
+validation status. Restore remaps old policy, library, and native intent IDs
+before restoring native child rows, and returns bounded native restore counts.
+
 ## Next Step
 
-Proceed to **Phase 8R.9 Native Storage Test Reset**. That component should reset
-tests around the final storage model: native schema coverage, conversion,
-runtime reads, rollback/reversion, legacy write blocking, backup/restore
-coverage, and deletion gates.
+Proceed to **Phase 8R Post-Upgrade Dry-Run Wiring**. Native backup/restore is
+now live; the next operational gap is connecting the candidate report and
+explicit conversion workflow to a post-upgrade dry-run action that reports
+readiness and blockers without applying conversion.

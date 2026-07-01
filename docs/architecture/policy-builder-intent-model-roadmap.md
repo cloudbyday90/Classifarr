@@ -4348,6 +4348,12 @@ Implementation status:
   requires restore validation for native policy recovery, rollback snapshots,
   migration events, and schema versions, and blocks readiness until
   fresh-install/upgraded-install schema parity is proven.
+- Live backup/export and transactional restore now include native policy intent
+  headers, rules, routing targets, starter-template provenance, migration
+  events, rollback snapshots, and validation status; restore remaps old policy,
+  library, and native intent IDs before restoring child rows.
+- Live wiring is documented in
+  [Policy Builder Phase 8R Native Backup And Restore Wiring](policy-builder-phase-8r-native-backup-restore-wiring.md).
 - Post-upgrade apply mode is blocked unless dry-run reporting is current,
   conversion is atomic, failure rolls back, legacy behavior stays active until
   commit, mixed partial native/legacy writes are prevented, and clear
@@ -4409,6 +4415,42 @@ Implementation status:
   deletion gates pass, abandoned diagnostics marked as final coverage, and any
   planning side effects.
 
+### 8R.10 Native Backup And Restore Wiring
+
+Intent: make Phase 8R native intent recoverable through the real backup and
+restore path before any post-upgrade conversion apply mode is enabled.
+
+Tasks:
+
+- Export every native policy intent table through `backupService`.
+- Restore native policy intent rows after library and policy IDs are remapped.
+- Remap native intent IDs before restoring rules, routing targets, template
+  applications, migration events, rollback snapshots, and validation status.
+- Keep replace-mode cleanup explicit for native intent tables.
+- Return bounded native restore counts to operators without logging raw intent
+  payloads.
+
+Acceptance criteria:
+
+- Backups contain all Phase 8R native intent tables.
+- Restores attach native rows to restored policy/library IDs, not stale IDs.
+- Restore remains transactional.
+- Orphaned native rows are skipped fail-closed.
+- Post-upgrade conversion apply remains disabled until dry-run and transaction
+  gates are wired.
+
+Implementation status:
+
+- Phase 8R native backup/restore wiring is documented in
+  [Policy Builder Phase 8R Native Backup And Restore Wiring](policy-builder-phase-8r-native-backup-restore-wiring.md).
+- Backup export includes native intent headers, rules, routing targets,
+  starter-template provenance, migration events, rollback snapshots, and
+  validation status.
+- Transactional restore now remaps old policy, library, and native intent IDs
+  before restoring native child rows.
+- Focused backup/export, restore-helper, and backup lifecycle integration tests
+  cover the new wiring.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -4431,6 +4473,11 @@ Implement Phase 8R in this order:
    Makes migration operationally safe.
 9. **8R.9 Native Storage Test Reset**
    Protects the final storage model.
+10. **8R.10 Native Backup And Restore Wiring**
+    Makes native intent recoverable through the live backup/restore path.
+11. **8R.11 Post-Upgrade Dry-Run Wiring**
+    Connects candidate reporting to post-upgrade dry-run without applying
+    conversion.
 
 Current starting point:
 

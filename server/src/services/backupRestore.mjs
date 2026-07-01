@@ -15,6 +15,7 @@ import {
   restoreAutoLearnedPreferences,
   restoreLearningPatterns,
   restoreClassificationEvidence,
+  restoreNativePolicyIntentStorage,
   restorePathMappings,
   restoreOllamaConfig,
   restoreTmdbConfig,
@@ -28,6 +29,13 @@ import {
 const logger = createLogger('BackupRestore');
 
 export async function clearExistingConfig(client) {
+  await client.query('DELETE FROM policy_intent_validation_status');
+  await client.query('DELETE FROM policy_intent_rollback_snapshots');
+  await client.query('DELETE FROM policy_intent_migration_events');
+  await client.query('DELETE FROM policy_intent_template_applications');
+  await client.query('DELETE FROM policy_intent_routing_targets');
+  await client.query('DELETE FROM policy_intent_rules');
+  await client.query('DELETE FROM policy_intents');
   await client.query('DELETE FROM library_custom_rules');
   await client.query('DELETE FROM library_labels');
   await client.query('DELETE FROM library_policies');
@@ -56,7 +64,20 @@ export async function restoreAllTables(client, backupData, mode) {
 
   const libraryIdMap = await restoreLibraries(client, backupData.data.libraries);
 
-  await restoreLibraryPolicies(client, backupData.data.libraryPolicies, libraryIdMap);
+  const policyIdMap = await restoreLibraryPolicies(client, backupData.data.libraryPolicies, libraryIdMap);
+  const nativePolicyIntentStats = await restoreNativePolicyIntentStorage(
+    client,
+    {
+      policyIntents: backupData.data.policyIntents,
+      policyIntentRules: backupData.data.policyIntentRules,
+      policyIntentRoutingTargets: backupData.data.policyIntentRoutingTargets,
+      policyIntentTemplateApplications: backupData.data.policyIntentTemplateApplications,
+      policyIntentMigrationEvents: backupData.data.policyIntentMigrationEvents,
+      policyIntentRollbackSnapshots: backupData.data.policyIntentRollbackSnapshots,
+      policyIntentValidationStatus: backupData.data.policyIntentValidationStatus,
+    },
+    { policyIdMap, libraryIdMap }
+  );
   await restoreLibraryCustomRules(client, backupData.data.libraryCustomRules, libraryIdMap);
   await restoreLabelPresets(client, backupData.data.labelPresets);
   await restoreScheduledTasks(client, backupData.data.scheduledTasks, libraryIdMap);
@@ -85,6 +106,13 @@ export async function restoreAllTables(client, backupData, mode) {
     stats: {
       librariesRestored: backupData.data.libraries?.length || 0,
       policiesRestored: backupData.data.libraryPolicies?.length || 0,
+      policyIntentsRestored: nativePolicyIntentStats.intentsRestored,
+      policyIntentRulesRestored: nativePolicyIntentStats.intentRulesRestored,
+      policyIntentRoutingTargetsRestored: nativePolicyIntentStats.routingTargetsRestored,
+      policyIntentTemplateApplicationsRestored: nativePolicyIntentStats.templateApplicationsRestored,
+      policyIntentMigrationEventsRestored: nativePolicyIntentStats.migrationEventsRestored,
+      policyIntentRollbackSnapshotsRestored: nativePolicyIntentStats.rollbackSnapshotsRestored,
+      policyIntentValidationStatusRestored: nativePolicyIntentStats.validationStatusesRestored,
       rulesRestored: backupData.data.libraryCustomRules?.length || 0,
       patternsRestored: backupData.data.learningPatterns?.length || 0,
       classificationEvidenceRestored: backupData.data.classificationEvidence?.length || 0

@@ -103,12 +103,14 @@ const POLICY_ALLOWED_COLUMNS = [
 const POLICY_JSONB_COLUMNS = new Set(['notify_channels', 'source_library_ids']);
 
 export async function restoreLibraryPolicies(client, policies, libraryIdMap) {
-  if (!policies) return;
+  const policyIdMap = new Map();
+  if (!policies) return policyIdMap;
+
   for (const policy of policies) {
     const newLibraryId = libraryIdMap.get(policy.library_id);
     if (!newLibraryId) continue;
 
-    const { id: _id, library_id: _library_id, created_at: _created_at, updated_at: _updated_at, ...data } = policy;
+    const { id: oldId, library_id: _library_id, created_at: _created_at, updated_at: _updated_at, ...data } = policy;
     const keys = Object.keys(data).filter(key => POLICY_ALLOWED_COLUMNS.includes(key) || POLICY_JSONB_COLUMNS.has(key));
     const values = keys.map(key => {
       const val = data[key];
@@ -119,13 +121,286 @@ export async function restoreLibraryPolicies(client, policies, libraryIdMap) {
 
     if (keys.length > 0) {
       const updateClauses = keys.filter(k => k !== 'name').map(k => `${k} = EXCLUDED.${k}`).join(', ');
-      await client.query(
+      const result = await client.query(
         `INSERT INTO library_policies (library_id, ${keys.join(', ')}) VALUES ($1, ${placeholders})
-         ON CONFLICT (library_id) DO UPDATE SET ${updateClauses}`,
+         ON CONFLICT (library_id) DO UPDATE SET ${updateClauses}
+         RETURNING id`,
         [newLibraryId, ...values]
       );
+      if (oldId !== undefined && oldId !== null && result.rows[0]?.id !== undefined) {
+        policyIdMap.set(oldId, result.rows[0].id);
+      }
     }
   }
+
+  return policyIdMap;
+}
+
+const POLICY_INTENT_ALLOWED_COLUMNS = [
+  'schema_version', 'intent_version', 'active', 'source', 'inference_state',
+  'review_behavior', 'validation_status', 'created_at', 'updated_at',
+  'accepted_at',
+];
+const POLICY_INTENT_JSONB_COLUMNS = new Set(['review_behavior']);
+
+const POLICY_INTENT_RULE_ALLOWED_COLUMNS = [
+  'intent_role', 'collection', 'signal_type', 'operator', 'values',
+  'constraint_mode', 'semantics', 'source', 'inference_state', 'sort_order',
+  'created_at',
+];
+const POLICY_INTENT_RULE_JSONB_COLUMNS = new Set(['values']);
+
+const POLICY_INTENT_ROUTING_TARGET_ALLOWED_COLUMNS = [
+  'arr_type', 'arr_config_id', 'arr_root_folder_id', 'arr_root_folder_path',
+  'quality_profile_id', 'target_status', 'created_at', 'updated_at',
+];
+
+const POLICY_INTENT_TEMPLATE_APPLICATION_ALLOWED_COLUMNS = [
+  'preset_id', 'preset_key', 'preset_name', 'weight', 'signal_count',
+  'link_state', 'applied_at',
+];
+
+const POLICY_INTENT_MIGRATION_EVENT_ALLOWED_COLUMNS = [
+  'event_type', 'actor_type', 'actor_id', 'source_version', 'target_version',
+  'reason_code', 'summary', 'metadata', 'created_at',
+];
+const POLICY_INTENT_MIGRATION_EVENT_JSONB_COLUMNS = new Set(['metadata']);
+
+const POLICY_INTENT_ROLLBACK_SNAPSHOT_ALLOWED_COLUMNS = [
+  'snapshot_version', 'snapshot_payload', 'payload_redacted', 'restore_path',
+  'expires_at', 'created_at', 'restored_at',
+];
+const POLICY_INTENT_ROLLBACK_SNAPSHOT_JSONB_COLUMNS = new Set(['snapshot_payload']);
+
+const POLICY_INTENT_VALIDATION_STATUS_ALLOWED_COLUMNS = [
+  'schema_version', 'status', 'validator_version', 'error_count',
+  'warning_count', 'errors', 'warnings', 'validated_at',
+];
+const POLICY_INTENT_VALIDATION_STATUS_JSONB_COLUMNS = new Set(['errors', 'warnings']);
+
+function normalizeJsonbValue(value) {
+  if (value == null || typeof value === 'string') return value;
+  return JSON.stringify(value);
+}
+
+function buildAllowedColumnValues(row, allowedColumns, jsonbColumns = new Set()) {
+  const keys = Object.keys(row).filter(key => allowedColumns.includes(key));
+  const values = keys.map(key => (
+    jsonbColumns.has(key) ? normalizeJsonbValue(row[key]) : row[key]
+  ));
+
+  return { keys, values };
+}
+
+async function insertNativeChildRows({
+  client,
+  tableName,
+  rows = [],
+  intentIdMap,
+  allowedColumns,
+  jsonbColumns = new Set(),
+}) {
+  let restoredCount = 0;
+
+  for (const row of rows || []) {
+    const newIntentId = intentIdMap.get(row.intent_id);
+    if (!newIntentId) continue;
+
+    const { keys, values } = buildAllowedColumnValues(row, allowedColumns, jsonbColumns);
+    if (keys.length === 0) continue;
+
+    const placeholders = keys.map((_, index) => `$${index + 2}`).join(', ');
+    await client.query(
+      `INSERT INTO ${tableName} (intent_id, ${keys.join(', ')})
+       VALUES ($1, ${placeholders})
+       ON CONFLICT DO NOTHING`,
+      [newIntentId, ...values]
+    );
+    restoredCount += 1;
+  }
+
+  return restoredCount;
+}
+
+async function restorePolicyIntents(client, policyIntents, { policyIdMap, libraryIdMap }) {
+  const intentIdMap = new Map();
+  const pendingReplacements = [];
+
+  for (const intent of policyIntents || []) {
+    const newPolicyId = policyIdMap.get(intent.policy_id);
+    const newLibraryId = libraryIdMap.get(intent.library_id);
+    if (!newPolicyId || !newLibraryId) continue;
+
+    const {
+      id: oldIntentId,
+      policy_id: _policy_id,
+      library_id: _library_id,
+      replaced_by_intent_id: replacedByIntentId,
+      created_by: _created_by,
+      accepted_by: _accepted_by,
+      ...data
+    } = intent;
+    const { keys, values } = buildAllowedColumnValues(
+      data,
+      POLICY_INTENT_ALLOWED_COLUMNS,
+      POLICY_INTENT_JSONB_COLUMNS
+    );
+    if (keys.length === 0) continue;
+
+    const placeholders = keys.map((_, index) => `$${index + 3}`).join(', ');
+    const result = await client.query(
+      `INSERT INTO policy_intents (policy_id, library_id, ${keys.join(', ')})
+       VALUES ($1, $2, ${placeholders})
+       ON CONFLICT DO NOTHING
+       RETURNING id`,
+      [newPolicyId, newLibraryId, ...values]
+    );
+
+    let newIntentId = result.rows[0]?.id ?? null;
+    if (!newIntentId) {
+      const existing = await client.query(
+        `SELECT id
+         FROM policy_intents
+         WHERE policy_id = $1
+           AND intent_version = $2
+           AND active IS NOT DISTINCT FROM $3
+         ORDER BY id
+         LIMIT 1`,
+        [newPolicyId, intent.intent_version ?? 1, intent.active ?? true]
+      );
+      newIntentId = existing.rows[0]?.id ?? null;
+    }
+
+    if (oldIntentId !== undefined && oldIntentId !== null && newIntentId) {
+      intentIdMap.set(oldIntentId, newIntentId);
+      if (replacedByIntentId !== undefined && replacedByIntentId !== null) {
+        pendingReplacements.push({ newIntentId, replacedByIntentId });
+      }
+    }
+  }
+
+  for (const replacement of pendingReplacements) {
+    const newReplacementId = intentIdMap.get(replacement.replacedByIntentId);
+    if (!newReplacementId) continue;
+
+    await client.query(
+      'UPDATE policy_intents SET replaced_by_intent_id = $1 WHERE id = $2',
+      [newReplacementId, replacement.newIntentId]
+    );
+  }
+
+  return intentIdMap;
+}
+
+export async function restoreNativePolicyIntentStorage(client, nativeStorage = {}, mappings = {}) {
+  const policyIdMap = mappings.policyIdMap || new Map();
+  const libraryIdMap = mappings.libraryIdMap || new Map();
+  const intentIdMap = await restorePolicyIntents(client, nativeStorage.policyIntents, {
+    policyIdMap,
+    libraryIdMap,
+  });
+  const stats = {
+    intentsRestored: intentIdMap.size,
+    intentRulesRestored: 0,
+    routingTargetsRestored: 0,
+    templateApplicationsRestored: 0,
+    migrationEventsRestored: 0,
+    rollbackSnapshotsRestored: 0,
+    validationStatusesRestored: 0,
+  };
+
+  stats.intentRulesRestored = await insertNativeChildRows({
+    client,
+    tableName: 'policy_intent_rules',
+    rows: nativeStorage.policyIntentRules,
+    intentIdMap,
+    allowedColumns: POLICY_INTENT_RULE_ALLOWED_COLUMNS,
+    jsonbColumns: POLICY_INTENT_RULE_JSONB_COLUMNS,
+  });
+
+  for (const row of nativeStorage.policyIntentRoutingTargets || []) {
+    const newIntentId = intentIdMap.get(row.intent_id);
+    const newLibraryId = libraryIdMap.get(row.library_id);
+    if (!newIntentId || !newLibraryId) continue;
+
+    const { keys, values } = buildAllowedColumnValues(
+      row,
+      POLICY_INTENT_ROUTING_TARGET_ALLOWED_COLUMNS
+    );
+    if (keys.length === 0) continue;
+
+    const placeholders = keys.map((_, index) => `$${index + 3}`).join(', ');
+    await client.query(
+      `INSERT INTO policy_intent_routing_targets (intent_id, library_id, ${keys.join(', ')})
+       VALUES ($1, $2, ${placeholders})
+       ON CONFLICT DO NOTHING`,
+      [newIntentId, newLibraryId, ...values]
+    );
+    stats.routingTargetsRestored += 1;
+  }
+
+  stats.templateApplicationsRestored = await insertNativeChildRows({
+    client,
+    tableName: 'policy_intent_template_applications',
+    rows: nativeStorage.policyIntentTemplateApplications,
+    intentIdMap,
+    allowedColumns: POLICY_INTENT_TEMPLATE_APPLICATION_ALLOWED_COLUMNS,
+  });
+
+  for (const event of nativeStorage.policyIntentMigrationEvents || []) {
+    const newPolicyId = policyIdMap.get(event.policy_id);
+    if (!newPolicyId) continue;
+
+    const newIntentId = event.intent_id == null ? null : (intentIdMap.get(event.intent_id) ?? null);
+    const { keys, values } = buildAllowedColumnValues(
+      event,
+      POLICY_INTENT_MIGRATION_EVENT_ALLOWED_COLUMNS,
+      POLICY_INTENT_MIGRATION_EVENT_JSONB_COLUMNS
+    );
+    if (keys.length === 0) continue;
+
+    const placeholders = keys.map((_, index) => `$${index + 3}`).join(', ');
+    await client.query(
+      `INSERT INTO policy_intent_migration_events (intent_id, policy_id, ${keys.join(', ')})
+       VALUES ($1, $2, ${placeholders})
+       ON CONFLICT DO NOTHING`,
+      [newIntentId, newPolicyId, ...values]
+    );
+    stats.migrationEventsRestored += 1;
+  }
+
+  for (const snapshot of nativeStorage.policyIntentRollbackSnapshots || []) {
+    const newIntentId = intentIdMap.get(snapshot.intent_id);
+    const newPolicyId = policyIdMap.get(snapshot.policy_id);
+    if (!newIntentId || !newPolicyId) continue;
+
+    const { keys, values } = buildAllowedColumnValues(
+      snapshot,
+      POLICY_INTENT_ROLLBACK_SNAPSHOT_ALLOWED_COLUMNS,
+      POLICY_INTENT_ROLLBACK_SNAPSHOT_JSONB_COLUMNS
+    );
+    if (keys.length === 0) continue;
+
+    const placeholders = keys.map((_, index) => `$${index + 3}`).join(', ');
+    await client.query(
+      `INSERT INTO policy_intent_rollback_snapshots (intent_id, policy_id, ${keys.join(', ')})
+       VALUES ($1, $2, ${placeholders})
+       ON CONFLICT DO NOTHING`,
+      [newIntentId, newPolicyId, ...values]
+    );
+    stats.rollbackSnapshotsRestored += 1;
+  }
+
+  stats.validationStatusesRestored = await insertNativeChildRows({
+    client,
+    tableName: 'policy_intent_validation_status',
+    rows: nativeStorage.policyIntentValidationStatus,
+    intentIdMap,
+    allowedColumns: POLICY_INTENT_VALIDATION_STATUS_ALLOWED_COLUMNS,
+    jsonbColumns: POLICY_INTENT_VALIDATION_STATUS_JSONB_COLUMNS,
+  });
+
+  return stats;
 }
 
 export async function restoreLibraryCustomRules(client, rules, libraryIdMap) {

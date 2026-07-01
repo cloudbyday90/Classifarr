@@ -241,6 +241,33 @@ describe('BackupService classification_evidence export (Phase 6A)', () => {
 
         expect(result.meta.classificationEvidenceCount).toBe(3);
     });
+
+    test('includes Phase 8R native policy intent tables in backup data', async () => {
+        db.query.mockImplementation(async (sql) => {
+            if (sql.includes('FROM policy_intents')) return { rows: [{ id: 1, policy_id: 10 }] };
+            if (sql.includes('FROM policy_intent_rules')) return { rows: [{ id: 2, intent_id: 1 }] };
+            if (sql.includes('FROM policy_intent_routing_targets')) return { rows: [{ id: 3, intent_id: 1 }] };
+            if (sql.includes('FROM policy_intent_template_applications')) return { rows: [{ id: 4, intent_id: 1 }] };
+            if (sql.includes('FROM policy_intent_migration_events')) return { rows: [{ id: 5, policy_id: 10 }] };
+            if (sql.includes('FROM policy_intent_rollback_snapshots')) return { rows: [{ id: 6, intent_id: 1 }] };
+            if (sql.includes('FROM policy_intent_validation_status')) return { rows: [{ id: 7, intent_id: 1 }] };
+            return { rows: [] };
+        });
+        classificationEvidenceService.listLegacyPatterns.mockResolvedValue([]);
+        classificationEvidenceRepository.listAll.mockResolvedValue([]);
+
+        const result = await backupService.collectBackupData({ includePatterns: true });
+
+        expect(result.data.policyIntents).toEqual([{ id: 1, policy_id: 10 }]);
+        expect(result.data.policyIntentRules).toEqual([{ id: 2, intent_id: 1 }]);
+        expect(result.data.policyIntentRoutingTargets).toEqual([{ id: 3, intent_id: 1 }]);
+        expect(result.data.policyIntentTemplateApplications).toEqual([{ id: 4, intent_id: 1 }]);
+        expect(result.data.policyIntentMigrationEvents).toEqual([{ id: 5, policy_id: 10 }]);
+        expect(result.data.policyIntentRollbackSnapshots).toEqual([{ id: 6, intent_id: 1 }]);
+        expect(result.data.policyIntentValidationStatus).toEqual([{ id: 7, intent_id: 1 }]);
+        expect(result.meta.policyIntentsCount).toBe(1);
+        expect(result.meta.policyIntentRollbackSnapshotsCount).toBe(1);
+    });
 });
 
 describe('BackupService classification_evidence restore mapping (Phase 6A)', () => {

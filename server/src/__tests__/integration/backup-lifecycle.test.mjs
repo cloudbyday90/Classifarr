@@ -42,6 +42,54 @@ const STUB_DDLS = [
         id SERIAL PRIMARY KEY, library_id INTEGER, name VARCHAR(255) NOT NULL,
         description TEXT, enabled BOOLEAN DEFAULT true, priority INTEGER DEFAULT 5
     )`,
+    `CREATE TABLE IF NOT EXISTS policy_intents (
+        id BIGSERIAL PRIMARY KEY, policy_id INTEGER, library_id INTEGER,
+        schema_version INTEGER DEFAULT 1, intent_version INTEGER DEFAULT 1,
+        active BOOLEAN DEFAULT true, source VARCHAR(40), inference_state VARCHAR(40),
+        review_behavior JSONB DEFAULT '{}'::jsonb,
+        validation_status VARCHAR(40) DEFAULT 'pending_validation',
+        created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS policy_intent_rules (
+        id BIGSERIAL PRIMARY KEY, intent_id BIGINT, intent_role VARCHAR(40),
+        collection VARCHAR(40), signal_type VARCHAR(50), operator VARCHAR(50),
+        values JSONB DEFAULT '{}'::jsonb, inference_state VARCHAR(40),
+        sort_order INTEGER DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS policy_intent_routing_targets (
+        id BIGSERIAL PRIMARY KEY, intent_id BIGINT, library_id INTEGER,
+        arr_type VARCHAR(20), arr_config_id INTEGER, arr_root_folder_id INTEGER,
+        arr_root_folder_path TEXT, quality_profile_id INTEGER,
+        target_status VARCHAR(40) DEFAULT 'configured',
+        created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS policy_intent_template_applications (
+        id BIGSERIAL PRIMARY KEY, intent_id BIGINT, preset_id INTEGER,
+        preset_key VARCHAR(100), preset_name VARCHAR(255), weight NUMERIC(6,3),
+        signal_count INTEGER DEFAULT 0, link_state VARCHAR(40) DEFAULT 'applied',
+        applied_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS policy_intent_migration_events (
+        id BIGSERIAL PRIMARY KEY, intent_id BIGINT, policy_id INTEGER,
+        event_type VARCHAR(50), actor_type VARCHAR(40), actor_id INTEGER,
+        source_version INTEGER, target_version INTEGER, reason_code VARCHAR(80),
+        summary TEXT, metadata JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS policy_intent_rollback_snapshots (
+        id BIGSERIAL PRIMARY KEY, intent_id BIGINT, policy_id INTEGER,
+        snapshot_version INTEGER, snapshot_payload JSONB DEFAULT '{}'::jsonb,
+        payload_redacted BOOLEAN DEFAULT true, restore_path TEXT,
+        expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(),
+        restored_at TIMESTAMPTZ
+    )`,
+    `CREATE TABLE IF NOT EXISTS policy_intent_validation_status (
+        id BIGSERIAL PRIMARY KEY, intent_id BIGINT, schema_version INTEGER DEFAULT 1,
+        status VARCHAR(40), validator_version VARCHAR(80),
+        error_count INTEGER DEFAULT 0, warning_count INTEGER DEFAULT 0,
+        errors JSONB DEFAULT '[]'::jsonb, warnings JSONB DEFAULT '[]'::jsonb,
+        validated_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
     `CREATE TABLE IF NOT EXISTS scheduled_tasks (
         id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL,
         task_type VARCHAR(50) DEFAULT 'library_scan' NOT NULL,

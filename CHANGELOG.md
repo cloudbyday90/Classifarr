@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Native Backup And Restore Wiring** — wired native
+  policy intent tables into the live backup/export and transactional restore
+  path; backup payloads now include native intent headers, rules, routing
+  targets, starter-template provenance, migration events, rollback snapshots,
+  and validation status; restore remaps old policy, library, and native intent
+  IDs before inserting native child rows; replace-mode cleanup clears native
+  intent tables explicitly; and restore stats now include bounded native intent
+  recovery counts without logging raw policy payloads.
 - **Policy Builder Phase 8R Native SQL Migration Coverage** — added the native
   policy intent storage migration, regenerated the authoritative schema
   snapshot, and expanded migration/reset tests to prove native intent headers,
