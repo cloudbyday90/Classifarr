@@ -67,16 +67,42 @@ function usage() {
   ].join('\n');
 }
 
-function executableFor(command) {
-  if (command === 'node') {
-    return process.execPath;
+function resolveNpmCliPath(command) {
+  const npmExecPath = process.env.npm_execpath;
+
+  if (!npmExecPath) {
+    return null;
+  }
+  if (command === 'npm') {
+    return npmExecPath;
   }
 
-  return command;
+  const npxCliPath = path.join(path.dirname(npmExecPath), 'npx-cli.js');
+  return fs.existsSync(npxCliPath) ? npxCliPath : null;
 }
 
-function shouldUseShell(command) {
-  return process.platform === 'win32' && ['npm', 'npx'].includes(command);
+function buildSpawnInvocation(commandSpec = {}) {
+  if (commandSpec.command === 'node') {
+    return {
+      command: process.execPath,
+      args: commandSpec.args,
+    };
+  }
+  if (['npm', 'npx'].includes(commandSpec.command)) {
+    const cliPath = resolveNpmCliPath(commandSpec.command);
+
+    if (cliPath) {
+      return {
+        command: process.execPath,
+        args: [cliPath, ...commandSpec.args],
+      };
+    }
+  }
+
+  return {
+    command: commandSpec.command,
+    args: commandSpec.args,
+  };
 }
 
 function writeJsonFile(filePath, value) {
@@ -93,7 +119,7 @@ function runCommand(commandSpec, { cwd }) {
   return new Promise(resolve => {
     const startedAt = new Date();
     const resolvedCwd = path.resolve(cwd, commandSpec.cwd || '.');
-    const command = executableFor(commandSpec.command);
+    const invocation = buildSpawnInvocation(commandSpec);
     let child;
     let outputTail = '';
     const appendOutput = chunk => {
@@ -101,11 +127,11 @@ function runCommand(commandSpec, { cwd }) {
     };
 
     try {
-      child = spawn(command, commandSpec.args, {
+      child = spawn(invocation.command, invocation.args, {
         cwd: resolvedCwd,
         env: process.env,
         stdio: ['ignore', 'pipe', 'pipe'],
-        shell: shouldUseShell(commandSpec.command),
+        shell: false,
       });
     } catch (err) {
       const finishedAt = new Date();

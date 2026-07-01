@@ -36,8 +36,12 @@ describe('policyBuilderPhase8ValidationEvidence', () => {
       exitCode: 0,
       command: expect.stringContaining('policyBuilderPhase8CurrentEvidenceCollector'),
     }));
+    expect(evidence.focused.command)
+      .toContain('policyBuilderPhase8FinalRemovalAuditEvidence');
     expect(evidence.lint.command).toBe('npm run lint');
     expect(evidence.markdown.command).toContain('markdownlint-cli2');
+    expect(evidence.markdown.command)
+      .toContain('policy-builder-phase-8r-final-removal-audit-exporter.md');
     expect(evidence.full.command).toBe('npm --prefix server test');
   });
 

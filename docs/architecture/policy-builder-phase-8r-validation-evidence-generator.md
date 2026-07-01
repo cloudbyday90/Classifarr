@@ -124,9 +124,11 @@ Implemented:
 Validation command set:
 
 - `focused`: focused Phase 8R Jest suites for current evidence, evidence run,
-  checkpoint, and completion audit contracts.
+  checkpoint, compatibility-removal completion audit, and final-removal audit
+  evidence contracts, plus the validation-evidence contract itself.
 - `lint`: server lint.
-- `markdown`: changelog and Phase 8R architecture markdown lint.
+- `markdown`: changelog, Phase 8R roadmap, completion evidence, validation
+  evidence, and final-removal audit architecture markdown lint.
 - `full`: full server unit and integration test suites.
 
 Current-state run:
@@ -136,8 +138,9 @@ Current-state run:
   `riskCount: 0`.
 - Feeding that JSON into `npm run --silent policy:phase8r:evidence -- --validation-evidence .tmp/phase8r/validation-evidence.json`
   cleared the validation blockers.
-- The Phase 8R closure run now blocks only on missing machine-readable Phase
-  8R.21 final-removal-audit evidence.
+- The Phase 8R closure run now consumes validation evidence independently from
+  final-removal-audit evidence; final closure remains blocked until the
+  real execution-plan manifest reaches verified zero remaining inventory.
 
 Example:
 
@@ -155,6 +158,6 @@ npm run --silent policy:phase8r:evidence -- \
 
 ## Next Step
 
-Add the machine-readable Phase 8R.21 final-removal-audit evidence export so the
-evidence runner has both missing closure inputs: validation JSON and
-final-removal-audit JSON.
+Run the final-removal audit exporter with the real Phase 8R.15 execution-plan
+manifest and continue the bounded removal loop until the audit reports zero
+remaining approved manifest paths.

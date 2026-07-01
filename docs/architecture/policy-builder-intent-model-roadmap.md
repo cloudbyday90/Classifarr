@@ -5077,6 +5077,52 @@ Implementation status:
   blockers in the Phase 8R.23 evidence run; final-removal-audit JSON remains
   the next closure input.
 
+### 8R.25 Final Removal Audit Exporter
+
+Intent: generate the machine-readable Phase 8R.21 final-removal-audit JSON that
+the Phase 8R.23 evidence run requires, without claiming completion while
+approved manifest paths still exist.
+
+Tasks:
+
+- Require a Phase 8R.15 execution-plan JSON artifact as the manifest source.
+- Read approved manifest paths from the execution plan.
+- Inspect current checkout path existence for every manifest path.
+- Build Phase 8R.20-compatible completion authorization evidence from current
+  removed and remaining path state.
+- Build Phase 8R.19-compatible removal verification evidence for paths that no
+  longer exist.
+- Scan source roots for exact manifest path references and feed that into the
+  final import/reference scan evidence.
+- Compose the existing Phase 8R.21 compatibility-removal completion audit.
+- Emit audit JSON without deleting files, mutating storage, running Git, or
+  changing checkpoint semantics.
+
+Acceptance criteria:
+
+- The exporter refuses to run without an explicit execution-plan JSON path.
+- Existing manifest paths are reported as remaining inventory.
+- Removed manifest paths are covered by bounded removal verification evidence.
+- Final scan references block completion.
+- The generated JSON can be passed to `npm run policy:phase8r:evidence`.
+- The exporter does not delete files, archive files, mutate storage, run Git, or
+  fabricate completion when current evidence says inventory remains.
+
+Implementation status:
+
+- Phase 8R.25 final removal audit export is documented in
+  [Policy Builder Phase 8R Final Removal Audit Exporter](policy-builder-phase-8r-final-removal-audit-exporter.md).
+- The final-removal audit evidence contract lives in
+  `server/src/services/policyBuilderPhase8FinalRemovalAuditEvidence.mjs`.
+- The exporter script lives in
+  `scripts/generate-policy-builder-phase-8r-final-removal-audit.mjs`.
+- The root runner is exposed as `npm run policy:phase8r:final-removal-audit`.
+- The focused final-removal audit evidence test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8FinalRemovalAuditEvidence.test.mjs`.
+- Current implementation can generate the final-removal-audit JSON input for
+  the Phase 8R.23 evidence run; completion remains dependent on the real
+  execution-plan artifact and current checkout removal state.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -5155,6 +5201,10 @@ Implement Phase 8R in this order:
     Generates machine-readable focused, lint, markdown, and full validation
     evidence for the Phase 8R.23 closure run without changing checkpoint
     semantics.
+25. **8R.25 Final Removal Audit Exporter**
+    Generates machine-readable Phase 8R.21 final-removal-audit evidence from an
+    explicit execution-plan manifest, current path state, source reference scan,
+    and validation JSON.
 
 Current starting point:
 

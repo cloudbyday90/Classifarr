@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Final Removal Audit Exporter** — added a
+  machine-readable final-removal-audit evidence contract and
+  `npm run policy:phase8r:final-removal-audit` to compose the Phase 8R.21 audit
+  from an explicit execution-plan manifest, current checkout path state, source
+  reference scan, and validation JSON; reports remaining inventory instead of
+  claiming closure when approved manifest paths still exist.
 - **Policy Builder Phase 8R Completion Evidence Run** — added a
   side-effect-free evidence-run service that consumes explicit Phase 8R artifact
   inventory, normalizes Windows/POSIX paths, maps 8R.1 through 8R.22 docs,
