@@ -4395,9 +4395,11 @@ Implementation status:
   dry-run candidate report, explicit conversion, native runtime read path,
   rollback/reversion, legacy write-blocking, backup/restore safety, and
   deletion-gate tests.
-- The reset contract intentionally reports native SQL migration coverage as a
-  named blocker because Phase 8R has a schema contract but does not yet have an
-  actual native SQL migration with fresh-install and upgraded-install coverage.
+- Native SQL migration coverage is now supplied by
+  `database/migrations/20260701_160000_add_policy_intent_native_storage.sql`,
+  `database/schema/current.sql`, and `server/src/__tests__/migrations.test.mjs`.
+- The native SQL migration coverage follow-up is documented in
+  [Policy Builder Phase 8R Native SQL Migration Coverage](policy-builder-phase-8r-native-sql-migration-coverage.md).
 - Legacy payload preservation tests are allowed only for unconverted policy
   compatibility, rollback snapshot restore, or maintainer migration fixtures.
 - Abandoned diagnostic impact/replay tests must be deletion-scoped and cannot

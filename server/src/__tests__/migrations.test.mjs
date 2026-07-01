@@ -292,6 +292,68 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain("'web_search_provider_guardrail_thresholds',");
     });
 
+    test('current.sql includes native policy intent storage tables and indexes', () => {
+        const schemaSql = readSchemaSnapshot();
+        const migrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260701_160000_add_policy_intent_native_storage.sql'
+        );
+        const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+        const policyIntents = getCreateTableBlock(schemaSql, 'policy_intents');
+        const policyIntentRules = getCreateTableBlock(schemaSql, 'policy_intent_rules');
+        const policyIntentRoutingTargets = getCreateTableBlock(schemaSql, 'policy_intent_routing_targets');
+        const policyIntentTemplateApplications = getCreateTableBlock(
+            schemaSql,
+            'policy_intent_template_applications'
+        );
+        const policyIntentMigrationEvents = getCreateTableBlock(schemaSql, 'policy_intent_migration_events');
+        const policyIntentRollbackSnapshots = getCreateTableBlock(
+            schemaSql,
+            'policy_intent_rollback_snapshots'
+        );
+        const policyIntentValidationStatus = getCreateTableBlock(
+            schemaSql,
+            'policy_intent_validation_status'
+        );
+
+        [
+            'CREATE TABLE IF NOT EXISTS policy_intents',
+            'CREATE TABLE IF NOT EXISTS policy_intent_rules',
+            'CREATE TABLE IF NOT EXISTS policy_intent_routing_targets',
+            'CREATE TABLE IF NOT EXISTS policy_intent_template_applications',
+            'CREATE TABLE IF NOT EXISTS policy_intent_migration_events',
+            'CREATE TABLE IF NOT EXISTS policy_intent_rollback_snapshots',
+            'CREATE TABLE IF NOT EXISTS policy_intent_validation_status',
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_policy_intents_active_version',
+            'CREATE INDEX IF NOT EXISTS idx_policy_intent_rules_values_gin',
+            'CREATE INDEX IF NOT EXISTS idx_policy_intent_rollback_snapshots_expiry'
+        ].forEach(expectedSnippet => {
+            expect(migrationSql).toContain(expectedSnippet);
+        });
+
+        expect(policyIntents).toContain('schema_version integer DEFAULT 1 NOT NULL');
+        expect(policyIntents).toContain('intent_version integer DEFAULT 1 NOT NULL');
+        expect(policyIntents).toContain('review_behavior jsonb DEFAULT \'{}\'::jsonb NOT NULL');
+        expect(policyIntents).toContain('validation_status character varying(40) DEFAULT \'pending_validation\'::character varying NOT NULL');
+        expect(policyIntents).toContain('policy_intents_schema_version_chk');
+        expect(policyIntents).toContain('policy_intents_source_chk');
+        expect(policyIntentRules).toContain('"values" jsonb DEFAULT \'{}\'::jsonb NOT NULL');
+        expect(policyIntentRules).toContain('policy_intent_rules_collection_role_chk');
+        expect(policyIntentRules).toContain('policy_intent_rules_signal_type_chk');
+        expect(policyIntentRoutingTargets).toContain('target_status character varying(40) DEFAULT \'configured\'::character varying NOT NULL');
+        expect(policyIntentTemplateApplications).toContain('link_state character varying(40) DEFAULT \'applied\'::character varying NOT NULL');
+        expect(policyIntentMigrationEvents).toContain('metadata jsonb DEFAULT \'{}\'::jsonb NOT NULL');
+        expect(policyIntentMigrationEvents).toContain('policy_intent_migration_events_event_type_chk');
+        expect(policyIntentRollbackSnapshots).toContain('snapshot_payload jsonb DEFAULT \'{}\'::jsonb NOT NULL');
+        expect(policyIntentRollbackSnapshots).toContain('policy_intent_rollback_snapshots_window_chk');
+        expect(policyIntentValidationStatus).toContain('errors jsonb DEFAULT \'[]\'::jsonb NOT NULL');
+        expect(policyIntentValidationStatus).toContain('warnings jsonb DEFAULT \'[]\'::jsonb NOT NULL');
+        expect(schemaSql).toContain('CREATE UNIQUE INDEX idx_policy_intents_active_version');
+        expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_rules_values_gin');
+        expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_migration_events_state');
+        expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_validation_status_lookup');
+    });
+
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {
         const schemaSql = readSchemaSnapshot();
         const originalMigrationPath = path.resolve(

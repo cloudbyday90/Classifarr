@@ -95,6 +95,11 @@ const REQUIRED_COVERAGE = Object.freeze([
 
 const CURRENT_PHASE8R_TEST_RECORDS = Object.freeze([
   {
+    path: 'server/src/__tests__/migrations.test.mjs',
+    coverageIds: [PHASE8R_NATIVE_STORAGE_TEST_COVERAGE_IDS.NATIVE_SCHEMA_SQL_MIGRATION_TESTS],
+    finalNativeStorageContract: true,
+  },
+  {
     path: 'server/src/__tests__/services/policyBuilderPhase8NativeSchemaContract.test.mjs',
     coverageIds: [PHASE8R_NATIVE_STORAGE_TEST_COVERAGE_IDS.NATIVE_SCHEMA_CONTRACT_TESTS],
     finalNativeStorageContract: true,
@@ -396,10 +401,10 @@ function buildPolicyBuilderPhase8NativeStorageTestReset({
       ),
     ],
     nextPhase: {
-      phaseId: '8r_sql_migration_coverage',
-      label: 'Native SQL Migration Coverage',
+      phaseId: '8r_operational_wiring',
+      label: 'Native Storage Operational Wiring',
       reason:
-        'The reset contract identifies native SQL migration coverage as the remaining blocker before native storage tests can be complete.',
+        'Native SQL migration coverage is present; operational backup/restore and post-upgrade wiring can move from contract to live implementation.',
     },
   };
 
@@ -507,9 +512,9 @@ function buildPolicyBuilderPhase8NativeStorageTestResetAudit(
     missingCoverageIds,
     diagnosticDeletionCandidatePaths,
     nextPhase: plan.nextPhase || {
-      phaseId: '8r_sql_migration_coverage',
-      label: 'Native SQL Migration Coverage',
-      reason: 'Native storage reset requires SQL migration coverage before final readiness.',
+      phaseId: '8r_operational_wiring',
+      label: 'Native Storage Operational Wiring',
+      reason: 'Native SQL migration coverage is present; live operational wiring is the next risk.',
     },
     validation,
   };

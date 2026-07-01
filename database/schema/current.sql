@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-06-25T11:53:58.588Z
--- Latest Migration: 20260625_064500_add_discord_pending_mention_targets.sql
+-- Generated: 2026-07-01T19:48:45.825Z
+-- Latest Migration: 20260701_160000_add_policy_intent_native_storage.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3312,7 +3312,7 @@ CREATE TABLE public.media_server_items (
     original_rating character varying(10),
     enrichment_provider_state character varying(20) DEFAULT 'none'::character varying NOT NULL,
     enrichment_deferred_reason text,
-    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY ((ARRAY['none'::character varying, 'omdb'::character varying, 'tavily'::character varying, 'omdb+tavily'::character varying, 'web_search'::character varying, 'omdb+web_search'::character varying])::text[]))),
+    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY (ARRAY[('none'::character varying)::text, ('omdb'::character varying)::text, ('tavily'::character varying)::text, ('omdb+tavily'::character varying)::text, ('web_search'::character varying)::text, ('omdb+web_search'::character varying)::text]))),
     CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('deferred'::character varying)::text, ('failed'::character varying)::text, ('not_needed'::character varying)::text])))
 );
 
@@ -3740,6 +3740,307 @@ CREATE SEQUENCE public.policy_feedback_log_id_seq
 --
 
 ALTER SEQUENCE public.policy_feedback_log_id_seq OWNED BY public.policy_feedback_log.id;
+
+
+--
+-- Name: policy_intent_migration_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_intent_migration_events (
+    id bigint NOT NULL,
+    intent_id bigint,
+    policy_id integer NOT NULL,
+    event_type character varying(50) NOT NULL,
+    actor_type character varying(40) NOT NULL,
+    actor_id integer,
+    source_version integer,
+    target_version integer,
+    reason_code character varying(80) NOT NULL,
+    summary text,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_intent_migration_events_actor_type_chk CHECK (((actor_type)::text = ANY (ARRAY[('operator'::character varying)::text, ('post_upgrade'::character varying)::text, ('test_fixture'::character varying)::text, ('maintainer'::character varying)::text]))),
+    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY (ARRAY[('dry_run_reported'::character varying)::text, ('conversion_started'::character varying)::text, ('conversion_applied'::character varying)::text, ('conversion_failed'::character varying)::text, ('rollback_snapshot_created'::character varying)::text, ('rollback_applied'::character varying)::text, ('native_validated'::character varying)::text, ('legacy_deletion_ready'::character varying)::text]))),
+    CONSTRAINT policy_intent_migration_events_metadata_shape_chk CHECK ((jsonb_typeof(metadata) = 'object'::text))
+);
+
+
+--
+-- Name: policy_intent_migration_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_intent_migration_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_intent_migration_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_intent_migration_events_id_seq OWNED BY public.policy_intent_migration_events.id;
+
+
+--
+-- Name: policy_intent_rollback_snapshots; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_intent_rollback_snapshots (
+    id bigint NOT NULL,
+    intent_id bigint NOT NULL,
+    policy_id integer NOT NULL,
+    snapshot_version integer NOT NULL,
+    snapshot_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    payload_redacted boolean DEFAULT true NOT NULL,
+    restore_path text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    restored_at timestamp with time zone,
+    CONSTRAINT policy_intent_rollback_snapshots_payload_shape_chk CHECK ((jsonb_typeof(snapshot_payload) = 'object'::text)),
+    CONSTRAINT policy_intent_rollback_snapshots_version_chk CHECK ((snapshot_version > 0)),
+    CONSTRAINT policy_intent_rollback_snapshots_window_chk CHECK ((expires_at > created_at))
+);
+
+
+--
+-- Name: policy_intent_rollback_snapshots_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_intent_rollback_snapshots_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_intent_rollback_snapshots_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_intent_rollback_snapshots_id_seq OWNED BY public.policy_intent_rollback_snapshots.id;
+
+
+--
+-- Name: policy_intent_routing_targets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_intent_routing_targets (
+    id bigint NOT NULL,
+    intent_id bigint NOT NULL,
+    library_id integer NOT NULL,
+    arr_type character varying(20),
+    arr_config_id integer,
+    arr_root_folder_id integer,
+    arr_root_folder_path text,
+    quality_profile_id integer,
+    target_status character varying(40) DEFAULT 'configured'::character varying NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_intent_routing_targets_arr_type_chk CHECK (((arr_type IS NULL) OR ((arr_type)::text = ANY (ARRAY[('radarr'::character varying)::text, ('sonarr'::character varying)::text])))),
+    CONSTRAINT policy_intent_routing_targets_status_chk CHECK (((target_status)::text = ANY (ARRAY[('configured'::character varying)::text, ('missing'::character varying)::text, ('disabled'::character varying)::text, ('review_required'::character varying)::text])))
+);
+
+
+--
+-- Name: policy_intent_routing_targets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_intent_routing_targets_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_intent_routing_targets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_intent_routing_targets_id_seq OWNED BY public.policy_intent_routing_targets.id;
+
+
+--
+-- Name: policy_intent_rules; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_intent_rules (
+    id bigint NOT NULL,
+    intent_id bigint NOT NULL,
+    intent_role character varying(40) NOT NULL,
+    collection character varying(40) NOT NULL,
+    signal_type character varying(50) NOT NULL,
+    operator character varying(50) NOT NULL,
+    "values" jsonb DEFAULT '{}'::jsonb NOT NULL,
+    constraint_mode character varying(30),
+    semantics character varying(30),
+    source character varying(50),
+    inference_state character varying(40) NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_intent_rules_collection_chk CHECK (((collection)::text = ANY (ARRAY[('purpose'::character varying)::text, ('hard_limits'::character varying)::text, ('helpful_hints'::character varying)::text, ('avoid'::character varying)::text]))),
+    CONSTRAINT policy_intent_rules_collection_role_chk CHECK (((((collection)::text = 'purpose'::text) AND ((intent_role)::text = 'purpose'::text)) OR (((collection)::text = 'hard_limits'::text) AND ((intent_role)::text = 'hard_limit'::text)) OR (((collection)::text = 'helpful_hints'::text) AND ((intent_role)::text = 'helpful_hint'::text)) OR (((collection)::text = 'avoid'::text) AND ((intent_role)::text = 'avoid'::text)))),
+    CONSTRAINT policy_intent_rules_constraint_mode_chk CHECK (((constraint_mode IS NULL) OR ((constraint_mode)::text = ANY (ARRAY[('strict'::character varying)::text, ('advisory'::character varying)::text])))),
+    CONSTRAINT policy_intent_rules_inference_state_chk CHECK (((inference_state)::text = ANY (ARRAY[('empty'::character varying)::text, ('inferred'::character varying)::text, ('partial'::character varying)::text]))),
+    CONSTRAINT policy_intent_rules_operator_chk CHECK (((operator)::text = ANY (ARRAY[('require_all'::character varying)::text, ('require_any'::character varying)::text, ('prefer'::character varying)::text, ('include'::character varying)::text, ('exclude'::character varying)::text, ('max'::character varying)::text, ('range'::character varying)::text, ('runtime_range'::character varying)::text, ('configured'::character varying)::text]))),
+    CONSTRAINT policy_intent_rules_role_chk CHECK (((intent_role)::text = ANY (ARRAY[('purpose'::character varying)::text, ('hard_limit'::character varying)::text, ('helpful_hint'::character varying)::text, ('avoid'::character varying)::text]))),
+    CONSTRAINT policy_intent_rules_semantics_chk CHECK (((semantics IS NULL) OR ((semantics)::text = ANY (ARRAY[('identity'::character varying)::text, ('compatibility'::character varying)::text])))),
+    CONSTRAINT policy_intent_rules_signal_type_chk CHECK (((signal_type)::text = ANY (ARRAY[('genres'::character varying)::text, ('keywords'::character varying)::text, ('studios'::character varying)::text, ('language'::character varying)::text, ('media_type'::character varying)::text, ('certifications'::character varying)::text, ('release_year'::character varying)::text, ('vote_average'::character varying)::text, ('runtime'::character varying)::text]))),
+    CONSTRAINT policy_intent_rules_values_shape_chk CHECK ((jsonb_typeof("values") = 'object'::text))
+);
+
+
+--
+-- Name: policy_intent_rules_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_intent_rules_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_intent_rules_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_intent_rules_id_seq OWNED BY public.policy_intent_rules.id;
+
+
+--
+-- Name: policy_intent_template_applications; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_intent_template_applications (
+    id bigint NOT NULL,
+    intent_id bigint NOT NULL,
+    preset_id integer,
+    preset_key character varying(100),
+    preset_name character varying(255),
+    weight numeric(6,3),
+    signal_count integer DEFAULT 0 NOT NULL,
+    link_state character varying(40) DEFAULT 'applied'::character varying NOT NULL,
+    applied_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_intent_template_applications_link_state_chk CHECK (((link_state)::text = ANY (ARRAY[('applied'::character varying)::text, ('removed'::character varying)::text, ('replaced'::character varying)::text, ('ignored'::character varying)::text]))),
+    CONSTRAINT policy_intent_template_applications_signal_count_chk CHECK ((signal_count >= 0))
+);
+
+
+--
+-- Name: policy_intent_template_applications_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_intent_template_applications_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_intent_template_applications_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_intent_template_applications_id_seq OWNED BY public.policy_intent_template_applications.id;
+
+
+--
+-- Name: policy_intent_validation_status; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_intent_validation_status (
+    id bigint NOT NULL,
+    intent_id bigint NOT NULL,
+    schema_version integer DEFAULT 1 NOT NULL,
+    status character varying(40) NOT NULL,
+    validator_version character varying(80) NOT NULL,
+    error_count integer DEFAULT 0 NOT NULL,
+    warning_count integer DEFAULT 0 NOT NULL,
+    errors jsonb DEFAULT '[]'::jsonb NOT NULL,
+    warnings jsonb DEFAULT '[]'::jsonb NOT NULL,
+    validated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_intent_validation_status_error_count_chk CHECK ((error_count >= 0)),
+    CONSTRAINT policy_intent_validation_status_errors_shape_chk CHECK ((jsonb_typeof(errors) = 'array'::text)),
+    CONSTRAINT policy_intent_validation_status_schema_version_chk CHECK ((schema_version = 1)),
+    CONSTRAINT policy_intent_validation_status_status_chk CHECK (((status)::text = ANY (ARRAY[('valid'::character varying)::text, ('invalid'::character varying)::text, ('warning'::character varying)::text]))),
+    CONSTRAINT policy_intent_validation_status_warning_count_chk CHECK ((warning_count >= 0)),
+    CONSTRAINT policy_intent_validation_status_warnings_shape_chk CHECK ((jsonb_typeof(warnings) = 'array'::text))
+);
+
+
+--
+-- Name: policy_intent_validation_status_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_intent_validation_status_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_intent_validation_status_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_intent_validation_status_id_seq OWNED BY public.policy_intent_validation_status.id;
+
+
+--
+-- Name: policy_intents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_intents (
+    id bigint NOT NULL,
+    policy_id integer NOT NULL,
+    library_id integer NOT NULL,
+    schema_version integer DEFAULT 1 NOT NULL,
+    intent_version integer DEFAULT 1 NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    source character varying(40) NOT NULL,
+    inference_state character varying(40) NOT NULL,
+    review_behavior jsonb DEFAULT '{}'::jsonb NOT NULL,
+    validation_status character varying(40) DEFAULT 'pending_validation'::character varying NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by integer,
+    accepted_at timestamp with time zone,
+    accepted_by integer,
+    replaced_by_intent_id bigint,
+    CONSTRAINT policy_intents_inference_state_chk CHECK (((inference_state)::text = ANY (ARRAY[('empty'::character varying)::text, ('inferred'::character varying)::text, ('partial'::character varying)::text]))),
+    CONSTRAINT policy_intents_intent_version_chk CHECK ((intent_version > 0)),
+    CONSTRAINT policy_intents_review_behavior_shape_chk CHECK ((jsonb_typeof(review_behavior) = 'object'::text)),
+    CONSTRAINT policy_intents_schema_version_chk CHECK ((schema_version = 1)),
+    CONSTRAINT policy_intents_source_chk CHECK (((source)::text = ANY (ARRAY[('empty'::character varying)::text, ('legacy_presets'::character varying)::text, ('native_intent'::character varying)::text]))),
+    CONSTRAINT policy_intents_validation_status_chk CHECK (((validation_status)::text = ANY (ARRAY[('pending_validation'::character varying)::text, ('valid'::character varying)::text, ('invalid'::character varying)::text, ('warning'::character varying)::text])))
+);
+
+
+--
+-- Name: policy_intents_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_intents_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_intents_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_intents_id_seq OWNED BY public.policy_intents.id;
 
 
 --
@@ -4942,7 +5243,7 @@ CREATE TABLE public.web_search_provider_guardrail_events (
     CONSTRAINT web_search_provider_guardrail_events_code_check CHECK (((guardrail_code)::text ~ '^[a-z0-9_]{1,80}$'::text)),
     CONSTRAINT web_search_provider_guardrail_events_provider_key_check CHECK (((provider_key IS NULL) OR ((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text))),
     CONSTRAINT web_search_provider_guardrail_events_purpose_check CHECK (((purpose)::text ~ '^[a-z0-9_-]{1,60}$'::text)),
-    CONSTRAINT web_search_provider_guardrail_events_severity_check CHECK (((severity)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'critical'::character varying])::text[])))
+    CONSTRAINT web_search_provider_guardrail_events_severity_check CHECK (((severity)::text = ANY (ARRAY[('info'::character varying)::text, ('warning'::character varying)::text, ('critical'::character varying)::text])))
 );
 
 
@@ -4992,8 +5293,8 @@ CREATE TABLE public.web_search_provider_health_events (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT web_search_provider_health_events_error_http_status_check CHECK (((error_http_status IS NULL) OR ((error_http_status >= 100) AND (error_http_status <= 599)))),
-    CONSTRAINT web_search_provider_health_events_event_type_check CHECK (((event_type)::text = ANY ((ARRAY['success'::character varying, 'error'::character varying, 'cooldown_started'::character varying])::text[]))),
-    CONSTRAINT web_search_provider_health_events_health_status_check CHECK (((health_status)::text = ANY ((ARRAY['available'::character varying, 'degraded'::character varying, 'cooldown'::character varying])::text[]))),
+    CONSTRAINT web_search_provider_health_events_event_type_check CHECK (((event_type)::text = ANY (ARRAY[('success'::character varying)::text, ('error'::character varying)::text, ('cooldown_started'::character varying)::text]))),
+    CONSTRAINT web_search_provider_health_events_health_status_check CHECK (((health_status)::text = ANY (ARRAY[('available'::character varying)::text, ('degraded'::character varying)::text, ('cooldown'::character varying)::text]))),
     CONSTRAINT web_search_provider_health_events_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
     CONSTRAINT web_search_provider_health_events_retry_after_check CHECK (((retry_after_seconds IS NULL) OR (retry_after_seconds >= 0)))
 );
@@ -5054,7 +5355,7 @@ CREATE TABLE public.web_search_provider_route_decisions (
     CONSTRAINT web_search_provider_route_decisions_duration_ms_check CHECK (((duration_ms IS NULL) OR (duration_ms >= 0))),
     CONSTRAINT web_search_provider_route_decisions_error_http_status_check CHECK (((error_http_status IS NULL) OR ((error_http_status >= 100) AND (error_http_status <= 599)))),
     CONSTRAINT web_search_provider_route_decisions_final_provider_key_check CHECK (((final_provider_key IS NULL) OR ((final_provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text))),
-    CONSTRAINT web_search_provider_route_decisions_outcome_check CHECK (((outcome)::text = ANY ((ARRAY['success'::character varying, 'no_provider'::character varying, 'failed'::character varying, 'error'::character varying])::text[]))),
+    CONSTRAINT web_search_provider_route_decisions_outcome_check CHECK (((outcome)::text = ANY (ARRAY[('success'::character varying)::text, ('no_provider'::character varying)::text, ('failed'::character varying)::text, ('error'::character varying)::text]))),
     CONSTRAINT web_search_provider_route_decisions_selected_provider_key_check CHECK (((selected_provider_key IS NULL) OR ((selected_provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)))
 );
 
@@ -5113,7 +5414,7 @@ CREATE TABLE public.web_search_provider_usage (
     CONSTRAINT web_search_provider_usage_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
     CONSTRAINT web_search_provider_usage_result_count_check CHECK (((result_count >= 0) AND (result_count <= 20))),
     CONSTRAINT web_search_provider_usage_retry_after_seconds_check CHECK (((retry_after_seconds IS NULL) OR (retry_after_seconds >= 0))),
-    CONSTRAINT web_search_provider_usage_status_check CHECK (((status)::text = ANY ((ARRAY['success'::character varying, 'failed'::character varying, 'skipped'::character varying, 'rate_limited'::character varying, 'quota_exhausted'::character varying])::text[])))
+    CONSTRAINT web_search_provider_usage_status_check CHECK (((status)::text = ANY (ARRAY[('success'::character varying)::text, ('failed'::character varying)::text, ('skipped'::character varying)::text, ('rate_limited'::character varying)::text, ('quota_exhausted'::character varying)::text])))
 );
 
 
@@ -5641,6 +5942,55 @@ ALTER TABLE ONLY public.policy_change_log ALTER COLUMN id SET DEFAULT nextval('p
 --
 
 ALTER TABLE ONLY public.policy_feedback_log ALTER COLUMN id SET DEFAULT nextval('public.policy_feedback_log_id_seq'::regclass);
+
+
+--
+-- Name: policy_intent_migration_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_migration_events ALTER COLUMN id SET DEFAULT nextval('public.policy_intent_migration_events_id_seq'::regclass);
+
+
+--
+-- Name: policy_intent_rollback_snapshots id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_rollback_snapshots ALTER COLUMN id SET DEFAULT nextval('public.policy_intent_rollback_snapshots_id_seq'::regclass);
+
+
+--
+-- Name: policy_intent_routing_targets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_routing_targets ALTER COLUMN id SET DEFAULT nextval('public.policy_intent_routing_targets_id_seq'::regclass);
+
+
+--
+-- Name: policy_intent_rules id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_rules ALTER COLUMN id SET DEFAULT nextval('public.policy_intent_rules_id_seq'::regclass);
+
+
+--
+-- Name: policy_intent_template_applications id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_template_applications ALTER COLUMN id SET DEFAULT nextval('public.policy_intent_template_applications_id_seq'::regclass);
+
+
+--
+-- Name: policy_intent_validation_status id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_validation_status ALTER COLUMN id SET DEFAULT nextval('public.policy_intent_validation_status_id_seq'::regclass);
+
+
+--
+-- Name: policy_intents id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intents ALTER COLUMN id SET DEFAULT nextval('public.policy_intents_id_seq'::regclass);
 
 
 --
@@ -6526,6 +6876,62 @@ ALTER TABLE ONLY public.policy_change_log
 
 ALTER TABLE ONLY public.policy_feedback_log
     ADD CONSTRAINT policy_feedback_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_intent_migration_events policy_intent_migration_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_migration_events
+    ADD CONSTRAINT policy_intent_migration_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_intent_rollback_snapshots policy_intent_rollback_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_rollback_snapshots
+    ADD CONSTRAINT policy_intent_rollback_snapshots_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_intent_routing_targets policy_intent_routing_targets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_routing_targets
+    ADD CONSTRAINT policy_intent_routing_targets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_intent_rules policy_intent_rules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_rules
+    ADD CONSTRAINT policy_intent_rules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_intent_template_applications policy_intent_template_applications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_template_applications
+    ADD CONSTRAINT policy_intent_template_applications_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_intent_validation_status policy_intent_validation_status_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_validation_status
+    ADD CONSTRAINT policy_intent_validation_status_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_intents policy_intents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intents
+    ADD CONSTRAINT policy_intents_pkey PRIMARY KEY (id);
 
 
 --
@@ -7851,6 +8257,83 @@ CREATE INDEX idx_policy_feedback_was_correction ON public.policy_feedback_log US
 
 
 --
+-- Name: idx_policy_intent_migration_events_state; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_intent_migration_events_state ON public.policy_intent_migration_events USING btree (policy_id, event_type, created_at);
+
+
+--
+-- Name: idx_policy_intent_rollback_snapshots_expiry; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_intent_rollback_snapshots_expiry ON public.policy_intent_rollback_snapshots USING btree (policy_id, expires_at);
+
+
+--
+-- Name: idx_policy_intent_routing_targets_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_intent_routing_targets_lookup ON public.policy_intent_routing_targets USING btree (intent_id, library_id, target_status);
+
+
+--
+-- Name: idx_policy_intent_rules_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_intent_rules_lookup ON public.policy_intent_rules USING btree (intent_id, intent_role, signal_type);
+
+
+--
+-- Name: idx_policy_intent_rules_values_gin; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_intent_rules_values_gin ON public.policy_intent_rules USING gin ("values");
+
+
+--
+-- Name: idx_policy_intent_template_applications_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_intent_template_applications_lookup ON public.policy_intent_template_applications USING btree (intent_id, preset_id);
+
+
+--
+-- Name: idx_policy_intent_validation_status_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_intent_validation_status_lookup ON public.policy_intent_validation_status USING btree (intent_id, status, validated_at);
+
+
+--
+-- Name: idx_policy_intents_active_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_policy_intents_active_version ON public.policy_intents USING btree (policy_id, intent_version) WHERE (active = true);
+
+
+--
+-- Name: idx_policy_intents_library_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_intents_library_lookup ON public.policy_intents USING btree (library_id);
+
+
+--
+-- Name: idx_policy_intents_policy_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_intents_policy_lookup ON public.policy_intents USING btree (policy_id);
+
+
+--
+-- Name: idx_policy_intents_validation_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_intents_validation_status ON public.policy_intents USING btree (validation_status);
+
+
+--
 -- Name: idx_policy_learning_stats_accuracy; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8919,6 +9402,126 @@ ALTER TABLE ONLY public.policy_feedback_log
 
 ALTER TABLE ONLY public.policy_feedback_log
     ADD CONSTRAINT policy_feedback_log_selected_policy_id_fkey FOREIGN KEY (selected_policy_id) REFERENCES public.library_policies(id);
+
+
+--
+-- Name: policy_intent_migration_events policy_intent_migration_events_intent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_migration_events
+    ADD CONSTRAINT policy_intent_migration_events_intent_id_fkey FOREIGN KEY (intent_id) REFERENCES public.policy_intents(id) ON DELETE SET NULL;
+
+
+--
+-- Name: policy_intent_migration_events policy_intent_migration_events_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_migration_events
+    ADD CONSTRAINT policy_intent_migration_events_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_intent_rollback_snapshots policy_intent_rollback_snapshots_intent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_rollback_snapshots
+    ADD CONSTRAINT policy_intent_rollback_snapshots_intent_id_fkey FOREIGN KEY (intent_id) REFERENCES public.policy_intents(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_intent_rollback_snapshots policy_intent_rollback_snapshots_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_rollback_snapshots
+    ADD CONSTRAINT policy_intent_rollback_snapshots_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_intent_routing_targets policy_intent_routing_targets_intent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_routing_targets
+    ADD CONSTRAINT policy_intent_routing_targets_intent_id_fkey FOREIGN KEY (intent_id) REFERENCES public.policy_intents(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_intent_routing_targets policy_intent_routing_targets_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_routing_targets
+    ADD CONSTRAINT policy_intent_routing_targets_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_intent_rules policy_intent_rules_intent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_rules
+    ADD CONSTRAINT policy_intent_rules_intent_id_fkey FOREIGN KEY (intent_id) REFERENCES public.policy_intents(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_intent_template_applications policy_intent_template_applications_intent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_template_applications
+    ADD CONSTRAINT policy_intent_template_applications_intent_id_fkey FOREIGN KEY (intent_id) REFERENCES public.policy_intents(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_intent_template_applications policy_intent_template_applications_preset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_template_applications
+    ADD CONSTRAINT policy_intent_template_applications_preset_id_fkey FOREIGN KEY (preset_id) REFERENCES public.content_presets(id) ON DELETE SET NULL;
+
+
+--
+-- Name: policy_intent_validation_status policy_intent_validation_status_intent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intent_validation_status
+    ADD CONSTRAINT policy_intent_validation_status_intent_id_fkey FOREIGN KEY (intent_id) REFERENCES public.policy_intents(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_intents policy_intents_accepted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intents
+    ADD CONSTRAINT policy_intents_accepted_by_fkey FOREIGN KEY (accepted_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: policy_intents policy_intents_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intents
+    ADD CONSTRAINT policy_intents_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: policy_intents policy_intents_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intents
+    ADD CONSTRAINT policy_intents_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_intents policy_intents_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intents
+    ADD CONSTRAINT policy_intents_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_intents policy_intents_replaced_by_intent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_intents
+    ADD CONSTRAINT policy_intents_replaced_by_intent_id_fkey FOREIGN KEY (replaced_by_intent_id) REFERENCES public.policy_intents(id) ON DELETE SET NULL;
 
 
 --
@@ -11040,6 +11643,7 @@ FROM unnest(ARRAY[
     '20260625_060000_reconcile_web_search_provider_guardrail_threshold_seed_data.sql',
     '20260625_061500_add_web_search_provider_guardrail_events.sql',
     '20260625_063000_add_discord_pending_item_notifications.sql',
-    '20260625_064500_add_discord_pending_mention_targets.sql'
+    '20260625_064500_add_discord_pending_mention_targets.sql',
+    '20260701_160000_add_policy_intent_native_storage.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

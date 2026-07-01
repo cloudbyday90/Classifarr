@@ -19,14 +19,15 @@ function buildCompleteTestRecords(overrides = []) {
 }
 
 describe('policyBuilderPhase8NativeStorageTestReset', () => {
-  test('inventories current Phase 8R test coverage and makes native SQL migration gap explicit', () => {
+  test('inventories current Phase 8R test coverage including native SQL migration coverage', () => {
     const plan = buildPolicyBuilderPhase8NativeStorageTestReset();
 
     expect(plan.statusId)
-      .toBe(PHASE8R_NATIVE_STORAGE_TEST_STATUS_IDS.BLOCKED_BY_MISSING_NATIVE_COVERAGE);
-    expect(plan.resetReady).toBe(false);
+      .toBe(PHASE8R_NATIVE_STORAGE_TEST_STATUS_IDS.READY_FOR_NATIVE_STORAGE_TEST_RESET);
+    expect(plan.resetReady).toBe(true);
     expect(plan.requiredCoverageIds).toEqual(COVERAGE_IDS);
     expect(plan.testRecords.map(record => record.path)).toEqual(expect.arrayContaining([
+      'server/src/__tests__/migrations.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8NativeSchemaContract.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8MigrationCandidateReport.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8ExplicitConversionWorkflow.test.mjs',
@@ -36,18 +37,22 @@ describe('policyBuilderPhase8NativeStorageTestReset', () => {
       'server/src/__tests__/services/policyBuilderPhase8BackupRestoreSafety.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8LegacyCodeDeletionGates.test.mjs',
     ]));
-    expect(plan.blockers).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        blockerId: 'missing_native_storage_test_coverage',
-        coverageId:
-          PHASE8R_NATIVE_STORAGE_TEST_COVERAGE_IDS.NATIVE_SCHEMA_SQL_MIGRATION_TESTS,
-      }),
-    ]));
+    expect(plan.blockers).toEqual([]);
+    expect(plan.validation.ok).toBe(true);
+  });
+
+  test('still rejects reset plans when native SQL migration coverage is missing', () => {
+    const plan = buildPolicyBuilderPhase8NativeStorageTestReset({
+      testRecords: buildCompleteTestRecords().filter(record => !record.coverageIds.includes(
+        PHASE8R_NATIVE_STORAGE_TEST_COVERAGE_IDS.NATIVE_SCHEMA_SQL_MIGRATION_TESTS
+      )),
+    });
+
+    expect(plan.statusId)
+      .toBe(PHASE8R_NATIVE_STORAGE_TEST_STATUS_IDS.BLOCKED_BY_MISSING_NATIVE_COVERAGE);
     expect(plan.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: PHASE8R_NATIVE_STORAGE_TEST_RISK_IDS.NATIVE_SQL_MIGRATION_COVERAGE_MISSING,
-        coverageId:
-          PHASE8R_NATIVE_STORAGE_TEST_COVERAGE_IDS.NATIVE_SCHEMA_SQL_MIGRATION_TESTS,
       }),
     ]));
   });
@@ -145,7 +150,7 @@ describe('policyBuilderPhase8NativeStorageTestReset', () => {
     expect(plan.resetReady).toBe(true);
     expect(plan.validation.ok).toBe(true);
     expect(plan.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '8r_sql_migration_coverage',
+      phaseId: '8r_operational_wiring',
     }));
   });
 
@@ -207,7 +212,7 @@ describe('policyBuilderPhase8NativeStorageTestReset', () => {
         'server/src/__tests__/services/policyIntentImpactPreview.test.mjs',
       ],
       nextPhase: expect.objectContaining({
-        phaseId: '8r_sql_migration_coverage',
+        phaseId: '8r_operational_wiring',
       }),
     }));
   });

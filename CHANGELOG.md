@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Native SQL Migration Coverage** — added the native
+  policy intent storage migration, regenerated the authoritative schema
+  snapshot, and expanded migration/reset tests to prove native intent headers,
+  rules, routing targets, starter-template provenance, migration events,
+  rollback snapshots, validation status, active-version uniqueness, JSONB rule
+  indexing, rollback expiry indexing, and validation lookup coverage exist for
+  fresh-install and upgraded-install paths.
 - **Policy Builder Phase 8R Native Storage Test Reset** — added a
   side-effect-free test reset service, architecture record, and audit suite that
   inventories Phase 8R schema contract, migration candidate, explicit

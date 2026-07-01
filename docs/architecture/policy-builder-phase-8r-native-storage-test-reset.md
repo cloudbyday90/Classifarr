@@ -20,7 +20,7 @@ compatibility, and which diagnostic tests must be deleted after gates pass?
 ```
 
 This component does not delete or rewrite tests. It classifies the test
-boundary and makes the remaining native SQL migration coverage gap explicit.
+boundary and requires native SQL migration coverage to be proven explicitly.
 
 ## Official Guidance Reviewed
 
@@ -53,8 +53,8 @@ boundary and makes the remaining native SQL migration coverage gap explicit.
 
 2. **Do not infer SQL migration coverage from schema-contract tests.**
    The schema contract proves intended shape. It does not prove an actual SQL
-   migration, fresh-install path, or upgraded-install path. Phase 8R.9 keeps that
-   as a named blocker.
+   migration, fresh-install path, or upgraded-install path. Phase 8R.9 requires
+   a real migration test path before reset readiness.
 
 3. **Scope legacy-preservation tests narrowly.**
    Legacy payload preservation is allowed only for unconverted policy
@@ -76,16 +76,16 @@ Pros:
 
 - Makes native-storage test coverage explicit.
 - Prevents legacy-preservation tests from freezing the old model.
-- Identifies the real native SQL migration coverage gap.
+- Makes native SQL migration coverage a first-class reset gate.
 - Keeps diagnostic preview/replay tests from becoming final product
   requirements.
 - Gives the next implementation step a precise target.
 
 Cons:
 
-- Does not add the actual native SQL migration yet.
 - Does not delete abandoned diagnostic tests yet.
-- Keeps the reset readiness blocked until SQL migration coverage is supplied.
+- Still requires follow-up live backup/restore and post-upgrade wiring before
+  native storage is operationally default.
 
 ## Final Recommendation Stack
 
@@ -115,6 +115,7 @@ The service exports:
 
 Current inventory covers:
 
+- native SQL migration tests,
 - native schema contract tests,
 - dry-run migration candidate report tests,
 - explicit conversion workflow tests,
@@ -124,10 +125,10 @@ Current inventory covers:
 - backup/restore operational safety tests,
 - deletion-gate tests.
 
-Current inventory intentionally reports missing
-`native_schema_sql_migration_tests`. That is correct: Phase 8R has a schema
-contract, but it has not yet added the actual native SQL migration and
-fresh/upgraded-install migration coverage.
+Current inventory treats `server/src/__tests__/migrations.test.mjs` as the
+native SQL migration coverage owner. The schema contract remains separate from
+SQL migration proof so future drift cannot be hidden by a passing contract-only
+test.
 
 A reset plan becomes `ready_for_native_storage_test_reset` only when:
 
@@ -152,6 +153,7 @@ A reset plan becomes `ready_for_native_storage_test_reset` only when:
 
 ## Next Step
 
-Proceed to **Native SQL Migration Coverage**. That work should add the actual
-native intent SQL migration and tests proving fresh-install and upgraded-install
-schema parity before native storage can be treated as the durable default.
+Proceed to **Native Storage Operational Wiring**. That work should move the
+Phase 8R backup/restore and post-upgrade safety contracts into live flows:
+native table export/import, restore validation, post-upgrade dry-run reporting,
+and atomic apply-mode conversion.
