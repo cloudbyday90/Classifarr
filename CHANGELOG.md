@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Completion Evidence Run** — added a
+  side-effect-free evidence-run service that consumes explicit Phase 8R artifact
+  inventory, normalizes Windows/POSIX paths, maps 8R.1 through 8R.22 docs,
+  contracts, and focused tests into checkpoint evidence, composes the Phase
+  8R.22 completion checkpoint, and blocks closure when inventory, artifact,
+  roadmap, final-removal-audit, validation, or changelog proof is incomplete.
 - **Policy Builder Phase 8R Completion Checkpoint** — added a
   side-effect-free phase completion checkpoint that consumes component,
   roadmap, final-removal-audit, validation, and changelog evidence for the full

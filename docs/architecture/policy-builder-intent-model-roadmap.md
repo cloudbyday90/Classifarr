@@ -4961,6 +4961,55 @@ Implementation status:
   removal audit evidence, validation evidence, and changelog evidence; blocks
   incomplete coverage; and emits `8r_complete` only when all evidence passes.
 
+### 8R.23 Completion Evidence Run
+
+Intent: normalize explicit current-state artifact evidence and run the Phase
+8R.22 completion checkpoint against that evidence before Phase 8R is closed.
+
+Tasks:
+
+- Accept explicit artifact inventory grouped by service, route, migration,
+  test, documentation, wiring, and other paths.
+- Normalize Windows and POSIX path separators before artifact matching.
+- Map every Phase 8R component from 8R.1 through 8R.22 to its expected docs,
+  contracts, and focused tests.
+- Treat existing production integration files as valid contract evidence when a
+  component was implemented through live wiring rather than a new wrapper
+  service.
+- Compose the Phase 8R.22 completion checkpoint instead of duplicating closure
+  rules.
+- Block completion when artifact inventory is empty, mapped artifacts are
+  missing, checkpoint evidence is incomplete, validation evidence fails, or any
+  side effect is reported.
+- Reject file writes, storage mutation, command execution, and Git execution
+  inside the evidence-run service.
+
+Acceptance criteria:
+
+- Evidence-run completion is blocked when the artifact inventory is empty.
+- Evidence-run completion is blocked when any mapped Phase 8R artifact is
+  missing.
+- Evidence-run completion is blocked unless the composed Phase 8R.22 checkpoint
+  completes and validates.
+- Windows-style and POSIX-style paths produce the same artifact matching result.
+- Phase 8R.10 native backup/restore wiring is represented by the live
+  backup/restore modules and lifecycle tests.
+- The evidence run does not scan files, run commands, mutate storage, write
+  docs/changelog, delete code, or run Git itself.
+
+Implementation status:
+
+- Phase 8R.23 completion evidence run is documented in
+  [Policy Builder Phase 8R Completion Evidence Run](policy-builder-phase-8r-completion-evidence-run.md).
+- The evidence-run contract lives in
+  `server/src/services/policyBuilderPhase8CompletionEvidenceRun.mjs`.
+- The focused evidence-run test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8CompletionEvidenceRun.test.mjs`.
+- Current implementation consumes explicit artifact inventory, converts mapped
+  artifact coverage into checkpoint component evidence, composes the Phase 8R.22
+  completion checkpoint, blocks incomplete evidence, and emits
+  `8r_complete` only when supplied evidence satisfies the checkpoint.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -5031,7 +5080,7 @@ Implement Phase 8R in this order:
     Audits the complete Phase 8R roadmap, service contracts, tests, docs,
     changelog coverage, and validation evidence before Phase 8R is considered
     fully implemented.
-23. **8R Completion Evidence Run**
+23. **8R.23 Completion Evidence Run**
     Runs the Phase 8R.22 checkpoint against current-state evidence and resolves
     any missing component, roadmap, validation, or changelog proof before the
     Phase 8R objective is marked complete.
