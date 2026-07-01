@@ -4027,6 +4027,25 @@ Acceptance criteria:
   metadata.
 - Server validation remains required before writes.
 
+Implementation status:
+
+- Phase 8R.1 native schema contract is documented in
+  [Policy Builder Phase 8R Native Schema Contract](policy-builder-phase-8r-native-schema-contract.md).
+- Current implementation defines a side-effect-free server schema contract for
+  native policy intent header, intent rules, routing target reference,
+  starter-template application provenance, migration events, rollback snapshots,
+  and validation/schema status.
+- The contract requires lookup indexes for policy, library, active intent
+  version, rule lookup, rule JSONB values, routing target, migration state,
+  rollback expiry, and validation status.
+- Validation rejects legacy `customSignals`-style storage gaps, missing Phase 5R
+  rule fields, unbounded rollback snapshots, missing server validation gates,
+  missing referential boundaries, missing active-version uniqueness, and durable
+  UI/provider/prompt/trace/embedding/replay diagnostic fields.
+- This component does not create database tables yet; SQL migration and
+  conversion are reserved for later Phase 8R components after the candidate
+  report and explicit conversion workflow are defined.
+
 ### 8R.2 Migration Candidate Report
 
 Intent: identify which policies can safely move to native intent before writing

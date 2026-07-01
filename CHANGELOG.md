@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Native Schema Contract** — added a server-owned
+  native intent schema contract, architecture record, and audit suite that
+  defines side-effect-free storage boundaries for native policy headers, intent
+  rules, routing targets, starter-template provenance, migration events,
+  rollback snapshots, and validation/schema status; requires policy, library,
+  active-version, rule, JSONB value, routing, migration, rollback-expiry, and
+  validation indexes; and rejects legacy `customSignals` gaps, unbounded
+  rollback snapshots, missing server validation gates, missing referential
+  boundaries, and durable UI/provider/prompt/trace/embedding/replay diagnostic
+  fields before any SQL migration is introduced.
 - **Policy Builder Phase 7R Runtime And Rebuild Test Reset** — added a
   server-owned test reset manifest, architecture record, and audit suite that
   classifies runtime/rebuild tests as retained regressions, Phase 7R contract
