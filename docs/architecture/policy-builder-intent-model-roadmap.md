@@ -4658,6 +4658,47 @@ Implementation status:
   requires rollback/support/approval stances, and validates that no deletion
   side effects occur.
 
+### 8R.16 Compatibility Path Deletion Execution Gate
+
+Intent: verify final pre-execution conditions before compatibility path deletion
+can move to a separate controlled deletion step.
+
+Tasks:
+
+- Consume Phase 8R.15 execution plan.
+- Require a clean worktree confirmation.
+- Require verified and fresh backup/restore evidence.
+- Require explicit operator approval with an approving actor.
+- Require final rollback or post-window recovery stance.
+- Require final support stance for converted native policies.
+- Require manifest freshness and confirmation that it still matches the current
+  execution plan.
+- Keep the gate side-effect-free.
+
+Acceptance criteria:
+
+- Gate is blocked unless Phase 8R.15 execution plan is ready and valid.
+- Dirty worktree blocks the gate.
+- Missing or stale backup/restore evidence blocks the gate.
+- Missing approval, approving actor, rollback stance, or support stance blocks
+  the gate.
+- Stale or mismatched manifest blocks the gate.
+- Gate never deletes files, archives files, removes routes, removes tests,
+  mutates storage, writes manifests, or runs Git commands.
+
+Implementation status:
+
+- Phase 8R.16 compatibility path deletion execution gate is documented in
+  [Policy Builder Phase 8R Compatibility Path Deletion Execution Gate](policy-builder-phase-8r-compatibility-path-deletion-execution-gate.md).
+- The execution-gate contract lives in
+  `server/src/services/policyBuilderPhase8CompatibilityPathDeletionExecutionGate.mjs`.
+- The focused execution-gate test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8CompatibilityPathDeletionExecutionGate.test.mjs`.
+- Current implementation verifies execution-plan readiness, worktree
+  cleanliness, backup/restore freshness, operator approval, final support
+  stances, manifest freshness, and validates that no deletion side effects
+  occur.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -4704,6 +4745,9 @@ Implement Phase 8R in this order:
     Verifies clean worktree state, fresh backup/restore evidence, operator
     approval, manifest freshness, and final rollback/support stance immediately
     before any compatibility path deletion is allowed.
+17. **8R.17 Controlled Compatibility Path Removal**
+    Performs the first narrow compatibility path removals only after consuming a
+    ready Phase 8R.16 gate output and preserving a reviewable deletion scope.
 
 Current starting point:
 

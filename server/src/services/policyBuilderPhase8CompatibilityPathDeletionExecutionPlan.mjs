@@ -77,7 +77,8 @@ function getEvidenceForPath({ path, categoryId, replacementEvidence = {} }) {
 }
 
 function buildManifestEntries({ deletionGatePlan = {}, replacementEvidence = {} } = {}) {
-  return asArray(deletionGatePlan.categories)
+  const gatePlan = asObject(deletionGatePlan);
+  return asArray(gatePlan.categories)
     .flatMap(category => asArray(category.paths).map(path => {
       const normalizedPath = normalizePath(path);
       const evidence = getEvidenceForPath({

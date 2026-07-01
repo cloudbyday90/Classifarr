@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Compatibility Path Deletion Execution Gate** —
+  added a final side-effect-free preflight gate that consumes the deletion
+  execution plan and blocks controlled deletion unless the worktree, backup and
+  restore evidence, operator approval, final rollback/support stances, and
+  manifest freshness are confirmed.
 - **Policy Builder Phase 8R Compatibility Path Deletion Execution Plan** —
   added a side-effect-free manifest builder that consumes deletion readiness and
   legacy deletion categories, enumerates exact compatibility paths with action
