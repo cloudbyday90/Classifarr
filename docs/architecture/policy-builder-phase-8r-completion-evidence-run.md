@@ -39,6 +39,10 @@ does not complete.
   artifact relationships before trusting them. Phase 8R.23 follows that model by
   mapping every Phase 8R component to known docs, code contracts, and tests
   before the checkpoint can pass.
+- Node.js file-system documentation supports ESM access to synchronous,
+  callback, and promise-based file operations. The current-state evidence
+  collector uses bounded synchronous reads because it is a short-lived local/CI
+  verification script, not request-path runtime code.
 
 Sources:
 
@@ -50,6 +54,8 @@ Sources:
   <https://owasp.org/www-project-samm/>
 - SLSA verifying artifacts:
   <https://slsa.dev/spec/v1.0/verifying-artifacts>
+- Node.js file system API:
+  <https://nodejs.org/api/fs.html>
 
 ## Recommendations
 
@@ -117,6 +123,22 @@ Cons:
 
 - requires separate orchestration to gather fresh validation results.
 
+### Split Collection From Evaluation
+
+The current-state collector may read repository files and gather artifact
+presence, but the evidence-run evaluator should remain pure and accept evidence
+as input.
+
+Pros:
+
+- keeps closure rules reusable in tests, CI, and release workflows,
+- allows the collector to evolve without changing checkpoint semantics,
+- makes it clear which layer reads files and which layer decides completion.
+
+Cons:
+
+- introduces one extra orchestration boundary.
+
 ## Final Recommendation Stack
 
 Use this stack for Phase 8R.23:
@@ -133,15 +155,25 @@ Use this stack for Phase 8R.23:
 6. Block completion when artifact inventory is empty, artifact coverage is
    missing, the checkpoint is incomplete, checkpoint validation fails, or any
    side effect is reported.
+7. Provide a root script for local or CI execution that prints the current
+   evidence run as JSON and can optionally fail when completion is required.
 
 ## Implementation Outcome
 
 Implemented:
 
 - Added `policyBuilderPhase8CompletionEvidenceRun.mjs`.
+- Added `policyBuilderPhase8CurrentEvidenceCollector.mjs`.
+- Added `scripts/run-policy-builder-phase-8r-evidence.mjs`.
+- Added root npm script `policy:phase8r:evidence`.
 - Added a Phase 8R artifact map from 8R.1 through 8R.22.
 - Mapped Phase 8R.10 to the live backup/restore production modules:
   `backupService.mjs`, `backupRestore.mjs`, and `backupRestoreTables.mjs`.
+- Added current-state artifact inventory collection from the repository
+  checkout.
+- Added roadmap evidence extraction from Phase 8R headings and work-sequence
+  items.
+- Added changelog evidence extraction from component labels.
 - Added Windows path normalization for supplied artifact inventories.
 - Added artifact inventory status and risk reporting.
 - Composed the Phase 8R.22 completion checkpoint instead of duplicating closure
@@ -154,19 +186,37 @@ Implemented:
   - roadmap and final-removal-audit blockers,
   - validation and changelog blockers,
   - mutated output validation and side-effect rejection.
+  - current-state artifact collection,
+  - roadmap/changelog extraction,
+  - current-state completion and missing-validation blockers.
 
 Not implemented in this component:
 
-- no filesystem scanning,
 - no command execution,
 - no storage mutation,
 - no Git command execution,
 - no changelog editing,
 - no source deletion.
 
+Current-state run:
+
+- `node scripts/run-policy-builder-phase-8r-evidence.mjs` reports all mapped
+  Phase 8R artifacts present in the current checkout.
+- The run currently blocks Phase 8R closure because no machine-readable
+  Phase 8R.21 final removal audit JSON or validation evidence JSON was supplied.
+- The expected closure invocation is:
+
+```bash
+node scripts/run-policy-builder-phase-8r-evidence.mjs \
+  --final-removal-audit .tmp/phase8r/final-removal-audit.json \
+  --validation-evidence .tmp/phase8r/validation-evidence.json \
+  --require-complete
+```
+
 ## Next Step
 
-Run the evidence contract from orchestration or CI with a real artifact
-inventory and fresh validation outputs. If the evidence run reports complete,
-Phase 8R can be closed; otherwise, continue with the exact missing phase,
-artifact, validation, or changelog evidence reported by the run.
+Generate machine-readable Phase 8R.21 final removal audit evidence and
+validation evidence, then run the current-state evidence script with
+`--require-complete`. If the evidence run reports complete, Phase 8R can be
+closed; otherwise, continue with the exact missing phase, artifact, validation,
+or changelog evidence reported by the run.

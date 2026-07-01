@@ -25,6 +25,7 @@
     "test:client": "cd client && npm test",
     "test:local:ai-policy-sweep": "node scripts/local-ai-policy-sweep.mjs",
     "test:local:ai-policy-sweep:cleanup": "node scripts/cleanup-local-ai-policy-sweep.mjs --all-reports",
+    "policy:phase8r:evidence": "node scripts/run-policy-builder-phase-8r-evidence.mjs",
     "test:coverage": "node scripts/run-workspace-tests.mjs test:coverage:server test:coverage:client",
     "test:coverage:server": "cd server && npm run test:coverage",
     "test:coverage:client": "cd client && npm run test:coverage",

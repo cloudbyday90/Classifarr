@@ -4970,9 +4970,16 @@ Tasks:
 
 - Accept explicit artifact inventory grouped by service, route, migration,
   test, documentation, wiring, and other paths.
+- Provide a current-state evidence collector that reads the repository checkout
+  and builds that artifact inventory outside the pure evaluator.
+- Provide a root script that emits the current evidence run as JSON and can fail
+  when Phase 8R completion is required.
 - Normalize Windows and POSIX path separators before artifact matching.
 - Map every Phase 8R component from 8R.1 through 8R.22 to its expected docs,
   contracts, and focused tests.
+- Extract roadmap sequence/status evidence from Phase 8R headings and work
+  sequence items.
+- Extract changelog evidence from Phase 8R component labels.
 - Treat existing production integration files as valid contract evidence when a
   component was implemented through live wiring rather than a new wrapper
   service.
@@ -4996,6 +5003,9 @@ Acceptance criteria:
   backup/restore modules and lifecycle tests.
 - The evidence run does not scan files, run commands, mutate storage, write
   docs/changelog, delete code, or run Git itself.
+- The current-state script reports mapped artifact, roadmap, and changelog
+  coverage while requiring caller-supplied final-removal-audit and validation
+  evidence before closure can pass.
 
 Implementation status:
 
@@ -5003,12 +5013,21 @@ Implementation status:
   [Policy Builder Phase 8R Completion Evidence Run](policy-builder-phase-8r-completion-evidence-run.md).
 - The evidence-run contract lives in
   `server/src/services/policyBuilderPhase8CompletionEvidenceRun.mjs`.
+- The current-state evidence collector lives in
+  `server/src/services/policyBuilderPhase8CurrentEvidenceCollector.mjs`.
+- The root runner lives in `scripts/run-policy-builder-phase-8r-evidence.mjs`
+  and is exposed as `npm run policy:phase8r:evidence`.
 - The focused evidence-run test suite lives in
   `server/src/__tests__/services/policyBuilderPhase8CompletionEvidenceRun.test.mjs`.
+- The focused current-state collector test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8CurrentEvidenceCollector.test.mjs`.
 - Current implementation consumes explicit artifact inventory, converts mapped
   artifact coverage into checkpoint component evidence, composes the Phase 8R.22
   completion checkpoint, blocks incomplete evidence, and emits
   `8r_complete` only when supplied evidence satisfies the checkpoint.
+- Current checkout execution reports all mapped Phase 8R artifacts present, then
+  correctly blocks closure until machine-readable Phase 8R.21 final removal
+  audit evidence and validation evidence are supplied.
 
 ## Phase 8R Work Sequence
 

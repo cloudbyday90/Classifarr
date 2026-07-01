@@ -16,7 +16,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   inventory, normalizes Windows/POSIX paths, maps 8R.1 through 8R.22 docs,
   contracts, and focused tests into checkpoint evidence, composes the Phase
   8R.22 completion checkpoint, and blocks closure when inventory, artifact,
-  roadmap, final-removal-audit, validation, or changelog proof is incomplete.
+  roadmap, final-removal-audit, validation, or changelog proof is incomplete;
+  added a current-state collector plus `npm run policy:phase8r:evidence` to
+  gather mapped artifact, roadmap, and changelog evidence from the checkout
+  while requiring caller-supplied final-removal-audit and validation JSON before
+  completion can pass.
 - **Policy Builder Phase 8R Completion Checkpoint** — added a
   side-effect-free phase completion checkpoint that consumes component,
   roadmap, final-removal-audit, validation, and changelog evidence for the full
