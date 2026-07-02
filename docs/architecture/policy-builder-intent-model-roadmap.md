@@ -4922,6 +4922,20 @@ Implementation status:
   evidence; reports remaining inventory separately; blocks incomplete
   completion claims; and advances to a Phase 8R completion checkpoint.
 
+Current removal slice:
+
+- Starter-template mechanics removal is documented in
+  [Policy Builder Phase 8R Starter Template Mechanics Removal](policy-builder-phase-8r-starter-template-mechanics-removal.md).
+- The approved compatibility path
+  `client/src/components/policies/PolicyStarterTemplateMechanics.vue` has been
+  removed from product code and replaced by
+  `client/src/components/policies/PolicyStarterTemplateAccelerator.vue`.
+- The focused component test now targets
+  `client/src/__tests__/PolicyStarterTemplateAccelerator.test.js`.
+- The final-removal reference scanner now excludes tests and Phase control-plane
+  manifest/audit services so completion is blocked by product/runtime
+  references rather than deletion-manifest evidence strings.
+
 ### 8R.22 Phase 8R Completion Checkpoint
 
 Intent: consume current-state evidence for the full Phase 8R sequence and prove

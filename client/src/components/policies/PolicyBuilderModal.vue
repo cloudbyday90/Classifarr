@@ -81,7 +81,7 @@
         />
       </div>
 
-      <PolicyStarterTemplateMechanics
+      <PolicyStarterTemplateAccelerator
         v-model:search-query="searchQuery"
         v-model:selected-category="selectedCategory"
         :suggested-presets="suggestedPresets"
@@ -140,7 +140,7 @@ import PolicyBuilderSetupCards from '@/components/policies/PolicyBuilderSetupCar
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicyIntentImpactPreviewCard from '@/components/policies/PolicyIntentImpactPreviewCard.vue'
 import PolicyIntentReplayPreviewCard from '@/components/policies/PolicyIntentReplayPreviewCard.vue'
-import PolicyStarterTemplateMechanics from '@/components/policies/PolicyStarterTemplateMechanics.vue'
+import PolicyStarterTemplateAccelerator from '@/components/policies/PolicyStarterTemplateAccelerator.vue'
 import api from '@/api'
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
 import { usePolicyIntentImpactPreview } from '@/composables/usePolicyIntentImpactPreview'

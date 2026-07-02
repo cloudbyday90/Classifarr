@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Starter Template Mechanics Removal** — removed the
+  `PolicyStarterTemplateMechanics.vue` compatibility path from product code,
+  replaced it with `PolicyStarterTemplateAccelerator.vue`, updated focused
+  component coverage, and hardened the Phase 8R final-removal reference scanner
+  so control-plane manifest strings and tests do not block product/runtime
+  removal evidence.
 - **Policy Builder Phase 6R Evidence Boundary** — added a server-owned Phase
   6R.1 boundary that validates the public evidence input envelope, adapts
   public section names into the evidence projection shape, builds the

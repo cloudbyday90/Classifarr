@@ -162,10 +162,10 @@ const emit = defineEmits({
   'set-signal-strict': payload => Boolean(payload),
 })
 
-const showMechanics = ref(false)
-const isOpen = computed(() => showMechanics.value)
+const showAccelerator = ref(false)
+const isOpen = computed(() => showAccelerator.value)
 
 const toggleOpen = () => {
-  showMechanics.value = !showMechanics.value
+  showAccelerator.value = !showAccelerator.value
 }
 </script>

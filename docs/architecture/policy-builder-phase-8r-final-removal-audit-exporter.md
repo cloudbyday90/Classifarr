@@ -74,18 +74,24 @@ Cons:
 
 ### Scan Source References Separately
 
-The exporter should scan source/runtime locations for exact manifest path
-strings and feed those references into the Phase 8R.21 audit.
+The exporter should scan product/runtime source locations for exact manifest
+path strings and feed those references into the Phase 8R.21 audit. Control-plane
+inventory services, Phase audit services, and test files may intentionally
+retain manifest path strings as evidence; those references should not be
+treated as live product dependencies.
 
 Pros:
 
 - catches lingering imports or references after file removal,
 - keeps docs/changelog references from blocking runtime closure,
 - preserves bounded reference metadata.
+- prevents deletion-manifest evidence from blocking its own completion audit.
 
 Cons:
 
 - exact-string scans do not replace focused runtime tests.
+- tests still need to run separately because the product/runtime reference scan
+  intentionally excludes test files.
 
 ## Final Recommendation Stack
 
@@ -98,7 +104,8 @@ Use this stack for Phase 8R final-removal audit evidence:
    remaining/removed path state.
 5. Build Phase 8R.19-compatible removal verification evidence for paths that no
    longer exist.
-6. Scan source roots for exact manifest path references.
+6. Scan product/runtime source roots for exact manifest path references while
+   excluding tests and Phase 8R control-plane manifest/audit services.
 7. Compose the existing Phase 8R.21 compatibility-removal completion audit.
 8. Emit the audit JSON without mutating source, storage, Git, or manifests.
 
@@ -115,6 +122,9 @@ Implemented:
   - complete audit evidence when paths are gone,
   - final-scan reference blockers,
   - missing-validation blockers.
+- Hardened the reference scanner so Phase 8R control-plane services, legacy
+  compatibility inventory, and test files do not count as product/runtime
+  dependencies on removed manifest paths.
 
 Example:
 

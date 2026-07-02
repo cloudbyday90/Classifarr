@@ -46,6 +46,16 @@ const TEXT_FILE_EXTENSIONS = Object.freeze([
   '.yaml',
 ]);
 
+const REFERENCE_SCAN_IGNORED_PATH_PREFIXES = Object.freeze([
+  'client/src/__tests__/',
+  'server/src/__tests__/',
+  'server/src/services/policyBuilderPhase',
+]);
+
+const REFERENCE_SCAN_IGNORED_PATHS = Object.freeze([
+  'server/src/services/policyBuilderLegacyCompatibilityBoundary.mjs',
+]);
+
 function parseArgs(argv = []) {
   const options = {
     cwd: process.cwd(),
@@ -151,6 +161,13 @@ function isTextFile(filePath) {
   return TEXT_FILE_EXTENSIONS.includes(path.extname(filePath).toLowerCase());
 }
 
+function isIgnoredReferenceScanPath(repositoryPath = '') {
+  const normalizedPath = normalizeRepositoryPath(repositoryPath);
+
+  return REFERENCE_SCAN_IGNORED_PATHS.includes(normalizedPath) ||
+    REFERENCE_SCAN_IGNORED_PATH_PREFIXES.some(prefix => normalizedPath.startsWith(prefix));
+}
+
 function walkTextFiles(rootPath) {
   if (!fs.existsSync(rootPath)) {
     return [];
@@ -189,6 +206,10 @@ function scanReferences({
     .flatMap(walkTextFiles)
     .forEach(filePath => {
       const repositoryPath = normalizeRepositoryPath(path.relative(cwd, filePath));
+      if (isIgnoredReferenceScanPath(repositoryPath)) {
+        return;
+      }
+
       let content = '';
 
       try {

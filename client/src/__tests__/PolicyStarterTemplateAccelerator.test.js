@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import PolicyStarterTemplateMechanics from '@/components/policies/PolicyStarterTemplateMechanics.vue'
+import PolicyStarterTemplateAccelerator from '@/components/policies/PolicyStarterTemplateAccelerator.vue'
 
 const presets = [
   {
@@ -26,8 +26,8 @@ const presets = [
   },
 ]
 
-function mountMechanics(overrides = {}) {
-  return mount(PolicyStarterTemplateMechanics, {
+function mountAccelerator(overrides = {}) {
+  return mount(PolicyStarterTemplateAccelerator, {
     props: {
       searchQuery: '',
       selectedCategory: 'all',
@@ -50,9 +50,9 @@ function mountMechanics(overrides = {}) {
   })
 }
 
-describe('PolicyStarterTemplateMechanics.vue', () => {
-  it('keeps starter-template mechanics collapsed and optional when no template is selected', async () => {
-    const wrapper = mountMechanics()
+describe('PolicyStarterTemplateAccelerator.vue', () => {
+  it('keeps starter-template accelerator collapsed and optional when no template is selected', async () => {
+    const wrapper = mountAccelerator()
     const button = wrapper.find('button')
 
     expect(wrapper.text()).toContain('Starter Template Accelerator')
@@ -70,8 +70,8 @@ describe('PolicyStarterTemplateMechanics.vue', () => {
     expect(wrapper.text()).toContain('Animated Family')
   })
 
-  it('collapses mechanics by default when starter templates are already selected', async () => {
-    const wrapper = mountMechanics({
+  it('collapses accelerator by default when starter templates are already selected', async () => {
+    const wrapper = mountAccelerator({
       props: {
         selectedPresets: [{
           preset_id: 1,
@@ -91,7 +91,7 @@ describe('PolicyStarterTemplateMechanics.vue', () => {
   })
 
   it('passes browser and selected-template events through explicitly', async () => {
-    const wrapper = mountMechanics()
+    const wrapper = mountAccelerator()
 
     await wrapper.find('button').trigger('click')
     await wrapper.find('input[type="search"]').setValue('family')
