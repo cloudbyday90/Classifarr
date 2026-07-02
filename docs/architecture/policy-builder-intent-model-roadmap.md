@@ -5217,6 +5217,52 @@ Implementation status:
   a later Phase 8R.18 apply artifact while keeping destructive removal out of
   this component.
 
+### 8R.28 Controlled Removal Apply Artifact Exporter
+
+Intent: generate the machine-readable Phase 8R.18 controlled-removal apply
+artifact from a ready Phase 8R.17 removal-batch JSON, explicit apply input
+evidence, operator confirmation, and a bounded apply adapter.
+
+Tasks:
+
+- Require a ready Phase 8R.17 removal-batch JSON artifact.
+- Require explicit apply input with `executeApply: true`,
+  `operatorConfirmation.confirmed: true`, and a confirming actor.
+- Reuse the existing Phase 8R.18 controlled-removal apply contract.
+- Keep service-level file mutation adapter-bound.
+- Provide a CLI adapter that only deletes repo-relative files when
+  `--apply-files` is present.
+- Refuse path traversal, absolute paths, archive behavior, storage mutation,
+  and Git-command side effects.
+- Write the nested apply-result JSON for Phase 8R.19 runtime verification.
+
+Acceptance criteria:
+
+- The exporter refuses to run without removal-batch and apply-input JSON.
+- Missing execute confirmation blocks apply output.
+- Unsupported actions block apply output instead of being silently treated as
+  file deletion.
+- Repo-relative delete/remove-test entries can be applied only when
+  `--apply-files` is passed.
+- Archive, storage, and Git-command side effects prevent applied artifact
+  status.
+- The generated apply-result JSON can be passed to Phase 8R.19 verification.
+
+Implementation status:
+
+- Phase 8R.28 controlled removal apply artifact export is documented in
+  [Policy Builder Phase 8R Controlled Removal Apply Artifact Exporter](policy-builder-phase-8r-controlled-removal-apply-artifact-exporter.md).
+- The controlled-removal apply artifact contract lives in
+  `server/src/services/policyBuilderPhase8ControlledRemovalApplyArtifact.mjs`.
+- The exporter script lives in
+  `scripts/generate-policy-builder-phase-8r-removal-apply.mjs`.
+- The root runner is exposed as `npm run policy:phase8r:removal-apply`.
+- The focused controlled-removal apply artifact test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8ControlledRemovalApplyArtifact.test.mjs`.
+- Current implementation applies only supported file-backed deletion actions
+  through an explicit CLI flag and emits apply evidence for Phase 8R.19
+  runtime validation.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -5307,6 +5353,10 @@ Implement Phase 8R in this order:
     Generates a machine-readable Phase 8R.17 controlled-removal batch from a
     ready execution plan, explicit execution-gate evidence, selected approved
     manifest paths, review reason, and reviewer metadata.
+28. **8R.28 Controlled Removal Apply Artifact Exporter**
+    Generates a machine-readable Phase 8R.18 controlled-removal apply artifact
+    from a ready reviewed batch, explicit execute confirmation, and a bounded
+    repo-relative filesystem adapter.
 
 Current starting point:
 

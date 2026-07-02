@@ -28,7 +28,7 @@ const PHASE8R_VALIDATION_COMMANDS = Object.freeze([
     command: 'node',
     args: [
       './scripts/run-jest.mjs',
-      '--testPathPatterns=policyBuilderPhase8CurrentEvidenceCollector|policyBuilderPhase8CompletionEvidenceRun|policyBuilderPhase8CompletionCheckpoint|policyBuilderPhase8CompatibilityRemovalCompletionAudit|policyBuilderPhase8ValidationEvidence|policyBuilderPhase8ExecutionPlanArtifact|policyBuilderPhase8ControlledRemovalBatchArtifact|policyBuilderPhase8FinalRemovalAuditEvidence',
+      '--testPathPatterns=policyBuilderPhase8CurrentEvidenceCollector|policyBuilderPhase8CompletionEvidenceRun|policyBuilderPhase8CompletionCheckpoint|policyBuilderPhase8CompatibilityRemovalCompletionAudit|policyBuilderPhase8ValidationEvidence|policyBuilderPhase8ExecutionPlanArtifact|policyBuilderPhase8ControlledRemovalBatchArtifact|policyBuilderPhase8ControlledRemovalApplyArtifact|policyBuilderPhase8FinalRemovalAuditEvidence',
       '--no-coverage',
       '--runInBand',
     ],
@@ -52,6 +52,7 @@ const PHASE8R_VALIDATION_COMMANDS = Object.freeze([
       'docs/architecture/policy-builder-phase-8r-completion-evidence-run.md',
       'docs/architecture/policy-builder-phase-8r-execution-plan-artifact-exporter.md',
       'docs/architecture/policy-builder-phase-8r-controlled-removal-batch-artifact-exporter.md',
+      'docs/architecture/policy-builder-phase-8r-controlled-removal-apply-artifact-exporter.md',
       'docs/architecture/policy-builder-phase-8r-validation-evidence-generator.md',
       'docs/architecture/policy-builder-phase-8r-final-removal-audit-exporter.md',
     ],

@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Controlled Removal Apply Artifact Exporter** —
+  added a machine-readable apply artifact contract and
+  `npm run policy:phase8r:removal-apply` to consume a ready Phase 8R.17
+  removal-batch JSON plus explicit operator confirmation, apply supported
+  repo-relative file deletion only when `--apply-files` is passed, and emit
+  Phase 8R.18 apply evidence for post-removal runtime verification.
 - **Policy Builder Phase 8R Controlled Removal Batch Artifact Exporter** —
   added a machine-readable removal-batch artifact contract and
   `npm run policy:phase8r:removal-batch` to generate Phase 8R.17

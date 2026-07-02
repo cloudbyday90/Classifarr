@@ -28,6 +28,7 @@
     "policy:phase8r:evidence": "node scripts/run-policy-builder-phase-8r-evidence.mjs",
     "policy:phase8r:execution-plan": "node scripts/generate-policy-builder-phase-8r-execution-plan.mjs",
     "policy:phase8r:removal-batch": "node scripts/generate-policy-builder-phase-8r-removal-batch.mjs",
+    "policy:phase8r:removal-apply": "node scripts/generate-policy-builder-phase-8r-removal-apply.mjs",
     "policy:phase8r:validation-evidence": "node scripts/generate-policy-builder-phase-8r-validation-evidence.mjs",
     "policy:phase8r:final-removal-audit": "node scripts/generate-policy-builder-phase-8r-final-removal-audit.mjs",
     "test:coverage": "node scripts/run-workspace-tests.mjs test:coverage:server test:coverage:client",
