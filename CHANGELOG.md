@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Compatibility Removal Completion Audit Artifact
+  Exporter** — added a machine-readable audit artifact contract and
+  `npm run policy:phase8r:completion-audit` to consume Phase 8R.20
+  authorization, the approved execution manifest, verified removal evidence,
+  final reference scan, and validation evidence before the Phase 8R completion
+  checkpoint.
 - **Policy Builder Phase 8R Next Compatibility Removal Batch Authorization
   Artifact Exporter** — added a machine-readable authorization artifact
   contract and `npm run policy:phase8r:next-batch-authorization` to consume

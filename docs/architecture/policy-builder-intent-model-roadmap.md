@@ -5353,6 +5353,55 @@ Implementation status:
 - Current implementation emits Phase 8R.20 authorization or completion evidence
   without performing removal, scan, manifest, storage, or Git side effects.
 
+### 8R.31 Compatibility Removal Completion Audit Artifact Exporter
+
+Intent: generate the machine-readable Phase 8R.21 compatibility-removal
+completion audit artifact from Phase 8R.20 authorization/completion evidence,
+Phase 8R.15 execution-plan JSON, verified Phase 8R.19 removal evidence, final
+import/reference scan evidence, and focused/full validation evidence.
+
+Tasks:
+
+- Require Phase 8R.20 authorization or completion JSON.
+- Require Phase 8R.15 execution-plan JSON with approved manifest entries.
+- Require verified Phase 8R.19 removal verification evidence.
+- Require final import/reference scan evidence covering every approved manifest
+  path.
+- Block completion when final scan references remain.
+- Preserve remaining-inventory as a valid non-complete artifact state.
+- Reuse the existing Phase 8R.21 compatibility-removal completion audit
+  contract.
+- Avoid deleting files, archiving, writing manifests, mutating storage, running
+  tests/scans, or running Git.
+- Write nested audit JSON for Phase 8R.22 checkpoint inputs.
+
+Acceptance criteria:
+
+- The exporter refuses missing completion-authorization, execution-plan, or
+  input JSON.
+- Complete authorization with full evidence yields a complete artifact.
+- Remaining authorization yields a remaining-inventory artifact.
+- Missing or failing final scan, removal, validation, or execution-plan
+  evidence blocks the artifact.
+- Any side effect prevents complete or remaining artifact status.
+- Generated audit JSON can feed the Phase 8R.22 completion checkpoint.
+
+Implementation status:
+
+- Phase 8R.31 completion audit artifact export is documented in
+  [Policy Builder Phase 8R Compatibility Removal Completion Audit Artifact Exporter](policy-builder-phase-8r-compatibility-removal-completion-audit-artifact-exporter.md).
+- The completion-audit artifact contract lives in
+  `server/src/services/policyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact.mjs`.
+- The exporter script lives in
+  `scripts/generate-policy-builder-phase-8r-completion-audit.mjs`.
+- The root runner is exposed as
+  `npm run policy:phase8r:completion-audit`.
+- The focused completion-audit artifact test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact.test.mjs`.
+- Current implementation emits complete, remaining-inventory, or blocked audit
+  artifacts without performing removal, scan, manifest, storage, or Git side
+  effects.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -5455,6 +5504,10 @@ Implement Phase 8R in this order:
     Generates a machine-readable Phase 8R.20 authorization artifact from
     verified post-removal evidence, the approved execution manifest, requested
     remaining paths, and operator authorization metadata.
+31. **8R.31 Compatibility Removal Completion Audit Artifact Exporter**
+    Generates a machine-readable Phase 8R.21 completion-audit artifact from
+    Phase 8R.20 authorization, the approved execution manifest, removal
+    verification, final scan, and validation evidence.
 
 Current starting point:
 
