@@ -851,7 +851,7 @@ describe('Policies routes coverage', () => {
       expect(db.query.mock.calls[6][0]).toContain('FROM web_search_provider_usage');
       expect(res.body).toEqual(expect.objectContaining({
         schema_version: 1,
-        mode: 'read_only_replay_preview',
+        mode: 'read_only_replay_migration_verifier',
         persistence_enabled: false,
         execution: {
           classification_run: false,

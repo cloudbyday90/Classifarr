@@ -149,13 +149,13 @@ const CURRENT_PHASE8R_TEST_RECORDS = Object.freeze([
       PHASE8R_NATIVE_STORAGE_TEST_LEGACY_SCOPE_IDS.UNCONVERTED_POLICY_COMPATIBILITY,
   },
   {
-    path: 'server/src/__tests__/services/policyIntentImpactPreview.test.mjs',
+    path: 'server/src/__tests__/services/policyBuilderPhase8ImpactMigrationVerifier.test.mjs',
     coverageIds: [],
     abandonedDiagnosticUi: true,
     deleteAfterPhase8rGates: true,
   },
   {
-    path: 'server/src/__tests__/policyIntentReplayPreview.test.mjs',
+    path: 'server/src/__tests__/policyBuilderPhase8ReplayMigrationVerifier.test.mjs',
     coverageIds: [],
     abandonedDiagnosticUi: true,
     deleteAfterPhase8rGates: true,

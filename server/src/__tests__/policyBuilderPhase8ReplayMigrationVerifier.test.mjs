@@ -7,23 +7,23 @@
  */
 
 import {
-  buildPolicyIntentReplayPreview,
-  buildPolicyIntentReplaySampleQuery,
-  normalizePolicyIntentReplayLimit,
-  sanitizePolicyIntentReplaySample,
-} from '../services/policyIntentReplayPreview.mjs';
+  buildPolicyBuilderPhase8ReplayMigrationVerifier,
+  buildPolicyBuilderPhase8ReplayMigrationSampleQuery,
+  normalizePolicyBuilderPhase8ReplayMigrationLimit,
+  sanitizePolicyBuilderPhase8ReplayMigrationSample,
+} from '../services/policyBuilderPhase8ReplayMigrationVerifier.mjs';
 
-describe('policyIntentReplayPreview', () => {
+describe('policyBuilderPhase8ReplayMigrationVerifier', () => {
   test('normalizes replay limits with defaults and caps', () => {
-    expect(normalizePolicyIntentReplayLimit(undefined)).toBe(10);
-    expect(normalizePolicyIntentReplayLimit('not-a-number')).toBe(10);
-    expect(normalizePolicyIntentReplayLimit(0)).toBe(1);
-    expect(normalizePolicyIntentReplayLimit(99)).toBe(25);
-    expect(normalizePolicyIntentReplayLimit('7')).toBe(7);
+    expect(normalizePolicyBuilderPhase8ReplayMigrationLimit(undefined)).toBe(10);
+    expect(normalizePolicyBuilderPhase8ReplayMigrationLimit('not-a-number')).toBe(10);
+    expect(normalizePolicyBuilderPhase8ReplayMigrationLimit(0)).toBe(1);
+    expect(normalizePolicyBuilderPhase8ReplayMigrationLimit(99)).toBe(25);
+    expect(normalizePolicyBuilderPhase8ReplayMigrationLimit('7')).toBe(7);
   });
 
   test('builds parameterized representative sample queries', () => {
-    const query = buildPolicyIntentReplaySampleQuery({
+    const query = buildPolicyBuilderPhase8ReplayMigrationSampleQuery({
       libraryId: 12,
       mediaType: 'movie',
       limit: 3,
@@ -41,15 +41,15 @@ describe('policyIntentReplayPreview', () => {
   });
 
   test('rejects missing library id for replay samples', () => {
-    expect(() => buildPolicyIntentReplaySampleQuery({
+    expect(() => buildPolicyBuilderPhase8ReplayMigrationSampleQuery({
       libraryId: null,
       mediaType: 'movie',
       limit: 3,
-    })).toThrow('A valid library_id is required for replay preview');
+    })).toThrow('A valid library_id is required for replay migration verification');
   });
 
   test('sanitizes sample rows without raw metadata identifiers', () => {
-    const sample = sanitizePolicyIntentReplaySample({
+    const sample = sanitizePolicyBuilderPhase8ReplayMigrationSample({
       id: 42,
       tmdb_id: 10674,
       title: 'Mulan',
@@ -83,7 +83,7 @@ describe('policyIntentReplayPreview', () => {
   });
 
   test('builds no-execution replay readiness preview', () => {
-    const preview = buildPolicyIntentReplayPreview({
+    const preview = buildPolicyBuilderPhase8ReplayMigrationVerifier({
       impactPreview: {
         validation: { valid: true, errors: [] },
         comparison: {
@@ -300,7 +300,7 @@ describe('policyIntentReplayPreview', () => {
 
     expect(preview).toEqual(expect.objectContaining({
       schema_version: 1,
-      mode: 'read_only_replay_preview',
+      mode: 'read_only_replay_migration_verifier',
       persistence_enabled: false,
       execution: {
         classification_run: false,

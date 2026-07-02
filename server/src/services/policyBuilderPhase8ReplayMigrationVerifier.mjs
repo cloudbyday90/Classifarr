@@ -9,9 +9,9 @@
 import { ValidationError } from '../utils/appError.mjs';
 import { buildPolicyIntentReplayParityDelta } from './policyIntentReplayParityDelta.mjs';
 
-export const POLICY_INTENT_REPLAY_PREVIEW_SCHEMA_VERSION = 1;
-export const POLICY_INTENT_REPLAY_PREVIEW_DEFAULT_LIMIT = 10;
-export const POLICY_INTENT_REPLAY_PREVIEW_MAX_LIMIT = 25;
+export const POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_SCHEMA_VERSION = 1;
+export const POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_DEFAULT_LIMIT = 10;
+export const POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_MAX_LIMIT = 25;
 
 const FINAL_SUCCESS_STATUSES = new Set(['completed', 'routed', 'verified', 'reclassified']);
 const ALLOWED_MEDIA_TYPES = new Set(['movie', 'tv']);
@@ -53,29 +53,33 @@ function normalizeMediaType(value) {
   return ALLOWED_MEDIA_TYPES.has(normalized) ? normalized : null;
 }
 
-export function normalizePolicyIntentReplayLimit(value) {
+export function normalizePolicyBuilderPhase8ReplayMigrationLimit(value) {
   if (value === null || value === undefined || value === '') {
-    return POLICY_INTENT_REPLAY_PREVIEW_DEFAULT_LIMIT;
+    return POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_DEFAULT_LIMIT;
   }
 
   const parsed = Number.parseInt(value, 10);
   if (!Number.isInteger(parsed)) {
-    return POLICY_INTENT_REPLAY_PREVIEW_DEFAULT_LIMIT;
+    return POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_DEFAULT_LIMIT;
   }
 
   return Math.min(
-    POLICY_INTENT_REPLAY_PREVIEW_MAX_LIMIT,
+    POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_MAX_LIMIT,
     Math.max(1, parsed)
   );
 }
 
-export function buildPolicyIntentReplaySampleQuery({ libraryId, mediaType = null, limit }) {
+export function buildPolicyBuilderPhase8ReplayMigrationSampleQuery({
+  libraryId,
+  mediaType = null,
+  limit,
+}) {
   const parsedLibraryId = Number.parseInt(libraryId, 10);
   if (!Number.isInteger(parsedLibraryId) || parsedLibraryId <= 0) {
-    throw new ValidationError('A valid library_id is required for replay preview');
+    throw new ValidationError('A valid library_id is required for replay migration verification');
   }
 
-  const normalizedLimit = normalizePolicyIntentReplayLimit(limit);
+  const normalizedLimit = normalizePolicyBuilderPhase8ReplayMigrationLimit(limit);
   const normalizedMediaType = normalizeMediaType(mediaType);
   const values = [parsedLibraryId];
   const predicates = ['library_id = $1'];
@@ -118,7 +122,7 @@ export function buildPolicyIntentReplaySampleQuery({ libraryId, mediaType = null
   };
 }
 
-export function sanitizePolicyIntentReplaySample(row = {}, index = 0) {
+export function sanitizePolicyBuilderPhase8ReplayMigrationSample(row = {}, index = 0) {
   const status = boundedString(row.status, 32, 'unknown');
 
   return {
@@ -135,7 +139,7 @@ export function sanitizePolicyIntentReplaySample(row = {}, index = 0) {
   };
 }
 
-export function buildPolicyIntentReplayPreview({
+export function buildPolicyBuilderPhase8ReplayMigrationVerifier({
   impactPreview,
   samples = [],
   scoring = null,
@@ -146,10 +150,12 @@ export function buildPolicyIntentReplayPreview({
   enrichmentAdapterContract = null,
   tmdbMetadataAdapterPreview = null,
   tmdbMetadataCoverageComparison = null,
-  requestedLimit = POLICY_INTENT_REPLAY_PREVIEW_DEFAULT_LIMIT,
+  requestedLimit = POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_DEFAULT_LIMIT,
 } = {}) {
-  const normalizedLimit = normalizePolicyIntentReplayLimit(requestedLimit);
-  const sanitizedSamples = samples.map((sample, index) => sanitizePolicyIntentReplaySample(sample, index));
+  const normalizedLimit = normalizePolicyBuilderPhase8ReplayMigrationLimit(requestedLimit);
+  const sanitizedSamples = samples.map((sample, index) => (
+    sanitizePolicyBuilderPhase8ReplayMigrationSample(sample, index)
+  ));
   const comparison = impactPreview?.comparison ?? {};
   const parityDelta = buildPolicyIntentReplayParityDelta({
     samples: sanitizedSamples,
@@ -157,8 +163,8 @@ export function buildPolicyIntentReplayPreview({
   });
 
   return {
-    schema_version: POLICY_INTENT_REPLAY_PREVIEW_SCHEMA_VERSION,
-    mode: 'read_only_replay_preview',
+    schema_version: POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_SCHEMA_VERSION,
+    mode: 'read_only_replay_migration_verifier',
     persistence_enabled: false,
     execution: {
       classification_run: false,

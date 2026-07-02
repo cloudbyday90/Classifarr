@@ -7,7 +7,9 @@
  */
 
 import { ValidationError } from '../utils/appError.mjs';
-import { normalizePolicyIntentReplayLimit } from './policyIntentReplayPreview.mjs';
+import {
+  normalizePolicyBuilderPhase8ReplayMigrationLimit,
+} from './policyBuilderPhase8ReplayMigrationVerifier.mjs';
 
 export const POLICY_INTENT_REPLAY_SAMPLE_DIAGNOSTICS_SCHEMA_VERSION = 1;
 export const POLICY_INTENT_REPLAY_SAMPLE_DIAGNOSTICS_MODE = 'representative_sample_selection_diagnostics';
@@ -135,7 +137,7 @@ export function buildPolicyIntentReplaySampleDiagnostics({
   returnedCount = 0,
   mediaType = null,
 } = {}) {
-  const normalizedLimit = normalizePolicyIntentReplayLimit(requestedLimit);
+  const normalizedLimit = normalizePolicyBuilderPhase8ReplayMigrationLimit(requestedLimit);
   const summary = {
     schema_version: POLICY_INTENT_REPLAY_SAMPLE_DIAGNOSTICS_SCHEMA_VERSION,
     mode: POLICY_INTENT_REPLAY_SAMPLE_DIAGNOSTICS_MODE,

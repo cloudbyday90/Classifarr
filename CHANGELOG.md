@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Replay Preview Removal** — removed the
+  `policyIntentReplayPreview.mjs` compatibility service path, replaced it with
+  a Phase 8R replay migration verifier, updated policy write routes and replay
+  diagnostics to use the verifier utilities, refreshed focused replay/route
+  coverage, and added the verifier to Phase 8R validation evidence.
 - **Policy Builder Phase 8R Impact Preview Removal** — removed the
   `policyIntentImpactPreview.mjs` compatibility service path, replaced it with
   a Phase 8R impact migration verifier, updated policy write routes and focused

@@ -83,7 +83,8 @@ Cons:
   migration-verifier UI is removed or renamed later.
 - Client impact-preview utilities remain for the current optional verifier
   panel.
-- `policyIntentReplayPreview.mjs` still exists and remains the next blocker.
+- Replay composition is now tracked by the separate Phase 8R replay migration
+  verifier removal slice.
 
 ## Final Recommendation Stack
 
@@ -124,8 +125,7 @@ Implemented:
 
 ## Next Step
 
-Proceed to the final remaining approved compatibility path:
-`server/src/services/policyIntentReplayPreview.mjs`. That path still owns replay
-composition and `normalizePolicyIntentReplayLimit`, so the next slice should
-extract any still-needed utility into a current verifier/service before deleting
-the old path.
+Replay-preview service removal is tracked in
+[Policy Builder Phase 8R Replay Preview Removal](policy-builder-phase-8r-replay-preview-removal.md).
+After that slice validates, refresh the final-removal audit and completion
+checkpoint evidence.
