@@ -4935,6 +4935,16 @@ Current removal slice:
 - The final-removal reference scanner now excludes tests and Phase control-plane
   manifest/audit services so completion is blocked by product/runtime
   references rather than deletion-manifest evidence strings.
+- Impact-preview service removal is documented in
+  [Policy Builder Phase 8R Impact Preview Removal](policy-builder-phase-8r-impact-preview-removal.md).
+- The approved compatibility path
+  `server/src/services/policyIntentImpactPreview.mjs` has been removed from
+  product code and replaced by
+  `server/src/services/policyBuilderPhase8ImpactMigrationVerifier.mjs`.
+- The policy write route still exposes the current non-persistent verifier
+  endpoint, but it no longer imports the deleted compatibility service path.
+- The focused service test now targets
+  `server/src/__tests__/services/policyBuilderPhase8ImpactMigrationVerifier.test.mjs`.
 
 ### 8R.22 Phase 8R Completion Checkpoint
 

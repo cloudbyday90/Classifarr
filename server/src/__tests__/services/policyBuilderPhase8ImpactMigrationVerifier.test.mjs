@@ -8,9 +8,9 @@ import {
   POLICY_INTENT_DRAFT_REQUEST_SCHEMA_VERSION,
 } from '../../services/policyIntentRequestValidator.mjs';
 import {
-  POLICY_INTENT_IMPACT_PREVIEW_SCHEMA_VERSION,
-  buildPolicyIntentImpactPreview,
-} from '../../services/policyIntentImpactPreview.mjs';
+  POLICY_BUILDER_PHASE8_IMPACT_MIGRATION_VERIFIER_SCHEMA_VERSION,
+  buildPolicyBuilderPhase8ImpactMigrationVerifier,
+} from '../../services/policyBuilderPhase8ImpactMigrationVerifier.mjs';
 
 function policy(overrides = {}) {
   return {
@@ -80,9 +80,9 @@ function validDraft(overrides = {}) {
   };
 }
 
-describe('policyIntentImpactPreview', () => {
+describe('policyBuilderPhase8ImpactMigrationVerifier', () => {
   test('reports matching parity without exposing raw draft content', () => {
-    const preview = buildPolicyIntentImpactPreview({
+    const preview = buildPolicyBuilderPhase8ImpactMigrationVerifier({
       policy: policy(),
       payload: {
         policyIntentDraft: validDraft(),
@@ -90,8 +90,8 @@ describe('policyIntentImpactPreview', () => {
     });
 
     expect(preview).toEqual(expect.objectContaining({
-      schema_version: POLICY_INTENT_IMPACT_PREVIEW_SCHEMA_VERSION,
-      mode: 'non_persistent_preview',
+      schema_version: POLICY_BUILDER_PHASE8_IMPACT_MIGRATION_VERIFIER_SCHEMA_VERSION,
+      mode: 'non_persistent_migration_verifier',
       persistence_enabled: false,
       validation: {
         valid: true,
@@ -136,7 +136,7 @@ describe('policyIntentImpactPreview', () => {
       }],
     });
 
-    const preview = buildPolicyIntentImpactPreview({
+    const preview = buildPolicyBuilderPhase8ImpactMigrationVerifier({
       policy: policy(),
       payload: {
         policyIntentDraft: draft,
@@ -160,8 +160,8 @@ describe('policyIntentImpactPreview', () => {
     }));
   });
 
-  test('returns unavailable preview when no draft is supplied', () => {
-    const preview = buildPolicyIntentImpactPreview({
+  test('returns unavailable verifier when no draft is supplied', () => {
+    const preview = buildPolicyBuilderPhase8ImpactMigrationVerifier({
       policy: policy(),
       payload: {},
     });

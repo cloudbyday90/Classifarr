@@ -116,8 +116,10 @@ Implemented:
 - Focused tests verify the replacement component still behaves as an optional
   draft accelerator.
 
-## Next Step
+## Follow-Up
 
-Proceed to the next controlled Phase 8R compatibility-removal slice:
-`server/src/services/policyIntentImpactPreview.mjs`. That path still has live
-route dependencies and needs a replacement/removal plan before deletion.
+The next controlled Phase 8R compatibility-removal slice was
+`server/src/services/policyIntentImpactPreview.mjs`, now tracked separately in
+[Policy Builder Phase 8R Impact Preview Removal](policy-builder-phase-8r-impact-preview-removal.md).
+The remaining approved compatibility path is
+`server/src/services/policyIntentReplayPreview.mjs`.

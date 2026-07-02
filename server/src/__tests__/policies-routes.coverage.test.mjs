@@ -694,7 +694,7 @@ describe('Policies routes coverage', () => {
       expect(db.withTransaction).not.toHaveBeenCalled();
       expect(res.body).toEqual(expect.objectContaining({
         schema_version: 1,
-        mode: 'non_persistent_preview',
+        mode: 'non_persistent_migration_verifier',
         persistence_enabled: false,
         validation: {
           valid: true,

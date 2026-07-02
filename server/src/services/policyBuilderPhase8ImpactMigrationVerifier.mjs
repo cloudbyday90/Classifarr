@@ -15,7 +15,7 @@ import {
   validatePolicyIntentWritePayload,
 } from './policyIntentRequestValidator.mjs';
 
-export const POLICY_INTENT_IMPACT_PREVIEW_SCHEMA_VERSION = 1;
+const POLICY_BUILDER_PHASE8_IMPACT_MIGRATION_VERIFIER_SCHEMA_VERSION = 1;
 
 const BUCKETS = Object.freeze([
   POLICY_INTENT_DRAFT_BUCKETS.IDENTITY,
@@ -187,12 +187,15 @@ function uniqueReasonCodes(bucketComparison) {
   ));
 }
 
-export function buildPolicyIntentImpactPreview({ policy = {}, payload = {} } = {}) {
+function buildPolicyBuilderPhase8ImpactMigrationVerifier({
+  policy = {},
+  payload = {},
+} = {}) {
   const writePayload = validatePolicyIntentWritePayload(payload);
   if (!writePayload.present) {
     return {
-      schema_version: POLICY_INTENT_IMPACT_PREVIEW_SCHEMA_VERSION,
-      mode: 'non_persistent_preview',
+      schema_version: POLICY_BUILDER_PHASE8_IMPACT_MIGRATION_VERIFIER_SCHEMA_VERSION,
+      mode: 'non_persistent_migration_verifier',
       persistence_enabled: false,
       validation: writePayload.validation,
       legacy: {
@@ -224,8 +227,8 @@ export function buildPolicyIntentImpactPreview({ policy = {}, payload = {} } = {
   const impactLevel = deriveImpactLevel(changedBucketDeltas);
 
   return {
-    schema_version: POLICY_INTENT_IMPACT_PREVIEW_SCHEMA_VERSION,
-    mode: 'non_persistent_preview',
+    schema_version: POLICY_BUILDER_PHASE8_IMPACT_MIGRATION_VERIFIER_SCHEMA_VERSION,
+    mode: 'non_persistent_migration_verifier',
     persistence_enabled: false,
     validation: writePayload.validation,
     legacy: {
@@ -253,3 +256,8 @@ export function buildPolicyIntentImpactPreview({ policy = {}, payload = {} } = {
     },
   };
 }
+
+export {
+  POLICY_BUILDER_PHASE8_IMPACT_MIGRATION_VERIFIER_SCHEMA_VERSION,
+  buildPolicyBuilderPhase8ImpactMigrationVerifier,
+};
