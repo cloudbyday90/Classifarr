@@ -5537,6 +5537,53 @@ Implementation status:
   blocked closure audits without writing files, mutating storage, running
   commands, or running Git.
 
+### 8R.35 Final Requirement Completion Audit
+
+Intent: prove the full current Phase 8R sequence requirement by requirement
+before Phase 8R is treated as complete.
+
+Tasks:
+
+- Require a complete and valid Phase 8R.34 current repository closure audit.
+- Inventory mapped current checkout artifacts for every Phase 8R component from
+  8R.1 through 8R.34.
+- Require design/outcome document evidence for every component.
+- Require service, script, route, migration, or wiring evidence for every
+  component.
+- Require focused test evidence for every component.
+- Require roadmap component-map and work-sequence coverage for every component.
+- Require changelog coverage for every component.
+- Reject file writes, manifest writes, storage mutation, command execution, and
+  Git commands inside the audit service.
+
+Acceptance criteria:
+
+- Completion is blocked without complete Phase 8R.34 current closure evidence.
+- Completion is blocked when any 8R.1 through 8R.34 mapped artifact is missing.
+- Completion is blocked when the roadmap component map or work sequence omits
+  any Phase 8R component.
+- Completion is blocked when changelog coverage omits any Phase 8R component.
+- The audit emits exact missing evidence rather than relying on narrative
+  completion status.
+- The service reads repository files only and performs no writes, storage
+  mutation, command execution, manifest writes, or Git operations.
+
+Implementation status:
+
+- Phase 8R.35 final requirement completion audit is documented in
+  [Policy Builder Phase 8R Final Requirement Completion Audit](policy-builder-phase-8r-final-requirement-completion-audit.md).
+- The final requirement audit contract lives in
+  `server/src/services/policyBuilderPhase8FinalRequirementCompletionAudit.mjs`.
+- The exporter script lives in
+  `scripts/run-policy-builder-phase-8r-final-requirement-audit.mjs`.
+- The root runner is exposed as
+  `npm run policy:phase8r:final-requirement-audit`.
+- The focused final requirement audit test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8FinalRequirementCompletionAudit.test.mjs`.
+- Current implementation verifies the complete 8R.1 through 8R.34 evidence
+  range so later artifact/exporter closure components cannot be skipped by the
+  older Phase 8R.22 checkpoint range.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -5654,6 +5701,10 @@ Implement Phase 8R in this order:
     Audits the current checkout by composing current artifact, roadmap,
     changelog, completion-audit, validation, checkpoint, and final-readout
     evidence into one completion decision.
+35. **8R.35 Final Requirement Completion Audit**
+    Verifies the full current Phase 8R.1 through 8R.34 sequence against
+    current closure, artifact, roadmap, changelog, and focused-test evidence
+    before the Phase 8R objective is marked complete.
 
 Current starting point:
 

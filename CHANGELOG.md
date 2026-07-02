@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Final Requirement Completion Audit** — added a
+  final current-state completion audit and
+  `npm run policy:phase8r:final-requirement-audit` to verify the full 8R.1
+  through 8R.34 sequence against current closure, artifact, roadmap, changelog,
+  and focused-test evidence before Phase 8R can be marked complete.
 - **Policy Builder Phase 8R Current Repository Closure Audit** — added a
   current-checkout closure audit contract and
   `npm run policy:phase8r:current-closure-audit` to compose current artifact,
