@@ -180,6 +180,23 @@ describe('policyBuilderPhase8CompletionCheckpoint', () => {
     ]));
   });
 
+  test('accepts human-readable dotted Phase 8R roadmap identifiers', () => {
+    const dottedPhaseIds = PHASE_IDS.map(phaseId => (
+      phaseId.replace(/^8r_(\d+)$/, '8R.$1')
+    ));
+    const checkpoint = completeCheckpoint({
+      roadmapEvidence: roadmapEvidence({
+        sequencePhaseIds: dottedPhaseIds,
+        implementationStatusPhaseIds: dottedPhaseIds,
+      }),
+    });
+
+    expect(checkpoint.statusId).toBe(PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE);
+    expect(checkpoint.roadmapEvidence.missingSequencePhaseIds).toEqual([]);
+    expect(checkpoint.roadmapEvidence.missingImplementationStatusPhaseIds)
+      .toEqual([]);
+  });
+
   test('blocks when final Phase 8R.21 removal audit is not complete or invalid', () => {
     const checkpoint = completeCheckpoint({
       finalRemovalAudit: finalRemovalAudit({

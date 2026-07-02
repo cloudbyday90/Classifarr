@@ -34,6 +34,7 @@
     "policy:phase8r:completion-audit": "node scripts/generate-policy-builder-phase-8r-completion-audit.mjs",
     "policy:phase8r:completion-checkpoint": "node scripts/generate-policy-builder-phase-8r-completion-checkpoint.mjs",
     "policy:phase8r:final-closure-readout": "node scripts/generate-policy-builder-phase-8r-final-closure-readout.mjs",
+    "policy:phase8r:current-closure-audit": "node scripts/run-policy-builder-phase-8r-current-closure-audit.mjs",
     "policy:phase8r:validation-evidence": "node scripts/generate-policy-builder-phase-8r-validation-evidence.mjs",
     "policy:phase8r:final-removal-audit": "node scripts/generate-policy-builder-phase-8r-final-removal-audit.mjs",
     "test:coverage": "node scripts/run-workspace-tests.mjs test:coverage:server test:coverage:client",

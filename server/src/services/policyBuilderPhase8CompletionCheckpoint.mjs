@@ -67,7 +67,14 @@ function asArray(value) {
 }
 
 function normalizePhaseId(value = '') {
-  return String(value || '').trim().toLowerCase().replace('.', 'r_');
+  const normalized = String(value || '').trim().toLowerCase();
+  const dottedPhaseMatch = normalized.match(/^(\d+)r?\.(\d+)$/);
+
+  if (dottedPhaseMatch) {
+    return `${dottedPhaseMatch[1]}r_${dottedPhaseMatch[2]}`;
+  }
+
+  return normalized;
 }
 
 function buildRisk(riskId, message, metadata = {}) {

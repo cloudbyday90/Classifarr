@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Current Repository Closure Audit** — added a
+  current-checkout closure audit contract and
+  `npm run policy:phase8r:current-closure-audit` to compose current artifact,
+  roadmap, changelog, Phase 8R.31 completion-audit, validation, checkpoint, and
+  final-readout evidence into one completion decision.
 - **Policy Builder Phase 8R Final Closure Readout** — added a
   machine-readable final readout contract and
   `npm run policy:phase8r:final-closure-readout` to classify Phase 8R closure

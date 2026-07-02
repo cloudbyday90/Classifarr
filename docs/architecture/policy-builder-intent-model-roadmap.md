@@ -5490,6 +5490,53 @@ Implementation status:
 - Current implementation emits complete or blocked final readouts without
   collecting evidence, running commands, mutating storage, or running Git.
 
+### 8R.34 Current Repository Closure Audit
+
+Intent: audit the current checkout against the Phase 8R closure chain by
+combining current repository evidence, Phase 8R.31 completion-audit evidence,
+validation evidence, the Phase 8R.32 checkpoint artifact, and the Phase 8R.33
+final closure readout.
+
+Tasks:
+
+- Read current mapped Phase 8R artifact inventory from the checkout.
+- Read current roadmap sequence and implementation-status evidence.
+- Read current changelog coverage evidence.
+- Require a complete and valid Phase 8R.31 completion-audit artifact.
+- Require focused, lint, markdown, and full validation evidence.
+- Compose the existing Phase 8R.23 current evidence run.
+- Compose the Phase 8R.32 checkpoint artifact from current evidence.
+- Compose the Phase 8R.33 final closure readout.
+- Reject file writes, manifest writes, storage mutation, command execution, and
+  Git commands inside the service.
+
+Acceptance criteria:
+
+- The exporter refuses missing completion-audit-artifact or validation-evidence
+  JSON.
+- Complete current repository evidence yields a complete audit.
+- Missing mapped artifacts block current evidence.
+- Missing validation or incomplete completion-audit evidence blocks closure.
+- Any side effect other than repository file reads prevents complete status.
+- Generated audit JSON can feed the final requirement-by-requirement Phase 8R
+  completion audit.
+
+Implementation status:
+
+- Phase 8R.34 current repository closure audit is documented in
+  [Policy Builder Phase 8R Current Repository Closure Audit](policy-builder-phase-8r-current-repository-closure-audit.md).
+- The current repository closure audit contract lives in
+  `server/src/services/policyBuilderPhase8CurrentRepositoryClosureAudit.mjs`.
+- The exporter script lives in
+  `scripts/run-policy-builder-phase-8r-current-closure-audit.mjs`.
+- The root runner is exposed as
+  `npm run policy:phase8r:current-closure-audit`.
+- The focused current repository closure audit test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8CurrentRepositoryClosureAudit.test.mjs`.
+- Current implementation reads mapped repository evidence and emits complete or
+  blocked closure audits without writing files, mutating storage, running
+  commands, or running Git.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -5603,6 +5650,10 @@ Implement Phase 8R in this order:
 33. **8R.33 Final Closure Readout**
     Generates the final operator-facing Phase 8R closure decision from the
     Phase 8R.32 checkpoint artifact, preserving exact blocker categories.
+34. **8R.34 Current Repository Closure Audit**
+    Audits the current checkout by composing current artifact, roadmap,
+    changelog, completion-audit, validation, checkpoint, and final-readout
+    evidence into one completion decision.
 
 Current starting point:
 
