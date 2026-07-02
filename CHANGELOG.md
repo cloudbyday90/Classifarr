@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Final Closure Readout** — added a
+  machine-readable final readout contract and
+  `npm run policy:phase8r:final-closure-readout` to classify Phase 8R closure
+  as complete or blocked by component, roadmap, removal-audit, validation,
+  changelog, artifact-validation, or side-effect evidence.
 - **Policy Builder Phase 8R Completion Checkpoint Artifact Exporter** — added
   a machine-readable checkpoint artifact contract and
   `npm run policy:phase8r:completion-checkpoint` to consume component,

@@ -5448,6 +5448,48 @@ Implementation status:
 - Current implementation emits complete or blocked checkpoint artifacts without
   collecting evidence, running commands, mutating storage, or running Git.
 
+### 8R.33 Final Closure Readout
+
+Intent: generate the final operator-facing Phase 8R closure decision from the
+Phase 8R.32 completion-checkpoint artifact.
+
+Tasks:
+
+- Require a Phase 8R.32 completion-checkpoint artifact.
+- Require the artifact to be complete and valid before closure can pass.
+- Require the nested Phase 8R.22 checkpoint to be complete and valid.
+- Map blocked checkpoint states to component, roadmap, removal-audit,
+  validation, or changelog blocker categories.
+- Map invalid or missing wrapper artifacts to artifact-validation blockers.
+- Reject file writes, manifest writes, storage mutation, command execution, and
+  Git commands inside the readout contract.
+- Emit a stable operator summary with the final decision and next action.
+
+Acceptance criteria:
+
+- The exporter refuses missing checkpoint-artifact JSON.
+- A complete Phase 8R.32 artifact yields a complete readout.
+- Missing or invalid Phase 8R.32 evidence blocks with artifact-validation
+  status.
+- Nested checkpoint failures preserve their blocker category.
+- Any side effect prevents complete readout status.
+- Generated readout JSON can be used for the final Phase 8R completion audit.
+
+Implementation status:
+
+- Phase 8R.33 final closure readout is documented in
+  [Policy Builder Phase 8R Final Closure Readout](policy-builder-phase-8r-final-closure-readout.md).
+- The final closure readout contract lives in
+  `server/src/services/policyBuilderPhase8FinalClosureReadout.mjs`.
+- The exporter script lives in
+  `scripts/generate-policy-builder-phase-8r-final-closure-readout.mjs`.
+- The root runner is exposed as
+  `npm run policy:phase8r:final-closure-readout`.
+- The focused final closure readout test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8FinalClosureReadout.test.mjs`.
+- Current implementation emits complete or blocked final readouts without
+  collecting evidence, running commands, mutating storage, or running Git.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -5558,6 +5600,9 @@ Implement Phase 8R in this order:
     Generates a machine-readable Phase 8R.22 completion-checkpoint artifact
     from explicit component, roadmap, completion-audit, validation, and
     changelog evidence.
+33. **8R.33 Final Closure Readout**
+    Generates the final operator-facing Phase 8R closure decision from the
+    Phase 8R.32 checkpoint artifact, preserving exact blocker categories.
 
 Current starting point:
 
