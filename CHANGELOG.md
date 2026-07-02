@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Controlled Removal Batch Artifact Exporter** —
+  added a machine-readable removal-batch artifact contract and
+  `npm run policy:phase8r:removal-batch` to generate Phase 8R.17
+  controlled-removal batch JSON from a ready execution plan, explicit
+  execution-gate evidence, selected approved manifest paths, review reason, and
+  reviewer metadata without applying compatibility removals.
 - **Policy Builder Phase 8R Execution Plan Artifact Exporter** — added a
   machine-readable execution-plan artifact contract and
   `npm run policy:phase8r:execution-plan` to generate Phase 8R.15

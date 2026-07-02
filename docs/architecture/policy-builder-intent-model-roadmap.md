@@ -5170,6 +5170,53 @@ Implementation status:
   the Phase 8R.25 final-removal audit exporter while keeping deletion readiness
   caller-owned and explicit.
 
+### 8R.27 Controlled Removal Batch Artifact Exporter
+
+Intent: generate the machine-readable Phase 8R.17 controlled-removal batch JSON
+from a ready Phase 8R.15 execution plan, explicit Phase 8R.16 gate evidence,
+selected manifest paths, review reason, and reviewer metadata.
+
+Tasks:
+
+- Require a ready Phase 8R.15 execution-plan JSON artifact.
+- Require explicit Phase 8R.16 gate input evidence for clean worktree,
+  backup/restore freshness, operator approval, final rollback/support stance,
+  and manifest freshness.
+- Require selected paths to come from the approved execution-plan manifest.
+- Require a narrow selected path batch with review reason and reviewer.
+- Build the Phase 8R.16 execution gate through the existing gate contract.
+- Build the Phase 8R.17 removal batch through the existing controlled-removal
+  contract.
+- Write the nested removal-batch JSON for Phase 8R.18 apply tooling.
+- Avoid deleting files, archiving files, removing routes/tests, mutating
+  storage, writing manifests, or running Git.
+
+Acceptance criteria:
+
+- The exporter refuses to run without execution-plan and gate/review input JSON.
+- Blocked gate evidence prevents ready removal-batch output.
+- Selected paths outside the approved manifest prevent ready output.
+- Ready output is bounded to the reviewed selected paths.
+- The generated removal-batch JSON can be passed to later Phase 8R.18 apply
+  tooling.
+- The exporter performs no deletion, archive, route, test, storage, manifest,
+  or Git side effects.
+
+Implementation status:
+
+- Phase 8R.27 controlled removal batch artifact export is documented in
+  [Policy Builder Phase 8R Controlled Removal Batch Artifact Exporter](policy-builder-phase-8r-controlled-removal-batch-artifact-exporter.md).
+- The controlled-removal batch artifact contract lives in
+  `server/src/services/policyBuilderPhase8ControlledRemovalBatchArtifact.mjs`.
+- The exporter script lives in
+  `scripts/generate-policy-builder-phase-8r-removal-batch.mjs`.
+- The root runner is exposed as `npm run policy:phase8r:removal-batch`.
+- The focused controlled-removal batch artifact test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8ControlledRemovalBatchArtifact.test.mjs`.
+- Current implementation generates the Phase 8R.17 removal-batch JSON input for
+  a later Phase 8R.18 apply artifact while keeping destructive removal out of
+  this component.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -5256,6 +5303,10 @@ Implement Phase 8R in this order:
     Generates the machine-readable Phase 8R.15 execution-plan JSON from
     explicit readiness, manifest, replacement, approval, rollback, and support
     evidence for downstream final-removal-audit tooling.
+27. **8R.27 Controlled Removal Batch Artifact Exporter**
+    Generates a machine-readable Phase 8R.17 controlled-removal batch from a
+    ready execution plan, explicit execution-gate evidence, selected approved
+    manifest paths, review reason, and reviewer metadata.
 
 Current starting point:
 

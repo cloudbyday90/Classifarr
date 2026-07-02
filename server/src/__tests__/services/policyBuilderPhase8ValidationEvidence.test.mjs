@@ -40,12 +40,16 @@ describe('policyBuilderPhase8ValidationEvidence', () => {
       .toContain('policyBuilderPhase8FinalRemovalAuditEvidence');
     expect(evidence.focused.command)
       .toContain('policyBuilderPhase8ExecutionPlanArtifact');
+    expect(evidence.focused.command)
+      .toContain('policyBuilderPhase8ControlledRemovalBatchArtifact');
     expect(evidence.lint.command).toBe('npm run lint');
     expect(evidence.markdown.command).toContain('markdownlint-cli2');
     expect(evidence.markdown.command)
       .toContain('policy-builder-phase-8r-final-removal-audit-exporter.md');
     expect(evidence.markdown.command)
       .toContain('policy-builder-phase-8r-execution-plan-artifact-exporter.md');
+    expect(evidence.markdown.command)
+      .toContain('policy-builder-phase-8r-controlled-removal-batch-artifact-exporter.md');
     expect(evidence.full.command).toBe('npm --prefix server test');
   });
 
