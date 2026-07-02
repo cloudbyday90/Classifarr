@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Completion Checkpoint Artifact Exporter** — added
+  a machine-readable checkpoint artifact contract and
+  `npm run policy:phase8r:completion-checkpoint` to consume component,
+  roadmap, Phase 8R.31 completion-audit, validation, and changelog evidence
+  before Phase 8R is claimed complete.
 - **Policy Builder Phase 8R Compatibility Removal Completion Audit Artifact
   Exporter** — added a machine-readable audit artifact contract and
   `npm run policy:phase8r:completion-audit` to consume Phase 8R.20

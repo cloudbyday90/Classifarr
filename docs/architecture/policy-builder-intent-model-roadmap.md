@@ -5402,6 +5402,52 @@ Implementation status:
   artifacts without performing removal, scan, manifest, storage, or Git side
   effects.
 
+### 8R.32 Completion Checkpoint Artifact Exporter
+
+Intent: generate the machine-readable Phase 8R.22 completion checkpoint artifact
+from explicit component evidence, roadmap evidence, Phase 8R.31
+completion-audit artifact evidence, validation evidence, and changelog
+evidence.
+
+Tasks:
+
+- Require component evidence for the Phase 8R implementation set.
+- Require roadmap sequence and implementation-status evidence.
+- Require a complete and valid Phase 8R.31 completion-audit artifact.
+- Require focused, lint, markdown, and full validation evidence.
+- Require changelog evidence covering Phase 8R components.
+- Reuse the existing Phase 8R.22 completion checkpoint contract.
+- Avoid collecting evidence, writing manifests, mutating storage, running
+  commands, running Git, or changing files inside the service.
+- Write nested checkpoint JSON for release/operator completion proof.
+
+Acceptance criteria:
+
+- The exporter refuses missing component, roadmap, completion-audit, validation,
+  or changelog JSON.
+- A complete Phase 8R.31 artifact plus complete checkpoint evidence yields a
+  complete artifact.
+- Missing or incomplete Phase 8R.31 evidence blocks completion.
+- Missing roadmap, component, validation, or changelog evidence blocks
+  completion through the nested checkpoint.
+- Any side effect prevents complete artifact status.
+- Generated checkpoint JSON can feed the final Phase 8R closure readout.
+
+Implementation status:
+
+- Phase 8R.32 completion checkpoint artifact export is documented in
+  [Policy Builder Phase 8R Completion Checkpoint Artifact Exporter](policy-builder-phase-8r-completion-checkpoint-artifact-exporter.md).
+- The completion-checkpoint artifact contract lives in
+  `server/src/services/policyBuilderPhase8CompletionCheckpointArtifact.mjs`.
+- The exporter script lives in
+  `scripts/generate-policy-builder-phase-8r-completion-checkpoint.mjs`.
+- The root runner is exposed as
+  `npm run policy:phase8r:completion-checkpoint`.
+- The focused completion-checkpoint artifact test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8CompletionCheckpointArtifact.test.mjs`.
+- Current implementation emits complete or blocked checkpoint artifacts without
+  collecting evidence, running commands, mutating storage, or running Git.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -5508,6 +5554,10 @@ Implement Phase 8R in this order:
     Generates a machine-readable Phase 8R.21 completion-audit artifact from
     Phase 8R.20 authorization, the approved execution manifest, removal
     verification, final scan, and validation evidence.
+32. **8R.32 Completion Checkpoint Artifact Exporter**
+    Generates a machine-readable Phase 8R.22 completion-checkpoint artifact
+    from explicit component, roadmap, completion-audit, validation, and
+    changelog evidence.
 
 Current starting point:
 

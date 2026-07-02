@@ -28,7 +28,7 @@ const PHASE8R_VALIDATION_COMMANDS = Object.freeze([
     command: 'node',
     args: [
       './scripts/run-jest.mjs',
-      '--testPathPatterns=policyBuilderPhase8CurrentEvidenceCollector|policyBuilderPhase8CompletionEvidenceRun|policyBuilderPhase8CompletionCheckpoint|policyBuilderPhase8CompatibilityRemovalCompletionAudit|policyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact|policyBuilderPhase8ValidationEvidence|policyBuilderPhase8ExecutionPlanArtifact|policyBuilderPhase8ControlledRemovalBatchArtifact|policyBuilderPhase8ControlledRemovalApplyArtifact|policyBuilderPhase8PostRemovalRuntimeVerificationArtifact|policyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact|policyBuilderPhase8FinalRemovalAuditEvidence',
+      '--testPathPatterns=policyBuilderPhase8CurrentEvidenceCollector|policyBuilderPhase8CompletionEvidenceRun|policyBuilderPhase8CompletionCheckpoint|policyBuilderPhase8CompletionCheckpointArtifact|policyBuilderPhase8CompatibilityRemovalCompletionAudit|policyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact|policyBuilderPhase8ValidationEvidence|policyBuilderPhase8ExecutionPlanArtifact|policyBuilderPhase8ControlledRemovalBatchArtifact|policyBuilderPhase8ControlledRemovalApplyArtifact|policyBuilderPhase8PostRemovalRuntimeVerificationArtifact|policyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact|policyBuilderPhase8FinalRemovalAuditEvidence',
       '--no-coverage',
       '--runInBand',
     ],
@@ -56,6 +56,7 @@ const PHASE8R_VALIDATION_COMMANDS = Object.freeze([
       'docs/architecture/policy-builder-phase-8r-post-removal-runtime-verification-artifact-exporter.md',
       'docs/architecture/policy-builder-phase-8r-next-compatibility-removal-batch-authorization-artifact-exporter.md',
       'docs/architecture/policy-builder-phase-8r-compatibility-removal-completion-audit-artifact-exporter.md',
+      'docs/architecture/policy-builder-phase-8r-completion-checkpoint-artifact-exporter.md',
       'docs/architecture/policy-builder-phase-8r-validation-evidence-generator.md',
       'docs/architecture/policy-builder-phase-8r-final-removal-audit-exporter.md',
     ],
