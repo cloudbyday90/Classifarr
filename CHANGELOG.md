@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Evidence Boundary** — added a server-owned Phase
+  6R.1 boundary that validates the public evidence input envelope, adapts
+  public section names into the evidence projection shape, builds the
+  projection, runs the projection audit, and blocks unsafe inputs before
+  downstream intent/readiness engines can consume evidence.
 - **Policy Builder Phase 8R Final Requirement Completion Audit** — added a
   final current-state completion audit and
   `npm run policy:phase8r:final-requirement-audit` to verify the full 8R.1

@@ -13,6 +13,9 @@ inventory. The summary gives downstream engines a bounded, deterministic view
 of bucket counts, source authority, blocking evidence, and review evidence. The
 cutline inventory prevents replay/impact reducers from returning as normal
 operator UI unless they are rewritten into source-authorized evidence reducers.
+The evidence boundary now validates the public input envelope, adapts it into
+the projection shape, and audits the generated projection before later engines
+consume it.
 
 ## Problem
 
@@ -146,6 +149,13 @@ The server module exports:
 - bucket/source lookup helpers,
 - bucket/source validation helpers,
 - a full evidence-engine audit.
+
+Boundary callers should use
+`buildPolicyBuilderPhase6BoundedEvidenceProjection` from
+`server/src/services/policyBuilderPhase6EvidenceBoundary.mjs` when they need a
+complete Phase 6R.1 handoff. That boundary runs the input gate first, maps
+public section names into the projection input shape, builds the projection,
+and runs the projection audit.
 
 The projection entry shape is intentionally small:
 

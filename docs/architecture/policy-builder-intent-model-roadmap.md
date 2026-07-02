@@ -3144,10 +3144,21 @@ Implementation status:
   [Policy Builder Phase 6R Evidence Input Gate](policy-builder-phase-6r-evidence-input-gate.md).
 - The evidence input gate lives in
   `server/src/services/policyBuilderPhase6EvidenceInputGate.mjs`.
+- Phase 6R.1 evidence boundary hardening is documented in
+  [Policy Builder Phase 6R Evidence Boundary](policy-builder-phase-6r-evidence-boundary.md).
+- The evidence boundary lives in
+  `server/src/services/policyBuilderPhase6EvidenceBoundary.mjs`.
 - The evidence input gate defines the allowed input envelope before projection:
   library profile, operator intent, final outcomes, manual corrections,
   pending-item answers, Arr routing outcomes, metadata evidence, and profile
   freshness.
+- The evidence boundary validates the public evidence input envelope, adapts
+  public section names into the projection shape, builds the evidence
+  projection, and runs the projection audit before downstream engines consume
+  evidence.
+- The boundary maps `classificationOutcomes` to
+  `classificationFinalOutcomes` and `arrRoutingOutcomes` to `routingOutcomes`
+  so the public gate envelope and internal projection contract cannot drift.
 - The evidence input gate rejects unknown sections, raw provider payload
   markers, live lookup markers, provider quota/cooldown state, UI diagnostic
   labels, and replay/impact preview payloads before evidence projection.
