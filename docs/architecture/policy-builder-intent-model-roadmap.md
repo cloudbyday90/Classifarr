@@ -5263,6 +5263,50 @@ Implementation status:
   through an explicit CLI flag and emits apply evidence for Phase 8R.19
   runtime validation.
 
+### 8R.29 Post-Removal Runtime Verification Artifact Exporter
+
+Intent: generate the machine-readable Phase 8R.19 post-removal runtime
+verification artifact from Phase 8R.18 apply evidence, import/reference scan
+evidence, focused runtime/import checks, and focused/full validation evidence.
+
+Tasks:
+
+- Require Phase 8R.18 apply-result JSON.
+- Require completed import/reference scan evidence that covers every applied
+  removal path.
+- Block verification if any removed path is still referenced.
+- Require focused runtime/import check evidence.
+- Require focused and full validation evidence.
+- Reuse the existing Phase 8R.19 post-removal runtime verification contract.
+- Avoid deleting files, mutating storage, running Git, or generating scan
+  evidence implicitly.
+- Write the nested verification JSON for Phase 8R.20 next-batch authorization.
+
+Acceptance criteria:
+
+- The exporter refuses to run without apply-result and verification-input JSON.
+- Incomplete or invalid apply evidence blocks verification.
+- Missing scan coverage or remaining references block verification.
+- Missing or failed runtime checks block verification.
+- Missing or failed focused/full validation evidence blocks verification.
+- Storage and Git side effects prevent verified artifact status.
+- The generated verification JSON can be passed to Phase 8R.20 authorization.
+
+Implementation status:
+
+- Phase 8R.29 post-removal runtime verification artifact export is documented in
+  [Policy Builder Phase 8R Post-Removal Runtime Verification Artifact Exporter](policy-builder-phase-8r-post-removal-runtime-verification-artifact-exporter.md).
+- The post-removal verification artifact contract lives in
+  `server/src/services/policyBuilderPhase8PostRemovalRuntimeVerificationArtifact.mjs`.
+- The exporter script lives in
+  `scripts/generate-policy-builder-phase-8r-post-removal-verification.mjs`.
+- The root runner is exposed as
+  `npm run policy:phase8r:post-removal-verification`.
+- The focused post-removal verification artifact test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase8PostRemovalRuntimeVerificationArtifact.test.mjs`.
+- Current implementation consumes explicit scan/check/validation evidence and
+  emits verified Phase 8R.19 evidence for Phase 8R.20 next-batch authorization.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -5357,6 +5401,10 @@ Implement Phase 8R in this order:
     Generates a machine-readable Phase 8R.18 controlled-removal apply artifact
     from a ready reviewed batch, explicit execute confirmation, and a bounded
     repo-relative filesystem adapter.
+29. **8R.29 Post-Removal Runtime Verification Artifact Exporter**
+    Generates a machine-readable Phase 8R.19 verification artifact from apply,
+    reference-scan, runtime-check, and validation evidence before the next
+    compatibility-removal batch can be authorized.
 
 Current starting point:
 

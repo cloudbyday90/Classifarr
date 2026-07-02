@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Post-Removal Runtime Verification Artifact
+  Exporter** — added a machine-readable verification artifact contract and
+  `npm run policy:phase8r:post-removal-verification` to consume Phase 8R.18
+  apply-result JSON plus explicit import/reference scan, runtime check, and
+  validation evidence before authorizing the next compatibility-removal batch.
 - **Policy Builder Phase 8R Controlled Removal Apply Artifact Exporter** —
   added a machine-readable apply artifact contract and
   `npm run policy:phase8r:removal-apply` to consume a ready Phase 8R.17
