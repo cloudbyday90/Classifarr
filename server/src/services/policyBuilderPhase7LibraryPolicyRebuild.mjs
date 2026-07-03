@@ -45,6 +45,7 @@ const PHASE7R_REBUILD_WARNING_IDS = Object.freeze({
   MISSING_IDENTITY_EVIDENCE: 'missing_identity_evidence',
   MISSING_ROUTING_CONFIGURATION: 'missing_routing_configuration',
   STALE_PROFILE: 'stale_profile',
+  GUARDED_OUTCOME_WITHOUT_FINGERPRINT: 'guarded_outcome_without_fingerprint',
 });
 
 const PHASE7R_REBUILD_AUDIT_RISK_IDS = Object.freeze({
@@ -64,9 +65,13 @@ const PHASE7R_REBUILD_AUDIT_RISK_IDS = Object.freeze({
   MISSING_EVIDENCE_SOURCE_SUMMARY: 'missing_evidence_source_summary',
   MISSING_CONFIDENCE: 'missing_confidence',
   MISSING_TRACE_REASON: 'missing_trace_reason',
+  GUARDED_OUTCOME_WITHOUT_FINGERPRINT: 'guarded_outcome_without_fingerprint',
+  GUARDED_OUTCOME_FINGERPRINT_MISMATCH: 'guarded_outcome_fingerprint_mismatch',
 });
 
 const MAX_TRACE_REASONS = 16;
+const MAX_REBUILD_FINGERPRINTS = 20;
+const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -78,6 +83,52 @@ function asObject(value) {
 
 function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeEvidenceFingerprint(value = {}) {
+  const fingerprintSource = asObject(value);
+  const provenance = asObject(fingerprintSource.provenance);
+  const fingerprint = normalizeString(fingerprintSource.fingerprint).toLowerCase();
+
+  if (!fingerprint) return null;
+
+  return {
+    algorithm: normalizeString(fingerprintSource.algorithm) || null,
+    fingerprint,
+    provenance: {
+      projectionVersion: normalizeString(provenance.projectionVersion) || null,
+      phase6EvidenceVersion: normalizeString(provenance.phase6EvidenceVersion) || null,
+      totalEntryCount: Number.isFinite(Number(provenance.totalEntryCount))
+        ? Number(provenance.totalEntryCount)
+        : 0,
+      sourceIds: asArray(provenance.sourceIds).map(String).sort(),
+      runtimeSourceIds: asArray(provenance.runtimeSourceIds).map(String).sort(),
+      authoritySourceIds: asArray(provenance.authoritySourceIds).map(String).sort(),
+      demotionReasonIds: asArray(provenance.demotionReasonIds).map(String).sort(),
+      warningReasonIds: asArray(provenance.warningReasonIds).map(String).sort(),
+      bucketCounts: asArray(provenance.bucketCounts)
+        .map(bucket => ({
+          bucketId: normalizeString(bucket?.bucketId) || null,
+          entryCount: Number.isFinite(Number(bucket?.entryCount))
+            ? Number(bucket.entryCount)
+            : 0,
+        }))
+        .sort((left, right) => String(left.bucketId).localeCompare(String(right.bucketId))),
+    },
+  };
+}
+
+function getGuardedOutcomeEvidenceFingerprint(outcome = {}) {
+  return normalizeEvidenceFingerprint(
+    outcome.upstreamEvidenceFingerprint ||
+    outcome.learningGuardContext?.upstreamEvidenceFingerprint ||
+    outcome.questionReductionPlan?.decisionEvidenceFingerprint ||
+    outcome.question?.decisionEvidenceFingerprint ||
+    outcome.decisionEvidenceFingerprint ||
+    outcome.automationDecision?.evidence?.projectionFingerprint ||
+    outcome.learningDecision?.upstreamEvidenceFingerprint ||
+    outcome.learningDecision?.learningGuardContext?.upstreamEvidenceFingerprint
+  );
 }
 
 function normalizeSignal(value) {
@@ -159,15 +210,40 @@ function mapGuardedOutcomeSignal(outcome = {}, reasonCode) {
 function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
   const compatibilityCandidates = [];
   const outliers = [];
+  const outcomeSummaries = [];
 
-  asArray(guardedOutcomes).forEach(outcome => {
+  asArray(guardedOutcomes).forEach((outcome, index) => {
     const learning = asObject(outcome.learning ?? outcome.learningDecision?.learning);
     const finalOutcome = asObject(outcome.finalOutcome);
+    const evidenceFingerprint = getGuardedOutcomeEvidenceFingerprint(outcome);
+    const hasFingerprint = SHA256_FINGERPRINT_PATTERN.test(evidenceFingerprint?.fingerprint || '') &&
+      evidenceFingerprint?.algorithm === 'sha256';
+    const summary = {
+      outcomeIndex: index,
+      accepted: false,
+      fingerprint: hasFingerprint ? evidenceFingerprint.fingerprint : null,
+      algorithm: hasFingerprint ? evidenceFingerprint.algorithm : null,
+      learningDecisionId: learning.decisionId ?? null,
+      finalOutcomeRecorded: finalOutcome.recorded === true,
+      finalOutcomeStatus: normalizeString(finalOutcome.status) || null,
+    };
+
+    if (!hasFingerprint) {
+      outcomeSummaries.push({
+        ...summary,
+        rejectionReasonId: PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
+      });
+      return;
+    }
 
     if (learning.decisionId === PHASE6R_LEARNING_DECISION_IDS.BLOCKED ||
         finalOutcome.status === 'route_failed_missing_mapping') {
       const outlier = mapGuardedOutcomeSignal(outcome, 'guarded_outcome_requires_review');
-      if (outlier) outliers.push(outlier);
+      if (outlier) {
+        outliers.push(outlier);
+        summary.accepted = true;
+      }
+      outcomeSummaries.push(summary);
       return;
     }
 
@@ -175,13 +251,35 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
         learning.decisionId === PHASE6R_LEARNING_DECISION_IDS.CANDIDATE ||
         finalOutcome.recorded === true) {
       const compatibility = mapGuardedOutcomeSignal(outcome, 'guarded_outcome_compatibility');
-      if (compatibility) compatibilityCandidates.push(compatibility);
+      if (compatibility) {
+        compatibilityCandidates.push(compatibility);
+        summary.accepted = true;
+      }
     }
+
+    outcomeSummaries.push(summary);
   });
+
+  const acceptedFingerprints = outcomeSummaries
+    .filter(outcome => outcome.accepted && outcome.fingerprint)
+    .map(outcome => outcome.fingerprint);
+  const uniqueFingerprints = Array.from(new Set(acceptedFingerprints)).sort();
+  const missingFingerprintCount = outcomeSummaries
+    .filter(outcome => outcome.rejectionReasonId === PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT)
+    .length;
 
   return {
     compatibilityCandidates,
     outliers,
+    summary: {
+      count: outcomeSummaries.length,
+      acceptedCount: outcomeSummaries.filter(outcome => outcome.accepted).length,
+      missingFingerprintCount,
+      fingerprintCount: uniqueFingerprints.length,
+      fingerprints: uniqueFingerprints.slice(0, MAX_REBUILD_FINGERPRINTS),
+      fingerprintListTruncated: uniqueFingerprints.length > MAX_REBUILD_FINGERPRINTS,
+      outcomes: outcomeSummaries,
+    },
   };
 }
 
@@ -268,6 +366,7 @@ function buildEvidenceInput(input = {}) {
     observedAbsences,
     existingConstraints,
     guardedOutcomeCount: asArray(input.guardedOutcomes).length,
+    guardedOutcomeEvidenceSummary: guardedOutcomeEvidence.summary,
   };
 }
 
@@ -282,7 +381,7 @@ function collectEvidenceSourceSummary({
       outlierCount: asArray(evidenceInput.libraryProfile.outliers).length,
     },
     guardedOutcomes: {
-      count: evidenceInput.guardedOutcomeCount,
+      ...evidenceInput.guardedOutcomeEvidenceSummary,
     },
     explicitConstraints: {
       hardLimitCount: evidenceInput.existingConstraints.hardLimits.length,
@@ -361,6 +460,14 @@ function collectWarnings({
     ));
   }
 
+  if (evidenceInput.guardedOutcomeEvidenceSummary?.missingFingerprintCount > 0) {
+    warnings.push(buildWarning(
+      PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
+      'One or more guarded outcomes were ignored because they do not carry an upstream evidence fingerprint.',
+      { target: 'guarded_outcomes', severity: 'error' }
+    ));
+  }
+
   asArray(intentDraft.warnings).forEach(warning => {
     if (warning.reasonCode === PHASE6R_INTENT_WARNING_IDS.OBSERVED_ABSENCE_NOT_EXCLUSION) {
       warnings.push(buildWarning(
@@ -430,6 +537,10 @@ function buildTrace({ statusId, evidenceSourceSummary, warnings }) {
       'classifarr.policy.rebuild.status': statusId,
       'classifarr.policy.rebuild.identity_count': evidenceSourceSummary.libraryProfile.identityCount,
       'classifarr.policy.rebuild.guarded_outcome_count': evidenceSourceSummary.guardedOutcomes.count,
+      'classifarr.policy.rebuild.guarded_outcome_fingerprint_count':
+        evidenceSourceSummary.guardedOutcomes.fingerprintCount,
+      'classifarr.policy.rebuild.guarded_outcome_missing_fingerprint_count':
+        evidenceSourceSummary.guardedOutcomes.missingFingerprintCount,
       'classifarr.policy.rebuild.routing_configured': evidenceSourceSummary.routing.configured,
       'classifarr.policy.rebuild.warning_count': warnings.length,
     },
@@ -608,6 +719,31 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
     issues.push({
       riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.MISSING_EVIDENCE_SOURCE_SUMMARY,
       message: 'Library policy rebuild proposal must explain evidence sources.',
+    });
+  }
+
+  const guardedOutcomeSummary = proposal.evidenceSourceSummary?.guardedOutcomes;
+  const guardedTraceFingerprintCount = Number(
+    proposal.trace?.attributes?.['classifarr.policy.rebuild.guarded_outcome_fingerprint_count']
+  );
+  const guardedTraceMissingFingerprintCount = Number(
+    proposal.trace?.attributes?.['classifarr.policy.rebuild.guarded_outcome_missing_fingerprint_count']
+  );
+
+  if (guardedOutcomeSummary?.missingFingerprintCount > 0) {
+    issues.push({
+      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
+      message: 'Guarded outcomes must carry upstream sanitized evidence fingerprints before rebuild can consume them.',
+    });
+  }
+
+  if (guardedOutcomeSummary && (
+    guardedTraceFingerprintCount !== guardedOutcomeSummary.fingerprintCount ||
+    guardedTraceMissingFingerprintCount !== guardedOutcomeSummary.missingFingerprintCount
+  )) {
+    issues.push({
+      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_FINGERPRINT_MISMATCH,
+      message: 'Guarded outcome fingerprint trace counts must match the rebuild source summary.',
     });
   }
 

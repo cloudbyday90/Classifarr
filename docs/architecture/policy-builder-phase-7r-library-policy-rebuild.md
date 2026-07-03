@@ -5,10 +5,11 @@
 Implemented as the sixth Phase 7R runtime/rebuild contract.
 
 This slice creates a side-effect-free rebuild proposal from observed library
-profile evidence, guarded outcomes, explicit operator constraints, routing
-configuration, outlier evidence, and profile freshness. It produces a Phase 6R
-intent draft plus readiness, source summaries, warnings, acceptance gates, and
-rollback gates. It does not activate, replace, delete, or persist policy.
+profile evidence, fingerprint-bound guarded outcomes, explicit operator
+constraints, routing configuration, outlier evidence, and profile freshness. It
+produces a Phase 6R intent draft plus readiness, source summaries, warnings,
+acceptance gates, and rollback gates. It does not activate, replace, delete, or
+persist policy.
 
 ## Problem
 
@@ -19,6 +20,7 @@ treated as an automatic migration:
 ```text
 observed examples are useful
 guarded outcomes are useful
+guarded outcomes must be bound to sanitized upstream evidence fingerprints
 operator constraints are authoritative
 observed absence is not an exclusion
 route configuration is operational state
@@ -46,6 +48,18 @@ without reintroducing destructive or opaque behavior.
   emphasize user control, clear uncertainty, and graceful recovery. Phase 7R.6
   requires operator acceptance and a rollback snapshot before any later
   replacement path can apply the proposal.
+
+Additional hardening guidance:
+
+- NIST AI RMF provenance and monitoring guidance supports carrying bounded
+  evidence proof through the rebuild chain so operators and later migration
+  verifiers know which guarded outcomes were actually consumed.
+- OWASP LLM application guidance supports refusing untrusted or unvalidated
+  intermediate outputs. Guarded outcomes without upstream evidence fingerprints
+  are now warning/error context, not proposal evidence.
+- Microsoft HAX guidance supports clear uncertainty and recovery. Missing
+  fingerprints surface as explicit validation risks instead of silently
+  influencing the proposed policy.
 
 ## Recommendation
 
@@ -87,7 +101,7 @@ Cons:
 
 1. Consume only bounded, local evidence:
    - observed library profile,
-   - guarded outcomes,
+   - guarded outcomes with sanitized upstream evidence fingerprints,
    - explicit constraints,
    - routing configuration,
    - outlier signals,
@@ -109,6 +123,9 @@ Cons:
 6. Require explicit operator acceptance before activation.
 7. Require rollback snapshot before any later accepted replacement.
 8. Leave migration comparison and rollback execution to Phase 7R.7.
+9. Reject guarded outcome handoffs that lack sanitized SHA-256 upstream
+   evidence fingerprints or whose bounded trace counts no longer match source
+   summaries.
 
 ## Implemented Files
 
@@ -170,12 +187,25 @@ The service exports:
 - Observed absence cannot become an avoid or exclusion rule.
 - Explicit constraints remain preserved unless an operator changes them later.
 - Trace output uses bounded reason codes and counts, not raw payloads or prompts.
+- Guarded outcomes are only consumed as compatibility/outlier proposal evidence
+  when they carry a sanitized upstream SHA-256 evidence fingerprint from the
+  Phase 7R runtime/question/request-learning chain.
+- Source summaries store bounded fingerprint counts and digests only; they do
+  not store raw library labels, item titles, provider payloads, prompts, or
+  runtime diagnostics.
+- Validation rejects missing guarded-outcome fingerprints and trace/source
+  summary fingerprint count mismatches before the proposal can pass.
 
 ## Test Coverage
 
 The focused test suite verifies:
 
 - proposals include belongs-here, helpful-match, hard-limit, and routing fields,
+- guarded outcomes with valid upstream evidence fingerprints are consumed as
+  proposal evidence,
+- guarded outcomes without upstream evidence fingerprints are not consumed and
+  fail validation,
+- guarded outcome fingerprint trace counts must match source summaries,
 - proposals require explicit operator acceptance,
 - proposals require rollback snapshots,
 - proposal side effects remain disabled,
@@ -194,7 +224,7 @@ The focused test suite verifies:
 Phase 7R.6 gives the rebuild path this shape:
 
 ```text
-library profile + guarded outcomes + explicit constraints + routing/freshness
+library profile + fingerprint-bound guarded outcomes + explicit constraints + routing/freshness
   -> Phase 6R evidence projection
   -> Phase 6R intent draft
   -> Phase 6R readiness

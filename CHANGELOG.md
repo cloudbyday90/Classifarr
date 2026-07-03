@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Rebuild Evidence Binding** — hardened
+  library-derived rebuild proposals so guarded outcomes require upstream
+  sanitized evidence fingerprints before they can shape proposed policy intent,
+  bounded source summaries and trace counts record only fingerprint provenance,
+  and validation rejects missing or mismatched handoffs.
 - **Policy Builder Phase 7R Request Learning Evidence Binding** — hardened
   request-time learning decisions so request/manual/routing events carry the
   upstream sanitized evidence fingerprint into the decision, bounded

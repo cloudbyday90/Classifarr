@@ -14,6 +14,30 @@ import {
   validatePolicyBuilderPhase7LibraryPolicyRebuildProposal,
 } from '../../services/policyBuilderPhase7LibraryPolicyRebuild.mjs';
 
+function upstreamEvidenceFingerprint(overrides = {}) {
+  return {
+    algorithm: 'sha256',
+    fingerprint: 'a'.repeat(64),
+    provenance: {
+      projectionVersion: 'phase7r.runtime_evidence_fingerprint.v1',
+      phase6EvidenceVersion: 'phase6r.evidence_projection.v1',
+      totalEntryCount: 4,
+      sourceIds: ['profile', 'runtime'],
+      runtimeSourceIds: ['request'],
+      authoritySourceIds: ['operator'],
+      demotionReasonIds: [],
+      warningReasonIds: [],
+      bucketCounts: [
+        {
+          bucketId: 'compatibility',
+          entryCount: 2,
+        },
+      ],
+    },
+    ...overrides,
+  };
+}
+
 function baseInput(overrides = {}) {
   return {
     library: {
@@ -47,6 +71,7 @@ function baseInput(overrides = {}) {
     },
     guardedOutcomes: [
       {
+        upstreamEvidenceFingerprint: upstreamEvidenceFingerprint(),
         finalOutcome: {
           recorded: true,
           destinationLibraryName: 'Animated Movies',
@@ -113,6 +138,19 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
         label: 'Pixar',
       }),
     ]));
+    expect(proposal.evidenceSourceSummary.guardedOutcomes).toEqual(expect.objectContaining({
+      count: 1,
+      acceptedCount: 1,
+      missingFingerprintCount: 0,
+      fingerprintCount: 1,
+      fingerprints: ['a'.repeat(64)],
+    }));
+    expect(proposal.trace.attributes).toEqual(expect.objectContaining({
+      'classifarr.policy.rebuild.guarded_outcome_fingerprint_count': 1,
+      'classifarr.policy.rebuild.guarded_outcome_missing_fingerprint_count': 0,
+    }));
+    expect(JSON.stringify(proposal.evidenceSourceSummary.guardedOutcomes.fingerprints))
+      .not.toContain('Animated Movies');
     expect(proposal.intentDraft.hard_limits).toEqual(expect.arrayContaining([
       expect.objectContaining({
         key: 'rating:r',
@@ -136,6 +174,68 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
       routingWritten: false,
     });
     expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal).ok).toBe(true);
+  });
+
+  test('rejects guarded outcomes without upstream evidence fingerprints and does not consume them', () => {
+    const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput({
+      guardedOutcomes: [
+        {
+          finalOutcome: {
+            recorded: true,
+            destinationLibraryName: 'Animated Movies',
+          },
+          learning: {
+            decisionId: 'candidate',
+            canWriteLearning: true,
+          },
+          candidate: {
+            key: 'studio:pixar',
+            label: 'Pixar',
+            evidenceCount: 4,
+          },
+        },
+      ],
+      existingConstraints: {
+        hardLimits: [],
+        avoid: [],
+      },
+    }));
+
+    expect(proposal.intentDraft.helpful_matches).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'studio:pixar',
+      }),
+    ]));
+    expect(proposal.evidenceSourceSummary.guardedOutcomes).toEqual(expect.objectContaining({
+      count: 1,
+      acceptedCount: 0,
+      missingFingerprintCount: 1,
+      fingerprintCount: 0,
+    }));
+    expect(proposal.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        reasonId: PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
+        severity: 'error',
+      }),
+    ]));
+    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
+        }),
+      ]));
+  });
+
+  test('rejects guarded outcome fingerprint trace mismatches', () => {
+    const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput());
+    proposal.trace.attributes['classifarr.policy.rebuild.guarded_outcome_fingerprint_count'] = 0;
+
+    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_FINGERPRINT_MISMATCH,
+        }),
+      ]));
   });
 
   test('keeps observed absence as a warning and never promotes it to avoid', () => {

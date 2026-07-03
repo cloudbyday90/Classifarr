@@ -3832,7 +3832,7 @@ Tasks:
 
 - Add or define a `Rebuild Policy From Library` workflow that consumes:
   - observed library profile,
-  - guarded outcomes,
+  - guarded outcomes with sanitized upstream evidence fingerprints,
   - explicit existing constraints,
   - routing configuration,
   - outlier analysis,
@@ -3850,10 +3850,18 @@ Tasks:
 - Require explicit operator acceptance before activation.
 - Treat observed absence as a warning, not automatic exclusion.
 - Create rollback snapshots before replacement.
+- Refuse to consume guarded outcomes that do not carry the upstream evidence
+  fingerprint chain from runtime decision/question/request-learning contracts.
+- Keep guarded-outcome fingerprint trace counts synchronized with bounded source
+  summaries.
 
 Acceptance criteria:
 
 - Rebuild proposals explain evidence source and confidence.
+- Rebuild proposals only consume guarded outcomes that carry sanitized SHA-256
+  upstream evidence fingerprints.
+- Missing guarded-outcome fingerprints and trace/source summary mismatches fail
+  validation before migration comparison.
 - Rebuild does not automatically delete or replace existing policies.
 - Explicit operator constraints are preserved unless the operator changes them.
 
@@ -3865,13 +3873,19 @@ Implementation status:
   `server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs`.
 - The focused rebuild test suite lives in
   `server/src/__tests__/services/policyBuilderPhase7LibraryPolicyRebuild.test.mjs`.
-- Current implementation consumes observed library profile evidence, guarded
-  outcomes, explicit constraints, routing configuration, observed outliers,
-  observed absences, and profile freshness.
+- Current implementation consumes observed library profile evidence,
+  fingerprint-bound guarded outcomes, explicit constraints, routing
+  configuration, observed outliers, observed absences, and profile freshness.
 - Rebuild output reuses Phase 6R evidence projection, intent draft, and
   readiness contracts instead of inventing a separate policy schema.
 - Proposals include evidence source summaries, confidence, assumptions,
   warnings, an explicit operator acceptance gate, and a rollback snapshot gate.
+- Guarded outcome source summaries now carry bounded accepted/missing
+  fingerprint counts plus sanitized digest lists, and trace attributes mirror
+  those counts without raw labels, prompts, or payloads.
+- Guarded outcomes without upstream evidence fingerprints are not converted
+  into compatibility or outlier proposal evidence and fail validation as an
+  incomplete handoff.
 - Observed absence is warning-only review context and cannot become avoid or
   exclusion evidence.
 - Explicit hard limits and avoid rules are preserved as operator-declared
