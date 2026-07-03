@@ -4606,6 +4606,10 @@ Implementation status:
 - Native SQL migration coverage is now supplied by
   `database/migrations/20260701_160000_add_policy_intent_native_storage.sql`,
   `database/schema/current.sql`, and `server/src/__tests__/migrations.test.mjs`.
+- Native SQL migration coverage is also tied back to the Phase 8R.1 schema
+  contract by
+  `server/src/services/policyBuilderPhase8NativeSqlMigrationCoverage.mjs` and
+  `server/src/__tests__/services/policyBuilderPhase8NativeSqlMigrationCoverage.test.mjs`.
 - The native SQL migration coverage follow-up is documented in
   [Policy Builder Phase 8R Native SQL Migration Coverage](policy-builder-phase-8r-native-sql-migration-coverage.md).
 - Legacy payload preservation tests are allowed only for unconverted policy

@@ -11,7 +11,9 @@ schema snapshot coverage proving fresh-install and upgraded-install paths could
 create that model.
 
 This component closes that gap by adding the actual native intent tables,
-indexes, constraints, schema snapshot, and migration tests.
+indexes, constraints, schema snapshot, migration tests, and a deterministic
+server-side coverage contract that compares the SQL migration back to the
+Phase 8R.1 native schema contract.
 
 ## Official Guidance Reviewed
 
@@ -67,6 +69,12 @@ indexes, constraints, schema snapshot, and migration tests.
    snapshot flow and migration tests assert the native tables and indexes are
    present.
 
+7. **Tie SQL coverage back to the schema contract.**
+   A server-owned coverage audit reads the canonical migration file, compares
+   each contract table, column, and index to executable DDL, strips comments
+   before forbidden-field checks, and rejects missing rollback or JSONB shape
+   boundaries.
+
 ## Pros And Cons
 
 Pros:
@@ -75,6 +83,7 @@ Pros:
 - Keeps migration additive and rollback-safe for existing installs.
 - Gives backup/restore and post-upgrade work concrete tables to include.
 - Makes schema drift visible through the existing migration and snapshot tests.
+- Makes contract-to-migration drift visible through a focused service test.
 - Advances native storage without preserving legacy custom signals as a second
   model.
 
@@ -93,6 +102,10 @@ Cons:
   `database/schema/current.sql`
 - Migration tests:
   `server/src/__tests__/migrations.test.mjs`
+- Migration coverage contract:
+  `server/src/services/policyBuilderPhase8NativeSqlMigrationCoverage.mjs`
+- Migration coverage tests:
+  `server/src/__tests__/services/policyBuilderPhase8NativeSqlMigrationCoverage.test.mjs`
 - Reset coverage contract:
   `server/src/services/policyBuilderPhase8NativeStorageTestReset.mjs`
 - Documentation:
@@ -128,11 +141,14 @@ It adds indexes for:
 
 - Native policy authority is represented by normalized, constrained tables.
 - Legacy storage remains untouched until conversion and rollback gates are ready.
+- The SQL coverage contract rejects executable legacy/transient fields such as
+  `custom_signals`, provider payloads, prompts, traces, embeddings, replay
+  diagnostics, and impact previews.
 - Runtime-sensitive fields are indexed explicitly instead of inferred from raw
   JSON blobs.
 - Migration and rollback records are separated from current policy authority.
-- Fresh-install schema snapshot and migration tests now prove the native SQL
-  path exists.
+- Fresh-install schema snapshot, migration tests, and contract-to-SQL coverage
+  now prove the native SQL path exists.
 
 ## Next Step
 
