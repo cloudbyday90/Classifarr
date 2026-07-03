@@ -58,21 +58,26 @@ This inventory also calls out two known failure modes:
    metadata enrichment, pending notification, classification, routing, or
    persistence surfaces are missing from the cutline.
 
-3. **Require authority sources.**
+3. **Guard Phase 7R contract surface coverage.**
+   The runtime/rebuild contracts that replace old behavior must also be listed
+   as inventory artifacts. A new contract service without an explicit cutline
+   decision should fail the inventory before later runtime wiring proceeds.
+
+4. **Require authority sources.**
    Every runtime artifact must identify whether it is driven by observed media
    server contents, declared operator intent, manual outcome, AI output,
    metadata evidence, or legacy template compatibility.
 
-4. **Separate classification from routing.**
+5. **Separate classification from routing.**
    Missing Arr mapping or failed Arr push must become a distinct runtime state,
    not a silent classification success.
 
-5. **Replace known bad question paths.**
+6. **Replace known bad question paths.**
    Genre-priority prompts, AI invalid-response prompts, AI disagreement prompts,
    and pending resolution flags that generate rules must be routed through the
    Phase 5R question contract and Phase 6R learning guard.
 
-6. **Keep AI/RAG as evidence.**
+7. **Keep AI/RAG as evidence.**
    AI explanations, RAG neighbors, and provider metadata can support evidence
    quality, but they cannot own final destination intent or durable learning.
 
@@ -160,10 +165,22 @@ Required runtime surface coverage now includes:
 - metadata enrichment paths,
 - Discord pending notification rendering.
 
+Required Phase 7R contract surface coverage now includes:
+
+- runtime evidence projection,
+- runtime evidence fingerprinting,
+- automation decision contract,
+- runtime question reduction,
+- request-time learning,
+- library-derived policy rebuild,
+- migration verifier and rollback,
+- runtime metrics and decision trace.
+
 ## Security Outcome
 
 - Runtime behavior is not changed before authority and cutline are documented.
 - Critical runtime surfaces cannot fall out of the inventory silently.
+- Phase 7R runtime/rebuild contracts cannot fall out of the inventory silently.
 - AI/RAG/provider output is not treated as final authority.
 - Learning side effects are flagged for Phase 6R guard wiring.
 - Routing success and classification success are separated as a required

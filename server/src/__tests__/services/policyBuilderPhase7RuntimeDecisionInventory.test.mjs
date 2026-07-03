@@ -8,6 +8,7 @@ import {
   PHASE7R_RUNTIME_STAGE_IDS,
   buildPolicyBuilderPhase7RuntimeDecisionInventory,
   listPolicyBuilderPhase7BadQuestionPaths,
+  listPolicyBuilderPhase7RequiredRuntimeContractSurfacePaths,
   listPolicyBuilderPhase7RequiredRuntimeSurfacePaths,
   listPolicyBuilderPhase7RuntimeArtifacts,
   validateRuntimeArtifact,
@@ -76,6 +77,29 @@ describe('policyBuilderPhase7RuntimeDecisionInventory', () => {
     expect(inventory.artifacts.map(artifact => artifact.path)).toEqual(
       expect.arrayContaining(requiredPaths)
     );
+  });
+
+  test('requires Phase 7R runtime and rebuild contract surfaces to be inventoried', () => {
+    const requiredContractPaths = listPolicyBuilderPhase7RequiredRuntimeContractSurfacePaths();
+    const inventory = buildPolicyBuilderPhase7RuntimeDecisionInventory();
+
+    expect(requiredContractPaths).toEqual(expect.arrayContaining([
+      'server/src/services/policyBuilderPhase7RuntimeEvidenceProjection.mjs',
+      'server/src/services/policyBuilderPhase7RuntimeEvidenceFingerprint.mjs',
+      'server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs',
+      'server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs',
+      'server/src/services/policyBuilderPhase7RequestTimeLearning.mjs',
+      'server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs',
+      'server/src/services/policyBuilderPhase7MigrationVerifierRollback.mjs',
+      'server/src/services/policyBuilderPhase7RuntimeMetricsTrace.mjs',
+    ]));
+    expect(inventory.artifacts).toEqual(expect.arrayContaining(
+      requiredContractPaths.map(path => expect.objectContaining({
+        path,
+        decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+        normalRuntimeAuthorityAllowed: true,
+      }))
+    ));
   });
 
   test('lists known bad question-generation paths for replacement', () => {
@@ -174,6 +198,23 @@ describe('policyBuilderPhase7RuntimeDecisionInventory', () => {
       }),
       expect.objectContaining({
         riskId: PHASE7R_RUNTIME_RISK_IDS.MISSING_RUNTIME_SURFACE_ARTIFACT,
+      }),
+    ]));
+  });
+
+  test('rejects inventories missing required Phase 7R contract surfaces', () => {
+    const inventory = buildPolicyBuilderPhase7RuntimeDecisionInventory({
+      artifacts: listPolicyBuilderPhase7RuntimeArtifacts()
+        .filter(artifact =>
+          artifact.path !== 'server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs'
+        ),
+      checkPathExists: false,
+    });
+
+    expect(inventory.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_RISK_IDS.MISSING_RUNTIME_CONTRACT_SURFACE,
+        path: 'server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs',
       }),
     ]));
   });

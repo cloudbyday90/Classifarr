@@ -43,6 +43,7 @@ const PHASE7R_RUNTIME_RISK_IDS = Object.freeze({
   CLASSIFICATION_ROUTING_CONFLATION_NOT_LISTED: 'classification_routing_conflation_not_listed',
   BAD_QUESTION_PATH_NOT_LISTED: 'bad_question_path_not_listed',
   MISSING_RUNTIME_SURFACE_ARTIFACT: 'missing_runtime_surface_artifact',
+  MISSING_RUNTIME_CONTRACT_SURFACE: 'missing_runtime_contract_surface',
   ARTIFACT_PATH_NOT_FOUND: 'artifact_path_not_found',
 });
 
@@ -101,6 +102,17 @@ const REQUIRED_RUNTIME_SURFACE_PATHS = Object.freeze([
   'server/src/services/classificationMetadataService.mjs',
   'server/src/services/classificationMetadataEnrichmentService.mjs',
   'server/src/services/discordPendingNotification.mjs',
+]);
+
+const REQUIRED_RUNTIME_CONTRACT_SURFACE_PATHS = Object.freeze([
+  'server/src/services/policyBuilderPhase7RuntimeEvidenceProjection.mjs',
+  'server/src/services/policyBuilderPhase7RuntimeEvidenceFingerprint.mjs',
+  'server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs',
+  'server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs',
+  'server/src/services/policyBuilderPhase7RequestTimeLearning.mjs',
+  'server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs',
+  'server/src/services/policyBuilderPhase7MigrationVerifierRollback.mjs',
+  'server/src/services/policyBuilderPhase7RuntimeMetricsTrace.mjs',
 ]);
 
 const RUNTIME_ARTIFACTS = Object.freeze([
@@ -590,6 +602,86 @@ const RUNTIME_ARTIFACTS = Object.freeze([
     ],
     normalRuntimeAuthorityAllowed: false,
   },
+  {
+    path: 'server/src/services/policyBuilderPhase7RuntimeEvidenceProjection.mjs',
+    owner: 'phase7-runtime-contract',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+    replacementTarget: 'Runtime evidence projection contract consumed by automation decisions',
+    riskIds: [],
+    normalRuntimeAuthorityAllowed: true,
+  },
+  {
+    path: 'server/src/services/policyBuilderPhase7RuntimeEvidenceFingerprint.mjs',
+    owner: 'phase7-runtime-contract',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+    replacementTarget: 'Sanitized runtime evidence fingerprint contract',
+    riskIds: [],
+    normalRuntimeAuthorityAllowed: true,
+  },
+  {
+    path: 'server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs',
+    owner: 'phase7-runtime-contract',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    replacementTarget: 'Server-owned automation decision contract over runtime evidence',
+    riskIds: [],
+    normalRuntimeAuthorityAllowed: true,
+  },
+  {
+    path: 'server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs',
+    owner: 'phase7-runtime-contract',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    replacementTarget: 'Runtime question reduction contract consuming automation decisions',
+    riskIds: [],
+    normalRuntimeAuthorityAllowed: true,
+  },
+  {
+    path: 'server/src/services/policyBuilderPhase7RequestTimeLearning.mjs',
+    owner: 'phase7-runtime-contract',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.LEARNING_SIDE_EFFECT,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
+    replacementTarget: 'Request-time learning eligibility contract behind the learning guard',
+    riskIds: [],
+    normalRuntimeAuthorityAllowed: true,
+  },
+  {
+    path: 'server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs',
+    owner: 'phase7-rebuild-contract',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.MEDIA_PROFILE_REFRESH,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+    replacementTarget: 'Library-derived policy rebuild proposal contract',
+    riskIds: [],
+    normalRuntimeAuthorityAllowed: true,
+  },
+  {
+    path: 'server/src/services/policyBuilderPhase7MigrationVerifierRollback.mjs',
+    owner: 'phase7-rebuild-contract',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
+    replacementTarget: 'Migration verifier and rollback contract for operator-accepted rebuilds',
+    riskIds: [],
+    normalRuntimeAuthorityAllowed: true,
+  },
+  {
+    path: 'server/src/services/policyBuilderPhase7RuntimeMetricsTrace.mjs',
+    owner: 'phase7-runtime-contract',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    replacementTarget: 'Bounded runtime metrics and decision trace projection',
+    riskIds: [],
+    normalRuntimeAuthorityAllowed: true,
+  },
 ]);
 
 const BAD_QUESTION_PATHS = Object.freeze([
@@ -650,6 +742,10 @@ function listPolicyBuilderPhase7BadQuestionPaths() {
 
 function listPolicyBuilderPhase7RequiredRuntimeSurfacePaths() {
   return REQUIRED_RUNTIME_SURFACE_PATHS;
+}
+
+function listPolicyBuilderPhase7RequiredRuntimeContractSurfacePaths() {
+  return REQUIRED_RUNTIME_CONTRACT_SURFACE_PATHS;
 }
 
 function normalizeRuntimeArtifact(artifact = {}) {
@@ -824,6 +920,16 @@ function buildPolicyBuilderPhase7RuntimeDecisionInventory({
       ));
     });
 
+  REQUIRED_RUNTIME_CONTRACT_SURFACE_PATHS
+    .filter(path => !artifactByPath.has(path))
+    .forEach(path => {
+      issues.push(buildIssue(
+        PHASE7R_RUNTIME_RISK_IDS.MISSING_RUNTIME_CONTRACT_SURFACE,
+        `Phase 7R contract surface path is missing from the runtime inventory: ${path}.`,
+        { path }
+      ));
+    });
+
   const byDecision = DECISION_IDS.reduce((acc, decisionId) => ({
     ...acc,
     [decisionId]: normalizedArtifacts.filter(artifact => artifact.decisionId === decisionId).length,
@@ -860,6 +966,7 @@ export {
   PHASE7R_RUNTIME_STAGE_IDS,
   buildPolicyBuilderPhase7RuntimeDecisionInventory,
   listPolicyBuilderPhase7BadQuestionPaths,
+  listPolicyBuilderPhase7RequiredRuntimeContractSurfacePaths,
   listPolicyBuilderPhase7RequiredRuntimeSurfacePaths,
   listPolicyBuilderPhase7RuntimeArtifacts,
   validateRuntimeArtifact,

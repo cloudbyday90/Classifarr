@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Contract Surface Coverage Guard** — hardened the
+  runtime decision inventory so Phase 7R evidence projection, automation,
+  question, request-learning, rebuild, migration-verifier, and metrics/trace
+  contracts must have explicit cutline decisions before additional runtime
+  wiring proceeds.
 - **Policy Builder Phase 6R Completion Audit Health** — hardened the Phase 6R
   completion audit so the end-to-end bounded chain fails when any successful
   evidence, intent, learning, readiness, workflow, or migration handoff has a

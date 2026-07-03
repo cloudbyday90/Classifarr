@@ -3614,6 +3614,11 @@ Implementation status:
   diagnostics, metadata enrichment, Discord pending notifications,
   classification orchestration, routing, and persistence paths so new runtime
   behavior cannot bypass the cutline silently.
+- The inventory now also requires Phase 7R runtime/rebuild contract surface
+  coverage for evidence projection, evidence fingerprinting, automation
+  decisions, question reduction, request-time learning, library rebuild,
+  migration verification, and runtime metrics/trace services so replacement
+  contracts cannot bypass the cutline silently.
 - Every runtime artifact identifies an authority source before behavior changes:
   media-server contents, declared operator intent, manual outcome, AI output,
   metadata provider evidence, or legacy template compatibility.
