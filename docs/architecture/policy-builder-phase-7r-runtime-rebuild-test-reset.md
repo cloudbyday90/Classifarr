@@ -1,13 +1,14 @@
-# Policy Builder Phase 7R Runtime And Rebuild Test Reset
+# Policy Runtime And Rebuild Test Reset
 
-Status: implemented as the ninth Phase 7R runtime/rebuild component.
+Status: implemented as a durable runtime/rebuild test reset contract that
+originated as the ninth Phase 7R runtime/rebuild checkpoint.
 
 ## Problem
 
-Phase 7R replaces the old policy-builder preview-heavy migration path with
-server-owned runtime authority contracts. The test suite must stop treating
-impact/replay preview UI as the behavior contract, while still preserving useful
-classification regressions and migration safety checks.
+The re-imagined policy runtime replaces the old policy-builder preview-heavy
+migration path with server-owned runtime authority contracts. The test suite
+must stop treating impact/replay preview UI as the behavior contract, while
+still preserving useful classification regressions and migration safety checks.
 
 The reset must prove these behaviors:
 
@@ -33,7 +34,8 @@ The reset must prove these behaviors:
 
 ## Recommendations
 
-1. Treat Phase 7R tests as authority-boundary tests, not UI preview snapshots.
+1. Treat runtime/rebuild tests as authority-boundary tests, not UI preview
+   snapshots.
 2. Keep existing classification regressions where they still prove legacy
    compatibility, but move new behavior assertions to server-owned contracts.
 3. Classify each old impact/replay preview test as keep, rewrite, or delete
@@ -41,7 +43,7 @@ The reset must prove these behaviors:
 4. Require missing-routing coverage to distinguish classification success from
    routing success.
 5. Require rebuild and verifier tests to protect explicit constraints and
-   rollback safety before Phase 8R storage migration begins.
+   rollback safety before native intent storage migration begins.
 6. Verify each declared test artifact still resolves inside the repository and
    exists on disk so the reset cannot pass with stale paths.
 
@@ -58,15 +60,15 @@ Pros:
 Cons:
 
 - Requires follow-up cleanup work to actually remove old preview tests after
-  Phase 8R parity proves they are replaced.
-- Adds a governance contract that must be kept in sync when Phase 7R contracts
+  native intent parity proves they are replaced.
+- Adds a governance contract that must be kept in sync when runtime contracts
   move or rename.
 - Reads repository file metadata during validation, so the reset is tied to the
   current workspace layout.
 
 ## Final Recommendation Stack
 
-- Server service: `policyBuilderPhase7RuntimeRebuildTestReset.mjs`
+- Server service: `policyRuntimeRebuildTestReset.mjs`
 - Test reset decisions:
   - keep classification regression,
   - rewrite evidence projection,
@@ -87,12 +89,12 @@ Cons:
   - paths must be repository-relative,
   - paths must resolve inside the repository,
   - declared replacement/retention test files must exist.
-- Next step: Phase 7R completion audit before Phase 8R native intent storage.
+- Next step: runtime contract completion audit before native intent storage.
 
 ## Implemented Files
 
-- `server/src/services/policyBuilderPhase7RuntimeRebuildTestReset.mjs`
-- `server/src/__tests__/services/policyBuilderPhase7RuntimeRebuildTestReset.test.mjs`
+- `server/src/services/policyRuntimeRebuildTestReset.mjs`
+- `server/src/__tests__/services/policyRuntimeRebuildTestReset.test.mjs`
 
 ## Outcome
 

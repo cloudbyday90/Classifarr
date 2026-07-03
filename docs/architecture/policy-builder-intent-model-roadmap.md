@@ -4151,10 +4151,10 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 7R.9 runtime and rebuild test reset is documented in
-  [Policy Builder Phase 7R Runtime And Rebuild Test Reset](policy-builder-phase-7r-runtime-rebuild-test-reset.md).
+- Runtime and rebuild test reset is documented in
+  [Policy Runtime And Rebuild Test Reset](policy-builder-phase-7r-runtime-rebuild-test-reset.md).
 - Current implementation adds a server-owned reset manifest that classifies
-  runtime/rebuild tests as kept regressions, Phase 7R contract rewrites, or
+  runtime/rebuild tests as kept regressions, runtime contract rewrites, or
   abandoned impact/replay diagnostic deletion candidates.
 - The reset now verifies that each declared test artifact path is
   repository-relative, resolves inside the repository, and exists on disk, so
@@ -6313,6 +6313,14 @@ Implementation status:
 - After the runtime-metrics cutover, the repository inventory validates with
   12,373 total phase-coded references, 5,237 production references, and 5,259
   rename candidates.
+- The next runtime module cutover renamed runtime and rebuild test reset to
+  `policyRuntimeRebuildTestReset.mjs`, renamed its focused test, moved the
+  reset contract to `policy.runtime_rebuild_test_reset.v1`, and replaced the
+  contract-local phase handoff with `nextStep`:
+  [Policy Runtime And Rebuild Test Reset Module Cutover](policy-runtime-rebuild-test-reset-module-cutover.md).
+- After the runtime/rebuild-test-reset cutover, the repository inventory
+  validates with 12,214 total phase-coded references, 5,142 production
+  references, and 5,164 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

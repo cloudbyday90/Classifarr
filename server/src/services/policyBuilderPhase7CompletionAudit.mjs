@@ -30,8 +30,8 @@ import {
   buildPolicyRuntimeQuestionReductionAudit,
 } from './policyRuntimeQuestionReduction.mjs';
 import {
-  buildPolicyBuilderPhase7RuntimeRebuildTestResetAudit,
-} from './policyBuilderPhase7RuntimeRebuildTestReset.mjs';
+  buildPolicyRuntimeRebuildTestResetAudit,
+} from './policyRuntimeRebuildTestReset.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -87,6 +87,9 @@ const PHASE7R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
   }),
   [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE]: Object.freeze({
     runtime_rebuild_test_reset: '7r_9',
+  }),
+  [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_REBUILD_TEST_RESET]: Object.freeze({
+    completion_audit: 'phase7r_completion_audit',
   }),
 });
 
@@ -167,8 +170,8 @@ const PHASE7R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_REBUILD_TEST_RESET,
     label: 'Runtime and rebuild test reset',
     docPath: 'docs/architecture/policy-builder-phase-7r-runtime-rebuild-test-reset.md',
-    servicePath: 'server/src/services/policyBuilderPhase7RuntimeRebuildTestReset.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase7RuntimeRebuildTestReset.test.mjs',
+    servicePath: 'server/src/services/policyRuntimeRebuildTestReset.mjs',
+    testPath: 'server/src/__tests__/services/policyRuntimeRebuildTestReset.test.mjs',
     expectedNextPhaseId: 'phase7r_completion_audit',
     evidence: 'Runtime/rebuild tests are classified around server contracts, stale paths fail validation, and old preview UI is not frozen as migration behavior.',
   },
@@ -237,7 +240,7 @@ function buildDefaultComponentAudits() {
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE]:
       buildPolicyRuntimeMetricsTraceAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_REBUILD_TEST_RESET]:
-      buildPolicyBuilderPhase7RuntimeRebuildTestResetAudit(),
+      buildPolicyRuntimeRebuildTestResetAudit(),
   };
 }
 

@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { dirname, isAbsolute, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const PHASE7R_TEST_RESET_DECISION_IDS = Object.freeze({
+const POLICY_RUNTIME_TEST_RESET_DECISION_IDS = Object.freeze({
   KEEP_CLASSIFICATION_REGRESSION: 'keep_classification_regression',
   REWRITE_EVIDENCE_PROJECTION: 'rewrite_evidence_projection',
   REWRITE_AUTOMATION_DECISION: 'rewrite_automation_decision',
@@ -13,7 +13,7 @@ const PHASE7R_TEST_RESET_DECISION_IDS = Object.freeze({
   DELETE_ABANDONED_DIAGNOSTIC: 'delete_abandoned_diagnostic',
 });
 
-const PHASE7R_TEST_RESET_COVERAGE_IDS = Object.freeze({
+const POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS = Object.freeze({
   BROAD_GENRE_NO_SPECIALIZED_AUTO_ROUTE: 'broad_genre_no_specialized_auto_route',
   MISSING_ROUTING_CLASSIFIED_NOT_ROUTED: 'missing_routing_classified_not_routed',
   STALE_QUESTIONS_CANNOT_LEARN: 'stale_questions_cannot_learn',
@@ -24,7 +24,7 @@ const PHASE7R_TEST_RESET_COVERAGE_IDS = Object.freeze({
   CLASSIFICATION_REGRESSION_REMAINS: 'classification_regression_remains',
 });
 
-const PHASE7R_TEST_RESET_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_DECISION: 'unknown_decision',
   UNKNOWN_COVERAGE: 'unknown_coverage',
   MISSING_ARTIFACT_PATH: 'missing_artifact_path',
@@ -42,42 +42,42 @@ const PHASE7R_TEST_RESET_AUDIT_RISK_IDS = Object.freeze({
   ARTIFACT_FILE_MISSING: 'artifact_file_missing',
 });
 
-const RESET_CONTRACT_VERSION = 'phase7r.runtime_rebuild_test_reset.v1';
+const RESET_CONTRACT_VERSION = 'policy.runtime_rebuild_test_reset.v1';
 const DEFAULT_REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 const REQUIRED_COVERAGE_IDS = Object.freeze([
-  PHASE7R_TEST_RESET_COVERAGE_IDS.BROAD_GENRE_NO_SPECIALIZED_AUTO_ROUTE,
-  PHASE7R_TEST_RESET_COVERAGE_IDS.MISSING_ROUTING_CLASSIFIED_NOT_ROUTED,
-  PHASE7R_TEST_RESET_COVERAGE_IDS.STALE_QUESTIONS_CANNOT_LEARN,
-  PHASE7R_TEST_RESET_COVERAGE_IDS.REQUEST_CHOICES_REQUIRE_GUARD,
-  PHASE7R_TEST_RESET_COVERAGE_IDS.REBUILD_PRESERVES_EXPLICIT_CONSTRAINTS,
-  PHASE7R_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
+  POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.BROAD_GENRE_NO_SPECIALIZED_AUTO_ROUTE,
+  POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.MISSING_ROUTING_CLASSIFIED_NOT_ROUTED,
+  POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.STALE_QUESTIONS_CANNOT_LEARN,
+  POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REQUEST_CHOICES_REQUIRE_GUARD,
+  POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REBUILD_PRESERVES_EXPLICIT_CONSTRAINTS,
+  POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
 ]);
 
-const DECISION_IDS = Object.freeze(Object.values(PHASE7R_TEST_RESET_DECISION_IDS));
-const COVERAGE_IDS = Object.freeze(Object.values(PHASE7R_TEST_RESET_COVERAGE_IDS));
+const DECISION_IDS = Object.freeze(Object.values(POLICY_RUNTIME_TEST_RESET_DECISION_IDS));
+const COVERAGE_IDS = Object.freeze(Object.values(POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS));
 const SERVER_AUTHORITY_DECISION_IDS = Object.freeze([
-  PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_EVIDENCE_PROJECTION,
-  PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_AUTOMATION_DECISION,
-  PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_QUESTION_CONTRACT,
-  PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD,
-  PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER,
-  PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS,
+  POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_EVIDENCE_PROJECTION,
+  POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_AUTOMATION_DECISION,
+  POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_QUESTION_CONTRACT,
+  POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD,
+  POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER,
+  POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS,
 ]);
 
 const CLASSIFICATION_ROUTING_COVERAGE_IDS = Object.freeze([
-  PHASE7R_TEST_RESET_COVERAGE_IDS.MISSING_ROUTING_CLASSIFIED_NOT_ROUTED,
+  POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.MISSING_ROUTING_CLASSIFIED_NOT_ROUTED,
 ]);
 
 const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
   Object.freeze({
     path: 'server/src/__tests__/classification-routing.test.mjs',
     owner: 'server',
-    decisionId: PHASE7R_TEST_RESET_DECISION_IDS.KEEP_CLASSIFICATION_REGRESSION,
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.KEEP_CLASSIFICATION_REGRESSION,
     coverageIds: [
-      PHASE7R_TEST_RESET_COVERAGE_IDS.CLASSIFICATION_REGRESSION_REMAINS,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.CLASSIFICATION_REGRESSION_REMAINS,
     ],
-    replacement: 'Keep as existing classification/routing regression coverage while Phase 7R contracts protect new authority boundaries.',
+    replacement: 'Keep as existing classification/routing regression coverage while runtime contracts protect new authority boundaries.',
     protectsAuthority: true,
     distinguishesClassificationFromRouting: true,
     preservesOldPreviewUi: false,
@@ -88,11 +88,11 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
   Object.freeze({
     path: 'server/src/__tests__/services/policyRuntimeEvidenceProjection.test.mjs',
     owner: 'server',
-    decisionId: PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_EVIDENCE_PROJECTION,
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_EVIDENCE_PROJECTION,
     coverageIds: [
-      PHASE7R_TEST_RESET_COVERAGE_IDS.BROAD_GENRE_NO_SPECIALIZED_AUTO_ROUTE,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.BROAD_GENRE_NO_SPECIALIZED_AUTO_ROUTE,
     ],
-    replacement: 'Use Phase 7R runtime evidence projection to demote broad genre overlap until identity evidence exists.',
+    replacement: 'Use runtime evidence projection to demote broad genre overlap until identity evidence exists.',
     protectsAuthority: true,
     distinguishesClassificationFromRouting: false,
     preservesOldPreviewUi: false,
@@ -103,12 +103,12 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
   Object.freeze({
     path: 'server/src/__tests__/services/policyAutomationDecisionContract.test.mjs',
     owner: 'server',
-    decisionId: PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_AUTOMATION_DECISION,
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_AUTOMATION_DECISION,
     coverageIds: [
-      PHASE7R_TEST_RESET_COVERAGE_IDS.BROAD_GENRE_NO_SPECIALIZED_AUTO_ROUTE,
-      PHASE7R_TEST_RESET_COVERAGE_IDS.MISSING_ROUTING_CLASSIFIED_NOT_ROUTED,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.BROAD_GENRE_NO_SPECIALIZED_AUTO_ROUTE,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.MISSING_ROUTING_CLASSIFIED_NOT_ROUTED,
     ],
-    replacement: 'Use Phase 7R automation states to separate classification success from routing success.',
+    replacement: 'Use automation decision states to separate classification success from routing success.',
     protectsAuthority: true,
     distinguishesClassificationFromRouting: true,
     preservesOldPreviewUi: false,
@@ -119,11 +119,11 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
   Object.freeze({
     path: 'server/src/__tests__/services/policyRuntimeQuestionReduction.test.mjs',
     owner: 'server',
-    decisionId: PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_QUESTION_CONTRACT,
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_QUESTION_CONTRACT,
     coverageIds: [
-      PHASE7R_TEST_RESET_COVERAGE_IDS.STALE_QUESTIONS_CANNOT_LEARN,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.STALE_QUESTIONS_CANNOT_LEARN,
     ],
-    replacement: 'Use Phase 7R question reduction to clean stale or legacy questions and prevent unguarded learning.',
+    replacement: 'Use runtime question reduction to clean stale or legacy questions and prevent unguarded learning.',
     protectsAuthority: true,
     distinguishesClassificationFromRouting: false,
     preservesOldPreviewUi: false,
@@ -134,11 +134,11 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
   Object.freeze({
     path: 'server/src/__tests__/services/policyRequestTimeLearning.test.mjs',
     owner: 'server',
-    decisionId: PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD,
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD,
     coverageIds: [
-      PHASE7R_TEST_RESET_COVERAGE_IDS.REQUEST_CHOICES_REQUIRE_GUARD,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REQUEST_CHOICES_REQUIRE_GUARD,
     ],
-    replacement: 'Use Phase 7R request-time learning decisions and Phase 6R learning guard before durable evidence writes.',
+    replacement: 'Use request-time learning decisions and the learning guard before durable evidence writes.',
     protectsAuthority: true,
     distinguishesClassificationFromRouting: true,
     preservesOldPreviewUi: false,
@@ -149,11 +149,11 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
   Object.freeze({
     path: 'server/src/__tests__/services/policyLibraryPolicyRebuild.test.mjs',
     owner: 'server',
-    decisionId: PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER,
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER,
     coverageIds: [
-      PHASE7R_TEST_RESET_COVERAGE_IDS.REBUILD_PRESERVES_EXPLICIT_CONSTRAINTS,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REBUILD_PRESERVES_EXPLICIT_CONSTRAINTS,
     ],
-    replacement: 'Use Phase 7R rebuild proposals to preserve explicit operator constraints while deriving policy from library evidence.',
+    replacement: 'Use library-derived rebuild proposals to preserve explicit operator constraints while deriving policy from library evidence.',
     protectsAuthority: true,
     distinguishesClassificationFromRouting: false,
     preservesOldPreviewUi: false,
@@ -164,11 +164,11 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
   Object.freeze({
     path: 'server/src/__tests__/services/policyMigrationVerifierRollback.test.mjs',
     owner: 'server',
-    decisionId: PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER,
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER,
     coverageIds: [
-      PHASE7R_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
     ],
-    replacement: 'Use Phase 7R migration verifier to require operator acceptance and rollback snapshot before replacement.',
+    replacement: 'Use the migration verifier to require operator acceptance and rollback snapshot before replacement.',
     protectsAuthority: true,
     distinguishesClassificationFromRouting: true,
     preservesOldPreviewUi: false,
@@ -179,11 +179,11 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
   Object.freeze({
     path: 'server/src/__tests__/services/policyRuntimeMetricsTrace.test.mjs',
     owner: 'server',
-    decisionId: PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS,
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS,
     coverageIds: [
-      PHASE7R_TEST_RESET_COVERAGE_IDS.RUNTIME_METRICS_SUPPRESS_DIAGNOSTICS,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.RUNTIME_METRICS_SUPPRESS_DIAGNOSTICS,
     ],
-    replacement: 'Use Phase 7R metrics trace to count runtime outcomes without exposing old replay or impact diagnostic internals.',
+    replacement: 'Use runtime metrics trace to count runtime outcomes without exposing old replay or impact diagnostic internals.',
     protectsAuthority: true,
     distinguishesClassificationFromRouting: true,
     preservesOldPreviewUi: false,
@@ -194,9 +194,9 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
   Object.freeze({
     path: 'client/src/__tests__/PolicyIntentImpactPreviewCard.test.js',
     owner: 'client',
-    decisionId: PHASE7R_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC,
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC,
     coverageIds: [
-      PHASE7R_TEST_RESET_COVERAGE_IDS.REBUILD_PRESERVES_EXPLICIT_CONSTRAINTS,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REBUILD_PRESERVES_EXPLICIT_CONSTRAINTS,
     ],
     replacement: 'Replace behavior-sensitive impact preview assertions with server rebuild proposal and migration verifier coverage before deleting old UI diagnostics.',
     protectsAuthority: false,
@@ -209,9 +209,9 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
   Object.freeze({
     path: 'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
     owner: 'client',
-    decisionId: PHASE7R_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC,
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC,
     coverageIds: [
-      PHASE7R_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
     ],
     replacement: 'Replace replay preview migration confidence with server migration verifier coverage before deleting old UI diagnostics.',
     protectsAuthority: false,
@@ -328,12 +328,12 @@ function buildCoveragePlan(artifacts) {
   });
 }
 
-function listPolicyBuilderPhase7TestResetArtifacts() {
+function listPolicyRuntimeRebuildTestResetArtifacts() {
   return DEFAULT_TEST_RESET_ARTIFACTS.map(artifact => normalizeArtifact(artifact));
 }
 
-function buildPolicyBuilderPhase7RuntimeRebuildTestReset({
-  artifacts = listPolicyBuilderPhase7TestResetArtifacts(),
+function buildPolicyRuntimeRebuildTestReset({
+  artifacts = listPolicyRuntimeRebuildTestResetArtifacts(),
   repoRoot = DEFAULT_REPO_ROOT,
 } = {}) {
   const normalizedArtifacts = asArray(artifacts).map(artifact => normalizeArtifact(artifact));
@@ -357,20 +357,20 @@ function buildPolicyBuilderPhase7RuntimeRebuildTestReset({
       testsRewritten: false,
       workflowModified: false,
     },
-    nextPhase: {
-      phaseId: 'phase7r_completion_audit',
-      label: 'Phase 7R Completion Audit',
-      reason: 'The runtime and rebuild test reset is the final Phase 7R component; verify all Phase 7R contracts before Phase 8R native intent storage work starts.',
+    nextStep: {
+      stepId: 'completion_audit',
+      label: 'Runtime Contract Completion Audit',
+      reason: 'Runtime and rebuild test reset is complete; verify all runtime contracts before native intent storage work starts.',
     },
   };
 
   return {
     ...reset,
-    validation: validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset),
+    validation: validatePolicyRuntimeRebuildTestReset(reset),
   };
 }
 
-function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
+function validatePolicyRuntimeRebuildTestReset(reset = {}) {
   const artifacts = asArray(reset.artifacts);
   const artifactAvailability = asArray(reset.artifactAvailability);
   const artifactAvailabilityByPath = new Map(
@@ -386,7 +386,7 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
 
     if (!normalizeString(artifact.path)) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.MISSING_ARTIFACT_PATH,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.MISSING_ARTIFACT_PATH,
         artifactIndex: index,
         message: 'Each runtime/rebuild test reset artifact must include a path.',
       });
@@ -394,7 +394,7 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
 
     if (normalizeString(artifact.path) && (!availability || availability.withinRepo !== true)) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.ARTIFACT_PATH_OUTSIDE_REPO,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.ARTIFACT_PATH_OUTSIDE_REPO,
         artifactPath: artifact.path || null,
         message: 'Runtime/rebuild test reset artifacts must resolve inside the repository.',
       });
@@ -402,7 +402,7 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
 
     if (normalizeString(artifact.path) && availability?.exists !== true) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.ARTIFACT_FILE_MISSING,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.ARTIFACT_FILE_MISSING,
         artifactPath: artifact.path || null,
         message: 'Runtime/rebuild test reset artifact path must exist before the reset can pass.',
       });
@@ -410,7 +410,7 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
 
     if (!normalizeString(artifact.owner)) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.MISSING_ARTIFACT_OWNER,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.MISSING_ARTIFACT_OWNER,
         artifactPath: artifact.path || null,
         message: 'Each runtime/rebuild test reset artifact must include an owner.',
       });
@@ -418,7 +418,7 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
 
     if (!DECISION_IDS.includes(artifact.decisionId)) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.UNKNOWN_DECISION,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.UNKNOWN_DECISION,
         artifactPath: artifact.path || null,
         decisionId: artifact.decisionId || null,
         message: 'Test reset artifact uses an unknown reset decision.',
@@ -427,7 +427,7 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
 
     if (!normalizeString(artifact.replacement)) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.MISSING_REPLACEMENT,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.MISSING_REPLACEMENT,
         artifactPath: artifact.path || null,
         message: 'Every test reset artifact must name the retained or replacement contract.',
       });
@@ -437,7 +437,7 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
       mappedCoverageIds.add(coverageId);
       if (!COVERAGE_IDS.includes(coverageId)) {
         issues.push({
-          riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.UNKNOWN_COVERAGE,
+          riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.UNKNOWN_COVERAGE,
           artifactPath: artifact.path || null,
           coverageId,
           message: 'Test reset artifact references an unknown coverage id.',
@@ -447,7 +447,7 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
 
     if (asArray(artifact.coverageIds).length === 0) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.MISSING_COVERAGE,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.MISSING_COVERAGE,
         artifactPath: artifact.path || null,
         message: 'Every test reset artifact must map to at least one coverage contract.',
       });
@@ -458,7 +458,7 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
       artifact.protectsAuthority !== true
     ) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.SERVER_AUTHORITY_NOT_PROTECTED,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.SERVER_AUTHORITY_NOT_PROTECTED,
         artifactPath: artifact.path || null,
         message: 'Runtime/rebuild rewrites must protect the server authority boundary.',
       });
@@ -471,7 +471,7 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
       artifact.distinguishesClassificationFromRouting !== true
     ) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.CLASSIFICATION_ROUTING_NOT_DISTINGUISHED,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.CLASSIFICATION_ROUTING_NOT_DISTINGUISHED,
         artifactPath: artifact.path || null,
         message: 'Missing-routing coverage must distinguish classification success from routing success.',
       });
@@ -479,29 +479,29 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
 
     if (artifact.preservesOldPreviewUi === true) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.OLD_PREVIEW_UI_FROZEN,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.OLD_PREVIEW_UI_FROZEN,
         artifactPath: artifact.path || null,
-        message: 'Phase 7R test reset cannot freeze old impact/replay preview UI as the migration contract.',
+        message: 'Runtime/rebuild test reset cannot freeze old impact/replay preview UI as the migration contract.',
       });
     }
 
     if (
-      artifact.decisionId === PHASE7R_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC &&
+      artifact.decisionId === POLICY_RUNTIME_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC &&
       artifact.normalWorkflowAllowed === true
     ) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.DELETE_TARGET_STILL_NORMAL_WORKFLOW,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.DELETE_TARGET_STILL_NORMAL_WORKFLOW,
         artifactPath: artifact.path || null,
         message: 'Deletion candidates cannot remain normal workflow requirements.',
       });
     }
 
     if (
-      artifact.decisionId === PHASE7R_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC &&
+      artifact.decisionId === POLICY_RUNTIME_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC &&
       !normalizeString(artifact.replacement)
     ) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.DELETE_TARGET_WITHOUT_REPLACEMENT,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.DELETE_TARGET_WITHOUT_REPLACEMENT,
         artifactPath: artifact.path || null,
         message: 'Deletion candidates must name the replacement server contract.',
       });
@@ -509,7 +509,7 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
 
     if (asArray(artifact.traceReasons).length === 0) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
         artifactPath: artifact.path || null,
         message: 'Every reset decision must include a bounded trace reason.',
       });
@@ -520,16 +520,16 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
     const coverageRecord = coveragePlan.find(coverage => coverage.coverageId === coverageId);
     if (!coverageRecord || coverageRecord.covered !== true || !mappedCoverageIds.has(coverageId)) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.REQUIRED_COVERAGE_UNMAPPED,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.REQUIRED_COVERAGE_UNMAPPED,
         coverageId,
-        message: 'Required Phase 7R runtime/rebuild reset coverage is not mapped to a test artifact.',
+        message: 'Required runtime/rebuild reset coverage is not mapped to a test artifact.',
       });
     }
   });
 
   if (reset.summary?.oldPreviewUiFrozen === true) {
     issues.push({
-      riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.OLD_PREVIEW_UI_FROZEN,
+      riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.OLD_PREVIEW_UI_FROZEN,
       message: 'Reset summary reports old preview UI as frozen.',
     });
   }
@@ -537,7 +537,7 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
   Object.entries(reset.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push({
-        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.OLD_PREVIEW_UI_FROZEN,
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.OLD_PREVIEW_UI_FROZEN,
         message: `Runtime/rebuild test reset cannot perform side effect "${key}".`,
       });
     }
@@ -550,10 +550,10 @@ function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
   };
 }
 
-function buildPolicyBuilderPhase7RuntimeRebuildTestResetAudit(
-  reset = buildPolicyBuilderPhase7RuntimeRebuildTestReset()
+function buildPolicyRuntimeRebuildTestResetAudit(
+  reset = buildPolicyRuntimeRebuildTestReset()
 ) {
-  const validation = validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset);
+  const validation = validatePolicyRuntimeRebuildTestReset(reset);
 
   return {
     ok: validation.ok,
@@ -561,20 +561,20 @@ function buildPolicyBuilderPhase7RuntimeRebuildTestResetAudit(
     artifactCount: asArray(reset.artifacts).length,
     requiredCoverageCount: REQUIRED_COVERAGE_IDS.length,
     validation,
-    nextPhase: reset.nextPhase || {
-      phaseId: 'phase7r_completion_audit',
-      label: 'Phase 7R Completion Audit',
-      reason: 'Verify Phase 7R contracts before Phase 8R native intent storage starts.',
+    nextStep: reset.nextStep || {
+      stepId: 'completion_audit',
+      label: 'Runtime Contract Completion Audit',
+      reason: 'Verify runtime contracts before native intent storage starts.',
     },
   };
 }
 
 export {
-  PHASE7R_TEST_RESET_AUDIT_RISK_IDS,
-  PHASE7R_TEST_RESET_COVERAGE_IDS,
-  PHASE7R_TEST_RESET_DECISION_IDS,
-  buildPolicyBuilderPhase7RuntimeRebuildTestReset,
-  buildPolicyBuilderPhase7RuntimeRebuildTestResetAudit,
-  listPolicyBuilderPhase7TestResetArtifacts,
-  validatePolicyBuilderPhase7RuntimeRebuildTestReset,
+  POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS,
+  POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS,
+  POLICY_RUNTIME_TEST_RESET_DECISION_IDS,
+  buildPolicyRuntimeRebuildTestReset,
+  buildPolicyRuntimeRebuildTestResetAudit,
+  listPolicyRuntimeRebuildTestResetArtifacts,
+  validatePolicyRuntimeRebuildTestReset,
 };

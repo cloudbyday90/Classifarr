@@ -108,7 +108,7 @@ Validation should include:
 
 ```text
 cd server
-node ../scripts/run-jest.mjs --testPathPatterns="policyRuntimeMetricsTrace|policyBuilderPhase7CompletionAudit|policyRuntimeDecisionInventory|policyBuilderPhase7RuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
+node ../scripts/run-jest.mjs --testPathPatterns="policyRuntimeMetricsTrace|policyBuilderPhase7CompletionAudit|policyRuntimeDecisionInventory|policyRuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
 npm run lint:docs
 npm --prefix server run lint:security -- --quiet
 node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid
@@ -117,6 +117,7 @@ npm --prefix server run test:unit -- --no-coverage --runInBand
 
 ## Next Step
 
-Cut over Runtime And Rebuild Test Reset to a durable product-domain module name
-because runtime metrics now exports durable names and test reset is the next
-direct runtime consumer still carrying Phase 7R production naming.
+Cut over the completion audit to a durable product-domain module name because
+runtime metrics and runtime/rebuild test reset now export durable names, and
+the completion audit is the next production service still carrying Phase 7R
+production naming.

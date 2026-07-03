@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Rebuild Test Reset Module Cutover** — renamed the runtime
+  and rebuild test reset contract plus focused test to durable product-domain
+  names, moved the reset contract to `policy.runtime_rebuild_test_reset.v1`,
+  replaced the contract-local phase handoff with `nextStep`, updated
+  completion-audit consumers, and retained the completion-audit adapter for the
+  final runtime contract completion checkpoint.
 - **Policy Runtime Metrics Trace Module Cutover** — renamed the runtime metrics
   and decision trace contract plus focused test to durable product-domain
   names, moved the metrics contract to `policy.runtime_metrics_trace.v1`,
