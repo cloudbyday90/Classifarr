@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Readiness Cutover** — renamed the readiness and
+  next-action contract and focused test to durable product-domain names,
+  replaced phase-coded readiness, diagnostic-surface, visibility, risk, and
+  helper exports with `POLICY_AUTHORING_READINESS_*`,
+  `POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS`, and
+  `policyAuthoringReadiness*`, updated completion-audit records to track
+  `policy_authoring_readiness`, and preserved one-action readiness,
+  verifier-only diagnostics, and action-to-component validation behavior.
 - **Policy Authoring Constraints Cutover** — renamed the hard-limit and avoid
   UX contract and focused test to durable product-domain names, replaced
   phase-coded constraint, certification, command, source, risk, and helper

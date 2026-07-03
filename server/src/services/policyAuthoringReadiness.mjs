@@ -11,7 +11,7 @@ import {
   POLICY_AUTHORING_WORKFLOW_ROLE_IDS,
 } from './policyAuthoringWorkflowInventory.mjs';
 
-const PHASE_3R_READINESS_STATE_IDS = Object.freeze({
+const POLICY_AUTHORING_READINESS_STATE_IDS = Object.freeze({
   READY: 'ready',
   NEEDS_EXAMPLES: 'needs_examples',
   NEEDS_REVIEW: 'needs_review',
@@ -20,7 +20,7 @@ const PHASE_3R_READINESS_STATE_IDS = Object.freeze({
   STALE_PROFILE: 'stale_profile',
 });
 
-const PHASE_3R_READINESS_ISSUE_IDS = Object.freeze({
+const POLICY_AUTHORING_READINESS_ISSUE_IDS = Object.freeze({
   NO_OBSERVED_EXAMPLES: 'no_observed_examples',
   MISSING_DESTINATION_INTENT: 'missing_destination_intent',
   STRUCTURAL_REVIEW_NEEDED: 'structural_review_needed',
@@ -29,7 +29,7 @@ const PHASE_3R_READINESS_ISSUE_IDS = Object.freeze({
   OBSERVED_PROFILE_STALE: 'observed_profile_stale',
 });
 
-const PHASE_3R_READINESS_NEXT_ACTION_IDS = Object.freeze({
+const POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS = Object.freeze({
   SAVE_POLICY: 'save_policy',
   SYNC_MEDIA_SERVER_LIBRARY: 'sync_media_server_library',
   ADD_DECLARED_INTENT: 'add_declared_intent',
@@ -39,7 +39,7 @@ const PHASE_3R_READINESS_NEXT_ACTION_IDS = Object.freeze({
   REFRESH_OBSERVED_PROFILE: 'refresh_observed_profile',
 });
 
-const PHASE_3R_DIAGNOSTIC_SURFACE_IDS = Object.freeze({
+const POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS = Object.freeze({
   IMPACT_PREVIEW: 'impact_preview',
   REPLAY_PREVIEW: 'replay_preview',
   PROVIDER_READINESS: 'provider_readiness',
@@ -48,12 +48,12 @@ const PHASE_3R_DIAGNOSTIC_SURFACE_IDS = Object.freeze({
   PARITY_DELTA: 'parity_delta',
 });
 
-const PHASE_3R_READINESS_SURFACE_VISIBILITY_IDS = Object.freeze({
+const POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS = Object.freeze({
   NORMAL_READINESS: 'normal_readiness',
   MIGRATION_VERIFIER_ONLY: 'migration_verifier_only',
 });
 
-const PHASE_3R_READINESS_RISK_IDS = Object.freeze({
+const POLICY_AUTHORING_READINESS_RISK_IDS = Object.freeze({
   UNKNOWN_READINESS_ISSUE: 'unknown_readiness_issue',
   UNKNOWN_READINESS_STATE: 'unknown_readiness_state',
   MULTIPLE_NEXT_ACTIONS: 'multiple_next_actions',
@@ -63,12 +63,12 @@ const PHASE_3R_READINESS_RISK_IDS = Object.freeze({
 });
 
 const READINESS_STATE_PRIORITY = Object.freeze({
-  [PHASE_3R_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT]: 1,
-  [PHASE_3R_READINESS_STATE_IDS.NEEDS_ROUTING]: 2,
-  [PHASE_3R_READINESS_STATE_IDS.STALE_PROFILE]: 3,
-  [PHASE_3R_READINESS_STATE_IDS.NEEDS_EXAMPLES]: 4,
-  [PHASE_3R_READINESS_STATE_IDS.NEEDS_REVIEW]: 5,
-  [PHASE_3R_READINESS_STATE_IDS.READY]: 6,
+  [POLICY_AUTHORING_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT]: 1,
+  [POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_ROUTING]: 2,
+  [POLICY_AUTHORING_READINESS_STATE_IDS.STALE_PROFILE]: 3,
+  [POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_EXAMPLES]: 4,
+  [POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_REVIEW]: 5,
+  [POLICY_AUTHORING_READINESS_STATE_IDS.READY]: 6,
 });
 
 function deepFreeze(value) {
@@ -93,107 +93,107 @@ function toCleanString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-const PHASE_3R_READINESS_STATE_RECORDS = deepFreeze([
+const POLICY_AUTHORING_READINESS_STATE_RECORDS = deepFreeze([
   {
-    id: PHASE_3R_READINESS_STATE_IDS.READY,
+    id: POLICY_AUTHORING_READINESS_STATE_IDS.READY,
     label: 'Ready',
     tone: 'success',
     statusRole: 'status',
     message: 'This policy has enough declared intent and routing context to save.',
-    nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.SAVE_POLICY,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.SAVE_POLICY,
   },
   {
-    id: PHASE_3R_READINESS_STATE_IDS.NEEDS_EXAMPLES,
+    id: POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_EXAMPLES,
     label: 'Needs examples',
     tone: 'info',
     statusRole: 'status',
     message: 'This destination needs more observed examples or an explicit declared intent.',
-    nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
   },
   {
-    id: PHASE_3R_READINESS_STATE_IDS.NEEDS_REVIEW,
+    id: POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_REVIEW,
     label: 'Needs review',
     tone: 'warning',
     statusRole: 'alert',
     message: 'Review the highlighted policy section before relying on this destination.',
-    nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.REVIEW_INTENT_SECTION,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.REVIEW_INTENT_SECTION,
   },
   {
-    id: PHASE_3R_READINESS_STATE_IDS.NEEDS_ROUTING,
+    id: POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_ROUTING,
     label: 'Needs routing',
     tone: 'warning',
     statusRole: 'alert',
     message: 'Map the destination to an Arr root folder before this policy can route.',
-    nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
   },
   {
-    id: PHASE_3R_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
+    id: POLICY_AUTHORING_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
     label: 'Blocked by hard limit',
     tone: 'danger',
     statusRole: 'alert',
     message: 'A declared hard limit currently blocks this destination.',
-    nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.REVIEW_HARD_LIMITS,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.REVIEW_HARD_LIMITS,
   },
   {
-    id: PHASE_3R_READINESS_STATE_IDS.STALE_PROFILE,
+    id: POLICY_AUTHORING_READINESS_STATE_IDS.STALE_PROFILE,
     label: 'Stale profile',
     tone: 'info',
     statusRole: 'status',
     message: 'Refresh the observed library profile before trusting suggestions.',
-    nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.REFRESH_OBSERVED_PROFILE,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.REFRESH_OBSERVED_PROFILE,
   },
 ]);
 
-const PHASE_3R_READINESS_ISSUE_RECORDS = deepFreeze([
+const POLICY_AUTHORING_READINESS_ISSUE_RECORDS = deepFreeze([
   {
-    issueId: PHASE_3R_READINESS_ISSUE_IDS.NO_OBSERVED_EXAMPLES,
-    stateId: PHASE_3R_READINESS_STATE_IDS.NEEDS_EXAMPLES,
-    nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
+    issueId: POLICY_AUTHORING_READINESS_ISSUE_IDS.NO_OBSERVED_EXAMPLES,
+    stateId: POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_EXAMPLES,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
     flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.REVIEW_OBSERVED_DESTINATION,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.OBSERVED_PROFILE_SUMMARY,
     destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
     message: 'Sync or add examples so the destination has observable context.',
   },
   {
-    issueId: PHASE_3R_READINESS_ISSUE_IDS.MISSING_DESTINATION_INTENT,
-    stateId: PHASE_3R_READINESS_STATE_IDS.NEEDS_EXAMPLES,
-    nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
+    issueId: POLICY_AUTHORING_READINESS_ISSUE_IDS.MISSING_DESTINATION_INTENT,
+    stateId: POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_EXAMPLES,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
     flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.ACCEPT_OR_EDIT_DECLARED_INTENT,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
     destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
     message: 'Add at least one belongs-here signal for this destination.',
   },
   {
-    issueId: PHASE_3R_READINESS_ISSUE_IDS.STRUCTURAL_REVIEW_NEEDED,
-    stateId: PHASE_3R_READINESS_STATE_IDS.NEEDS_REVIEW,
-    nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.REVIEW_INTENT_SECTION,
+    issueId: POLICY_AUTHORING_READINESS_ISSUE_IDS.STRUCTURAL_REVIEW_NEEDED,
+    stateId: POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_REVIEW,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.REVIEW_INTENT_SECTION,
     flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.ACCEPT_OR_EDIT_DECLARED_INTENT,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
     destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.ACCEPT_OBSERVED_SUGGESTIONS,
     message: 'Review weak or conflicting intent before saving.',
   },
   {
-    issueId: PHASE_3R_READINESS_ISSUE_IDS.ROUTING_UNMAPPED,
-    stateId: PHASE_3R_READINESS_STATE_IDS.NEEDS_ROUTING,
-    nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
+    issueId: POLICY_AUTHORING_READINESS_ISSUE_IDS.ROUTING_UNMAPPED,
+    stateId: POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_ROUTING,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
     flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.CONFIRM_ROUTING_READINESS,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
     destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
     message: 'Map this media-server library to an Arr destination before routing.',
   },
   {
-    issueId: PHASE_3R_READINESS_ISSUE_IDS.HARD_LIMIT_BLOCKING,
-    stateId: PHASE_3R_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
-    nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.REVIEW_HARD_LIMITS,
+    issueId: POLICY_AUTHORING_READINESS_ISSUE_IDS.HARD_LIMIT_BLOCKING,
+    stateId: POLICY_AUTHORING_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.REVIEW_HARD_LIMITS,
     flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.CONFIRM_HARD_LIMITS,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
     destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.CONFIRM_HARD_LIMITS,
     message: 'Review the hard limit that is blocking this destination.',
   },
   {
-    issueId: PHASE_3R_READINESS_ISSUE_IDS.OBSERVED_PROFILE_STALE,
-    stateId: PHASE_3R_READINESS_STATE_IDS.STALE_PROFILE,
-    nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.REFRESH_OBSERVED_PROFILE,
+    issueId: POLICY_AUTHORING_READINESS_ISSUE_IDS.OBSERVED_PROFILE_STALE,
+    stateId: POLICY_AUTHORING_READINESS_STATE_IDS.STALE_PROFILE,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.REFRESH_OBSERVED_PROFILE,
     flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.REVIEW_OBSERVED_DESTINATION,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_CONTEXT_CARD,
     destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
@@ -201,78 +201,78 @@ const PHASE_3R_READINESS_ISSUE_RECORDS = deepFreeze([
   },
 ]);
 
-const PHASE_3R_DIAGNOSTIC_SURFACE_RECORDS = deepFreeze([
+const POLICY_AUTHORING_DIAGNOSTIC_SURFACE_RECORDS = deepFreeze([
   {
-    id: PHASE_3R_DIAGNOSTIC_SURFACE_IDS.IMPACT_PREVIEW,
+    id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.IMPACT_PREVIEW,
     label: 'Impact preview',
-    visibilityId: PHASE_3R_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
+    visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
     workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
   },
   {
-    id: PHASE_3R_DIAGNOSTIC_SURFACE_IDS.REPLAY_PREVIEW,
+    id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.REPLAY_PREVIEW,
     label: 'Replay preview',
-    visibilityId: PHASE_3R_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
+    visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
     workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
   },
   {
-    id: PHASE_3R_DIAGNOSTIC_SURFACE_IDS.PROVIDER_READINESS,
+    id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.PROVIDER_READINESS,
     label: 'Provider readiness',
-    visibilityId: PHASE_3R_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
+    visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
     workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
   },
   {
-    id: PHASE_3R_DIAGNOSTIC_SURFACE_IDS.TMDB_LIVE_PREVIEW,
+    id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.TMDB_LIVE_PREVIEW,
     label: 'TMDB live preview',
-    visibilityId: PHASE_3R_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
+    visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
     workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
   },
   {
-    id: PHASE_3R_DIAGNOSTIC_SURFACE_IDS.SCORING_DETAILS,
+    id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.SCORING_DETAILS,
     label: 'Scoring details',
-    visibilityId: PHASE_3R_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
+    visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
     workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
   },
   {
-    id: PHASE_3R_DIAGNOSTIC_SURFACE_IDS.PARITY_DELTA,
+    id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.PARITY_DELTA,
     label: 'Parity delta',
-    visibilityId: PHASE_3R_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
+    visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
     workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
   },
 ]);
 
-const STATE_BY_ID = new Map(PHASE_3R_READINESS_STATE_RECORDS.map(record => [record.id, record]));
-const ISSUE_BY_ID = new Map(PHASE_3R_READINESS_ISSUE_RECORDS.map(record => [record.issueId, record]));
-const DIAGNOSTIC_SURFACE_BY_ID = new Map(PHASE_3R_DIAGNOSTIC_SURFACE_RECORDS.map(record => [record.id, record]));
+const STATE_BY_ID = new Map(POLICY_AUTHORING_READINESS_STATE_RECORDS.map(record => [record.id, record]));
+const ISSUE_BY_ID = new Map(POLICY_AUTHORING_READINESS_ISSUE_RECORDS.map(record => [record.issueId, record]));
+const DIAGNOSTIC_SURFACE_BY_ID = new Map(POLICY_AUTHORING_DIAGNOSTIC_SURFACE_RECORDS.map(record => [record.id, record]));
 
-function listPhase3RReadinessStateRecords() {
-  return PHASE_3R_READINESS_STATE_RECORDS;
+function listPolicyAuthoringReadinessStateRecords() {
+  return POLICY_AUTHORING_READINESS_STATE_RECORDS;
 }
 
-function listPhase3RReadinessIssueRecords() {
-  return PHASE_3R_READINESS_ISSUE_RECORDS;
+function listPolicyAuthoringReadinessIssueRecords() {
+  return POLICY_AUTHORING_READINESS_ISSUE_RECORDS;
 }
 
-function listPhase3RDiagnosticSurfaceRecords() {
-  return PHASE_3R_DIAGNOSTIC_SURFACE_RECORDS;
+function listPolicyAuthoringDiagnosticSurfaceRecords() {
+  return POLICY_AUTHORING_DIAGNOSTIC_SURFACE_RECORDS;
 }
 
-function getPhase3RReadinessStateRecord(stateId) {
+function getPolicyAuthoringReadinessStateRecord(stateId) {
   return STATE_BY_ID.get(stateId) || null;
 }
 
-function getPhase3RReadinessIssueRecord(issueId) {
+function getPolicyAuthoringReadinessIssueRecord(issueId) {
   return ISSUE_BY_ID.get(issueId) || null;
 }
 
-function normalizePhase3RReadinessIssue(issue = {}) {
+function normalizePolicyAuthoringReadinessIssue(issue = {}) {
   const issueId = toCleanString(typeof issue === 'string' ? issue : issue.issueId);
-  const record = getPhase3RReadinessIssueRecord(issueId);
+  const record = getPolicyAuthoringReadinessIssueRecord(issueId);
 
   return {
     issueId,
@@ -288,23 +288,23 @@ function normalizePhase3RReadinessIssue(issue = {}) {
   };
 }
 
-function validatePhase3RReadinessIssue(issue = {}) {
-  const normalizedIssue = normalizePhase3RReadinessIssue(issue);
-  const record = getPhase3RReadinessIssueRecord(normalizedIssue.issueId);
+function validatePolicyAuthoringReadinessIssue(issue = {}) {
+  const normalizedIssue = normalizePolicyAuthoringReadinessIssue(issue);
+  const record = getPolicyAuthoringReadinessIssueRecord(normalizedIssue.issueId);
 
   if (!record) {
     return {
       valid: false,
-      riskId: PHASE_3R_READINESS_RISK_IDS.UNKNOWN_READINESS_ISSUE,
+      riskId: POLICY_AUTHORING_READINESS_RISK_IDS.UNKNOWN_READINESS_ISSUE,
       normalizedIssue,
-      reason: 'Readiness issue is not part of the Phase 3R normal workflow vocabulary.',
+      reason: 'Readiness issue is not part of the policy authoring normal workflow vocabulary.',
     };
   }
 
-  if (!getPhase3RReadinessStateRecord(normalizedIssue.stateId)) {
+  if (!getPolicyAuthoringReadinessStateRecord(normalizedIssue.stateId)) {
     return {
       valid: false,
-      riskId: PHASE_3R_READINESS_RISK_IDS.UNKNOWN_READINESS_STATE,
+      riskId: POLICY_AUTHORING_READINESS_RISK_IDS.UNKNOWN_READINESS_STATE,
       normalizedIssue,
       reason: 'Readiness issue points to an unknown visible readiness state.',
     };
@@ -313,7 +313,7 @@ function validatePhase3RReadinessIssue(issue = {}) {
   if (normalizedIssue.nextActionIds.length !== 1) {
     return {
       valid: false,
-      riskId: PHASE_3R_READINESS_RISK_IDS.MULTIPLE_NEXT_ACTIONS,
+      riskId: POLICY_AUTHORING_READINESS_RISK_IDS.MULTIPLE_NEXT_ACTIONS,
       normalizedIssue,
       reason: 'Each readiness issue must expose exactly one next action.',
     };
@@ -322,7 +322,7 @@ function validatePhase3RReadinessIssue(issue = {}) {
   if (!normalizedIssue.flowStepId || !normalizedIssue.componentId) {
     return {
       valid: false,
-      riskId: PHASE_3R_READINESS_RISK_IDS.MISSING_DESTINATION_LINK,
+      riskId: POLICY_AUTHORING_READINESS_RISK_IDS.MISSING_DESTINATION_LINK,
       normalizedIssue,
       reason: 'Each readiness issue must link to a destination workflow section or setting.',
     };
@@ -331,7 +331,7 @@ function validatePhase3RReadinessIssue(issue = {}) {
   if (normalizedIssue.internalDiagnosticSurfaceIds.length > 0) {
     return {
       valid: false,
-      riskId: PHASE_3R_READINESS_RISK_IDS.INTERNAL_DIAGNOSTIC_IN_NORMAL_FLOW,
+      riskId: POLICY_AUTHORING_READINESS_RISK_IDS.INTERNAL_DIAGNOSTIC_IN_NORMAL_FLOW,
       normalizedIssue,
       reason: 'Normal readiness cannot expose raw diagnostic surfaces.',
     };
@@ -347,7 +347,7 @@ function validatePhase3RReadinessIssue(issue = {}) {
 
 function selectHighestPriorityState(issueRecords = []) {
   if (issueRecords.length === 0) {
-    return PHASE_3R_READINESS_STATE_IDS.READY;
+    return POLICY_AUTHORING_READINESS_STATE_IDS.READY;
   }
 
   return issueRecords
@@ -355,8 +355,8 @@ function selectHighestPriorityState(issueRecords = []) {
     .sort((left, right) => READINESS_STATE_PRIORITY[left] - READINESS_STATE_PRIORITY[right])[0];
 }
 
-function buildPhase3RReadinessProjection(issues = []) {
-  const validationResults = asArray(issues).map(issue => validatePhase3RReadinessIssue(issue));
+function buildPolicyAuthoringReadinessProjection(issues = []) {
+  const validationResults = asArray(issues).map(issue => validatePolicyAuthoringReadinessIssue(issue));
   const validIssues = validationResults
     .filter(result => result.valid)
     .map(result => result.normalizedIssue)
@@ -364,7 +364,7 @@ function buildPhase3RReadinessProjection(issues = []) {
       READINESS_STATE_PRIORITY[left.stateId] - READINESS_STATE_PRIORITY[right.stateId]
     ));
   const stateId = selectHighestPriorityState(validIssues);
-  const state = getPhase3RReadinessStateRecord(stateId);
+  const state = getPolicyAuthoringReadinessStateRecord(stateId);
 
   return {
     componentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
@@ -403,24 +403,24 @@ function buildPhase3RReadinessProjection(issues = []) {
   };
 }
 
-function validatePhase3RDiagnosticSurfaceVisibility(surfaceIds = []) {
+function validatePolicyAuthoringDiagnosticSurfaceVisibility(surfaceIds = []) {
   const surfaces = asArray(surfaceIds)
     .map(surfaceId => toCleanString(surfaceId))
     .filter(Boolean)
     .map(surfaceId => DIAGNOSTIC_SURFACE_BY_ID.get(surfaceId) || {
       id: surfaceId,
-      visibilityId: PHASE_3R_READINESS_SURFACE_VISIBILITY_IDS.NORMAL_READINESS,
+      visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.NORMAL_READINESS,
     });
 
   const normalDiagnosticIds = surfaces
-    .filter(surface => surface.visibilityId !== PHASE_3R_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY)
+    .filter(surface => surface.visibilityId !== POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY)
     .map(surface => surface.id);
 
   return {
     valid: normalDiagnosticIds.length === 0,
     riskId: normalDiagnosticIds.length === 0
       ? null
-      : PHASE_3R_READINESS_RISK_IDS.PROVIDER_OR_REPLAY_DETAIL_EXPOSED,
+      : POLICY_AUTHORING_READINESS_RISK_IDS.PROVIDER_OR_REPLAY_DETAIL_EXPOSED,
     normalDiagnosticIds,
     reason: normalDiagnosticIds.length === 0
       ? 'Diagnostic surfaces are verifier-only and excluded from normal readiness.'
@@ -428,34 +428,34 @@ function validatePhase3RDiagnosticSurfaceVisibility(surfaceIds = []) {
   };
 }
 
-function summarizePhase3RReadinessNextActionSurface() {
+function summarizePolicyAuthoringReadiness() {
   return {
-    readinessStateCount: PHASE_3R_READINESS_STATE_RECORDS.length,
-    readinessIssueCount: PHASE_3R_READINESS_ISSUE_RECORDS.length,
-    diagnosticSurfaceCount: PHASE_3R_DIAGNOSTIC_SURFACE_RECORDS.length,
-    visibleStateIds: Object.values(PHASE_3R_READINESS_STATE_IDS),
-    diagnosticSurfaceVisibilityIds: PHASE_3R_DIAGNOSTIC_SURFACE_RECORDS.map(surface => surface.visibilityId),
-    everyIssueHasOneNextAction: PHASE_3R_READINESS_ISSUE_RECORDS
+    readinessStateCount: POLICY_AUTHORING_READINESS_STATE_RECORDS.length,
+    readinessIssueCount: POLICY_AUTHORING_READINESS_ISSUE_RECORDS.length,
+    diagnosticSurfaceCount: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_RECORDS.length,
+    visibleStateIds: Object.values(POLICY_AUTHORING_READINESS_STATE_IDS),
+    diagnosticSurfaceVisibilityIds: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_RECORDS.map(surface => surface.visibilityId),
+    everyIssueHasOneNextAction: POLICY_AUTHORING_READINESS_ISSUE_RECORDS
       .every(issue => Boolean(issue.nextActionId) && !Array.isArray(issue.nextActionId)),
     normalReadinessExposesInternalDiagnostics: false,
   };
 }
 
 export {
-  PHASE_3R_DIAGNOSTIC_SURFACE_IDS,
-  PHASE_3R_READINESS_ISSUE_IDS,
-  PHASE_3R_READINESS_NEXT_ACTION_IDS,
-  PHASE_3R_READINESS_RISK_IDS,
-  PHASE_3R_READINESS_STATE_IDS,
-  PHASE_3R_READINESS_SURFACE_VISIBILITY_IDS,
-  buildPhase3RReadinessProjection,
-  getPhase3RReadinessIssueRecord,
-  getPhase3RReadinessStateRecord,
-  listPhase3RDiagnosticSurfaceRecords,
-  listPhase3RReadinessIssueRecords,
-  listPhase3RReadinessStateRecords,
-  normalizePhase3RReadinessIssue,
-  summarizePhase3RReadinessNextActionSurface,
-  validatePhase3RDiagnosticSurfaceVisibility,
-  validatePhase3RReadinessIssue,
+  POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS,
+  POLICY_AUTHORING_READINESS_ISSUE_IDS,
+  POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS,
+  POLICY_AUTHORING_READINESS_RISK_IDS,
+  POLICY_AUTHORING_READINESS_STATE_IDS,
+  POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS,
+  buildPolicyAuthoringReadinessProjection,
+  getPolicyAuthoringReadinessIssueRecord,
+  getPolicyAuthoringReadinessStateRecord,
+  listPolicyAuthoringDiagnosticSurfaceRecords,
+  listPolicyAuthoringReadinessIssueRecords,
+  listPolicyAuthoringReadinessStateRecords,
+  normalizePolicyAuthoringReadinessIssue,
+  summarizePolicyAuthoringReadiness,
+  validatePolicyAuthoringDiagnosticSurfaceVisibility,
+  validatePolicyAuthoringReadinessIssue,
 };

@@ -40,7 +40,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_authoring_component_system',
       'policy_authoring_option_selection',
       'policy_authoring_constraints',
-      'readiness_next_action_surface',
+      'policy_authoring_readiness',
       'starter_template_role_reset',
       'accessibility_decision_load',
       'presentation_test_reset',

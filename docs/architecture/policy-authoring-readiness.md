@@ -1,36 +1,30 @@
-# Policy Builder Phase 3R Readiness And Next Action Surface
+# Policy Authoring Readiness
 
-Status: implemented as the sixth Phase 3R operator-workflow contract.
+Status: implemented as a durable policy-authoring contract.
 
 ## Scope
 
-Phase 3R.6 replaces dense policy-builder diagnostics with a small
-action-oriented readiness surface. The normal workflow should answer one
-operator question: "What do I do next?"
+Policy authoring readiness is the small, operator-facing projection that answers
+one question: "What do I do next?"
 
-This checkpoint defines visible readiness states, issue-to-action mapping,
-destination workflow links, and verifier-only treatment for old preview,
-replay, provider, TMDB, scoring, and parity surfaces.
+This contract defines visible readiness states, issue-to-action mapping,
+destination workflow links, and verifier-only treatment for old preview, replay,
+provider, TMDB, scoring, and parity surfaces. It intentionally does not expose
+raw diagnostics in the normal authoring workflow.
 
 ## Current Best-Practice Inputs
 
 Official sources reviewed for this checkpoint:
 
+- W3C WCAG 2.2: https://www.w3.org/TR/WCAG22/
+- W3C WCAG Status Messages understanding document:
+  https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html
 - WAI-ARIA Authoring Practices Guide:
   https://www.w3.org/WAI/ARIA/apg/
-- W3C WCAG 2.2:
-  https://www.w3.org/TR/WCAG22/
-- OWASP API Security Top 10, API3:2023 Broken Object Property Level
-  Authorization:
-  https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/
 - OWASP Input Validation Cheat Sheet:
   https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html
 - NIST Secure Software Development Framework SP 800-218:
   https://csrc.nist.gov/pubs/sp/800/218/final
-- Vue Test Utils Guide:
-  https://test-utils.vuejs.org/
-- Vitest Guide:
-  https://vitest.dev/guide/
 
 The applied guidance:
 
@@ -84,8 +78,7 @@ Pros:
 - Preserves support value during migration without making diagnostics the
   product model.
 - Reduces accidental exposure of provider or scoring internals.
-- Aligns with the Phase 3R cutline that diagnostics must not drive normal
-  authoring.
+- Keeps diagnostics outside the normal authoring mental model.
 
 Cons:
 
@@ -108,16 +101,16 @@ details, should stay out of the normal policy-authoring workflow.
 
 ## Implementation
 
-The Phase 3R.6 implementation now provides:
+The implementation provides:
 
-- `server/src/services/policyBuilderPhase3ReadinessNextActionSurface.mjs`
+- `server/src/services/policyAuthoringReadiness.mjs`
   - defines the six visible readiness states,
   - defines six readiness issues mapped to one next action each,
   - links issues to destination flow steps and resolving components,
   - builds a prioritized readiness projection,
   - classifies old diagnostic surfaces as migration verifier only,
   - rejects unknown diagnostic surfaces in normal readiness.
-- `server/src/__tests__/services/policyBuilderPhase3ReadinessNextActionSurface.test.mjs`
+- `server/src/__tests__/services/policyAuthoringReadiness.test.mjs`
   - pins visible readiness states,
   - proves each issue has exactly one next action and one destination link,
   - checks highest-priority issue selection,
@@ -125,7 +118,7 @@ The Phase 3R.6 implementation now provides:
   - checks verifier-only diagnostic classification,
   - rejects unknown normal diagnostic surfaces.
 
-## Phase 3R.6 Checklist Result
+## Checklist Result
 
 | Check | Result |
 | --- | --- |
@@ -138,6 +131,5 @@ The Phase 3R.6 implementation now provides:
 
 ## Next Step
 
-Continue with **Phase 3R.7 Starter Template Role Reset**. That task should keep
-starter templates useful as post-destination accelerators while preventing
-template mechanics from becoming the normal policy mental model.
+Cut over the starter-template role reset contract to durable policy-authoring
+names so templates remain optional accelerators after destination context.

@@ -2374,10 +2374,12 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 3R.6 readiness and next action surface is documented in
-  [Policy Builder Phase 3R Readiness And Next Action Surface](policy-builder-phase-3r-readiness-next-action-surface.md).
-- The server-side Phase 3R readiness contract lives in
-  `server/src/services/policyBuilderPhase3ReadinessNextActionSurface.mjs`.
+- Policy authoring readiness is documented in
+  [Policy Authoring Readiness](policy-authoring-readiness.md).
+- The readiness module cutover is documented in
+  [Policy Authoring Readiness Module Cutover](policy-authoring-readiness-module-cutover.md).
+- The server-side policy authoring readiness contract lives in
+  `server/src/services/policyAuthoringReadiness.mjs`.
 - The normal readiness model now has six visible states and six issue records,
   each mapped to exactly one next action and one resolving destination workflow
   step/component.
@@ -2558,8 +2560,8 @@ Implementation record:
   [Policy Authoring Option Selection](policy-authoring-option-selection.md).
 - Policy authoring constraints are documented in
   [Policy Authoring Constraints](policy-authoring-constraints.md).
-- Phase 3R.6 readiness and next action surface is documented in
-  [Policy Builder Phase 3R Readiness And Next Action Surface](policy-builder-phase-3r-readiness-next-action-surface.md).
+- Policy authoring readiness is documented in
+  [Policy Authoring Readiness](policy-authoring-readiness.md).
 - Phase 3R.7 starter template role reset is documented in
   [Policy Builder Phase 3R Starter Template Role Reset](policy-builder-phase-3r-starter-template-role-reset.md).
 - Phase 3R.8 accessibility and decision load is documented in
@@ -6476,7 +6478,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 3, 2026
   baseline for production references, rename candidates, and obsolete migration
   tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `5653` production references, `5675` rename
+- The current baseline is `4022` production references, `4044` rename
   candidates, and `93` obsolete migration tooling references. Future durable
   rename batches should lower this baseline after inventory validation proves
   the debt decreased.

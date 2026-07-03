@@ -66,11 +66,11 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Separates hard limits, avoid values, review warnings, certification semantics, and explicit operator-action requirements.',
   },
   {
-    id: 'readiness_next_action_surface',
-    label: 'Readiness and next action surface',
-    docPath: 'docs/architecture/policy-builder-phase-3r-readiness-next-action-surface.md',
-    servicePath: 'server/src/services/policyBuilderPhase3ReadinessNextActionSurface.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase3ReadinessNextActionSurface.test.mjs',
+    id: 'policy_authoring_readiness',
+    label: 'Policy authoring readiness',
+    docPath: 'docs/architecture/policy-authoring-readiness.md',
+    servicePath: 'server/src/services/policyAuthoringReadiness.mjs',
+    testPath: 'server/src/__tests__/services/policyAuthoringReadiness.test.mjs',
     evidence: 'Replaces dense diagnostics with action-oriented readiness states and one primary next action.',
   },
   {
@@ -190,7 +190,7 @@ const POLICY_AUTHORING_NORMAL_WORKFLOW_RULES = Object.freeze([
   {
     id: 'one_recommended_next_action',
     label: 'Readiness exposes one recommended next action',
-    docPath: 'docs/architecture/policy-builder-phase-3r-readiness-next-action-surface.md',
+    docPath: 'docs/architecture/policy-authoring-readiness.md',
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
     evidence: 'Setup cards expose one current step with supporting status and completion context.',
   },
