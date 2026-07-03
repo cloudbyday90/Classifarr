@@ -3165,6 +3165,9 @@ Implementation status:
   engines can correlate the bounded evidence they consumed without exposing raw
   evidence labels, media titles, provider payloads, quota state, or UI
   diagnostic strings.
+- The boundary now audits the generated projection fingerprint, trace
+  attributes, and sanitized provenance against the returned projection before
+  downstream engines can consume the Phase 6R.1 handoff.
 - The boundary maps `classificationOutcomes` to
   `classificationFinalOutcomes` and `arrRoutingOutcomes` to `routingOutcomes`
   so the public gate envelope and internal projection contract cannot drift.

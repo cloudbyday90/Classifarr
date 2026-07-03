@@ -1,11 +1,46 @@
 import {
+  PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS,
   PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES,
   PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_VERSION,
   buildPolicyBuilderPhase6EvidenceProjectionFingerprint,
   stableStringify,
+  validatePolicyBuilderPhase6EvidenceProjectionFingerprint,
 } from '../../services/policyBuilderPhase6EvidenceProjectionFingerprint.mjs';
 
 describe('policyBuilderPhase6EvidenceProjectionFingerprint', () => {
+  const buildProjection = () => ({
+    version: 'phase6r.evidence.v1',
+    generatedFromLiveProvider: false,
+    exposesRawProviderPayloads: false,
+    exposesUiChipLanguage: false,
+    buckets: {
+      identity_evidence: [
+        {
+          bucketId: 'identity_evidence',
+          sourceId: 'media_server_library_profile',
+          authoritySourceId: 'media_server_contents',
+          label: 'Animation',
+        },
+      ],
+    },
+    warnings: [],
+    summary: {
+      version: 'phase6r.evidence.summary.v1',
+      totalEntryCount: 1,
+      sourceIds: ['media_server_library_profile'],
+      authoritySourceIds: ['media_server_contents'],
+      bucketSummaries: [
+        {
+          bucketId: 'identity_evidence',
+          entryCount: 1,
+          readinessId: 'supporting',
+        },
+      ],
+      hasBlockingEvidence: false,
+      hasReviewEvidence: false,
+    },
+  });
+
   test('stableStringify sorts object keys recursively', () => {
     expect(stableStringify({
       b: 2,
@@ -23,38 +58,7 @@ describe('policyBuilderPhase6EvidenceProjectionFingerprint', () => {
   });
 
   test('builds stable projection fingerprints with sanitized provenance', () => {
-    const projection = {
-      version: 'phase6r.evidence.v1',
-      generatedFromLiveProvider: false,
-      exposesRawProviderPayloads: false,
-      exposesUiChipLanguage: false,
-      buckets: {
-        identity_evidence: [
-          {
-            bucketId: 'identity_evidence',
-            sourceId: 'media_server_library_profile',
-            authoritySourceId: 'media_server_contents',
-            label: 'Animation',
-          },
-        ],
-      },
-      warnings: [],
-      summary: {
-        version: 'phase6r.evidence.summary.v1',
-        totalEntryCount: 1,
-        sourceIds: ['media_server_library_profile'],
-        authoritySourceIds: ['media_server_contents'],
-        bucketSummaries: [
-          {
-            bucketId: 'identity_evidence',
-            entryCount: 1,
-            readinessId: 'supporting',
-          },
-        ],
-        hasBlockingEvidence: false,
-        hasReviewEvidence: false,
-      },
-    };
+    const projection = buildProjection();
 
     const left = buildPolicyBuilderPhase6EvidenceProjectionFingerprint(projection);
     const right = buildPolicyBuilderPhase6EvidenceProjectionFingerprint({
@@ -93,6 +97,90 @@ describe('policyBuilderPhase6EvidenceProjectionFingerprint', () => {
       PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.AUTHORITY_SOURCE_IDS,
     ]));
     expect(JSON.stringify(left)).not.toContain('Animation');
+  });
+
+  test('validates projection fingerprints against projection, trace, and provenance', () => {
+    const projection = buildProjection();
+    const projectionFingerprint =
+      buildPolicyBuilderPhase6EvidenceProjectionFingerprint(projection);
+
+    expect(validatePolicyBuilderPhase6EvidenceProjectionFingerprint({
+      projection,
+      projectionFingerprint,
+    })).toEqual({
+      ok: true,
+      issueCount: 0,
+      issues: [],
+    });
+  });
+
+  test('rejects stale, malformed, trace-mismatched, and provenance-mismatched fingerprints', () => {
+    const projection = buildProjection();
+    const staleProjection = {
+      ...projection,
+      buckets: {
+        identity_evidence: [
+          ...projection.buckets.identity_evidence,
+          {
+            bucketId: 'identity_evidence',
+            sourceId: 'media_server_library_profile',
+            authoritySourceId: 'media_server_contents',
+            label: 'Family',
+          },
+        ],
+      },
+      summary: {
+        ...projection.summary,
+        totalEntryCount: 2,
+        bucketSummaries: [
+          {
+            bucketId: 'identity_evidence',
+            entryCount: 2,
+            readinessId: 'supporting',
+          },
+        ],
+      },
+    };
+    const staleFingerprint =
+      buildPolicyBuilderPhase6EvidenceProjectionFingerprint(projection);
+    const tamperedFingerprint = {
+      ...staleFingerprint,
+      fingerprint: 'not-a-sha256',
+      provenance: {
+        ...staleFingerprint.provenance,
+        totalEntryCount: 99,
+      },
+      traceAttributes: {
+        ...staleFingerprint.traceAttributes,
+        [PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.FINGERPRINT]:
+          'b'.repeat(64),
+      },
+    };
+
+    const audit = validatePolicyBuilderPhase6EvidenceProjectionFingerprint({
+      projection: staleProjection,
+      projectionFingerprint: tamperedFingerprint,
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.MALFORMED_FINGERPRINT,
+      }),
+      expect.objectContaining({
+        riskId:
+          PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.FINGERPRINT_MISMATCH,
+      }),
+      expect.objectContaining({
+        riskId:
+          PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+      }),
+      expect.objectContaining({
+        riskId:
+          PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.PROVENANCE_MISMATCH,
+      }),
+    ]));
   });
 
   test('changes the fingerprint when projection evidence changes', () => {

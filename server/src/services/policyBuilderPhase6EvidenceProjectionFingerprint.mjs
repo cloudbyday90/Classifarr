@@ -11,6 +11,17 @@ const PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES = Object.freeze({
   AUTHORITY_SOURCE_IDS: 'classifarr.policy.evidence.authority_source_ids',
 });
 
+const PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS = Object.freeze({
+  MISSING_PROJECTION: 'missing_projection',
+  MISSING_FINGERPRINT: 'missing_fingerprint',
+  MALFORMED_FINGERPRINT: 'malformed_fingerprint',
+  FINGERPRINT_MISMATCH: 'fingerprint_mismatch',
+  TRACE_FINGERPRINT_MISMATCH: 'trace_fingerprint_mismatch',
+  PROVENANCE_MISMATCH: 'provenance_mismatch',
+});
+
+const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/;
+
 function stableValue(value) {
   if (Array.isArray(value)) {
     return value.map(item => stableValue(item));
@@ -105,9 +116,148 @@ function buildPolicyBuilderPhase6EvidenceProjectionFingerprint(projection = {}) 
   };
 }
 
+function normalizeString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function arraysEqual(left = [], right = []) {
+  if (left.length !== right.length) return false;
+  return left.every((item, index) => item === right[index]);
+}
+
+function bucketCountsEqual(left = [], right = []) {
+  if (left.length !== right.length) return false;
+
+  return left.every((leftBucket, index) => {
+    const rightBucket = right[index] || {};
+
+    return leftBucket.bucketId === rightBucket.bucketId &&
+      Number(leftBucket.entryCount) === Number(rightBucket.entryCount) &&
+      (leftBucket.readinessId || null) === (rightBucket.readinessId || null);
+  });
+}
+
+function validatePolicyBuilderPhase6EvidenceProjectionFingerprint({
+  projection = null,
+  projectionFingerprint = null,
+} = {}) {
+  const issues = [];
+
+  if (!projection || typeof projection !== 'object' || Array.isArray(projection)) {
+    issues.push({
+      riskId: PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.MISSING_PROJECTION,
+      message: 'Evidence projection fingerprint validation requires the bounded projection.',
+    });
+  }
+
+  if (
+    !projectionFingerprint ||
+    typeof projectionFingerprint !== 'object' ||
+    Array.isArray(projectionFingerprint)
+  ) {
+    issues.push({
+      riskId: PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.MISSING_FINGERPRINT,
+      message: 'Evidence projection fingerprint validation requires a fingerprint artifact.',
+    });
+  }
+
+  if (issues.length > 0) {
+    return {
+      ok: false,
+      issueCount: issues.length,
+      issues,
+    };
+  }
+
+  const expected = buildPolicyBuilderPhase6EvidenceProjectionFingerprint(projection);
+  const fingerprintValue = normalizeString(projectionFingerprint.fingerprint).toLowerCase();
+  const traceFingerprintValue = normalizeString(
+    projectionFingerprint.traceAttributes?.[
+      PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.FINGERPRINT
+    ]
+  ).toLowerCase();
+
+  if (
+    projectionFingerprint.version !== PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_VERSION ||
+    projectionFingerprint.algorithm !== 'sha256' ||
+    !SHA256_FINGERPRINT_PATTERN.test(fingerprintValue)
+  ) {
+    issues.push({
+      riskId: PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.MALFORMED_FINGERPRINT,
+      message: 'Evidence projection fingerprint must be a versioned SHA-256 hex digest.',
+    });
+  }
+
+  if (fingerprintValue && fingerprintValue !== expected.fingerprint) {
+    issues.push({
+      riskId: PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.FINGERPRINT_MISMATCH,
+      message: 'Evidence projection fingerprint must match the bounded projection.',
+    });
+  }
+
+  const traceAttributes = projectionFingerprint.traceAttributes || {};
+  const traceSourceIds = asArray(traceAttributes[
+    PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.SOURCE_IDS
+  ]).map(String).sort();
+  const traceAuthoritySourceIds = asArray(traceAttributes[
+    PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.AUTHORITY_SOURCE_IDS
+  ]).map(String).sort();
+
+  if (
+    traceFingerprintValue !== expected.fingerprint ||
+    traceAttributes[
+      PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.PROJECTION_VERSION
+    ] !== expected.traceAttributes[
+      PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.PROJECTION_VERSION
+    ] ||
+    Number(traceAttributes[
+      PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.TOTAL_ENTRY_COUNT
+    ]) !== expected.traceAttributes[
+      PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.TOTAL_ENTRY_COUNT
+    ] ||
+    !arraysEqual(traceSourceIds, expected.traceAttributes[
+      PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.SOURCE_IDS
+    ]) ||
+    !arraysEqual(traceAuthoritySourceIds, expected.traceAttributes[
+      PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.AUTHORITY_SOURCE_IDS
+    ])
+  ) {
+    issues.push({
+      riskId: PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+      message: 'Evidence projection fingerprint trace attributes must match the bounded projection.',
+    });
+  }
+
+  const provenance = projectionFingerprint.provenance || {};
+  if (
+    Number(provenance.totalEntryCount) !== Number(expected.provenance.totalEntryCount) ||
+    !arraysEqual(asArray(provenance.sourceIds).map(String).sort(), expected.provenance.sourceIds) ||
+    !arraysEqual(
+      asArray(provenance.authoritySourceIds).map(String).sort(),
+      expected.provenance.authoritySourceIds
+    ) ||
+    !bucketCountsEqual(asArray(provenance.bucketCounts), expected.provenance.bucketCounts) ||
+    provenance.hasBlockingEvidence !== expected.provenance.hasBlockingEvidence ||
+    provenance.hasReviewEvidence !== expected.provenance.hasReviewEvidence
+  ) {
+    issues.push({
+      riskId: PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.PROVENANCE_MISMATCH,
+      message: 'Evidence projection fingerprint provenance must match the bounded projection summary.',
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    issueCount: issues.length,
+    issues,
+  };
+}
+
 export {
+  PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS,
   PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES,
   PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_VERSION,
   buildPolicyBuilderPhase6EvidenceProjectionFingerprint,
   stableStringify,
+  validatePolicyBuilderPhase6EvidenceProjectionFingerprint,
 };

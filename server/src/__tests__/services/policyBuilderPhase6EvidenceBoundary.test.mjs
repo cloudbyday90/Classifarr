@@ -11,6 +11,10 @@ import {
 import {
   PHASE6R_EVIDENCE_INPUT_GATE_RISK_IDS,
 } from '../../services/policyBuilderPhase6EvidenceInputGate.mjs';
+import {
+  PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS,
+  buildPolicyBuilderPhase6EvidenceProjectionFingerprint,
+} from '../../services/policyBuilderPhase6EvidenceProjectionFingerprint.mjs';
 
 describe('policyBuilderPhase6EvidenceBoundary', () => {
   test('adapts the public input envelope into the evidence projection shape', () => {
@@ -136,5 +140,33 @@ describe('policyBuilderPhase6EvidenceBoundary', () => {
       PHASE6R_EVIDENCE_INPUT_GATE_RISK_IDS.LIVE_PROVIDER_LOOKUP,
     ]));
     expect(JSON.stringify(result)).not.toContain('raw provider payload title');
+  });
+
+  test('blocks handoff when the projection fingerprint does not match the bounded projection', () => {
+    const result = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        libraryProfile: {
+          identityCandidates: [{ label: 'Animation', count: 12 }],
+        },
+      },
+      projectionFingerprintBuilder: projection => ({
+        ...buildPolicyBuilderPhase6EvidenceProjectionFingerprint(projection),
+        fingerprint: 'b'.repeat(64),
+      }),
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_PROJECTION_FINGERPRINT,
+      projectionAudit: expect.objectContaining({ ok: true }),
+      projectionFingerprintAudit: expect.objectContaining({ ok: false }),
+      nextPhase: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.FINGERPRINT_MISMATCH,
+      }),
+    ]));
   });
 });

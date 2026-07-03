@@ -15,7 +15,9 @@ cutline inventory prevents replay/impact reducers from returning as normal
 operator UI unless they are rewritten into source-authorized evidence reducers.
 The evidence boundary now validates the public input envelope, adapts it into
 the projection shape, and audits the generated projection before later engines
-consume it.
+consume it. July 2026 hardening also validates the generated projection
+fingerprint, trace attributes, and sanitized provenance against the returned
+projection before downstream engines can consume the handoff.
 
 ## Problem
 
@@ -224,6 +226,8 @@ fails when a projection:
 - Raw provider payloads are not copied into projection entries.
 - Generated projections are independently auditable so future code cannot
   bypass the constructor by mutating or assembling unsafe evidence entries.
+- Projection fingerprints are independently auditable so downstream engines do
+  not consume stale or tampered evidence correlation handles.
 - Provider quota/cooldown state is not evidence.
 - Manual outcomes can describe evidence, but cannot create learning directly.
 - Hard limits and avoid evidence require operator-declared intent.

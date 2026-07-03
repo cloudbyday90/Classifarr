@@ -13,6 +13,11 @@ sanitized SHA-256 projection fingerprint so later engines can prove which
 bounded evidence they consumed without copying raw evidence labels or provider
 payloads into trace metadata.
 
+July 2026 hardening adds an explicit fingerprint audit at the boundary. The
+boundary now validates that the fingerprint value, trace attributes, and
+sanitized provenance match the projection being returned before Phase 6R.2 can
+consume the handoff.
+
 ## Problem
 
 Phase 6R.1 already had two strong pieces:
@@ -95,6 +100,11 @@ another, or bypass the input gate and call the projection helper directly.
    provenance does not expose evidence labels, media titles, provider payloads,
    or UI diagnostic strings.
 
+7. **Audit the fingerprint before handoff.**
+   A bounded evidence result is not ready unless its fingerprint, trace
+   attributes, and provenance are derived from the same projection returned by
+   the boundary.
+
 ## Pros And Cons
 
 Pros:
@@ -106,6 +116,8 @@ Pros:
 - Makes side-effect expectations testable.
 - Gives Phase 6R.2/7R a compact correlation handle for bounded evidence.
 - Avoids leaking titles or provider data into trace metadata.
+- Blocks stale or tampered evidence correlation handles before downstream
+  engines can consume them.
 
 Cons:
 
@@ -147,6 +159,7 @@ Status IDs:
 - `ready`
 - `blocked_by_input_gate`
 - `blocked_by_projection_audit`
+- `blocked_by_projection_fingerprint`
 
 The boundary output includes:
 
@@ -158,6 +171,7 @@ inputGate
 projection
 projectionAudit
 projectionFingerprint
+projectionFingerprintAudit
 issueCount
 issues
 sideEffects
@@ -175,6 +189,9 @@ nextPhase
   tested adapter.
 - Successful projections include a deterministic fingerprint and sanitized
   provenance for trace correlation without raw evidence leakage.
+- Successful projections must pass a fingerprint audit, so a stale/tampered
+  fingerprint or mismatched trace/provenance data cannot pass the Phase 6R.1
+  boundary.
 
 ## Next Step
 

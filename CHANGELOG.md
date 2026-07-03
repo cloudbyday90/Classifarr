@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Evidence Fingerprint Audit** — hardened the Phase
+  6R.1 evidence boundary so projection fingerprints, bounded trace attributes,
+  and sanitized provenance must match the returned evidence projection before
+  downstream intent/readiness engines can consume the handoff.
 - **Policy Builder Phase 7R Metrics Trace Source Fingerprints** — hardened
   runtime metrics traces so supported upstream decision fingerprints are carried
   into bounded trace attributes for correlation, while validation rejects
