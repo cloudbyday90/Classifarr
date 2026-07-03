@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -19,7 +19,7 @@
 import { SignalCollector, SIGNAL_TYPES } from './signalCollector.mjs';
 import { ragRetriever } from './ragRetriever.mjs';
 import { confidenceCalculator } from './confidenceCalculator.mjs';
-import { classificationPhaseService } from './classificationPhaseService.mjs';
+import { classificationProgressStageService } from './classificationProgressStageService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { classificationAiService } from './classificationAiService.mjs';
 import { classificationRagLoopService } from './classificationRagLoopService.mjs';
@@ -43,7 +43,7 @@ export class ClassificationLegacySignalPathService {
 		this.SignalCollectorClass = deps.SignalCollectorClass || SignalCollector;
 		this.ragRetriever = deps.ragRetriever || ragRetriever;
 		this.confidenceCalculator = deps.confidenceCalculator || confidenceCalculator;
-		this.classificationPhaseService = deps.classificationPhaseService || classificationPhaseService;
+		this.classificationProgressStageService = deps.classificationProgressStageService || classificationProgressStageService;
 		this.classificationEvidenceService = deps.classificationEvidenceService || classificationEvidenceService;
 		this.classificationAiService = deps.classificationAiService || classificationAiService;
 		this.classificationRagLoopService = deps.classificationRagLoopService || classificationRagLoopService;
@@ -86,7 +86,7 @@ export class ClassificationLegacySignalPathService {
 		let ragContext = null;
 		try {
 			if (taskId && !metadata.source_library_id) {
-				await this.classificationPhaseService.updatePhase(taskId, 'rag_analysis');
+				await this.classificationProgressStageService.updateStage(taskId, 'rag_analysis');
 			}
 
 			const similarItems = await this.ragRetriever.semanticSearch(metadata, 5);
@@ -121,14 +121,14 @@ export class ClassificationLegacySignalPathService {
 		}
 
 		if (taskId && !metadata.source_library_id) {
-			await this.classificationPhaseService.updatePhase(taskId, 'signal_combine');
+			await this.classificationProgressStageService.updateStage(taskId, 'signal_combine');
 		}
 
 		await this.confidenceCalculator.loadWeights();
 		const confidenceResult = this.confidenceCalculator.calculate(signalCollector.getSignals());
 
 		if (taskId && !metadata.source_library_id) {
-			await this.classificationPhaseService.updatePhase(taskId, 'ai_analysis');
+			await this.classificationProgressStageService.updateStage(taskId, 'ai_analysis');
 		}
 
 		const aiContext = this.confidenceCalculator.toAIContext(confidenceResult);
@@ -152,7 +152,7 @@ export class ClassificationLegacySignalPathService {
 				decisionPolicyResult: metadata.policyResult || null,
 				ragContext,
 				taskId,
-				classificationPhaseService: this.classificationPhaseService,
+				classificationProgressStageService: this.classificationProgressStageService,
 				classificationRagLoopService: this.classificationRagLoopService,
 				ensureDecisionQuestion: this.classificationRoutingService.ensureDecisionQuestion,
 			});

@@ -15,7 +15,7 @@ import { tmdbService } from './tmdb.mjs';
 import { discordBotService as discordBot } from './discordBot.mjs';
 import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
 import { clarificationService } from './clarificationService.mjs';
-import { classificationPhaseService } from './classificationPhaseService.mjs';
+import { classificationProgressStageService } from './classificationProgressStageService.mjs';
 import { classificationRetryService } from './classificationRetryService.mjs';
 import { classificationEvidenceReinforcementService } from './classificationEvidenceReinforcementService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
@@ -44,7 +44,7 @@ export const classificationService = createClassificationService({
 		clarificationService,
 	},
 	workflowServices: {
-		classificationPhaseService,
+		classificationProgressStageService,
 		classificationRetryService,
 		classificationEvidenceReinforcementService,
 		classificationEvidenceService,

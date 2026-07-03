@@ -557,7 +557,7 @@ const RUNTIME_ARTIFACTS = Object.freeze([
     normalRuntimeAuthorityAllowed: false,
   },
   {
-    path: 'server/src/services/classificationPhaseService.mjs',
+    path: 'server/src/services/classificationProgressStageService.mjs',
     owner: 'runtime-progress',
     stageId: PHASE7R_RUNTIME_STAGE_IDS.QUEUE_RETRY,
     decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,

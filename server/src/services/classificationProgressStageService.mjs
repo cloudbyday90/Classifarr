@@ -1,22 +1,22 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
-    PHASES,
-    PHASE_METADATA,
+    STAGES,
+    STAGE_METADATA,
     parsePayload as _parsePayload,
     parsePhaseHistory,
     extractDisplayInfo as _extractDisplayInfo,
-    buildPhaseList as _buildPhaseList,
-    resolveSkippedPhases as _resolveSkippedPhases,
-    isValidPhase as _isValidPhase,
-    getPhaseMetadata as _getPhaseMetadata,
-    getPhaseCount as _getPhaseCount,
-} from './classificationPhaseUtils.mjs';
-import { getProgress as _getProgress, getActiveClassifications as _getActiveClassifications, resumeFromPhase as _resumeFromPhase } from './classificationPhaseProgress.mjs';
+    buildStageList as _buildStageList,
+    resolveSkippedStages as _resolveSkippedStages,
+    isValidStage as _isValidStage,
+    getStageMetadata as _getStageMetadata,
+    getStageCount as _getStageCount,
+} from './classificationProgressStageUtils.mjs';
+import { getProgress as _getProgress, getActiveClassifications as _getActiveClassifications, resumeFromStage as _resumeFromStage } from './classificationProgressStageQueries.mjs';
 
-const logger = createLogger('ClassificationPhaseService');
+const logger = createLogger('classificationProgressStageService');
 
-export class ClassificationPhaseService {
+export class ClassificationProgressStageService {
     constructor() {
         this.webSocketService = null;
     }
@@ -25,13 +25,13 @@ export class ClassificationPhaseService {
         this.webSocketService = wsService;
     }
 
-    async updatePhase(taskId, phase, metadata = {}) {
-        if (!this.isValidPhase(phase)) {
-            logger.warn('Invalid phase', { taskId, phase });
+    async updateStage(taskId, stage, metadata = {}) {
+        if (!this.isValidStage(stage)) {
+            logger.warn('Invalid stage', { taskId, stage });
             return null;
         }
 
-        const phaseIndex = PHASES.indexOf(phase) + 1;
+        const stageIndex = STAGES.indexOf(stage) + 1;
         const now = new Date().toISOString();
 
         try {
@@ -41,16 +41,16 @@ export class ClassificationPhaseService {
             );
 
             if (task.rows.length === 0) {
-                logger.warn('Task not found for phase update', { taskId, phase });
+                logger.warn('Task not found for stage update', { taskId, stage });
                 return null;
             }
 
             const currentTask = task.rows[0];
             const history = parsePhaseHistory(currentTask.phase_history);
 
-            const skippedPhases = this.resolveSkippedPhases({
+            const skippedPhases = this.resolveSkippedStages({
                 currentPhase: currentTask.current_phase,
-                targetPhase: phase,
+                targetPhase: stage,
                 requested: metadata.skippedPhases,
                 history
             });
@@ -84,26 +84,30 @@ export class ClassificationPhaseService {
              phase_started_at = $3,
              phase_history = $4
          WHERE id = $5`,
-                [phase, phaseIndex, now, JSON.stringify(history), taskId]
+                [stage, stageIndex, now, JSON.stringify(history), taskId]
             );
 
-            logger.debug('Phase updated', { taskId, phase, phaseIndex });
+            logger.debug('Classification progress stage updated', { taskId, stage, stageIndex });
 
             const payload = this.parsePayload(currentTask.payload);
             const displayInfo = this.extractDisplayInfo(payload);
 
-            this.emitProgressEvent(taskId, phase, phaseIndex, {
+            this.emitProgressEvent(taskId, stage, stageIndex, {
                 ...metadata,
                 title: displayInfo.title,
                 source_library_id: payload?.source_library_id,
                 method: payload?.method
             });
 
-            return { taskId, phase, phaseIndex, history };
+            return { taskId, phase: stage, phaseIndex: stageIndex, history };
         } catch (error) {
-            logger.error('Failed to update phase', { taskId, phase, error: error.message });
+            logger.error('Failed to update classification progress stage', { taskId, stage, error: error.message });
             throw error;
         }
+    }
+
+    async updatePhase(taskId, phase, metadata = {}) {
+        return this.updateStage(taskId, phase, metadata);
     }
 
     async getProgress(taskId) {
@@ -114,8 +118,12 @@ export class ClassificationPhaseService {
         return _getActiveClassifications();
     }
 
+    async resumeFromStage(taskId) {
+        return _resumeFromStage(taskId);
+    }
+
     async resumeFromPhase(taskId) {
-        return _resumeFromPhase(taskId);
+        return this.resumeFromStage(taskId);
     }
 
     async completeTracking(taskId, finalResult = {}) {
@@ -157,21 +165,21 @@ export class ClassificationPhaseService {
                 this.webSocketService.emitTaskProgress(taskId, {
                     taskId,
                     phase: 'completed',
-                    phaseIndex: PHASES.length,
-                    totalPhases: PHASES.length,
+                    phaseIndex: STAGES.length,
+                    totalPhases: STAGES.length,
                     progress: 100,
                     completed: true,
                     result: finalResult
                 });
             }
 
-            logger.info('Phase tracking completed', { taskId, totalPhases: history.length });
+            logger.info('Classification progress stage tracking completed', { taskId, totalStages: history.length });
         } catch (error) {
             logger.error('Failed to complete tracking', { taskId, error: error.message });
         }
     }
 
-    emitProgressEvent(taskId, phase, phaseIndex, metadata = {}) {
+    emitProgressEvent(taskId, stage, stageIndex, metadata = {}) {
         if (!this.webSocketService) {
             logger.debug('WebSocket service not available, skipping emit');
             return;
@@ -181,29 +189,37 @@ export class ClassificationPhaseService {
             return;
         }
 
-        const phaseInfo = PHASE_METADATA[phase] || { icon: '⏳', label: phase };
+        const stageInfo = STAGE_METADATA[stage] || { icon: '⏳', label: stage };
 
         this.webSocketService.emitTaskProgress(taskId, {
             taskId,
-            phase,
-            phaseIndex,
-            totalPhases: PHASES.length,
-            progress: Math.round((phaseIndex / PHASES.length) * 100),
+            phase: stage,
+            phaseIndex: stageIndex,
+            totalPhases: STAGES.length,
+            progress: Math.round((stageIndex / STAGES.length) * 100),
             startedAt: new Date().toISOString(),
-            icon: phaseInfo.icon,
-            label: phaseInfo.label,
-            description: phaseInfo.description,
+            icon: stageInfo.icon,
+            label: stageInfo.label,
+            description: stageInfo.description,
             title: metadata.title,
             ...metadata
         });
     }
 
+    buildStageList(task) {
+        return _buildStageList(task);
+    }
+
     buildPhaseList(task) {
-        return _buildPhaseList(task);
+        return this.buildStageList(task);
+    }
+
+    resolveSkippedStages(input) {
+        return _resolveSkippedStages(input);
     }
 
     resolveSkippedPhases(input) {
-        return _resolveSkippedPhases(input);
+        return this.resolveSkippedStages(input);
     }
 
     parsePayload(rawPayload) {
@@ -214,17 +230,29 @@ export class ClassificationPhaseService {
         return _extractDisplayInfo(payload);
     }
 
+    getStageMetadata() {
+        return _getStageMetadata();
+    }
+
     getPhaseMetadata() {
-        return _getPhaseMetadata();
+        return this.getStageMetadata();
+    }
+
+    isValidStage(phase) {
+        return _isValidStage(phase);
     }
 
     isValidPhase(phase) {
-        return _isValidPhase(phase);
+        return this.isValidStage(phase);
+    }
+
+    getStageCount() {
+        return _getStageCount();
     }
 
     getPhaseCount() {
-        return _getPhaseCount();
+        return this.getStageCount();
     }
 }
 
-export const classificationPhaseService = new ClassificationPhaseService();
+export const classificationProgressStageService = new ClassificationProgressStageService();

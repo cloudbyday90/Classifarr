@@ -7,7 +7,7 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
 const { authenticateToken } = await import('../../middleware/auth.mjs');
-const { classificationPhaseService } = await import('../../services/classificationPhaseService.mjs');
+const { classificationProgressStageService } = await import('../../services/classificationProgressStageService.mjs');
 const { createClassificationProgressRouter } = await import('../../routes/classificationProgressRouteShared.mjs');
 
 const express = (await import('express')).default;
@@ -17,7 +17,7 @@ const app = createIntegrationTestApp({
     middleware: [authenticateToken],
     router: createClassificationProgressRouter({
         express,
-        classificationPhaseService,
+        classificationProgressStageService,
     }),
 });
 

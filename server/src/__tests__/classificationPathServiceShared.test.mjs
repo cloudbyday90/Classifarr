@@ -62,7 +62,7 @@ describe('classificationPathServiceShared', () => {
 		const signalContext = { confidence: 82 };
 		const policyResult = { ranked: [{ library_id: 1, score: 82 }] };
 		const ragContext = { similarItems: [{ tmdbId: 101 }] };
-		const classificationPhaseService = { updatePhase: jest.fn().mockResolvedValue(undefined) };
+		const classificationProgressStageService = { updateStage: jest.fn().mockResolvedValue(undefined) };
 		const finalResult = { library: libraries[0], confidence: 83, method: 'ai_verified' };
 		const classificationRagLoopService = {
 			evaluateRagLoopSecondPass: jest.fn().mockResolvedValue(finalResult),
@@ -85,12 +85,12 @@ describe('classificationPathServiceShared', () => {
 			decisionPolicyResult: policyResult,
 			ragContext,
 			taskId: 'task-1',
-			classificationPhaseService,
+			classificationProgressStageService,
 			classificationRagLoopService,
 			ensureDecisionQuestion,
 		});
 
-		expect(classificationPhaseService.updatePhase).toHaveBeenCalledWith('task-1', 'decision', {
+		expect(classificationProgressStageService.updateStage).toHaveBeenCalledWith('task-1', 'decision', {
 			confidence: 82,
 		});
 		expect(classificationRagLoopService.evaluateRagLoopSecondPass).toHaveBeenCalledWith({

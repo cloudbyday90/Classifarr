@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -7,10 +7,10 @@
  */
 
 import express from 'express';
-import { classificationPhaseService } from '../services/classificationPhaseService.mjs';
+import { classificationProgressStageService } from '../services/classificationProgressStageService.mjs';
 import { createClassificationProgressRouter } from './classificationProgressRouteShared.mjs';
 
 export const router = createClassificationProgressRouter({
   express,
-  classificationPhaseService,
+  classificationProgressStageService,
 });

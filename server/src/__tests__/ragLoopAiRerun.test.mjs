@@ -40,8 +40,8 @@ const mockOllamaService = {
   updateTokenCount: jest.fn(),
 };
 
-const mockClassificationPhaseService = {
-  updatePhase: jest.fn(),
+const mockclassificationProgressStageService = {
+  updateStage: jest.fn(),
   completeTracking: jest.fn(),
 };
 
@@ -80,9 +80,9 @@ const mockPolicyQuestionBuilder = {
   build: jest.fn(),
 };
 
-jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
-    ...mockClassificationPhaseService,
-    classificationPhaseService: mockClassificationPhaseService
+jest.unstable_mockModule('../services/classificationProgressStageService.mjs', () => ({
+    ...mockclassificationProgressStageService,
+    classificationProgressStageService: mockclassificationProgressStageService
 }));
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));

@@ -24,7 +24,7 @@ const PHASE8R_NATIVE_SCHEMA_CONTRACT_VERSION = 'phase8r.native_schema_contract.v
     },
     {
       path: 'server/src/routes/classificationProgress.mjs',
-      content: "import { classificationPhaseService } from '../services/classificationPhaseService.mjs';",
+      content: "import { classificationProgressStageService } from '../services/classificationProgressStageService.mjs';",
     },
     {
       path: 'docs/architecture/policy-builder-intent-model-roadmap.md',
@@ -87,17 +87,17 @@ describe('policyBuilderProductionNameInventory', () => {
         decisionId: PRODUCTION_NAMING_DECISION_IDS.RENAME_IN_PRODUCTION_CODE,
         durableTarget: 'nativePolicyIntentSchemaContract',
       }),
-      expect.objectContaining({
-        repoPath: 'server/src/routes/classificationProgress.mjs',
-        categoryId: PRODUCTION_NAMING_CATEGORY_IDS.PRODUCTION,
-        decisionId: PRODUCTION_NAMING_DECISION_IDS.RENAME_IN_PRODUCTION_CODE,
-        durableTarget: 'classificationProgressStageService',
-      }),
     ]));
     expect(inventory.renameMap).toEqual(expect.arrayContaining([
       expect.objectContaining({
         repoPath: 'server/src/services/policyBuilderPhase6IntentEngine.mjs',
         durableTarget: 'policyIntentInference',
+      }),
+    ]));
+    expect(inventory.references).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        repoPath: 'server/src/routes/classificationProgress.mjs',
+        durableTarget: 'classificationProgressStageService',
       }),
     ]));
   });

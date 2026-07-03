@@ -20,12 +20,12 @@ jest.unstable_mockModule('../config/database.mjs', () => ({
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 await import('../config/database.mjs');
-const { classificationPhaseService } = await import('../services/classificationPhaseService.mjs');
+const { classificationProgressStageService } = await import('../services/classificationProgressStageService.mjs');
 
-describe('classificationPhaseService', () => {
+describe('classificationProgressStageService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        classificationPhaseService.webSocketService = {
+        classificationProgressStageService.webSocketService = {
             emitTaskProgress: jest.fn()
         };
     });
@@ -34,7 +34,7 @@ describe('classificationPhaseService', () => {
         jest.restoreAllMocks();
     });
 
-    describe('updatePhase', () => {
+    describe('updateStage', () => {
         it('should update phase and emit progress event for a task', async () => {
             mockQuery.mockResolvedValueOnce({
                 rows: [{
@@ -46,7 +46,7 @@ describe('classificationPhaseService', () => {
             });
             mockQuery.mockResolvedValueOnce({ rows: [] });
 
-            const result = await classificationPhaseService.updatePhase(1, 'metadata_fetch', {});
+            const result = await classificationProgressStageService.updateStage(1, 'metadata_fetch', {});
 
             expect(mockQuery).toHaveBeenCalledTimes(2);
             expect(result).toMatchObject({
@@ -54,7 +54,7 @@ describe('classificationPhaseService', () => {
                 phase: 'metadata_fetch',
                 phaseIndex: 2
             });
-            expect(classificationPhaseService.webSocketService.emitTaskProgress).toHaveBeenCalledWith(
+            expect(classificationProgressStageService.webSocketService.emitTaskProgress).toHaveBeenCalledWith(
                 1,
                 expect.objectContaining({
                     taskId: 1,
@@ -66,14 +66,14 @@ describe('classificationPhaseService', () => {
         });
 
         it('should return null for invalid phase', async () => {
-            const result = await classificationPhaseService.updatePhase(1, 'invalid_phase');
+            const result = await classificationProgressStageService.updateStage(1, 'invalid_phase');
             expect(result).toBeNull();
         });
 
         it('should return null for non-existent task', async () => {
             mockQuery.mockResolvedValueOnce({ rows: [] });
 
-            const result = await classificationPhaseService.updatePhase(999, 'metadata_fetch');
+            const result = await classificationProgressStageService.updateStage(999, 'metadata_fetch');
 
             expect(result).toBeNull();
         });
@@ -89,7 +89,7 @@ describe('classificationPhaseService', () => {
             });
             mockQuery.mockResolvedValueOnce({ rows: [] });
 
-            const result = await classificationPhaseService.updatePhase(1, 'ai_analysis', {
+            const result = await classificationProgressStageService.updateStage(1, 'ai_analysis', {
                 skippedPhases: ['signal_combine'],
                 skippedPhaseMetadata: {
                     signal_combine: { reason: 'policy_signal_path' }
@@ -124,9 +124,9 @@ describe('classificationPhaseService', () => {
             });
             mockQuery.mockResolvedValueOnce({ rows: [] });
 
-            await classificationPhaseService.updatePhase(1, 'metadata_fetch', {});
+            await classificationProgressStageService.updateStage(1, 'metadata_fetch', {});
 
-            expect(classificationPhaseService.webSocketService.emitTaskProgress).toHaveBeenCalledWith(
+            expect(classificationProgressStageService.webSocketService.emitTaskProgress).toHaveBeenCalledWith(
                 1,
                 expect.objectContaining({
                     title: 'Nested Media Title'
@@ -148,7 +148,7 @@ describe('classificationPhaseService', () => {
             };
             mockQuery.mockResolvedValueOnce({ rows: [mockTask] });
 
-            const result = await classificationPhaseService.getProgress(1);
+            const result = await classificationProgressStageService.getProgress(1);
 
             expect(result).toMatchObject({
                 taskId: 1,
@@ -166,7 +166,7 @@ describe('classificationPhaseService', () => {
         it('should return null for non-existent task', async () => {
             mockQuery.mockResolvedValueOnce({ rows: [] });
 
-            const result = await classificationPhaseService.getProgress(999);
+            const result = await classificationProgressStageService.getProgress(999);
 
             expect(result).toBeNull();
         });
@@ -180,7 +180,7 @@ describe('classificationPhaseService', () => {
             ];
             mockQuery.mockResolvedValueOnce({ rows: mockTasks });
 
-            const result = await classificationPhaseService.getActiveClassifications();
+            const result = await classificationProgressStageService.getActiveClassifications();
 
             expect(result).toHaveLength(2);
             expect(result[0]).toMatchObject({ taskId: 1, title: 'Test Movie 1', currentPhase: 'metadata_fetch' });
@@ -190,7 +190,7 @@ describe('classificationPhaseService', () => {
         it('should return empty array when no active classifications', async () => {
             mockQuery.mockResolvedValueOnce({ rows: [] });
 
-            const result = await classificationPhaseService.getActiveClassifications();
+            const result = await classificationProgressStageService.getActiveClassifications();
 
             expect(result).toEqual([]);
         });
@@ -211,7 +211,7 @@ describe('classificationPhaseService', () => {
             ];
             mockQuery.mockResolvedValueOnce({ rows: mockTasks });
 
-            const result = await classificationPhaseService.getActiveClassifications();
+            const result = await classificationProgressStageService.getActiveClassifications();
 
             expect(result).toHaveLength(1);
             expect(result[0]).toMatchObject({
@@ -230,14 +230,14 @@ describe('classificationPhaseService', () => {
             });
             mockQuery.mockResolvedValueOnce({ rows: [] });
 
-            await classificationPhaseService.completeTracking(1, { library: 'Movies', confidence: 95 });
+            await classificationProgressStageService.completeTracking(1, { library: 'Movies', confidence: 95 });
 
             expect(mockQuery).toHaveBeenCalledTimes(2);
             expect(mockQuery).toHaveBeenLastCalledWith(
                 expect.stringContaining('UPDATE task_queue'),
                 expect.any(Array)
             );
-            expect(classificationPhaseService.webSocketService.emitTaskProgress).toHaveBeenCalledWith(
+            expect(classificationProgressStageService.webSocketService.emitTaskProgress).toHaveBeenCalledWith(
                 1,
                 expect.objectContaining({
                     taskId: 1,
@@ -251,19 +251,19 @@ describe('classificationPhaseService', () => {
         it('should handle non-existent task gracefully', async () => {
             mockQuery.mockResolvedValueOnce({ rows: [] });
 
-            await classificationPhaseService.completeTracking(999);
+            await classificationProgressStageService.completeTracking(999);
 
             expect(mockQuery).toHaveBeenCalledTimes(1);
         });
     });
 
-    describe('resumeFromPhase', () => {
+    describe('resumeFromStage', () => {
         it('should return the phase to resume from', async () => {
             mockQuery.mockResolvedValueOnce({
                 rows: [{ current_phase: 'rag_analysis', phase_index: 4 }]
             });
 
-            const result = await classificationPhaseService.resumeFromPhase(1);
+            const result = await classificationProgressStageService.resumeFromStage(1);
 
             expect(result).toBe('rag_analysis');
         });
@@ -271,15 +271,15 @@ describe('classificationPhaseService', () => {
         it('should return null for non-existent task', async () => {
             mockQuery.mockResolvedValueOnce({ rows: [] });
 
-            const result = await classificationPhaseService.resumeFromPhase(999);
+            const result = await classificationProgressStageService.resumeFromStage(999);
 
             expect(result).toBeNull();
         });
     });
 
-    describe('getPhaseMetadata', () => {
+    describe('getStageMetadata', () => {
         it('should return phase metadata for all phases', () => {
-            const metadata = classificationPhaseService.getPhaseMetadata();
+            const metadata = classificationProgressStageService.getStageMetadata();
 
             expect(metadata).toHaveLength(8);
             expect(metadata[0]).toMatchObject({ name: 'queued', index: 1 });
@@ -287,23 +287,23 @@ describe('classificationPhaseService', () => {
         });
     });
 
-    describe('isValidPhase', () => {
+    describe('isValidStage', () => {
         it('should return true for valid phases', () => {
             const validPhases = ['queued', 'metadata_fetch', 'policy_eval', 'rag_analysis', 'signal_combine', 'ai_analysis', 'decision', 'notification'];
 
             validPhases.forEach(phase => {
-                expect(classificationPhaseService.isValidPhase(phase)).toBe(true);
+                expect(classificationProgressStageService.isValidStage(phase)).toBe(true);
             });
         });
 
         it('should return false for invalid phases', () => {
-            expect(classificationPhaseService.isValidPhase('invalid_phase')).toBe(false);
-            expect(classificationPhaseService.isValidPhase('policy_evaluation')).toBe(false);
-            expect(classificationPhaseService.isValidPhase('signal_combination')).toBe(false);
+            expect(classificationProgressStageService.isValidStage('invalid_phase')).toBe(false);
+            expect(classificationProgressStageService.isValidStage('policy_evaluation')).toBe(false);
+            expect(classificationProgressStageService.isValidStage('signal_combination')).toBe(false);
         });
     });
 
-    describe('buildPhaseList', () => {
+    describe('buildStageList', () => {
         it('should build phase list with correct statuses', () => {
             const mockTask = {
                 current_phase: 'rag_analysis',
@@ -315,7 +315,7 @@ describe('classificationPhaseService', () => {
                 ]
             };
 
-            const phases = classificationPhaseService.buildPhaseList(mockTask);
+            const phases = classificationProgressStageService.buildStageList(mockTask);
 
             expect(phases).toHaveLength(8);
             expect(phases[0].status).toBe('complete');
@@ -342,16 +342,16 @@ describe('classificationPhaseService', () => {
                 ]
             };
 
-            const phases = classificationPhaseService.buildPhaseList(mockTask);
+            const phases = classificationProgressStageService.buildStageList(mockTask);
 
             expect(phases[4].status).toBe('skipped');
             expect(phases[6].status).toBe('in_progress');
         });
     });
 
-    describe('getPhaseCount', () => {
+    describe('getStageCount', () => {
         it('should return 8 phases', () => {
-            expect(classificationPhaseService.getPhaseCount()).toBe(8);
+            expect(classificationProgressStageService.getStageCount()).toBe(8);
         });
     });
 });

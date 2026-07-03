@@ -168,3 +168,10 @@ labels, except where an allow-listed migration or history reason is documented.
   `server/src/__tests__/services/policyBuilderProductionNameInventory.test.mjs`.
 - The implementation outcome is documented in
   [Policy Builder Production Name Inventory](policy-builder-production-name-inventory.md).
+- The first Phase 9R.2 module cutover renamed classification progress
+  production modules from phase terminology to stage terminology:
+  [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
+- After that cutover, the production naming inventory validates with 15,951
+  total phase-coded references, 7,521 production references, and 7,543 rename
+  candidates. Persisted/API classification progress fields remain deferred to
+  Phase 9R.3 contract naming work.

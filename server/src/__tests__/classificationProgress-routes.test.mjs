@@ -11,10 +11,10 @@ import request from 'supertest';
 import { jest } from '@jest/globals';
 
 import { createLoggerModuleMock, createNamedMockModule, createServiceStubs } from './helpers/mockFactory.mjs';
-const classificationPhaseService = createServiceStubs(['getActiveClassifications', 'getProgress']);
-const { getActiveClassifications, getProgress } = classificationPhaseService;
+const classificationProgressStageService = createServiceStubs(['getActiveClassifications', 'getProgress']);
+const { getActiveClassifications, getProgress } = classificationProgressStageService;
 
-jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => createNamedMockModule('classificationPhaseService', classificationPhaseService));
+jest.unstable_mockModule('../services/classificationProgressStageService.mjs', () => createNamedMockModule('classificationProgressStageService', classificationProgressStageService));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 

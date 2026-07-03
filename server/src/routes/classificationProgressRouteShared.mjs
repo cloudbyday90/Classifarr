@@ -12,7 +12,7 @@ import { NotFoundError } from '../utils/appError.mjs';
 
 export function createClassificationProgressRouter({
   express,
-  classificationPhaseService,
+  classificationProgressStageService,
 }) {
   const router = express.Router();
 
@@ -42,7 +42,7 @@ export function createClassificationProgressRouter({
    *                     type: integer
    */
   router.get('/', asyncHandler(async (_req, res) => {
-    const activeClassifications = await classificationPhaseService.getActiveClassifications();
+    const activeClassifications = await classificationProgressStageService.getActiveClassifications();
     return sendData(res, activeClassifications);
   }));
 
@@ -65,7 +65,7 @@ export function createClassificationProgressRouter({
    *         description: Task not found
    */
   router.get('/:taskId', asyncHandler(async (req, res) => {
-    const progress = await classificationPhaseService.getProgress(req.params.taskId);
+    const progress = await classificationProgressStageService.getProgress(req.params.taskId);
 
     if (!progress) {
       throw new NotFoundError('Task not found or not processing');

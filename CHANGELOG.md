@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Classification Progress Stage Naming Cutover** — renamed the classification
+  progress phase service, utility, query module, imports, and focused tests to
+  durable stage terminology while preserving persisted/API phase-shaped fields
+  for the later contract naming cutover.
 - **Policy Builder Production Name Inventory** — added a side-effect-free
   production naming inventory that scans phase-coded production, test, script,
   package-command, migration, and docs/history references; classifies each

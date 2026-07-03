@@ -44,7 +44,7 @@ const ragRetriever = createServiceStubs(['semanticSearch', 'getSuggestedLibrary'
   getSuggestedLibrary: jest.fn().mockReturnValue(null),
   calculateDynamicWeight: jest.fn().mockReturnValue(0.5),
 });
-const classificationPhaseService = createServiceStubs(['updatePhase']);
+const classificationProgressStageService = createServiceStubs(['updateStage']);
 
 const classificationEvidenceService = createServiceStubs(['buildRelatedEvidenceSummary', 'findExactMatch'], {
   buildRelatedEvidenceSummary: jest.fn().mockReturnValue(null),
@@ -95,7 +95,7 @@ jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => c
 
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => createNamedMockModule('classificationUtilsService', classificationUtilsService));
 
-jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => createNamedMockModule('classificationPhaseService', classificationPhaseService));
+jest.unstable_mockModule('../services/classificationProgressStageService.mjs', () => createNamedMockModule('classificationProgressStageService', classificationProgressStageService));
 
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => createNamedMockModule('classificationEvidenceService', classificationEvidenceService));
 

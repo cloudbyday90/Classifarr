@@ -30,7 +30,7 @@ const ragRetriever = createServiceStubs(['getSuggestedLibrary'], {
   getSuggestedLibrary: jest.fn().mockReturnValue(null),
 });
 
-const classificationPhaseServiceObj = createServiceStubs(['updatePhase']);
+const classificationProgressStageServiceObj = createServiceStubs(['updateStage']);
 
 const buildSignalContext = jest.fn();
 const ensureDecisionQuestion = jest.fn();
@@ -53,7 +53,7 @@ jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => c
 
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => createNamedMockModule('classificationUtilsService', classificationUtilsService));
 
-jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => createNamedMockModule('classificationPhaseService', classificationPhaseServiceObj));
+jest.unstable_mockModule('../services/classificationProgressStageService.mjs', () => createNamedMockModule('classificationProgressStageService', classificationProgressStageServiceObj));
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedStubModule('ragRetriever', ragRetriever));
 

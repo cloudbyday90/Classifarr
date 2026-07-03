@@ -6120,6 +6120,26 @@ Acceptance criteria:
 - Temporary compatibility exports have explicit removal dates/gates.
 - No new production code imports phase-coded modules.
 
+Implementation status:
+
+- The first narrow module cutover is complete for classification progress
+  tracking. `classificationPhaseService`, `classificationPhaseUtils`, and
+  `classificationPhaseProgress` were renamed to
+  `classificationProgressStageService`,
+  `classificationProgressStageUtils`, and
+  `classificationProgressStageQueries`.
+- Internal progress definitions now use `STAGES` and `STAGE_METADATA`, while
+  bounded compatibility aliases remain for existing phase-shaped callers.
+- Persisted task queue and public progress response fields such as
+  `current_phase`, `phase_index`, `phase_history`, `currentPhase`,
+  `phaseIndex`, `totalPhases`, and `phases` were not changed in this batch.
+  They are owned by Phase 9R.3 contract and telemetry naming cutover.
+- Outcome record:
+  [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
+- The repository inventory validates after this batch with 15,951 total
+  phase-coded references, 7,521 production references, and 7,543 rename
+  candidates.
+
 ### 9R.3 Contract And Telemetry Naming Cutover
 
 Intent: remove phase-coded labels from payloads, traces, events, and operator

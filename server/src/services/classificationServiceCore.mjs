@@ -35,7 +35,7 @@ export class ClassificationService {
     discordBot,
     contentTypeAnalyzer,
     clarificationService,
-    classificationPhaseService,
+    classificationProgressStageService,
     classificationRetryService,
     classificationEvidenceReinforcementService,
     classificationEvidenceService,
@@ -60,7 +60,7 @@ export class ClassificationService {
     this.discordBot = discordBot;
     this.contentTypeAnalyzer = contentTypeAnalyzer;
     this.clarificationService = clarificationService;
-    this.classificationPhaseService = classificationPhaseService;
+    this.classificationProgressStageService = classificationProgressStageService;
     this.classificationRetryService = classificationRetryService;
     this.classificationEvidenceReinforcementService = classificationEvidenceReinforcementService;
     this.classificationEvidenceService = classificationEvidenceService;
@@ -212,7 +212,7 @@ export class ClassificationService {
       this.logger.info(`Starting classification for ${media_type}: ${title} (TMDB: ${tmdbId || 'searching...'})`);
 
       if (taskId && !existingMetadata.source_library_id) {
-        await this.classificationPhaseService.updatePhase(taskId, 'metadata_fetch', { title });
+        await this.classificationProgressStageService.updateStage(taskId, 'metadata_fetch', { title });
       }
 
       let metadata;
@@ -322,7 +322,7 @@ export class ClassificationService {
       if (this.discordBot.isInitialized) {
         try {
           if (taskId && !metadata.source_library_id) {
-            await this.classificationPhaseService.updatePhase(taskId, 'notification');
+            await this.classificationProgressStageService.updateStage(taskId, 'notification');
           }
 
           this.logger.info('[Discord] Notification attempt', {
@@ -362,7 +362,7 @@ export class ClassificationService {
       });
 
       if (taskId && !metadata.source_library_id) {
-        await this.classificationPhaseService.completeTracking(taskId, {
+        await this.classificationProgressStageService.completeTracking(taskId, {
           library: result.library?.name,
           confidence: result.confidence,
           method: result.method,

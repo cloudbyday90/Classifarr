@@ -192,7 +192,7 @@ jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createName
 
 jest.unstable_mockModule('../services/clarificationService.mjs', () => createNamedStubModule('clarificationService'));
 
-jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => createNamedStubModule('classificationPhaseService'));
+jest.unstable_mockModule('../services/classificationProgressStageService.mjs', () => createNamedStubModule('classificationProgressStageService'));
 
 jest.unstable_mockModule('../services/classificationRetryService.mjs', () => createNamedStubModule('classificationRetryService'));
 

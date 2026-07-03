@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -19,7 +19,7 @@
 import { jest } from '@jest/globals';
 import { createNamedMockModule, createLoggerModuleMock, createServiceStubs } from './helpers/mockFactory.mjs';
 
-const mockClassificationPhaseService = createServiceStubs(['updatePhase', 'completeTracking']);
+const mockclassificationProgressStageService = createServiceStubs(['updateStage', 'completeTracking']);
 
 const mockDb = {
   query: jest.fn()
@@ -53,7 +53,7 @@ const mockClassificationRetryService = createServiceStubs(['retryClassifications
 
 const mockClassificationOutcomeService = createServiceStubs(['recordOutcome']);
 
-jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => createNamedMockModule('classificationPhaseService', mockClassificationPhaseService));
+jest.unstable_mockModule('../services/classificationProgressStageService.mjs', () => createNamedMockModule('classificationProgressStageService', mockclassificationProgressStageService));
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
@@ -95,7 +95,7 @@ const { providerLock } = await import('../services/providerLock.mjs');
 const { ragLogger } = await import('../utils/ragLogger.mjs');
 const { OperationController } = await import('../utils/operationController.mjs');
 
-const classificationPhaseService = mockClassificationPhaseService;
+const classificationProgressStageService = mockclassificationProgressStageService;
 const db = mockDb;
 const tmdbService = mockTmdbService;
 const policyEngine = mockPolicyEngine;
@@ -603,8 +603,8 @@ describe('Phase Tracking in classify()', () => {
     confidenceCalculator.calculate.mockReset();
     confidenceCalculator.toAIContext.mockReset();
     contentTypeAnalyzer.analyze.mockReset();
-    classificationPhaseService.updatePhase.mockReset();
-    classificationPhaseService.completeTracking.mockReset();
+    classificationProgressStageService.updateStage.mockReset();
+    classificationProgressStageService.completeTracking.mockReset();
 
     // Setup default mocks
     db.query.mockResolvedValue({ rows: [] });
@@ -615,8 +615,8 @@ describe('Phase Tracking in classify()', () => {
     confidenceCalculator.toAIContext.mockReturnValue('');
     contentTypeAnalyzer.analyze.mockResolvedValue({ analyzed: false });
 
-    classificationPhaseService.updatePhase.mockResolvedValue(true);
-    classificationPhaseService.completeTracking.mockResolvedValue(true);
+    classificationProgressStageService.updateStage.mockResolvedValue(true);
+    classificationProgressStageService.completeTracking.mockResolvedValue(true);
 
     // Mock libraries
     db.query.mockImplementation((text, _params) => {
@@ -640,11 +640,11 @@ describe('Phase Tracking in classify()', () => {
     await classificationService.classify(payload);
 
     // Check for phase updates
-    expect(classificationPhaseService.updatePhase).toHaveBeenCalledWith('task-123', 'metadata_fetch', expect.anything());
-    expect(classificationPhaseService.updatePhase).toHaveBeenCalledWith('task-123', 'policy_eval');
+    expect(classificationProgressStageService.updateStage).toHaveBeenCalledWith('task-123', 'metadata_fetch', expect.anything());
+    expect(classificationProgressStageService.updateStage).toHaveBeenCalledWith('task-123', 'policy_eval');
 
     // Tracking completion
-    expect(classificationPhaseService.completeTracking).toHaveBeenCalledWith('task-123', expect.anything());
+    expect(classificationProgressStageService.completeTracking).toHaveBeenCalledWith('task-123', expect.anything());
   });
 
   test('should SKIP phase tracking when taskId is missing', async () => {
@@ -655,8 +655,8 @@ describe('Phase Tracking in classify()', () => {
 
     await classificationService.classify(payload);
 
-    expect(classificationPhaseService.updatePhase).not.toHaveBeenCalled();
-    expect(classificationPhaseService.completeTracking).not.toHaveBeenCalled();
+    expect(classificationProgressStageService.updateStage).not.toHaveBeenCalled();
+    expect(classificationProgressStageService.completeTracking).not.toHaveBeenCalled();
   });
 
   test('should SKIP phase tracking for source_library items', async () => {
@@ -668,8 +668,8 @@ describe('Phase Tracking in classify()', () => {
 
     await classificationService.classify(payload);
 
-    expect(classificationPhaseService.updatePhase).not.toHaveBeenCalled();
-    expect(classificationPhaseService.completeTracking).not.toHaveBeenCalled();
+    expect(classificationProgressStageService.updateStage).not.toHaveBeenCalled();
+    expect(classificationProgressStageService.completeTracking).not.toHaveBeenCalled();
   });
 });
 
@@ -731,7 +731,7 @@ describe('PolicyEngine -> AI flow', () => {
       expect.any(Object),
       expect.objectContaining({ mode: 'classify' })
     );
-    expect(classificationPhaseService.updatePhase).toHaveBeenCalledWith(
+    expect(classificationProgressStageService.updateStage).toHaveBeenCalledWith(
       'task-456',
       'ai_analysis',
       expect.objectContaining({

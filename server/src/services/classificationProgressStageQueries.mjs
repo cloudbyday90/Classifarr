@@ -1,8 +1,14 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { PHASES, PHASE_METADATA, parsePayload, extractDisplayInfo, buildPhaseList } from './classificationPhaseUtils.mjs';
+import {
+    STAGES,
+    STAGE_METADATA,
+    parsePayload,
+    extractDisplayInfo,
+    buildStageList
+} from './classificationProgressStageUtils.mjs';
 
-const logger = createLogger('ClassificationPhaseService');
+const logger = createLogger('classificationProgressStageService');
 
 function buildProgressEntry(task) {
     const payload = parsePayload(task.payload);
@@ -15,13 +21,13 @@ function buildProgressEntry(task) {
         mediaType: displayInfo.mediaType,
         currentPhase: task.current_phase,
         phaseIndex: task.phase_index || 0,
-        totalPhases: PHASES.length,
-        progress: task.phase_index ? Math.round((task.phase_index / PHASES.length) * 100) : 0,
+        totalPhases: STAGES.length,
+        progress: task.phase_index ? Math.round((task.phase_index / STAGES.length) * 100) : 0,
         phaseStartedAt: task.phase_started_at,
         phaseDuration: task.phase_started_at
             ? Date.now() - new Date(task.phase_started_at).getTime()
             : 0,
-        phases: buildPhaseList(task),
+        phases: buildStageList(task),
     };
 }
 
@@ -62,7 +68,7 @@ export async function getActiveClassifications() {
         return result.rows.map(task => ({
             ...buildProgressEntry(task),
             createdAt: task.created_at,
-            phaseMetadata: PHASE_METADATA[task.current_phase] || null,
+            phaseMetadata: STAGE_METADATA[task.current_phase] || null,
         }));
     } catch (error) {
         logger.error('Failed to get active classifications', { error: error.message });
@@ -70,7 +76,7 @@ export async function getActiveClassifications() {
     }
 }
 
-export async function resumeFromPhase(taskId) {
+export async function resumeFromStage(taskId) {
     try {
         const task = await db.query(
             'SELECT current_phase, phase_index FROM task_queue WHERE id = $1',
@@ -79,13 +85,17 @@ export async function resumeFromPhase(taskId) {
 
         if (task.rows.length === 0) return null;
 
-        const phase = task.rows[0].current_phase;
-        if (phase) {
-            logger.info('Resuming task from phase', { taskId, phase });
+        const stage = task.rows[0].current_phase;
+        if (stage) {
+            logger.info('Resuming task from stage', { taskId, stage });
         }
-        return phase;
+        return stage;
     } catch (error) {
         logger.error('Failed to get resume phase', { taskId, error: error.message });
         return null;
     }
+}
+
+export async function resumeFromPhase(taskId) {
+    return resumeFromStage(taskId);
 }

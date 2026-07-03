@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -17,7 +17,7 @@
  */
 
 import { policyEngine } from './policyEngine.mjs';
-import { classificationPhaseService } from './classificationPhaseService.mjs';
+import { classificationProgressStageService } from './classificationProgressStageService.mjs';
 import { ragRetriever } from './ragRetriever.mjs';
 import * as policyScoringContextBuilder from './policyScoringContextBuilder.mjs';
 import { classificationAiService } from './classificationAiService.mjs';
@@ -35,7 +35,7 @@ const defaultLogger = createLogger('classificationPolicyPathService');
 export class ClassificationPolicyPathService {
 	constructor(deps = {}) {
 		this.policyEngine = deps.policyEngine || policyEngine;
-		this.classificationPhaseService = deps.classificationPhaseService || classificationPhaseService;
+		this.classificationProgressStageService = deps.classificationProgressStageService || classificationProgressStageService;
 		this.ragRetriever = deps.ragRetriever || ragRetriever;
 		this.policyScoringContextBuilder = deps.policyScoringContextBuilder || policyScoringContextBuilder;
 		this.classificationAiService = deps.classificationAiService || classificationAiService;
@@ -56,7 +56,7 @@ export class ClassificationPolicyPathService {
 
 		try {
 			if (taskId && !metadata.source_library_id) {
-				await this.classificationPhaseService.updatePhase(taskId, 'policy_eval');
+				await this.classificationProgressStageService.updateStage(taskId, 'policy_eval');
 			}
 
 			this.logger.info('Evaluating with PolicyEngine', { title: metadata.title });
@@ -116,7 +116,7 @@ export class ClassificationPolicyPathService {
 		const ragMatches = ragCache?.matches || [];
 
 		if (ragCache && taskId && !metadata.source_library_id) {
-			await this.classificationPhaseService.updatePhase(taskId, 'rag_analysis');
+			await this.classificationProgressStageService.updateStage(taskId, 'rag_analysis');
 		}
 
 		if (ragMatches.length > 0) {
@@ -127,7 +127,7 @@ export class ClassificationPolicyPathService {
 		}
 
 		if (taskId && !metadata.source_library_id) {
-			await this.classificationPhaseService.updatePhase(taskId, 'ai_analysis', {
+			await this.classificationProgressStageService.updateStage(taskId, 'ai_analysis', {
 				skippedPhases: ['signal_combine'],
 				skippedPhaseMetadata: { signal_combine: { reason: 'policy_signal_path' } },
 			});
@@ -151,7 +151,7 @@ export class ClassificationPolicyPathService {
 					decisionPolicyResult: policyResult || null,
 					ragContext,
 					taskId,
-					classificationPhaseService: this.classificationPhaseService,
+					classificationProgressStageService: this.classificationProgressStageService,
 					classificationRagLoopService: this.classificationRagLoopService,
 					ensureDecisionQuestion: this.classificationRoutingService.ensureDecisionQuestion,
 				}),

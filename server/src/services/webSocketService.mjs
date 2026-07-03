@@ -16,7 +16,7 @@ const logger = createLogger('WebSocketService');
  * Pre-built WebSocket service infrastructure.
  *
  * Fully implemented but not yet wired into the production entry point.
- * ClassificationPhaseService accepts an optional wsService dependency
+ * classificationProgressStageService accepts an optional wsService dependency
  * (currently null at runtime) — when wired, this module will provide
  * real-time task progress events via Socket.IO.
  *

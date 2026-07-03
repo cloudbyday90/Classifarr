@@ -55,7 +55,7 @@ export async function resolveClassificationPathAiSuccess({
 	decisionPolicyResult = policyResult,
 	ragContext = null,
 	taskId = null,
-	classificationPhaseService,
+	classificationProgressStageService,
 	classificationRagLoopService,
 	ensureDecisionQuestion,
 }) {
@@ -68,7 +68,7 @@ export async function resolveClassificationPathAiSuccess({
 	});
 
 	if (taskId && !metadata.source_library_id) {
-		await classificationPhaseService.updatePhase(taskId, 'decision', {
+		await classificationProgressStageService.updateStage(taskId, 'decision', {
 			confidence: aiResult.confidence,
 		});
 	}
