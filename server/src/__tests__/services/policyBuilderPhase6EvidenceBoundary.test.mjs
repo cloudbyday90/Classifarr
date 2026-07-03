@@ -12,9 +12,9 @@ import {
   PHASE6R_EVIDENCE_INPUT_GATE_RISK_IDS,
 } from '../../services/policyBuilderPhase6EvidenceInputGate.mjs';
 import {
-  PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS,
-  buildPolicyBuilderPhase6EvidenceProjectionFingerprint,
-} from '../../services/policyBuilderPhase6EvidenceProjectionFingerprint.mjs';
+  POLICY_EVIDENCE_FINGERPRINT_AUDIT_RISK_IDS,
+  buildPolicyEvidenceFingerprint,
+} from '../../services/policyEvidenceFingerprint.mjs';
 
 describe('policyBuilderPhase6EvidenceBoundary', () => {
   test('adapts the public input envelope into the evidence projection shape', () => {
@@ -150,7 +150,7 @@ describe('policyBuilderPhase6EvidenceBoundary', () => {
         },
       },
       projectionFingerprintBuilder: projection => ({
-        ...buildPolicyBuilderPhase6EvidenceProjectionFingerprint(projection),
+        ...buildPolicyEvidenceFingerprint(projection),
         fingerprint: 'b'.repeat(64),
       }),
     });
@@ -165,7 +165,7 @@ describe('policyBuilderPhase6EvidenceBoundary', () => {
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.FINGERPRINT_MISMATCH,
+          POLICY_EVIDENCE_FINGERPRINT_AUDIT_RISK_IDS.FINGERPRINT_MISMATCH,
       }),
     ]));
   });

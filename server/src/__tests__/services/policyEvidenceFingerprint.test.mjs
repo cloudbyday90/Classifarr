@@ -1,13 +1,13 @@
 import {
-  PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS,
-  PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES,
-  PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_VERSION,
-  buildPolicyBuilderPhase6EvidenceProjectionFingerprint,
+  POLICY_EVIDENCE_FINGERPRINT_AUDIT_RISK_IDS,
+  POLICY_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES,
+  POLICY_EVIDENCE_FINGERPRINT_VERSION,
+  buildPolicyEvidenceFingerprint,
   stableStringify,
-  validatePolicyBuilderPhase6EvidenceProjectionFingerprint,
-} from '../../services/policyBuilderPhase6EvidenceProjectionFingerprint.mjs';
+  validatePolicyEvidenceFingerprint,
+} from '../../services/policyEvidenceFingerprint.mjs';
 
-describe('policyBuilderPhase6EvidenceProjectionFingerprint', () => {
+describe('policyEvidenceFingerprint', () => {
   const buildProjection = () => ({
     version: 'phase6r.evidence.v1',
     generatedFromLiveProvider: false,
@@ -60,8 +60,8 @@ describe('policyBuilderPhase6EvidenceProjectionFingerprint', () => {
   test('builds stable projection fingerprints with sanitized provenance', () => {
     const projection = buildProjection();
 
-    const left = buildPolicyBuilderPhase6EvidenceProjectionFingerprint(projection);
-    const right = buildPolicyBuilderPhase6EvidenceProjectionFingerprint({
+    const left = buildPolicyEvidenceFingerprint(projection);
+    const right = buildPolicyEvidenceFingerprint({
       summary: projection.summary,
       warnings: [],
       buckets: projection.buckets,
@@ -73,7 +73,7 @@ describe('policyBuilderPhase6EvidenceProjectionFingerprint', () => {
 
     expect(left).toEqual(right);
     expect(left).toEqual(expect.objectContaining({
-      version: PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_VERSION,
+      version: POLICY_EVIDENCE_FINGERPRINT_VERSION,
       algorithm: 'sha256',
       fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
       provenance: expect.objectContaining({
@@ -90,11 +90,11 @@ describe('policyBuilderPhase6EvidenceProjectionFingerprint', () => {
       }),
     }));
     expect(Object.keys(left.traceAttributes)).toEqual(expect.arrayContaining([
-      PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.FINGERPRINT,
-      PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.PROJECTION_VERSION,
-      PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.TOTAL_ENTRY_COUNT,
-      PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.SOURCE_IDS,
-      PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.AUTHORITY_SOURCE_IDS,
+      POLICY_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.FINGERPRINT,
+      POLICY_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.PROJECTION_VERSION,
+      POLICY_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.TOTAL_ENTRY_COUNT,
+      POLICY_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.SOURCE_IDS,
+      POLICY_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.AUTHORITY_SOURCE_IDS,
     ]));
     expect(JSON.stringify(left)).not.toContain('Animation');
   });
@@ -102,9 +102,9 @@ describe('policyBuilderPhase6EvidenceProjectionFingerprint', () => {
   test('validates projection fingerprints against projection, trace, and provenance', () => {
     const projection = buildProjection();
     const projectionFingerprint =
-      buildPolicyBuilderPhase6EvidenceProjectionFingerprint(projection);
+      buildPolicyEvidenceFingerprint(projection);
 
-    expect(validatePolicyBuilderPhase6EvidenceProjectionFingerprint({
+    expect(validatePolicyEvidenceFingerprint({
       projection,
       projectionFingerprint,
     })).toEqual({
@@ -142,7 +142,7 @@ describe('policyBuilderPhase6EvidenceProjectionFingerprint', () => {
       },
     };
     const staleFingerprint =
-      buildPolicyBuilderPhase6EvidenceProjectionFingerprint(projection);
+      buildPolicyEvidenceFingerprint(projection);
     const tamperedFingerprint = {
       ...staleFingerprint,
       fingerprint: 'not-a-sha256',
@@ -152,12 +152,12 @@ describe('policyBuilderPhase6EvidenceProjectionFingerprint', () => {
       },
       traceAttributes: {
         ...staleFingerprint.traceAttributes,
-        [PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_TRACE_ATTRIBUTES.FINGERPRINT]:
+        [POLICY_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.FINGERPRINT]:
           'b'.repeat(64),
       },
     };
 
-    const audit = validatePolicyBuilderPhase6EvidenceProjectionFingerprint({
+    const audit = validatePolicyEvidenceFingerprint({
       projection: staleProjection,
       projectionFingerprint: tamperedFingerprint,
     });
@@ -166,19 +166,19 @@ describe('policyBuilderPhase6EvidenceProjectionFingerprint', () => {
     expect(audit.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.MALFORMED_FINGERPRINT,
+          POLICY_EVIDENCE_FINGERPRINT_AUDIT_RISK_IDS.MALFORMED_FINGERPRINT,
       }),
       expect.objectContaining({
         riskId:
-          PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.FINGERPRINT_MISMATCH,
+          POLICY_EVIDENCE_FINGERPRINT_AUDIT_RISK_IDS.FINGERPRINT_MISMATCH,
       }),
       expect.objectContaining({
         riskId:
-          PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+          POLICY_EVIDENCE_FINGERPRINT_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
       }),
       expect.objectContaining({
         riskId:
-          PHASE6R_EVIDENCE_PROJECTION_FINGERPRINT_AUDIT_RISK_IDS.PROVENANCE_MISMATCH,
+          POLICY_EVIDENCE_FINGERPRINT_AUDIT_RISK_IDS.PROVENANCE_MISMATCH,
       }),
     ]));
   });
@@ -209,7 +209,7 @@ describe('policyBuilderPhase6EvidenceProjectionFingerprint', () => {
       },
     };
 
-    expect(buildPolicyBuilderPhase6EvidenceProjectionFingerprint(baseProjection).fingerprint)
-      .not.toBe(buildPolicyBuilderPhase6EvidenceProjectionFingerprint(changedProjection).fingerprint);
+    expect(buildPolicyEvidenceFingerprint(baseProjection).fingerprint)
+      .not.toBe(buildPolicyEvidenceFingerprint(changedProjection).fingerprint);
   });
 });

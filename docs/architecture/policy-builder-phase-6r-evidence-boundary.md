@@ -136,11 +136,11 @@ Cons:
 - Evidence engine:
   `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
 - Projection fingerprint:
-  `server/src/services/policyBuilderPhase6EvidenceProjectionFingerprint.mjs`
+  `server/src/services/policyEvidenceFingerprint.mjs`
 - Focused tests:
   `server/src/__tests__/services/policyBuilderPhase6EvidenceBoundary.test.mjs`
   and
-  `server/src/__tests__/services/policyBuilderPhase6EvidenceProjectionFingerprint.test.mjs`
+  `server/src/__tests__/services/policyEvidenceFingerprint.test.mjs`
 - Roadmap owner:
   Phase 6R.1 Evidence Engine in
   `docs/architecture/policy-builder-intent-model-roadmap.md`

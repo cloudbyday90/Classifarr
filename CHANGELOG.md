@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Fingerprint Module Cutover** — renamed the evidence
+  projection fingerprint helper and focused test to durable product-domain
+  names, moved the fingerprint artifact contract to
+  `policy.evidence.fingerprint.v1`, updated Phase 6R boundary/intent imports,
+  and lowered the production naming regression baseline after inventory
+  validation proved reduced phase-coded production debt.
 - **Policy Evidence Quality Module Cutover** — renamed the evidence-quality
   helper and focused test to durable product-domain names, moved the internal
   quality contract version to `policy.evidence.quality.v1`, updated Phase 6R

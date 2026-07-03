@@ -6,9 +6,9 @@ import {
   buildPolicyBuilderPhase6EvidenceProjectionAudit,
 } from './policyBuilderPhase6EvidenceEngine.mjs';
 import {
-  buildPolicyBuilderPhase6EvidenceProjectionFingerprint,
-  validatePolicyBuilderPhase6EvidenceProjectionFingerprint,
-} from './policyBuilderPhase6EvidenceProjectionFingerprint.mjs';
+  buildPolicyEvidenceFingerprint,
+  validatePolicyEvidenceFingerprint,
+} from './policyEvidenceFingerprint.mjs';
 
 const PHASE6R_EVIDENCE_BOUNDARY_VERSION = 'phase6r.evidence_boundary.v1';
 
@@ -40,7 +40,7 @@ function adaptPolicyBuilderPhase6EvidenceInput(evidenceInput = {}) {
 
 function buildPolicyBuilderPhase6BoundedEvidenceProjection({
   evidenceInput = {},
-  projectionFingerprintBuilder = buildPolicyBuilderPhase6EvidenceProjectionFingerprint,
+  projectionFingerprintBuilder = buildPolicyEvidenceFingerprint,
 } = {}) {
   const inputGate = buildPolicyBuilderPhase6EvidenceInputGate({ evidenceInput });
 
@@ -70,12 +70,12 @@ function buildPolicyBuilderPhase6BoundedEvidenceProjection({
   const projectionAudit = buildPolicyBuilderPhase6EvidenceProjectionAudit(projection);
   const fingerprintBuilder = typeof projectionFingerprintBuilder === 'function'
     ? projectionFingerprintBuilder
-    : buildPolicyBuilderPhase6EvidenceProjectionFingerprint;
+    : buildPolicyEvidenceFingerprint;
   const projectionFingerprint = projectionAudit.ok === true
     ? fingerprintBuilder(projection)
     : null;
   const projectionFingerprintAudit = projectionAudit.ok === true
-    ? validatePolicyBuilderPhase6EvidenceProjectionFingerprint({
+    ? validatePolicyEvidenceFingerprint({
         projection,
         projectionFingerprint,
       })

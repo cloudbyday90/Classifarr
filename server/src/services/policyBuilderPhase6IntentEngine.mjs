@@ -10,8 +10,8 @@ import {
   getPolicyBuilderPhase6EvidenceBucket,
 } from './policyBuilderPhase6EvidenceEngine.mjs';
 import {
-  validatePolicyBuilderPhase6EvidenceProjectionFingerprint,
-} from './policyBuilderPhase6EvidenceProjectionFingerprint.mjs';
+  validatePolicyEvidenceFingerprint,
+} from './policyEvidenceFingerprint.mjs';
 import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from './policyEvidenceQuality.mjs';
@@ -608,7 +608,7 @@ function buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
 
   const evidenceFingerprintAudit = boundedEvidenceResult?.projection &&
     boundedEvidenceResult?.projectionFingerprint
-    ? validatePolicyBuilderPhase6EvidenceProjectionFingerprint({
+    ? validatePolicyEvidenceFingerprint({
         projection: boundedEvidenceResult.projection,
         projectionFingerprint: boundedEvidenceResult.projectionFingerprint,
       })

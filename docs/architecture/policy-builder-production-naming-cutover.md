@@ -183,10 +183,15 @@ labels, except where an allow-listed migration or history reason is documented.
   to `policyEvidenceQuality.mjs` and moved the internal quality contract version
   to `policy.evidence.quality.v1`:
   [Policy Evidence Quality Module Cutover](policy-evidence-quality-module-cutover.md).
+- The follow-up Phase 9R.2 durable module cutover renamed the evidence
+  projection fingerprint helper to `policyEvidenceFingerprint.mjs`, renamed its
+  focused test, and moved the fingerprint artifact contract to
+  `policy.evidence.fingerprint.v1`:
+  [Policy Evidence Fingerprint Module Cutover](policy-evidence-fingerprint-module-cutover.md).
 - Phase 9R.4 now has a durable-named regression audit:
   [Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md).
   The audit consumes the production naming inventory and blocks increases above
   the approved July 3, 2026 baseline while durable rename batches continue.
-- After the evidence-quality cutover, the regression baseline is 7,514
-  production references, 7,536 rename candidates, and 93 obsolete migration
+- After the evidence-fingerprint cutover, the regression baseline is 7,470
+  production references, 7,492 rename candidates, and 93 obsolete migration
   tooling references.

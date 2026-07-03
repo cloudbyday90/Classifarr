@@ -3191,6 +3191,9 @@ Implementation status:
   [Policy Builder Phase 6R Evidence Quality](policy-builder-phase-6r-evidence-quality.md).
 - The evidence quality helper lives in
   `server/src/services/policyEvidenceQuality.mjs`.
+- The evidence projection fingerprint helper now lives in
+  `server/src/services/policyEvidenceFingerprint.mjs`; the artifact contract is
+  `policy.evidence.fingerprint.v1`.
 - Replay and impact reducer artifacts are explicitly classified as delete,
   rewrite-as-evidence-reducer, or maintainer-only migration material; all are
   blocked from normal operator flow until rewritten into Phase 6R evidence
@@ -6186,6 +6189,13 @@ Implementation status:
 - After the evidence-quality cutover, the repository inventory validates with
   16,187 total phase-coded references, 7,514 production references, and 7,536
   rename candidates.
+- The next durable module cutover renamed the evidence projection fingerprint
+  helper to `policyEvidenceFingerprint.mjs`, renamed its focused test, and moved
+  the fingerprint artifact contract to `policy.evidence.fingerprint.v1`:
+  [Policy Evidence Fingerprint Module Cutover](policy-evidence-fingerprint-module-cutover.md).
+- After the evidence-fingerprint cutover, the repository inventory validates
+  with 16,129 total phase-coded references, 7,470 production references, and
+  7,492 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
