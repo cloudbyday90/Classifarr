@@ -2301,10 +2301,10 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 3R.4 evidence-backed option selection is documented in
-  [Policy Builder Phase 3R Evidence-Backed Option Selection](policy-builder-phase-3r-evidence-backed-option-selection.md).
-- The server-side Phase 3R option-selection contract lives in
-  `server/src/services/policyBuilderPhase3EvidenceBackedOptionSelection.mjs`.
+- Policy authoring option selection is documented in
+  [Policy Authoring Option Selection](policy-authoring-option-selection.md).
+- The server-side policy authoring option-selection contract lives in
+  `server/src/services/policyAuthoringOptionSelection.mjs`.
 - Option candidates now normalize source label, selection state, evidence
   count, confidence, explanation, disabled reason, and command identity before
   any UI control can treat them as selectable.
@@ -2554,8 +2554,8 @@ Implementation record:
   [Policy Authoring Destination Flow](policy-authoring-destination-flow.md).
 - The policy-authoring component system is documented in
   [Policy Authoring Component System](policy-authoring-component-system.md).
-- Phase 3R.4 evidence-backed option selection is documented in
-  [Policy Builder Phase 3R Evidence-Backed Option Selection](policy-builder-phase-3r-evidence-backed-option-selection.md).
+- Policy authoring option selection is documented in
+  [Policy Authoring Option Selection](policy-authoring-option-selection.md).
 - Phase 3R.5 hard limits and avoid UX is documented in
   [Policy Builder Phase 3R Hard Limits And Avoid UX](policy-builder-phase-3r-hard-limit-avoid-ux.md).
 - Phase 3R.6 readiness and next action surface is documented in
@@ -6382,6 +6382,17 @@ Implementation status:
 - After the policy-authoring component-system cutover, the repository inventory
   validates with 10,688 total phase-coded references, 4,267 production
   references, and 4,289 rename candidates.
+- The next authoring workflow cutover renamed the option-selection contract to
+  `policyAuthoringOptionSelection.mjs`, renamed its focused test, replaced
+  phase-coded option-selection exports/helpers with
+  `POLICY_AUTHORING_OPTION_SELECTION_*`,
+  `POLICY_AUTHORING_OPTION_EVIDENCE_FIELD_IDS`, and
+  `policyAuthoringOption*`, and moved its standing design record to
+  [Policy Authoring Option Selection](policy-authoring-option-selection.md):
+  [Policy Authoring Option Selection Module Cutover](policy-authoring-option-selection-module-cutover.md).
+- After the policy-authoring option-selection cutover, the repository inventory
+  validates with 10,578 total phase-coded references, 4,211 production
+  references, and 4,233 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

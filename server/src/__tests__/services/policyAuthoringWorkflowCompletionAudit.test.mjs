@@ -38,7 +38,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_authoring_workflow_inventory',
       'policy_authoring_destination_flow',
       'policy_authoring_component_system',
-      'evidence_backed_option_selection',
+      'policy_authoring_option_selection',
       'hard_limits_avoid_ux',
       'readiness_next_action_surface',
       'starter_template_role_reset',

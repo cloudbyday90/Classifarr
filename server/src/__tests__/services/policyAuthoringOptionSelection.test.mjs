@@ -7,23 +7,23 @@ import {
   POLICY_AUTHORING_DESTINATION_QUESTION_IDS,
 } from '../../services/policyAuthoringDestinationFlow.mjs';
 import {
-  PHASE_3R_EVIDENCE_FIELD_IDS,
-  PHASE_3R_OPTION_SELECTION_COMMAND_IDS,
-  PHASE_3R_OPTION_SELECTION_RISK_IDS,
-  PHASE_3R_OPTION_SELECTION_STATE_IDS,
-  buildPhase3RMultiSelectCommandPlan,
-  getPhase3ROptionSelectionSourceBehavior,
+  POLICY_AUTHORING_OPTION_EVIDENCE_FIELD_IDS,
+  POLICY_AUTHORING_OPTION_SELECTION_COMMAND_IDS,
+  POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS,
+  POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS,
+  buildPolicyAuthoringMultiSelectCommandPlan,
+  getPolicyAuthoringOptionSelectionSourceBehavior,
   isBroadIdentityGenre,
-  listPhase3ROptionSelectionSourceBehaviors,
-  normalizePhase3ROptionCandidate,
-  summarizePhase3REvidenceBackedOptionSelection,
-  validatePhase3RCommandPlanBoundary,
-  validatePhase3ROptionCandidate,
-} from '../../services/policyBuilderPhase3EvidenceBackedOptionSelection.mjs';
+  listPolicyAuthoringOptionSelectionSourceBehaviors,
+  normalizePolicyAuthoringOptionCandidate,
+  summarizePolicyAuthoringOptionSelection,
+  validatePolicyAuthoringCommandPlanBoundary,
+  validatePolicyAuthoringOptionCandidate,
+} from '../../services/policyAuthoringOptionSelection.mjs';
 
-describe('policyBuilderPhase3EvidenceBackedOptionSelection', () => {
+describe('policyAuthoringOptionSelection', () => {
   test('defines explicit source behavior for evidence-backed option groups', () => {
-    expect(listPhase3ROptionSelectionSourceBehaviors().map(behavior => behavior.sourceId)).toEqual([
+    expect(listPolicyAuthoringOptionSelectionSourceBehaviors().map(behavior => behavior.sourceId)).toEqual([
       POLICY_AUTHORING_OPTION_SOURCE_IDS.OBSERVED_IN_LIBRARY,
       POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_OBSERVED_PROFILE,
       POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_STARTER_TEMPLATE,
@@ -33,9 +33,9 @@ describe('policyBuilderPhase3EvidenceBackedOptionSelection', () => {
       POLICY_AUTHORING_OPTION_SOURCE_IDS.UNAVAILABLE_CONFLICTING_INTENT,
     ]);
 
-    expect(getPhase3ROptionSelectionSourceBehavior(POLICY_AUTHORING_OPTION_SOURCE_IDS.OBSERVED_IN_LIBRARY))
+    expect(getPolicyAuthoringOptionSelectionSourceBehavior(POLICY_AUTHORING_OPTION_SOURCE_IDS.OBSERVED_IN_LIBRARY))
       .toEqual(expect.objectContaining({
-        selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.READ_ONLY_EVIDENCE,
+        selectionStateId: POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS.READ_ONLY_EVIDENCE,
         visibleGroupLabel: 'Already in this library',
         selectable: false,
         readOnlyEvidence: true,
@@ -44,16 +44,16 @@ describe('policyBuilderPhase3EvidenceBackedOptionSelection', () => {
         canAutoDeclare: false,
       }));
 
-    expect(getPhase3ROptionSelectionSourceBehavior(POLICY_AUTHORING_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM))
+    expect(getPolicyAuthoringOptionSelectionSourceBehavior(POLICY_AUTHORING_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM))
       .toEqual(expect.objectContaining({
-        selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.SELECTABLE_CUSTOM_VALUE,
+        selectionStateId: POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS.SELECTABLE_CUSTOM_VALUE,
         selectable: true,
         requiresExplanation: true,
       }));
   });
 
   test('normalizes observed evidence as read-only context that still requires acceptance', () => {
-    const normalizedCandidate = normalizePhase3ROptionCandidate({
+    const normalizedCandidate = normalizePolicyAuthoringOptionCandidate({
       value: 'Animation',
       sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.OBSERVED_IN_LIBRARY,
       evidenceCount: 42,
@@ -65,7 +65,7 @@ describe('policyBuilderPhase3EvidenceBackedOptionSelection', () => {
       value: 'Animation',
       label: 'Animation',
       sourceLabel: 'Already in this library',
-      selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.READ_ONLY_EVIDENCE,
+      selectionStateId: POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS.READ_ONLY_EVIDENCE,
       selectable: false,
       readOnlyEvidence: true,
       requiresExplicitAcceptance: true,
@@ -79,16 +79,16 @@ describe('policyBuilderPhase3EvidenceBackedOptionSelection', () => {
   });
 
   test('rejects observed evidence without evidence count or with auto declaration', () => {
-    expect(validatePhase3ROptionCandidate({
+    expect(validatePolicyAuthoringOptionCandidate({
       value: 'Animation',
       sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.OBSERVED_IN_LIBRARY,
       explanation: 'Observed in this destination.',
     })).toEqual(expect.objectContaining({
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.MISSING_EVIDENCE,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.MISSING_EVIDENCE,
     }));
 
-    expect(validatePhase3ROptionCandidate({
+    expect(validatePolicyAuthoringOptionCandidate({
       value: 'Animation',
       sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.OBSERVED_IN_LIBRARY,
       evidenceCount: 3,
@@ -96,20 +96,20 @@ describe('policyBuilderPhase3EvidenceBackedOptionSelection', () => {
       explanation: 'Observed in this destination.',
     })).toEqual(expect.objectContaining({
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.OBSERVED_EVIDENCE_AUTO_DECLARED,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.OBSERVED_EVIDENCE_AUTO_DECLARED,
     }));
   });
 
   test('requires explanations for selectable suggestions and custom values', () => {
-    expect(validatePhase3ROptionCandidate({
+    expect(validatePolicyAuthoringOptionCandidate({
       value: 'Anime',
       sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_STARTER_TEMPLATE,
     })).toEqual(expect.objectContaining({
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.MISSING_EXPLANATION,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.MISSING_EXPLANATION,
     }));
 
-    expect(validatePhase3ROptionCandidate({
+    expect(validatePolicyAuthoringOptionCandidate({
       value: 'Studio Ghibli',
       sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM,
       explanation: 'Operator added a studio-specific identity signal.',
@@ -121,26 +121,26 @@ describe('policyBuilderPhase3EvidenceBackedOptionSelection', () => {
 
   test('rejects broad static identity genres without supporting evidence', () => {
     expect(isBroadIdentityGenre('Animation')).toBe(true);
-    expect(validatePhase3ROptionCandidate({
+    expect(validatePolicyAuthoringOptionCandidate({
       value: 'Animation',
       sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.COMMON_STATIC_OPTION,
       questionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
     })).toEqual(expect.objectContaining({
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.BROAD_GENRE_WITHOUT_SUPPORTING_EVIDENCE,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.BROAD_GENRE_WITHOUT_SUPPORTING_EVIDENCE,
     }));
   });
 
   test('requires disabled reasons for already-declared and conflicting choices', () => {
-    expect(validatePhase3ROptionCandidate({
+    expect(validatePolicyAuthoringOptionCandidate({
       value: 'Animation',
       sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.ALREADY_DECLARED,
     })).toEqual(expect.objectContaining({
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.DISABLED_WITHOUT_REASON,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.DISABLED_WITHOUT_REASON,
     }));
 
-    expect(validatePhase3ROptionCandidate({
+    expect(validatePolicyAuthoringOptionCandidate({
       value: 'Horror',
       sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.UNAVAILABLE_CONFLICTING_INTENT,
       disabledReason: 'This destination currently avoids Horror.',
@@ -151,7 +151,7 @@ describe('policyBuilderPhase3EvidenceBackedOptionSelection', () => {
   });
 
   test('builds typed multi-select command plans only for selectable valid options', () => {
-    const commandPlan = buildPhase3RMultiSelectCommandPlan([
+    const commandPlan = buildPolicyAuthoringMultiSelectCommandPlan([
       {
         value: 'Anime',
         sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_OBSERVED_PROFILE,
@@ -184,12 +184,12 @@ describe('policyBuilderPhase3EvidenceBackedOptionSelection', () => {
       commandCount: 2,
       commands: [
         expect.objectContaining({
-          commandId: PHASE_3R_OPTION_SELECTION_COMMAND_IDS.ADD_SIGNAL_VALUE,
+          commandId: POLICY_AUTHORING_OPTION_SELECTION_COMMAND_IDS.ADD_SIGNAL_VALUE,
           value: 'Anime',
           sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_OBSERVED_PROFILE,
         }),
         expect.objectContaining({
-          commandId: PHASE_3R_OPTION_SELECTION_COMMAND_IDS.ADD_SIGNAL_VALUE,
+          commandId: POLICY_AUTHORING_OPTION_SELECTION_COMMAND_IDS.ADD_SIGNAL_VALUE,
           value: 'Studio Ghibli',
           sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM,
         }),
@@ -200,15 +200,15 @@ describe('policyBuilderPhase3EvidenceBackedOptionSelection', () => {
       expect.objectContaining({
         value: 'Animation',
         valid: true,
-        selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.READ_ONLY_EVIDENCE,
+        selectionStateId: POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS.READ_ONLY_EVIDENCE,
       }),
       expect.objectContaining({
         value: 'Family',
         valid: true,
-        selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.DISABLED_ALREADY_DECLARED,
+        selectionStateId: POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS.DISABLED_ALREADY_DECLARED,
       }),
     ]);
-    expect(validatePhase3RCommandPlanBoundary(commandPlan)).toEqual({
+    expect(validatePolicyAuthoringCommandPlanBoundary(commandPlan)).toEqual({
       valid: true,
       riskId: null,
       reason: 'Multi-select option selection is constrained to typed draft commands.',
@@ -216,25 +216,25 @@ describe('policyBuilderPhase3EvidenceBackedOptionSelection', () => {
   });
 
   test('fails closed for unknown source IDs and raw bridge command boundaries', () => {
-    expect(validatePhase3ROptionCandidate({
+    expect(validatePolicyAuthoringOptionCandidate({
       value: 'Animation',
       sourceId: 'legacy_dropdown_option',
     })).toEqual(expect.objectContaining({
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.UNKNOWN_OPTION_SOURCE,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.UNKNOWN_OPTION_SOURCE,
     }));
 
-    expect(validatePhase3RCommandPlanBoundary({
+    expect(validatePolicyAuthoringCommandPlanBoundary({
       commandBoundary: 'raw_bridge_mutation',
     })).toEqual({
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.RAW_BRIDGE_MUTATION,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.RAW_BRIDGE_MUTATION,
       reason: 'Multi-select option selection must emit typed draft commands.',
     });
   });
 
   test('summarizes evidence fields and source states for the implementation checkpoint', () => {
-    expect(summarizePhase3REvidenceBackedOptionSelection()).toEqual({
+    expect(summarizePolicyAuthoringOptionSelection()).toEqual({
       optionSourceCount: 7,
       selectableSourceIds: [
         POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_OBSERVED_PROFILE,
@@ -251,11 +251,11 @@ describe('policyBuilderPhase3EvidenceBackedOptionSelection', () => {
         POLICY_AUTHORING_OPTION_SOURCE_IDS.UNAVAILABLE_CONFLICTING_INTENT,
       ],
       evidenceFieldIds: [
-        PHASE_3R_EVIDENCE_FIELD_IDS.EVIDENCE_COUNT,
-        PHASE_3R_EVIDENCE_FIELD_IDS.CONFIDENCE,
-        PHASE_3R_EVIDENCE_FIELD_IDS.SOURCE_LABEL,
-        PHASE_3R_EVIDENCE_FIELD_IDS.EXPLANATION,
-        PHASE_3R_EVIDENCE_FIELD_IDS.DISABLED_REASON,
+        POLICY_AUTHORING_OPTION_EVIDENCE_FIELD_IDS.EVIDENCE_COUNT,
+        POLICY_AUTHORING_OPTION_EVIDENCE_FIELD_IDS.CONFIDENCE,
+        POLICY_AUTHORING_OPTION_EVIDENCE_FIELD_IDS.SOURCE_LABEL,
+        POLICY_AUTHORING_OPTION_EVIDENCE_FIELD_IDS.EXPLANATION,
+        POLICY_AUTHORING_OPTION_EVIDENCE_FIELD_IDS.DISABLED_REASON,
       ],
       observedEvidenceAutoDeclares: false,
       commandBoundary: 'typed_draft_commands',

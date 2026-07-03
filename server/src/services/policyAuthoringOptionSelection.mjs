@@ -8,7 +8,7 @@ import {
   POLICY_AUTHORING_DESTINATION_QUESTION_IDS,
 } from './policyAuthoringDestinationFlow.mjs';
 
-const PHASE_3R_OPTION_SELECTION_STATE_IDS = Object.freeze({
+const POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS = Object.freeze({
   READ_ONLY_EVIDENCE: 'read_only_evidence',
   SELECTABLE_SUGGESTION: 'selectable_suggestion',
   SELECTABLE_CUSTOM_VALUE: 'selectable_custom_value',
@@ -16,11 +16,11 @@ const PHASE_3R_OPTION_SELECTION_STATE_IDS = Object.freeze({
   DISABLED_CONFLICTING_INTENT: 'disabled_conflicting_intent',
 });
 
-const PHASE_3R_OPTION_SELECTION_COMMAND_IDS = Object.freeze({
+const POLICY_AUTHORING_OPTION_SELECTION_COMMAND_IDS = Object.freeze({
   ADD_SIGNAL_VALUE: 'add_signal_value',
 });
 
-const PHASE_3R_OPTION_SELECTION_RISK_IDS = Object.freeze({
+const POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS = Object.freeze({
   UNKNOWN_OPTION_SOURCE: 'unknown_option_source',
   UNKNOWN_SELECTION_STATE: 'unknown_selection_state',
   MISSING_OPTION_VALUE: 'missing_option_value',
@@ -32,7 +32,7 @@ const PHASE_3R_OPTION_SELECTION_RISK_IDS = Object.freeze({
   RAW_BRIDGE_MUTATION: 'raw_bridge_mutation',
 });
 
-const PHASE_3R_EVIDENCE_FIELD_IDS = Object.freeze({
+const POLICY_AUTHORING_OPTION_EVIDENCE_FIELD_IDS = Object.freeze({
   EVIDENCE_COUNT: 'evidence_count',
   CONFIDENCE: 'confidence',
   SOURCE_LABEL: 'source_label',
@@ -88,10 +88,10 @@ function clampConfidence(value) {
   return Math.max(0, Math.min(1, numericValue));
 }
 
-const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
+const POLICY_AUTHORING_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
   {
     sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.OBSERVED_IN_LIBRARY,
-    selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.READ_ONLY_EVIDENCE,
+    selectionStateId: POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS.READ_ONLY_EVIDENCE,
     visibleGroupLabel: 'Already in this library',
     selectable: false,
     readOnlyEvidence: true,
@@ -104,7 +104,7 @@ const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
   },
   {
     sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_OBSERVED_PROFILE,
-    selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.SELECTABLE_SUGGESTION,
+    selectionStateId: POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS.SELECTABLE_SUGGESTION,
     visibleGroupLabel: 'Suggested from this library',
     selectable: true,
     readOnlyEvidence: false,
@@ -117,7 +117,7 @@ const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
   },
   {
     sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_STARTER_TEMPLATE,
-    selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.SELECTABLE_SUGGESTION,
+    selectionStateId: POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS.SELECTABLE_SUGGESTION,
     visibleGroupLabel: 'Suggested by starter template',
     selectable: true,
     readOnlyEvidence: false,
@@ -130,7 +130,7 @@ const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
   },
   {
     sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.COMMON_STATIC_OPTION,
-    selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.SELECTABLE_SUGGESTION,
+    selectionStateId: POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS.SELECTABLE_SUGGESTION,
     visibleGroupLabel: 'Common options',
     selectable: true,
     readOnlyEvidence: false,
@@ -143,7 +143,7 @@ const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
   },
   {
     sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM,
-    selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.SELECTABLE_CUSTOM_VALUE,
+    selectionStateId: POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS.SELECTABLE_CUSTOM_VALUE,
     visibleGroupLabel: 'Custom value',
     selectable: true,
     readOnlyEvidence: false,
@@ -156,7 +156,7 @@ const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
   },
   {
     sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.ALREADY_DECLARED,
-    selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.DISABLED_ALREADY_DECLARED,
+    selectionStateId: POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS.DISABLED_ALREADY_DECLARED,
     visibleGroupLabel: 'Already added',
     selectable: false,
     readOnlyEvidence: false,
@@ -169,7 +169,7 @@ const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
   },
   {
     sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.UNAVAILABLE_CONFLICTING_INTENT,
-    selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.DISABLED_CONFLICTING_INTENT,
+    selectionStateId: POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS.DISABLED_CONFLICTING_INTENT,
     visibleGroupLabel: 'Unavailable',
     selectable: false,
     readOnlyEvidence: false,
@@ -183,14 +183,14 @@ const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
 ]);
 
 const SOURCE_BEHAVIOR_BY_ID = new Map(
-  PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS.map(behavior => [behavior.sourceId, behavior]),
+  POLICY_AUTHORING_OPTION_SELECTION_SOURCE_BEHAVIORS.map(behavior => [behavior.sourceId, behavior]),
 );
 
-function listPhase3ROptionSelectionSourceBehaviors() {
-  return PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS;
+function listPolicyAuthoringOptionSelectionSourceBehaviors() {
+  return POLICY_AUTHORING_OPTION_SELECTION_SOURCE_BEHAVIORS;
 }
 
-function getPhase3ROptionSelectionSourceBehavior(sourceId) {
+function getPolicyAuthoringOptionSelectionSourceBehavior(sourceId) {
   return SOURCE_BEHAVIOR_BY_ID.get(sourceId) || null;
 }
 
@@ -198,9 +198,9 @@ function isBroadIdentityGenre(value) {
   return BROAD_IDENTITY_GENRES.has(toCleanString(value).toLowerCase());
 }
 
-function normalizePhase3ROptionCandidate(candidate = {}) {
+function normalizePolicyAuthoringOptionCandidate(candidate = {}) {
   const sourceId = toCleanString(candidate.sourceId);
-  const sourceBehavior = getPhase3ROptionSelectionSourceBehavior(sourceId);
+  const sourceBehavior = getPolicyAuthoringOptionSelectionSourceBehavior(sourceId);
   const sourceRecord = getPolicyAuthoringOptionSourceRecord(sourceId);
   const value = toCleanString(candidate.value);
   const label = toCleanString(candidate.label) || value;
@@ -235,19 +235,19 @@ function normalizePhase3ROptionCandidate(candidate = {}) {
       confidence,
     },
     commandId: sourceBehavior?.selectable ?
-      PHASE_3R_OPTION_SELECTION_COMMAND_IDS.ADD_SIGNAL_VALUE :
+      POLICY_AUTHORING_OPTION_SELECTION_COMMAND_IDS.ADD_SIGNAL_VALUE :
       null,
   };
 }
 
-function validatePhase3ROptionCandidate(candidate = {}) {
-  const normalizedCandidate = normalizePhase3ROptionCandidate(candidate);
-  const sourceBehavior = getPhase3ROptionSelectionSourceBehavior(normalizedCandidate.sourceId);
+function validatePolicyAuthoringOptionCandidate(candidate = {}) {
+  const normalizedCandidate = normalizePolicyAuthoringOptionCandidate(candidate);
+  const sourceBehavior = getPolicyAuthoringOptionSelectionSourceBehavior(normalizedCandidate.sourceId);
 
   if (!sourceBehavior) {
     return {
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.UNKNOWN_OPTION_SOURCE,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.UNKNOWN_OPTION_SOURCE,
       normalizedCandidate,
       reason: 'Option candidate has an unknown source.',
     };
@@ -256,7 +256,7 @@ function validatePhase3ROptionCandidate(candidate = {}) {
   if (!normalizedCandidate.selectionStateId) {
     return {
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.UNKNOWN_SELECTION_STATE,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.UNKNOWN_SELECTION_STATE,
       normalizedCandidate,
       reason: 'Option candidate has an unknown selection state.',
     };
@@ -265,7 +265,7 @@ function validatePhase3ROptionCandidate(candidate = {}) {
   if (!normalizedCandidate.value) {
     return {
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.MISSING_OPTION_VALUE,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.MISSING_OPTION_VALUE,
       normalizedCandidate,
       reason: 'Option candidate needs a stable value.',
     };
@@ -274,7 +274,7 @@ function validatePhase3ROptionCandidate(candidate = {}) {
   if (normalizedCandidate.autoDeclare) {
     return {
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.OBSERVED_EVIDENCE_AUTO_DECLARED,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.OBSERVED_EVIDENCE_AUTO_DECLARED,
       normalizedCandidate,
       reason: 'Option candidates cannot auto-declare policy intent.',
     };
@@ -283,7 +283,7 @@ function validatePhase3ROptionCandidate(candidate = {}) {
   if (sourceBehavior.requiresEvidence && normalizedCandidate.evidence.count <= 0) {
     return {
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.MISSING_EVIDENCE,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.MISSING_EVIDENCE,
       normalizedCandidate,
       reason: 'Observed library evidence must include a positive evidence count.',
     };
@@ -292,7 +292,7 @@ function validatePhase3ROptionCandidate(candidate = {}) {
   if (sourceBehavior.requiresExplanation && !normalizedCandidate.explanation && sourceBehavior.selectable) {
     return {
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.MISSING_EXPLANATION,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.MISSING_EXPLANATION,
       normalizedCandidate,
       reason: 'Suggested or custom selectable options must explain why they are present.',
     };
@@ -301,7 +301,7 @@ function validatePhase3ROptionCandidate(candidate = {}) {
   if (!sourceBehavior.selectable && !sourceBehavior.readOnlyEvidence && !normalizedCandidate.disabledReason) {
     return {
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.DISABLED_WITHOUT_REASON,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.DISABLED_WITHOUT_REASON,
       normalizedCandidate,
       reason: 'Disabled option candidates must explain why they cannot be selected.',
     };
@@ -318,7 +318,7 @@ function validatePhase3ROptionCandidate(candidate = {}) {
   ) {
     return {
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.BROAD_GENRE_WITHOUT_SUPPORTING_EVIDENCE,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.BROAD_GENRE_WITHOUT_SUPPORTING_EVIDENCE,
       normalizedCandidate,
       reason: 'Broad identity genres need supporting evidence before they are framed as destination identity.',
     };
@@ -332,8 +332,8 @@ function validatePhase3ROptionCandidate(candidate = {}) {
   };
 }
 
-function buildPhase3RMultiSelectCommandPlan(candidates = []) {
-  const validationResults = candidates.map(candidate => validatePhase3ROptionCandidate(candidate));
+function buildPolicyAuthoringMultiSelectCommandPlan(candidates = []) {
+  const validationResults = candidates.map(candidate => validatePolicyAuthoringOptionCandidate(candidate));
   const acceptedCandidates = validationResults
     .filter(result => result.valid && result.normalizedCandidate.selectable)
     .map(result => result.normalizedCandidate);
@@ -356,7 +356,7 @@ function buildPhase3RMultiSelectCommandPlan(candidates = []) {
     commandBoundary: 'typed_draft_commands',
     commandCount: acceptedCandidates.length,
     commands: acceptedCandidates.map(candidate => ({
-      commandId: PHASE_3R_OPTION_SELECTION_COMMAND_IDS.ADD_SIGNAL_VALUE,
+      commandId: POLICY_AUTHORING_OPTION_SELECTION_COMMAND_IDS.ADD_SIGNAL_VALUE,
       value: candidate.value,
       label: candidate.label,
       sourceId: candidate.sourceId,
@@ -368,11 +368,11 @@ function buildPhase3RMultiSelectCommandPlan(candidates = []) {
   };
 }
 
-function validatePhase3RCommandPlanBoundary(commandPlan = {}) {
+function validatePolicyAuthoringCommandPlanBoundary(commandPlan = {}) {
   if (commandPlan.commandBoundary !== 'typed_draft_commands') {
     return {
       valid: false,
-      riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.RAW_BRIDGE_MUTATION,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.RAW_BRIDGE_MUTATION,
       reason: 'Multi-select option selection must emit typed draft commands.',
     };
   }
@@ -384,39 +384,39 @@ function validatePhase3RCommandPlanBoundary(commandPlan = {}) {
   };
 }
 
-function summarizePhase3REvidenceBackedOptionSelection() {
-  const selectableSourceIds = PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS
+function summarizePolicyAuthoringOptionSelection() {
+  const selectableSourceIds = POLICY_AUTHORING_OPTION_SELECTION_SOURCE_BEHAVIORS
     .filter(behavior => behavior.selectable)
     .map(behavior => behavior.sourceId);
-  const readOnlyEvidenceSourceIds = PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS
+  const readOnlyEvidenceSourceIds = POLICY_AUTHORING_OPTION_SELECTION_SOURCE_BEHAVIORS
     .filter(behavior => behavior.readOnlyEvidence)
     .map(behavior => behavior.sourceId);
-  const disabledSourceIds = PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS
+  const disabledSourceIds = POLICY_AUTHORING_OPTION_SELECTION_SOURCE_BEHAVIORS
     .filter(behavior => !behavior.selectable)
     .map(behavior => behavior.sourceId);
 
   return {
-    optionSourceCount: PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS.length,
+    optionSourceCount: POLICY_AUTHORING_OPTION_SELECTION_SOURCE_BEHAVIORS.length,
     selectableSourceIds,
     readOnlyEvidenceSourceIds,
     disabledSourceIds,
-    evidenceFieldIds: Object.values(PHASE_3R_EVIDENCE_FIELD_IDS),
+    evidenceFieldIds: Object.values(POLICY_AUTHORING_OPTION_EVIDENCE_FIELD_IDS),
     observedEvidenceAutoDeclares: false,
     commandBoundary: 'typed_draft_commands',
   };
 }
 
 export {
-  PHASE_3R_EVIDENCE_FIELD_IDS,
-  PHASE_3R_OPTION_SELECTION_COMMAND_IDS,
-  PHASE_3R_OPTION_SELECTION_RISK_IDS,
-  PHASE_3R_OPTION_SELECTION_STATE_IDS,
-  buildPhase3RMultiSelectCommandPlan,
-  getPhase3ROptionSelectionSourceBehavior,
+  POLICY_AUTHORING_OPTION_EVIDENCE_FIELD_IDS,
+  POLICY_AUTHORING_OPTION_SELECTION_COMMAND_IDS,
+  POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS,
+  POLICY_AUTHORING_OPTION_SELECTION_STATE_IDS,
+  buildPolicyAuthoringMultiSelectCommandPlan,
+  getPolicyAuthoringOptionSelectionSourceBehavior,
   isBroadIdentityGenre,
-  listPhase3ROptionSelectionSourceBehaviors,
-  normalizePhase3ROptionCandidate,
-  summarizePhase3REvidenceBackedOptionSelection,
-  validatePhase3RCommandPlanBoundary,
-  validatePhase3ROptionCandidate,
+  listPolicyAuthoringOptionSelectionSourceBehaviors,
+  normalizePolicyAuthoringOptionCandidate,
+  summarizePolicyAuthoringOptionSelection,
+  validatePolicyAuthoringCommandPlanBoundary,
+  validatePolicyAuthoringOptionCandidate,
 };

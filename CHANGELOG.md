@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Option Selection Cutover** — renamed the option-selection
+  contract and focused test to durable product-domain names, replaced
+  phase-coded option-selection state, command, risk, evidence-field, and helper
+  exports with `POLICY_AUTHORING_OPTION_*` and `policyAuthoringOption*`,
+  updated completion-audit records to track `policy_authoring_option_selection`,
+  and preserved read-only evidence, explanation, disabled-reason,
+  broad-genre, and typed-command validation behavior.
 - **Policy Authoring Component System Cutover** — renamed the component-system
   contract and focused test to durable product-domain names, replaced
   phase-coded component, primitive, option-source, interaction, accessibility,

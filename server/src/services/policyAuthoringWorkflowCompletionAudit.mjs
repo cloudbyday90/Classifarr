@@ -50,12 +50,12 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Defines the policy-authoring component vocabulary, option sources, interaction rules, and accessibility rules before Vue rebuilds.',
   },
   {
-    id: 'evidence_backed_option_selection',
-    label: 'Evidence-backed option selection',
-    docPath: 'docs/architecture/policy-builder-phase-3r-evidence-backed-option-selection.md',
-    servicePath: 'server/src/services/policyBuilderPhase3EvidenceBackedOptionSelection.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase3EvidenceBackedOptionSelection.test.mjs',
-    evidence: 'Separates observed evidence, template suggestions, static options, custom values, and unavailable choices.',
+    id: 'policy_authoring_option_selection',
+    label: 'Policy authoring option selection',
+    docPath: 'docs/architecture/policy-authoring-option-selection.md',
+    servicePath: 'server/src/services/policyAuthoringOptionSelection.mjs',
+    testPath: 'server/src/__tests__/services/policyAuthoringOptionSelection.test.mjs',
+    evidence: 'Separates option sources, observed evidence, selectable suggestions, disabled choices, and typed add commands.',
   },
   {
     id: 'hard_limits_avoid_ux',
@@ -176,7 +176,7 @@ const POLICY_AUTHORING_NORMAL_WORKFLOW_RULES = Object.freeze([
   {
     id: 'observed_evidence_requires_acceptance',
     label: 'Observed evidence requires explicit acceptance before becoming intent',
-    docPath: 'docs/architecture/policy-builder-phase-3r-evidence-backed-option-selection.md',
+    docPath: 'docs/architecture/policy-authoring-option-selection.md',
     testPath: 'client/src/__tests__/PolicyIntentGenreControl.test.js',
     evidence: 'Observed profile suggestions remain suggestions until typed draft commands accept them.',
   },

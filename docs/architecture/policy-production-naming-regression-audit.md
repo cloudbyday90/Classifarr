@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the current repository inventory after the
-policy authoring component system cutover on July 3, 2026:
+policy authoring option selection cutover on July 3, 2026:
 
-- production references: `4267`
-- rename candidates: `4289`
+- production references: `4211`
+- rename candidates: `4233`
 - obsolete migration tooling references: `93`
 
 The baseline is intentionally a maximum, not a target. Future durable rename
