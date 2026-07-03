@@ -9,6 +9,9 @@ import {
   buildPolicyBuilderPhase6EvidenceProjection,
   getPolicyBuilderPhase6EvidenceBucket,
 } from './policyBuilderPhase6EvidenceEngine.mjs';
+import {
+  validatePolicyBuilderPhase6EvidenceProjectionFingerprint,
+} from './policyBuilderPhase6EvidenceProjectionFingerprint.mjs';
 
 const PHASE6R_INTENT_BOUNDARY_STATUS_IDS = Object.freeze({
   READY: 'ready',
@@ -70,6 +73,7 @@ const PHASE6R_INTENT_AUDIT_RISK_IDS = Object.freeze({
   DIRECT_LEARNING_FROM_INTENT: 'direct_learning_from_intent',
   MISSING_EVIDENCE_BOUNDARY: 'missing_evidence_boundary',
   MISSING_EVIDENCE_FINGERPRINT: 'missing_evidence_fingerprint',
+  EVIDENCE_FINGERPRINT_MISMATCH: 'evidence_fingerprint_mismatch',
 });
 
 const BROAD_GENRE_LABELS = Object.freeze([
@@ -548,11 +552,28 @@ function buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
     });
   }
 
+  const evidenceFingerprintAudit = boundedEvidenceResult?.projection &&
+    boundedEvidenceResult?.projectionFingerprint
+    ? validatePolicyBuilderPhase6EvidenceProjectionFingerprint({
+        projection: boundedEvidenceResult.projection,
+        projectionFingerprint: boundedEvidenceResult.projectionFingerprint,
+      })
+    : null;
+
+  if (evidenceFingerprintAudit && evidenceFingerprintAudit.ok !== true) {
+    evidenceIssues.push({
+      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.EVIDENCE_FINGERPRINT_MISMATCH,
+      message: 'Intent inference requires the evidence fingerprint to match the bounded evidence projection.',
+      fingerprintIssues: evidenceFingerprintAudit.issues,
+    });
+  }
+
   if (evidenceIssues.length > 0) {
     return {
       ok: false,
       statusId: PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
       evidenceBoundary,
+      evidenceFingerprintAudit,
       intent: null,
       intentAudit: null,
       issueCount: evidenceIssues.length,
@@ -573,6 +594,7 @@ function buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
       ? PHASE6R_INTENT_BOUNDARY_STATUS_IDS.READY
       : PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_AUDIT,
     evidenceBoundary,
+    evidenceFingerprintAudit,
     intent,
     intentAudit,
     issueCount: intentAudit.issueCount,

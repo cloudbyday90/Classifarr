@@ -3239,6 +3239,9 @@ Implementation status:
   6R.1 evidence boundary result, requires the projection fingerprint, blocks
   failed evidence-boundary handoffs, and carries a sanitized evidence-boundary
   snapshot into the intent draft for downstream correlation.
+- The bounded intent entry point now audits the evidence projection fingerprint,
+  trace attributes, and sanitized provenance against the returned Phase 6R.1
+  projection before producing an intent draft.
 - The contract demotes unsupported broad-genre identity to helpful evidence,
   prevents metadata from owning destination identity, treats stale or missing
   evidence as review triggers instead of exclusions, keeps hard limits and avoid

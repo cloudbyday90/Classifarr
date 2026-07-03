@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Intent Fingerprint Integrity** — hardened the
+  bounded Phase 6R.2 intent entry point so evidence projection fingerprints,
+  bounded trace attributes, and sanitized provenance must still match the
+  returned Phase 6R.1 evidence projection before intent generation proceeds.
 - **Policy Builder Phase 6R Evidence Fingerprint Audit** — hardened the Phase
   6R.1 evidence boundary so projection fingerprints, bounded trace attributes,
   and sanitized provenance must match the returned evidence projection before

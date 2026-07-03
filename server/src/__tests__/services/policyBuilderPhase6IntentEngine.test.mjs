@@ -139,6 +139,42 @@ describe('policyBuilderPhase6IntentEngine', () => {
     expect(result.intentAudit.ok).toBe(true);
   });
 
+  test('blocks bounded intent when evidence fingerprint no longer matches the projection', () => {
+    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        libraryProfile: {
+          identityCandidates: [
+            { key: 'studio:pixar', label: 'Pixar', confidence: 0.94, count: 18 },
+          ],
+        },
+      },
+    });
+    const tamperedBoundary = {
+      ...boundedEvidenceResult,
+      projectionFingerprint: {
+        ...boundedEvidenceResult.projectionFingerprint,
+        fingerprint: 'b'.repeat(64),
+      },
+    };
+
+    const result = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+      boundedEvidenceResult: tamperedBoundary,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
+      intent: null,
+      intentAudit: null,
+      evidenceFingerprintAudit: expect.objectContaining({ ok: false }),
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.EVIDENCE_FINGERPRINT_MISMATCH,
+      }),
+    ]));
+  });
+
   test('blocks bounded intent when evidence boundary failed or lacks fingerprint', () => {
     const blockedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
       evidenceInput: {

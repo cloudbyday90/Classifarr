@@ -9,7 +9,10 @@ destination intent. It does not persist policy intent, create learning,
 execute routing, call providers, or replace runtime classification paths. New
 runtime and rebuild callers should use the bounded intent entry point, which
 requires the Phase 6R.1 evidence boundary result and carries the evidence
-projection fingerprint forward.
+projection fingerprint forward. July 2026 hardening makes that handoff stricter:
+the intent boundary now validates that the evidence projection fingerprint,
+trace attributes, and sanitized provenance still match the bounded evidence
+projection before producing an intent draft.
 
 ## Problem
 
@@ -84,6 +87,11 @@ The important boundary is authority:
    projection fingerprint, and attaches a sanitized evidence-boundary snapshot
    to the intent draft.
 
+8. **Validate evidence handoff integrity.**
+   The intent boundary recomputes the Phase 6R.1 projection fingerprint audit
+   before producing intent. A stale, malformed, or tampered fingerprint blocks
+   intent generation.
+
 ## Pros And Cons
 
 Pros:
@@ -97,6 +105,8 @@ Pros:
   projection audits.
 - Carries deterministic evidence provenance into intent without leaking raw
   evidence labels in the boundary snapshot.
+- Prevents stale or tampered evidence correlation handles from becoming intent
+  provenance.
 
 Cons:
 
@@ -196,6 +206,8 @@ blocked_by_intent_audit
 - Legacy templates remain draft seeds and compatibility bridge inputs only.
 - New callers can require a successful evidence boundary and projection
   fingerprint before intent inference.
+- Bounded intent generation rejects evidence fingerprints that no longer match
+  the returned evidence projection, trace attributes, or sanitized provenance.
 - The intent draft carries a compact evidence-boundary snapshot for traceability
   without raw provider payloads or evidence labels in the boundary metadata.
 
