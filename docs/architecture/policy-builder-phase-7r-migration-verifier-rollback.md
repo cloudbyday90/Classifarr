@@ -6,9 +6,10 @@ Implemented as the seventh Phase 7R runtime/rebuild contract.
 
 This slice compares a Phase 7R.6 library-derived rebuild proposal against
 sanitized legacy behavior samples, emits only migration-relevant differences,
-and enforces operator acceptance, rollback snapshot, and legacy deletion gates.
-It does not apply policy replacement, create rollback snapshots, delete legacy
-paths, write learning, or expose raw replay/provider payloads.
+binds the comparison to a stable sample-set fingerprint, and enforces operator
+acceptance, rollback snapshot, and legacy deletion gates. It does not apply
+policy replacement, create rollback snapshots, delete legacy paths, write
+learning, or expose raw replay/provider payloads.
 
 ## Problem
 
@@ -25,6 +26,7 @@ newly blocked items
 newly review-required items
 route-readiness changes
 evidence-confidence changes
+sample-set provenance
 rollback snapshot readiness
 legacy deletion criteria
 ```
@@ -41,6 +43,18 @@ legacy deletion criteria
 - [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
   emphasizes server-side verification and business logic controls. The report
   validates acceptance, rollback, deletion, and side-effect gates server-side.
+- [OWASP Top 10 for Large Language Model Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+  highlights insecure output handling, excessive agency, and overreliance. The
+  verifier validates bounded comparison output before any downstream
+  replacement can act on it.
+- [Microsoft safe deployment practices](https://learn.microsoft.com/en-us/devops/operate/safe-deployment-practices)
+  emphasize quality signals, controlled exposure, automation, and rollback. The
+  verifier report is a quality signal that must pass before replacement and
+  deletion gates advance.
+- [Microsoft Azure Well-Architected safe deployments](https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/safe-deployments)
+  recommends failure-detection mechanisms, versioning, and rollback/roll-forward
+  guardrails. Phase 7R.7 records a comparison fingerprint and requires a
+  rollback restore path before apply can be considered.
 - [PostgreSQL Backup And Restore](https://www.postgresql.org/docs/current/backup.html)
   documents backup and restore responsibilities. Phase 7R.7 treats rollback as
   an explicit precondition before replacement instead of an operator memory
@@ -55,6 +69,7 @@ The report should answer:
 
 ```text
 Is the rebuild proposal valid?
+Which exact sanitized comparison sample set was verified?
 Which representative items change destination?
 Which items become blocked or review-required?
 Does route readiness change?
@@ -73,6 +88,8 @@ Pros:
 - Gives operators migration-relevant risk before accepting replacement.
 - Keeps old impact/replay diagnostics out of normal policy authoring.
 - Requires rollback before replacement can apply.
+- Binds verifier output to a stable sanitized sample-set fingerprint so stale or
+  tampered comparisons cannot silently pass.
 - Blocks legacy deletion until Phase 8R native intent is stable and verifier
   differences are resolved.
 - Keeps report output bounded and free of raw provider/replay payloads.
@@ -83,22 +100,27 @@ Cons:
 - Does not execute replacement or deletion; those remain later gated slices.
 - Conservative deletion criteria mean old paths remain until Phase 8R stability
   is proven.
+- Sample-set fingerprints add another validation gate that integration code must
+  preserve when wiring real comparison samples.
 
 ## Final Recommendation Stack
 
 1. Consume a valid Phase 7R.6 rebuild proposal.
 2. Consume sanitized representative legacy/proposed comparison samples.
-3. Emit only these migration-relevant difference types:
+3. Generate a stable SHA-256 sample-set fingerprint from normalized samples,
+   verifier options, and bounded rebuild proposal evidence metadata.
+4. Mirror that fingerprint into bounded trace attributes.
+5. Emit only these migration-relevant difference types:
    - `destination_change`,
    - `newly_blocked_item`,
    - `newly_review_required_item`,
    - `route_readiness_change`,
    - `evidence_confidence_change`.
-4. Bound emitted differences with a configured maximum.
-5. Suppress raw payloads, prompts, embeddings, and provider payloads.
-6. Require explicit operator acceptance before replacement.
-7. Require rollback snapshot and restore path before replacement.
-8. Define deletion criteria for old preset/custom-signal runtime paths:
+6. Bound emitted differences with a configured maximum.
+7. Suppress raw payloads, prompts, embeddings, and provider payloads.
+8. Require explicit operator acceptance before replacement.
+9. Require rollback snapshot and restore path before replacement.
+10. Define deletion criteria for old preset/custom-signal runtime paths:
    - Phase 8R native intent stable,
    - verifier passed,
    - rollback snapshot created,
@@ -106,7 +128,7 @@ Cons:
    - delete checklist approved,
    - legacy artifacts classified,
    - custom-signal replacement defined.
-9. Leave all replacement, deletion, rollback creation, learning, and routing
+11. Leave all replacement, deletion, rollback creation, learning, and routing
    writes disabled in this verifier.
 
 ## Implemented Files
@@ -154,6 +176,10 @@ The service exports:
 - The verifier does not run live replay.
 - The verifier does not expose raw provider payloads, prompts, or embeddings.
 - The verifier output is bounded by `maxDifferences`.
+- The verifier carries a SHA-256 sample-set fingerprint with bounded provenance:
+  sample count, raw-payload suppression flag, verifier options, proposal
+  version/status, and sanitized proposal evidence digests.
+- Trace attributes must carry the same sample-set fingerprint as the report.
 - The verifier cannot become a normal policy-authoring surface.
 - The verifier cannot activate, replace, delete, write learning, write routing,
   or create rollback snapshots.
@@ -164,6 +190,10 @@ The focused test suite verifies:
 
 - no-difference reports can apply only with operator acceptance and rollback,
 - emitted differences are bounded and migration-relevant,
+- sample-set fingerprints are stable for equivalent normalized comparison
+  inputs and change when comparison behavior changes,
+- sample-set fingerprints are mirrored into trace attributes,
+- missing, malformed, or mismatched sample-set fingerprints fail validation,
 - raw payloads are suppressed,
 - replacement cannot apply without acceptance and rollback,
 - verifier output cannot become normal policy-authoring UI,
@@ -178,6 +208,7 @@ Phase 7R.7 gives migration this shape:
 
 ```text
 rebuild proposal + sanitized comparison samples
+  -> stable sample-set fingerprint + bounded provenance
   -> bounded migration verifier report
   -> application gate requires acceptance + rollback
   -> deletion readiness requires Phase 8 stability + verifier pass

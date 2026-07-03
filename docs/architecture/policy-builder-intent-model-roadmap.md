@@ -3902,6 +3902,9 @@ Tasks:
 - Use Phase 5R/6R verifier pieces to compare legacy compatibility behavior with
   generated intent behavior.
 - Keep verifier output bounded and side-effect-free.
+- Bind verifier output to a stable sample-set fingerprint built from normalized
+  comparison samples, verifier options, and bounded rebuild proposal evidence
+  metadata.
 - Show only migration-relevant differences:
   - destination changes,
   - newly blocked items,
@@ -3915,6 +3918,9 @@ Tasks:
 Acceptance criteria:
 
 - Operators can see meaningful migration risk before accepting rebuilds.
+- Verifier reports carry a SHA-256 sample-set fingerprint and trace attribute
+  for the exact sanitized comparison set.
+- Missing, malformed, or mismatched verifier fingerprints fail validation.
 - Verifier output does not become normal policy-authoring UI.
 - Rollback path is explicit and tested.
 
@@ -3928,6 +3934,11 @@ Implementation status:
   `server/src/__tests__/services/policyBuilderPhase7MigrationVerifierRollback.test.mjs`.
 - Current implementation consumes a Phase 7R.6 rebuild proposal and sanitized
   representative legacy/proposed comparison samples.
+- Verifier reports now carry a stable sample-set fingerprint with bounded
+  provenance for sample count, raw-payload suppression, verifier options,
+  proposal version/status, and sanitized proposal evidence digests.
+- Trace attributes mirror the sample-set fingerprint, and validation rejects
+  missing, malformed, or mismatched fingerprint handoffs.
 - Verifier output is bounded to migration-relevant differences only:
   destination changes, newly blocked items, newly review-required items,
   route-readiness changes, and evidence-confidence changes.

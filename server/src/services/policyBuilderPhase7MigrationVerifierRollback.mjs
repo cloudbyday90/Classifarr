@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import {
   PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS,
   buildPolicyBuilderPhase6MigrationPlan,
@@ -61,10 +63,17 @@ const PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS = Object.freeze({
   CAN_DELETE_WITHOUT_VERIFIER_PASS: 'can_delete_without_verifier_pass',
   SIDE_EFFECT_PERFORMED: 'side_effect_performed',
   MISSING_TRACE_REASON: 'missing_trace_reason',
+  MISSING_SAMPLE_SET_FINGERPRINT: 'missing_sample_set_fingerprint',
+  MALFORMED_SAMPLE_SET_FINGERPRINT: 'malformed_sample_set_fingerprint',
+  TRACE_SAMPLE_SET_FINGERPRINT_MISMATCH: 'trace_sample_set_fingerprint_mismatch',
 });
 
 const MAX_DIFFERENCES_DEFAULT = 25;
 const CONFIDENCE_DELTA_THRESHOLD_DEFAULT = 0.15;
+const SAMPLE_SET_FINGERPRINT_VERSION = 'phase7r.migration_verifier_sample_set_fingerprint.v1';
+const SAMPLE_SET_FINGERPRINT_TRACE_ATTRIBUTE =
+  'classifarr.policy.migration_verifier.sample_set_fingerprint';
+const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
 
 const MIGRATION_RELEVANT_DIFFERENCE_TYPES = Object.freeze(
   Object.values(PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS)
@@ -80,6 +89,32 @@ function asObject(value) {
 
 function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function stableValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(stableValue);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  return Object.keys(value)
+    .sort()
+    .reduce((normalized, key) => {
+      const child = stableValue(value[key]);
+      if (child !== undefined) {
+        normalized[key] = child;
+      }
+      return normalized;
+    }, {});
+}
+
+function sha256(value) {
+  return createHash('sha256')
+    .update(JSON.stringify(stableValue(value)))
+    .digest('hex');
 }
 
 function normalizeNumber(value) {
@@ -137,6 +172,58 @@ function normalizeSample(value = {}, proposal = {}) {
       ...asObject(sample.proposed),
     }),
     exposesRawPayload: Boolean(sample.rawPayload || sample.providerPayload || sample.prompt || sample.embedding),
+  };
+}
+
+function buildSampleSetFingerprint({
+  samples,
+  proposal,
+  maxDifferences,
+  confidenceDeltaThreshold,
+}) {
+  const proposalGuardedOutcomeSummary = asObject(proposal.evidenceSourceSummary?.guardedOutcomes);
+  const proposalGuardedOutcomeFingerprints = asArray(proposalGuardedOutcomeSummary.fingerprints)
+    .map(String)
+    .sort();
+  const payload = {
+    version: SAMPLE_SET_FINGERPRINT_VERSION,
+    proposal: {
+      version: proposal.version || null,
+      statusId: proposal.statusId || null,
+      libraryId: proposal.library?.libraryId ?? null,
+      mediaType: proposal.library?.mediaType || null,
+      guardedOutcomeFingerprints: proposalGuardedOutcomeFingerprints,
+      guardedOutcomeFingerprintCount: proposalGuardedOutcomeSummary.fingerprintCount ?? 0,
+      guardedOutcomeMissingFingerprintCount: proposalGuardedOutcomeSummary.missingFingerprintCount ?? 0,
+    },
+    verifierOptions: {
+      maxDifferences,
+      confidenceDeltaThreshold,
+    },
+    samples: asArray(samples).map(sample => ({
+      itemId: sample.itemId,
+      year: sample.year,
+      mediaType: sample.mediaType,
+      legacy: sample.legacy,
+      proposed: sample.proposed,
+      exposesRawPayload: sample.exposesRawPayload,
+    })),
+  };
+
+  return {
+    version: SAMPLE_SET_FINGERPRINT_VERSION,
+    algorithm: 'sha256',
+    fingerprint: sha256(payload),
+    provenance: {
+      sampleCount: asArray(samples).length,
+      rawPayloadSuppressed: asArray(samples).some(sample => sample.exposesRawPayload),
+      maxDifferences,
+      confidenceDeltaThreshold,
+      proposalVersion: proposal.version || null,
+      proposalStatusId: proposal.statusId || null,
+      proposalGuardedOutcomeFingerprintCount: proposalGuardedOutcomeSummary.fingerprintCount ?? 0,
+      proposalGuardedOutcomeFingerprints,
+    },
   };
 }
 
@@ -341,7 +428,7 @@ function buildDeletionCriteria({ input, differences, migrationPlan, applicationG
   };
 }
 
-function buildTrace({ statusId, differences, boundedDifferences }) {
+function buildTrace({ statusId, differences, boundedDifferences, sampleSetFingerprint }) {
   const reasons = [
     PHASE7R_MIGRATION_VERIFIER_REASON_IDS.PROPOSAL_VALIDATED,
     PHASE7R_MIGRATION_VERIFIER_REASON_IDS.LEGACY_COMPARISON_CONSUMED,
@@ -360,6 +447,7 @@ function buildTrace({ statusId, differences, boundedDifferences }) {
       'classifarr.policy.migration_verifier.difference_count': differences.length,
       'classifarr.policy.migration_verifier.emitted_difference_count': boundedDifferences.length,
       'classifarr.policy.migration_verifier.truncated': differences.length > boundedDifferences.length,
+      [SAMPLE_SET_FINGERPRINT_TRACE_ATTRIBUTE]: sampleSetFingerprint.fingerprint,
     },
     reasons: reasons.map(reasonId => ({
       reasonId,
@@ -383,6 +471,12 @@ function buildPolicyBuilderPhase7MigrationVerifierReport(input = {}) {
     : CONFIDENCE_DELTA_THRESHOLD_DEFAULT;
   const samples = asArray(input.legacyComparisonSamples)
     .map(sample => normalizeSample(sample, proposal));
+  const sampleSetFingerprint = buildSampleSetFingerprint({
+    samples,
+    proposal,
+    maxDifferences,
+    confidenceDeltaThreshold,
+  });
   const differences = samples.flatMap(sample =>
     compareSample(sample, confidenceDeltaThreshold)
   );
@@ -410,6 +504,7 @@ function buildPolicyBuilderPhase7MigrationVerifierReport(input = {}) {
       comparedCount: samples.length,
       rawPayloadSuppressed: samples.some(sample => sample.exposesRawPayload),
     },
+    sampleSetFingerprint,
     differenceSummary: {
       totalCount: differences.length,
       emittedCount: boundedDifferences.length,
@@ -433,6 +528,7 @@ function buildPolicyBuilderPhase7MigrationVerifierReport(input = {}) {
       statusId,
       differences,
       boundedDifferences,
+      sampleSetFingerprint,
     }),
   };
 }
@@ -458,6 +554,35 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
     issues.push({
       riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_MIGRATION_PLAN,
       message: 'Migration verifier report must include a valid migration plan.',
+    });
+  }
+
+  const sampleSetFingerprint = report.sampleSetFingerprint;
+  const sampleFingerprintValue = normalizeString(sampleSetFingerprint?.fingerprint);
+  const traceSampleFingerprint = normalizeString(
+    report.trace?.attributes?.[SAMPLE_SET_FINGERPRINT_TRACE_ATTRIBUTE]
+  );
+
+  if (!sampleFingerprintValue) {
+    issues.push({
+      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_SAMPLE_SET_FINGERPRINT,
+      message: 'Migration verifier report must carry a sample-set fingerprint.',
+    });
+  } else if (
+    sampleSetFingerprint?.version !== SAMPLE_SET_FINGERPRINT_VERSION ||
+    sampleSetFingerprint?.algorithm !== 'sha256' ||
+    !SHA256_FINGERPRINT_PATTERN.test(sampleFingerprintValue)
+  ) {
+    issues.push({
+      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MALFORMED_SAMPLE_SET_FINGERPRINT,
+      message: 'Migration verifier sample-set fingerprint must be a supported SHA-256 digest.',
+    });
+  }
+
+  if (sampleFingerprintValue && traceSampleFingerprint !== sampleFingerprintValue) {
+    issues.push({
+      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.TRACE_SAMPLE_SET_FINGERPRINT_MISMATCH,
+      message: 'Migration verifier trace sample-set fingerprint must match the report.',
     });
   }
 

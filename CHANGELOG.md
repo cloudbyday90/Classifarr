@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Migration Verifier Fingerprint** — hardened
+  migration verifier reports with stable sanitized sample-set fingerprints,
+  bounded provenance, and matching trace attributes so missing, malformed, or
+  mismatched comparison evidence cannot pass validation before replacement
+  gates.
 - **Policy Builder Phase 7R Rebuild Evidence Binding** — hardened
   library-derived rebuild proposals so guarded outcomes require upstream
   sanitized evidence fingerprints before they can shape proposed policy intent,

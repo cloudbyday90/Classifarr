@@ -166,12 +166,143 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
       [PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS.EVIDENCE_CONFIDENCE_CHANGE]: 2,
     }));
     expect(report.sampleSummary.rawPayloadSuppressed).toBe(true);
+    expect(report.sampleSetFingerprint).toEqual(expect.objectContaining({
+      version: 'phase7r.migration_verifier_sample_set_fingerprint.v1',
+      algorithm: 'sha256',
+      fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      provenance: expect.objectContaining({
+        sampleCount: 2,
+        rawPayloadSuppressed: true,
+        maxDifferences: 3,
+        confidenceDeltaThreshold: 0.1,
+      }),
+    }));
+    expect(report.trace.attributes['classifarr.policy.migration_verifier.sample_set_fingerprint'])
+      .toBe(report.sampleSetFingerprint.fingerprint);
+    expect(JSON.stringify(report.sampleSetFingerprint)).not.toContain('Different destination');
+    expect(JSON.stringify(report.sampleSetFingerprint)).not.toContain('Animated Movies');
     report.differences.forEach(difference => {
       expect(Object.values(PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS)).toContain(difference.typeId);
       expect(difference.exposesRawPayload).toBe(false);
       expect(difference.rawPayload).toBeUndefined();
     });
     expect(validatePolicyBuilderPhase7MigrationVerifierReport(report).ok).toBe(true);
+  });
+
+  test('builds stable sample-set fingerprints and changes them when comparison inputs change', () => {
+    const baseReport = buildPolicyBuilderPhase7MigrationVerifierReport({
+      proposal: acceptedProposal(),
+      maxDifferences: 5,
+      legacyComparisonSamples: [
+        {
+          itemId: 10674,
+          title: 'Mulan',
+          legacy: {
+            destinationLibraryId: 6,
+            routeReady: true,
+            confidenceScore: 0.8,
+          },
+          proposed: {
+            destinationLibraryId: 6,
+            routeReady: true,
+            confidenceScore: 0.8,
+          },
+        },
+      ],
+    });
+    const reorderedEquivalentReport = buildPolicyBuilderPhase7MigrationVerifierReport({
+      proposal: acceptedProposal(),
+      maxDifferences: 5,
+      legacyComparisonSamples: [
+        {
+          title: 'Mulan',
+          itemId: 10674,
+          proposed: {
+            confidenceScore: 0.8,
+            routeReady: true,
+            destinationLibraryId: 6,
+          },
+          legacy: {
+            confidenceScore: 0.8,
+            routeReady: true,
+            destinationLibraryId: 6,
+          },
+        },
+      ],
+    });
+    const changedReport = buildPolicyBuilderPhase7MigrationVerifierReport({
+      proposal: acceptedProposal(),
+      maxDifferences: 5,
+      legacyComparisonSamples: [
+        {
+          itemId: 10674,
+          title: 'Mulan',
+          legacy: {
+            destinationLibraryId: 6,
+            routeReady: true,
+            confidenceScore: 0.8,
+          },
+          proposed: {
+            destinationLibraryId: 7,
+            routeReady: true,
+            confidenceScore: 0.8,
+          },
+        },
+      ],
+    });
+
+    expect(baseReport.sampleSetFingerprint.fingerprint)
+      .toBe(reorderedEquivalentReport.sampleSetFingerprint.fingerprint);
+    expect(baseReport.sampleSetFingerprint.fingerprint)
+      .not.toBe(changedReport.sampleSetFingerprint.fingerprint);
+    expect(validatePolicyBuilderPhase7MigrationVerifierReport(baseReport).ok).toBe(true);
+  });
+
+  test('rejects missing, malformed, or mismatched sample-set fingerprints', () => {
+    const report = buildPolicyBuilderPhase7MigrationVerifierReport({
+      proposal: acceptedProposal(),
+      legacyComparisonSamples: [],
+    });
+    const missing = {
+      ...report,
+      sampleSetFingerprint: null,
+    };
+    const malformed = {
+      ...report,
+      sampleSetFingerprint: {
+        ...report.sampleSetFingerprint,
+        fingerprint: 'not-a-sha256',
+      },
+    };
+    const mismatched = {
+      ...report,
+      trace: {
+        ...report.trace,
+        attributes: {
+          ...report.trace.attributes,
+          'classifarr.policy.migration_verifier.sample_set_fingerprint': 'b'.repeat(64),
+        },
+      },
+    };
+
+    expect(validatePolicyBuilderPhase7MigrationVerifierReport(missing).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_SAMPLE_SET_FINGERPRINT,
+        }),
+      ]));
+    expect(validatePolicyBuilderPhase7MigrationVerifierReport(malformed).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MALFORMED_SAMPLE_SET_FINGERPRINT,
+        }),
+      ]));
+    expect(validatePolicyBuilderPhase7MigrationVerifierReport(mismatched).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.TRACE_SAMPLE_SET_FINGERPRINT_MISMATCH,
+        }),
+      ]));
   });
 
   test('does not allow replacement without operator acceptance and rollback', () => {
