@@ -77,6 +77,17 @@ describe('policyBuilderPhase6EvidenceBoundary', () => {
 
     expect(result.inputGate.ok).toBe(true);
     expect(result.projectionAudit.ok).toBe(true);
+    expect(result.projectionFingerprint).toEqual(expect.objectContaining({
+      algorithm: 'sha256',
+      fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      provenance: expect.objectContaining({
+        totalEntryCount: result.projection.summary.totalEntryCount,
+        sourceIds: result.projection.summary.sourceIds,
+        authoritySourceIds: result.projection.summary.authoritySourceIds,
+      }),
+    }));
+    expect(JSON.stringify(result.projectionFingerprint)).not.toContain('Mulan');
+    expect(JSON.stringify(result.projectionFingerprint)).not.toContain('Radarr accepted root folder');
     expect(result.projection.summary.sourceIds).toEqual(expect.arrayContaining([
       PHASE6R_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
       PHASE6R_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
@@ -113,6 +124,7 @@ describe('policyBuilderPhase6EvidenceBoundary', () => {
       statusId: PHASE6R_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_INPUT_GATE,
       projection: null,
       projectionAudit: null,
+      projectionFingerprint: null,
       sideEffects: expect.objectContaining({
         evidenceProjectionBuilt: false,
         liveProviderLookupPerformed: false,

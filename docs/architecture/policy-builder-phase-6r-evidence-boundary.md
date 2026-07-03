@@ -8,7 +8,10 @@ This slice adds a single server-owned entry point for Phase 6R evidence
 projection. Callers pass the public evidence input envelope into the boundary;
 the boundary validates the envelope, adapts section names into the evidence
 engine input shape, builds the projection, and audits the projection before
-Phase 6R.2 or later runtime work can consume it.
+Phase 6R.2 or later runtime work can consume it. The boundary also emits a
+sanitized SHA-256 projection fingerprint so later engines can prove which
+bounded evidence they consumed without copying raw evidence labels or provider
+payloads into trace metadata.
 
 ## Problem
 
@@ -46,6 +49,15 @@ another, or bypass the input gate and call the projection helper directly.
   encourage stable names for operations and data. The boundary preserves stable
   Phase 6R source and bucket IDs so later tracing can attach to evidence
   without exposing raw values.
+- [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
+  recommends verified, traceable software changes and retained integrity
+  evidence. The boundary fingerprint creates a deterministic handoff artifact
+  that downstream engines can reference during tests, audits, and runtime
+  diagnostics.
+- [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
+  provides verification requirements for application security controls. The
+  fingerprint keeps server-side validation evidence compact while avoiding
+  sensitive or untrusted raw values in diagnostic output.
 
 ## Recommendations
 
@@ -76,6 +88,13 @@ another, or bypass the input gate and call the projection helper directly.
    policy storage mutation. Projection construction is the only allowed action
    after the input gate passes.
 
+6. **Emit a sanitized projection fingerprint.**
+   Successful projections include a SHA-256 fingerprint plus source IDs,
+   authority-source IDs, bucket counts, and trace attribute names. The
+   fingerprint is computed from the bounded projection, but the returned
+   provenance does not expose evidence labels, media titles, provider payloads,
+   or UI diagnostic strings.
+
 ## Pros And Cons
 
 Pros:
@@ -85,12 +104,16 @@ Pros:
 - Blocks unsafe inputs before projection builds any evidence.
 - Keeps evidence projection deterministic and offline.
 - Makes side-effect expectations testable.
+- Gives Phase 6R.2/7R a compact correlation handle for bounded evidence.
+- Avoids leaking titles or provider data into trace metadata.
 
 Cons:
 
 - Adds one small service layer.
 - Existing callers still need to migrate to the boundary in later runtime work.
 - The boundary does not delete legacy replay or impact diagnostics by itself.
+- A fingerprint proves projection equality, not semantic correctness; the input
+  and projection audits remain authoritative.
 
 ## Final Recommendation Stack
 
@@ -100,8 +123,12 @@ Cons:
   `server/src/services/policyBuilderPhase6EvidenceInputGate.mjs`
 - Evidence engine:
   `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
+- Projection fingerprint:
+  `server/src/services/policyBuilderPhase6EvidenceProjectionFingerprint.mjs`
 - Focused tests:
   `server/src/__tests__/services/policyBuilderPhase6EvidenceBoundary.test.mjs`
+  and
+  `server/src/__tests__/services/policyBuilderPhase6EvidenceProjectionFingerprint.test.mjs`
 - Roadmap owner:
   Phase 6R.1 Evidence Engine in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
@@ -130,6 +157,7 @@ statusId
 inputGate
 projection
 projectionAudit
+projectionFingerprint
 issueCount
 issues
 sideEffects
@@ -145,6 +173,8 @@ nextPhase
   audits pass.
 - The public input shape and engine projection shape now have one explicit,
   tested adapter.
+- Successful projections include a deterministic fingerprint and sanitized
+  provenance for trace correlation without raw evidence leakage.
 
 ## Next Step
 

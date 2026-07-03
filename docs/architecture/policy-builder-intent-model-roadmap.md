@@ -3156,6 +3156,11 @@ Implementation status:
   public section names into the projection shape, builds the evidence
   projection, and runs the projection audit before downstream engines consume
   evidence.
+- The boundary emits a sanitized SHA-256 projection fingerprint with source IDs,
+  authority-source IDs, bucket counts, and trace attribute names so later
+  engines can correlate the bounded evidence they consumed without exposing raw
+  evidence labels, media titles, provider payloads, quota state, or UI
+  diagnostic strings.
 - The boundary maps `classificationOutcomes` to
   `classificationFinalOutcomes` and `arrRoutingOutcomes` to `routingOutcomes`
   so the public gate envelope and internal projection contract cannot drift.

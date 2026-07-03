@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Evidence Projection Fingerprint** — added a
+  sanitized SHA-256 fingerprint and provenance summary to the Phase 6R.1
+  evidence boundary so downstream engines can correlate bounded evidence
+  without leaking raw evidence labels, provider payloads, quota state, or UI
+  diagnostics.
 - **Policy Builder Phase 8R Closure Inventory Sync** — classified the
   `PolicyStarterTemplateAccelerator.vue` replacement in the Phase 1R boundary
   and Phase 3R workflow inventories, added focused inventory assertions, and

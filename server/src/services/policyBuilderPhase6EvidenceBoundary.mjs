@@ -5,6 +5,9 @@ import {
   buildPolicyBuilderPhase6EvidenceProjection,
   buildPolicyBuilderPhase6EvidenceProjectionAudit,
 } from './policyBuilderPhase6EvidenceEngine.mjs';
+import {
+  buildPolicyBuilderPhase6EvidenceProjectionFingerprint,
+} from './policyBuilderPhase6EvidenceProjectionFingerprint.mjs';
 
 const PHASE6R_EVIDENCE_BOUNDARY_VERSION = 'phase6r.evidence_boundary.v1';
 
@@ -46,6 +49,7 @@ function buildPolicyBuilderPhase6BoundedEvidenceProjection({
       inputGate,
       projection: null,
       projectionAudit: null,
+      projectionFingerprint: null,
       issueCount: inputGate.issueCount,
       issues: inputGate.issues,
       sideEffects: {
@@ -61,6 +65,9 @@ function buildPolicyBuilderPhase6BoundedEvidenceProjection({
   const projectionInput = adaptPolicyBuilderPhase6EvidenceInput(evidenceInput);
   const projection = buildPolicyBuilderPhase6EvidenceProjection(projectionInput);
   const projectionAudit = buildPolicyBuilderPhase6EvidenceProjectionAudit(projection);
+  const projectionFingerprint = projectionAudit.ok === true
+    ? buildPolicyBuilderPhase6EvidenceProjectionFingerprint(projection)
+    : null;
   const ok = projectionAudit.ok === true;
 
   return {
@@ -72,6 +79,7 @@ function buildPolicyBuilderPhase6BoundedEvidenceProjection({
     inputGate,
     projection,
     projectionAudit,
+    projectionFingerprint,
     issueCount: projectionAudit.issueCount,
     issues: projectionAudit.issues,
     sideEffects: {
