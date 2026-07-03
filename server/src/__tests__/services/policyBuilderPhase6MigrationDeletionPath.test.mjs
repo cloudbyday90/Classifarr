@@ -17,8 +17,8 @@ import {
   buildPolicyAutomationReadinessFromBoundedContracts,
 } from '../../services/policyAutomationReadinessEngine.mjs';
 import {
-  buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness,
-} from '../../services/policyBuilderPhase6OperatorWorkflow.mjs';
+  buildPolicyOperatorWorkflowFromBoundedReadiness,
+} from '../../services/policyOperatorWorkflow.mjs';
 import {
   PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS,
   PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS,
@@ -72,7 +72,7 @@ function buildBoundedWorkflowResult() {
     },
   });
 
-  return buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+  return buildPolicyOperatorWorkflowFromBoundedReadiness({
     boundedIntentResult,
     boundedReadinessResult,
   });

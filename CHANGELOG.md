@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Operator Workflow Module Cutover** — renamed the operator workflow
+  projection and focused test to durable product-domain names, moved the
+  workflow contract to `policy.operator_workflow.v1`, replaced the
+  workflow-local audit handoff with `nextStep`, updated direct runtime imports,
+  and added a legacy completion-audit adapter for the migration/deletion
+  handoff.
 - **Policy Automation Readiness Engine Module Cutover** — renamed the
   automation readiness engine and focused test to durable product-domain names,
   moved the readiness contract to `policy.automation_readiness.v1`, replaced

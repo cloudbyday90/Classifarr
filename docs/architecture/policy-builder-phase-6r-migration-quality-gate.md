@@ -89,7 +89,7 @@ Cons:
 ## Final Recommendation Stack
 
 - Workflow quality source:
-  `server/src/services/policyBuilderPhase6OperatorWorkflow.mjs`
+  `server/src/services/policyOperatorWorkflow.mjs`
 - Migration boundary:
   `server/src/services/policyBuilderPhase6MigrationDeletionPath.mjs`
 - Test module:

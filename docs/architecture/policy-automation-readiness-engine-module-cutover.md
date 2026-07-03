@@ -124,6 +124,7 @@ Cons:
 
 ## Next Step
 
-Continue with the operator workflow rebuild cutover. It is the next direct
-consumer of `policyAutomationReadinessEngine` and still carries roadmap phase
-naming in its module, tests, and local completion handoff fields.
+The operator workflow rebuild cutover is now documented in
+[Policy Operator Workflow Module Cutover](policy-operator-workflow-module-cutover.md).
+Continue with the migration/deletion path cutover, which is the next direct
+consumer of the durable operator workflow module.

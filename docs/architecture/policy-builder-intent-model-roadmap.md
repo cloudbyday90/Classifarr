@@ -3430,9 +3430,9 @@ Implementation status:
 - Phase 6R.5 operator workflow rebuild is documented in
   [Policy Builder Phase 6R Operator Workflow Rebuild](policy-builder-phase-6r-operator-workflow.md).
 - The server-owned workflow projection lives in
-  `server/src/services/policyBuilderPhase6OperatorWorkflow.mjs`.
+  `server/src/services/policyOperatorWorkflow.mjs`.
 - The focused operator-workflow test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase6OperatorWorkflow.test.mjs`.
+  `server/src/__tests__/services/policyOperatorWorkflow.test.mjs`.
 - Current implementation defines the normal workflow as five destination-first
   sections: `what_belongs_here`, `what_should_not_go_here`,
   `what_helps_but_should_not_decide_alone`,
@@ -6245,6 +6245,14 @@ Implementation status:
 - After the automation-readiness cutover, the repository inventory validates
   with 14,634 total phase-coded references, 6,584 production references, and
   6,606 rename candidates.
+- The next durable module cutover renamed the operator workflow to
+  `policyOperatorWorkflow.mjs`, renamed its focused test, moved the workflow
+  contract to `policy.operator_workflow.v1`, and replaced the workflow-local
+  phase handoff with `nextStep`:
+  [Policy Operator Workflow Module Cutover](policy-operator-workflow-module-cutover.md).
+- After the operator-workflow cutover, the repository inventory validates with
+  14,446 total phase-coded references, 6,480 production references, and 6,502
+  rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

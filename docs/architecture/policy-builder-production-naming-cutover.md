@@ -221,3 +221,11 @@ labels, except where an allow-listed migration or history reason is documented.
 - After the automation-readiness cutover, the regression baseline is 6,584
   production references, 6,606 rename candidates, and 93 obsolete migration
   tooling references.
+- The next Phase 9R.2 durable module cutover renamed the operator workflow to
+  `policyOperatorWorkflow.mjs`, moved its focused test, moved the workflow
+  contract to `policy.operator_workflow.v1`, and replaced its workflow-local
+  audit handoff with `nextStep`:
+  [Policy Operator Workflow Module Cutover](policy-operator-workflow-module-cutover.md).
+- After the operator-workflow cutover, the regression baseline is 6,480
+  production references, 6,502 rename candidates, and 93 obsolete migration
+  tooling references.

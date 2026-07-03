@@ -93,9 +93,9 @@ Cons:
 - Readiness source:
   `server/src/services/policyAutomationReadinessEngine.mjs`
 - Workflow gate:
-  `server/src/services/policyBuilderPhase6OperatorWorkflow.mjs`
+  `server/src/services/policyOperatorWorkflow.mjs`
 - Test module:
-  `server/src/__tests__/services/policyBuilderPhase6OperatorWorkflow.test.mjs`
+  `server/src/__tests__/services/policyOperatorWorkflow.test.mjs`
 - Existing operator workflow record:
   `docs/architecture/policy-builder-phase-6r-operator-workflow.md`
 - Roadmap owner:

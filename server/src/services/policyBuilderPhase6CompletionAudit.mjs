@@ -26,9 +26,9 @@ import {
   listPolicyBuilderPhase6MigrationArtifacts,
 } from './policyBuilderPhase6MigrationDeletionPath.mjs';
 import {
-  buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness,
-  buildPolicyBuilderPhase6OperatorWorkflowAudit,
-} from './policyBuilderPhase6OperatorWorkflow.mjs';
+  buildPolicyOperatorWorkflowFromBoundedReadiness,
+  buildPolicyOperatorWorkflowAudit,
+} from './policyOperatorWorkflow.mjs';
 import {
   buildPolicyAutomationReadinessFromBoundedContracts,
   buildPolicyAutomationReadinessEngineAudit,
@@ -124,8 +124,8 @@ const PHASE6R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE6R_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW,
     label: 'Operator workflow rebuild',
     docPath: 'docs/architecture/policy-builder-phase-6r-operator-workflow.md',
-    servicePath: 'server/src/services/policyBuilderPhase6OperatorWorkflow.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase6OperatorWorkflow.test.mjs',
+    servicePath: 'server/src/services/policyOperatorWorkflow.mjs',
+    testPath: 'server/src/__tests__/services/policyOperatorWorkflow.test.mjs',
     expectedNextPhaseId: '6r_6',
     evidence: 'Normal workflow is destination-first and excludes replay/provider/TMDB/scoring diagnostics.',
   },
@@ -152,6 +152,9 @@ const PHASE6R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
   }),
   [PHASE6R_COMPLETION_COMPONENT_IDS.READINESS_ENGINE]: Object.freeze({
     operator_workflow: '6r_5',
+  }),
+  [PHASE6R_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW]: Object.freeze({
+    migration_deletion_path: '6r_6',
   }),
 });
 
@@ -333,7 +336,7 @@ function buildComponentAuditMap() {
     [PHASE6R_COMPLETION_COMPONENT_IDS.READINESS_ENGINE]:
       buildPolicyAutomationReadinessEngineAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW]:
-      buildPolicyBuilderPhase6OperatorWorkflowAudit(),
+      buildPolicyOperatorWorkflowAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.MIGRATION_DELETION_PATH]:
       buildPolicyBuilderPhase6MigrationDeletionAudit(),
   };
@@ -377,7 +380,7 @@ function buildDefaultPhase6BoundedCompletionChain() {
       targetName: 'Radarr Animated Movies',
     },
   });
-  const boundedWorkflowResult = buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+  const boundedWorkflowResult = buildPolicyOperatorWorkflowFromBoundedReadiness({
     boundedIntentResult,
     boundedReadinessResult,
   });

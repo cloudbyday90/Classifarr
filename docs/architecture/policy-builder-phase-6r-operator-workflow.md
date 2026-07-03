@@ -143,11 +143,11 @@ Cons:
 - Readiness input:
   `server/src/services/policyAutomationReadinessEngine.mjs`
 - Operator workflow projection:
-  `server/src/services/policyBuilderPhase6OperatorWorkflow.mjs`
+  `server/src/services/policyOperatorWorkflow.mjs`
 - Bounded workflow wrapper:
-  `buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness`
+  `buildPolicyOperatorWorkflowFromBoundedReadiness`
 - Test module:
-  `server/src/__tests__/services/policyBuilderPhase6OperatorWorkflow.test.mjs`
+  `server/src/__tests__/services/policyOperatorWorkflow.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-operator-workflow.md`
 - Quality gate documentation:
