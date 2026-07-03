@@ -120,6 +120,9 @@ Cons:
    question-reduction plan, planned question, and bounded trace attributes.
 10. Reject plans where the question or trace fingerprint differs from the plan
     fingerprint.
+11. Require the carried automation decision validation result and bounded trace
+    `decision_valid` attribute to agree before question plans can pass
+    validation.
 
 ## Implemented Files
 
@@ -185,6 +188,9 @@ The service exports:
   AI text.
 - The reducer carries only sanitized decision-evidence fingerprint provenance
   and rejects missing or mismatched fingerprint bindings.
+- The reducer carries the automation decision validation result and mirrors that
+  result in bounded trace attributes so stale or forged decision handoffs cannot
+  create questions.
 
 ## Test Coverage
 
@@ -197,7 +203,9 @@ The focused test suite verifies:
 - broad-genre priority frames are rewritten before persistence,
 - stale or legacy pending questions require cleanup,
 - question plans carry the automation decision evidence fingerprint,
+- question plans carry the automation decision validation result,
 - planned questions and traces must match the plan fingerprint,
+- traces must mirror the carried decision-valid state,
 - invalid plans with rejected frames, learning enabled, auto-route questions, or
   side effects fail validation,
 - the component audit points to Phase 7R.5.

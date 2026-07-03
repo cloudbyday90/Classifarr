@@ -65,6 +65,7 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
       fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
     }));
     expect(plan.trace.attributes).toEqual(expect.objectContaining({
+      'classifarr.runtime.question.decision_valid': true,
       'classifarr.runtime.question.decision_evidence_projection_fingerprint':
         plan.decisionEvidenceFingerprint.fingerprint,
     }));
@@ -320,6 +321,122 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
       }),
       expect.objectContaining({
         riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+      }),
+    ]));
+  });
+
+  test('rejects question plans without carried automation decision validation proof', () => {
+    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+      libraryProfile: {
+        identityCandidates: [
+          { label: 'Animation', count: 1, confidence: 0.6 },
+        ],
+      },
+    });
+    const validation = validatePolicyBuilderPhase7RuntimeQuestionReduction({
+      ...plan,
+      decisionValidation: undefined,
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+          .MISSING_AUTOMATION_DECISION_VALIDATION,
+      }),
+    ]));
+  });
+
+  test('rejects question plans when decision validation or trace proof drifts', () => {
+    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+      libraryProfile: {
+        identityCandidates: [
+          { label: 'Animation', count: 1, confidence: 0.6 },
+        ],
+      },
+    });
+    const validation = validatePolicyBuilderPhase7RuntimeQuestionReduction({
+      ...plan,
+      decisionValidation: {
+        ...plan.decisionValidation,
+        ok: false,
+      },
+      trace: {
+        ...plan.trace,
+        attributes: {
+          ...plan.trace.attributes,
+          'classifarr.runtime.question.decision_valid': true,
+        },
+      },
+    });
+    const traceOnlyValidation = validatePolicyBuilderPhase7RuntimeQuestionReduction({
+      ...plan,
+      trace: {
+        ...plan.trace,
+        attributes: {
+          ...plan.trace.attributes,
+          'classifarr.runtime.question.decision_valid': false,
+        },
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+          .AUTOMATION_DECISION_VALIDATION_MISMATCH,
+      }),
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+          .TRACE_DECISION_VALID_MISMATCH,
+      }),
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+          .AUTOMATION_DECISION_INVALID,
+      }),
+    ]));
+    expect(traceOnlyValidation.ok).toBe(false);
+    expect(traceOnlyValidation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+          .TRACE_DECISION_VALID_MISMATCH,
+      }),
+    ]));
+  });
+
+  test('rejects created questions or traces without evidence fingerprint proof', () => {
+    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+      libraryProfile: {
+        identityCandidates: [
+          { label: 'Animation', count: 1, confidence: 0.6 },
+        ],
+      },
+    });
+    const validation = validatePolicyBuilderPhase7RuntimeQuestionReduction({
+      ...plan,
+      question: {
+        ...plan.question,
+        decisionEvidenceFingerprint: undefined,
+      },
+      trace: {
+        ...plan.trace,
+        attributes: {
+          ...plan.trace.attributes,
+          'classifarr.runtime.question.decision_evidence_projection_fingerprint':
+            undefined,
+        },
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+          .MISSING_QUESTION_EVIDENCE_FINGERPRINT,
+      }),
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+          .MISSING_TRACE_EVIDENCE_FINGERPRINT,
       }),
     ]));
   });

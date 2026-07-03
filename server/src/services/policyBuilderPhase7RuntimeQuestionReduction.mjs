@@ -48,7 +48,12 @@ const PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS = Object.freeze({
   STALE_QUESTION_NOT_CLEANED: 'stale_question_not_cleaned',
   MISSING_TRACE_REASON: 'missing_trace_reason',
   AUTOMATION_DECISION_INVALID: 'automation_decision_invalid',
+  MISSING_AUTOMATION_DECISION_VALIDATION: 'missing_automation_decision_validation',
+  AUTOMATION_DECISION_VALIDATION_MISMATCH: 'automation_decision_validation_mismatch',
+  TRACE_DECISION_VALID_MISMATCH: 'trace_decision_valid_mismatch',
   MISSING_DECISION_EVIDENCE_FINGERPRINT: 'missing_decision_evidence_fingerprint',
+  MISSING_QUESTION_EVIDENCE_FINGERPRINT: 'missing_question_evidence_fingerprint',
+  MISSING_TRACE_EVIDENCE_FINGERPRINT: 'missing_trace_evidence_fingerprint',
   QUESTION_FINGERPRINT_MISMATCH: 'question_fingerprint_mismatch',
   TRACE_FINGERPRINT_MISMATCH: 'trace_fingerprint_mismatch',
 });
@@ -57,6 +62,8 @@ const QUESTION_CONTRACT_VERSION = 'phase7r.runtime_question_reduction.v1';
 const MAX_TRACE_REASONS = 10;
 const DECISION_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE =
   'classifarr.runtime.question.decision_evidence_projection_fingerprint';
+const DECISION_VALID_TRACE_ATTRIBUTE =
+  'classifarr.runtime.question.decision_valid';
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -246,7 +253,13 @@ function sanitizeDecisionEvidenceFingerprint(decision = {}) {
   };
 }
 
-function buildTrace(dispositionId, reasons, decision, decisionEvidenceFingerprint) {
+function buildTrace(
+  dispositionId,
+  reasons,
+  decision,
+  decisionValidation,
+  decisionEvidenceFingerprint
+) {
   const boundedReasons = reasons.slice(0, MAX_TRACE_REASONS);
   const attributes = {
     'classifarr.runtime.question.version': QUESTION_CONTRACT_VERSION,
@@ -254,6 +267,7 @@ function buildTrace(dispositionId, reasons, decision, decisionEvidenceFingerprin
     'classifarr.runtime.question.reason_count': boundedReasons.length,
     'classifarr.runtime.question.decision_state': decision.stateId,
     'classifarr.runtime.question.created': dispositionId === PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
+    [DECISION_VALID_TRACE_ATTRIBUTE]: decisionValidation.ok,
   };
 
   if (decisionEvidenceFingerprint?.fingerprint) {
@@ -399,7 +413,13 @@ function buildPolicyBuilderPhase7RuntimeQuestionReduction(input = {}) {
         frameId,
         staleQuestionCleanupRequired: true,
       }),
-      trace: buildTrace(dispositionId, reasons, decision, decisionEvidenceFingerprint),
+      trace: buildTrace(
+        dispositionId,
+        reasons,
+        decision,
+        decisionValidation,
+        decisionEvidenceFingerprint
+      ),
     };
   }
 
@@ -449,6 +469,7 @@ function buildPolicyBuilderPhase7RuntimeQuestionReduction(input = {}) {
       baseDisposition.dispositionId,
       reasons,
       decision,
+      decisionValidation,
       decisionEvidenceFingerprint
     ),
   };
@@ -477,11 +498,17 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
   const questionFrame = plan.question?.frameId;
   const normalizedQuestionFrame = questionFrame ? normalizeQuestionFrame(questionFrame) : null;
   const decisionValidation = validatePolicyBuilderPhase7AutomationDecision(asObject(plan.decision));
+  const carriedDecisionValidation = plan.decisionValidation;
+  const hasCarriedDecisionValidation = carriedDecisionValidation &&
+    typeof carriedDecisionValidation === 'object' &&
+    typeof carriedDecisionValidation.ok === 'boolean';
   const planFingerprint = normalizeString(plan.decisionEvidenceFingerprint?.fingerprint);
   const questionFingerprint = normalizeString(plan.question?.decisionEvidenceFingerprint?.fingerprint);
   const traceFingerprint = normalizeString(
     plan.trace?.attributes?.[DECISION_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE]
   );
+  const traceDecisionValid =
+    plan.trace?.attributes?.[DECISION_VALID_TRACE_ATTRIBUTE];
 
   if (!dispositionIds.includes(plan.dispositionId)) {
     issues.push({
@@ -490,7 +517,28 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
     });
   }
 
-  if (plan.decisionValidation?.ok === false || !decisionValidation.ok) {
+  if (!hasCarriedDecisionValidation) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+        .MISSING_AUTOMATION_DECISION_VALIDATION,
+      message: 'Runtime question reduction must carry the automation decision validation result.',
+    });
+  } else if (carriedDecisionValidation.ok !== decisionValidation.ok) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+        .AUTOMATION_DECISION_VALIDATION_MISMATCH,
+      message: 'Runtime question reduction validation must match the embedded automation decision.',
+    });
+  }
+
+  if (hasCarriedDecisionValidation && traceDecisionValid !== carriedDecisionValidation.ok) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.TRACE_DECISION_VALID_MISMATCH,
+      message: 'Runtime question trace decision-valid attribute must match the decision validation result.',
+    });
+  }
+
+  if (carriedDecisionValidation?.ok === false || !decisionValidation.ok) {
     issues.push({
       riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.AUTOMATION_DECISION_INVALID,
       message: 'Runtime question reduction cannot rely on an invalid automation decision.',
@@ -501,6 +549,20 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
     issues.push({
       riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_DECISION_EVIDENCE_FINGERPRINT,
       message: 'Runtime question reduction must carry the automation decision evidence fingerprint.',
+    });
+  }
+
+  if (plan.createQuestion === true && !questionFingerprint) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_QUESTION_EVIDENCE_FINGERPRINT,
+      message: 'Created runtime questions must carry the decision evidence fingerprint.',
+    });
+  }
+
+  if (!traceFingerprint) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_TRACE_EVIDENCE_FINGERPRINT,
+      message: 'Runtime question traces must carry the decision evidence fingerprint.',
     });
   }
 

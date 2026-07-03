@@ -3769,6 +3769,8 @@ Tasks:
   they can be answered or learned from.
 - Carry the automation decision evidence fingerprint into the question-reduction
   plan, planned question, and bounded trace attributes.
+- Carry the automation decision validation result and reject bounded trace
+  `decision_valid` values that drift from the carried validation proof.
 
 Acceptance criteria:
 
@@ -3800,6 +3802,9 @@ Implementation status:
 - Question-reduction plans now preserve the sanitized automation decision
   evidence fingerprint across the plan, planned question, and trace attributes;
   validation rejects missing or mismatched bindings before a question can pass.
+- Question-reduction plans also carry the automation decision validation result
+  and fail validation when that proof is missing, mismatched with the embedded
+  decision, or not mirrored by the bounded question trace.
 
 ### 7R.5 Request-Time Learning And Destination Selection
 
