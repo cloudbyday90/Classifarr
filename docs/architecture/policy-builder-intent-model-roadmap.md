@@ -3325,6 +3325,11 @@ Implementation status:
 - The bounded learning entry point now requires the upstream bounded intent
   evidence-fingerprint audit to pass and rejects mismatched wrapper-versus-intent
   evidence fingerprints before evaluating learning candidates.
+- The bounded learning entry point now also requires wrapper and embedded intent
+  evidence-quality snapshots to exist, match, and avoid the `insufficient`
+  status before any durable learning candidate is evaluated.
+- The Phase 6R.3 quality-gated learning hardening is documented in
+  [Policy Builder Phase 6R Learning Quality Gate](policy-builder-phase-6r-learning-quality-gate.md).
 
 ### 6R.4 Automation Readiness Engine
 

@@ -12,7 +12,9 @@ should use the bounded learning entry point, which requires a successful Phase
 fingerprint. July 2026 hardening makes that boundary stricter: the learning
 guard now requires the upstream bounded intent evidence-fingerprint audit to
 pass and rejects intent wrappers whose evidence fingerprint no longer matches
-the embedded intent snapshot.
+the embedded intent snapshot. It also requires the wrapper and embedded intent
+draft to carry matching, usable evidence-quality snapshots before any learning
+candidate can be evaluated.
 
 ## Problem
 
@@ -90,6 +92,11 @@ Phase 6R.3 makes that boundary executable.
    pass and verifies that the bounded intent wrapper and intent draft carry the
    same evidence projection fingerprint.
 
+8. **Require usable intent evidence quality before learning.**
+   The learning boundary compares the wrapper and embedded intent quality
+   snapshots and blocks missing, insufficient, or mismatched quality before a
+   durable learning candidate can be evaluated.
+
 ## Pros And Cons
 
 Pros:
@@ -105,6 +112,8 @@ Pros:
   labels or provider payloads into learning metadata.
 - Blocks stale or tampered intent handoffs before any learning candidate is
   evaluated.
+- Blocks missing, insufficient, or mismatched evidence quality before any
+  learning candidate is evaluated.
 
 Cons:
 
@@ -114,6 +123,8 @@ Cons:
 - Runtime code must still be wired to call the guard in Phase 7R.
 - The original pure decision reducer remains for focused tests and existing
   internal callers; runtime code should use the bounded entry point.
+- Conservative quality gating can pause learning until upstream evidence has a
+  usable identity/compatibility foundation.
 
 ## Final Recommendation Stack
 
@@ -127,6 +138,8 @@ Cons:
   `server/src/__tests__/services/policyBuilderPhase6LearningGuard.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-learning-guard.md`
+- Quality-gate outcome:
+  `docs/architecture/policy-builder-phase-6r-learning-quality-gate.md`
 - Roadmap owner:
   Phase 6R.3 Learning Guard in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
@@ -142,6 +155,22 @@ finalOutcome
 learning
 profileRefresh
 intentBoundary
+```
+
+For bounded runtime/rebuild callers, `intentBoundary.evidenceBoundary` includes
+a sanitized `quality` snapshot:
+
+```text
+version
+statusId
+score
+nextActionId
+reasonIds[]
+counts
+hasIdentityEvidence
+hasDeclaredIdentityEvidence
+hasObservedIdentityEvidence
+hasStaleProfileEvidence
 ```
 
 `finalOutcome` is always separate from `learning`.
@@ -202,13 +231,15 @@ blocked_by_learning_audit
   provenance before learning eligibility is evaluated.
 - Bounded learning rejects failed upstream fingerprint audits and mismatched
   wrapper-versus-intent evidence fingerprints.
+- Bounded learning rejects missing, insufficient, or mismatched wrapper-versus-
+  intent evidence quality snapshots.
 - The learning boundary records a sanitized intent/evidence snapshot without
   learning from raw AI explanation text or provider diagnostics.
 
 ## Next Step
 
 Proceed to **Phase 6R.4 Automation Readiness Engine**. That component should
-combine evidence, intent, routing, profile freshness, and learning state into a
-small readiness answer such as `ready`, `needs_more_examples`,
-`needs_operator_review`, `needs_routing`, `blocked_by_hard_limit`, or
-`stale_profile`.
+consume only quality-gated bounded learning results while combining evidence,
+intent, routing, profile freshness, and learning state into a small readiness
+answer such as `ready`, `needs_more_examples`, `needs_operator_review`,
+`needs_routing`, `blocked_by_hard_limit`, or `stale_profile`.

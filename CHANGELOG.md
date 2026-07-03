@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Learning Quality Gate** — hardened bounded learning
+  so Phase 6R.3 requires matching, usable evidence-quality snapshots from the
+  bounded intent wrapper and embedded intent before evaluating durable learning
+  candidates.
 - **Policy Builder Phase 6R Intent Quality Gate** — hardened bounded intent
   inference so Phase 6R.2 consumes generated evidence quality, blocks missing
   or insufficient evidence-quality handoffs, and carries sanitized quality

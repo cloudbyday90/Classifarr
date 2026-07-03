@@ -190,6 +190,11 @@ describe('policyBuilderPhase6LearningGuard', () => {
       statusId: boundedIntentResult.statusId,
       intentVersion: boundedIntentResult.intent.version,
       evidenceBoundary: expect.objectContaining({
+        quality: expect.objectContaining({
+          statusId: boundedIntentResult.intent.evidenceBoundary.quality.statusId,
+          nextActionId: boundedIntentResult.intent.evidenceBoundary.quality.nextActionId,
+          reasonIds: boundedIntentResult.intent.evidenceBoundary.quality.reasonIds,
+        }),
         projectionFingerprint: expect.objectContaining({
           fingerprint: boundedEvidenceResult.projectionFingerprint.fingerprint,
         }),
@@ -202,6 +207,140 @@ describe('policyBuilderPhase6LearningGuard', () => {
     }));
     expect(JSON.stringify(result.intentBoundary)).not.toContain('Pixar');
     expect(result.learningAudit.ok).toBe(true);
+  });
+
+  test('blocks bounded learning when intent evidence quality is missing', () => {
+    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        operatorIntent: {
+          belongsHere: ['Animated Movies'],
+        },
+      },
+    });
+    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+      boundedEvidenceResult,
+    });
+    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+      boundedIntentResult: {
+        ...boundedIntentResult,
+        evidenceBoundary: {
+          ...boundedIntentResult.evidenceBoundary,
+          quality: null,
+        },
+      },
+      learningInput: {
+        answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
+        answer: { label: 'Animated Movies' },
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      decision: null,
+      learningAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_QUALITY,
+      }),
+    ]));
+  });
+
+  test('blocks bounded learning when intent evidence quality is insufficient', () => {
+    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        operatorIntent: {
+          belongsHere: ['Animated Movies'],
+        },
+      },
+    });
+    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+      boundedEvidenceResult,
+    });
+    const insufficientQuality = {
+      ...boundedIntentResult.evidenceBoundary.quality,
+      statusId: 'insufficient',
+      nextActionId: 'confirm_destination_identity',
+      reasonIds: ['missing_identity_evidence'],
+    };
+    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+      boundedIntentResult: {
+        ...boundedIntentResult,
+        evidenceBoundary: {
+          ...boundedIntentResult.evidenceBoundary,
+          quality: insufficientQuality,
+        },
+        intent: {
+          ...boundedIntentResult.intent,
+          evidenceBoundary: {
+            ...boundedIntentResult.intent.evidenceBoundary,
+            quality: insufficientQuality,
+          },
+        },
+      },
+      learningInput: {
+        answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
+        answer: { label: 'Animated Movies' },
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      decision: null,
+      learningAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.INSUFFICIENT_INTENT_EVIDENCE_QUALITY,
+        nextActionId: 'confirm_destination_identity',
+      }),
+    ]));
+  });
+
+  test('blocks bounded learning when intent evidence quality differs from the wrapper', () => {
+    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        operatorIntent: {
+          belongsHere: ['Animated Movies'],
+        },
+      },
+    });
+    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+      boundedEvidenceResult,
+    });
+    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+      boundedIntentResult: {
+        ...boundedIntentResult,
+        intent: {
+          ...boundedIntentResult.intent,
+          evidenceBoundary: {
+            ...boundedIntentResult.intent.evidenceBoundary,
+            quality: {
+              ...boundedIntentResult.intent.evidenceBoundary.quality,
+              nextActionId: 'refresh_profile_examples',
+            },
+          },
+        },
+      },
+      learningInput: {
+        answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
+        answer: { label: 'Animated Movies' },
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      decision: null,
+      learningAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.INTENT_EVIDENCE_QUALITY_MISMATCH,
+      }),
+    ]));
   });
 
   test('blocks bounded learning when bounded intent evidence audit is not passing', () => {
@@ -488,6 +627,49 @@ describe('policyBuilderPhase6LearningGuard', () => {
       phaseId: '6r_4',
       label: 'Automation Readiness Engine',
     }));
+  });
+
+  test('rejects learning decisions that drop bounded intent quality', () => {
+    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        operatorIntent: {
+          belongsHere: ['Animated Movies'],
+        },
+      },
+    });
+    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+      boundedEvidenceResult,
+    });
+    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+      boundedIntentResult,
+      learningInput: {
+        answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
+        answer: { label: 'Animated Movies' },
+        candidate: {
+          key: 'studio:pixar',
+          label: 'Pixar',
+          signalType: 'studio',
+          evidenceCount: 4,
+        },
+      },
+    });
+    const tamperedDecision = {
+      ...result.decision,
+      intentBoundary: {
+        ...result.decision.intentBoundary,
+        evidenceBoundary: {
+          ...result.decision.intentBoundary.evidenceBoundary,
+          quality: null,
+        },
+      },
+    };
+
+    expect(validatePolicyBuilderPhase6LearningDecision(tamperedDecision).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_QUALITY,
+        }),
+      ]));
   });
 
   test('rejects invalid decisions that try to write directly or refresh without destination learning', () => {

@@ -8,6 +8,9 @@ import {
   getAnswerOutcome,
   normalizeQuestionFrame,
 } from './policyQuestionLearningVocabulary.mjs';
+import {
+  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
+} from './policyBuilderPhase6EvidenceQuality.mjs';
 
 const PHASE6R_LEARNING_TIER_IDS = Object.freeze({
   NONE: 'none',
@@ -74,6 +77,9 @@ const PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS = Object.freeze({
   MISSING_INTENT_EVIDENCE_FINGERPRINT: 'missing_intent_evidence_fingerprint',
   MISSING_INTENT_EVIDENCE_AUDIT: 'missing_intent_evidence_audit',
   INTENT_EVIDENCE_FINGERPRINT_MISMATCH: 'intent_evidence_fingerprint_mismatch',
+  MISSING_INTENT_EVIDENCE_QUALITY: 'missing_intent_evidence_quality',
+  INSUFFICIENT_INTENT_EVIDENCE_QUALITY: 'insufficient_intent_evidence_quality',
+  INTENT_EVIDENCE_QUALITY_MISMATCH: 'intent_evidence_quality_mismatch',
 });
 
 const BROAD_GENRE_LABELS = Object.freeze([
@@ -223,6 +229,79 @@ function projectionFingerprintSnapshotsMatch(left = {}, right = {}) {
     leftSnapshot.version === rightSnapshot.version &&
     leftSnapshot.algorithm === rightSnapshot.algorithm &&
     leftSnapshot.fingerprint === rightSnapshot.fingerprint;
+}
+
+function getEvidenceQualitySnapshot(source = {}) {
+  const quality = asObject(source?.evidenceBoundary?.quality);
+  const reasonIds = asArray(quality.reasonIds)
+    .map(reasonId => normalizeString(reasonId))
+    .filter(Boolean);
+
+  return {
+    version: quality.version || null,
+    statusId: quality.statusId || null,
+    score: Number.isFinite(Number(quality.score)) ? Number(quality.score) : null,
+    nextActionId: quality.nextActionId || null,
+    reasonIds,
+    counts: asObject(quality.counts),
+    hasIdentityEvidence: quality.hasIdentityEvidence === true,
+    hasDeclaredIdentityEvidence: quality.hasDeclaredIdentityEvidence === true,
+    hasObservedIdentityEvidence: quality.hasObservedIdentityEvidence === true,
+    hasStaleProfileEvidence: quality.hasStaleProfileEvidence === true,
+  };
+}
+
+function hasEvidenceQualitySnapshot(source = {}) {
+  return hasValue(getEvidenceQualitySnapshot(source).statusId);
+}
+
+function evidenceQualitySnapshotsMatch(left = {}, right = {}) {
+  const leftSnapshot = getEvidenceQualitySnapshot(left);
+  const rightSnapshot = getEvidenceQualitySnapshot(right);
+
+  return hasValue(leftSnapshot.statusId) &&
+    leftSnapshot.version === rightSnapshot.version &&
+    leftSnapshot.statusId === rightSnapshot.statusId &&
+    leftSnapshot.nextActionId === rightSnapshot.nextActionId &&
+    leftSnapshot.reasonIds.join('|') === rightSnapshot.reasonIds.join('|');
+}
+
+function buildIntentEvidenceQualityIssues(wrapper = {}, intent = {}) {
+  const issues = [];
+  const wrapperQuality = getEvidenceQualitySnapshot(wrapper);
+  const intentQuality = getEvidenceQualitySnapshot(intent);
+  const missingWrapperQuality = !hasEvidenceQualitySnapshot(wrapper);
+  const missingIntentQuality = !hasEvidenceQualitySnapshot(intent);
+
+  if (missingWrapperQuality || missingIntentQuality) {
+    issues.push({
+      riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_QUALITY,
+      message: 'Learning guard requires the bounded intent evidence quality snapshot.',
+    });
+    return issues;
+  }
+
+  if (
+    wrapperQuality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT ||
+    intentQuality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+  ) {
+    issues.push({
+      riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.INSUFFICIENT_INTENT_EVIDENCE_QUALITY,
+      message: 'Learning guard requires usable bounded intent evidence quality.',
+      qualityStatusId: wrapperQuality.statusId,
+      nextActionId: wrapperQuality.nextActionId,
+      reasonIds: wrapperQuality.reasonIds,
+    });
+  }
+
+  if (!evidenceQualitySnapshotsMatch(wrapper, intent)) {
+    issues.push({
+      riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.INTENT_EVIDENCE_QUALITY_MISMATCH,
+      message: 'Learning guard requires the intent evidence quality to match the bounded intent wrapper.',
+    });
+  }
+
+  return issues;
 }
 
 function getPolicyBuilderPhase6LearningTier(tierId) {
@@ -487,6 +566,7 @@ function buildIntentBoundarySnapshot(boundedIntentResult = {}) {
     evidenceBoundary: {
       boundaryVersion: evidenceBoundary.boundaryVersion || null,
       statusId: evidenceBoundary.statusId || null,
+      quality: getEvidenceQualitySnapshot(boundedIntentResult),
       projectionFingerprint: {
         version: projectionFingerprint.version || null,
         algorithm: projectionFingerprint.algorithm || null,
@@ -537,6 +617,11 @@ function buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
         message: 'Learning guard requires the intent evidence fingerprint to match the bounded intent wrapper.',
       });
     }
+
+    boundaryIssues.push(...buildIntentEvidenceQualityIssues(
+      boundedIntentResult,
+      boundedIntentResult.intent
+    ));
   }
 
   if (boundaryIssues.length > 0) {
@@ -659,6 +744,13 @@ function validatePolicyBuilderPhase6LearningDecision(decision = {}) {
       riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_REASON_CODE,
       message: 'Learning decisions must include reason codes.',
     });
+  }
+
+  if (decision.intentBoundary && typeof decision.intentBoundary === 'object') {
+    issues.push(...buildIntentEvidenceQualityIssues(
+      decision.intentBoundary,
+      decision.intentBoundary
+    ));
   }
 
   return {
