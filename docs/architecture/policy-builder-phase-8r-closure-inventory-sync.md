@@ -62,12 +62,12 @@ Cons:
 
 - Phase 1R inventory:
   `server/src/services/policyBuilderPhase1BoundaryInventory.mjs`
-- Phase 3R inventory:
-  `server/src/services/policyBuilderPhase3WorkflowInventory.mjs`
+- Policy-authoring workflow inventory:
+  `server/src/services/policyAuthoringWorkflowInventory.mjs`
 - Focused tests:
   `server/src/__tests__/services/policyBuilderPhase1BoundaryInventory.test.mjs`
   and
-  `server/src/__tests__/services/policyBuilderPhase3WorkflowInventory.test.mjs`
+  `server/src/__tests__/services/policyAuthoringWorkflowInventory.test.mjs`
 - Completion evidence:
   rerun Phase 8R validation evidence after the sync.
 

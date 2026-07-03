@@ -10,9 +10,9 @@ import {
   PHASE_3R_DESTINATION_FLOW_STEP_IDS,
 } from './policyBuilderPhase3DestinationFirstFlow.mjs';
 import {
-  PHASE_3R_WORKFLOW_DECISION_IDS,
-  PHASE_3R_WORKFLOW_ROLE_IDS,
-} from './policyBuilderPhase3WorkflowInventory.mjs';
+  POLICY_AUTHORING_WORKFLOW_DECISION_IDS,
+  POLICY_AUTHORING_WORKFLOW_ROLE_IDS,
+} from './policyAuthoringWorkflowInventory.mjs';
 import {
   POLICY_UX_TERM_IDS,
 } from './policyUserMentalModel.mjs';
@@ -131,8 +131,8 @@ const PHASE_3R_TEMPLATE_MECHANIC_RECORDS = deepFreeze([
   {
     mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_BROWSER,
     roleId: PHASE_3R_TEMPLATE_ROLE_IDS.OPTIONAL_ACCELERATOR,
-    workflowDecisionId: PHASE_3R_WORKFLOW_DECISION_IDS.REWRITE,
-    workflowRoleId: PHASE_3R_WORKFLOW_ROLE_IDS.STARTER_TEMPLATE_ACCELERATOR,
+    workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
+    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.STARTER_TEMPLATE_ACCELERATOR,
     normalAuthoringAllowed: true,
     deleteAfterPhase8R: false,
     notes: 'Browser can remain only after destination context and as optional accelerator.',
@@ -140,8 +140,8 @@ const PHASE_3R_TEMPLATE_MECHANIC_RECORDS = deepFreeze([
   {
     mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_DETAILS,
     roleId: PHASE_3R_TEMPLATE_ROLE_IDS.SECONDARY_PROVENANCE,
-    workflowDecisionId: PHASE_3R_WORKFLOW_DECISION_IDS.REWRITE,
-    workflowRoleId: PHASE_3R_WORKFLOW_ROLE_IDS.STARTER_TEMPLATE_ACCELERATOR,
+    workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
+    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.STARTER_TEMPLATE_ACCELERATOR,
     normalAuthoringAllowed: true,
     deleteAfterPhase8R: false,
     notes: 'Details can explain provenance but cannot become the primary editing surface.',
@@ -149,8 +149,8 @@ const PHASE_3R_TEMPLATE_MECHANIC_RECORDS = deepFreeze([
   {
     mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_MECHANICS,
     roleId: PHASE_3R_TEMPLATE_ROLE_IDS.BRIDGE_ONLY_MECHANIC,
-    workflowDecisionId: PHASE_3R_WORKFLOW_DECISION_IDS.DELETE,
-    workflowRoleId: PHASE_3R_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
+    workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
+    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
     normalAuthoringAllowed: false,
     deleteAfterPhase8R: true,
     notes: 'Raw mechanics are bridge/verifier-only and should leave normal authoring.',
@@ -158,8 +158,8 @@ const PHASE_3R_TEMPLATE_MECHANIC_RECORDS = deepFreeze([
   {
     mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_WEIGHT,
     roleId: PHASE_3R_TEMPLATE_ROLE_IDS.BRIDGE_ONLY_MECHANIC,
-    workflowDecisionId: PHASE_3R_WORKFLOW_DECISION_IDS.DELETE,
-    workflowRoleId: PHASE_3R_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
+    workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
+    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
     normalAuthoringAllowed: false,
     deleteAfterPhase8R: true,
     notes: 'Template weights are compatibility scoring mechanics, not intent language.',
@@ -167,8 +167,8 @@ const PHASE_3R_TEMPLATE_MECHANIC_RECORDS = deepFreeze([
   {
     mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.RAW_CUSTOM_SIGNALS,
     roleId: PHASE_3R_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
-    workflowDecisionId: PHASE_3R_WORKFLOW_DECISION_IDS.DELETE,
-    workflowRoleId: PHASE_3R_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
+    workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
+    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
     normalAuthoringAllowed: false,
     deleteAfterPhase8R: true,
     notes: 'Raw customSignals must be replaced by native intent storage.',
@@ -176,8 +176,8 @@ const PHASE_3R_TEMPLATE_MECHANIC_RECORDS = deepFreeze([
   {
     mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.REMOVED_SIGNAL_MARKERS,
     roleId: PHASE_3R_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
-    workflowDecisionId: PHASE_3R_WORKFLOW_DECISION_IDS.DELETE,
-    workflowRoleId: PHASE_3R_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
+    workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
+    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
     normalAuthoringAllowed: false,
     deleteAfterPhase8R: true,
     notes: 'Removed markers are compatibility bridge state, not a normal product concept.',
@@ -185,8 +185,8 @@ const PHASE_3R_TEMPLATE_MECHANIC_RECORDS = deepFreeze([
   {
     mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.STRICT_ADVISORY_METADATA,
     roleId: PHASE_3R_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
-    workflowDecisionId: PHASE_3R_WORKFLOW_DECISION_IDS.DELETE,
-    workflowRoleId: PHASE_3R_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
+    workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
+    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
     normalAuthoringAllowed: false,
     deleteAfterPhase8R: true,
     notes: 'Strict/advisory metadata moves to native constraint semantics.',

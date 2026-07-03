@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Workflow Inventory Cutover** — renamed the workflow
+  inventory contract and focused test to durable product-domain names, replaced
+  phase-coded exported workflow constants/helpers with
+  `POLICY_AUTHORING_WORKFLOW_*` and `policyAuthoringWorkflow*`, updated
+  dependent authoring contracts to consume the durable vocabulary, and preserved
+  deterministic policy-builder surface classification behavior.
 - **Policy Authoring Workflow Completion Audit Cutover** — renamed the authoring
   workflow completion audit service and focused test to durable product-domain
   names, replaced phase-coded record ids and `nextPhase.phaseId` with semantic

@@ -1,6 +1,6 @@
 import {
-  PHASE_3R_WORKFLOW_ROLE_IDS,
-} from '../../services/policyBuilderPhase3WorkflowInventory.mjs';
+  POLICY_AUTHORING_WORKFLOW_ROLE_IDS,
+} from '../../services/policyAuthoringWorkflowInventory.mjs';
 import {
   PHASE_3R_DESTINATION_EMPTY_STATE_IDS,
   PHASE_3R_DESTINATION_FLOW_STEP_IDS,
@@ -36,7 +36,7 @@ describe('policyBuilderPhase3DestinationFirstFlow', () => {
     expect(listPhase3RDestinationFlowSteps().map(step => step.order)).toEqual([1, 2, 3, 4, 5, 6]);
     expect(getPhase3RDestinationFlowStep(PHASE_3R_DESTINATION_FLOW_STEP_IDS.REVIEW_OBSERVED_DESTINATION))
       .toEqual(expect.objectContaining({
-        roleId: PHASE_3R_WORKFLOW_ROLE_IDS.DESTINATION_CONTEXT,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DESTINATION_CONTEXT,
         primaryQuestionId: PHASE_3R_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
         allowsStarterTemplates: false,
         allowsAdvancedMechanics: false,

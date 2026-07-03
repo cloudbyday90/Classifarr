@@ -7,9 +7,9 @@ import {
   PHASE_3R_DESTINATION_NEXT_ACTION_IDS,
 } from '../../services/policyBuilderPhase3DestinationFirstFlow.mjs';
 import {
-  PHASE_3R_WORKFLOW_DECISION_IDS,
-  PHASE_3R_WORKFLOW_ROLE_IDS,
-} from '../../services/policyBuilderPhase3WorkflowInventory.mjs';
+  POLICY_AUTHORING_WORKFLOW_DECISION_IDS,
+  POLICY_AUTHORING_WORKFLOW_ROLE_IDS,
+} from '../../services/policyAuthoringWorkflowInventory.mjs';
 import {
   PHASE_3R_DIAGNOSTIC_SURFACE_IDS,
   PHASE_3R_READINESS_ISSUE_IDS,
@@ -147,8 +147,8 @@ describe('policyBuilderPhase3ReadinessNextActionSurface', () => {
       expect.objectContaining({
         id: PHASE_3R_DIAGNOSTIC_SURFACE_IDS.IMPACT_PREVIEW,
         visibilityId: PHASE_3R_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-        workflowDecisionId: PHASE_3R_WORKFLOW_DECISION_IDS.DELETE,
-        workflowRoleId: PHASE_3R_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
+        workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
+        workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
       }),
       expect.objectContaining({
         id: PHASE_3R_DIAGNOSTIC_SURFACE_IDS.REPLAY_PREVIEW,

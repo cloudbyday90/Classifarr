@@ -26,12 +26,12 @@ const POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS = Object.freeze({
 
 const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
   {
-    id: 'workflow_inventory_cutline',
-    label: 'Workflow inventory and cutline',
-    docPath: 'docs/architecture/policy-builder-phase-3r-workflow-inventory-cutline.md',
-    servicePath: 'server/src/services/policyBuilderPhase3WorkflowInventory.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase3WorkflowInventory.test.mjs',
-    evidence: 'Classifies current policy-builder surfaces as keep, rewrite, replace, delete, bridge-only, or verifier-only.',
+    id: 'policy_authoring_workflow_inventory',
+    label: 'Policy authoring workflow inventory',
+    docPath: 'docs/architecture/policy-authoring-workflow-inventory.md',
+    servicePath: 'server/src/services/policyAuthoringWorkflowInventory.mjs',
+    testPath: 'server/src/__tests__/services/policyAuthoringWorkflowInventory.test.mjs',
+    evidence: 'Classifies current policy-builder surfaces as keep, rewrite, replace, delete, bridge-only, or verifier-only without phase-specific module names.',
   },
   {
     id: 'destination_first_flow',

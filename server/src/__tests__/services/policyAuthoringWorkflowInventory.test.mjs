@@ -2,18 +2,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  PHASE_3R_WORKFLOW_DECISION_IDS,
-  PHASE_3R_WORKFLOW_REQUIREMENT_IDS,
-  PHASE_3R_WORKFLOW_RISK_IDS,
-  PHASE_3R_WORKFLOW_ROLE_IDS,
-  classifyPhase3RWorkflowSurface,
-  isPhase3RPolicyBuilderPath,
-  listPhase3RWorkflowRules,
+  POLICY_AUTHORING_WORKFLOW_DECISION_IDS,
+  POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS,
+  POLICY_AUTHORING_WORKFLOW_RISK_IDS,
+  POLICY_AUTHORING_WORKFLOW_ROLE_IDS,
+  classifyPolicyAuthoringWorkflowSurface,
+  isPolicyAuthoringBuilderPath,
+  listPolicyAuthoringWorkflowRules,
   normalizeClientPath,
-  summarizePhase3RWorkflowInventory,
-  validatePhase3RWorkflowInventory,
-  validatePhase3RWorkflowRequirement,
-} from '../../services/policyBuilderPhase3WorkflowInventory.mjs';
+  summarizePolicyAuthoringWorkflowInventory,
+  validatePolicyAuthoringWorkflowInventory,
+  validatePolicyAuthoringWorkflowRequirement,
+} from '../../services/policyAuthoringWorkflowInventory.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,30 +32,30 @@ function collectClientFiles(directory) {
   });
 }
 
-describe('policyBuilderPhase3WorkflowInventory', () => {
-  test('classifies every current policy-builder client surface with a Phase 3R cutline decision', () => {
+describe('policyAuthoringWorkflowInventory', () => {
+  test('classifies every current policy-builder client surface with a policy authoring cutline decision', () => {
     const policyBuilderPaths = collectClientFiles(clientSrcRoot)
-      .filter(isPhase3RPolicyBuilderPath);
-    const inventory = summarizePhase3RWorkflowInventory(policyBuilderPaths);
+      .filter(isPolicyAuthoringBuilderPath);
+    const inventory = summarizePolicyAuthoringWorkflowInventory(policyBuilderPaths);
 
     expect(inventory.total).toBeGreaterThanOrEqual(90);
     expect(inventory.unclassifiedPaths).toEqual([]);
-    expect(validatePhase3RWorkflowInventory(policyBuilderPaths)).toEqual(expect.objectContaining({
+    expect(validatePolicyAuthoringWorkflowInventory(policyBuilderPaths)).toEqual(expect.objectContaining({
       valid: true,
     }));
   });
 
   test('classifies the shell as rewrite but still allowed in the normal workflow role', () => {
-    const record = classifyPhase3RWorkflowSurface('client/src/components/policies/PolicyBuilderModal.vue');
+    const record = classifyPolicyAuthoringWorkflowSurface('client/src/components/policies/PolicyBuilderModal.vue');
 
     expect(record).toEqual(expect.objectContaining({
-      decisionId: PHASE_3R_WORKFLOW_DECISION_IDS.REWRITE,
-      roleId: PHASE_3R_WORKFLOW_ROLE_IDS.WORKFLOW_SHELL,
+      decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
+      roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.WORKFLOW_SHELL,
       normalAuthoringAllowed: true,
       migrationSupportOnly: false,
     }));
     expect(record.riskIds).toEqual([
-      PHASE_3R_WORKFLOW_RISK_IDS.OLD_MODAL_SHAPE,
+      POLICY_AUTHORING_WORKFLOW_RISK_IDS.OLD_MODAL_SHAPE,
     ]);
   });
 
@@ -65,26 +65,26 @@ describe('policyBuilderPhase3WorkflowInventory', () => {
       'client/src/utils/policyBuilderLibraryGenreOptions.js',
       'client/src/composables/usePolicyBuilderReferenceData.js',
     ].forEach((filePath) => {
-      expect(classifyPhase3RWorkflowSurface(filePath)).toEqual(expect.objectContaining({
-        decisionId: PHASE_3R_WORKFLOW_DECISION_IDS.KEEP,
-        roleId: PHASE_3R_WORKFLOW_ROLE_IDS.DESTINATION_CONTEXT,
+      expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DESTINATION_CONTEXT,
         normalAuthoringAllowed: true,
       }));
     });
   });
 
   test('keeps leaf intent controls while rewriting old editor grouping', () => {
-    expect(classifyPhase3RWorkflowSurface('client/src/components/policies/PolicyIntentGenreControl.vue'))
+    expect(classifyPolicyAuthoringWorkflowSurface('client/src/components/policies/PolicyIntentGenreControl.vue'))
       .toEqual(expect.objectContaining({
-        decisionId: PHASE_3R_WORKFLOW_DECISION_IDS.KEEP,
-        roleId: PHASE_3R_WORKFLOW_ROLE_IDS.DECLARED_INTENT_EDITING,
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DECLARED_INTENT_EDITING,
         normalAuthoringAllowed: true,
       }));
 
-    expect(classifyPhase3RWorkflowSurface('client/src/components/policies/PolicyIntentEditor.vue'))
+    expect(classifyPolicyAuthoringWorkflowSurface('client/src/components/policies/PolicyIntentEditor.vue'))
       .toEqual(expect.objectContaining({
-        decisionId: PHASE_3R_WORKFLOW_DECISION_IDS.REWRITE,
-        roleId: PHASE_3R_WORKFLOW_ROLE_IDS.DECLARED_INTENT_EDITING,
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DECLARED_INTENT_EDITING,
         normalAuthoringAllowed: true,
       }));
   });
@@ -97,25 +97,25 @@ describe('policyBuilderPhase3WorkflowInventory', () => {
       'client/src/components/policies/PolicySelectedStarterTemplates.vue',
       'client/src/composables/usePolicyBuilderTemplateSignals.js',
     ].forEach((filePath) => {
-      const record = classifyPhase3RWorkflowSurface(filePath);
+      const record = classifyPolicyAuthoringWorkflowSurface(filePath);
 
       expect(record).toEqual(expect.objectContaining({
-        decisionId: PHASE_3R_WORKFLOW_DECISION_IDS.REWRITE,
-        roleId: PHASE_3R_WORKFLOW_ROLE_IDS.STARTER_TEMPLATE_ACCELERATOR,
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.STARTER_TEMPLATE_ACCELERATOR,
         normalAuthoringAllowed: false,
         migrationSupportOnly: true,
       }));
       expect(record.riskIds).toEqual(expect.arrayContaining([
-        PHASE_3R_WORKFLOW_RISK_IDS.STARTER_TEMPLATE_FIRST_MODEL,
+        POLICY_AUTHORING_WORKFLOW_RISK_IDS.STARTER_TEMPLATE_FIRST_MODEL,
       ]));
     });
   });
 
   test('keeps migration notices out of the normal authoring path', () => {
-    expect(classifyPhase3RWorkflowSurface('client/src/components/policies/PolicyPresetMigrationNotice.vue'))
+    expect(classifyPolicyAuthoringWorkflowSurface('client/src/components/policies/PolicyPresetMigrationNotice.vue'))
       .toEqual(expect.objectContaining({
-        decisionId: PHASE_3R_WORKFLOW_DECISION_IDS.REWRITE,
-        roleId: PHASE_3R_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
         normalAuthoringAllowed: false,
         migrationSupportOnly: true,
       }));
@@ -128,33 +128,33 @@ describe('policyBuilderPhase3WorkflowInventory', () => {
       'client/src/composables/usePolicyIntentReplayPreview.js',
       'client/src/utils/policyIntentImpactPreview.js',
     ].forEach((filePath) => {
-      const record = classifyPhase3RWorkflowSurface(filePath);
+      const record = classifyPolicyAuthoringWorkflowSurface(filePath);
 
       expect(record).toEqual(expect.objectContaining({
-        decisionId: PHASE_3R_WORKFLOW_DECISION_IDS.DELETE,
-        roleId: PHASE_3R_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
         normalAuthoringAllowed: false,
         migrationSupportOnly: true,
       }));
       expect(record.riskIds).toEqual(expect.arrayContaining([
-        PHASE_3R_WORKFLOW_RISK_IDS.DIAGNOSTIC_PRODUCT_PATH,
-        PHASE_3R_WORKFLOW_RISK_IDS.PROVIDER_READINESS_IN_NORMAL_UX,
+        POLICY_AUTHORING_WORKFLOW_RISK_IDS.DIAGNOSTIC_PRODUCT_PATH,
+        POLICY_AUTHORING_WORKFLOW_RISK_IDS.PROVIDER_READINESS_IN_NORMAL_UX,
       ]));
     });
   });
 
   test('replaces raw advanced scoring and combined-signal UI mechanics', () => {
-    expect(classifyPhase3RWorkflowSurface('client/src/components/policies/PolicyBuilderAdvancedSettings.vue'))
+    expect(classifyPolicyAuthoringWorkflowSurface('client/src/components/policies/PolicyBuilderAdvancedSettings.vue'))
       .toEqual(expect.objectContaining({
-        decisionId: PHASE_3R_WORKFLOW_DECISION_IDS.REPLACE,
-        roleId: PHASE_3R_WORKFLOW_ROLE_IDS.ADVANCED_SUPPORT_ONLY,
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REPLACE,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.ADVANCED_SUPPORT_ONLY,
         normalAuthoringAllowed: false,
       }));
 
-    expect(classifyPhase3RWorkflowSurface('client/src/composables/usePolicyBuilderCombinedSignals.js'))
+    expect(classifyPolicyAuthoringWorkflowSurface('client/src/composables/usePolicyBuilderCombinedSignals.js'))
       .toEqual(expect.objectContaining({
-        decisionId: PHASE_3R_WORKFLOW_DECISION_IDS.REPLACE,
-        roleId: PHASE_3R_WORKFLOW_ROLE_IDS.FUTURE_SERVER_ENGINE_INPUT,
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REPLACE,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.FUTURE_SERVER_ENGINE_INPUT,
         normalAuthoringAllowed: false,
       }));
   });
@@ -166,9 +166,9 @@ describe('policyBuilderPhase3WorkflowInventory', () => {
       'client/src/utils/policyIntentDraftBridge.js',
       'client/src/utils/policyIntentDraftView.js',
     ].forEach((filePath) => {
-      expect(classifyPhase3RWorkflowSurface(filePath)).toEqual(expect.objectContaining({
-        decisionId: PHASE_3R_WORKFLOW_DECISION_IDS.KEEP,
-        roleId: PHASE_3R_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
+      expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
         normalAuthoringAllowed: false,
         migrationSupportOnly: true,
       }));
@@ -177,17 +177,17 @@ describe('policyBuilderPhase3WorkflowInventory', () => {
 
   test('validates the normal authoring path excludes diagnostics, provider readiness, raw weights, templates, and tests', () => {
     const policyBuilderPaths = collectClientFiles(clientSrcRoot)
-      .filter(isPhase3RPolicyBuilderPath);
+      .filter(isPolicyAuthoringBuilderPath);
 
     [
-      PHASE_3R_WORKFLOW_REQUIREMENT_IDS.EVERY_SURFACE_CLASSIFIED,
-      PHASE_3R_WORKFLOW_REQUIREMENT_IDS.NORMAL_PATH_EXCLUDES_DIAGNOSTICS,
-      PHASE_3R_WORKFLOW_REQUIREMENT_IDS.NORMAL_PATH_EXCLUDES_PROVIDER_READINESS,
-      PHASE_3R_WORKFLOW_REQUIREMENT_IDS.NORMAL_PATH_EXCLUDES_RAW_SCORING_WEIGHTS,
-      PHASE_3R_WORKFLOW_REQUIREMENT_IDS.STARTER_TEMPLATES_ARE_ACCELERATORS,
-      PHASE_3R_WORKFLOW_REQUIREMENT_IDS.TESTS_DO_NOT_FREEZE_OLD_UI,
+      POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.EVERY_SURFACE_CLASSIFIED,
+      POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.NORMAL_PATH_EXCLUDES_DIAGNOSTICS,
+      POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.NORMAL_PATH_EXCLUDES_PROVIDER_READINESS,
+      POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.NORMAL_PATH_EXCLUDES_RAW_SCORING_WEIGHTS,
+      POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.STARTER_TEMPLATES_ARE_ACCELERATORS,
+      POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.TESTS_DO_NOT_FREEZE_OLD_UI,
     ].forEach((requirementId) => {
-      expect(validatePhase3RWorkflowRequirement(requirementId, policyBuilderPaths))
+      expect(validatePolicyAuthoringWorkflowRequirement(requirementId, policyBuilderPaths))
         .toEqual(expect.objectContaining({
           valid: true,
           riskId: null,
@@ -196,17 +196,17 @@ describe('policyBuilderPhase3WorkflowInventory', () => {
   });
 
   test('returns a failed requirement for unknown requirement ids', () => {
-    expect(validatePhase3RWorkflowRequirement('unknown', [])).toEqual({
+    expect(validatePolicyAuthoringWorkflowRequirement('unknown', [])).toEqual({
       valid: false,
-      riskId: PHASE_3R_WORKFLOW_RISK_IDS.UNCLASSIFIED_SURFACE,
+      riskId: POLICY_AUTHORING_WORKFLOW_RISK_IDS.UNCLASSIFIED_SURFACE,
       evidence: {
-        reason: 'Unknown Phase 3R workflow requirement.',
+        reason: 'Unknown policy authoring workflow requirement.',
       },
     });
   });
 
   test('exposes immutable serializable rules without matcher functions', () => {
-    const rules = listPhase3RWorkflowRules();
+    const rules = listPolicyAuthoringWorkflowRules();
 
     expect(rules.length).toBeGreaterThan(0);
     expect(rules[0]).not.toHaveProperty('matches');

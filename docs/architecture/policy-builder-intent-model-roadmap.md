@@ -2146,10 +2146,10 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 3R.1 workflow inventory and cutline is documented in
-  [Policy Builder Phase 3R Workflow Inventory And Cutline](policy-builder-phase-3r-workflow-inventory-cutline.md).
-- The server-side Phase 3R workflow inventory contract lives in
-  `server/src/services/policyBuilderPhase3WorkflowInventory.mjs`.
+- The policy-authoring workflow inventory is documented in
+  [Policy Authoring Workflow Inventory](policy-authoring-workflow-inventory.md).
+- The server-side policy-authoring workflow inventory contract lives in
+  `server/src/services/policyAuthoringWorkflowInventory.mjs`.
 - The live client-tree scan currently classifies all policy-builder surfaces and
   keeps replay, impact preview, provider readiness, raw scoring weights,
   migration notices, starter-template mechanics, bridge internals, and
@@ -2548,8 +2548,8 @@ Implementation record:
 
 - Existing implementation details are documented in
   [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
-- Phase 3R.1 workflow inventory and cutline is documented in
-  [Policy Builder Phase 3R Workflow Inventory And Cutline](policy-builder-phase-3r-workflow-inventory-cutline.md).
+- The policy-authoring workflow inventory is documented in
+  [Policy Authoring Workflow Inventory](policy-authoring-workflow-inventory.md).
 - Phase 3R.2 destination-first flow is documented in
   [Policy Builder Phase 3R Destination-First Flow](policy-builder-phase-3r-destination-first-flow.md).
 - Phase 3R.3 UI component system and interaction reset is documented in
@@ -6354,6 +6354,15 @@ Implementation status:
 - After the policy-authoring workflow completion audit cutover, the repository
   inventory validates with 11,640 total phase-coded references, 4,813
   production references, and 4,835 rename candidates.
+- The next authoring workflow cutover renamed the workflow inventory contract
+  to `policyAuthoringWorkflowInventory.mjs`, renamed its focused test, replaced
+  phase-coded workflow exports/helpers with `POLICY_AUTHORING_WORKFLOW_*` and
+  `policyAuthoringWorkflow*`, and moved its standing design record to
+  [Policy Authoring Workflow Inventory](policy-authoring-workflow-inventory.md):
+  [Policy Authoring Workflow Inventory Module Cutover](policy-authoring-workflow-inventory-module-cutover.md).
+- After the policy-authoring workflow inventory cutover, the repository
+  inventory validates with 11,420 total phase-coded references, 4,679
+  production references, and 4,701 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

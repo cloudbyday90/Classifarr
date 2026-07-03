@@ -9,9 +9,9 @@ import {
   PHASE_3R_DESTINATION_FLOW_STEP_IDS,
 } from '../../services/policyBuilderPhase3DestinationFirstFlow.mjs';
 import {
-  PHASE_3R_WORKFLOW_DECISION_IDS,
-  PHASE_3R_WORKFLOW_ROLE_IDS,
-} from '../../services/policyBuilderPhase3WorkflowInventory.mjs';
+  POLICY_AUTHORING_WORKFLOW_DECISION_IDS,
+  POLICY_AUTHORING_WORKFLOW_ROLE_IDS,
+} from '../../services/policyAuthoringWorkflowInventory.mjs';
 import {
   PHASE_3R_TEMPLATE_MECHANIC_IDS,
   PHASE_3R_TEMPLATE_RISK_IDS,
@@ -249,8 +249,8 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
     expect(getPhase3RStarterTemplateMechanicRecord(PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_BROWSER))
       .toEqual(expect.objectContaining({
         roleId: PHASE_3R_TEMPLATE_ROLE_IDS.OPTIONAL_ACCELERATOR,
-        workflowDecisionId: PHASE_3R_WORKFLOW_DECISION_IDS.REWRITE,
-        workflowRoleId: PHASE_3R_WORKFLOW_ROLE_IDS.STARTER_TEMPLATE_ACCELERATOR,
+        workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
+        workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.STARTER_TEMPLATE_ACCELERATOR,
         normalAuthoringAllowed: true,
         deleteAfterPhase8R: false,
       }));
@@ -258,8 +258,8 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
     expect(getPhase3RStarterTemplateMechanicRecord(PHASE_3R_TEMPLATE_MECHANIC_IDS.RAW_CUSTOM_SIGNALS))
       .toEqual(expect.objectContaining({
         roleId: PHASE_3R_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
-        workflowDecisionId: PHASE_3R_WORKFLOW_DECISION_IDS.DELETE,
-        workflowRoleId: PHASE_3R_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
+        workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
+        workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
         normalAuthoringAllowed: false,
         deleteAfterPhase8R: true,
       }));

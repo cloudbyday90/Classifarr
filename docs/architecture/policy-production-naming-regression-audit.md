@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the current repository inventory after the
-policy authoring workflow completion audit cutover on July 3, 2026:
+policy authoring workflow inventory cutover on July 3, 2026:
 
-- production references: `4813`
-- rename candidates: `4835`
+- production references: `4679`
+- rename candidates: `4701`
 - obsolete migration tooling references: `93`
 
 The baseline is intentionally a maximum, not a target. Future durable rename
