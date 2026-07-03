@@ -42,12 +42,12 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Defines the normal operator sequence from library context through save or defer without phase-specific module names.',
   },
   {
-    id: 'component_system_reset',
-    label: 'Component system reset',
-    docPath: 'docs/architecture/policy-builder-phase-3r-component-system-reset.md',
-    servicePath: 'server/src/services/policyBuilderPhase3ComponentSystem.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase3ComponentSystem.test.mjs',
-    evidence: 'Defines the target component vocabulary and interaction rules before Vue rebuilds.',
+    id: 'policy_authoring_component_system',
+    label: 'Policy authoring component system',
+    docPath: 'docs/architecture/policy-authoring-component-system.md',
+    servicePath: 'server/src/services/policyAuthoringComponentSystem.mjs',
+    testPath: 'server/src/__tests__/services/policyAuthoringComponentSystem.test.mjs',
+    evidence: 'Defines the policy-authoring component vocabulary, option sources, interaction rules, and accessibility rules before Vue rebuilds.',
   },
   {
     id: 'evidence_backed_option_selection',

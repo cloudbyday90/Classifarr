@@ -69,7 +69,7 @@ Official sources reviewed as of June 2026:
 
 - Gives Phase 2R a concrete product-language draft model.
 - Prevents compatibility metadata from becoming native intent accidentally.
-- Gives Phase 3R components stable field names that do not expose raw legacy
+- Gives policy authoring components stable field names that do not expose raw legacy
   storage.
 - Gives Phase 5R and Phase 8R clear native intent candidate fields.
 - Keeps server validation and future engine contracts authoritative.

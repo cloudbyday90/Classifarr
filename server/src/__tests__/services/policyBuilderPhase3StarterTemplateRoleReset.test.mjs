@@ -2,9 +2,9 @@ import {
   PHASE_2R_DRAFT_COMMAND_IDS,
 } from '../../services/policyBuilderPhase2DraftCommandBoundary.mjs';
 import {
-  PHASE_3R_COMPONENT_IDS,
-  PHASE_3R_INTERACTION_RULE_IDS,
-} from '../../services/policyBuilderPhase3ComponentSystem.mjs';
+  POLICY_AUTHORING_COMPONENT_IDS,
+  POLICY_AUTHORING_INTERACTION_RULE_IDS,
+} from '../../services/policyAuthoringComponentSystem.mjs';
 import {
   POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS,
 } from '../../services/policyAuthoringDestinationFlow.mjs';
@@ -46,7 +46,7 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
         normalAuthoringAllowed: true,
         requiresDestinationContext: true,
         canBeRequiredToSave: false,
-        componentId: PHASE_3R_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
+        componentId: POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
       }));
   });
 
@@ -163,9 +163,9 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
     });
 
     expect(commandPlan).toEqual(expect.objectContaining({
-      componentId: PHASE_3R_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
+      componentId: POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
       flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.ACCEPT_OR_EDIT_DECLARED_INTENT,
-      interactionRuleId: PHASE_3R_INTERACTION_RULE_IDS.ADD_VALUES_THROUGH_TYPED_DRAFT_COMMANDS,
+      interactionRuleId: POLICY_AUTHORING_INTERACTION_RULE_IDS.ADD_VALUES_THROUGH_TYPED_DRAFT_COMMANDS,
       commandBoundary: 'typed_draft_commands',
       commandCount: 4,
       valid: true,

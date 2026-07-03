@@ -1,7 +1,7 @@
 import {
-  PHASE_3R_COMPONENT_IDS,
-  PHASE_3R_INTERACTION_RULE_IDS,
-} from '../../services/policyBuilderPhase3ComponentSystem.mjs';
+  POLICY_AUTHORING_COMPONENT_IDS,
+  POLICY_AUTHORING_INTERACTION_RULE_IDS,
+} from '../../services/policyAuthoringComponentSystem.mjs';
 import {
   POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS,
   POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS,
@@ -65,7 +65,7 @@ describe('policyBuilderPhase3ReadinessNextActionSurface', () => {
         stateId: PHASE_3R_READINESS_STATE_IDS.NEEDS_ROUTING,
         nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
         flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.CONFIRM_ROUTING_READINESS,
-        componentId: PHASE_3R_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
+        componentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
         destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
       }));
   });
@@ -79,21 +79,21 @@ describe('policyBuilderPhase3ReadinessNextActionSurface', () => {
           PHASE_3R_READINESS_NEXT_ACTION_IDS.REVIEW_HARD_LIMITS,
         ],
         flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.CONFIRM_HARD_LIMITS,
-        componentId: PHASE_3R_COMPONENT_IDS.HARD_LIMIT_CONTROL,
+        componentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
       }));
   });
 
   test('builds ready projection with save action when there are no issues', () => {
     expect(buildPhase3RReadinessProjection([])).toEqual(expect.objectContaining({
-      componentId: PHASE_3R_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
-      interactionRuleId: PHASE_3R_INTERACTION_RULE_IDS.READINESS_LINKS_TO_RESOLVING_COMPONENT,
+      componentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
+      interactionRuleId: POLICY_AUTHORING_INTERACTION_RULE_IDS.READINESS_LINKS_TO_RESOLVING_COMPONENT,
       stateId: PHASE_3R_READINESS_STATE_IDS.READY,
       label: 'Ready',
       nextAction: {
         actionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.SAVE_POLICY,
         issueId: null,
         flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.SAVE_OR_DEFER,
-        componentId: PHASE_3R_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
+        componentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
         destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.SAVE_POLICY,
         message: 'Save this policy or defer without changing routing behavior.',
       },
@@ -114,7 +114,7 @@ describe('policyBuilderPhase3ReadinessNextActionSurface', () => {
       nextAction: expect.objectContaining({
         actionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.REVIEW_HARD_LIMITS,
         issueId: PHASE_3R_READINESS_ISSUE_IDS.HARD_LIMIT_BLOCKING,
-        componentId: PHASE_3R_COMPONENT_IDS.HARD_LIMIT_CONTROL,
+        componentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
       }),
       exposesInternalDiagnostics: false,
     }));

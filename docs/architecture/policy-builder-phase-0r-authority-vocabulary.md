@@ -37,7 +37,7 @@ Official sources reviewed as of June 2026:
 - GOV.UK Design System, Checkboxes:
   <https://design-system.service.gov.uk/components/checkboxes/>
   - Multi-select UI should make it clear when users can select more than one
-    item, which supports the later Phase 3R component-system reset.
+    item, which supports the later policy authoring component-system reset.
 
 ## Recommendations
 

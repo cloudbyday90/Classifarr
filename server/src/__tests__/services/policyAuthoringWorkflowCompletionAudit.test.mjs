@@ -37,7 +37,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
     expect(listPolicyAuthoringServerContracts().map(record => record.id)).toEqual([
       'policy_authoring_workflow_inventory',
       'policy_authoring_destination_flow',
-      'component_system_reset',
+      'policy_authoring_component_system',
       'evidence_backed_option_selection',
       'hard_limits_avoid_ux',
       'readiness_next_action_surface',

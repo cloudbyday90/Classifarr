@@ -1,7 +1,7 @@
 import {
-  PHASE_3R_COMPONENT_IDS,
-  PHASE_3R_INTERACTION_RULE_IDS,
-} from '../../services/policyBuilderPhase3ComponentSystem.mjs';
+  POLICY_AUTHORING_COMPONENT_IDS,
+  POLICY_AUTHORING_INTERACTION_RULE_IDS,
+} from '../../services/policyAuthoringComponentSystem.mjs';
 import {
   POLICY_AUTHORING_DESTINATION_QUESTION_IDS,
 } from '../../services/policyAuthoringDestinationFlow.mjs';
@@ -30,7 +30,7 @@ describe('policyBuilderPhase3HardLimitAvoidUx', () => {
 
     expect(getPhase3RConstraintControlRecord(PHASE_3R_CONSTRAINT_CONTROL_IDS.HARD_LIMIT))
       .toEqual(expect.objectContaining({
-        componentId: PHASE_3R_COMPONENT_IDS.HARD_LIMIT_CONTROL,
+        componentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
         questionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_SHOULD_NOT_GO_HERE,
         intentId: PHASE_3R_CONSTRAINT_INTENT_IDS.BLOCKING_CONSTRAINT,
         canBlockRouting: true,
@@ -41,7 +41,7 @@ describe('policyBuilderPhase3HardLimitAvoidUx', () => {
 
     expect(getPhase3RConstraintControlRecord(PHASE_3R_CONSTRAINT_CONTROL_IDS.AVOID))
       .toEqual(expect.objectContaining({
-        componentId: PHASE_3R_COMPONENT_IDS.AVOID_CONTROL,
+        componentId: POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
         intentId: PHASE_3R_CONSTRAINT_INTENT_IDS.ADVISORY_AVOID,
         canBlockRouting: false,
         certificationSemanticId: PHASE_3R_CERTIFICATION_SEMANTIC_IDS.AVOID_RATING,
@@ -56,7 +56,7 @@ describe('policyBuilderPhase3HardLimitAvoidUx', () => {
       explicitOperatorAction: true,
     })).toEqual(expect.objectContaining({
       controlId: PHASE_3R_CONSTRAINT_CONTROL_IDS.HARD_LIMIT,
-      componentId: PHASE_3R_COMPONENT_IDS.HARD_LIMIT_CONTROL,
+      componentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
       commandId: PHASE_3R_CONSTRAINT_COMMAND_IDS.SET_HARD_LIMIT,
       values: ['PG-13'],
       certificationSemanticId: PHASE_3R_CERTIFICATION_SEMANTIC_IDS.MAX_ALLOWED_RATING,
@@ -192,8 +192,8 @@ describe('policyBuilderPhase3HardLimitAvoidUx', () => {
     expect(commandPlan).toEqual(expect.objectContaining({
       commandBoundary: 'typed_draft_commands',
       interactionRuleIds: [
-        PHASE_3R_INTERACTION_RULE_IDS.ADD_VALUES_THROUGH_TYPED_DRAFT_COMMANDS,
-        PHASE_3R_INTERACTION_RULE_IDS.DESTRUCTIVE_OR_BLOCKING_REQUIRES_CONFIRMATION,
+        POLICY_AUTHORING_INTERACTION_RULE_IDS.ADD_VALUES_THROUGH_TYPED_DRAFT_COMMANDS,
+        POLICY_AUTHORING_INTERACTION_RULE_IDS.DESTRUCTIVE_OR_BLOCKING_REQUIRES_CONFIRMATION,
       ],
       commandCount: 2,
       commands: [

@@ -1,7 +1,7 @@
 import {
-  PHASE_3R_COMPONENT_IDS,
-  listPhase3RTargetComponents,
-} from '../../services/policyBuilderPhase3ComponentSystem.mjs';
+  POLICY_AUTHORING_COMPONENT_IDS,
+  listPolicyAuthoringTargetComponents,
+} from '../../services/policyAuthoringComponentSystem.mjs';
 import {
   PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS,
   PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS,
@@ -14,7 +14,7 @@ import {
 } from '../../services/policyBuilderPhase3AccessibilityDecisionLoad.mjs';
 
 describe('policyBuilderPhase3AccessibilityDecisionLoad', () => {
-  test('defines accessibility and decision-load surfaces for every Phase 3R component', () => {
+  test('defines accessibility and decision-load surfaces for every policy authoring component', () => {
     const surfaces = listPhase3AccessibilityDecisionLoadSurfaces();
 
     expect(surfaces.map(surface => surface.id)).toEqual([
@@ -31,7 +31,7 @@ describe('policyBuilderPhase3AccessibilityDecisionLoad', () => {
     ]);
 
     expect(new Set(surfaces.map(surface => surface.componentId))).toEqual(
-      new Set(listPhase3RTargetComponents().map(component => component.id)),
+      new Set(listPolicyAuthoringTargetComponents().map(component => component.id)),
     );
   });
 
@@ -52,7 +52,7 @@ describe('policyBuilderPhase3AccessibilityDecisionLoad', () => {
     expect(getPhase3AccessibilityDecisionLoadSurface(
       PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.INTENT_SIGNAL_PICKER,
     )).toEqual(expect.objectContaining({
-      componentId: PHASE_3R_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
+      componentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
       disabledReasonRequired: true,
       multiSelectStateRequired: true,
     }));
@@ -60,7 +60,7 @@ describe('policyBuilderPhase3AccessibilityDecisionLoad', () => {
     expect(getPhase3AccessibilityDecisionLoadSurface(
       PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.INTENT_SIGNAL_CHIP_LIST,
     )).toEqual(expect.objectContaining({
-      componentId: PHASE_3R_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
+      componentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
       chipRemoveNameRequired: true,
     }));
   });
@@ -71,7 +71,7 @@ describe('policyBuilderPhase3AccessibilityDecisionLoad', () => {
     );
 
     expect(readiness).toEqual(expect.objectContaining({
-      componentId: PHASE_3R_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
+      componentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
       singleNextActionRequired: true,
       maxPrimaryActions: 1,
     }));
@@ -88,7 +88,7 @@ describe('policyBuilderPhase3AccessibilityDecisionLoad', () => {
     expect(buildPhase3AccessibilityDecisionLoadAudit()).toEqual(expect.objectContaining({
       ok: true,
       checkedSurfaceCount: listPhase3AccessibilityDecisionLoadSurfaces().length,
-      coveredComponentCount: listPhase3RTargetComponents().length,
+      coveredComponentCount: listPolicyAuthoringTargetComponents().length,
       uncoveredComponentIds: [],
       issueCount: 0,
     }));

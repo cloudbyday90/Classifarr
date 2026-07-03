@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Component System Cutover** — renamed the component-system
+  contract and focused test to durable product-domain names, replaced
+  phase-coded component, primitive, option-source, interaction, accessibility,
+  and risk exports/helpers with `POLICY_AUTHORING_*` and `policyAuthoring*`,
+  updated dependent authoring contracts to consume the durable vocabulary, and
+  preserved component vocabulary, typed-command, option-source, and
+  accessibility validation behavior.
 - **Policy Authoring Destination Flow Cutover** — renamed the destination-flow
   contract and focused test to durable product-domain names, replaced
   phase-coded exported destination constants/helpers with

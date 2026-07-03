@@ -3,9 +3,9 @@ import {
   validatePhase2RDraftCommand,
 } from './policyBuilderPhase2DraftCommandBoundary.mjs';
 import {
-  PHASE_3R_COMPONENT_IDS,
-  PHASE_3R_INTERACTION_RULE_IDS,
-} from './policyBuilderPhase3ComponentSystem.mjs';
+  POLICY_AUTHORING_COMPONENT_IDS,
+  POLICY_AUTHORING_INTERACTION_RULE_IDS,
+} from './policyAuthoringComponentSystem.mjs';
 import {
   POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS,
 } from './policyAuthoringDestinationFlow.mjs';
@@ -99,7 +99,7 @@ const PHASE_3R_TEMPLATE_ROLE_RECORDS = deepFreeze([
     normalAuthoringAllowed: true,
     requiresDestinationContext: true,
     canBeRequiredToSave: false,
-    componentId: PHASE_3R_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
   },
   {
     roleId: PHASE_3R_TEMPLATE_ROLE_IDS.SECONDARY_PROVENANCE,
@@ -107,7 +107,7 @@ const PHASE_3R_TEMPLATE_ROLE_RECORDS = deepFreeze([
     normalAuthoringAllowed: true,
     requiresDestinationContext: true,
     canBeRequiredToSave: false,
-    componentId: PHASE_3R_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
   },
   {
     roleId: PHASE_3R_TEMPLATE_ROLE_IDS.BRIDGE_ONLY_MECHANIC,
@@ -115,7 +115,7 @@ const PHASE_3R_TEMPLATE_ROLE_RECORDS = deepFreeze([
     normalAuthoringAllowed: false,
     requiresDestinationContext: false,
     canBeRequiredToSave: false,
-    componentId: PHASE_3R_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
   },
   {
     roleId: PHASE_3R_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
@@ -123,7 +123,7 @@ const PHASE_3R_TEMPLATE_ROLE_RECORDS = deepFreeze([
     normalAuthoringAllowed: false,
     requiresDestinationContext: false,
     canBeRequiredToSave: false,
-    componentId: PHASE_3R_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
   },
 ]);
 
@@ -319,9 +319,9 @@ function buildPhase3RTemplateApplicationCommands({ presetId, suggestions = [] } 
   const commandValidations = commands.map(command => validatePhase2RDraftCommand(command));
 
   return {
-    componentId: PHASE_3R_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
     flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.ACCEPT_OR_EDIT_DECLARED_INTENT,
-    interactionRuleId: PHASE_3R_INTERACTION_RULE_IDS.ADD_VALUES_THROUGH_TYPED_DRAFT_COMMANDS,
+    interactionRuleId: POLICY_AUTHORING_INTERACTION_RULE_IDS.ADD_VALUES_THROUGH_TYPED_DRAFT_COMMANDS,
     commandBoundary: 'typed_draft_commands',
     commandCount: commands.length,
     commands,

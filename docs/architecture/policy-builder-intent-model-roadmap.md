@@ -2260,10 +2260,10 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 3R.3 UI component system and interaction reset is documented in
-  [Policy Builder Phase 3R UI Component System And Interaction Reset](policy-builder-phase-3r-component-system-reset.md).
-- The server-side Phase 3R component-system contract lives in
-  `server/src/services/policyBuilderPhase3ComponentSystem.mjs`.
+- The policy-authoring component system is documented in
+  [Policy Authoring Component System](policy-authoring-component-system.md).
+- The server-side policy authoring component-system contract lives in
+  `server/src/services/policyAuthoringComponentSystem.mjs`.
 - The target component vocabulary now includes destination context, observed
   profile, signal picker, chip list, hard-limit, avoid, review-trigger,
   readiness next-action, starter-template suggestion, and migration verifier
@@ -2552,8 +2552,8 @@ Implementation record:
   [Policy Authoring Workflow Inventory](policy-authoring-workflow-inventory.md).
 - The policy-authoring destination flow is documented in
   [Policy Authoring Destination Flow](policy-authoring-destination-flow.md).
-- Phase 3R.3 UI component system and interaction reset is documented in
-  [Policy Builder Phase 3R UI Component System And Interaction Reset](policy-builder-phase-3r-component-system-reset.md).
+- The policy-authoring component system is documented in
+  [Policy Authoring Component System](policy-authoring-component-system.md).
 - Phase 3R.4 evidence-backed option selection is documented in
   [Policy Builder Phase 3R Evidence-Backed Option Selection](policy-builder-phase-3r-evidence-backed-option-selection.md).
 - Phase 3R.5 hard limits and avoid UX is documented in
@@ -6372,6 +6372,16 @@ Implementation status:
 - After the policy-authoring destination flow cutover, the repository inventory
   validates with 11,128 total phase-coded references, 4,521 production
   references, and 4,543 rename candidates.
+- The next authoring workflow cutover renamed the component-system contract to
+  `policyAuthoringComponentSystem.mjs`, renamed its focused test, replaced
+  phase-coded component, primitive, option-source, interaction, accessibility,
+  and risk exports/helpers with `POLICY_AUTHORING_*` and
+  `policyAuthoring*`, and moved its standing design record to
+  [Policy Authoring Component System](policy-authoring-component-system.md):
+  [Policy Authoring Component System Module Cutover](policy-authoring-component-system-module-cutover.md).
+- After the policy-authoring component-system cutover, the repository inventory
+  validates with 10,688 total phase-coded references, 4,267 production
+  references, and 4,289 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

@@ -1,9 +1,9 @@
 import {
-  PHASE_3R_COMPONENT_IDS,
-  PHASE_3R_INTERACTION_RULE_IDS,
-  PHASE_3R_OPTION_SOURCE_IDS,
-  getPhase3ROptionSourceRecord,
-} from './policyBuilderPhase3ComponentSystem.mjs';
+  POLICY_AUTHORING_COMPONENT_IDS,
+  POLICY_AUTHORING_INTERACTION_RULE_IDS,
+  POLICY_AUTHORING_OPTION_SOURCE_IDS,
+  getPolicyAuthoringOptionSourceRecord,
+} from './policyAuthoringComponentSystem.mjs';
 import {
   POLICY_AUTHORING_DESTINATION_QUESTION_IDS,
 } from './policyAuthoringDestinationFlow.mjs';
@@ -90,7 +90,7 @@ function clampConfidence(value) {
 
 const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
   {
-    sourceId: PHASE_3R_OPTION_SOURCE_IDS.OBSERVED_IN_LIBRARY,
+    sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.OBSERVED_IN_LIBRARY,
     selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.READ_ONLY_EVIDENCE,
     visibleGroupLabel: 'Already in this library',
     selectable: false,
@@ -103,7 +103,7 @@ const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
     mayShowConfidence: true,
   },
   {
-    sourceId: PHASE_3R_OPTION_SOURCE_IDS.SUGGESTED_FROM_OBSERVED_PROFILE,
+    sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_OBSERVED_PROFILE,
     selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.SELECTABLE_SUGGESTION,
     visibleGroupLabel: 'Suggested from this library',
     selectable: true,
@@ -116,7 +116,7 @@ const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
     mayShowConfidence: true,
   },
   {
-    sourceId: PHASE_3R_OPTION_SOURCE_IDS.SUGGESTED_FROM_STARTER_TEMPLATE,
+    sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_STARTER_TEMPLATE,
     selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.SELECTABLE_SUGGESTION,
     visibleGroupLabel: 'Suggested by starter template',
     selectable: true,
@@ -129,7 +129,7 @@ const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
     mayShowConfidence: false,
   },
   {
-    sourceId: PHASE_3R_OPTION_SOURCE_IDS.COMMON_STATIC_OPTION,
+    sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.COMMON_STATIC_OPTION,
     selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.SELECTABLE_SUGGESTION,
     visibleGroupLabel: 'Common options',
     selectable: true,
@@ -142,7 +142,7 @@ const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
     mayShowConfidence: false,
   },
   {
-    sourceId: PHASE_3R_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM,
+    sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM,
     selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.SELECTABLE_CUSTOM_VALUE,
     visibleGroupLabel: 'Custom value',
     selectable: true,
@@ -155,7 +155,7 @@ const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
     mayShowConfidence: false,
   },
   {
-    sourceId: PHASE_3R_OPTION_SOURCE_IDS.ALREADY_DECLARED,
+    sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.ALREADY_DECLARED,
     selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.DISABLED_ALREADY_DECLARED,
     visibleGroupLabel: 'Already added',
     selectable: false,
@@ -168,7 +168,7 @@ const PHASE_3R_OPTION_SELECTION_SOURCE_BEHAVIORS = deepFreeze([
     mayShowConfidence: false,
   },
   {
-    sourceId: PHASE_3R_OPTION_SOURCE_IDS.UNAVAILABLE_CONFLICTING_INTENT,
+    sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.UNAVAILABLE_CONFLICTING_INTENT,
     selectionStateId: PHASE_3R_OPTION_SELECTION_STATE_IDS.DISABLED_CONFLICTING_INTENT,
     visibleGroupLabel: 'Unavailable',
     selectable: false,
@@ -201,7 +201,7 @@ function isBroadIdentityGenre(value) {
 function normalizePhase3ROptionCandidate(candidate = {}) {
   const sourceId = toCleanString(candidate.sourceId);
   const sourceBehavior = getPhase3ROptionSelectionSourceBehavior(sourceId);
-  const sourceRecord = getPhase3ROptionSourceRecord(sourceId);
+  const sourceRecord = getPolicyAuthoringOptionSourceRecord(sourceId);
   const value = toCleanString(candidate.value);
   const label = toCleanString(candidate.label) || value;
   const explanation = toCleanString(candidate.explanation);
@@ -312,8 +312,8 @@ function validatePhase3ROptionCandidate(candidate = {}) {
     isBroadIdentityGenre(normalizedCandidate.value) &&
     normalizedCandidate.evidence.count <= 0 &&
     [
-      PHASE_3R_OPTION_SOURCE_IDS.COMMON_STATIC_OPTION,
-      PHASE_3R_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM,
+      POLICY_AUTHORING_OPTION_SOURCE_IDS.COMMON_STATIC_OPTION,
+      POLICY_AUTHORING_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM,
     ].includes(normalizedCandidate.sourceId)
   ) {
     return {
@@ -351,8 +351,8 @@ function buildPhase3RMultiSelectCommandPlan(candidates = []) {
     }));
 
   return {
-    componentId: PHASE_3R_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
-    interactionRuleId: PHASE_3R_INTERACTION_RULE_IDS.ADD_VALUES_THROUGH_TYPED_DRAFT_COMMANDS,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
+    interactionRuleId: POLICY_AUTHORING_INTERACTION_RULE_IDS.ADD_VALUES_THROUGH_TYPED_DRAFT_COMMANDS,
     commandBoundary: 'typed_draft_commands',
     commandCount: acceptedCandidates.length,
     commands: acceptedCandidates.map(candidate => ({

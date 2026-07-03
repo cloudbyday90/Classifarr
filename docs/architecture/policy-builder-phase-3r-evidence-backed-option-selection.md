@@ -150,7 +150,7 @@ The Phase 3R.4 implementation now provides:
   - checks disabled reason requirements,
   - checks broad genre guardrails,
   - verifies typed command-plan output.
-- `server/src/services/policyBuilderPhase3ComponentSystem.mjs`
+- `server/src/services/policyAuthoringComponentSystem.mjs`
   - now includes `operator_added_custom` as a first-class option source.
 
 ## Phase 3R.4 Checklist Result

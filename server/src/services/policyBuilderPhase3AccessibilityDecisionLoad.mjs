@@ -1,8 +1,8 @@
 import {
-  PHASE_3R_COMPONENT_IDS,
-  getPhase3RTargetComponent,
-  listPhase3RTargetComponents,
-} from './policyBuilderPhase3ComponentSystem.mjs';
+  POLICY_AUTHORING_COMPONENT_IDS,
+  getPolicyAuthoringTargetComponent,
+  listPolicyAuthoringTargetComponents,
+} from './policyAuthoringComponentSystem.mjs';
 import {
   includesInternalPolicyLanguage,
 } from './policyUserMentalModel.mjs';
@@ -81,7 +81,7 @@ function cleanString(value) {
 const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
   {
     id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.DESTINATION_CONTEXT,
-    componentId: PHASE_3R_COMPONENT_IDS.DESTINATION_CONTEXT_CARD,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_CONTEXT_CARD,
     label: 'Destination context',
     helperText: 'Choose the library before editing destination intent.',
     normalPath: true,
@@ -98,7 +98,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
   },
   {
     id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.OBSERVED_PROFILE,
-    componentId: PHASE_3R_COMPONENT_IDS.OBSERVED_PROFILE_SUMMARY,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.OBSERVED_PROFILE_SUMMARY,
     label: 'Observed profile',
     helperText: 'Show observed examples as suggestions before they become declared intent.',
     normalPath: true,
@@ -115,7 +115,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
   },
   {
     id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.INTENT_SIGNAL_PICKER,
-    componentId: PHASE_3R_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
     label: 'Intent signal picker',
     helperText: 'Add one or more accepted belongs-here or helpful values through typed draft commands.',
     normalPath: true,
@@ -132,7 +132,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
   },
   {
     id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.INTENT_SIGNAL_CHIP_LIST,
-    componentId: PHASE_3R_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
     label: 'Declared intent chips',
     helperText: 'Show accepted values with clear removal names.',
     normalPath: true,
@@ -149,7 +149,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
   },
   {
     id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.HARD_LIMITS,
-    componentId: PHASE_3R_COMPONENT_IDS.HARD_LIMIT_CONTROL,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
     label: 'Hard limits',
     helperText: 'Confirm explicit blocking rules before they can affect classification or routing.',
     normalPath: true,
@@ -166,7 +166,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
   },
   {
     id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.AVOID,
-    componentId: PHASE_3R_COMPONENT_IDS.AVOID_CONTROL,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
     label: 'Avoid',
     helperText: 'Add explicit poor-fit warnings without turning observed absence into a blocker.',
     normalPath: true,
@@ -183,7 +183,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
   },
   {
     id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.REVIEW_TRIGGERS,
-    componentId: PHASE_3R_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
     label: 'Ask when unsure',
     helperText: 'Choose the conditions that should ask the operator instead of automating.',
     normalPath: true,
@@ -200,7 +200,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
   },
   {
     id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.READINESS_NEXT_ACTION,
-    componentId: PHASE_3R_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
     label: 'Readiness next action',
     helperText: 'Show the highest-priority readiness issue and one action that resolves it.',
     normalPath: true,
@@ -217,7 +217,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
   },
   {
     id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.STARTER_TEMPLATE_SUGGESTION,
-    componentId: PHASE_3R_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
     label: 'Starter template suggestion',
     helperText: 'Offer an optional shortcut after destination context is visible.',
     normalPath: false,
@@ -234,7 +234,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
   },
   {
     id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.MIGRATION_VERIFIER,
-    componentId: PHASE_3R_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
     label: 'Migration verifier',
     helperText: 'Keep migration diagnostics outside the normal authoring workflow.',
     normalPath: false,
@@ -266,7 +266,7 @@ function validatePhase3AccessibilityDecisionLoadSurface(surface = {}) {
     ...asObject(surface),
   };
   const issues = [];
-  const component = getPhase3RTargetComponent(candidate.componentId);
+  const component = getPolicyAuthoringTargetComponent(candidate.componentId);
   const candidateRequiredRuleIds = requiredRuleIds(candidate);
   const candidateProvidedRuleIds = providedRuleIds(candidate);
 
@@ -283,7 +283,7 @@ function validatePhase3AccessibilityDecisionLoadSurface(surface = {}) {
       riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.UNKNOWN_COMPONENT,
       surfaceId: candidate.id || null,
       componentId: candidate.componentId || null,
-      message: 'Surface must map to a known Phase 3R component.',
+      message: 'Surface must map to a known policy authoring component.',
     });
   }
 
@@ -451,7 +451,7 @@ function buildPhase3AccessibilityDecisionLoadAudit(surfaces = PHASE_3R_ACCESSIBI
   const results = (Array.isArray(surfaces) ? surfaces : [])
     .map(surface => validatePhase3AccessibilityDecisionLoadSurface(surface));
   const issues = results.flatMap(result => result.issues);
-  const componentIds = new Set(listPhase3RTargetComponents().map(component => component.id));
+  const componentIds = new Set(listPolicyAuthoringTargetComponents().map(component => component.id));
   const coveredComponentIds = new Set((Array.isArray(surfaces) ? surfaces : [])
     .map(surface => surface.componentId)
     .filter(componentId => componentIds.has(componentId)));
