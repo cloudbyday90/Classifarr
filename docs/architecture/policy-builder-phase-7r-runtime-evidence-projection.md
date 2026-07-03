@@ -72,7 +72,13 @@ Phase 7R.2 creates a deterministic adapter that maps runtime facts into Phase
    provenance so Phase 7R.3 can bind automation decisions to the exact evidence
    projection it evaluated without carrying raw labels forward.
 
-6. **Prepare for automation decisions.**
+6. **Verify fingerprint integrity before handoff.**
+   Validation should recompute the sanitized projection fingerprint, compare the
+   carried fingerprint and provenance, and require trace attributes to mirror
+   the same digest. A projection with a stale digest is not a trustworthy input
+   for automation even when the evidence entries themselves are valid.
+
+7. **Prepare for automation decisions.**
    The output should explain why automation may later be allowed or blocked,
    but the projection itself should not classify, route, ask, or learn.
 
@@ -85,6 +91,8 @@ Pros:
 - Makes weak RAG, stale profile, failed routing, and broad-genre cases
   explicit.
 - Gives automation decisions a stable sanitized evidence identity.
+- Detects stale or forged projection fingerprints before runtime decisions can
+  consume the projection.
 - Avoids live provider calls and raw payload leakage.
 
 Cons:
@@ -93,6 +101,8 @@ Cons:
 - Does not make automation decisions by itself.
 - Adds one adapter layer that must be maintained as runtime inputs evolve.
 - Fingerprints are diagnostic/provenance aids, not security signatures.
+- Strict fingerprint validation means malformed test fixtures and manual debug
+  payloads must be regenerated instead of patched by hand.
 
 ## Final Recommendation Stack
 
@@ -161,12 +171,22 @@ Each projection now carries `projectionFingerprint` with:
 
 The provenance is intentionally bounded and excludes raw evidence labels.
 
+Validation now recomputes the projection fingerprint during the audit and
+rejects:
+
+- missing or malformed SHA-256 digests,
+- stale digests that no longer match the sanitized projection payload,
+- provenance summaries that do not match the recomputed projection,
+- trace attributes that do not mirror the carried projection fingerprint.
+
 ## Security Outcome
 
 - Projection is deterministic and side-effect-free.
 - No live provider lookup is performed.
 - Raw provider payloads are suppressed.
 - Fingerprint provenance is sanitized and label-free.
+- Fingerprint, provenance, and trace attributes are verified together before
+  downstream runtime decisions can trust the projection.
 - AI/RAG/provider evidence cannot become destination identity by itself.
 - Stale profiles and failed routing become insufficient evidence, not silent
   success.

@@ -3681,6 +3681,10 @@ Implementation status:
   fingerprint with bounded provenance counts/source ids, allowing Phase 7R.3
   automation decisions to bind to the exact evidence projection without
   carrying raw evidence labels forward.
+- The projection audit now recomputes the sanitized fingerprint, verifies the
+  carried provenance and trace attributes, and rejects stale, malformed, or
+  mismatched fingerprint handoffs before automation can consume runtime
+  evidence.
 
 ### 7R.3 Automation Decision Contract
 

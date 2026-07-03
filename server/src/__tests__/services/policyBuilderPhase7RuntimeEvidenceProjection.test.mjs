@@ -353,4 +353,92 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
         }),
       ]));
   });
+
+  test('rejects stale or malformed projection fingerprints', () => {
+    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: [
+          { label: 'Animated Movies', count: 12, confidence: 0.93, trusted: true },
+        ],
+      },
+    });
+    const staleProjection = {
+      ...projection,
+      projectionFingerprint: {
+        ...projection.projectionFingerprint,
+        fingerprint: '0'.repeat(64),
+      },
+    };
+    const malformedProjection = {
+      ...projection,
+      projectionFingerprint: {
+        ...projection.projectionFingerprint,
+        fingerprint: 'not-a-sha256-digest',
+      },
+    };
+
+    expect(validatePolicyBuilderPhase7RuntimeEvidenceProjection(staleProjection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
+            .PROJECTION_FINGERPRINT_MISMATCH,
+        }),
+        expect.objectContaining({
+          riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
+            .PROJECTION_FINGERPRINT_TRACE_MISMATCH,
+        }),
+      ]));
+    expect(validatePolicyBuilderPhase7RuntimeEvidenceProjection(malformedProjection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
+            .MALFORMED_PROJECTION_FINGERPRINT,
+        }),
+      ]));
+  });
+
+  test('rejects mismatched projection fingerprint provenance and trace attributes', () => {
+    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: [
+          { label: 'Animated Movies', count: 12, confidence: 0.93, trusted: true },
+        ],
+      },
+    });
+    const provenanceMismatch = {
+      ...projection,
+      projectionFingerprint: {
+        ...projection.projectionFingerprint,
+        provenance: {
+          ...projection.projectionFingerprint.provenance,
+          totalEntryCount: 99,
+        },
+      },
+    };
+    const traceMismatch = {
+      ...projection,
+      trace: {
+        ...projection.trace,
+        attributes: {
+          ...projection.trace.attributes,
+          'classifarr.runtime.evidence.projection_fingerprint': '1'.repeat(64),
+        },
+      },
+    };
+
+    expect(validatePolicyBuilderPhase7RuntimeEvidenceProjection(provenanceMismatch).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
+            .PROJECTION_FINGERPRINT_PROVENANCE_MISMATCH,
+        }),
+      ]));
+    expect(validatePolicyBuilderPhase7RuntimeEvidenceProjection(traceMismatch).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
+            .PROJECTION_FINGERPRINT_TRACE_MISMATCH,
+        }),
+      ]));
+  });
 });

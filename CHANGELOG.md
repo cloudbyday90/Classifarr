@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Runtime Evidence Projection Audit** — hardened the
+  runtime evidence projection audit so sanitized projection fingerprints,
+  bounded provenance, and trace attributes are recomputed and compared before
+  automation decisions can consume runtime evidence.
 - **Policy Builder Phase 7R Contract Surface Coverage Guard** — hardened the
   runtime decision inventory so Phase 7R evidence projection, automation,
   question, request-learning, rebuild, migration-verifier, and metrics/trace

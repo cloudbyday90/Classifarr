@@ -13,6 +13,7 @@ import {
   listPolicyBuilderPhase6EvidenceBuckets,
 } from './policyBuilderPhase6EvidenceEngine.mjs';
 import {
+  PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES,
   buildPolicyBuilderPhase7RuntimeEvidenceFingerprint,
 } from './policyBuilderPhase7RuntimeEvidenceFingerprint.mjs';
 
@@ -49,8 +50,16 @@ const PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   STALE_PROFILE_NOT_INSUFFICIENT: 'stale_profile_not_insufficient',
   MISSING_TRACE_REASON: 'missing_trace_reason',
   MISSING_PROJECTION_FINGERPRINT: 'missing_projection_fingerprint',
+  MALFORMED_PROJECTION_FINGERPRINT: 'malformed_projection_fingerprint',
+  PROJECTION_FINGERPRINT_MISMATCH: 'projection_fingerprint_mismatch',
+  PROJECTION_FINGERPRINT_PROVENANCE_MISMATCH:
+    'projection_fingerprint_provenance_mismatch',
+  PROJECTION_FINGERPRINT_TRACE_MISMATCH:
+    'projection_fingerprint_trace_mismatch',
   RAW_PROVENANCE_EXPOSED: 'raw_provenance_exposed',
 });
+
+const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/;
 
 const BROAD_GENRE_SET = new Set(BROAD_GENRE_LABELS.map(label => label.toLowerCase()));
 const AUTHORITY_IDS = Object.freeze(Object.values(AUTHORITY_SOURCE_IDS));
@@ -90,6 +99,83 @@ function normalizeCount(value) {
   const numeric = normalizeNumber(value);
   if (numeric === null) return null;
   return Math.max(0, Math.trunc(numeric));
+}
+
+function stableValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(item => stableValue(item));
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  return Object.keys(value)
+    .sort()
+    .reduce((acc, key) => {
+      acc[key] = stableValue(value[key]);
+      return acc;
+    }, {});
+}
+
+function stableJson(value) {
+  return JSON.stringify(stableValue(value));
+}
+
+function addProjectionFingerprintIssues(projection, issues) {
+  const actualFingerprint = projection.projectionFingerprint;
+  const expectedFingerprint =
+    buildPolicyBuilderPhase7RuntimeEvidenceFingerprint(projection);
+  const actualTraceAttributes = projection.trace?.attributes || {};
+  const projectionTraceAttributes = actualFingerprint?.traceAttributes || {};
+  const traceFingerprintKey =
+    PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.FINGERPRINT;
+
+  if (!actualFingerprint?.fingerprint) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.MISSING_PROJECTION_FINGERPRINT,
+      message: 'Runtime evidence projection must include a stable sanitized fingerprint.',
+    });
+    return;
+  }
+
+  if (!SHA256_HEX_PATTERN.test(actualFingerprint.fingerprint)) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.MALFORMED_PROJECTION_FINGERPRINT,
+      message: 'Runtime evidence projection fingerprint must be a lowercase SHA-256 hex digest.',
+    });
+  }
+
+  if (actualFingerprint.fingerprint !== expectedFingerprint.fingerprint) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_FINGERPRINT_MISMATCH,
+      message: 'Runtime evidence projection fingerprint must match the sanitized projection payload.',
+    });
+  }
+
+  if (
+    stableJson(actualFingerprint.provenance || {}) !==
+    stableJson(expectedFingerprint.provenance)
+  ) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
+        .PROJECTION_FINGERPRINT_PROVENANCE_MISMATCH,
+      message: 'Runtime evidence projection fingerprint provenance must match the sanitized projection payload.',
+    });
+  }
+
+  if (
+    stableJson(projectionTraceAttributes) !==
+    stableJson(expectedFingerprint.traceAttributes) ||
+    actualTraceAttributes[traceFingerprintKey] !== actualFingerprint.fingerprint ||
+    projectionTraceAttributes[traceFingerprintKey] !== actualFingerprint.fingerprint
+  ) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
+        .PROJECTION_FINGERPRINT_TRACE_MISMATCH,
+      message: 'Runtime evidence projection trace attributes must mirror the sanitized projection fingerprint.',
+    });
+  }
 }
 
 function isBroadGenreLabel(value) {
@@ -585,12 +671,7 @@ function validatePolicyBuilderPhase7RuntimeEvidenceProjection(projection = {}) {
     });
   }
 
-  if (!projectionFingerprint?.fingerprint) {
-    issues.push({
-      riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.MISSING_PROJECTION_FINGERPRINT,
-      message: 'Runtime evidence projection must include a stable sanitized fingerprint.',
-    });
-  }
+  addProjectionFingerprintIssues(projection, issues);
 
   const serializedProvenance = JSON.stringify(projectionFingerprint?.provenance || {});
   entries.forEach(entry => {
