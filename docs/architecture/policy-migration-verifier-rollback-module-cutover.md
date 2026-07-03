@@ -110,7 +110,7 @@ Validation should include:
 
 ```text
 cd server
-node ../scripts/run-jest.mjs --testPathPatterns="policyMigrationVerifierRollback|policyBuilderPhase7RuntimeMetricsTrace|policyBuilderPhase7CompletionAudit|policyBuilderPhase8ExplicitConversionWorkflow|policyRuntimeDecisionInventory|policyBuilderPhase7RuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
+node ../scripts/run-jest.mjs --testPathPatterns="policyMigrationVerifierRollback|policyRuntimeMetricsTrace|policyBuilderPhase7CompletionAudit|policyBuilderPhase8ExplicitConversionWorkflow|policyRuntimeDecisionInventory|policyBuilderPhase7RuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
 npm run lint:docs
 npm --prefix server run lint:security -- --quiet
 node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid
@@ -119,6 +119,7 @@ npm --prefix server run test:unit -- --no-coverage --runInBand
 
 ## Next Step
 
-Cut over Runtime Metrics And Decision Trace to a durable product-domain module
-name because migration verification now exports durable names and metrics/trace
-is the next direct runtime consumer still carrying Phase 7R production naming.
+Cut over Runtime And Rebuild Test Reset to a durable product-domain module name
+because migration verification and runtime metrics now export durable names,
+and test reset is the next direct runtime consumer still carrying Phase 7R
+production naming.

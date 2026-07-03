@@ -177,7 +177,7 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     traceReasons: ['migration_verifier_rewrite'],
   }),
   Object.freeze({
-    path: 'server/src/__tests__/services/policyBuilderPhase7RuntimeMetricsTrace.test.mjs',
+    path: 'server/src/__tests__/services/policyRuntimeMetricsTrace.test.mjs',
     owner: 'server',
     decisionId: PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS,
     coverageIds: [

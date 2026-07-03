@@ -23,8 +23,8 @@ import {
   buildPolicyRuntimeEvidenceProjectionAudit,
 } from './policyRuntimeEvidenceProjection.mjs';
 import {
-  buildPolicyBuilderPhase7RuntimeMetricsTraceAudit,
-} from './policyBuilderPhase7RuntimeMetricsTrace.mjs';
+  buildPolicyRuntimeMetricsTraceAudit,
+} from './policyRuntimeMetricsTrace.mjs';
 import {
   buildPolicyRuntimeQuestionReduction,
   buildPolicyRuntimeQuestionReductionAudit,
@@ -84,6 +84,9 @@ const PHASE7R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
   }),
   [PHASE7R_COMPLETION_COMPONENT_IDS.MIGRATION_VERIFIER_ROLLBACK]: Object.freeze({
     runtime_metrics_trace: '7r_8',
+  }),
+  [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE]: Object.freeze({
+    runtime_rebuild_test_reset: '7r_9',
   }),
 });
 
@@ -155,8 +158,8 @@ const PHASE7R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE,
     label: 'Runtime metrics and decision trace',
     docPath: 'docs/architecture/policy-builder-phase-7r-runtime-metrics-trace.md',
-    servicePath: 'server/src/services/policyBuilderPhase7RuntimeMetricsTrace.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase7RuntimeMetricsTrace.test.mjs',
+    servicePath: 'server/src/services/policyRuntimeMetricsTrace.mjs',
+    testPath: 'server/src/__tests__/services/policyRuntimeMetricsTrace.test.mjs',
     expectedNextPhaseId: '7r_9',
     evidence: 'Runtime and rebuild outcomes are projected into bounded counters, sanitized trace records, and action-oriented summaries.',
   },
@@ -232,7 +235,7 @@ function buildDefaultComponentAudits() {
     [PHASE7R_COMPLETION_COMPONENT_IDS.MIGRATION_VERIFIER_ROLLBACK]:
       buildPolicyMigrationVerifierAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE]:
-      buildPolicyBuilderPhase7RuntimeMetricsTraceAudit(),
+      buildPolicyRuntimeMetricsTraceAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_REBUILD_TEST_RESET]:
       buildPolicyBuilderPhase7RuntimeRebuildTestResetAudit(),
   };

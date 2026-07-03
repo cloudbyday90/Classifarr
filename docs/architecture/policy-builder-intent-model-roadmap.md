@@ -4092,20 +4092,20 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 7R.8 runtime metrics and decision trace is documented in
-  [Policy Builder Phase 7R Runtime Metrics And Decision Trace](policy-builder-phase-7r-runtime-metrics-trace.md).
+- Runtime metrics and decision trace is documented in
+  [Policy Runtime Metrics And Decision Trace](policy-builder-phase-7r-runtime-metrics-trace.md).
 - The server-owned metrics/trace projection lives in
-  `server/src/services/policyBuilderPhase7RuntimeMetricsTrace.mjs`.
+  `server/src/services/policyRuntimeMetricsTrace.mjs`.
 - The focused metrics/trace test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase7RuntimeMetricsTrace.test.mjs`.
-- Current implementation counts Phase 7R automation, question, learning,
+  `server/src/__tests__/services/policyRuntimeMetricsTrace.test.mjs`.
+- Current implementation counts policy runtime automation, question, learning,
   rebuild, migration verifier, and rebuild lifecycle outcomes into bounded
   counters for auto-routed, classified-not-routed, review, hard-limit block,
   missing routing, stale profile, learning allowed/blocked/downgraded, rebuild
   accepted/rejected, and rollback events.
-- Trace records use stable `classifarr.phase7r.trace.*` attributes, bounded
-  component ids, bounded reason codes, and a configurable `maxTraceRecords`
-  limit.
+- Trace records use stable `classifarr.policy.runtime_metrics_trace.*`
+  attributes, bounded component ids, bounded reason codes, and a configurable
+  `maxTraceRecords` limit.
 - Trace records now carry supported upstream SHA-256 source fingerprints from
   automation decisions, question reductions, request-time learning decisions,
   rebuild proposals, and migration verifier reports. Rebuild proposal traces use
@@ -6303,6 +6303,15 @@ Implementation status:
   [Policy Migration Verifier And Rollback Module Cutover](policy-migration-verifier-rollback-module-cutover.md).
 - After the migration-verifier cutover, the repository inventory validates with
   12,580 total phase-coded references, 5,341 production references, and 5,363
+  rename candidates.
+- The next runtime module cutover renamed runtime metrics and decision trace to
+  `policyRuntimeMetricsTrace.mjs`, renamed its focused test, moved the metrics
+  contract to `policy.runtime_metrics_trace.v1`, moved trace attributes to
+  `classifarr.policy.runtime_metrics_trace.*`, and replaced the contract-local
+  phase handoff with `nextStep`:
+  [Policy Runtime Metrics And Decision Trace Module Cutover](policy-runtime-metrics-trace-module-cutover.md).
+- After the runtime-metrics cutover, the repository inventory validates with
+  12,373 total phase-coded references, 5,237 production references, and 5,259
   rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover

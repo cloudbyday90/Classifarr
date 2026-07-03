@@ -98,7 +98,7 @@ describe('policyRuntimeDecisionInventory', () => {
       'server/src/services/policyRequestTimeLearning.mjs',
       'server/src/services/policyLibraryPolicyRebuild.mjs',
       'server/src/services/policyMigrationVerifierRollback.mjs',
-      'server/src/services/policyBuilderPhase7RuntimeMetricsTrace.mjs',
+      'server/src/services/policyRuntimeMetricsTrace.mjs',
     ]));
     expect(inventory.artifacts).toEqual(expect.arrayContaining(
       requiredContractPaths.map(path => expect.objectContaining({

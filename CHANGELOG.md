@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Metrics Trace Module Cutover** — renamed the runtime metrics
+  and decision trace contract plus focused test to durable product-domain
+  names, moved the metrics contract to `policy.runtime_metrics_trace.v1`,
+  moved trace attributes to `classifarr.policy.runtime_metrics_trace.*`,
+  replaced the contract-local phase handoff with `nextStep`, updated downstream
+  runtime consumers, and retained the completion-audit adapter for the
+  runtime/rebuild test-reset handoff.
 - **Policy Migration Verifier Rollback Module Cutover** — renamed the
   migration verifier and rollback contract plus focused test to durable
   product-domain names, moved verifier and sample-set fingerprint contracts to
@@ -623,8 +630,8 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   server-owned metrics/trace projection contract, architecture record, and audit
   suite that counts Phase 7R automation, question, request-learning, rebuild,
   migration-verifier, and rebuild lifecycle outcomes; emits bounded
-  `classifarr.phase7r.trace.*` records with reason codes and stable component
-  ids; suppresses raw payloads, prompts, embeddings, provider payloads, and
+  `classifarr.policy.runtime_metrics_trace.*` records with reason codes and
+  stable component ids; suppresses raw payloads, prompts, embeddings, provider payloads, and
   diagnostic internals; and keeps operator summaries action-oriented without
   persisting or exporting telemetry yet.
 - **Policy Builder Phase 7R Migration Verifier And Rollback Path** — added a

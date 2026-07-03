@@ -112,7 +112,7 @@ const REQUIRED_RUNTIME_CONTRACT_SURFACE_PATHS = Object.freeze([
   'server/src/services/policyRequestTimeLearning.mjs',
   'server/src/services/policyLibraryPolicyRebuild.mjs',
   'server/src/services/policyMigrationVerifierRollback.mjs',
-  'server/src/services/policyBuilderPhase7RuntimeMetricsTrace.mjs',
+  'server/src/services/policyRuntimeMetricsTrace.mjs',
 ]);
 
 const RUNTIME_ARTIFACTS = Object.freeze([
@@ -673,7 +673,7 @@ const RUNTIME_ARTIFACTS = Object.freeze([
     normalRuntimeAuthorityAllowed: true,
   },
   {
-    path: 'server/src/services/policyBuilderPhase7RuntimeMetricsTrace.mjs',
+    path: 'server/src/services/policyRuntimeMetricsTrace.mjs',
     owner: 'policy-runtime-contract',
     stageId: POLICY_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
     decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,

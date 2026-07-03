@@ -1,12 +1,13 @@
-# Policy Builder Phase 7R Runtime Metrics And Decision Trace
+# Policy Runtime Metrics And Decision Trace
 
 ## Status
 
-Implemented as the eighth Phase 7R runtime/rebuild contract.
+Implemented as a durable runtime metrics and decision trace contract that
+originated as the eighth Phase 7R runtime/rebuild checkpoint.
 
-This slice projects Phase 7R automation decisions, runtime question plans,
-request-time learning decisions, rebuild proposals, migration verifier reports,
-and rebuild lifecycle events into bounded counters, sanitized trace records, and
+This slice projects automation decisions, runtime question plans, request-time
+learning decisions, rebuild proposals, migration verifier reports, and rebuild
+lifecycle events into bounded counters, sanitized trace records, and
 action-oriented operator summaries. Trace records retain supported upstream
 source fingerprints for correlation without copying raw evidence. It does not
 persist telemetry, export to an observability backend, expose raw provider
@@ -14,7 +15,7 @@ payloads, or surface diagnostic internals as normal policy UI.
 
 ## Problem
 
-Phase 7R now has deterministic contracts for runtime evidence, automation,
+Classifarr now has deterministic contracts for runtime evidence, automation,
 questions, request-time learning, rebuild proposals, and migration verification.
 Without a bounded metrics contract, the next failure mode is predictable:
 
@@ -27,29 +28,31 @@ broken correlation between metrics and source decisions
 operators seeing diagnostics instead of next action
 ```
 
-Phase 7R.8 makes runtime behavior auditable while keeping the operator workflow
+The runtime metrics trace makes runtime behavior auditable while keeping the operator workflow
 small and action-oriented.
 
 ## Official Guidance Reviewed
 
 - [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
-  emphasize stable attribute naming and common telemetry structure. Phase 7R.8
-  emits stable `classifarr.phase7r.trace.*` attributes for future telemetry
+  emphasize stable attribute naming and common telemetry structure. The runtime
+  metrics trace emits stable `classifarr.policy.runtime_metrics_trace.*`
+  attributes for future telemetry
   wiring.
 - [OpenTelemetry Signals](https://opentelemetry.io/docs/concepts/signals/)
   separates traces, metrics, and logs. This slice keeps counters and trace
   records as a local projection and does not conflate them with raw logs.
 - [OpenTelemetry Context Propagation](https://opentelemetry.io/docs/concepts/context-propagation/)
   explains that propagated context lets traces, logs, and metrics be correlated.
-  Phase 7R.8 preserves only approved source fingerprints for correlation.
+  The runtime metrics trace preserves only approved source fingerprints for
+  correlation.
 - [W3C Trace Context](https://www.w3.org/TR/trace-context/)
-  defines portable trace context propagation. Phase 7R.8 does not export
+  defines portable trace context propagation. The runtime metrics trace does not export
   W3C spans yet, but follows the same principle: carry stable correlation
   identifiers without embedding payload data.
 - [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
   warns against logging sensitive data and recommends event attributes useful
-  for monitoring and response. Phase 7R.8 suppresses provider payloads, prompts,
-  embeddings, raw payloads, and diagnostic internals.
+  for monitoring and response. The runtime metrics trace suppresses provider
+  payloads, prompts, embeddings, raw payloads, and diagnostic internals.
 - [NIST Privacy Framework](https://www.nist.gov/privacy-framework)
   emphasizes managing privacy risk and minimizing unnecessary data exposure.
   This contract records bounded counts and reason codes instead of user prompts,
@@ -57,7 +60,7 @@ small and action-oriented.
 
 ## Recommendation
 
-Use a server-owned metrics and trace projection that consumes Phase 7R contracts
+Use a server-owned metrics and trace projection that consumes policy runtime contracts
 and emits only bounded counters, reason-coded traces, and operator next-action
 summaries.
 
@@ -86,7 +89,7 @@ Pros:
   request-learning, rebuild-proposal, and migration-verifier outputs.
 - Prevents raw payload, prompt, embedding, provider, or diagnostic leakage.
 - Produces operator summaries only when they support a next action.
-- Creates a stable handoff to Phase 7R.9 test reset.
+- Creates a stable handoff to runtime and rebuild test reset.
 
 Cons:
 
@@ -100,7 +103,7 @@ Cons:
 
 ## Final Recommendation Stack
 
-1. Count only known Phase 7R outcomes:
+1. Count only known policy runtime outcomes:
    - auto-routed,
    - classified-not-routed,
    - asked-for-review,
@@ -135,9 +138,9 @@ Cons:
 ## Implemented Files
 
 - Runtime metrics and trace contract:
-  `server/src/services/policyBuilderPhase7RuntimeMetricsTrace.mjs`
+  `server/src/services/policyRuntimeMetricsTrace.mjs`
 - Focused tests:
-  `server/src/__tests__/services/policyBuilderPhase7RuntimeMetricsTrace.test.mjs`
+  `server/src/__tests__/services/policyRuntimeMetricsTrace.test.mjs`
 - Automation decision dependency:
   `server/src/services/policyAutomationDecisionContract.mjs`
 - Runtime question dependency:
@@ -149,21 +152,21 @@ Cons:
 - Migration verifier dependency:
   `server/src/services/policyMigrationVerifierRollback.mjs`
 - Roadmap owner:
-  Phase 7R.8 Runtime Metrics And Decision Trace in
+  Runtime Metrics And Decision Trace in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
 
 The service exports:
 
-- `PHASE7R_METRIC_AUDIT_RISK_IDS`
-- `PHASE7R_METRIC_COMPONENT_IDS`
-- `PHASE7R_METRIC_COUNTER_IDS`
-- `PHASE7R_METRIC_REASON_IDS`
+- `POLICY_RUNTIME_METRIC_AUDIT_RISK_IDS`
+- `POLICY_RUNTIME_METRIC_COMPONENT_IDS`
+- `POLICY_RUNTIME_METRIC_COUNTER_IDS`
+- `POLICY_RUNTIME_METRIC_REASON_IDS`
 - `POLICY_REBUILD_EVENT_STATUS_IDS`
-- `buildPolicyBuilderPhase7RuntimeMetricsTrace`
-- `buildPolicyBuilderPhase7RuntimeMetricsTraceAudit`
-- `validatePolicyBuilderPhase7RuntimeMetricsTrace`
+- `buildPolicyRuntimeMetricsTrace`
+- `buildPolicyRuntimeMetricsTraceAudit`
+- `validatePolicyRuntimeMetricsTrace`
 
 ## Security And Data Handling
 
@@ -186,7 +189,7 @@ The service exports:
 
 The focused test suite verifies:
 
-- all required Phase 7R counters are counted from contract outcomes,
+- all required runtime counters are counted from contract outcomes,
 - trace records are bounded by `maxTraceRecords`,
 - trace reason arrays are bounded,
 - supported upstream source fingerprints are carried into bounded trace
@@ -200,25 +203,25 @@ The focused test suite verifies:
 - unknown/negative/non-integer counters fail validation,
 - sensitive trace exposure fails validation,
 - trace summary mismatches fail validation,
-- the component audit points to Phase 7R.9.
+- the component audit points to `nextStep.stepId = runtime_rebuild_test_reset`.
 
 ## Outcome
 
-Phase 7R.8 gives runtime/rebuild observability this shape:
+The runtime metrics trace gives runtime/rebuild observability this shape:
 
 ```text
-Phase 7R contract outputs
+policy runtime contract outputs
   -> bounded counters
   -> sanitized trace records with supported source-fingerprint correlation
   -> action-oriented operator summaries
   -> no persistence/export side effects
 ```
 
-This makes Phase 7R auditable without reintroducing noisy diagnostic UI.
+This makes policy runtime behavior auditable without reintroducing noisy
+diagnostic UI.
 
 ## Next Step
 
-Phase 7R.9 Runtime And Rebuild Test Reset should categorize old runtime and
-rebuild tests, then define the regression coverage that protects the new
-evidence, automation, question, learning, rebuild, verifier, rollback, and
-metrics contracts.
+Runtime And Rebuild Test Reset should categorize old runtime and rebuild tests,
+then define the regression coverage that protects the new evidence, automation,
+question, learning, rebuild, verifier, rollback, and metrics contracts.
