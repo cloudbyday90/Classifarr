@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Workflow Completion Audit Cutover** — renamed the authoring
+  workflow completion audit service and focused test to durable product-domain
+  names, replaced phase-coded record ids and `nextPhase.phaseId` with semantic
+  `nextStep.stepId` handoff output, and preserved the side-effect-free artifact
+  coverage gate.
 - **Policy Evidence Engine Diagnostics Cutover** — removed Phase 6R wording
   from production evidence-engine validation messages and reducer cutline
   targets, replacing it with durable policy-evidence and native-storage

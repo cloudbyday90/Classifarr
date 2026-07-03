@@ -1,11 +1,11 @@
-const PHASE3R_ARTIFACT_KIND_IDS = Object.freeze({
+const POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS = Object.freeze({
   SERVER_CONTRACT: 'server_contract',
   VUE_REWRITE_SLICE: 'vue_rewrite_slice',
   NORMAL_WORKFLOW_RULE: 'normal_workflow_rule',
   NORMAL_PATH_EXCLUSION: 'normal_path_exclusion',
 });
 
-const PHASE3R_COMPLETION_RISK_IDS = Object.freeze({
+const POLICY_AUTHORING_COMPLETION_RISK_IDS = Object.freeze({
   MISSING_RECORD_ID: 'missing_record_id',
   MISSING_LABEL: 'missing_label',
   MISSING_DOC_PATH: 'missing_doc_path',
@@ -17,16 +17,16 @@ const PHASE3R_COMPLETION_RISK_IDS = Object.freeze({
   INTERNAL_SURFACE_ALLOWED_IN_NORMAL_PATH: 'internal_surface_allowed_in_normal_path',
 });
 
-const PHASE3R_EXCLUSION_SCOPE_IDS = Object.freeze({
+const POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS = Object.freeze({
   NORMAL_PATH_FORBIDDEN: 'normal_path_forbidden',
   MIGRATION_VERIFIER_ONLY: 'migration_verifier_only',
   BRIDGE_ONLY: 'bridge_only',
   DELETE_AFTER_NATIVE_STORAGE: 'delete_after_native_storage',
 });
 
-const PHASE3R_SERVER_CONTRACTS = Object.freeze([
+const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
   {
-    id: '3r_1_workflow_inventory_cutline',
+    id: 'workflow_inventory_cutline',
     label: 'Workflow inventory and cutline',
     docPath: 'docs/architecture/policy-builder-phase-3r-workflow-inventory-cutline.md',
     servicePath: 'server/src/services/policyBuilderPhase3WorkflowInventory.mjs',
@@ -34,7 +34,7 @@ const PHASE3R_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Classifies current policy-builder surfaces as keep, rewrite, replace, delete, bridge-only, or verifier-only.',
   },
   {
-    id: '3r_2_destination_first_flow',
+    id: 'destination_first_flow',
     label: 'Destination-first flow',
     docPath: 'docs/architecture/policy-builder-phase-3r-destination-first-flow.md',
     servicePath: 'server/src/services/policyBuilderPhase3DestinationFirstFlow.mjs',
@@ -42,7 +42,7 @@ const PHASE3R_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Defines the normal operator sequence from library context through save or defer.',
   },
   {
-    id: '3r_3_component_system_reset',
+    id: 'component_system_reset',
     label: 'Component system reset',
     docPath: 'docs/architecture/policy-builder-phase-3r-component-system-reset.md',
     servicePath: 'server/src/services/policyBuilderPhase3ComponentSystem.mjs',
@@ -50,7 +50,7 @@ const PHASE3R_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Defines the target component vocabulary and interaction rules before Vue rebuilds.',
   },
   {
-    id: '3r_4_evidence_backed_option_selection',
+    id: 'evidence_backed_option_selection',
     label: 'Evidence-backed option selection',
     docPath: 'docs/architecture/policy-builder-phase-3r-evidence-backed-option-selection.md',
     servicePath: 'server/src/services/policyBuilderPhase3EvidenceBackedOptionSelection.mjs',
@@ -58,7 +58,7 @@ const PHASE3R_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Separates observed evidence, template suggestions, static options, custom values, and unavailable choices.',
   },
   {
-    id: '3r_5_hard_limits_avoid_ux',
+    id: 'hard_limits_avoid_ux',
     label: 'Hard limits and avoid UX',
     docPath: 'docs/architecture/policy-builder-phase-3r-hard-limit-avoid-ux.md',
     servicePath: 'server/src/services/policyBuilderPhase3HardLimitAvoidUx.mjs',
@@ -66,7 +66,7 @@ const PHASE3R_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Separates blockers, avoid warnings, and review warnings with explicit operator-action requirements.',
   },
   {
-    id: '3r_6_readiness_next_action_surface',
+    id: 'readiness_next_action_surface',
     label: 'Readiness and next action surface',
     docPath: 'docs/architecture/policy-builder-phase-3r-readiness-next-action-surface.md',
     servicePath: 'server/src/services/policyBuilderPhase3ReadinessNextActionSurface.mjs',
@@ -74,7 +74,7 @@ const PHASE3R_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Replaces dense diagnostics with action-oriented readiness states and one primary next action.',
   },
   {
-    id: '3r_7_starter_template_role_reset',
+    id: 'starter_template_role_reset',
     label: 'Starter template role reset',
     docPath: 'docs/architecture/policy-builder-phase-3r-starter-template-role-reset.md',
     servicePath: 'server/src/services/policyBuilderPhase3StarterTemplateRoleReset.mjs',
@@ -82,7 +82,7 @@ const PHASE3R_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Keeps starter templates as optional accelerators after destination context.',
   },
   {
-    id: '3r_8_accessibility_decision_load',
+    id: 'accessibility_decision_load',
     label: 'Accessibility and decision load',
     docPath: 'docs/architecture/policy-builder-phase-3r-accessibility-decision-load.md',
     servicePath: 'server/src/services/policyBuilderPhase3AccessibilityDecisionLoad.mjs',
@@ -90,7 +90,7 @@ const PHASE3R_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Defines labels, helper text, keyboard, disabled reason, and one-primary-action requirements.',
   },
   {
-    id: '3r_9_presentation_test_reset',
+    id: 'presentation_test_reset',
     label: 'Presentation test reset',
     docPath: 'docs/architecture/policy-builder-phase-3r-presentation-test-reset.md',
     servicePath: 'server/src/services/policyBuilderPhase3PresentationTestReset.mjs',
@@ -99,7 +99,7 @@ const PHASE3R_SERVER_CONTRACTS = Object.freeze([
   },
 ]);
 
-const PHASE3R_VUE_REWRITE_SLICES = Object.freeze([
+const POLICY_AUTHORING_VUE_REWRITE_SLICES = Object.freeze([
   {
     id: 'vue_setup_cards',
     label: 'Vue setup cards',
@@ -165,7 +165,7 @@ const PHASE3R_VUE_REWRITE_SLICES = Object.freeze([
   },
 ]);
 
-const PHASE3R_NORMAL_WORKFLOW_RULES = Object.freeze([
+const POLICY_AUTHORING_NORMAL_WORKFLOW_RULES = Object.freeze([
   {
     id: 'destination_context_before_templates',
     label: 'Destination context appears before starter-template mechanics',
@@ -203,123 +203,123 @@ const PHASE3R_NORMAL_WORKFLOW_RULES = Object.freeze([
   },
 ]);
 
-const PHASE3R_NORMAL_PATH_EXCLUSIONS = Object.freeze([
+const POLICY_AUTHORING_NORMAL_PATH_EXCLUSIONS = Object.freeze([
   {
     id: 'impact_preview_panel',
     label: 'Intent impact preview panel',
-    scopeId: PHASE3R_EXCLUSION_SCOPE_IDS.MIGRATION_VERIFIER_ONLY,
+    scopeId: POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.MIGRATION_VERIFIER_ONLY,
     evidence: 'Read-only verifier surface; not part of default policy authoring.',
   },
   {
     id: 'representative_replay_panel',
     label: 'Representative replay preview panel',
-    scopeId: PHASE3R_EXCLUSION_SCOPE_IDS.MIGRATION_VERIFIER_ONLY,
+    scopeId: POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.MIGRATION_VERIFIER_ONLY,
     evidence: 'Read-only verifier surface with no execution; not part of default policy authoring.',
   },
   {
     id: 'provider_readiness_details',
     label: 'Provider readiness details',
-    scopeId: PHASE3R_EXCLUSION_SCOPE_IDS.NORMAL_PATH_FORBIDDEN,
+    scopeId: POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.NORMAL_PATH_FORBIDDEN,
     evidence: 'Provider configuration and quota diagnostics belong outside normal policy authoring.',
   },
   {
     id: 'tmdb_coverage_details',
     label: 'TMDB coverage details',
-    scopeId: PHASE3R_EXCLUSION_SCOPE_IDS.NORMAL_PATH_FORBIDDEN,
+    scopeId: POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.NORMAL_PATH_FORBIDDEN,
     evidence: 'Metadata coverage is diagnostic evidence, not normal policy setup copy.',
   },
   {
     id: 'raw_template_mechanics',
     label: 'Raw starter-template mechanics',
-    scopeId: PHASE3R_EXCLUSION_SCOPE_IDS.BRIDGE_ONLY,
+    scopeId: POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.BRIDGE_ONLY,
     evidence: 'Legacy weights, removed markers, and raw custom signals remain bridge-only.',
   },
   {
     id: 'legacy_policy_storage_shape',
     label: 'Legacy policy storage shape',
-    scopeId: PHASE3R_EXCLUSION_SCOPE_IDS.DELETE_AFTER_NATIVE_STORAGE,
-    evidence: 'Legacy preset/custom-signal storage remains compatible until Phase 8R replacement.',
+    scopeId: POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.DELETE_AFTER_NATIVE_STORAGE,
+    evidence: 'Legacy preset/custom-signal storage remains compatible until native intent storage replacement.',
   },
 ]);
 
-function validatePhase3CompletionRecord(record = {}, artifactKindId) {
+function validatePolicyAuthoringCompletionRecord(record = {}, artifactKindId) {
   const issues = [];
 
   if (!record.id) {
     issues.push({
-      riskId: PHASE3R_COMPLETION_RISK_IDS.MISSING_RECORD_ID,
+      riskId: POLICY_AUTHORING_COMPLETION_RISK_IDS.MISSING_RECORD_ID,
       artifactKindId,
-      message: 'Phase 3R completion records must have a stable id.',
+      message: 'Policy authoring completion records must have a stable id.',
     });
   }
 
   if (!record.label) {
     issues.push({
-      riskId: PHASE3R_COMPLETION_RISK_IDS.MISSING_LABEL,
+      riskId: POLICY_AUTHORING_COMPLETION_RISK_IDS.MISSING_LABEL,
       artifactKindId,
       recordId: record.id || null,
-      message: 'Phase 3R completion records must have an operator-readable label.',
+      message: 'Policy authoring completion records must have an operator-readable label.',
     });
   }
 
   if (!record.evidence) {
     issues.push({
-      riskId: PHASE3R_COMPLETION_RISK_IDS.MISSING_EVIDENCE,
+      riskId: POLICY_AUTHORING_COMPLETION_RISK_IDS.MISSING_EVIDENCE,
       artifactKindId,
       recordId: record.id || null,
-      message: 'Phase 3R completion records must explain what proves the record.',
+      message: 'Policy authoring completion records must explain what proves the record.',
     });
   }
 
   if ([
-    PHASE3R_ARTIFACT_KIND_IDS.SERVER_CONTRACT,
-    PHASE3R_ARTIFACT_KIND_IDS.VUE_REWRITE_SLICE,
-    PHASE3R_ARTIFACT_KIND_IDS.NORMAL_WORKFLOW_RULE,
+    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.SERVER_CONTRACT,
+    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.VUE_REWRITE_SLICE,
+    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.NORMAL_WORKFLOW_RULE,
   ].includes(artifactKindId) && !record.docPath) {
     issues.push({
-      riskId: PHASE3R_COMPLETION_RISK_IDS.MISSING_DOC_PATH,
+      riskId: POLICY_AUTHORING_COMPLETION_RISK_IDS.MISSING_DOC_PATH,
       artifactKindId,
       recordId: record.id || null,
-      message: 'Phase 3R implementation records must link to an architecture document.',
+      message: 'Policy authoring implementation records must link to an architecture document.',
     });
   }
 
-  if (artifactKindId === PHASE3R_ARTIFACT_KIND_IDS.SERVER_CONTRACT && !record.servicePath) {
+  if (artifactKindId === POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.SERVER_CONTRACT && !record.servicePath) {
     issues.push({
-      riskId: PHASE3R_COMPLETION_RISK_IDS.MISSING_SERVICE_PATH,
+      riskId: POLICY_AUTHORING_COMPLETION_RISK_IDS.MISSING_SERVICE_PATH,
       artifactKindId,
       recordId: record.id || null,
-      message: 'Phase 3R server contracts must link to the owning ESM service.',
+      message: 'Policy authoring server contracts must link to the owning ESM service.',
     });
   }
 
   if ([
-    PHASE3R_ARTIFACT_KIND_IDS.SERVER_CONTRACT,
-    PHASE3R_ARTIFACT_KIND_IDS.VUE_REWRITE_SLICE,
-    PHASE3R_ARTIFACT_KIND_IDS.NORMAL_WORKFLOW_RULE,
+    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.SERVER_CONTRACT,
+    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.VUE_REWRITE_SLICE,
+    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.NORMAL_WORKFLOW_RULE,
   ].includes(artifactKindId) && !record.testPath) {
     issues.push({
-      riskId: PHASE3R_COMPLETION_RISK_IDS.MISSING_TEST_PATH,
+      riskId: POLICY_AUTHORING_COMPLETION_RISK_IDS.MISSING_TEST_PATH,
       artifactKindId,
       recordId: record.id || null,
-      message: 'Phase 3R implementation records must link to a regression test.',
+      message: 'Policy authoring implementation records must link to a regression test.',
     });
   }
 
-  if (artifactKindId === PHASE3R_ARTIFACT_KIND_IDS.NORMAL_PATH_EXCLUSION) {
-    if (!Object.values(PHASE3R_EXCLUSION_SCOPE_IDS).includes(record.scopeId)) {
+  if (artifactKindId === POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.NORMAL_PATH_EXCLUSION) {
+    if (!Object.values(POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS).includes(record.scopeId)) {
       issues.push({
-        riskId: PHASE3R_COMPLETION_RISK_IDS.INVALID_EXCLUSION_SCOPE,
+        riskId: POLICY_AUTHORING_COMPLETION_RISK_IDS.INVALID_EXCLUSION_SCOPE,
         artifactKindId,
         recordId: record.id || null,
-        message: 'Phase 3R exclusions must use an approved exclusion scope.',
+        message: 'Policy authoring exclusions must use an approved exclusion scope.',
       });
     }
 
-    if (record.scopeId !== PHASE3R_EXCLUSION_SCOPE_IDS.NORMAL_PATH_FORBIDDEN &&
+    if (record.scopeId !== POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.NORMAL_PATH_FORBIDDEN &&
         record.normalAuthoringAllowed === true) {
       issues.push({
-        riskId: PHASE3R_COMPLETION_RISK_IDS.INTERNAL_SURFACE_ALLOWED_IN_NORMAL_PATH,
+        riskId: POLICY_AUTHORING_COMPLETION_RISK_IDS.INTERNAL_SURFACE_ALLOWED_IN_NORMAL_PATH,
         artifactKindId,
         recordId: record.id || null,
         message: 'Verifier, bridge, and deletion-target surfaces cannot be allowed in normal authoring.',
@@ -335,8 +335,8 @@ function validatePhase3CompletionRecord(record = {}, artifactKindId) {
   };
 }
 
-function auditPhase3CompletionRecords(records, artifactKindId) {
-  if (!Object.values(PHASE3R_ARTIFACT_KIND_IDS).includes(artifactKindId)) {
+function auditPolicyAuthoringCompletionRecords(records, artifactKindId) {
+  if (!Object.values(POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS).includes(artifactKindId)) {
     return {
       ok: false,
       artifactKindId,
@@ -347,16 +347,16 @@ function auditPhase3CompletionRecords(records, artifactKindId) {
         artifactKindId,
         recordId: null,
         issues: [{
-          riskId: PHASE3R_COMPLETION_RISK_IDS.UNKNOWN_ARTIFACT_KIND,
+          riskId: POLICY_AUTHORING_COMPLETION_RISK_IDS.UNKNOWN_ARTIFACT_KIND,
           artifactKindId,
-          message: 'Phase 3R completion audits must use an approved artifact kind.',
+          message: 'Policy authoring completion audits must use an approved artifact kind.',
         }],
       }],
     };
   }
 
   const results = (Array.isArray(records) ? records : [])
-    .map(record => validatePhase3CompletionRecord(record, artifactKindId));
+    .map(record => validatePolicyAuthoringCompletionRecord(record, artifactKindId));
   const issueCount = results.reduce((count, result) => count + result.issues.length, 0);
 
   return {
@@ -368,27 +368,27 @@ function auditPhase3CompletionRecords(records, artifactKindId) {
   };
 }
 
-function buildPolicyBuilderPhase3CompletionAudit({
-  serverContracts = PHASE3R_SERVER_CONTRACTS,
-  vueRewriteSlices = PHASE3R_VUE_REWRITE_SLICES,
-  normalWorkflowRules = PHASE3R_NORMAL_WORKFLOW_RULES,
-  normalPathExclusions = PHASE3R_NORMAL_PATH_EXCLUSIONS,
+function buildPolicyAuthoringWorkflowCompletionAudit({
+  serverContracts = POLICY_AUTHORING_SERVER_CONTRACTS,
+  vueRewriteSlices = POLICY_AUTHORING_VUE_REWRITE_SLICES,
+  normalWorkflowRules = POLICY_AUTHORING_NORMAL_WORKFLOW_RULES,
+  normalPathExclusions = POLICY_AUTHORING_NORMAL_PATH_EXCLUSIONS,
 } = {}) {
-  const serverContractAudit = auditPhase3CompletionRecords(
+  const serverContractAudit = auditPolicyAuthoringCompletionRecords(
     serverContracts,
-    PHASE3R_ARTIFACT_KIND_IDS.SERVER_CONTRACT
+    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.SERVER_CONTRACT
   );
-  const vueRewriteAudit = auditPhase3CompletionRecords(
+  const vueRewriteAudit = auditPolicyAuthoringCompletionRecords(
     vueRewriteSlices,
-    PHASE3R_ARTIFACT_KIND_IDS.VUE_REWRITE_SLICE
+    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.VUE_REWRITE_SLICE
   );
-  const normalWorkflowAudit = auditPhase3CompletionRecords(
+  const normalWorkflowAudit = auditPolicyAuthoringCompletionRecords(
     normalWorkflowRules,
-    PHASE3R_ARTIFACT_KIND_IDS.NORMAL_WORKFLOW_RULE
+    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.NORMAL_WORKFLOW_RULE
   );
-  const normalPathExclusionAudit = auditPhase3CompletionRecords(
+  const normalPathExclusionAudit = auditPolicyAuthoringCompletionRecords(
     normalPathExclusions,
-    PHASE3R_ARTIFACT_KIND_IDS.NORMAL_PATH_EXCLUSION
+    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.NORMAL_PATH_EXCLUSION
   );
   const issueCount = [
     serverContractAudit,
@@ -408,58 +408,58 @@ function buildPolicyBuilderPhase3CompletionAudit({
     vueRewriteAudit,
     normalWorkflowAudit,
     normalPathExclusionAudit,
-    nextPhase: {
-      phaseId: '6r_1',
-      label: 'Runtime decision pipeline contract',
-      reason: 'Phase 6R can consume Phase 3R operator intent only after normal authoring, verifier-only surfaces, and bridge-only surfaces are separated.',
+    nextStep: {
+      stepId: 'policy_evidence_engine',
+      label: 'Policy Evidence Engine',
+      reason: 'Policy evidence can consume operator intent only after normal authoring, verifier-only surfaces, and bridge-only surfaces are separated.',
     },
   };
 }
 
-function listPolicyBuilderPhase3CompletionArtifactPaths() {
+function listPolicyAuthoringCompletionArtifactPaths() {
   return [
-    ...PHASE3R_SERVER_CONTRACTS.flatMap(record => [
+    ...POLICY_AUTHORING_SERVER_CONTRACTS.flatMap(record => [
       record.docPath,
       record.servicePath,
       record.testPath,
     ]),
-    ...PHASE3R_VUE_REWRITE_SLICES.flatMap(record => [
+    ...POLICY_AUTHORING_VUE_REWRITE_SLICES.flatMap(record => [
       record.docPath,
       record.testPath,
     ]),
-    ...PHASE3R_NORMAL_WORKFLOW_RULES.flatMap(record => [
+    ...POLICY_AUTHORING_NORMAL_WORKFLOW_RULES.flatMap(record => [
       record.docPath,
       record.testPath,
     ]),
   ];
 }
 
-function listPolicyBuilderPhase3ServerContracts() {
-  return PHASE3R_SERVER_CONTRACTS;
+function listPolicyAuthoringServerContracts() {
+  return POLICY_AUTHORING_SERVER_CONTRACTS;
 }
 
-function listPolicyBuilderPhase3VueRewriteSlices() {
-  return PHASE3R_VUE_REWRITE_SLICES;
+function listPolicyAuthoringVueRewriteSlices() {
+  return POLICY_AUTHORING_VUE_REWRITE_SLICES;
 }
 
-function listPolicyBuilderPhase3NormalWorkflowRules() {
-  return PHASE3R_NORMAL_WORKFLOW_RULES;
+function listPolicyAuthoringNormalWorkflowRules() {
+  return POLICY_AUTHORING_NORMAL_WORKFLOW_RULES;
 }
 
-function listPolicyBuilderPhase3NormalPathExclusions() {
-  return PHASE3R_NORMAL_PATH_EXCLUSIONS;
+function listPolicyAuthoringNormalPathExclusions() {
+  return POLICY_AUTHORING_NORMAL_PATH_EXCLUSIONS;
 }
 
 export {
-  PHASE3R_ARTIFACT_KIND_IDS,
-  PHASE3R_COMPLETION_RISK_IDS,
-  PHASE3R_EXCLUSION_SCOPE_IDS,
-  auditPhase3CompletionRecords,
-  buildPolicyBuilderPhase3CompletionAudit,
-  listPolicyBuilderPhase3CompletionArtifactPaths,
-  listPolicyBuilderPhase3NormalPathExclusions,
-  listPolicyBuilderPhase3NormalWorkflowRules,
-  listPolicyBuilderPhase3ServerContracts,
-  listPolicyBuilderPhase3VueRewriteSlices,
-  validatePhase3CompletionRecord,
+  POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS,
+  POLICY_AUTHORING_COMPLETION_RISK_IDS,
+  POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS,
+  auditPolicyAuthoringCompletionRecords,
+  buildPolicyAuthoringWorkflowCompletionAudit,
+  listPolicyAuthoringCompletionArtifactPaths,
+  listPolicyAuthoringNormalPathExclusions,
+  listPolicyAuthoringNormalWorkflowRules,
+  listPolicyAuthoringServerContracts,
+  listPolicyAuthoringVueRewriteSlices,
+  validatePolicyAuthoringCompletionRecord,
 };

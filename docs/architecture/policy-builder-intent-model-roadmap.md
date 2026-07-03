@@ -2614,8 +2614,8 @@ Implementation record:
   the destination-first workflow and verifier-only safety contract without
   freezing old provider, TMDB, scoring, parity, or sample-selection diagnostics
   as normal product UI.
-- The Phase 3R completion gate is documented in
-  [Policy Builder Phase 3R Completion Audit](policy-builder-phase-3r-completion-audit.md).
+- The policy authoring workflow completion gate is documented in
+  [Policy Authoring Workflow Completion Audit](policy-authoring-workflow-completion-audit.md).
   The server-owned completion audit now verifies the Phase 3R server contracts,
   Vue rewrite slices, normal workflow rules, normal-path exclusions, and
   referenced artifact paths before Phase 6R runtime work consumes the
@@ -6346,6 +6346,14 @@ Implementation status:
 - After the policy-evidence-engine diagnostics cutover, the repository
   inventory validates with 11,767 total phase-coded references, 4,897
   production references, and 4,919 rename candidates.
+- The next authoring workflow cutover renamed the completion audit to
+  `policyAuthoringWorkflowCompletionAudit.mjs`, replaced semantic record ids,
+  and removed the production `nextPhase.phaseId` handoff in favor of
+  `nextStep.stepId = policy_evidence_engine`:
+  [Policy Authoring Workflow Completion Audit Module Cutover](policy-authoring-workflow-completion-audit-module-cutover.md).
+- After the policy-authoring workflow completion audit cutover, the repository
+  inventory validates with 11,640 total phase-coded references, 4,813
+  production references, and 4,835 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
