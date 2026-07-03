@@ -168,16 +168,27 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
     expect(result.boundaryContext).toEqual(expect.objectContaining({
       projectionFingerprintMatch: true,
       evidenceBoundary: expect.objectContaining({
+        quality: expect.objectContaining({
+          statusId: boundedEvidenceResult.projection.quality.statusId,
+          nextActionId: boundedEvidenceResult.projection.quality.nextActionId,
+          reasonIds: boundedEvidenceResult.projection.quality.reasonIds,
+        }),
         projectionFingerprint: expect.objectContaining({
           fingerprint: boundedEvidenceResult.projectionFingerprint.fingerprint,
         }),
       }),
       intentBoundary: expect.objectContaining({
+        quality: expect.objectContaining({
+          statusId: boundedIntentResult.evidenceBoundary.quality.statusId,
+        }),
         projectionFingerprint: expect.objectContaining({
           fingerprint: boundedEvidenceResult.projectionFingerprint.fingerprint,
         }),
       }),
       learningBoundary: expect.objectContaining({
+        quality: expect.objectContaining({
+          statusId: boundedLearningResult.intentBoundary.evidenceBoundary.quality.statusId,
+        }),
         projectionFingerprint: expect.objectContaining({
           fingerprint: boundedEvidenceResult.projectionFingerprint.fingerprint,
         }),
@@ -223,6 +234,146 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
     expect(result.readiness.reasonCodes).toContain(
       PHASE6R_READINESS_REASON_IDS.PROFILE_REFRESH_QUEUED
     );
+  });
+
+  test('blocks bounded readiness when bounded quality is missing', () => {
+    const {
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+    } = buildBoundedReadyInputs();
+
+    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+      boundedEvidenceResult,
+      boundedIntentResult: {
+        ...boundedIntentResult,
+        evidenceBoundary: {
+          ...boundedIntentResult.evidenceBoundary,
+          quality: null,
+        },
+      },
+      boundedLearningResult,
+      routing: {
+        configured: true,
+        routeReady: true,
+        targetName: 'Radarr Animated Movies',
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      readiness: null,
+      readinessAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+      }),
+    ]));
+  });
+
+  test('blocks bounded readiness when bounded quality is insufficient', () => {
+    const {
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+    } = buildBoundedReadyInputs();
+    const insufficientQuality = {
+      ...boundedEvidenceResult.projection.quality,
+      statusId: 'insufficient',
+      nextActionId: 'confirm_destination_identity',
+      reasonIds: ['missing_identity_evidence'],
+    };
+
+    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+      boundedEvidenceResult: {
+        ...boundedEvidenceResult,
+        projection: {
+          ...boundedEvidenceResult.projection,
+          quality: insufficientQuality,
+        },
+      },
+      boundedIntentResult: {
+        ...boundedIntentResult,
+        evidenceBoundary: {
+          ...boundedIntentResult.evidenceBoundary,
+          quality: insufficientQuality,
+        },
+      },
+      boundedLearningResult: {
+        ...boundedLearningResult,
+        intentBoundary: {
+          ...boundedLearningResult.intentBoundary,
+          evidenceBoundary: {
+            ...boundedLearningResult.intentBoundary.evidenceBoundary,
+            quality: insufficientQuality,
+          },
+        },
+      },
+      routing: {
+        configured: true,
+        routeReady: true,
+        targetName: 'Radarr Animated Movies',
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      readiness: null,
+      readinessAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_QUALITY_INSUFFICIENT,
+        nextActionId: 'confirm_destination_identity',
+      }),
+    ]));
+  });
+
+  test('blocks bounded readiness when bounded quality does not match', () => {
+    const {
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+    } = buildBoundedReadyInputs();
+    const mismatchedLearningResult = {
+      ...boundedLearningResult,
+      intentBoundary: {
+        ...boundedLearningResult.intentBoundary,
+        evidenceBoundary: {
+          ...boundedLearningResult.intentBoundary.evidenceBoundary,
+          quality: {
+            ...boundedLearningResult.intentBoundary.evidenceBoundary.quality,
+            nextActionId: 'refresh_profile_examples',
+          },
+        },
+      },
+    };
+
+    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult: mismatchedLearningResult,
+      routing: {
+        configured: true,
+        routeReady: true,
+        targetName: 'Radarr Animated Movies',
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      readiness: null,
+      readinessAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_QUALITY_MISMATCH,
+      }),
+    ]));
   });
 
   test('blocks bounded readiness when bounded inputs or provenance are missing', () => {
@@ -585,6 +736,44 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       phaseId: '6r_5',
       label: 'Operator Workflow Rebuild',
     }));
+  });
+
+  test('rejects readiness boundary context that drops bounded quality', () => {
+    const {
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+    } = buildBoundedReadyInputs();
+    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+      routing: {
+        configured: true,
+        routeReady: true,
+        targetName: 'Radarr Animated Movies',
+      },
+    });
+    const tamperedReadiness = {
+      ...result.readiness,
+      inputs: {
+        ...result.readiness.inputs,
+        boundaryContext: {
+          ...result.readiness.inputs.boundaryContext,
+          learningBoundary: {
+            ...result.readiness.inputs.boundaryContext.learningBoundary,
+            quality: null,
+          },
+        },
+      },
+    };
+
+    expect(validatePolicyBuilderPhase6Readiness(tamperedReadiness).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+        }),
+      ]));
   });
 
   test('rejects readiness contracts that depend on live diagnostics or miss actions', () => {

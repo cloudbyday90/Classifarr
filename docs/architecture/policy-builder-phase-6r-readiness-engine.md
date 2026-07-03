@@ -15,7 +15,9 @@ entry point. That entry point requires successful Phase 6R.1 bounded evidence,
 Phase 6R.2 bounded intent, and Phase 6R.3 bounded learning contracts before
 readiness can be trusted. July 2026 hardening makes that gate stricter:
 readiness now requires the upstream evidence, intent, evidence-fingerprint, and
-learning audits to pass before automation state is evaluated.
+learning audits to pass before automation state is evaluated. It also requires
+matching, usable evidence-quality snapshots across the bounded evidence, intent,
+and learning handoff.
 
 ## Problem
 
@@ -99,6 +101,10 @@ Phase 6R.4 makes that answer deterministic and server-owned.
    Matching fingerprints are not enough. Readiness should also reject bounded
    evidence, intent, or learning wrappers whose own audits are not passing.
 
+8. **Require matching bounded quality before automation readiness.**
+   Evidence, intent, and learning must carry matching, usable evidence-quality
+   snapshots before readiness can return an automation state.
+
 ## Pros And Cons
 
 Pros:
@@ -112,6 +118,8 @@ Pros:
   stitched together into a readiness decision.
 - Prevents automation readiness from evaluating wrappers that claim success but
   carry failed upstream audit state.
+- Prevents automation readiness from evaluating missing, insufficient, or
+  mismatched upstream evidence quality.
 
 Cons:
 
@@ -122,6 +130,8 @@ Cons:
   decision.
 - Existing pure reducer callers still exist for compatibility until runtime
   paths are moved onto the bounded wrapper.
+- Quality-gate failures block readiness before a normal operator action is
+  produced.
 
 ## Final Recommendation Stack
 
@@ -139,6 +149,8 @@ Cons:
   `server/src/__tests__/services/policyBuilderPhase6ReadinessEngine.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-readiness-engine.md`
+- Quality-gate outcome:
+  `docs/architecture/policy-builder-phase-6r-readiness-quality-gate.md`
 - Roadmap owner:
   Phase 6R.4 Automation Readiness Engine in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
@@ -207,12 +219,15 @@ The boundary context carries only sanitized contract metadata:
 ```text
 evidenceBoundary.version
 evidenceBoundary.statusId
+evidenceBoundary.quality
 evidenceBoundary.projectionFingerprint
 intentBoundary.statusId
 intentBoundary.intentVersion
+intentBoundary.quality
 intentBoundary.projectionFingerprint
 learningBoundary.statusId
 learningBoundary.learningVersion
+learningBoundary.quality
 learningBoundary.projectionFingerprint
 projectionFingerprintMatch
 ```
@@ -229,9 +244,11 @@ projectionFingerprintMatch
 - The bounded wrapper rejects failed upstream contracts, missing projection
   provenance, mismatched projection fingerprints, and failed upstream evidence,
   intent, evidence-fingerprint, or learning audits before readiness is returned.
+- The bounded wrapper rejects missing, insufficient, or mismatched upstream
+  quality before readiness is returned.
 
 ## Next Step
 
 Proceed to **Phase 6R.5 Operator Workflow Rebuild**. That component should
 replace old policy-builder diagnostic panels with destination-oriented sections
-that consume the readiness contract directly.
+that consume the quality-gated readiness contract directly.

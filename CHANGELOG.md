@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Readiness Quality Gate** — hardened bounded
+  readiness so Phase 6R.4 requires matching, usable evidence-quality snapshots
+  across bounded evidence, intent, and learning before returning an automation
+  readiness state.
 - **Policy Builder Phase 6R Learning Quality Gate** — hardened bounded learning
   so Phase 6R.3 requires matching, usable evidence-quality snapshots from the
   bounded intent wrapper and embedded intent before evaluating durable learning

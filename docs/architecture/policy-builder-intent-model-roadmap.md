@@ -3382,6 +3382,11 @@ Implementation status:
 - The bounded readiness entry point now also requires the upstream evidence,
   intent, evidence-fingerprint, and learning audits to pass before automation
   readiness is evaluated.
+- The bounded readiness entry point now requires evidence, intent, and learning
+  to carry matching, usable evidence-quality snapshots before any automation
+  readiness state is returned.
+- The Phase 6R.4 quality-gated readiness hardening is documented in
+  [Policy Builder Phase 6R Readiness Quality Gate](policy-builder-phase-6r-readiness-quality-gate.md).
 
 ### 6R.5 Operator Workflow Rebuild
 

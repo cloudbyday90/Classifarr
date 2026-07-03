@@ -3,6 +3,9 @@ import {
   buildPolicyBuilderPhase6EvidenceProjection,
 } from './policyBuilderPhase6EvidenceEngine.mjs';
 import {
+  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
+} from './policyBuilderPhase6EvidenceQuality.mjs';
+import {
   PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS,
   PHASE6R_INTENT_WARNING_IDS,
   buildPolicyBuilderPhase6IntentDraft,
@@ -72,6 +75,9 @@ const PHASE6R_READINESS_AUDIT_RISK_IDS = Object.freeze({
   BOUNDED_EVIDENCE_AUDIT_NOT_PASSING: 'bounded_evidence_audit_not_passing',
   BOUNDED_INTENT_EVIDENCE_AUDIT_NOT_PASSING: 'bounded_intent_evidence_audit_not_passing',
   BOUNDED_LEARNING_AUDIT_NOT_PASSING: 'bounded_learning_audit_not_passing',
+  MISSING_BOUNDED_QUALITY: 'missing_bounded_quality',
+  BOUNDED_QUALITY_INSUFFICIENT: 'bounded_quality_insufficient',
+  BOUNDED_QUALITY_MISMATCH: 'bounded_quality_mismatch',
 });
 
 const IGNORED_DIAGNOSTIC_INPUT_KEYS = Object.freeze([
@@ -392,6 +398,107 @@ function getProjectionFingerprintFromLearningResult(boundedLearningResult = {}) 
   return boundedLearningResult?.intentBoundary?.evidenceBoundary?.projectionFingerprint?.fingerprint || null;
 }
 
+function getQualityFromEvidenceResult(boundedEvidenceResult = {}) {
+  return boundedEvidenceResult?.projection?.quality || null;
+}
+
+function getQualityFromIntentResult(boundedIntentResult = {}) {
+  return boundedIntentResult?.evidenceBoundary?.quality || null;
+}
+
+function getQualityFromLearningResult(boundedLearningResult = {}) {
+  return boundedLearningResult?.intentBoundary?.evidenceBoundary?.quality || null;
+}
+
+function normalizeQualitySnapshot(quality = null) {
+  const normalized = asObject(quality);
+  const reasonIds = asArray(normalized.reasonIds)
+    .map(reasonId => normalizeString(reasonId))
+    .filter(Boolean);
+
+  return {
+    version: normalized.version || null,
+    statusId: normalized.statusId || null,
+    score: Number.isFinite(Number(normalized.score)) ? Number(normalized.score) : null,
+    nextActionId: normalized.nextActionId || null,
+    reasonIds,
+    counts: asObject(normalized.counts),
+    hasIdentityEvidence: normalized.hasIdentityEvidence === true,
+    hasDeclaredIdentityEvidence: normalized.hasDeclaredIdentityEvidence === true,
+    hasObservedIdentityEvidence: normalized.hasObservedIdentityEvidence === true,
+    hasStaleProfileEvidence: normalized.hasStaleProfileEvidence === true,
+  };
+}
+
+function hasQualitySnapshot(quality = null) {
+  return Boolean(normalizeQualitySnapshot(quality).statusId);
+}
+
+function qualitySnapshotsMatch(left = null, right = null) {
+  const leftSnapshot = normalizeQualitySnapshot(left);
+  const rightSnapshot = normalizeQualitySnapshot(right);
+
+  return Boolean(leftSnapshot.statusId) &&
+    leftSnapshot.version === rightSnapshot.version &&
+    leftSnapshot.statusId === rightSnapshot.statusId &&
+    leftSnapshot.nextActionId === rightSnapshot.nextActionId &&
+    leftSnapshot.reasonIds.join('|') === rightSnapshot.reasonIds.join('|');
+}
+
+function collectBoundedQualityIssues({
+  boundedEvidenceResult,
+  boundedIntentResult,
+  boundedLearningResult,
+} = {}) {
+  const issues = [];
+  const evidenceQuality = getQualityFromEvidenceResult(boundedEvidenceResult);
+  const intentQuality = getQualityFromIntentResult(boundedIntentResult);
+  const learningQuality = getQualityFromLearningResult(boundedLearningResult);
+
+  if (
+    !hasQualitySnapshot(evidenceQuality) ||
+    !hasQualitySnapshot(intentQuality) ||
+    !hasQualitySnapshot(learningQuality)
+  ) {
+    issues.push({
+      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+      message: 'Readiness requires bounded evidence, intent, and learning quality snapshots.',
+    });
+    return issues;
+  }
+
+  const qualitySnapshots = [
+    normalizeQualitySnapshot(evidenceQuality),
+    normalizeQualitySnapshot(intentQuality),
+    normalizeQualitySnapshot(learningQuality),
+  ];
+  const insufficientQuality = qualitySnapshots.find(quality =>
+    quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+  );
+
+  if (insufficientQuality) {
+    issues.push({
+      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_QUALITY_INSUFFICIENT,
+      message: 'Readiness requires usable bounded evidence quality before automation can be evaluated.',
+      qualityStatusId: insufficientQuality.statusId,
+      nextActionId: insufficientQuality.nextActionId,
+      reasonIds: insufficientQuality.reasonIds,
+    });
+  }
+
+  if (
+    !qualitySnapshotsMatch(evidenceQuality, intentQuality) ||
+    !qualitySnapshotsMatch(evidenceQuality, learningQuality)
+  ) {
+    issues.push({
+      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_QUALITY_MISMATCH,
+      message: 'Readiness requires bounded evidence, intent, and learning quality to match.',
+    });
+  }
+
+  return issues;
+}
+
 function buildBoundedReadinessContext({
   boundedEvidenceResult,
   boundedIntentResult,
@@ -409,17 +516,20 @@ function buildBoundedReadinessContext({
     evidenceBoundary: {
       version: boundedEvidenceResult.version || null,
       statusId: boundedEvidenceResult.statusId || null,
+      quality: normalizeQualitySnapshot(getQualityFromEvidenceResult(boundedEvidenceResult)),
       projectionFingerprint: boundedEvidenceResult.projectionFingerprint,
     },
     intentBoundary: {
       statusId: boundedIntentResult.statusId || null,
       intentVersion: boundedIntentResult.intent?.version || null,
+      quality: normalizeQualitySnapshot(getQualityFromIntentResult(boundedIntentResult)),
       projectionFingerprint:
         boundedIntentResult.evidenceBoundary?.projectionFingerprint || null,
     },
     learningBoundary: {
       statusId: boundedLearningResult.statusId || null,
       learningVersion: boundedLearningResult.decision?.version || null,
+      quality: normalizeQualitySnapshot(getQualityFromLearningResult(boundedLearningResult)),
       projectionFingerprint:
         boundedLearningResult.intentBoundary?.evidenceBoundary?.projectionFingerprint || null,
     },
@@ -490,6 +600,18 @@ function buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
       riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_LEARNING_AUDIT_NOT_PASSING,
       message: 'Readiness requires a passing bounded learning audit.',
     });
+  }
+
+  if (
+    boundedEvidenceResult?.ok === true &&
+    boundedIntentResult?.ok === true &&
+    boundedLearningResult?.ok === true
+  ) {
+    boundaryIssues.push(...collectBoundedQualityIssues({
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+    }));
   }
 
   const boundaryContext = buildBoundedReadinessContext({
@@ -635,6 +757,32 @@ function validatePolicyBuilderPhase6Readiness(readiness = {}) {
       riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.LEARNING_WRITE_DEPENDENCY,
       message: 'Readiness must not depend on learning writes having already occurred.',
     });
+  }
+
+  if (readiness.inputs?.boundaryContext) {
+    const boundaryContext = asObject(readiness.inputs.boundaryContext);
+    issues.push(...collectBoundedQualityIssues({
+      boundedEvidenceResult: {
+        ok: true,
+        projection: {
+          quality: boundaryContext.evidenceBoundary?.quality,
+        },
+      },
+      boundedIntentResult: {
+        ok: true,
+        evidenceBoundary: {
+          quality: boundaryContext.intentBoundary?.quality,
+        },
+      },
+      boundedLearningResult: {
+        ok: true,
+        intentBoundary: {
+          evidenceBoundary: {
+            quality: boundaryContext.learningBoundary?.quality,
+          },
+        },
+      },
+    }));
   }
 
   return {
