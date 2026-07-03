@@ -60,6 +60,16 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
       actionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
       label: 'Route automatically',
     }));
+    expect(plan.decisionEvidenceFingerprint).toEqual(expect.objectContaining({
+      algorithm: 'sha256',
+      fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    }));
+    expect(plan.trace.attributes).toEqual(expect.objectContaining({
+      'classifarr.runtime.question.decision_evidence_projection_fingerprint':
+        plan.decisionEvidenceFingerprint.fingerprint,
+    }));
+    expect(JSON.stringify(plan.decisionEvidenceFingerprint)).not.toContain('Animated Movies');
+    expect(JSON.stringify(plan.decisionEvidenceFingerprint)).not.toContain('Radarr Animated Movies');
     expect(plan.trace.reasons).toEqual([
       expect.objectContaining({
         reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.AUTO_ROUTE_DOES_NOT_NEED_QUESTION,
@@ -131,6 +141,9 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
       contractVersion: 'phase7r.runtime_question_reduction.v1',
       frameId: QUESTION_FRAME_IDS.HARD_LIMIT_CONFLICT,
       decisionStateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
+      decisionEvidenceFingerprint: expect.objectContaining({
+        fingerprint: hardLimitPlan.decisionEvidenceFingerprint.fingerprint,
+      }),
     }));
     expect(hardLimitPlan.question.learning).toEqual(expect.objectContaining({
       eligible: false,
@@ -263,6 +276,50 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
       }),
       expect.objectContaining({
         riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
+      }),
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.AUTOMATION_DECISION_INVALID,
+      }),
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_DECISION_EVIDENCE_FINGERPRINT,
+      }),
+    ]));
+  });
+
+  test('rejects question plans with mismatched evidence fingerprints', () => {
+    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+      libraryProfile: {
+        identityCandidates: [
+          { label: 'Animation', count: 1, confidence: 0.6 },
+        ],
+      },
+    });
+    const validation = validatePolicyBuilderPhase7RuntimeQuestionReduction({
+      ...plan,
+      question: {
+        ...plan.question,
+        decisionEvidenceFingerprint: {
+          ...plan.question.decisionEvidenceFingerprint,
+          fingerprint: '0'.repeat(64),
+        },
+      },
+      trace: {
+        ...plan.trace,
+        attributes: {
+          ...plan.trace.attributes,
+          'classifarr.runtime.question.decision_evidence_projection_fingerprint':
+            '1'.repeat(64),
+        },
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_FINGERPRINT_MISMATCH,
+      }),
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
       }),
     ]));
   });

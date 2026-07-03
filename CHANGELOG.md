@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Question Evidence Binding** — hardened runtime
+  question reduction so question plans carry the automation decision evidence
+  fingerprint into the plan, planned question, and bounded trace attributes, with
+  validation rejecting missing or mismatched bindings.
 - **Policy Builder Phase 7R Automation Evidence Binding** — hardened the
   automation decision contract so decisions carry the sanitized runtime evidence
   projection fingerprint, mirror it into bounded trace attributes, and fail

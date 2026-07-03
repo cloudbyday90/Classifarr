@@ -3735,6 +3735,8 @@ Tasks:
   weak.
 - Ensure old pending questions are routed through stale-question cleanup before
   they can be answered or learned from.
+- Carry the automation decision evidence fingerprint into the question-reduction
+  plan, planned question, and bounded trace attributes.
 
 Acceptance criteria:
 
@@ -3763,6 +3765,9 @@ Implementation status:
 - Rejected legacy frames such as broad-genre priority, AI-authored policy edit,
   provider-specific diagnostic, and replay parity interpretation are rewritten
   before persistence.
+- Question-reduction plans now preserve the sanitized automation decision
+  evidence fingerprint across the plan, planned question, and trace attributes;
+  validation rejects missing or mismatched bindings before a question can pass.
 
 ### 7R.5 Request-Time Learning And Destination Selection
 

@@ -59,6 +59,11 @@ Is an existing pending question stale or legacy?
 Can this answer teach Classifarr?
 ```
 
+The reducer must also preserve the automation decision's sanitized runtime
+evidence projection fingerprint. Any future persisted question should be
+traceable to the exact evidence-bound automation state that caused the question
+without storing raw labels, provider payloads, AI text, or replay diagnostics.
+
 ## Pros And Cons
 
 Pros:
@@ -71,6 +76,8 @@ Pros:
 - Requires stale or legacy pending questions to go through cleanup before answer
   or learning.
 - Includes learning eligibility metadata on every planned question.
+- Carries a sanitized decision-evidence fingerprint into the plan, planned
+  question, and trace so later persistence can audit why the question existed.
 
 Cons:
 
@@ -81,6 +88,8 @@ Cons:
 - Some routing and stale-profile states are now operational next actions rather
   than operator questions, which requires the UI/Discord layer to respect the
   disposition.
+- Later integration must preserve the fingerprint instead of re-deriving question
+  context from raw runtime data.
 
 ## Final Recommendation Stack
 
@@ -107,6 +116,10 @@ Cons:
    - `replay_parity_interpretation`.
 8. Mark every planned question as learning-ineligible by default. Durable
    learning remains owned by the Phase 6R learning guard.
+9. Carry the automation decision evidence fingerprint through the
+   question-reduction plan, planned question, and bounded trace attributes.
+10. Reject plans where the question or trace fingerprint differs from the plan
+    fingerprint.
 
 ## Implemented Files
 
@@ -170,6 +183,8 @@ The service exports:
   learning.
 - Trace output uses bounded reason codes and frame ids, not provider payloads or
   AI text.
+- The reducer carries only sanitized decision-evidence fingerprint provenance
+  and rejects missing or mismatched fingerprint bindings.
 
 ## Test Coverage
 
@@ -181,6 +196,8 @@ The focused test suite verifies:
 - avoid/high-risk review uses `outlier_review`,
 - broad-genre priority frames are rewritten before persistence,
 - stale or legacy pending questions require cleanup,
+- question plans carry the automation decision evidence fingerprint,
+- planned questions and traces must match the plan fingerprint,
 - invalid plans with rejected frames, learning enabled, auto-route questions, or
   side effects fail validation,
 - the component audit points to Phase 7R.5.

@@ -48,10 +48,15 @@ const PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS = Object.freeze({
   STALE_QUESTION_NOT_CLEANED: 'stale_question_not_cleaned',
   MISSING_TRACE_REASON: 'missing_trace_reason',
   AUTOMATION_DECISION_INVALID: 'automation_decision_invalid',
+  MISSING_DECISION_EVIDENCE_FINGERPRINT: 'missing_decision_evidence_fingerprint',
+  QUESTION_FINGERPRINT_MISMATCH: 'question_fingerprint_mismatch',
+  TRACE_FINGERPRINT_MISMATCH: 'trace_fingerprint_mismatch',
 });
 
 const QUESTION_CONTRACT_VERSION = 'phase7r.runtime_question_reduction.v1';
 const MAX_TRACE_REASONS = 10;
+const DECISION_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE =
+  'classifarr.runtime.question.decision_evidence_projection_fingerprint';
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -178,6 +183,7 @@ function buildQuestion({
   frameId,
   decision,
   reasonId,
+  decisionEvidenceFingerprint,
   stale = false,
 }) {
   const frame = getAcceptableQuestionFrame(frameId);
@@ -190,6 +196,7 @@ function buildQuestion({
     operatorQuestion: frame.operatorQuestion,
     reasonId,
     decisionStateId: decision.stateId,
+    decisionEvidenceFingerprint,
     stale,
     learning: buildLearningMetadata({ frameId }),
     options: [
@@ -207,17 +214,55 @@ function buildQuestion({
   };
 }
 
-function buildTrace(dispositionId, reasons, decision) {
-  const boundedReasons = reasons.slice(0, MAX_TRACE_REASONS);
+function sanitizeDecisionEvidenceFingerprint(decision = {}) {
+  const projectionFingerprint = decision.evidence?.projectionFingerprint;
+  const provenance = asObject(projectionFingerprint?.provenance);
+
+  if (!normalizeString(projectionFingerprint?.fingerprint)) return null;
 
   return {
-    attributes: {
-      'classifarr.runtime.question.version': QUESTION_CONTRACT_VERSION,
-      'classifarr.runtime.question.disposition': dispositionId,
-      'classifarr.runtime.question.reason_count': boundedReasons.length,
-      'classifarr.runtime.question.decision_state': decision.stateId,
-      'classifarr.runtime.question.created': dispositionId === PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
+    algorithm: normalizeString(projectionFingerprint.algorithm) || null,
+    fingerprint: normalizeString(projectionFingerprint.fingerprint),
+    provenance: {
+      projectionVersion: normalizeString(provenance.projectionVersion) || null,
+      phase6EvidenceVersion: normalizeString(provenance.phase6EvidenceVersion) || null,
+      totalEntryCount: Number.isFinite(Number(provenance.totalEntryCount))
+        ? Number(provenance.totalEntryCount)
+        : 0,
+      sourceIds: asArray(provenance.sourceIds).map(String).sort(),
+      runtimeSourceIds: asArray(provenance.runtimeSourceIds).map(String).sort(),
+      authoritySourceIds: asArray(provenance.authoritySourceIds).map(String).sort(),
+      demotionReasonIds: asArray(provenance.demotionReasonIds).map(String).sort(),
+      warningReasonIds: asArray(provenance.warningReasonIds).map(String).sort(),
+      bucketCounts: asArray(provenance.bucketCounts)
+        .map(bucket => ({
+          bucketId: normalizeString(bucket?.bucketId) || null,
+          entryCount: Number.isFinite(Number(bucket?.entryCount))
+            ? Number(bucket.entryCount)
+            : 0,
+        }))
+        .sort((left, right) => String(left.bucketId).localeCompare(String(right.bucketId))),
     },
+  };
+}
+
+function buildTrace(dispositionId, reasons, decision, decisionEvidenceFingerprint) {
+  const boundedReasons = reasons.slice(0, MAX_TRACE_REASONS);
+  const attributes = {
+    'classifarr.runtime.question.version': QUESTION_CONTRACT_VERSION,
+    'classifarr.runtime.question.disposition': dispositionId,
+    'classifarr.runtime.question.reason_count': boundedReasons.length,
+    'classifarr.runtime.question.decision_state': decision.stateId,
+    'classifarr.runtime.question.created': dispositionId === PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
+  };
+
+  if (decisionEvidenceFingerprint?.fingerprint) {
+    attributes[DECISION_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE] =
+      decisionEvidenceFingerprint.fingerprint;
+  }
+
+  return {
+    attributes,
     reasons: boundedReasons,
     truncated: reasons.length > boundedReasons.length,
   };
@@ -310,6 +355,7 @@ function buildPolicyBuilderPhase7RuntimeQuestionReduction(input = {}) {
     ? input.automationDecision
     : buildPolicyBuilderPhase7AutomationDecision(input);
   const decisionValidation = validatePolicyBuilderPhase7AutomationDecision(decision);
+  const decisionEvidenceFingerprint = sanitizeDecisionEvidenceFingerprint(decision);
   const frameOverride = normalizeFrameOverride(input);
   const reasons = [];
 
@@ -340,6 +386,8 @@ function buildPolicyBuilderPhase7RuntimeQuestionReduction(input = {}) {
         target: 'pending_question_cleanup',
       },
       decision,
+      decisionValidation,
+      decisionEvidenceFingerprint,
       question: null,
       proposedFrameId: frameId,
       rejectedFrame: frameOverride.accepted === false ? frameOverride : null,
@@ -351,7 +399,7 @@ function buildPolicyBuilderPhase7RuntimeQuestionReduction(input = {}) {
         frameId,
         staleQuestionCleanupRequired: true,
       }),
-      trace: buildTrace(dispositionId, reasons, decision),
+      trace: buildTrace(dispositionId, reasons, decision, decisionEvidenceFingerprint),
     };
   }
 
@@ -373,6 +421,7 @@ function buildPolicyBuilderPhase7RuntimeQuestionReduction(input = {}) {
       frameId,
       decision,
       reasonId: baseDisposition.reasonId,
+      decisionEvidenceFingerprint,
     })
     : null;
 
@@ -387,6 +436,7 @@ function buildPolicyBuilderPhase7RuntimeQuestionReduction(input = {}) {
     },
     decision,
     decisionValidation,
+    decisionEvidenceFingerprint,
     question,
     proposedFrameId: frameId,
     rejectedFrame: frameOverride.accepted === false ? frameOverride : null,
@@ -395,7 +445,12 @@ function buildPolicyBuilderPhase7RuntimeQuestionReduction(input = {}) {
       existingQuestionId: input.existingQuestion?.id ?? null,
     },
     learning: buildLearningMetadata({ frameId: frameId || QUESTION_FRAME_IDS.DESTINATION_FIT }),
-    trace: buildTrace(baseDisposition.dispositionId, reasons, decision),
+    trace: buildTrace(
+      baseDisposition.dispositionId,
+      reasons,
+      decision,
+      decisionEvidenceFingerprint
+    ),
   };
 }
 
@@ -421,6 +476,12 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
   const dispositionIds = Object.values(PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS);
   const questionFrame = plan.question?.frameId;
   const normalizedQuestionFrame = questionFrame ? normalizeQuestionFrame(questionFrame) : null;
+  const decisionValidation = validatePolicyBuilderPhase7AutomationDecision(asObject(plan.decision));
+  const planFingerprint = normalizeString(plan.decisionEvidenceFingerprint?.fingerprint);
+  const questionFingerprint = normalizeString(plan.question?.decisionEvidenceFingerprint?.fingerprint);
+  const traceFingerprint = normalizeString(
+    plan.trace?.attributes?.[DECISION_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE]
+  );
 
   if (!dispositionIds.includes(plan.dispositionId)) {
     issues.push({
@@ -429,10 +490,31 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
     });
   }
 
-  if (plan.decisionValidation?.ok === false) {
+  if (plan.decisionValidation?.ok === false || !decisionValidation.ok) {
     issues.push({
       riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.AUTOMATION_DECISION_INVALID,
       message: 'Runtime question reduction cannot rely on an invalid automation decision.',
+    });
+  }
+
+  if (!planFingerprint) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_DECISION_EVIDENCE_FINGERPRINT,
+      message: 'Runtime question reduction must carry the automation decision evidence fingerprint.',
+    });
+  }
+
+  if (questionFingerprint && questionFingerprint !== planFingerprint) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_FINGERPRINT_MISMATCH,
+      message: 'Planned question fingerprint must match the question-reduction plan.',
+    });
+  }
+
+  if (traceFingerprint && traceFingerprint !== planFingerprint) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+      message: 'Question trace fingerprint must match the question-reduction plan.',
     });
   }
 
