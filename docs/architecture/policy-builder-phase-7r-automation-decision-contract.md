@@ -1,10 +1,11 @@
-# Policy Builder Phase 7R Automation Decision Contract
+# Policy Automation Decision Contract
 
 ## Status
 
-Implemented as the third Phase 7R runtime contract.
+Implemented as the durable policy automation decision contract that originated
+as the third Phase 7R runtime contract.
 
-This slice turns Phase 7R runtime evidence into a single server-owned
+This slice turns runtime evidence into a single server-owned
 automation decision. It does not route media, write classifications, create
 questions, write learning records, call providers, or persist native intent.
 
@@ -22,11 +23,34 @@ candidate should wait for profile refresh
 ```
 
 That ambiguity is exactly why a successfully classified item could fail to
-reach Radarr/Sonarr while still looking complete. Phase 7R.3 introduces a
+reach Radarr/Sonarr while still looking complete. The automation decision
+contract introduces a
 bounded state contract so classification, routing, review, skip, refresh, and
 block outcomes are explicit before any runtime behavior is rewired.
 
 ## Official Guidance Reviewed
+
+This cutover rechecked the current official guidance as of June 2026:
+
+- [NIST Secure Software Development Framework SP 800-218](https://csrc.nist.gov/pubs/sp/800/218/final)
+  recommends secure development practices, common vocabulary, and reducing
+  vulnerability root causes. This supports durable product-domain module names
+  and explicit validation instead of temporary roadmap contract names.
+- [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
+  provides verification requirements for secure development. This supports
+  allow-listed automation states, bounded traces, and no side effects during
+  decision construction.
+- [OWASP ASVS Validation And Business Logic](https://asvs.dev/v5.0.0/V2-Validation-and-Business-Logic/)
+  emphasizes validating business rules and preventing workflow bypass. This
+  supports separating classify-only, route-ready, review, mapping, stale
+  profile, and blocked states.
+- [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
+  and [OpenTelemetry Naming](https://opentelemetry.io/docs/specs/semconv/general/naming/)
+  support stable, consistent telemetry naming. This contract keeps bounded
+  `classifarr.runtime.decision.*` attributes and moves the payload version to a
+  durable `policy.*` namespace.
+
+Historical Phase 7R design sources:
 
 - [NIST AI Risk Management Framework 1.0](https://nvlpubs.nist.gov/nistpubs/ai/nist.ai.100-1.pdf)
   supports governed, measured, and managed AI system behavior. This slice maps
@@ -92,7 +116,7 @@ Cons:
 ## Final Recommendation Stack
 
 1. Keep Phase 7R.2 runtime evidence projection as the only evidence input.
-2. Compute one Phase 7R.3 automation state from server-owned evidence.
+2. Compute one policy automation state from server-owned evidence.
 3. Require `auto_route_ready` to satisfy all gates:
    - strong destination identity,
    - hard limits satisfied,
@@ -116,9 +140,9 @@ Cons:
 ## Implemented Files
 
 - Automation decision contract:
-  `server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs`
+  `server/src/services/policyAutomationDecisionContract.mjs`
 - Focused tests:
-  `server/src/__tests__/services/policyBuilderPhase7AutomationDecisionContract.test.mjs`
+  `server/src/__tests__/services/policyAutomationDecisionContract.test.mjs`
 - Runtime evidence dependency:
   `server/src/services/policyRuntimeEvidenceProjection.mjs`
 - Roadmap owner:
@@ -129,15 +153,15 @@ Cons:
 
 The service exports:
 
-- `PHASE7R_AUTOMATION_DECISION_STATE_IDS`
-- `PHASE7R_AUTOMATION_DECISION_ACTION_IDS`
-- `PHASE7R_AUTOMATION_DECISION_REASON_IDS`
-- `PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS`
-- `buildPolicyBuilderPhase7AutomationDecision`
-- `buildPolicyBuilderPhase7AutomationDecisionContractAudit`
+- `POLICY_AUTOMATION_DECISION_STATE_IDS`
+- `POLICY_AUTOMATION_DECISION_ACTION_IDS`
+- `POLICY_AUTOMATION_DECISION_REASON_IDS`
+- `POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS`
+- `buildPolicyAutomationDecision`
+- `buildPolicyAutomationDecisionContractAudit`
 - `getAutomationDecisionState`
-- `listPolicyBuilderPhase7AutomationDecisionStates`
-- `validatePolicyBuilderPhase7AutomationDecision`
+- `listPolicyAutomationDecisionStates`
+- `validatePolicyAutomationDecision`
 
 ## Runtime States
 
@@ -224,11 +248,11 @@ The focused test suite verifies:
 - missing validation proof or mismatched trace evidence-valid attributes fail
   validation,
 - unsafe route and side-effect claims fail validation,
-- the component audit points to Phase 7R.4.
+- the component audit points to the runtime question reduction step.
 
 ## Outcome
 
-Phase 7R.3 is now a deterministic runtime gate. It gives the next slices a
+The policy automation decision contract is now a deterministic runtime gate. It gives the next slices a
 stable contract:
 
 ```text

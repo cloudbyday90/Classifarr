@@ -6,12 +6,12 @@ import {
   normalizeQuestionFrame,
 } from './policyQuestionLearningVocabulary.mjs';
 import {
-  PHASE7R_AUTOMATION_DECISION_ACTION_IDS,
-  PHASE7R_AUTOMATION_DECISION_REASON_IDS,
-  PHASE7R_AUTOMATION_DECISION_STATE_IDS,
-  buildPolicyBuilderPhase7AutomationDecision,
-  validatePolicyBuilderPhase7AutomationDecision,
-} from './policyBuilderPhase7AutomationDecisionContract.mjs';
+  POLICY_AUTOMATION_DECISION_ACTION_IDS,
+  POLICY_AUTOMATION_DECISION_REASON_IDS,
+  POLICY_AUTOMATION_DECISION_STATE_IDS,
+  buildPolicyAutomationDecision,
+  validatePolicyAutomationDecision,
+} from './policyAutomationDecisionContract.mjs';
 
 const PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS = Object.freeze({
   SUPPRESS_QUESTION: 'suppress_question',
@@ -140,22 +140,22 @@ function chooseFrameForDecision(decision = {}, frameOverride = {}) {
   const reasonIds = new Set(getDecisionReasonIds(decision));
 
   switch (decision.stateId) {
-    case PHASE7R_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT:
+    case POLICY_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT:
       return QUESTION_FRAME_IDS.HARD_LIMIT_CONFLICT;
-    case PHASE7R_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED:
-    case PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING:
+    case POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED:
+    case POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING:
       return QUESTION_FRAME_IDS.ROUTING_GAP;
-    case PHASE7R_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY:
+    case POLICY_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY:
       return QUESTION_FRAME_IDS.STALE_PROFILE;
-    case PHASE7R_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE:
+    case POLICY_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE:
       return QUESTION_FRAME_IDS.MISSING_EVIDENCE;
-    case PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW:
-      if (reasonIds.has(PHASE7R_AUTOMATION_DECISION_REASON_IDS.RUNTIME_EVIDENCE_INVALID)) {
+    case POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW:
+      if (reasonIds.has(POLICY_AUTOMATION_DECISION_REASON_IDS.RUNTIME_EVIDENCE_INVALID)) {
         return QUESTION_FRAME_IDS.MISSING_EVIDENCE;
       }
       if (
-        reasonIds.has(PHASE7R_AUTOMATION_DECISION_REASON_IDS.AVOID_RULE_CONFLICT) ||
-        reasonIds.has(PHASE7R_AUTOMATION_DECISION_REASON_IDS.HIGH_RISK_EVIDENCE_CONFLICT)
+        reasonIds.has(POLICY_AUTOMATION_DECISION_REASON_IDS.AVOID_RULE_CONFLICT) ||
+        reasonIds.has(POLICY_AUTOMATION_DECISION_REASON_IDS.HIGH_RISK_EVIDENCE_CONFLICT)
       ) {
         return QUESTION_FRAME_IDS.OUTLIER_REVIEW;
       }
@@ -297,60 +297,60 @@ function buildReason(reasonId, {
 
 function getBaseDisposition(decision = {}) {
   switch (decision.stateId) {
-    case PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY:
+    case POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY:
       return {
         dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.SUPPRESS_QUESTION,
         createQuestion: false,
         reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.AUTO_ROUTE_DOES_NOT_NEED_QUESTION,
-        nextActionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
+        nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
         frameId: null,
       };
-    case PHASE7R_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED:
+    case POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED:
       return {
         dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING,
         createQuestion: false,
         reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.CLASSIFIED_NOT_ROUTED_NEEDS_ROUTING,
-        nextActionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING,
+        nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING,
         frameId: QUESTION_FRAME_IDS.ROUTING_GAP,
       };
-    case PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING:
+    case POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING:
       return {
         dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING,
         createQuestion: false,
         reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.ROUTING_MAPPING_REQUIRED,
-        nextActionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING,
+        nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING,
         frameId: QUESTION_FRAME_IDS.ROUTING_GAP,
       };
-    case PHASE7R_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY:
+    case POLICY_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY:
       return {
         dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.REFRESH_PROFILE,
         createQuestion: false,
         reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.PROFILE_REFRESH_REQUIRED,
-        nextActionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.REFRESH_PROFILE,
+        nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.REFRESH_PROFILE,
         frameId: QUESTION_FRAME_IDS.STALE_PROFILE,
       };
-    case PHASE7R_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT:
+    case POLICY_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT:
       return {
         dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
         createQuestion: true,
         reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.HARD_LIMIT_REVIEW_REQUIRED,
-        nextActionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
+        nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
         frameId: QUESTION_FRAME_IDS.HARD_LIMIT_CONFLICT,
       };
-    case PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW:
+    case POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW:
       return {
         dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
         createQuestion: true,
         reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.OPERATOR_REVIEW_REQUIRED,
-        nextActionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
+        nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
         frameId: chooseFrameForDecision(decision),
       };
-    case PHASE7R_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE:
+    case POLICY_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE:
       return {
         dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
         createQuestion: true,
         reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.MISSING_EVIDENCE_REVIEW_REQUIRED,
-        nextActionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
+        nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
         frameId: QUESTION_FRAME_IDS.MISSING_EVIDENCE,
       };
     default:
@@ -358,17 +358,17 @@ function getBaseDisposition(decision = {}) {
         dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.GATHER_EVIDENCE,
         createQuestion: false,
         reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.MISSING_EVIDENCE_REVIEW_REQUIRED,
-        nextActionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.GATHER_EVIDENCE,
+        nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.GATHER_EVIDENCE,
         frameId: QUESTION_FRAME_IDS.MISSING_EVIDENCE,
       };
   }
 }
 
 function buildPolicyBuilderPhase7RuntimeQuestionReduction(input = {}) {
-  const decision = input.automationDecision?.version === 'phase7r.automation_decision.v1'
+  const decision = input.automationDecision?.version === 'policy.automation_decision.v1'
     ? input.automationDecision
-    : buildPolicyBuilderPhase7AutomationDecision(input);
-  const decisionValidation = validatePolicyBuilderPhase7AutomationDecision(decision);
+    : buildPolicyAutomationDecision(input);
+  const decisionValidation = validatePolicyAutomationDecision(decision);
   const decisionEvidenceFingerprint = sanitizeDecisionEvidenceFingerprint(decision);
   const frameOverride = normalizeFrameOverride(input);
   const reasons = [];
@@ -477,15 +477,15 @@ function buildPolicyBuilderPhase7RuntimeQuestionReduction(input = {}) {
 
 function getNextActionLabel(actionId) {
   switch (actionId) {
-    case PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR:
+    case POLICY_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR:
       return 'Route automatically';
-    case PHASE7R_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING:
+    case POLICY_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING:
       return 'Configure routing';
-    case PHASE7R_AUTOMATION_DECISION_ACTION_IDS.REFRESH_PROFILE:
+    case POLICY_AUTOMATION_DECISION_ACTION_IDS.REFRESH_PROFILE:
       return 'Refresh profile';
-    case PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR:
+    case POLICY_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR:
       return 'Ask operator';
-    case PHASE7R_AUTOMATION_DECISION_ACTION_IDS.BLOCK_AUTOMATION:
+    case POLICY_AUTOMATION_DECISION_ACTION_IDS.BLOCK_AUTOMATION:
       return 'Block automation';
     default:
       return 'Gather evidence';
@@ -497,7 +497,7 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
   const dispositionIds = Object.values(PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS);
   const questionFrame = plan.question?.frameId;
   const normalizedQuestionFrame = questionFrame ? normalizeQuestionFrame(questionFrame) : null;
-  const decisionValidation = validatePolicyBuilderPhase7AutomationDecision(asObject(plan.decision));
+  const decisionValidation = validatePolicyAutomationDecision(asObject(plan.decision));
   const carriedDecisionValidation = plan.decisionValidation;
   const hasCarriedDecisionValidation = carriedDecisionValidation &&
     typeof carriedDecisionValidation === 'object' &&
@@ -618,7 +618,7 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
   });
 
   if (
-    plan.decision?.stateId === PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY &&
+    plan.decision?.stateId === POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY &&
     plan.createQuestion === true
   ) {
     issues.push({
@@ -629,8 +629,8 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
 
   if (
     [
-      PHASE7R_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED,
-      PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING,
+      POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED,
+      POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING,
     ].includes(plan.decision?.stateId) &&
     plan.createQuestion === true
   ) {

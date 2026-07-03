@@ -29,7 +29,7 @@ describe('policyBuilderPhase7RuntimeRebuildTestReset', () => {
     )).toBe(true);
     expect(reset.artifacts).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        path: 'server/src/__tests__/services/policyBuilderPhase7AutomationDecisionContract.test.mjs',
+        path: 'server/src/__tests__/services/policyAutomationDecisionContract.test.mjs',
         decisionId: PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_AUTOMATION_DECISION,
       }),
       expect.objectContaining({
@@ -95,7 +95,7 @@ describe('policyBuilderPhase7RuntimeRebuildTestReset', () => {
     expect(coverageById.get(
       PHASE7R_TEST_RESET_COVERAGE_IDS.MISSING_ROUTING_CLASSIFIED_NOT_ROUTED
     ).artifactPaths).toContain(
-      'server/src/__tests__/services/policyBuilderPhase7AutomationDecisionContract.test.mjs'
+      'server/src/__tests__/services/policyAutomationDecisionContract.test.mjs'
     );
   });
 
@@ -131,7 +131,7 @@ describe('policyBuilderPhase7RuntimeRebuildTestReset', () => {
     expect(reset.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.SERVER_AUTHORITY_NOT_PROTECTED,
-        artifactPath: 'server/src/__tests__/services/policyBuilderPhase7AutomationDecisionContract.test.mjs',
+        artifactPath: 'server/src/__tests__/services/policyAutomationDecisionContract.test.mjs',
       }),
     ]));
   });

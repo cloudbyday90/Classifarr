@@ -101,7 +101,7 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     traceReasons: ['evidence_projection_rewrite'],
   }),
   Object.freeze({
-    path: 'server/src/__tests__/services/policyBuilderPhase7AutomationDecisionContract.test.mjs',
+    path: 'server/src/__tests__/services/policyAutomationDecisionContract.test.mjs',
     owner: 'server',
     decisionId: PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_AUTOMATION_DECISION,
     coverageIds: [

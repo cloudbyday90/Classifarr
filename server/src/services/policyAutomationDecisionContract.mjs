@@ -12,7 +12,7 @@ import {
   validatePolicyRuntimeEvidenceProjection,
 } from './policyRuntimeEvidenceProjection.mjs';
 
-const PHASE7R_AUTOMATION_DECISION_STATE_IDS = Object.freeze({
+const POLICY_AUTOMATION_DECISION_STATE_IDS = Object.freeze({
   AUTO_ROUTE_READY: 'auto_route_ready',
   CLASSIFIED_NOT_ROUTED: 'classified_not_routed',
   NEEDS_OPERATOR_REVIEW: 'needs_operator_review',
@@ -22,7 +22,7 @@ const PHASE7R_AUTOMATION_DECISION_STATE_IDS = Object.freeze({
   INSUFFICIENT_EVIDENCE: 'insufficient_evidence',
 });
 
-const PHASE7R_AUTOMATION_DECISION_ACTION_IDS = Object.freeze({
+const POLICY_AUTOMATION_DECISION_ACTION_IDS = Object.freeze({
   ROUTE_TO_ARR: 'route_to_arr',
   RECORD_CLASSIFICATION_ONLY: 'record_classification_only',
   ASK_OPERATOR: 'ask_operator',
@@ -32,7 +32,7 @@ const PHASE7R_AUTOMATION_DECISION_ACTION_IDS = Object.freeze({
   GATHER_EVIDENCE: 'gather_evidence',
 });
 
-const PHASE7R_AUTOMATION_DECISION_REASON_IDS = Object.freeze({
+const POLICY_AUTOMATION_DECISION_REASON_IDS = Object.freeze({
   AUTOMATION_ROUTE_READY: 'automation_route_ready',
   CLASSIFICATION_WITHOUT_ROUTE: 'classification_without_route',
   HARD_LIMIT_VIOLATION: 'hard_limit_violation',
@@ -46,7 +46,7 @@ const PHASE7R_AUTOMATION_DECISION_REASON_IDS = Object.freeze({
   RUNTIME_EVIDENCE_INVALID: 'runtime_evidence_invalid',
 });
 
-const PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS = Object.freeze({
   MISSING_STATE: 'missing_state',
   UNKNOWN_STATE: 'unknown_state',
   MISSING_ACTION: 'missing_action',
@@ -70,57 +70,57 @@ const PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS = Object.freeze({
 
 const STATE_CONTRACTS = Object.freeze([
   {
-    id: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+    id: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
     label: 'Auto-route ready',
-    actionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
+    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
     automationAllowed: true,
     routeAllowed: true,
   },
   {
-    id: PHASE7R_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED,
+    id: POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED,
     label: 'Classified, not routed',
-    actionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.RECORD_CLASSIFICATION_ONLY,
+    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.RECORD_CLASSIFICATION_ONLY,
     automationAllowed: true,
     routeAllowed: false,
   },
   {
-    id: PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
+    id: POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
     label: 'Needs operator review',
-    actionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
+    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
     automationAllowed: false,
     routeAllowed: false,
   },
   {
-    id: PHASE7R_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
+    id: POLICY_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
     label: 'Blocked by hard limit',
-    actionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.BLOCK_AUTOMATION,
+    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.BLOCK_AUTOMATION,
     automationAllowed: false,
     routeAllowed: false,
   },
   {
-    id: PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING,
+    id: POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING,
     label: 'Needs routing mapping',
-    actionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING,
+    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING,
     automationAllowed: false,
     routeAllowed: false,
   },
   {
-    id: PHASE7R_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY,
+    id: POLICY_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY,
     label: 'Stale profile retry',
-    actionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.REFRESH_PROFILE,
+    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.REFRESH_PROFILE,
     automationAllowed: false,
     routeAllowed: false,
   },
   {
-    id: PHASE7R_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE,
+    id: POLICY_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE,
     label: 'Insufficient evidence',
-    actionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.GATHER_EVIDENCE,
+    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.GATHER_EVIDENCE,
     automationAllowed: false,
     routeAllowed: false,
   },
 ]);
 
-const DECISION_STATE_IDS = Object.freeze(Object.values(PHASE7R_AUTOMATION_DECISION_STATE_IDS));
+const DECISION_STATE_IDS = Object.freeze(Object.values(POLICY_AUTOMATION_DECISION_STATE_IDS));
 const MAX_TRACE_REASONS = 12;
 const STRONG_IDENTITY_CONFIDENCE = 0.75;
 const STRONG_IDENTITY_COUNT = 2;
@@ -163,7 +163,7 @@ function getAutomationDecisionState(stateId) {
   return STATE_CONTRACTS.find(state => state.id === stateId) || null;
 }
 
-function listPolicyBuilderPhase7AutomationDecisionStates() {
+function listPolicyAutomationDecisionStates() {
   return STATE_CONTRACTS;
 }
 
@@ -312,109 +312,109 @@ function chooseDecisionState({
   const reasons = [];
 
   if (!evidenceValidation.ok) {
-    pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.RUNTIME_EVIDENCE_INVALID, {
+    pushReason(reasons, POLICY_AUTOMATION_DECISION_REASON_IDS.RUNTIME_EVIDENCE_INVALID, {
       severity: 'error',
       summary: 'Runtime evidence projection failed validation.',
     });
     return {
-      stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
+      stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
       reasons,
     };
   }
 
   if (hasHardLimitViolation(input)) {
-    pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.HARD_LIMIT_VIOLATION, {
+    pushReason(reasons, POLICY_AUTOMATION_DECISION_REASON_IDS.HARD_LIMIT_VIOLATION, {
       bucketId: POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
       severity: 'error',
       summary: 'A hard-limit rule blocks automation.',
     });
     return {
-      stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
+      stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
       reasons,
     };
   }
 
   if (hasStaleProfile(input, buckets)) {
-    pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.STALE_PROFILE, {
+    pushReason(reasons, POLICY_AUTOMATION_DECISION_REASON_IDS.STALE_PROFILE, {
       bucketId: POLICY_EVIDENCE_BUCKET_IDS.FRESHNESS,
       severity: 'warning',
       summary: 'Refresh the media-server profile before trusting automation.',
     });
     return {
-      stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY,
+      stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY,
       reasons,
     };
   }
 
   if (hasAvoidConflict(input)) {
-    pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.AVOID_RULE_CONFLICT, {
+    pushReason(reasons, POLICY_AUTOMATION_DECISION_REASON_IDS.AVOID_RULE_CONFLICT, {
       bucketId: POLICY_EVIDENCE_BUCKET_IDS.AVOID,
       severity: 'warning',
       summary: 'Avoid evidence conflicts with this candidate.',
     });
     return {
-      stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
+      stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
       reasons,
     };
   }
 
   if (hasHighRiskEvidenceConflict(input, buckets)) {
-    pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.HIGH_RISK_EVIDENCE_CONFLICT, {
+    pushReason(reasons, POLICY_AUTOMATION_DECISION_REASON_IDS.HIGH_RISK_EVIDENCE_CONFLICT, {
       bucketId: POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
       severity: 'warning',
       summary: 'High-risk evidence conflict requires operator review.',
     });
     return {
-      stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
+      stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
       reasons,
     };
   }
 
   if (!strongIdentity) {
-    pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.MISSING_STRONG_IDENTITY, {
+    pushReason(reasons, POLICY_AUTOMATION_DECISION_REASON_IDS.MISSING_STRONG_IDENTITY, {
       bucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
       severity: 'warning',
       summary: 'Destination identity evidence is not strong enough for automation.',
     });
     return {
-      stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE,
+      stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE,
       reasons,
     };
   }
 
   if (!routeMapped) {
-    pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.ROUTING_MAPPING_MISSING, {
+    pushReason(reasons, POLICY_AUTOMATION_DECISION_REASON_IDS.ROUTING_MAPPING_MISSING, {
       bucketId: POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
       severity: 'warning',
       summary: 'A concrete Arr route mapping is required before routing.',
     });
 
     if (classificationComplete || routingIntent) {
-      pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.CLASSIFICATION_WITHOUT_ROUTE, {
+      pushReason(reasons, POLICY_AUTOMATION_DECISION_REASON_IDS.CLASSIFICATION_WITHOUT_ROUTE, {
         bucketId: POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
         severity: 'warning',
         summary: 'Classification may be recorded, but routing cannot be treated as complete.',
       });
 
       return {
-        stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED,
+        stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED,
         reasons,
       };
     }
 
     return {
-      stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING,
+      stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING,
       reasons,
     };
   }
 
-  pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.AUTOMATION_ROUTE_READY, {
+  pushReason(reasons, POLICY_AUTOMATION_DECISION_REASON_IDS.AUTOMATION_ROUTE_READY, {
     bucketId: POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
     summary: 'Identity, risk, freshness, and routing gates allow automatic routing.',
   });
 
   return {
-    stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+    stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
     reasons,
   };
 }
@@ -431,7 +431,7 @@ function buildTrace({
 
   return {
     attributes: {
-      'classifarr.runtime.decision.version': 'phase7r.automation_decision.v1',
+      'classifarr.runtime.decision.version': 'policy.automation_decision.v1',
       'classifarr.runtime.decision.state': stateId,
       'classifarr.runtime.decision.reason_count': boundedReasons.length,
       'classifarr.runtime.decision.identity_count': asArray(buckets.identity).length,
@@ -510,7 +510,7 @@ function validateDecisionEvidenceFingerprint(decision = {}) {
 
   if (!fingerprintValue) {
     issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
+      riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
       message: 'Automation decision must carry the runtime evidence projection fingerprint.',
     });
     return issues;
@@ -518,21 +518,21 @@ function validateDecisionEvidenceFingerprint(decision = {}) {
 
   if (!FINGERPRINT_PATTERN.test(fingerprintValue) || fingerprint?.algorithm !== 'sha256') {
     issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.MALFORMED_EVIDENCE_FINGERPRINT,
+      riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.MALFORMED_EVIDENCE_FINGERPRINT,
       message: 'Automation decision evidence fingerprint must be a SHA-256 hex digest.',
     });
   }
 
   if (hasUnsafeProvenanceKey(fingerprint.provenance)) {
     issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.RAW_EVIDENCE_PROVENANCE_EXPOSED,
+      riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.RAW_EVIDENCE_PROVENANCE_EXPOSED,
       message: 'Automation decision fingerprint provenance must not expose raw labels or payload fields.',
     });
   }
 
   if (traceFingerprint && traceFingerprint !== fingerprintValue) {
     issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+      riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
       message: 'Automation decision trace fingerprint must match decision evidence.',
     });
   }
@@ -551,7 +551,7 @@ function validateDecisionEvidenceValidation(decision = {}) {
 
   if (!hasValidationResult) {
     issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS
+      riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS
         .MISSING_RUNTIME_EVIDENCE_VALIDATION,
       message: 'Automation decision must carry the runtime evidence validation result.',
     });
@@ -560,14 +560,14 @@ function validateDecisionEvidenceValidation(decision = {}) {
 
   if (validation.ok !== true) {
     issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.INVALID_RUNTIME_EVIDENCE,
+      riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.INVALID_RUNTIME_EVIDENCE,
       message: 'Automation decision cannot rely on invalid runtime evidence.',
     });
   }
 
   if (traceEvidenceValid !== validation.ok) {
     issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.TRACE_EVIDENCE_VALID_MISMATCH,
+      riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.TRACE_EVIDENCE_VALID_MISMATCH,
       message: 'Automation decision trace evidence-valid attribute must match runtime evidence validation.',
     });
   }
@@ -575,7 +575,7 @@ function validateDecisionEvidenceValidation(decision = {}) {
   return issues;
 }
 
-function buildPolicyBuilderPhase7AutomationDecision(input = {}) {
+function buildPolicyAutomationDecision(input = {}) {
   const evidenceProjection = input.evidenceProjection?.version === 'policy.runtime_evidence_projection.v1'
     ? input.evidenceProjection
     : buildPolicyRuntimeEvidenceProjection(input);
@@ -598,14 +598,14 @@ function buildPolicyBuilderPhase7AutomationDecision(input = {}) {
   const state = getAutomationDecisionState(chosen.stateId);
 
   const decision = {
-    version: 'phase7r.automation_decision.v1',
+    version: 'policy.automation_decision.v1',
     stateId: chosen.stateId,
-    actionId: state?.actionId || PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
+    actionId: state?.actionId || POLICY_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
     automationAllowed: state?.automationAllowed === true,
     routeAllowed: state?.routeAllowed === true,
     classificationAllowed: [
-      PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
-      PHASE7R_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED,
+      POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+      POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED,
     ].includes(chosen.stateId),
     routeMapped,
     strongIdentity,
@@ -644,38 +644,38 @@ function buildPolicyBuilderPhase7AutomationDecision(input = {}) {
   return decision;
 }
 
-function validatePolicyBuilderPhase7AutomationDecision(decision = {}) {
+function validatePolicyAutomationDecision(decision = {}) {
   const issues = [];
 
   if (!normalizeString(decision.stateId)) {
     issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.MISSING_STATE,
+      riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.MISSING_STATE,
       message: 'Automation decision must include a state id.',
     });
   } else if (!DECISION_STATE_IDS.includes(decision.stateId)) {
     issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.UNKNOWN_STATE,
-      message: 'Automation decision must use a supported Phase 7R state.',
+      riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.UNKNOWN_STATE,
+      message: 'Automation decision must use a supported policy automation state.',
     });
   }
 
   if (!normalizeString(decision.actionId)) {
     issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.MISSING_ACTION,
+      riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.MISSING_ACTION,
       message: 'Automation decision must include an action id.',
     });
   }
 
   if (asArray(decision.trace?.reasons).length === 0) {
     issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
+      riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
       message: 'Automation decision must include bounded trace reasons.',
     });
   }
 
   if (asArray(decision.trace?.reasons).length > MAX_TRACE_REASONS || decision.trace?.truncated === true) {
     issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.TRACE_REASON_OVERFLOW,
+      riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.TRACE_REASON_OVERFLOW,
       message: 'Automation decision trace must stay bounded.',
     });
   }
@@ -683,50 +683,50 @@ function validatePolicyBuilderPhase7AutomationDecision(decision = {}) {
   issues.push(...validateDecisionEvidenceValidation(decision));
   issues.push(...validateDecisionEvidenceFingerprint(decision));
 
-  if (decision.stateId === PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY) {
+  if (decision.stateId === POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY) {
     if (decision.strongIdentity !== true) {
       issues.push({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITHOUT_STRONG_IDENTITY,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITHOUT_STRONG_IDENTITY,
         message: 'Auto-route decisions require strong destination identity evidence.',
       });
     }
 
     if (decision.routeMapped !== true || decision.routeAllowed !== true) {
       issues.push({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITHOUT_ROUTING,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITHOUT_ROUTING,
         message: 'Auto-route decisions require a concrete route mapping.',
       });
     }
 
     const reasonIds = new Set(asArray(decision.trace?.reasons).map(reason => reason.reasonId));
-    if (reasonIds.has(PHASE7R_AUTOMATION_DECISION_REASON_IDS.HARD_LIMIT_VIOLATION)) {
+    if (reasonIds.has(POLICY_AUTOMATION_DECISION_REASON_IDS.HARD_LIMIT_VIOLATION)) {
       issues.push({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITH_HARD_LIMIT_BLOCK,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITH_HARD_LIMIT_BLOCK,
         message: 'Auto-route decisions cannot include a hard-limit block reason.',
       });
     }
 
-    if (reasonIds.has(PHASE7R_AUTOMATION_DECISION_REASON_IDS.STALE_PROFILE)) {
+    if (reasonIds.has(POLICY_AUTOMATION_DECISION_REASON_IDS.STALE_PROFILE)) {
       issues.push({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITH_STALE_PROFILE,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITH_STALE_PROFILE,
         message: 'Auto-route decisions cannot include stale-profile reasons.',
       });
     }
 
-    if (reasonIds.has(PHASE7R_AUTOMATION_DECISION_REASON_IDS.HIGH_RISK_EVIDENCE_CONFLICT)) {
+    if (reasonIds.has(POLICY_AUTOMATION_DECISION_REASON_IDS.HIGH_RISK_EVIDENCE_CONFLICT)) {
       issues.push({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITH_HIGH_RISK_CONFLICT,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITH_HIGH_RISK_CONFLICT,
         message: 'Auto-route decisions cannot include high-risk evidence conflicts.',
       });
     }
   }
 
   if (
-    decision.stateId === PHASE7R_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED &&
+    decision.stateId === POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED &&
     decision.routeAllowed === true
   ) {
     issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.ROUTING_SUCCESS_CONFLATED_WITH_CLASSIFICATION,
+      riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.ROUTING_SUCCESS_CONFLATED_WITH_CLASSIFICATION,
       message: 'Classified-not-routed decisions cannot claim route success.',
     });
   }
@@ -734,7 +734,7 @@ function validatePolicyBuilderPhase7AutomationDecision(decision = {}) {
   Object.entries(asObject(decision.sideEffects)).forEach(([key, value]) => {
     if (value === true) {
       issues.push({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.DECISION_PERFORMED_SIDE_EFFECT,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.DECISION_PERFORMED_SIDE_EFFECT,
         message: `Automation decision contract must not perform side effect "${key}".`,
       });
     }
@@ -747,10 +747,10 @@ function validatePolicyBuilderPhase7AutomationDecision(decision = {}) {
   };
 }
 
-function buildPolicyBuilderPhase7AutomationDecisionContractAudit(
-  decision = buildPolicyBuilderPhase7AutomationDecision()
+function buildPolicyAutomationDecisionContractAudit(
+  decision = buildPolicyAutomationDecision()
 ) {
-  const validation = validatePolicyBuilderPhase7AutomationDecision(decision);
+  const validation = validatePolicyAutomationDecision(decision);
 
   return {
     ok: validation.ok,
@@ -758,8 +758,8 @@ function buildPolicyBuilderPhase7AutomationDecisionContractAudit(
     checkedStateCount: STATE_CONTRACTS.length,
     maxTraceReasonCount: MAX_TRACE_REASONS,
     validation,
-    nextPhase: {
-      phaseId: '7r_4',
+    nextStep: {
+      stepId: 'runtime_question_reduction',
       label: 'Runtime Question Reduction',
       reason: 'Runtime automation can now distinguish route, classify-only, review, stale-profile, routing-gap, hard-limit, and insufficient-evidence states before question generation changes.',
     },
@@ -767,13 +767,13 @@ function buildPolicyBuilderPhase7AutomationDecisionContractAudit(
 }
 
 export {
-  PHASE7R_AUTOMATION_DECISION_ACTION_IDS,
-  PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS,
-  PHASE7R_AUTOMATION_DECISION_REASON_IDS,
-  PHASE7R_AUTOMATION_DECISION_STATE_IDS,
-  buildPolicyBuilderPhase7AutomationDecision,
-  buildPolicyBuilderPhase7AutomationDecisionContractAudit,
+  POLICY_AUTOMATION_DECISION_ACTION_IDS,
+  POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS,
+  POLICY_AUTOMATION_DECISION_REASON_IDS,
+  POLICY_AUTOMATION_DECISION_STATE_IDS,
+  buildPolicyAutomationDecision,
+  buildPolicyAutomationDecisionContractAudit,
   getAutomationDecisionState,
-  listPolicyBuilderPhase7AutomationDecisionStates,
-  validatePolicyBuilderPhase7AutomationDecision,
+  listPolicyAutomationDecisionStates,
+  validatePolicyAutomationDecision,
 };

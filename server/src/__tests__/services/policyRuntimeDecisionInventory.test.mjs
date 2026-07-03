@@ -93,7 +93,7 @@ describe('policyRuntimeDecisionInventory', () => {
     expect(requiredContractPaths).toEqual(expect.arrayContaining([
       'server/src/services/policyRuntimeEvidenceProjection.mjs',
       'server/src/services/policyRuntimeEvidenceFingerprint.mjs',
-      'server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs',
+      'server/src/services/policyAutomationDecisionContract.mjs',
       'server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs',
       'server/src/services/policyBuilderPhase7RequestTimeLearning.mjs',
       'server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs',
@@ -213,7 +213,7 @@ describe('policyRuntimeDecisionInventory', () => {
     const inventory = buildPolicyRuntimeDecisionInventory({
       artifacts: listPolicyRuntimeArtifacts()
         .filter(artifact =>
-          artifact.path !== 'server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs'
+          artifact.path !== 'server/src/services/policyAutomationDecisionContract.mjs'
         ),
       checkPathExists: false,
     });
@@ -221,7 +221,7 @@ describe('policyRuntimeDecisionInventory', () => {
     expect(inventory.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: POLICY_RUNTIME_RISK_IDS.MISSING_RUNTIME_CONTRACT_SURFACE,
-        path: 'server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs',
+        path: 'server/src/services/policyAutomationDecisionContract.mjs',
       }),
     ]));
   });

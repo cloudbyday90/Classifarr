@@ -1,6 +1,6 @@
 import {
-  PHASE7R_AUTOMATION_DECISION_STATE_IDS,
-} from '../../services/policyBuilderPhase7AutomationDecisionContract.mjs';
+  POLICY_AUTOMATION_DECISION_STATE_IDS,
+} from '../../services/policyAutomationDecisionContract.mjs';
 import {
   PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS,
 } from '../../services/policyBuilderPhase7RuntimeQuestionReduction.mjs';
@@ -28,12 +28,12 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
   test('counts Phase 7R automation, question, learning, rebuild, and migration outcomes', () => {
     const metrics = buildPolicyBuilderPhase7RuntimeMetricsTrace({
       automationDecisions: [
-        { stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY },
-        { stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED },
-        { stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW },
-        { stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT },
-        { stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING },
-        { stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY },
+        { stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY },
+        { stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED },
+        { stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW },
+        { stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT },
+        { stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING },
+        { stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY },
       ],
       questionReductions: [
         { dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION },
@@ -109,7 +109,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
       maxTraceRecords: 2,
       automationDecisions: [
         {
-          stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+          stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
           rawPayload: {
             provider: 'suppressed',
           },
@@ -120,11 +120,11 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
           },
         },
         {
-          stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
+          stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
           prompt: 'do not expose',
         },
         {
-          stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE,
+          stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE,
           embedding: [0.1, 0.2],
         },
       ],
@@ -156,7 +156,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
     const metrics = buildPolicyBuilderPhase7RuntimeMetricsTrace({
       automationDecisions: [
         {
-          stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+          stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
           trace: {
             reasons: Array.from({ length: 20 }, (_, index) => ({
               reasonId: `reason_${index}`,
@@ -168,7 +168,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
 
     expect(metrics.traces[0]).toEqual(expect.objectContaining({
       componentId: PHASE7R_METRIC_COMPONENT_IDS.AUTOMATION_DECISION,
-      outcomeId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+      outcomeId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
       counterIds: [PHASE7R_METRIC_COUNTER_IDS.AUTO_ROUTED],
     }));
     expect(metrics.traces[0].reasons).toHaveLength(12);
@@ -183,7 +183,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
     const metrics = buildPolicyBuilderPhase7RuntimeMetricsTrace({
       automationDecisions: [
         {
-          stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+          stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
           trace: {
             attributes: {
               'classifarr.runtime.decision.evidence_projection_fingerprint': 'a'.repeat(64),
@@ -306,7 +306,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
   test('rejects traces that expose raw payloads, prompts, embeddings, providers, or diagnostics', () => {
     const metrics = buildPolicyBuilderPhase7RuntimeMetricsTrace({
       automationDecisions: [
-        { stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY },
+        { stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY },
       ],
     });
     metrics.traces[0].rawPayload = { leak: true };
@@ -339,7 +339,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
   test('rejects non-actionable operator summaries and trace summary mismatch', () => {
     const metrics = buildPolicyBuilderPhase7RuntimeMetricsTrace({
       automationDecisions: [
-        { stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY },
+        { stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY },
       ],
     });
     metrics.operatorSummaries.push({
@@ -362,7 +362,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
   test('rejects malformed or mismatched source fingerprints in traces', () => {
     const malformed = buildPolicyBuilderPhase7RuntimeMetricsTrace({
       automationDecisions: [
-        { stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY },
+        { stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY },
       ],
     });
     malformed.traces[0].sourceFingerprint = {
@@ -376,7 +376,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
     const mismatched = buildPolicyBuilderPhase7RuntimeMetricsTrace({
       automationDecisions: [
         {
-          stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+          stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
           trace: {
             attributes: {
               'classifarr.runtime.decision.evidence_projection_fingerprint': 'a'.repeat(64),

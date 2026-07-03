@@ -4,7 +4,7 @@
 
 Implemented as the fourth Phase 7R runtime contract.
 
-This slice consumes the Phase 7R automation decision state and decides whether
+This slice consumes the policy automation decision state and decides whether
 Classifarr should create a bounded operator question, suppress the question,
 ask for routing configuration, refresh the profile, block automation, gather
 evidence, or clean up a stale pending question. It does not persist questions,
@@ -93,7 +93,7 @@ Cons:
 
 ## Final Recommendation Stack
 
-1. Consume `phase7r.automation_decision.v1` as the only runtime decision input.
+1. Consume `policy.automation_decision.v1` as the only runtime decision input.
 2. Suppress questions for `auto_route_ready`.
 3. Convert `classified_not_routed` and `needs_routing_mapping` into routing
    actions, not persisted classification questions.
@@ -131,7 +131,7 @@ Cons:
 - Focused tests:
   `server/src/__tests__/services/policyBuilderPhase7RuntimeQuestionReduction.test.mjs`
 - Automation decision dependency:
-  `server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs`
+  `server/src/services/policyAutomationDecisionContract.mjs`
 - Question vocabulary dependency:
   `server/src/services/policyQuestionLearningVocabulary.mjs`
 - Roadmap owner:

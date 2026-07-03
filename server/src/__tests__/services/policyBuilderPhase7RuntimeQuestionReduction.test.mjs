@@ -4,10 +4,10 @@ import {
   REJECTED_QUESTION_FRAME_IDS,
 } from '../../services/policyQuestionLearningVocabulary.mjs';
 import {
-  PHASE7R_AUTOMATION_DECISION_ACTION_IDS,
-  PHASE7R_AUTOMATION_DECISION_STATE_IDS,
-  buildPolicyBuilderPhase7AutomationDecision,
-} from '../../services/policyBuilderPhase7AutomationDecisionContract.mjs';
+  POLICY_AUTOMATION_DECISION_ACTION_IDS,
+  POLICY_AUTOMATION_DECISION_STATE_IDS,
+  buildPolicyAutomationDecision,
+} from '../../services/policyAutomationDecisionContract.mjs';
 import {
   PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS,
   PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS,
@@ -21,7 +21,7 @@ import {
 } from '../../services/policyRuntimeEvidenceProjection.mjs';
 
 function buildStrongDecision(overrides = {}) {
-  return buildPolicyBuilderPhase7AutomationDecision({
+  return buildPolicyAutomationDecision({
     evidenceProjection: buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
@@ -57,7 +57,7 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
     expect(plan.createQuestion).toBe(false);
     expect(plan.question).toBeNull();
     expect(plan.nextAction).toEqual(expect.objectContaining({
-      actionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
+      actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
       label: 'Route automatically',
     }));
     expect(plan.decisionEvidenceFingerprint).toEqual(expect.objectContaining({
@@ -80,7 +80,7 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
   });
 
   test('turns classified_not_routed into routing action instead of a persisted question', () => {
-    const decision = buildPolicyBuilderPhase7AutomationDecision({
+    const decision = buildPolicyAutomationDecision({
       evidenceProjection: buildPolicyRuntimeEvidenceProjection({
         libraryProfile: {
           identityCandidates: [
@@ -101,12 +101,12 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
     });
     const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({ automationDecision: decision });
 
-    expect(decision.stateId).toBe(PHASE7R_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED);
+    expect(decision.stateId).toBe(POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED);
     expect(plan.dispositionId).toBe(PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING);
     expect(plan.createQuestion).toBe(false);
     expect(plan.proposedFrameId).toBe(QUESTION_FRAME_IDS.ROUTING_GAP);
     expect(plan.nextAction).toEqual(expect.objectContaining({
-      actionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING,
+      actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING,
       target: QUESTION_FRAME_IDS.ROUTING_GAP,
     }));
     expect(validatePolicyBuilderPhase7RuntimeQuestionReduction(plan).ok).toBe(true);
@@ -141,7 +141,7 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
     expect(hardLimitPlan.question).toEqual(expect.objectContaining({
       contractVersion: 'phase7r.runtime_question_reduction.v1',
       frameId: QUESTION_FRAME_IDS.HARD_LIMIT_CONFLICT,
-      decisionStateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
+      decisionStateId: POLICY_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
       decisionEvidenceFingerprint: expect.objectContaining({
         fingerprint: hardLimitPlan.decisionEvidenceFingerprint.fingerprint,
       }),
@@ -156,7 +156,7 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
 
     expect(missingEvidencePlan.question).toEqual(expect.objectContaining({
       frameId: QUESTION_FRAME_IDS.MISSING_EVIDENCE,
-      decisionStateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE,
+      decisionStateId: POLICY_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE,
     }));
     expect(validatePolicyBuilderPhase7RuntimeQuestionReduction(hardLimitPlan).ok).toBe(true);
     expect(validatePolicyBuilderPhase7RuntimeQuestionReduction(missingEvidencePlan).ok).toBe(true);
@@ -171,7 +171,7 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
       }),
     });
 
-    expect(plan.decision.stateId).toBe(PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW);
+    expect(plan.decision.stateId).toBe(POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW);
     expect(plan.question).toEqual(expect.objectContaining({
       frameId: QUESTION_FRAME_IDS.OUTLIER_REVIEW,
     }));
@@ -237,7 +237,7 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
       dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
       createQuestion: true,
       decision: {
-        stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+        stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
       },
       question: {
         frameId: REJECTED_QUESTION_FRAME_IDS.BROAD_GENRE_PRIORITY,

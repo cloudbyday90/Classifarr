@@ -6,16 +6,16 @@ import {
   buildPolicyRuntimeEvidenceProjection,
 } from '../../services/policyRuntimeEvidenceProjection.mjs';
 import {
-  PHASE7R_AUTOMATION_DECISION_ACTION_IDS,
-  PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS,
-  PHASE7R_AUTOMATION_DECISION_REASON_IDS,
-  PHASE7R_AUTOMATION_DECISION_STATE_IDS,
-  buildPolicyBuilderPhase7AutomationDecision,
-  buildPolicyBuilderPhase7AutomationDecisionContractAudit,
+  POLICY_AUTOMATION_DECISION_ACTION_IDS,
+  POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS,
+  POLICY_AUTOMATION_DECISION_REASON_IDS,
+  POLICY_AUTOMATION_DECISION_STATE_IDS,
+  buildPolicyAutomationDecision,
+  buildPolicyAutomationDecisionContractAudit,
   getAutomationDecisionState,
-  listPolicyBuilderPhase7AutomationDecisionStates,
-  validatePolicyBuilderPhase7AutomationDecision,
-} from '../../services/policyBuilderPhase7AutomationDecisionContract.mjs';
+  listPolicyAutomationDecisionStates,
+  validatePolicyAutomationDecision,
+} from '../../services/policyAutomationDecisionContract.mjs';
 
 function buildStrongRuntimeEvidence(overrides = {}) {
   return buildPolicyRuntimeEvidenceProjection({
@@ -38,28 +38,28 @@ function buildStrongRuntimeEvidence(overrides = {}) {
   });
 }
 
-describe('policyBuilderPhase7AutomationDecisionContract', () => {
-  test('defines the Phase 7R runtime automation decision states', () => {
-    expect(listPolicyBuilderPhase7AutomationDecisionStates().map(state => state.id)).toEqual([
-      PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
-      PHASE7R_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED,
-      PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
-      PHASE7R_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
-      PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING,
-      PHASE7R_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY,
-      PHASE7R_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE,
+describe('policyAutomationDecisionContract', () => {
+  test('defines the runtime automation decision states', () => {
+    expect(listPolicyAutomationDecisionStates().map(state => state.id)).toEqual([
+      POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+      POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED,
+      POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
+      POLICY_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
+      POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING,
+      POLICY_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY,
+      POLICY_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE,
     ]);
 
-    expect(getAutomationDecisionState(PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY))
+    expect(getAutomationDecisionState(POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY))
       .toEqual(expect.objectContaining({
-        actionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
+        actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
         automationAllowed: true,
         routeAllowed: true,
       }));
   });
 
   test('allows auto-route only when identity, routing, freshness, and risk gates pass', () => {
-    const decision = buildPolicyBuilderPhase7AutomationDecision({
+    const decision = buildPolicyAutomationDecision({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
@@ -70,8 +70,8 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
       },
     });
 
-    expect(decision.stateId).toBe(PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY);
-    expect(decision.actionId).toBe(PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR);
+    expect(decision.stateId).toBe(POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY);
+    expect(decision.actionId).toBe(POLICY_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR);
     expect(decision.automationAllowed).toBe(true);
     expect(decision.routeAllowed).toBe(true);
     expect(decision.classificationAllowed).toBe(true);
@@ -84,7 +84,7 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
       learningWritten: false,
     });
     expect(decision.trace.attributes).toEqual(expect.objectContaining({
-      'classifarr.runtime.decision.state': PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+      'classifarr.runtime.decision.state': POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
       'classifarr.runtime.decision.strong_identity': true,
       'classifarr.runtime.decision.route_mapped': true,
       'classifarr.runtime.decision.evidence_projection_fingerprint':
@@ -103,10 +103,10 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
     expect(JSON.stringify(decision.evidence.projectionFingerprint)).not.toContain('Radarr Animated Movies');
     expect(decision.trace.reasons).toEqual([
       expect.objectContaining({
-        reasonId: PHASE7R_AUTOMATION_DECISION_REASON_IDS.AUTOMATION_ROUTE_READY,
+        reasonId: POLICY_AUTOMATION_DECISION_REASON_IDS.AUTOMATION_ROUTE_READY,
       }),
     ]);
-    expect(validatePolicyBuilderPhase7AutomationDecision(decision).ok).toBe(true);
+    expect(validatePolicyAutomationDecision(decision).ok).toBe(true);
   });
 
   test('records completed classification without Arr mapping as classified_not_routed', () => {
@@ -120,7 +120,7 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
         routingTargets: ['Radarr Animated Movies'],
       },
     });
-    const decision = buildPolicyBuilderPhase7AutomationDecision({
+    const decision = buildPolicyAutomationDecision({
       evidenceProjection,
       classification: {
         status: 'completed',
@@ -131,20 +131,20 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
       },
     });
 
-    expect(decision.stateId).toBe(PHASE7R_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED);
+    expect(decision.stateId).toBe(POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED);
     expect(decision.classificationAllowed).toBe(true);
     expect(decision.routeAllowed).toBe(false);
     expect(decision.routeMapped).toBe(false);
     expect(decision.trace.reasons).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: PHASE7R_AUTOMATION_DECISION_REASON_IDS.CLASSIFICATION_WITHOUT_ROUTE,
+        reasonId: POLICY_AUTOMATION_DECISION_REASON_IDS.CLASSIFICATION_WITHOUT_ROUTE,
       }),
     ]));
-    expect(validatePolicyBuilderPhase7AutomationDecision(decision).ok).toBe(true);
+    expect(validatePolicyAutomationDecision(decision).ok).toBe(true);
   });
 
   test('uses needs_routing_mapping when destination identity is strong but no route target is mapped', () => {
-    const decision = buildPolicyBuilderPhase7AutomationDecision({
+    const decision = buildPolicyAutomationDecision({
       evidenceProjection: buildPolicyRuntimeEvidenceProjection({
         libraryProfile: {
           identityCandidates: [
@@ -157,14 +157,14 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
       },
     });
 
-    expect(decision.stateId).toBe(PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING);
-    expect(decision.actionId).toBe(PHASE7R_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING);
+    expect(decision.stateId).toBe(POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING);
+    expect(decision.actionId).toBe(POLICY_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING);
     expect(decision.classificationAllowed).toBe(false);
     expect(decision.routeAllowed).toBe(false);
   });
 
   test('blocks automation when hard-limit evaluation fails', () => {
-    const decision = buildPolicyBuilderPhase7AutomationDecision({
+    const decision = buildPolicyAutomationDecision({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
@@ -174,17 +174,17 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
       },
     });
 
-    expect(decision.stateId).toBe(PHASE7R_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT);
-    expect(decision.actionId).toBe(PHASE7R_AUTOMATION_DECISION_ACTION_IDS.BLOCK_AUTOMATION);
+    expect(decision.stateId).toBe(POLICY_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT);
+    expect(decision.actionId).toBe(POLICY_AUTOMATION_DECISION_ACTION_IDS.BLOCK_AUTOMATION);
     expect(decision.automationAllowed).toBe(false);
     expect(decision.trace.reasons[0]).toEqual(expect.objectContaining({
-      reasonId: PHASE7R_AUTOMATION_DECISION_REASON_IDS.HARD_LIMIT_VIOLATION,
+      reasonId: POLICY_AUTOMATION_DECISION_REASON_IDS.HARD_LIMIT_VIOLATION,
       bucketId: POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
     }));
   });
 
   test('uses stale_profile_retry before route decisions when profile evidence is stale', () => {
-    const decision = buildPolicyBuilderPhase7AutomationDecision({
+    const decision = buildPolicyAutomationDecision({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animated Movies', count: 10, confidence: 0.9, trusted: true },
@@ -200,16 +200,16 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
       },
     });
 
-    expect(decision.stateId).toBe(PHASE7R_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY);
-    expect(decision.actionId).toBe(PHASE7R_AUTOMATION_DECISION_ACTION_IDS.REFRESH_PROFILE);
+    expect(decision.stateId).toBe(POLICY_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY);
+    expect(decision.actionId).toBe(POLICY_AUTOMATION_DECISION_ACTION_IDS.REFRESH_PROFILE);
     expect(decision.routeAllowed).toBe(false);
     expect(decision.trace.reasons[0]).toEqual(expect.objectContaining({
-      reasonId: PHASE7R_AUTOMATION_DECISION_REASON_IDS.STALE_PROFILE,
+      reasonId: POLICY_AUTOMATION_DECISION_REASON_IDS.STALE_PROFILE,
     }));
   });
 
   test('requires operator review for avoid rules and high-risk evidence conflicts', () => {
-    const avoidDecision = buildPolicyBuilderPhase7AutomationDecision({
+    const avoidDecision = buildPolicyAutomationDecision({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
@@ -218,7 +218,7 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
         avoidRulesSatisfied: false,
       },
     });
-    const ragConflictDecision = buildPolicyBuilderPhase7AutomationDecision({
+    const ragConflictDecision = buildPolicyAutomationDecision({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animated Movies', count: 9, confidence: 0.9, trusted: true },
@@ -238,15 +238,15 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
       ],
     });
 
-    expect(avoidDecision.stateId).toBe(PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW);
+    expect(avoidDecision.stateId).toBe(POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW);
     expect(avoidDecision.trace.reasons[0].reasonId)
-      .toBe(PHASE7R_AUTOMATION_DECISION_REASON_IDS.AVOID_RULE_CONFLICT);
-    expect(ragConflictDecision.stateId).toBe(PHASE7R_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW);
+      .toBe(POLICY_AUTOMATION_DECISION_REASON_IDS.AVOID_RULE_CONFLICT);
+    expect(ragConflictDecision.stateId).toBe(POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW);
     expect(ragConflictDecision.evidence.counts.insufficient).toBe(1);
   });
 
   test('uses insufficient_evidence when weak runtime evidence is all that exists', () => {
-    const decision = buildPolicyBuilderPhase7AutomationDecision({
+    const decision = buildPolicyAutomationDecision({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.64 },
@@ -257,20 +257,20 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
       ],
     });
 
-    expect(decision.stateId).toBe(PHASE7R_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE);
-    expect(decision.actionId).toBe(PHASE7R_AUTOMATION_DECISION_ACTION_IDS.GATHER_EVIDENCE);
+    expect(decision.stateId).toBe(POLICY_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE);
+    expect(decision.actionId).toBe(POLICY_AUTOMATION_DECISION_ACTION_IDS.GATHER_EVIDENCE);
     expect(decision.strongIdentity).toBe(false);
     expect(decision.evidence.counts.identity).toBe(0);
     expect(decision.trace.reasons[0]).toEqual(expect.objectContaining({
-      reasonId: PHASE7R_AUTOMATION_DECISION_REASON_IDS.MISSING_STRONG_IDENTITY,
+      reasonId: POLICY_AUTOMATION_DECISION_REASON_IDS.MISSING_STRONG_IDENTITY,
     }));
   });
 
   test('rejects unsafe auto-route and side-effect claims', () => {
-    const validation = validatePolicyBuilderPhase7AutomationDecision({
-      version: 'phase7r.automation_decision.v1',
-      stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
-      actionId: PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
+    const validation = validatePolicyAutomationDecision({
+      version: 'policy.automation_decision.v1',
+      stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+      actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
       routeAllowed: true,
       routeMapped: false,
       strongIdentity: false,
@@ -294,32 +294,32 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITHOUT_STRONG_IDENTITY,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITHOUT_STRONG_IDENTITY,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITHOUT_ROUTING,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.AUTO_ROUTE_WITHOUT_ROUTING,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.INVALID_RUNTIME_EVIDENCE,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.INVALID_RUNTIME_EVIDENCE,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.DECISION_PERFORMED_SIDE_EFFECT,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.DECISION_PERFORMED_SIDE_EFFECT,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
       }),
     ]));
   });
 
   test('rejects automation decisions with malformed or unsafe evidence fingerprints', () => {
-    const decision = buildPolicyBuilderPhase7AutomationDecision({
+    const decision = buildPolicyAutomationDecision({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
         targetName: 'Radarr Animated Movies',
       },
     });
-    const validation = validatePolicyBuilderPhase7AutomationDecision({
+    const validation = validatePolicyAutomationDecision({
       ...decision,
       evidence: {
         ...decision.evidence,
@@ -346,26 +346,26 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.MALFORMED_EVIDENCE_FINGERPRINT,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.MALFORMED_EVIDENCE_FINGERPRINT,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.RAW_EVIDENCE_PROVENANCE_EXPOSED,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.RAW_EVIDENCE_PROVENANCE_EXPOSED,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
       }),
     ]));
   });
 
   test('rejects automation decisions without runtime evidence validation proof', () => {
-    const decision = buildPolicyBuilderPhase7AutomationDecision({
+    const decision = buildPolicyAutomationDecision({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
         targetName: 'Radarr Animated Movies',
       },
     });
-    const validation = validatePolicyBuilderPhase7AutomationDecision({
+    const validation = validatePolicyAutomationDecision({
       ...decision,
       evidence: {
         ...decision.evidence,
@@ -376,21 +376,21 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS
           .MISSING_RUNTIME_EVIDENCE_VALIDATION,
       }),
     ]));
   });
 
   test('rejects automation decisions when trace evidence validity drifts', () => {
-    const decision = buildPolicyBuilderPhase7AutomationDecision({
+    const decision = buildPolicyAutomationDecision({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
         targetName: 'Radarr Animated Movies',
       },
     });
-    const validation = validatePolicyBuilderPhase7AutomationDecision({
+    const validation = validatePolicyAutomationDecision({
       ...decision,
       trace: {
         ...decision.trace,
@@ -404,27 +404,27 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS
+        riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS
           .TRACE_EVIDENCE_VALID_MISMATCH,
       }),
     ]));
   });
 
   test('passes the default automation decision contract audit', () => {
-    const decision = buildPolicyBuilderPhase7AutomationDecision({
+    const decision = buildPolicyAutomationDecision({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
         targetName: 'Radarr Animated Movies',
       },
     });
-    const audit = buildPolicyBuilderPhase7AutomationDecisionContractAudit(decision);
+    const audit = buildPolicyAutomationDecisionContractAudit(decision);
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedStateCount).toBe(7);
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '7r_4',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'runtime_question_reduction',
       label: 'Runtime Question Reduction',
     }));
   });

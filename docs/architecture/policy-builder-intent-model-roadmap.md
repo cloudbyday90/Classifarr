@@ -3770,9 +3770,9 @@ Implementation status:
 - Phase 7R.3 automation decision contract is documented in
   [Policy Builder Phase 7R Automation Decision Contract](policy-builder-phase-7r-automation-decision-contract.md).
 - The server-owned automation decision contract lives in
-  `server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs`.
+  `server/src/services/policyAutomationDecisionContract.mjs`.
 - The focused automation-decision test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase7AutomationDecisionContract.test.mjs`.
+  `server/src/__tests__/services/policyAutomationDecisionContract.test.mjs`.
 - Current implementation defines the runtime states `auto_route_ready`,
   `classified_not_routed`, `needs_operator_review`,
   `blocked_by_hard_limit`, `needs_routing_mapping`, `stale_profile_retry`,
@@ -3827,7 +3827,7 @@ Implementation status:
   `server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs`.
 - The focused runtime-question test suite lives in
   `server/src/__tests__/services/policyBuilderPhase7RuntimeQuestionReduction.test.mjs`.
-- Current implementation consumes `phase7r.automation_decision.v1` and returns
+- Current implementation consumes `policy.automation_decision.v1` and returns
   a disposition instead of directly creating questions: `suppress_question`,
   `create_operator_question`, `configure_routing`, `refresh_profile`,
   `block_automation`, `gather_evidence`, or `stale_question_cleanup`.
@@ -6253,6 +6253,23 @@ Implementation status:
 - After the operator-workflow cutover, the repository inventory validates with
   14,446 total phase-coded references, 6,480 production references, and 6,502
   rename candidates.
+- The next runtime module cutover renamed the runtime evidence projection and
+  runtime evidence fingerprint helpers to durable product-domain names, moved
+  their contracts to `policy.runtime_evidence_projection.v1` and
+  `policy.runtime_evidence_fingerprint.v1`, and replaced projection-local phase
+  handoffs with `nextStep`:
+  [Policy Runtime Evidence Projection Module Cutover](policy-runtime-evidence-projection-module-cutover.md).
+- After the runtime-evidence-projection cutover, the repository inventory
+  validates with 13,709 total phase-coded references, 5,875 production
+  references, and 5,897 rename candidates.
+- The next runtime module cutover renamed the automation decision contract to
+  `policyAutomationDecisionContract.mjs`, renamed its focused test, moved the
+  decision contract to `policy.automation_decision.v1`, and replaced the
+  contract-local phase handoff with `nextStep`:
+  [Policy Automation Decision Contract Module Cutover](policy-automation-decision-contract-module-cutover.md).
+- After the automation-decision-contract cutover, the repository inventory
+  validates with 13,331 total phase-coded references, 5,735 production
+  references, and 5,757 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
@@ -6325,7 +6342,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 3, 2026
   baseline for production references, rename candidates, and obsolete migration
   tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `7514` production references, `7536` rename
+- The current baseline is `5735` production references, `5757` rename
   candidates, and `93` obsolete migration tooling references. Future durable
   rename batches should lower this baseline after inventory validation proves
   the debt decreased.

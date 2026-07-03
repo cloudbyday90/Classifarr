@@ -3,8 +3,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  buildPolicyBuilderPhase7AutomationDecisionContractAudit,
-} from './policyBuilderPhase7AutomationDecisionContract.mjs';
+  buildPolicyAutomationDecisionContractAudit,
+} from './policyAutomationDecisionContract.mjs';
 import {
   buildPolicyBuilderPhase7LibraryPolicyRebuildAudit,
 } from './policyBuilderPhase7LibraryPolicyRebuild.mjs';
@@ -70,6 +70,9 @@ const PHASE7R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
   [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_EVIDENCE_PROJECTION]: Object.freeze({
     automation_decision_contract: '7r_3',
   }),
+  [PHASE7R_COMPLETION_COMPONENT_IDS.AUTOMATION_DECISION_CONTRACT]: Object.freeze({
+    runtime_question_reduction: '7r_4',
+  }),
 });
 
 const PHASE7R_COMPONENT_RECORDS = Object.freeze([
@@ -95,8 +98,8 @@ const PHASE7R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE7R_COMPLETION_COMPONENT_IDS.AUTOMATION_DECISION_CONTRACT,
     label: 'Automation decision contract',
     docPath: 'docs/architecture/policy-builder-phase-7r-automation-decision-contract.md',
-    servicePath: 'server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase7AutomationDecisionContract.test.mjs',
+    servicePath: 'server/src/services/policyAutomationDecisionContract.mjs',
+    testPath: 'server/src/__tests__/services/policyAutomationDecisionContract.test.mjs',
     expectedNextPhaseId: '7r_4',
     evidence: 'Automation decisions separate auto-route, classify-only, review, stale profile, routing gap, and hard-limit outcomes.',
   },
@@ -207,7 +210,7 @@ function buildDefaultComponentAudits() {
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_EVIDENCE_PROJECTION]:
       buildPolicyRuntimeEvidenceProjectionAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.AUTOMATION_DECISION_CONTRACT]:
-      buildPolicyBuilderPhase7AutomationDecisionContractAudit(),
+      buildPolicyAutomationDecisionContractAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_QUESTION_REDUCTION]:
       buildPolicyBuilderPhase7RuntimeQuestionReductionAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.REQUEST_TIME_LEARNING]:

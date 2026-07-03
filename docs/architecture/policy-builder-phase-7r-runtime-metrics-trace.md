@@ -139,7 +139,7 @@ Cons:
 - Focused tests:
   `server/src/__tests__/services/policyBuilderPhase7RuntimeMetricsTrace.test.mjs`
 - Automation decision dependency:
-  `server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs`
+  `server/src/services/policyAutomationDecisionContract.mjs`
 - Runtime question dependency:
   `server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs`
 - Request learning dependency:

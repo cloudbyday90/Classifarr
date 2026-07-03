@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Automation Decision Contract Module Cutover** — renamed the runtime
+  automation decision contract and focused test to durable product-domain names,
+  moved the decision contract to `policy.automation_decision.v1`, replaced the
+  contract-local phase handoff with `nextStep`, updated downstream runtime
+  consumers, and retained the completion-audit adapter for the runtime question
+  reduction handoff.
 - **Policy Runtime Evidence Projection Module Cutover** — renamed the runtime
   evidence projection and fingerprint helpers plus focused projection tests to
   durable product-domain names, moved projection and fingerprint contracts to
