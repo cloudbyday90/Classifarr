@@ -153,7 +153,7 @@ Cons:
 - Rebuild proposal dependency:
   `server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs`
 - Migration/deletion plan dependency:
-  `server/src/services/policyBuilderPhase6MigrationDeletionPath.mjs`
+  `server/src/services/policyMigrationDeletionPath.mjs`
 - Roadmap owner:
   Phase 7R.7 Migration Verifier And Rollback Path in
   `docs/architecture/policy-builder-intent-model-roadmap.md`

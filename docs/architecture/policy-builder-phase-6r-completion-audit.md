@@ -100,7 +100,7 @@ Cons:
 - Completion audit tests:
   `server/src/__tests__/services/policyBuilderPhase6CompletionAudit.test.mjs`
 - Migration cutline input:
-  `server/src/services/policyBuilderPhase6MigrationDeletionPath.mjs`
+  `server/src/services/policyMigrationDeletionPath.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-completion-audit.md`
 - Roadmap owner:

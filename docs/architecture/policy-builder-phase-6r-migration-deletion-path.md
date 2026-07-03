@@ -132,11 +132,11 @@ Cons:
 ## Final Recommendation Stack
 
 - Migration cutline service:
-  `server/src/services/policyBuilderPhase6MigrationDeletionPath.mjs`
+  `server/src/services/policyMigrationDeletionPath.mjs`
 - Bounded migration wrapper:
-  `buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow`
+  `buildPolicyMigrationDeletionPlanFromBoundedWorkflow`
 - Test module:
-  `server/src/__tests__/services/policyBuilderPhase6MigrationDeletionPath.test.mjs`
+  `server/src/__tests__/services/policyMigrationDeletionPath.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-migration-deletion-path.md`
 - Quality gate documentation:
@@ -149,20 +149,20 @@ Cons:
 
 The service exports:
 
-- `PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS`
-- `PHASE6R_MIGRATION_GATE_IDS`
-- `PHASE6R_MIGRATION_VERIFIER_KIND_IDS`
-- `PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS`
-- `listPolicyBuilderPhase6MigrationArtifacts`
-- `buildPolicyBuilderPhase6MigrationPlan`
-- `buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow`
+- `POLICY_MIGRATION_ARTIFACT_DECISION_IDS`
+- `POLICY_MIGRATION_GATE_IDS`
+- `POLICY_MIGRATION_VERIFIER_KIND_IDS`
+- `POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS`
+- `listPolicyMigrationDeletionArtifacts`
+- `buildPolicyMigrationDeletionPlan`
+- `buildPolicyMigrationDeletionPlanFromBoundedWorkflow`
 - `validateMigrationArtifact`
-- `validatePolicyBuilderPhase6MigrationPlan`
-- `buildPolicyBuilderPhase6MigrationDeletionAudit`
+- `validatePolicyMigrationDeletionPlan`
+- `buildPolicyMigrationDeletionAudit`
 
 Default decisions:
 
-- Keep Phase 6R evidence and intent engines as engine primitives.
+- Keep policy evidence and intent engines as engine primitives.
 - Treat old server-side impact, replay, parity, enrichment eligibility,
   evidence completeness, and TMDB coverage artifacts as migration verifier
   machinery when their deterministic reducers remain useful for parity.
@@ -170,16 +170,16 @@ Default decisions:
   old diagnostic tests, provider-readiness replay helpers, TMDB adapter
   execution helpers, and the pre-6R implementation document for deletion after
   migration gates pass.
-- Treat `database/schema/current.sql` as a Phase 8R storage blocker.
+- Treat `database/schema/current.sql` as a native-storage blocker.
 
 Default gates:
 
-- `phase6_engine_contracts_stable`
+- `policy_engine_contracts_stable`
 - `representative_comparison_defined`
 - `rollback_snapshot_defined`
 - `rollback_window_defined`
 - `delete_checklist_defined`
-- `native_storage_blocked_until_phase8`
+- `native_storage_blocked_until_migration_ready`
 
 The bounded wrapper returns:
 
@@ -191,7 +191,7 @@ plan
 migrationAudit
 issueCount
 issues[]
-nextPhase
+nextStep
 ```
 
 Supported bounded wrapper status IDs:
@@ -221,7 +221,8 @@ projectionFingerprintMatch
 - No live provider calls or raw provider payloads are required for the cutline.
 - Old diagnostics are not allowed in the normal operator workflow.
 - Rollback snapshots and restore path are mandatory before migration deletion.
-- Native intent storage remains blocked until Phase 8R owns the schema plan.
+- Native intent storage remains blocked until the native storage schema plan
+  owns the migration path.
 - The bounded wrapper rejects failed workflow contracts, missing bounded
   provenance, mismatched projection fingerprints, and non-passing bounded
   workflow audits before returning a migration/deletion plan.

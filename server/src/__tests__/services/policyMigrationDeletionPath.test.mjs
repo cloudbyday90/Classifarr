@@ -20,18 +20,18 @@ import {
   buildPolicyOperatorWorkflowFromBoundedReadiness,
 } from '../../services/policyOperatorWorkflow.mjs';
 import {
-  PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS,
-  PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS,
-  PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS,
-  PHASE6R_MIGRATION_GATE_IDS,
-  PHASE6R_MIGRATION_VERIFIER_KIND_IDS,
-  buildPolicyBuilderPhase6MigrationDeletionAudit,
-  buildPolicyBuilderPhase6MigrationPlan,
-  buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow,
-  listPolicyBuilderPhase6MigrationArtifacts,
+  POLICY_MIGRATION_ARTIFACT_DECISION_IDS,
+  POLICY_MIGRATION_BOUNDARY_STATUS_IDS,
+  POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS,
+  POLICY_MIGRATION_GATE_IDS,
+  POLICY_MIGRATION_VERIFIER_KIND_IDS,
+  buildPolicyMigrationDeletionAudit,
+  buildPolicyMigrationDeletionPlan,
+  buildPolicyMigrationDeletionPlanFromBoundedWorkflow,
+  listPolicyMigrationDeletionArtifacts,
   validateMigrationArtifact,
-  validatePolicyBuilderPhase6MigrationPlan,
-} from '../../services/policyBuilderPhase6MigrationDeletionPath.mjs';
+  validatePolicyMigrationDeletionPlan,
+} from '../../services/policyMigrationDeletionPath.mjs';
 
 function buildBoundedWorkflowResult() {
   const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
@@ -93,9 +93,9 @@ function withWorkflowQuality(result, quality) {
   return nextResult;
 }
 
-describe('policyBuilderPhase6MigrationDeletionPath', () => {
+describe('policyMigrationDeletionPath', () => {
   test('classifies real policy-builder diagnostic artifacts', () => {
-    const paths = listPolicyBuilderPhase6MigrationArtifacts().map(artifact => artifact.path);
+    const paths = listPolicyMigrationDeletionArtifacts().map(artifact => artifact.path);
 
     expect(paths).toEqual(expect.arrayContaining([
       'client/src/components/policies/PolicyIntentImpactPreviewCard.vue',
@@ -111,48 +111,48 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
     ]));
   });
 
-  test('separates keep, verifier, delete, and Phase 8 storage blocker decisions', () => {
-    const artifacts = listPolicyBuilderPhase6MigrationArtifacts();
+  test('separates keep, verifier, delete, and native storage blocker decisions', () => {
+    const artifacts = listPolicyMigrationDeletionArtifacts();
     const decisions = new Set(artifacts.map(artifact => artifact.decisionId));
 
     expect(decisions).toEqual(new Set([
-      PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.KEEP_ENGINE_PRIMITIVE,
-      PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER,
-      PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
-      PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.PHASE8_STORAGE_BLOCKER,
+      POLICY_MIGRATION_ARTIFACT_DECISION_IDS.KEEP_ENGINE_PRIMITIVE,
+      POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER,
+      POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
+      POLICY_MIGRATION_ARTIFACT_DECISION_IDS.NATIVE_STORAGE_BLOCKER,
     ]));
 
     expect(artifacts.filter(artifact =>
-      artifact.decisionId === PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER
+      artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER
     ).map(artifact => artifact.verifierKindId)).toEqual(expect.arrayContaining([
-      PHASE6R_MIGRATION_VERIFIER_KIND_IDS.IMPACT_PARITY,
-      PHASE6R_MIGRATION_VERIFIER_KIND_IDS.REPRESENTATIVE_REPLAY,
-      PHASE6R_MIGRATION_VERIFIER_KIND_IDS.ENRICHMENT_COVERAGE,
+      POLICY_MIGRATION_VERIFIER_KIND_IDS.IMPACT_PARITY,
+      POLICY_MIGRATION_VERIFIER_KIND_IDS.REPRESENTATIVE_REPLAY,
+      POLICY_MIGRATION_VERIFIER_KIND_IDS.ENRICHMENT_COVERAGE,
     ]));
   });
 
-  test('builds a migration plan with all required gates and Phase 8 storage blocked', () => {
-    const plan = buildPolicyBuilderPhase6MigrationPlan();
+  test('builds a migration plan with all required gates and native storage blocked', () => {
+    const plan = buildPolicyMigrationDeletionPlan();
 
     expect(plan).toEqual(expect.objectContaining({
-      version: 'phase6r.migration_deletion_path.v1',
-      phaseId: '6r_6',
+      version: 'policy.migration_deletion_path.v1',
+      stepId: 'migration_deletion_path',
       normalWorkflowAllowsDiagnostics: false,
-      phase8StorageMigrationBlocked: true,
+      nativeStorageMigrationBlocked: true,
     }));
     expect(plan.requiredGateIds).toEqual([
-      PHASE6R_MIGRATION_GATE_IDS.PHASE6_ENGINE_CONTRACTS_STABLE,
-      PHASE6R_MIGRATION_GATE_IDS.REPRESENTATIVE_COMPARISON_DEFINED,
-      PHASE6R_MIGRATION_GATE_IDS.ROLLBACK_SNAPSHOT_DEFINED,
-      PHASE6R_MIGRATION_GATE_IDS.ROLLBACK_WINDOW_DEFINED,
-      PHASE6R_MIGRATION_GATE_IDS.DELETE_CHECKLIST_DEFINED,
-      PHASE6R_MIGRATION_GATE_IDS.NATIVE_STORAGE_BLOCKED_UNTIL_PHASE8,
+      POLICY_MIGRATION_GATE_IDS.POLICY_ENGINE_CONTRACTS_STABLE,
+      POLICY_MIGRATION_GATE_IDS.REPRESENTATIVE_COMPARISON_DEFINED,
+      POLICY_MIGRATION_GATE_IDS.ROLLBACK_SNAPSHOT_DEFINED,
+      POLICY_MIGRATION_GATE_IDS.ROLLBACK_WINDOW_DEFINED,
+      POLICY_MIGRATION_GATE_IDS.DELETE_CHECKLIST_DEFINED,
+      POLICY_MIGRATION_GATE_IDS.NATIVE_STORAGE_BLOCKED_UNTIL_MIGRATION_READY,
     ]);
     expect(plan.rollbackPlan).toEqual(expect.objectContaining({
       snapshotRequired: true,
       restorePathRequired: true,
       retentionWindowDays: 30,
-      phase8StorageMigrationAllowed: false,
+      nativeStorageMigrationAllowed: false,
     }));
     expect(plan.validation.ok).toBe(true);
   });
@@ -160,21 +160,21 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
   test('builds a bounded migration plan from a bounded operator workflow result', () => {
     const boundedWorkflowResult = buildBoundedWorkflowResult();
 
-    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+    const result = buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
       boundedWorkflowResult,
     });
 
     expect(result).toEqual(expect.objectContaining({
       ok: true,
-      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.READY,
+      statusId: POLICY_MIGRATION_BOUNDARY_STATUS_IDS.READY,
       issueCount: 0,
-      nextPhase: expect.objectContaining({
-        phaseId: '7r_1',
+      nextStep: expect.objectContaining({
+        stepId: 'runtime_decision_inventory',
       }),
     }));
     expect(result.plan).toEqual(expect.objectContaining({
-      version: 'phase6r.migration_deletion_path.v1',
-      phase8StorageMigrationBlocked: true,
+      version: 'policy.migration_deletion_path.v1',
+      nativeStorageMigrationBlocked: true,
       boundaryContext: expect.objectContaining({
         projectionFingerprintMatch: true,
       }),
@@ -194,7 +194,7 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
   });
 
   test('blocks bounded migration planning when bounded workflow is missing', () => {
-    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+    const result = buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
       boundedWorkflowResult: {
         ok: false,
       },
@@ -202,16 +202,16 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      statusId: POLICY_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
       plan: null,
       migrationAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_WORKFLOW,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_WORKFLOW,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_PROVENANCE,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_PROVENANCE,
       }),
     ]));
   });
@@ -226,13 +226,13 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
       },
     };
 
-    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+    const result = buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
       boundedWorkflowResult: failedWorkflowAuditResult,
     });
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      statusId: POLICY_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
       plan: null,
       migrationAudit: null,
       boundaryContext: expect.objectContaining({
@@ -243,7 +243,7 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_WORKFLOW_AUDIT_NOT_PASSING,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_WORKFLOW_AUDIT_NOT_PASSING,
       }),
     ]));
   });
@@ -264,13 +264,13 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
       },
     };
 
-    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+    const result = buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
       boundedWorkflowResult: mismatchedWorkflowResult,
     });
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      statusId: POLICY_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
       plan: null,
       migrationAudit: null,
       boundaryContext: expect.objectContaining({
@@ -279,7 +279,7 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
       }),
     ]));
   });
@@ -288,13 +288,13 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
     const boundedWorkflowResult = clonePlain(buildBoundedWorkflowResult());
     boundedWorkflowResult.workflow.boundaryContext.readinessBoundary.intentQuality = null;
 
-    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+    const result = buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
       boundedWorkflowResult,
     });
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      statusId: POLICY_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
       plan: null,
       migrationAudit: null,
       boundaryContext: expect.objectContaining({
@@ -305,7 +305,7 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
       }),
     ]));
   });
@@ -319,19 +319,19 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
       reasonIds: ['missing_identity'],
     };
 
-    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+    const result = buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
       boundedWorkflowResult: withWorkflowQuality(boundedWorkflowResult, insufficientQuality),
     });
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      statusId: POLICY_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
       plan: null,
       migrationAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_QUALITY_INSUFFICIENT,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_QUALITY_INSUFFICIENT,
         nextActionId: 'confirm_destination_identity',
       }),
     ]));
@@ -350,13 +350,13 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
     boundedWorkflowResult.workflow.boundaryContext =
       clonePlain(boundedWorkflowResult.boundaryContext);
 
-    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+    const result = buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
       boundedWorkflowResult,
     });
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      statusId: POLICY_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
       plan: null,
       migrationAudit: null,
       boundaryContext: expect.objectContaining({
@@ -367,24 +367,24 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_QUALITY_MISMATCH,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_QUALITY_MISMATCH,
       }),
     ]));
   });
 
   test('keeps old diagnostic artifacts out of the normal workflow', () => {
-    const diagnosticArtifacts = listPolicyBuilderPhase6MigrationArtifacts()
+    const diagnosticArtifacts = listPolicyMigrationDeletionArtifacts()
       .filter(artifact => [
-        PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER,
-        PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
+        POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER,
+        POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
       ].includes(artifact.decisionId));
 
     expect(diagnosticArtifacts.length).toBeGreaterThan(0);
     diagnosticArtifacts.forEach(artifact => {
       expect(artifact.normalWorkflowAllowed).toBe(false);
       expect(artifact.removalGateIds).toEqual(expect.arrayContaining([
-        PHASE6R_MIGRATION_GATE_IDS.ROLLBACK_SNAPSHOT_DEFINED,
-        PHASE6R_MIGRATION_GATE_IDS.DELETE_CHECKLIST_DEFINED,
+        POLICY_MIGRATION_GATE_IDS.ROLLBACK_SNAPSHOT_DEFINED,
+        POLICY_MIGRATION_GATE_IDS.DELETE_CHECKLIST_DEFINED,
       ]));
       expect(artifact.rollbackPlan).toEqual(expect.objectContaining({
         snapshotRequired: true,
@@ -394,15 +394,15 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
   });
 
   test('passes the default migration deletion audit', () => {
-    const audit = buildPolicyBuilderPhase6MigrationDeletionAudit();
+    const audit = buildPolicyMigrationDeletionAudit();
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedArtifactCount).toBeGreaterThanOrEqual(10);
     expect(audit.verifierCount).toBeGreaterThan(0);
     expect(audit.deleteCount).toBeGreaterThan(0);
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '7r_1',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'runtime_decision_inventory',
       label: 'Runtime Decision Inventory And Cutline',
     }));
   });
@@ -410,8 +410,8 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
   test('rejects migration artifacts without owner, replacement, gates, or rollback', () => {
     const result = validateMigrationArtifact({
       path: 'client/src/components/policies/PolicyIntentReplayPreviewCard.vue',
-      decisionId: PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
-      verifierKindId: PHASE6R_MIGRATION_VERIFIER_KIND_IDS.REPRESENTATIVE_REPLAY,
+      decisionId: POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
+      verifierKindId: POLICY_MIGRATION_VERIFIER_KIND_IDS.REPRESENTATIVE_REPLAY,
       normalWorkflowAllowed: true,
       rollbackPlan: {
         snapshotRequired: false,
@@ -421,53 +421,53 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
 
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_OWNER,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_OWNER,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_REPLACEMENT,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_REPLACEMENT,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_REMOVAL_GATE,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_REMOVAL_GATE,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_ROLLBACK_PLAN,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_ROLLBACK_PLAN,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_RETENTION_WINDOW,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_RETENTION_WINDOW,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.NORMAL_FLOW_DIAGNOSTIC_SURFACE,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.NORMAL_FLOW_DIAGNOSTIC_SURFACE,
       }),
     ]));
   });
 
-  test('rejects Phase 8 native storage migration before engine and rollback gates pass', () => {
-    const plan = buildPolicyBuilderPhase6MigrationPlan({
+  test('rejects native storage migration before engine and rollback gates pass', () => {
+    const plan = buildPolicyMigrationDeletionPlan({
       requiredGateIds: [
-        PHASE6R_MIGRATION_GATE_IDS.PHASE6_ENGINE_CONTRACTS_STABLE,
+        POLICY_MIGRATION_GATE_IDS.POLICY_ENGINE_CONTRACTS_STABLE,
       ],
       rollbackPlan: {
         snapshotRequired: true,
         restorePathRequired: true,
         retentionWindowDays: 30,
-        phase8StorageMigrationAllowed: true,
+        nativeStorageMigrationAllowed: true,
       },
     });
-    const validation = validatePolicyBuilderPhase6MigrationPlan({
+    const validation = validatePolicyMigrationDeletionPlan({
       ...plan,
-      phase8StorageMigrationBlocked: false,
+      nativeStorageMigrationBlocked: false,
       normalWorkflowAllowsDiagnostics: true,
     });
 
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_REQUIRED_GATE,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_REQUIRED_GATE,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.PHASE8_NOT_BLOCKED,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.NATIVE_STORAGE_NOT_BLOCKED,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.NORMAL_FLOW_DIAGNOSTIC_SURFACE,
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.NORMAL_FLOW_DIAGNOSTIC_SURFACE,
       }),
     ]));
   });

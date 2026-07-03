@@ -3485,12 +3485,12 @@ Implementation status:
 - Phase 6R.6 migration and deletion path is documented in
   [Policy Builder Phase 6R Migration And Deletion Path](policy-builder-phase-6r-migration-deletion-path.md).
 - The server-owned migration cutline lives in
-  `server/src/services/policyBuilderPhase6MigrationDeletionPath.mjs`.
+  `server/src/services/policyMigrationDeletionPath.mjs`.
 - The focused migration/deletion test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase6MigrationDeletionPath.test.mjs`.
+  `server/src/__tests__/services/policyMigrationDeletionPath.test.mjs`.
 - Current implementation classifies policy-builder artifacts as
   `keep_engine_primitive`, `migration_verifier`, `delete_after_migration`, or
-  `phase8_storage_blocker`.
+  `native_storage_blocker`.
 - Old impact preview, replay preview, provider readiness, TMDB coverage, raw
   scoring, and policy-write diagnostics are verifier-only or delete-after-
   migration targets, never normal operator workflow.

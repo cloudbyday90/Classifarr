@@ -12,10 +12,10 @@ import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from '../../services/policyEvidenceQuality.mjs';
 import {
-  PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS,
-  buildPolicyBuilderPhase6MigrationPlan,
-  listPolicyBuilderPhase6MigrationArtifacts,
-} from '../../services/policyBuilderPhase6MigrationDeletionPath.mjs';
+  POLICY_MIGRATION_ARTIFACT_DECISION_IDS,
+  buildPolicyMigrationDeletionPlan,
+  listPolicyMigrationDeletionArtifacts,
+} from '../../services/policyMigrationDeletionPath.mjs';
 
 const stableQuality = Object.freeze({
   version: 'policy.evidence.quality.v1',
@@ -69,7 +69,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
 
   test('requires legacy replay, impact, provider, TMDB, and old Phase 6 docs to have cutline decisions', () => {
     const requiredPaths = listPolicyBuilderPhase6RequiredLegacyCutlineArtifacts();
-    const classifiedPaths = listPolicyBuilderPhase6MigrationArtifacts()
+    const classifiedPaths = listPolicyMigrationDeletionArtifacts()
       .map(artifact => artifact.path);
 
     expect(requiredPaths).toEqual(expect.arrayContaining([
@@ -571,11 +571,11 @@ describe('policyBuilderPhase6CompletionAudit', () => {
   });
 
   test('rejects missing legacy cutline decisions and premature Phase 8 storage migration', () => {
-    const migrationPlan = buildPolicyBuilderPhase6MigrationPlan();
+    const migrationPlan = buildPolicyMigrationDeletionPlan();
     const artifacts = migrationPlan.artifacts
       .filter(artifact =>
         artifact.path !== 'client/src/components/policies/PolicyIntentImpactPreviewCard.vue' &&
-        artifact.decisionId !== PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.PHASE8_STORAGE_BLOCKER
+        artifact.decisionId !== POLICY_MIGRATION_ARTIFACT_DECISION_IDS.NATIVE_STORAGE_BLOCKER
       );
     const audit = buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit({
       artifacts,
@@ -592,7 +592,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
   });
 
   test('rejects legacy diagnostic artifacts still allowed in normal workflow', () => {
-    const artifacts = listPolicyBuilderPhase6MigrationArtifacts().map(artifact =>
+    const artifacts = listPolicyMigrationDeletionArtifacts().map(artifact =>
       artifact.path === 'client/src/components/policies/PolicyIntentReplayPreviewCard.vue'
         ? { ...artifact, normalWorkflowAllowed: true }
         : artifact

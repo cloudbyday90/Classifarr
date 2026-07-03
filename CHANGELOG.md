@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Migration Deletion Path Module Cutover** — renamed the migration and
+  deletion path plus focused test to durable product-domain names, moved the
+  migration contract to `policy.migration_deletion_path.v1`, replaced
+  migration-local phase handoffs with `nextStep`, switched storage gates to
+  native-storage field names, updated downstream verifier imports, and added a
+  legacy completion-audit adapter for the runtime-decision-inventory handoff.
 - **Policy Operator Workflow Module Cutover** — renamed the operator workflow
   projection and focused test to durable product-domain names, moved the
   workflow contract to `policy.operator_workflow.v1`, replaced the

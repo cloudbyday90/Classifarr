@@ -83,17 +83,18 @@ Cons:
 
 - Adds another invariant to migration fixtures.
 - Does not remove old verifier/deletion target code by itself.
-- Does not rename phase-coded production modules; Phase 9R owns that after
-  replacement behavior is proven.
+- Historical phase-coded migration module names have been cut over to durable
+  policy-domain names; remaining cleanup stays tied to explicit migration
+  gates.
 
 ## Final Recommendation Stack
 
 - Workflow quality source:
   `server/src/services/policyOperatorWorkflow.mjs`
 - Migration boundary:
-  `server/src/services/policyBuilderPhase6MigrationDeletionPath.mjs`
+  `server/src/services/policyMigrationDeletionPath.mjs`
 - Test module:
-  `server/src/__tests__/services/policyBuilderPhase6MigrationDeletionPath.test.mjs`
+  `server/src/__tests__/services/policyMigrationDeletionPath.test.mjs`
 - Existing migration record:
   `docs/architecture/policy-builder-phase-6r-migration-deletion-path.md`
 - Roadmap owner:

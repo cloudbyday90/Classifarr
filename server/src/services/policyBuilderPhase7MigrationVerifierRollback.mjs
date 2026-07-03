@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto';
 
 import {
-  PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS,
-  buildPolicyBuilderPhase6MigrationPlan,
-  validatePolicyBuilderPhase6MigrationPlan,
-} from './policyBuilderPhase6MigrationDeletionPath.mjs';
+  POLICY_MIGRATION_ARTIFACT_DECISION_IDS,
+  buildPolicyMigrationDeletionPlan,
+  validatePolicyMigrationDeletionPlan,
+} from './policyMigrationDeletionPath.mjs';
 import {
   PHASE7R_REBUILD_PROPOSAL_STATUS_IDS,
   buildPolicyBuilderPhase7LibraryPolicyRebuildProposal,
@@ -390,7 +390,7 @@ function buildDeletionCriteria({ input, differences, migrationPlan, applicationG
   const verifierPassed = differences.length === 0;
   const deleteTargetCount = asArray(migrationPlan.artifacts)
     .filter(artifact =>
-      artifact.decisionId === PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION
+      artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION
     ).length;
 
   const criteria = [
@@ -470,9 +470,9 @@ function buildPolicyBuilderPhase7MigrationVerifierReport(input = {}) {
   const proposal = input.proposal?.version === 'phase7r.library_policy_rebuild.v1'
     ? input.proposal
     : buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(input.proposalInput || {});
-  const migrationPlan = input.migrationPlan?.version === 'phase6r.migration_deletion_path.v1'
+  const migrationPlan = input.migrationPlan?.version === 'policy.migration_deletion_path.v1'
     ? input.migrationPlan
-    : buildPolicyBuilderPhase6MigrationPlan();
+    : buildPolicyMigrationDeletionPlan();
   const maxDifferences = Number.isFinite(Number(input.maxDifferences))
     ? Math.max(1, Math.trunc(Number(input.maxDifferences)))
     : MAX_DIFFERENCES_DEFAULT;
@@ -509,7 +509,7 @@ function buildPolicyBuilderPhase7MigrationVerifierReport(input = {}) {
     statusId,
     proposal,
     proposalValidation: validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal),
-    migrationPlanValidation: validatePolicyBuilderPhase6MigrationPlan(migrationPlan),
+    migrationPlanValidation: validatePolicyMigrationDeletionPlan(migrationPlan),
     sampleSummary: {
       comparedCount: samples.length,
       rawPayloadSuppressed: samples.some(sample => sample.exposesRawPayload),

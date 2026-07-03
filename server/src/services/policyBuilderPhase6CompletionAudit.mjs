@@ -20,11 +20,11 @@ import {
   buildPolicyLearningGuardAudit,
 } from './policyLearningGuard.mjs';
 import {
-  PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS,
-  buildPolicyBuilderPhase6MigrationDeletionAudit,
-  buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow,
-  listPolicyBuilderPhase6MigrationArtifacts,
-} from './policyBuilderPhase6MigrationDeletionPath.mjs';
+  POLICY_MIGRATION_ARTIFACT_DECISION_IDS,
+  buildPolicyMigrationDeletionAudit,
+  buildPolicyMigrationDeletionPlanFromBoundedWorkflow,
+  listPolicyMigrationDeletionArtifacts,
+} from './policyMigrationDeletionPath.mjs';
 import {
   buildPolicyOperatorWorkflowFromBoundedReadiness,
   buildPolicyOperatorWorkflowAudit,
@@ -79,8 +79,8 @@ const PHASE6R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE6R_COMPLETION_COMPONENT_IDS.ARTIFACT_INVENTORY_CUTLINE,
     label: 'Artifact inventory and cutline',
     docPath: 'docs/architecture/policy-builder-intent-model-roadmap.md',
-    servicePath: 'server/src/services/policyBuilderPhase6MigrationDeletionPath.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase6MigrationDeletionPath.test.mjs',
+    servicePath: 'server/src/services/policyMigrationDeletionPath.mjs',
+    testPath: 'server/src/__tests__/services/policyMigrationDeletionPath.test.mjs',
     expectedNextPhaseId: '6r_1',
     evidence: 'Legacy policy-builder diagnostics have explicit verifier, deletion, keep, or Phase 8 blocker decisions.',
   },
@@ -133,8 +133,8 @@ const PHASE6R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE6R_COMPLETION_COMPONENT_IDS.MIGRATION_DELETION_PATH,
     label: 'Migration and deletion path',
     docPath: 'docs/architecture/policy-builder-phase-6r-migration-deletion-path.md',
-    servicePath: 'server/src/services/policyBuilderPhase6MigrationDeletionPath.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase6MigrationDeletionPath.test.mjs',
+    servicePath: 'server/src/services/policyMigrationDeletionPath.mjs',
+    testPath: 'server/src/__tests__/services/policyMigrationDeletionPath.test.mjs',
     expectedNextPhaseId: '7r_1',
     evidence: 'Legacy diagnostics are migration verifiers or deletion targets with rollback and Phase 8 gates.',
   },
@@ -155,6 +155,9 @@ const PHASE6R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
   }),
   [PHASE6R_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW]: Object.freeze({
     migration_deletion_path: '6r_6',
+  }),
+  [PHASE6R_COMPLETION_COMPONENT_IDS.MIGRATION_DELETION_PATH]: Object.freeze({
+    runtime_decision_inventory: '7r_1',
   }),
 });
 
@@ -269,7 +272,7 @@ function validatePhase6CompletionRecord(record = {}, {
 
 function buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit({
   artifactPaths = REQUIRED_LEGACY_CUTLINE_ARTIFACT_PATHS,
-  artifacts = listPolicyBuilderPhase6MigrationArtifacts(),
+  artifacts = listPolicyMigrationDeletionArtifacts(),
 } = {}) {
   const artifactByPath = new Map(asArray(artifacts).map(artifact => [artifact.path, artifact]));
   const issues = [];
@@ -286,7 +289,7 @@ function buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit({
 
   asArray(artifacts)
     .filter(artifact =>
-      artifact.decisionId !== PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.KEEP_ENGINE_PRIMITIVE &&
+      artifact.decisionId !== POLICY_MIGRATION_ARTIFACT_DECISION_IDS.KEEP_ENGINE_PRIMITIVE &&
       artifact.normalWorkflowAllowed === true
     )
     .forEach(artifact => {
@@ -298,8 +301,8 @@ function buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit({
     });
 
   const phase8Blocked = asArray(artifacts).some(artifact =>
-    artifact.decisionId === PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.PHASE8_STORAGE_BLOCKER &&
-    artifact.rollbackPlan?.phase8StorageMigrationAllowed !== true
+    artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.NATIVE_STORAGE_BLOCKER &&
+    artifact.rollbackPlan?.nativeStorageMigrationAllowed !== true
   );
 
   if (!phase8Blocked) {
@@ -338,7 +341,7 @@ function buildComponentAuditMap() {
     [PHASE6R_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW]:
       buildPolicyOperatorWorkflowAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.MIGRATION_DELETION_PATH]:
-      buildPolicyBuilderPhase6MigrationDeletionAudit(),
+      buildPolicyMigrationDeletionAudit(),
   };
 }
 
@@ -384,7 +387,7 @@ function buildDefaultPhase6BoundedCompletionChain() {
     boundedIntentResult,
     boundedReadinessResult,
   });
-  const boundedMigrationResult = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+  const boundedMigrationResult = buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
     boundedWorkflowResult,
   });
 
