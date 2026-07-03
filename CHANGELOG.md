@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Production Name Inventory** — added a side-effect-free
+  production naming inventory that scans phase-coded production, test, script,
+  package-command, migration, and docs/history references; classifies each
+  reference for rename/keep/delete/adapter treatment; and emits a durable
+  product-domain rename map through a repository scan adapter before Phase 9R
+  module cutover begins.
 - **Policy Builder Phase 8R Native SQL Migration Coverage** — added a
   server-owned coverage contract that reads the canonical native intent
   migration, compares executable DDL to the Phase 8R.1 schema contract, and
