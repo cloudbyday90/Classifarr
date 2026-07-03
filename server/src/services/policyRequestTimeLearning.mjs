@@ -12,14 +12,14 @@ import {
   validatePolicyRuntimeQuestionReduction,
 } from './policyRuntimeQuestionReduction.mjs';
 
-const PHASE7R_REQUEST_EVENT_TYPE_IDS = Object.freeze({
+const POLICY_REQUEST_EVENT_TYPE_IDS = Object.freeze({
   USER_REQUESTED_DESTINATION: 'user_requested_destination',
   OPERATOR_MANUAL_DESTINATION_CHANGE: 'operator_manual_destination_change',
   ROUTE_SUCCEEDED: 'route_succeeded',
   ROUTE_FAILED_MISSING_MAPPING: 'route_failed_missing_mapping',
 });
 
-const PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS = Object.freeze({
+const POLICY_REQUEST_LEARNING_DISPOSITION_IDS = Object.freeze({
   OUTCOME_ONLY: 'outcome_only',
   LEARNING_CANDIDATE: 'learning_candidate',
   POLICY_EDIT_REQUIRED: 'policy_edit_required',
@@ -27,7 +27,7 @@ const PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS = Object.freeze({
   ROUTE_FAILURE_ONLY: 'route_failure_only',
 });
 
-const PHASE7R_REQUEST_LEARNING_REASON_IDS = Object.freeze({
+const POLICY_REQUEST_LEARNING_REASON_IDS = Object.freeze({
   REQUEST_CHOICE_RECORDED: 'request_choice_recorded',
   MANUAL_DESTINATION_CHANGE_RECORDED: 'manual_destination_change_recorded',
   ROUTE_SUCCESS_RECORDED: 'route_success_recorded',
@@ -39,7 +39,7 @@ const PHASE7R_REQUEST_LEARNING_REASON_IDS = Object.freeze({
   PROFILE_REFRESH_QUEUED_BY_GUARD: 'profile_refresh_queued_by_guard',
 });
 
-const PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_EVENT_TYPE: 'unknown_event_type',
   UNKNOWN_SOURCE: 'unknown_source',
   MISSING_DESTINATION_CHOICE: 'missing_destination_choice',
@@ -63,25 +63,25 @@ const PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS = Object.freeze({
 });
 
 const EVENT_SOURCE_BY_TYPE = Object.freeze({
-  [PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION]:
+  [POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION]:
     POLICY_LEARNING_EVENT_SOURCE_IDS.REQUEST_DESTINATION_CHOICE,
-  [PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE]:
+  [POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE]:
     POLICY_LEARNING_EVENT_SOURCE_IDS.MANUAL_CLASSIFICATION_CHANGE,
-  [PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED]:
+  [POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED]:
     POLICY_LEARNING_EVENT_SOURCE_IDS.ARR_ROUTING_OUTCOME,
-  [PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING]:
+  [POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING]:
     POLICY_LEARNING_EVENT_SOURCE_IDS.ARR_ROUTING_OUTCOME,
 });
 
 const EVENT_REASON_BY_TYPE = Object.freeze({
-  [PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION]:
-    PHASE7R_REQUEST_LEARNING_REASON_IDS.REQUEST_CHOICE_RECORDED,
-  [PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE]:
-    PHASE7R_REQUEST_LEARNING_REASON_IDS.MANUAL_DESTINATION_CHANGE_RECORDED,
-  [PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED]:
-    PHASE7R_REQUEST_LEARNING_REASON_IDS.ROUTE_SUCCESS_RECORDED,
-  [PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING]:
-    PHASE7R_REQUEST_LEARNING_REASON_IDS.ROUTE_FAILURE_RECORDED,
+  [POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION]:
+    POLICY_REQUEST_LEARNING_REASON_IDS.REQUEST_CHOICE_RECORDED,
+  [POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE]:
+    POLICY_REQUEST_LEARNING_REASON_IDS.MANUAL_DESTINATION_CHANGE_RECORDED,
+  [POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED]:
+    POLICY_REQUEST_LEARNING_REASON_IDS.ROUTE_SUCCESS_RECORDED,
+  [POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING]:
+    POLICY_REQUEST_LEARNING_REASON_IDS.ROUTE_FAILURE_RECORDED,
 });
 
 const MAX_TRACE_REASONS = 12;
@@ -139,8 +139,8 @@ function normalizeItem(value = {}) {
 
 function normalizeRouteResult(value = {}, eventTypeId) {
   const route = asObject(value);
-  const failedByEvent = eventTypeId === PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING;
-  const succeededByEvent = eventTypeId === PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED;
+  const failedByEvent = eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING;
+  const succeededByEvent = eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED;
 
   return {
     attempted: route.attempted === true || failedByEvent || succeededByEvent,
@@ -234,7 +234,7 @@ function buildQuestionReductionProof(input = {}) {
 
 function defaultAnswerOutcomeForEvent(eventTypeId) {
   switch (eventTypeId) {
-    case PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING:
+    case POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING:
       return ANSWER_OUTCOME_IDS.DO_NOT_LEARN;
     default:
       return ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM;
@@ -268,8 +268,8 @@ function buildFinalOutcome({
   finalDestination,
   routeResult,
 }) {
-  const routeFailed = eventTypeId === PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING;
-  const routeSucceeded = eventTypeId === PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED;
+  const routeFailed = eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING;
+  const routeSucceeded = eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED;
 
   return {
     recorded: true,
@@ -294,10 +294,10 @@ function buildSelection({
   routeResult,
 }) {
   return {
-    requestDestinationChoice: eventTypeId === PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION
+    requestDestinationChoice: eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION
       ? requestedDestination
       : null,
-    operatorSelectedDestination: eventTypeId === PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE
+    operatorSelectedDestination: eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE
       ? operatorDestination
       : null,
     finalDestination,
@@ -308,19 +308,19 @@ function buildSelection({
 function mapDisposition(learningDecision = {}, eventTypeId) {
   const learning = asObject(learningDecision.learning);
 
-  if (eventTypeId === PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING) {
-    return PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.ROUTE_FAILURE_ONLY;
+  if (eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING) {
+    return POLICY_REQUEST_LEARNING_DISPOSITION_IDS.ROUTE_FAILURE_ONLY;
   }
 
   switch (learning.decisionId) {
     case POLICY_LEARNING_DECISION_IDS.CANDIDATE:
-      return PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE;
+      return POLICY_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE;
     case POLICY_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED:
-      return PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.POLICY_EDIT_REQUIRED;
+      return POLICY_REQUEST_LEARNING_DISPOSITION_IDS.POLICY_EDIT_REQUIRED;
     case POLICY_LEARNING_DECISION_IDS.BLOCKED:
-      return PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.BLOCKED;
+      return POLICY_REQUEST_LEARNING_DISPOSITION_IDS.BLOCKED;
     default:
-      return PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.OUTCOME_ONLY;
+      return POLICY_REQUEST_LEARNING_DISPOSITION_IDS.OUTCOME_ONLY;
   }
 }
 
@@ -334,39 +334,39 @@ function buildTrace({
 }) {
   const reasons = [
     {
-      reasonId: EVENT_REASON_BY_TYPE[eventTypeId] || PHASE7R_REQUEST_LEARNING_REASON_IDS.REQUEST_CHOICE_RECORDED,
+      reasonId: EVENT_REASON_BY_TYPE[eventTypeId] || POLICY_REQUEST_LEARNING_REASON_IDS.REQUEST_CHOICE_RECORDED,
       severity: 'info',
     },
     {
-      reasonId: PHASE7R_REQUEST_LEARNING_REASON_IDS.LEARNING_GUARD_REQUIRED,
+      reasonId: POLICY_REQUEST_LEARNING_REASON_IDS.LEARNING_GUARD_REQUIRED,
       severity: 'info',
     },
   ];
 
   if (routeResult.missingMapping === true) {
     reasons.push({
-      reasonId: PHASE7R_REQUEST_LEARNING_REASON_IDS.ROUTE_FAILURE_NOT_EVIDENCE,
+      reasonId: POLICY_REQUEST_LEARNING_REASON_IDS.ROUTE_FAILURE_NOT_EVIDENCE,
       severity: 'warning',
     });
   }
 
   if (learningDecision?.learning?.decisionId === POLICY_LEARNING_DECISION_IDS.CANDIDATE) {
     reasons.push({
-      reasonId: PHASE7R_REQUEST_LEARNING_REASON_IDS.LEARNING_GUARD_APPROVED,
+      reasonId: POLICY_REQUEST_LEARNING_REASON_IDS.LEARNING_GUARD_APPROVED,
       severity: 'info',
     });
   }
 
   if (learningDecision?.learning?.decisionId === POLICY_LEARNING_DECISION_IDS.BLOCKED) {
     reasons.push({
-      reasonId: PHASE7R_REQUEST_LEARNING_REASON_IDS.LEARNING_GUARD_BLOCKED,
+      reasonId: POLICY_REQUEST_LEARNING_REASON_IDS.LEARNING_GUARD_BLOCKED,
       severity: 'warning',
     });
   }
 
   if (learningDecision?.profileRefresh?.queue === true) {
     reasons.push({
-      reasonId: PHASE7R_REQUEST_LEARNING_REASON_IDS.PROFILE_REFRESH_QUEUED_BY_GUARD,
+      reasonId: POLICY_REQUEST_LEARNING_REASON_IDS.PROFILE_REFRESH_QUEUED_BY_GUARD,
       severity: 'info',
     });
   }
@@ -374,7 +374,7 @@ function buildTrace({
   const boundedReasons = reasons.slice(0, MAX_TRACE_REASONS);
 
   const attributes = {
-    'classifarr.runtime.request_learning.version': 'phase7r.request_time_learning.v1',
+    'classifarr.runtime.request_learning.version': 'policy.request_time_learning.v1',
     'classifarr.runtime.request_learning.event_type': eventTypeId,
     'classifarr.runtime.request_learning.disposition': dispositionId,
     'classifarr.runtime.request_learning.reason_count': boundedReasons.length,
@@ -401,8 +401,8 @@ function buildTrace({
   };
 }
 
-function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
-  const eventTypeId = input.eventTypeId || PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION;
+function buildPolicyRequestTimeLearningDecision(input = {}) {
+  const eventTypeId = input.eventTypeId || POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION;
   const sourceId = EVENT_SOURCE_BY_TYPE[eventTypeId] || null;
   const item = normalizeItem(input.item);
   const requestedDestination = normalizeDestination(input.requestedDestination || input.destination);
@@ -410,7 +410,7 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
   const explicitFinalDestination = normalizeDestination(input.finalDestination || input.destination);
   const finalDestination = destinationHasValue(explicitFinalDestination)
     ? explicitFinalDestination
-    : eventTypeId === PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE
+    : eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE
       ? operatorDestination
       : requestedDestination;
   const routeResult = normalizeRouteResult(input.routeResult, eventTypeId);
@@ -446,7 +446,7 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
   const dispositionId = mapDisposition(learningDecision, eventTypeId);
 
   return {
-    version: 'phase7r.request_time_learning.v1',
+    version: 'policy.request_time_learning.v1',
     eventTypeId,
     sourceId,
     dispositionId,
@@ -470,10 +470,10 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
       queuedByLearningGuard: learningDecision.profileRefresh?.queue === true,
     },
     audit: {
-      reversible: eventTypeId === PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
+      reversible: eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
       actorId: input.actorId ?? null,
       sourceEventId: input.sourceEventId ?? null,
-      rollbackHint: eventTypeId === PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE
+      rollbackHint: eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE
         ? 'manual_destination_change_can_be_reverted_by_final_outcome_history'
         : null,
     },
@@ -493,9 +493,9 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
   };
 }
 
-function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
+function validatePolicyRequestTimeLearningDecision(decision = {}) {
   const issues = [];
-  const eventTypeIds = Object.values(PHASE7R_REQUEST_EVENT_TYPE_IDS);
+  const eventTypeIds = Object.values(POLICY_REQUEST_EVENT_TYPE_IDS);
   const sourceIds = Object.values(POLICY_LEARNING_EVENT_SOURCE_IDS);
   const upstreamFingerprint = normalizeString(decision.upstreamEvidenceFingerprint?.fingerprint);
   const learningGuardFingerprint = normalizeString(
@@ -515,14 +515,14 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
 
   if (!eventTypeIds.includes(decision.eventTypeId)) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.UNKNOWN_EVENT_TYPE,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.UNKNOWN_EVENT_TYPE,
       message: 'Request-time learning decision must use a supported event type.',
     });
   }
 
   if (!sourceIds.includes(decision.sourceId)) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.UNKNOWN_SOURCE,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.UNKNOWN_SOURCE,
       message: 'Request-time learning decision must map to a Phase 6R learning source.',
     });
   }
@@ -531,14 +531,14 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
   const finalDestination = asObject(selection.finalDestination);
   if (!destinationHasValue(finalDestination)) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_DESTINATION_CHOICE,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_DESTINATION_CHOICE,
       message: 'Request-time learning decision must include a selected destination.',
     });
   }
 
   if (!decision.finalOutcome?.recorded) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_FINAL_OUTCOME,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_FINAL_OUTCOME,
       message: 'Request-time learning decision must record a final outcome separately.',
     });
   }
@@ -547,49 +547,49 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
       decision.finalOutcome === selection.operatorSelectedDestination ||
       decision.finalOutcome === selection.finalDestination) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.SELECTION_CONFLATED_WITH_FINAL_OUTCOME,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.SELECTION_CONFLATED_WITH_FINAL_OUTCOME,
       message: 'Destination selection must not be the same object as the final outcome.',
     });
   }
 
   if (!decision.learningDecision?.version || decision.learningDecision.version !== 'policy.learning_guard.v1') {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_LEARNING_GUARD,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_LEARNING_GUARD,
       message: 'Request-time learning must pass through the Phase 6R learning guard.',
     });
   }
 
   if (decision.learningValidation?.ok === false) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.INVALID_LEARNING_GUARD,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.INVALID_LEARNING_GUARD,
       message: 'Request-time learning cannot rely on an invalid learning guard decision.',
     });
   }
 
   if (!upstreamFingerprint) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_UPSTREAM_EVIDENCE_FINGERPRINT,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_UPSTREAM_EVIDENCE_FINGERPRINT,
       message: 'Request-time learning must carry the upstream decision evidence fingerprint.',
     });
   }
 
   if (upstreamFingerprint && !traceFingerprint) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_TRACE_EVIDENCE_FINGERPRINT,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_TRACE_EVIDENCE_FINGERPRINT,
       message: 'Request-time learning trace must carry the upstream decision evidence fingerprint.',
     });
   }
 
   if (learningGuardFingerprint && learningGuardFingerprint !== upstreamFingerprint) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.LEARNING_GUARD_FINGERPRINT_MISMATCH,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.LEARNING_GUARD_FINGERPRINT_MISMATCH,
       message: 'Learning-guard context fingerprint must match the request-time decision.',
     });
   }
 
   if (traceFingerprint && traceFingerprint !== upstreamFingerprint) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
       message: 'Request-time learning trace fingerprint must match the decision.',
     });
   }
@@ -597,13 +597,13 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
   if (!decision.questionReductionProof?.validation ||
       typeof decision.questionReductionProof.validation.ok !== 'boolean') {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_QUESTION_REDUCTION_VALIDATION,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_QUESTION_REDUCTION_VALIDATION,
       message: 'Request-time learning must carry bounded question-reduction validation proof.',
     });
   } else if (decision.questionReductionProof.validation.ok !== true ||
       decision.questionReductionProof.validation.issueCount !== 0) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.INVALID_QUESTION_REDUCTION,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.INVALID_QUESTION_REDUCTION,
       message: 'Request-time learning cannot rely on an invalid question-reduction handoff.',
     });
   }
@@ -615,7 +615,7 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
     !questionReductionFingerprint
   ) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
       message: 'Question-reduction proof must carry the request-time evidence fingerprint.',
     });
   }
@@ -626,7 +626,7 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
     questionReductionFingerprint !== upstreamFingerprint
   ) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
       message: 'Question-reduction proof fingerprint must match the request-time decision.',
     });
   }
@@ -638,7 +638,7 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
     !questionReductionTraceFingerprint
   ) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
       message: 'Question-reduction proof must carry the upstream question trace fingerprint.',
     });
   }
@@ -649,7 +649,7 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
     questionReductionTraceFingerprint !== upstreamFingerprint
   ) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
       message: 'Question-reduction trace fingerprint must match the request-time decision.',
     });
   }
@@ -660,41 +660,41 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
     traceQuestionReductionValid !== decision.questionReductionProof.validation.ok
   ) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_QUESTION_REDUCTION_VALID_MISMATCH,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_QUESTION_REDUCTION_VALID_MISMATCH,
       message: 'Request-time trace question-reduction-valid attribute must match the carried proof.',
     });
   }
 
   const learning = asObject(decision.learningDecision?.learning);
   if (
-    decision.eventTypeId === PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING &&
+    decision.eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING &&
     (learning.canWriteLearning === true || decision.profileRefresh?.queue === true)
   ) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.ROUTE_FAILURE_WRITES_LEARNING,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.ROUTE_FAILURE_WRITES_LEARNING,
       message: 'Failed routing cannot become positive destination evidence.',
     });
   }
 
   if (
     [
-      PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED,
-      PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING,
+      POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED,
+      POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING,
     ].includes(decision.eventTypeId) &&
     learning.canWriteLearning === true
   ) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.ROUTE_OUTCOME_WRITES_LEARNING,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.ROUTE_OUTCOME_WRITES_LEARNING,
       message: 'Arr routing outcomes can record final outcomes but cannot write durable learning directly.',
     });
   }
 
   if (
-    decision.eventTypeId === PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE &&
+    decision.eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE &&
     decision.audit?.reversible !== true
   ) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MANUAL_CHANGE_NOT_REVERSIBLE,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.MANUAL_CHANGE_NOT_REVERSIBLE,
       message: 'Manual destination changes must be auditable and reversible.',
     });
   }
@@ -702,7 +702,7 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
   Object.entries(asObject(decision.sideEffects)).forEach(([key, value]) => {
     if (value === true) {
       issues.push({
-        riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.DIRECT_SIDE_EFFECT,
+        riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.DIRECT_SIDE_EFFECT,
         message: `Request-time learning decision cannot perform side effect "${key}".`,
       });
     }
@@ -710,7 +710,7 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
 
   if (asArray(decision.trace?.reasons).length === 0) {
     issues.push({
-      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
       message: 'Request-time learning decision must include bounded trace reasons.',
     });
   }
@@ -722,19 +722,19 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
   };
 }
 
-function buildPolicyBuilderPhase7RequestTimeLearningAudit(
-  decision = buildPolicyBuilderPhase7RequestTimeLearningDecision()
+function buildPolicyRequestTimeLearningAudit(
+  decision = buildPolicyRequestTimeLearningDecision()
 ) {
-  const validation = validatePolicyBuilderPhase7RequestTimeLearningDecision(decision);
+  const validation = validatePolicyRequestTimeLearningDecision(decision);
 
   return {
     ok: validation.ok,
     issueCount: validation.issueCount,
-    checkedEventTypeCount: Object.values(PHASE7R_REQUEST_EVENT_TYPE_IDS).length,
+    checkedEventTypeCount: Object.values(POLICY_REQUEST_EVENT_TYPE_IDS).length,
     checkedLearningSourceCount: Object.values(POLICY_LEARNING_EVENT_SOURCE_IDS).length,
     validation,
-    nextPhase: {
-      phaseId: '7r_6',
+    nextStep: {
+      stepId: 'library_policy_rebuild',
       label: 'Library-Derived Policy Rebuild',
       reason: 'Request-time and manual choices now pass through the learning guard, so guarded outcomes can feed rebuild proposals without direct policy mutation.',
     },
@@ -742,11 +742,11 @@ function buildPolicyBuilderPhase7RequestTimeLearningAudit(
 }
 
 export {
-  PHASE7R_REQUEST_EVENT_TYPE_IDS,
-  PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS,
-  PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS,
-  PHASE7R_REQUEST_LEARNING_REASON_IDS,
-  buildPolicyBuilderPhase7RequestTimeLearningAudit,
-  buildPolicyBuilderPhase7RequestTimeLearningDecision,
-  validatePolicyBuilderPhase7RequestTimeLearningDecision,
+  POLICY_REQUEST_EVENT_TYPE_IDS,
+  POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS,
+  POLICY_REQUEST_LEARNING_DISPOSITION_IDS,
+  POLICY_REQUEST_LEARNING_REASON_IDS,
+  buildPolicyRequestTimeLearningAudit,
+  buildPolicyRequestTimeLearningDecision,
+  validatePolicyRequestTimeLearningDecision,
 };

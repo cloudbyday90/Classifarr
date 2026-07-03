@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the current repository inventory after the
-policy runtime question reduction module cutover on July 3, 2026:
+policy request-time learning module cutover on July 3, 2026:
 
-- production references: `5653`
-- rename candidates: `5675`
+- production references: `5548`
+- rename candidates: `5570`
 - obsolete migration tooling references: `93`
 
 The baseline is intentionally a maximum, not a target. Future durable rename

@@ -17,8 +17,8 @@ import {
   POLICY_LEARNING_DECISION_IDS,
 } from './policyLearningGuard.mjs';
 import {
-  validatePolicyBuilderPhase7RequestTimeLearningDecision,
-} from './policyBuilderPhase7RequestTimeLearning.mjs';
+  validatePolicyRequestTimeLearningDecision,
+} from './policyRequestTimeLearning.mjs';
 
 const PHASE7R_REBUILD_PROPOSAL_STATUS_IDS = Object.freeze({
   READY_FOR_REVIEW: 'ready_for_review',
@@ -140,7 +140,7 @@ function getGuardedOutcomeEvidenceFingerprint(outcome = {}) {
 }
 
 function validateGuardedOutcomeRequestProof(outcome = {}) {
-  return validatePolicyBuilderPhase7RequestTimeLearningDecision(outcome);
+  return validatePolicyRequestTimeLearningDecision(outcome);
 }
 
 function normalizeSignal(value) {

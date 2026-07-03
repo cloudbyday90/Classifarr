@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Request-Time Learning Module Cutover** — renamed the request-time
+  learning contract and focused test to durable product-domain names, moved the
+  request-time learning contract to `policy.request_time_learning.v1`,
+  replaced the contract-local phase handoff with `nextStep`, updated downstream
+  runtime consumers, and retained the completion-audit adapter for the
+  library-policy-rebuild handoff.
 - **Policy Runtime Question Reduction Module Cutover** — renamed the runtime
   question reduction contract and focused test to durable product-domain names,
   moved the question-reduction contract to

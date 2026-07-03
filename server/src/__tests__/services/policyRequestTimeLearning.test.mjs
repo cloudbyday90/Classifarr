@@ -12,14 +12,14 @@ import {
   buildPolicyRuntimeQuestionReduction,
 } from '../../services/policyRuntimeQuestionReduction.mjs';
 import {
-  PHASE7R_REQUEST_EVENT_TYPE_IDS,
-  PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS,
-  PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS,
-  PHASE7R_REQUEST_LEARNING_REASON_IDS,
-  buildPolicyBuilderPhase7RequestTimeLearningAudit,
-  buildPolicyBuilderPhase7RequestTimeLearningDecision,
-  validatePolicyBuilderPhase7RequestTimeLearningDecision,
-} from '../../services/policyBuilderPhase7RequestTimeLearning.mjs';
+  POLICY_REQUEST_EVENT_TYPE_IDS,
+  POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS,
+  POLICY_REQUEST_LEARNING_DISPOSITION_IDS,
+  POLICY_REQUEST_LEARNING_REASON_IDS,
+  buildPolicyRequestTimeLearningAudit,
+  buildPolicyRequestTimeLearningDecision,
+  validatePolicyRequestTimeLearningDecision,
+} from '../../services/policyRequestTimeLearning.mjs';
 
 function destination(overrides = {}) {
   return {
@@ -46,16 +46,16 @@ function questionReductionPlan(overrides = {}) {
 function buildRequestTimeLearningDecision(input = {}) {
   const plan = input.questionReductionPlan || questionReductionPlan();
 
-  return buildPolicyBuilderPhase7RequestTimeLearningDecision({
+  return buildPolicyRequestTimeLearningDecision({
     questionReductionPlan: plan,
     ...input,
   });
 }
 
-describe('policyBuilderPhase7RequestTimeLearning', () => {
+describe('policyRequestTimeLearning', () => {
   test('records user-requested destination separately from final outcome without durable learning', () => {
     const decision = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       item: {
         itemId: 10674,
         title: 'Mulan',
@@ -109,12 +109,12 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
     }));
     expect(JSON.stringify(decision.upstreamEvidenceFingerprint)).not.toContain('Animated Movies');
     expect(decision.profileRefresh.queue).toBe(false);
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(decision).ok).toBe(true);
+    expect(validatePolicyRequestTimeLearningDecision(decision).ok).toBe(true);
   });
 
   test('passes operator manual destination changes through the learning guard and marks them reversible', () => {
     const decision = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
       actorId: 'admin-1',
       item: {
         itemId: 10674,
@@ -146,22 +146,22 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
       tierId: POLICY_LEARNING_TIER_IDS.IDENTITY_EVIDENCE,
       canWriteLearning: true,
     }));
-    expect(decision.dispositionId).toBe(PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE);
+    expect(decision.dispositionId).toBe(POLICY_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE);
     expect(decision.profileRefresh).toEqual(expect.objectContaining({
       queue: true,
       queuedByLearningGuard: true,
     }));
     expect(decision.trace.reasons).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: PHASE7R_REQUEST_LEARNING_REASON_IDS.PROFILE_REFRESH_QUEUED_BY_GUARD,
+        reasonId: POLICY_REQUEST_LEARNING_REASON_IDS.PROFILE_REFRESH_QUEUED_BY_GUARD,
       }),
     ]));
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(decision).ok).toBe(true);
+    expect(validatePolicyRequestTimeLearningDecision(decision).ok).toBe(true);
   });
 
   test('records successful Arr routing as final outcome without direct learning', () => {
     const decision = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED,
       item: {
         itemId: 10674,
         title: 'Mulan',
@@ -182,12 +182,12 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
     }));
     expect(decision.learningDecision.learning.canWriteLearning).toBe(false);
     expect(decision.profileRefresh.queue).toBe(false);
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(decision).ok).toBe(true);
+    expect(validatePolicyRequestTimeLearningDecision(decision).ok).toBe(true);
   });
 
   test('records failed route mapping as route failure only and not positive destination evidence', () => {
     const decision = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING,
       item: {
         itemId: 10674,
         title: 'Mulan',
@@ -200,7 +200,7 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
       },
     });
 
-    expect(decision.dispositionId).toBe(PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.ROUTE_FAILURE_ONLY);
+    expect(decision.dispositionId).toBe(POLICY_REQUEST_LEARNING_DISPOSITION_IDS.ROUTE_FAILURE_ONLY);
     expect(decision.finalOutcome).toEqual(expect.objectContaining({
       status: 'route_failed_missing_mapping',
       route: expect.objectContaining({
@@ -216,15 +216,15 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
     expect(decision.profileRefresh.queue).toBe(false);
     expect(decision.trace.reasons).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: PHASE7R_REQUEST_LEARNING_REASON_IDS.ROUTE_FAILURE_NOT_EVIDENCE,
+        reasonId: POLICY_REQUEST_LEARNING_REASON_IDS.ROUTE_FAILURE_NOT_EVIDENCE,
       }),
     ]));
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(decision).ok).toBe(true);
+    expect(validatePolicyRequestTimeLearningDecision(decision).ok).toBe(true);
   });
 
   test('blocks learning when the upstream question is stale or rejected', () => {
     const decision = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
       operatorDestination: destination(),
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
       question: {
@@ -248,67 +248,67 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
       POLICY_LEARNING_REASON_IDS.STALE_QUESTION_BLOCKED,
       POLICY_LEARNING_REASON_IDS.BROAD_ONE_OFF_GENRE_BLOCKED,
     ]));
-    expect(decision.dispositionId).toBe(PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.BLOCKED);
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(decision).ok).toBe(true);
+    expect(decision.dispositionId).toBe(POLICY_REQUEST_LEARNING_DISPOSITION_IDS.BLOCKED);
+    expect(validatePolicyRequestTimeLearningDecision(decision).ok).toBe(true);
   });
 
   test('rejects route failures or routing outcomes that claim learning writes', () => {
     const routeFailure = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING,
       finalDestination: destination(),
     });
     routeFailure.learningDecision.learning.canWriteLearning = true;
     routeFailure.profileRefresh.queue = true;
 
     const routeSuccess = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED,
       finalDestination: destination(),
     });
     routeSuccess.learningDecision.learning.canWriteLearning = true;
 
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(routeFailure).issues)
+    expect(validatePolicyRequestTimeLearningDecision(routeFailure).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.ROUTE_FAILURE_WRITES_LEARNING,
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.ROUTE_FAILURE_WRITES_LEARNING,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.ROUTE_OUTCOME_WRITES_LEARNING,
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.ROUTE_OUTCOME_WRITES_LEARNING,
         }),
       ]));
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(routeSuccess).issues)
+    expect(validatePolicyRequestTimeLearningDecision(routeSuccess).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.ROUTE_OUTCOME_WRITES_LEARNING,
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.ROUTE_OUTCOME_WRITES_LEARNING,
         }),
       ]));
   });
 
   test('rejects direct side effects and non-reversible manual changes', () => {
     const decision = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
       operatorDestination: destination(),
     });
     decision.audit.reversible = false;
     decision.sideEffects.learningWritten = true;
 
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(decision).issues)
+    expect(validatePolicyRequestTimeLearningDecision(decision).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MANUAL_CHANGE_NOT_REVERSIBLE,
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.MANUAL_CHANGE_NOT_REVERSIBLE,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.DIRECT_SIDE_EFFECT,
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.DIRECT_SIDE_EFFECT,
         }),
       ]));
   });
 
   test('rejects request-time learning with missing or mismatched evidence fingerprints', () => {
-    const missing = buildPolicyBuilderPhase7RequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+    const missing = buildPolicyRequestTimeLearningDecision({
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
     const mismatched = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
 
@@ -316,54 +316,54 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
     mismatched.trace.attributes['classifarr.runtime.request_learning.upstream_evidence_fingerprint'] =
       'c'.repeat(64);
 
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(missing).issues)
+    expect(validatePolicyRequestTimeLearningDecision(missing).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_UPSTREAM_EVIDENCE_FINGERPRINT,
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_UPSTREAM_EVIDENCE_FINGERPRINT,
         }),
       ]));
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(mismatched).issues)
+    expect(validatePolicyRequestTimeLearningDecision(mismatched).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.LEARNING_GUARD_FINGERPRINT_MISMATCH,
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.LEARNING_GUARD_FINGERPRINT_MISMATCH,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
         }),
       ]));
   });
 
   test('rejects request-time learning without question-reduction validation proof', () => {
     const decision = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
 
     decision.questionReductionProof = null;
 
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(decision).issues)
+    expect(validatePolicyRequestTimeLearningDecision(decision).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_QUESTION_REDUCTION_VALIDATION,
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_QUESTION_REDUCTION_VALIDATION,
         }),
       ]));
   });
 
   test('rejects request-time learning with invalid or drifted question-reduction proof', () => {
     const invalid = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
     const drifted = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
     const missingProofFingerprint = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
     const traceDrift = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
 
@@ -375,47 +375,47 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
     missingProofFingerprint.questionReductionProof.traceEvidenceFingerprint = null;
     traceDrift.trace.attributes['classifarr.runtime.request_learning.question_reduction_valid'] = false;
 
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(invalid).issues)
+    expect(validatePolicyRequestTimeLearningDecision(invalid).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.INVALID_QUESTION_REDUCTION,
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.INVALID_QUESTION_REDUCTION,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_QUESTION_REDUCTION_VALID_MISMATCH,
-        }),
-      ]));
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(drifted).issues)
-      .toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_QUESTION_REDUCTION_VALID_MISMATCH,
         }),
       ]));
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(missingProofFingerprint).issues)
+    expect(validatePolicyRequestTimeLearningDecision(drifted).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
         }),
       ]));
-    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(traceDrift).issues)
+    expect(validatePolicyRequestTimeLearningDecision(missingProofFingerprint).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_QUESTION_REDUCTION_VALID_MISMATCH,
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
+        }),
+      ]));
+    expect(validatePolicyRequestTimeLearningDecision(traceDrift).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_QUESTION_REDUCTION_VALID_MISMATCH,
         }),
       ]));
   });
 
   test('passes the default request-time learning audit', () => {
     const decision = buildRequestTimeLearningDecision({
-      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
-    const audit = buildPolicyBuilderPhase7RequestTimeLearningAudit(decision);
+    const audit = buildPolicyRequestTimeLearningAudit(decision);
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedEventTypeCount).toBe(4);
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '7r_6',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'library_policy_rebuild',
       label: 'Library-Derived Policy Rebuild',
     }));
   });

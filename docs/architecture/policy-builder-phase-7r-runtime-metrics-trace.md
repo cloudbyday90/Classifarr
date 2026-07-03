@@ -143,7 +143,7 @@ Cons:
 - Runtime question dependency:
   `server/src/services/policyRuntimeQuestionReduction.mjs`
 - Request learning dependency:
-  `server/src/services/policyBuilderPhase7RequestTimeLearning.mjs`
+  `server/src/services/policyRequestTimeLearning.mjs`
 - Rebuild proposal dependency:
   `server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs`
 - Migration verifier dependency:

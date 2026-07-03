@@ -11,9 +11,9 @@ import {
   buildPolicyRuntimeQuestionReduction,
 } from '../../services/policyRuntimeQuestionReduction.mjs';
 import {
-  PHASE7R_REQUEST_EVENT_TYPE_IDS,
-  buildPolicyBuilderPhase7RequestTimeLearningDecision,
-} from '../../services/policyBuilderPhase7RequestTimeLearning.mjs';
+  POLICY_REQUEST_EVENT_TYPE_IDS,
+  buildPolicyRequestTimeLearningDecision,
+} from '../../services/policyRequestTimeLearning.mjs';
 import {
   PHASE7R_REBUILD_AUDIT_RISK_IDS,
   PHASE7R_REBUILD_PROPOSAL_STATUS_IDS,
@@ -47,8 +47,8 @@ function questionReductionPlan(overrides = {}) {
 }
 
 function guardedOutcome(overrides = {}) {
-  return buildPolicyBuilderPhase7RequestTimeLearningDecision({
-    eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
+  return buildPolicyRequestTimeLearningDecision({
+    eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
     questionReductionPlan: questionReductionPlan(),
     operatorDestination: destination(),
     answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,

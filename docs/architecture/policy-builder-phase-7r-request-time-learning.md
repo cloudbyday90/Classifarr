@@ -1,8 +1,10 @@
-# Policy Builder Phase 7R Request-Time Learning And Destination Selection
+# Policy Request-Time Learning And Destination Selection
 
 ## Status
 
-Implemented as the fifth Phase 7R runtime contract.
+Implemented as the durable request-time learning runtime contract. It originated
+as the fifth Phase 7R runtime contract and now exposes product-domain module,
+export, and contract names.
 
 This slice normalizes request-time destination choices, operator manual
 destination changes, successful routing outcomes, and routing failures into a
@@ -26,8 +28,8 @@ is not a final outcome. A routed item is not a policy-learning event by itself.
 A missing Arr mapping is operational configuration debt, not positive evidence
 that the destination was wrong or right.
 
-Phase 7R.5 makes those distinctions explicit before request/manual outcomes are
-allowed to influence future automation.
+Request-time learning makes those distinctions explicit before request/manual
+outcomes are allowed to influence future automation.
 
 This checkpoint tightens that boundary further: request-time learning can no
 longer rely on a loose upstream fingerprint alone. It must carry a bounded
@@ -41,18 +43,19 @@ preserved into the request-time decision and trace.
   emphasizes governed, measured, and managed AI system behavior. This contract
   separates event recording, final outcome, learning, and side effects so each
   can be governed independently.
-- [NIST Generative AI Profile](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf)
+- [NIST Generative AI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence)
   emphasizes risk controls, measurement, and provenance for generative AI
-  systems. Phase 7R.5 keeps request/manual decisions traceable and prevents raw
-  runtime events from directly becoming durable learning.
+  systems. Request-time learning keeps request/manual decisions traceable and
+  prevents raw runtime events from directly becoming durable learning.
 - [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
   calls out excessive agency, insecure output handling, and overreliance risks.
   This slice does not let request-time or AI-adjacent runtime outputs perform
   profile or policy writes directly.
-- [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
-  provides verifiable security control requirements. Phase 7R.5 treats the
-  question-reduction proof, trace attributes, and no-side-effect checks as
-  explicit validation controls instead of UI-only assurances.
+- [OpenTelemetry Semantic Convention Naming](https://opentelemetry.io/docs/specs/semconv/general/naming/)
+  recommends lower-case namespacing, snake_case for multi-word name components,
+  and precise unambiguous terms. The contract uses
+  `policy.request_time_learning.v1` and product-domain step names instead of
+  roadmap phase identifiers.
 - [OpenTelemetry Traces](https://opentelemetry.io/docs/concepts/signals/traces/)
   describes traces as correlated spans and attributes. This slice keeps
   traceable request-learning attributes bounded, stable, and aligned with the
@@ -159,9 +162,9 @@ Cons:
 ## Implemented Files
 
 - Request-time learning contract:
-  `server/src/services/policyBuilderPhase7RequestTimeLearning.mjs`
+  `server/src/services/policyRequestTimeLearning.mjs`
 - Focused tests:
-  `server/src/__tests__/services/policyBuilderPhase7RequestTimeLearning.test.mjs`
+  `server/src/__tests__/services/policyRequestTimeLearning.test.mjs`
 - Learning guard dependency:
   `server/src/services/policyLearningGuard.mjs`
 - Question vocabulary dependency:
@@ -174,13 +177,13 @@ Cons:
 
 The service exports:
 
-- `PHASE7R_REQUEST_EVENT_TYPE_IDS`
-- `PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS`
-- `PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS`
-- `PHASE7R_REQUEST_LEARNING_REASON_IDS`
-- `buildPolicyBuilderPhase7RequestTimeLearningDecision`
-- `buildPolicyBuilderPhase7RequestTimeLearningAudit`
-- `validatePolicyBuilderPhase7RequestTimeLearningDecision`
+- `POLICY_REQUEST_EVENT_TYPE_IDS`
+- `POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS`
+- `POLICY_REQUEST_LEARNING_DISPOSITION_IDS`
+- `POLICY_REQUEST_LEARNING_REASON_IDS`
+- `buildPolicyRequestTimeLearningDecision`
+- `buildPolicyRequestTimeLearningAudit`
+- `validatePolicyRequestTimeLearningDecision`
 
 ## Event Semantics
 
@@ -239,11 +242,13 @@ The focused test suite verifies:
 - missing, invalid, or fingerprint-drifted question-reduction proof fails
   validation,
 - request-time trace attributes must match the carried question-reduction proof,
-- the component audit points to Phase 7R.6.
+- the component audit points to
+  `nextStep.stepId = library_policy_rebuild`.
 
 ## Outcome
 
-Phase 7R.5 gives request/import/manual/routing events this runtime shape:
+Request-time learning gives request/import/manual/routing events this runtime
+shape:
 
 ```text
 request or routing event
@@ -259,6 +264,6 @@ without treating every request, route, or failure as policy evidence.
 
 ## Next Step
 
-Phase 7R.6 Library-Derived Policy Rebuild should consume guarded outcomes,
-library profile evidence, routing configuration, and explicit constraints to
-produce reviewable policy rebuild proposals without destructive replacement.
+Library-Derived Policy Rebuild should consume guarded outcomes, library profile
+evidence, routing configuration, and explicit constraints to produce reviewable
+policy rebuild proposals without destructive replacement.

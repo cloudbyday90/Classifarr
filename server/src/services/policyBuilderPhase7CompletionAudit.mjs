@@ -12,10 +12,10 @@ import {
   buildPolicyBuilderPhase7MigrationVerifierAudit,
 } from './policyBuilderPhase7MigrationVerifierRollback.mjs';
 import {
-  PHASE7R_REQUEST_EVENT_TYPE_IDS,
-  buildPolicyBuilderPhase7RequestTimeLearningAudit,
-  buildPolicyBuilderPhase7RequestTimeLearningDecision,
-} from './policyBuilderPhase7RequestTimeLearning.mjs';
+  POLICY_REQUEST_EVENT_TYPE_IDS,
+  buildPolicyRequestTimeLearningAudit,
+  buildPolicyRequestTimeLearningDecision,
+} from './policyRequestTimeLearning.mjs';
 import {
   buildPolicyRuntimeDecisionInventory,
 } from './policyRuntimeDecisionInventory.mjs';
@@ -76,6 +76,9 @@ const PHASE7R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
   [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_QUESTION_REDUCTION]: Object.freeze({
     request_time_learning: '7r_5',
   }),
+  [PHASE7R_COMPLETION_COMPONENT_IDS.REQUEST_TIME_LEARNING]: Object.freeze({
+    library_policy_rebuild: '7r_6',
+  }),
 });
 
 const PHASE7R_COMPONENT_RECORDS = Object.freeze([
@@ -119,8 +122,8 @@ const PHASE7R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE7R_COMPLETION_COMPONENT_IDS.REQUEST_TIME_LEARNING,
     label: 'Request-time learning and destination selection',
     docPath: 'docs/architecture/policy-builder-phase-7r-request-time-learning.md',
-    servicePath: 'server/src/services/policyBuilderPhase7RequestTimeLearning.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase7RequestTimeLearning.test.mjs',
+    servicePath: 'server/src/services/policyRequestTimeLearning.mjs',
+    testPath: 'server/src/__tests__/services/policyRequestTimeLearning.test.mjs',
     expectedNextPhaseId: '7r_6',
     evidence: 'Request and manual destination choices pass through the learning guard before any durable learning decision.',
   },
@@ -187,9 +190,9 @@ function buildPassingRequestTimeLearningAudit() {
       ],
     },
   });
-  const decision = buildPolicyBuilderPhase7RequestTimeLearningDecision({
+  const decision = buildPolicyRequestTimeLearningDecision({
     questionReductionPlan,
-    eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+    eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
     item: {
       itemId: 10674,
       title: 'Mulan',
@@ -203,7 +206,7 @@ function buildPassingRequestTimeLearningAudit() {
     },
   });
 
-  return buildPolicyBuilderPhase7RequestTimeLearningAudit(decision);
+  return buildPolicyRequestTimeLearningAudit(decision);
 }
 
 function buildDefaultComponentAudits() {

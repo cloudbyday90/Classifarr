@@ -3885,9 +3885,9 @@ Implementation status:
 - Phase 7R.5 request-time learning and destination selection is documented in
   [Policy Builder Phase 7R Request-Time Learning And Destination Selection](policy-builder-phase-7r-request-time-learning.md).
 - The server-owned request-time learning contract lives in
-  `server/src/services/policyBuilderPhase7RequestTimeLearning.mjs`.
+  `server/src/services/policyRequestTimeLearning.mjs`.
 - The focused request-time learning test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase7RequestTimeLearning.test.mjs`.
+  `server/src/__tests__/services/policyRequestTimeLearning.test.mjs`.
 - Current implementation normalizes four runtime event types:
   `user_requested_destination`, `operator_manual_destination_change`,
   `route_succeeded`, and `route_failed_missing_mapping`.
@@ -6278,6 +6278,14 @@ Implementation status:
 - After the runtime-question-reduction cutover, the repository inventory
   validates with 13,161 total phase-coded references, 5,653 production
   references, and 5,675 rename candidates.
+- The next runtime module cutover renamed request-time learning to
+  `policyRequestTimeLearning.mjs`, renamed its focused test, moved the
+  request-time contract to `policy.request_time_learning.v1`, and replaced the
+  contract-local phase handoff with `nextStep`:
+  [Policy Request-Time Learning Module Cutover](policy-request-time-learning-module-cutover.md).
+- After the request-time-learning cutover, the repository inventory validates
+  with 12,971 total phase-coded references, 5,548 production references, and
+  5,570 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

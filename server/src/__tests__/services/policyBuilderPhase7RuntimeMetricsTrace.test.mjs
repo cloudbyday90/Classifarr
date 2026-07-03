@@ -5,8 +5,8 @@ import {
   POLICY_RUNTIME_QUESTION_DISPOSITION_IDS,
 } from '../../services/policyRuntimeQuestionReduction.mjs';
 import {
-  PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS,
-} from '../../services/policyBuilderPhase7RequestTimeLearning.mjs';
+  POLICY_REQUEST_LEARNING_DISPOSITION_IDS,
+} from '../../services/policyRequestTimeLearning.mjs';
 import {
   PHASE7R_REBUILD_PROPOSAL_STATUS_IDS,
 } from '../../services/policyBuilderPhase7LibraryPolicyRebuild.mjs';
@@ -41,10 +41,10 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
         { dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.REFRESH_PROFILE },
       ],
       requestLearningDecisions: [
-        { dispositionId: PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE },
-        { dispositionId: PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.BLOCKED },
-        { dispositionId: PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.OUTCOME_ONLY },
-        { dispositionId: PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.ROUTE_FAILURE_ONLY },
+        { dispositionId: POLICY_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE },
+        { dispositionId: POLICY_REQUEST_LEARNING_DISPOSITION_IDS.BLOCKED },
+        { dispositionId: POLICY_REQUEST_LEARNING_DISPOSITION_IDS.OUTCOME_ONLY },
+        { dispositionId: POLICY_REQUEST_LEARNING_DISPOSITION_IDS.ROUTE_FAILURE_ONLY },
       ],
       rebuildProposals: [
         {
@@ -203,7 +203,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
       ],
       requestLearningDecisions: [
         {
-          dispositionId: PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE,
+          dispositionId: POLICY_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE,
           trace: {
             attributes: {
               'classifarr.runtime.request_learning.upstream_evidence_fingerprint': 'c'.repeat(64),
@@ -438,7 +438,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
   test('passes component audit and points to runtime and rebuild test reset', () => {
     const metrics = buildPolicyBuilderPhase7RuntimeMetricsTrace({
       requestLearningDecisions: [
-        { dispositionId: PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE },
+        { dispositionId: POLICY_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE },
       ],
     });
     const audit = buildPolicyBuilderPhase7RuntimeMetricsTraceAudit(metrics);
