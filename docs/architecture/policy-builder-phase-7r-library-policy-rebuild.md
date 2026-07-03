@@ -106,7 +106,7 @@ Pros:
 - Preserves explicit operator constraints unless the operator changes them.
 - Keeps observed absence as warning/review context, not automatic exclusion.
 - Requires explicit acceptance and rollback gates.
-- Gives Phase 7R.7 verifier work a stable proposal input.
+- Gives migration verifier work a stable proposal input.
 
 Cons:
 
@@ -143,7 +143,7 @@ Cons:
 5. Preserve explicit hard limits and avoid rules.
 6. Require explicit operator acceptance before activation.
 7. Require rollback snapshot before any later accepted replacement.
-8. Leave migration comparison and rollback execution to Phase 7R.7.
+8. Leave migration comparison and rollback execution to the migration verifier.
 9. Reject guarded outcome handoffs that lack sanitized SHA-256 upstream
    evidence fingerprints or whose bounded trace counts no longer match source
    summaries.

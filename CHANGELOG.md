@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Migration Verifier Rollback Module Cutover** — renamed the
+  migration verifier and rollback contract plus focused test to durable
+  product-domain names, moved verifier and sample-set fingerprint contracts to
+  `policy.migration_verifier.v1` and
+  `policy.migration_verifier_sample_set_fingerprint.v1`, replaced the
+  contract-local phase handoff with `nextStep`, updated deletion readiness to
+  native intent storage terminology, updated downstream runtime consumers, and
+  retained the completion-audit adapter for the runtime-metrics handoff.
 - **Policy Library-Derived Policy Rebuild Module Cutover** — renamed the
   library-derived policy rebuild contract and focused test to durable
   product-domain names, moved the rebuild proposal contract to

@@ -162,7 +162,7 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     traceReasons: ['library_rebuild_rewrite'],
   }),
   Object.freeze({
-    path: 'server/src/__tests__/services/policyBuilderPhase7MigrationVerifierRollback.test.mjs',
+    path: 'server/src/__tests__/services/policyMigrationVerifierRollback.test.mjs',
     owner: 'server',
     decisionId: PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER,
     coverageIds: [

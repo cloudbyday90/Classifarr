@@ -9,8 +9,8 @@ import {
   buildPolicyLibraryPolicyRebuildAudit,
 } from './policyLibraryPolicyRebuild.mjs';
 import {
-  buildPolicyBuilderPhase7MigrationVerifierAudit,
-} from './policyBuilderPhase7MigrationVerifierRollback.mjs';
+  buildPolicyMigrationVerifierAudit,
+} from './policyMigrationVerifierRollback.mjs';
 import {
   POLICY_REQUEST_EVENT_TYPE_IDS,
   buildPolicyRequestTimeLearningAudit,
@@ -82,6 +82,9 @@ const PHASE7R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
   [PHASE7R_COMPLETION_COMPONENT_IDS.LIBRARY_POLICY_REBUILD]: Object.freeze({
     migration_verifier_rollback: '7r_7',
   }),
+  [PHASE7R_COMPLETION_COMPONENT_IDS.MIGRATION_VERIFIER_ROLLBACK]: Object.freeze({
+    runtime_metrics_trace: '7r_8',
+  }),
 });
 
 const PHASE7R_COMPONENT_RECORDS = Object.freeze([
@@ -143,8 +146,8 @@ const PHASE7R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE7R_COMPLETION_COMPONENT_IDS.MIGRATION_VERIFIER_ROLLBACK,
     label: 'Migration verifier and rollback path',
     docPath: 'docs/architecture/policy-builder-phase-7r-migration-verifier-rollback.md',
-    servicePath: 'server/src/services/policyBuilderPhase7MigrationVerifierRollback.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase7MigrationVerifierRollback.test.mjs',
+    servicePath: 'server/src/services/policyMigrationVerifierRollback.mjs',
+    testPath: 'server/src/__tests__/services/policyMigrationVerifierRollback.test.mjs',
     expectedNextPhaseId: '7r_8',
     evidence: 'Migration verifier reports require proposal validation, bounded sample-set proof, operator acceptance, and rollback before replacement.',
   },
@@ -227,7 +230,7 @@ function buildDefaultComponentAudits() {
     [PHASE7R_COMPLETION_COMPONENT_IDS.LIBRARY_POLICY_REBUILD]:
       buildPolicyLibraryPolicyRebuildAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.MIGRATION_VERIFIER_ROLLBACK]:
-      buildPolicyBuilderPhase7MigrationVerifierAudit(),
+      buildPolicyMigrationVerifierAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE]:
       buildPolicyBuilderPhase7RuntimeMetricsTraceAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_REBUILD_TEST_RESET]:

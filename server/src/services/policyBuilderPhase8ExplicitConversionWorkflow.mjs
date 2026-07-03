@@ -1,6 +1,6 @@
 import {
-  PHASE7R_MIGRATION_VERIFIER_STATUS_IDS,
-} from './policyBuilderPhase7MigrationVerifierRollback.mjs';
+  POLICY_MIGRATION_VERIFIER_STATUS_IDS,
+} from './policyMigrationVerifierRollback.mjs';
 import {
   PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS,
   buildPolicyBuilderPhase8MigrationCandidateReport,
@@ -113,9 +113,9 @@ function getVerifierReport(verifierReports, policyId) {
 
 function isVerifierPassed(verifierReport) {
   if (!verifierReport) return false;
-  return verifierReport.statusId === PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES ||
+  return verifierReport.statusId === POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES ||
     (
-      verifierReport.statusId === PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.REVIEW_REQUIRED &&
+      verifierReport.statusId === POLICY_MIGRATION_VERIFIER_STATUS_IDS.REVIEW_REQUIRED &&
       verifierReport.applicationGate?.operatorAccepted === true
     );
 }
@@ -526,7 +526,7 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
 
     if (
       step.behaviorSensitive === true &&
-      step.verifierStatusId === PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK &&
+      step.verifierStatusId === POLICY_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK &&
       step.statusId === PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY
     ) {
       issues.push({

@@ -13,8 +13,8 @@ import {
   POLICY_REBUILD_PROPOSAL_STATUS_IDS,
 } from './policyLibraryPolicyRebuild.mjs';
 import {
-  PHASE7R_MIGRATION_VERIFIER_STATUS_IDS,
-} from './policyBuilderPhase7MigrationVerifierRollback.mjs';
+  POLICY_MIGRATION_VERIFIER_STATUS_IDS,
+} from './policyMigrationVerifierRollback.mjs';
 
 const PHASE7R_METRIC_COUNTER_IDS = Object.freeze({
   AUTO_ROUTED: 'auto_routed',
@@ -394,7 +394,7 @@ function processMigrationVerifier(counters, traces, report = {}) {
   if (report.applicationGate?.operatorAccepted === true) {
     counterIds.push(PHASE7R_METRIC_COUNTER_IDS.REBUILD_ACCEPTED);
   }
-  if (report.statusId === PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK) {
+  if (report.statusId === POLICY_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK) {
     counterIds.push(PHASE7R_METRIC_COUNTER_IDS.REBUILD_REJECTED);
   }
 

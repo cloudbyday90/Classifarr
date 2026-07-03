@@ -1,6 +1,6 @@
 import {
-  PHASE7R_MIGRATION_VERIFIER_STATUS_IDS,
-} from '../../services/policyBuilderPhase7MigrationVerifierRollback.mjs';
+  POLICY_MIGRATION_VERIFIER_STATUS_IDS,
+} from '../../services/policyMigrationVerifierRollback.mjs';
 import {
   buildPolicyBuilderPhase8MigrationCandidateReport,
 } from '../../services/policyBuilderPhase8MigrationCandidateReport.mjs';
@@ -200,7 +200,7 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
       verifierReports: [
         {
           policyId: 14,
-          statusId: PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES,
+          statusId: POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES,
         },
       ],
       action: {
@@ -215,7 +215,7 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
     expect(passedVerifier.steps[0].statusId)
       .toBe(PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY);
     expect(passedVerifier.steps[0].verifierStatusId)
-      .toBe(PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES);
+      .toBe(POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES);
   });
 
   test('requires rollback snapshot planning before ready conversion', () => {

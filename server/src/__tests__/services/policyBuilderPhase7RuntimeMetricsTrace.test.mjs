@@ -11,8 +11,8 @@ import {
   POLICY_REBUILD_PROPOSAL_STATUS_IDS,
 } from '../../services/policyLibraryPolicyRebuild.mjs';
 import {
-  PHASE7R_MIGRATION_VERIFIER_STATUS_IDS,
-} from '../../services/policyBuilderPhase7MigrationVerifierRollback.mjs';
+  POLICY_MIGRATION_VERIFIER_STATUS_IDS,
+} from '../../services/policyMigrationVerifierRollback.mjs';
 import {
   PHASE7R_METRIC_AUDIT_RISK_IDS,
   PHASE7R_METRIC_COMPONENT_IDS,
@@ -62,7 +62,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
       ],
       migrationVerifierReports: [
         {
-          statusId: PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK,
+          statusId: POLICY_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK,
           applicationGate: {
             operatorAccepted: true,
           },
@@ -228,7 +228,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
       ],
       migrationVerifierReports: [
         {
-          statusId: PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES,
+          statusId: POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES,
           trace: {
             attributes: {
               'classifarr.policy.migration_verifier.sample_set_fingerprint': 'd'.repeat(64),

@@ -1,8 +1,9 @@
-# Policy Builder Phase 7R Migration Verifier And Rollback Path
+# Policy Migration Verifier And Rollback Path
 
 ## Status
 
-Implemented as the seventh Phase 7R runtime/rebuild contract.
+Implemented as a durable migration-verifier contract that originated as the
+seventh Phase 7R runtime/rebuild checkpoint.
 
 This slice compares a library-derived rebuild proposal against sanitized legacy
 behavior samples, emits only migration-relevant differences,
@@ -39,8 +40,13 @@ legacy deletion criteria
 ## Official Guidance Reviewed
 
 - [NIST Secure Software Development Framework](https://csrc.nist.gov/Projects/ssdf)
-  emphasizes secure release, verification, and tested changes. Phase 7R.7 uses
-  a deterministic verifier before any replacement path can apply a proposal.
+  emphasizes secure release, verification, and tested changes. The migration
+  verifier uses deterministic checks before any replacement path can apply a
+  proposal.
+- [NIST Generative AI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence)
+  emphasizes governed measurement and lifecycle risk controls for generative AI
+  systems. The verifier keeps proposal validation, sample-set provenance,
+  operator acceptance, rollback state, and deletion readiness separate.
 - [NIST SP 800-53 Revision 5](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final)
   includes contingency, backup, recovery, and system integrity controls. The
   verifier requires rollback snapshots, restore paths, and retention criteria
@@ -60,12 +66,17 @@ legacy deletion criteria
   deletion gates advance.
 - [Microsoft Azure Well-Architected safe deployments](https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/safe-deployments)
   recommends failure-detection mechanisms, versioning, and rollback/roll-forward
-  guardrails. Phase 7R.7 records a comparison fingerprint and requires a
+  guardrails. The verifier records a comparison fingerprint and requires a
   rollback restore path before apply can be considered.
 - [PostgreSQL Backup And Restore](https://www.postgresql.org/docs/current/backup.html)
-  documents backup and restore responsibilities. Phase 7R.7 treats rollback as
+  documents backup and restore responsibilities. The verifier treats rollback as
   an explicit precondition before replacement instead of an operator memory
   step.
+- [OpenTelemetry Naming](https://opentelemetry.io/docs/specs/semconv/general/naming/)
+  recommends lower-case namespacing, snake_case multi-word name components, and
+  precise unambiguous names. The verifier payload versions now use
+  `policy.migration_verifier.v1` and
+  `policy.migration_verifier_sample_set_fingerprint.v1`.
 
 ## Recommendation
 
@@ -97,7 +108,7 @@ Pros:
 - Requires rollback before replacement can apply.
 - Binds verifier output to a stable sanitized sample-set fingerprint so stale or
   tampered comparisons cannot silently pass.
-- Blocks legacy deletion until Phase 8R native intent is stable and verifier
+- Blocks legacy deletion until native intent storage is stable and verifier
   differences are resolved.
 - Keeps report output bounded and free of raw provider/replay payloads.
 
@@ -134,7 +145,7 @@ Cons:
 10. Require explicit operator acceptance before replacement.
 11. Require rollback snapshot and restore path before replacement.
 12. Define deletion criteria for old preset/custom-signal runtime paths:
-   - Phase 8R native intent stable,
+   - native intent storage stable,
    - verifier passed,
    - rollback snapshot created,
    - rollback window active,
@@ -147,29 +158,29 @@ Cons:
 ## Implemented Files
 
 - Migration verifier and rollback contract:
-  `server/src/services/policyBuilderPhase7MigrationVerifierRollback.mjs`
+  `server/src/services/policyMigrationVerifierRollback.mjs`
 - Focused tests:
-  `server/src/__tests__/services/policyBuilderPhase7MigrationVerifierRollback.test.mjs`
+  `server/src/__tests__/services/policyMigrationVerifierRollback.test.mjs`
 - Rebuild proposal dependency:
   `server/src/services/policyLibraryPolicyRebuild.mjs`
 - Migration/deletion plan dependency:
   `server/src/services/policyMigrationDeletionPath.mjs`
 - Roadmap owner:
-  Phase 7R.7 Migration Verifier And Rollback Path in
+  Migration Verifier And Rollback Path in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
 
 The service exports:
 
-- `PHASE7R_MIGRATION_DELETION_CRITERION_IDS`
-- `PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS`
-- `PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS`
-- `PHASE7R_MIGRATION_VERIFIER_REASON_IDS`
-- `PHASE7R_MIGRATION_VERIFIER_STATUS_IDS`
-- `buildPolicyBuilderPhase7MigrationVerifierReport`
-- `buildPolicyBuilderPhase7MigrationVerifierAudit`
-- `validatePolicyBuilderPhase7MigrationVerifierReport`
+- `POLICY_MIGRATION_DELETION_CRITERION_IDS`
+- `POLICY_MIGRATION_DIFFERENCE_TYPE_IDS`
+- `POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS`
+- `POLICY_MIGRATION_VERIFIER_REASON_IDS`
+- `POLICY_MIGRATION_VERIFIER_STATUS_IDS`
+- `buildPolicyMigrationVerifierReport`
+- `buildPolicyMigrationVerifierAudit`
+- `validatePolicyMigrationVerifierReport`
 
 ## Report Statuses
 
@@ -219,20 +230,21 @@ The focused test suite verifies:
 - replacement cannot apply without acceptance and rollback,
 - verifier output cannot become normal policy-authoring UI,
 - side effects fail validation,
-- legacy deletion is blocked before Phase 8 stability or verifier pass,
+- legacy deletion is blocked before native intent storage stability or verifier
+  pass,
 - deletion readiness is true only when all criteria are met,
-- the component audit points to Phase 7R.8.
+- the component audit points to `nextStep.stepId = runtime_metrics_trace`.
 
 ## Outcome
 
-Phase 7R.7 gives migration this shape:
+The migration verifier gives replacement review this shape:
 
 ```text
 rebuild proposal + sanitized comparison samples
   -> stable sample-set fingerprint + bounded provenance
   -> bounded migration verifier report
   -> application gate requires acceptance + rollback
-  -> deletion readiness requires Phase 8 stability + verifier pass
+  -> deletion readiness requires native storage stability + verifier pass
   -> no direct side effects
 ```
 
@@ -241,6 +253,6 @@ legacy deletion work.
 
 ## Next Step
 
-Phase 7R.8 Runtime Metrics And Decision Trace should convert the Phase 7R
-runtime/rebuild outcomes into bounded counters and trace attributes without
-exposing provider payloads, prompts, embeddings, or diagnostic internals.
+Runtime Metrics And Decision Trace should convert runtime/rebuild outcomes into
+bounded counters and trace attributes without exposing provider payloads,
+prompts, embeddings, or diagnostic internals.

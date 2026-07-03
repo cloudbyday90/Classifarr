@@ -11,7 +11,7 @@ import {
   validatePolicyLibraryPolicyRebuildProposal,
 } from './policyLibraryPolicyRebuild.mjs';
 
-const PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS = Object.freeze({
+const POLICY_MIGRATION_DIFFERENCE_TYPE_IDS = Object.freeze({
   DESTINATION_CHANGE: 'destination_change',
   NEWLY_BLOCKED_ITEM: 'newly_blocked_item',
   NEWLY_REVIEW_REQUIRED_ITEM: 'newly_review_required_item',
@@ -19,13 +19,13 @@ const PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS = Object.freeze({
   EVIDENCE_CONFIDENCE_CHANGE: 'evidence_confidence_change',
 });
 
-const PHASE7R_MIGRATION_VERIFIER_STATUS_IDS = Object.freeze({
+const POLICY_MIGRATION_VERIFIER_STATUS_IDS = Object.freeze({
   NO_MIGRATION_DIFFERENCES: 'no_migration_differences',
   REVIEW_REQUIRED: 'review_required',
   BLOCKED_BY_MIGRATION_RISK: 'blocked_by_migration_risk',
 });
 
-const PHASE7R_MIGRATION_VERIFIER_REASON_IDS = Object.freeze({
+const POLICY_MIGRATION_VERIFIER_REASON_IDS = Object.freeze({
   PROPOSAL_VALIDATED: 'proposal_validated',
   LEGACY_COMPARISON_CONSUMED: 'legacy_comparison_consumed',
   BOUNDED_DIFFERENCES_EMITTED: 'bounded_differences_emitted',
@@ -36,8 +36,8 @@ const PHASE7R_MIGRATION_VERIFIER_REASON_IDS = Object.freeze({
   SIDE_EFFECTS_DISABLED: 'side_effects_disabled',
 });
 
-const PHASE7R_MIGRATION_DELETION_CRITERION_IDS = Object.freeze({
-  PHASE8_NATIVE_INTENT_STABLE: 'phase8_native_intent_stable',
+const POLICY_MIGRATION_DELETION_CRITERION_IDS = Object.freeze({
+  NATIVE_INTENT_STORAGE_STABLE: 'native_intent_storage_stable',
   VERIFIER_PASSED: 'verifier_passed',
   ROLLBACK_SNAPSHOT_CREATED: 'rollback_snapshot_created',
   ROLLBACK_WINDOW_ACTIVE: 'rollback_window_active',
@@ -46,7 +46,7 @@ const PHASE7R_MIGRATION_DELETION_CRITERION_IDS = Object.freeze({
   CUSTOM_SIGNAL_REPLACEMENT_DEFINED: 'custom_signal_replacement_defined',
 });
 
-const PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS = Object.freeze({
   MISSING_REPORT_VERSION: 'missing_report_version',
   INVALID_PROPOSAL: 'invalid_proposal',
   MISSING_PROPOSAL_VALIDATION: 'missing_proposal_validation',
@@ -61,7 +61,7 @@ const PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS = Object.freeze({
   CAN_APPLY_WITHOUT_OPERATOR_ACCEPTANCE: 'can_apply_without_operator_acceptance',
   CAN_APPLY_WITHOUT_ROLLBACK: 'can_apply_without_rollback',
   MISSING_ROLLBACK_PATH: 'missing_rollback_path',
-  CAN_DELETE_BEFORE_PHASE8_STABLE: 'can_delete_before_phase8_stable',
+  CAN_DELETE_BEFORE_NATIVE_INTENT_STABLE: 'can_delete_before_native_intent_stable',
   CAN_DELETE_WITHOUT_VERIFIER_PASS: 'can_delete_without_verifier_pass',
   SIDE_EFFECT_PERFORMED: 'side_effect_performed',
   MISSING_TRACE_REASON: 'missing_trace_reason',
@@ -73,13 +73,13 @@ const PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS = Object.freeze({
 
 const MAX_DIFFERENCES_DEFAULT = 25;
 const CONFIDENCE_DELTA_THRESHOLD_DEFAULT = 0.15;
-const SAMPLE_SET_FINGERPRINT_VERSION = 'phase7r.migration_verifier_sample_set_fingerprint.v1';
+const SAMPLE_SET_FINGERPRINT_VERSION = 'policy.migration_verifier_sample_set_fingerprint.v1';
 const SAMPLE_SET_FINGERPRINT_TRACE_ATTRIBUTE =
   'classifarr.policy.migration_verifier.sample_set_fingerprint';
 const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
 
 const MIGRATION_RELEVANT_DIFFERENCE_TYPES = Object.freeze(
-  Object.values(PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS)
+  Object.values(POLICY_MIGRATION_DIFFERENCE_TYPE_IDS)
 );
 
 function asArray(value) {
@@ -272,7 +272,7 @@ function compareSample(sample, confidenceDeltaThreshold) {
 
   if (valuesDiffer(legacyDestination, proposedDestination)) {
     differences.push(buildDifference({
-      typeId: PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS.DESTINATION_CHANGE,
+      typeId: POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.DESTINATION_CHANGE,
       sample,
       summary: 'Generated intent would choose a different destination than legacy behavior.',
       legacyValue: legacyDestination,
@@ -282,7 +282,7 @@ function compareSample(sample, confidenceDeltaThreshold) {
 
   if (sample.legacy.blocked !== true && sample.proposed.blocked === true) {
     differences.push(buildDifference({
-      typeId: PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_BLOCKED_ITEM,
+      typeId: POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_BLOCKED_ITEM,
       sample,
       severity: 'blocker',
       summary: 'Generated intent would newly block an item legacy behavior did not block.',
@@ -293,7 +293,7 @@ function compareSample(sample, confidenceDeltaThreshold) {
 
   if (sample.legacy.needsReview !== true && sample.proposed.needsReview === true) {
     differences.push(buildDifference({
-      typeId: PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_REVIEW_REQUIRED_ITEM,
+      typeId: POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_REVIEW_REQUIRED_ITEM,
       sample,
       summary: 'Generated intent would require review for an item legacy behavior allowed.',
       legacyValue: sample.legacy.statusId || 'no_review',
@@ -303,7 +303,7 @@ function compareSample(sample, confidenceDeltaThreshold) {
 
   if (sample.legacy.routeReady !== sample.proposed.routeReady) {
     differences.push(buildDifference({
-      typeId: PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS.ROUTE_READINESS_CHANGE,
+      typeId: POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.ROUTE_READINESS_CHANGE,
       sample,
       summary: 'Generated intent changes route readiness compared with legacy behavior.',
       legacyValue: sample.legacy.routeReady,
@@ -319,7 +319,7 @@ function compareSample(sample, confidenceDeltaThreshold) {
   if (confidenceDelta >= confidenceDeltaThreshold ||
       valuesDiffer(sample.legacy.confidenceLevel, sample.proposed.confidenceLevel)) {
     differences.push(buildDifference({
-      typeId: PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS.EVIDENCE_CONFIDENCE_CHANGE,
+      typeId: POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.EVIDENCE_CONFIDENCE_CHANGE,
       sample,
       summary: 'Generated intent changes evidence confidence compared with legacy behavior.',
       legacyValue: sample.legacy.confidenceLevel || legacyConfidence,
@@ -341,16 +341,16 @@ function summarizeDifferences(differences) {
 
 function determineStatus(differences) {
   if (differences.some(difference =>
-    difference.typeId === PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_BLOCKED_ITEM
+    difference.typeId === POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_BLOCKED_ITEM
   )) {
-    return PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK;
+    return POLICY_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK;
   }
 
   if (differences.length > 0) {
-    return PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.REVIEW_REQUIRED;
+    return POLICY_MIGRATION_VERIFIER_STATUS_IDS.REVIEW_REQUIRED;
   }
 
-  return PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES;
+  return POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES;
 }
 
 function normalizeRollbackSnapshot(input = {}) {
@@ -374,7 +374,7 @@ function buildApplicationGate({ input, proposal, statusId }) {
   const canApply = operatorAccepted === true &&
     rollbackSnapshot.created === true &&
     normalizeString(rollbackSnapshot.restorePath).length > 0 &&
-    statusId !== PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK;
+    statusId !== POLICY_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK;
 
   return {
     requiresOperatorAcceptance: true,
@@ -395,37 +395,38 @@ function buildDeletionCriteria({ input, differences, migrationPlan, applicationG
 
   const criteria = [
     {
-      criterionId: PHASE7R_MIGRATION_DELETION_CRITERION_IDS.PHASE8_NATIVE_INTENT_STABLE,
-      met: criteriaInput.phase8NativeIntentStable === true,
-      summary: 'Phase 8R native intent storage has proven stable.',
+      criterionId: POLICY_MIGRATION_DELETION_CRITERION_IDS.NATIVE_INTENT_STORAGE_STABLE,
+      met: criteriaInput.nativeIntentStorageStable === true ||
+        criteriaInput.phase8NativeIntentStable === true,
+      summary: 'Native intent storage has proven stable.',
     },
     {
-      criterionId: PHASE7R_MIGRATION_DELETION_CRITERION_IDS.VERIFIER_PASSED,
+      criterionId: POLICY_MIGRATION_DELETION_CRITERION_IDS.VERIFIER_PASSED,
       met: verifierPassed,
       summary: 'Migration verifier found no behavior-sensitive differences.',
     },
     {
-      criterionId: PHASE7R_MIGRATION_DELETION_CRITERION_IDS.ROLLBACK_SNAPSHOT_CREATED,
+      criterionId: POLICY_MIGRATION_DELETION_CRITERION_IDS.ROLLBACK_SNAPSHOT_CREATED,
       met: applicationGate.rollbackSnapshot.created === true,
       summary: 'Rollback snapshot exists for the replacement window.',
     },
     {
-      criterionId: PHASE7R_MIGRATION_DELETION_CRITERION_IDS.ROLLBACK_WINDOW_ACTIVE,
+      criterionId: POLICY_MIGRATION_DELETION_CRITERION_IDS.ROLLBACK_WINDOW_ACTIVE,
       met: criteriaInput.rollbackWindowActive === true,
       summary: 'Rollback retention window is active.',
     },
     {
-      criterionId: PHASE7R_MIGRATION_DELETION_CRITERION_IDS.DELETE_CHECKLIST_APPROVED,
+      criterionId: POLICY_MIGRATION_DELETION_CRITERION_IDS.DELETE_CHECKLIST_APPROVED,
       met: criteriaInput.deleteChecklistApproved === true,
       summary: 'Deletion checklist has been approved.',
     },
     {
-      criterionId: PHASE7R_MIGRATION_DELETION_CRITERION_IDS.LEGACY_ARTIFACTS_CLASSIFIED,
+      criterionId: POLICY_MIGRATION_DELETION_CRITERION_IDS.LEGACY_ARTIFACTS_CLASSIFIED,
       met: deleteTargetCount > 0,
       summary: 'Legacy artifacts have explicit migration/deletion classifications.',
     },
     {
-      criterionId: PHASE7R_MIGRATION_DELETION_CRITERION_IDS.CUSTOM_SIGNAL_REPLACEMENT_DEFINED,
+      criterionId: POLICY_MIGRATION_DELETION_CRITERION_IDS.CUSTOM_SIGNAL_REPLACEMENT_DEFINED,
       met: criteriaInput.customSignalReplacementDefined === true,
       summary: 'Custom-signal replacement path is defined for native intent storage.',
     },
@@ -440,19 +441,19 @@ function buildDeletionCriteria({ input, differences, migrationPlan, applicationG
 
 function buildTrace({ statusId, differences, boundedDifferences, sampleSetFingerprint }) {
   const reasons = [
-    PHASE7R_MIGRATION_VERIFIER_REASON_IDS.PROPOSAL_VALIDATED,
-    PHASE7R_MIGRATION_VERIFIER_REASON_IDS.LEGACY_COMPARISON_CONSUMED,
-    PHASE7R_MIGRATION_VERIFIER_REASON_IDS.BOUNDED_DIFFERENCES_EMITTED,
-    PHASE7R_MIGRATION_VERIFIER_REASON_IDS.MIGRATION_RELEVANT_ONLY,
-    PHASE7R_MIGRATION_VERIFIER_REASON_IDS.OPERATOR_ACCEPTANCE_REQUIRED,
-    PHASE7R_MIGRATION_VERIFIER_REASON_IDS.ROLLBACK_SNAPSHOT_REQUIRED,
-    PHASE7R_MIGRATION_VERIFIER_REASON_IDS.DELETION_CRITERIA_DEFINED,
-    PHASE7R_MIGRATION_VERIFIER_REASON_IDS.SIDE_EFFECTS_DISABLED,
+    POLICY_MIGRATION_VERIFIER_REASON_IDS.PROPOSAL_VALIDATED,
+    POLICY_MIGRATION_VERIFIER_REASON_IDS.LEGACY_COMPARISON_CONSUMED,
+    POLICY_MIGRATION_VERIFIER_REASON_IDS.BOUNDED_DIFFERENCES_EMITTED,
+    POLICY_MIGRATION_VERIFIER_REASON_IDS.MIGRATION_RELEVANT_ONLY,
+    POLICY_MIGRATION_VERIFIER_REASON_IDS.OPERATOR_ACCEPTANCE_REQUIRED,
+    POLICY_MIGRATION_VERIFIER_REASON_IDS.ROLLBACK_SNAPSHOT_REQUIRED,
+    POLICY_MIGRATION_VERIFIER_REASON_IDS.DELETION_CRITERIA_DEFINED,
+    POLICY_MIGRATION_VERIFIER_REASON_IDS.SIDE_EFFECTS_DISABLED,
   ];
 
   return {
     attributes: {
-      'classifarr.policy.migration_verifier.version': 'phase7r.migration_verifier.v1',
+      'classifarr.policy.migration_verifier.version': 'policy.migration_verifier.v1',
       'classifarr.policy.migration_verifier.status': statusId,
       'classifarr.policy.migration_verifier.difference_count': differences.length,
       'classifarr.policy.migration_verifier.emitted_difference_count': boundedDifferences.length,
@@ -466,7 +467,7 @@ function buildTrace({ statusId, differences, boundedDifferences, sampleSetFinger
   };
 }
 
-function buildPolicyBuilderPhase7MigrationVerifierReport(input = {}) {
+function buildPolicyMigrationVerifierReport(input = {}) {
   const proposal = input.proposal?.version === 'policy.library_policy_rebuild.v1'
     ? input.proposal
     : buildPolicyLibraryPolicyRebuildProposal(input.proposalInput || {});
@@ -505,7 +506,7 @@ function buildPolicyBuilderPhase7MigrationVerifierReport(input = {}) {
   });
 
   return {
-    version: 'phase7r.migration_verifier.v1',
+    version: 'policy.migration_verifier.v1',
     statusId,
     proposal,
     proposalValidation: validatePolicyLibraryPolicyRebuildProposal(proposal),
@@ -543,16 +544,16 @@ function buildPolicyBuilderPhase7MigrationVerifierReport(input = {}) {
   };
 }
 
-function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
+function validatePolicyMigrationVerifierReport(report = {}) {
   const issues = [];
   const proposalValidation = validatePolicyLibraryPolicyRebuildProposal(
     asObject(report.proposal)
   );
 
-  if (report.version !== 'phase7r.migration_verifier.v1') {
+  if (report.version !== 'policy.migration_verifier.v1') {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_REPORT_VERSION,
-      message: 'Migration verifier report must use the Phase 7R.7 version.',
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_REPORT_VERSION,
+      message: 'Migration verifier report must use the durable policy migration verifier version.',
     });
   }
 
@@ -560,27 +561,27 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
       typeof report.proposalValidation !== 'object' ||
       typeof report.proposalValidation.ok !== 'boolean') {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_PROPOSAL_VALIDATION,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_PROPOSAL_VALIDATION,
       message: 'Migration verifier report must carry rebuild proposal validation proof.',
     });
   } else if (report.proposalValidation.ok !== proposalValidation.ok ||
       Number(report.proposalValidation.issueCount) !== proposalValidation.issueCount) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.PROPOSAL_VALIDATION_MISMATCH,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.PROPOSAL_VALIDATION_MISMATCH,
       message: 'Migration verifier proposal validation proof must match the embedded proposal.',
     });
   }
 
   if (report.proposalValidation?.ok !== true || !proposalValidation.ok) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_PROPOSAL,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_PROPOSAL,
       message: 'Migration verifier report must include a valid rebuild proposal.',
     });
   }
 
   if (report.migrationPlanValidation?.ok !== true) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_MIGRATION_PLAN,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_MIGRATION_PLAN,
       message: 'Migration verifier report must include a valid migration plan.',
     });
   }
@@ -595,7 +596,7 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
 
   if (!sampleFingerprintValue) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_SAMPLE_SET_FINGERPRINT,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_SAMPLE_SET_FINGERPRINT,
       message: 'Migration verifier report must carry a sample-set fingerprint.',
     });
   } else if (
@@ -604,14 +605,14 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
     !SHA256_FINGERPRINT_PATTERN.test(sampleFingerprintValue)
   ) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MALFORMED_SAMPLE_SET_FINGERPRINT,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MALFORMED_SAMPLE_SET_FINGERPRINT,
       message: 'Migration verifier sample-set fingerprint must be a supported SHA-256 digest.',
     });
   }
 
   if (sampleFingerprintValue && traceSampleFingerprint !== sampleFingerprintValue) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.TRACE_SAMPLE_SET_FINGERPRINT_MISMATCH,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.TRACE_SAMPLE_SET_FINGERPRINT_MISMATCH,
       message: 'Migration verifier trace sample-set fingerprint must match the report.',
     });
   }
@@ -631,7 +632,7 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
       Number(proposalGuardedOutcomeSummary.invalidRequestProofCount ?? 0)
   )) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.SAMPLE_SET_PROVENANCE_MISMATCH,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.SAMPLE_SET_PROVENANCE_MISMATCH,
       message: 'Migration verifier sample-set provenance must match the embedded rebuild proposal summary.',
     });
   }
@@ -640,21 +641,21 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
   asArray(report.differences).forEach(difference => {
     if (!allowedTypes.has(difference.typeId)) {
       issues.push({
-        riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.UNKNOWN_DIFFERENCE_TYPE,
+        riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.UNKNOWN_DIFFERENCE_TYPE,
         message: `Migration verifier emitted unknown difference type "${difference.typeId}".`,
       });
     }
 
     if (difference.migrationRelevant === false) {
       issues.push({
-        riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.NON_MIGRATION_RELEVANT_DIFFERENCE,
+        riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.NON_MIGRATION_RELEVANT_DIFFERENCE,
         message: 'Migration verifier output must include only migration-relevant differences.',
       });
     }
 
     if (difference.exposesRawPayload === true || difference.rawPayload || difference.prompt || difference.embedding) {
       issues.push({
-        riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
+        riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
         message: 'Migration verifier differences must not expose raw payloads, prompts, or embeddings.',
       });
     }
@@ -665,14 +666,14 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
     asArray(report.differences).length !== Number(report.differenceSummary?.emittedCount)
   ) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.UNBOUNDED_DIFFERENCE_OUTPUT,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.UNBOUNDED_DIFFERENCE_OUTPUT,
       message: 'Migration verifier emitted difference output must be bounded and counted.',
     });
   }
 
   if (report.normalWorkflowSurface === true) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.NORMAL_WORKFLOW_SURFACE,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.NORMAL_WORKFLOW_SURFACE,
       message: 'Migration verifier output cannot become normal policy-authoring UI.',
     });
   }
@@ -680,7 +681,7 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
   if (report.applicationGate?.requiresOperatorAcceptance !== true ||
       report.applicationGate?.requiresRollbackSnapshot !== true) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_APPLICATION_GATE,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_APPLICATION_GATE,
       message: 'Migration verifier must require operator acceptance and rollback before replacement.',
     });
   }
@@ -690,7 +691,7 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
     report.applicationGate?.operatorAccepted !== true
   ) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_APPLY_WITHOUT_OPERATOR_ACCEPTANCE,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_APPLY_WITHOUT_OPERATOR_ACCEPTANCE,
       message: 'Migration replacement cannot apply without explicit operator acceptance.',
     });
   }
@@ -700,7 +701,7 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
     report.applicationGate?.rollbackSnapshot?.created !== true
   ) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_APPLY_WITHOUT_ROLLBACK,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_APPLY_WITHOUT_ROLLBACK,
       message: 'Migration replacement cannot apply without a rollback snapshot.',
     });
   }
@@ -710,30 +711,33 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
     !normalizeString(report.applicationGate?.rollbackSnapshot?.restorePath)
   ) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_ROLLBACK_PATH,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_ROLLBACK_PATH,
       message: 'Rollback snapshot must include a restore path.',
     });
   }
 
-  const phase8Stable = asArray(report.deletionReadiness?.criteria)
+  const nativeIntentStorageStable = asArray(report.deletionReadiness?.criteria)
     .find(criterion =>
-      criterion.criterionId === PHASE7R_MIGRATION_DELETION_CRITERION_IDS.PHASE8_NATIVE_INTENT_STABLE
+      criterion.criterionId === POLICY_MIGRATION_DELETION_CRITERION_IDS.NATIVE_INTENT_STORAGE_STABLE
     )?.met === true;
   const verifierPassed = asArray(report.deletionReadiness?.criteria)
     .find(criterion =>
-      criterion.criterionId === PHASE7R_MIGRATION_DELETION_CRITERION_IDS.VERIFIER_PASSED
+      criterion.criterionId === POLICY_MIGRATION_DELETION_CRITERION_IDS.VERIFIER_PASSED
     )?.met === true;
 
-  if (report.deletionReadiness?.canDeleteLegacyPaths === true && !phase8Stable) {
+  if (
+    report.deletionReadiness?.canDeleteLegacyPaths === true &&
+    !nativeIntentStorageStable
+  ) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_DELETE_BEFORE_PHASE8_STABLE,
-      message: 'Legacy paths cannot be deleted before Phase 8R native intent storage is stable.',
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_DELETE_BEFORE_NATIVE_INTENT_STABLE,
+      message: 'Legacy paths cannot be deleted before native intent storage is stable.',
     });
   }
 
   if (report.deletionReadiness?.canDeleteLegacyPaths === true && !verifierPassed) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_DELETE_WITHOUT_VERIFIER_PASS,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_DELETE_WITHOUT_VERIFIER_PASS,
       message: 'Legacy paths cannot be deleted while migration verifier differences remain.',
     });
   }
@@ -741,7 +745,7 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
   Object.entries(asObject(report.sideEffects)).forEach(([key, value]) => {
     if (value === true) {
       issues.push({
-        riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
         message: `Migration verifier cannot perform side effect "${key}".`,
       });
     }
@@ -749,7 +753,7 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
 
   if (asArray(report.trace?.reasons).length === 0) {
     issues.push({
-      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
       message: 'Migration verifier must include bounded trace reasons.',
     });
   }
@@ -761,10 +765,10 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
   };
 }
 
-function buildPolicyBuilderPhase7MigrationVerifierAudit(
-  report = buildPolicyBuilderPhase7MigrationVerifierReport()
+function buildPolicyMigrationVerifierAudit(
+  report = buildPolicyMigrationVerifierReport()
 ) {
-  const validation = validatePolicyBuilderPhase7MigrationVerifierReport(report);
+  const validation = validatePolicyMigrationVerifierReport(report);
 
   return {
     ok: validation.ok,
@@ -772,8 +776,8 @@ function buildPolicyBuilderPhase7MigrationVerifierAudit(
     statusId: report.statusId || null,
     differenceCount: report.differenceSummary?.totalCount ?? 0,
     validation,
-    nextPhase: {
-      phaseId: '7r_8',
+    nextStep: {
+      stepId: 'runtime_metrics_trace',
       label: 'Runtime Metrics And Decision Trace',
       reason: 'Migration verification and rollback gates now produce bounded decision output, so runtime metrics and decision traces can count automation, review, rollback, and rebuild outcomes safely.',
     },
@@ -781,12 +785,12 @@ function buildPolicyBuilderPhase7MigrationVerifierAudit(
 }
 
 export {
-  PHASE7R_MIGRATION_DELETION_CRITERION_IDS,
-  PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS,
-  PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS,
-  PHASE7R_MIGRATION_VERIFIER_REASON_IDS,
-  PHASE7R_MIGRATION_VERIFIER_STATUS_IDS,
-  buildPolicyBuilderPhase7MigrationVerifierAudit,
-  buildPolicyBuilderPhase7MigrationVerifierReport,
-  validatePolicyBuilderPhase7MigrationVerifierReport,
+  POLICY_MIGRATION_DELETION_CRITERION_IDS,
+  POLICY_MIGRATION_DIFFERENCE_TYPE_IDS,
+  POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS,
+  POLICY_MIGRATION_VERIFIER_REASON_IDS,
+  POLICY_MIGRATION_VERIFIER_STATUS_IDS,
+  buildPolicyMigrationVerifierAudit,
+  buildPolicyMigrationVerifierReport,
+  validatePolicyMigrationVerifierReport,
 };

@@ -4015,7 +4015,7 @@ Tasks:
   - evidence-confidence changes.
 - Require rollback snapshots before applying accepted replacements.
 - Define deletion criteria for old preset/custom-signal runtime paths after
-  Phase 8R native intent migration proves stable.
+  native intent storage proves stable.
 
 Acceptance criteria:
 
@@ -4031,13 +4031,12 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 7R.7 migration verifier and rollback path is documented in
-  [Policy Builder Phase 7R Migration Verifier And Rollback Path](policy-builder-phase-7r-migration-verifier-rollback.md).
+- Migration verifier and rollback path is documented in
+  [Policy Migration Verifier And Rollback Path](policy-builder-phase-7r-migration-verifier-rollback.md).
 - The server-owned verifier contract lives in
-  `server/src/services/policyBuilderPhase7MigrationVerifierRollback.mjs`.
+  `server/src/services/policyMigrationVerifierRollback.mjs`.
 - The focused verifier test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase7MigrationVerifierRollback.test.mjs`.
-- Current implementation consumes a Phase 7R.6 rebuild proposal and sanitized
+- Current implementation consumes a durable library-derived rebuild proposal and sanitized
   representative legacy/proposed comparison samples.
 - Verifier reports now carry a stable sample-set fingerprint with bounded
   provenance for sample count, raw-payload suppression, verifier options,
@@ -4054,7 +4053,7 @@ Implementation status:
   route-readiness changes, and evidence-confidence changes.
 - Application gates require explicit operator acceptance plus rollback snapshot
   and restore path before any later replacement can apply.
-- Legacy deletion readiness is blocked until Phase 8R native intent is stable,
+- Legacy deletion readiness is blocked until native intent storage is stable,
   the verifier passes, rollback and retention gates are active, delete checklist
   approval exists, legacy artifacts are classified, and custom-signal
   replacement is defined.
@@ -6294,6 +6293,17 @@ Implementation status:
 - After the library-derived-policy-rebuild cutover, the repository inventory
   validates with 12,769 total phase-coded references, 5,437 production
   references, and 5,459 rename candidates.
+- The next runtime module cutover renamed migration verifier and rollback to
+  `policyMigrationVerifierRollback.mjs`, renamed its focused test, moved the
+  verifier and sample-set fingerprint contracts to
+  `policy.migration_verifier.v1` and
+  `policy.migration_verifier_sample_set_fingerprint.v1`, replaced the
+  contract-local phase handoff with `nextStep`, and moved deletion readiness to
+  native intent storage terminology:
+  [Policy Migration Verifier And Rollback Module Cutover](policy-migration-verifier-rollback-module-cutover.md).
+- After the migration-verifier cutover, the repository inventory validates with
+  12,580 total phase-coded references, 5,341 production references, and 5,363
+  rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

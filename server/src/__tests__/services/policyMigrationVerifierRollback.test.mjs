@@ -2,14 +2,14 @@ import {
   buildPolicyLibraryPolicyRebuildProposal,
 } from '../../services/policyLibraryPolicyRebuild.mjs';
 import {
-  PHASE7R_MIGRATION_DELETION_CRITERION_IDS,
-  PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS,
-  PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS,
-  PHASE7R_MIGRATION_VERIFIER_STATUS_IDS,
-  buildPolicyBuilderPhase7MigrationVerifierAudit,
-  buildPolicyBuilderPhase7MigrationVerifierReport,
-  validatePolicyBuilderPhase7MigrationVerifierReport,
-} from '../../services/policyBuilderPhase7MigrationVerifierRollback.mjs';
+  POLICY_MIGRATION_DELETION_CRITERION_IDS,
+  POLICY_MIGRATION_DIFFERENCE_TYPE_IDS,
+  POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS,
+  POLICY_MIGRATION_VERIFIER_STATUS_IDS,
+  buildPolicyMigrationVerifierAudit,
+  buildPolicyMigrationVerifierReport,
+  validatePolicyMigrationVerifierReport,
+} from '../../services/policyMigrationVerifierRollback.mjs';
 
 function proposalInput(overrides = {}) {
   return {
@@ -56,9 +56,9 @@ function acceptedProposal() {
   return proposal;
 }
 
-describe('policyBuilderPhase7MigrationVerifierRollback', () => {
+describe('policyMigrationVerifierRollback', () => {
   test('builds a no-difference report with explicit rollback and deletion gates', () => {
-    const report = buildPolicyBuilderPhase7MigrationVerifierReport({
+    const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       legacyComparisonSamples: [
         {
@@ -89,7 +89,7 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
       },
     });
 
-    expect(report.statusId).toBe(PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES);
+    expect(report.statusId).toBe(POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES);
     expect(report.differenceSummary.totalCount).toBe(0);
     expect(report.applicationGate).toEqual(expect.objectContaining({
       requiresOperatorAcceptance: true,
@@ -98,18 +98,18 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
       canApplyReplacement: true,
     }));
     expect(report.deletionReadiness.canDeleteLegacyPaths).toBe(false);
-    expect(report.deletionReadiness.criteria).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        criterionId: PHASE7R_MIGRATION_DELETION_CRITERION_IDS.PHASE8_NATIVE_INTENT_STABLE,
+      expect(report.deletionReadiness.criteria).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+        criterionId: POLICY_MIGRATION_DELETION_CRITERION_IDS.NATIVE_INTENT_STORAGE_STABLE,
         met: false,
       }),
     ]));
     expect(report.normalWorkflowSurface).toBe(false);
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(report).ok).toBe(true);
+    expect(validatePolicyMigrationVerifierReport(report).ok).toBe(true);
   });
 
   test('emits only migration-relevant bounded differences', () => {
-    const report = buildPolicyBuilderPhase7MigrationVerifierReport({
+    const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       maxDifferences: 3,
       confidenceDeltaThreshold: 0.1,
@@ -154,20 +154,20 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
       ],
     });
 
-    expect(report.statusId).toBe(PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK);
+    expect(report.statusId).toBe(POLICY_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK);
     expect(report.differenceSummary.totalCount).toBeGreaterThan(3);
     expect(report.differenceSummary.emittedCount).toBe(3);
     expect(report.differenceSummary.truncated).toBe(true);
     expect(report.differenceSummary.byType).toEqual(expect.objectContaining({
-      [PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS.DESTINATION_CHANGE]: 1,
-      [PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_BLOCKED_ITEM]: 1,
-      [PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_REVIEW_REQUIRED_ITEM]: 1,
-      [PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS.ROUTE_READINESS_CHANGE]: 1,
-      [PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS.EVIDENCE_CONFIDENCE_CHANGE]: 2,
+      [POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.DESTINATION_CHANGE]: 1,
+      [POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_BLOCKED_ITEM]: 1,
+      [POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_REVIEW_REQUIRED_ITEM]: 1,
+      [POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.ROUTE_READINESS_CHANGE]: 1,
+      [POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.EVIDENCE_CONFIDENCE_CHANGE]: 2,
     }));
     expect(report.sampleSummary.rawPayloadSuppressed).toBe(true);
     expect(report.sampleSetFingerprint).toEqual(expect.objectContaining({
-      version: 'phase7r.migration_verifier_sample_set_fingerprint.v1',
+      version: 'policy.migration_verifier_sample_set_fingerprint.v1',
       algorithm: 'sha256',
       fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
       provenance: expect.objectContaining({
@@ -182,15 +182,15 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
     expect(JSON.stringify(report.sampleSetFingerprint)).not.toContain('Different destination');
     expect(JSON.stringify(report.sampleSetFingerprint)).not.toContain('Animated Movies');
     report.differences.forEach(difference => {
-      expect(Object.values(PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS)).toContain(difference.typeId);
+      expect(Object.values(POLICY_MIGRATION_DIFFERENCE_TYPE_IDS)).toContain(difference.typeId);
       expect(difference.exposesRawPayload).toBe(false);
       expect(difference.rawPayload).toBeUndefined();
     });
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(report).ok).toBe(true);
+    expect(validatePolicyMigrationVerifierReport(report).ok).toBe(true);
   });
 
   test('builds stable sample-set fingerprints and changes them when comparison inputs change', () => {
-    const baseReport = buildPolicyBuilderPhase7MigrationVerifierReport({
+    const baseReport = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       maxDifferences: 5,
       legacyComparisonSamples: [
@@ -210,7 +210,7 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
         },
       ],
     });
-    const reorderedEquivalentReport = buildPolicyBuilderPhase7MigrationVerifierReport({
+    const reorderedEquivalentReport = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       maxDifferences: 5,
       legacyComparisonSamples: [
@@ -230,7 +230,7 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
         },
       ],
     });
-    const changedReport = buildPolicyBuilderPhase7MigrationVerifierReport({
+    const changedReport = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       maxDifferences: 5,
       legacyComparisonSamples: [
@@ -255,11 +255,11 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
       .toBe(reorderedEquivalentReport.sampleSetFingerprint.fingerprint);
     expect(baseReport.sampleSetFingerprint.fingerprint)
       .not.toBe(changedReport.sampleSetFingerprint.fingerprint);
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(baseReport).ok).toBe(true);
+    expect(validatePolicyMigrationVerifierReport(baseReport).ok).toBe(true);
   });
 
   test('rejects missing, malformed, or mismatched sample-set fingerprints', () => {
-    const report = buildPolicyBuilderPhase7MigrationVerifierReport({
+    const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       legacyComparisonSamples: [],
     });
@@ -285,28 +285,28 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
       },
     };
 
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(missing).issues)
+    expect(validatePolicyMigrationVerifierReport(missing).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_SAMPLE_SET_FINGERPRINT,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_SAMPLE_SET_FINGERPRINT,
         }),
       ]));
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(malformed).issues)
+    expect(validatePolicyMigrationVerifierReport(malformed).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MALFORMED_SAMPLE_SET_FINGERPRINT,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MALFORMED_SAMPLE_SET_FINGERPRINT,
         }),
       ]));
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(mismatched).issues)
+    expect(validatePolicyMigrationVerifierReport(mismatched).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.TRACE_SAMPLE_SET_FINGERPRINT_MISMATCH,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.TRACE_SAMPLE_SET_FINGERPRINT_MISMATCH,
         }),
       ]));
   });
 
   test('rejects stale proposal validation proof and sample-set provenance drift', () => {
-    const report = buildPolicyBuilderPhase7MigrationVerifierReport({
+    const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       legacyComparisonSamples: [],
     });
@@ -335,34 +335,34 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
       },
     };
 
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(missingValidation).issues)
+    expect(validatePolicyMigrationVerifierReport(missingValidation).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_PROPOSAL_VALIDATION,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_PROPOSAL_VALIDATION,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_PROPOSAL,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_PROPOSAL,
         }),
       ]));
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(staleValidation).issues)
+    expect(validatePolicyMigrationVerifierReport(staleValidation).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.PROPOSAL_VALIDATION_MISMATCH,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.PROPOSAL_VALIDATION_MISMATCH,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_PROPOSAL,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_PROPOSAL,
         }),
       ]));
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(provenanceDrift).issues)
+    expect(validatePolicyMigrationVerifierReport(provenanceDrift).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.SAMPLE_SET_PROVENANCE_MISMATCH,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.SAMPLE_SET_PROVENANCE_MISMATCH,
         }),
       ]));
   });
 
   test('does not allow replacement without operator acceptance and rollback', () => {
-    const report = buildPolicyBuilderPhase7MigrationVerifierReport({
+    const report = buildPolicyMigrationVerifierReport({
       proposal: buildPolicyLibraryPolicyRebuildProposal(proposalInput()),
       legacyComparisonSamples: [],
     });
@@ -372,30 +372,30 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
       canApplyReplacement: false,
     }));
     expect(report.applicationGate.rollbackSnapshot.created).toBe(false);
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(report).ok).toBe(true);
+    expect(validatePolicyMigrationVerifierReport(report).ok).toBe(true);
 
     report.applicationGate.canApplyReplacement = true;
 
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(report).issues)
+    expect(validatePolicyMigrationVerifierReport(report).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_APPLY_WITHOUT_OPERATOR_ACCEPTANCE,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_APPLY_WITHOUT_OPERATOR_ACCEPTANCE,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_APPLY_WITHOUT_ROLLBACK,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_APPLY_WITHOUT_ROLLBACK,
         }),
       ]));
   });
 
   test('rejects normal-workflow verifier output, raw payload differences, and side effects', () => {
-    const report = buildPolicyBuilderPhase7MigrationVerifierReport({
+    const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       legacyComparisonSamples: [],
     });
     report.normalWorkflowSurface = true;
     report.sideEffects.policyReplaced = true;
     report.differences.push({
-      typeId: PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS.DESTINATION_CHANGE,
+      typeId: POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.DESTINATION_CHANGE,
       rawPayload: {
         shouldNotLeak: true,
       },
@@ -404,22 +404,22 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
     report.differenceSummary.emittedCount = report.differences.length;
     report.differenceSummary.totalCount = report.differences.length;
 
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(report).issues)
+    expect(validatePolicyMigrationVerifierReport(report).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.NORMAL_WORKFLOW_SURFACE,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.NORMAL_WORKFLOW_SURFACE,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
         }),
       ]));
   });
 
   test('blocks legacy deletion before Phase 8 stability or verifier pass', () => {
-    const report = buildPolicyBuilderPhase7MigrationVerifierReport({
+    const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       legacyComparisonSamples: [
         {
@@ -448,19 +448,19 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
 
     report.deletionReadiness.canDeleteLegacyPaths = true;
 
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(report).issues)
+    expect(validatePolicyMigrationVerifierReport(report).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_DELETE_BEFORE_PHASE8_STABLE,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_DELETE_BEFORE_NATIVE_INTENT_STABLE,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_DELETE_WITHOUT_VERIFIER_PASS,
+          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_DELETE_WITHOUT_VERIFIER_PASS,
         }),
       ]));
   });
 
   test('allows delete readiness only after all deletion criteria are met', () => {
-    const report = buildPolicyBuilderPhase7MigrationVerifierReport({
+    const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       legacyComparisonSamples: [],
       rollbackSnapshot: {
@@ -468,7 +468,7 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
         restorePath: 'policy_snapshots/snapshot-1.json',
       },
       deletionCriteria: {
-        phase8NativeIntentStable: true,
+        nativeIntentStorageStable: true,
         rollbackWindowActive: true,
         deleteChecklistApproved: true,
         customSignalReplacementDefined: true,
@@ -476,20 +476,20 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
     });
 
     expect(report.deletionReadiness.canDeleteLegacyPaths).toBe(true);
-    expect(validatePolicyBuilderPhase7MigrationVerifierReport(report).ok).toBe(true);
+    expect(validatePolicyMigrationVerifierReport(report).ok).toBe(true);
   });
 
   test('passes component audit and points to runtime metrics and decision trace', () => {
-    const report = buildPolicyBuilderPhase7MigrationVerifierReport({
+    const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       legacyComparisonSamples: [],
     });
-    const audit = buildPolicyBuilderPhase7MigrationVerifierAudit(report);
+    const audit = buildPolicyMigrationVerifierAudit(report);
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '7r_8',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'runtime_metrics_trace',
       label: 'Runtime Metrics And Decision Trace',
     }));
   });

@@ -147,7 +147,7 @@ Cons:
 - Rebuild proposal dependency:
   `server/src/services/policyLibraryPolicyRebuild.mjs`
 - Migration verifier dependency:
-  `server/src/services/policyBuilderPhase7MigrationVerifierRollback.mjs`
+  `server/src/services/policyMigrationVerifierRollback.mjs`
 - Roadmap owner:
   Phase 7R.8 Runtime Metrics And Decision Trace in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
