@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Production Naming Cutover Plan** — expanded the roadmap with
+  a mandatory production naming stabilization phase and added a design record
+  so phase-coded implementation names are inventoried, renamed to durable
+  product-domain terms, and enforced by scanner coverage before the
+  re-imagined policy builder is considered complete.
 - **Policy Builder Phase 7R Runtime Evidence Projection Audit** — hardened the
   runtime evidence projection audit so sanitized projection fingerprints,
   bounded provenance, and trace attributes are recomputed and compared before

@@ -5931,6 +5931,59 @@ Official guidance alignment:
   names should use durable product-domain terms rather than temporary roadmap
   phase identifiers.
 
+Design record:
+
+- [Policy Builder Production Naming Cutover](policy-builder-production-naming-cutover.md)
+
+Non-goals:
+
+- Do not rename production modules while Phase 6R, 7R, or 8R contracts are
+  still moving. Mid-flight renames would obscure behavior changes and make
+  rollback harder.
+- Do not leave adapters permanently. Compatibility exports are allowed only when
+  a release boundary or persisted payload migration requires them.
+- Do not remove phase labels from docs, changelog history, migration evidence,
+  or tests that intentionally prove old-to-new compatibility.
+
+Required outcome:
+
+```text
+roadmap phases remain in roadmap/history
+production code uses durable product-domain names
+telemetry and payloads use durable product-domain names
+tests enforce the boundary
+```
+
+### 9R.0 Durable Naming Design Record
+
+Intent: define the durable product vocabulary before any code moves.
+
+Tasks:
+
+- Publish the naming design record with official guidance, rename principles,
+  pros/cons, and final recommendation stack.
+- Define durable names for these production domains:
+  - policy evidence boundary,
+  - intent inference,
+  - learning eligibility,
+  - automation readiness,
+  - operator workflow,
+  - runtime evidence projection,
+  - automation decision,
+  - request learning,
+  - library rebuild,
+  - migration verification,
+  - native policy storage.
+- Define the allow-list categories for phase-coded references that may remain:
+  docs, changelog history, migration evidence, legacy compatibility tests, and
+  bounded temporary adapters.
+
+Acceptance criteria:
+
+- The design record exists before production files are renamed.
+- Durable names are product-domain names, not roadmap task names.
+- Every later rename can point to the design record and map.
+
 ### 9R.1 Production Name Inventory
 
 Intent: identify every phase-coded production artifact before any rename.
@@ -5951,8 +6004,11 @@ Tasks:
   - **Rename in production code**,
   - **Keep in docs/history**,
   - **Keep in tests only as migration evidence**,
+  - **Temporary adapter with deletion gate**,
   - **Delete with obsolete migration tooling**.
 - Build a rename map from phase-coded names to durable product names.
+- Separate inventory into production, test, docs, scripts, migrations, package
+  commands, telemetry, payload fields, and generated artifacts.
 
 Acceptance criteria:
 
@@ -5967,13 +6023,16 @@ Intent: move server/client production modules to durable domain names.
 
 Tasks:
 
-- Rename Phase 6R evidence, intent, readiness, learning, and workflow modules to
+- Rename evidence, intent, readiness, learning, and workflow modules to
   product-domain module names.
-- Rename Phase 7R runtime/rebuild modules to runtime-domain names.
-- Rename Phase 8R native storage and migration modules to storage/migration
-  domain names after native storage is stable.
+- Rename runtime evidence, automation, question, request-learning, rebuild,
+  migration-verifier, and metrics modules to runtime-domain names.
+- Rename native storage, rollback, conversion, and legacy-removal modules to
+  storage/migration domain names after native storage is stable.
 - Keep temporary adapter exports only when needed for one release window, and
   record their deletion gate.
+- Use mechanical file moves plus focused import rewrites; behavior changes are
+  out of scope for this phase.
 
 Acceptance criteria:
 
@@ -5991,8 +6050,12 @@ Tasks:
 - Rename internal contract versions from roadmap names to durable names where
   external compatibility allows it.
 - Rename trace attributes and event labels to product-domain terms.
+- Rename package scripts and generated artifact names that operators or CI will
+  keep using after the roadmap completes.
 - Keep migration-history records clear enough to explain old phase-origin data
   without exposing phase labels as current product concepts.
+- Provide compatibility readers for persisted phase-coded payload fields only
+  when a storage migration cannot safely rewrite historical records in place.
 
 Acceptance criteria:
 
@@ -6012,6 +6075,8 @@ Tasks:
   runtime modules without an allow-listed reason.
 - Run the scanner in focused tests or CI before the rebuild is called complete.
 - Update docs to show the final production module map.
+- Prove temporary adapter deletion gates are either complete or explicitly
+  scheduled with owner, reason, and target release.
 
 Acceptance criteria:
 
@@ -6019,6 +6084,27 @@ Acceptance criteria:
   as docs/history/test migration evidence.
 - Full focused server/client tests pass after rename.
 - The roadmap records the final durable module names.
+
+### 9R.5 Final Product-Language Audit
+
+Intent: verify the completed platform can be understood without knowing the
+roadmap phases.
+
+Tasks:
+
+- Audit user-facing labels, API payload examples, settings text, diagnostics,
+  route names, logs, and release notes for temporary roadmap language.
+- Confirm operator-facing text uses terms such as evidence, intent, readiness,
+  learning, migration, storage, and automation instead of phase numbers.
+- Keep historical changelog entries intact, but write current release notes in
+  product-domain language.
+
+Acceptance criteria:
+
+- Normal operators do not need roadmap phase knowledge to understand the
+  product.
+- Current runtime diagnostics and settings do not expose completed phase labels.
+- Historical docs remain searchable for migration evidence.
 
 ## Testing Strategy
 
