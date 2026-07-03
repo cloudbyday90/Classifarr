@@ -5,8 +5,8 @@
 Implemented as the Phase 6R completion gate.
 
 This audit proves that the re-imagined Phase 6R contracts are present,
-documented, tested, internally chained, and migration-gated before Phase 7R
-runtime work starts.
+documented, tested, internally chained, quality-gated, and migration-gated
+before Phase 7R runtime work starts.
 
 ## Problem
 
@@ -37,6 +37,10 @@ normal operator workflow.
   emphasizes server-side validation, business logic controls, and secure
   configuration. The completion audit is server-owned and rejects diagnostic
   surfaces in the normal workflow.
+- [OWASP Business Logic Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Business_Logic_Security_Cheat_Sheet.html)
+  emphasizes enforcing intended workflow sequencing server-side. The completion
+  audit now rejects quality gaps and drift across the Phase 6R handoff chain
+  instead of trusting that earlier component gates were called correctly.
 - [PostgreSQL Backup And Restore](https://www.postgresql.org/docs/current/backup.html)
   documents backup and restore practices. The audit verifies that Phase 8R
   storage migration remains blocked until Phase 6R migration gates pass.
@@ -55,7 +59,8 @@ normal operator workflow.
    Completion should build a deterministic evidence -> intent -> learning ->
    readiness -> workflow -> migration chain and fail when a bounded step fails,
    a nested bounded audit is missing or non-passing, evidence projection
-   fingerprints drift, or raw evidence labels leak into boundary provenance.
+   fingerprints drift, quality snapshots are missing/insufficient/mismatched,
+   or raw evidence labels leak into boundary provenance.
 
 4. **Treat 6R.0 as a real gate.**
    The artifact inventory and cutline must verify that legacy impact/replay/
@@ -76,6 +81,7 @@ Pros:
 - Gives a concrete proof point before Phase 7R begins.
 - Catches missing docs, tests, services, and broken phase sequencing.
 - Catches broken bounded handoffs before Phase 7R runtime work depends on them.
+- Catches quality handoff drift before runtime automation trusts the chain.
 - Prevents old replay/TMDB diagnostics from surviving without a cutline.
 - Makes Phase 6R completion repeatable in CI or release workflows later.
 
@@ -125,6 +131,8 @@ The default audit checks:
 - 6R.5 operator workflow rebuild.
 - 6R.6 migration and deletion path.
 - End-to-end bounded handoff from evidence boundary through migration plan.
+- End-to-end evidence-quality continuity from evidence boundary through
+  migration plan.
 - Nested bounded audit health for every successful handoff:
   - evidence projection audit,
   - evidence projection-fingerprint audit,
@@ -135,6 +143,7 @@ The default audit checks:
   - workflow audit,
   - migration/deletion audit.
 - Shared sanitized evidence projection fingerprint across bounded handoffs.
+- Matching usable evidence-quality snapshots across bounded handoffs.
 - Boundary provenance that excludes raw operator/library evidence labels.
 
 ## Security Outcome
@@ -145,6 +154,8 @@ The default audit checks:
   still passing.
 - Bounded handoffs must share sanitized provenance instead of raw evidence
   labels.
+- Bounded handoffs must carry matching usable quality snapshots, so no runtime
+  path can skip the evidence quality gate while still passing completion.
 - Legacy diagnostics cannot remain in normal operator workflow.
 - Phase 8R storage migration remains blocked until the migration gates pass.
 

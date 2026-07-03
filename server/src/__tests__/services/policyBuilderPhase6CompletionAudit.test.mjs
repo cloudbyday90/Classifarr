@@ -9,10 +9,49 @@ import {
   validatePhase6ComponentCompletion,
 } from '../../services/policyBuilderPhase6CompletionAudit.mjs';
 import {
+  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
+} from '../../services/policyBuilderPhase6EvidenceQuality.mjs';
+import {
   PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS,
   buildPolicyBuilderPhase6MigrationPlan,
   listPolicyBuilderPhase6MigrationArtifacts,
 } from '../../services/policyBuilderPhase6MigrationDeletionPath.mjs';
+
+const stableQuality = Object.freeze({
+  version: 'phase6r.evidence.quality.v1',
+  statusId: PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.USABLE,
+  score: 0.9,
+  nextActionId: 'proceed_to_intent',
+  reasonIds: [
+    'compatibility_present',
+    'declared_identity_present',
+    'observed_identity_present',
+  ],
+  counts: {
+    identity: 2,
+    compatibility: 1,
+  },
+  hasIdentityEvidence: true,
+  hasDeclaredIdentityEvidence: true,
+  hasObservedIdentityEvidence: true,
+  hasStaleProfileEvidence: false,
+});
+
+const insufficientQuality = Object.freeze({
+  ...stableQuality,
+  statusId: PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT,
+  score: 0.2,
+  nextActionId: 'confirm_destination_identity',
+  reasonIds: [
+    'missing_identity',
+  ],
+  counts: {
+    identity: 0,
+  },
+  hasIdentityEvidence: false,
+  hasDeclaredIdentityEvidence: false,
+  hasObservedIdentityEvidence: false,
+});
 
 describe('policyBuilderPhase6CompletionAudit', () => {
   test('lists Phase 6R components in roadmap order', () => {
@@ -79,9 +118,14 @@ describe('policyBuilderPhase6CompletionAudit', () => {
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedStepCount).toBe(6);
     expect(audit.fingerprintCount).toBe(6);
+    expect(audit.qualitySnapshotCount).toBeGreaterThanOrEqual(6);
+    expect(audit.qualityStatuses).toEqual([
+      PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.USABLE,
+    ]);
     expect(audit.sharedProjectionFingerprint).toMatch(/^[a-f0-9]{64}$/);
     expect(new Set(audit.steps.map(step => step.projectionFingerprint)).size).toBe(1);
     expect(audit.steps.every(step => step.auditOk === true)).toBe(true);
+    expect(audit.steps.every(step => step.qualityOk === true)).toBe(true);
     expect(JSON.stringify(audit.steps)).not.toContain('Animated Movies');
     expect(audit.nextPhase).toEqual(expect.objectContaining({
       phaseId: '7r_1',
@@ -98,6 +142,9 @@ describe('policyBuilderPhase6CompletionAudit', () => {
         boundedEvidenceResult: {
           ok: true,
           statusId: 'ready',
+          projection: {
+            quality: stableQuality,
+          },
           projectionFingerprint,
           projectionAudit: {
             ok: true,
@@ -110,6 +157,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
           ok: true,
           statusId: 'ready',
           evidenceBoundary: {
+            quality: stableQuality,
             projectionFingerprint,
           },
           intentAudit: {
@@ -124,6 +172,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
           statusId: 'ready',
           intentBoundary: {
             evidenceBoundary: {
+              quality: stableQuality,
               projectionFingerprint,
             },
           },
@@ -136,7 +185,14 @@ describe('policyBuilderPhase6CompletionAudit', () => {
           statusId: 'ready',
           boundaryContext: {
             evidenceBoundary: {
+              quality: stableQuality,
               projectionFingerprint,
+            },
+            intentBoundary: {
+              quality: stableQuality,
+            },
+            learningBoundary: {
+              quality: stableQuality,
             },
             projectionFingerprintMatch: true,
           },
@@ -149,12 +205,28 @@ describe('policyBuilderPhase6CompletionAudit', () => {
           statusId: 'ready',
           boundaryContext: {
             intentBoundary: {
+              quality: stableQuality,
               projectionFingerprint,
             },
             readinessBoundary: {
+              evidenceQuality: stableQuality,
+              intentQuality: stableQuality,
+              learningQuality: stableQuality,
               projectionFingerprint,
             },
             projectionFingerprintMatch: true,
+          },
+          workflow: {
+            boundaryContext: {
+              intentBoundary: {
+                quality: stableQuality,
+              },
+              readinessBoundary: {
+                evidenceQuality: stableQuality,
+                intentQuality: stableQuality,
+                learningQuality: stableQuality,
+              },
+            },
           },
           workflowAudit: {
             ok: true,
@@ -165,6 +237,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
           statusId: 'ready',
           boundaryContext: {
             workflowBoundary: {
+              quality: stableQuality,
               projectionFingerprint,
             },
             projectionFingerprintMatch: true,
@@ -205,6 +278,9 @@ describe('policyBuilderPhase6CompletionAudit', () => {
         boundedEvidenceResult: {
           ok: true,
           statusId: 'ready',
+          projection: {
+            quality: stableQuality,
+          },
           projectionFingerprint: {
             fingerprint: stableFingerprint,
           },
@@ -214,6 +290,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
           statusId: 'blocked_by_intent_audit',
           issueCount: 1,
           evidenceBoundary: {
+            quality: stableQuality,
             projectionFingerprint: {
               fingerprint: driftFingerprint,
               provenance: {
@@ -227,6 +304,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
           statusId: 'ready',
           intentBoundary: {
             evidenceBoundary: {
+              quality: stableQuality,
               projectionFingerprint: {
                 fingerprint: stableFingerprint,
               },
@@ -238,9 +316,16 @@ describe('policyBuilderPhase6CompletionAudit', () => {
           statusId: 'ready',
           boundaryContext: {
             evidenceBoundary: {
+              quality: stableQuality,
               projectionFingerprint: {
                 fingerprint: stableFingerprint,
               },
+            },
+            intentBoundary: {
+              quality: stableQuality,
+            },
+            learningBoundary: {
+              quality: stableQuality,
             },
             projectionFingerprintMatch: true,
           },
@@ -250,16 +335,32 @@ describe('policyBuilderPhase6CompletionAudit', () => {
           statusId: 'ready',
           boundaryContext: {
             intentBoundary: {
+              quality: stableQuality,
               projectionFingerprint: {
                 fingerprint: stableFingerprint,
               },
             },
             readinessBoundary: {
+              evidenceQuality: stableQuality,
+              intentQuality: stableQuality,
+              learningQuality: stableQuality,
               projectionFingerprint: {
                 fingerprint: stableFingerprint,
               },
             },
             projectionFingerprintMatch: true,
+          },
+          workflow: {
+            boundaryContext: {
+              intentBoundary: {
+                quality: stableQuality,
+              },
+              readinessBoundary: {
+                evidenceQuality: stableQuality,
+                intentQuality: stableQuality,
+                learningQuality: stableQuality,
+              },
+            },
           },
         },
         boundedMigrationResult: {
@@ -267,6 +368,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
           statusId: 'ready',
           boundaryContext: {
             workflowBoundary: {
+              quality: stableQuality,
               projectionFingerprint: {
                 fingerprint: stableFingerprint,
               },
@@ -287,6 +389,146 @@ describe('policyBuilderPhase6CompletionAudit', () => {
       }),
       expect.objectContaining({
         riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_RAW_PROVENANCE,
+      }),
+    ]));
+  });
+
+  test('rejects bounded chain quality gaps, insufficient quality, and quality drift', () => {
+    const stableFingerprint = 'c'.repeat(64);
+    const projectionFingerprint = {
+      fingerprint: stableFingerprint,
+    };
+    const mismatchedQuality = {
+      ...stableQuality,
+      statusId: PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.NEEDS_REVIEW,
+      nextActionId: 'review_evidence',
+      reasonIds: [
+        'review_evidence_present',
+      ],
+    };
+    const audit = buildPolicyBuilderPhase6BoundedChainCompletionAudit({
+      chain: {
+        boundedEvidenceResult: {
+          ok: true,
+          statusId: 'ready',
+          projection: {
+            quality: insufficientQuality,
+          },
+          projectionFingerprint,
+          projectionAudit: {
+            ok: true,
+          },
+          projectionFingerprintAudit: {
+            ok: true,
+          },
+        },
+        boundedIntentResult: {
+          ok: true,
+          statusId: 'ready',
+          evidenceBoundary: {
+            quality: stableQuality,
+            projectionFingerprint,
+          },
+          intentAudit: {
+            ok: true,
+          },
+          evidenceFingerprintAudit: {
+            ok: true,
+          },
+        },
+        boundedLearningResult: {
+          ok: true,
+          statusId: 'ready',
+          intentBoundary: {
+            evidenceBoundary: {
+              quality: null,
+              projectionFingerprint,
+            },
+          },
+          learningAudit: {
+            ok: true,
+          },
+        },
+        boundedReadinessResult: {
+          ok: true,
+          statusId: 'ready',
+          boundaryContext: {
+            evidenceBoundary: {
+              quality: stableQuality,
+              projectionFingerprint,
+            },
+            intentBoundary: {
+              quality: mismatchedQuality,
+            },
+            learningBoundary: {
+              quality: stableQuality,
+            },
+            projectionFingerprintMatch: true,
+          },
+          readinessAudit: {
+            ok: true,
+          },
+        },
+        boundedWorkflowResult: {
+          ok: true,
+          statusId: 'ready',
+          boundaryContext: {
+            intentBoundary: {
+              quality: stableQuality,
+              projectionFingerprint,
+            },
+            readinessBoundary: {
+              evidenceQuality: stableQuality,
+              intentQuality: stableQuality,
+              learningQuality: stableQuality,
+              projectionFingerprint,
+            },
+            projectionFingerprintMatch: true,
+          },
+          workflow: {
+            boundaryContext: {
+              intentBoundary: {
+                quality: stableQuality,
+              },
+              readinessBoundary: {
+                evidenceQuality: stableQuality,
+                intentQuality: stableQuality,
+                learningQuality: stableQuality,
+              },
+            },
+          },
+          workflowAudit: {
+            ok: true,
+          },
+        },
+        boundedMigrationResult: {
+          ok: true,
+          statusId: 'ready',
+          boundaryContext: {
+            workflowBoundary: {
+              quality: stableQuality,
+              projectionFingerprint,
+            },
+            projectionFingerprintMatch: true,
+          },
+          migrationAudit: {
+            ok: true,
+          },
+        },
+      },
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.sharedProjectionFingerprint).toBe(stableFingerprint);
+    expect(audit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_MISSING,
+      }),
+      expect.objectContaining({
+        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_INSUFFICIENT,
+      }),
+      expect.objectContaining({
+        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_MISMATCH,
       }),
     ]));
   });

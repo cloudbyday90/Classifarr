@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Completion Quality Chain** — hardened the Phase 6R
+  completion audit so the bounded evidence → intent → learning → readiness →
+  workflow → migration handoff rejects missing, insufficient, or mismatched
+  evidence-quality snapshots before Phase 7R runtime work can consume it.
 - **Policy Builder Phase 6R Migration Quality Gate** — hardened the bounded
   migration/deletion wrapper so Phase 6R.6 requires matching, usable workflow
   quality snapshots from the bounded workflow result and embedded workflow

@@ -9,6 +9,9 @@ import {
   buildPolicyBuilderPhase6EvidenceEngineAudit,
 } from './policyBuilderPhase6EvidenceEngine.mjs';
 import {
+  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
+} from './policyBuilderPhase6EvidenceQuality.mjs';
+import {
   buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
   buildPolicyBuilderPhase6IntentEngineAudit,
 } from './policyBuilderPhase6IntentEngine.mjs';
@@ -64,6 +67,9 @@ const PHASE6R_COMPLETION_RISK_IDS = Object.freeze({
   BOUNDED_CHAIN_AUDIT_NOT_PASSING: 'bounded_chain_audit_not_passing',
   BOUNDED_CHAIN_PROVENANCE_MISMATCH: 'bounded_chain_provenance_mismatch',
   BOUNDED_CHAIN_RAW_PROVENANCE: 'bounded_chain_raw_provenance',
+  BOUNDED_CHAIN_QUALITY_MISSING: 'bounded_chain_quality_missing',
+  BOUNDED_CHAIN_QUALITY_INSUFFICIENT: 'bounded_chain_quality_insufficient',
+  BOUNDED_CHAIN_QUALITY_MISMATCH: 'bounded_chain_quality_mismatch',
 });
 
 const REQUIRED_COMPONENT_IDS = Object.freeze(Object.values(PHASE6R_COMPLETION_COMPONENT_IDS));
@@ -168,6 +174,10 @@ function defaultPathExists(relativePath) {
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
 
 function buildIssue(riskId, message, details = {}) {
@@ -380,6 +390,125 @@ function getEvidenceFingerprint(chainStep = {}) {
     null;
 }
 
+function normalizeString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeQualitySnapshot(quality = null) {
+  const normalized = asObject(quality);
+  const reasonIds = asArray(normalized.reasonIds)
+    .map(reasonId => normalizeString(reasonId))
+    .filter(Boolean)
+    .sort();
+
+  return {
+    version: normalized.version || null,
+    statusId: normalized.statusId || null,
+    score: Number.isFinite(Number(normalized.score)) ? Number(normalized.score) : null,
+    nextActionId: normalized.nextActionId || null,
+    reasonIds,
+    counts: asObject(normalized.counts),
+    hasIdentityEvidence: normalized.hasIdentityEvidence === true,
+    hasDeclaredIdentityEvidence: normalized.hasDeclaredIdentityEvidence === true,
+    hasObservedIdentityEvidence: normalized.hasObservedIdentityEvidence === true,
+    hasStaleProfileEvidence: normalized.hasStaleProfileEvidence === true,
+  };
+}
+
+function hasQualitySnapshot(quality = null) {
+  return Boolean(normalizeQualitySnapshot(quality).statusId);
+}
+
+function qualitySnapshotsMatch(left = null, right = null) {
+  const leftSnapshot = normalizeQualitySnapshot(left);
+  const rightSnapshot = normalizeQualitySnapshot(right);
+
+  return Boolean(leftSnapshot.statusId) &&
+    leftSnapshot.version === rightSnapshot.version &&
+    leftSnapshot.statusId === rightSnapshot.statusId &&
+    leftSnapshot.nextActionId === rightSnapshot.nextActionId &&
+    leftSnapshot.reasonIds.join('|') === rightSnapshot.reasonIds.join('|');
+}
+
+function getQualitySnapshotsForStep(step = {}) {
+  const result = asObject(step.result);
+
+  switch (step.stepId) {
+    case PHASE6R_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE:
+      return [result.projection?.quality];
+    case PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE:
+      return [result.evidenceBoundary?.quality];
+    case PHASE6R_COMPLETION_COMPONENT_IDS.LEARNING_GUARD:
+      return [result.intentBoundary?.evidenceBoundary?.quality];
+    case PHASE6R_COMPLETION_COMPONENT_IDS.READINESS_ENGINE:
+      return [
+        result.boundaryContext?.evidenceBoundary?.quality,
+        result.boundaryContext?.intentBoundary?.quality,
+        result.boundaryContext?.learningBoundary?.quality,
+      ];
+    case PHASE6R_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW:
+      return [
+        result.boundaryContext?.intentBoundary?.quality,
+        result.boundaryContext?.readinessBoundary?.evidenceQuality,
+        result.boundaryContext?.readinessBoundary?.intentQuality,
+        result.boundaryContext?.readinessBoundary?.learningQuality,
+        result.workflow?.boundaryContext?.intentBoundary?.quality,
+        result.workflow?.boundaryContext?.readinessBoundary?.evidenceQuality,
+        result.workflow?.boundaryContext?.readinessBoundary?.intentQuality,
+        result.workflow?.boundaryContext?.readinessBoundary?.learningQuality,
+      ];
+    case PHASE6R_COMPLETION_COMPONENT_IDS.MIGRATION_DELETION_PATH:
+      return [result.boundaryContext?.workflowBoundary?.quality];
+    default:
+      return [];
+  }
+}
+
+function collectStepQualityIssues(stepSnapshot = {}) {
+  const issues = [];
+  if (
+    stepSnapshot.qualitySnapshotCount === 0 ||
+    stepSnapshot.qualitySnapshots.some(quality => !hasQualitySnapshot(quality))
+  ) {
+    issues.push(buildIssue(
+      PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_MISSING,
+      `Phase 6R bounded completion chain is missing quality at "${stepSnapshot.stepId}".`,
+      { componentId: stepSnapshot.stepId }
+    ));
+    return issues;
+  }
+
+  const insufficientQuality = stepSnapshot.normalizedQualitySnapshots.find(quality =>
+    quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+  );
+  if (insufficientQuality) {
+    issues.push(buildIssue(
+      PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_INSUFFICIENT,
+      `Phase 6R bounded completion chain carries insufficient quality at "${stepSnapshot.stepId}".`,
+      {
+        componentId: stepSnapshot.stepId,
+        qualityStatusId: insufficientQuality.statusId,
+        nextActionId: insufficientQuality.nextActionId,
+        reasonIds: insufficientQuality.reasonIds,
+      }
+    ));
+  }
+
+  const referenceQuality = stepSnapshot.qualitySnapshots[0];
+  const stepQualityMismatch = stepSnapshot.qualitySnapshots.some(quality =>
+    !qualitySnapshotsMatch(referenceQuality, quality)
+  );
+  if (stepQualityMismatch) {
+    issues.push(buildIssue(
+      PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_MISMATCH,
+      `Phase 6R bounded completion chain has mismatched quality within "${stepSnapshot.stepId}".`,
+      { componentId: stepSnapshot.stepId }
+    ));
+  }
+
+  return issues;
+}
+
 function getBoundedStepAuditChecks(step = {}) {
   const result = step.result || {};
 
@@ -442,6 +571,10 @@ function getBoundedStepAuditChecks(step = {}) {
 function getBoundedChainStepSnapshot(step) {
   const fingerprint = getEvidenceFingerprint(step);
   const auditChecks = getBoundedStepAuditChecks(step);
+  const qualitySnapshots = getQualitySnapshotsForStep(step);
+  const normalizedQualitySnapshots = qualitySnapshots.map(quality =>
+    normalizeQualitySnapshot(quality)
+  );
 
   return {
     stepId: step.stepId,
@@ -451,6 +584,22 @@ function getBoundedChainStepSnapshot(step) {
     statusId: step.result?.statusId || null,
     issueCount: step.result?.issueCount || 0,
     projectionFingerprint: fingerprint,
+    qualityStatusId: normalizedQualitySnapshots[0]?.statusId || null,
+    qualitySnapshotCount: qualitySnapshots.length,
+    qualityOk:
+      qualitySnapshots.length > 0 &&
+      qualitySnapshots.every(quality => hasQualitySnapshot(quality)) &&
+      normalizedQualitySnapshots.every(quality =>
+        quality.statusId !== PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+      ) &&
+      qualitySnapshots.every(quality => qualitySnapshotsMatch(qualitySnapshots[0], quality)),
+    qualitySnapshots: normalizedQualitySnapshots.map(quality => ({
+      version: quality.version,
+      statusId: quality.statusId,
+      nextActionId: quality.nextActionId,
+      reasonIds: quality.reasonIds,
+    })),
+    normalizedQualitySnapshots,
   };
 }
 
@@ -498,6 +647,7 @@ function buildPolicyBuilderPhase6BoundedChainCompletionAudit({
     .map(step => step.projectionFingerprint)
     .filter(Boolean);
   const uniqueFingerprints = new Set(fingerprints);
+  const allQualitySnapshots = stepSnapshots.flatMap(step => step.normalizedQualitySnapshots);
   const issues = [];
 
   stepSnapshots
@@ -539,6 +689,41 @@ function buildPolicyBuilderPhase6BoundedChainCompletionAudit({
     ));
   }
 
+  stepSnapshots.forEach(step => {
+    issues.push(...collectStepQualityIssues(step));
+  });
+
+  if (
+    allQualitySnapshots.length === 0 ||
+    allQualitySnapshots.some(quality => !hasQualitySnapshot(quality))
+  ) {
+    issues.push(buildIssue(
+      PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_MISSING,
+      'Phase 6R bounded completion chain must carry quality snapshots across every handoff.'
+    ));
+  } else {
+    const referenceQuality = allQualitySnapshots[0];
+    const chainHasInsufficientQuality = allQualitySnapshots.some(quality =>
+      quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+    );
+    if (chainHasInsufficientQuality) {
+      issues.push(buildIssue(
+        PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_INSUFFICIENT,
+        'Phase 6R bounded completion chain must not carry insufficient quality.'
+      ));
+    }
+
+    const chainQualityMismatch = allQualitySnapshots.some(quality =>
+      !qualitySnapshotsMatch(referenceQuality, quality)
+    );
+    if (chainQualityMismatch) {
+      issues.push(buildIssue(
+        PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_MISMATCH,
+        'Phase 6R bounded completion chain must carry one shared quality snapshot.'
+      ));
+    }
+  }
+
   if (containsRawCompletionEvidence([
     chain.boundedIntentResult?.evidenceBoundary,
     chain.boundedLearningResult?.intentBoundary,
@@ -557,6 +742,10 @@ function buildPolicyBuilderPhase6BoundedChainCompletionAudit({
     issueCount: issues.length,
     checkedStepCount: steps.length,
     fingerprintCount: fingerprints.length,
+    qualitySnapshotCount: allQualitySnapshots.length,
+    qualityStatuses: [...new Set(allQualitySnapshots
+      .map(quality => quality.statusId)
+      .filter(Boolean))],
     sharedProjectionFingerprint: fingerprints.length === steps.length && uniqueFingerprints.size === 1
       ? fingerprints[0]
       : null,

@@ -3541,8 +3541,11 @@ Completion gate:
 - The gate also builds the bounded 6R.1 through 6R.6 handoff chain and fails if
   evidence, intent, learning, readiness, workflow, or migration wrappers fail,
   have missing or non-passing nested audits, drift away from the shared
-  sanitized evidence projection fingerprint, or carry raw evidence labels in
+  sanitized evidence projection fingerprint, miss/drop/drift evidence-quality
+  snapshots, carry insufficient quality, or carry raw evidence labels in
   boundary provenance.
+- The completion quality-chain hardening is documented in
+  [Policy Builder Phase 6R Completion Quality Chain](policy-builder-phase-6r-completion-quality-chain.md).
 - The gate also fails if legacy replay, impact, provider, TMDB, scoring, or old
   Phase 6 documentation artifacts lack explicit migration/deletion decisions,
   remain allowed in the normal operator workflow, or unblock Phase 8R storage
