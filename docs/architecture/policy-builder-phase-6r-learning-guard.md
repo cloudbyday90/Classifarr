@@ -6,7 +6,10 @@ Implemented as the third Phase 6R engine contract.
 
 This slice decides whether a concrete operator/routing/request outcome may
 create a learning candidate. It does not write learning data, update profiles,
-mutate policy intent, or execute routing.
+mutate policy intent, or execute routing. New runtime and rebuild callers
+should use the bounded learning entry point, which requires a successful Phase
+6R.2 bounded intent result and the carried Phase 6R.1 evidence projection
+fingerprint.
 
 ## Problem
 
@@ -36,6 +39,11 @@ Phase 6R.3 makes that boundary executable.
 - [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/)
   supports server-side validation, business-logic controls, and auditability.
   The guard is a server-owned contract with explicit validation.
+- [OWASP LLM06:2025 Excessive Agency](https://genai.owasp.org/llmrisk/llm06-sensitive-information-disclosure/)
+  describes the risk of systems taking damaging actions from unexpected,
+  ambiguous, or manipulated model output. The bounded learning entry point
+  prevents learning candidates from being evaluated unless evidence and intent
+  already passed deterministic server boundaries.
 
 ## Recommendations
 
@@ -68,6 +76,12 @@ Phase 6R.3 makes that boundary executable.
    Exact-item memory does not require a profile refresh. Compatibility and
    identity evidence candidates do.
 
+6. **Require bounded intent for new callers.**
+   `buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent` consumes the
+   Phase 6R.2 bounded intent result, blocks failed or unfingerprinted handoffs,
+   and attaches a sanitized intent/evidence boundary snapshot to the learning
+   decision wrapper.
+
 ## Pros And Cons
 
 Pros:
@@ -77,6 +91,10 @@ Pros:
 - Blocks stale, ambiguous, AI-authored, provider-state, and diagnostic inputs.
 - Keeps hard limits under explicit policy-edit authority.
 - Creates a clear handoff into automation readiness.
+- Prevents future runtime/rebuild callers from evaluating learning candidates
+  without bounded evidence and intent provenance.
+- Carries a compact fingerprint/provenance handle without copying raw evidence
+  labels or provider payloads into learning metadata.
 
 Cons:
 
@@ -84,6 +102,8 @@ Cons:
 - It does not yet consume live pending-question rows.
 - Profile refresh is represented as an instruction, not queued here.
 - Runtime code must still be wired to call the guard in Phase 7R.
+- The original pure decision reducer remains for focused tests and existing
+  internal callers; runtime code should use the bounded entry point.
 
 ## Final Recommendation Stack
 
@@ -91,6 +111,8 @@ Cons:
   `server/src/services/policyQuestionLearningVocabulary.mjs`
 - Learning guard:
   `server/src/services/policyBuilderPhase6LearningGuard.mjs`
+- Bounded intent input:
+  `server/src/services/policyBuilderPhase6IntentEngine.mjs`
 - Test module:
   `server/src/__tests__/services/policyBuilderPhase6LearningGuard.test.mjs`
 - Documentation:
@@ -109,6 +131,7 @@ sourceId
 finalOutcome
 learning
 profileRefresh
+intentBoundary
 ```
 
 `finalOutcome` is always separate from `learning`.
@@ -134,6 +157,27 @@ queue
 reasonCodes
 ```
 
+For bounded runtime/rebuild callers, the learning guard returns:
+
+```text
+ok
+statusId
+intentBoundary
+decision
+learningAudit
+issueCount
+issues
+nextPhase
+```
+
+The bounded status IDs are:
+
+```text
+ready
+blocked_by_intent_boundary
+blocked_by_learning_audit
+```
+
 ## Security Outcome
 
 - The guard does not perform writes.
@@ -144,6 +188,10 @@ reasonCodes
   system.
 - Provider quota/cooldown, replay, and TMDB diagnostic state cannot become
   learning evidence.
+- New callers can require successful bounded intent and evidence fingerprint
+  provenance before learning eligibility is evaluated.
+- The learning boundary records a sanitized intent/evidence snapshot without
+  learning from raw AI explanation text or provider diagnostics.
 
 ## Next Step
 

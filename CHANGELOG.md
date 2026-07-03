@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Learning Boundary Alignment** — added a bounded
+  Phase 6R.3 learning-guard entry point that requires a successful bounded
+  intent result and carried evidence projection fingerprint before evaluating
+  learning eligibility, while preserving final outcome recording separately
+  from durable learning.
 - **Policy Builder Production Naming Cutover Roadmap** — added Phase 9R to the
   intent-model roadmap so phase-coded production services, contracts, telemetry,
   and adapters are renamed to durable product-domain names after the rebuilt

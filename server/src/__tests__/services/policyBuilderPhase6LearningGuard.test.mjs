@@ -6,12 +6,20 @@ import {
   REJECTED_QUESTION_FRAME_IDS,
 } from '../../services/policyQuestionLearningVocabulary.mjs';
 import {
+  buildPolicyBuilderPhase6BoundedEvidenceProjection,
+} from '../../services/policyBuilderPhase6EvidenceBoundary.mjs';
+import {
+  buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
+} from '../../services/policyBuilderPhase6IntentEngine.mjs';
+import {
+  PHASE6R_LEARNING_BOUNDARY_STATUS_IDS,
   PHASE6R_LEARNING_DECISION_IDS,
   PHASE6R_LEARNING_EVENT_SOURCE_IDS,
   PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS,
   PHASE6R_LEARNING_REASON_IDS,
   PHASE6R_LEARNING_TIER_IDS,
   buildPolicyBuilderPhase6LearningDecision,
+  buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent,
   buildPolicyBuilderPhase6LearningGuardAudit,
   getPolicyBuilderPhase6LearningSource,
   getPolicyBuilderPhase6LearningTier,
@@ -135,6 +143,111 @@ describe('policyBuilderPhase6LearningGuard', () => {
       queue: true,
       reasonCodes: [PHASE6R_LEARNING_REASON_IDS.PROFILE_REFRESH_REQUIRED],
     });
+  });
+
+  test('builds bounded learning only from a successful bounded intent result', () => {
+    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        libraryProfile: {
+          identityCandidates: [
+            { key: 'studio:pixar', label: 'Pixar', count: 10 },
+          ],
+        },
+        operatorIntent: {
+          belongsHere: ['Animated Movies'],
+        },
+      },
+    });
+    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+      boundedEvidenceResult,
+    });
+    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+      boundedIntentResult,
+      learningInput: {
+        sourceId: PHASE6R_LEARNING_EVENT_SOURCE_IDS.DISCORD_PENDING_ANSWER,
+        answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
+        answer: { label: 'Animated Movies' },
+        candidate: {
+          key: 'studio:pixar',
+          label: 'Pixar',
+          signalType: 'studio',
+          destinationLibraryId: 6,
+          destinationLibraryName: 'Animated Movies',
+          evidenceCount: 10,
+        },
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: true,
+      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.READY,
+      issueCount: 0,
+      nextPhase: expect.objectContaining({
+        phaseId: '6r_4',
+      }),
+    }));
+    expect(result.intentBoundary).toEqual(expect.objectContaining({
+      statusId: boundedIntentResult.statusId,
+      intentVersion: boundedIntentResult.intent.version,
+      evidenceBoundary: expect.objectContaining({
+        projectionFingerprint: expect.objectContaining({
+          fingerprint: boundedEvidenceResult.projectionFingerprint.fingerprint,
+        }),
+      }),
+    }));
+    expect(result.decision.learning).toEqual(expect.objectContaining({
+      decisionId: PHASE6R_LEARNING_DECISION_IDS.CANDIDATE,
+      tierId: PHASE6R_LEARNING_TIER_IDS.COMPATIBILITY_EVIDENCE,
+      canWriteLearning: true,
+    }));
+    expect(JSON.stringify(result.intentBoundary)).not.toContain('Pixar');
+    expect(result.learningAudit.ok).toBe(true);
+  });
+
+  test('blocks bounded learning when bounded intent failed or lacks evidence fingerprint', () => {
+    const blocked = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+      boundedIntentResult: {
+        ok: false,
+        intent: null,
+      },
+      learningInput: {
+        answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
+        answer: { label: 'Animated Movies' },
+      },
+    });
+
+    expect(blocked).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      decision: null,
+      learningAudit: null,
+    }));
+    expect(blocked.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_BOUNDED_INTENT,
+      }),
+      expect.objectContaining({
+        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_FINGERPRINT,
+      }),
+    ]));
+
+    const missingFingerprint = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+      boundedIntentResult: {
+        ok: true,
+        statusId: 'ready',
+        intent: {
+          version: 'phase6r.intent.v1',
+          source: 'phase6r_bounded_evidence_boundary',
+        },
+        evidenceBoundary: {},
+      },
+    });
+
+    expect(missingFingerprint.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_FINGERPRINT,
+      }),
+    ]));
   });
 
   test('blocks stale question learning while still recording the final outcome', () => {

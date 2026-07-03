@@ -3297,6 +3297,11 @@ Implementation status:
 - Compatibility and identity learning candidates queue profile refresh
   instructions; hard-limit learning requires an explicit policy edit and cannot
   write directly.
+- The learning guard now exposes a bounded entry point that consumes the Phase
+  6R.2 bounded intent result, requires the carried Phase 6R.1 evidence
+  projection fingerprint, blocks failed or unfingerprinted intent handoffs, and
+  attaches a sanitized intent/evidence boundary snapshot to the learning
+  decision wrapper.
 
 ### 6R.4 Automation Readiness Engine
 

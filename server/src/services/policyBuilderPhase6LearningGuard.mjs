@@ -24,6 +24,12 @@ const PHASE6R_LEARNING_DECISION_IDS = Object.freeze({
   BLOCKED: 'blocked',
 });
 
+const PHASE6R_LEARNING_BOUNDARY_STATUS_IDS = Object.freeze({
+  READY: 'ready',
+  BLOCKED_BY_INTENT_BOUNDARY: 'blocked_by_intent_boundary',
+  BLOCKED_BY_LEARNING_AUDIT: 'blocked_by_learning_audit',
+});
+
 const PHASE6R_LEARNING_EVENT_SOURCE_IDS = Object.freeze({
   MANUAL_CLASSIFICATION_CHANGE: 'manual_classification_change',
   OPERATOR_CONFIRMATION: 'operator_confirmation',
@@ -64,6 +70,8 @@ const PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS = Object.freeze({
   DIRECT_WRITE_PERFORMED: 'direct_write_performed',
   PROFILE_REFRESH_WITHOUT_DESTINATION_LEARNING: 'profile_refresh_without_destination_learning',
   MISSING_REASON_CODE: 'missing_reason_code',
+  MISSING_BOUNDED_INTENT: 'missing_bounded_intent',
+  MISSING_INTENT_EVIDENCE_FINGERPRINT: 'missing_intent_evidence_fingerprint',
 });
 
 const BROAD_GENRE_LABELS = Object.freeze([
@@ -433,6 +441,92 @@ function buildPolicyBuilderPhase6LearningDecision(input = {}) {
   };
 }
 
+function buildIntentBoundarySnapshot(boundedIntentResult = {}) {
+  if (!boundedIntentResult || typeof boundedIntentResult !== 'object') {
+    return null;
+  }
+
+  const evidenceBoundary = asObject(boundedIntentResult.evidenceBoundary);
+  const projectionFingerprint = asObject(evidenceBoundary.projectionFingerprint);
+  const intent = asObject(boundedIntentResult.intent);
+
+  if (!hasValue(projectionFingerprint.fingerprint)) {
+    return null;
+  }
+
+  return {
+    statusId: boundedIntentResult.statusId || null,
+    intentVersion: intent.version || null,
+    intentSource: intent.source || null,
+    evidenceBoundary: {
+      boundaryVersion: evidenceBoundary.boundaryVersion || null,
+      statusId: evidenceBoundary.statusId || null,
+      projectionFingerprint: {
+        version: projectionFingerprint.version || null,
+        algorithm: projectionFingerprint.algorithm || null,
+        fingerprint: projectionFingerprint.fingerprint || null,
+        provenance: projectionFingerprint.provenance || null,
+        traceAttributes: projectionFingerprint.traceAttributes || null,
+      },
+    },
+  };
+}
+
+function buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+  boundedIntentResult,
+  learningInput = {},
+} = {}) {
+  const boundaryIssues = [];
+
+  if (boundedIntentResult?.ok !== true || !boundedIntentResult?.intent) {
+    boundaryIssues.push({
+      riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_BOUNDED_INTENT,
+      message: 'Learning guard requires a successful bounded intent result.',
+    });
+  }
+
+  const intentBoundary = buildIntentBoundarySnapshot(boundedIntentResult);
+  if (!intentBoundary?.evidenceBoundary?.projectionFingerprint?.fingerprint) {
+    boundaryIssues.push({
+      riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_FINGERPRINT,
+      message: 'Learning guard requires the bounded intent evidence fingerprint.',
+    });
+  }
+
+  if (boundaryIssues.length > 0) {
+    return {
+      ok: false,
+      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      intentBoundary,
+      decision: null,
+      learningAudit: null,
+      issueCount: boundaryIssues.length,
+      issues: boundaryIssues,
+      nextPhase: null,
+    };
+  }
+
+  const decision = {
+    ...buildPolicyBuilderPhase6LearningDecision(learningInput),
+    intentBoundary,
+  };
+  const learningAudit = buildPolicyBuilderPhase6LearningGuardAudit(decision);
+  const ok = learningAudit.ok === true;
+
+  return {
+    ok,
+    statusId: ok
+      ? PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.READY
+      : PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_LEARNING_AUDIT,
+    intentBoundary,
+    decision,
+    learningAudit,
+    issueCount: learningAudit.issueCount,
+    issues: learningAudit.validation.issues,
+    nextPhase: ok ? learningAudit.nextPhase : null,
+  };
+}
+
 function validatePolicyBuilderPhase6LearningDecision(decision = {}) {
   const issues = [];
   const finalOutcome = asObject(decision.finalOutcome);
@@ -549,12 +643,14 @@ function buildPolicyBuilderPhase6LearningGuardAudit(
 
 export {
   BROAD_GENRE_LABELS,
+  PHASE6R_LEARNING_BOUNDARY_STATUS_IDS,
   PHASE6R_LEARNING_DECISION_IDS,
   PHASE6R_LEARNING_EVENT_SOURCE_IDS,
   PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS,
   PHASE6R_LEARNING_REASON_IDS,
   PHASE6R_LEARNING_TIER_IDS,
   buildPolicyBuilderPhase6LearningDecision,
+  buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent,
   buildPolicyBuilderPhase6LearningGuardAudit,
   getPolicyBuilderPhase6LearningSource,
   getPolicyBuilderPhase6LearningTier,
