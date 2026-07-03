@@ -14,6 +14,9 @@ import {
   validatePolicyBuilderPhase7RuntimeEvidenceProjection,
   validateRuntimeEvidenceEntry,
 } from '../../services/policyBuilderPhase7RuntimeEvidenceProjection.mjs';
+import {
+  buildPolicyBuilderPhase7RuntimeEvidenceFingerprint,
+} from '../../services/policyBuilderPhase7RuntimeEvidenceFingerprint.mjs';
 
 describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
   test('projects runtime inputs into Phase 6R evidence buckets', () => {
@@ -40,6 +43,18 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
     expect(projection.phase6EvidenceVersion).toBe('phase6r.evidence.v1');
     expect(projection.generatedFromLiveProvider).toBe(false);
     expect(projection.exposesRawProviderPayloads).toBe(false);
+    expect(projection.projectionFingerprint).toEqual(expect.objectContaining({
+      algorithm: 'sha256',
+      fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      provenance: expect.objectContaining({
+        totalEntryCount: expect.any(Number),
+        sourceIds: expect.any(Array),
+        runtimeSourceIds: expect.any(Array),
+        authoritySourceIds: expect.any(Array),
+      }),
+    }));
+    expect(JSON.stringify(projection.projectionFingerprint)).not.toContain('Animated Movies');
+    expect(JSON.stringify(projection.projectionFingerprint)).not.toContain('Radarr route mapped');
     expect(projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY])
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
@@ -208,6 +223,64 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
     }));
   });
 
+  test('builds stable sanitized runtime evidence fingerprints', () => {
+    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: [
+          { label: 'Animated Movies', count: 12, confidence: 0.93, trusted: true },
+        ],
+        compatibilityCandidates: ['Disney'],
+      },
+      metadataSignals: [
+        { label: 'TMDB keyword: princess', confidence: 0.72 },
+      ],
+    });
+    const reorderedProjection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+      metadataSignals: [
+        { label: 'TMDB keyword: princess', confidence: 0.72 },
+      ],
+      libraryProfile: {
+        compatibilityCandidates: ['Disney'],
+        identityCandidates: [
+          { trusted: true, confidence: 0.93, count: 12, label: 'Animated Movies' },
+        ],
+      },
+    });
+    const changedProjection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: [
+          { label: 'Animated Movies', count: 13, confidence: 0.93, trusted: true },
+        ],
+        compatibilityCandidates: ['Disney'],
+      },
+      metadataSignals: [
+        { label: 'TMDB keyword: princess', confidence: 0.72 },
+      ],
+    });
+
+    expect(projection.projectionFingerprint.fingerprint)
+      .toBe(reorderedProjection.projectionFingerprint.fingerprint);
+    expect(projection.projectionFingerprint.fingerprint)
+      .not.toBe(changedProjection.projectionFingerprint.fingerprint);
+    expect(buildPolicyBuilderPhase7RuntimeEvidenceFingerprint(projection))
+      .toEqual(projection.projectionFingerprint);
+    expect(projection.projectionFingerprint.provenance).toEqual(expect.objectContaining({
+      totalEntryCount: 3,
+      sourceIds: expect.arrayContaining([
+        PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+        PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      ]),
+      runtimeSourceIds: expect.arrayContaining([
+        PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.LIBRARY_PROFILE,
+        PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.METADATA_SIGNAL,
+      ]),
+      authoritySourceIds: expect.arrayContaining([
+        AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+        AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
+      ]),
+    }));
+  });
+
   test('rejects unsafe runtime evidence entries and projections', () => {
     expect(validateRuntimeEvidenceEntry({
       bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
@@ -248,6 +321,36 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
       expect.objectContaining({
         riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.UI_LANGUAGE_EXPOSED,
       }),
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.MISSING_PROJECTION_FINGERPRINT,
+      }),
     ]));
+  });
+
+  test('rejects projection fingerprint provenance that exposes raw evidence labels', () => {
+    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: [
+          { label: 'Animated Movies', count: 12, confidence: 0.93, trusted: true },
+        ],
+      },
+    });
+    const unsafeProjection = {
+      ...projection,
+      projectionFingerprint: {
+        ...projection.projectionFingerprint,
+        provenance: {
+          ...projection.projectionFingerprint.provenance,
+          rawLabel: 'Animated Movies',
+        },
+      },
+    };
+
+    expect(validatePolicyBuilderPhase7RuntimeEvidenceProjection(unsafeProjection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.RAW_PROVENANCE_EXPOSED,
+        }),
+      ]));
   });
 });

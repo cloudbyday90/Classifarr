@@ -33,7 +33,7 @@ Phase 7R.2 creates a deterministic adapter that maps runtime facts into Phase
 
 ## Official Guidance Reviewed
 
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/Projects/ssdf)
+- [NIST Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
   supports secure design and verification before behavior changes. This slice
   adds a tested runtime evidence contract before changing classification flow.
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
@@ -67,7 +67,12 @@ Phase 7R.2 creates a deterministic adapter that maps runtime facts into Phase
    source IDs. It must not expose raw provider payloads, quota state, request
    URLs, prompts, or UI chip language.
 
-5. **Prepare for automation decisions.**
+5. **Fingerprint sanitized evidence projections.**
+   Runtime evidence should emit a stable SHA-256 fingerprint with bounded
+   provenance so Phase 7R.3 can bind automation decisions to the exact evidence
+   projection it evaluated without carrying raw labels forward.
+
+6. **Prepare for automation decisions.**
    The output should explain why automation may later be allowed or blocked,
    but the projection itself should not classify, route, ask, or learn.
 
@@ -79,6 +84,7 @@ Pros:
 - Gives Phase 7R.3 a stable input contract.
 - Makes weak RAG, stale profile, failed routing, and broad-genre cases
   explicit.
+- Gives automation decisions a stable sanitized evidence identity.
 - Avoids live provider calls and raw payload leakage.
 
 Cons:
@@ -86,11 +92,14 @@ Cons:
 - Does not yet wire into the active classification pipeline.
 - Does not make automation decisions by itself.
 - Adds one adapter layer that must be maintained as runtime inputs evolve.
+- Fingerprints are diagnostic/provenance aids, not security signatures.
 
 ## Final Recommendation Stack
 
 - Runtime evidence projection:
   `server/src/services/policyBuilderPhase7RuntimeEvidenceProjection.mjs`
+- Runtime evidence fingerprint:
+  `server/src/services/policyBuilderPhase7RuntimeEvidenceFingerprint.mjs`
 - Test module:
   `server/src/__tests__/services/policyBuilderPhase7RuntimeEvidenceProjection.test.mjs`
 - Phase 6R evidence vocabulary:
@@ -113,6 +122,10 @@ The service exports:
 - `validateRuntimeEvidenceEntry`
 - `validatePolicyBuilderPhase7RuntimeEvidenceProjection`
 
+The fingerprint service exports:
+
+- `buildPolicyBuilderPhase7RuntimeEvidenceFingerprint`
+
 Runtime inputs supported:
 
 - library profile evidence,
@@ -134,11 +147,26 @@ Demotion reasons:
 - `routing_not_proven`
 - `raw_payload_suppressed`
 
+Each projection now carries `projectionFingerprint` with:
+
+- SHA-256 fingerprint,
+- projection and Phase 6R evidence versions,
+- total entry count,
+- Phase 6R source ids,
+- runtime source ids,
+- authority source ids,
+- demotion reason ids,
+- warning reason ids,
+- bucket counts.
+
+The provenance is intentionally bounded and excludes raw evidence labels.
+
 ## Security Outcome
 
 - Projection is deterministic and side-effect-free.
 - No live provider lookup is performed.
 - Raw provider payloads are suppressed.
+- Fingerprint provenance is sanitized and label-free.
 - AI/RAG/provider evidence cannot become destination identity by itself.
 - Stale profiles and failed routing become insufficient evidence, not silent
   success.

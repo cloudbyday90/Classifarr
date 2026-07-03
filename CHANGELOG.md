@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Runtime Evidence Fingerprint** — added stable
+  sanitized SHA-256 fingerprints and bounded provenance summaries to runtime
+  evidence projections so automation decisions can bind to the exact evidence
+  projection without carrying raw evidence labels forward.
 - **Policy Builder Phase 7R Runtime Surface Coverage Guard** — hardened the
   runtime decision inventory so classification route entrypoints, pending and
   correction routes, second-pass diagnostics, metadata enrichment, Discord

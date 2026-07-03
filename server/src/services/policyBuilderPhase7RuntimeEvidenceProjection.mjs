@@ -12,6 +12,9 @@ import {
   getPolicyBuilderPhase6EvidenceSource,
   listPolicyBuilderPhase6EvidenceBuckets,
 } from './policyBuilderPhase6EvidenceEngine.mjs';
+import {
+  buildPolicyBuilderPhase7RuntimeEvidenceFingerprint,
+} from './policyBuilderPhase7RuntimeEvidenceFingerprint.mjs';
 
 const PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS = Object.freeze({
   LIBRARY_PROFILE: 'library_profile',
@@ -45,6 +48,8 @@ const PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_LIBRARY_NOT_DEMOTED: 'unknown_library_not_demoted',
   STALE_PROFILE_NOT_INSUFFICIENT: 'stale_profile_not_insufficient',
   MISSING_TRACE_REASON: 'missing_trace_reason',
+  MISSING_PROJECTION_FINGERPRINT: 'missing_projection_fingerprint',
+  RAW_PROVENANCE_EXPOSED: 'raw_provenance_exposed',
 });
 
 const BROAD_GENRE_SET = new Set(BROAD_GENRE_LABELS.map(label => label.toLowerCase()));
@@ -108,6 +113,7 @@ function createEmptyRuntimeProjection() {
       reasons: [],
     },
     warnings: [],
+    projectionFingerprint: null,
   };
 }
 
@@ -435,6 +441,12 @@ function buildPolicyBuilderPhase7RuntimeEvidenceProjection(input = {}) {
     Object.values(projection.buckets).flat().length;
   projection.trace.attributes['classifarr.runtime.evidence.warning_count'] =
     projection.warnings.length;
+  projection.projectionFingerprint =
+    buildPolicyBuilderPhase7RuntimeEvidenceFingerprint(projection);
+  Object.assign(
+    projection.trace.attributes,
+    projection.projectionFingerprint.traceAttributes
+  );
 
   return projection;
 }
@@ -550,6 +562,7 @@ function validateRuntimeEvidenceEntry(entry = {}) {
 function validatePolicyBuilderPhase7RuntimeEvidenceProjection(projection = {}) {
   const entries = Object.values(projection.buckets || {}).flat();
   const issues = entries.flatMap(entry => validateRuntimeEvidenceEntry(entry).issues);
+  const projectionFingerprint = projection.projectionFingerprint;
 
   if (projection.generatedFromLiveProvider === true) {
     issues.push({
@@ -571,6 +584,23 @@ function validatePolicyBuilderPhase7RuntimeEvidenceProjection(projection = {}) {
       message: 'Runtime evidence projection cannot expose UI chip language.',
     });
   }
+
+  if (!projectionFingerprint?.fingerprint) {
+    issues.push({
+      riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.MISSING_PROJECTION_FINGERPRINT,
+      message: 'Runtime evidence projection must include a stable sanitized fingerprint.',
+    });
+  }
+
+  const serializedProvenance = JSON.stringify(projectionFingerprint?.provenance || {});
+  entries.forEach(entry => {
+    if (entry.label && serializedProvenance.includes(entry.label)) {
+      issues.push({
+        riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.RAW_PROVENANCE_EXPOSED,
+        message: 'Runtime evidence fingerprint provenance must not expose raw evidence labels.',
+      });
+    }
+  });
 
   return {
     ok: issues.length === 0,

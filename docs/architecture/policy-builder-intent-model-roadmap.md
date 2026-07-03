@@ -3654,6 +3654,10 @@ Implementation status:
 - The projection is deterministic, side-effect-free, does not call live
   providers, suppresses raw payloads, and emits bounded trace attributes for
   later runtime decision tracing.
+- Each runtime evidence projection now includes a stable sanitized SHA-256
+  fingerprint with bounded provenance counts/source ids, allowing Phase 7R.3
+  automation decisions to bind to the exact evidence projection without
+  carrying raw evidence labels forward.
 
 ### 7R.3 Automation Decision Contract
 
