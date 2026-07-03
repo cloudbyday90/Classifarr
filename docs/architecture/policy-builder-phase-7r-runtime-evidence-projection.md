@@ -2,9 +2,11 @@
 
 ## Status
 
-Implemented as the second Phase 7R runtime contract.
+Implemented as the second Phase 7R runtime contract. The runtime projection
+and fingerprint helpers now use durable product-domain module names while this
+document remains the roadmap implementation record.
 
-This slice projects runtime classification inputs into the Phase 6R evidence
+This slice projects runtime classification inputs into the policy evidence
 bucket vocabulary. It does not change classification behavior, route items,
 write learning, call providers, or persist native intent.
 
@@ -28,8 +30,8 @@ That is the failure mode Phase 7R is trying to remove: broad genre overlap,
 unknown-library RAG evidence, stale profiles, and metadata hints can look more
 authoritative than they are.
 
-Phase 7R.2 creates a deterministic adapter that maps runtime facts into Phase
-6R buckets before automation decisions are allowed to change.
+Phase 7R.2 creates a deterministic adapter that maps runtime facts into policy
+evidence buckets before automation decisions are allowed to change.
 
 ## Official Guidance Reviewed
 
@@ -48,7 +50,7 @@ Phase 7R.2 creates a deterministic adapter that maps runtime facts into Phase
 
 ## Recommendations
 
-1. **Reuse Phase 6R buckets.**
+1. **Reuse policy evidence buckets.**
    Runtime and rebuild paths should share `identity`, `compatibility`,
    `hard_limit`, `avoid`, `outlier`, `routing`, `freshness`, and
    `insufficient` evidence categories.
@@ -107,12 +109,12 @@ Cons:
 ## Final Recommendation Stack
 
 - Runtime evidence projection:
-  `server/src/services/policyBuilderPhase7RuntimeEvidenceProjection.mjs`
+  `server/src/services/policyRuntimeEvidenceProjection.mjs`
 - Runtime evidence fingerprint:
-  `server/src/services/policyBuilderPhase7RuntimeEvidenceFingerprint.mjs`
+  `server/src/services/policyRuntimeEvidenceFingerprint.mjs`
 - Test module:
-  `server/src/__tests__/services/policyBuilderPhase7RuntimeEvidenceProjection.test.mjs`
-- Phase 6R evidence vocabulary:
+  `server/src/__tests__/services/policyRuntimeEvidenceProjection.test.mjs`
+- Policy evidence vocabulary:
   `server/src/services/policyEvidenceEngine.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-7r-runtime-evidence-projection.md`
@@ -124,17 +126,17 @@ Cons:
 
 The service exports:
 
-- `PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS`
-- `PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS`
-- `PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS`
-- `buildPolicyBuilderPhase7RuntimeEvidenceProjection`
-- `buildPolicyBuilderPhase7RuntimeEvidenceProjectionAudit`
+- `POLICY_RUNTIME_EVIDENCE_SOURCE_IDS`
+- `POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS`
+- `POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS`
+- `buildPolicyRuntimeEvidenceProjection`
+- `buildPolicyRuntimeEvidenceProjectionAudit`
 - `validateRuntimeEvidenceEntry`
-- `validatePolicyBuilderPhase7RuntimeEvidenceProjection`
+- `validatePolicyRuntimeEvidenceProjection`
 
 The fingerprint service exports:
 
-- `buildPolicyBuilderPhase7RuntimeEvidenceFingerprint`
+- `buildPolicyRuntimeEvidenceFingerprint`
 
 Runtime inputs supported:
 
@@ -160,9 +162,9 @@ Demotion reasons:
 Each projection now carries `projectionFingerprint` with:
 
 - SHA-256 fingerprint,
-- projection and Phase 6R evidence versions,
+- projection and policy evidence versions,
 - total entry count,
-- Phase 6R source ids,
+- policy evidence source ids,
 - runtime source ids,
 - authority source ids,
 - demotion reason ids,

@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Evidence Projection Module Cutover** — renamed the runtime
+  evidence projection and fingerprint helpers plus focused projection tests to
+  durable product-domain names, moved projection and fingerprint contracts to
+  `policy.runtime_evidence_projection.v1` and
+  `policy.runtime_evidence_fingerprint.v1`, replaced projection-local phase
+  handoffs with `nextStep`, updated downstream runtime consumers, and added a
+  legacy completion-audit adapter for the automation-decision-contract handoff.
 - **Policy Runtime Decision Inventory Module Cutover** — renamed the runtime
   decision inventory and focused test to durable product-domain names, moved the
   inventory contract to `policy.runtime_decision_inventory.v1`, replaced local

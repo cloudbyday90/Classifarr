@@ -6,21 +6,21 @@ import {
   POLICY_EVIDENCE_SOURCE_IDS,
 } from '../../services/policyEvidenceEngine.mjs';
 import {
-  PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS,
-  PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS,
-  PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS,
-  buildPolicyBuilderPhase7RuntimeEvidenceProjection,
-  buildPolicyBuilderPhase7RuntimeEvidenceProjectionAudit,
-  validatePolicyBuilderPhase7RuntimeEvidenceProjection,
+  POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS,
+  POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS,
+  POLICY_RUNTIME_EVIDENCE_SOURCE_IDS,
+  buildPolicyRuntimeEvidenceProjection,
+  buildPolicyRuntimeEvidenceProjectionAudit,
+  validatePolicyRuntimeEvidenceProjection,
   validateRuntimeEvidenceEntry,
-} from '../../services/policyBuilderPhase7RuntimeEvidenceProjection.mjs';
+} from '../../services/policyRuntimeEvidenceProjection.mjs';
 import {
-  buildPolicyBuilderPhase7RuntimeEvidenceFingerprint,
-} from '../../services/policyBuilderPhase7RuntimeEvidenceFingerprint.mjs';
+  buildPolicyRuntimeEvidenceFingerprint,
+} from '../../services/policyRuntimeEvidenceFingerprint.mjs';
 
-describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
-  test('projects runtime inputs into Phase 6R evidence buckets', () => {
-    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+describe('policyRuntimeEvidenceProjection', () => {
+  test('projects runtime inputs into policy evidence buckets', () => {
+    const projection = buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animated Movies', count: 12, confidence: 0.93, trusted: true },
@@ -39,8 +39,8 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
       },
     });
 
-    expect(projection.version).toBe('phase7r.runtime_evidence_projection.v1');
-    expect(projection.phase6EvidenceVersion).toBe('policy.evidence.v1');
+    expect(projection.version).toBe('policy.runtime_evidence_projection.v1');
+    expect(projection.evidenceVersion).toBe('policy.evidence.v1');
     expect(projection.generatedFromLiveProvider).toBe(false);
     expect(projection.exposesRawProviderPayloads).toBe(false);
     expect(projection.projectionFingerprint).toEqual(expect.objectContaining({
@@ -60,7 +60,7 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
         expect.objectContaining({
           label: 'Animated Movies',
           sourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
-          runtimeSourceId: PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.LIBRARY_PROFILE,
+          runtimeSourceId: POLICY_RUNTIME_EVIDENCE_SOURCE_IDS.LIBRARY_PROFILE,
           authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
         }),
       ]));
@@ -82,7 +82,7 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
   });
 
   test('demotes broad genres without strong identity support to compatibility evidence', () => {
-    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+    const projection = buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.8 },
@@ -98,19 +98,19 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           label: 'Animation',
-          reasonCode: PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.BROAD_GENRE_WITHOUT_IDENTITY,
+          reasonCode: POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.BROAD_GENRE_WITHOUT_IDENTITY,
           demotedFromBucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
         }),
         expect.objectContaining({
           label: 'Comedy',
-          reasonCode: PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.BROAD_GENRE_WITHOUT_IDENTITY,
+          reasonCode: POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.BROAD_GENRE_WITHOUT_IDENTITY,
           demotedFromBucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
         }),
       ]));
   });
 
   test('demotes low-trust and unknown-library RAG neighbors to insufficient evidence', () => {
-    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+    const projection = buildPolicyRuntimeEvidenceProjection({
       ragNeighbors: [
         {
           label: 'Unknown neighbor',
@@ -139,25 +139,25 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           label: 'Unknown neighbor',
-          reasonCode: PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.UNKNOWN_LIBRARY_NEIGHBOR,
+          reasonCode: POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.UNKNOWN_LIBRARY_NEIGHBOR,
         }),
         expect.objectContaining({
           label: 'Weak known neighbor',
-          reasonCode: PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.LOW_TRUST_RAG_NEIGHBOR,
+          reasonCode: POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.LOW_TRUST_RAG_NEIGHBOR,
         }),
       ]));
     expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY])
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           label: 'Trusted known neighbor',
-          runtimeSourceId: PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.RAG_NEIGHBOR,
+          runtimeSourceId: POLICY_RUNTIME_EVIDENCE_SOURCE_IDS.RAG_NEIGHBOR,
           trusted: true,
         }),
       ]));
   });
 
   test('treats stale profile and failed routing as insufficient evidence', () => {
-    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+    const projection = buildPolicyRuntimeEvidenceProjection({
       profileFreshness: {
         stale: true,
         updatedAt: '2026-05-01T12:00:00.000Z',
@@ -171,19 +171,19 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           label: 'Profile is stale',
-          reasonCode: PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.STALE_PROFILE,
+          reasonCode: POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.STALE_PROFILE,
           stale: true,
         }),
         expect.objectContaining({
           label: 'Radarr missing mapping',
-          reasonCode: PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.ROUTING_NOT_PROVEN,
+          reasonCode: POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.ROUTING_NOT_PROVEN,
           demotedFromBucketId: POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
         }),
       ]));
   });
 
   test('suppresses raw provider payloads and records bounded warnings', () => {
-    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+    const projection = buildPolicyRuntimeEvidenceProjection({
       metadataSignals: [
         {
           label: 'TMDB keyword: princess',
@@ -198,33 +198,33 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
     expect(projection.exposesRawProviderPayloads).toBe(false);
     expect(projection.warnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonCode: PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.RAW_PAYLOAD_SUPPRESSED,
+        reasonCode: POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.RAW_PAYLOAD_SUPPRESSED,
       }),
     ]));
   });
 
   test('passes the default runtime evidence projection audit', () => {
-    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+    const projection = buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animated Movies', count: 12, confidence: 0.93, trusted: true },
         ],
       },
     });
-    const audit = buildPolicyBuilderPhase7RuntimeEvidenceProjectionAudit(projection);
+    const audit = buildPolicyRuntimeEvidenceProjectionAudit(projection);
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedEntryCount).toBe(1);
     expect(audit.checkedBucketCount).toBe(8);
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '7r_3',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'automation_decision_contract',
       label: 'Automation Decision Contract',
     }));
   });
 
   test('builds stable sanitized runtime evidence fingerprints', () => {
-    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+    const projection = buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animated Movies', count: 12, confidence: 0.93, trusted: true },
@@ -235,7 +235,7 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
         { label: 'TMDB keyword: princess', confidence: 0.72 },
       ],
     });
-    const reorderedProjection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+    const reorderedProjection = buildPolicyRuntimeEvidenceProjection({
       metadataSignals: [
         { label: 'TMDB keyword: princess', confidence: 0.72 },
       ],
@@ -246,7 +246,7 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
         ],
       },
     });
-    const changedProjection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+    const changedProjection = buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animated Movies', count: 13, confidence: 0.93, trusted: true },
@@ -262,7 +262,7 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
       .toBe(reorderedProjection.projectionFingerprint.fingerprint);
     expect(projection.projectionFingerprint.fingerprint)
       .not.toBe(changedProjection.projectionFingerprint.fingerprint);
-    expect(buildPolicyBuilderPhase7RuntimeEvidenceFingerprint(projection))
+    expect(buildPolicyRuntimeEvidenceFingerprint(projection))
       .toEqual(projection.projectionFingerprint);
     expect(projection.projectionFingerprint.provenance).toEqual(expect.objectContaining({
       totalEntryCount: 3,
@@ -271,8 +271,8 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
         POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
       ]),
       runtimeSourceIds: expect.arrayContaining([
-        PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.LIBRARY_PROFILE,
-        PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.METADATA_SIGNAL,
+        POLICY_RUNTIME_EVIDENCE_SOURCE_IDS.LIBRARY_PROFILE,
+        POLICY_RUNTIME_EVIDENCE_SOURCE_IDS.METADATA_SIGNAL,
       ]),
       authoritySourceIds: expect.arrayContaining([
         AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
@@ -293,42 +293,42 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
       exposesUiLanguage: true,
     }).issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
+        riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.LIVE_LOOKUP_USED,
+        riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.LIVE_LOOKUP_USED,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.UI_LANGUAGE_EXPOSED,
+        riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.UI_LANGUAGE_EXPOSED,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.BROAD_GENRE_PROMOTED_TO_IDENTITY,
+        riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.BROAD_GENRE_PROMOTED_TO_IDENTITY,
       }),
     ]));
 
-    expect(validatePolicyBuilderPhase7RuntimeEvidenceProjection({
+    expect(validatePolicyRuntimeEvidenceProjection({
       generatedFromLiveProvider: true,
       exposesRawProviderPayloads: true,
       exposesUiChipLanguage: true,
       buckets: {},
     }).issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.LIVE_LOOKUP_USED,
+        riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.LIVE_LOOKUP_USED,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
+        riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.UI_LANGUAGE_EXPOSED,
+        riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.UI_LANGUAGE_EXPOSED,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.MISSING_PROJECTION_FINGERPRINT,
+        riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.MISSING_PROJECTION_FINGERPRINT,
       }),
     ]));
   });
 
   test('rejects projection fingerprint provenance that exposes raw evidence labels', () => {
-    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+    const projection = buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animated Movies', count: 12, confidence: 0.93, trusted: true },
@@ -346,16 +346,16 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
       },
     };
 
-    expect(validatePolicyBuilderPhase7RuntimeEvidenceProjection(unsafeProjection).issues)
+    expect(validatePolicyRuntimeEvidenceProjection(unsafeProjection).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.RAW_PROVENANCE_EXPOSED,
+          riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.RAW_PROVENANCE_EXPOSED,
         }),
       ]));
   });
 
   test('rejects stale or malformed projection fingerprints', () => {
-    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+    const projection = buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animated Movies', count: 12, confidence: 0.93, trusted: true },
@@ -377,28 +377,28 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
       },
     };
 
-    expect(validatePolicyBuilderPhase7RuntimeEvidenceProjection(staleProjection).issues)
+    expect(validatePolicyRuntimeEvidenceProjection(staleProjection).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
+          riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
             .PROJECTION_FINGERPRINT_MISMATCH,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
+          riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
             .PROJECTION_FINGERPRINT_TRACE_MISMATCH,
         }),
       ]));
-    expect(validatePolicyBuilderPhase7RuntimeEvidenceProjection(malformedProjection).issues)
+    expect(validatePolicyRuntimeEvidenceProjection(malformedProjection).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
+          riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
             .MALFORMED_PROJECTION_FINGERPRINT,
         }),
       ]));
   });
 
   test('rejects mismatched projection fingerprint provenance and trace attributes', () => {
-    const projection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+    const projection = buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animated Movies', count: 12, confidence: 0.93, trusted: true },
@@ -426,17 +426,17 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
       },
     };
 
-    expect(validatePolicyBuilderPhase7RuntimeEvidenceProjection(provenanceMismatch).issues)
+    expect(validatePolicyRuntimeEvidenceProjection(provenanceMismatch).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
+          riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
             .PROJECTION_FINGERPRINT_PROVENANCE_MISMATCH,
         }),
       ]));
-    expect(validatePolicyBuilderPhase7RuntimeEvidenceProjection(traceMismatch).issues)
+    expect(validatePolicyRuntimeEvidenceProjection(traceMismatch).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
+          riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
             .PROJECTION_FINGERPRINT_TRACE_MISMATCH,
         }),
       ]));

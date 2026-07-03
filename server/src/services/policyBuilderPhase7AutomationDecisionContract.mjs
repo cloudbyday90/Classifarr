@@ -6,11 +6,11 @@ import {
   POLICY_EVIDENCE_SOURCE_IDS,
 } from './policyEvidenceEngine.mjs';
 import {
-  PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS,
-  PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS,
-  buildPolicyBuilderPhase7RuntimeEvidenceProjection,
-  validatePolicyBuilderPhase7RuntimeEvidenceProjection,
-} from './policyBuilderPhase7RuntimeEvidenceProjection.mjs';
+  POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS,
+  POLICY_RUNTIME_EVIDENCE_SOURCE_IDS,
+  buildPolicyRuntimeEvidenceProjection,
+  validatePolicyRuntimeEvidenceProjection,
+} from './policyRuntimeEvidenceProjection.mjs';
 
 const PHASE7R_AUTOMATION_DECISION_STATE_IDS = Object.freeze({
   AUTO_ROUTE_READY: 'auto_route_ready',
@@ -227,7 +227,7 @@ function hasStaleProfile(input = {}, buckets = {}) {
   return profileFreshness.stale === true ||
     asArray(buckets.insufficient).some(entry =>
       entry?.stale === true ||
-      entry?.reasonCode === PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.STALE_PROFILE
+      entry?.reasonCode === POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.STALE_PROFILE
     );
 }
 
@@ -249,7 +249,7 @@ function isRoutingMapped(input = {}, buckets = {}) {
   }
 
   return asArray(buckets.routing).some(entry =>
-    entry?.runtimeSourceId === PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.ROUTING_OUTCOME &&
+    entry?.runtimeSourceId === POLICY_RUNTIME_EVIDENCE_SOURCE_IDS.ROUTING_OUTCOME &&
     entry?.reasonCode === 'runtime_arr_routing_outcome'
   );
 }
@@ -270,8 +270,8 @@ function hasHighRiskEvidenceConflict(input = {}, buckets = {}) {
   const policyEvaluation = asObject(input.policyEvaluation);
   const risk = asObject(input.risk);
   const highRiskInsufficientReasons = new Set([
-    PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.LOW_TRUST_RAG_NEIGHBOR,
-    PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.UNKNOWN_LIBRARY_NEIGHBOR,
+    POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.LOW_TRUST_RAG_NEIGHBOR,
+    POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.UNKNOWN_LIBRARY_NEIGHBOR,
   ]);
 
   return input.highRiskEvidenceConflict === true ||
@@ -467,7 +467,7 @@ function sanitizeProjectionFingerprint(projectionFingerprint = null) {
     fingerprint: normalizeString(projectionFingerprint.fingerprint),
     provenance: {
       projectionVersion: normalizeString(provenance.projectionVersion) || null,
-      phase6EvidenceVersion: normalizeString(provenance.phase6EvidenceVersion) || null,
+      evidenceVersion: normalizeString(provenance.evidenceVersion) || null,
       totalEntryCount: Number.isFinite(Number(provenance.totalEntryCount))
         ? Number(provenance.totalEntryCount)
         : 0,
@@ -576,10 +576,10 @@ function validateDecisionEvidenceValidation(decision = {}) {
 }
 
 function buildPolicyBuilderPhase7AutomationDecision(input = {}) {
-  const evidenceProjection = input.evidenceProjection?.version === 'phase7r.runtime_evidence_projection.v1'
+  const evidenceProjection = input.evidenceProjection?.version === 'policy.runtime_evidence_projection.v1'
     ? input.evidenceProjection
-    : buildPolicyBuilderPhase7RuntimeEvidenceProjection(input);
-  const evidenceValidation = validatePolicyBuilderPhase7RuntimeEvidenceProjection(evidenceProjection);
+    : buildPolicyRuntimeEvidenceProjection(input);
+  const evidenceValidation = validatePolicyRuntimeEvidenceProjection(evidenceProjection);
   const buckets = getBuckets(evidenceProjection);
   const projectionFingerprint = sanitizeProjectionFingerprint(evidenceProjection.projectionFingerprint);
   const strongIdentity = buckets.identity.some(isStrongIdentityEntry);

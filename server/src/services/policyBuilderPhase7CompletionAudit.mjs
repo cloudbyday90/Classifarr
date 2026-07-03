@@ -20,8 +20,8 @@ import {
   buildPolicyRuntimeDecisionInventory,
 } from './policyRuntimeDecisionInventory.mjs';
 import {
-  buildPolicyBuilderPhase7RuntimeEvidenceProjectionAudit,
-} from './policyBuilderPhase7RuntimeEvidenceProjection.mjs';
+  buildPolicyRuntimeEvidenceProjectionAudit,
+} from './policyRuntimeEvidenceProjection.mjs';
 import {
   buildPolicyBuilderPhase7RuntimeMetricsTraceAudit,
 } from './policyBuilderPhase7RuntimeMetricsTrace.mjs';
@@ -67,6 +67,9 @@ const PHASE7R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
   [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_DECISION_INVENTORY]: Object.freeze({
     runtime_evidence_projection: '7r_2',
   }),
+  [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_EVIDENCE_PROJECTION]: Object.freeze({
+    automation_decision_contract: '7r_3',
+  }),
 });
 
 const PHASE7R_COMPONENT_RECORDS = Object.freeze([
@@ -83,8 +86,8 @@ const PHASE7R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_EVIDENCE_PROJECTION,
     label: 'Runtime evidence projection',
     docPath: 'docs/architecture/policy-builder-phase-7r-runtime-evidence-projection.md',
-    servicePath: 'server/src/services/policyBuilderPhase7RuntimeEvidenceProjection.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase7RuntimeEvidenceProjection.test.mjs',
+    servicePath: 'server/src/services/policyRuntimeEvidenceProjection.mjs',
+    testPath: 'server/src/__tests__/services/policyRuntimeEvidenceProjection.test.mjs',
     expectedNextPhaseId: '7r_3',
     evidence: 'Runtime evidence is projected into bounded buckets with sanitized fingerprint proof.',
   },
@@ -202,7 +205,7 @@ function buildDefaultComponentAudits() {
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_DECISION_INVENTORY]:
       buildPolicyRuntimeDecisionInventory(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_EVIDENCE_PROJECTION]:
-      buildPolicyBuilderPhase7RuntimeEvidenceProjectionAudit(),
+      buildPolicyRuntimeEvidenceProjectionAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.AUTOMATION_DECISION_CONTRACT]:
       buildPolicyBuilderPhase7AutomationDecisionContractAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_QUESTION_REDUCTION]:

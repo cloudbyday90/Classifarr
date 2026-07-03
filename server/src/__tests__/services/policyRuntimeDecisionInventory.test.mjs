@@ -91,8 +91,8 @@ describe('policyRuntimeDecisionInventory', () => {
     const inventory = buildPolicyRuntimeDecisionInventory();
 
     expect(requiredContractPaths).toEqual(expect.arrayContaining([
-      'server/src/services/policyBuilderPhase7RuntimeEvidenceProjection.mjs',
-      'server/src/services/policyBuilderPhase7RuntimeEvidenceFingerprint.mjs',
+      'server/src/services/policyRuntimeEvidenceProjection.mjs',
+      'server/src/services/policyRuntimeEvidenceFingerprint.mjs',
       'server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs',
       'server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs',
       'server/src/services/policyBuilderPhase7RequestTimeLearning.mjs',

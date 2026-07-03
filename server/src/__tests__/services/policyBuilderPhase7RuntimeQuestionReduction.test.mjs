@@ -17,12 +17,12 @@ import {
   validatePolicyBuilderPhase7RuntimeQuestionReduction,
 } from '../../services/policyBuilderPhase7RuntimeQuestionReduction.mjs';
 import {
-  buildPolicyBuilderPhase7RuntimeEvidenceProjection,
-} from '../../services/policyBuilderPhase7RuntimeEvidenceProjection.mjs';
+  buildPolicyRuntimeEvidenceProjection,
+} from '../../services/policyRuntimeEvidenceProjection.mjs';
 
 function buildStrongDecision(overrides = {}) {
   return buildPolicyBuilderPhase7AutomationDecision({
-    evidenceProjection: buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+    evidenceProjection: buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animated Movies', count: 12, confidence: 0.92, trusted: true },
@@ -81,7 +81,7 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
 
   test('turns classified_not_routed into routing action instead of a persisted question', () => {
     const decision = buildPolicyBuilderPhase7AutomationDecision({
-      evidenceProjection: buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+      evidenceProjection: buildPolicyRuntimeEvidenceProjection({
         libraryProfile: {
           identityCandidates: [
             { label: 'Animated Movies', count: 8, confidence: 0.9, trusted: true },
@@ -114,7 +114,7 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
 
   test('creates bounded Phase 5R questions for hard-limit and missing-evidence states', () => {
     const hardLimitPlan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
-      evidenceProjection: buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+      evidenceProjection: buildPolicyRuntimeEvidenceProjection({
         libraryProfile: {
           identityCandidates: [
             { label: 'Movies', count: 8, confidence: 0.86, trusted: true },

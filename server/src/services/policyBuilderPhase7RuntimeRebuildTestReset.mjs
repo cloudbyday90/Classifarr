@@ -86,7 +86,7 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     traceReasons: ['classification_regression_kept'],
   }),
   Object.freeze({
-    path: 'server/src/__tests__/services/policyBuilderPhase7RuntimeEvidenceProjection.test.mjs',
+    path: 'server/src/__tests__/services/policyRuntimeEvidenceProjection.test.mjs',
     owner: 'server',
     decisionId: PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_EVIDENCE_PROJECTION,
     coverageIds: [

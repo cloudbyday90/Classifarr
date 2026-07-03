@@ -163,7 +163,7 @@ function normalizeEvidenceFingerprint(value = {}) {
     fingerprint,
     provenance: {
       projectionVersion: normalizeString(provenance.projectionVersion) || null,
-      phase6EvidenceVersion: normalizeString(provenance.phase6EvidenceVersion) || null,
+      evidenceVersion: normalizeString(provenance.evidenceVersion) || null,
       totalEntryCount: Number.isFinite(Number(provenance.totalEntryCount))
         ? Number(provenance.totalEntryCount)
         : 0,

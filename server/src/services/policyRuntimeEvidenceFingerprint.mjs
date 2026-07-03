@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 
-const PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_VERSION =
-  'phase7r.runtime_evidence_fingerprint.v1';
+const POLICY_RUNTIME_EVIDENCE_FINGERPRINT_VERSION =
+  'policy.runtime_evidence_fingerprint.v1';
 
-const PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES = Object.freeze({
+const POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES = Object.freeze({
   FINGERPRINT: 'classifarr.runtime.evidence.projection_fingerprint',
   PROJECTION_VERSION: 'classifarr.runtime.evidence.projection_version',
   TOTAL_ENTRY_COUNT: 'classifarr.runtime.evidence.total_entry_count',
@@ -101,7 +101,7 @@ function buildBucketCounts(entries = []) {
     .sort((left, right) => String(left.bucketId).localeCompare(String(right.bucketId)));
 }
 
-function buildPolicyBuilderPhase7RuntimeEvidenceFingerprint(projection = {}) {
+function buildPolicyRuntimeEvidenceFingerprint(projection = {}) {
   const entries = listRuntimeEvidenceEntries(projection);
   const sourceIds = uniqueSorted(entries.map(entry => entry.sourceId));
   const runtimeSourceIds = uniqueSorted(entries.map(entry => entry.runtimeSourceId));
@@ -115,9 +115,9 @@ function buildPolicyBuilderPhase7RuntimeEvidenceFingerprint(projection = {}) {
     asArray(projection.warnings).map(warning => warning?.reasonCode)
   );
   const payload = {
-    version: PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_VERSION,
+    version: POLICY_RUNTIME_EVIDENCE_FINGERPRINT_VERSION,
     projectionVersion: projection.version || null,
-    phase6EvidenceVersion: projection.phase6EvidenceVersion || null,
+    evidenceVersion: projection.evidenceVersion || null,
     generatedFromLiveProvider: projection.generatedFromLiveProvider === true,
     exposesRawProviderPayloads: projection.exposesRawProviderPayloads === true,
     exposesUiChipLanguage: projection.exposesUiChipLanguage === true,
@@ -127,12 +127,12 @@ function buildPolicyBuilderPhase7RuntimeEvidenceFingerprint(projection = {}) {
   const fingerprint = sha256(stableStringify(payload));
 
   return {
-    version: PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_VERSION,
+    version: POLICY_RUNTIME_EVIDENCE_FINGERPRINT_VERSION,
     algorithm: 'sha256',
     fingerprint,
     provenance: {
       projectionVersion: projection.version || null,
-      phase6EvidenceVersion: projection.phase6EvidenceVersion || null,
+      evidenceVersion: projection.evidenceVersion || null,
       totalEntryCount: entries.length,
       sourceIds,
       runtimeSourceIds,
@@ -145,24 +145,24 @@ function buildPolicyBuilderPhase7RuntimeEvidenceFingerprint(projection = {}) {
       exposesUiChipLanguage: projection.exposesUiChipLanguage === true,
     },
     traceAttributes: {
-      [PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.FINGERPRINT]: fingerprint,
-      [PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.PROJECTION_VERSION]:
+      [POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.FINGERPRINT]: fingerprint,
+      [POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.PROJECTION_VERSION]:
         projection.version || null,
-      [PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.TOTAL_ENTRY_COUNT]:
+      [POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.TOTAL_ENTRY_COUNT]:
         entries.length,
-      [PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.SOURCE_IDS]: sourceIds,
-      [PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.RUNTIME_SOURCE_IDS]:
+      [POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.SOURCE_IDS]: sourceIds,
+      [POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.RUNTIME_SOURCE_IDS]:
         runtimeSourceIds,
-      [PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.AUTHORITY_SOURCE_IDS]:
+      [POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.AUTHORITY_SOURCE_IDS]:
         authoritySourceIds,
-      [PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.DEMOTION_REASON_IDS]:
+      [POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.DEMOTION_REASON_IDS]:
         demotionReasonIds,
     },
   };
 }
 
 export {
-  PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES,
-  PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_VERSION,
-  buildPolicyBuilderPhase7RuntimeEvidenceFingerprint,
+  POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES,
+  POLICY_RUNTIME_EVIDENCE_FINGERPRINT_VERSION,
+  buildPolicyRuntimeEvidenceFingerprint,
 };

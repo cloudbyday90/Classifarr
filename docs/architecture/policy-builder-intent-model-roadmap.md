@@ -3677,7 +3677,7 @@ rebuild and readiness.
 Tasks:
 
 - Build or identify a runtime evidence projection that can evaluate an item
-  against candidate destinations using Phase 6R evidence buckets:
+  against candidate destinations using policy evidence buckets:
   - identity evidence,
   - compatibility evidence,
   - hard-limit evidence,
@@ -3705,9 +3705,9 @@ Implementation status:
 - Phase 7R.2 runtime evidence projection is documented in
   [Policy Builder Phase 7R Runtime Evidence Projection](policy-builder-phase-7r-runtime-evidence-projection.md).
 - The server-owned runtime evidence projection lives in
-  `server/src/services/policyBuilderPhase7RuntimeEvidenceProjection.mjs`.
+  `server/src/services/policyRuntimeEvidenceProjection.mjs`.
 - The focused runtime-evidence test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase7RuntimeEvidenceProjection.test.mjs`.
+  `server/src/__tests__/services/policyRuntimeEvidenceProjection.test.mjs`.
 - Current implementation maps runtime library profile, operator intent,
   classification history, manual corrections, pending answers, RAG neighbors,
   metadata signals, Arr routing outcomes, and profile freshness into Phase 6R

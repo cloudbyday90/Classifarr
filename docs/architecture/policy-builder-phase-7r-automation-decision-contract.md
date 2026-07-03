@@ -120,7 +120,7 @@ Cons:
 - Focused tests:
   `server/src/__tests__/services/policyBuilderPhase7AutomationDecisionContract.test.mjs`
 - Runtime evidence dependency:
-  `server/src/services/policyBuilderPhase7RuntimeEvidenceProjection.mjs`
+  `server/src/services/policyRuntimeEvidenceProjection.mjs`
 - Roadmap owner:
   Phase 7R.3 Automation Decision Contract in
   `docs/architecture/policy-builder-intent-model-roadmap.md`

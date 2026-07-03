@@ -2,9 +2,9 @@ import {
   POLICY_EVIDENCE_BUCKET_IDS,
 } from '../../services/policyEvidenceEngine.mjs';
 import {
-  PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS,
-  buildPolicyBuilderPhase7RuntimeEvidenceProjection,
-} from '../../services/policyBuilderPhase7RuntimeEvidenceProjection.mjs';
+  POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS,
+  buildPolicyRuntimeEvidenceProjection,
+} from '../../services/policyRuntimeEvidenceProjection.mjs';
 import {
   PHASE7R_AUTOMATION_DECISION_ACTION_IDS,
   PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS,
@@ -18,7 +18,7 @@ import {
 } from '../../services/policyBuilderPhase7AutomationDecisionContract.mjs';
 
 function buildStrongRuntimeEvidence(overrides = {}) {
-  return buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+  return buildPolicyRuntimeEvidenceProjection({
     libraryProfile: {
       identityCandidates: [
         { label: 'Animated Movies', count: 12, confidence: 0.92, trusted: true },
@@ -110,7 +110,7 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
   });
 
   test('records completed classification without Arr mapping as classified_not_routed', () => {
-    const evidenceProjection = buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+    const evidenceProjection = buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animated Movies', count: 8, confidence: 0.91, trusted: true },
@@ -145,7 +145,7 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
 
   test('uses needs_routing_mapping when destination identity is strong but no route target is mapped', () => {
     const decision = buildPolicyBuilderPhase7AutomationDecision({
-      evidenceProjection: buildPolicyBuilderPhase7RuntimeEvidenceProjection({
+      evidenceProjection: buildPolicyRuntimeEvidenceProjection({
         libraryProfile: {
           identityCandidates: [
             { label: 'Animated Movies', count: 7, confidence: 0.88, trusted: true },
@@ -285,7 +285,7 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
       trace: {
         reasons: [
           {
-            reasonId: PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.STALE_PROFILE,
+            reasonId: POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.STALE_PROFILE,
           },
         ],
       },
