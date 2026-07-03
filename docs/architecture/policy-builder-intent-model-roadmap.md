@@ -3787,6 +3787,8 @@ Tasks:
   - item could not route because configuration was missing.
 - Queue profile refresh when a guarded learning decision changes destination
   evidence.
+- Carry the upstream decision/question evidence fingerprint into the
+  request-time decision, learning-guard context, and bounded trace attributes.
 
 Acceptance criteria:
 
@@ -3817,6 +3819,9 @@ Implementation status:
 - Manual destination changes are marked auditable and reversible, and all direct
   side effects remain disabled until a later runtime integration slice
   deliberately wires persistence.
+- Request-time learning decisions now preserve the upstream sanitized evidence
+  fingerprint through the decision, bounded learning-guard context, and trace;
+  validation rejects missing or mismatched fingerprint handoffs.
 
 ### 7R.6 Library-Derived Policy Rebuild
 

@@ -29,9 +29,40 @@ function destination(overrides = {}) {
   };
 }
 
+function upstreamEvidenceFingerprint(overrides = {}) {
+  return {
+    algorithm: 'sha256',
+    fingerprint: 'a'.repeat(64),
+    provenance: {
+      projectionVersion: 'phase7r.runtime_evidence_projection.v1',
+      phase6EvidenceVersion: 'phase6r.evidence.v1',
+      totalEntryCount: 2,
+      sourceIds: ['media_server_library_profile'],
+      runtimeSourceIds: ['library_profile'],
+      authoritySourceIds: ['media_server_contents'],
+      demotionReasonIds: [],
+      warningReasonIds: [],
+      bucketCounts: [
+        {
+          bucketId: 'identity_evidence',
+          entryCount: 2,
+        },
+      ],
+    },
+    ...overrides,
+  };
+}
+
+function buildRequestTimeLearningDecision(input = {}) {
+  return buildPolicyBuilderPhase7RequestTimeLearningDecision({
+    upstreamEvidenceFingerprint: upstreamEvidenceFingerprint(),
+    ...input,
+  });
+}
+
 describe('policyBuilderPhase7RequestTimeLearning', () => {
   test('records user-requested destination separately from final outcome without durable learning', () => {
-    const decision = buildPolicyBuilderPhase7RequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecision({
       eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       item: {
         itemId: 10674,
@@ -60,12 +91,25 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
       tierId: PHASE6R_LEARNING_TIER_IDS.NONE,
       canWriteLearning: false,
     }));
+    expect(decision.upstreamEvidenceFingerprint).toEqual(expect.objectContaining({
+      algorithm: 'sha256',
+      fingerprint: 'a'.repeat(64),
+    }));
+    expect(decision.learningGuardContext.upstreamEvidenceFingerprint).toEqual({
+      algorithm: 'sha256',
+      fingerprint: 'a'.repeat(64),
+    });
+    expect(decision.trace.attributes).toEqual(expect.objectContaining({
+      'classifarr.runtime.request_learning.upstream_evidence_fingerprint':
+        'a'.repeat(64),
+    }));
+    expect(JSON.stringify(decision.upstreamEvidenceFingerprint)).not.toContain('Animated Movies');
     expect(decision.profileRefresh.queue).toBe(false);
     expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(decision).ok).toBe(true);
   });
 
   test('passes operator manual destination changes through the learning guard and marks them reversible', () => {
-    const decision = buildPolicyBuilderPhase7RequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecision({
       eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
       actorId: 'admin-1',
       item: {
@@ -112,7 +156,7 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
   });
 
   test('records successful Arr routing as final outcome without direct learning', () => {
-    const decision = buildPolicyBuilderPhase7RequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecision({
       eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED,
       item: {
         itemId: 10674,
@@ -138,7 +182,7 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
   });
 
   test('records failed route mapping as route failure only and not positive destination evidence', () => {
-    const decision = buildPolicyBuilderPhase7RequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecision({
       eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING,
       item: {
         itemId: 10674,
@@ -175,7 +219,7 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
   });
 
   test('blocks learning when the upstream question is stale or rejected', () => {
-    const decision = buildPolicyBuilderPhase7RequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecision({
       eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
       operatorDestination: destination(),
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
@@ -205,14 +249,14 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
   });
 
   test('rejects route failures or routing outcomes that claim learning writes', () => {
-    const routeFailure = buildPolicyBuilderPhase7RequestTimeLearningDecision({
+    const routeFailure = buildRequestTimeLearningDecision({
       eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING,
       finalDestination: destination(),
     });
     routeFailure.learningDecision.learning.canWriteLearning = true;
     routeFailure.profileRefresh.queue = true;
 
-    const routeSuccess = buildPolicyBuilderPhase7RequestTimeLearningDecision({
+    const routeSuccess = buildRequestTimeLearningDecision({
       eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED,
       finalDestination: destination(),
     });
@@ -236,7 +280,7 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
   });
 
   test('rejects direct side effects and non-reversible manual changes', () => {
-    const decision = buildPolicyBuilderPhase7RequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecision({
       eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
       operatorDestination: destination(),
     });
@@ -254,8 +298,39 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
       ]));
   });
 
+  test('rejects request-time learning with missing or mismatched evidence fingerprints', () => {
+    const missing = buildPolicyBuilderPhase7RequestTimeLearningDecision({
+      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      requestedDestination: destination(),
+    });
+    const mismatched = buildRequestTimeLearningDecision({
+      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      requestedDestination: destination(),
+    });
+
+    mismatched.learningGuardContext.upstreamEvidenceFingerprint.fingerprint = 'b'.repeat(64);
+    mismatched.trace.attributes['classifarr.runtime.request_learning.upstream_evidence_fingerprint'] =
+      'c'.repeat(64);
+
+    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(missing).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_UPSTREAM_EVIDENCE_FINGERPRINT,
+        }),
+      ]));
+    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(mismatched).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.LEARNING_GUARD_FINGERPRINT_MISMATCH,
+        }),
+        expect.objectContaining({
+          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+        }),
+      ]));
+  });
+
   test('passes the default request-time learning audit', () => {
-    const decision = buildPolicyBuilderPhase7RequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecision({
       eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });

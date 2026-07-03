@@ -65,6 +65,12 @@ Were any side effects performed?
 Can the operator audit or reverse the change?
 ```
 
+The contract must also preserve the upstream sanitized evidence fingerprint
+from the automation decision or question-reduction plan. Request-time learning
+is only useful when it can prove which evidence-bound decision caused the
+request/manual/routing event, without carrying raw labels, provider payloads, or
+question text into durable learning.
+
 ## Pros And Cons
 
 Pros:
@@ -76,6 +82,8 @@ Pros:
   learning guard approves the evidence.
 - Keeps the slice side-effect-free until runtime persistence is intentionally
   wired.
+- Carries upstream evidence fingerprints into the request decision, bounded
+  learning-guard context, and trace so learning candidates remain auditable.
 
 Cons:
 
@@ -84,6 +92,8 @@ Cons:
   to call this service.
 - Conservative handling means successful routing is recorded as outcome only;
   a separate learning signal is required before it can mutate policy evidence.
+- Runtime integration must supply the upstream fingerprint from the automation
+  decision or question-reduction plan before this contract can validate.
 
 ## Final Recommendation Stack
 
@@ -104,6 +114,10 @@ Cons:
    change destination profile state.
 8. Keep all writes disabled in this contract. Persistence belongs to later
    integration slices.
+9. Carry the upstream evidence fingerprint into the request-time decision,
+   learning-guard context, and bounded trace attributes.
+10. Reject missing or mismatched fingerprint handoffs before request-time
+    learning can pass validation.
 
 ## Implemented Files
 
@@ -161,6 +175,8 @@ The service exports:
 - Manual destination changes require reversibility metadata.
 - Route failures are blocked from writing durable learning or profile refresh
   requests.
+- The contract carries only sanitized upstream evidence fingerprint provenance
+  and rejects missing or mismatched fingerprint handoffs.
 
 ## Test Coverage
 
@@ -174,6 +190,9 @@ The focused test suite verifies:
 - stale or rejected upstream questions block learning,
 - route outcomes and route failures cannot claim direct learning writes,
 - direct side effects and non-reversible manual changes fail validation,
+- request-time decisions carry upstream evidence fingerprints into the
+  learning-guard context and trace,
+- missing or mismatched fingerprint handoffs fail validation,
 - the component audit points to Phase 7R.6.
 
 ## Outcome

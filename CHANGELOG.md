@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Request Learning Evidence Binding** — hardened
+  request-time learning decisions so request/manual/routing events carry the
+  upstream sanitized evidence fingerprint into the decision, bounded
+  learning-guard context, and trace, with validation rejecting missing or
+  mismatched handoffs.
 - **Policy Builder Phase 7R Question Evidence Binding** — hardened runtime
   question reduction so question plans carry the automation decision evidence
   fingerprint into the plan, planned question, and bounded trace attributes, with

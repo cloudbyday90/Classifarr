@@ -49,6 +49,9 @@ const PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS = Object.freeze({
   INVALID_LEARNING_GUARD: 'invalid_learning_guard',
   DIRECT_SIDE_EFFECT: 'direct_side_effect',
   MISSING_TRACE_REASON: 'missing_trace_reason',
+  MISSING_UPSTREAM_EVIDENCE_FINGERPRINT: 'missing_upstream_evidence_fingerprint',
+  LEARNING_GUARD_FINGERPRINT_MISMATCH: 'learning_guard_fingerprint_mismatch',
+  TRACE_FINGERPRINT_MISMATCH: 'trace_fingerprint_mismatch',
 });
 
 const EVENT_SOURCE_BY_TYPE = Object.freeze({
@@ -74,6 +77,8 @@ const EVENT_REASON_BY_TYPE = Object.freeze({
 });
 
 const MAX_TRACE_REASONS = 12;
+const REQUEST_LEARNING_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE =
+  'classifarr.runtime.request_learning.upstream_evidence_fingerprint';
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -134,6 +139,49 @@ function normalizeRouteResult(value = {}, eventTypeId) {
     routeId: route.routeId ?? null,
     reasonCode: normalizeString(route.reasonCode) || (failedByEvent ? 'missing_mapping' : null),
   };
+}
+
+function normalizeEvidenceFingerprint(value = {}) {
+  const fingerprintSource = asObject(value);
+  const provenance = asObject(fingerprintSource.provenance);
+  const fingerprint = normalizeString(fingerprintSource.fingerprint);
+
+  if (!fingerprint) return null;
+
+  return {
+    algorithm: normalizeString(fingerprintSource.algorithm) || null,
+    fingerprint,
+    provenance: {
+      projectionVersion: normalizeString(provenance.projectionVersion) || null,
+      phase6EvidenceVersion: normalizeString(provenance.phase6EvidenceVersion) || null,
+      totalEntryCount: Number.isFinite(Number(provenance.totalEntryCount))
+        ? Number(provenance.totalEntryCount)
+        : 0,
+      sourceIds: asArray(provenance.sourceIds).map(String).sort(),
+      runtimeSourceIds: asArray(provenance.runtimeSourceIds).map(String).sort(),
+      authoritySourceIds: asArray(provenance.authoritySourceIds).map(String).sort(),
+      demotionReasonIds: asArray(provenance.demotionReasonIds).map(String).sort(),
+      warningReasonIds: asArray(provenance.warningReasonIds).map(String).sort(),
+      bucketCounts: asArray(provenance.bucketCounts)
+        .map(bucket => ({
+          bucketId: normalizeString(bucket?.bucketId) || null,
+          entryCount: Number.isFinite(Number(bucket?.entryCount))
+            ? Number(bucket.entryCount)
+            : 0,
+        }))
+        .sort((left, right) => String(left.bucketId).localeCompare(String(right.bucketId))),
+    },
+  };
+}
+
+function getUpstreamEvidenceFingerprint(input = {}) {
+  return normalizeEvidenceFingerprint(
+    input.questionReductionPlan?.decisionEvidenceFingerprint ||
+    input.question?.decisionEvidenceFingerprint ||
+    input.automationDecision?.evidence?.projectionFingerprint ||
+    input.decisionEvidenceFingerprint ||
+    input.upstreamEvidenceFingerprint
+  );
 }
 
 function defaultAnswerOutcomeForEvent(eventTypeId) {
@@ -233,6 +281,7 @@ function buildTrace({
   dispositionId,
   learningDecision,
   routeResult,
+  upstreamEvidenceFingerprint,
 }) {
   const reasons = [
     {
@@ -275,16 +324,23 @@ function buildTrace({
 
   const boundedReasons = reasons.slice(0, MAX_TRACE_REASONS);
 
+  const attributes = {
+    'classifarr.runtime.request_learning.version': 'phase7r.request_time_learning.v1',
+    'classifarr.runtime.request_learning.event_type': eventTypeId,
+    'classifarr.runtime.request_learning.disposition': dispositionId,
+    'classifarr.runtime.request_learning.reason_count': boundedReasons.length,
+    'classifarr.runtime.request_learning.route_succeeded': routeResult.succeeded,
+    'classifarr.runtime.request_learning.missing_mapping': routeResult.missingMapping,
+    'classifarr.runtime.request_learning.profile_refresh_queued': learningDecision?.profileRefresh?.queue === true,
+  };
+
+  if (upstreamEvidenceFingerprint?.fingerprint) {
+    attributes[REQUEST_LEARNING_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE] =
+      upstreamEvidenceFingerprint.fingerprint;
+  }
+
   return {
-    attributes: {
-      'classifarr.runtime.request_learning.version': 'phase7r.request_time_learning.v1',
-      'classifarr.runtime.request_learning.event_type': eventTypeId,
-      'classifarr.runtime.request_learning.disposition': dispositionId,
-      'classifarr.runtime.request_learning.reason_count': boundedReasons.length,
-      'classifarr.runtime.request_learning.route_succeeded': routeResult.succeeded,
-      'classifarr.runtime.request_learning.missing_mapping': routeResult.missingMapping,
-      'classifarr.runtime.request_learning.profile_refresh_queued': learningDecision?.profileRefresh?.queue === true,
-    },
+    attributes,
     reasons: boundedReasons,
     truncated: reasons.length > boundedReasons.length,
   };
@@ -310,6 +366,16 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
     finalDestination,
     routeResult,
   });
+  const upstreamEvidenceFingerprint = getUpstreamEvidenceFingerprint(input);
+  const learningGuardContext = {
+    ...asObject(input.context),
+    upstreamEvidenceFingerprint: upstreamEvidenceFingerprint
+      ? {
+        algorithm: upstreamEvidenceFingerprint.algorithm,
+        fingerprint: upstreamEvidenceFingerprint.fingerprint,
+      }
+      : null,
+  };
   const answerOutcomeId = input.answerOutcomeId || defaultAnswerOutcomeForEvent(eventTypeId);
   const learningDecision = buildPolicyBuilderPhase6LearningDecision({
     sourceId,
@@ -317,7 +383,7 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
     question: normalizeQuestionForLearning(input),
     answer: buildAnswerFromDestination(finalDestination, input),
     candidate: input.candidate || {},
-    context: input.context || {},
+    context: learningGuardContext,
     finalOutcome,
   });
   const learningValidation = validatePolicyBuilderPhase6LearningDecision(learningDecision);
@@ -337,6 +403,8 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
     }),
     item,
     finalOutcome,
+    upstreamEvidenceFingerprint,
+    learningGuardContext,
     learningDecision,
     learningValidation,
     profileRefresh: {
@@ -362,6 +430,7 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
       dispositionId,
       learningDecision,
       routeResult,
+      upstreamEvidenceFingerprint,
     }),
   };
 }
@@ -370,6 +439,13 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
   const issues = [];
   const eventTypeIds = Object.values(PHASE7R_REQUEST_EVENT_TYPE_IDS);
   const sourceIds = Object.values(PHASE6R_LEARNING_EVENT_SOURCE_IDS);
+  const upstreamFingerprint = normalizeString(decision.upstreamEvidenceFingerprint?.fingerprint);
+  const learningGuardFingerprint = normalizeString(
+    decision.learningGuardContext?.upstreamEvidenceFingerprint?.fingerprint
+  );
+  const traceFingerprint = normalizeString(
+    decision.trace?.attributes?.[REQUEST_LEARNING_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE]
+  );
 
   if (!eventTypeIds.includes(decision.eventTypeId)) {
     issues.push({
@@ -421,6 +497,27 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
     issues.push({
       riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.INVALID_LEARNING_GUARD,
       message: 'Request-time learning cannot rely on an invalid learning guard decision.',
+    });
+  }
+
+  if (!upstreamFingerprint) {
+    issues.push({
+      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_UPSTREAM_EVIDENCE_FINGERPRINT,
+      message: 'Request-time learning must carry the upstream decision evidence fingerprint.',
+    });
+  }
+
+  if (learningGuardFingerprint && learningGuardFingerprint !== upstreamFingerprint) {
+    issues.push({
+      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.LEARNING_GUARD_FINGERPRINT_MISMATCH,
+      message: 'Learning-guard context fingerprint must match the request-time decision.',
+    });
+  }
+
+  if (traceFingerprint && traceFingerprint !== upstreamFingerprint) {
+    issues.push({
+      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+      message: 'Request-time learning trace fingerprint must match the decision.',
     });
   }
 
