@@ -49,6 +49,8 @@ const PHASE7R_MIGRATION_DELETION_CRITERION_IDS = Object.freeze({
 const PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS = Object.freeze({
   MISSING_REPORT_VERSION: 'missing_report_version',
   INVALID_PROPOSAL: 'invalid_proposal',
+  MISSING_PROPOSAL_VALIDATION: 'missing_proposal_validation',
+  PROPOSAL_VALIDATION_MISMATCH: 'proposal_validation_mismatch',
   INVALID_MIGRATION_PLAN: 'invalid_migration_plan',
   UNKNOWN_DIFFERENCE_TYPE: 'unknown_difference_type',
   NON_MIGRATION_RELEVANT_DIFFERENCE: 'non_migration_relevant_difference',
@@ -66,6 +68,7 @@ const PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS = Object.freeze({
   MISSING_SAMPLE_SET_FINGERPRINT: 'missing_sample_set_fingerprint',
   MALFORMED_SAMPLE_SET_FINGERPRINT: 'malformed_sample_set_fingerprint',
   TRACE_SAMPLE_SET_FINGERPRINT_MISMATCH: 'trace_sample_set_fingerprint_mismatch',
+  SAMPLE_SET_PROVENANCE_MISMATCH: 'sample_set_provenance_mismatch',
 });
 
 const MAX_DIFFERENCES_DEFAULT = 25;
@@ -195,6 +198,9 @@ function buildSampleSetFingerprint({
       guardedOutcomeFingerprints: proposalGuardedOutcomeFingerprints,
       guardedOutcomeFingerprintCount: proposalGuardedOutcomeSummary.fingerprintCount ?? 0,
       guardedOutcomeMissingFingerprintCount: proposalGuardedOutcomeSummary.missingFingerprintCount ?? 0,
+      guardedOutcomeRequestProofCount: proposalGuardedOutcomeSummary.requestProofCount ?? 0,
+      guardedOutcomeMissingRequestProofCount: proposalGuardedOutcomeSummary.missingRequestProofCount ?? 0,
+      guardedOutcomeInvalidRequestProofCount: proposalGuardedOutcomeSummary.invalidRequestProofCount ?? 0,
     },
     verifierOptions: {
       maxDifferences,
@@ -222,6 +228,10 @@ function buildSampleSetFingerprint({
       proposalVersion: proposal.version || null,
       proposalStatusId: proposal.statusId || null,
       proposalGuardedOutcomeFingerprintCount: proposalGuardedOutcomeSummary.fingerprintCount ?? 0,
+      proposalGuardedOutcomeMissingFingerprintCount: proposalGuardedOutcomeSummary.missingFingerprintCount ?? 0,
+      proposalGuardedOutcomeRequestProofCount: proposalGuardedOutcomeSummary.requestProofCount ?? 0,
+      proposalGuardedOutcomeMissingRequestProofCount: proposalGuardedOutcomeSummary.missingRequestProofCount ?? 0,
+      proposalGuardedOutcomeInvalidRequestProofCount: proposalGuardedOutcomeSummary.invalidRequestProofCount ?? 0,
       proposalGuardedOutcomeFingerprints,
     },
   };
@@ -535,6 +545,9 @@ function buildPolicyBuilderPhase7MigrationVerifierReport(input = {}) {
 
 function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
   const issues = [];
+  const proposalValidation = validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(
+    asObject(report.proposal)
+  );
 
   if (report.version !== 'phase7r.migration_verifier.v1') {
     issues.push({
@@ -543,7 +556,22 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
     });
   }
 
-  if (report.proposalValidation?.ok !== true) {
+  if (!report.proposalValidation ||
+      typeof report.proposalValidation !== 'object' ||
+      typeof report.proposalValidation.ok !== 'boolean') {
+    issues.push({
+      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_PROPOSAL_VALIDATION,
+      message: 'Migration verifier report must carry rebuild proposal validation proof.',
+    });
+  } else if (report.proposalValidation.ok !== proposalValidation.ok ||
+      Number(report.proposalValidation.issueCount) !== proposalValidation.issueCount) {
+    issues.push({
+      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.PROPOSAL_VALIDATION_MISMATCH,
+      message: 'Migration verifier proposal validation proof must match the embedded proposal.',
+    });
+  }
+
+  if (report.proposalValidation?.ok !== true || !proposalValidation.ok) {
     issues.push({
       riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_PROPOSAL,
       message: 'Migration verifier report must include a valid rebuild proposal.',
@@ -559,9 +587,11 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
 
   const sampleSetFingerprint = report.sampleSetFingerprint;
   const sampleFingerprintValue = normalizeString(sampleSetFingerprint?.fingerprint);
+  const sampleFingerprintProvenance = asObject(sampleSetFingerprint?.provenance);
   const traceSampleFingerprint = normalizeString(
     report.trace?.attributes?.[SAMPLE_SET_FINGERPRINT_TRACE_ATTRIBUTE]
   );
+  const proposalGuardedOutcomeSummary = asObject(report.proposal?.evidenceSourceSummary?.guardedOutcomes);
 
   if (!sampleFingerprintValue) {
     issues.push({
@@ -583,6 +613,26 @@ function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
     issues.push({
       riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.TRACE_SAMPLE_SET_FINGERPRINT_MISMATCH,
       message: 'Migration verifier trace sample-set fingerprint must match the report.',
+    });
+  }
+
+  if (sampleSetFingerprint && (
+    sampleFingerprintProvenance.proposalVersion !== report.proposal?.version ||
+    sampleFingerprintProvenance.proposalStatusId !== report.proposal?.statusId ||
+    Number(sampleFingerprintProvenance.proposalGuardedOutcomeFingerprintCount) !==
+      Number(proposalGuardedOutcomeSummary.fingerprintCount ?? 0) ||
+    Number(sampleFingerprintProvenance.proposalGuardedOutcomeMissingFingerprintCount) !==
+      Number(proposalGuardedOutcomeSummary.missingFingerprintCount ?? 0) ||
+    Number(sampleFingerprintProvenance.proposalGuardedOutcomeRequestProofCount) !==
+      Number(proposalGuardedOutcomeSummary.requestProofCount ?? 0) ||
+    Number(sampleFingerprintProvenance.proposalGuardedOutcomeMissingRequestProofCount) !==
+      Number(proposalGuardedOutcomeSummary.missingRequestProofCount ?? 0) ||
+    Number(sampleFingerprintProvenance.proposalGuardedOutcomeInvalidRequestProofCount) !==
+      Number(proposalGuardedOutcomeSummary.invalidRequestProofCount ?? 0)
+  )) {
+    issues.push({
+      riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.SAMPLE_SET_PROVENANCE_MISMATCH,
+      message: 'Migration verifier sample-set provenance must match the embedded rebuild proposal summary.',
     });
   }
 

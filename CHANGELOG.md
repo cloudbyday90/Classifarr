@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Migration Verifier Validation Freshness** —
+  hardened migration verifier reports so embedded rebuild proposal validation
+  is recomputed, stale validation proof is rejected, and sample-set provenance
+  must match guarded-outcome fingerprint and request-proof counts.
 - **Policy Builder Phase 7R Rebuild Request Proof Gate** — hardened
   library-derived rebuild proposals so guarded outcomes must pass request-time
   learning validation, carry bounded question-reduction proof, and keep

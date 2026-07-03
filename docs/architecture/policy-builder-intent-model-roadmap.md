@@ -3962,6 +3962,10 @@ Tasks:
 - Bind verifier output to a stable sample-set fingerprint built from normalized
   comparison samples, verifier options, and bounded rebuild proposal evidence
   metadata.
+- Recompute embedded rebuild proposal validation instead of trusting stale
+  validation flags from integration code.
+- Bind sample-set provenance to guarded-outcome fingerprint counts and
+  request-proof counts from the embedded rebuild proposal.
 - Show only migration-relevant differences:
   - destination changes,
   - newly blocked items,
@@ -3978,6 +3982,9 @@ Acceptance criteria:
 - Verifier reports carry a SHA-256 sample-set fingerprint and trace attribute
   for the exact sanitized comparison set.
 - Missing, malformed, or mismatched verifier fingerprints fail validation.
+- Missing or stale rebuild proposal validation proof fails validation.
+- Sample-set provenance that drifts from guarded-outcome fingerprint or
+  request-proof counts fails validation.
 - Verifier output does not become normal policy-authoring UI.
 - Rollback path is explicit and tested.
 
@@ -3993,9 +4000,14 @@ Implementation status:
   representative legacy/proposed comparison samples.
 - Verifier reports now carry a stable sample-set fingerprint with bounded
   provenance for sample count, raw-payload suppression, verifier options,
-  proposal version/status, and sanitized proposal evidence digests.
+  proposal version/status, sanitized proposal evidence digests,
+  guarded-outcome fingerprint counts, and guarded-outcome request-proof counts.
 - Trace attributes mirror the sample-set fingerprint, and validation rejects
   missing, malformed, or mismatched fingerprint handoffs.
+- Validation recomputes the embedded rebuild proposal validation result and
+  rejects missing or stale proposal-validation proof.
+- Validation rejects sample-set provenance that no longer matches the embedded
+  rebuild proposal guarded-outcome fingerprint or request-proof summary.
 - Verifier output is bounded to migration-relevant differences only:
   destination changes, newly blocked items, newly review-required items,
   route-readiness changes, and evidence-confidence changes.

@@ -11,6 +11,11 @@ acceptance, rollback snapshot, and legacy deletion gates. It does not apply
 policy replacement, create rollback snapshots, delete legacy paths, write
 learning, or expose raw replay/provider payloads.
 
+This checkpoint also makes the verifier prove that its embedded rebuild
+proposal validation is current. Reports recompute proposal validation during
+verification and bind sample-set provenance to guarded-outcome fingerprint and
+request-proof counts from the embedded rebuild proposal.
+
 ## Problem
 
 Classifarr can now generate a reviewable policy proposal from observed library
@@ -42,7 +47,9 @@ legacy deletion criteria
   before replacement or deletion.
 - [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
   emphasizes server-side verification and business logic controls. The report
-  validates acceptance, rollback, deletion, and side-effect gates server-side.
+  validates acceptance, rollback, deletion, and side-effect gates server-side,
+  and recomputes authoritative validation rather than trusting stale client or
+  integration-provided validation flags.
 - [OWASP Top 10 for Large Language Model Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
   highlights insecure output handling, excessive agency, and overreliance. The
   verifier validates bounded comparison output before any downstream
@@ -102,6 +109,8 @@ Cons:
   is proven.
 - Sample-set fingerprints add another validation gate that integration code must
   preserve when wiring real comparison samples.
+- Verifier integrations must preserve both the report fingerprint and its
+  bounded proposal provenance, including guarded-outcome request-proof counts.
 
 ## Final Recommendation Stack
 
@@ -110,17 +119,21 @@ Cons:
 3. Generate a stable SHA-256 sample-set fingerprint from normalized samples,
    verifier options, and bounded rebuild proposal evidence metadata.
 4. Mirror that fingerprint into bounded trace attributes.
-5. Emit only these migration-relevant difference types:
+5. Recompute rebuild proposal validation during report validation and reject
+   stale or missing proposal-validation proof.
+6. Bind sample-set provenance to the embedded rebuild proposal version, status,
+   guarded-outcome fingerprint counts, and request-proof counts.
+7. Emit only these migration-relevant difference types:
    - `destination_change`,
    - `newly_blocked_item`,
    - `newly_review_required_item`,
    - `route_readiness_change`,
    - `evidence_confidence_change`.
-6. Bound emitted differences with a configured maximum.
-7. Suppress raw payloads, prompts, embeddings, and provider payloads.
-8. Require explicit operator acceptance before replacement.
-9. Require rollback snapshot and restore path before replacement.
-10. Define deletion criteria for old preset/custom-signal runtime paths:
+8. Bound emitted differences with a configured maximum.
+9. Suppress raw payloads, prompts, embeddings, and provider payloads.
+10. Require explicit operator acceptance before replacement.
+11. Require rollback snapshot and restore path before replacement.
+12. Define deletion criteria for old preset/custom-signal runtime paths:
    - Phase 8R native intent stable,
    - verifier passed,
    - rollback snapshot created,
@@ -128,7 +141,7 @@ Cons:
    - delete checklist approved,
    - legacy artifacts classified,
    - custom-signal replacement defined.
-11. Leave all replacement, deletion, rollback creation, learning, and routing
+13. Leave all replacement, deletion, rollback creation, learning, and routing
    writes disabled in this verifier.
 
 ## Implemented Files
@@ -178,7 +191,12 @@ The service exports:
 - The verifier output is bounded by `maxDifferences`.
 - The verifier carries a SHA-256 sample-set fingerprint with bounded provenance:
   sample count, raw-payload suppression flag, verifier options, proposal
-  version/status, and sanitized proposal evidence digests.
+  version/status, sanitized proposal evidence digests, guarded-outcome
+  fingerprint counts, and guarded-outcome request-proof counts.
+- Report validation recomputes the embedded rebuild proposal validation and
+  rejects missing or stale proposal-validation proof.
+- Report validation rejects sample-set provenance that no longer matches the
+  embedded proposal summary.
 - Trace attributes must carry the same sample-set fingerprint as the report.
 - The verifier cannot become a normal policy-authoring surface.
 - The verifier cannot activate, replace, delete, write learning, write routing,
@@ -194,6 +212,9 @@ The focused test suite verifies:
   inputs and change when comparison behavior changes,
 - sample-set fingerprints are mirrored into trace attributes,
 - missing, malformed, or mismatched sample-set fingerprints fail validation,
+- missing or stale proposal-validation proof fails validation,
+- sample-set provenance drift against guarded-outcome request-proof counts fails
+  validation,
 - raw payloads are suppressed,
 - replacement cannot apply without acceptance and rollback,
 - verifier output cannot become normal policy-authoring UI,

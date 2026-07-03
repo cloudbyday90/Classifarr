@@ -305,6 +305,62 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
       ]));
   });
 
+  test('rejects stale proposal validation proof and sample-set provenance drift', () => {
+    const report = buildPolicyBuilderPhase7MigrationVerifierReport({
+      proposal: acceptedProposal(),
+      legacyComparisonSamples: [],
+    });
+    const missingValidation = {
+      ...report,
+      proposalValidation: undefined,
+    };
+    const staleValidation = {
+      ...report,
+      proposal: {
+        ...report.proposal,
+        acceptanceGate: {
+          ...report.proposal.acceptanceGate,
+          requiresExplicitOperatorAcceptance: false,
+        },
+      },
+    };
+    const provenanceDrift = {
+      ...report,
+      sampleSetFingerprint: {
+        ...report.sampleSetFingerprint,
+        provenance: {
+          ...report.sampleSetFingerprint.provenance,
+          proposalGuardedOutcomeRequestProofCount: 999,
+        },
+      },
+    };
+
+    expect(validatePolicyBuilderPhase7MigrationVerifierReport(missingValidation).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_PROPOSAL_VALIDATION,
+        }),
+        expect.objectContaining({
+          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_PROPOSAL,
+        }),
+      ]));
+    expect(validatePolicyBuilderPhase7MigrationVerifierReport(staleValidation).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.PROPOSAL_VALIDATION_MISMATCH,
+        }),
+        expect.objectContaining({
+          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_PROPOSAL,
+        }),
+      ]));
+    expect(validatePolicyBuilderPhase7MigrationVerifierReport(provenanceDrift).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_MIGRATION_VERIFIER_AUDIT_RISK_IDS.SAMPLE_SET_PROVENANCE_MISMATCH,
+        }),
+      ]));
+  });
+
   test('does not allow replacement without operator acceptance and rollback', () => {
     const report = buildPolicyBuilderPhase7MigrationVerifierReport({
       proposal: buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(proposalInput()),
