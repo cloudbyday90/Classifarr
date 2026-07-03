@@ -1,11 +1,12 @@
-# Policy Builder Phase 3R Accessibility And Decision Load
+# Policy Authoring Accessibility
 
-Status: implemented as the eighth Phase 3R operator-workflow contract.
+Status: implemented as the policy-authoring accessibility contract.
 
 ## Scope
 
-Phase 3R.8 defines accessibility and decision-load requirements for the
-re-imagined policy-builder surface before Vue screens are rebuilt.
+Policy authoring accessibility defines accessibility and decision-load
+requirements for the re-imagined policy-builder surface before Vue screens are
+rebuilt.
 
 This checkpoint does not change UI rendering, policy saves, scoring, routing,
 database schema, or runtime learning. It creates a server-owned ESM contract
@@ -27,14 +28,14 @@ Official sources reviewed as of June 2026:
 - W3C WCAG 2.2:
   <https://www.w3.org/TR/WCAG22/>
   - Component state, labels, focus, and errors must be perceivable and operable.
-- U.S. Web Design System, Form Controls:
-  <https://designsystem.digital.gov/components/form-controls/>
-  - Form controls should use clear labels, helper text, validation state, and
-    grouped structure.
-- GOV.UK Design System, Content Design:
-  <https://design-system.service.gov.uk/styles/content/>
-  - Product language should be direct, task-oriented, and avoid unnecessary
-    detail.
+- OWASP Input Validation Cheat Sheet:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html>
+  - Server-side validation should define accepted structure and reject
+    malformed input instead of relying on UI behavior.
+- NIST Secure Software Development Framework SP 800-218:
+  <https://csrc.nist.gov/pubs/sp/800/218/final>
+  - Security and quality requirements should be verified through repeatable
+    checks and documented evidence.
 
 ## Recommendation Stack
 
@@ -77,8 +78,8 @@ Official sources reviewed as of June 2026:
 
 ## Final Recommendation
 
-Use Phase 3R.8 as the acceptance contract for every rebuilt policy-builder
-surface:
+Use policy authoring accessibility as the acceptance contract for every rebuilt
+policy-builder surface:
 
 ```text
 Accessible name + helper text + keyboard/focus requirements
@@ -90,25 +91,25 @@ Accessible name + helper text + keyboard/focus requirements
 
 ## Implementation
 
-The Phase 3R.8 implementation provides:
+The policy authoring accessibility implementation provides:
 
-- `server/src/services/policyBuilderPhase3AccessibilityDecisionLoad.mjs`
-  - defines accessibility and decision-load surfaces for every Phase 3R target
+- `server/src/services/policyAuthoringAccessibility.mjs`
+  - defines accessibility and decision-load surfaces for every policy-authoring
     component,
   - maps normal workflow surfaces to one primary action,
   - pins multi-select state, chip removal naming, disabled reason, destructive
     confirmation, and single-next-action requirements,
   - blocks internal diagnostic language in normal workflow surfaces,
   - validates full component coverage.
-- `server/src/__tests__/services/policyBuilderPhase3AccessibilityDecisionLoad.test.mjs`
-  - verifies every target component has a Phase 3R.8 surface,
+- `server/src/__tests__/services/policyAuthoringAccessibility.test.mjs`
+  - verifies every target component has a policy authoring accessibility surface,
   - proves normal workflow surfaces stay keyboard/focus accessible and limited
     to one primary action,
   - proves readiness exposes one next action,
   - proves overloaded diagnostic surfaces fail the audit,
   - proves chip-list controls require accessible removal names.
 
-## Phase 3R.8 Checklist Result
+## Policy Authoring Accessibility Checklist Result
 
 | Check | Result |
 | --- | --- |
@@ -122,7 +123,8 @@ The Phase 3R.8 implementation provides:
 
 ## Next Step
 
-Continue with **Phase 3R.9 Presentation Test Reset**. That task should rewrite
-presentation tests around the simplified workflow, accessible control contracts,
-evidence-backed options, explicit hard limits, and readiness next actions
-instead of preserving the old modal layout or diagnostic panels.
+Continue with **Presentation Test Reset**. That task should cut over the
+remaining server-side presentation-test contract to durable policy-authoring
+naming while preserving its simplified workflow, accessible control,
+evidence-backed option, explicit hard-limit, readiness next-action, and
+diagnostic-exclusion behavior.

@@ -4,7 +4,8 @@ Status: implemented as the eighth Vue-facing Phase 3R workflow rewrite slice.
 
 ## Scope
 
-This slice applies the Phase 3R.8 accessibility and decision-load contract to
+This slice applies the durable
+[Policy Authoring Accessibility](policy-authoring-accessibility.md) contract to
 the current Vue setup-card workflow.
 
 The change keeps all four setup cards visible, but only one card is marked as
@@ -74,7 +75,7 @@ Official sources reviewed as of June 2026:
 ### Cons
 
 - This still uses local client-side setup-card metadata; a later slice can
-  consume the server Phase 0R.2 field-group contract directly.
+  consume the durable server field-group contract directly.
 - No-template intent editing remains conservative until native intent storage
   replaces preset-backed draft commands.
 - This does not remove legacy migration verifier panels; they remain gated

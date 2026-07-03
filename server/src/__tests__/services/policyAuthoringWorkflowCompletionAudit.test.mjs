@@ -42,7 +42,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_authoring_constraints',
       'policy_authoring_readiness',
       'policy_authoring_starter_templates',
-      'accessibility_decision_load',
+      'policy_authoring_accessibility',
       'presentation_test_reset',
     ]);
 
@@ -54,7 +54,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'vue_setup_card_state_binding',
       'vue_save_defer_action_boundary',
       'vue_starter_template_accelerator',
-      'vue_accessibility_decision_load_audit',
+      'vue_policy_authoring_accessibility_audit',
       'vue_presentation_test_reset',
     ]);
   });

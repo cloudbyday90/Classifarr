@@ -7,7 +7,7 @@ import {
   includesInternalPolicyLanguage,
 } from './policyUserMentalModel.mjs';
 
-const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS = Object.freeze({
+const POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS = Object.freeze({
   DESTINATION_CONTEXT: 'destination_context',
   OBSERVED_PROFILE: 'observed_profile',
   INTENT_SIGNAL_PICKER: 'intent_signal_picker',
@@ -20,7 +20,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS = Object.freeze({
   MIGRATION_VERIFIER: 'migration_verifier',
 });
 
-const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS = Object.freeze({
+const POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS = Object.freeze({
   ACCESSIBLE_NAME: 'accessible_name',
   HELPER_TEXT: 'helper_text',
   KEYBOARD_OPERABLE: 'keyboard_operable',
@@ -35,7 +35,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS = Object.freeze({
   NO_INTERNAL_DIAGNOSTICS_IN_NORMAL_PATH: 'no_internal_diagnostics_in_normal_path',
 });
 
-const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS = Object.freeze({
+const POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS = Object.freeze({
   UNKNOWN_SURFACE: 'unknown_surface',
   UNKNOWN_COMPONENT: 'unknown_component',
   MISSING_ACCESSIBLE_NAME: 'missing_accessible_name',
@@ -78,9 +78,9 @@ function cleanString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
+const POLICY_AUTHORING_ACCESSIBILITY_SURFACES = deepFreeze([
   {
-    id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.DESTINATION_CONTEXT,
+    id: POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.DESTINATION_CONTEXT,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_CONTEXT_CARD,
     label: 'Destination context',
     helperText: 'Choose the library before editing destination intent.',
@@ -97,7 +97,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
     internalDiagnosticsAllowed: false,
   },
   {
-    id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.OBSERVED_PROFILE,
+    id: POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.OBSERVED_PROFILE,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.OBSERVED_PROFILE_SUMMARY,
     label: 'Observed profile',
     helperText: 'Show observed examples as suggestions before they become declared intent.',
@@ -114,7 +114,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
     internalDiagnosticsAllowed: false,
   },
   {
-    id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.INTENT_SIGNAL_PICKER,
+    id: POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.INTENT_SIGNAL_PICKER,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
     label: 'Intent signal picker',
     helperText: 'Add one or more accepted belongs-here or helpful values through typed draft commands.',
@@ -131,7 +131,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
     internalDiagnosticsAllowed: false,
   },
   {
-    id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.INTENT_SIGNAL_CHIP_LIST,
+    id: POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.INTENT_SIGNAL_CHIP_LIST,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
     label: 'Declared intent chips',
     helperText: 'Show accepted values with clear removal names.',
@@ -148,7 +148,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
     internalDiagnosticsAllowed: false,
   },
   {
-    id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.HARD_LIMITS,
+    id: POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.HARD_LIMITS,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
     label: 'Hard limits',
     helperText: 'Confirm explicit blocking rules before they can affect classification or routing.',
@@ -165,7 +165,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
     internalDiagnosticsAllowed: false,
   },
   {
-    id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.AVOID,
+    id: POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.AVOID,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
     label: 'Avoid',
     helperText: 'Add explicit poor-fit warnings without turning observed absence into a blocker.',
@@ -182,7 +182,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
     internalDiagnosticsAllowed: false,
   },
   {
-    id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.REVIEW_TRIGGERS,
+    id: POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.REVIEW_TRIGGERS,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
     label: 'Ask when unsure',
     helperText: 'Choose the conditions that should ask the operator instead of automating.',
@@ -199,7 +199,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
     internalDiagnosticsAllowed: false,
   },
   {
-    id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.READINESS_NEXT_ACTION,
+    id: POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.READINESS_NEXT_ACTION,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
     label: 'Readiness next action',
     helperText: 'Show the highest-priority readiness issue and one action that resolves it.',
@@ -216,7 +216,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
     internalDiagnosticsAllowed: false,
   },
   {
-    id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.STARTER_TEMPLATE_SUGGESTION,
+    id: POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.STARTER_TEMPLATE_SUGGESTION,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
     label: 'Starter template suggestion',
     helperText: 'Offer an optional shortcut after destination context is visible.',
@@ -233,7 +233,7 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
     internalDiagnosticsAllowed: false,
   },
   {
-    id: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS.MIGRATION_VERIFIER,
+    id: POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.MIGRATION_VERIFIER,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
     label: 'Migration verifier',
     helperText: 'Keep migration diagnostics outside the normal authoring workflow.',
@@ -251,16 +251,16 @@ const PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES = deepFreeze([
   },
 ]);
 
-function listPhase3AccessibilityDecisionLoadSurfaces() {
-  return PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES;
+function listPolicyAuthoringAccessibilitySurfaces() {
+  return POLICY_AUTHORING_ACCESSIBILITY_SURFACES;
 }
 
-function getPhase3AccessibilityDecisionLoadSurface(surfaceId) {
-  return PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES.find(surface => surface.id === surfaceId) || null;
+function getPolicyAuthoringAccessibilitySurface(surfaceId) {
+  return POLICY_AUTHORING_ACCESSIBILITY_SURFACES.find(surface => surface.id === surfaceId) || null;
 }
 
-function validatePhase3AccessibilityDecisionLoadSurface(surface = {}) {
-  const record = getPhase3AccessibilityDecisionLoadSurface(surface.id);
+function validatePolicyAuthoringAccessibilitySurface(surface = {}) {
+  const record = getPolicyAuthoringAccessibilitySurface(surface.id);
   const candidate = {
     ...record,
     ...asObject(surface),
@@ -272,15 +272,15 @@ function validatePhase3AccessibilityDecisionLoadSurface(surface = {}) {
 
   if (!record) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.UNKNOWN_SURFACE,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.UNKNOWN_SURFACE,
       surfaceId: surface.id || null,
-      message: 'Accessibility and decision-load surface must be part of the Phase 3R.8 contract.',
+      message: 'Accessibility and decision-load surface must be part of the policy authoring accessibility contract.',
     });
   }
 
   if (!component) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.UNKNOWN_COMPONENT,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.UNKNOWN_COMPONENT,
       surfaceId: candidate.id || null,
       componentId: candidate.componentId || null,
       message: 'Surface must map to a known policy authoring component.',
@@ -289,7 +289,7 @@ function validatePhase3AccessibilityDecisionLoadSurface(surface = {}) {
 
   if (!cleanString(candidate.label)) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.MISSING_ACCESSIBLE_NAME,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.MISSING_ACCESSIBLE_NAME,
       surfaceId: candidate.id || null,
       message: 'Surface must define a visible accessible name.',
     });
@@ -297,7 +297,7 @@ function validatePhase3AccessibilityDecisionLoadSurface(surface = {}) {
 
   if (!cleanString(candidate.helperText)) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.MISSING_HELPER_TEXT,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.MISSING_HELPER_TEXT,
       surfaceId: candidate.id || null,
       message: 'Surface must provide concise helper text.',
     });
@@ -305,7 +305,7 @@ function validatePhase3AccessibilityDecisionLoadSurface(surface = {}) {
 
   if (candidate.keyboardOperable !== true) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.KEYBOARD_NOT_REQUIRED,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.KEYBOARD_NOT_REQUIRED,
       surfaceId: candidate.id || null,
       message: 'Surface must require keyboard operation.',
     });
@@ -313,52 +313,52 @@ function validatePhase3AccessibilityDecisionLoadSurface(surface = {}) {
 
   if (candidate.visibleFocusRequired !== true) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.FOCUS_NOT_REQUIRED,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.FOCUS_NOT_REQUIRED,
       surfaceId: candidate.id || null,
       message: 'Surface must require visible focus.',
     });
   }
 
   if (candidate.disabledReasonRequired === true &&
-      !candidateProvidedRuleIds.includes(PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.DISABLED_REASON)) {
+      !candidateProvidedRuleIds.includes(POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.DISABLED_REASON)) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.MISSING_DISABLED_REASON,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.MISSING_DISABLED_REASON,
       surfaceId: candidate.id || null,
       message: 'Surface with disabled choices must expose disabled reasons.',
     });
   }
 
   if (candidate.multiSelectStateRequired === true &&
-      !candidateProvidedRuleIds.includes(PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.MULTI_SELECT_STATE)) {
+      !candidateProvidedRuleIds.includes(POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.MULTI_SELECT_STATE)) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.MISSING_MULTI_SELECT_STATE,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.MISSING_MULTI_SELECT_STATE,
       surfaceId: candidate.id || null,
       message: 'Multi-select surface must expose selected state.',
     });
   }
 
   if (candidate.chipRemoveNameRequired === true &&
-      !candidateProvidedRuleIds.includes(PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.CHIP_REMOVE_NAME)) {
+      !candidateProvidedRuleIds.includes(POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.CHIP_REMOVE_NAME)) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.MISSING_CHIP_REMOVE_NAME,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.MISSING_CHIP_REMOVE_NAME,
       surfaceId: candidate.id || null,
       message: 'Chip-list surface must expose removal names that include the removed value.',
     });
   }
 
   if (candidate.destructiveConfirmationRequired === true &&
-      !candidateProvidedRuleIds.includes(PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.DESTRUCTIVE_CONFIRMATION)) {
+      !candidateProvidedRuleIds.includes(POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.DESTRUCTIVE_CONFIRMATION)) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.MISSING_DESTRUCTIVE_CONFIRMATION,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.MISSING_DESTRUCTIVE_CONFIRMATION,
       surfaceId: candidate.id || null,
       message: 'Blocking or destructive surfaces must require explicit confirmation.',
     });
   }
 
   if (candidate.singleNextActionRequired === true &&
-      !candidateProvidedRuleIds.includes(PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.SINGLE_NEXT_ACTION)) {
+      !candidateProvidedRuleIds.includes(POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.SINGLE_NEXT_ACTION)) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.MISSING_SINGLE_NEXT_ACTION,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.MISSING_SINGLE_NEXT_ACTION,
       surfaceId: candidate.id || null,
       message: 'Readiness surface must expose one primary next action.',
     });
@@ -366,7 +366,7 @@ function validatePhase3AccessibilityDecisionLoadSurface(surface = {}) {
 
   if (Number(candidate.maxPrimaryActions) > 1 && candidate.normalPath === true) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.TOO_MANY_PRIMARY_ACTIONS,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.TOO_MANY_PRIMARY_ACTIONS,
       surfaceId: candidate.id || null,
       message: 'Normal workflow surfaces must not expose more than one primary action.',
     });
@@ -375,7 +375,7 @@ function validatePhase3AccessibilityDecisionLoadSurface(surface = {}) {
   const warningConceptIds = asArray(candidate.warningConceptIds);
   if (new Set(warningConceptIds).size !== warningConceptIds.length) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.DUPLICATE_WARNING_CONCEPT,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.DUPLICATE_WARNING_CONCEPT,
       surfaceId: candidate.id || null,
       message: 'Surface must not repeat the same warning concept.',
     });
@@ -390,7 +390,7 @@ function validatePhase3AccessibilityDecisionLoadSurface(surface = {}) {
       candidate.internalDiagnosticsAllowed !== true &&
       includesInternalPolicyLanguage(surfaceText)) {
     issues.push({
-      riskId: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS.INTERNAL_DIAGNOSTIC_NORMAL_PATH,
+      riskId: POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS.INTERNAL_DIAGNOSTIC_NORMAL_PATH,
       surfaceId: candidate.id || null,
       message: 'Normal workflow surfaces must not expose internal diagnostic language.',
     });
@@ -412,44 +412,44 @@ function providedRuleIds(surface = {}) {
 
 function requiredRuleIds(surface = {}) {
   const rules = [
-    PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.ACCESSIBLE_NAME,
-    PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.HELPER_TEXT,
-    PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.KEYBOARD_OPERABLE,
-    PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.VISIBLE_FOCUS,
-    PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.SINGLE_PRIMARY_ACTION,
-    PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.NO_DUPLICATE_WARNING_CONCEPT,
+    POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.ACCESSIBLE_NAME,
+    POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.HELPER_TEXT,
+    POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.KEYBOARD_OPERABLE,
+    POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.VISIBLE_FOCUS,
+    POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.SINGLE_PRIMARY_ACTION,
+    POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.NO_DUPLICATE_WARNING_CONCEPT,
   ];
 
   if (surface.disabledReasonRequired) {
-    rules.push(PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.DISABLED_REASON);
+    rules.push(POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.DISABLED_REASON);
   }
 
   if (surface.multiSelectStateRequired) {
-    rules.push(PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.MULTI_SELECT_STATE);
+    rules.push(POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.MULTI_SELECT_STATE);
   }
 
   if (surface.chipRemoveNameRequired) {
-    rules.push(PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.CHIP_REMOVE_NAME);
+    rules.push(POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.CHIP_REMOVE_NAME);
   }
 
   if (surface.destructiveConfirmationRequired) {
-    rules.push(PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.DESTRUCTIVE_CONFIRMATION);
+    rules.push(POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.DESTRUCTIVE_CONFIRMATION);
   }
 
   if (surface.singleNextActionRequired) {
-    rules.push(PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.SINGLE_NEXT_ACTION);
+    rules.push(POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.SINGLE_NEXT_ACTION);
   }
 
   if (surface.normalPath && !surface.internalDiagnosticsAllowed) {
-    rules.push(PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS.NO_INTERNAL_DIAGNOSTICS_IN_NORMAL_PATH);
+    rules.push(POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS.NO_INTERNAL_DIAGNOSTICS_IN_NORMAL_PATH);
   }
 
   return rules;
 }
 
-function buildPhase3AccessibilityDecisionLoadAudit(surfaces = PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES) {
+function buildPolicyAuthoringAccessibilityAudit(surfaces = POLICY_AUTHORING_ACCESSIBILITY_SURFACES) {
   const results = (Array.isArray(surfaces) ? surfaces : [])
-    .map(surface => validatePhase3AccessibilityDecisionLoadSurface(surface));
+    .map(surface => validatePolicyAuthoringAccessibilitySurface(surface));
   const issues = results.flatMap(result => result.issues);
   const componentIds = new Set(listPolicyAuthoringTargetComponents().map(component => component.id));
   const coveredComponentIds = new Set((Array.isArray(surfaces) ? surfaces : [])
@@ -468,24 +468,24 @@ function buildPhase3AccessibilityDecisionLoadAudit(surfaces = PHASE_3R_ACCESSIBI
   };
 }
 
-function summarizePhase3AccessibilityDecisionLoad() {
-  const normalPathSurfaceIds = PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES
+function summarizePolicyAuthoringAccessibility() {
+  const normalPathSurfaceIds = POLICY_AUTHORING_ACCESSIBILITY_SURFACES
     .filter(surface => surface.normalPath)
     .map(surface => surface.id);
-  const multiSelectSurfaceIds = PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES
+  const multiSelectSurfaceIds = POLICY_AUTHORING_ACCESSIBILITY_SURFACES
     .filter(surface => surface.multiSelectStateRequired)
     .map(surface => surface.id);
-  const disabledReasonSurfaceIds = PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES
+  const disabledReasonSurfaceIds = POLICY_AUTHORING_ACCESSIBILITY_SURFACES
     .filter(surface => surface.disabledReasonRequired)
     .map(surface => surface.id);
 
   return {
-    surfaceCount: PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES.length,
+    surfaceCount: POLICY_AUTHORING_ACCESSIBILITY_SURFACES.length,
     normalPathSurfaceIds,
     multiSelectSurfaceIds,
     disabledReasonSurfaceIds,
     maxNormalPathPrimaryActions: Math.max(
-      ...PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACES
+      ...POLICY_AUTHORING_ACCESSIBILITY_SURFACES
         .filter(surface => surface.normalPath)
         .map(surface => surface.maxPrimaryActions),
     ),
@@ -493,12 +493,12 @@ function summarizePhase3AccessibilityDecisionLoad() {
 }
 
 export {
-  PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RISK_IDS,
-  PHASE_3R_ACCESSIBILITY_DECISION_LOAD_RULE_IDS,
-  PHASE_3R_ACCESSIBILITY_DECISION_LOAD_SURFACE_IDS,
-  buildPhase3AccessibilityDecisionLoadAudit,
-  getPhase3AccessibilityDecisionLoadSurface,
-  listPhase3AccessibilityDecisionLoadSurfaces,
-  summarizePhase3AccessibilityDecisionLoad,
-  validatePhase3AccessibilityDecisionLoadSurface,
+  POLICY_AUTHORING_ACCESSIBILITY_RISK_IDS,
+  POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS,
+  POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS,
+  buildPolicyAuthoringAccessibilityAudit,
+  getPolicyAuthoringAccessibilitySurface,
+  listPolicyAuthoringAccessibilitySurfaces,
+  summarizePolicyAuthoringAccessibility,
+  validatePolicyAuthoringAccessibilitySurface,
 };

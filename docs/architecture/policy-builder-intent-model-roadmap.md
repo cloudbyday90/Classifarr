@@ -2454,11 +2454,13 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 3R.8 accessibility and decision load is documented in
-  [Policy Builder Phase 3R Accessibility And Decision Load](policy-builder-phase-3r-accessibility-decision-load.md).
-- The server-side Phase 3R accessibility and decision-load contract lives in
-  `server/src/services/policyBuilderPhase3AccessibilityDecisionLoad.mjs`.
-- Every Phase 3R target component now maps to an accessibility and
+- Policy authoring accessibility is documented in
+  [Policy Authoring Accessibility](policy-authoring-accessibility.md).
+- The durable server-side accessibility and decision-load contract lives in
+  `server/src/services/policyAuthoringAccessibility.mjs`.
+- The module cutover is documented in
+  [Policy Authoring Accessibility Module Cutover](policy-authoring-accessibility-module-cutover.md).
+- Every policy-authoring target component now maps to an accessibility and
   decision-load surface before Vue screens are rebuilt.
 - Normal workflow surfaces require labels, helper text, keyboard operation,
   visible focus, no internal diagnostic language, and at most one primary
@@ -2566,8 +2568,8 @@ Implementation record:
   [Policy Authoring Readiness](policy-authoring-readiness.md).
 - Policy authoring starter templates are documented in
   [Policy Authoring Starter Templates](policy-authoring-starter-templates.md).
-- Phase 3R.8 accessibility and decision load is documented in
-  [Policy Builder Phase 3R Accessibility And Decision Load](policy-builder-phase-3r-accessibility-decision-load.md).
+- policy authoring accessibility is documented in
+  [Policy Authoring Accessibility](policy-authoring-accessibility.md).
 - Phase 3R.9 presentation test reset is documented in
   [Policy Builder Phase 3R Presentation Test Reset](policy-builder-phase-3r-presentation-test-reset.md).
 - Phase 3R contract checkpoints are now defined through 3R.9. Future Phase 3R
@@ -6408,6 +6410,16 @@ Implementation status:
 - After the policy-authoring constraints cutover, the repository inventory
   validates with 10,400 total phase-coded references, 4,137 production
   references, and 4,159 rename candidates.
+- The next authoring workflow cutover renamed the accessibility contract to
+  `policyAuthoringAccessibility.mjs`, renamed its focused test, replaced
+  phase-coded accessibility surface, rule, risk, and helper exports with
+  `POLICY_AUTHORING_ACCESSIBILITY_*` and `policyAuthoringAccessibility*`, and
+  moved its standing design record to
+  [Policy Authoring Accessibility](policy-authoring-accessibility.md):
+  [Policy Authoring Accessibility Module Cutover](policy-authoring-accessibility-module-cutover.md).
+- After the policy-authoring accessibility cutover, the repository inventory
+  validates with 9,840 total phase-coded references, 3,865 production
+  references, and 3,887 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
@@ -6480,7 +6492,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 3, 2026
   baseline for production references, rename candidates, and obsolete migration
   tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `3936` production references, `3958` rename
+- The current baseline is `3865` production references, `3887` rename
   candidates, and `93` obsolete migration tooling references. Future durable
   rename batches should lower this baseline after inventory validation proves
   the debt decreased.

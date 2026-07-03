@@ -82,11 +82,11 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Keeps starter templates as optional accelerators after destination context.',
   },
   {
-    id: 'accessibility_decision_load',
-    label: 'Accessibility and decision load',
-    docPath: 'docs/architecture/policy-builder-phase-3r-accessibility-decision-load.md',
-    servicePath: 'server/src/services/policyBuilderPhase3AccessibilityDecisionLoad.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase3AccessibilityDecisionLoad.test.mjs',
+    id: 'policy_authoring_accessibility',
+    label: 'Policy authoring accessibility',
+    docPath: 'docs/architecture/policy-authoring-accessibility.md',
+    servicePath: 'server/src/services/policyAuthoringAccessibility.mjs',
+    testPath: 'server/src/__tests__/services/policyAuthoringAccessibility.test.mjs',
     evidence: 'Defines labels, helper text, keyboard, disabled reason, and one-primary-action requirements.',
   },
   {
@@ -150,7 +150,7 @@ const POLICY_AUTHORING_VUE_REWRITE_SLICES = Object.freeze([
     evidence: 'Makes starter templates optional accelerators collapsed behind an accessible disclosure.',
   },
   {
-    id: 'vue_accessibility_decision_load_audit',
+    id: 'vue_policy_authoring_accessibility_audit',
     label: 'Vue accessibility decision-load audit',
     docPath: 'docs/architecture/policy-builder-phase-3r-vue-accessibility-decision-load-audit.md',
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',

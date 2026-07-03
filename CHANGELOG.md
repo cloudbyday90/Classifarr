@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Accessibility Cutover** — renamed the accessibility and
+  decision-load contract and focused test to durable product-domain names,
+  replaced phase-coded surface, rule, risk, and helper exports with
+  `POLICY_AUTHORING_ACCESSIBILITY_*` and
+  `policyAuthoringAccessibility*`, updated completion-audit records to track
+  `policy_authoring_accessibility`, and preserved label/helper, keyboard/focus,
+  multi-select, chip-removal, disabled-reason, single-next-action, and
+  diagnostic-exclusion validation behavior.
 - **Policy Authoring Starter Templates Cutover** — renamed the starter-template
   role contract and focused test to durable product-domain names, replaced
   phase-coded template role, suggestion bucket, mechanic, risk, and helper
