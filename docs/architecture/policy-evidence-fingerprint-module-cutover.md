@@ -62,7 +62,7 @@ Cons:
 - Focused tests:
   `server/src/__tests__/services/policyEvidenceFingerprint.test.mjs`
 - Consuming boundary:
-  `server/src/services/policyBuilderPhase6EvidenceBoundary.mjs`
+  `server/src/services/policyEvidenceBoundary.mjs`
 - Consuming intent engine:
   `server/src/services/policyBuilderPhase6IntentEngine.mjs`
 - Regression guard:

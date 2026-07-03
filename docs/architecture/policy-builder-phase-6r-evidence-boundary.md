@@ -68,7 +68,7 @@ another, or bypass the input gate and call the projection helper directly.
 
 1. **Expose one safe Phase 6R.1 boundary.**
    Future runtime, rebuild, or policy-builder callers should use
-   `buildPolicyBuilderPhase6BoundedEvidenceProjection` instead of composing
+   `buildBoundedPolicyEvidenceProjection` instead of composing
    gate and projection steps manually.
 
 2. **Validate before adapting.**
@@ -130,7 +130,7 @@ Cons:
 ## Final Recommendation Stack
 
 - Boundary service:
-  `server/src/services/policyBuilderPhase6EvidenceBoundary.mjs`
+  `server/src/services/policyEvidenceBoundary.mjs`
 - Evidence input gate:
   `server/src/services/policyBuilderPhase6EvidenceInputGate.mjs`
 - Evidence engine:
@@ -138,7 +138,7 @@ Cons:
 - Projection fingerprint:
   `server/src/services/policyEvidenceFingerprint.mjs`
 - Focused tests:
-  `server/src/__tests__/services/policyBuilderPhase6EvidenceBoundary.test.mjs`
+  `server/src/__tests__/services/policyEvidenceBoundary.test.mjs`
   and
   `server/src/__tests__/services/policyEvidenceFingerprint.test.mjs`
 - Roadmap owner:
@@ -149,10 +149,10 @@ Cons:
 
 The boundary exports:
 
-- `PHASE6R_EVIDENCE_BOUNDARY_VERSION`
-- `PHASE6R_EVIDENCE_BOUNDARY_STATUS_IDS`
-- `adaptPolicyBuilderPhase6EvidenceInput`
-- `buildPolicyBuilderPhase6BoundedEvidenceProjection`
+- `POLICY_EVIDENCE_BOUNDARY_VERSION`
+- `POLICY_EVIDENCE_BOUNDARY_STATUS_IDS`
+- `adaptPolicyEvidenceInput`
+- `buildBoundedPolicyEvidenceProjection`
 
 Status IDs:
 

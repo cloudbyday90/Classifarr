@@ -1,9 +1,9 @@
 import {
-  PHASE6R_EVIDENCE_BOUNDARY_STATUS_IDS,
-  PHASE6R_EVIDENCE_BOUNDARY_VERSION,
-  adaptPolicyBuilderPhase6EvidenceInput,
-  buildPolicyBuilderPhase6BoundedEvidenceProjection,
-} from '../../services/policyBuilderPhase6EvidenceBoundary.mjs';
+  POLICY_EVIDENCE_BOUNDARY_STATUS_IDS,
+  POLICY_EVIDENCE_BOUNDARY_VERSION,
+  adaptPolicyEvidenceInput,
+  buildBoundedPolicyEvidenceProjection,
+} from '../../services/policyEvidenceBoundary.mjs';
 import {
   PHASE6R_EVIDENCE_BUCKET_IDS,
   PHASE6R_EVIDENCE_SOURCE_IDS,
@@ -16,9 +16,9 @@ import {
   buildPolicyEvidenceFingerprint,
 } from '../../services/policyEvidenceFingerprint.mjs';
 
-describe('policyBuilderPhase6EvidenceBoundary', () => {
+describe('policyEvidenceBoundary', () => {
   test('adapts the public input envelope into the evidence projection shape', () => {
-    const projectionInput = adaptPolicyBuilderPhase6EvidenceInput({
+    const projectionInput = adaptPolicyEvidenceInput({
       libraryProfile: { identityCandidates: ['Animation'] },
       operatorIntent: { belongsHere: ['Animated Movies'] },
       classificationOutcomes: ['Mulan'],
@@ -42,7 +42,7 @@ describe('policyBuilderPhase6EvidenceBoundary', () => {
   });
 
   test('gates, adapts, projects, and audits evidence without side effects', () => {
-    const result = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const result = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         libraryProfile: {
           identityCandidates: [
@@ -64,9 +64,9 @@ describe('policyBuilderPhase6EvidenceBoundary', () => {
     });
 
     expect(result).toEqual(expect.objectContaining({
-      version: PHASE6R_EVIDENCE_BOUNDARY_VERSION,
+      version: POLICY_EVIDENCE_BOUNDARY_VERSION,
       ok: true,
-      statusId: PHASE6R_EVIDENCE_BOUNDARY_STATUS_IDS.READY,
+      statusId: POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.READY,
       issueCount: 0,
       sideEffects: {
         liveProviderLookupPerformed: false,
@@ -74,8 +74,8 @@ describe('policyBuilderPhase6EvidenceBoundary', () => {
         evidenceProjectionBuilt: true,
         policyStorageMutated: false,
       },
-      nextPhase: expect.objectContaining({
-        phaseId: '6r_2',
+      nextStep: expect.objectContaining({
+        stepId: 'intent_inference',
       }),
     }));
 
@@ -113,7 +113,7 @@ describe('policyBuilderPhase6EvidenceBoundary', () => {
   });
 
   test('blocks projection when input gate rejects unsafe payloads', () => {
-    const result = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const result = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         metadataEvidence: [{
           label: 'Provider evidence',
@@ -125,7 +125,7 @@ describe('policyBuilderPhase6EvidenceBoundary', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_INPUT_GATE,
+      statusId: POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_INPUT_GATE,
       projection: null,
       projectionAudit: null,
       projectionFingerprint: null,
@@ -143,7 +143,7 @@ describe('policyBuilderPhase6EvidenceBoundary', () => {
   });
 
   test('blocks handoff when the projection fingerprint does not match the bounded projection', () => {
-    const result = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const result = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         libraryProfile: {
           identityCandidates: [{ label: 'Animation', count: 12 }],
@@ -157,10 +157,10 @@ describe('policyBuilderPhase6EvidenceBoundary', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_PROJECTION_FINGERPRINT,
+      statusId: POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_PROJECTION_FINGERPRINT,
       projectionAudit: expect.objectContaining({ ok: true }),
       projectionFingerprintAudit: expect.objectContaining({ ok: false }),
-      nextPhase: null,
+      nextStep: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({

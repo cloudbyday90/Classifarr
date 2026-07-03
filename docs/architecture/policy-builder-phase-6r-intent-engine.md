@@ -133,7 +133,7 @@ Cons:
 - Evidence input:
   `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
 - Bounded evidence boundary:
-  `server/src/services/policyBuilderPhase6EvidenceBoundary.mjs`
+  `server/src/services/policyEvidenceBoundary.mjs`
 - Intent engine:
   `server/src/services/policyBuilderPhase6IntentEngine.mjs`
 - Test module:

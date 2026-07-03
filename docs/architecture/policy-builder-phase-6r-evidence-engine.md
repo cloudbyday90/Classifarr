@@ -167,8 +167,8 @@ The server module exports:
 - a full evidence-engine audit.
 
 Boundary callers should use
-`buildPolicyBuilderPhase6BoundedEvidenceProjection` from
-`server/src/services/policyBuilderPhase6EvidenceBoundary.mjs` when they need a
+`buildBoundedPolicyEvidenceProjection` from
+`server/src/services/policyEvidenceBoundary.mjs` when they need a
 complete Phase 6R.1 handoff. That boundary runs the input gate first, maps
 public section names into the projection input shape, builds the projection,
 and runs the projection audit.

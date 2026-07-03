@@ -6,8 +6,8 @@ import {
   REJECTED_QUESTION_FRAME_IDS,
 } from '../../services/policyQuestionLearningVocabulary.mjs';
 import {
-  buildPolicyBuilderPhase6BoundedEvidenceProjection,
-} from '../../services/policyBuilderPhase6EvidenceBoundary.mjs';
+  buildBoundedPolicyEvidenceProjection,
+} from '../../services/policyEvidenceBoundary.mjs';
 import {
   buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
 } from '../../services/policyBuilderPhase6IntentEngine.mjs';
@@ -146,7 +146,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
   });
 
   test('builds bounded learning only from a successful bounded intent result', () => {
-    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         libraryProfile: {
           identityCandidates: [
@@ -210,7 +210,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
   });
 
   test('blocks bounded learning when intent evidence quality is missing', () => {
-    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         operatorIntent: {
           belongsHere: ['Animated Movies'],
@@ -248,7 +248,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
   });
 
   test('blocks bounded learning when intent evidence quality is insufficient', () => {
-    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         operatorIntent: {
           belongsHere: ['Animated Movies'],
@@ -300,7 +300,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
   });
 
   test('blocks bounded learning when intent evidence quality differs from the wrapper', () => {
-    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         operatorIntent: {
           belongsHere: ['Animated Movies'],
@@ -344,7 +344,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
   });
 
   test('blocks bounded learning when bounded intent evidence audit is not passing', () => {
-    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         operatorIntent: {
           belongsHere: ['Animated Movies'],
@@ -382,7 +382,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
   });
 
   test('blocks bounded learning when intent evidence fingerprint differs from the wrapper', () => {
-    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         operatorIntent: {
           belongsHere: ['Animated Movies'],
@@ -630,7 +630,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
   });
 
   test('rejects learning decisions that drop bounded intent quality', () => {
-    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         operatorIntent: {
           belongsHere: ['Animated Movies'],

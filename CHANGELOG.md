@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Boundary Module Cutover** — renamed the bounded evidence
+  boundary and focused test to durable product-domain names, moved the boundary
+  contract to `policy.evidence.boundary.v1`, replaced the boundary-local phase
+  handoff with `nextStep`, updated downstream imports, and lowered the
+  production naming regression baseline after inventory validation.
 - **Policy Evidence Fingerprint Module Cutover** — renamed the evidence
   projection fingerprint helper and focused test to durable product-domain
   names, moved the fingerprint artifact contract to

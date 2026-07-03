@@ -188,10 +188,15 @@ labels, except where an allow-listed migration or history reason is documented.
   focused test, and moved the fingerprint artifact contract to
   `policy.evidence.fingerprint.v1`:
   [Policy Evidence Fingerprint Module Cutover](policy-evidence-fingerprint-module-cutover.md).
+- The next Phase 9R.2 durable module cutover renamed the bounded evidence
+  boundary to `policyEvidenceBoundary.mjs`, renamed its focused test, moved the
+  boundary contract to `policy.evidence.boundary.v1`, and replaced its
+  phase-coded handoff with a product-domain `nextStep`:
+  [Policy Evidence Boundary Module Cutover](policy-evidence-boundary-module-cutover.md).
 - Phase 9R.4 now has a durable-named regression audit:
   [Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md).
   The audit consumes the production naming inventory and blocks increases above
   the approved July 3, 2026 baseline while durable rename batches continue.
-- After the evidence-fingerprint cutover, the regression baseline is 7,470
-  production references, 7,492 rename candidates, and 93 obsolete migration
+- After the evidence-boundary cutover, the regression baseline is 7,446
+  production references, 7,468 rename candidates, and 93 obsolete migration
   tooling references.

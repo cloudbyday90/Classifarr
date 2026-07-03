@@ -3151,7 +3151,7 @@ Implementation status:
 - Phase 6R.1 evidence boundary hardening is documented in
   [Policy Builder Phase 6R Evidence Boundary](policy-builder-phase-6r-evidence-boundary.md).
 - The evidence boundary lives in
-  `server/src/services/policyBuilderPhase6EvidenceBoundary.mjs`.
+  `server/src/services/policyEvidenceBoundary.mjs`.
 - The evidence input gate defines the allowed input envelope before projection:
   library profile, operator intent, final outcomes, manual corrections,
   pending-item answers, Arr routing outcomes, metadata evidence, and profile
@@ -6196,6 +6196,14 @@ Implementation status:
 - After the evidence-fingerprint cutover, the repository inventory validates
   with 16,129 total phase-coded references, 7,470 production references, and
   7,492 rename candidates.
+- The follow-up durable module cutover renamed the bounded evidence boundary to
+  `policyEvidenceBoundary.mjs`, renamed its focused test, moved the boundary
+  contract to `policy.evidence.boundary.v1`, and replaced the boundary-local
+  phase handoff with a product-domain `nextStep`:
+  [Policy Evidence Boundary Module Cutover](policy-evidence-boundary-module-cutover.md).
+- After the evidence-boundary cutover, the repository inventory validates with
+  16,069 total phase-coded references, 7,446 production references, and 7,468
+  rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

@@ -3,8 +3,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  buildPolicyBuilderPhase6BoundedEvidenceProjection,
-} from './policyBuilderPhase6EvidenceBoundary.mjs';
+  buildBoundedPolicyEvidenceProjection,
+} from './policyEvidenceBoundary.mjs';
 import {
   buildPolicyBuilderPhase6EvidenceEngineAudit,
 } from './policyBuilderPhase6EvidenceEngine.mjs';
@@ -325,7 +325,7 @@ function buildComponentAuditMap() {
 }
 
 function buildDefaultPhase6BoundedCompletionChain() {
-  const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+  const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
     evidenceInput: {
       operatorIntent: {
         belongsHere: ['Animated Movies'],

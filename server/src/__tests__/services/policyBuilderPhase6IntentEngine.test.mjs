@@ -6,8 +6,8 @@ import {
   buildPolicyBuilderPhase6EvidenceProjection,
 } from '../../services/policyBuilderPhase6EvidenceEngine.mjs';
 import {
-  buildPolicyBuilderPhase6BoundedEvidenceProjection,
-} from '../../services/policyBuilderPhase6EvidenceBoundary.mjs';
+  buildBoundedPolicyEvidenceProjection,
+} from '../../services/policyEvidenceBoundary.mjs';
 import {
   PHASE6R_INTENT_AUDIT_RISK_IDS,
   PHASE6R_INTENT_BOUNDARY_STATUS_IDS,
@@ -97,7 +97,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
   });
 
   test('builds bounded intent only from a successful evidence boundary result', () => {
-    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         libraryProfile: {
           identityCandidates: [
@@ -146,7 +146,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
   });
 
   test('blocks bounded intent when evidence quality is insufficient', () => {
-    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         metadataEvidence: ['Family'],
         profileFreshness: {
@@ -183,7 +183,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
   });
 
   test('rejects bounded intent drafts that drop the evidence quality snapshot', () => {
-    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         operatorIntent: {
           belongsHere: ['Animated Movies'],
@@ -210,7 +210,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
   });
 
   test('blocks bounded intent when evidence fingerprint no longer matches the projection', () => {
-    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         libraryProfile: {
           identityCandidates: [
@@ -246,7 +246,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
   });
 
   test('blocks bounded intent when evidence boundary failed or lacks fingerprint', () => {
-    const blockedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const blockedEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         metadataEvidence: [{
           label: 'Unsafe provider evidence',
@@ -273,7 +273,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
       }),
     ]));
 
-    const validEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    const validEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {
         operatorIntent: {
           belongsHere: ['Animated Movies'],

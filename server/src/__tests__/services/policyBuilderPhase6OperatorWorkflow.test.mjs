@@ -2,8 +2,8 @@ import {
   ANSWER_OUTCOME_IDS,
 } from '../../services/policyQuestionLearningVocabulary.mjs';
 import {
-  buildPolicyBuilderPhase6BoundedEvidenceProjection,
-} from '../../services/policyBuilderPhase6EvidenceBoundary.mjs';
+  buildBoundedPolicyEvidenceProjection,
+} from '../../services/policyEvidenceBoundary.mjs';
 import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from '../../services/policyEvidenceQuality.mjs';
@@ -52,7 +52,7 @@ function buildBoundedWorkflowInputs({
   learningInput = {},
   routing = {},
 } = {}) {
-  const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+  const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
     evidenceInput: {
       operatorIntent: {
         belongsHere: ['Animated Movies'],
