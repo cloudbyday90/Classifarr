@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Review Triggers Cutover** — renamed the review-trigger
+  design record and completion-audit entry to durable product-domain names,
+  replaced the phase-coded review-trigger architecture path with
+  `policy-authoring-review-triggers.md`, updated completion-audit records to
+  track `policy_authoring_review_triggers`, and preserved the existing
+  **Ask When Unsure** checkbox control, draft bridge serialization, readable
+  section chips, and behavior-summary copy.
 - **Policy Authoring Destination Sections Cutover** — renamed the destination
   section design record and completion-audit entry to durable product-domain
   names, replaced the phase-coded destination-section architecture path with

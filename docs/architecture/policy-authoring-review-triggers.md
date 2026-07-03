@@ -1,19 +1,19 @@
-# Policy Builder Phase 3R Vue Review Trigger Control
+# Policy Authoring Review Triggers
 
-Status: implemented as the third Vue-facing Phase 3R workflow rewrite slice.
+Status: implemented as the durable policy-authoring review-trigger control.
 
 ## Scope
 
-This slice adds a bounded review-trigger control to the existing policy intent
+This document defines the bounded review-trigger control in the policy intent
 editor. It lets operators declare when Classifarr should ask instead of
 automating, without exposing replay, provider, scoring, TMDB, or migration
 diagnostics as normal policy controls.
 
 This slice does not change server routes, database schema, classification
 scoring, learning behavior, routing behavior, or native policy storage. It uses
-the Phase 2R draft bridge as the compatibility boundary and serializes review
-triggers into legacy `customSignals.review_triggers.when_any` until Phase 8R
-native intent storage replaces the bridge.
+the draft bridge as the compatibility boundary and serializes review triggers
+into legacy `customSignals.review_triggers.when_any` until native intent storage
+replaces the bridge.
 
 ## Research Inputs
 
@@ -23,6 +23,13 @@ Official sources reviewed as of June 2026:
   <https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html>
   - The control needs a visible label and helper text before operators decide
     which uncertainty conditions should trigger review.
+- W3C WAI Forms Tutorial, Grouping Controls:
+  <https://www.w3.org/WAI/tutorials/forms/grouping/>
+  - Related checkbox controls should be grouped so the shared question is
+    clear.
+- WAI-ARIA Authoring Practices, Checkbox Pattern:
+  <https://www.w3.org/WAI/ARIA/apg/patterns/checkbox/>
+  - Checkbox state and keyboard behavior must remain predictable.
 - W3C WCAG 2.2, Headings and Labels:
   <https://www.w3.org/WAI/WCAG22/Understanding/headings-and-labels.html>
   - The review surface should use descriptive headings that explain the task,
@@ -75,10 +82,10 @@ Official sources reviewed as of June 2026:
 
 ### Cons
 
-- The durable server-side intent contract is still future Phase 5R/8R work.
+- The durable server-side intent contract is still future native-storage work.
 - The legacy bridge key `review_triggers.when_any` is transitional.
-- The review-trigger vocabulary is intentionally small until Phase 6R defines
-  the final engine-side review reasons.
+- The review-trigger vocabulary is intentionally small until the engine-side
+  review reasons are finalized.
 - Routing readiness still needs its own Vue-facing surface; this slice only
   lets operators declare that routing-not-ready should ask.
 
@@ -137,8 +144,8 @@ behavior visible without making warnings look like durable policy rules.
 
 ## Follow-Up
 
-The next high-value item is **Phase 3R Vue Routing Readiness Surface**. Routing
-is still represented mostly as a setup-card target and readiness state. The next
-slice should give `Can this destination route?` a bounded, read-only readiness
-surface that explains whether a connected Arr target exists and what action is
-needed, without turning routing diagnostics into policy rules.
+The next high-value item is **Policy Authoring Routing Readiness Surface**.
+Routing is still represented mostly as a setup-card target and readiness state.
+The next slice should give `Can this destination route?` a bounded, read-only
+readiness surface that explains whether a connected Arr target exists and what
+action is needed, without turning routing diagnostics into policy rules.

@@ -115,9 +115,9 @@ const POLICY_AUTHORING_VUE_REWRITE_SLICES = Object.freeze([
     evidence: 'Splits review behavior, destination identity, destination rules, and confidence support anchors.',
   },
   {
-    id: 'vue_review_trigger_control',
-    label: 'Vue review trigger control',
-    docPath: 'docs/architecture/policy-builder-phase-3r-vue-review-trigger-control.md',
+    id: 'policy_authoring_review_triggers',
+    label: 'Policy authoring review triggers',
+    docPath: 'docs/architecture/policy-authoring-review-triggers.md',
     testPath: 'client/src/__tests__/PolicyIntentEditor.test.js',
     evidence: 'Adds Ask When Unsure review triggers through typed draft serialization.',
   },

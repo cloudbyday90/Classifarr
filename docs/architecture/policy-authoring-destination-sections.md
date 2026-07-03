@@ -100,6 +100,6 @@ editor anchor.
 ## Follow-Up
 
 Completed by
-[Policy Builder Phase 3R Vue Review Trigger Control](policy-builder-phase-3r-vue-review-trigger-control.md).
+[Policy Authoring Review Triggers](policy-authoring-review-triggers.md).
 The review behavior group now has a bounded **Ask When Unsure** checkbox
 control backed by the draft bridge.
