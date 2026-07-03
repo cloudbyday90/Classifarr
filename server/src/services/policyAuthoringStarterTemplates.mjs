@@ -1,6 +1,6 @@
 import {
-  PHASE_2R_DRAFT_COMMAND_IDS,
-  validatePhase2RDraftCommand,
+  PHASE_2R_DRAFT_COMMAND_IDS as POLICY_DRAFT_COMMAND_IDS,
+  validatePhase2RDraftCommand as validatePolicyDraftCommand,
 } from './policyBuilderPhase2DraftCommandBoundary.mjs';
 import {
   POLICY_AUTHORING_COMPONENT_IDS,
@@ -17,21 +17,21 @@ import {
   POLICY_UX_TERM_IDS,
 } from './policyUserMentalModel.mjs';
 
-const PHASE_3R_TEMPLATE_ROLE_IDS = Object.freeze({
+const POLICY_AUTHORING_TEMPLATE_ROLE_IDS = Object.freeze({
   OPTIONAL_ACCELERATOR: 'optional_accelerator',
   SECONDARY_PROVENANCE: 'secondary_provenance',
   BRIDGE_ONLY_MECHANIC: 'bridge_only_mechanic',
   DELETE_AFTER_NATIVE_STORAGE: 'delete_after_native_storage',
 });
 
-const PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS = Object.freeze({
+const POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS = Object.freeze({
   BELONGS_HERE: POLICY_UX_TERM_IDS.BELONGS_HERE,
   HELPFUL_MATCHES: POLICY_UX_TERM_IDS.HELPFUL_MATCHES,
   HARD_LIMITS: POLICY_UX_TERM_IDS.HARD_LIMITS,
   AVOID: POLICY_UX_TERM_IDS.AVOID,
 });
 
-const PHASE_3R_TEMPLATE_MECHANIC_IDS = Object.freeze({
+const POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS = Object.freeze({
   TEMPLATE_BROWSER: 'template_browser',
   TEMPLATE_DETAILS: 'template_details',
   TEMPLATE_MECHANICS: 'template_mechanics',
@@ -41,7 +41,7 @@ const PHASE_3R_TEMPLATE_MECHANIC_IDS = Object.freeze({
   STRICT_ADVISORY_METADATA: 'strict_advisory_metadata',
 });
 
-const PHASE_3R_TEMPLATE_RISK_IDS = Object.freeze({
+const POLICY_AUTHORING_TEMPLATE_RISK_IDS = Object.freeze({
   TEMPLATE_BEFORE_DESTINATION_CONTEXT: 'template_before_destination_context',
   TEMPLATE_REQUIRED_FOR_POLICY: 'template_required_for_policy',
   UNKNOWN_TEMPLATE_BUCKET: 'unknown_template_bucket',
@@ -52,19 +52,19 @@ const PHASE_3R_TEMPLATE_RISK_IDS = Object.freeze({
 });
 
 const TEMPLATE_BUCKET_TO_SIGNAL = Object.freeze({
-  [PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS.BELONGS_HERE]: {
+  [POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS.BELONGS_HERE]: {
     signalType: 'genres',
     key: 'require_any',
   },
-  [PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS.HELPFUL_MATCHES]: {
+  [POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS.HELPFUL_MATCHES]: {
     signalType: 'genres',
     key: 'prefer',
   },
-  [PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS.HARD_LIMITS]: {
+  [POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS.HARD_LIMITS]: {
     signalType: 'certifications',
     key: 'max',
   },
-  [PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS.AVOID]: {
+  [POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS.AVOID]: {
     signalType: 'certifications',
     key: 'exclude',
   },
@@ -92,9 +92,9 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-const PHASE_3R_TEMPLATE_ROLE_RECORDS = deepFreeze([
+const POLICY_AUTHORING_TEMPLATE_ROLE_RECORDS = deepFreeze([
   {
-    roleId: PHASE_3R_TEMPLATE_ROLE_IDS.OPTIONAL_ACCELERATOR,
+    roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.OPTIONAL_ACCELERATOR,
     label: 'Optional accelerator',
     normalAuthoringAllowed: true,
     requiresDestinationContext: true,
@@ -102,7 +102,7 @@ const PHASE_3R_TEMPLATE_ROLE_RECORDS = deepFreeze([
     componentId: POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
   },
   {
-    roleId: PHASE_3R_TEMPLATE_ROLE_IDS.SECONDARY_PROVENANCE,
+    roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.SECONDARY_PROVENANCE,
     label: 'Secondary provenance',
     normalAuthoringAllowed: true,
     requiresDestinationContext: true,
@@ -110,7 +110,7 @@ const PHASE_3R_TEMPLATE_ROLE_RECORDS = deepFreeze([
     componentId: POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
   },
   {
-    roleId: PHASE_3R_TEMPLATE_ROLE_IDS.BRIDGE_ONLY_MECHANIC,
+    roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.BRIDGE_ONLY_MECHANIC,
     label: 'Bridge-only mechanic',
     normalAuthoringAllowed: false,
     requiresDestinationContext: false,
@@ -118,7 +118,7 @@ const PHASE_3R_TEMPLATE_ROLE_RECORDS = deepFreeze([
     componentId: POLICY_AUTHORING_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
   },
   {
-    roleId: PHASE_3R_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
+    roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
     label: 'Delete after native storage',
     normalAuthoringAllowed: false,
     requiresDestinationContext: false,
@@ -127,92 +127,92 @@ const PHASE_3R_TEMPLATE_ROLE_RECORDS = deepFreeze([
   },
 ]);
 
-const PHASE_3R_TEMPLATE_MECHANIC_RECORDS = deepFreeze([
+const POLICY_AUTHORING_TEMPLATE_MECHANIC_RECORDS = deepFreeze([
   {
-    mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_BROWSER,
-    roleId: PHASE_3R_TEMPLATE_ROLE_IDS.OPTIONAL_ACCELERATOR,
+    mechanicId: POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_BROWSER,
+    roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.OPTIONAL_ACCELERATOR,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
     workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.STARTER_TEMPLATE_ACCELERATOR,
     normalAuthoringAllowed: true,
-    deleteAfterPhase8R: false,
+    deleteAfterNativeStorage: false,
     notes: 'Browser can remain only after destination context and as optional accelerator.',
   },
   {
-    mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_DETAILS,
-    roleId: PHASE_3R_TEMPLATE_ROLE_IDS.SECONDARY_PROVENANCE,
+    mechanicId: POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_DETAILS,
+    roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.SECONDARY_PROVENANCE,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
     workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.STARTER_TEMPLATE_ACCELERATOR,
     normalAuthoringAllowed: true,
-    deleteAfterPhase8R: false,
+    deleteAfterNativeStorage: false,
     notes: 'Details can explain provenance but cannot become the primary editing surface.',
   },
   {
-    mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_MECHANICS,
-    roleId: PHASE_3R_TEMPLATE_ROLE_IDS.BRIDGE_ONLY_MECHANIC,
+    mechanicId: POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_MECHANICS,
+    roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.BRIDGE_ONLY_MECHANIC,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
     workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
     normalAuthoringAllowed: false,
-    deleteAfterPhase8R: true,
+    deleteAfterNativeStorage: true,
     notes: 'Raw mechanics are bridge/verifier-only and should leave normal authoring.',
   },
   {
-    mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_WEIGHT,
-    roleId: PHASE_3R_TEMPLATE_ROLE_IDS.BRIDGE_ONLY_MECHANIC,
+    mechanicId: POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_WEIGHT,
+    roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.BRIDGE_ONLY_MECHANIC,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
     workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
     normalAuthoringAllowed: false,
-    deleteAfterPhase8R: true,
+    deleteAfterNativeStorage: true,
     notes: 'Template weights are compatibility scoring mechanics, not intent language.',
   },
   {
-    mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.RAW_CUSTOM_SIGNALS,
-    roleId: PHASE_3R_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
+    mechanicId: POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.RAW_CUSTOM_SIGNALS,
+    roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
     workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
     normalAuthoringAllowed: false,
-    deleteAfterPhase8R: true,
+    deleteAfterNativeStorage: true,
     notes: 'Raw customSignals must be replaced by native intent storage.',
   },
   {
-    mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.REMOVED_SIGNAL_MARKERS,
-    roleId: PHASE_3R_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
+    mechanicId: POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.REMOVED_SIGNAL_MARKERS,
+    roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
     workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
     normalAuthoringAllowed: false,
-    deleteAfterPhase8R: true,
+    deleteAfterNativeStorage: true,
     notes: 'Removed markers are compatibility bridge state, not a normal product concept.',
   },
   {
-    mechanicId: PHASE_3R_TEMPLATE_MECHANIC_IDS.STRICT_ADVISORY_METADATA,
-    roleId: PHASE_3R_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
+    mechanicId: POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.STRICT_ADVISORY_METADATA,
+    roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
     workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
     normalAuthoringAllowed: false,
-    deleteAfterPhase8R: true,
+    deleteAfterNativeStorage: true,
     notes: 'Strict/advisory metadata moves to native constraint semantics.',
   },
 ]);
 
-const ROLE_BY_ID = new Map(PHASE_3R_TEMPLATE_ROLE_RECORDS.map(record => [record.roleId, record]));
-const MECHANIC_BY_ID = new Map(PHASE_3R_TEMPLATE_MECHANIC_RECORDS.map(record => [record.mechanicId, record]));
+const ROLE_BY_ID = new Map(POLICY_AUTHORING_TEMPLATE_ROLE_RECORDS.map(record => [record.roleId, record]));
+const MECHANIC_BY_ID = new Map(POLICY_AUTHORING_TEMPLATE_MECHANIC_RECORDS.map(record => [record.mechanicId, record]));
 
-function listPhase3RStarterTemplateRoleRecords() {
-  return PHASE_3R_TEMPLATE_ROLE_RECORDS;
+function listPolicyAuthoringStarterTemplateRoleRecords() {
+  return POLICY_AUTHORING_TEMPLATE_ROLE_RECORDS;
 }
 
-function listPhase3RStarterTemplateMechanicRecords() {
-  return PHASE_3R_TEMPLATE_MECHANIC_RECORDS;
+function listPolicyAuthoringStarterTemplateMechanicRecords() {
+  return POLICY_AUTHORING_TEMPLATE_MECHANIC_RECORDS;
 }
 
-function getPhase3RStarterTemplateRoleRecord(roleId) {
+function getPolicyAuthoringStarterTemplateRoleRecord(roleId) {
   return ROLE_BY_ID.get(roleId) || null;
 }
 
-function getPhase3RStarterTemplateMechanicRecord(mechanicId) {
+function getPolicyAuthoringStarterTemplateMechanicRecord(mechanicId) {
   return MECHANIC_BY_ID.get(mechanicId) || null;
 }
 
-function normalizePhase3RTemplateSuggestion(suggestion = {}) {
+function normalizePolicyAuthoringTemplateSuggestion(suggestion = {}) {
   const bucketId = toCleanString(suggestion.bucketId);
   const mapping = TEMPLATE_BUCKET_TO_SIGNAL[bucketId] || null;
 
@@ -223,29 +223,29 @@ function normalizePhase3RTemplateSuggestion(suggestion = {}) {
     label: toCleanString(suggestion.label) || toCleanString(suggestion.value),
     value: toCleanString(suggestion.value),
     explanation: toCleanString(suggestion.explanation),
-    provenanceRoleId: PHASE_3R_TEMPLATE_ROLE_IDS.SECONDARY_PROVENANCE,
+    provenanceRoleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.SECONDARY_PROVENANCE,
     sourceLabel: 'Starter template suggestion',
     signalType: mapping?.signalType || null,
     key: mapping?.key || null,
   };
 }
 
-function validatePhase3RTemplateSuggestion(suggestion = {}) {
-  const normalizedSuggestion = normalizePhase3RTemplateSuggestion(suggestion);
+function validatePolicyAuthoringTemplateSuggestion(suggestion = {}) {
+  const normalizedSuggestion = normalizePolicyAuthoringTemplateSuggestion(suggestion);
 
   if (!TEMPLATE_BUCKET_TO_SIGNAL[normalizedSuggestion.bucketId]) {
     return {
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.UNKNOWN_TEMPLATE_BUCKET,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.UNKNOWN_TEMPLATE_BUCKET,
       normalizedSuggestion,
-      reason: 'Starter template suggestion bucket is not part of Phase 0R product vocabulary.',
+      reason: 'Starter template suggestion bucket is not part of policy product vocabulary.',
     };
   }
 
   if (!normalizedSuggestion.value) {
     return {
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.MISSING_TEMPLATE_VALUE,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.MISSING_TEMPLATE_VALUE,
       normalizedSuggestion,
       reason: 'Starter template suggestion requires a value before it can become a draft command.',
     };
@@ -255,7 +255,7 @@ function validatePhase3RTemplateSuggestion(suggestion = {}) {
     valid: true,
     riskId: null,
     normalizedSuggestion,
-    reason: 'Starter template suggestion is mapped to Phase 0R vocabulary and secondary provenance.',
+    reason: 'Starter template suggestion is mapped to product vocabulary and secondary provenance.',
   };
 }
 
@@ -267,7 +267,7 @@ function validatePolicyAuthoringStarterTemplatePlacement({
   if (!destinationContextVisible) {
     return {
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.TEMPLATE_BEFORE_DESTINATION_CONTEXT,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.TEMPLATE_BEFORE_DESTINATION_CONTEXT,
       reason: 'Starter templates can appear only after destination context is visible.',
     };
   }
@@ -275,7 +275,7 @@ function validatePolicyAuthoringStarterTemplatePlacement({
   if (templateRequiredToSave) {
     return {
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.TEMPLATE_REQUIRED_FOR_POLICY,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.TEMPLATE_REQUIRED_FOR_POLICY,
       reason: 'Users must be able to build and save a policy without selecting a starter template.',
     };
   }
@@ -283,7 +283,7 @@ function validatePolicyAuthoringStarterTemplatePlacement({
   if (provenancePrimary) {
     return {
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.TEMPLATE_PROVENANCE_PRIMARY,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.TEMPLATE_PROVENANCE_PRIMARY,
       reason: 'Starter-template provenance must remain secondary to destination context and declared intent.',
     };
   }
@@ -295,14 +295,14 @@ function validatePolicyAuthoringStarterTemplatePlacement({
   };
 }
 
-function buildPhase3RTemplateApplicationCommands({ presetId, suggestions = [] } = {}) {
+function buildPolicyAuthoringTemplateApplicationCommands({ presetId, suggestions = [] } = {}) {
   const normalizedPresetId = toCleanString(presetId);
-  const validationResults = asArray(suggestions).map(suggestion => validatePhase3RTemplateSuggestion(suggestion));
+  const validationResults = asArray(suggestions).map(suggestion => validatePolicyAuthoringTemplateSuggestion(suggestion));
   const commands = validationResults
     .filter(result => result.valid)
     .map(result => result.normalizedSuggestion)
     .map(suggestion => ({
-      commandId: PHASE_2R_DRAFT_COMMAND_IDS.ADD_SIGNAL,
+      commandId: POLICY_DRAFT_COMMAND_IDS.ADD_SIGNAL,
       payload: {
         presetId: normalizedPresetId || suggestion.templateId,
         signalType: suggestion.signalType,
@@ -316,7 +316,7 @@ function buildPhase3RTemplateApplicationCommands({ presetId, suggestions = [] } 
         },
       },
     }));
-  const commandValidations = commands.map(command => validatePhase2RDraftCommand(command));
+  const commandValidations = commands.map(command => validatePolicyDraftCommand(command));
 
   return {
     componentId: POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
@@ -337,16 +337,16 @@ function buildPhase3RTemplateApplicationCommands({ presetId, suggestions = [] } 
     valid: commandValidations.every(result => result.valid),
     riskId: commandValidations.every(result => result.valid)
       ? null
-      : PHASE_3R_TEMPLATE_RISK_IDS.INVALID_DRAFT_COMMAND,
+      : POLICY_AUTHORING_TEMPLATE_RISK_IDS.INVALID_DRAFT_COMMAND,
   };
 }
 
-function validatePhase3RTemplateMechanicSurface(mechanicId) {
-  const record = getPhase3RStarterTemplateMechanicRecord(mechanicId);
+function validatePolicyAuthoringTemplateMechanicSurface(mechanicId) {
+  const record = getPolicyAuthoringStarterTemplateMechanicRecord(mechanicId);
   if (!record) {
     return {
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.RAW_TEMPLATE_MECHANIC_IN_NORMAL_FLOW,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.RAW_TEMPLATE_MECHANIC_IN_NORMAL_FLOW,
       reason: 'Unknown starter-template mechanic cannot appear in normal authoring.',
     };
   }
@@ -354,7 +354,7 @@ function validatePhase3RTemplateMechanicSurface(mechanicId) {
   if (!record.normalAuthoringAllowed) {
     return {
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.RAW_TEMPLATE_MECHANIC_IN_NORMAL_FLOW,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.RAW_TEMPLATE_MECHANIC_IN_NORMAL_FLOW,
       record,
       reason: 'Starter-template mechanic is bridge-only or delete-after-native-storage.',
     };
@@ -368,36 +368,36 @@ function validatePhase3RTemplateMechanicSurface(mechanicId) {
   };
 }
 
-function summarizePhase3RStarterTemplateRoleReset() {
+function summarizePolicyAuthoringStarterTemplates() {
   return {
-    roleCount: PHASE_3R_TEMPLATE_ROLE_RECORDS.length,
-    mechanicCount: PHASE_3R_TEMPLATE_MECHANIC_RECORDS.length,
-    suggestionBucketIds: Object.values(PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS),
-    normalAuthoringMechanicIds: PHASE_3R_TEMPLATE_MECHANIC_RECORDS
+    roleCount: POLICY_AUTHORING_TEMPLATE_ROLE_RECORDS.length,
+    mechanicCount: POLICY_AUTHORING_TEMPLATE_MECHANIC_RECORDS.length,
+    suggestionBucketIds: Object.values(POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS),
+    normalAuthoringMechanicIds: POLICY_AUTHORING_TEMPLATE_MECHANIC_RECORDS
       .filter(record => record.normalAuthoringAllowed)
       .map(record => record.mechanicId),
-    bridgeOnlyOrDeleteMechanicIds: PHASE_3R_TEMPLATE_MECHANIC_RECORDS
+    bridgeOnlyOrDeleteMechanicIds: POLICY_AUTHORING_TEMPLATE_MECHANIC_RECORDS
       .filter(record => !record.normalAuthoringAllowed)
       .map(record => record.mechanicId),
     templatesRequiredToSave: false,
     destinationContextRequiredFirst: true,
-    applicationCommandId: PHASE_2R_DRAFT_COMMAND_IDS.ADD_SIGNAL,
+    applicationCommandId: POLICY_DRAFT_COMMAND_IDS.ADD_SIGNAL,
   };
 }
 
 export {
-  PHASE_3R_TEMPLATE_MECHANIC_IDS,
-  PHASE_3R_TEMPLATE_RISK_IDS,
-  PHASE_3R_TEMPLATE_ROLE_IDS,
-  PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS,
-  buildPhase3RTemplateApplicationCommands,
-  getPhase3RStarterTemplateMechanicRecord,
-  getPhase3RStarterTemplateRoleRecord,
-  listPhase3RStarterTemplateMechanicRecords,
-  listPhase3RStarterTemplateRoleRecords,
-  normalizePhase3RTemplateSuggestion,
-  summarizePhase3RStarterTemplateRoleReset,
+  POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS,
+  POLICY_AUTHORING_TEMPLATE_RISK_IDS,
+  POLICY_AUTHORING_TEMPLATE_ROLE_IDS,
+  POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS,
+  buildPolicyAuthoringTemplateApplicationCommands,
+  getPolicyAuthoringStarterTemplateMechanicRecord,
+  getPolicyAuthoringStarterTemplateRoleRecord,
+  listPolicyAuthoringStarterTemplateMechanicRecords,
+  listPolicyAuthoringStarterTemplateRoleRecords,
+  normalizePolicyAuthoringTemplateSuggestion,
+  summarizePolicyAuthoringStarterTemplates,
   validatePolicyAuthoringStarterTemplatePlacement,
-  validatePhase3RTemplateMechanicSurface,
-  validatePhase3RTemplateSuggestion,
+  validatePolicyAuthoringTemplateMechanicSurface,
+  validatePolicyAuthoringTemplateSuggestion,
 };

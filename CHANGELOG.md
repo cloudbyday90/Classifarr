@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Starter Templates Cutover** — renamed the starter-template
+  role contract and focused test to durable product-domain names, replaced
+  phase-coded template role, suggestion bucket, mechanic, risk, and helper
+  exports with `POLICY_AUTHORING_TEMPLATE_*` and
+  `policyAuthoring*Template*`, updated completion-audit records to track
+  `policy_authoring_starter_templates`, renamed the deletion marker to
+  `deleteAfterNativeStorage`, and preserved optional-template,
+  secondary-provenance, typed-command, and bridge-only mechanic validation
+  behavior.
 - **Policy Authoring Readiness Cutover** — renamed the readiness and
   next-action contract and focused test to durable product-domain names,
   replaced phase-coded readiness, diagnostic-surface, visibility, risk, and

@@ -1103,7 +1103,7 @@ design detail, but this table is the authoritative sequence.
 
 Non-negotiable sequencing rules:
 
-- Do not add new policy controls before Phase 0R vocabulary and Phase 1R state
+- Do not add new policy controls before product vocabulary and Phase 1R state
   boundaries are clear.
 - Do not let AI-authored clarification text drive learning before Phase 5R
   model authority, question normalization, answer contracts, and learning guard
@@ -1353,7 +1353,7 @@ Tasks:
 
 Acceptance criteria:
 
-- Phase 5R question and learning components can use Phase 0R vocabulary
+- Phase 5R question and learning components can use product vocabulary
   directly.
 - Discord/UI questions can be normalized to the same terms.
 - Manual resolution does not imply durable learning by default.
@@ -1371,7 +1371,7 @@ Intent: make the roadmap actionable before implementation resumes.
 
 Tasks:
 
-- Update implementation docs to use Phase 0R vocabulary.
+- Update implementation docs to use product vocabulary.
 - Identify client tests that assert old labels or old product assumptions.
 - Identify server tests that should assert authority separation.
 - Add a checklist that future implementation tasks must satisfy before changing
@@ -1668,7 +1668,7 @@ Acceptance criteria:
 - Legacy compatibility remains regression-tested.
 - Bridge ownership is explicit enough to delete later.
 - Compatibility modules, artifact ownership, raw mutation, product-facing raw
-  access, and Phase 8R deletion gates can be audited before legacy bridge code
+  access, and native-storage deletion gates can be audited before legacy bridge code
   is changed or removed.
 
 Implementation record:
@@ -1689,7 +1689,7 @@ Tasks:
 
 - Categorize existing tests as:
   - keep as behavior regression,
-  - rewrite around Phase 0R vocabulary,
+  - rewrite around product vocabulary,
   - rewrite around draft/bridge boundaries,
   - rewrite around future evidence/readiness contracts,
   - delete when abandoned diagnostic UI is removed.
@@ -1796,7 +1796,7 @@ Intent: define what an intent draft is allowed to represent.
 
 Tasks:
 
-- Define draft fields around Phase 0R vocabulary:
+- Define draft fields around product vocabulary:
   - `belongs_here`,
   - `helpful_matches`,
   - `hard_limits`,
@@ -1864,7 +1864,7 @@ Acceptance criteria:
 - Bridge code has explicit deletion/replacement criteria for Phase 8R.
 - The bridge isolation contract has an executable audit that fails unsafe
   responsibility ownership, serializer key drift, unsupported preservation
-  overlap, raw mutation outside the bridge, and missing Phase 8R deletion gates.
+  overlap, raw mutation outside the bridge, and missing native-storage deletion gates.
 
 Implementation record:
 
@@ -1906,7 +1906,7 @@ Implementation record:
 
 - Phase 2R.3 draft command boundary is documented in
   [Policy Builder Phase 2R Draft Command Boundary](policy-builder-phase-2r-draft-command-boundary.md).
-- The server-side Phase 2R draft command boundary contract lives in
+- The server-side draft command boundary contract lives in
   `server/src/services/policyBuilderPhase2DraftCommandBoundary.mjs`.
 - Current bridge-adapter commands that need Phase 6R rename or split work are:
   `set_signal_config`, `set_signal_metadata`, and `set_signal_removal`.
@@ -2215,7 +2215,7 @@ Tasks:
   - observed-profile suggestion rows,
   - empty/loading/error states,
   - template detail/mechanics surfaces.
-- Define the target component set around Phase 0R vocabulary:
+- Define the target component set around product vocabulary:
   - `DestinationContextCard`,
   - `ObservedProfileSummary`,
   - `IntentSignalPicker`,
@@ -2397,7 +2397,7 @@ model.
 Tasks:
 
 - Present starter templates as optional accelerators after destination context.
-- Show what a template would add in Phase 0R vocabulary:
+- Show what a template would add in product vocabulary:
   - belongs-here suggestions,
   - helpful suggestions,
   - hard-limit suggestions,
@@ -2415,18 +2415,20 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 3R.7 starter template role reset is documented in
-  [Policy Builder Phase 3R Starter Template Role Reset](policy-builder-phase-3r-starter-template-role-reset.md).
-- The server-side Phase 3R starter-template role contract lives in
-  `server/src/services/policyBuilderPhase3StarterTemplateRoleReset.mjs`.
+- Policy authoring starter templates are documented in
+  [Policy Authoring Starter Templates](policy-authoring-starter-templates.md).
+- The starter-template module cutover is documented in
+  [Policy Authoring Starter Templates Module Cutover](policy-authoring-starter-templates-module-cutover.md).
+- The server-side policy authoring starter-template contract lives in
+  `server/src/services/policyAuthoringStarterTemplates.mjs`.
 - Starter templates are now modeled as optional post-destination accelerators
   with secondary provenance, not required policy authority.
-- Template suggestions map into Phase 0R vocabulary buckets: Belongs Here,
+- Template suggestions map into product vocabulary buckets: Belongs Here,
   Helpful Matches, Hard Limits, and Avoid.
-- Applying a template suggestion emits existing Phase 2R `add_signal` draft
+- Applying a template suggestion emits existing `add_signal` draft
   commands instead of mutating raw template mechanics.
 - Template mechanics, weights, raw custom signals, removed markers, and
-  strict/advisory metadata are classified as bridge-only or Phase 8R
+  strict/advisory metadata are classified as bridge-only or
   delete-after-native-storage targets.
 
 ### 3R.8 Accessibility And Decision Load
@@ -2489,7 +2491,7 @@ Tasks:
 Acceptance criteria:
 
 - Tests preserve the simplified workflow, not the old layout.
-- Product-facing tests use Phase 0R vocabulary.
+- Product-facing tests use product vocabulary.
 - Draft/bridge behavior remains covered by Phase 2R tests rather than duplicated
   in presentation tests.
 
@@ -2562,8 +2564,8 @@ Implementation record:
   [Policy Authoring Constraints](policy-authoring-constraints.md).
 - Policy authoring readiness is documented in
   [Policy Authoring Readiness](policy-authoring-readiness.md).
-- Phase 3R.7 starter template role reset is documented in
-  [Policy Builder Phase 3R Starter Template Role Reset](policy-builder-phase-3r-starter-template-role-reset.md).
+- Policy authoring starter templates are documented in
+  [Policy Authoring Starter Templates](policy-authoring-starter-templates.md).
 - Phase 3R.8 accessibility and decision load is documented in
   [Policy Builder Phase 3R Accessibility And Decision Load](policy-builder-phase-3r-accessibility-decision-load.md).
 - Phase 3R.9 presentation test reset is documented in
@@ -2721,7 +2723,7 @@ Tasks:
   - **Rewrite**: useful but too coupled to draft/preflight wording,
   - **Replace**: contract need remains but shape must change,
   - **Delete after migration**: only exists for legacy sidecar compatibility.
-- Define the server contract around Phase 0R vocabulary:
+- Define the server contract around product vocabulary:
   - declared intent,
   - observed evidence reference,
   - hard limits,
@@ -2735,7 +2737,7 @@ Tasks:
 
 Acceptance criteria:
 
-- Server contract names match Phase 0R vocabulary.
+- Server contract names match product vocabulary.
 - The server contract is independent of client draft implementation details.
 - Legacy projection is explicitly a bridge, not the final authority model.
 
@@ -3573,7 +3575,7 @@ to classify, ask, route, and rebuild safely.
 
 Phase 7R depends on these prior contracts:
 
-- Phase 0R vocabulary and authority model,
+- product vocabulary and authority model,
 - Phase 1R client boundary ownership,
 - Phase 2R draft/bridge boundary,
 - Phase 3R destination-first workflow,
@@ -3817,7 +3819,7 @@ Tasks:
 
 Acceptance criteria:
 
-- Runtime questions match Phase 0R vocabulary.
+- Runtime questions match product vocabulary.
 - Questions include learning eligibility metadata.
 - Manual answers resolve outcomes without automatically mutating policy.
 
@@ -6478,7 +6480,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 3, 2026
   baseline for production references, rename candidates, and obsolete migration
   tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `4022` production references, `4044` rename
+- The current baseline is `3936` production references, `3958` rename
   candidates, and `93` obsolete migration tooling references. Future durable
   rename batches should lower this baseline after inventory validation proves
   the debt decreased.
@@ -6508,7 +6510,7 @@ Acceptance criteria:
 
 Required coverage should follow the re-imagined phase boundaries:
 
-- Phase 0R vocabulary tests:
+- product vocabulary tests:
   - product labels use source-of-truth language,
   - broad genres are not described as automatic identity,
   - learning and outcome language remain separate.

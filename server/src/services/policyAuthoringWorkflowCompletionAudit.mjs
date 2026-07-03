@@ -74,11 +74,11 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Replaces dense diagnostics with action-oriented readiness states and one primary next action.',
   },
   {
-    id: 'starter_template_role_reset',
-    label: 'Starter template role reset',
-    docPath: 'docs/architecture/policy-builder-phase-3r-starter-template-role-reset.md',
-    servicePath: 'server/src/services/policyBuilderPhase3StarterTemplateRoleReset.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase3StarterTemplateRoleReset.test.mjs',
+    id: 'policy_authoring_starter_templates',
+    label: 'Policy authoring starter templates',
+    docPath: 'docs/architecture/policy-authoring-starter-templates.md',
+    servicePath: 'server/src/services/policyAuthoringStarterTemplates.mjs',
+    testPath: 'server/src/__tests__/services/policyAuthoringStarterTemplates.test.mjs',
     evidence: 'Keeps starter templates as optional accelerators after destination context.',
   },
   {

@@ -4,8 +4,9 @@ Status: implemented as the seventh Vue-facing Phase 3R workflow rewrite slice.
 
 ## Scope
 
-This slice applies the Phase 3R.7 starter-template role reset to the current Vue
-policy-builder workflow.
+This slice applies the durable
+[Policy Authoring Starter Templates](policy-authoring-starter-templates.md)
+contract to the current Vue policy-builder workflow.
 
 Starter templates are now treated as optional accelerators. A selected library
 with valid scoring weights can be saved without a selected starter template.
@@ -67,7 +68,7 @@ Official sources reviewed as of June 2026:
 
 ### Pros
 
-- Aligns the Vue workflow with the Phase 3R.7 contract.
+- Aligns the Vue workflow with the policy authoring starter-template contract.
 - Removes a false save blocker.
 - Reduces default decision load in the modal.
 - Keeps templates available for users who want a seed.

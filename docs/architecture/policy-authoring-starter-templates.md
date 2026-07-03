@@ -1,15 +1,15 @@
-# Policy Builder Phase 3R Starter Template Role Reset
+# Policy Authoring Starter Templates
 
-Status: implemented as the seventh Phase 3R operator-workflow contract.
+Status: implemented as a durable policy-authoring contract.
 
 ## Scope
 
-Phase 3R.7 resets starter templates from the policy-builder mental model to an
-optional accelerator. Templates can suggest intent after destination context is
-visible, but they cannot be required to build a policy and cannot expose raw
-template mechanics in the normal authoring path.
+Policy authoring starter templates are optional accelerators. They can suggest
+intent after destination context is visible, but they cannot be required to
+build a policy and cannot expose raw template mechanics in the normal authoring
+path.
 
-This checkpoint does not remove compatibility bridge behavior yet. It defines
+This contract does not remove compatibility bridge behavior yet. It defines
 which template concepts remain product-facing, which mechanics are bridge-only,
 and how applying a template becomes typed draft commands.
 
@@ -17,21 +17,15 @@ and how applying a template becomes typed draft commands.
 
 Official sources reviewed for this checkpoint:
 
+- W3C WCAG 2.2: https://www.w3.org/TR/WCAG22/
 - WAI-ARIA Authoring Practices Guide:
   https://www.w3.org/WAI/ARIA/apg/
-- W3C WCAG 2.2:
-  https://www.w3.org/TR/WCAG22/
+- WAI-ARIA Disclosure Pattern:
+  https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/
 - OWASP Input Validation Cheat Sheet:
   https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html
-- OWASP API Security Top 10, API3:2023 Broken Object Property Level
-  Authorization:
-  https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/
 - NIST Secure Software Development Framework SP 800-218:
   https://csrc.nist.gov/pubs/sp/800/218/final
-- Vue Test Utils Guide:
-  https://test-utils.vuejs.org/
-- Vitest Guide:
-  https://vitest.dev/guide/
 
 The applied guidance:
 
@@ -47,7 +41,7 @@ The applied guidance:
 
 1. Present starter templates only after destination context is visible.
 2. Do not require a template to build, save, or validate a policy.
-3. Show template additions in Phase 0R vocabulary:
+3. Show template additions in product vocabulary:
    - Belongs Here,
    - Helpful Matches,
    - Hard Limits,
@@ -57,8 +51,8 @@ The applied guidance:
 5. Apply template suggestions through existing typed draft commands.
 6. Keep template mechanics, weights, raw `customSignals`, removed markers, and
    strict/advisory metadata out of normal authoring.
-7. Mark raw template mechanics for bridge-only handling or Phase 8R deletion
-   after native intent storage is authoritative.
+7. Mark raw template mechanics for bridge-only handling or native-storage
+   deletion after native intent storage is authoritative.
 
 ## Pros And Cons
 
@@ -78,7 +72,7 @@ Cons:
 
 Pros:
 
-- Preserves the Phase 2R draft command boundary.
+- Preserves the draft command boundary.
 - Prevents raw compatibility payload mutation from template controls.
 - Gives rollback and native-storage migration a clearer audit path.
 
@@ -93,7 +87,7 @@ Pros:
 
 - Keeps weights, removed markers, and raw custom signal details out of normal
   authoring.
-- Makes Phase 8R deletion targets explicit.
+- Makes native-storage deletion targets explicit.
 
 Cons:
 
@@ -107,7 +101,7 @@ Build starter templates as a post-destination accelerator:
 ```text
 destination context visible
   -> optional template suggestion
-  -> Phase 0R bucketed additions
+  -> product bucketed additions
   -> typed draft commands
   -> secondary provenance only
 ```
@@ -116,39 +110,39 @@ The normal policy builder should remain usable with no selected template.
 
 ## Implementation
 
-The Phase 3R.7 implementation now provides:
+The implementation provides:
 
-- `server/src/services/policyBuilderPhase3StarterTemplateRoleReset.mjs`
+- `server/src/services/policyAuthoringStarterTemplates.mjs`
   - defines template roles for optional accelerator, secondary provenance,
     bridge-only mechanic, and delete-after-native-storage,
-  - maps starter-template suggestions to Phase 0R vocabulary buckets,
+  - maps starter-template suggestions to product vocabulary buckets,
   - validates destination-context-first placement,
   - rejects template-required save behavior and primary provenance,
-  - builds existing Phase 2R `add_signal` draft commands from suggestions,
+  - builds existing `add_signal` draft commands from suggestions,
   - classifies template browser/details as accelerator surfaces,
   - classifies template mechanics, weights, raw custom signals, removed markers,
-    and strict/advisory metadata as bridge-only or Phase 8R deletion targets.
-- `server/src/__tests__/services/policyBuilderPhase3StarterTemplateRoleReset.test.mjs`
+    and strict/advisory metadata as bridge-only or native-storage deletion
+    targets.
+- `server/src/__tests__/services/policyAuthoringStarterTemplates.test.mjs`
   - pins template role records,
-  - verifies Phase 0R bucket mapping,
+  - verifies product bucket mapping,
   - proves templates cannot appear before destination context or be required to
     save,
   - proves template application emits valid typed draft commands,
   - keeps raw template mechanics out of normal authoring.
 
-## Phase 3R.7 Checklist Result
+## Checklist Result
 
 | Check | Result |
 | --- | --- |
 | Users can build without a template | Yes; templates are never required to save. |
 | Templates appear after destination context | Yes; placement validation fails before destination context is visible. |
-| Template additions use Phase 0R vocabulary | Yes; suggestions map to Belongs Here, Helpful Matches, Hard Limits, and Avoid. |
-| Template application uses typed commands | Yes; suggestions emit Phase 2R `add_signal` commands. |
+| Template additions use product vocabulary | Yes; suggestions map to Belongs Here, Helpful Matches, Hard Limits, and Avoid. |
+| Template application uses typed commands | Yes; suggestions emit `add_signal` commands. |
 | Provenance remains secondary | Yes; primary template provenance is rejected. |
 | Template internals leave normal UI | Yes; raw mechanics, weights, custom signals, removed markers, and strict/advisory metadata are bridge-only or delete-after-native-storage. |
 
 ## Next Step
 
-Continue with **Phase 3R.8 Accessibility And Decision Load**. That task should
-audit labels, helper text, disabled states, focus behavior, repeated warnings,
-and decision count across the simplified workflow.
+Cut over the accessibility and decision-load contract to durable
+policy-authoring naming.

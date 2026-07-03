@@ -1,5 +1,5 @@
 import {
-  PHASE_2R_DRAFT_COMMAND_IDS,
+  PHASE_2R_DRAFT_COMMAND_IDS as POLICY_DRAFT_COMMAND_IDS,
 } from '../../services/policyBuilderPhase2DraftCommandBoundary.mjs';
 import {
   POLICY_AUTHORING_COMPONENT_IDS,
@@ -13,35 +13,35 @@ import {
   POLICY_AUTHORING_WORKFLOW_ROLE_IDS,
 } from '../../services/policyAuthoringWorkflowInventory.mjs';
 import {
-  PHASE_3R_TEMPLATE_MECHANIC_IDS,
-  PHASE_3R_TEMPLATE_RISK_IDS,
-  PHASE_3R_TEMPLATE_ROLE_IDS,
-  PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS,
-  buildPhase3RTemplateApplicationCommands,
-  getPhase3RStarterTemplateMechanicRecord,
-  getPhase3RStarterTemplateRoleRecord,
-  listPhase3RStarterTemplateMechanicRecords,
-  listPhase3RStarterTemplateRoleRecords,
-  normalizePhase3RTemplateSuggestion,
-  summarizePhase3RStarterTemplateRoleReset,
+  POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS,
+  POLICY_AUTHORING_TEMPLATE_RISK_IDS,
+  POLICY_AUTHORING_TEMPLATE_ROLE_IDS,
+  POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS,
+  buildPolicyAuthoringTemplateApplicationCommands,
+  getPolicyAuthoringStarterTemplateMechanicRecord,
+  getPolicyAuthoringStarterTemplateRoleRecord,
+  listPolicyAuthoringStarterTemplateMechanicRecords,
+  listPolicyAuthoringStarterTemplateRoleRecords,
+  normalizePolicyAuthoringTemplateSuggestion,
+  summarizePolicyAuthoringStarterTemplates,
   validatePolicyAuthoringStarterTemplatePlacement,
-  validatePhase3RTemplateMechanicSurface,
-  validatePhase3RTemplateSuggestion,
-} from '../../services/policyBuilderPhase3StarterTemplateRoleReset.mjs';
+  validatePolicyAuthoringTemplateMechanicSurface,
+  validatePolicyAuthoringTemplateSuggestion,
+} from '../../services/policyAuthoringStarterTemplates.mjs';
 import {
   POLICY_UX_TERM_IDS,
 } from '../../services/policyUserMentalModel.mjs';
 
-describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
+describe('policyAuthoringStarterTemplates', () => {
   test('defines starter templates as optional accelerators with secondary provenance', () => {
-    expect(listPhase3RStarterTemplateRoleRecords().map(record => record.roleId)).toEqual([
-      PHASE_3R_TEMPLATE_ROLE_IDS.OPTIONAL_ACCELERATOR,
-      PHASE_3R_TEMPLATE_ROLE_IDS.SECONDARY_PROVENANCE,
-      PHASE_3R_TEMPLATE_ROLE_IDS.BRIDGE_ONLY_MECHANIC,
-      PHASE_3R_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
+    expect(listPolicyAuthoringStarterTemplateRoleRecords().map(record => record.roleId)).toEqual([
+      POLICY_AUTHORING_TEMPLATE_ROLE_IDS.OPTIONAL_ACCELERATOR,
+      POLICY_AUTHORING_TEMPLATE_ROLE_IDS.SECONDARY_PROVENANCE,
+      POLICY_AUTHORING_TEMPLATE_ROLE_IDS.BRIDGE_ONLY_MECHANIC,
+      POLICY_AUTHORING_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
     ]);
 
-    expect(getPhase3RStarterTemplateRoleRecord(PHASE_3R_TEMPLATE_ROLE_IDS.OPTIONAL_ACCELERATOR))
+    expect(getPolicyAuthoringStarterTemplateRoleRecord(POLICY_AUTHORING_TEMPLATE_ROLE_IDS.OPTIONAL_ACCELERATOR))
       .toEqual(expect.objectContaining({
         normalAuthoringAllowed: true,
         requiresDestinationContext: true,
@@ -50,18 +50,18 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
       }));
   });
 
-  test('maps template suggestions into Phase 0R product vocabulary buckets', () => {
-    expect(Object.values(PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS)).toEqual([
+  test('maps template suggestions into product vocabulary buckets', () => {
+    expect(Object.values(POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS)).toEqual([
       POLICY_UX_TERM_IDS.BELONGS_HERE,
       POLICY_UX_TERM_IDS.HELPFUL_MATCHES,
       POLICY_UX_TERM_IDS.HARD_LIMITS,
       POLICY_UX_TERM_IDS.AVOID,
     ]);
 
-    expect(normalizePhase3RTemplateSuggestion({
+    expect(normalizePolicyAuthoringTemplateSuggestion({
       templateId: 'template-1',
       templateName: 'Animated starter',
-      bucketId: PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS.BELONGS_HERE,
+      bucketId: POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS.BELONGS_HERE,
       value: 'Animation',
       explanation: 'Starter template commonly uses Animation as identity.',
     })).toEqual(expect.objectContaining({
@@ -70,7 +70,7 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
       bucketId: POLICY_UX_TERM_IDS.BELONGS_HERE,
       value: 'Animation',
       label: 'Animation',
-      provenanceRoleId: PHASE_3R_TEMPLATE_ROLE_IDS.SECONDARY_PROVENANCE,
+      provenanceRoleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.SECONDARY_PROVENANCE,
       sourceLabel: 'Starter template suggestion',
       signalType: 'genres',
       key: 'require_any',
@@ -82,7 +82,7 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
       destinationContextVisible: false,
     })).toEqual({
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.TEMPLATE_BEFORE_DESTINATION_CONTEXT,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.TEMPLATE_BEFORE_DESTINATION_CONTEXT,
       reason: 'Starter templates can appear only after destination context is visible.',
     });
 
@@ -91,7 +91,7 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
       templateRequiredToSave: true,
     })).toEqual({
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.TEMPLATE_REQUIRED_FOR_POLICY,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.TEMPLATE_REQUIRED_FOR_POLICY,
       reason: 'Users must be able to build and save a policy without selecting a starter template.',
     });
 
@@ -100,7 +100,7 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
       provenancePrimary: true,
     })).toEqual({
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.TEMPLATE_PROVENANCE_PRIMARY,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.TEMPLATE_PROVENANCE_PRIMARY,
       reason: 'Starter-template provenance must remain secondary to destination context and declared intent.',
     });
 
@@ -114,49 +114,49 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
   });
 
   test('rejects unknown template buckets and empty values', () => {
-    expect(validatePhase3RTemplateSuggestion({
+    expect(validatePolicyAuthoringTemplateSuggestion({
       bucketId: 'legacy_preset_weight',
       value: 'Animation',
     })).toEqual(expect.objectContaining({
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.UNKNOWN_TEMPLATE_BUCKET,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.UNKNOWN_TEMPLATE_BUCKET,
     }));
 
-    expect(validatePhase3RTemplateSuggestion({
-      bucketId: PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS.HELPFUL_MATCHES,
+    expect(validatePolicyAuthoringTemplateSuggestion({
+      bucketId: POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS.HELPFUL_MATCHES,
       value: '',
     })).toEqual(expect.objectContaining({
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.MISSING_TEMPLATE_VALUE,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.MISSING_TEMPLATE_VALUE,
     }));
   });
 
   test('builds typed draft commands when applying template suggestions', () => {
-    const commandPlan = buildPhase3RTemplateApplicationCommands({
+    const commandPlan = buildPolicyAuthoringTemplateApplicationCommands({
       presetId: 'preset-1',
       suggestions: [
         {
           templateId: 'preset-1',
           templateName: 'Animated starter',
-          bucketId: PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS.BELONGS_HERE,
+          bucketId: POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS.BELONGS_HERE,
           value: 'Animation',
         },
         {
           templateId: 'preset-1',
           templateName: 'Animated starter',
-          bucketId: PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS.HELPFUL_MATCHES,
+          bucketId: POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS.HELPFUL_MATCHES,
           value: 'Family',
         },
         {
           templateId: 'preset-1',
           templateName: 'Animated starter',
-          bucketId: PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS.HARD_LIMITS,
+          bucketId: POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS.HARD_LIMITS,
           value: 'PG-13',
         },
         {
           templateId: 'preset-1',
           templateName: 'Animated starter',
-          bucketId: PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS.AVOID,
+          bucketId: POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS.AVOID,
           value: 'R',
         },
       ],
@@ -173,7 +173,7 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
     }));
     expect(commandPlan.commands).toEqual([
       expect.objectContaining({
-        commandId: PHASE_2R_DRAFT_COMMAND_IDS.ADD_SIGNAL,
+        commandId: POLICY_DRAFT_COMMAND_IDS.ADD_SIGNAL,
         payload: expect.objectContaining({
           presetId: 'preset-1',
           signalType: 'genres',
@@ -212,11 +212,11 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
   });
 
   test('rejects template application plans with invalid command payloads', () => {
-    const commandPlan = buildPhase3RTemplateApplicationCommands({
+    const commandPlan = buildPolicyAuthoringTemplateApplicationCommands({
       suggestions: [
         {
           templateId: '',
-          bucketId: PHASE_3R_TEMPLATE_SUGGESTION_BUCKET_IDS.BELONGS_HERE,
+          bucketId: POLICY_AUTHORING_TEMPLATE_SUGGESTION_BUCKET_IDS.BELONGS_HERE,
           value: 'Animation',
         },
       ],
@@ -225,7 +225,7 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
     expect(commandPlan).toEqual(expect.objectContaining({
       commandCount: 1,
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.INVALID_DRAFT_COMMAND,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.INVALID_DRAFT_COMMAND,
     }));
     expect(commandPlan.commandValidations).toEqual([
       expect.objectContaining({
@@ -236,57 +236,57 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
   });
 
   test('classifies template mechanics as normal accelerator or bridge-only/delete-after-native-storage', () => {
-    expect(listPhase3RStarterTemplateMechanicRecords().map(record => record.mechanicId)).toEqual([
-      PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_BROWSER,
-      PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_DETAILS,
-      PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_MECHANICS,
-      PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_WEIGHT,
-      PHASE_3R_TEMPLATE_MECHANIC_IDS.RAW_CUSTOM_SIGNALS,
-      PHASE_3R_TEMPLATE_MECHANIC_IDS.REMOVED_SIGNAL_MARKERS,
-      PHASE_3R_TEMPLATE_MECHANIC_IDS.STRICT_ADVISORY_METADATA,
+    expect(listPolicyAuthoringStarterTemplateMechanicRecords().map(record => record.mechanicId)).toEqual([
+      POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_BROWSER,
+      POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_DETAILS,
+      POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_MECHANICS,
+      POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_WEIGHT,
+      POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.RAW_CUSTOM_SIGNALS,
+      POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.REMOVED_SIGNAL_MARKERS,
+      POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.STRICT_ADVISORY_METADATA,
     ]);
 
-    expect(getPhase3RStarterTemplateMechanicRecord(PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_BROWSER))
+    expect(getPolicyAuthoringStarterTemplateMechanicRecord(POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_BROWSER))
       .toEqual(expect.objectContaining({
-        roleId: PHASE_3R_TEMPLATE_ROLE_IDS.OPTIONAL_ACCELERATOR,
+        roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.OPTIONAL_ACCELERATOR,
         workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
         workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.STARTER_TEMPLATE_ACCELERATOR,
         normalAuthoringAllowed: true,
-        deleteAfterPhase8R: false,
+        deleteAfterNativeStorage: false,
       }));
 
-    expect(getPhase3RStarterTemplateMechanicRecord(PHASE_3R_TEMPLATE_MECHANIC_IDS.RAW_CUSTOM_SIGNALS))
+    expect(getPolicyAuthoringStarterTemplateMechanicRecord(POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.RAW_CUSTOM_SIGNALS))
       .toEqual(expect.objectContaining({
-        roleId: PHASE_3R_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
+        roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
         workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
         workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
         normalAuthoringAllowed: false,
-        deleteAfterPhase8R: true,
+        deleteAfterNativeStorage: true,
       }));
   });
 
   test('keeps raw template mechanics out of normal authoring', () => {
-    expect(validatePhase3RTemplateMechanicSurface(PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_BROWSER))
+    expect(validatePolicyAuthoringTemplateMechanicSurface(POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_BROWSER))
       .toEqual(expect.objectContaining({
         valid: true,
         riskId: null,
       }));
 
-    expect(validatePhase3RTemplateMechanicSurface(PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_MECHANICS))
+    expect(validatePolicyAuthoringTemplateMechanicSurface(POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_MECHANICS))
       .toEqual(expect.objectContaining({
         valid: false,
-        riskId: PHASE_3R_TEMPLATE_RISK_IDS.RAW_TEMPLATE_MECHANIC_IN_NORMAL_FLOW,
+        riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.RAW_TEMPLATE_MECHANIC_IN_NORMAL_FLOW,
       }));
 
-    expect(validatePhase3RTemplateMechanicSurface('unknown_mechanic')).toEqual({
+    expect(validatePolicyAuthoringTemplateMechanicSurface('unknown_mechanic')).toEqual({
       valid: false,
-      riskId: PHASE_3R_TEMPLATE_RISK_IDS.RAW_TEMPLATE_MECHANIC_IN_NORMAL_FLOW,
+      riskId: POLICY_AUTHORING_TEMPLATE_RISK_IDS.RAW_TEMPLATE_MECHANIC_IN_NORMAL_FLOW,
       reason: 'Unknown starter-template mechanic cannot appear in normal authoring.',
     });
   });
 
   test('summarizes the starter-template role reset checkpoint', () => {
-    expect(summarizePhase3RStarterTemplateRoleReset()).toEqual({
+    expect(summarizePolicyAuthoringStarterTemplates()).toEqual({
       roleCount: 4,
       mechanicCount: 7,
       suggestionBucketIds: [
@@ -296,19 +296,19 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
         POLICY_UX_TERM_IDS.AVOID,
       ],
       normalAuthoringMechanicIds: [
-        PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_BROWSER,
-        PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_DETAILS,
+        POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_BROWSER,
+        POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_DETAILS,
       ],
       bridgeOnlyOrDeleteMechanicIds: [
-        PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_MECHANICS,
-        PHASE_3R_TEMPLATE_MECHANIC_IDS.TEMPLATE_WEIGHT,
-        PHASE_3R_TEMPLATE_MECHANIC_IDS.RAW_CUSTOM_SIGNALS,
-        PHASE_3R_TEMPLATE_MECHANIC_IDS.REMOVED_SIGNAL_MARKERS,
-        PHASE_3R_TEMPLATE_MECHANIC_IDS.STRICT_ADVISORY_METADATA,
+        POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_MECHANICS,
+        POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_WEIGHT,
+        POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.RAW_CUSTOM_SIGNALS,
+        POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.REMOVED_SIGNAL_MARKERS,
+        POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.STRICT_ADVISORY_METADATA,
       ],
       templatesRequiredToSave: false,
       destinationContextRequiredFirst: true,
-      applicationCommandId: PHASE_2R_DRAFT_COMMAND_IDS.ADD_SIGNAL,
+      applicationCommandId: POLICY_DRAFT_COMMAND_IDS.ADD_SIGNAL,
     });
   });
 });
