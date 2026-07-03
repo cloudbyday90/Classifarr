@@ -2513,7 +2513,7 @@ Implementation status:
   as abandoned normal-path diagnostics instead of simplified workflow
   requirements.
 - The first Vue-facing Phase 3R rewrite is documented in
-  [Policy Builder Phase 3R Vue Setup Cards](policy-builder-phase-3r-vue-setup-cards.md).
+  [Policy Authoring Setup Cards](policy-authoring-setup-cards.md).
   The modal now renders four setup cards after library context and keeps impact
   and replay verifier panels out of the default workflow unless explicitly
   enabled.
@@ -2576,7 +2576,7 @@ Implementation record:
 - Phase 3R contract checkpoints are now defined through 3R.9. Future Phase 3R
   work should apply these contracts to the Vue components and client tests.
 - The first Vue-facing rewrite slice is documented in
-  [Policy Builder Phase 3R Vue Setup Cards](policy-builder-phase-3r-vue-setup-cards.md).
+  [Policy Authoring Setup Cards](policy-authoring-setup-cards.md).
 - The second Vue-facing rewrite slice is documented in
   [Policy Builder Phase 3R Vue Destination Section Split](policy-builder-phase-3r-vue-destination-section-split.md).
   The current intent editor now has distinct review behavior, destination
@@ -6432,6 +6432,14 @@ Implementation status:
 - After the policy-authoring presentation-tests cutover, the repository
   inventory validates with 9,649 total phase-coded references, 3,750
   production references, and 3,772 rename candidates.
+- The next authoring workflow cutover renamed the setup-card design record to
+  [Policy Authoring Setup Cards](policy-authoring-setup-cards.md), updated the
+  workflow completion-audit id to `policy_authoring_setup_cards`, and added the
+  standing cutover record:
+  [Policy Authoring Setup Cards Module Cutover](policy-authoring-setup-cards-module-cutover.md).
+- After the policy-authoring setup-cards cutover, the repository inventory
+  validates with 9,646 total phase-coded references, 3,749 production
+  references, and 3,771 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
@@ -6504,7 +6512,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 3, 2026
   baseline for production references, rename candidates, and obsolete migration
   tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `3750` production references, `3772` rename
+- The current baseline is `3749` production references, `3771` rename
   candidates, and `93` obsolete migration tooling references. Future durable
   rename batches should lower this baseline after inventory validation proves
   the debt decreased.

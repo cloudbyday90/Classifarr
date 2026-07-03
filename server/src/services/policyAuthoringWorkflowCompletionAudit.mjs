@@ -101,9 +101,9 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
 
 const POLICY_AUTHORING_VUE_REWRITE_SLICES = Object.freeze([
   {
-    id: 'vue_setup_cards',
-    label: 'Vue setup cards',
-    docPath: 'docs/architecture/policy-builder-phase-3r-vue-setup-cards.md',
+    id: 'policy_authoring_setup_cards',
+    label: 'Policy authoring setup cards',
+    docPath: 'docs/architecture/policy-authoring-setup-cards.md',
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
     evidence: 'Renders four setup cards after library context and keeps verifier panels out of default workflow.',
   },

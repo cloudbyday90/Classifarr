@@ -1,58 +1,51 @@
-# Policy Builder Phase 3R Vue Setup Cards
+# Policy Authoring Setup Cards
 
-Status: implemented as the first Vue-facing Phase 3R workflow rewrite slice.
+Status: implemented as the policy-authoring setup-card surface.
 
 ## Scope
 
-This slice applies the Phase 0R.2 mental model and Phase 3R workflow reset to
-the current policy-builder modal without rebuilding the full editor.
-
-It adds a small setup-card surface that gives operators four plain next actions:
+Policy authoring setup cards provide the first visible entry points after the
+library context in the policy-builder modal. The cards orient operators around
+four product questions:
 
 1. What already belongs here?
 2. What should always or never belong here?
 3. When should Classifarr ask?
 4. Can this destination route?
 
-This slice does not change saved policy payloads, server routes, classification
-behavior, learning behavior, database schema, or Arr routing.
+This slice does not change saved policy payloads, server routes,
+classification behavior, learning behavior, database schema, or Arr routing.
+It documents and verifies the existing Vue setup-card surface with durable
+product terminology.
 
-## Research Inputs
+## Official Sources Reviewed
 
 Official sources reviewed as of June 2026:
 
 - W3C WCAG 2.2, Headings and Labels:
   <https://www.w3.org/WAI/WCAG22/Understanding/headings-and-labels.html>
-  - The setup cards use descriptive headings so the purpose of each section is
-    clear before the operator activates an action.
 - W3C WCAG 2.2, Labels or Instructions:
   <https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html>
-  - Each card has helper text and one explicit action label.
 - W3C WCAG 2.2, Name, Role, Value:
   <https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html>
-  - The card actions are real links with visible names and stable targets.
 - U.S. Web Design System, Card:
   <https://designsystem.digital.gov/components/card/>
-  - Cards are used as grouped entry points with concise headings, body copy, and
-    clear actions.
-- U.S. Web Design System, Form Controls:
-  <https://designsystem.digital.gov/components/form-controls/>
-  - The card copy keeps labels and instructions separate from later form
-    controls.
-- GOV.UK Design System, Content Design:
-  <https://design-system.service.gov.uk/styles/content/>
-  - The card language is direct, task-oriented, and avoids internal
-    implementation vocabulary.
+- U.S. Web Design System, Components:
+  <https://designsystem.digital.gov/components/overview/>
+- GOV.UK Design System:
+  <https://design-system.service.gov.uk/>
 
 ## Recommendations
 
 1. Put the setup-card surface immediately after library context.
-2. Use one card per Phase 0R setup question.
-3. Make each action navigate to an existing modal section instead of creating a
+2. Use one card per product setup question.
+3. Give each card a descriptive heading, concise helper text, and one explicit
+   action.
+4. Make each action navigate to an existing modal section instead of creating a
    new state machine.
-4. Keep migration verifier panels hidden from the default workflow unless an
+5. Keep migration verifier panels hidden from the default workflow unless an
    explicit verifier flag is provided.
-5. Keep card content in a small client utility until the server exposes a
+6. Keep card content in a small client utility until the server exposes a
    product-copy endpoint or native policy-builder UI schema.
 
 ## Pros And Cons
@@ -61,18 +54,19 @@ Official sources reviewed as of June 2026:
 
 - Moves the visible workflow toward destination-first setup without a large
   rewrite.
-- Gives operators clear entry points before advanced starter-template mechanics.
-- Keeps the modal behavior compatible with existing save payloads.
+- Gives operators clear entry points before advanced starter-template
+  mechanics.
+- Keeps modal behavior compatible with existing save payloads.
 - Uses accessible links rather than inert buttons or no-op controls.
 - Creates a client-side contract that can be tested independently.
 
 ### Cons
 
-- The card copy currently mirrors the server Phase 0R contract instead of being
-  served dynamically.
-- The actions navigate to existing broad sections because the detailed Phase 3R
-  components are not fully rebuilt yet.
-- The old intent editor and starter-template mechanics still exist below the new
+- The card copy currently mirrors server vocabulary instead of being served
+  dynamically.
+- Actions navigate to existing broad sections because the detailed
+  policy-authoring controls are still being cut over one component at a time.
+- The old intent editor and starter-template mechanics still exist below the
   setup surface until later slices replace them.
 
 ## Final Stack
@@ -92,7 +86,7 @@ Official sources reviewed as of June 2026:
 
 ## Implemented Outcome
 
-The policy-builder modal now renders `PolicyBuilderSetupCards` after the library
+The policy-builder modal renders `PolicyBuilderSetupCards` after the library
 context. Each card links to one existing section:
 
 | Setup Question | Action | Target |
@@ -107,7 +101,7 @@ Migration verifier panels remain outside the default workflow through
 
 ## Follow-Up Status
 
-Completed by
-[Policy Builder Phase 3R Vue Destination Section Split](policy-builder-phase-3r-vue-destination-section-split.md).
 The setup cards now target distinct review behavior and destination-rule
-sections instead of pointing both actions at one editor anchor.
+sections instead of pointing both actions at one editor anchor. That follow-up
+is documented in
+[Policy Builder Phase 3R Vue Destination Section Split](policy-builder-phase-3r-vue-destination-section-split.md).

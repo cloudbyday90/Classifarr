@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Setup Cards Cutover** — renamed the setup-card design
+  record and completion-audit entry to durable product-domain names, replaced
+  the phase-coded setup-card architecture path with
+  `policy-authoring-setup-cards.md`, updated completion-audit records to track
+  `policy_authoring_setup_cards`, and preserved the existing destination-first
+  setup-card component, modal integration, routing, and verifier-gating
+  behavior.
 - **Policy Authoring Presentation Tests Cutover** — renamed the presentation
   test classification contract and focused test to durable product-domain
   names, replaced phase-coded category, behavior, risk, owner, and helper
