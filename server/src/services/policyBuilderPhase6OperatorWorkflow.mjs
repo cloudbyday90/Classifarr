@@ -79,6 +79,8 @@ const PHASE6R_WORKFLOW_AUDIT_RISK_IDS = Object.freeze({
   MISSING_BOUNDED_READINESS: 'missing_bounded_readiness',
   MISSING_BOUNDED_PROVENANCE: 'missing_bounded_provenance',
   BOUNDED_PROVENANCE_MISMATCH: 'bounded_provenance_mismatch',
+  BOUNDED_INTENT_AUDIT_NOT_PASSING: 'bounded_intent_audit_not_passing',
+  BOUNDED_READINESS_AUDIT_NOT_PASSING: 'bounded_readiness_audit_not_passing',
 });
 
 const REQUIRED_SECTION_IDS = Object.freeze(Object.values(PHASE6R_WORKFLOW_SECTION_IDS));
@@ -332,6 +334,15 @@ function getProjectionFingerprintFromReadinessResult(boundedReadinessResult = {}
     null;
 }
 
+function boundedIntentAuditsPass(boundedIntentResult = {}) {
+  return boundedIntentResult?.intentAudit?.ok === true &&
+    boundedIntentResult?.evidenceFingerprintAudit?.ok === true;
+}
+
+function boundedReadinessAuditPasses(boundedReadinessResult = {}) {
+  return boundedReadinessResult?.readinessAudit?.ok === true;
+}
+
 function buildBoundedWorkflowContext({
   boundedIntentResult,
   boundedReadinessResult,
@@ -347,12 +358,14 @@ function buildBoundedWorkflowContext({
     intentBoundary: {
       statusId: boundedIntentResult.statusId || null,
       intentVersion: boundedIntentResult.intent?.version || null,
+      intentAuditOk: boundedIntentAuditsPass(boundedIntentResult),
       projectionFingerprint:
         boundedIntentResult.evidenceBoundary?.projectionFingerprint || null,
     },
     readinessBoundary: {
       statusId: boundedReadinessResult.statusId || null,
       readinessStateId: boundedReadinessResult.readiness?.stateId || null,
+      readinessAuditOk: boundedReadinessAuditPasses(boundedReadinessResult),
       projectionFingerprint:
         boundedReadinessResult.boundaryContext?.intentBoundary?.projectionFingerprint ||
         boundedReadinessResult.boundaryContext?.evidenceBoundary?.projectionFingerprint ||
@@ -383,6 +396,28 @@ function buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
     boundaryIssues.push({
       riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_BOUNDED_READINESS,
       message: 'Operator workflow requires a successful bounded readiness result.',
+    });
+  }
+
+  if (
+    boundedIntentResult?.ok === true &&
+    boundedIntentResult?.intent &&
+    !boundedIntentAuditsPass(boundedIntentResult)
+  ) {
+    boundaryIssues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_INTENT_AUDIT_NOT_PASSING,
+      message: 'Operator workflow requires passing bounded intent and evidence-fingerprint audits.',
+    });
+  }
+
+  if (
+    boundedReadinessResult?.ok === true &&
+    boundedReadinessResult?.readiness &&
+    !boundedReadinessAuditPasses(boundedReadinessResult)
+  ) {
+    boundaryIssues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_READINESS_AUDIT_NOT_PASSING,
+      message: 'Operator workflow requires a passing bounded readiness audit.',
     });
   }
 

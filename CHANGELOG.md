@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Workflow Audit Gate** — hardened the bounded Phase
+  6R.5 operator workflow wrapper so workflow projections render only when
+  upstream bounded intent, evidence-fingerprint, and readiness audits are
+  passing in addition to sharing matching sanitized evidence provenance.
 - **Policy Builder Phase 6R Readiness Audit Gate** — hardened the bounded Phase
   6R.4 readiness wrapper so automation readiness is evaluated only when
   upstream evidence, intent, evidence-fingerprint, and learning audits are all

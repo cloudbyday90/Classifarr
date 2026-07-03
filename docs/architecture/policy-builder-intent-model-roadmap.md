@@ -3419,6 +3419,9 @@ Implementation status:
   callers: it requires successful bounded intent and bounded readiness results,
   verifies their shared sanitized evidence projection fingerprint, and attaches
   bounded provenance to the workflow without exposing raw evidence labels.
+- The bounded workflow entry point now also requires the upstream intent,
+  evidence-fingerprint, and readiness audits to pass before any operator
+  workflow projection is returned.
 
 ### 6R.6 Migration And Deletion Path
 

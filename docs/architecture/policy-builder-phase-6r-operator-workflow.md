@@ -13,6 +13,9 @@ The pure projection remains available for focused tests and internal
 composition, but new runtime/rebuild callers should use the bounded workflow
 entry point. That entry point requires a successful bounded intent result and a
 successful bounded readiness result before a workflow projection is returned.
+It also requires the upstream intent, evidence-fingerprint, and readiness
+audits to still be passing so stale or tampered bounded contracts cannot render
+as an operator workflow.
 
 ## Problem
 
@@ -57,6 +60,14 @@ Can this route?
   supports server-side validation and business-logic controls. The workflow
   explicitly prevents client-side direct persistence, routing execution, and
   diagnostic-panel authority.
+- [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
+  calls out validation failures and output validation failures as security
+  events. The workflow boundary records failed upstream audit handoffs as
+  structured risk IDs instead of rendering a partial workflow.
+- [OpenTelemetry Context Propagation](https://opentelemetry.io/docs/concepts/context-propagation/)
+  describes propagating causal context across boundaries. The workflow carries
+  only sanitized evidence projection fingerprints and audit booleans to
+  correlate handoffs without exposing raw evidence labels.
 
 ## Recommendations
 
@@ -196,9 +207,11 @@ The boundary context carries only sanitized contract metadata:
 ```text
 intentBoundary.statusId
 intentBoundary.intentVersion
+intentBoundary.intentAuditOk
 intentBoundary.projectionFingerprint
 readinessBoundary.statusId
 readinessBoundary.readinessStateId
+readinessBoundary.readinessAuditOk
 readinessBoundary.projectionFingerprint
 readinessBoundary.projectionFingerprintMatch
 projectionFingerprintMatch
@@ -214,7 +227,8 @@ projectionFingerprintMatch
   questions, missing primary actions, diagnostic surfaces in the normal flow,
   direct execution, direct persistence, and raw payload exposure.
 - The bounded wrapper rejects failed bounded intent/readiness contracts, missing
-  bounded provenance, and mismatched projection fingerprints before the
+  bounded provenance, mismatched projection fingerprints, and non-passing
+  upstream bounded intent/evidence-fingerprint/readiness audits before the
   workflow is returned.
 
 ## Next Step

@@ -208,6 +208,78 @@ describe('policyBuilderPhase6OperatorWorkflow', () => {
     ]));
   });
 
+  test('blocks bounded workflow when bounded intent audits are not passing', () => {
+    const {
+      boundedIntentResult,
+      boundedReadinessResult,
+    } = buildBoundedWorkflowInputs();
+    const failedIntentAuditResult = {
+      ...boundedIntentResult,
+      intentAudit: {
+        ...boundedIntentResult.intentAudit,
+        ok: false,
+      },
+    };
+
+    const result = buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+      boundedIntentResult: failedIntentAuditResult,
+      boundedReadinessResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      workflow: null,
+      workflowAudit: null,
+      boundaryContext: expect.objectContaining({
+        intentBoundary: expect.objectContaining({
+          intentAuditOk: false,
+        }),
+      }),
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_INTENT_AUDIT_NOT_PASSING,
+      }),
+    ]));
+  });
+
+  test('blocks bounded workflow when bounded readiness audit is not passing', () => {
+    const {
+      boundedIntentResult,
+      boundedReadinessResult,
+    } = buildBoundedWorkflowInputs();
+    const failedReadinessAuditResult = {
+      ...boundedReadinessResult,
+      readinessAudit: {
+        ...boundedReadinessResult.readinessAudit,
+        ok: false,
+      },
+    };
+
+    const result = buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+      boundedIntentResult,
+      boundedReadinessResult: failedReadinessAuditResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      workflow: null,
+      workflowAudit: null,
+      boundaryContext: expect.objectContaining({
+        readinessBoundary: expect.objectContaining({
+          readinessAuditOk: false,
+        }),
+      }),
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_READINESS_AUDIT_NOT_PASSING,
+      }),
+    ]));
+  });
+
   test('blocks bounded workflow when intent and readiness provenance differ', () => {
     const {
       boundedIntentResult,
