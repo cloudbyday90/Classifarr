@@ -3969,11 +3969,15 @@ Tasks:
   - rebuild accepted/rejected/rolled back.
 - Record decision traces that identify evidence categories and reason codes, not
   raw provider payloads or AI prompts.
+- Preserve supported upstream source fingerprints for correlation without
+  copying raw evidence into metrics traces.
 - Surface user-facing summaries only where they support next action.
 
 Acceptance criteria:
 
 - Runtime behavior can be audited and debugged.
+- Metrics traces can correlate back to supported upstream decision fingerprints
+  without exposing payloads.
 - Metrics do not leak secrets, raw provider payloads, prompts, or embeddings.
 - Operator UI remains action-oriented.
 
@@ -3993,6 +3997,10 @@ Implementation status:
 - Trace records use stable `classifarr.phase7r.trace.*` attributes, bounded
   component ids, bounded reason codes, and a configurable `maxTraceRecords`
   limit.
+- Trace records now carry supported upstream SHA-256 source fingerprints from
+  automation decisions, question reductions, request-time learning decisions,
+  and migration verifier reports, with validation rejecting malformed or
+  mismatched trace fingerprint attributes.
 - Raw provider payloads, raw replay/impact payloads, prompts, embeddings,
   provider payloads, and diagnostic internals are suppressed from trace output.
 - Operator summaries are limited to action-oriented next steps such as configure

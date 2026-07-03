@@ -68,12 +68,24 @@ const PHASE7R_METRIC_AUDIT_RISK_IDS = Object.freeze({
   DIAGNOSTIC_INTERNAL_EXPOSED: 'diagnostic_internal_exposed',
   MISSING_TRACE_REASON: 'missing_trace_reason',
   OPERATOR_SUMMARY_NOT_ACTIONABLE: 'operator_summary_not_actionable',
+  MALFORMED_SOURCE_FINGERPRINT: 'malformed_source_fingerprint',
+  TRACE_SOURCE_FINGERPRINT_MISMATCH: 'trace_source_fingerprint_mismatch',
 });
 
 const MAX_TRACE_RECORDS_DEFAULT = 50;
 const MAX_TRACE_REASONS = 12;
+const SOURCE_FINGERPRINT_TRACE_ATTRIBUTE = 'classifarr.phase7r.trace.source_fingerprint';
+const SOURCE_FINGERPRINT_ATTRIBUTE_TRACE_ATTRIBUTE =
+  'classifarr.phase7r.trace.source_fingerprint_attribute';
+const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
 const COUNTER_IDS = Object.freeze(Object.values(PHASE7R_METRIC_COUNTER_IDS));
 const COMPONENT_IDS = Object.freeze(Object.values(PHASE7R_METRIC_COMPONENT_IDS));
+const SOURCE_FINGERPRINT_ATTRIBUTE_IDS = Object.freeze([
+  'classifarr.runtime.decision.evidence_projection_fingerprint',
+  'classifarr.runtime.question.decision_evidence_projection_fingerprint',
+  'classifarr.runtime.request_learning.upstream_evidence_fingerprint',
+  'classifarr.policy.migration_verifier.sample_set_fingerprint',
+]);
 const DIAGNOSTIC_KEYS = Object.freeze([
   'impactPreview',
   'replayPreview',
@@ -143,6 +155,21 @@ function getTraceReasons(source = {}, fallbackReasonId) {
   }));
 }
 
+function getSourceFingerprint(source = {}) {
+  const attributes = asObject(source.trace?.attributes);
+  const attributeId = SOURCE_FINGERPRINT_ATTRIBUTE_IDS
+    .find(candidate => SHA256_FINGERPRINT_PATTERN.test(
+      normalizeString(attributes[candidate]).toLowerCase()
+    ));
+
+  if (!attributeId) return null;
+
+  return {
+    attributeId,
+    fingerprint: normalizeString(attributes[attributeId]).toLowerCase(),
+  };
+}
+
 function buildTraceRecord({
   componentId,
   source = {},
@@ -152,18 +179,25 @@ function buildTraceRecord({
 }) {
   const reasonRecords = getTraceReasons(source, fallbackReasonId);
   const sensitiveRiskId = sensitiveReasonForEvent(source);
+  const sourceFingerprint = getSourceFingerprint(source);
+  const attributes = {
+    'classifarr.phase7r.trace.version': 'phase7r.runtime_metrics_trace.v1',
+    'classifarr.phase7r.trace.component': componentId,
+    'classifarr.phase7r.trace.outcome': normalizeString(outcomeId),
+    'classifarr.phase7r.trace.reason_count': reasonRecords.length,
+    'classifarr.phase7r.trace.sensitive_suppressed': Boolean(sensitiveRiskId),
+  };
+
+  if (sourceFingerprint) {
+    attributes[SOURCE_FINGERPRINT_TRACE_ATTRIBUTE] = sourceFingerprint.fingerprint;
+    attributes[SOURCE_FINGERPRINT_ATTRIBUTE_TRACE_ATTRIBUTE] = sourceFingerprint.attributeId;
+  }
 
   return {
     componentId,
     outcomeId: normalizeString(outcomeId),
     counterIds: counterIds.filter(counterId => COUNTER_IDS.includes(counterId)),
-    attributes: {
-      'classifarr.phase7r.trace.version': 'phase7r.runtime_metrics_trace.v1',
-      'classifarr.phase7r.trace.component': componentId,
-      'classifarr.phase7r.trace.outcome': normalizeString(outcomeId),
-      'classifarr.phase7r.trace.reason_count': reasonRecords.length,
-      'classifarr.phase7r.trace.sensitive_suppressed': Boolean(sensitiveRiskId),
-    },
+    attributes,
     reasons: sensitiveRiskId
       ? [
         ...reasonRecords,
@@ -173,6 +207,7 @@ function buildTraceRecord({
         },
       ].slice(0, MAX_TRACE_REASONS)
       : reasonRecords,
+    sourceFingerprint,
     sensitiveRiskId,
     exposesRawPayload: false,
     exposesPrompt: false,
@@ -489,6 +524,38 @@ function validatePolicyBuilderPhase7RuntimeMetricsTrace(metrics = {}) {
         riskId: PHASE7R_METRIC_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
         message: 'Each Phase 7R trace must include bounded reason codes.',
       });
+    }
+
+    const sourceFingerprint = asObject(trace.sourceFingerprint);
+    const sourceFingerprintValue = normalizeString(sourceFingerprint.fingerprint).toLowerCase();
+    const sourceFingerprintAttribute = normalizeString(sourceFingerprint.attributeId);
+    const traceFingerprintValue = normalizeString(
+      trace.attributes?.[SOURCE_FINGERPRINT_TRACE_ATTRIBUTE]
+    ).toLowerCase();
+    const traceFingerprintAttribute = normalizeString(
+      trace.attributes?.[SOURCE_FINGERPRINT_ATTRIBUTE_TRACE_ATTRIBUTE]
+    );
+
+    if (sourceFingerprintValue || traceFingerprintValue) {
+      if (
+        !SHA256_FINGERPRINT_PATTERN.test(sourceFingerprintValue) ||
+        !SOURCE_FINGERPRINT_ATTRIBUTE_IDS.includes(sourceFingerprintAttribute)
+      ) {
+        issues.push({
+          riskId: PHASE7R_METRIC_AUDIT_RISK_IDS.MALFORMED_SOURCE_FINGERPRINT,
+          message: 'Metric trace source fingerprint must be a supported SHA-256 digest and known source attribute.',
+        });
+      }
+
+      if (
+        traceFingerprintValue !== sourceFingerprintValue ||
+        traceFingerprintAttribute !== sourceFingerprintAttribute
+      ) {
+        issues.push({
+          riskId: PHASE7R_METRIC_AUDIT_RISK_IDS.TRACE_SOURCE_FINGERPRINT_MISMATCH,
+          message: 'Metric trace source fingerprint attributes must match the trace source fingerprint.',
+        });
+      }
     }
 
     if (trace.exposesRawPayload === true || hasOwnKeyDeep(trace, ['raw', 'rawPayload', 'payload'])) {

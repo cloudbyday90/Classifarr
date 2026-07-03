@@ -7,9 +7,10 @@ Implemented as the eighth Phase 7R runtime/rebuild contract.
 This slice projects Phase 7R automation decisions, runtime question plans,
 request-time learning decisions, rebuild proposals, migration verifier reports,
 and rebuild lifecycle events into bounded counters, sanitized trace records, and
-action-oriented operator summaries. It does not persist telemetry, export to an
-observability backend, expose raw provider payloads, or surface diagnostic
-internals as normal policy UI.
+action-oriented operator summaries. Trace records retain supported upstream
+source fingerprints for correlation without copying raw evidence. It does not
+persist telemetry, export to an observability backend, expose raw provider
+payloads, or surface diagnostic internals as normal policy UI.
 
 ## Problem
 
@@ -22,6 +23,7 @@ too many internal panels
 raw replay/provider payloads in logs
 prompt or embedding leakage
 unclear counts for automation vs review
+broken correlation between metrics and source decisions
 operators seeing diagnostics instead of next action
 ```
 
@@ -37,6 +39,13 @@ small and action-oriented.
 - [OpenTelemetry Signals](https://opentelemetry.io/docs/concepts/signals/)
   separates traces, metrics, and logs. This slice keeps counters and trace
   records as a local projection and does not conflate them with raw logs.
+- [OpenTelemetry Context Propagation](https://opentelemetry.io/docs/concepts/context-propagation/)
+  explains that propagated context lets traces, logs, and metrics be correlated.
+  Phase 7R.8 preserves only approved source fingerprints for correlation.
+- [W3C Trace Context](https://www.w3.org/TR/trace-context/)
+  defines portable trace context propagation. Phase 7R.8 does not export
+  W3C spans yet, but follows the same principle: carry stable correlation
+  identifiers without embedding payload data.
 - [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
   warns against logging sensitive data and recommends event attributes useful
   for monitoring and response. Phase 7R.8 suppresses provider payloads, prompts,
@@ -61,6 +70,8 @@ How many need review, routing, or profile refresh?
 How many learning decisions were allowed, blocked, or downgraded?
 How many rebuilds were accepted, rejected, or rolled back?
 Which bounded reason codes explain each outcome?
+Which safe upstream source fingerprint, if any, links this trace back to the
+source decision?
 What operator action, if any, follows from the counts?
 Was any sensitive/raw diagnostic data exposed?
 ```
@@ -71,6 +82,8 @@ Pros:
 
 - Gives runtime/rebuild behavior auditable counters.
 - Keeps trace records bounded and reason-coded.
+- Preserves safe source-fingerprint correlation for automation, question,
+  request-learning, and migration-verifier outputs.
 - Prevents raw payload, prompt, embedding, provider, or diagnostic leakage.
 - Produces operator summaries only when they support a next action.
 - Creates a stable handoff to Phase 7R.9 test reset.
@@ -81,6 +94,8 @@ Cons:
 - Later integration must decide retention and transport.
 - Counts are only as complete as the Phase 7R contract events passed into the
   projection.
+- Source correlation is intentionally limited to known SHA-256 fingerprint
+  attributes; unsupported ad hoc trace fields are ignored.
 
 ## Final Recommendation Stack
 
@@ -102,10 +117,17 @@ Cons:
    - `rebuild_event`.
 3. Limit emitted trace records with `maxTraceRecords`.
 4. Limit trace reason codes to bounded arrays.
-5. Suppress raw payloads, prompts, embeddings, provider payloads, and diagnostic
+5. Carry only supported upstream source fingerprints into trace attributes:
+   - automation evidence projection fingerprint,
+   - question decision-evidence fingerprint,
+   - request-learning upstream evidence fingerprint,
+   - migration-verifier sample-set fingerprint.
+6. Validate that source fingerprints are SHA-256 digests and match trace
+   attributes.
+7. Suppress raw payloads, prompts, embeddings, provider payloads, and diagnostic
    internals.
-6. Surface only action-oriented operator summaries.
-7. Leave persistence, retention, and OpenTelemetry export to a later integration
+8. Surface only action-oriented operator summaries.
+9. Leave persistence, retention, and OpenTelemetry export to a later integration
    slice.
 
 ## Implemented Files
@@ -148,6 +170,10 @@ The service exports:
 - The projection does not export telemetry.
 - Trace records suppress raw payloads, prompts, embeddings, provider payloads,
   replay payloads, impact preview payloads, and diagnostic internals.
+- Trace records can carry supported upstream SHA-256 source fingerprints for
+  correlation, with the originating source attribute name mirrored in bounded
+  trace attributes.
+- Validation rejects malformed or mismatched source fingerprints.
 - Operator summaries require action ids and labels.
 - Security flags must remain false for exposed sensitive data categories.
 
@@ -158,6 +184,9 @@ The focused test suite verifies:
 - all required Phase 7R counters are counted from contract outcomes,
 - trace records are bounded by `maxTraceRecords`,
 - trace reason arrays are bounded,
+- supported upstream source fingerprints are carried into bounded trace
+  attributes,
+- malformed or mismatched source fingerprints fail validation,
 - raw payloads, prompts, embeddings, provider payloads, and diagnostic internals
   are suppressed,
 - operator summaries are action-oriented,
@@ -173,7 +202,7 @@ Phase 7R.8 gives runtime/rebuild observability this shape:
 ```text
 Phase 7R contract outputs
   -> bounded counters
-  -> sanitized trace records
+  -> sanitized trace records with supported source-fingerprint correlation
   -> action-oriented operator summaries
   -> no persistence/export side effects
 ```

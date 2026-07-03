@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Metrics Trace Source Fingerprints** — hardened
+  runtime metrics traces so supported upstream decision fingerprints are carried
+  into bounded trace attributes for correlation, while validation rejects
+  malformed or mismatched source fingerprints and continues suppressing raw
+  payloads, prompts, embeddings, provider payloads, and diagnostics.
 - **Policy Builder Phase 7R Migration Verifier Fingerprint** — hardened
   migration verifier reports with stable sanitized sample-set fingerprints,
   bounded provenance, and matching trace attributes so missing, malformed, or

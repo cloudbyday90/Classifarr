@@ -179,6 +179,61 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
     expect(validatePolicyBuilderPhase7RuntimeMetricsTrace(metrics).ok).toBe(true);
   });
 
+  test('carries supported upstream source fingerprints into bounded trace attributes', () => {
+    const metrics = buildPolicyBuilderPhase7RuntimeMetricsTrace({
+      automationDecisions: [
+        {
+          stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+          trace: {
+            attributes: {
+              'classifarr.runtime.decision.evidence_projection_fingerprint': 'a'.repeat(64),
+            },
+          },
+        },
+      ],
+      questionReductions: [
+        {
+          dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
+          trace: {
+            attributes: {
+              'classifarr.runtime.question.decision_evidence_projection_fingerprint': 'b'.repeat(64),
+            },
+          },
+        },
+      ],
+      requestLearningDecisions: [
+        {
+          dispositionId: PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE,
+          trace: {
+            attributes: {
+              'classifarr.runtime.request_learning.upstream_evidence_fingerprint': 'c'.repeat(64),
+            },
+          },
+        },
+      ],
+      migrationVerifierReports: [
+        {
+          statusId: PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES,
+          trace: {
+            attributes: {
+              'classifarr.policy.migration_verifier.sample_set_fingerprint': 'd'.repeat(64),
+            },
+          },
+        },
+      ],
+    });
+
+    expect(metrics.traces.map(trace => trace.sourceFingerprint?.fingerprint))
+      .toEqual(['a'.repeat(64), 'b'.repeat(64), 'c'.repeat(64), 'd'.repeat(64)]);
+    expect(metrics.traces[0].attributes).toEqual(expect.objectContaining({
+      'classifarr.phase7r.trace.source_fingerprint': 'a'.repeat(64),
+      'classifarr.phase7r.trace.source_fingerprint_attribute':
+        'classifarr.runtime.decision.evidence_projection_fingerprint',
+    }));
+    expect(JSON.stringify(metrics.traces)).not.toContain('Mulan');
+    expect(validatePolicyBuilderPhase7RuntimeMetricsTrace(metrics).ok).toBe(true);
+  });
+
   test('defaults to an action-oriented no-action summary when no counters require operator work', () => {
     const metrics = buildPolicyBuilderPhase7RuntimeMetricsTrace();
 
@@ -264,6 +319,48 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
         }),
         expect.objectContaining({
           riskId: PHASE7R_METRIC_AUDIT_RISK_IDS.TRACE_OVERFLOW,
+        }),
+      ]));
+  });
+
+  test('rejects malformed or mismatched source fingerprints in traces', () => {
+    const malformed = buildPolicyBuilderPhase7RuntimeMetricsTrace({
+      automationDecisions: [
+        { stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY },
+      ],
+    });
+    malformed.traces[0].sourceFingerprint = {
+      attributeId: 'classifarr.runtime.decision.evidence_projection_fingerprint',
+      fingerprint: 'not-a-sha256',
+    };
+    malformed.traces[0].attributes['classifarr.phase7r.trace.source_fingerprint'] = 'not-a-sha256';
+    malformed.traces[0].attributes['classifarr.phase7r.trace.source_fingerprint_attribute'] =
+      'classifarr.runtime.decision.evidence_projection_fingerprint';
+
+    const mismatched = buildPolicyBuilderPhase7RuntimeMetricsTrace({
+      automationDecisions: [
+        {
+          stateId: PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
+          trace: {
+            attributes: {
+              'classifarr.runtime.decision.evidence_projection_fingerprint': 'a'.repeat(64),
+            },
+          },
+        },
+      ],
+    });
+    mismatched.traces[0].attributes['classifarr.phase7r.trace.source_fingerprint'] = 'b'.repeat(64);
+
+    expect(validatePolicyBuilderPhase7RuntimeMetricsTrace(malformed).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_METRIC_AUDIT_RISK_IDS.MALFORMED_SOURCE_FINGERPRINT,
+        }),
+      ]));
+    expect(validatePolicyBuilderPhase7RuntimeMetricsTrace(mismatched).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_METRIC_AUDIT_RISK_IDS.TRACE_SOURCE_FINGERPRINT_MISMATCH,
         }),
       ]));
   });
