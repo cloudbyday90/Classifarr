@@ -43,7 +43,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_authoring_readiness',
       'policy_authoring_starter_templates',
       'policy_authoring_accessibility',
-      'presentation_test_reset',
+      'policy_authoring_presentation_tests',
     ]);
 
     expect(listPolicyAuthoringVueRewriteSlices().map(record => record.id)).toEqual([
@@ -55,7 +55,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'vue_save_defer_action_boundary',
       'vue_starter_template_accelerator',
       'vue_policy_authoring_accessibility_audit',
-      'vue_presentation_test_reset',
+      'vue_policy_authoring_presentation_tests',
     ]);
   });
 

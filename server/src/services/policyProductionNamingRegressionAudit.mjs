@@ -7,9 +7,9 @@ const POLICY_PRODUCTION_NAMING_REGRESSION_AUDIT_VERSION =
   'policy.production_naming_regression_audit.v1';
 
 const POLICY_PRODUCTION_NAMING_REGRESSION_BASELINE = Object.freeze({
-  label: 'policy-authoring-accessibility-cutover-2026-07-03',
-  maxProductionReferenceCount: 3865,
-  maxRenameCandidateCount: 3887,
+  label: 'policy-authoring-presentation-tests-cutover-2026-07-03',
+  maxProductionReferenceCount: 3750,
+  maxRenameCandidateCount: 3772,
   maxObsoleteToolingCount: 93,
 });
 

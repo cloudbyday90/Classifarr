@@ -2499,13 +2499,12 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 3R.9 presentation test reset is documented in
-  [Policy Builder Phase 3R Presentation Test Reset](policy-builder-phase-3r-presentation-test-reset.md).
-- The server-side Phase 3R presentation test reset contract lives in
-  `server/src/services/policyBuilderPhase3PresentationTestReset.mjs`.
-- Current policy-builder presentation tests are categorized as keep, rewrite,
-  delete, or Phase 2R-owned draft bridge coverage before client test rewrites
-  continue.
+- Policy authoring presentation tests is documented in
+  [Policy Authoring Presentation Tests](policy-authoring-presentation-tests.md).
+- The server-side policy authoring presentation test contract lives in
+  `server/src/services/policyAuthoringPresentationTests.mjs`.
+- Current policy-builder presentation tests are categorized as keep, protect,
+  remove, or draft-bridge-owned coverage before client test updates continue.
 - Required presentation behaviors now cover starter-template ordering,
   observed evidence versus declared intent, typed multi-select commands,
   accessible names and disabled reasons, explicit hard-limit action, readiness
@@ -2570,8 +2569,10 @@ Implementation record:
   [Policy Authoring Starter Templates](policy-authoring-starter-templates.md).
 - policy authoring accessibility is documented in
   [Policy Authoring Accessibility](policy-authoring-accessibility.md).
-- Phase 3R.9 presentation test reset is documented in
-  [Policy Builder Phase 3R Presentation Test Reset](policy-builder-phase-3r-presentation-test-reset.md).
+- Policy authoring presentation tests are documented in
+  [Policy Authoring Presentation Tests](policy-authoring-presentation-tests.md).
+- The presentation-test module cutover is documented in
+  [Policy Authoring Presentation Tests Module Cutover](policy-authoring-presentation-tests-module-cutover.md).
 - Phase 3R contract checkpoints are now defined through 3R.9. Future Phase 3R
   work should apply these contracts to the Vue components and client tests.
 - The first Vue-facing rewrite slice is documented in
@@ -6420,6 +6421,17 @@ Implementation status:
 - After the policy-authoring accessibility cutover, the repository inventory
   validates with 9,840 total phase-coded references, 3,865 production
   references, and 3,887 rename candidates.
+- The next authoring workflow cutover renamed the presentation-test contract to
+  `policyAuthoringPresentationTests.mjs`, renamed its focused test, replaced
+  phase-coded presentation category, behavior, risk, owner, and helper exports
+  with `POLICY_AUTHORING_PRESENTATION_TEST_*` and
+  `policyAuthoringPresentation*`, replaced roadmap owners with durable coverage
+  owners, and moved its standing design record to
+  [Policy Authoring Presentation Tests](policy-authoring-presentation-tests.md):
+  [Policy Authoring Presentation Tests Module Cutover](policy-authoring-presentation-tests-module-cutover.md).
+- After the policy-authoring presentation-tests cutover, the repository
+  inventory validates with 9,649 total phase-coded references, 3,750
+  production references, and 3,772 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
@@ -6492,7 +6504,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 3, 2026
   baseline for production references, rename candidates, and obsolete migration
   tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `3865` production references, `3887` rename
+- The current baseline is `3750` production references, `3772` rename
   candidates, and `93` obsolete migration tooling references. Future durable
   rename batches should lower this baseline after inventory validation proves
   the debt decreased.

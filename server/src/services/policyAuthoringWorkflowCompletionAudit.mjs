@@ -90,11 +90,11 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Defines labels, helper text, keyboard, disabled reason, and one-primary-action requirements.',
   },
   {
-    id: 'presentation_test_reset',
-    label: 'Presentation test reset',
-    docPath: 'docs/architecture/policy-builder-phase-3r-presentation-test-reset.md',
-    servicePath: 'server/src/services/policyBuilderPhase3PresentationTestReset.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase3PresentationTestReset.test.mjs',
+    id: 'policy_authoring_presentation_tests',
+    label: 'Policy authoring presentation tests',
+    docPath: 'docs/architecture/policy-authoring-presentation-tests.md',
+    servicePath: 'server/src/services/policyAuthoringPresentationTests.mjs',
+    testPath: 'server/src/__tests__/services/policyAuthoringPresentationTests.test.mjs',
     evidence: 'Classifies presentation tests so they protect simplified workflow behavior instead of old diagnostics.',
   },
 ]);
@@ -157,8 +157,8 @@ const POLICY_AUTHORING_VUE_REWRITE_SLICES = Object.freeze([
     evidence: 'Marks one recommended next action and routes setup links to existing targets.',
   },
   {
-    id: 'vue_presentation_test_reset',
-    label: 'Vue presentation test reset',
+    id: 'vue_policy_authoring_presentation_tests',
+    label: 'Vue policy authoring presentation tests',
     docPath: 'docs/architecture/policy-builder-phase-3r-vue-presentation-test-reset.md',
     testPath: 'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
     evidence: 'Resets impact and replay preview tests around read-only verifier behavior, no execution, and opt-in gates.',
@@ -197,7 +197,7 @@ const POLICY_AUTHORING_NORMAL_WORKFLOW_RULES = Object.freeze([
   {
     id: 'verifier_panels_not_default',
     label: 'Verifier panels are not default policy-authoring path',
-    docPath: 'docs/architecture/policy-builder-phase-3r-presentation-test-reset.md',
+    docPath: 'docs/architecture/policy-authoring-presentation-tests.md',
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
     evidence: 'Impact and replay verifier panels are absent unless the explicit verifier prop is enabled.',
   },
