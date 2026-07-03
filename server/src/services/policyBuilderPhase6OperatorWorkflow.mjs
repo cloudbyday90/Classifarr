@@ -2,6 +2,9 @@ import {
   AUTHORITY_SOURCE_IDS,
 } from './policyAuthorityVocabulary.mjs';
 import {
+  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
+} from './policyBuilderPhase6EvidenceQuality.mjs';
+import {
   PHASE6R_INTENT_FIELD_IDS,
   buildPolicyBuilderPhase6IntentDraft,
 } from './policyBuilderPhase6IntentEngine.mjs';
@@ -81,6 +84,9 @@ const PHASE6R_WORKFLOW_AUDIT_RISK_IDS = Object.freeze({
   BOUNDED_PROVENANCE_MISMATCH: 'bounded_provenance_mismatch',
   BOUNDED_INTENT_AUDIT_NOT_PASSING: 'bounded_intent_audit_not_passing',
   BOUNDED_READINESS_AUDIT_NOT_PASSING: 'bounded_readiness_audit_not_passing',
+  MISSING_BOUNDED_QUALITY: 'missing_bounded_quality',
+  BOUNDED_QUALITY_INSUFFICIENT: 'bounded_quality_insufficient',
+  BOUNDED_QUALITY_MISMATCH: 'bounded_quality_mismatch',
 });
 
 const REQUIRED_SECTION_IDS = Object.freeze(Object.values(PHASE6R_WORKFLOW_SECTION_IDS));
@@ -172,6 +178,10 @@ function asArray(value) {
 
 function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
 
 function normalizeEntry(entry = {}) {
@@ -343,12 +353,168 @@ function boundedReadinessAuditPasses(boundedReadinessResult = {}) {
   return boundedReadinessResult?.readinessAudit?.ok === true;
 }
 
+function normalizeQualitySnapshot(quality = null) {
+  const normalized = asObject(quality);
+  const reasonIds = asArray(normalized.reasonIds)
+    .map(reasonId => normalizeString(reasonId))
+    .filter(Boolean)
+    .sort();
+
+  return {
+    version: normalized.version || null,
+    statusId: normalized.statusId || null,
+    score: Number.isFinite(Number(normalized.score)) ? Number(normalized.score) : null,
+    nextActionId: normalized.nextActionId || null,
+    reasonIds,
+    counts: asObject(normalized.counts),
+    hasIdentityEvidence: normalized.hasIdentityEvidence === true,
+    hasDeclaredIdentityEvidence: normalized.hasDeclaredIdentityEvidence === true,
+    hasObservedIdentityEvidence: normalized.hasObservedIdentityEvidence === true,
+    hasStaleProfileEvidence: normalized.hasStaleProfileEvidence === true,
+  };
+}
+
+function hasQualitySnapshot(quality = null) {
+  return Boolean(normalizeQualitySnapshot(quality).statusId);
+}
+
+function qualitySnapshotsMatch(left = null, right = null) {
+  const leftSnapshot = normalizeQualitySnapshot(left);
+  const rightSnapshot = normalizeQualitySnapshot(right);
+
+  return Boolean(leftSnapshot.statusId) &&
+    leftSnapshot.version === rightSnapshot.version &&
+    leftSnapshot.statusId === rightSnapshot.statusId &&
+    leftSnapshot.nextActionId === rightSnapshot.nextActionId &&
+    leftSnapshot.reasonIds.join('|') === rightSnapshot.reasonIds.join('|');
+}
+
+function getReadinessBoundaryContext(boundedReadinessResult = {}) {
+  return asObject(boundedReadinessResult.boundaryContext);
+}
+
+function getReadinessInputBoundaryContext(boundedReadinessResult = {}) {
+  return asObject(boundedReadinessResult.readiness?.inputs?.boundaryContext);
+}
+
+function getWorkflowQualitySnapshots({
+  boundedIntentResult,
+  boundedReadinessResult,
+} = {}) {
+  const readinessBoundaryContext = getReadinessBoundaryContext(boundedReadinessResult);
+  const readinessInputBoundaryContext = getReadinessInputBoundaryContext(boundedReadinessResult);
+
+  return {
+    intentWrapperQuality: boundedIntentResult?.evidenceBoundary?.quality || null,
+    readinessEvidenceQuality: readinessBoundaryContext.evidenceBoundary?.quality || null,
+    readinessIntentQuality: readinessBoundaryContext.intentBoundary?.quality || null,
+    readinessLearningQuality: readinessBoundaryContext.learningBoundary?.quality || null,
+    embeddedReadinessEvidenceQuality:
+      readinessInputBoundaryContext.evidenceBoundary?.quality || null,
+    embeddedReadinessIntentQuality:
+      readinessInputBoundaryContext.intentBoundary?.quality || null,
+    embeddedReadinessLearningQuality:
+      readinessInputBoundaryContext.learningBoundary?.quality || null,
+  };
+}
+
+function collectBoundedWorkflowQualityIssues({
+  boundedIntentResult,
+  boundedReadinessResult,
+} = {}) {
+  const issues = [];
+  const snapshots = getWorkflowQualitySnapshots({
+    boundedIntentResult,
+    boundedReadinessResult,
+  });
+  const qualityValues = Object.values(snapshots);
+
+  if (qualityValues.some(quality => !hasQualitySnapshot(quality))) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+      message: 'Operator workflow requires bounded readiness quality snapshots from intent, readiness, and embedded readiness context.',
+    });
+    return issues;
+  }
+
+  const normalizedSnapshots = qualityValues.map(quality => normalizeQualitySnapshot(quality));
+  const insufficientQuality = normalizedSnapshots.find(quality =>
+    quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+  );
+
+  if (insufficientQuality) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_QUALITY_INSUFFICIENT,
+      message: 'Operator workflow requires usable bounded evidence quality before rendering.',
+      qualityStatusId: insufficientQuality.statusId,
+      nextActionId: insufficientQuality.nextActionId,
+      reasonIds: insufficientQuality.reasonIds,
+    });
+  }
+
+  const referenceQuality = snapshots.intentWrapperQuality;
+  const qualityMismatch = qualityValues.some(quality =>
+    !qualitySnapshotsMatch(referenceQuality, quality)
+  );
+
+  if (qualityMismatch) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_QUALITY_MISMATCH,
+      message: 'Operator workflow requires bounded intent, readiness, and embedded readiness quality to match.',
+    });
+  }
+
+  return issues;
+}
+
+function collectWorkflowBoundaryContextQualityIssues(boundaryContext = {}) {
+  const context = asObject(boundaryContext);
+  if (!Object.keys(context).length) return [];
+
+  const qualities = [
+    context.intentBoundary?.quality,
+    context.readinessBoundary?.evidenceQuality,
+    context.readinessBoundary?.intentQuality,
+    context.readinessBoundary?.learningQuality,
+  ];
+
+  if (qualities.some(quality => !hasQualitySnapshot(quality))) {
+    return [{
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+      message: 'Bounded workflow context must retain sanitized quality snapshots.',
+    }];
+  }
+
+  const insufficientQuality = qualities
+    .map(quality => normalizeQualitySnapshot(quality))
+    .find(quality => quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT);
+
+  if (insufficientQuality) {
+    return [{
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_QUALITY_INSUFFICIENT,
+      message: 'Bounded workflow context cannot carry insufficient quality into the normal workflow.',
+      qualityStatusId: insufficientQuality.statusId,
+      nextActionId: insufficientQuality.nextActionId,
+      reasonIds: insufficientQuality.reasonIds,
+    }];
+  }
+
+  const qualityMismatch = qualities.some(quality => !qualitySnapshotsMatch(qualities[0], quality));
+  return qualityMismatch
+    ? [{
+        riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_QUALITY_MISMATCH,
+        message: 'Bounded workflow context quality snapshots must match.',
+      }]
+    : [];
+}
+
 function buildBoundedWorkflowContext({
   boundedIntentResult,
   boundedReadinessResult,
 } = {}) {
   const intentFingerprint = getProjectionFingerprintFromIntentResult(boundedIntentResult);
   const readinessFingerprint = getProjectionFingerprintFromReadinessResult(boundedReadinessResult);
+  const readinessBoundaryContext = getReadinessBoundaryContext(boundedReadinessResult);
 
   if (!intentFingerprint || !readinessFingerprint) {
     return null;
@@ -359,6 +525,7 @@ function buildBoundedWorkflowContext({
       statusId: boundedIntentResult.statusId || null,
       intentVersion: boundedIntentResult.intent?.version || null,
       intentAuditOk: boundedIntentAuditsPass(boundedIntentResult),
+      quality: normalizeQualitySnapshot(boundedIntentResult.evidenceBoundary?.quality),
       projectionFingerprint:
         boundedIntentResult.evidenceBoundary?.projectionFingerprint || null,
     },
@@ -366,16 +533,26 @@ function buildBoundedWorkflowContext({
       statusId: boundedReadinessResult.statusId || null,
       readinessStateId: boundedReadinessResult.readiness?.stateId || null,
       readinessAuditOk: boundedReadinessAuditPasses(boundedReadinessResult),
+      evidenceQuality:
+        normalizeQualitySnapshot(readinessBoundaryContext.evidenceBoundary?.quality),
+      intentQuality:
+        normalizeQualitySnapshot(readinessBoundaryContext.intentBoundary?.quality),
+      learningQuality:
+        normalizeQualitySnapshot(readinessBoundaryContext.learningBoundary?.quality),
       projectionFingerprint:
-        boundedReadinessResult.boundaryContext?.intentBoundary?.projectionFingerprint ||
-        boundedReadinessResult.boundaryContext?.evidenceBoundary?.projectionFingerprint ||
+        readinessBoundaryContext.intentBoundary?.projectionFingerprint ||
+        readinessBoundaryContext.evidenceBoundary?.projectionFingerprint ||
         null,
       projectionFingerprintMatch:
-        boundedReadinessResult.boundaryContext?.projectionFingerprintMatch === true,
+        readinessBoundaryContext.projectionFingerprintMatch === true,
     },
     projectionFingerprintMatch:
       intentFingerprint === readinessFingerprint &&
-      boundedReadinessResult.boundaryContext?.projectionFingerprintMatch === true,
+      readinessBoundaryContext.projectionFingerprintMatch === true,
+    qualityMatch: collectBoundedWorkflowQualityIssues({
+      boundedIntentResult,
+      boundedReadinessResult,
+    }).length === 0,
   };
 }
 
@@ -419,6 +596,18 @@ function buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
       riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_READINESS_AUDIT_NOT_PASSING,
       message: 'Operator workflow requires a passing bounded readiness audit.',
     });
+  }
+
+  if (
+    boundedIntentResult?.ok === true &&
+    boundedReadinessResult?.ok === true &&
+    boundedIntentResult?.intent &&
+    boundedReadinessResult?.readiness
+  ) {
+    boundaryIssues.push(...collectBoundedWorkflowQualityIssues({
+      boundedIntentResult,
+      boundedReadinessResult,
+    }));
   }
 
   const boundaryContext = buildBoundedWorkflowContext({
@@ -658,6 +847,8 @@ function validatePolicyBuilderPhase6OperatorWorkflow(workflow = {}) {
       message: 'The workflow cannot let the client execute routing directly.',
     });
   }
+
+  issues.push(...collectWorkflowBoundaryContextQualityIssues(workflow.boundaryContext));
 
   return {
     ok: issues.length === 0,

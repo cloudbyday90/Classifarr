@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Workflow Quality Gate** — hardened the bounded
+  operator workflow so Phase 6R.5 requires matching, usable evidence-quality
+  snapshots from bounded intent, readiness boundary context, and embedded
+  readiness input context before returning a product workflow projection.
 - **Policy Builder Phase 6R Readiness Quality Gate** — hardened bounded
   readiness so Phase 6R.4 requires matching, usable evidence-quality snapshots
   across bounded evidence, intent, and learning before returning an automation

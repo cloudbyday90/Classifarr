@@ -15,7 +15,9 @@ entry point. That entry point requires a successful bounded intent result and a
 successful bounded readiness result before a workflow projection is returned.
 It also requires the upstream intent, evidence-fingerprint, and readiness
 audits to still be passing so stale or tampered bounded contracts cannot render
-as an operator workflow.
+as an operator workflow. The boundary now also requires matching, usable,
+sanitized evidence-quality snapshots from bounded intent, readiness boundary
+context, and embedded readiness input context before returning the workflow.
 
 ## Problem
 
@@ -101,6 +103,11 @@ Can this route?
    blocks failed bounded intent/readiness handoffs and rejects missing or
    mismatched evidence projection fingerprints.
 
+7. **Require quality continuity before workflow projection.**
+   The bounded workflow wrapper should block missing, insufficient, or
+   mismatched evidence-quality snapshots so the normal operator workflow cannot
+   render from incomplete evidence state.
+
 ## Pros And Cons
 
 Pros:
@@ -113,6 +120,8 @@ Pros:
 - Creates an audit target for later deletion/migration work.
 - Prevents the UI workflow from stitching together intent and readiness results
   from different evidence projections.
+- Prevents the UI workflow from rendering when the underlying evidence quality
+  is missing, insufficient, or drifted across bounded contracts.
 
 Cons:
 
@@ -123,6 +132,7 @@ Cons:
   versus deletion targets.
 - Existing pure projection callers still exist for compatibility until runtime
   paths move onto the bounded wrapper.
+- Quality checks add another fixture invariant for bounded workflow tests.
 
 ## Final Recommendation Stack
 
@@ -140,6 +150,8 @@ Cons:
   `server/src/__tests__/services/policyBuilderPhase6OperatorWorkflow.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-operator-workflow.md`
+- Quality gate documentation:
+  `docs/architecture/policy-builder-phase-6r-workflow-quality-gate.md`
 - Roadmap owner:
   Phase 6R.5 Operator Workflow Rebuild in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
@@ -212,9 +224,13 @@ intentBoundary.projectionFingerprint
 readinessBoundary.statusId
 readinessBoundary.readinessStateId
 readinessBoundary.readinessAuditOk
+readinessBoundary.evidenceQuality
+readinessBoundary.intentQuality
+readinessBoundary.learningQuality
 readinessBoundary.projectionFingerprint
 readinessBoundary.projectionFingerprintMatch
 projectionFingerprintMatch
+qualityMatch
 ```
 
 ## Security Outcome
@@ -230,6 +246,8 @@ projectionFingerprintMatch
   bounded provenance, mismatched projection fingerprints, and non-passing
   upstream bounded intent/evidence-fingerprint/readiness audits before the
   workflow is returned.
+- The bounded wrapper rejects missing, insufficient, or mismatched sanitized
+  evidence-quality snapshots before the workflow is returned.
 
 ## Next Step
 

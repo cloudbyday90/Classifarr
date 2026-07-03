@@ -3446,6 +3446,12 @@ Implementation status:
 - The bounded workflow entry point now also requires the upstream intent,
   evidence-fingerprint, and readiness audits to pass before any operator
   workflow projection is returned.
+- The bounded workflow entry point now requires bounded intent, readiness
+  boundary context, and embedded readiness input context to carry matching,
+  usable evidence-quality snapshots before any operator workflow projection is
+  returned.
+- The Phase 6R.5 quality-gated workflow hardening is documented in
+  [Policy Builder Phase 6R Workflow Quality Gate](policy-builder-phase-6r-workflow-quality-gate.md).
 
 ### 6R.6 Migration And Deletion Path
 

@@ -5,6 +5,9 @@ import {
   buildPolicyBuilderPhase6BoundedEvidenceProjection,
 } from '../../services/policyBuilderPhase6EvidenceBoundary.mjs';
 import {
+  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
+} from '../../services/policyBuilderPhase6EvidenceQuality.mjs';
+import {
   buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
 } from '../../services/policyBuilderPhase6IntentEngine.mjs';
 import {
@@ -98,6 +101,19 @@ function buildBoundedWorkflowInputs({
   };
 }
 
+function clonePlain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function withReadinessQuality(result, quality) {
+  const nextResult = clonePlain(result);
+  nextResult.boundaryContext.evidenceBoundary.quality = clonePlain(quality);
+  nextResult.boundaryContext.intentBoundary.quality = clonePlain(quality);
+  nextResult.boundaryContext.learningBoundary.quality = clonePlain(quality);
+  nextResult.readiness.inputs.boundaryContext = clonePlain(nextResult.boundaryContext);
+  return nextResult;
+}
+
 describe('policyBuilderPhase6OperatorWorkflow', () => {
   test('defines the five destination-first sections in roadmap order', () => {
     expect(listPolicyBuilderPhase6WorkflowSections().map(section => section.sectionId))
@@ -168,6 +184,26 @@ describe('policyBuilderPhase6OperatorWorkflow', () => {
     }));
     expect(result.workflow.sections).toHaveLength(5);
     expect(result.workflow.decisionModel.serverOwnsBoundedReadiness).toBe(true);
+    expect(result.boundaryContext).toEqual(expect.objectContaining({
+      qualityMatch: true,
+      intentBoundary: expect.objectContaining({
+        quality: expect.objectContaining({
+          statusId: boundedIntentResult.evidenceBoundary.quality.statusId,
+          nextActionId: boundedIntentResult.evidenceBoundary.quality.nextActionId,
+        }),
+      }),
+      readinessBoundary: expect.objectContaining({
+        evidenceQuality: expect.objectContaining({
+          statusId: boundedReadinessResult.boundaryContext.evidenceBoundary.quality.statusId,
+        }),
+        intentQuality: expect.objectContaining({
+          statusId: boundedReadinessResult.boundaryContext.intentBoundary.quality.statusId,
+        }),
+        learningQuality: expect.objectContaining({
+          statusId: boundedReadinessResult.boundaryContext.learningBoundary.quality.statusId,
+        }),
+      }),
+    }));
     expect(JSON.stringify(result.boundaryContext)).not.toContain('Animated Movies');
   });
 
@@ -318,6 +354,128 @@ describe('policyBuilderPhase6OperatorWorkflow', () => {
         riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
       }),
     ]));
+  });
+
+  test('blocks bounded workflow when readiness quality context is missing', () => {
+    const {
+      boundedIntentResult,
+      boundedReadinessResult,
+    } = buildBoundedWorkflowInputs();
+    const missingQualityReadinessResult = clonePlain(boundedReadinessResult);
+    missingQualityReadinessResult.readiness.inputs.boundaryContext.intentBoundary.quality = null;
+
+    const result = buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+      boundedIntentResult,
+      boundedReadinessResult: missingQualityReadinessResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      workflow: null,
+      workflowAudit: null,
+      boundaryContext: expect.objectContaining({
+        qualityMatch: false,
+      }),
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+      }),
+    ]));
+  });
+
+  test('blocks bounded workflow when readiness quality is insufficient', () => {
+    const {
+      boundedIntentResult,
+      boundedReadinessResult,
+    } = buildBoundedWorkflowInputs();
+    const insufficientQuality = {
+      ...boundedIntentResult.evidenceBoundary.quality,
+      statusId: PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT,
+      nextActionId: 'confirm_destination_identity',
+      reasonIds: ['missing_identity'],
+    };
+    const insufficientIntentResult = {
+      ...boundedIntentResult,
+      evidenceBoundary: {
+        ...boundedIntentResult.evidenceBoundary,
+        quality: insufficientQuality,
+      },
+    };
+
+    const result = buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+      boundedIntentResult: insufficientIntentResult,
+      boundedReadinessResult: withReadinessQuality(boundedReadinessResult, insufficientQuality),
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      workflow: null,
+      workflowAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_QUALITY_INSUFFICIENT,
+        nextActionId: 'confirm_destination_identity',
+      }),
+    ]));
+  });
+
+  test('blocks bounded workflow when readiness quality no longer matches intent quality', () => {
+    const {
+      boundedIntentResult,
+      boundedReadinessResult,
+    } = buildBoundedWorkflowInputs();
+    const mismatchedQuality = {
+      ...boundedIntentResult.evidenceBoundary.quality,
+      nextActionId: 'review_evidence',
+      reasonIds: [
+        ...boundedIntentResult.evidenceBoundary.quality.reasonIds,
+        'review_evidence_present',
+      ].sort(),
+    };
+
+    const result = buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+      boundedIntentResult,
+      boundedReadinessResult: withReadinessQuality(boundedReadinessResult, mismatchedQuality),
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      workflow: null,
+      workflowAudit: null,
+      boundaryContext: expect.objectContaining({
+        qualityMatch: false,
+      }),
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_QUALITY_MISMATCH,
+      }),
+    ]));
+  });
+
+  test('rejects bounded workflow context that drops sanitized quality snapshots', () => {
+    const {
+      boundedIntentResult,
+      boundedReadinessResult,
+    } = buildBoundedWorkflowInputs();
+    const result = buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+      boundedIntentResult,
+      boundedReadinessResult,
+    });
+
+    result.workflow.boundaryContext.readinessBoundary.intentQuality = null;
+
+    expect(validatePolicyBuilderPhase6OperatorWorkflow(result.workflow).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+        }),
+      ]));
   });
 
   test('surfaces readiness through the route section without making it editable', () => {
