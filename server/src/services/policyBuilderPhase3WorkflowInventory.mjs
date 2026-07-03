@@ -183,6 +183,7 @@ const PHASE_3R_WORKFLOW_RULES = deepFreeze([
     notes: 'Templates can accelerate intent, but they must sit behind destination context and never define the normal model.',
     matches: filePath => hasAnySegment(filePath, [
       '/PolicySelectedStarterTemplates.vue',
+      '/PolicyStarterTemplateAccelerator.vue',
       '/PolicyStarterTemplateBrowser.vue',
       '/PolicyStarterTemplateDetails.vue',
       '/PolicyStarterTemplateMechanics.vue',

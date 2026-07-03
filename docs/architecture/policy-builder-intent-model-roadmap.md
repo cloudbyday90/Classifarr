@@ -5629,6 +5629,13 @@ Implementation status:
 - Current implementation verifies the complete 8R.1 through 8R.34 evidence
   range so later artifact/exporter closure components cannot be skipped by the
   older Phase 8R.22 checkpoint range.
+- Final closure inventory sync is documented in
+  [Policy Builder Phase 8R Closure Inventory Sync](policy-builder-phase-8r-closure-inventory-sync.md).
+- Current validation hardening classifies
+  `client/src/components/policies/PolicyStarterTemplateAccelerator.vue` in the
+  Phase 1R boundary inventory and Phase 3R workflow inventory so the final
+  Phase 8R evidence chain can prove every current policy-builder surface has an
+  explicit owner and cutline.
 
 ## Phase 8R Work Sequence
 

@@ -284,6 +284,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
         '/PolicyIntentSummaryCard.vue',
         '/PolicyPresetMigrationNotice.vue',
         '/PolicySelectedStarterTemplates.vue',
+        '/PolicyStarterTemplateAccelerator.vue',
         '/PolicyStarterTemplateBrowser.vue',
         '/PolicyStarterTemplateDetails.vue',
         '/PolicyStarterTemplateMechanics.vue',

@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Closure Inventory Sync** — classified the
+  `PolicyStarterTemplateAccelerator.vue` replacement in the Phase 1R boundary
+  and Phase 3R workflow inventories, added focused inventory assertions, and
+  documented the validation gap that blocked Phase 8R final closure evidence.
 - **Policy Builder Phase 8R Replay Preview Removal** — removed the
   `policyIntentReplayPreview.mjs` compatibility service path, replaced it with
   a Phase 8R replay migration verifier, updated policy write routes and replay

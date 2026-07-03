@@ -91,6 +91,7 @@ describe('policyBuilderPhase3WorkflowInventory', () => {
 
   test('keeps starter templates out of the normal authoring path', () => {
     [
+      'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
       'client/src/components/policies/PolicyStarterTemplateBrowser.vue',
       'client/src/components/policies/PolicyStarterTemplateDetails.vue',
       'client/src/components/policies/PolicySelectedStarterTemplates.vue',

@@ -64,6 +64,7 @@ const PHASE8R_VALIDATION_COMMANDS = Object.freeze([
       'docs/architecture/policy-builder-phase-8r-final-removal-audit-exporter.md',
       'docs/architecture/policy-builder-phase-8r-impact-preview-removal.md',
       'docs/architecture/policy-builder-phase-8r-replay-preview-removal.md',
+      'docs/architecture/policy-builder-phase-8r-closure-inventory-sync.md',
     ],
     cwd: '.',
   },
