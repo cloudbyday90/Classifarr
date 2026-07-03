@@ -1,3 +1,7 @@
+import { existsSync } from 'node:fs';
+import { dirname, isAbsolute, normalize, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 const PHASE7R_TEST_RESET_DECISION_IDS = Object.freeze({
   KEEP_CLASSIFICATION_REGRESSION: 'keep_classification_regression',
   REWRITE_EVIDENCE_PROJECTION: 'rewrite_evidence_projection',
@@ -34,9 +38,12 @@ const PHASE7R_TEST_RESET_AUDIT_RISK_IDS = Object.freeze({
   DELETE_TARGET_STILL_NORMAL_WORKFLOW: 'delete_target_still_normal_workflow',
   DELETE_TARGET_WITHOUT_REPLACEMENT: 'delete_target_without_replacement',
   MISSING_TRACE_REASON: 'missing_trace_reason',
+  ARTIFACT_PATH_OUTSIDE_REPO: 'artifact_path_outside_repo',
+  ARTIFACT_FILE_MISSING: 'artifact_file_missing',
 });
 
 const RESET_CONTRACT_VERSION = 'phase7r.runtime_rebuild_test_reset.v1';
+const DEFAULT_REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 const REQUIRED_COVERAGE_IDS = Object.freeze([
   PHASE7R_TEST_RESET_COVERAGE_IDS.BROAD_GENRE_NO_SPECIALIZED_AUTO_ROUTE,
@@ -228,6 +235,52 @@ function normalizeBoolean(value) {
   return value === true;
 }
 
+function normalizePathKey(value) {
+  return normalizeString(value).replace(/\\/gu, '/');
+}
+
+function isWithinDirectory(candidatePath, directoryPath) {
+  const resolvedCandidate = resolve(candidatePath).toLowerCase();
+  const resolvedDirectory = resolve(directoryPath).toLowerCase();
+  return resolvedCandidate === resolvedDirectory ||
+    resolvedCandidate.startsWith(`${resolvedDirectory.toLowerCase()}${sep}`);
+}
+
+function resolveArtifactPath(artifactPath, repoRoot = DEFAULT_REPO_ROOT) {
+  const normalizedPath = normalizeString(artifactPath);
+  if (!normalizedPath || isAbsolute(normalizedPath)) {
+    return {
+      path: normalizePathKey(artifactPath),
+      resolvedPath: '',
+      withinRepo: false,
+      exists: false,
+    };
+  }
+
+  const resolvedPath = resolve(repoRoot, normalize(normalizedPath));
+  const withinRepo = isWithinDirectory(resolvedPath, repoRoot);
+
+  return {
+    path: normalizePathKey(artifactPath),
+    resolvedPath,
+    withinRepo,
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- resolvedPath is constrained to repoRoot before this metadata-only existence check.
+    exists: withinRepo && existsSync(resolvedPath),
+  };
+}
+
+function buildArtifactAvailability(artifacts, { repoRoot = DEFAULT_REPO_ROOT } = {}) {
+  return artifacts.map(artifact => {
+    const availability = resolveArtifactPath(artifact.path, repoRoot);
+
+    return {
+      path: artifact.path,
+      exists: availability.exists,
+      withinRepo: availability.withinRepo,
+    };
+  });
+}
+
 function normalizeArtifact(artifact = {}) {
   return {
     path: normalizeString(artifact.path),
@@ -281,15 +334,19 @@ function listPolicyBuilderPhase7TestResetArtifacts() {
 
 function buildPolicyBuilderPhase7RuntimeRebuildTestReset({
   artifacts = listPolicyBuilderPhase7TestResetArtifacts(),
+  repoRoot = DEFAULT_REPO_ROOT,
 } = {}) {
   const normalizedArtifacts = asArray(artifacts).map(artifact => normalizeArtifact(artifact));
+  const artifactAvailability = buildArtifactAvailability(normalizedArtifacts, { repoRoot });
   const coveragePlan = buildCoveragePlan(normalizedArtifacts);
   const reset = {
     version: RESET_CONTRACT_VERSION,
     artifacts: normalizedArtifacts,
+    artifactAvailability,
     coveragePlan,
     summary: {
       artifactCount: normalizedArtifacts.length,
+      existingArtifactCount: artifactAvailability.filter(artifact => artifact.exists).length,
       decisionCounts: summarizeDecisions(normalizedArtifacts),
       requiredCoverageCount: REQUIRED_COVERAGE_IDS.length,
       coveredRequiredCoverageCount: coveragePlan.filter(coverage => coverage.covered).length,
@@ -315,16 +372,39 @@ function buildPolicyBuilderPhase7RuntimeRebuildTestReset({
 
 function validatePolicyBuilderPhase7RuntimeRebuildTestReset(reset = {}) {
   const artifacts = asArray(reset.artifacts);
+  const artifactAvailability = asArray(reset.artifactAvailability);
+  const artifactAvailabilityByPath = new Map(
+    artifactAvailability.map(artifact => [normalizePathKey(artifact.path), artifact])
+  );
   const coveragePlan = asArray(reset.coveragePlan);
   const issues = [];
   const mappedCoverageIds = new Set();
 
   artifacts.forEach((artifact, index) => {
+    const artifactPathKey = normalizePathKey(artifact.path);
+    const availability = artifactAvailabilityByPath.get(artifactPathKey);
+
     if (!normalizeString(artifact.path)) {
       issues.push({
         riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.MISSING_ARTIFACT_PATH,
         artifactIndex: index,
         message: 'Each runtime/rebuild test reset artifact must include a path.',
+      });
+    }
+
+    if (normalizeString(artifact.path) && (!availability || availability.withinRepo !== true)) {
+      issues.push({
+        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.ARTIFACT_PATH_OUTSIDE_REPO,
+        artifactPath: artifact.path || null,
+        message: 'Runtime/rebuild test reset artifacts must resolve inside the repository.',
+      });
+    }
+
+    if (normalizeString(artifact.path) && availability?.exists !== true) {
+      issues.push({
+        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.ARTIFACT_FILE_MISSING,
+        artifactPath: artifact.path || null,
+        message: 'Runtime/rebuild test reset artifact path must exist before the reset can pass.',
       });
     }
 

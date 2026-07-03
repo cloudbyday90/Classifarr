@@ -4116,14 +4116,18 @@ Implementation status:
 - Current implementation adds a server-owned reset manifest that classifies
   runtime/rebuild tests as kept regressions, Phase 7R contract rewrites, or
   abandoned impact/replay diagnostic deletion candidates.
+- The reset now verifies that each declared test artifact path is
+  repository-relative, resolves inside the repository, and exists on disk, so
+  stale replacement paths fail validation instead of remaining documentation.
 - Required reset coverage now explicitly includes broad genre no specialized
   auto-route, missing routing as `classified_not_routed`, stale questions unable
   to learn, guarded request-time choices, explicit constraint preservation, and
   rollback snapshot requirements.
 - Validation rejects runtime/rebuild rewrites that bypass server authority,
   missing-routing coverage that conflates classification and routing success,
-  missing replacement contracts, missing trace reasons, and old preview UI frozen
-  as the migration contract.
+  missing replacement contracts, missing trace reasons, missing or
+  repository-escaping artifact paths, and old preview UI frozen as the migration
+  contract.
 
 ## Phase 7R Work Sequence
 

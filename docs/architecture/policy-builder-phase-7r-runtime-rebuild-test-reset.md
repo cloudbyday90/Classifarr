@@ -42,6 +42,8 @@ The reset must prove these behaviors:
    routing success.
 5. Require rebuild and verifier tests to protect explicit constraints and
    rollback safety before Phase 8R storage migration begins.
+6. Verify each declared test artifact still resolves inside the repository and
+   exists on disk so the reset cannot pass with stale paths.
 
 ## Pros And Cons
 
@@ -59,6 +61,8 @@ Cons:
   Phase 8R parity proves they are replaced.
 - Adds a governance contract that must be kept in sync when Phase 7R contracts
   move or rename.
+- Reads repository file metadata during validation, so the reset is tied to the
+  current workspace layout.
 
 ## Final Recommendation Stack
 
@@ -79,6 +83,10 @@ Cons:
   - request choices require guarded learning,
   - rebuild preserves explicit constraints,
   - rollback required before replacement.
+- Artifact availability validation:
+  - paths must be repository-relative,
+  - paths must resolve inside the repository,
+  - declared replacement/retention test files must exist.
 - Next step: Phase 7R completion audit before Phase 8R native intent storage.
 
 ## Implemented Files
@@ -90,8 +98,9 @@ Cons:
 
 The reset now produces a side-effect-free manifest of runtime/rebuild test
 decisions, replacement contracts, required coverage, authority-boundary
-requirements, and deletion criteria for abandoned impact/replay diagnostics.
+requirements, artifact availability proof, and deletion criteria for abandoned
+impact/replay diagnostics.
 Validation fails when a runtime rewrite bypasses server authority, when
 classification success is not separated from routing success, when required
-coverage is missing, or when old preview UI is preserved as the migration
-contract.
+coverage is missing, when a declared test artifact is missing or escapes the
+repository, or when old preview UI is preserved as the migration contract.

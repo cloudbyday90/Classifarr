@@ -23,6 +23,10 @@ describe('policyBuilderPhase7RuntimeRebuildTestReset', () => {
       [PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS]: 1,
       [PHASE7R_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC]: 2,
     }));
+    expect(reset.summary.existingArtifactCount).toBe(reset.summary.artifactCount);
+    expect(reset.artifactAvailability.every(artifact =>
+      artifact.withinRepo === true && artifact.exists === true
+    )).toBe(true);
     expect(reset.artifacts).toEqual(expect.arrayContaining([
       expect.objectContaining({
         path: 'server/src/__tests__/services/policyBuilderPhase7AutomationDecisionContract.test.mjs',
@@ -40,6 +44,32 @@ describe('policyBuilderPhase7RuntimeRebuildTestReset', () => {
       }),
     ]));
     expect(reset.validation.ok).toBe(true);
+  });
+
+  test('rejects missing or repository-escaping reset artifact paths', () => {
+    const artifacts = [
+      {
+        ...listPolicyBuilderPhase7TestResetArtifacts()[0],
+        path: 'server/src/__tests__/services/missing-runtime-reset.test.mjs',
+      },
+      {
+        ...listPolicyBuilderPhase7TestResetArtifacts()[1],
+        path: '../outside-repo.test.mjs',
+      },
+    ];
+    const reset = buildPolicyBuilderPhase7RuntimeRebuildTestReset({ artifacts });
+
+    expect(reset.validation.ok).toBe(false);
+    expect(reset.validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.ARTIFACT_FILE_MISSING,
+        artifactPath: 'server/src/__tests__/services/missing-runtime-reset.test.mjs',
+      }),
+      expect.objectContaining({
+        riskId: PHASE7R_TEST_RESET_AUDIT_RISK_IDS.ARTIFACT_PATH_OUTSIDE_REPO,
+        artifactPath: '../outside-repo.test.mjs',
+      }),
+    ]));
   });
 
   test('maps required runtime and rebuild reset coverage to server-owned contracts', () => {
