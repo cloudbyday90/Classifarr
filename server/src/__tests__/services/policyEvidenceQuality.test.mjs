@@ -2,9 +2,9 @@ import {
   AUTHORITY_SOURCE_IDS,
 } from '../../services/policyAuthorityVocabulary.mjs';
 import {
-  PHASE6R_EVIDENCE_BUCKET_IDS,
-  buildPolicyBuilderPhase6EvidenceProjection,
-} from '../../services/policyBuilderPhase6EvidenceEngine.mjs';
+  POLICY_EVIDENCE_BUCKET_IDS,
+  buildPolicyEvidenceProjection,
+} from '../../services/policyEvidenceEngine.mjs';
 import {
   POLICY_EVIDENCE_QUALITY_AUDIT_RISK_IDS,
   POLICY_EVIDENCE_QUALITY_NEXT_ACTION_IDS,
@@ -15,13 +15,13 @@ import {
 } from '../../services/policyEvidenceQuality.mjs';
 
 const qualityOptions = {
-  bucketIds: PHASE6R_EVIDENCE_BUCKET_IDS,
+  bucketIds: POLICY_EVIDENCE_BUCKET_IDS,
   authoritySourceIds: AUTHORITY_SOURCE_IDS,
 };
 
 describe('policyEvidenceQuality', () => {
   test('builds compact quality for usable observed and declared identity evidence', () => {
-    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+    const projection = buildPolicyEvidenceProjection({
       libraryProfile: {
         identityCandidates: [{ label: 'Animation', count: 12 }],
         compatibilityCandidates: ['Family'],
@@ -63,7 +63,7 @@ describe('policyEvidenceQuality', () => {
   });
 
   test('marks missing identity as insufficient instead of inferring destination meaning', () => {
-    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+    const projection = buildPolicyEvidenceProjection({
       metadataEvidence: ['Family'],
       profileFreshness: {
         stale: false,
@@ -83,7 +83,7 @@ describe('policyEvidenceQuality', () => {
   });
 
   test('routes stale profile evidence to review with refresh as the next action', () => {
-    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+    const projection = buildPolicyEvidenceProjection({
       libraryProfile: {
         identityCandidates: ['Animation'],
       },
@@ -105,7 +105,7 @@ describe('policyEvidenceQuality', () => {
   });
 
   test('validates quality against projection counts and rejects label leakage', () => {
-    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+    const projection = buildPolicyEvidenceProjection({
       libraryProfile: {
         identityCandidates: ['Animation'],
       },

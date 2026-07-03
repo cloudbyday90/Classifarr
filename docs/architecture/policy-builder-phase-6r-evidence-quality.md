@@ -80,11 +80,11 @@ Cons:
 - Quality module:
   `server/src/services/policyEvidenceQuality.mjs`
 - Evidence projection integration:
-  `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
+  `server/src/services/policyEvidenceEngine.mjs`
 - Focused tests:
   `server/src/__tests__/services/policyEvidenceQuality.test.mjs`
   and
-  `server/src/__tests__/services/policyBuilderPhase6EvidenceEngine.test.mjs`
+  `server/src/__tests__/services/policyEvidenceEngine.test.mjs`
 - Roadmap owner:
   Phase 6R.1 Evidence Engine in
   `docs/architecture/policy-builder-intent-model-roadmap.md`

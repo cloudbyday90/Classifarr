@@ -112,7 +112,7 @@ Use this stack for Phase 6R.1 hardening:
 
 1. `policyEvidenceInputGate.mjs` validates input envelope shape and
    unsafe payload markers.
-2. `policyBuilderPhase6EvidenceEngine.mjs` remains the deterministic projection
+2. `policyEvidenceEngine.mjs` remains the deterministic projection
    builder and projection audit.
 3. Phase 6R.2 intent inference consumes projection output only after Phase 6R.1
    input and projection audits pass.

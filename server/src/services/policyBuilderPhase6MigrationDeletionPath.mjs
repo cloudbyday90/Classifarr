@@ -521,7 +521,7 @@ const DEFAULT_MIGRATION_ARTIFACTS = Object.freeze([
     rollbackPlan: DEFAULT_ROLLBACK_PLAN,
   },
   {
-    path: 'server/src/services/policyBuilderPhase6EvidenceEngine.mjs',
+    path: 'server/src/services/policyEvidenceEngine.mjs',
     owner: 'phase6r-engine',
     decisionId: PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.KEEP_ENGINE_PRIMITIVE,
     verifierKindId: PHASE6R_MIGRATION_VERIFIER_KIND_IDS.NONE,

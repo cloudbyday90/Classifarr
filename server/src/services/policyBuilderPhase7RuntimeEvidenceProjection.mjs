@@ -5,13 +5,13 @@ import {
   BROAD_GENRE_LABELS,
 } from './policyBuilderPhase6IntentEngine.mjs';
 import {
-  PHASE6R_EVIDENCE_BUCKET_IDS,
-  PHASE6R_EVIDENCE_SOURCE_IDS,
-  buildPolicyBuilderPhase6EvidenceProjection,
-  getPolicyBuilderPhase6EvidenceBucket,
-  getPolicyBuilderPhase6EvidenceSource,
-  listPolicyBuilderPhase6EvidenceBuckets,
-} from './policyBuilderPhase6EvidenceEngine.mjs';
+  POLICY_EVIDENCE_BUCKET_IDS,
+  POLICY_EVIDENCE_SOURCE_IDS,
+  buildPolicyEvidenceProjection,
+  getPolicyEvidenceBucket,
+  getPolicyEvidenceSource,
+  listPolicyEvidenceBuckets,
+} from './policyEvidenceEngine.mjs';
 import {
   PHASE7R_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES,
   buildPolicyBuilderPhase7RuntimeEvidenceFingerprint,
@@ -63,8 +63,8 @@ const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/;
 
 const BROAD_GENRE_SET = new Set(BROAD_GENRE_LABELS.map(label => label.toLowerCase()));
 const AUTHORITY_IDS = Object.freeze(Object.values(AUTHORITY_SOURCE_IDS));
-const PHASE6_BUCKET_IDS = Object.freeze(Object.values(PHASE6R_EVIDENCE_BUCKET_IDS));
-const PHASE6_SOURCE_IDS = Object.freeze(Object.values(PHASE6R_EVIDENCE_SOURCE_IDS));
+const PHASE6_BUCKET_IDS = Object.freeze(Object.values(POLICY_EVIDENCE_BUCKET_IDS));
+const PHASE6_SOURCE_IDS = Object.freeze(Object.values(POLICY_EVIDENCE_SOURCE_IDS));
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -185,12 +185,12 @@ function isBroadGenreLabel(value) {
 function createEmptyRuntimeProjection() {
   return {
     version: 'phase7r.runtime_evidence_projection.v1',
-    phase6EvidenceVersion: 'phase6r.evidence.v1',
+    phase6EvidenceVersion: 'policy.evidence.v1',
     generatedFromLiveProvider: false,
     exposesRawProviderPayloads: false,
     exposesUiChipLanguage: false,
     buckets: Object.fromEntries(
-      listPolicyBuilderPhase6EvidenceBuckets().map(bucket => [bucket.id, []])
+      listPolicyEvidenceBuckets().map(bucket => [bucket.id, []])
     ),
     trace: {
       attributes: {
@@ -219,8 +219,8 @@ function createRuntimeEvidenceEntry({
   stale = null,
   trusted = null,
 }) {
-  const bucket = getPolicyBuilderPhase6EvidenceBucket(bucketId);
-  const phase6Source = getPolicyBuilderPhase6EvidenceSource(phase6SourceId);
+  const bucket = getPolicyEvidenceBucket(bucketId);
+  const phase6Source = getPolicyEvidenceSource(phase6SourceId);
   const normalizedLabel = normalizeNullableString(label ?? key ?? value);
 
   if (!bucket || !phase6Source || !normalizedLabel) {
@@ -300,29 +300,29 @@ function mapProfileEvidence(projection, libraryProfile = {}) {
     const broadGenre = isBroadGenreLabel(signal.label);
     const hasSupport = signal.count >= 2 || signal.trusted === true;
     const bucketId = broadGenre && !hasSupport
-      ? PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY
-      : PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY;
+      ? POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY
+      : POLICY_EVIDENCE_BUCKET_IDS.IDENTITY;
 
     addEntry(projection, createRuntimeEvidenceEntry({
       bucketId,
-      phase6SourceId: PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+      phase6SourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
       runtimeSourceId: PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.LIBRARY_PROFILE,
       authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
       ...signal,
-      reasonCode: bucketId === PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY
+      reasonCode: bucketId === POLICY_EVIDENCE_BUCKET_IDS.IDENTITY
         ? 'runtime_profile_identity'
         : PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.BROAD_GENRE_WITHOUT_IDENTITY,
-      demotedFromBucketId: bucketId === PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY
+      demotedFromBucketId: bucketId === POLICY_EVIDENCE_BUCKET_IDS.IDENTITY
         ? null
-        : PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
+        : POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
     }));
   });
 
   asArray(libraryProfile.compatibilityCandidates).forEach(value => {
     const signal = mapSignal(value);
     addEntry(projection, createRuntimeEvidenceEntry({
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-      phase6SourceId: PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+      phase6SourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
       runtimeSourceId: PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.LIBRARY_PROFILE,
       authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
       ...signal,
@@ -330,7 +330,7 @@ function mapProfileEvidence(projection, libraryProfile = {}) {
         ? PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.BROAD_GENRE_WITHOUT_IDENTITY
         : 'runtime_profile_compatibility',
       demotedFromBucketId: isBroadGenreLabel(signal?.label)
-        ? PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY
+        ? POLICY_EVIDENCE_BUCKET_IDS.IDENTITY
         : null,
     }));
   });
@@ -338,8 +338,8 @@ function mapProfileEvidence(projection, libraryProfile = {}) {
   asArray(libraryProfile.outliers).forEach(value => {
     const signal = mapSignal(value);
     addEntry(projection, createRuntimeEvidenceEntry({
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
-      phase6SourceId: PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
+      phase6SourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
       runtimeSourceId: PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.LIBRARY_PROFILE,
       authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
       ...signal,
@@ -349,7 +349,7 @@ function mapProfileEvidence(projection, libraryProfile = {}) {
 }
 
 function mapOperatorIntentEvidence(projection, operatorIntent = {}) {
-  const intentProjection = buildPolicyBuilderPhase6EvidenceProjection({ operatorIntent });
+  const intentProjection = buildPolicyEvidenceProjection({ operatorIntent });
 
   Object.values(intentProjection.buckets).flat().forEach(entry => {
     addEntry(projection, {
@@ -365,8 +365,8 @@ function mapHistoryEvidence(projection, input = {}) {
   asArray(input.classificationFinalOutcomes).forEach(value => {
     const signal = mapSignal(value);
     addEntry(projection, createRuntimeEvidenceEntry({
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-      phase6SourceId: PHASE6R_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+      phase6SourceId: POLICY_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
       runtimeSourceId: PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.HISTORY,
       authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
       ...signal,
@@ -377,8 +377,8 @@ function mapHistoryEvidence(projection, input = {}) {
   asArray(input.manualCorrections).forEach(value => {
     const signal = mapSignal(value);
     addEntry(projection, createRuntimeEvidenceEntry({
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
-      phase6SourceId: PHASE6R_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
+      phase6SourceId: POLICY_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS,
       runtimeSourceId: PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.HISTORY,
       authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
       ...signal,
@@ -389,8 +389,8 @@ function mapHistoryEvidence(projection, input = {}) {
   asArray(input.pendingItemAnswers).forEach(value => {
     const signal = mapSignal(value);
     addEntry(projection, createRuntimeEvidenceEntry({
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
-      phase6SourceId: PHASE6R_EVIDENCE_SOURCE_IDS.PENDING_ITEM_ANSWERS,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+      phase6SourceId: POLICY_EVIDENCE_SOURCE_IDS.PENDING_ITEM_ANSWERS,
       runtimeSourceId: PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.HISTORY,
       authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
       ...signal,
@@ -410,20 +410,20 @@ function mapRagEvidence(projection, ragNeighbors = []) {
     const compatibleProfile = signal.compatibleProfile === true;
     const strongEnough = knownLibrary && trusted && compatibleProfile;
     const bucketId = strongEnough
-      ? PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY
-      : PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT;
+      ? POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY
+      : POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT;
     const reasonCode = knownLibrary
       ? PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.LOW_TRUST_RAG_NEIGHBOR
       : PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.UNKNOWN_LIBRARY_NEIGHBOR;
 
     addEntry(projection, createRuntimeEvidenceEntry({
       bucketId,
-      phase6SourceId: PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      phase6SourceId: POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
       runtimeSourceId: PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.RAG_NEIGHBOR,
       authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
       ...signal,
       reasonCode: strongEnough ? 'runtime_rag_compatibility' : reasonCode,
-      demotedFromBucketId: strongEnough ? null : PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+      demotedFromBucketId: strongEnough ? null : POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
       trusted: strongEnough,
     }));
   });
@@ -435,19 +435,19 @@ function mapMetadataEvidence(projection, metadataSignals = []) {
     if (!signal) return;
     const broadGenre = isBroadGenreLabel(signal.label);
     const bucketId = broadGenre
-      ? PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY
-      : PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY;
+      ? POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY
+      : POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY;
 
     addEntry(projection, createRuntimeEvidenceEntry({
       bucketId,
-      phase6SourceId: PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      phase6SourceId: POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
       runtimeSourceId: PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.METADATA_SIGNAL,
       authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
       ...signal,
       reasonCode: broadGenre
         ? PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.BROAD_GENRE_WITHOUT_IDENTITY
         : 'runtime_metadata_compatibility',
-      demotedFromBucketId: broadGenre ? PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY : null,
+      demotedFromBucketId: broadGenre ? POLICY_EVIDENCE_BUCKET_IDS.IDENTITY : null,
     }));
 
     if (signal.rawPayloadPresent) {
@@ -465,19 +465,19 @@ function mapRoutingEvidence(projection, routingOutcomes = []) {
     if (!signal) return;
     const routed = value.routed === true || value.routeReady === true;
     const bucketId = routed
-      ? PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING
-      : PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT;
+      ? POLICY_EVIDENCE_BUCKET_IDS.ROUTING
+      : POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT;
 
     addEntry(projection, createRuntimeEvidenceEntry({
       bucketId,
-      phase6SourceId: PHASE6R_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
+      phase6SourceId: POLICY_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
       runtimeSourceId: PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.ROUTING_OUTCOME,
       authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
       ...signal,
       reasonCode: routed
         ? 'runtime_arr_routing_outcome'
         : PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.ROUTING_NOT_PROVEN,
-      demotedFromBucketId: routed ? null : PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING,
+      demotedFromBucketId: routed ? null : POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
     }));
   });
 }
@@ -487,8 +487,8 @@ function mapProfileFreshnessEvidence(projection, profileFreshness = null) {
   const stale = profileFreshness.stale === true;
 
   addEntry(projection, createRuntimeEvidenceEntry({
-    bucketId: stale ? PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT : PHASE6R_EVIDENCE_BUCKET_IDS.FRESHNESS,
-    phase6SourceId: PHASE6R_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS,
+    bucketId: stale ? POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT : POLICY_EVIDENCE_BUCKET_IDS.FRESHNESS,
+    phase6SourceId: POLICY_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS,
     runtimeSourceId: PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
     key: profileFreshness.key ?? 'profile_freshness',
@@ -500,7 +500,7 @@ function mapProfileFreshnessEvidence(projection, profileFreshness = null) {
     reasonCode: stale
       ? PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.STALE_PROFILE
       : 'runtime_profile_current',
-    demotedFromBucketId: stale ? PHASE6R_EVIDENCE_BUCKET_IDS.FRESHNESS : null,
+    demotedFromBucketId: stale ? POLICY_EVIDENCE_BUCKET_IDS.FRESHNESS : null,
   }));
 }
 
@@ -517,7 +517,7 @@ function buildPolicyBuilderPhase7RuntimeEvidenceProjection(input = {}) {
 
   if (Object.values(projection.buckets).every(entries => entries.length === 0)) {
     projection.warnings.push({
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
       reasonCode: 'no_runtime_evidence_inputs',
       message: 'No Phase 7R runtime evidence inputs were provided.',
     });
@@ -597,7 +597,7 @@ function validateRuntimeEvidenceEntry(entry = {}) {
   }
 
   if (
-    entry.bucketId === PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY &&
+    entry.bucketId === POLICY_EVIDENCE_BUCKET_IDS.IDENTITY &&
     isBroadGenreLabel(entry.label) &&
     entry.authoritySourceId !== AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT &&
     entry.reasonCode !== 'runtime_profile_identity'
@@ -611,7 +611,7 @@ function validateRuntimeEvidenceEntry(entry = {}) {
   if (
     entry.runtimeSourceId === PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.RAG_NEIGHBOR &&
     entry.trusted !== true &&
-    entry.bucketId !== PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT
+    entry.bucketId !== POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT
   ) {
     issues.push({
       riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.LOW_TRUST_RAG_NOT_DEMOTED,
@@ -621,7 +621,7 @@ function validateRuntimeEvidenceEntry(entry = {}) {
 
   if (
     entry.reasonCode === PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.UNKNOWN_LIBRARY_NEIGHBOR &&
-    entry.bucketId !== PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT
+    entry.bucketId !== POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT
   ) {
     issues.push({
       riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_LIBRARY_NOT_DEMOTED,
@@ -631,7 +631,7 @@ function validateRuntimeEvidenceEntry(entry = {}) {
 
   if (
     entry.stale === true &&
-    entry.bucketId !== PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT
+    entry.bucketId !== POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT
   ) {
     issues.push({
       riskId: PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.STALE_PROFILE_NOT_INSUFFICIENT,
@@ -700,7 +700,7 @@ function buildPolicyBuilderPhase7RuntimeEvidenceProjectionAudit(
     ok: validation.ok,
     issueCount: validation.issueCount,
     checkedEntryCount: validation.entryCount,
-    checkedBucketCount: listPolicyBuilderPhase6EvidenceBuckets().length,
+    checkedBucketCount: listPolicyEvidenceBuckets().length,
     validation,
     nextPhase: {
       phaseId: '7r_3',

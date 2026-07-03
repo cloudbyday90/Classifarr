@@ -1,6 +1,6 @@
 import {
-  PHASE6R_EVIDENCE_BUCKET_IDS,
-} from '../../services/policyBuilderPhase6EvidenceEngine.mjs';
+  POLICY_EVIDENCE_BUCKET_IDS,
+} from '../../services/policyEvidenceEngine.mjs';
 import {
   PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS,
   buildPolicyBuilderPhase7RuntimeEvidenceProjection,
@@ -179,7 +179,7 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
     expect(decision.automationAllowed).toBe(false);
     expect(decision.trace.reasons[0]).toEqual(expect.objectContaining({
       reasonId: PHASE7R_AUTOMATION_DECISION_REASON_IDS.HARD_LIMIT_VIOLATION,
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
     }));
   });
 

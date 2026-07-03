@@ -131,7 +131,7 @@ Cons:
 ## Final Recommendation Stack
 
 - Evidence input:
-  `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
+  `server/src/services/policyEvidenceEngine.mjs`
 - Bounded evidence boundary:
   `server/src/services/policyEvidenceBoundary.mjs`
 - Intent engine:

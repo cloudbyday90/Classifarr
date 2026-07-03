@@ -2,9 +2,9 @@ import {
   buildPolicyEvidenceInputGate,
 } from './policyEvidenceInputGate.mjs';
 import {
-  buildPolicyBuilderPhase6EvidenceProjection as buildPolicyEvidenceProjection,
-  buildPolicyBuilderPhase6EvidenceProjectionAudit as buildPolicyEvidenceProjectionAudit,
-} from './policyBuilderPhase6EvidenceEngine.mjs';
+  buildPolicyEvidenceProjection,
+  buildPolicyEvidenceProjectionAudit,
+} from './policyEvidenceEngine.mjs';
 import {
   buildPolicyEvidenceFingerprint,
   validatePolicyEvidenceFingerprint,

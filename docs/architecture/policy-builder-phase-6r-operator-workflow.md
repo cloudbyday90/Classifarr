@@ -137,7 +137,7 @@ Cons:
 ## Final Recommendation Stack
 
 - Evidence input:
-  `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
+  `server/src/services/policyEvidenceEngine.mjs`
 - Intent input:
   `server/src/services/policyBuilderPhase6IntentEngine.mjs`
 - Readiness input:

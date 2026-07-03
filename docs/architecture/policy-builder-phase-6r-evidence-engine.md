@@ -136,11 +136,11 @@ Cons:
 ## Final Recommendation Stack
 
 - Server module:
-  `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
+  `server/src/services/policyEvidenceEngine.mjs`
 - Quality module:
   `server/src/services/policyEvidenceQuality.mjs`
 - Test module:
-  `server/src/__tests__/services/policyBuilderPhase6EvidenceEngine.test.mjs`
+  `server/src/__tests__/services/policyEvidenceEngine.test.mjs`
   and `server/src/__tests__/services/policyEvidenceQuality.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-evidence-engine.md`

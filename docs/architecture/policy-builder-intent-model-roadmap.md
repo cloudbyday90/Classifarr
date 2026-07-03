@@ -3136,9 +3136,9 @@ Implementation status:
 - Phase 6R.1 evidence engine is documented in
   [Policy Builder Phase 6R Evidence Engine](policy-builder-phase-6r-evidence-engine.md).
 - The server-owned evidence contract lives in
-  `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`.
+  `server/src/services/policyEvidenceEngine.mjs`.
 - The focused evidence-engine test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase6EvidenceEngine.test.mjs`.
+  `server/src/__tests__/services/policyEvidenceEngine.test.mjs`.
 - Current implementation defines stable evidence buckets, source-authority
   rules, prohibited payload classes, deterministic offline projection, and an
   audit that blocks live provider lookups, raw provider payloads, UI chip
@@ -6211,6 +6211,15 @@ Implementation status:
   [Policy Evidence Input Gate Module Cutover](policy-evidence-input-gate-module-cutover.md).
 - After the evidence-input-gate cutover, the repository inventory validates with
   15,974 total phase-coded references, 7,390 production references, and 7,412
+  rename candidates.
+- The next durable module cutover renamed the evidence projection engine to
+  `policyEvidenceEngine.mjs`, renamed its focused test, moved the projection and
+  summary contracts to `policy.evidence.v1` and
+  `policy.evidence.summary.v1`, and replaced the engine-local phase handoff
+  with `nextStep`:
+  [Policy Evidence Engine Module Cutover](policy-evidence-engine-module-cutover.md).
+- After the evidence-engine cutover, the repository inventory validates with
+  15,429 total phase-coded references, 7,024 production references, and 7,046
   rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover

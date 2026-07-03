@@ -2,9 +2,9 @@ import {
   AUTHORITY_SOURCE_IDS,
 } from '../../services/policyAuthorityVocabulary.mjs';
 import {
-  PHASE6R_EVIDENCE_BUCKET_IDS,
-  buildPolicyBuilderPhase6EvidenceProjection,
-} from '../../services/policyBuilderPhase6EvidenceEngine.mjs';
+  POLICY_EVIDENCE_BUCKET_IDS,
+  buildPolicyEvidenceProjection,
+} from '../../services/policyEvidenceEngine.mjs';
 import {
   buildBoundedPolicyEvidenceProjection,
 } from '../../services/policyEvidenceBoundary.mjs';
@@ -36,12 +36,12 @@ describe('policyBuilderPhase6IntentEngine', () => {
     expect(getPolicyBuilderPhase6IntentField(PHASE6R_INTENT_FIELD_IDS.HARD_LIMITS))
       .toEqual(expect.objectContaining({
         durableAuthorityRequired: true,
-        evidenceBucketIds: [PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT],
+        evidenceBucketIds: [POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT],
       }));
   });
 
   test('builds proposed destination intent from evidence projection', () => {
-    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+    const projection = buildPolicyEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
           { key: 'studio:pixar', label: 'Pixar', confidence: 0.94, count: 18 },
@@ -64,7 +64,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
     expect(intent.belongs_here).toEqual([
       expect.objectContaining({
         label: 'Pixar',
-        evidenceBucketId: PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
+        evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
         authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
         inferred: true,
       }),
@@ -72,7 +72,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
     expect(intent.helpful_matches).toEqual([
       expect.objectContaining({
         label: 'Family',
-        evidenceBucketId: PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+        evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
       }),
     ]);
     expect(intent.hard_limits).toEqual([
@@ -338,28 +338,28 @@ describe('policyBuilderPhase6IntentEngine', () => {
 
   test('keeps metadata as compatibility evidence instead of identity authority', () => {
     const projection = {
-      version: 'phase6r.evidence.v1',
+      version: 'policy.evidence.v1',
       generatedFromLiveProvider: false,
       exposesRawProviderPayloads: false,
       exposesUiChipLanguage: false,
       warnings: [],
       buckets: {
-        [PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY]: [
+        [POLICY_EVIDENCE_BUCKET_IDS.IDENTITY]: [
           {
-            bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
+            bucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
             sourceId: 'metadata_enrichment',
             authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
             key: 'metadata:genre:animation',
             label: 'Animation',
           },
         ],
-        [PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY]: [],
-        [PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT]: [],
-        [PHASE6R_EVIDENCE_BUCKET_IDS.AVOID]: [],
-        [PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER]: [],
-        [PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING]: [],
-        [PHASE6R_EVIDENCE_BUCKET_IDS.FRESHNESS]: [],
-        [PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT]: [],
+        [POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY]: [],
+        [POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT]: [],
+        [POLICY_EVIDENCE_BUCKET_IDS.AVOID]: [],
+        [POLICY_EVIDENCE_BUCKET_IDS.OUTLIER]: [],
+        [POLICY_EVIDENCE_BUCKET_IDS.ROUTING]: [],
+        [POLICY_EVIDENCE_BUCKET_IDS.FRESHNESS]: [],
+        [POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT]: [],
       },
     };
 
@@ -445,7 +445,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
       fieldId: PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE,
       key: 'metadata:genre:animation',
       label: 'Animation',
-      evidenceBucketId: PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
+      evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
       authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
       operatorDeclared: false,
     });
@@ -469,7 +469,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
         fieldId: PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE,
         key: 'genre:animation',
         label: 'Animation',
-        evidenceBucketId: PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
+        evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
         authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
         operatorDeclared: false,
       },
@@ -493,7 +493,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
       fieldId: PHASE6R_INTENT_FIELD_IDS.HARD_LIMITS,
       key: 'rating:nc17',
       label: 'No NC-17',
-      evidenceBucketId: PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
+      evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
       authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
       operatorDeclared: false,
     });

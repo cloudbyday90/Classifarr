@@ -1,7 +1,7 @@
 import {
-  PHASE6R_EVIDENCE_BUCKET_IDS,
-  buildPolicyBuilderPhase6EvidenceProjection,
-} from './policyBuilderPhase6EvidenceEngine.mjs';
+  POLICY_EVIDENCE_BUCKET_IDS,
+  buildPolicyEvidenceProjection,
+} from './policyEvidenceEngine.mjs';
 import {
   PHASE6R_INTENT_FIELD_IDS,
   PHASE6R_INTENT_WARNING_IDS,
@@ -464,7 +464,7 @@ function collectEvidenceSourceSummary({
     },
     profileFreshness: evidenceInput.profileFreshness,
     evidenceBucketCounts: Object.fromEntries(
-      Object.values(PHASE6R_EVIDENCE_BUCKET_IDS).map(bucketId => [
+      Object.values(POLICY_EVIDENCE_BUCKET_IDS).map(bucketId => [
         bucketId,
         asArray(evidenceProjection.buckets?.[bucketId]).length,
       ])
@@ -641,7 +641,7 @@ function buildTrace({ statusId, evidenceSourceSummary, warnings }) {
 
 function buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(input = {}) {
   const evidenceInput = buildEvidenceInput(input);
-  const evidenceProjection = buildPolicyBuilderPhase6EvidenceProjection(evidenceInput);
+  const evidenceProjection = buildPolicyEvidenceProjection(evidenceInput);
   const intentDraft = buildPolicyBuilderPhase6IntentDraft(evidenceProjection);
   const readiness = buildPolicyBuilderPhase6Readiness({
     evidenceProjection,

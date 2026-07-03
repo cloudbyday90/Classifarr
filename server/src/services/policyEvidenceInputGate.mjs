@@ -3,9 +3,9 @@ import {
   getPolicyAuthoritySource,
 } from './policyAuthorityVocabulary.mjs';
 import {
-  PHASE6R_EVIDENCE_SOURCE_IDS as POLICY_EVIDENCE_SOURCE_IDS,
-  getPolicyBuilderPhase6EvidenceSource as getPolicyEvidenceSource,
-} from './policyBuilderPhase6EvidenceEngine.mjs';
+  POLICY_EVIDENCE_SOURCE_IDS,
+  getPolicyEvidenceSource,
+} from './policyEvidenceEngine.mjs';
 
 const POLICY_EVIDENCE_INPUT_GATE_VERSION = 'policy.evidence.input_gate.v1';
 

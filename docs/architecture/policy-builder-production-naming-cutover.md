@@ -202,6 +202,6 @@ labels, except where an allow-listed migration or history reason is documented.
   [Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md).
   The audit consumes the production naming inventory and blocks increases above
   the approved July 3, 2026 baseline while durable rename batches continue.
-- After the evidence-input-gate cutover, the regression baseline is 7,390
-  production references, 7,412 rename candidates, and 93 obsolete migration
+- After the evidence-engine cutover, the regression baseline is 7,024
+  production references, 7,046 rename candidates, and 93 obsolete migration
   tooling references.

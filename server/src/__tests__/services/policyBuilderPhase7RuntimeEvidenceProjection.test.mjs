@@ -2,9 +2,9 @@ import {
   AUTHORITY_SOURCE_IDS,
 } from '../../services/policyAuthorityVocabulary.mjs';
 import {
-  PHASE6R_EVIDENCE_BUCKET_IDS,
-  PHASE6R_EVIDENCE_SOURCE_IDS,
-} from '../../services/policyBuilderPhase6EvidenceEngine.mjs';
+  POLICY_EVIDENCE_BUCKET_IDS,
+  POLICY_EVIDENCE_SOURCE_IDS,
+} from '../../services/policyEvidenceEngine.mjs';
 import {
   PHASE7R_RUNTIME_EVIDENCE_AUDIT_RISK_IDS,
   PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS,
@@ -40,7 +40,7 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
     });
 
     expect(projection.version).toBe('phase7r.runtime_evidence_projection.v1');
-    expect(projection.phase6EvidenceVersion).toBe('phase6r.evidence.v1');
+    expect(projection.phase6EvidenceVersion).toBe('policy.evidence.v1');
     expect(projection.generatedFromLiveProvider).toBe(false);
     expect(projection.exposesRawProviderPayloads).toBe(false);
     expect(projection.projectionFingerprint).toEqual(expect.objectContaining({
@@ -55,22 +55,22 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
     }));
     expect(JSON.stringify(projection.projectionFingerprint)).not.toContain('Animated Movies');
     expect(JSON.stringify(projection.projectionFingerprint)).not.toContain('Radarr route mapped');
-    expect(projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY])
+    expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY])
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           label: 'Animated Movies',
-          sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+          sourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
           runtimeSourceId: PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.LIBRARY_PROFILE,
           authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
         }),
       ]));
-    expect(projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT][0])
+    expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT][0])
       .toEqual(expect.objectContaining({
         label: 'No NC-17',
-        sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+        sourceId: POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
         authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
       }));
-    expect(projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING])
+    expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.ROUTING])
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           label: 'Radarr Animated',
@@ -93,18 +93,18 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
       ],
     });
 
-    expect(projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY]).toEqual([]);
-    expect(projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY])
+    expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY]).toEqual([]);
+    expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY])
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           label: 'Animation',
           reasonCode: PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.BROAD_GENRE_WITHOUT_IDENTITY,
-          demotedFromBucketId: PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
+          demotedFromBucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
         }),
         expect.objectContaining({
           label: 'Comedy',
           reasonCode: PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.BROAD_GENRE_WITHOUT_IDENTITY,
-          demotedFromBucketId: PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
+          demotedFromBucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
         }),
       ]));
   });
@@ -135,7 +135,7 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
       ],
     });
 
-    expect(projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT])
+    expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT])
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           label: 'Unknown neighbor',
@@ -146,7 +146,7 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
           reasonCode: PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.LOW_TRUST_RAG_NEIGHBOR,
         }),
       ]));
-    expect(projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY])
+    expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY])
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           label: 'Trusted known neighbor',
@@ -167,7 +167,7 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
       ],
     });
 
-    expect(projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT])
+    expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT])
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           label: 'Profile is stale',
@@ -177,7 +177,7 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
         expect.objectContaining({
           label: 'Radarr missing mapping',
           reasonCode: PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.ROUTING_NOT_PROVEN,
-          demotedFromBucketId: PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING,
+          demotedFromBucketId: POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
         }),
       ]));
   });
@@ -267,8 +267,8 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
     expect(projection.projectionFingerprint.provenance).toEqual(expect.objectContaining({
       totalEntryCount: 3,
       sourceIds: expect.arrayContaining([
-        PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
-        PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+        POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+        POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
       ]),
       runtimeSourceIds: expect.arrayContaining([
         PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS.LIBRARY_PROFILE,
@@ -283,8 +283,8 @@ describe('policyBuilderPhase7RuntimeEvidenceProjection', () => {
 
   test('rejects unsafe runtime evidence entries and projections', () => {
     expect(validateRuntimeEvidenceEntry({
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
-      sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
+      sourceId: POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
       authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
       label: 'Animation',
       reasonCode: 'metadata_identity',

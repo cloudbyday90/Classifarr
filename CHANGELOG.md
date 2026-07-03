@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Engine Module Cutover** — renamed the evidence projection
+  engine and focused test to durable product-domain names, moved the projection
+  and summary contracts to `policy.evidence.v1` and
+  `policy.evidence.summary.v1`, replaced the engine-local audit handoff with
+  `nextStep`, added a legacy completion-audit adapter, and lowered the
+  production naming regression baseline after inventory validation.
 - **Policy Evidence Input Gate Module Cutover** — renamed the evidence input
   gate and focused test to durable product-domain names, moved the input-gate
   contract to `policy.evidence.input_gate.v1`, replaced the local audit handoff

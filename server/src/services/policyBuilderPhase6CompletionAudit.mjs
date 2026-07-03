@@ -6,8 +6,8 @@ import {
   buildBoundedPolicyEvidenceProjection,
 } from './policyEvidenceBoundary.mjs';
 import {
-  buildPolicyBuilderPhase6EvidenceEngineAudit,
-} from './policyBuilderPhase6EvidenceEngine.mjs';
+  buildPolicyEvidenceEngineAudit,
+} from './policyEvidenceEngine.mjs';
 import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from './policyEvidenceQuality.mjs';
@@ -88,8 +88,8 @@ const PHASE6R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE6R_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE,
     label: 'Evidence engine',
     docPath: 'docs/architecture/policy-builder-phase-6r-evidence-engine.md',
-    servicePath: 'server/src/services/policyBuilderPhase6EvidenceEngine.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase6EvidenceEngine.test.mjs',
+    servicePath: 'server/src/services/policyEvidenceEngine.mjs',
+    testPath: 'server/src/__tests__/services/policyEvidenceEngine.test.mjs',
     expectedNextPhaseId: '6r_2',
     evidence: 'Evidence buckets and sources are server-owned and exclude live provider/UI payload authority.',
   },
@@ -139,6 +139,12 @@ const PHASE6R_COMPONENT_RECORDS = Object.freeze([
     evidence: 'Legacy diagnostics are migration verifiers or deletion targets with rollback and Phase 8 gates.',
   },
 ]);
+
+const PHASE6R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
+  [PHASE6R_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE]: Object.freeze({
+    intent_inference: '6r_2',
+  }),
+});
 
 const REQUIRED_LEGACY_CUTLINE_ARTIFACT_PATHS = Object.freeze([
   'client/src/components/policies/PolicyIntentImpactPreviewCard.vue',
@@ -310,7 +316,7 @@ function buildComponentAuditMap() {
     [PHASE6R_COMPLETION_COMPONENT_IDS.ARTIFACT_INVENTORY_CUTLINE]:
       buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE]:
-      buildPolicyBuilderPhase6EvidenceEngineAudit(),
+      buildPolicyEvidenceEngineAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE]:
       buildPolicyBuilderPhase6IntentEngineAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.LEARNING_GUARD]:
@@ -785,15 +791,19 @@ function validatePhase6ComponentCompletion(record, {
       ));
     }
 
+    const actualNextPhaseId = componentAudit.nextPhase?.phaseId ||
+      PHASE6R_COMPONENT_NEXT_STEP_PHASE_IDS[record.id]?.[componentAudit.nextStep?.stepId] ||
+      null;
+
     if (record.expectedNextPhaseId &&
-        componentAudit.nextPhase?.phaseId !== record.expectedNextPhaseId) {
+        actualNextPhaseId !== record.expectedNextPhaseId) {
       issues.push(buildIssue(
         PHASE6R_COMPLETION_RISK_IDS.NEXT_PHASE_MISMATCH,
         `Phase 6R component "${record.id}" points to an unexpected next phase.`,
         {
           componentId: record.id,
           expectedNextPhaseId: record.expectedNextPhaseId,
-          actualNextPhaseId: componentAudit.nextPhase?.phaseId || null,
+          actualNextPhaseId,
         }
       ));
     }

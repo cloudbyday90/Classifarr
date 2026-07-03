@@ -5,41 +5,41 @@ import {
   POLICY_UX_TERM_IDS,
 } from '../../services/policyUserMentalModel.mjs';
 import {
-  PHASE6R_EVIDENCE_AUDIT_RISK_IDS,
-  PHASE6R_EVIDENCE_BUCKET_IDS,
-  PHASE6R_EVIDENCE_BUCKET_READINESS_IDS,
-  PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS,
-  PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS,
-  PHASE6R_EVIDENCE_SOURCE_IDS,
-  buildPolicyBuilderPhase6EvidenceEngineAudit,
-  buildPolicyBuilderPhase6EvidenceProjection,
-  buildPolicyBuilderPhase6EvidenceProjectionAudit,
-  getPolicyBuilderPhase6EvidenceBucket,
-  getPolicyBuilderPhase6EvidenceSource,
-  listPolicyBuilderPhase6EvidenceBuckets,
-  listPolicyBuilderPhase6EvidenceReducerCutlines,
-  listPolicyBuilderPhase6EvidenceSources,
-  summarizePolicyBuilderPhase6EvidenceProjection,
-  validatePolicyBuilderPhase6EvidenceBucket,
-  validatePolicyBuilderPhase6EvidenceProjectionEntry,
-  validatePolicyBuilderPhase6EvidenceSource,
-} from '../../services/policyBuilderPhase6EvidenceEngine.mjs';
+  POLICY_EVIDENCE_AUDIT_RISK_IDS,
+  POLICY_EVIDENCE_BUCKET_IDS,
+  POLICY_EVIDENCE_BUCKET_READINESS_IDS,
+  POLICY_EVIDENCE_PROHIBITED_PAYLOAD_IDS,
+  POLICY_EVIDENCE_REDUCER_CUTLINE_IDS,
+  POLICY_EVIDENCE_SOURCE_IDS,
+  buildPolicyEvidenceEngineAudit,
+  buildPolicyEvidenceProjection,
+  buildPolicyEvidenceProjectionAudit,
+  getPolicyEvidenceBucket,
+  getPolicyEvidenceSource,
+  listPolicyEvidenceBuckets,
+  listPolicyEvidenceReducerCutlines,
+  listPolicyEvidenceSources,
+  summarizePolicyEvidenceProjection,
+  validatePolicyEvidenceBucket,
+  validatePolicyEvidenceProjectionEntry,
+  validatePolicyEvidenceSource,
+} from '../../services/policyEvidenceEngine.mjs';
 
-describe('policyBuilderPhase6EvidenceEngine', () => {
-  test('defines stable Phase 6R evidence buckets in roadmap order', () => {
-    expect(listPolicyBuilderPhase6EvidenceBuckets().map(bucket => bucket.id)).toEqual([
-      PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
-      PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-      PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
-      PHASE6R_EVIDENCE_BUCKET_IDS.AVOID,
-      PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
-      PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING,
-      PHASE6R_EVIDENCE_BUCKET_IDS.FRESHNESS,
-      PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+describe('policyEvidenceEngine', () => {
+  test('defines stable policy evidence buckets in roadmap order', () => {
+    expect(listPolicyEvidenceBuckets().map(bucket => bucket.id)).toEqual([
+      POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
+      POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+      POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
+      POLICY_EVIDENCE_BUCKET_IDS.AVOID,
+      POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
+      POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
+      POLICY_EVIDENCE_BUCKET_IDS.FRESHNESS,
+      POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
     ]);
 
-    const identity = getPolicyBuilderPhase6EvidenceBucket(PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY);
-    expect(identity.phase0TermIds).toEqual([POLICY_UX_TERM_IDS.BELONGS_HERE]);
+    const identity = getPolicyEvidenceBucket(POLICY_EVIDENCE_BUCKET_IDS.IDENTITY);
+    expect(identity.uxTermIds).toEqual([POLICY_UX_TERM_IDS.BELONGS_HERE]);
     expect(identity.authoritySourceIds).toEqual([
       AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
@@ -48,42 +48,42 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
   });
 
   test('defines evidence sources without live lookups, raw payloads, UI language, or transient quota state', () => {
-    listPolicyBuilderPhase6EvidenceSources().forEach(source => {
+    listPolicyEvidenceSources().forEach(source => {
       expect(source.liveLookupAllowed).toBe(false);
       expect(source.exposesRawPayload).toBe(false);
       expect(source.exposesUiLanguage).toBe(false);
       expect(source.transientStateAllowed).toBe(false);
       expect(source.prohibitedPayloadIds).toEqual(expect.arrayContaining([
-        PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS.RAW_PROVIDER_PAYLOAD,
-        PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS.LIVE_PROVIDER_LOOKUP,
-        PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS.PROVIDER_QUOTA_STATE,
-        PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS.UI_CHIP_LANGUAGE,
-        PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS.REPLAY_PREVIEW_PAYLOAD,
-        PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS.IMPACT_PREVIEW_PAYLOAD,
+        POLICY_EVIDENCE_PROHIBITED_PAYLOAD_IDS.RAW_PROVIDER_PAYLOAD,
+        POLICY_EVIDENCE_PROHIBITED_PAYLOAD_IDS.LIVE_PROVIDER_LOOKUP,
+        POLICY_EVIDENCE_PROHIBITED_PAYLOAD_IDS.PROVIDER_QUOTA_STATE,
+        POLICY_EVIDENCE_PROHIBITED_PAYLOAD_IDS.UI_CHIP_LANGUAGE,
+        POLICY_EVIDENCE_PROHIBITED_PAYLOAD_IDS.REPLAY_PREVIEW_PAYLOAD,
+        POLICY_EVIDENCE_PROHIBITED_PAYLOAD_IDS.IMPACT_PREVIEW_PAYLOAD,
       ]));
     });
 
-    expect(getPolicyBuilderPhase6EvidenceSource(PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT)
+    expect(getPolicyEvidenceSource(POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT)
       .allowedBucketIds)
-      .not.toContain(PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY);
+      .not.toContain(POLICY_EVIDENCE_BUCKET_IDS.IDENTITY);
   });
 
   test('keeps hard limits and avoid evidence tied to operator-declared intent only', () => {
-    const hardLimit = getPolicyBuilderPhase6EvidenceBucket(PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT);
-    const avoid = getPolicyBuilderPhase6EvidenceBucket(PHASE6R_EVIDENCE_BUCKET_IDS.AVOID);
+    const hardLimit = getPolicyEvidenceBucket(POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT);
+    const avoid = getPolicyEvidenceBucket(POLICY_EVIDENCE_BUCKET_IDS.AVOID);
 
     expect(hardLimit.authoritySourceIds).toEqual([AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT]);
     expect(hardLimit.allowedSourceIds).toEqual([
-      PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ]);
     expect(avoid.authoritySourceIds).toEqual([AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT]);
     expect(avoid.allowedSourceIds).toEqual([
-      PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ]);
   });
 
   test('builds a deterministic offline evidence projection and strips raw provider payloads', () => {
-    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+    const projection = buildPolicyEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
           { key: 'genre:animation', label: 'Animation', count: 12, confidence: 0.91 },
@@ -115,31 +115,31 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
     expect(projection.generatedFromLiveProvider).toBe(false);
     expect(projection.exposesRawProviderPayloads).toBe(false);
     expect(projection.exposesUiChipLanguage).toBe(false);
-    expect(projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY])
+    expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY])
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           label: 'Animation',
-          sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+          sourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
           authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
           includesRawPayload: false,
           liveLookupPerformed: false,
         }),
         expect.objectContaining({
           label: 'Animated Movies',
-          sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+          sourceId: POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
           authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
         }),
       ]));
-    expect(projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT][0])
+    expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT][0])
       .toEqual(expect.objectContaining({
         label: 'No NC-17',
         authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
       }));
-    expect(projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY])
+    expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY])
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           label: 'TMDB genre: Animation',
-          sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+          sourceId: POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
           authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
           includesRawPayload: false,
         }),
@@ -148,7 +148,7 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
     expect(JSON.stringify(projection)).not.toContain('quotaState');
     expect(JSON.stringify(projection)).not.toContain('uiChipLabel');
     expect(projection.summary).toEqual(expect.objectContaining({
-      version: 'phase6r.evidence.summary.v1',
+      version: 'policy.evidence.summary.v1',
       totalEntryCount: 9,
       hasBlockingEvidence: true,
       hasReviewEvidence: true,
@@ -165,20 +165,20 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
     expect(JSON.stringify(projection.quality)).not.toContain('Animated Movies');
     expect(projection.summary.bucketSummaries).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
+        bucketId: POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
         entryCount: 1,
-        readinessId: PHASE6R_EVIDENCE_BUCKET_READINESS_IDS.BLOCKING,
+        readinessId: POLICY_EVIDENCE_BUCKET_READINESS_IDS.BLOCKING,
       }),
       expect.objectContaining({
-        bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
+        bucketId: POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
         entryCount: 1,
-        readinessId: PHASE6R_EVIDENCE_BUCKET_READINESS_IDS.REVIEW,
+        readinessId: POLICY_EVIDENCE_BUCKET_READINESS_IDS.REVIEW,
       }),
     ]));
   });
 
   test('builds a bounded evidence summary for downstream engines', () => {
-    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+    const projection = buildPolicyEvidenceProjection({
       libraryProfile: {
         identityCandidates: ['Animation'],
         compatibilityCandidates: ['Family'],
@@ -188,68 +188,68 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
       },
     });
 
-    const summary = summarizePolicyBuilderPhase6EvidenceProjection(projection);
+    const summary = summarizePolicyEvidenceProjection(projection);
 
     expect(summary).toEqual(projection.summary);
     expect(summary.sourceIds).toEqual([
-      PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
-      PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+      POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ]);
     expect(summary.authoritySourceIds).toEqual([
       AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ]);
     expect(summary.blockingBucketIds).toEqual([
-      PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
+      POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
     ]);
   });
 
   test('treats stale profiles and missing input as insufficient evidence instead of exclusions', () => {
-    const staleProjection = buildPolicyBuilderPhase6EvidenceProjection({
+    const staleProjection = buildPolicyEvidenceProjection({
       profileFreshness: {
         stale: true,
         updatedAt: '2026-05-01T12:00:00.000Z',
       },
     });
 
-    expect(staleProjection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT][0])
+    expect(staleProjection.buckets[POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT][0])
       .toEqual(expect.objectContaining({
         label: 'Profile is stale',
         reasonCode: 'stale_profile',
         stale: true,
       }));
-    expect(staleProjection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.AVOID]).toEqual([]);
+    expect(staleProjection.buckets[POLICY_EVIDENCE_BUCKET_IDS.AVOID]).toEqual([]);
 
-    const emptyProjection = buildPolicyBuilderPhase6EvidenceProjection();
+    const emptyProjection = buildPolicyEvidenceProjection();
     expect(emptyProjection.warnings).toEqual([
       expect.objectContaining({
-        bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+        bucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
         reasonCode: 'no_evidence_inputs',
       }),
     ]);
   });
 
   test('passes the default evidence engine audit', () => {
-    const audit = buildPolicyBuilderPhase6EvidenceEngineAudit();
+    const audit = buildPolicyEvidenceEngineAudit();
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedBucketCount).toBe(8);
     expect(audit.checkedSourceCount).toBe(8);
     expect(audit.checkedReducerCutlineCount).toBe(4);
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '6r_2',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'intent_inference',
       label: 'Intent Engine',
     }));
   });
 
   test('tracks replay and impact reducers as rewrite or deletion candidates outside normal flow', () => {
-    const cutlines = listPolicyBuilderPhase6EvidenceReducerCutlines();
+    const cutlines = listPolicyEvidenceReducerCutlines();
 
     expect(cutlines.map(cutline => cutline.dispositionId)).toEqual(expect.arrayContaining([
-      PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
-      PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.REWRITE_AS_EVIDENCE_REDUCER,
-      PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.KEEP_OUT_OF_NORMAL_FLOW,
+      POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
+      POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.REWRITE_AS_EVIDENCE_REDUCER,
+      POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.KEEP_OUT_OF_NORMAL_FLOW,
     ]));
     cutlines.forEach(cutline => {
       expect(cutline.normalFlowAllowed).toBe(false);
@@ -259,7 +259,7 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
   });
 
   test('audits generated evidence projections as safe contract instances', () => {
-    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+    const projection = buildPolicyEvidenceProjection({
       libraryProfile: {
         identityCandidates: ['Animation'],
         compatibilityCandidates: ['Family'],
@@ -269,7 +269,7 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
       },
     });
 
-    const audit = buildPolicyBuilderPhase6EvidenceProjectionAudit(projection);
+    const audit = buildPolicyEvidenceProjectionAudit(projection);
 
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
@@ -280,7 +280,7 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
   });
 
   test('rejects tampered projections that leak payloads, live lookups, or invalid authority', () => {
-    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+    const projection = buildPolicyEvidenceProjection({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
       },
@@ -288,57 +288,57 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
     projection.generatedFromLiveProvider = true;
     projection.exposesRawProviderPayloads = true;
     projection.exposesUiChipLanguage = true;
-    projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY].push({
+    projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY].push({
       label: 'Provider gate identity chip',
-      sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      sourceId: POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
       authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
       includesRawPayload: true,
       liveLookupPerformed: true,
       raw: { providerPayload: { id: 16 } },
     });
-    projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT].push({
+    projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT].push({
       label: 'Provider hard limit',
-      sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      sourceId: POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
       authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
     });
     projection.summary.totalEntryCount = 1;
 
-    const riskIds = buildPolicyBuilderPhase6EvidenceProjectionAudit(projection)
+    const riskIds = buildPolicyEvidenceProjectionAudit(projection)
       .issues
       .map(issue => issue.riskId);
 
     expect(riskIds).toEqual(expect.arrayContaining([
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_USED_LIVE_PROVIDER,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_RAW_PAYLOAD,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_UI_LANGUAGE,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_SOURCE_NOT_ALLOWED,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_AUTHORITY_NOT_ALLOWED,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_RAW_PAYLOAD,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_LIVE_LOOKUP,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_HARD_LIMIT_WITHOUT_OPERATOR_AUTHORITY,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_METADATA_OWNS_IDENTITY,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_SUMMARY_COUNT_MISMATCH,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_USED_LIVE_PROVIDER,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_RAW_PAYLOAD,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_UI_LANGUAGE,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_SOURCE_NOT_ALLOWED,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_AUTHORITY_NOT_ALLOWED,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_RAW_PAYLOAD,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_LIVE_LOOKUP,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_HARD_LIMIT_WITHOUT_OPERATOR_AUTHORITY,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_METADATA_OWNS_IDENTITY,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_SUMMARY_COUNT_MISMATCH,
     ]));
   });
 
   test('rejects projections without generated summaries', () => {
-    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+    const projection = buildPolicyEvidenceProjection({
       libraryProfile: {
         identityCandidates: ['Animation'],
       },
     });
     delete projection.summary;
 
-    expect(buildPolicyBuilderPhase6EvidenceProjectionAudit(projection).issues)
+    expect(buildPolicyEvidenceProjectionAudit(projection).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_MISSING_SUMMARY,
+          riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_MISSING_SUMMARY,
         }),
       ]));
   });
 
   test('rejects projections with stale quality assessments', () => {
-    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+    const projection = buildPolicyEvidenceProjection({
       libraryProfile: {
         identityCandidates: ['Animation'],
       },
@@ -352,80 +352,80 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
       },
     };
 
-    expect(buildPolicyBuilderPhase6EvidenceProjectionAudit(projection).issues)
+    expect(buildPolicyEvidenceProjectionAudit(projection).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_QUALITY_MISMATCH,
+          riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_QUALITY_MISMATCH,
         }),
       ]));
   });
 
   test('rejects individual projection entries with unknown source or authority', () => {
-    const result = validatePolicyBuilderPhase6EvidenceProjectionEntry({
+    const result = validatePolicyEvidenceProjectionEntry({
       label: 'Mystery signal',
       sourceId: 'unknown_source',
       authoritySourceId: 'unknown_authority',
-    }, PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY);
+    }, POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY);
 
     expect(result.ok).toBe(false);
     expect(result.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_UNKNOWN_SOURCE,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_UNKNOWN_AUTHORITY_SOURCE,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_UNKNOWN_SOURCE,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_UNKNOWN_AUTHORITY_SOURCE,
     ]));
   });
 
   test('rejects metadata evidence as destination identity authority', () => {
     const metadataSource = {
-      ...getPolicyBuilderPhase6EvidenceSource(PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT),
+      ...getPolicyEvidenceSource(POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT),
       allowedBucketIds: [
-        ...getPolicyBuilderPhase6EvidenceSource(PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT)
+        ...getPolicyEvidenceSource(POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT)
           .allowedBucketIds,
-        PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
+        POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
       ],
     };
 
-    expect(validatePolicyBuilderPhase6EvidenceSource(metadataSource).issues)
+    expect(validatePolicyEvidenceSource(metadataSource).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.METADATA_OWNS_POLICY_MEANING,
+          riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.METADATA_OWNS_POLICY_MEANING,
         }),
       ]));
   });
 
   test('rejects hard-limit authority that does not come from declared operator intent', () => {
     const hardLimitBucket = {
-      ...getPolicyBuilderPhase6EvidenceBucket(PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT),
+      ...getPolicyEvidenceBucket(POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT),
       authoritySourceIds: [
         AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
         AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
       ],
     };
 
-    expect(validatePolicyBuilderPhase6EvidenceBucket(hardLimitBucket).issues)
+    expect(validatePolicyEvidenceBucket(hardLimitBucket).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.HARD_LIMIT_WITHOUT_OPERATOR_AUTHORITY,
+          riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.HARD_LIMIT_WITHOUT_OPERATOR_AUTHORITY,
         }),
       ]));
   });
 
   test('rejects final-outcome sources that try to learn directly before the learning guard', () => {
     const manualCorrections = {
-      ...getPolicyBuilderPhase6EvidenceSource(PHASE6R_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS),
+      ...getPolicyEvidenceSource(POLICY_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS),
       directLearningAllowed: true,
     };
 
-    expect(validatePolicyBuilderPhase6EvidenceSource(manualCorrections).issues)
+    expect(validatePolicyEvidenceSource(manualCorrections).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.FINAL_OUTCOME_LEARNS_DIRECTLY,
+          riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.FINAL_OUTCOME_LEARNS_DIRECTLY,
         }),
       ]));
   });
 
   test('exposes immutable evidence bucket and source contracts', () => {
-    const buckets = listPolicyBuilderPhase6EvidenceBuckets();
-    const sources = listPolicyBuilderPhase6EvidenceSources();
+    const buckets = listPolicyEvidenceBuckets();
+    const sources = listPolicyEvidenceSources();
 
     expect(Object.isFrozen(buckets)).toBe(true);
     expect(Object.isFrozen(buckets[0])).toBe(true);

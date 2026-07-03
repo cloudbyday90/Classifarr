@@ -68,7 +68,7 @@ Cons:
   `server/src/__tests__/services/policyEvidenceBoundary.test.mjs`
 - Current dependencies:
   `server/src/services/policyEvidenceInputGate.mjs` and
-  `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
+  `server/src/services/policyEvidenceEngine.mjs`
 - Downstream consumers:
   Phase 6R completion audit and intent/learning/readiness/operator/migration
   tests now import `buildBoundedPolicyEvidenceProjection`.

@@ -9,7 +9,7 @@ import {
 
 describe('policyEvidenceFingerprint', () => {
   const buildProjection = () => ({
-    version: 'phase6r.evidence.v1',
+    version: 'policy.evidence.v1',
     generatedFromLiveProvider: false,
     exposesRawProviderPayloads: false,
     exposesUiChipLanguage: false,
@@ -25,7 +25,7 @@ describe('policyEvidenceFingerprint', () => {
     },
     warnings: [],
     summary: {
-      version: 'phase6r.evidence.summary.v1',
+      version: 'policy.evidence.summary.v1',
       totalEntryCount: 1,
       sourceIds: ['media_server_library_profile'],
       authoritySourceIds: ['media_server_contents'],
@@ -68,7 +68,7 @@ describe('policyEvidenceFingerprint', () => {
       exposesUiChipLanguage: false,
       exposesRawProviderPayloads: false,
       generatedFromLiveProvider: false,
-      version: 'phase6r.evidence.v1',
+      version: 'policy.evidence.v1',
     });
 
     expect(left).toEqual(right);
@@ -185,7 +185,7 @@ describe('policyEvidenceFingerprint', () => {
 
   test('changes the fingerprint when projection evidence changes', () => {
     const baseProjection = {
-      version: 'phase6r.evidence.v1',
+      version: 'policy.evidence.v1',
       buckets: {
         identity_evidence: [{ label: 'Animation' }],
       },

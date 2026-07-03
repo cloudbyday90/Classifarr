@@ -68,7 +68,7 @@ Cons:
 - Consuming boundary:
   `server/src/services/policyEvidenceBoundary.mjs`
 - Current source-id dependency:
-  `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
+  `server/src/services/policyEvidenceEngine.mjs`
 - Regression guard:
   `server/src/services/policyProductionNamingRegressionAudit.mjs`
 

@@ -5,9 +5,9 @@ import {
   buildBoundedPolicyEvidenceProjection,
 } from '../../services/policyEvidenceBoundary.mjs';
 import {
-  PHASE6R_EVIDENCE_BUCKET_IDS,
-  PHASE6R_EVIDENCE_SOURCE_IDS,
-} from '../../services/policyBuilderPhase6EvidenceEngine.mjs';
+  POLICY_EVIDENCE_BUCKET_IDS,
+  POLICY_EVIDENCE_SOURCE_IDS,
+} from '../../services/policyEvidenceEngine.mjs';
 import {
   POLICY_EVIDENCE_INPUT_GATE_RISK_IDS,
 } from '../../services/policyEvidenceInputGate.mjs';
@@ -93,20 +93,20 @@ describe('policyEvidenceBoundary', () => {
     expect(JSON.stringify(result.projectionFingerprint)).not.toContain('Mulan');
     expect(JSON.stringify(result.projectionFingerprint)).not.toContain('Radarr accepted root folder');
     expect(result.projection.summary.sourceIds).toEqual(expect.arrayContaining([
-      PHASE6R_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
-      PHASE6R_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
+      POLICY_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
+      POLICY_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
     ]));
-    expect(result.projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY])
+    expect(result.projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY])
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
+          sourceId: POLICY_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
           label: 'Mulan',
         }),
       ]));
-    expect(result.projection.buckets[PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING])
+    expect(result.projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.ROUTING])
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
+          sourceId: POLICY_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
           label: 'Radarr accepted root folder',
         }),
       ]));

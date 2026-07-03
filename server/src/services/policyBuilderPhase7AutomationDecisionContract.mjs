@@ -2,9 +2,9 @@ import {
   AUTHORITY_SOURCE_IDS,
 } from './policyAuthorityVocabulary.mjs';
 import {
-  PHASE6R_EVIDENCE_BUCKET_IDS,
-  PHASE6R_EVIDENCE_SOURCE_IDS,
-} from './policyBuilderPhase6EvidenceEngine.mjs';
+  POLICY_EVIDENCE_BUCKET_IDS,
+  POLICY_EVIDENCE_SOURCE_IDS,
+} from './policyEvidenceEngine.mjs';
 import {
   PHASE7R_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS,
   PHASE7R_RUNTIME_EVIDENCE_SOURCE_IDS,
@@ -171,21 +171,21 @@ function getBuckets(evidenceProjection = {}) {
   const buckets = asObject(evidenceProjection.buckets);
 
   return {
-    identity: asArray(buckets[PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY]),
-    compatibility: asArray(buckets[PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY]),
-    hardLimit: asArray(buckets[PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT]),
-    avoid: asArray(buckets[PHASE6R_EVIDENCE_BUCKET_IDS.AVOID]),
-    outlier: asArray(buckets[PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER]),
-    routing: asArray(buckets[PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING]),
-    freshness: asArray(buckets[PHASE6R_EVIDENCE_BUCKET_IDS.FRESHNESS]),
-    insufficient: asArray(buckets[PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT]),
+    identity: asArray(buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY]),
+    compatibility: asArray(buckets[POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY]),
+    hardLimit: asArray(buckets[POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT]),
+    avoid: asArray(buckets[POLICY_EVIDENCE_BUCKET_IDS.AVOID]),
+    outlier: asArray(buckets[POLICY_EVIDENCE_BUCKET_IDS.OUTLIER]),
+    routing: asArray(buckets[POLICY_EVIDENCE_BUCKET_IDS.ROUTING]),
+    freshness: asArray(buckets[POLICY_EVIDENCE_BUCKET_IDS.FRESHNESS]),
+    insufficient: asArray(buckets[POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT]),
   };
 }
 
 function isStrongIdentityEntry(entry = {}) {
   const confidence = normalizeConfidence(entry.confidence);
 
-  return entry.sourceId === PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT ||
+  return entry.sourceId === POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT ||
     entry.authoritySourceId === AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT ||
     entry.trusted === true ||
     Number(entry.count) >= STRONG_IDENTITY_COUNT ||
@@ -324,7 +324,7 @@ function chooseDecisionState({
 
   if (hasHardLimitViolation(input)) {
     pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.HARD_LIMIT_VIOLATION, {
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
       severity: 'error',
       summary: 'A hard-limit rule blocks automation.',
     });
@@ -336,7 +336,7 @@ function chooseDecisionState({
 
   if (hasStaleProfile(input, buckets)) {
     pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.STALE_PROFILE, {
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.FRESHNESS,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.FRESHNESS,
       severity: 'warning',
       summary: 'Refresh the media-server profile before trusting automation.',
     });
@@ -348,7 +348,7 @@ function chooseDecisionState({
 
   if (hasAvoidConflict(input)) {
     pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.AVOID_RULE_CONFLICT, {
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.AVOID,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.AVOID,
       severity: 'warning',
       summary: 'Avoid evidence conflicts with this candidate.',
     });
@@ -360,7 +360,7 @@ function chooseDecisionState({
 
   if (hasHighRiskEvidenceConflict(input, buckets)) {
     pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.HIGH_RISK_EVIDENCE_CONFLICT, {
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
       severity: 'warning',
       summary: 'High-risk evidence conflict requires operator review.',
     });
@@ -372,7 +372,7 @@ function chooseDecisionState({
 
   if (!strongIdentity) {
     pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.MISSING_STRONG_IDENTITY, {
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
       severity: 'warning',
       summary: 'Destination identity evidence is not strong enough for automation.',
     });
@@ -384,14 +384,14 @@ function chooseDecisionState({
 
   if (!routeMapped) {
     pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.ROUTING_MAPPING_MISSING, {
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
       severity: 'warning',
       summary: 'A concrete Arr route mapping is required before routing.',
     });
 
     if (classificationComplete || routingIntent) {
       pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.CLASSIFICATION_WITHOUT_ROUTE, {
-        bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING,
+        bucketId: POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
         severity: 'warning',
         summary: 'Classification may be recorded, but routing cannot be treated as complete.',
       });
@@ -409,7 +409,7 @@ function chooseDecisionState({
   }
 
   pushReason(reasons, PHASE7R_AUTOMATION_DECISION_REASON_IDS.AUTOMATION_ROUTE_READY, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
     summary: 'Identity, risk, freshness, and routing gates allow automatic routing.',
   });
 

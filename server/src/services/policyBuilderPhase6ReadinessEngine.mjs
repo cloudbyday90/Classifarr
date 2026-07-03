@@ -1,7 +1,7 @@
 import {
-  PHASE6R_EVIDENCE_BUCKET_IDS,
-  buildPolicyBuilderPhase6EvidenceProjection,
-} from './policyBuilderPhase6EvidenceEngine.mjs';
+  POLICY_EVIDENCE_BUCKET_IDS,
+  buildPolicyEvidenceProjection,
+} from './policyEvidenceEngine.mjs';
 import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from './policyEvidenceQuality.mjs';
@@ -217,7 +217,7 @@ function buildInputsSummary({
 
 function hasStaleProfile(input = {}, evidenceProjection = {}, intent = {}, learningDecision = {}) {
   const profileFreshness = asObject(input.profileFreshness);
-  const staleEvidence = asArray(evidenceProjection?.buckets?.[PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT])
+  const staleEvidence = asArray(evidenceProjection?.buckets?.[POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT])
     .some(entry => entry?.reasonCode === 'stale_profile' || entry?.stale === true);
 
   return profileFreshness.stale === true ||
@@ -344,9 +344,9 @@ function chooseReadinessState(issues) {
 }
 
 function buildPolicyBuilderPhase6Readiness(input = {}) {
-  const evidenceProjection = input.evidenceProjection?.version === 'phase6r.evidence.v1'
+  const evidenceProjection = input.evidenceProjection?.version === 'policy.evidence.v1'
     ? input.evidenceProjection
-    : buildPolicyBuilderPhase6EvidenceProjection(input);
+    : buildPolicyEvidenceProjection(input);
   const intent = input.intentDraft?.version === 'phase6r.intent.v1' ||
     input.intent?.version === 'phase6r.intent.v1'
     ? input.intentDraft || input.intent

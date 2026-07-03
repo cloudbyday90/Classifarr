@@ -153,7 +153,7 @@ Cons:
 - Focused tests:
   `server/src/__tests__/services/policyBuilderPhase7LibraryPolicyRebuild.test.mjs`
 - Evidence dependency:
-  `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
+  `server/src/services/policyEvidenceEngine.mjs`
 - Intent dependency:
   `server/src/services/policyBuilderPhase6IntentEngine.mjs`
 - Readiness dependency:

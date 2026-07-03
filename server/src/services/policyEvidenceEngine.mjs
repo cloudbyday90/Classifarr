@@ -11,7 +11,7 @@ import {
   validatePolicyEvidenceQualityAssessment,
 } from './policyEvidenceQuality.mjs';
 
-const PHASE6R_EVIDENCE_BUCKET_IDS = Object.freeze({
+const POLICY_EVIDENCE_BUCKET_IDS = Object.freeze({
   IDENTITY: 'identity_evidence',
   COMPATIBILITY: 'compatibility_evidence',
   HARD_LIMIT: 'hard_limit_evidence',
@@ -22,7 +22,7 @@ const PHASE6R_EVIDENCE_BUCKET_IDS = Object.freeze({
   INSUFFICIENT: 'insufficient_evidence',
 });
 
-const PHASE6R_EVIDENCE_SOURCE_IDS = Object.freeze({
+const POLICY_EVIDENCE_SOURCE_IDS = Object.freeze({
   MEDIA_SERVER_LIBRARY_PROFILE: 'media_server_library_profile',
   OPERATOR_DECLARED_INTENT: 'operator_declared_intent',
   CLASSIFICATION_FINAL_OUTCOMES: 'classification_final_outcomes',
@@ -33,7 +33,7 @@ const PHASE6R_EVIDENCE_SOURCE_IDS = Object.freeze({
   PROFILE_FRESHNESS: 'profile_freshness',
 });
 
-const PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS = Object.freeze({
+const POLICY_EVIDENCE_PROHIBITED_PAYLOAD_IDS = Object.freeze({
   RAW_PROVIDER_PAYLOAD: 'raw_provider_payload',
   LIVE_PROVIDER_LOOKUP: 'live_provider_lookup',
   PROVIDER_QUOTA_STATE: 'provider_quota_state',
@@ -42,20 +42,20 @@ const PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS = Object.freeze({
   IMPACT_PREVIEW_PAYLOAD: 'impact_preview_payload',
 });
 
-const PHASE6R_EVIDENCE_BUCKET_READINESS_IDS = Object.freeze({
+const POLICY_EVIDENCE_BUCKET_READINESS_IDS = Object.freeze({
   EMPTY: 'empty',
   SUPPORTING: 'supporting',
   REVIEW: 'review',
   BLOCKING: 'blocking',
 });
 
-const PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS = Object.freeze({
+const POLICY_EVIDENCE_REDUCER_CUTLINE_IDS = Object.freeze({
   REWRITE_AS_EVIDENCE_REDUCER: 'rewrite_as_evidence_reducer',
   DELETE_DIAGNOSTIC_SURFACE: 'delete_diagnostic_surface',
   KEEP_OUT_OF_NORMAL_FLOW: 'keep_out_of_normal_flow',
 });
 
-const PHASE6R_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_BUCKET: 'unknown_bucket',
   UNKNOWN_SOURCE: 'unknown_source',
   UNKNOWN_AUTHORITY_SOURCE: 'unknown_authority_source',
@@ -115,18 +115,18 @@ function deepFreeze(value) {
 }
 
 const ALL_PROHIBITED_PAYLOAD_IDS = Object.freeze(
-  Object.values(PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS)
+  Object.values(POLICY_EVIDENCE_PROHIBITED_PAYLOAD_IDS)
 );
 
-const PHASE6R_EVIDENCE_BUCKETS = deepFreeze([
+const POLICY_EVIDENCE_BUCKETS = deepFreeze([
   {
-    id: PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
+    id: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
     label: 'Identity Evidence',
-    phase0TermIds: [POLICY_UX_TERM_IDS.BELONGS_HERE],
+    uxTermIds: [POLICY_UX_TERM_IDS.BELONGS_HERE],
     productMeaning: 'Signals that help define what clearly belongs in a destination after observed examples or declared intent support them.',
     allowedSourceIds: [
-      PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
-      PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+      POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ],
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
@@ -136,17 +136,17 @@ const PHASE6R_EVIDENCE_BUCKETS = deepFreeze([
     canBlockAutomation: false,
   },
   {
-    id: PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+    id: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
     label: 'Compatibility Evidence',
-    phase0TermIds: [POLICY_UX_TERM_IDS.HELPFUL_MATCHES],
+    uxTermIds: [POLICY_UX_TERM_IDS.HELPFUL_MATCHES],
     productMeaning: 'Signals that can support a match after destination identity is plausible.',
     allowedSourceIds: [
-      PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
-      PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-      PHASE6R_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
-      PHASE6R_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS,
-      PHASE6R_EVIDENCE_SOURCE_IDS.PENDING_ITEM_ANSWERS,
-      PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+      POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      POLICY_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
+      POLICY_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS,
+      POLICY_EVIDENCE_SOURCE_IDS.PENDING_ITEM_ANSWERS,
+      POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
     ],
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
@@ -158,12 +158,12 @@ const PHASE6R_EVIDENCE_BUCKETS = deepFreeze([
     canBlockAutomation: false,
   },
   {
-    id: PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
+    id: POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
     label: 'Hard-Limit Evidence',
-    phase0TermIds: [POLICY_UX_TERM_IDS.HARD_LIMITS],
+    uxTermIds: [POLICY_UX_TERM_IDS.HARD_LIMITS],
     productMeaning: 'Explicit operator constraints that can block classification or routing.',
     allowedSourceIds: [
-      PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ],
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
@@ -172,12 +172,12 @@ const PHASE6R_EVIDENCE_BUCKETS = deepFreeze([
     canBlockAutomation: true,
   },
   {
-    id: PHASE6R_EVIDENCE_BUCKET_IDS.AVOID,
+    id: POLICY_EVIDENCE_BUCKET_IDS.AVOID,
     label: 'Avoid Evidence',
-    phase0TermIds: [POLICY_UX_TERM_IDS.AVOID],
+    uxTermIds: [POLICY_UX_TERM_IDS.AVOID],
     productMeaning: 'Explicit operator negative evidence that lowers confidence without becoming a hard block by default.',
     allowedSourceIds: [
-      PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ],
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
@@ -186,18 +186,18 @@ const PHASE6R_EVIDENCE_BUCKETS = deepFreeze([
     canBlockAutomation: false,
   },
   {
-    id: PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
+    id: POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
     label: 'Outlier Evidence',
-    phase0TermIds: [POLICY_UX_TERM_IDS.ASK_WHEN_UNSURE],
+    uxTermIds: [POLICY_UX_TERM_IDS.ASK_WHEN_UNSURE],
     productMeaning: 'Evidence that a candidate does not cleanly match the observed or declared destination shape.',
     allowedSourceIds: [
-      PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
-      PHASE6R_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
-      PHASE6R_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS,
-      PHASE6R_EVIDENCE_SOURCE_IDS.PENDING_ITEM_ANSWERS,
-      PHASE6R_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
-      PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
-      PHASE6R_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS,
+      POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+      POLICY_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
+      POLICY_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS,
+      POLICY_EVIDENCE_SOURCE_IDS.PENDING_ITEM_ANSWERS,
+      POLICY_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
+      POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      POLICY_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS,
     ],
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
@@ -208,13 +208,13 @@ const PHASE6R_EVIDENCE_BUCKETS = deepFreeze([
     canBlockAutomation: false,
   },
   {
-    id: PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING,
+    id: POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
     label: 'Routing Evidence',
-    phase0TermIds: [POLICY_UX_TERM_IDS.ROUTING_TARGET],
+    uxTermIds: [POLICY_UX_TERM_IDS.ROUTING_TARGET],
     productMeaning: 'Evidence about whether confirmed matches can be sent to the destination target.',
     allowedSourceIds: [
-      PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-      PHASE6R_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
+      POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      POLICY_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
     ],
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
@@ -224,14 +224,14 @@ const PHASE6R_EVIDENCE_BUCKETS = deepFreeze([
     canBlockAutomation: false,
   },
   {
-    id: PHASE6R_EVIDENCE_BUCKET_IDS.FRESHNESS,
+    id: POLICY_EVIDENCE_BUCKET_IDS.FRESHNESS,
     label: 'Freshness Evidence',
-    phase0TermIds: [POLICY_UX_TERM_IDS.READINESS],
+    uxTermIds: [POLICY_UX_TERM_IDS.READINESS],
     productMeaning: 'Evidence about whether observed profile or enrichment data is current enough to trust.',
     allowedSourceIds: [
-      PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
-      PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
-      PHASE6R_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS,
+      POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+      POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      POLICY_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS,
     ],
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
@@ -241,18 +241,18 @@ const PHASE6R_EVIDENCE_BUCKETS = deepFreeze([
     canBlockAutomation: false,
   },
   {
-    id: PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+    id: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
     label: 'Insufficient Evidence',
-    phase0TermIds: [POLICY_UX_TERM_IDS.READINESS],
+    uxTermIds: [POLICY_UX_TERM_IDS.READINESS],
     productMeaning: 'Missing, stale, or conflicting evidence that should stop confident automation until resolved.',
     allowedSourceIds: [
-      PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
-      PHASE6R_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
-      PHASE6R_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS,
-      PHASE6R_EVIDENCE_SOURCE_IDS.PENDING_ITEM_ANSWERS,
-      PHASE6R_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
-      PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
-      PHASE6R_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS,
+      POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+      POLICY_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
+      POLICY_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS,
+      POLICY_EVIDENCE_SOURCE_IDS.PENDING_ITEM_ANSWERS,
+      POLICY_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
+      POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      POLICY_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS,
     ],
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
@@ -264,17 +264,17 @@ const PHASE6R_EVIDENCE_BUCKETS = deepFreeze([
   },
 ]);
 
-const PHASE6R_EVIDENCE_SOURCES = deepFreeze([
+const POLICY_EVIDENCE_SOURCES = deepFreeze([
   {
-    id: PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+    id: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
     label: 'Media-server library profile',
     authoritySourceIds: [AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS],
     allowedBucketIds: [
-      PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
-      PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-      PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
-      PHASE6R_EVIDENCE_BUCKET_IDS.FRESHNESS,
-      PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+      POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
+      POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+      POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
+      POLICY_EVIDENCE_BUCKET_IDS.FRESHNESS,
+      POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
     ],
     liveLookupAllowed: false,
     exposesRawPayload: false,
@@ -284,15 +284,15 @@ const PHASE6R_EVIDENCE_SOURCES = deepFreeze([
     prohibitedPayloadIds: ALL_PROHIBITED_PAYLOAD_IDS,
   },
   {
-    id: PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    id: POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     label: 'Operator-declared intent',
     authoritySourceIds: [AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT],
     allowedBucketIds: [
-      PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
-      PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-      PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
-      PHASE6R_EVIDENCE_BUCKET_IDS.AVOID,
-      PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING,
+      POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
+      POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+      POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
+      POLICY_EVIDENCE_BUCKET_IDS.AVOID,
+      POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
     ],
     liveLookupAllowed: false,
     exposesRawPayload: false,
@@ -302,13 +302,13 @@ const PHASE6R_EVIDENCE_SOURCES = deepFreeze([
     prohibitedPayloadIds: ALL_PROHIBITED_PAYLOAD_IDS,
   },
   {
-    id: PHASE6R_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
+    id: POLICY_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
     label: 'Classification final outcomes',
     authoritySourceIds: [AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME],
     allowedBucketIds: [
-      PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-      PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
-      PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+      POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+      POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
+      POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
     ],
     liveLookupAllowed: false,
     exposesRawPayload: false,
@@ -318,13 +318,13 @@ const PHASE6R_EVIDENCE_SOURCES = deepFreeze([
     prohibitedPayloadIds: ALL_PROHIBITED_PAYLOAD_IDS,
   },
   {
-    id: PHASE6R_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS,
+    id: POLICY_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS,
     label: 'Manual corrections',
     authoritySourceIds: [AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME],
     allowedBucketIds: [
-      PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-      PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
-      PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+      POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+      POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
+      POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
     ],
     liveLookupAllowed: false,
     exposesRawPayload: false,
@@ -334,13 +334,13 @@ const PHASE6R_EVIDENCE_SOURCES = deepFreeze([
     prohibitedPayloadIds: ALL_PROHIBITED_PAYLOAD_IDS,
   },
   {
-    id: PHASE6R_EVIDENCE_SOURCE_IDS.PENDING_ITEM_ANSWERS,
+    id: POLICY_EVIDENCE_SOURCE_IDS.PENDING_ITEM_ANSWERS,
     label: 'Pending-item answers',
     authoritySourceIds: [AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME],
     allowedBucketIds: [
-      PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-      PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
-      PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+      POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+      POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
+      POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
     ],
     liveLookupAllowed: false,
     exposesRawPayload: false,
@@ -350,13 +350,13 @@ const PHASE6R_EVIDENCE_SOURCES = deepFreeze([
     prohibitedPayloadIds: ALL_PROHIBITED_PAYLOAD_IDS,
   },
   {
-    id: PHASE6R_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
+    id: POLICY_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
     label: 'Arr routing outcomes',
     authoritySourceIds: [AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME],
     allowedBucketIds: [
-      PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING,
-      PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
-      PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+      POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
+      POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
+      POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
     ],
     liveLookupAllowed: false,
     exposesRawPayload: false,
@@ -366,14 +366,14 @@ const PHASE6R_EVIDENCE_SOURCES = deepFreeze([
     prohibitedPayloadIds: ALL_PROHIBITED_PAYLOAD_IDS,
   },
   {
-    id: PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+    id: POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
     label: 'Metadata enrichment',
     authoritySourceIds: [AUTHORITY_SOURCE_IDS.METADATA_PROVIDER],
     allowedBucketIds: [
-      PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-      PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
-      PHASE6R_EVIDENCE_BUCKET_IDS.FRESHNESS,
-      PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+      POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+      POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
+      POLICY_EVIDENCE_BUCKET_IDS.FRESHNESS,
+      POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
     ],
     liveLookupAllowed: false,
     exposesRawPayload: false,
@@ -383,16 +383,16 @@ const PHASE6R_EVIDENCE_SOURCES = deepFreeze([
     prohibitedPayloadIds: ALL_PROHIBITED_PAYLOAD_IDS,
   },
   {
-    id: PHASE6R_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS,
+    id: POLICY_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS,
     label: 'Profile freshness',
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
       AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
     ],
     allowedBucketIds: [
-      PHASE6R_EVIDENCE_BUCKET_IDS.FRESHNESS,
-      PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
-      PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+      POLICY_EVIDENCE_BUCKET_IDS.FRESHNESS,
+      POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
+      POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
     ],
     liveLookupAllowed: false,
     exposesRawPayload: false,
@@ -403,11 +403,11 @@ const PHASE6R_EVIDENCE_SOURCES = deepFreeze([
   },
 ]);
 
-const PHASE6R_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
+const POLICY_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
   {
     id: 'impact_preview_service',
     path: 'server/src/services/policyIntentImpactPreview.mjs',
-    dispositionId: PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
+    dispositionId: POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
     normalFlowAllowed: false,
     exposesUiDiagnostic: true,
     replacementTarget: 'Phase 6R evidence summary and Phase 6R/7R migration verifier output.',
@@ -416,7 +416,7 @@ const PHASE6R_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
   {
     id: 'replay_preview_service',
     path: 'server/src/services/policyIntentReplayPreview.mjs',
-    dispositionId: PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
+    dispositionId: POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
     normalFlowAllowed: false,
     exposesUiDiagnostic: true,
     replacementTarget: 'Phase 6R evidence projection plus migration-only replay verifier.',
@@ -425,7 +425,7 @@ const PHASE6R_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
   {
     id: 'replay_scoring_service',
     path: 'server/src/services/policyIntentReplayScoring.mjs',
-    dispositionId: PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.REWRITE_AS_EVIDENCE_REDUCER,
+    dispositionId: POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.REWRITE_AS_EVIDENCE_REDUCER,
     normalFlowAllowed: false,
     exposesUiDiagnostic: false,
     replacementTarget: 'Deterministic Phase 6R evidence reducers for outlier and compatibility buckets.',
@@ -434,7 +434,7 @@ const PHASE6R_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
   {
     id: 'replay_sample_diagnostics_service',
     path: 'server/src/services/policyIntentReplaySampleDiagnostics.mjs',
-    dispositionId: PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.KEEP_OUT_OF_NORMAL_FLOW,
+    dispositionId: POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.KEEP_OUT_OF_NORMAL_FLOW,
     normalFlowAllowed: false,
     exposesUiDiagnostic: true,
     replacementTarget: 'Maintainer-only migration diagnostics until Phase 8R deletion gates.',
@@ -442,24 +442,24 @@ const PHASE6R_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
   },
 ]);
 
-function listPolicyBuilderPhase6EvidenceBuckets() {
-  return PHASE6R_EVIDENCE_BUCKETS;
+function listPolicyEvidenceBuckets() {
+  return POLICY_EVIDENCE_BUCKETS;
 }
 
-function listPolicyBuilderPhase6EvidenceSources() {
-  return PHASE6R_EVIDENCE_SOURCES;
+function listPolicyEvidenceSources() {
+  return POLICY_EVIDENCE_SOURCES;
 }
 
-function listPolicyBuilderPhase6EvidenceReducerCutlines() {
-  return PHASE6R_EVIDENCE_REDUCER_CUTLINES;
+function listPolicyEvidenceReducerCutlines() {
+  return POLICY_EVIDENCE_REDUCER_CUTLINES;
 }
 
-function getPolicyBuilderPhase6EvidenceBucket(bucketId) {
-  return PHASE6R_EVIDENCE_BUCKETS.find(bucket => bucket.id === bucketId) || null;
+function getPolicyEvidenceBucket(bucketId) {
+  return POLICY_EVIDENCE_BUCKETS.find(bucket => bucket.id === bucketId) || null;
 }
 
-function getPolicyBuilderPhase6EvidenceSource(sourceId) {
-  return PHASE6R_EVIDENCE_SOURCES.find(source => source.id === sourceId) || null;
+function getPolicyEvidenceSource(sourceId) {
+  return POLICY_EVIDENCE_SOURCES.find(source => source.id === sourceId) || null;
 }
 
 function normalizeString(value) {
@@ -510,8 +510,8 @@ function createEvidenceEntry({
   observedAt = null,
   stale = null,
 }) {
-  const bucket = getPolicyBuilderPhase6EvidenceBucket(bucketId);
-  const source = getPolicyBuilderPhase6EvidenceSource(sourceId);
+  const bucket = getPolicyEvidenceBucket(bucketId);
+  const source = getPolicyEvidenceSource(sourceId);
 
   if (!bucket || !source || !bucket.allowedSourceIds.includes(sourceId)) {
     return null;
@@ -592,11 +592,11 @@ function mapSignalEntries(values, {
 
 function createEmptyEvidenceProjection() {
   const buckets = Object.fromEntries(
-    PHASE6R_EVIDENCE_BUCKETS.map(bucket => [bucket.id, []])
+    POLICY_EVIDENCE_BUCKETS.map(bucket => [bucket.id, []])
   );
 
   return {
-    version: 'phase6r.evidence.v1',
+    version: 'policy.evidence.v1',
     generatedFromLiveProvider: false,
     exposesRawProviderPayloads: false,
     exposesUiChipLanguage: false,
@@ -607,14 +607,14 @@ function createEmptyEvidenceProjection() {
   };
 }
 
-function summarizePolicyBuilderPhase6EvidenceProjection(projection = {}) {
+function summarizePolicyEvidenceProjection(projection = {}) {
   const buckets = isNonEmptyObject(projection.buckets) ? projection.buckets : {};
   const sourceIds = new Set();
   const authoritySourceIds = new Set();
   const blockingBucketIds = [];
   const reviewBucketIds = [];
 
-  const bucketSummaries = PHASE6R_EVIDENCE_BUCKETS.map(bucket => {
+  const bucketSummaries = POLICY_EVIDENCE_BUCKETS.map(bucket => {
     const entries = Array.isArray(buckets[bucket.id]) ? buckets[bucket.id] : [];
     entries.forEach(entry => {
       if (entry?.sourceId) sourceIds.add(entry.sourceId);
@@ -622,18 +622,18 @@ function summarizePolicyBuilderPhase6EvidenceProjection(projection = {}) {
     });
 
     let readinessId = entries.length === 0
-      ? PHASE6R_EVIDENCE_BUCKET_READINESS_IDS.EMPTY
-      : PHASE6R_EVIDENCE_BUCKET_READINESS_IDS.SUPPORTING;
+      ? POLICY_EVIDENCE_BUCKET_READINESS_IDS.EMPTY
+      : POLICY_EVIDENCE_BUCKET_READINESS_IDS.SUPPORTING;
 
     if (entries.length > 0 && bucket.canBlockAutomation === true) {
-      readinessId = PHASE6R_EVIDENCE_BUCKET_READINESS_IDS.BLOCKING;
+      readinessId = POLICY_EVIDENCE_BUCKET_READINESS_IDS.BLOCKING;
       blockingBucketIds.push(bucket.id);
     } else if ([
-      PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
-      PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
-      PHASE6R_EVIDENCE_BUCKET_IDS.FRESHNESS,
+      POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
+      POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+      POLICY_EVIDENCE_BUCKET_IDS.FRESHNESS,
     ].includes(bucket.id) && entries.length > 0) {
-      readinessId = PHASE6R_EVIDENCE_BUCKET_READINESS_IDS.REVIEW;
+      readinessId = POLICY_EVIDENCE_BUCKET_READINESS_IDS.REVIEW;
       reviewBucketIds.push(bucket.id);
     }
 
@@ -648,7 +648,7 @@ function summarizePolicyBuilderPhase6EvidenceProjection(projection = {}) {
   });
 
   return {
-    version: 'phase6r.evidence.summary.v1',
+    version: 'policy.evidence.summary.v1',
     totalEntryCount: bucketSummaries.reduce((count, bucket) => count + bucket.entryCount, 0),
     bucketSummaries,
     sourceIds: [...sourceIds].sort(),
@@ -660,88 +660,88 @@ function summarizePolicyBuilderPhase6EvidenceProjection(projection = {}) {
   };
 }
 
-function buildPolicyBuilderPhase6EvidenceProjection(input = {}) {
+function buildPolicyEvidenceProjection(input = {}) {
   const projection = createEmptyEvidenceProjection();
   const libraryProfile = isNonEmptyObject(input.libraryProfile) ? input.libraryProfile : {};
   const operatorIntent = isNonEmptyObject(input.operatorIntent) ? input.operatorIntent : {};
 
   addEntries(projection, mapSignalEntries(libraryProfile.identityCandidates, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
-    sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
+    sourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
     reasonCode: 'observed_library_profile',
   }));
   addEntries(projection, mapSignalEntries(libraryProfile.compatibilityCandidates, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-    sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+    sourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
     reasonCode: 'observed_library_profile',
   }));
   addEntries(projection, mapSignalEntries(libraryProfile.outliers, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
-    sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
+    sourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
     reasonCode: 'observed_outlier',
   }));
 
   addEntries(projection, mapSignalEntries(operatorIntent.belongsHere, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY,
-    sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
+    sourceId: POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     reasonCode: 'operator_declared_belongs_here',
   }));
   addEntries(projection, mapSignalEntries(operatorIntent.helpfulMatches, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-    sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+    sourceId: POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     reasonCode: 'operator_declared_helpful_match',
   }));
   addEntries(projection, mapSignalEntries(operatorIntent.hardLimits, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
-    sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
+    sourceId: POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     reasonCode: 'operator_declared_hard_limit',
   }));
   addEntries(projection, mapSignalEntries(operatorIntent.avoid, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.AVOID,
-    sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.AVOID,
+    sourceId: POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     reasonCode: 'operator_declared_avoid',
   }));
   addEntries(projection, mapSignalEntries(operatorIntent.routingTargets, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING,
-    sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
+    sourceId: POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     reasonCode: 'operator_declared_routing_target',
   }));
 
   addEntries(projection, mapSignalEntries(input.classificationFinalOutcomes, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-    sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+    sourceId: POLICY_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
     reasonCode: 'final_outcome_observed',
   }));
   addEntries(projection, mapSignalEntries(input.manualCorrections, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.OUTLIER,
-    sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
+    sourceId: POLICY_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
     reasonCode: 'manual_correction_observed',
   }));
   addEntries(projection, mapSignalEntries(input.pendingItemAnswers, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
-    sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.PENDING_ITEM_ANSWERS,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+    sourceId: POLICY_EVIDENCE_SOURCE_IDS.PENDING_ITEM_ANSWERS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
     reasonCode: 'pending_answer_requires_learning_guard',
   }));
   addEntries(projection, mapSignalEntries(input.routingOutcomes, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.ROUTING,
-    sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.ROUTING,
+    sourceId: POLICY_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
     reasonCode: 'arr_routing_outcome',
   }));
   addEntries(projection, mapSignalEntries(input.metadataEvidence, {
-    bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-    sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+    bucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+    sourceId: POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
     authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
     reasonCode: 'metadata_enrichment',
   }));
@@ -751,9 +751,9 @@ function buildPolicyBuilderPhase6EvidenceProjection(input = {}) {
     addEntries(projection, [
       createEvidenceEntry({
         bucketId: profileFreshness.stale === true
-          ? PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT
-          : PHASE6R_EVIDENCE_BUCKET_IDS.FRESHNESS,
-        sourceId: PHASE6R_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS,
+          ? POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT
+          : POLICY_EVIDENCE_BUCKET_IDS.FRESHNESS,
+        sourceId: POLICY_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS,
         authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
         key: profileFreshness.key ?? 'profile_freshness',
         label: profileFreshness.label ?? (profileFreshness.stale === true ? 'Profile is stale' : 'Profile is fresh'),
@@ -768,50 +768,50 @@ function buildPolicyBuilderPhase6EvidenceProjection(input = {}) {
 
   if (Object.values(projection.buckets).every(entries => entries.length === 0)) {
     projection.warnings.push({
-      bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
       reasonCode: 'no_evidence_inputs',
       message: 'No Phase 6R evidence inputs were provided.',
     });
   }
 
-  projection.summary = summarizePolicyBuilderPhase6EvidenceProjection(projection);
+  projection.summary = summarizePolicyEvidenceProjection(projection);
   projection.quality = buildPolicyEvidenceQualityAssessment(projection, {
-    bucketIds: PHASE6R_EVIDENCE_BUCKET_IDS,
+    bucketIds: POLICY_EVIDENCE_BUCKET_IDS,
     authoritySourceIds: AUTHORITY_SOURCE_IDS,
   });
 
   return projection;
 }
 
-function validatePolicyBuilderPhase6EvidenceBucket(candidate, sources = PHASE6R_EVIDENCE_SOURCES) {
+function validatePolicyEvidenceBucket(candidate, sources = POLICY_EVIDENCE_SOURCES) {
   const issues = [];
   const knownSourceIds = new Set(sources.map(source => source.id));
   const knownAuthoritySourceIds = new Set(Object.values(AUTHORITY_SOURCE_IDS));
 
-  if (!getPolicyBuilderPhase6EvidenceBucket(candidate?.id)) {
+  if (!getPolicyEvidenceBucket(candidate?.id)) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_BUCKET,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_BUCKET,
       message: 'Evidence bucket must be part of the Phase 6R evidence vocabulary.',
     });
   }
 
   if (!normalizeString(candidate?.label)) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.MISSING_LABEL,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.MISSING_LABEL,
       message: 'Evidence bucket must have a label.',
     });
   }
 
   if (!normalizeString(candidate?.productMeaning)) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.MISSING_PRODUCT_MEANING,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.MISSING_PRODUCT_MEANING,
       message: 'Evidence bucket must explain its destination-meaning role.',
     });
   }
 
   if (!normalizeString(candidate?.traceAttribute)) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.MISSING_TRACE_ATTRIBUTE,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.MISSING_TRACE_ATTRIBUTE,
       message: 'Evidence bucket must define a stable trace attribute name.',
     });
   }
@@ -819,7 +819,7 @@ function validatePolicyBuilderPhase6EvidenceBucket(candidate, sources = PHASE6R_
   const allowedSourceIds = Array.isArray(candidate?.allowedSourceIds) ? candidate.allowedSourceIds : [];
   if (allowedSourceIds.length === 0) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.MISSING_ALLOWED_SOURCE,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.MISSING_ALLOWED_SOURCE,
       message: 'Evidence bucket must define which sources can populate it.',
     });
   }
@@ -827,7 +827,7 @@ function validatePolicyBuilderPhase6EvidenceBucket(candidate, sources = PHASE6R_
     .filter(sourceId => !knownSourceIds.has(sourceId))
     .forEach(sourceId => {
       issues.push({
-        riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_SOURCE,
+        riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_SOURCE,
         message: `Evidence bucket allows unknown source "${sourceId}".`,
       });
     });
@@ -835,7 +835,7 @@ function validatePolicyBuilderPhase6EvidenceBucket(candidate, sources = PHASE6R_
   const authoritySourceIds = Array.isArray(candidate?.authoritySourceIds) ? candidate.authoritySourceIds : [];
   if (authoritySourceIds.length === 0) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.MISSING_AUTHORITY_SOURCE,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.MISSING_AUTHORITY_SOURCE,
       message: 'Evidence bucket must define authority sources.',
     });
   }
@@ -843,23 +843,23 @@ function validatePolicyBuilderPhase6EvidenceBucket(candidate, sources = PHASE6R_
     .filter(sourceId => !knownAuthoritySourceIds.has(sourceId) || !getPolicyAuthoritySource(sourceId))
     .forEach(sourceId => {
       issues.push({
-        riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_AUTHORITY_SOURCE,
+        riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_AUTHORITY_SOURCE,
         message: `Evidence bucket references unknown authority source "${sourceId}".`,
       });
     });
 
-  if (candidate?.id === PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT &&
+  if (candidate?.id === POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT &&
       authoritySourceIds.some(sourceId => sourceId !== AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT)) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.HARD_LIMIT_WITHOUT_OPERATOR_AUTHORITY,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.HARD_LIMIT_WITHOUT_OPERATOR_AUTHORITY,
       message: 'Hard-limit evidence must come only from operator-declared intent.',
     });
   }
 
-  if (candidate?.id === PHASE6R_EVIDENCE_BUCKET_IDS.AVOID &&
+  if (candidate?.id === POLICY_EVIDENCE_BUCKET_IDS.AVOID &&
       authoritySourceIds.some(sourceId => sourceId !== AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT)) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.AVOID_WITHOUT_OPERATOR_AUTHORITY,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.AVOID_WITHOUT_OPERATOR_AUTHORITY,
       message: 'Avoid evidence must come only from operator-declared intent.',
     });
   }
@@ -871,21 +871,21 @@ function validatePolicyBuilderPhase6EvidenceBucket(candidate, sources = PHASE6R_
   };
 }
 
-function validatePolicyBuilderPhase6EvidenceSource(candidate, buckets = PHASE6R_EVIDENCE_BUCKETS) {
+function validatePolicyEvidenceSource(candidate, buckets = POLICY_EVIDENCE_BUCKETS) {
   const issues = [];
   const knownBucketIds = new Set(buckets.map(bucket => bucket.id));
   const knownAuthoritySourceIds = new Set(Object.values(AUTHORITY_SOURCE_IDS));
 
-  if (!getPolicyBuilderPhase6EvidenceSource(candidate?.id)) {
+  if (!getPolicyEvidenceSource(candidate?.id)) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_SOURCE,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_SOURCE,
       message: 'Evidence source must be part of the Phase 6R evidence vocabulary.',
     });
   }
 
   if (!normalizeString(candidate?.label)) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.MISSING_LABEL,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.MISSING_LABEL,
       message: 'Evidence source must have a label.',
     });
   }
@@ -893,7 +893,7 @@ function validatePolicyBuilderPhase6EvidenceSource(candidate, buckets = PHASE6R_
   const authoritySourceIds = Array.isArray(candidate?.authoritySourceIds) ? candidate.authoritySourceIds : [];
   if (authoritySourceIds.length === 0) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.MISSING_AUTHORITY_SOURCE,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.MISSING_AUTHORITY_SOURCE,
       message: 'Evidence source must define authority sources.',
     });
   }
@@ -901,7 +901,7 @@ function validatePolicyBuilderPhase6EvidenceSource(candidate, buckets = PHASE6R_
     .filter(sourceId => !knownAuthoritySourceIds.has(sourceId) || !getPolicyAuthoritySource(sourceId))
     .forEach(sourceId => {
       issues.push({
-        riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_AUTHORITY_SOURCE,
+        riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_AUTHORITY_SOURCE,
         message: `Evidence source references unknown authority source "${sourceId}".`,
       });
     });
@@ -911,35 +911,35 @@ function validatePolicyBuilderPhase6EvidenceSource(candidate, buckets = PHASE6R_
     .filter(bucketId => !knownBucketIds.has(bucketId))
     .forEach(bucketId => {
       issues.push({
-        riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.SOURCE_ALLOWS_UNKNOWN_BUCKET,
+        riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.SOURCE_ALLOWS_UNKNOWN_BUCKET,
         message: `Evidence source allows unknown bucket "${bucketId}".`,
       });
     });
 
   if (candidate?.liveLookupAllowed === true) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.SOURCE_ALLOWS_LIVE_LOOKUP,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.SOURCE_ALLOWS_LIVE_LOOKUP,
       message: 'Evidence sources must not perform live provider lookups in Phase 6R.1.',
     });
   }
 
   if (candidate?.exposesRawPayload === true) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.SOURCE_EXPOSES_RAW_PAYLOAD,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.SOURCE_EXPOSES_RAW_PAYLOAD,
       message: 'Evidence sources must not expose raw provider, replay, or impact payloads.',
     });
   }
 
   if (candidate?.exposesUiLanguage === true) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.SOURCE_EXPOSES_UI_LANGUAGE,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.SOURCE_EXPOSES_UI_LANGUAGE,
       message: 'Evidence sources must not expose UI chip language as contract fields.',
     });
   }
 
   if (candidate?.transientStateAllowed === true) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.SOURCE_ALLOWS_TRANSIENT_STATE,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.SOURCE_ALLOWS_TRANSIENT_STATE,
       message: 'Evidence sources must not treat provider quota or cooldown state as policy evidence.',
     });
   }
@@ -951,15 +951,15 @@ function validatePolicyBuilderPhase6EvidenceSource(candidate, buckets = PHASE6R_
     .filter(payloadId => !prohibitedPayloadIds.includes(payloadId))
     .forEach(payloadId => {
       issues.push({
-        riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.SOURCE_MISSING_PROHIBITED_PAYLOAD,
+        riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.SOURCE_MISSING_PROHIBITED_PAYLOAD,
         message: `Evidence source must explicitly prohibit "${payloadId}".`,
       });
     });
 
-  if (candidate?.id === PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT &&
-      allowedBucketIds.includes(PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY)) {
+  if (candidate?.id === POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT &&
+      allowedBucketIds.includes(POLICY_EVIDENCE_BUCKET_IDS.IDENTITY)) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.METADATA_OWNS_POLICY_MEANING,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.METADATA_OWNS_POLICY_MEANING,
       message: 'Metadata evidence cannot own destination identity in Phase 6R.1.',
     });
   }
@@ -967,7 +967,7 @@ function validatePolicyBuilderPhase6EvidenceSource(candidate, buckets = PHASE6R_
   if (authoritySourceIds.includes(AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME) &&
       candidate?.directLearningAllowed === true) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.FINAL_OUTCOME_LEARNS_DIRECTLY,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.FINAL_OUTCOME_LEARNS_DIRECTLY,
       message: 'Final outcomes can describe evidence but cannot learn directly before the learning guard.',
     });
   }
@@ -987,15 +987,15 @@ function pushProjectionIssue(issues, riskId, message, details = {}) {
   });
 }
 
-function validatePolicyBuilderPhase6EvidenceProjectionSummary(projection = {}) {
+function validatePolicyEvidenceProjectionSummary(projection = {}) {
   const issues = [];
-  const expectedSummary = summarizePolicyBuilderPhase6EvidenceProjection(projection);
+  const expectedSummary = summarizePolicyEvidenceProjection(projection);
   const summary = isNonEmptyObject(projection.summary) ? projection.summary : null;
 
   if (!summary) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_MISSING_SUMMARY,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_MISSING_SUMMARY,
       'Evidence projection must include a generated summary for downstream engines.'
     );
     return {
@@ -1008,7 +1008,7 @@ function validatePolicyBuilderPhase6EvidenceProjectionSummary(projection = {}) {
   if (summary.totalEntryCount !== expectedSummary.totalEntryCount) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_SUMMARY_COUNT_MISMATCH,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_SUMMARY_COUNT_MISMATCH,
       'Evidence projection summary must match bucket entry counts.',
       {
         expectedTotalEntryCount: expectedSummary.totalEntryCount,
@@ -1026,7 +1026,7 @@ function validatePolicyBuilderPhase6EvidenceProjectionSummary(projection = {}) {
     if (actualBucketCounts.get(bucket.bucketId) !== bucket.entryCount) {
       pushProjectionIssue(
         issues,
-        PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_SUMMARY_COUNT_MISMATCH,
+        POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_SUMMARY_COUNT_MISMATCH,
         `Evidence projection summary count for "${bucket.bucketId}" must match bucket entries.`,
         {
           bucketId: bucket.bucketId,
@@ -1044,9 +1044,9 @@ function validatePolicyBuilderPhase6EvidenceProjectionSummary(projection = {}) {
   };
 }
 
-function validatePolicyBuilderPhase6EvidenceProjectionQuality(projection = {}) {
+function validatePolicyEvidenceProjectionQuality(projection = {}) {
   const result = validatePolicyEvidenceQualityAssessment(projection, {
-    bucketIds: PHASE6R_EVIDENCE_BUCKET_IDS,
+    bucketIds: POLICY_EVIDENCE_BUCKET_IDS,
     authoritySourceIds: AUTHORITY_SOURCE_IDS,
   });
 
@@ -1057,17 +1057,17 @@ function validatePolicyBuilderPhase6EvidenceProjectionQuality(projection = {}) {
         case 'missing_quality':
           return {
             ...issue,
-            riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_MISSING_QUALITY,
+            riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_MISSING_QUALITY,
           };
         case 'quality_mismatch':
           return {
             ...issue,
-            riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_QUALITY_MISMATCH,
+            riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_QUALITY_MISMATCH,
           };
         case 'quality_exposes_entry_labels':
           return {
             ...issue,
-            riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_QUALITY_EXPOSES_ENTRY_LABELS,
+            riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_QUALITY_EXPOSES_ENTRY_LABELS,
           };
         default:
           return issue;
@@ -1076,15 +1076,15 @@ function validatePolicyBuilderPhase6EvidenceProjectionQuality(projection = {}) {
   };
 }
 
-function validatePolicyBuilderPhase6EvidenceProjectionEntry(entry = {}, bucketId) {
+function validatePolicyEvidenceProjectionEntry(entry = {}, bucketId) {
   const issues = [];
-  const bucket = getPolicyBuilderPhase6EvidenceBucket(bucketId);
-  const source = getPolicyBuilderPhase6EvidenceSource(entry.sourceId);
+  const bucket = getPolicyEvidenceBucket(bucketId);
+  const source = getPolicyEvidenceSource(entry.sourceId);
 
   if (!normalizeString(entry.label)) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_MISSING_LABEL,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_MISSING_LABEL,
       'Evidence projection entries must expose a bounded label.',
       { bucketId, sourceId: entry.sourceId || null }
     );
@@ -1093,14 +1093,14 @@ function validatePolicyBuilderPhase6EvidenceProjectionEntry(entry = {}, bucketId
   if (!source) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_UNKNOWN_SOURCE,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_UNKNOWN_SOURCE,
       'Evidence projection entry source must be part of the Phase 6R evidence vocabulary.',
       { bucketId, sourceId: entry.sourceId || null }
     );
   } else if (bucket && !bucket.allowedSourceIds.includes(entry.sourceId)) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_SOURCE_NOT_ALLOWED,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_SOURCE_NOT_ALLOWED,
       `Evidence source "${entry.sourceId}" is not allowed to populate bucket "${bucketId}".`,
       { bucketId, sourceId: entry.sourceId }
     );
@@ -1109,14 +1109,14 @@ function validatePolicyBuilderPhase6EvidenceProjectionEntry(entry = {}, bucketId
   if (!getPolicyAuthoritySource(entry.authoritySourceId)) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_UNKNOWN_AUTHORITY_SOURCE,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_UNKNOWN_AUTHORITY_SOURCE,
       'Evidence projection entry authority source must be known.',
       { bucketId, authoritySourceId: entry.authoritySourceId || null }
     );
   } else if (bucket && !bucket.authoritySourceIds.includes(entry.authoritySourceId)) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_AUTHORITY_NOT_ALLOWED,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_AUTHORITY_NOT_ALLOWED,
       `Authority source "${entry.authoritySourceId}" is not allowed to populate bucket "${bucketId}".`,
       { bucketId, authoritySourceId: entry.authoritySourceId }
     );
@@ -1125,7 +1125,7 @@ function validatePolicyBuilderPhase6EvidenceProjectionEntry(entry = {}, bucketId
   if (entry.includesRawPayload === true || Object.prototype.hasOwnProperty.call(entry, 'raw')) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_RAW_PAYLOAD,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_RAW_PAYLOAD,
       'Evidence projection entries must not expose raw provider, replay, or impact payloads.',
       { bucketId, sourceId: entry.sourceId || null }
     );
@@ -1134,7 +1134,7 @@ function validatePolicyBuilderPhase6EvidenceProjectionEntry(entry = {}, bucketId
   if (entry.liveLookupPerformed === true) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_LIVE_LOOKUP,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_LIVE_LOOKUP,
       'Evidence projection entries must not be generated from live provider lookups.',
       { bucketId, sourceId: entry.sourceId || null }
     );
@@ -1145,37 +1145,37 @@ function validatePolicyBuilderPhase6EvidenceProjectionEntry(entry = {}, bucketId
       includesInternalPolicyLanguage(entry.value)) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_UI_LANGUAGE,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_UI_LANGUAGE,
       'Evidence projection entries must not expose diagnostic or UI chip language.',
       { bucketId, sourceId: entry.sourceId || null }
     );
   }
 
-  if (bucketId === PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT &&
+  if (bucketId === POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT &&
       entry.authoritySourceId !== AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_HARD_LIMIT_WITHOUT_OPERATOR_AUTHORITY,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_HARD_LIMIT_WITHOUT_OPERATOR_AUTHORITY,
       'Hard-limit projection entries must come from operator-declared intent.',
       { bucketId, authoritySourceId: entry.authoritySourceId || null }
     );
   }
 
-  if (bucketId === PHASE6R_EVIDENCE_BUCKET_IDS.AVOID &&
+  if (bucketId === POLICY_EVIDENCE_BUCKET_IDS.AVOID &&
       entry.authoritySourceId !== AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_AVOID_WITHOUT_OPERATOR_AUTHORITY,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_AVOID_WITHOUT_OPERATOR_AUTHORITY,
       'Avoid projection entries must come from operator-declared intent.',
       { bucketId, authoritySourceId: entry.authoritySourceId || null }
     );
   }
 
-  if (bucketId === PHASE6R_EVIDENCE_BUCKET_IDS.IDENTITY &&
-      entry.sourceId === PHASE6R_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT) {
+  if (bucketId === POLICY_EVIDENCE_BUCKET_IDS.IDENTITY &&
+      entry.sourceId === POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_METADATA_OWNS_IDENTITY,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_METADATA_OWNS_IDENTITY,
       'Metadata enrichment cannot own destination identity in the evidence projection.',
       { bucketId, sourceId: entry.sourceId }
     );
@@ -1189,16 +1189,16 @@ function validatePolicyBuilderPhase6EvidenceProjectionEntry(entry = {}, bucketId
   };
 }
 
-function buildPolicyBuilderPhase6EvidenceProjectionAudit(projection = {}) {
+function buildPolicyEvidenceProjectionAudit(projection = {}) {
   const issues = [];
   const buckets = isNonEmptyObject(projection.buckets) ? projection.buckets : null;
-  const summaryResult = validatePolicyBuilderPhase6EvidenceProjectionSummary(projection);
-  const qualityResult = validatePolicyBuilderPhase6EvidenceProjectionQuality(projection);
+  const summaryResult = validatePolicyEvidenceProjectionSummary(projection);
+  const qualityResult = validatePolicyEvidenceProjectionQuality(projection);
 
   if (!buckets) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_MISSING_BUCKETS,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_MISSING_BUCKETS,
       'Evidence projection must include a buckets object.'
     );
   }
@@ -1206,7 +1206,7 @@ function buildPolicyBuilderPhase6EvidenceProjectionAudit(projection = {}) {
   if (projection.generatedFromLiveProvider === true) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_USED_LIVE_PROVIDER,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_USED_LIVE_PROVIDER,
       'Evidence projection must not perform live provider lookups.'
     );
   }
@@ -1214,7 +1214,7 @@ function buildPolicyBuilderPhase6EvidenceProjectionAudit(projection = {}) {
   if (projection.exposesRawProviderPayloads === true) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_RAW_PAYLOAD,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_RAW_PAYLOAD,
       'Evidence projection must not expose raw provider payloads.'
     );
   }
@@ -1222,7 +1222,7 @@ function buildPolicyBuilderPhase6EvidenceProjectionAudit(projection = {}) {
   if (projection.exposesUiChipLanguage === true) {
     pushProjectionIssue(
       issues,
-      PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_UI_LANGUAGE,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_EXPOSES_UI_LANGUAGE,
       'Evidence projection must not expose UI chip language.'
     );
   }
@@ -1230,22 +1230,22 @@ function buildPolicyBuilderPhase6EvidenceProjectionAudit(projection = {}) {
   const entryResults = [];
   if (buckets) {
     Object.keys(buckets)
-      .filter(bucketId => !getPolicyBuilderPhase6EvidenceBucket(bucketId))
+      .filter(bucketId => !getPolicyEvidenceBucket(bucketId))
       .forEach(bucketId => {
         pushProjectionIssue(
           issues,
-          PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_UNKNOWN_BUCKET,
+          POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_UNKNOWN_BUCKET,
           `Evidence projection contains unknown bucket "${bucketId}".`,
           { bucketId }
         );
       });
 
-    PHASE6R_EVIDENCE_BUCKETS.forEach(bucket => {
+    POLICY_EVIDENCE_BUCKETS.forEach(bucket => {
       const entries = buckets[bucket.id];
       if (!Array.isArray(entries)) {
         pushProjectionIssue(
           issues,
-          PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_BUCKET_NOT_ARRAY,
+          POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_BUCKET_NOT_ARRAY,
           `Evidence projection bucket "${bucket.id}" must be an array.`,
           { bucketId: bucket.id }
         );
@@ -1253,7 +1253,7 @@ function buildPolicyBuilderPhase6EvidenceProjectionAudit(projection = {}) {
       }
 
       entries.forEach(entry => {
-        const result = validatePolicyBuilderPhase6EvidenceProjectionEntry(entry, bucket.id);
+        const result = validatePolicyEvidenceProjectionEntry(entry, bucket.id);
         entryResults.push(result);
         result.issues.forEach(issue => issues.push(issue));
       });
@@ -1274,20 +1274,20 @@ function buildPolicyBuilderPhase6EvidenceProjectionAudit(projection = {}) {
   };
 }
 
-function validatePolicyBuilderPhase6EvidenceReducerCutline(cutline = {}) {
+function validatePolicyEvidenceReducerCutline(cutline = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS).includes(cutline.dispositionId)) {
+  if (!Object.values(POLICY_EVIDENCE_REDUCER_CUTLINE_IDS).includes(cutline.dispositionId)) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.REDUCER_CUTLINE_MISSING_DISPOSITION,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.REDUCER_CUTLINE_MISSING_DISPOSITION,
       cutlineId: cutline.id || null,
-      message: 'Legacy replay/impact reducers must have an explicit Phase 6R disposition.',
+      message: 'Legacy replay/impact reducers must have an explicit evidence reducer disposition.',
     });
   }
 
   if (cutline.normalFlowAllowed === true) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.REDUCER_CUTLINE_USES_NORMAL_FLOW,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.REDUCER_CUTLINE_USES_NORMAL_FLOW,
       cutlineId: cutline.id || null,
       message: 'Legacy replay/impact reducers must not remain in the normal operator workflow.',
     });
@@ -1295,10 +1295,10 @@ function validatePolicyBuilderPhase6EvidenceReducerCutline(cutline = {}) {
 
   if (
     cutline.exposesUiDiagnostic === true &&
-    cutline.dispositionId === PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS.REWRITE_AS_EVIDENCE_REDUCER
+    cutline.dispositionId === POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.REWRITE_AS_EVIDENCE_REDUCER
   ) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.REDUCER_CUTLINE_EXPOSES_UI_DIAGNOSTIC,
+      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.REDUCER_CUTLINE_EXPOSES_UI_DIAGNOSTIC,
       cutlineId: cutline.id || null,
       message: 'Reducers rewritten into evidence must not expose UI diagnostic language.',
     });
@@ -1311,19 +1311,19 @@ function validatePolicyBuilderPhase6EvidenceReducerCutline(cutline = {}) {
   };
 }
 
-function buildPolicyBuilderPhase6EvidenceEngineAudit({
-  buckets = PHASE6R_EVIDENCE_BUCKETS,
-  sources = PHASE6R_EVIDENCE_SOURCES,
-  reducerCutlines = PHASE6R_EVIDENCE_REDUCER_CUTLINES,
+function buildPolicyEvidenceEngineAudit({
+  buckets = POLICY_EVIDENCE_BUCKETS,
+  sources = POLICY_EVIDENCE_SOURCES,
+  reducerCutlines = POLICY_EVIDENCE_REDUCER_CUTLINES,
 } = {}) {
   const bucketResults = buckets.map(bucket =>
-    validatePolicyBuilderPhase6EvidenceBucket(bucket, sources)
+    validatePolicyEvidenceBucket(bucket, sources)
   );
   const sourceResults = sources.map(source =>
-    validatePolicyBuilderPhase6EvidenceSource(source, buckets)
+    validatePolicyEvidenceSource(source, buckets)
   );
   const reducerCutlineResults = reducerCutlines.map(cutline =>
-    validatePolicyBuilderPhase6EvidenceReducerCutline(cutline)
+    validatePolicyEvidenceReducerCutline(cutline)
   );
   const issueCount = [...bucketResults, ...sourceResults, ...reducerCutlineResults]
     .reduce((count, result) => count + result.issues.length, 0);
@@ -1337,8 +1337,8 @@ function buildPolicyBuilderPhase6EvidenceEngineAudit({
     bucketResults,
     sourceResults,
     reducerCutlineResults,
-    nextPhase: {
-      phaseId: '6r_2',
+    nextStep: {
+      stepId: 'intent_inference',
       label: 'Intent Engine',
       reason: 'Evidence buckets are now stable enough to convert observed and declared evidence into proposed destination meaning.',
     },
@@ -1346,24 +1346,24 @@ function buildPolicyBuilderPhase6EvidenceEngineAudit({
 }
 
 export {
-  PHASE6R_EVIDENCE_AUDIT_RISK_IDS,
-  PHASE6R_EVIDENCE_BUCKET_IDS,
-  PHASE6R_EVIDENCE_BUCKET_READINESS_IDS,
-  PHASE6R_EVIDENCE_PROHIBITED_PAYLOAD_IDS,
-  PHASE6R_EVIDENCE_REDUCER_CUTLINE_IDS,
-  PHASE6R_EVIDENCE_SOURCE_IDS,
-  buildPolicyBuilderPhase6EvidenceEngineAudit,
-  buildPolicyBuilderPhase6EvidenceProjection,
-  buildPolicyBuilderPhase6EvidenceProjectionAudit,
+  POLICY_EVIDENCE_AUDIT_RISK_IDS,
+  POLICY_EVIDENCE_BUCKET_IDS,
+  POLICY_EVIDENCE_BUCKET_READINESS_IDS,
+  POLICY_EVIDENCE_PROHIBITED_PAYLOAD_IDS,
+  POLICY_EVIDENCE_REDUCER_CUTLINE_IDS,
+  POLICY_EVIDENCE_SOURCE_IDS,
+  buildPolicyEvidenceEngineAudit,
+  buildPolicyEvidenceProjection,
+  buildPolicyEvidenceProjectionAudit,
   buildPolicyEvidenceQualityAssessment,
-  getPolicyBuilderPhase6EvidenceBucket,
-  getPolicyBuilderPhase6EvidenceSource,
-  listPolicyBuilderPhase6EvidenceBuckets,
-  listPolicyBuilderPhase6EvidenceReducerCutlines,
-  listPolicyBuilderPhase6EvidenceSources,
-  summarizePolicyBuilderPhase6EvidenceProjection,
+  getPolicyEvidenceBucket,
+  getPolicyEvidenceSource,
+  listPolicyEvidenceBuckets,
+  listPolicyEvidenceReducerCutlines,
+  listPolicyEvidenceSources,
+  summarizePolicyEvidenceProjection,
   validatePolicyEvidenceQualityAssessment,
-  validatePolicyBuilderPhase6EvidenceBucket,
-  validatePolicyBuilderPhase6EvidenceProjectionEntry,
-  validatePolicyBuilderPhase6EvidenceSource,
+  validatePolicyEvidenceBucket,
+  validatePolicyEvidenceProjectionEntry,
+  validatePolicyEvidenceSource,
 };

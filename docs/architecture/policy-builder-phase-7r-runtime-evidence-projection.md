@@ -113,7 +113,7 @@ Cons:
 - Test module:
   `server/src/__tests__/services/policyBuilderPhase7RuntimeEvidenceProjection.test.mjs`
 - Phase 6R evidence vocabulary:
-  `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
+  `server/src/services/policyEvidenceEngine.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-7r-runtime-evidence-projection.md`
 - Roadmap owner:
