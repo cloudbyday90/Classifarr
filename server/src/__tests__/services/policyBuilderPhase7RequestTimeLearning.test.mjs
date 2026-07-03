@@ -9,6 +9,9 @@ import {
   PHASE6R_LEARNING_TIER_IDS,
 } from '../../services/policyBuilderPhase6LearningGuard.mjs';
 import {
+  buildPolicyBuilderPhase7RuntimeQuestionReduction,
+} from '../../services/policyBuilderPhase7RuntimeQuestionReduction.mjs';
+import {
   PHASE7R_REQUEST_EVENT_TYPE_IDS,
   PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS,
   PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS,
@@ -29,33 +32,22 @@ function destination(overrides = {}) {
   };
 }
 
-function upstreamEvidenceFingerprint(overrides = {}) {
-  return {
-    algorithm: 'sha256',
-    fingerprint: 'a'.repeat(64),
-    provenance: {
-      projectionVersion: 'phase7r.runtime_evidence_projection.v1',
-      phase6EvidenceVersion: 'phase6r.evidence.v1',
-      totalEntryCount: 2,
-      sourceIds: ['media_server_library_profile'],
-      runtimeSourceIds: ['library_profile'],
-      authoritySourceIds: ['media_server_contents'],
-      demotionReasonIds: [],
-      warningReasonIds: [],
-      bucketCounts: [
-        {
-          bucketId: 'identity_evidence',
-          entryCount: 2,
-        },
+function questionReductionPlan(overrides = {}) {
+  return buildPolicyBuilderPhase7RuntimeQuestionReduction({
+    libraryProfile: {
+      identityCandidates: [
+        { label: 'Animation', count: 2, confidence: 0.8 },
       ],
     },
     ...overrides,
-  };
+  });
 }
 
 function buildRequestTimeLearningDecision(input = {}) {
+  const plan = input.questionReductionPlan || questionReductionPlan();
+
   return buildPolicyBuilderPhase7RequestTimeLearningDecision({
-    upstreamEvidenceFingerprint: upstreamEvidenceFingerprint(),
+    questionReductionPlan: plan,
     ...input,
   });
 }
@@ -93,15 +85,27 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
     }));
     expect(decision.upstreamEvidenceFingerprint).toEqual(expect.objectContaining({
       algorithm: 'sha256',
-      fingerprint: 'a'.repeat(64),
+      fingerprint: decision.questionReductionProof.evidenceFingerprint.fingerprint,
     }));
     expect(decision.learningGuardContext.upstreamEvidenceFingerprint).toEqual({
       algorithm: 'sha256',
-      fingerprint: 'a'.repeat(64),
+      fingerprint: decision.upstreamEvidenceFingerprint.fingerprint,
     });
     expect(decision.trace.attributes).toEqual(expect.objectContaining({
       'classifarr.runtime.request_learning.upstream_evidence_fingerprint':
-        'a'.repeat(64),
+        decision.upstreamEvidenceFingerprint.fingerprint,
+      'classifarr.runtime.request_learning.question_reduction_valid': true,
+    }));
+    expect(decision.questionReductionProof).toEqual(expect.objectContaining({
+      version: 'phase7r.runtime_question_reduction.v1',
+      validation: {
+        ok: true,
+        issueCount: 0,
+      },
+      evidenceFingerprint: expect.objectContaining({
+        fingerprint: decision.upstreamEvidenceFingerprint.fingerprint,
+      }),
+      traceEvidenceFingerprint: decision.upstreamEvidenceFingerprint.fingerprint,
     }));
     expect(JSON.stringify(decision.upstreamEvidenceFingerprint)).not.toContain('Animated Movies');
     expect(decision.profileRefresh.queue).toBe(false);
@@ -325,6 +329,77 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
         }),
         expect.objectContaining({
           riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+        }),
+      ]));
+  });
+
+  test('rejects request-time learning without question-reduction validation proof', () => {
+    const decision = buildRequestTimeLearningDecision({
+      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      requestedDestination: destination(),
+    });
+
+    decision.questionReductionProof = null;
+
+    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(decision).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_QUESTION_REDUCTION_VALIDATION,
+        }),
+      ]));
+  });
+
+  test('rejects request-time learning with invalid or drifted question-reduction proof', () => {
+    const invalid = buildRequestTimeLearningDecision({
+      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      requestedDestination: destination(),
+    });
+    const drifted = buildRequestTimeLearningDecision({
+      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      requestedDestination: destination(),
+    });
+    const missingProofFingerprint = buildRequestTimeLearningDecision({
+      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      requestedDestination: destination(),
+    });
+    const traceDrift = buildRequestTimeLearningDecision({
+      eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      requestedDestination: destination(),
+    });
+
+    invalid.questionReductionProof.validation.ok = false;
+    invalid.questionReductionProof.validation.issueCount = 1;
+    drifted.questionReductionProof.evidenceFingerprint.fingerprint = 'd'.repeat(64);
+    drifted.questionReductionProof.traceEvidenceFingerprint = 'e'.repeat(64);
+    missingProofFingerprint.questionReductionProof.evidenceFingerprint = null;
+    missingProofFingerprint.questionReductionProof.traceEvidenceFingerprint = null;
+    traceDrift.trace.attributes['classifarr.runtime.request_learning.question_reduction_valid'] = false;
+
+    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(invalid).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.INVALID_QUESTION_REDUCTION,
+        }),
+        expect.objectContaining({
+          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_QUESTION_REDUCTION_VALID_MISMATCH,
+        }),
+      ]));
+    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(drifted).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
+        }),
+      ]));
+    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(missingProofFingerprint).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
+        }),
+      ]));
+    expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(traceDrift).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_QUESTION_REDUCTION_VALID_MISMATCH,
         }),
       ]));
   });

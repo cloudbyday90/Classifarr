@@ -8,6 +8,9 @@ import {
   buildPolicyBuilderPhase6LearningDecision,
   validatePolicyBuilderPhase6LearningDecision,
 } from './policyBuilderPhase6LearningGuard.mjs';
+import {
+  validatePolicyBuilderPhase7RuntimeQuestionReduction,
+} from './policyBuilderPhase7RuntimeQuestionReduction.mjs';
 
 const PHASE7R_REQUEST_EVENT_TYPE_IDS = Object.freeze({
   USER_REQUESTED_DESTINATION: 'user_requested_destination',
@@ -50,8 +53,13 @@ const PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS = Object.freeze({
   DIRECT_SIDE_EFFECT: 'direct_side_effect',
   MISSING_TRACE_REASON: 'missing_trace_reason',
   MISSING_UPSTREAM_EVIDENCE_FINGERPRINT: 'missing_upstream_evidence_fingerprint',
+  MISSING_TRACE_EVIDENCE_FINGERPRINT: 'missing_trace_evidence_fingerprint',
   LEARNING_GUARD_FINGERPRINT_MISMATCH: 'learning_guard_fingerprint_mismatch',
   TRACE_FINGERPRINT_MISMATCH: 'trace_fingerprint_mismatch',
+  MISSING_QUESTION_REDUCTION_VALIDATION: 'missing_question_reduction_validation',
+  INVALID_QUESTION_REDUCTION: 'invalid_question_reduction',
+  QUESTION_REDUCTION_FINGERPRINT_MISMATCH: 'question_reduction_fingerprint_mismatch',
+  TRACE_QUESTION_REDUCTION_VALID_MISMATCH: 'trace_question_reduction_valid_mismatch',
 });
 
 const EVENT_SOURCE_BY_TYPE = Object.freeze({
@@ -79,6 +87,8 @@ const EVENT_REASON_BY_TYPE = Object.freeze({
 const MAX_TRACE_REASONS = 12;
 const REQUEST_LEARNING_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE =
   'classifarr.runtime.request_learning.upstream_evidence_fingerprint';
+const REQUEST_LEARNING_QUESTION_REDUCTION_VALID_TRACE_ATTRIBUTE =
+  'classifarr.runtime.request_learning.question_reduction_valid';
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -184,6 +194,44 @@ function getUpstreamEvidenceFingerprint(input = {}) {
   );
 }
 
+function buildQuestionReductionProof(input = {}) {
+  const plan = asObject(input.questionReductionPlan);
+
+  if (!plan.version) return null;
+
+  const validation = validatePolicyBuilderPhase7RuntimeQuestionReduction(plan);
+  const decisionEvidenceFingerprint = normalizeEvidenceFingerprint(plan.decisionEvidenceFingerprint);
+  const questionEvidenceFingerprint = normalizeEvidenceFingerprint(plan.question?.decisionEvidenceFingerprint);
+  const traceEvidenceFingerprint = normalizeString(
+    plan.trace?.attributes?.['classifarr.runtime.question.decision_evidence_projection_fingerprint']
+  );
+
+  return {
+    version: normalizeString(plan.version),
+    dispositionId: normalizeString(plan.dispositionId),
+    createQuestion: plan.createQuestion === true,
+    validation: {
+      ok: validation.ok === true,
+      issueCount: Number.isFinite(Number(validation.issueCount))
+        ? Number(validation.issueCount)
+        : asArray(validation.issues).length,
+    },
+    evidenceFingerprint: decisionEvidenceFingerprint
+      ? {
+        algorithm: decisionEvidenceFingerprint.algorithm,
+        fingerprint: decisionEvidenceFingerprint.fingerprint,
+      }
+      : null,
+    questionEvidenceFingerprint: questionEvidenceFingerprint
+      ? {
+        algorithm: questionEvidenceFingerprint.algorithm,
+        fingerprint: questionEvidenceFingerprint.fingerprint,
+      }
+      : null,
+    traceEvidenceFingerprint: traceEvidenceFingerprint || null,
+  };
+}
+
 function defaultAnswerOutcomeForEvent(eventTypeId) {
   switch (eventTypeId) {
     case PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING:
@@ -282,6 +330,7 @@ function buildTrace({
   learningDecision,
   routeResult,
   upstreamEvidenceFingerprint,
+  questionReductionProof,
 }) {
   const reasons = [
     {
@@ -339,6 +388,12 @@ function buildTrace({
       upstreamEvidenceFingerprint.fingerprint;
   }
 
+  if (questionReductionProof?.validation &&
+      typeof questionReductionProof.validation.ok === 'boolean') {
+    attributes[REQUEST_LEARNING_QUESTION_REDUCTION_VALID_TRACE_ATTRIBUTE] =
+      questionReductionProof.validation.ok;
+  }
+
   return {
     attributes,
     reasons: boundedReasons,
@@ -367,6 +422,7 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
     routeResult,
   });
   const upstreamEvidenceFingerprint = getUpstreamEvidenceFingerprint(input);
+  const questionReductionProof = buildQuestionReductionProof(input);
   const learningGuardContext = {
     ...asObject(input.context),
     upstreamEvidenceFingerprint: upstreamEvidenceFingerprint
@@ -404,6 +460,7 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
     item,
     finalOutcome,
     upstreamEvidenceFingerprint,
+    questionReductionProof,
     learningGuardContext,
     learningDecision,
     learningValidation,
@@ -431,6 +488,7 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
       learningDecision,
       routeResult,
       upstreamEvidenceFingerprint,
+      questionReductionProof,
     }),
   };
 }
@@ -443,9 +501,17 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
   const learningGuardFingerprint = normalizeString(
     decision.learningGuardContext?.upstreamEvidenceFingerprint?.fingerprint
   );
+  const questionReductionFingerprint = normalizeString(
+    decision.questionReductionProof?.evidenceFingerprint?.fingerprint
+  );
+  const questionReductionTraceFingerprint = normalizeString(
+    decision.questionReductionProof?.traceEvidenceFingerprint
+  );
   const traceFingerprint = normalizeString(
     decision.trace?.attributes?.[REQUEST_LEARNING_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE]
   );
+  const traceQuestionReductionValid =
+    decision.trace?.attributes?.[REQUEST_LEARNING_QUESTION_REDUCTION_VALID_TRACE_ATTRIBUTE];
 
   if (!eventTypeIds.includes(decision.eventTypeId)) {
     issues.push({
@@ -507,6 +573,13 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
     });
   }
 
+  if (upstreamFingerprint && !traceFingerprint) {
+    issues.push({
+      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_TRACE_EVIDENCE_FINGERPRINT,
+      message: 'Request-time learning trace must carry the upstream decision evidence fingerprint.',
+    });
+  }
+
   if (learningGuardFingerprint && learningGuardFingerprint !== upstreamFingerprint) {
     issues.push({
       riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.LEARNING_GUARD_FINGERPRINT_MISMATCH,
@@ -518,6 +591,77 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
     issues.push({
       riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
       message: 'Request-time learning trace fingerprint must match the decision.',
+    });
+  }
+
+  if (!decision.questionReductionProof?.validation ||
+      typeof decision.questionReductionProof.validation.ok !== 'boolean') {
+    issues.push({
+      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_QUESTION_REDUCTION_VALIDATION,
+      message: 'Request-time learning must carry bounded question-reduction validation proof.',
+    });
+  } else if (decision.questionReductionProof.validation.ok !== true ||
+      decision.questionReductionProof.validation.issueCount !== 0) {
+    issues.push({
+      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.INVALID_QUESTION_REDUCTION,
+      message: 'Request-time learning cannot rely on an invalid question-reduction handoff.',
+    });
+  }
+
+  if (
+    decision.questionReductionProof?.validation &&
+    typeof decision.questionReductionProof.validation.ok === 'boolean' &&
+    upstreamFingerprint &&
+    !questionReductionFingerprint
+  ) {
+    issues.push({
+      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
+      message: 'Question-reduction proof must carry the request-time evidence fingerprint.',
+    });
+  }
+
+  if (
+    questionReductionFingerprint &&
+    upstreamFingerprint &&
+    questionReductionFingerprint !== upstreamFingerprint
+  ) {
+    issues.push({
+      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
+      message: 'Question-reduction proof fingerprint must match the request-time decision.',
+    });
+  }
+
+  if (
+    decision.questionReductionProof?.validation &&
+    typeof decision.questionReductionProof.validation.ok === 'boolean' &&
+    upstreamFingerprint &&
+    !questionReductionTraceFingerprint
+  ) {
+    issues.push({
+      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
+      message: 'Question-reduction proof must carry the upstream question trace fingerprint.',
+    });
+  }
+
+  if (
+    questionReductionTraceFingerprint &&
+    upstreamFingerprint &&
+    questionReductionTraceFingerprint !== upstreamFingerprint
+  ) {
+    issues.push({
+      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.QUESTION_REDUCTION_FINGERPRINT_MISMATCH,
+      message: 'Question-reduction trace fingerprint must match the request-time decision.',
+    });
+  }
+
+  if (
+    decision.questionReductionProof?.validation &&
+    typeof decision.questionReductionProof.validation.ok === 'boolean' &&
+    traceQuestionReductionValid !== decision.questionReductionProof.validation.ok
+  ) {
+    issues.push({
+      riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_QUESTION_REDUCTION_VALID_MISMATCH,
+      message: 'Request-time trace question-reduction-valid attribute must match the carried proof.',
     });
   }
 

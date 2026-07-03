@@ -3826,6 +3826,8 @@ Tasks:
   evidence.
 - Carry the upstream decision/question evidence fingerprint into the
   request-time decision, learning-guard context, and bounded trace attributes.
+- Carry bounded Phase 7R.4 question-reduction validation proof into the
+  request-time decision and mirror that validity state into trace attributes.
 
 Acceptance criteria:
 
@@ -3833,6 +3835,9 @@ Acceptance criteria:
   guard.
 - A failed route does not become positive destination evidence.
 - Manual changes are auditable and reversible.
+- Request-time learning cannot pass validation when the upstream
+  question-reduction proof is missing, invalid, fingerprint-drifted, or not
+  reflected in trace.
 
 Implementation status:
 
@@ -3859,6 +3864,10 @@ Implementation status:
 - Request-time learning decisions now preserve the upstream sanitized evidence
   fingerprint through the decision, bounded learning-guard context, and trace;
   validation rejects missing or mismatched fingerprint handoffs.
+- Request-time learning decisions now carry bounded question-reduction
+  validation proof, preserve the same sanitized evidence fingerprint from the
+  question-reduction handoff, and fail validation when proof or trace validity
+  drifts.
 
 ### 7R.6 Library-Derived Policy Rebuild
 

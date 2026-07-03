@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Request Learning Validation Proof** — hardened
+  request-time learning so request/manual/routing decisions carry bounded
+  question-reduction validation proof, mirror that validity state into trace
+  attributes, and reject missing, invalid, or fingerprint-drifted handoffs.
 - **Policy Builder Phase 7R Question Validation Proof** — hardened runtime
   question reduction so plans carry automation-decision validation proof,
   planned questions and traces require matching evidence fingerprints, and

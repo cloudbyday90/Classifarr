@@ -29,6 +29,12 @@ that the destination was wrong or right.
 Phase 7R.5 makes those distinctions explicit before request/manual outcomes are
 allowed to influence future automation.
 
+This checkpoint tightens that boundary further: request-time learning can no
+longer rely on a loose upstream fingerprint alone. It must carry a bounded
+question-reduction proof showing that the previous Phase 7R question contract
+validated successfully, and that the same sanitized evidence fingerprint was
+preserved into the request-time decision and trace.
+
 ## Official Guidance Reviewed
 
 - [NIST AI Risk Management Framework 1.0](https://www.nist.gov/itl/ai-risk-management-framework)
@@ -43,6 +49,15 @@ allowed to influence future automation.
   calls out excessive agency, insecure output handling, and overreliance risks.
   This slice does not let request-time or AI-adjacent runtime outputs perform
   profile or policy writes directly.
+- [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
+  provides verifiable security control requirements. Phase 7R.5 treats the
+  question-reduction proof, trace attributes, and no-side-effect checks as
+  explicit validation controls instead of UI-only assurances.
+- [OpenTelemetry Traces](https://opentelemetry.io/docs/concepts/signals/traces/)
+  describes traces as correlated spans and attributes. This slice keeps
+  traceable request-learning attributes bounded, stable, and aligned with the
+  carried validation proof so later runtime wiring can correlate decisions
+  without storing raw evidence payloads.
 - [Microsoft Human-AI Experience Guidelines](https://www.microsoft.com/en-us/haxtoolkit/ai-guidelines/)
   emphasize clear user control and graceful recovery. Manual destination
   changes are explicitly auditable and reversible, and failed routing becomes a
@@ -71,6 +86,20 @@ is only useful when it can prove which evidence-bound decision caused the
 request/manual/routing event, without carrying raw labels, provider payloads, or
 question text into durable learning.
 
+The contract should carry only bounded question-reduction proof:
+
+```text
+question-reduction version
+question-reduction disposition
+question-reduction validation ok/issue count
+question-reduction evidence fingerprint
+question-reduction trace evidence fingerprint
+request-time trace question-reduction-valid attribute
+```
+
+It should not embed full question plans, raw question text, raw labels, provider
+payloads, prompts, embeddings, or diagnostics.
+
 ## Pros And Cons
 
 Pros:
@@ -94,6 +123,8 @@ Cons:
   a separate learning signal is required before it can mutate policy evidence.
 - Runtime integration must supply the upstream fingerprint from the automation
   decision or question-reduction plan before this contract can validate.
+- Runtime integration must supply a Phase 7R.4 question-reduction plan or
+  equivalent bounded validation proof before request-time learning can pass.
 
 ## Final Recommendation Stack
 
@@ -118,6 +149,12 @@ Cons:
    learning-guard context, and bounded trace attributes.
 10. Reject missing or mismatched fingerprint handoffs before request-time
     learning can pass validation.
+11. Carry bounded question-reduction validation proof into the request-time
+    decision.
+12. Mirror the question-reduction validation result into bounded trace
+    attributes.
+13. Reject missing, invalid, mismatched, or trace-drifted question-reduction
+    proof before request-time learning can pass validation.
 
 ## Implemented Files
 
@@ -177,6 +214,11 @@ The service exports:
   requests.
 - The contract carries only sanitized upstream evidence fingerprint provenance
   and rejects missing or mismatched fingerprint handoffs.
+- The contract carries only bounded question-reduction proof and rejects missing
+  or failed upstream validation before request-time choices can be treated as
+  learning candidates.
+- The request-time trace must mirror the upstream question-reduction validation
+  status and sanitized evidence fingerprint.
 
 ## Test Coverage
 
@@ -193,6 +235,10 @@ The focused test suite verifies:
 - request-time decisions carry upstream evidence fingerprints into the
   learning-guard context and trace,
 - missing or mismatched fingerprint handoffs fail validation,
+- request-time decisions carry bounded question-reduction validation proof,
+- missing, invalid, or fingerprint-drifted question-reduction proof fails
+  validation,
+- request-time trace attributes must match the carried question-reduction proof,
 - the component audit points to Phase 7R.6.
 
 ## Outcome
