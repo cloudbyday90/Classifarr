@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Completion Audit** — added a server-owned
+  completion gate that composes every Phase 7R runtime/rebuild component audit,
+  verifies docs/services/tests exist, and rejects next-phase handoff drift before
+  Phase 8R native storage work begins.
 - **Policy Builder Phase 7R Test Reset Artifact Verification** — hardened the
   runtime/rebuild test reset so declared replacement and retention test
   artifacts must resolve inside the repository and exist on disk before the

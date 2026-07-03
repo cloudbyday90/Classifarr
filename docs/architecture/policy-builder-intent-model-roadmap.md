@@ -4151,6 +4151,9 @@ Implement Phase 7R in this order:
    Makes runtime behavior auditable.
 9. **7R.9 Runtime And Rebuild Test Reset**
    Protects the new behavior.
+10. **7R Completion Audit**
+    Proves all runtime/rebuild contracts, artifacts, and handoffs are complete
+    before Phase 8R native storage work starts.
 
 Current starting point:
 
@@ -4165,9 +4168,16 @@ Current starting point:
 
 Implementation record:
 
-- Future implementation should create or update a Phase 7R implementation doc
-  with runtime/rebuild inventory, decision states, migration verifier role, and
-  deletion criteria.
+- Phase 7R completion audit is documented in
+  [Policy Builder Phase 7R Completion Audit](policy-builder-phase-7r-completion-audit.md).
+- The server-owned completion gate lives in
+  `server/src/services/policyBuilderPhase7CompletionAudit.mjs`.
+- The focused completion audit suite lives in
+  `server/src/__tests__/services/policyBuilderPhase7CompletionAudit.test.mjs`.
+- Current completion audit verifies all nine Phase 7R runtime/rebuild
+  components have docs, services, focused tests, passing component audits, and
+  the expected next-phase handoff sequence before allowing the Phase 8R storage
+  boundary to begin.
 
 ## Phase 8R: Native Intent Storage And Legacy Removal
 
