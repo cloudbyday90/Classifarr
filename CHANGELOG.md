@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Intent Quality Gate** — hardened bounded intent
+  inference so Phase 6R.2 consumes generated evidence quality, blocks missing
+  or insufficient evidence-quality handoffs, and carries sanitized quality
+  IDs/counts without raw evidence labels.
 - **Policy Builder Phase 6R Evidence Quality** — added a server-generated,
   label-free evidence quality assessment for Phase 6R.1 projections so
   downstream intent/readiness engines can distinguish usable, constrained,

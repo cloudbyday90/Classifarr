@@ -12,10 +12,14 @@ import {
 import {
   validatePolicyBuilderPhase6EvidenceProjectionFingerprint,
 } from './policyBuilderPhase6EvidenceProjectionFingerprint.mjs';
+import {
+  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
+} from './policyBuilderPhase6EvidenceQuality.mjs';
 
 const PHASE6R_INTENT_BOUNDARY_STATUS_IDS = Object.freeze({
   READY: 'ready',
   BLOCKED_BY_EVIDENCE_BOUNDARY: 'blocked_by_evidence_boundary',
+  BLOCKED_BY_EVIDENCE_QUALITY: 'blocked_by_evidence_quality',
   BLOCKED_BY_INTENT_AUDIT: 'blocked_by_intent_audit',
 });
 
@@ -74,6 +78,8 @@ const PHASE6R_INTENT_AUDIT_RISK_IDS = Object.freeze({
   MISSING_EVIDENCE_BOUNDARY: 'missing_evidence_boundary',
   MISSING_EVIDENCE_FINGERPRINT: 'missing_evidence_fingerprint',
   EVIDENCE_FINGERPRINT_MISMATCH: 'evidence_fingerprint_mismatch',
+  INSUFFICIENT_EVIDENCE_QUALITY: 'insufficient_evidence_quality',
+  MISSING_EVIDENCE_QUALITY: 'missing_evidence_quality',
 });
 
 const BROAD_GENRE_LABELS = Object.freeze([
@@ -354,6 +360,25 @@ function buildEvidenceBoundarySnapshot(boundedEvidenceResult = {}) {
   return {
     boundaryVersion: boundedEvidenceResult.version || null,
     statusId: boundedEvidenceResult.statusId || null,
+    quality: boundedEvidenceResult.projection?.quality
+      ? {
+          version: boundedEvidenceResult.projection.quality.version || null,
+          statusId: boundedEvidenceResult.projection.quality.statusId || null,
+          score: boundedEvidenceResult.projection.quality.score ?? null,
+          nextActionId: boundedEvidenceResult.projection.quality.nextActionId || null,
+          reasonIds: Array.isArray(boundedEvidenceResult.projection.quality.reasonIds)
+            ? [...boundedEvidenceResult.projection.quality.reasonIds]
+            : [],
+          counts: boundedEvidenceResult.projection.quality.counts || {},
+          hasIdentityEvidence: boundedEvidenceResult.projection.quality.hasIdentityEvidence === true,
+          hasDeclaredIdentityEvidence:
+            boundedEvidenceResult.projection.quality.hasDeclaredIdentityEvidence === true,
+          hasObservedIdentityEvidence:
+            boundedEvidenceResult.projection.quality.hasObservedIdentityEvidence === true,
+          hasStaleProfileEvidence:
+            boundedEvidenceResult.projection.quality.hasStaleProfileEvidence === true,
+        }
+      : null,
     projectionFingerprint: {
       version: projectionFingerprint.version || null,
       algorithm: projectionFingerprint.algorithm || null,
@@ -362,6 +387,27 @@ function buildEvidenceBoundarySnapshot(boundedEvidenceResult = {}) {
       traceAttributes: projectionFingerprint.traceAttributes || null,
     },
   };
+}
+
+function buildEvidenceQualityIssues(quality = null) {
+  if (!quality || typeof quality !== 'object' || Array.isArray(quality)) {
+    return [{
+      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_QUALITY,
+      message: 'Intent inference requires a generated evidence quality assessment.',
+    }];
+  }
+
+  if (quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT) {
+    return [{
+      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.INSUFFICIENT_EVIDENCE_QUALITY,
+      message: 'Intent inference is blocked until evidence quality is no longer insufficient.',
+      qualityStatusId: quality.statusId,
+      nextActionId: quality.nextActionId || null,
+      reasonIds: Array.isArray(quality.reasonIds) ? [...quality.reasonIds] : [],
+    }];
+  }
+
+  return [];
 }
 
 function buildPolicyBuilderPhase6IntentDraft(input = {}) {
@@ -491,6 +537,14 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
     ));
   }
 
+  if (projection.quality?.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT) {
+    intent.warnings.push(buildWarning(
+      PHASE6R_INTENT_WARNING_IDS.INSUFFICIENT_EVIDENCE,
+      'Evidence quality is insufficient; intent inference must wait for more evidence or operator confirmation.',
+      { evidenceBucketId: PHASE6R_EVIDENCE_BUCKET_IDS.INSUFFICIENT }
+    ));
+  }
+
   if (intent.ask_when.some(entry => entry.reasonCode === 'stale_profile_needs_review')) {
     intent.warnings.push(buildWarning(
       PHASE6R_INTENT_WARNING_IDS.STALE_PROFILE,
@@ -568,10 +622,19 @@ function buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
     });
   }
 
+  if (boundedEvidenceResult?.ok === true && boundedEvidenceResult?.projection) {
+    evidenceIssues.push(...buildEvidenceQualityIssues(boundedEvidenceResult.projection.quality));
+  }
+
   if (evidenceIssues.length > 0) {
     return {
       ok: false,
-      statusId: PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
+      statusId: evidenceIssues.some(issue =>
+        issue.riskId === PHASE6R_INTENT_AUDIT_RISK_IDS.INSUFFICIENT_EVIDENCE_QUALITY ||
+        issue.riskId === PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_QUALITY
+      )
+        ? PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_QUALITY
+        : PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
       evidenceBoundary,
       evidenceFingerprintAudit,
       intent: null,
@@ -772,6 +835,8 @@ function validatePolicyBuilderPhase6IntentDraft(intent = {}) {
         message: 'Bounded intent drafts must retain the evidence projection fingerprint.',
       });
     }
+
+    issues.push(...buildEvidenceQualityIssues(intent?.evidenceBoundary?.quality));
   }
 
   return {

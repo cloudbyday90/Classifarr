@@ -127,6 +127,12 @@ describe('policyBuilderPhase6IntentEngine', () => {
       evidenceBoundary: expect.objectContaining({
         boundaryVersion: boundedEvidenceResult.version,
         statusId: boundedEvidenceResult.statusId,
+        quality: expect.objectContaining({
+          statusId: boundedEvidenceResult.projection.quality.statusId,
+          nextActionId: boundedEvidenceResult.projection.quality.nextActionId,
+          reasonIds: boundedEvidenceResult.projection.quality.reasonIds,
+          counts: boundedEvidenceResult.projection.quality.counts,
+        }),
         projectionFingerprint: expect.objectContaining({
           fingerprint: boundedEvidenceResult.projectionFingerprint.fingerprint,
         }),
@@ -137,6 +143,70 @@ describe('policyBuilderPhase6IntentEngine', () => {
     ]);
     expect(JSON.stringify(result.intent.evidenceBoundary)).not.toContain('Pixar');
     expect(result.intentAudit.ok).toBe(true);
+  });
+
+  test('blocks bounded intent when evidence quality is insufficient', () => {
+    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        metadataEvidence: ['Family'],
+        profileFreshness: {
+          stale: false,
+        },
+      },
+    });
+
+    const result = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+      boundedEvidenceResult,
+    });
+
+    expect(boundedEvidenceResult.projection.quality.statusId).toBe('insufficient');
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_QUALITY,
+      intent: null,
+      intentAudit: null,
+      nextPhase: null,
+    }));
+    expect(result.evidenceBoundary).toEqual(expect.objectContaining({
+      quality: expect.objectContaining({
+        statusId: 'insufficient',
+        nextActionId: 'confirm_destination_identity',
+      }),
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.INSUFFICIENT_EVIDENCE_QUALITY,
+        nextActionId: 'confirm_destination_identity',
+      }),
+    ]));
+    expect(JSON.stringify(result.evidenceBoundary)).not.toContain('Family');
+  });
+
+  test('rejects bounded intent drafts that drop the evidence quality snapshot', () => {
+    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        operatorIntent: {
+          belongsHere: ['Animated Movies'],
+        },
+      },
+    });
+    const result = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+      boundedEvidenceResult,
+    });
+    const tamperedIntent = {
+      ...result.intent,
+      evidenceBoundary: {
+        ...result.intent.evidenceBoundary,
+        quality: null,
+      },
+    };
+
+    expect(validatePolicyBuilderPhase6IntentDraft(tamperedIntent).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_QUALITY,
+        }),
+      ]));
   });
 
   test('blocks bounded intent when evidence fingerprint no longer matches the projection', () => {

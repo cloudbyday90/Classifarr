@@ -3250,6 +3250,12 @@ Implementation status:
 - The bounded intent entry point now audits the evidence projection fingerprint,
   trace attributes, and sanitized provenance against the returned Phase 6R.1
   projection before producing an intent draft.
+- The bounded intent entry point now consumes the Phase 6R.1 evidence quality
+  assessment, carries a sanitized quality snapshot into the evidence boundary,
+  and blocks missing or insufficient quality with
+  `blocked_by_evidence_quality` before intent inference.
+- The Phase 6R.2 quality-gate hardening is documented in
+  [Policy Builder Phase 6R Intent Quality Gate](policy-builder-phase-6r-intent-quality-gate.md).
 - The contract demotes unsupported broad-genre identity to helpful evidence,
   prevents metadata from owning destination identity, treats stale or missing
   evidence as review triggers instead of exclusions, keeps hard limits and avoid

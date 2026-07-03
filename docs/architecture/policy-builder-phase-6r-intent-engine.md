@@ -12,7 +12,9 @@ requires the Phase 6R.1 evidence boundary result and carries the evidence
 projection fingerprint forward. July 2026 hardening makes that handoff stricter:
 the intent boundary now validates that the evidence projection fingerprint,
 trace attributes, and sanitized provenance still match the bounded evidence
-projection before producing an intent draft.
+projection before producing an intent draft. It also consumes the Phase 6R.1
+evidence quality assessment and blocks intent inference when evidence quality is
+insufficient.
 
 ## Problem
 
@@ -92,6 +94,11 @@ The important boundary is authority:
    before producing intent. A stale, malformed, or tampered fingerprint blocks
    intent generation.
 
+9. **Consume generated evidence quality before inference.**
+   Bounded intent generation requires the Phase 6R.1 quality object. Missing or
+   insufficient quality returns `blocked_by_evidence_quality` with stable reason
+   IDs and a next action instead of producing policy intent.
+
 ## Pros And Cons
 
 Pros:
@@ -107,6 +114,8 @@ Pros:
   evidence labels in the boundary snapshot.
 - Prevents stale or tampered evidence correlation handles from becoming intent
   provenance.
+- Prevents insufficient evidence quality from becoming intent while preserving a
+  sanitized reason/action snapshot for downstream review.
 
 Cons:
 
@@ -116,6 +125,8 @@ Cons:
 - It does not run runtime classification or Arr routing.
 - The older direct draft reducer remains for unit-level compatibility and must
   not be used as a runtime boundary.
+- Conservative quality gating can pause more drafts until identity evidence or
+  operator confirmation exists.
 
 ## Final Recommendation Stack
 
@@ -129,6 +140,8 @@ Cons:
   `server/src/__tests__/services/policyBuilderPhase6IntentEngine.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-intent-engine.md`
+- Quality-gate outcome:
+  `docs/architecture/policy-builder-phase-6r-intent-quality-gate.md`
 - Roadmap owner:
   Phase 6R.2 Intent Engine in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
@@ -152,6 +165,22 @@ warnings[]
 learningSideEffects[]
 bridgeCompatibility
 evidenceBoundary
+```
+
+For bounded intent drafts, `evidenceBoundary` also includes a sanitized
+`quality` snapshot:
+
+```text
+version
+statusId
+score
+nextActionId
+reasonIds[]
+counts
+hasIdentityEvidence
+hasDeclaredIdentityEvidence
+hasObservedIdentityEvidence
+hasStaleProfileEvidence
 ```
 
 Each intent entry keeps:
@@ -192,6 +221,7 @@ The bounded status IDs are:
 ```text
 ready
 blocked_by_evidence_boundary
+blocked_by_evidence_quality
 blocked_by_intent_audit
 ```
 
@@ -210,10 +240,14 @@ blocked_by_intent_audit
   the returned evidence projection, trace attributes, or sanitized provenance.
 - The intent draft carries a compact evidence-boundary snapshot for traceability
   without raw provider payloads or evidence labels in the boundary metadata.
+- Bounded intent generation requires generated evidence quality and rejects
+  missing or insufficient quality before producing a draft.
+- The intent audit rejects bounded drafts that later omit the quality snapshot
+  or carry insufficient quality.
 
 ## Next Step
 
-Proceed to **Phase 6R.3 Learning Guard**. That component should decide when
-manual outcomes, Discord answers, confirmations, routing outcomes, and request
-choices can become durable learning, exact-item memory, profile evidence, or
-outcome history only.
+Proceed to **Phase 6R.3 Learning Guard**. That component should require
+quality-gated bounded intent before manual outcomes, Discord answers,
+confirmations, routing outcomes, and request choices can become durable
+learning, exact-item memory, profile evidence, or outcome history only.
