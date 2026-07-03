@@ -153,6 +153,16 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
       hasBlockingEvidence: true,
       hasReviewEvidence: true,
     }));
+    expect(projection.quality).toEqual(expect.objectContaining({
+      version: 'phase6r.evidence.quality.v1',
+      statusId: 'needs_review',
+      nextActionId: 'review_evidence',
+      hasIdentityEvidence: true,
+      hasObservedIdentityEvidence: true,
+      hasDeclaredIdentityEvidence: true,
+    }));
+    expect(JSON.stringify(projection.quality)).not.toContain('Animation');
+    expect(JSON.stringify(projection.quality)).not.toContain('Animated Movies');
     expect(projection.summary.bucketSummaries).toEqual(expect.arrayContaining([
       expect.objectContaining({
         bucketId: PHASE6R_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
@@ -323,6 +333,29 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_MISSING_SUMMARY,
+        }),
+      ]));
+  });
+
+  test('rejects projections with stale quality assessments', () => {
+    const projection = buildPolicyBuilderPhase6EvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animation'],
+      },
+    });
+    projection.quality = {
+      ...projection.quality,
+      statusId: 'usable',
+      counts: {
+        ...projection.quality.counts,
+        identity: 99,
+      },
+    };
+
+    expect(buildPolicyBuilderPhase6EvidenceProjectionAudit(projection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_QUALITY_MISMATCH,
         }),
       ]));
   });

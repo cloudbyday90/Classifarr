@@ -6,6 +6,10 @@ import {
   includesInternalPolicyLanguage,
   POLICY_UX_TERM_IDS,
 } from './policyUserMentalModel.mjs';
+import {
+  buildPolicyBuilderPhase6EvidenceQualityAssessment,
+  validatePolicyBuilderPhase6EvidenceQualityAssessment,
+} from './policyBuilderPhase6EvidenceQuality.mjs';
 
 const PHASE6R_EVIDENCE_BUCKET_IDS = Object.freeze({
   IDENTITY: 'identity_evidence',
@@ -88,6 +92,9 @@ const PHASE6R_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   PROJECTION_METADATA_OWNS_IDENTITY: 'projection_metadata_owns_identity',
   PROJECTION_MISSING_SUMMARY: 'projection_missing_summary',
   PROJECTION_SUMMARY_COUNT_MISMATCH: 'projection_summary_count_mismatch',
+  PROJECTION_MISSING_QUALITY: 'projection_missing_quality',
+  PROJECTION_QUALITY_MISMATCH: 'projection_quality_mismatch',
+  PROJECTION_QUALITY_EXPOSES_ENTRY_LABELS: 'projection_quality_exposes_entry_labels',
   REDUCER_CUTLINE_MISSING_DISPOSITION: 'reducer_cutline_missing_disposition',
   REDUCER_CUTLINE_USES_NORMAL_FLOW: 'reducer_cutline_uses_normal_flow',
   REDUCER_CUTLINE_EXPOSES_UI_DIAGNOSTIC: 'reducer_cutline_exposes_ui_diagnostic',
@@ -595,6 +602,7 @@ function createEmptyEvidenceProjection() {
     exposesUiChipLanguage: false,
     buckets,
     summary: null,
+    quality: null,
     warnings: [],
   };
 }
@@ -767,6 +775,10 @@ function buildPolicyBuilderPhase6EvidenceProjection(input = {}) {
   }
 
   projection.summary = summarizePolicyBuilderPhase6EvidenceProjection(projection);
+  projection.quality = buildPolicyBuilderPhase6EvidenceQualityAssessment(projection, {
+    bucketIds: PHASE6R_EVIDENCE_BUCKET_IDS,
+    authoritySourceIds: AUTHORITY_SOURCE_IDS,
+  });
 
   return projection;
 }
@@ -1032,6 +1044,38 @@ function validatePolicyBuilderPhase6EvidenceProjectionSummary(projection = {}) {
   };
 }
 
+function validatePolicyBuilderPhase6EvidenceProjectionQuality(projection = {}) {
+  const result = validatePolicyBuilderPhase6EvidenceQualityAssessment(projection, {
+    bucketIds: PHASE6R_EVIDENCE_BUCKET_IDS,
+    authoritySourceIds: AUTHORITY_SOURCE_IDS,
+  });
+
+  return {
+    ...result,
+    issues: result.issues.map(issue => {
+      switch (issue.riskId) {
+        case 'missing_quality':
+          return {
+            ...issue,
+            riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_MISSING_QUALITY,
+          };
+        case 'quality_mismatch':
+          return {
+            ...issue,
+            riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_QUALITY_MISMATCH,
+          };
+        case 'quality_exposes_entry_labels':
+          return {
+            ...issue,
+            riskId: PHASE6R_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_QUALITY_EXPOSES_ENTRY_LABELS,
+          };
+        default:
+          return issue;
+      }
+    }),
+  };
+}
+
 function validatePolicyBuilderPhase6EvidenceProjectionEntry(entry = {}, bucketId) {
   const issues = [];
   const bucket = getPolicyBuilderPhase6EvidenceBucket(bucketId);
@@ -1149,6 +1193,7 @@ function buildPolicyBuilderPhase6EvidenceProjectionAudit(projection = {}) {
   const issues = [];
   const buckets = isNonEmptyObject(projection.buckets) ? projection.buckets : null;
   const summaryResult = validatePolicyBuilderPhase6EvidenceProjectionSummary(projection);
+  const qualityResult = validatePolicyBuilderPhase6EvidenceProjectionQuality(projection);
 
   if (!buckets) {
     pushProjectionIssue(
@@ -1216,6 +1261,7 @@ function buildPolicyBuilderPhase6EvidenceProjectionAudit(projection = {}) {
   }
 
   summaryResult.issues.forEach(issue => issues.push(issue));
+  qualityResult.issues.forEach(issue => issues.push(issue));
 
   return {
     ok: issues.length === 0,
@@ -1224,6 +1270,7 @@ function buildPolicyBuilderPhase6EvidenceProjectionAudit(projection = {}) {
     issues,
     entryResults,
     summaryResult,
+    qualityResult,
   };
 }
 
@@ -1308,12 +1355,14 @@ export {
   buildPolicyBuilderPhase6EvidenceEngineAudit,
   buildPolicyBuilderPhase6EvidenceProjection,
   buildPolicyBuilderPhase6EvidenceProjectionAudit,
+  buildPolicyBuilderPhase6EvidenceQualityAssessment,
   getPolicyBuilderPhase6EvidenceBucket,
   getPolicyBuilderPhase6EvidenceSource,
   listPolicyBuilderPhase6EvidenceBuckets,
   listPolicyBuilderPhase6EvidenceReducerCutlines,
   listPolicyBuilderPhase6EvidenceSources,
   summarizePolicyBuilderPhase6EvidenceProjection,
+  validatePolicyBuilderPhase6EvidenceQualityAssessment,
   validatePolicyBuilderPhase6EvidenceBucket,
   validatePolicyBuilderPhase6EvidenceProjectionEntry,
   validatePolicyBuilderPhase6EvidenceSource,

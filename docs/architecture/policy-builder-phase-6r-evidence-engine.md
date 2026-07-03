@@ -17,7 +17,10 @@ The evidence boundary now validates the public input envelope, adapts it into
 the projection shape, and audits the generated projection before later engines
 consume it. July 2026 hardening also validates the generated projection
 fingerprint, trace attributes, and sanitized provenance against the returned
-projection before downstream engines can consume the handoff.
+projection before downstream engines can consume the handoff. Evidence quality
+hardening adds a generated, label-free quality assessment so downstream engines
+can distinguish usable, constrained, review-needed, and insufficient evidence
+without reusing replay/provider diagnostics.
 
 ## Problem
 
@@ -102,6 +105,11 @@ supports each piece of evidence?
    maintainer-only migration material. Normal operator flow cannot consume old
    diagnostic reducers directly.
 
+8. **Generate bounded evidence quality.**
+   Downstream engines should consume server-generated quality status and
+   next-action IDs instead of recalculating evidence readiness from raw bucket
+   labels.
+
 ## Pros And Cons
 
 Pros:
@@ -114,6 +122,8 @@ Pros:
 - Gives Phase 6R.2 and Phase 6R.4 a compact summary instead of forcing each
   engine to rescan bucket entries or reuse diagnostic panels.
 - Makes old replay/impact reducer disposition explicit before future cleanup.
+- Gives downstream engines a label-free quality assessment for usable,
+  constrained, review-needed, and insufficient evidence.
 
 Cons:
 
@@ -127,8 +137,11 @@ Cons:
 
 - Server module:
   `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
+- Quality module:
+  `server/src/services/policyBuilderPhase6EvidenceQuality.mjs`
 - Test module:
   `server/src/__tests__/services/policyBuilderPhase6EvidenceEngine.test.mjs`
+  and `server/src/__tests__/services/policyBuilderPhase6EvidenceQuality.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-evidence-engine.md`
 - Roadmap owner:
@@ -146,6 +159,7 @@ The server module exports:
 - reducer cutline IDs,
 - an evidence projection builder,
 - an evidence projection summary builder,
+- an evidence quality assessment builder,
 - an evidence projection audit for generated/tampered contract instances,
 - a reducer cutline inventory,
 - bucket/source lookup helpers,
@@ -198,6 +212,28 @@ The summary is generated from the projection, not provided by the client. The
 projection audit fails if the summary is missing or no longer matches bucket
 entry counts.
 
+The projection quality shape is also generated from the projection:
+
+```text
+version
+statusId
+score
+nextActionId
+reasonIds[]
+counts
+hasIdentityEvidence
+hasObservedIdentityEvidence
+hasDeclaredIdentityEvidence
+hasHardLimitEvidence
+hasRoutingEvidence
+hasFreshnessEvidence
+hasStaleProfileEvidence
+```
+
+The quality assessment exposes counts and stable IDs, not evidence labels or
+provider/replay payloads. The projection audit fails if quality is missing,
+stale, or leaks entry labels.
+
 The reducer cutline inventory currently classifies:
 
 | Reducer | Disposition | Normal Flow |
@@ -218,7 +254,9 @@ fails when a projection:
 - lets hard-limit or avoid evidence bypass operator-declared intent,
 - contains individual entries that claim raw payloads or live lookup behavior,
 - omits the generated summary,
-- carries a stale summary whose counts do not match the bucket entries.
+- carries a stale summary whose counts do not match the bucket entries,
+- omits generated quality, carries stale quality, or leaks entry labels through
+  quality.
 
 ## Security Outcome
 
@@ -235,12 +273,15 @@ fails when a projection:
 - Projection summaries contain counts and IDs only; they do not include raw
   titles, provider payloads, request prompts, API keys, quota state, or
   diagnostic UI copy.
+- Projection quality contains status, next action, reason IDs, booleans, and
+  counts only; it does not carry evidence labels.
 - Replay and impact reducers are blocked from normal flow unless rewritten into
   source-authorized evidence reducers.
 
 ## Next Step
 
-Proceed to **Phase 6R.2 Intent Engine**. That component should consume these
-evidence buckets and produce proposed destination intent with assumptions,
+Proceed to **Phase 6R.2 Intent Engine** consumption hardening. That component
+should consume evidence buckets plus generated quality, block insufficient
+evidence handoffs, and produce proposed destination intent with assumptions,
 warnings, confidence, and review needs while keeping inferred evidence separate
 from operator-declared constraints.

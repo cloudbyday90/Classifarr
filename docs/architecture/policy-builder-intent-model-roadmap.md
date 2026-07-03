@@ -3183,6 +3183,14 @@ Implementation status:
   source IDs, authority-source IDs, blocking bucket IDs, and review bucket IDs
   so later engines can consume deterministic evidence state without reusing
   replay, impact, provider, or UI diagnostic payloads.
+- The evidence projection now includes a generated quality assessment with
+  status, score, next-action ID, reason IDs, bucket counts, and identity/routing
+  booleans so downstream engines can distinguish usable, constrained,
+  review-needed, and insufficient evidence without carrying raw evidence labels.
+- Phase 6R.1 evidence quality hardening is documented in
+  [Policy Builder Phase 6R Evidence Quality](policy-builder-phase-6r-evidence-quality.md).
+- The evidence quality helper lives in
+  `server/src/services/policyBuilderPhase6EvidenceQuality.mjs`.
 - Replay and impact reducer artifacts are explicitly classified as delete,
   rewrite-as-evidence-reducer, or maintainer-only migration material; all are
   blocked from normal operator flow until rewritten into Phase 6R evidence

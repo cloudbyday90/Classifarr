@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Evidence Quality** — added a server-generated,
+  label-free evidence quality assessment for Phase 6R.1 projections so
+  downstream intent/readiness engines can distinguish usable, constrained,
+  review-needed, and insufficient evidence without reusing replay/provider UI
+  diagnostics.
 - **Classification Progress Stage Contract Cutover** — added stage-first
   classification progress API/WebSocket fields, centralized legacy phase alias
   mapping, and moved Command Center processing UI copy/readers to stage
