@@ -3449,6 +3449,10 @@ Implementation status:
 - Migration deletion requires stable Phase 6R contracts, representative
   comparison, rollback snapshot, rollback window, deletion checklist, and
   native storage blocked until Phase 8R.
+- Migration planning now exposes a bounded entry point for new runtime/rebuild
+  callers: it requires a successful bounded Phase 6R.5 operator workflow result,
+  verifies sanitized workflow provenance, and attaches the bounded workflow
+  context to the migration plan before the migration/deletion audit can pass.
 
 ## Phase 6R Work Sequence
 

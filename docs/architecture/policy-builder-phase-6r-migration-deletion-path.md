@@ -18,6 +18,11 @@ Phase 8 storage blocker
 It does not delete code yet, add native intent storage, expose old diagnostics
 in the normal product workflow, or run migration against production data.
 
+The compatibility migration-plan builder remains available for focused tests
+and inventory work, but new runtime/rebuild callers should use the bounded
+migration wrapper. That wrapper requires a successful bounded operator workflow
+result before any migration/deletion plan is considered ready.
+
 ## Problem
 
 The re-imagined policy builder cannot keep the old diagnostic UX as a permanent
@@ -76,6 +81,11 @@ delete replaced surfaces after gates pass
    Phase 6R proves engine behavior and migration safety. Phase 8R owns native
    schema migration after those gates pass.
 
+6. **Require bounded workflow evidence before migration planning.**
+   Migration/deletion planning should consume the bounded Phase 6R.5 workflow
+   result so deletion gates cannot be evaluated against stale or mismatched
+   evidence, intent, readiness, or workflow state.
+
 ## Pros And Cons
 
 Pros:
@@ -85,6 +95,8 @@ Pros:
 - Keeps storage migration separated from engine-contract stabilization.
 - Requires rollback before any removal.
 - Creates a testable inventory for future cleanup and release readiness.
+- Prevents migration/deletion readiness from being detached from the bounded
+  operator workflow and its evidence provenance.
 
 Cons:
 
@@ -93,11 +105,15 @@ Cons:
 - It adds one more server contract before the UI can be simplified.
 - The 30-day retention window is a starting contract, not a final release
   policy.
+- Existing pure plan builders still exist for compatibility until runtime
+  migration paths move onto the bounded wrapper.
 
 ## Final Recommendation Stack
 
 - Migration cutline service:
   `server/src/services/policyBuilderPhase6MigrationDeletionPath.mjs`
+- Bounded migration wrapper:
+  `buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow`
 - Test module:
   `server/src/__tests__/services/policyBuilderPhase6MigrationDeletionPath.test.mjs`
 - Documentation:
@@ -116,6 +132,7 @@ The service exports:
 - `PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS`
 - `listPolicyBuilderPhase6MigrationArtifacts`
 - `buildPolicyBuilderPhase6MigrationPlan`
+- `buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow`
 - `validateMigrationArtifact`
 - `validatePolicyBuilderPhase6MigrationPlan`
 - `buildPolicyBuilderPhase6MigrationDeletionAudit`
@@ -141,12 +158,47 @@ Default gates:
 - `delete_checklist_defined`
 - `native_storage_blocked_until_phase8`
 
+The bounded wrapper returns:
+
+```text
+ok
+statusId
+boundaryContext
+plan
+migrationAudit
+issueCount
+issues[]
+nextPhase
+```
+
+Supported bounded wrapper status IDs:
+
+```text
+ready
+blocked_by_bounded_workflow
+blocked_by_migration_audit
+```
+
+The boundary context carries only sanitized workflow metadata:
+
+```text
+workflowBoundary.statusId
+workflowBoundary.workflowVersion
+workflowBoundary.workflowId
+workflowBoundary.readinessStateId
+workflowBoundary.projectionFingerprint
+projectionFingerprintMatch
+```
+
 ## Security Outcome
 
 - No live provider calls or raw provider payloads are required for the cutline.
 - Old diagnostics are not allowed in the normal operator workflow.
 - Rollback snapshots and restore path are mandatory before migration deletion.
 - Native intent storage remains blocked until Phase 8R owns the schema plan.
+- The bounded wrapper rejects failed workflow contracts, missing bounded
+  provenance, and mismatched projection fingerprints before returning a
+  migration/deletion plan.
 
 ## Next Step
 

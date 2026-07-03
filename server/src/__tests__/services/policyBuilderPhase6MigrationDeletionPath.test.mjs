@@ -1,14 +1,79 @@
 import {
+  ANSWER_OUTCOME_IDS,
+} from '../../services/policyQuestionLearningVocabulary.mjs';
+import {
+  buildPolicyBuilderPhase6BoundedEvidenceProjection,
+} from '../../services/policyBuilderPhase6EvidenceBoundary.mjs';
+import {
+  buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
+} from '../../services/policyBuilderPhase6IntentEngine.mjs';
+import {
+  buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent,
+} from '../../services/policyBuilderPhase6LearningGuard.mjs';
+import {
+  buildPolicyBuilderPhase6ReadinessFromBoundedContracts,
+} from '../../services/policyBuilderPhase6ReadinessEngine.mjs';
+import {
+  buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness,
+} from '../../services/policyBuilderPhase6OperatorWorkflow.mjs';
+import {
   PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS,
+  PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS,
   PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS,
   PHASE6R_MIGRATION_GATE_IDS,
   PHASE6R_MIGRATION_VERIFIER_KIND_IDS,
   buildPolicyBuilderPhase6MigrationDeletionAudit,
   buildPolicyBuilderPhase6MigrationPlan,
+  buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow,
   listPolicyBuilderPhase6MigrationArtifacts,
   validateMigrationArtifact,
   validatePolicyBuilderPhase6MigrationPlan,
 } from '../../services/policyBuilderPhase6MigrationDeletionPath.mjs';
+
+function buildBoundedWorkflowResult() {
+  const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    evidenceInput: {
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+        helpfulMatches: ['Disney'],
+        routingTargets: ['Radarr Animated Movies'],
+      },
+    },
+  });
+  const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    boundedEvidenceResult,
+  });
+  const boundedLearningResult = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+    boundedIntentResult,
+    learningInput: {
+      answerOutcomeId: ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM,
+      answer: {
+        label: 'Animated Movies',
+        destinationLibraryId: 6,
+        destinationLibraryName: 'Animated Movies',
+      },
+      finalOutcome: {
+        itemId: 10674,
+        status: 'resolved',
+      },
+    },
+  });
+  const boundedReadinessResult = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    boundedEvidenceResult,
+    boundedIntentResult,
+    boundedLearningResult,
+    routing: {
+      configured: true,
+      routeReady: true,
+      targetName: 'Radarr Animated Movies',
+    },
+  });
+
+  return buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+    boundedIntentResult,
+    boundedReadinessResult,
+  });
+}
 
 describe('policyBuilderPhase6MigrationDeletionPath', () => {
   test('classifies real policy-builder diagnostic artifacts', () => {
@@ -72,6 +137,95 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
       phase8StorageMigrationAllowed: false,
     }));
     expect(plan.validation.ok).toBe(true);
+  });
+
+  test('builds a bounded migration plan from a bounded operator workflow result', () => {
+    const boundedWorkflowResult = buildBoundedWorkflowResult();
+
+    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+      boundedWorkflowResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: true,
+      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.READY,
+      issueCount: 0,
+      nextPhase: expect.objectContaining({
+        phaseId: '7r_1',
+      }),
+    }));
+    expect(result.plan).toEqual(expect.objectContaining({
+      version: 'phase6r.migration_deletion_path.v1',
+      phase8StorageMigrationBlocked: true,
+      boundaryContext: expect.objectContaining({
+        projectionFingerprintMatch: true,
+      }),
+      engineContractBoundary: expect.objectContaining({
+        boundedWorkflowRequired: true,
+        workflowId: 'destination_first_policy_setup',
+      }),
+    }));
+    expect(result.migrationAudit.ok).toBe(true);
+    expect(JSON.stringify(result.boundaryContext)).not.toContain('Animated Movies');
+  });
+
+  test('blocks bounded migration planning when bounded workflow is missing', () => {
+    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+      boundedWorkflowResult: {
+        ok: false,
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      plan: null,
+      migrationAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_WORKFLOW,
+      }),
+      expect.objectContaining({
+        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_PROVENANCE,
+      }),
+    ]));
+  });
+
+  test('blocks bounded migration planning when workflow provenance does not match', () => {
+    const boundedWorkflowResult = buildBoundedWorkflowResult();
+    const mismatchedWorkflowResult = {
+      ...boundedWorkflowResult,
+      boundaryContext: {
+        ...boundedWorkflowResult.boundaryContext,
+        readinessBoundary: {
+          ...boundedWorkflowResult.boundaryContext.readinessBoundary,
+          projectionFingerprint: {
+            ...boundedWorkflowResult.boundaryContext.readinessBoundary.projectionFingerprint,
+            fingerprint: 'f'.repeat(64),
+          },
+        },
+      },
+    };
+
+    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+      boundedWorkflowResult: mismatchedWorkflowResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      plan: null,
+      migrationAudit: null,
+      boundaryContext: expect.objectContaining({
+        projectionFingerprintMatch: false,
+      }),
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
+      }),
+    ]));
   });
 
   test('keeps old diagnostic artifacts out of the normal workflow', () => {

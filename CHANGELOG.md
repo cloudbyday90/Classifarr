@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Migration Boundary Alignment** — added a bounded
+  Phase 6R.6 migration/deletion entry point that requires a successful bounded
+  operator workflow result and matching sanitized workflow provenance before
+  returning a migration plan.
 - **Policy Builder Phase 6R Operator Workflow Boundary Alignment** — added a
   bounded Phase 6R.5 workflow entry point that requires successful bounded
   intent and readiness contracts with matching sanitized evidence projection

@@ -37,6 +37,15 @@ const PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS = Object.freeze({
   PHASE8_NOT_BLOCKED: 'phase8_not_blocked',
   MISSING_REQUIRED_GATE: 'missing_required_gate',
   STORAGE_MIGRATION_BEFORE_ENGINE_STABILITY: 'storage_migration_before_engine_stability',
+  MISSING_BOUNDED_WORKFLOW: 'missing_bounded_workflow',
+  MISSING_BOUNDED_PROVENANCE: 'missing_bounded_provenance',
+  BOUNDED_PROVENANCE_MISMATCH: 'bounded_provenance_mismatch',
+});
+
+const PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS = Object.freeze({
+  READY: 'ready',
+  BLOCKED_BY_BOUNDED_WORKFLOW: 'blocked_by_bounded_workflow',
+  BLOCKED_BY_MIGRATION_AUDIT: 'blocked_by_migration_audit',
 });
 
 const REQUIRED_GATE_IDS = Object.freeze(Object.values(PHASE6R_MIGRATION_GATE_IDS));
@@ -748,6 +757,116 @@ function buildPolicyBuilderPhase6MigrationPlan({
   };
 }
 
+function getWorkflowIntentFingerprint(boundedWorkflowResult = {}) {
+  return boundedWorkflowResult?.boundaryContext?.intentBoundary?.projectionFingerprint?.fingerprint ||
+    boundedWorkflowResult?.workflow?.boundaryContext?.intentBoundary?.projectionFingerprint?.fingerprint ||
+    null;
+}
+
+function getWorkflowReadinessFingerprint(boundedWorkflowResult = {}) {
+  return boundedWorkflowResult?.boundaryContext?.readinessBoundary?.projectionFingerprint?.fingerprint ||
+    boundedWorkflowResult?.workflow?.boundaryContext?.readinessBoundary?.projectionFingerprint?.fingerprint ||
+    null;
+}
+
+function buildBoundedMigrationContext(boundedWorkflowResult = {}) {
+  const intentFingerprint = getWorkflowIntentFingerprint(boundedWorkflowResult);
+  const readinessFingerprint = getWorkflowReadinessFingerprint(boundedWorkflowResult);
+  const sourceBoundary = boundedWorkflowResult.boundaryContext ||
+    boundedWorkflowResult.workflow?.boundaryContext ||
+    null;
+
+  if (!intentFingerprint || !readinessFingerprint || !sourceBoundary) {
+    return null;
+  }
+
+  return {
+    workflowBoundary: {
+      statusId: boundedWorkflowResult.statusId || null,
+      workflowVersion: boundedWorkflowResult.workflow?.version || null,
+      workflowId: boundedWorkflowResult.workflow?.workflowId || null,
+      readinessStateId: boundedWorkflowResult.workflow?.readiness?.stateId || null,
+      projectionFingerprint:
+        sourceBoundary.intentBoundary?.projectionFingerprint ||
+        sourceBoundary.readinessBoundary?.projectionFingerprint ||
+        null,
+    },
+    projectionFingerprintMatch:
+      intentFingerprint === readinessFingerprint &&
+      sourceBoundary.projectionFingerprintMatch === true,
+  };
+}
+
+function buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+  boundedWorkflowResult,
+  artifacts = DEFAULT_MIGRATION_ARTIFACTS,
+  requiredGateIds = REQUIRED_GATE_IDS,
+  rollbackPlan = DEFAULT_ROLLBACK_PLAN,
+} = {}) {
+  const boundaryIssues = [];
+
+  if (boundedWorkflowResult?.ok !== true || !boundedWorkflowResult?.workflow) {
+    boundaryIssues.push({
+      riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_WORKFLOW,
+      message: 'Migration planning requires a successful bounded operator workflow result.',
+    });
+  }
+
+  const boundaryContext = buildBoundedMigrationContext(boundedWorkflowResult);
+
+  if (!boundaryContext) {
+    boundaryIssues.push({
+      riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_PROVENANCE,
+      message: 'Migration planning requires bounded workflow provenance.',
+    });
+  } else if (boundaryContext.projectionFingerprintMatch !== true) {
+    boundaryIssues.push({
+      riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
+      message: 'Migration planning requires workflow intent and readiness to share evidence provenance.',
+    });
+  }
+
+  if (boundaryIssues.length > 0) {
+    return {
+      ok: false,
+      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      boundaryContext,
+      plan: null,
+      migrationAudit: null,
+      issueCount: boundaryIssues.length,
+      issues: boundaryIssues,
+      nextPhase: null,
+    };
+  }
+
+  const plan = buildPolicyBuilderPhase6MigrationPlan({
+    artifacts,
+    requiredGateIds,
+    rollbackPlan,
+  });
+  plan.boundaryContext = boundaryContext;
+  plan.engineContractBoundary = {
+    boundedWorkflowRequired: true,
+    workflowVersion: boundedWorkflowResult.workflow.version,
+    workflowId: boundedWorkflowResult.workflow.workflowId,
+  };
+  const migrationAudit = buildPolicyBuilderPhase6MigrationDeletionAudit(plan);
+  const ok = migrationAudit.ok === true;
+
+  return {
+    ok,
+    statusId: ok
+      ? PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.READY
+      : PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_MIGRATION_AUDIT,
+    boundaryContext,
+    plan,
+    migrationAudit,
+    issueCount: migrationAudit.issueCount,
+    issues: migrationAudit.validation.issues,
+    nextPhase: ok ? migrationAudit.nextPhase : null,
+  };
+}
+
 function validatePolicyBuilderPhase6MigrationPlan(plan = {}) {
   const artifacts = asArray(plan.artifacts);
   const artifactValidation = artifacts.map(validateMigrationArtifact);
@@ -820,11 +939,13 @@ function buildPolicyBuilderPhase6MigrationDeletionAudit(
 
 export {
   PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS,
+  PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS,
   PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS,
   PHASE6R_MIGRATION_GATE_IDS,
   PHASE6R_MIGRATION_VERIFIER_KIND_IDS,
   buildPolicyBuilderPhase6MigrationDeletionAudit,
   buildPolicyBuilderPhase6MigrationPlan,
+  buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow,
   listPolicyBuilderPhase6MigrationArtifacts,
   validateMigrationArtifact,
   validatePolicyBuilderPhase6MigrationPlan,
