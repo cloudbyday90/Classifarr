@@ -72,6 +72,8 @@ const PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS = Object.freeze({
   MISSING_REASON_CODE: 'missing_reason_code',
   MISSING_BOUNDED_INTENT: 'missing_bounded_intent',
   MISSING_INTENT_EVIDENCE_FINGERPRINT: 'missing_intent_evidence_fingerprint',
+  MISSING_INTENT_EVIDENCE_AUDIT: 'missing_intent_evidence_audit',
+  INTENT_EVIDENCE_FINGERPRINT_MISMATCH: 'intent_evidence_fingerprint_mismatch',
 });
 
 const BROAD_GENRE_LABELS = Object.freeze([
@@ -197,6 +199,30 @@ function asArray(value) {
 
 function hasValue(value) {
   return normalizeString(value).length > 0;
+}
+
+function getProjectionFingerprintValue(source = {}) {
+  return normalizeString(source?.evidenceBoundary?.projectionFingerprint?.fingerprint);
+}
+
+function getProjectionFingerprintSnapshot(source = {}) {
+  const projectionFingerprint = asObject(source?.evidenceBoundary?.projectionFingerprint);
+
+  return {
+    version: projectionFingerprint.version || null,
+    algorithm: projectionFingerprint.algorithm || null,
+    fingerprint: projectionFingerprint.fingerprint || null,
+  };
+}
+
+function projectionFingerprintSnapshotsMatch(left = {}, right = {}) {
+  const leftSnapshot = getProjectionFingerprintSnapshot(left);
+  const rightSnapshot = getProjectionFingerprintSnapshot(right);
+
+  return hasValue(leftSnapshot.fingerprint) &&
+    leftSnapshot.version === rightSnapshot.version &&
+    leftSnapshot.algorithm === rightSnapshot.algorithm &&
+    leftSnapshot.fingerprint === rightSnapshot.fingerprint;
 }
 
 function getPolicyBuilderPhase6LearningTier(tierId) {
@@ -491,6 +517,26 @@ function buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
       riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_FINGERPRINT,
       message: 'Learning guard requires the bounded intent evidence fingerprint.',
     });
+  }
+
+  if (boundedIntentResult?.ok === true) {
+    if (boundedIntentResult.evidenceFingerprintAudit?.ok !== true) {
+      boundaryIssues.push({
+        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_AUDIT,
+        message: 'Learning guard requires a passing bounded intent evidence-fingerprint audit.',
+      });
+    }
+
+    if (
+      hasValue(getProjectionFingerprintValue(boundedIntentResult)) &&
+      hasValue(getProjectionFingerprintValue(boundedIntentResult.intent)) &&
+      !projectionFingerprintSnapshotsMatch(boundedIntentResult, boundedIntentResult.intent)
+    ) {
+      boundaryIssues.push({
+        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.INTENT_EVIDENCE_FINGERPRINT_MISMATCH,
+        message: 'Learning guard requires the intent evidence fingerprint to match the bounded intent wrapper.',
+      });
+    }
   }
 
   if (boundaryIssues.length > 0) {

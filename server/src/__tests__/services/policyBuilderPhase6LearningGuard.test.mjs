@@ -204,6 +204,90 @@ describe('policyBuilderPhase6LearningGuard', () => {
     expect(result.learningAudit.ok).toBe(true);
   });
 
+  test('blocks bounded learning when bounded intent evidence audit is not passing', () => {
+    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        operatorIntent: {
+          belongsHere: ['Animated Movies'],
+        },
+      },
+    });
+    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+      boundedEvidenceResult,
+    });
+    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+      boundedIntentResult: {
+        ...boundedIntentResult,
+        evidenceFingerprintAudit: {
+          ok: false,
+          issues: [{ riskId: 'fingerprint_mismatch' }],
+        },
+      },
+      learningInput: {
+        answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
+        answer: { label: 'Animated Movies' },
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      decision: null,
+      learningAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_AUDIT,
+      }),
+    ]));
+  });
+
+  test('blocks bounded learning when intent evidence fingerprint differs from the wrapper', () => {
+    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        operatorIntent: {
+          belongsHere: ['Animated Movies'],
+        },
+      },
+    });
+    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+      boundedEvidenceResult,
+    });
+    const tamperedIntentResult = {
+      ...boundedIntentResult,
+      intent: {
+        ...boundedIntentResult.intent,
+        evidenceBoundary: {
+          ...boundedIntentResult.intent.evidenceBoundary,
+          projectionFingerprint: {
+            ...boundedIntentResult.intent.evidenceBoundary.projectionFingerprint,
+            fingerprint: 'b'.repeat(64),
+          },
+        },
+      },
+    };
+    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+      boundedIntentResult: tamperedIntentResult,
+      learningInput: {
+        answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
+        answer: { label: 'Animated Movies' },
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      decision: null,
+      learningAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.INTENT_EVIDENCE_FINGERPRINT_MISMATCH,
+      }),
+    ]));
+  });
+
   test('blocks bounded learning when bounded intent failed or lacks evidence fingerprint', () => {
     const blocked = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
       boundedIntentResult: {

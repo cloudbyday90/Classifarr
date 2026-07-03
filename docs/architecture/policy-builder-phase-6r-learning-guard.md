@@ -9,7 +9,10 @@ create a learning candidate. It does not write learning data, update profiles,
 mutate policy intent, or execute routing. New runtime and rebuild callers
 should use the bounded learning entry point, which requires a successful Phase
 6R.2 bounded intent result and the carried Phase 6R.1 evidence projection
-fingerprint.
+fingerprint. July 2026 hardening makes that boundary stricter: the learning
+guard now requires the upstream bounded intent evidence-fingerprint audit to
+pass and rejects intent wrappers whose evidence fingerprint no longer matches
+the embedded intent snapshot.
 
 ## Problem
 
@@ -82,6 +85,11 @@ Phase 6R.3 makes that boundary executable.
    and attaches a sanitized intent/evidence boundary snapshot to the learning
    decision wrapper.
 
+7. **Validate intent handoff integrity before learning.**
+   The learning boundary requires the Phase 6R.2 evidence-fingerprint audit to
+   pass and verifies that the bounded intent wrapper and intent draft carry the
+   same evidence projection fingerprint.
+
 ## Pros And Cons
 
 Pros:
@@ -95,6 +103,8 @@ Pros:
   without bounded evidence and intent provenance.
 - Carries a compact fingerprint/provenance handle without copying raw evidence
   labels or provider payloads into learning metadata.
+- Blocks stale or tampered intent handoffs before any learning candidate is
+  evaluated.
 
 Cons:
 
@@ -190,6 +200,8 @@ blocked_by_learning_audit
   learning evidence.
 - New callers can require successful bounded intent and evidence fingerprint
   provenance before learning eligibility is evaluated.
+- Bounded learning rejects failed upstream fingerprint audits and mismatched
+  wrapper-versus-intent evidence fingerprints.
 - The learning boundary records a sanitized intent/evidence snapshot without
   learning from raw AI explanation text or provider diagnostics.
 

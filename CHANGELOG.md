@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Learning Handoff Integrity** — hardened the
+  bounded Phase 6R.3 learning guard so learning candidates are evaluated only
+  when the upstream bounded intent evidence-fingerprint audit passed and the
+  intent wrapper still matches the embedded evidence fingerprint snapshot.
 - **Policy Builder Phase 6R Intent Fingerprint Integrity** — hardened the
   bounded Phase 6R.2 intent entry point so evidence projection fingerprints,
   bounded trace attributes, and sanitized provenance must still match the

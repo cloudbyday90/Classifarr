@@ -3308,6 +3308,9 @@ Implementation status:
   projection fingerprint, blocks failed or unfingerprinted intent handoffs, and
   attaches a sanitized intent/evidence boundary snapshot to the learning
   decision wrapper.
+- The bounded learning entry point now requires the upstream bounded intent
+  evidence-fingerprint audit to pass and rejects mismatched wrapper-versus-intent
+  evidence fingerprints before evaluating learning candidates.
 
 ### 6R.4 Automation Readiness Engine
 
