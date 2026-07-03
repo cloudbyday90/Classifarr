@@ -9,6 +9,11 @@ builder should render. It does not replace the Vue modal yet, persist policy,
 execute routing, run provider checks, run replay, or expose migration verifier
 diagnostics in the normal operator flow.
 
+The pure projection remains available for focused tests and internal
+composition, but new runtime/rebuild callers should use the bounded workflow
+entry point. That entry point requires a successful bounded intent result and a
+successful bounded readiness result before a workflow projection is returned.
+
 ## Problem
 
 The prior builder accumulated panels that asked operators to reason about
@@ -80,6 +85,11 @@ Can this route?
    The workflow projection can be rendered by Vue, but the client does not own
    readiness, policy persistence, learning, or routing execution.
 
+6. **Require bounded readiness before workflow projection.**
+   Runtime and rebuild flows should call the bounded workflow wrapper, which
+   blocks failed bounded intent/readiness handoffs and rejects missing or
+   mismatched evidence projection fingerprints.
+
 ## Pros And Cons
 
 Pros:
@@ -90,6 +100,8 @@ Pros:
 - Uses the readiness engine directly instead of duplicating routing logic in the
   client.
 - Creates an audit target for later deletion/migration work.
+- Prevents the UI workflow from stitching together intent and readiness results
+  from different evidence projections.
 
 Cons:
 
@@ -98,6 +110,8 @@ Cons:
 - It does not persist native policy intent.
 - It does not decide which old replay/provider services are migration verifiers
   versus deletion targets.
+- Existing pure projection callers still exist for compatibility until runtime
+  paths move onto the bounded wrapper.
 
 ## Final Recommendation Stack
 
@@ -109,6 +123,8 @@ Cons:
   `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`
 - Operator workflow projection:
   `server/src/services/policyBuilderPhase6OperatorWorkflow.mjs`
+- Bounded workflow wrapper:
+  `buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness`
 - Test module:
   `server/src/__tests__/services/policyBuilderPhase6OperatorWorkflow.test.mjs`
 - Documentation:
@@ -131,6 +147,7 @@ sections[]
 readiness
 normalWorkflowExclusions[]
 decisionModel
+boundaryContext
 ```
 
 Each section contains:
@@ -153,6 +170,40 @@ persistsPolicy = false
 exposesRawPayload = false
 ```
 
+The bounded wrapper returns:
+
+```text
+ok
+statusId
+boundaryContext
+workflow
+workflowAudit
+issueCount
+issues[]
+nextPhase
+```
+
+Supported bounded wrapper status IDs:
+
+```text
+ready
+blocked_by_bounded_input
+blocked_by_workflow_audit
+```
+
+The boundary context carries only sanitized contract metadata:
+
+```text
+intentBoundary.statusId
+intentBoundary.intentVersion
+intentBoundary.projectionFingerprint
+readinessBoundary.statusId
+readinessBoundary.readinessStateId
+readinessBoundary.projectionFingerprint
+readinessBoundary.projectionFingerprintMatch
+projectionFingerprintMatch
+```
+
 ## Security Outcome
 
 - The workflow does not execute routing.
@@ -162,6 +213,9 @@ exposesRawPayload = false
 - The audit rejects internal diagnostic language, missing sections, missing
   questions, missing primary actions, diagnostic surfaces in the normal flow,
   direct execution, direct persistence, and raw payload exposure.
+- The bounded wrapper rejects failed bounded intent/readiness contracts, missing
+  bounded provenance, and mismatched projection fingerprints before the
+  workflow is returned.
 
 ## Next Step
 

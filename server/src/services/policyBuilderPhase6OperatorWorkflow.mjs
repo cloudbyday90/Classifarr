@@ -38,6 +38,12 @@ const PHASE6R_WORKFLOW_STATUS_IDS = Object.freeze({
   READ_ONLY: 'read_only',
 });
 
+const PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS = Object.freeze({
+  READY: 'ready',
+  BLOCKED_BY_BOUNDED_INPUT: 'blocked_by_bounded_input',
+  BLOCKED_BY_WORKFLOW_AUDIT: 'blocked_by_workflow_audit',
+});
+
 const PHASE6R_WORKFLOW_PROHIBITED_NORMAL_SURFACE_IDS = Object.freeze({
   IMPACT_PREVIEW: 'impact_preview',
   REPLAY_PREVIEW: 'replay_preview',
@@ -69,6 +75,10 @@ const PHASE6R_WORKFLOW_AUDIT_RISK_IDS = Object.freeze({
   DIRECT_PERSISTENCE: 'direct_persistence',
   RAW_PAYLOAD_EXPOSED: 'raw_payload_exposed',
   MISSING_NEXT_ACTION: 'missing_next_action',
+  MISSING_BOUNDED_INTENT: 'missing_bounded_intent',
+  MISSING_BOUNDED_READINESS: 'missing_bounded_readiness',
+  MISSING_BOUNDED_PROVENANCE: 'missing_bounded_provenance',
+  BOUNDED_PROVENANCE_MISMATCH: 'bounded_provenance_mismatch',
 });
 
 const REQUIRED_SECTION_IDS = Object.freeze(Object.values(PHASE6R_WORKFLOW_SECTION_IDS));
@@ -312,6 +322,123 @@ function buildPolicyBuilderPhase6OperatorWorkflow(input = {}) {
   };
 }
 
+function getProjectionFingerprintFromIntentResult(boundedIntentResult = {}) {
+  return boundedIntentResult?.evidenceBoundary?.projectionFingerprint?.fingerprint || null;
+}
+
+function getProjectionFingerprintFromReadinessResult(boundedReadinessResult = {}) {
+  return boundedReadinessResult?.boundaryContext?.intentBoundary?.projectionFingerprint?.fingerprint ||
+    boundedReadinessResult?.boundaryContext?.evidenceBoundary?.projectionFingerprint?.fingerprint ||
+    null;
+}
+
+function buildBoundedWorkflowContext({
+  boundedIntentResult,
+  boundedReadinessResult,
+} = {}) {
+  const intentFingerprint = getProjectionFingerprintFromIntentResult(boundedIntentResult);
+  const readinessFingerprint = getProjectionFingerprintFromReadinessResult(boundedReadinessResult);
+
+  if (!intentFingerprint || !readinessFingerprint) {
+    return null;
+  }
+
+  return {
+    intentBoundary: {
+      statusId: boundedIntentResult.statusId || null,
+      intentVersion: boundedIntentResult.intent?.version || null,
+      projectionFingerprint:
+        boundedIntentResult.evidenceBoundary?.projectionFingerprint || null,
+    },
+    readinessBoundary: {
+      statusId: boundedReadinessResult.statusId || null,
+      readinessStateId: boundedReadinessResult.readiness?.stateId || null,
+      projectionFingerprint:
+        boundedReadinessResult.boundaryContext?.intentBoundary?.projectionFingerprint ||
+        boundedReadinessResult.boundaryContext?.evidenceBoundary?.projectionFingerprint ||
+        null,
+      projectionFingerprintMatch:
+        boundedReadinessResult.boundaryContext?.projectionFingerprintMatch === true,
+    },
+    projectionFingerprintMatch:
+      intentFingerprint === readinessFingerprint &&
+      boundedReadinessResult.boundaryContext?.projectionFingerprintMatch === true,
+  };
+}
+
+function buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+  boundedIntentResult,
+  boundedReadinessResult,
+} = {}) {
+  const boundaryIssues = [];
+
+  if (boundedIntentResult?.ok !== true || !boundedIntentResult?.intent) {
+    boundaryIssues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_BOUNDED_INTENT,
+      message: 'Operator workflow requires a successful bounded intent result.',
+    });
+  }
+
+  if (boundedReadinessResult?.ok !== true || !boundedReadinessResult?.readiness) {
+    boundaryIssues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_BOUNDED_READINESS,
+      message: 'Operator workflow requires a successful bounded readiness result.',
+    });
+  }
+
+  const boundaryContext = buildBoundedWorkflowContext({
+    boundedIntentResult,
+    boundedReadinessResult,
+  });
+
+  if (!boundaryContext) {
+    boundaryIssues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_BOUNDED_PROVENANCE,
+      message: 'Operator workflow requires bounded evidence provenance.',
+    });
+  } else if (boundaryContext.projectionFingerprintMatch !== true) {
+    boundaryIssues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
+      message: 'Operator workflow requires intent and readiness to reference the same evidence projection.',
+    });
+  }
+
+  if (boundaryIssues.length > 0) {
+    return {
+      ok: false,
+      statusId: PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      boundaryContext,
+      workflow: null,
+      workflowAudit: null,
+      issueCount: boundaryIssues.length,
+      issues: boundaryIssues,
+      nextPhase: null,
+    };
+  }
+
+  const workflow = buildPolicyBuilderPhase6OperatorWorkflow({
+    intentDraft: boundedIntentResult.intent,
+    readiness: boundedReadinessResult.readiness,
+  });
+  workflow.boundaryContext = boundaryContext;
+  workflow.decisionModel.serverOwnsBoundedReadiness = true;
+  const workflowAudit = buildPolicyBuilderPhase6OperatorWorkflowAudit(workflow);
+  const ok = workflowAudit.ok === true;
+
+  return {
+    ok,
+    statusId: ok
+      ? PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS.READY
+      : PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS.BLOCKED_BY_WORKFLOW_AUDIT,
+    boundaryContext,
+    workflow,
+    workflowAudit,
+    issueCount: workflowAudit.issueCount,
+    issues: workflowAudit.validation.issues,
+    nextPhase: ok ? workflowAudit.nextPhase : null,
+  };
+}
+
 function sectionContainsInternalLanguage(section = {}) {
   return [
     section.heading,
@@ -536,10 +663,12 @@ function getPolicyBuilderPhase6WorkflowSection(sectionId) {
 export {
   PHASE6R_WORKFLOW_ACTION_IDS,
   PHASE6R_WORKFLOW_AUDIT_RISK_IDS,
+  PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS,
   PHASE6R_WORKFLOW_PROHIBITED_NORMAL_SURFACE_IDS,
   PHASE6R_WORKFLOW_SECTION_IDS,
   PHASE6R_WORKFLOW_STATUS_IDS,
   buildPolicyBuilderPhase6OperatorWorkflow,
+  buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness,
   buildPolicyBuilderPhase6OperatorWorkflowAudit,
   getPolicyBuilderPhase6WorkflowSection,
   listPolicyBuilderPhase6WorkflowSections,

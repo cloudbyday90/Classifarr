@@ -1,12 +1,27 @@
 import {
+  ANSWER_OUTCOME_IDS,
+} from '../../services/policyQuestionLearningVocabulary.mjs';
+import {
+  buildPolicyBuilderPhase6BoundedEvidenceProjection,
+} from '../../services/policyBuilderPhase6EvidenceBoundary.mjs';
+import {
+  buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
+} from '../../services/policyBuilderPhase6IntentEngine.mjs';
+import {
+  buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent,
+} from '../../services/policyBuilderPhase6LearningGuard.mjs';
+import {
   PHASE6R_READINESS_STATE_IDS,
+  buildPolicyBuilderPhase6ReadinessFromBoundedContracts,
 } from '../../services/policyBuilderPhase6ReadinessEngine.mjs';
 import {
   PHASE6R_WORKFLOW_AUDIT_RISK_IDS,
+  PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS,
   PHASE6R_WORKFLOW_PROHIBITED_NORMAL_SURFACE_IDS,
   PHASE6R_WORKFLOW_SECTION_IDS,
   PHASE6R_WORKFLOW_STATUS_IDS,
   buildPolicyBuilderPhase6OperatorWorkflow,
+  buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness,
   buildPolicyBuilderPhase6OperatorWorkflowAudit,
   getPolicyBuilderPhase6WorkflowSection,
   listPolicyBuilderPhase6WorkflowSections,
@@ -26,6 +41,60 @@ function buildReadyWorkflowInput(overrides = {}) {
       targetName: 'Radarr Animated Movies',
     },
     ...overrides,
+  };
+}
+
+function buildBoundedWorkflowInputs({
+  evidenceInput = {},
+  learningInput = {},
+  routing = {},
+} = {}) {
+  const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    evidenceInput: {
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+        helpfulMatches: ['Disney'],
+        routingTargets: ['Radarr Animated Movies'],
+      },
+      ...evidenceInput,
+    },
+  });
+  const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    boundedEvidenceResult,
+  });
+  const boundedLearningResult = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+    boundedIntentResult,
+    learningInput: {
+      answerOutcomeId: ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM,
+      answer: {
+        label: 'Animated Movies',
+        destinationLibraryId: 6,
+        destinationLibraryName: 'Animated Movies',
+      },
+      finalOutcome: {
+        itemId: 10674,
+        status: 'resolved',
+      },
+      ...learningInput,
+    },
+  });
+  const boundedReadinessResult = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    boundedEvidenceResult,
+    boundedIntentResult,
+    boundedLearningResult,
+    routing: {
+      configured: true,
+      routeReady: true,
+      targetName: 'Radarr Animated Movies',
+      ...routing,
+    },
+  });
+
+  return {
+    boundedEvidenceResult,
+    boundedIntentResult,
+    boundedLearningResult,
+    boundedReadinessResult,
   };
 }
 
@@ -66,6 +135,117 @@ describe('policyBuilderPhase6OperatorWorkflow', () => {
       stateId: PHASE6R_READINESS_STATE_IDS.READY,
       ready: true,
     }));
+  });
+
+  test('builds bounded workflow from bounded intent and readiness results', () => {
+    const {
+      boundedIntentResult,
+      boundedReadinessResult,
+    } = buildBoundedWorkflowInputs();
+
+    const result = buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+      boundedIntentResult,
+      boundedReadinessResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: true,
+      statusId: PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS.READY,
+      issueCount: 0,
+      nextPhase: expect.objectContaining({
+        phaseId: '6r_6',
+      }),
+    }));
+    expect(result.workflow).toEqual(expect.objectContaining({
+      version: 'phase6r.operator_workflow.v1',
+      boundaryContext: expect.objectContaining({
+        projectionFingerprintMatch: true,
+      }),
+    }));
+    expect(result.workflow.readiness).toEqual(expect.objectContaining({
+      stateId: PHASE6R_READINESS_STATE_IDS.READY,
+      ready: true,
+    }));
+    expect(result.workflow.sections).toHaveLength(5);
+    expect(result.workflow.decisionModel.serverOwnsBoundedReadiness).toBe(true);
+    expect(JSON.stringify(result.boundaryContext)).not.toContain('Animated Movies');
+  });
+
+  test('blocks bounded workflow when bounded readiness failed', () => {
+    const {
+      boundedIntentResult,
+      boundedReadinessResult,
+    } = buildBoundedWorkflowInputs({
+      routing: {
+        configured: false,
+        routeReady: false,
+        targetName: '',
+      },
+    });
+
+    expect(boundedReadinessResult.ok).toBe(true);
+    const failedReadinessResult = {
+      ...boundedReadinessResult,
+      ok: false,
+      readiness: null,
+    };
+
+    const result = buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+      boundedIntentResult,
+      boundedReadinessResult: failedReadinessResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      workflow: null,
+      workflowAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_BOUNDED_READINESS,
+      }),
+    ]));
+  });
+
+  test('blocks bounded workflow when intent and readiness provenance differ', () => {
+    const {
+      boundedIntentResult,
+      boundedReadinessResult,
+    } = buildBoundedWorkflowInputs();
+    const mismatchedReadinessResult = {
+      ...boundedReadinessResult,
+      boundaryContext: {
+        ...boundedReadinessResult.boundaryContext,
+        intentBoundary: {
+          ...boundedReadinessResult.boundaryContext.intentBoundary,
+          projectionFingerprint: {
+            ...boundedReadinessResult.boundaryContext.intentBoundary.projectionFingerprint,
+            fingerprint: 'f'.repeat(64),
+          },
+        },
+      },
+    };
+
+    const result = buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+      boundedIntentResult,
+      boundedReadinessResult: mismatchedReadinessResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      workflow: null,
+      workflowAudit: null,
+      boundaryContext: expect.objectContaining({
+        projectionFingerprintMatch: false,
+      }),
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
+      }),
+    ]));
   });
 
   test('surfaces readiness through the route section without making it editable', () => {

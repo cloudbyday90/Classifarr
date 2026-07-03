@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Operator Workflow Boundary Alignment** — added a
+  bounded Phase 6R.5 workflow entry point that requires successful bounded
+  intent and readiness contracts with matching sanitized evidence projection
+  fingerprints before returning the destination-first operator workflow.
 - **Policy Builder Phase 6R Readiness Boundary Alignment** — added a bounded
   Phase 6R.4 readiness entry point that requires successful bounded evidence,
   intent, and learning contracts with matching sanitized evidence projection

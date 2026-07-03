@@ -3403,6 +3403,10 @@ Implementation status:
   policy persistence or routing execution, and explicitly excludes impact
   preview, replay preview, replay parity, provider gates, provider readiness,
   TMDB coverage, raw scoring, and diagnostic panels from the normal flow.
+- The workflow now exposes a bounded entry point for new runtime/rebuild
+  callers: it requires successful bounded intent and bounded readiness results,
+  verifies their shared sanitized evidence projection fingerprint, and attaches
+  bounded provenance to the workflow without exposing raw evidence labels.
 
 ### 6R.6 Migration And Deletion Path
 
