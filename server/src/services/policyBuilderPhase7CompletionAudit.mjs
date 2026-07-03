@@ -17,8 +17,8 @@ import {
   buildPolicyBuilderPhase7RequestTimeLearningDecision,
 } from './policyBuilderPhase7RequestTimeLearning.mjs';
 import {
-  buildPolicyBuilderPhase7RuntimeDecisionInventory,
-} from './policyBuilderPhase7RuntimeDecisionInventory.mjs';
+  buildPolicyRuntimeDecisionInventory,
+} from './policyRuntimeDecisionInventory.mjs';
 import {
   buildPolicyBuilderPhase7RuntimeEvidenceProjectionAudit,
 } from './policyBuilderPhase7RuntimeEvidenceProjection.mjs';
@@ -63,13 +63,19 @@ const PHASE7R_COMPLETION_RISK_IDS = Object.freeze({
 
 const REQUIRED_COMPONENT_IDS = Object.freeze(Object.values(PHASE7R_COMPLETION_COMPONENT_IDS));
 
+const PHASE7R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
+  [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_DECISION_INVENTORY]: Object.freeze({
+    runtime_evidence_projection: '7r_2',
+  }),
+});
+
 const PHASE7R_COMPONENT_RECORDS = Object.freeze([
   {
     id: PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_DECISION_INVENTORY,
     label: 'Runtime decision inventory and cutline',
     docPath: 'docs/architecture/policy-builder-phase-7r-runtime-decision-inventory.md',
-    servicePath: 'server/src/services/policyBuilderPhase7RuntimeDecisionInventory.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase7RuntimeDecisionInventory.test.mjs',
+    servicePath: 'server/src/services/policyRuntimeDecisionInventory.mjs',
+    testPath: 'server/src/__tests__/services/policyRuntimeDecisionInventory.test.mjs',
     expectedNextPhaseId: '7r_2',
     evidence: 'Runtime surfaces are inventoried with authority sources, cutline decisions, and required contract surfaces.',
   },
@@ -194,7 +200,7 @@ function buildPassingRequestTimeLearningAudit() {
 function buildDefaultComponentAudits() {
   return {
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_DECISION_INVENTORY]:
-      buildPolicyBuilderPhase7RuntimeDecisionInventory(),
+      buildPolicyRuntimeDecisionInventory(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_EVIDENCE_PROJECTION]:
       buildPolicyBuilderPhase7RuntimeEvidenceProjectionAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.AUTOMATION_DECISION_CONTRACT]:
@@ -291,7 +297,9 @@ function buildPolicyBuilderPhase7CompletionAudit({
     const recordValidation = validateCompletionRecord(record, { pathExists });
     const componentAudit = componentAudits[record.id];
     const auditOk = componentAudit?.ok === true && Number(componentAudit?.issueCount || 0) === 0;
-    const nextPhaseId = componentAudit?.nextPhase?.phaseId || null;
+    const nextPhaseId = componentAudit?.nextPhase?.phaseId ||
+      PHASE7R_COMPONENT_NEXT_STEP_PHASE_IDS[record.id]?.[componentAudit?.nextStep?.stepId] ||
+      null;
 
     if (!componentAudit) {
       issues.push(buildIssue(

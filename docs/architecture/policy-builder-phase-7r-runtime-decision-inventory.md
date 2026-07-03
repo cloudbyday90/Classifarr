@@ -104,9 +104,9 @@ Cons:
 ## Final Recommendation Stack
 
 - Runtime inventory service:
-  `server/src/services/policyBuilderPhase7RuntimeDecisionInventory.mjs`
+  `server/src/services/policyRuntimeDecisionInventory.mjs`
 - Runtime inventory tests:
-  `server/src/__tests__/services/policyBuilderPhase7RuntimeDecisionInventory.test.mjs`
+  `server/src/__tests__/services/policyRuntimeDecisionInventory.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-7r-runtime-decision-inventory.md`
 - Roadmap owner:
@@ -117,20 +117,29 @@ Cons:
 
 The service exports:
 
-- `PHASE7R_RUNTIME_DECISION_IDS`
-- `PHASE7R_RUNTIME_STAGE_IDS`
-- `PHASE7R_RUNTIME_RISK_IDS`
-- `PHASE7R_BAD_QUESTION_PATH_IDS`
-- `listPolicyBuilderPhase7RuntimeArtifacts`
-- `listPolicyBuilderPhase7BadQuestionPaths`
-- `listPolicyBuilderPhase7RequiredRuntimeSurfacePaths`
+- `POLICY_RUNTIME_DECISION_IDS`
+- `POLICY_RUNTIME_STAGE_IDS`
+- `POLICY_RUNTIME_RISK_IDS`
+- `POLICY_BAD_QUESTION_PATH_IDS`
+- `listPolicyRuntimeArtifacts`
+- `listPolicyBadQuestionPaths`
+- `listPolicyRequiredRuntimeSurfacePaths`
+- `listPolicyRequiredRuntimeContractSurfacePaths`
 - `validateRuntimeArtifact`
-- `buildPolicyBuilderPhase7RuntimeDecisionInventory`
+- `buildPolicyRuntimeDecisionInventory`
+
+The inventory payload uses:
+
+```text
+version = policy.runtime_decision_inventory.v1
+stepId = runtime_decision_inventory
+nextStep.stepId = runtime_evidence_projection
+```
 
 Inventory decisions:
 
 - `keep_runtime_engine_primitive`
-- `rewrite_around_phase5_6_contracts`
+- `rewrite_around_policy_contracts`
 - `replace_with_readiness_question_contract`
 - `delete_after_migration`
 
@@ -165,7 +174,7 @@ Required runtime surface coverage now includes:
 - metadata enrichment paths,
 - Discord pending notification rendering.
 
-Required Phase 7R contract surface coverage now includes:
+Required policy runtime/rebuild contract surface coverage now includes:
 
 - runtime evidence projection,
 - runtime evidence fingerprinting,
@@ -180,14 +189,14 @@ Required Phase 7R contract surface coverage now includes:
 
 - Runtime behavior is not changed before authority and cutline are documented.
 - Critical runtime surfaces cannot fall out of the inventory silently.
-- Phase 7R runtime/rebuild contracts cannot fall out of the inventory silently.
+- Policy runtime/rebuild contracts cannot fall out of the inventory silently.
 - AI/RAG/provider output is not treated as final authority.
-- Learning side effects are flagged for Phase 6R guard wiring.
+- Learning side effects are flagged for policy learning guard wiring.
 - Routing success and classification success are separated as a required
   follow-up contract.
 
 ## Next Step
 
-Phase 7R.2 Runtime Evidence Projection should build the runtime evidence
-projection that maps current classification inputs into Phase 6R evidence
+The next roadmap step, Runtime Evidence Projection, should build the runtime
+evidence projection that maps current classification inputs into policy evidence
 buckets before automation decisions are changed.

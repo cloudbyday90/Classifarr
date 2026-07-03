@@ -3644,11 +3644,11 @@ Implementation status:
 - Phase 7R.1 runtime decision inventory is documented in
   [Policy Builder Phase 7R Runtime Decision Inventory And Cutline](policy-builder-phase-7r-runtime-decision-inventory.md).
 - The server-owned runtime inventory lives in
-  `server/src/services/policyBuilderPhase7RuntimeDecisionInventory.mjs`.
+  `server/src/services/policyRuntimeDecisionInventory.mjs`.
 - The focused runtime-inventory test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase7RuntimeDecisionInventory.test.mjs`.
+  `server/src/__tests__/services/policyRuntimeDecisionInventory.test.mjs`.
 - Current implementation classifies runtime artifacts as
-  `keep_runtime_engine_primitive`, `rewrite_around_phase5_6_contracts`,
+  `keep_runtime_engine_primitive`, `rewrite_around_policy_contracts`,
   `replace_with_readiness_question_contract`, or `delete_after_migration`.
 - The inventory now requires critical runtime surface coverage for
   classification route entrypoints, pending/correction routes, second-pass

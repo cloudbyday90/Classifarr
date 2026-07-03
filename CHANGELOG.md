@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Decision Inventory Module Cutover** — renamed the runtime
+  decision inventory and focused test to durable product-domain names, moved the
+  inventory contract to `policy.runtime_decision_inventory.v1`, replaced local
+  roadmap-phase handoffs with `nextStep`, updated Phase 7 completion-audit
+  imports, and added a legacy completion-audit adapter for the
+  runtime-evidence-projection handoff.
 - **Policy Migration Deletion Path Module Cutover** — renamed the migration and
   deletion path plus focused test to durable product-domain names, moved the
   migration contract to `policy.migration_deletion_path.v1`, replaced

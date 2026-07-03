@@ -8,14 +8,14 @@ import {
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
-const PHASE7R_RUNTIME_DECISION_IDS = Object.freeze({
+const POLICY_RUNTIME_DECISION_IDS = Object.freeze({
   KEEP_RUNTIME_ENGINE_PRIMITIVE: 'keep_runtime_engine_primitive',
-  REWRITE_AROUND_PHASE5_6_CONTRACTS: 'rewrite_around_phase5_6_contracts',
+  REWRITE_AROUND_POLICY_CONTRACTS: 'rewrite_around_policy_contracts',
   REPLACE_WITH_READINESS_QUESTION_CONTRACT: 'replace_with_readiness_question_contract',
   DELETE_AFTER_MIGRATION: 'delete_after_migration',
 });
 
-const PHASE7R_RUNTIME_STAGE_IDS = Object.freeze({
+const POLICY_RUNTIME_STAGE_IDS = Object.freeze({
   CLASSIFICATION_POLICY_PATH: 'classification_policy_path',
   SIGNAL_CALCULATION: 'signal_calculation',
   AI_ANALYSIS_VERIFICATION: 'ai_analysis_verification',
@@ -29,7 +29,7 @@ const PHASE7R_RUNTIME_STAGE_IDS = Object.freeze({
   RUNTIME_ROUTE: 'runtime_route',
 });
 
-const PHASE7R_RUNTIME_RISK_IDS = Object.freeze({
+const POLICY_RUNTIME_RISK_IDS = Object.freeze({
   MISSING_ARTIFACT_PATH: 'missing_artifact_path',
   MISSING_OWNER: 'missing_owner',
   MISSING_REPLACEMENT_TARGET: 'missing_replacement_target',
@@ -47,28 +47,28 @@ const PHASE7R_RUNTIME_RISK_IDS = Object.freeze({
   ARTIFACT_PATH_NOT_FOUND: 'artifact_path_not_found',
 });
 
-const PHASE7R_BAD_QUESTION_PATH_IDS = Object.freeze({
+const POLICY_BAD_QUESTION_PATH_IDS = Object.freeze({
   GENRE_PRIORITY_QUESTION: 'genre_priority_question',
   AI_INVALID_RESPONSE_QUESTION: 'ai_invalid_response_question',
   AI_DISAGREEMENT_QUESTION: 'ai_disagreement_question',
   PENDING_GENERATE_RULE_FLAG: 'pending_generate_rule_flag',
 });
 
-const DECISION_IDS = Object.freeze(Object.values(PHASE7R_RUNTIME_DECISION_IDS));
-const STAGE_IDS = Object.freeze(Object.values(PHASE7R_RUNTIME_STAGE_IDS));
+const DECISION_IDS = Object.freeze(Object.values(POLICY_RUNTIME_DECISION_IDS));
+const STAGE_IDS = Object.freeze(Object.values(POLICY_RUNTIME_STAGE_IDS));
 const AUTHORITY_IDS = Object.freeze(Object.values(AUTHORITY_SOURCE_IDS));
 
 const REQUIRED_STAGE_IDS = Object.freeze([
-  PHASE7R_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
-  PHASE7R_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
-  PHASE7R_RUNTIME_STAGE_IDS.AI_ANALYSIS_VERIFICATION,
-  PHASE7R_RUNTIME_STAGE_IDS.RAG_DECISION,
-  PHASE7R_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
-  PHASE7R_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
-  PHASE7R_RUNTIME_STAGE_IDS.LEARNING_SIDE_EFFECT,
-  PHASE7R_RUNTIME_STAGE_IDS.ARR_ROUTING,
-  PHASE7R_RUNTIME_STAGE_IDS.MEDIA_PROFILE_REFRESH,
-  PHASE7R_RUNTIME_STAGE_IDS.QUEUE_RETRY,
+  POLICY_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
+  POLICY_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
+  POLICY_RUNTIME_STAGE_IDS.AI_ANALYSIS_VERIFICATION,
+  POLICY_RUNTIME_STAGE_IDS.RAG_DECISION,
+  POLICY_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
+  POLICY_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
+  POLICY_RUNTIME_STAGE_IDS.LEARNING_SIDE_EFFECT,
+  POLICY_RUNTIME_STAGE_IDS.ARR_ROUTING,
+  POLICY_RUNTIME_STAGE_IDS.MEDIA_PROFILE_REFRESH,
+  POLICY_RUNTIME_STAGE_IDS.QUEUE_RETRY,
 ]);
 
 const REQUIRED_CONFLATION_RISK_PATHS = Object.freeze([
@@ -83,7 +83,7 @@ const REQUIRED_BROAD_GENRE_RISK_PATHS = Object.freeze([
   'server/src/services/classificationRagLoopService.mjs',
 ]);
 
-const REQUIRED_BAD_QUESTION_PATH_IDS = Object.freeze(Object.values(PHASE7R_BAD_QUESTION_PATH_IDS));
+const REQUIRED_BAD_QUESTION_PATH_IDS = Object.freeze(Object.values(POLICY_BAD_QUESTION_PATH_IDS));
 
 const REQUIRED_RUNTIME_SURFACE_PATHS = Object.freeze([
   'server/src/routes/classification.mjs',
@@ -119,20 +119,20 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/routes/classification.mjs',
     owner: 'classification-route-entrypoint',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    stageId: POLICY_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-    replacementTarget: 'Authenticated classification route entrypoint delegating to Phase 7R runtime contracts',
+    replacementTarget: 'Authenticated classification route entrypoint delegating to policy runtime contracts',
     riskIds: [],
     normalRuntimeAuthorityAllowed: true,
   },
   {
     path: 'server/src/routes/classificationRouteShared.mjs',
     owner: 'classification-route-entrypoint',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-    replacementTarget: 'Phase 7R runtime orchestration entrypoint that separates classify, ask, route, retry, and learn states',
+    replacementTarget: 'policy runtime orchestration entrypoint that separates classify, ask, route, retry, and learn states',
     riskIds: [
       'classification_route_entrypoint_can_bypass_runtime_decision_contract',
     ],
@@ -141,10 +141,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/routes/classificationRouteSecondPass.mjs',
     owner: 'classification-diagnostics',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.RAG_DECISION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.DELETE_AFTER_MIGRATION,
+    stageId: POLICY_RUNTIME_STAGE_IDS.RAG_DECISION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.DELETE_AFTER_MIGRATION,
     authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
-    replacementTarget: 'Bounded Phase 7R decision trace and evidence projection diagnostics',
+    replacementTarget: 'Bounded decision trace and evidence projection diagnostics',
     riskIds: [
       'second_pass_diagnostic_can_preserve_old_rag_loop_authority',
     ],
@@ -153,22 +153,22 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classification.mjs',
     owner: 'classification-runtime',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-    replacementTarget: 'Runtime orchestration over Phase 6R evidence, intent, readiness, and learning contracts',
+    replacementTarget: 'Runtime orchestration over policy evidence, intent, readiness, and learning contracts',
     riskIds: [
-      'runtime_orchestrator_can_bypass_phase6_contracts_without_cutline',
+      'runtime_orchestrator_can_bypass_policy_contracts_without_cutline',
     ],
     normalRuntimeAuthorityAllowed: false,
   },
   {
     path: 'server/src/services/classificationServiceCore.mjs',
     owner: 'classification-runtime',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-    replacementTarget: 'Phase 7R automation decision contract',
+    replacementTarget: 'policy automation decision contract',
     riskIds: [
       'classification_core_can_mix_classify_ask_route_and_learn_states',
     ],
@@ -177,23 +177,23 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationPolicyPathService.mjs',
     owner: 'classification-policy-path',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.LEGACY_TEMPLATE,
-    replacementTarget: 'Phase 7R runtime evidence projection and automation decision contract',
+    replacementTarget: 'policy runtime evidence projection and automation decision contract',
     riskIds: [
       'broad_genre_overlap_can_act_like_destination_authority',
-      'legacy_template_can_obscure_phase6_intent',
+      'legacy_template_can_obscure_policy_intent',
     ],
     normalRuntimeAuthorityAllowed: false,
   },
   {
     path: 'server/src/services/classificationLegacySignalPathService.mjs',
     owner: 'classification-policy-path',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.DELETE_AFTER_MIGRATION,
+    stageId: POLICY_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.DELETE_AFTER_MIGRATION,
     authoritySourceId: AUTHORITY_SOURCE_IDS.LEGACY_TEMPLATE,
-    replacementTarget: 'Phase 8R native intent storage after Phase 7R runtime parity',
+    replacementTarget: 'native intent storage after runtime parity',
     riskIds: [
       'legacy_signal_scoring_not_destination_intent',
     ],
@@ -202,54 +202,54 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationAuthoritativeSignalService.mjs',
     owner: 'classification-signals',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    stageId: POLICY_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-    replacementTarget: 'Phase 7R evidence source adapter',
+    replacementTarget: 'policy evidence source adapter',
     riskIds: [],
     normalRuntimeAuthorityAllowed: true,
   },
   {
     path: 'server/src/services/classificationAuthoritativeSignalShared.mjs',
     owner: 'classification-signals',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    stageId: POLICY_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-    replacementTarget: 'Phase 7R evidence source adapter',
+    replacementTarget: 'policy evidence source adapter',
     riskIds: [],
     normalRuntimeAuthorityAllowed: true,
   },
   {
     path: 'server/src/services/policyEngine.mjs',
     owner: 'policy-runtime',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.LEGACY_TEMPLATE,
-    replacementTarget: 'Phase 7R runtime evidence projection and Phase 8R native intent evaluator',
+    replacementTarget: 'policy runtime evidence projection and native intent evaluator',
     riskIds: [
-      'legacy_policy_engine_can_score_without_phase6_intent_contract',
+      'legacy_policy_engine_can_score_without_policy_intent_contract',
     ],
     normalRuntimeAuthorityAllowed: false,
   },
   {
     path: 'server/src/services/policyDecisionBuilder.mjs',
     owner: 'policy-runtime',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.LEGACY_TEMPLATE,
-    replacementTarget: 'Phase 7R automation decision builder',
+    replacementTarget: 'policy automation decision builder',
     riskIds: [
-      'legacy_decision_builder_can_emit_decisions_without_phase6_readiness',
+      'legacy_decision_builder_can_emit_decisions_without_policy_readiness',
     ],
     normalRuntimeAuthorityAllowed: false,
   },
   {
     path: 'server/src/services/policyCandidateRanker.mjs',
     owner: 'policy-runtime',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.LEGACY_TEMPLATE,
-    replacementTarget: 'Phase 7R runtime evidence projection with Phase 6R bucket semantics',
+    replacementTarget: 'policy runtime evidence projection with policy bucket semantics',
     riskIds: [
       'compatibility_signals_can_outweigh_identity_evidence',
     ],
@@ -258,10 +258,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationAiService.mjs',
     owner: 'classification-ai',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.AI_ANALYSIS_VERIFICATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
+    stageId: POLICY_RUNTIME_STAGE_IDS.AI_ANALYSIS_VERIFICATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
     authoritySourceId: AUTHORITY_SOURCE_IDS.AI_OUTPUT,
-    replacementTarget: 'Phase 7R bounded AI suggestion normalizer and question contract',
+    replacementTarget: 'bounded AI suggestion normalizer and question contract',
     riskIds: [
       'ai_output_not_final_authority',
       'ai_explanation_cannot_learn_directly',
@@ -271,10 +271,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationAiRepair.mjs',
     owner: 'classification-ai',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.AI_ANALYSIS_VERIFICATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
+    stageId: POLICY_RUNTIME_STAGE_IDS.AI_ANALYSIS_VERIFICATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
     authoritySourceId: AUTHORITY_SOURCE_IDS.AI_OUTPUT,
-    replacementTarget: 'Phase 7R structured AI response normalizer',
+    replacementTarget: 'structured AI response normalizer',
     riskIds: [
       'ai_response_repair_can_mask_contract_violation',
     ],
@@ -283,13 +283,13 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/aiResponseParserResults.mjs',
     owner: 'classification-ai',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
     authoritySourceId: AUTHORITY_SOURCE_IDS.AI_OUTPUT,
-    replacementTarget: 'Phase 5R question contract and Phase 7R runtime question reduction',
+    replacementTarget: 'policy question contract and runtime question reduction',
     riskIds: [
-      PHASE7R_BAD_QUESTION_PATH_IDS.AI_INVALID_RESPONSE_QUESTION,
-      PHASE7R_BAD_QUESTION_PATH_IDS.AI_DISAGREEMENT_QUESTION,
+      POLICY_BAD_QUESTION_PATH_IDS.AI_INVALID_RESPONSE_QUESTION,
+      POLICY_BAD_QUESTION_PATH_IDS.AI_DISAGREEMENT_QUESTION,
       'ai_disagreement_can_become_operator_question_without_intent_context',
     ],
     normalRuntimeAuthorityAllowed: false,
@@ -297,10 +297,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationRagLoopService.mjs',
     owner: 'classification-rag',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.RAG_DECISION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.RAG_DECISION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
-    replacementTarget: 'Phase 7R evidence projection that demotes weak RAG neighbors',
+    replacementTarget: 'policy evidence projection that demotes weak RAG neighbors',
     riskIds: [
       'unknown_library_neighbors_can_act_like_destination_authority',
       'broad_genre_overlap_can_act_like_destination_authority',
@@ -310,10 +310,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationMetadataService.mjs',
     owner: 'classification-metadata',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.AI_ANALYSIS_VERIFICATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.AI_ANALYSIS_VERIFICATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
-    replacementTarget: 'Phase 7R evidence projection adapter that treats metadata as bounded evidence',
+    replacementTarget: 'policy evidence projection adapter that treats metadata as bounded evidence',
     riskIds: [
       'metadata_provider_payload_can_be_overweighted_without_evidence_boundary',
     ],
@@ -322,10 +322,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationMetadataEnrichmentService.mjs',
     owner: 'classification-metadata',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.AI_ANALYSIS_VERIFICATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.AI_ANALYSIS_VERIFICATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
-    replacementTarget: 'Phase 7R metadata evidence source with bounded provider provenance and no final authority',
+    replacementTarget: 'policy metadata evidence source with bounded provider provenance and no final authority',
     riskIds: [
       'metadata_enrichment_can_trigger_provider_weight_without_readiness_gate',
     ],
@@ -334,10 +334,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationRagLoopPhases.mjs',
     owner: 'classification-rag',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.RAG_DECISION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.RAG_DECISION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
-    replacementTarget: 'Phase 7R evidence projection stages',
+    replacementTarget: 'policy evidence projection stages',
     riskIds: [
       'rag_stage_output_must_be_demoted_to_evidence_source',
     ],
@@ -346,24 +346,24 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/policyQuestionBuilder.mjs',
     owner: 'runtime-questions',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-    replacementTarget: 'Phase 5R question contract and Phase 7R question reduction',
+    replacementTarget: 'policy question contract and runtime question reduction',
     riskIds: [
-      'question_generation_not_bound_to_phase6_readiness',
+      'question_generation_not_bound_to_policy_readiness',
     ],
     normalRuntimeAuthorityAllowed: false,
   },
   {
     path: 'server/src/services/policyQuestionBuilderQuestions.mjs',
     owner: 'runtime-questions',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     replacementTarget: 'Destination-fit question normalizer with learning eligibility metadata',
     riskIds: [
-      PHASE7R_BAD_QUESTION_PATH_IDS.GENRE_PRIORITY_QUESTION,
+      POLICY_BAD_QUESTION_PATH_IDS.GENRE_PRIORITY_QUESTION,
       'broad_genre_overlap_can_act_like_destination_authority',
       'candidate_question_can_ask_best_library_without_readiness_reason',
     ],
@@ -372,10 +372,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/clarificationService.mjs',
     owner: 'runtime-questions',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
-    replacementTarget: 'Phase 7R pending answer resolver plus Phase 6R learning guard',
+    replacementTarget: 'pending answer resolver plus policy learning guard',
     riskIds: [
       'manual_resolution_can_create_learning_side_effect',
     ],
@@ -384,10 +384,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/clarificationQuestionManager.mjs',
     owner: 'runtime-questions',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-    replacementTarget: 'Phase 5R question contract with stale-question metadata',
+    replacementTarget: 'policy question contract with stale-question metadata',
     riskIds: [
       'question_manager_must_reject_stale_or_non_learning_question_shapes',
     ],
@@ -396,12 +396,12 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/routes/classificationRoutePending.mjs',
     owner: 'runtime-questions',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
-    replacementTarget: 'Phase 7R pending resolver that separates outcome, learning, and routing',
+    replacementTarget: 'pending resolver that separates outcome, learning, and routing',
     riskIds: [
-      PHASE7R_BAD_QUESTION_PATH_IDS.PENDING_GENERATE_RULE_FLAG,
+      POLICY_BAD_QUESTION_PATH_IDS.PENDING_GENERATE_RULE_FLAG,
       'classification_success_can_be_conflated_with_routing_success',
       'manual_answer_can_generate_rule_without_learning_guard',
     ],
@@ -410,10 +410,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/routes/classificationRouteCorrections.mjs',
     owner: 'runtime-corrections',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
-    replacementTarget: 'Phase 6R learning guard for correction-derived evidence',
+    replacementTarget: 'policy learning guard for correction-derived evidence',
     riskIds: [
       'correction_can_remember_exact_match_directly',
       'pattern_reinforcement_can_bypass_learning_guard',
@@ -423,20 +423,20 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationOutcomeService.mjs',
     owner: 'runtime-outcomes',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    stageId: POLICY_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
-    replacementTarget: 'Final outcome ledger feeding Phase 6R learning guard',
+    replacementTarget: 'final outcome ledger feeding policy learning guard',
     riskIds: [],
     normalRuntimeAuthorityAllowed: true,
   },
   {
     path: 'server/src/services/classificationEvidenceService.mjs',
     owner: 'runtime-learning',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.LEARNING_SIDE_EFFECT,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.LEARNING_SIDE_EFFECT,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
-    replacementTarget: 'Phase 6R learning guard writes guarded evidence only',
+    replacementTarget: 'policy learning guard writes guarded evidence only',
     riskIds: [
       'evidence_write_can_bypass_learning_guard',
     ],
@@ -445,10 +445,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationEvidenceReinforcementService.mjs',
     owner: 'runtime-learning',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.LEARNING_SIDE_EFFECT,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.LEARNING_SIDE_EFFECT,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
-    replacementTarget: 'Phase 6R learning guard reinforcement adapter',
+    replacementTarget: 'policy learning guard reinforcement adapter',
     riskIds: [
       'reinforcement_can_convert_single_outcome_into_broad_rule',
     ],
@@ -457,8 +457,8 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationLearnedCorrectionsService.mjs',
     owner: 'runtime-learning',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.LEARNING_SIDE_EFFECT,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.LEARNING_SIDE_EFFECT,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
     replacementTarget: 'Guarded exact-item memory and compatibility evidence service',
     riskIds: [
@@ -469,10 +469,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationRoutingService.mjs',
     owner: 'runtime-routing',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.ARR_ROUTING,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.ARR_ROUTING,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-    replacementTarget: 'Phase 7R automation decision contract with classified-not-routed state',
+    replacementTarget: 'policy automation decision contract with classified-not-routed state',
     riskIds: [
       'classification_success_can_be_conflated_with_routing_success',
       'missing_arr_mapping_can_look_like_completed_classification',
@@ -482,30 +482,30 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationRoutingArrRadarr.mjs',
     owner: 'runtime-routing',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.ARR_ROUTING,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    stageId: POLICY_RUNTIME_STAGE_IDS.ARR_ROUTING,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-    replacementTarget: 'Arr route executor behind Phase 7R automation decision gate',
+    replacementTarget: 'Arr route executor behind policy automation decision gate',
     riskIds: [],
     normalRuntimeAuthorityAllowed: true,
   },
   {
     path: 'server/src/services/classificationRoutingArrSonarr.mjs',
     owner: 'runtime-routing',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.ARR_ROUTING,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    stageId: POLICY_RUNTIME_STAGE_IDS.ARR_ROUTING,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-    replacementTarget: 'Arr route executor behind Phase 7R automation decision gate',
+    replacementTarget: 'Arr route executor behind policy automation decision gate',
     riskIds: [],
     normalRuntimeAuthorityAllowed: true,
   },
   {
     path: 'server/src/services/classificationPersistenceService.mjs',
     owner: 'runtime-persistence',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
-    replacementTarget: 'Phase 7R decision-state persistence that separates classify, route, ask, and block',
+    replacementTarget: 'policy decision-state persistence that separates classify, route, ask, and block',
     riskIds: [
       'classification_success_can_be_conflated_with_routing_success',
       'final_outcome_can_be_mistaken_for_learning',
@@ -515,8 +515,8 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationPersistenceRagEvents.mjs',
     owner: 'runtime-persistence',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.RAG_DECISION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    stageId: POLICY_RUNTIME_STAGE_IDS.RAG_DECISION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
     replacementTarget: 'Bounded decision trace events with no raw provider payloads',
     riskIds: [],
@@ -525,20 +525,20 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/mediaServerLibrarySync.mjs',
     owner: 'runtime-profile',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.MEDIA_PROFILE_REFRESH,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    stageId: POLICY_RUNTIME_STAGE_IDS.MEDIA_PROFILE_REFRESH,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
-    replacementTarget: 'Observed application profile source for Phase 7R evidence projection',
+    replacementTarget: 'observed application profile source for policy evidence projection',
     riskIds: [],
     normalRuntimeAuthorityAllowed: true,
   },
   {
     path: 'server/src/services/classificationRetryService.mjs',
     owner: 'runtime-retry',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.QUEUE_RETRY,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUEUE_RETRY,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-    replacementTarget: 'Phase 7R retry state machine over decision states',
+    replacementTarget: 'policy retry state machine over decision states',
     riskIds: [
       'retry_can_repeat_stale_question_or_stale_profile_decision',
     ],
@@ -547,10 +547,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationRetryFollowupService.mjs',
     owner: 'runtime-retry',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.QUEUE_RETRY,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUEUE_RETRY,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-    replacementTarget: 'Phase 7R stale-profile retry and question-reduction contract',
+    replacementTarget: 'policy stale-profile retry and question-reduction contract',
     riskIds: [
       'retry_followup_must_not_reask_stale_or_low_quality_questions',
     ],
@@ -559,8 +559,8 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/classificationProgressStageService.mjs',
     owner: 'runtime-progress',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.QUEUE_RETRY,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUEUE_RETRY,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.AI_OUTPUT,
     replacementTarget: 'Runtime progress telemetry without policy authority',
     riskIds: [],
@@ -569,10 +569,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/reclassificationService.mjs',
     owner: 'runtime-reclassification',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
-    replacementTarget: 'Phase 7R final outcome and learning guard boundary',
+    replacementTarget: 'final outcome and policy learning guard boundary',
     riskIds: [
       'manual_reclassification_can_bypass_learning_guard',
     ],
@@ -581,10 +581,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/discordClarificationHandler.mjs',
     owner: 'runtime-discord',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    stageId: POLICY_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
-    replacementTarget: 'Phase 5R question contract and Phase 6R learning guard',
+    replacementTarget: 'policy question contract and learning guard',
     riskIds: [
       'discord_answer_can_resolve_outcome_without_question_freshness',
     ],
@@ -593,10 +593,10 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/discordPendingNotification.mjs',
     owner: 'runtime-discord',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
-    replacementTarget: 'Phase 5R question contract renderer with stale-question and learning-eligibility metadata',
+    replacementTarget: 'policy question contract renderer with stale-question and learning-eligibility metadata',
     riskIds: [
       'pending_discord_notification_can_render_stale_or_unbounded_question',
     ],
@@ -604,9 +604,9 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   },
   {
     path: 'server/src/services/policyBuilderPhase7RuntimeEvidenceProjection.mjs',
-    owner: 'phase7-runtime-contract',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    owner: 'policy-runtime-contract',
+    stageId: POLICY_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
     replacementTarget: 'Runtime evidence projection contract consumed by automation decisions',
     riskIds: [],
@@ -614,9 +614,9 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   },
   {
     path: 'server/src/services/policyBuilderPhase7RuntimeEvidenceFingerprint.mjs',
-    owner: 'phase7-runtime-contract',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    owner: 'policy-runtime-contract',
+    stageId: POLICY_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
     replacementTarget: 'Sanitized runtime evidence fingerprint contract',
     riskIds: [],
@@ -624,9 +624,9 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   },
   {
     path: 'server/src/services/policyBuilderPhase7AutomationDecisionContract.mjs',
-    owner: 'phase7-runtime-contract',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    owner: 'policy-runtime-contract',
+    stageId: POLICY_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     replacementTarget: 'Server-owned automation decision contract over runtime evidence',
     riskIds: [],
@@ -634,9 +634,9 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   },
   {
     path: 'server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs',
-    owner: 'phase7-runtime-contract',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    owner: 'policy-runtime-contract',
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     replacementTarget: 'Runtime question reduction contract consuming automation decisions',
     riskIds: [],
@@ -644,9 +644,9 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   },
   {
     path: 'server/src/services/policyBuilderPhase7RequestTimeLearning.mjs',
-    owner: 'phase7-runtime-contract',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.LEARNING_SIDE_EFFECT,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    owner: 'policy-runtime-contract',
+    stageId: POLICY_RUNTIME_STAGE_IDS.LEARNING_SIDE_EFFECT,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
     replacementTarget: 'Request-time learning eligibility contract behind the learning guard',
     riskIds: [],
@@ -654,9 +654,9 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   },
   {
     path: 'server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs',
-    owner: 'phase7-rebuild-contract',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.MEDIA_PROFILE_REFRESH,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    owner: 'policy-rebuild-contract',
+    stageId: POLICY_RUNTIME_STAGE_IDS.MEDIA_PROFILE_REFRESH,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
     replacementTarget: 'Library-derived policy rebuild proposal contract',
     riskIds: [],
@@ -664,9 +664,9 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   },
   {
     path: 'server/src/services/policyBuilderPhase7MigrationVerifierRollback.mjs',
-    owner: 'phase7-rebuild-contract',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    owner: 'policy-rebuild-contract',
+    stageId: POLICY_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
     replacementTarget: 'Migration verifier and rollback contract for operator-accepted rebuilds',
     riskIds: [],
@@ -674,9 +674,9 @@ const RUNTIME_ARTIFACTS = Object.freeze([
   },
   {
     path: 'server/src/services/policyBuilderPhase7RuntimeMetricsTrace.mjs',
-    owner: 'phase7-runtime-contract',
-    stageId: PHASE7R_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
-    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    owner: 'policy-runtime-contract',
+    stageId: POLICY_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     replacementTarget: 'Bounded runtime metrics and decision trace projection',
     riskIds: [],
@@ -686,27 +686,27 @@ const RUNTIME_ARTIFACTS = Object.freeze([
 
 const BAD_QUESTION_PATHS = Object.freeze([
   {
-    id: PHASE7R_BAD_QUESTION_PATH_IDS.GENRE_PRIORITY_QUESTION,
+    id: POLICY_BAD_QUESTION_PATH_IDS.GENRE_PRIORITY_QUESTION,
     path: 'server/src/services/policyQuestionBuilderQuestions.mjs',
-    replacementTarget: 'Phase 7R.4 destination-fit question normalizer',
+    replacementTarget: 'destination-fit question normalizer',
     reason: 'Genre priority framing can make broad overlap look like destination authority.',
   },
   {
-    id: PHASE7R_BAD_QUESTION_PATH_IDS.AI_INVALID_RESPONSE_QUESTION,
+    id: POLICY_BAD_QUESTION_PATH_IDS.AI_INVALID_RESPONSE_QUESTION,
     path: 'server/src/services/aiResponseParserResults.mjs',
-    replacementTarget: 'Phase 7R.4 bounded AI-response clarification contract',
+    replacementTarget: 'bounded AI-response clarification contract',
     reason: 'Invalid AI response questions should ask for destination-fit resolution, not validate AI output.',
   },
   {
-    id: PHASE7R_BAD_QUESTION_PATH_IDS.AI_DISAGREEMENT_QUESTION,
+    id: POLICY_BAD_QUESTION_PATH_IDS.AI_DISAGREEMENT_QUESTION,
     path: 'server/src/services/aiResponseParserResults.mjs',
-    replacementTarget: 'Phase 7R.4 bounded AI-response clarification contract',
+    replacementTarget: 'bounded AI-response clarification contract',
     reason: 'AI disagreement is a suggestion conflict, not a policy authority question.',
   },
   {
-    id: PHASE7R_BAD_QUESTION_PATH_IDS.PENDING_GENERATE_RULE_FLAG,
+    id: POLICY_BAD_QUESTION_PATH_IDS.PENDING_GENERATE_RULE_FLAG,
     path: 'server/src/routes/classificationRoutePending.mjs',
-    replacementTarget: 'Phase 6R learning guard plus Phase 7R pending resolver',
+    replacementTarget: 'policy learning guard plus pending resolver',
     reason: 'Resolving an item and generating durable learning must be separate decisions.',
   },
 ]);
@@ -732,19 +732,19 @@ function buildIssue(riskId, message, details = {}) {
   };
 }
 
-function listPolicyBuilderPhase7RuntimeArtifacts() {
+function listPolicyRuntimeArtifacts() {
   return RUNTIME_ARTIFACTS;
 }
 
-function listPolicyBuilderPhase7BadQuestionPaths() {
+function listPolicyBadQuestionPaths() {
   return BAD_QUESTION_PATHS;
 }
 
-function listPolicyBuilderPhase7RequiredRuntimeSurfacePaths() {
+function listPolicyRequiredRuntimeSurfacePaths() {
   return REQUIRED_RUNTIME_SURFACE_PATHS;
 }
 
-function listPolicyBuilderPhase7RequiredRuntimeContractSurfacePaths() {
+function listPolicyRequiredRuntimeContractSurfacePaths() {
   return REQUIRED_RUNTIME_CONTRACT_SURFACE_PATHS;
 }
 
@@ -769,12 +769,12 @@ function validateRuntimeArtifact(artifact = {}, {
 
   if (!candidate.path) {
     issues.push(buildIssue(
-      PHASE7R_RUNTIME_RISK_IDS.MISSING_ARTIFACT_PATH,
+      POLICY_RUNTIME_RISK_IDS.MISSING_ARTIFACT_PATH,
       'Runtime artifacts must include a path.'
     ));
   } else if (checkPathExists && !pathExists(candidate.path)) {
     issues.push(buildIssue(
-      PHASE7R_RUNTIME_RISK_IDS.ARTIFACT_PATH_NOT_FOUND,
+      POLICY_RUNTIME_RISK_IDS.ARTIFACT_PATH_NOT_FOUND,
       `Runtime artifact path does not exist: ${candidate.path}.`,
       { path: candidate.path }
     ));
@@ -782,7 +782,7 @@ function validateRuntimeArtifact(artifact = {}, {
 
   if (!candidate.owner) {
     issues.push(buildIssue(
-      PHASE7R_RUNTIME_RISK_IDS.MISSING_OWNER,
+      POLICY_RUNTIME_RISK_IDS.MISSING_OWNER,
       'Runtime artifacts must include an owner.',
       { path: candidate.path || null }
     ));
@@ -790,7 +790,7 @@ function validateRuntimeArtifact(artifact = {}, {
 
   if (!STAGE_IDS.includes(candidate.stageId)) {
     issues.push(buildIssue(
-      PHASE7R_RUNTIME_RISK_IDS.UNKNOWN_STAGE,
+      POLICY_RUNTIME_RISK_IDS.UNKNOWN_STAGE,
       'Runtime artifacts must use a supported runtime stage.',
       { path: candidate.path || null, stageId: candidate.stageId || null }
     ));
@@ -798,7 +798,7 @@ function validateRuntimeArtifact(artifact = {}, {
 
   if (!DECISION_IDS.includes(candidate.decisionId)) {
     issues.push(buildIssue(
-      PHASE7R_RUNTIME_RISK_IDS.UNKNOWN_DECISION,
+      POLICY_RUNTIME_RISK_IDS.UNKNOWN_DECISION,
       'Runtime artifacts must use a supported cutline decision.',
       { path: candidate.path || null, decisionId: candidate.decisionId || null }
     ));
@@ -806,13 +806,13 @@ function validateRuntimeArtifact(artifact = {}, {
 
   if (!candidate.authoritySourceId) {
     issues.push(buildIssue(
-      PHASE7R_RUNTIME_RISK_IDS.MISSING_AUTHORITY_SOURCE,
+      POLICY_RUNTIME_RISK_IDS.MISSING_AUTHORITY_SOURCE,
       'Runtime artifacts must identify an authority source before behavior changes.',
       { path: candidate.path || null }
     ));
   } else if (!AUTHORITY_IDS.includes(candidate.authoritySourceId)) {
     issues.push(buildIssue(
-      PHASE7R_RUNTIME_RISK_IDS.UNKNOWN_AUTHORITY_SOURCE,
+      POLICY_RUNTIME_RISK_IDS.UNKNOWN_AUTHORITY_SOURCE,
       'Runtime artifacts must use an approved authority source.',
       { path: candidate.path || null, authoritySourceId: candidate.authoritySourceId }
     ));
@@ -820,18 +820,18 @@ function validateRuntimeArtifact(artifact = {}, {
 
   if (!candidate.replacementTarget) {
     issues.push(buildIssue(
-      PHASE7R_RUNTIME_RISK_IDS.MISSING_REPLACEMENT_TARGET,
-      'Runtime artifacts must name their Phase 7R replacement target or keep reason.',
+      POLICY_RUNTIME_RISK_IDS.MISSING_REPLACEMENT_TARGET,
+      'Runtime artifacts must name their policy replacement target or keep reason.',
       { path: candidate.path || null }
     ));
   }
 
   if (
-    candidate.decisionId !== PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE &&
+    candidate.decisionId !== POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE &&
     candidate.riskIds.length === 0
   ) {
     issues.push(buildIssue(
-      PHASE7R_RUNTIME_RISK_IDS.MISSING_RISK_REASON,
+      POLICY_RUNTIME_RISK_IDS.MISSING_RISK_REASON,
       'Runtime artifacts that need rewrite, replacement, or deletion must include risk reasons.',
       { path: candidate.path || null }
     ));
@@ -839,10 +839,10 @@ function validateRuntimeArtifact(artifact = {}, {
 
   if (
     candidate.normalRuntimeAuthorityAllowed === true &&
-    candidate.decisionId !== PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE
+    candidate.decisionId !== POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE
   ) {
     issues.push(buildIssue(
-      PHASE7R_RUNTIME_RISK_IDS.NORMAL_RUNTIME_DIAGNOSTIC_AUTHORITY,
+      POLICY_RUNTIME_RISK_IDS.NORMAL_RUNTIME_DIAGNOSTIC_AUTHORITY,
       'Rewrite, replacement, and deletion targets cannot keep normal runtime authority.',
       { path: candidate.path || null }
     ));
@@ -855,7 +855,7 @@ function validateRuntimeArtifact(artifact = {}, {
   };
 }
 
-function buildPolicyBuilderPhase7RuntimeDecisionInventory({
+function buildPolicyRuntimeDecisionInventory({
   artifacts = RUNTIME_ARTIFACTS,
   badQuestionPaths = BAD_QUESTION_PATHS,
   checkPathExists = true,
@@ -871,8 +871,8 @@ function buildPolicyBuilderPhase7RuntimeDecisionInventory({
     .filter(stageId => !normalizedArtifacts.some(artifact => artifact.stageId === stageId))
     .forEach(stageId => {
       issues.push(buildIssue(
-        PHASE7R_RUNTIME_RISK_IDS.UNKNOWN_STAGE,
-        `Phase 7R runtime inventory is missing required stage "${stageId}".`,
+        POLICY_RUNTIME_RISK_IDS.UNKNOWN_STAGE,
+        `Policy runtime inventory is missing required stage "${stageId}".`,
         { stageId }
       ));
     });
@@ -881,7 +881,7 @@ function buildPolicyBuilderPhase7RuntimeDecisionInventory({
     const artifact = artifactByPath.get(path);
     if (!artifact || !artifact.riskIds.some(riskId => String(riskId).includes('broad_genre'))) {
       issues.push(buildIssue(
-        PHASE7R_RUNTIME_RISK_IDS.BROAD_GENRE_AUTHORITY_RISK_NOT_LISTED,
+        POLICY_RUNTIME_RISK_IDS.BROAD_GENRE_AUTHORITY_RISK_NOT_LISTED,
         `Runtime artifact must list broad-genre authority risk: ${path}.`,
         { path }
       ));
@@ -892,7 +892,7 @@ function buildPolicyBuilderPhase7RuntimeDecisionInventory({
     const artifact = artifactByPath.get(path);
     if (!artifact || !artifact.riskIds.some(riskId => String(riskId).includes('routing_success'))) {
       issues.push(buildIssue(
-        PHASE7R_RUNTIME_RISK_IDS.CLASSIFICATION_ROUTING_CONFLATION_NOT_LISTED,
+        POLICY_RUNTIME_RISK_IDS.CLASSIFICATION_ROUTING_CONFLATION_NOT_LISTED,
         `Runtime artifact must list classification/routing conflation risk: ${path}.`,
         { path }
       ));
@@ -904,8 +904,8 @@ function buildPolicyBuilderPhase7RuntimeDecisionInventory({
     .filter(questionPathId => !badQuestionIds.has(questionPathId))
     .forEach(questionPathId => {
       issues.push(buildIssue(
-        PHASE7R_RUNTIME_RISK_IDS.BAD_QUESTION_PATH_NOT_LISTED,
-        `Known bad question path is missing from the Phase 7R.1 inventory: ${questionPathId}.`,
+        POLICY_RUNTIME_RISK_IDS.BAD_QUESTION_PATH_NOT_LISTED,
+        `Known bad question path is missing from the policy runtime inventory: ${questionPathId}.`,
         { questionPathId }
       ));
     });
@@ -914,8 +914,8 @@ function buildPolicyBuilderPhase7RuntimeDecisionInventory({
     .filter(path => !artifactByPath.has(path))
     .forEach(path => {
       issues.push(buildIssue(
-        PHASE7R_RUNTIME_RISK_IDS.MISSING_RUNTIME_SURFACE_ARTIFACT,
-        `Critical runtime surface path is missing from the Phase 7R.1 inventory: ${path}.`,
+        POLICY_RUNTIME_RISK_IDS.MISSING_RUNTIME_SURFACE_ARTIFACT,
+        `Critical runtime surface path is missing from the policy runtime inventory: ${path}.`,
         { path }
       ));
     });
@@ -924,8 +924,8 @@ function buildPolicyBuilderPhase7RuntimeDecisionInventory({
     .filter(path => !artifactByPath.has(path))
     .forEach(path => {
       issues.push(buildIssue(
-        PHASE7R_RUNTIME_RISK_IDS.MISSING_RUNTIME_CONTRACT_SURFACE,
-        `Phase 7R contract surface path is missing from the runtime inventory: ${path}.`,
+        POLICY_RUNTIME_RISK_IDS.MISSING_RUNTIME_CONTRACT_SURFACE,
+        `Policy contract surface path is missing from the runtime inventory: ${path}.`,
         { path }
       ));
     });
@@ -940,8 +940,8 @@ function buildPolicyBuilderPhase7RuntimeDecisionInventory({
   }), {});
 
   return {
-    version: 'phase7r.runtime_decision_inventory.v1',
-    phaseId: '7r_1',
+    version: 'policy.runtime_decision_inventory.v1',
+    stepId: 'runtime_decision_inventory',
     ok: issues.length === 0,
     issueCount: issues.length,
     artifactCount: normalizedArtifacts.length,
@@ -951,23 +951,23 @@ function buildPolicyBuilderPhase7RuntimeDecisionInventory({
     byDecision,
     byStage,
     issues,
-    nextPhase: {
-      phaseId: '7r_2',
+    nextStep: {
+      stepId: 'runtime_evidence_projection',
       label: 'Runtime Evidence Projection',
-      reason: 'Runtime artifacts now have authority sources and cutline decisions, so evidence can be projected through Phase 6R buckets.',
+      reason: 'Runtime artifacts now have authority sources and cutline decisions, so evidence can be projected through policy evidence buckets.',
     },
   };
 }
 
 export {
-  PHASE7R_BAD_QUESTION_PATH_IDS,
-  PHASE7R_RUNTIME_DECISION_IDS,
-  PHASE7R_RUNTIME_RISK_IDS,
-  PHASE7R_RUNTIME_STAGE_IDS,
-  buildPolicyBuilderPhase7RuntimeDecisionInventory,
-  listPolicyBuilderPhase7BadQuestionPaths,
-  listPolicyBuilderPhase7RequiredRuntimeContractSurfacePaths,
-  listPolicyBuilderPhase7RequiredRuntimeSurfacePaths,
-  listPolicyBuilderPhase7RuntimeArtifacts,
+  POLICY_BAD_QUESTION_PATH_IDS,
+  POLICY_RUNTIME_DECISION_IDS,
+  POLICY_RUNTIME_RISK_IDS,
+  POLICY_RUNTIME_STAGE_IDS,
+  buildPolicyRuntimeDecisionInventory,
+  listPolicyBadQuestionPaths,
+  listPolicyRequiredRuntimeContractSurfacePaths,
+  listPolicyRequiredRuntimeSurfacePaths,
+  listPolicyRuntimeArtifacts,
   validateRuntimeArtifact,
 };
