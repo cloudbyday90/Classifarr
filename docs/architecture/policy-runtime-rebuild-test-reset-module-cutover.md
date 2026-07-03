@@ -60,7 +60,7 @@ Pros:
 
 Cons:
 
-- Leaves the completion audit itself phase-coded until the next cutover slice.
+- The completion audit now has a durable product-domain module name and contract version.
 - Does not remove old preview/replay tests; deletion remains gated by migration
   parity and replacement coverage.
 - Requires the manifest to stay current when test files move.
@@ -74,8 +74,7 @@ Cons:
 4. Move the contract version to `policy.runtime_rebuild_test_reset.v1`.
 5. Replace the contract-local audit handoff with
    `nextStep.stepId = completion_audit`.
-6. Keep the Phase 7R completion audit mapping as a compatibility adapter for
-   the broader roadmap completion gate.
+6. Use the runtime completion audit to verify the semantic `nextStep` handoff sequence.
 7. Update direct completion-audit consumers, docs, changelog, and naming
    regression baseline after inventory validation proves the count decreased.
 
@@ -96,8 +95,7 @@ Cons:
 Runtime and rebuild test reset now uses durable production naming while
 preserving the same deterministic artifact manifest, coverage mapping,
 authority checks, routing checks, old diagnostic deletion gates, side-effect
-flags, and completion-audit handoff. The Phase 7R completion audit now imports
-the durable reset contract.
+flags, and completion-audit handoff. The runtime completion audit imports the durable reset contract.
 
 ## Validation
 
@@ -105,7 +103,7 @@ Validation should include:
 
 ```text
 cd server
-node ../scripts/run-jest.mjs --testPathPatterns="policyRuntimeRebuildTestReset|policyBuilderPhase7CompletionAudit|policyProductionNamingRegressionAudit" --no-coverage --runInBand
+node ../scripts/run-jest.mjs --testPathPatterns="policyRuntimeRebuildTestReset|policyRuntimeCompletionAudit|policyProductionNamingRegressionAudit" --no-coverage --runInBand
 npm run lint:docs
 npm --prefix server run lint:security -- --quiet
 node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid
@@ -114,6 +112,4 @@ npm --prefix server run test:unit -- --no-coverage --runInBand
 
 ## Next Step
 
-Cut over the completion audit to a durable product-domain module name because
-all runtime/rebuild component contracts now export durable names, and the
-completion audit is the next production service still carrying Phase 7R naming.
+Continue with native intent storage readiness because the runtime completion audit now uses durable product-domain naming.

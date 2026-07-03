@@ -50,8 +50,7 @@ the production runtime evidence boundary.
    product evidence model through `evidenceVersion`, not a roadmap-phase
    evidence version field.
 4. **Keep local handoffs semantic.** The projection audit now returns
-   `nextStep.stepId = automation_decision_contract`; the Phase 7R completion
-   audit maps that semantic step to the roadmap checkpoint.
+   `nextStep.stepId = automation_decision_contract`; the runtime completion audit validates that semantic step directly.
 5. **Preserve security boundaries.** The projection remains deterministic,
    side-effect-free, raw-payload-free, live-lookup-free, and label-free in
    fingerprint provenance.
@@ -81,7 +80,7 @@ Cons:
 - Focused tests:
   `server/src/__tests__/services/policyRuntimeEvidenceProjection.test.mjs`
 - Completion adapter:
-  `server/src/services/policyBuilderPhase7CompletionAudit.mjs`
+  `server/src/services/policyRuntimeCompletionAudit.mjs`
 - Runtime inventory:
   `server/src/services/policyRuntimeDecisionInventory.mjs`
 - Regression guard:

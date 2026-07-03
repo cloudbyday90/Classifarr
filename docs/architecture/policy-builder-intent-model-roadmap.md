@@ -4208,16 +4208,16 @@ Current starting point:
 
 Implementation record:
 
-- Phase 7R completion audit is documented in
-  [Policy Builder Phase 7R Completion Audit](policy-builder-phase-7r-completion-audit.md).
+- Runtime completion audit is documented in
+  [Policy Runtime Completion Audit](policy-runtime-completion-audit.md).
 - The server-owned completion gate lives in
-  `server/src/services/policyBuilderPhase7CompletionAudit.mjs`.
+  `server/src/services/policyRuntimeCompletionAudit.mjs`.
 - The focused completion audit suite lives in
-  `server/src/__tests__/services/policyBuilderPhase7CompletionAudit.test.mjs`.
-- Current completion audit verifies all nine Phase 7R runtime/rebuild
+  `server/src/__tests__/services/policyRuntimeCompletionAudit.test.mjs`.
+- Current completion audit verifies all nine runtime/rebuild
   components have docs, services, focused tests, passing component audits, and
-  the expected next-phase handoff sequence before allowing the Phase 8R storage
-  boundary to begin.
+  the expected semantic `nextStep` handoff sequence before allowing the native
+  intent storage boundary to begin.
 
 ## Phase 8R: Native Intent Storage And Legacy Removal
 
@@ -6321,6 +6321,15 @@ Implementation status:
 - After the runtime/rebuild-test-reset cutover, the repository inventory
   validates with 12,214 total phase-coded references, 5,142 production
   references, and 5,164 rename candidates.
+- The next runtime module cutover renamed the completion audit to
+  `policyRuntimeCompletionAudit.mjs`, renamed its focused test, moved the audit
+  contract to `policy.runtime_completion_audit.v1`, replaced roadmap handoff
+  ids with semantic `nextStep.stepId` validation, and pointed component
+  evidence at durable module-cutover docs:
+  [Policy Runtime Completion Audit Module Cutover](policy-runtime-completion-audit-module-cutover.md).
+- After the runtime-completion-audit cutover, the repository inventory validates
+  with 12,034 total phase-coded references, 5,050 production references, and
+  5,072 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

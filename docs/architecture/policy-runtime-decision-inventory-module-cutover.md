@@ -53,8 +53,7 @@ Cons:
 
 - The inventory still references phase-coded downstream file paths because
   those modules have not been renamed yet.
-- The Phase 7 completion audit needs a temporary adapter from product
-  `nextStep` to roadmap `expectedNextPhaseId`.
+- The runtime completion audit now validates product `nextStep` ids directly.
 
 ## Final Recommendation Stack
 
@@ -67,7 +66,7 @@ Cons:
 - Handoff field:
   `nextStep.stepId = runtime_evidence_projection`
 - Compatibility adapter:
-  `server/src/services/policyBuilderPhase7CompletionAudit.mjs`
+  `server/src/services/policyRuntimeCompletionAudit.mjs`
 - Original design record:
   `docs/architecture/policy-builder-phase-7r-runtime-decision-inventory.md`
 

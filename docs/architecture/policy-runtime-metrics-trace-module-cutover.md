@@ -78,8 +78,7 @@ Cons:
    `policy.library_policy_rebuild_guarded_outcome_fingerprint_set.v1`.
 7. Replace the contract-local audit handoff with
    `nextStep.stepId = runtime_rebuild_test_reset`.
-8. Keep the Phase 7R completion audit mapping as a compatibility adapter for
-   the broader roadmap completion gate.
+8. Use the runtime completion audit to verify the semantic `nextStep` handoff sequence.
 9. Update direct runtime consumers, docs, changelog, and naming regression
    baseline after inventory validation proves the count decreased.
 
@@ -108,7 +107,7 @@ Validation should include:
 
 ```text
 cd server
-node ../scripts/run-jest.mjs --testPathPatterns="policyRuntimeMetricsTrace|policyBuilderPhase7CompletionAudit|policyRuntimeDecisionInventory|policyRuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
+node ../scripts/run-jest.mjs --testPathPatterns="policyRuntimeMetricsTrace|policyRuntimeCompletionAudit|policyRuntimeDecisionInventory|policyRuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
 npm run lint:docs
 npm --prefix server run lint:security -- --quiet
 node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid
@@ -117,7 +116,4 @@ npm --prefix server run test:unit -- --no-coverage --runInBand
 
 ## Next Step
 
-Cut over the completion audit to a durable product-domain module name because
-runtime metrics and runtime/rebuild test reset now export durable names, and
-the completion audit is the next production service still carrying Phase 7R
-production naming.
+Continue with runtime/rebuild test reset and native intent storage readiness after the runtime completion audit cutover.

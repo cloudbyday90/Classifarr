@@ -75,8 +75,7 @@ Cons:
 7. Rename deletion readiness from Phase 8-specific language to
    `native_intent_storage_stable` while keeping legacy input compatibility for
    existing callers that still send `phase8NativeIntentStable`.
-8. Keep the Phase 7R completion audit mapping as a compatibility adapter for
-   the broader roadmap completion gate.
+8. Use the runtime completion audit to verify the semantic `nextStep` handoff sequence.
 9. Update direct runtime consumers, docs, changelog, and naming regression
    baseline after inventory validation proves the count decreased.
 
@@ -110,7 +109,7 @@ Validation should include:
 
 ```text
 cd server
-node ../scripts/run-jest.mjs --testPathPatterns="policyMigrationVerifierRollback|policyRuntimeMetricsTrace|policyBuilderPhase7CompletionAudit|policyBuilderPhase8ExplicitConversionWorkflow|policyRuntimeDecisionInventory|policyRuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
+node ../scripts/run-jest.mjs --testPathPatterns="policyMigrationVerifierRollback|policyRuntimeMetricsTrace|policyRuntimeCompletionAudit|policyBuilderPhase8ExplicitConversionWorkflow|policyRuntimeDecisionInventory|policyRuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
 npm run lint:docs
 npm --prefix server run lint:security -- --quiet
 node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid

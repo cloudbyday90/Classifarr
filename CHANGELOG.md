@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Completion Audit Module Cutover** — renamed the runtime
+  completion audit contract plus focused test to durable product-domain names,
+  moved the audit contract to `policy.runtime_completion_audit.v1`, replaced
+  roadmap handoff ids with semantic `nextStep.stepId` validation, pointed
+  component evidence at durable module-cutover docs, and retained the
+  side-effect-free native-storage readiness gate.
 - **Policy Runtime Rebuild Test Reset Module Cutover** — renamed the runtime
   and rebuild test reset contract plus focused test to durable product-domain
   names, moved the reset contract to `policy.runtime_rebuild_test_reset.v1`,

@@ -67,8 +67,7 @@ Cons:
 4. Move the decision payload version to `policy.automation_decision.v1`.
 5. Replace the local audit handoff with `nextStep.stepId =
    runtime_question_reduction`.
-6. Keep the Phase 7R completion audit mapping as a compatibility adapter for the
-   broader roadmap completion gate.
+6. Use the runtime completion audit to verify the semantic `nextStep` handoff sequence.
 7. Update direct runtime consumers, docs, and the naming regression baseline
    only after inventory validation proves the count decreased.
 
@@ -96,7 +95,7 @@ Validation should include:
 
 ```text
 cd server
-node ../scripts/run-jest.mjs --testPathPatterns="policyAutomationDecisionContract|policyRuntimeQuestionReduction|policyRuntimeMetricsTrace|policyBuilderPhase7CompletionAudit|policyRuntimeDecisionInventory|policyRuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
+node ../scripts/run-jest.mjs --testPathPatterns="policyAutomationDecisionContract|policyRuntimeQuestionReduction|policyRuntimeMetricsTrace|policyRuntimeCompletionAudit|policyRuntimeDecisionInventory|policyRuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
 npm run lint:docs
 npm --prefix server run lint:security -- --quiet
 node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid
