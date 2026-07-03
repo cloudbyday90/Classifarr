@@ -47,7 +47,7 @@ Phase 6R.3 therefore needs to:
 
 1. **Require quality-gated bounded intent.**
    Runtime and rebuild callers must enter learning through
-   `buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent`. The wrapper and
+   `buildPolicyLearningDecisionFromBoundedIntent`. The wrapper and
    embedded intent draft must both carry evidence quality.
 
 2. **Block insufficient quality before candidate evaluation.**
@@ -92,9 +92,9 @@ Cons:
 - Bounded intent source:
   `server/src/services/policyIntentEngine.mjs`
 - Learning quality consumer:
-  `server/src/services/policyBuilderPhase6LearningGuard.mjs`
+  `server/src/services/policyLearningGuard.mjs`
 - Focused tests:
-  `server/src/__tests__/services/policyBuilderPhase6LearningGuard.test.mjs`
+  `server/src/__tests__/services/policyLearningGuard.test.mjs`
 - Design owner:
   `docs/architecture/policy-builder-phase-6r-learning-guard.md`
 - Roadmap owner:

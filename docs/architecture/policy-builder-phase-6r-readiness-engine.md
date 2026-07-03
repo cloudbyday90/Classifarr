@@ -140,7 +140,7 @@ Cons:
 - Intent input:
   `server/src/services/policyIntentEngine.mjs`
 - Learning input:
-  `server/src/services/policyBuilderPhase6LearningGuard.mjs`
+  `server/src/services/policyLearningGuard.mjs`
 - Readiness engine:
   `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`
 - Bounded readiness wrapper:

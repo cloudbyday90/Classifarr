@@ -82,7 +82,7 @@ Phase 6R.3 makes that boundary executable.
    identity evidence candidates do.
 
 6. **Require bounded intent for new callers.**
-   `buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent` consumes the
+   `buildPolicyLearningDecisionFromBoundedIntent` consumes the
    Phase 6R.2 bounded intent result, blocks failed or unfingerprinted handoffs,
    and attaches a sanitized intent/evidence boundary snapshot to the learning
    decision wrapper.
@@ -131,11 +131,11 @@ Cons:
 - Question/answer vocabulary:
   `server/src/services/policyQuestionLearningVocabulary.mjs`
 - Learning guard:
-  `server/src/services/policyBuilderPhase6LearningGuard.mjs`
+  `server/src/services/policyLearningGuard.mjs`
 - Bounded intent input:
   `server/src/services/policyIntentEngine.mjs`
 - Test module:
-  `server/src/__tests__/services/policyBuilderPhase6LearningGuard.test.mjs`
+  `server/src/__tests__/services/policyLearningGuard.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-learning-guard.md`
 - Quality-gate outcome:
@@ -206,7 +206,7 @@ decision
 learningAudit
 issueCount
 issues
-nextPhase
+nextStep
 ```
 
 The bounded status IDs are:

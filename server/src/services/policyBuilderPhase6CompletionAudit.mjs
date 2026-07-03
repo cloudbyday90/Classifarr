@@ -16,9 +16,9 @@ import {
   buildPolicyIntentEngineAudit,
 } from './policyIntentEngine.mjs';
 import {
-  buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent,
-  buildPolicyBuilderPhase6LearningGuardAudit,
-} from './policyBuilderPhase6LearningGuard.mjs';
+  buildPolicyLearningDecisionFromBoundedIntent,
+  buildPolicyLearningGuardAudit,
+} from './policyLearningGuard.mjs';
 import {
   PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS,
   buildPolicyBuilderPhase6MigrationDeletionAudit,
@@ -106,8 +106,8 @@ const PHASE6R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE6R_COMPLETION_COMPONENT_IDS.LEARNING_GUARD,
     label: 'Learning guard',
     docPath: 'docs/architecture/policy-builder-phase-6r-learning-guard.md',
-    servicePath: 'server/src/services/policyBuilderPhase6LearningGuard.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase6LearningGuard.test.mjs',
+    servicePath: 'server/src/services/policyLearningGuard.mjs',
+    testPath: 'server/src/__tests__/services/policyLearningGuard.test.mjs',
     expectedNextPhaseId: '6r_4',
     evidence: 'Final outcomes are separated from durable learning tiers and blocked learning sources.',
   },
@@ -146,6 +146,9 @@ const PHASE6R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
   }),
   [PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE]: Object.freeze({
     learning_eligibility: '6r_3',
+  }),
+  [PHASE6R_COMPLETION_COMPONENT_IDS.LEARNING_GUARD]: Object.freeze({
+    automation_readiness: '6r_4',
   }),
 });
 
@@ -323,7 +326,7 @@ function buildComponentAuditMap() {
     [PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE]:
       buildPolicyIntentEngineAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.LEARNING_GUARD]:
-      buildPolicyBuilderPhase6LearningGuardAudit(),
+      buildPolicyLearningGuardAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.READINESS_ENGINE]:
       buildPolicyBuilderPhase6ReadinessEngineAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW]:
@@ -346,7 +349,7 @@ function buildDefaultPhase6BoundedCompletionChain() {
   const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
     boundedEvidenceResult,
   });
-  const boundedLearningResult = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+  const boundedLearningResult = buildPolicyLearningDecisionFromBoundedIntent({
     boundedIntentResult,
     learningInput: {
       answerOutcomeId: ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM,

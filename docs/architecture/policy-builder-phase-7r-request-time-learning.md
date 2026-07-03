@@ -163,7 +163,7 @@ Cons:
 - Focused tests:
   `server/src/__tests__/services/policyBuilderPhase7RequestTimeLearning.test.mjs`
 - Learning guard dependency:
-  `server/src/services/policyBuilderPhase6LearningGuard.mjs`
+  `server/src/services/policyLearningGuard.mjs`
 - Question vocabulary dependency:
   `server/src/services/policyQuestionLearningVocabulary.mjs`
 - Roadmap owner:

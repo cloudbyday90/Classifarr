@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Learning Guard Module Cutover** — renamed the learning guard and
+  focused test to durable product-domain names, moved the guard contract to
+  `policy.learning_guard.v1`, replaced the guard-local audit handoff with
+  `nextStep`, updated direct runtime imports, and added a legacy completion
+  audit adapter for the automation-readiness handoff.
 - **Policy Intent Engine Module Cutover** — renamed the intent inference engine
   and focused test to durable product-domain names, moved the draft contract to
   `policy.intent.v1`, replaced the engine-local audit handoff with `nextStep`,

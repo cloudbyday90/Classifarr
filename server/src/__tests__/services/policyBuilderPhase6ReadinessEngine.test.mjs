@@ -10,11 +10,11 @@ import {
   buildPolicyIntentDraftFromBoundedEvidence,
 } from '../../services/policyIntentEngine.mjs';
 import {
-  PHASE6R_LEARNING_DECISION_IDS,
-  PHASE6R_LEARNING_TIER_IDS,
-  buildPolicyBuilderPhase6LearningDecision,
-  buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent,
-} from '../../services/policyBuilderPhase6LearningGuard.mjs';
+  POLICY_LEARNING_DECISION_IDS,
+  POLICY_LEARNING_TIER_IDS,
+  buildPolicyLearningDecision,
+  buildPolicyLearningDecisionFromBoundedIntent,
+} from '../../services/policyLearningGuard.mjs';
 import {
   PHASE6R_READINESS_AUDIT_RISK_IDS,
   PHASE6R_READINESS_BOUNDARY_STATUS_IDS,
@@ -59,7 +59,7 @@ function buildBoundedReadyInputs({
   const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
     boundedEvidenceResult,
   });
-  const boundedLearningResult = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+  const boundedLearningResult = buildPolicyLearningDecisionFromBoundedIntent({
     boundedIntentResult,
     learningInput: {
       answerOutcomeId: ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM,
@@ -390,7 +390,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       boundedLearningResult: {
         ok: true,
         decision: {
-          version: 'phase6r.learning_guard.v1',
+          version: 'policy.learning_guard.v1',
         },
       },
     });
@@ -575,7 +575,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
   });
 
   test('treats queued profile refresh from learning as stale profile readiness', () => {
-    const learningDecision = buildPolicyBuilderPhase6LearningDecision({
+    const learningDecision = buildPolicyLearningDecision({
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
       answer: { label: 'Animated Movies' },
       candidate: {
@@ -597,7 +597,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
   });
 
   test('blocks automation when a hard-limit policy edit is required', () => {
-    const learningDecision = buildPolicyBuilderPhase6LearningDecision({
+    const learningDecision = buildPolicyLearningDecision({
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_HARD_LIMIT_EVIDENCE,
       answer: { label: 'Block NC-17' },
       candidate: {
@@ -667,10 +667,10 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
   test('requires operator review when the learning guard blocks learning', () => {
     const readiness = buildPolicyBuilderPhase6Readiness(buildReadyInput({
       learningDecision: {
-        version: 'phase6r.learning_guard.v1',
+        version: 'policy.learning_guard.v1',
         learning: {
-          decisionId: PHASE6R_LEARNING_DECISION_IDS.BLOCKED,
-          tierId: PHASE6R_LEARNING_TIER_IDS.IDENTITY_EVIDENCE,
+          decisionId: POLICY_LEARNING_DECISION_IDS.BLOCKED,
+          tierId: POLICY_LEARNING_TIER_IDS.IDENTITY_EVIDENCE,
           blockedReasonCodes: ['stale_question_blocked'],
           writesPerformed: false,
         },
@@ -807,10 +807,10 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
   test('rejects readiness derived from a learning decision that already wrote', () => {
     const readiness = buildPolicyBuilderPhase6Readiness(buildReadyInput({
       learningDecision: {
-        version: 'phase6r.learning_guard.v1',
+        version: 'policy.learning_guard.v1',
         learning: {
-          decisionId: PHASE6R_LEARNING_DECISION_IDS.CANDIDATE,
-          tierId: PHASE6R_LEARNING_TIER_IDS.IDENTITY_EVIDENCE,
+          decisionId: POLICY_LEARNING_DECISION_IDS.CANDIDATE,
+          tierId: POLICY_LEARNING_TIER_IDS.IDENTITY_EVIDENCE,
           writesPerformed: true,
         },
         profileRefresh: {

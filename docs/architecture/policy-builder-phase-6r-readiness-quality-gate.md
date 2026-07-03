@@ -90,7 +90,7 @@ Cons:
 - Bounded intent:
   `server/src/services/policyIntentEngine.mjs`
 - Bounded learning:
-  `server/src/services/policyBuilderPhase6LearningGuard.mjs`
+  `server/src/services/policyLearningGuard.mjs`
 - Readiness quality consumer:
   `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`
 - Focused tests:

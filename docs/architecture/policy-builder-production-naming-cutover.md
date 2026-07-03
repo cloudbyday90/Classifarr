@@ -205,3 +205,11 @@ labels, except where an allow-listed migration or history reason is documented.
 - After the intent-engine cutover, the regression baseline is 6,857
   production references, 6,879 rename candidates, and 93 obsolete migration
   tooling references.
+- The next Phase 9R.2 durable module cutover renamed the learning guard to
+  `policyLearningGuard.mjs`, moved its focused test, moved the guard contract
+  to `policy.learning_guard.v1`, and replaced its guard-local audit handoff
+  with `nextStep`:
+  [Policy Learning Guard Module Cutover](policy-learning-guard-module-cutover.md).
+- After the learning-guard cutover, the regression baseline is 6,700
+  production references, 6,722 rename candidates, and 93 obsolete migration
+  tooling references.

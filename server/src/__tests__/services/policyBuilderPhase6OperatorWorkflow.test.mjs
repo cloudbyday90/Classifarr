@@ -11,8 +11,8 @@ import {
   buildPolicyIntentDraftFromBoundedEvidence,
 } from '../../services/policyIntentEngine.mjs';
 import {
-  buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent,
-} from '../../services/policyBuilderPhase6LearningGuard.mjs';
+  buildPolicyLearningDecisionFromBoundedIntent,
+} from '../../services/policyLearningGuard.mjs';
 import {
   PHASE6R_READINESS_STATE_IDS,
   buildPolicyBuilderPhase6ReadinessFromBoundedContracts,
@@ -65,7 +65,7 @@ function buildBoundedWorkflowInputs({
   const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
     boundedEvidenceResult,
   });
-  const boundedLearningResult = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+  const boundedLearningResult = buildPolicyLearningDecisionFromBoundedIntent({
     boundedIntentResult,
     learningInput: {
       answerOutcomeId: ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM,

@@ -14,8 +14,8 @@ import {
   validatePolicyBuilderPhase6Readiness,
 } from './policyBuilderPhase6ReadinessEngine.mjs';
 import {
-  PHASE6R_LEARNING_DECISION_IDS,
-} from './policyBuilderPhase6LearningGuard.mjs';
+  POLICY_LEARNING_DECISION_IDS,
+} from './policyLearningGuard.mjs';
 import {
   validatePolicyBuilderPhase7RequestTimeLearningDecision,
 } from './policyBuilderPhase7RequestTimeLearning.mjs';
@@ -292,7 +292,7 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
       return;
     }
 
-    if (learning.decisionId === PHASE6R_LEARNING_DECISION_IDS.BLOCKED ||
+    if (learning.decisionId === POLICY_LEARNING_DECISION_IDS.BLOCKED ||
         finalOutcome.status === 'route_failed_missing_mapping') {
       const outlier = mapGuardedOutcomeSignal(outcome, 'guarded_outcome_requires_review');
       if (outlier) {
@@ -304,7 +304,7 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
     }
 
     if (learning.canWriteLearning === true ||
-        learning.decisionId === PHASE6R_LEARNING_DECISION_IDS.CANDIDATE ||
+        learning.decisionId === POLICY_LEARNING_DECISION_IDS.CANDIDATE ||
         finalOutcome.recorded === true) {
       const compatibility = mapGuardedOutcomeSignal(outcome, 'guarded_outcome_compatibility');
       if (compatibility) {

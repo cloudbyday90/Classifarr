@@ -3,11 +3,11 @@ import {
   QUESTION_FRAME_IDS,
 } from './policyQuestionLearningVocabulary.mjs';
 import {
-  PHASE6R_LEARNING_DECISION_IDS,
-  PHASE6R_LEARNING_EVENT_SOURCE_IDS,
-  buildPolicyBuilderPhase6LearningDecision,
-  validatePolicyBuilderPhase6LearningDecision,
-} from './policyBuilderPhase6LearningGuard.mjs';
+  POLICY_LEARNING_DECISION_IDS,
+  POLICY_LEARNING_EVENT_SOURCE_IDS,
+  buildPolicyLearningDecision,
+  validatePolicyLearningDecision,
+} from './policyLearningGuard.mjs';
 import {
   validatePolicyBuilderPhase7RuntimeQuestionReduction,
 } from './policyBuilderPhase7RuntimeQuestionReduction.mjs';
@@ -64,13 +64,13 @@ const PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS = Object.freeze({
 
 const EVENT_SOURCE_BY_TYPE = Object.freeze({
   [PHASE7R_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION]:
-    PHASE6R_LEARNING_EVENT_SOURCE_IDS.REQUEST_DESTINATION_CHOICE,
+    POLICY_LEARNING_EVENT_SOURCE_IDS.REQUEST_DESTINATION_CHOICE,
   [PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE]:
-    PHASE6R_LEARNING_EVENT_SOURCE_IDS.MANUAL_CLASSIFICATION_CHANGE,
+    POLICY_LEARNING_EVENT_SOURCE_IDS.MANUAL_CLASSIFICATION_CHANGE,
   [PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED]:
-    PHASE6R_LEARNING_EVENT_SOURCE_IDS.ARR_ROUTING_OUTCOME,
+    POLICY_LEARNING_EVENT_SOURCE_IDS.ARR_ROUTING_OUTCOME,
   [PHASE7R_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING]:
-    PHASE6R_LEARNING_EVENT_SOURCE_IDS.ARR_ROUTING_OUTCOME,
+    POLICY_LEARNING_EVENT_SOURCE_IDS.ARR_ROUTING_OUTCOME,
 });
 
 const EVENT_REASON_BY_TYPE = Object.freeze({
@@ -313,11 +313,11 @@ function mapDisposition(learningDecision = {}, eventTypeId) {
   }
 
   switch (learning.decisionId) {
-    case PHASE6R_LEARNING_DECISION_IDS.CANDIDATE:
+    case POLICY_LEARNING_DECISION_IDS.CANDIDATE:
       return PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE;
-    case PHASE6R_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED:
+    case POLICY_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED:
       return PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.POLICY_EDIT_REQUIRED;
-    case PHASE6R_LEARNING_DECISION_IDS.BLOCKED:
+    case POLICY_LEARNING_DECISION_IDS.BLOCKED:
       return PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.BLOCKED;
     default:
       return PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.OUTCOME_ONLY;
@@ -350,14 +350,14 @@ function buildTrace({
     });
   }
 
-  if (learningDecision?.learning?.decisionId === PHASE6R_LEARNING_DECISION_IDS.CANDIDATE) {
+  if (learningDecision?.learning?.decisionId === POLICY_LEARNING_DECISION_IDS.CANDIDATE) {
     reasons.push({
       reasonId: PHASE7R_REQUEST_LEARNING_REASON_IDS.LEARNING_GUARD_APPROVED,
       severity: 'info',
     });
   }
 
-  if (learningDecision?.learning?.decisionId === PHASE6R_LEARNING_DECISION_IDS.BLOCKED) {
+  if (learningDecision?.learning?.decisionId === POLICY_LEARNING_DECISION_IDS.BLOCKED) {
     reasons.push({
       reasonId: PHASE7R_REQUEST_LEARNING_REASON_IDS.LEARNING_GUARD_BLOCKED,
       severity: 'warning',
@@ -433,7 +433,7 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
       : null,
   };
   const answerOutcomeId = input.answerOutcomeId || defaultAnswerOutcomeForEvent(eventTypeId);
-  const learningDecision = buildPolicyBuilderPhase6LearningDecision({
+  const learningDecision = buildPolicyLearningDecision({
     sourceId,
     answerOutcomeId,
     question: normalizeQuestionForLearning(input),
@@ -442,7 +442,7 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
     context: learningGuardContext,
     finalOutcome,
   });
-  const learningValidation = validatePolicyBuilderPhase6LearningDecision(learningDecision);
+  const learningValidation = validatePolicyLearningDecision(learningDecision);
   const dispositionId = mapDisposition(learningDecision, eventTypeId);
 
   return {
@@ -496,7 +496,7 @@ function buildPolicyBuilderPhase7RequestTimeLearningDecision(input = {}) {
 function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
   const issues = [];
   const eventTypeIds = Object.values(PHASE7R_REQUEST_EVENT_TYPE_IDS);
-  const sourceIds = Object.values(PHASE6R_LEARNING_EVENT_SOURCE_IDS);
+  const sourceIds = Object.values(POLICY_LEARNING_EVENT_SOURCE_IDS);
   const upstreamFingerprint = normalizeString(decision.upstreamEvidenceFingerprint?.fingerprint);
   const learningGuardFingerprint = normalizeString(
     decision.learningGuardContext?.upstreamEvidenceFingerprint?.fingerprint
@@ -552,7 +552,7 @@ function validatePolicyBuilderPhase7RequestTimeLearningDecision(decision = {}) {
     });
   }
 
-  if (!decision.learningDecision?.version || decision.learningDecision.version !== 'phase6r.learning_guard.v1') {
+  if (!decision.learningDecision?.version || decision.learningDecision.version !== 'policy.learning_guard.v1') {
     issues.push({
       riskId: PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_LEARNING_GUARD,
       message: 'Request-time learning must pass through the Phase 6R learning guard.',
@@ -731,7 +731,7 @@ function buildPolicyBuilderPhase7RequestTimeLearningAudit(
     ok: validation.ok,
     issueCount: validation.issueCount,
     checkedEventTypeCount: Object.values(PHASE7R_REQUEST_EVENT_TYPE_IDS).length,
-    checkedLearningSourceCount: Object.values(PHASE6R_LEARNING_EVENT_SOURCE_IDS).length,
+    checkedLearningSourceCount: Object.values(POLICY_LEARNING_EVENT_SOURCE_IDS).length,
     validation,
     nextPhase: {
       phaseId: '7r_6',

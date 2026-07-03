@@ -12,34 +12,34 @@ import {
   buildPolicyIntentDraftFromBoundedEvidence,
 } from '../../services/policyIntentEngine.mjs';
 import {
-  PHASE6R_LEARNING_BOUNDARY_STATUS_IDS,
-  PHASE6R_LEARNING_DECISION_IDS,
-  PHASE6R_LEARNING_EVENT_SOURCE_IDS,
-  PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS,
-  PHASE6R_LEARNING_REASON_IDS,
-  PHASE6R_LEARNING_TIER_IDS,
-  buildPolicyBuilderPhase6LearningDecision,
-  buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent,
-  buildPolicyBuilderPhase6LearningGuardAudit,
-  getPolicyBuilderPhase6LearningSource,
-  getPolicyBuilderPhase6LearningTier,
+  POLICY_LEARNING_BOUNDARY_STATUS_IDS,
+  POLICY_LEARNING_DECISION_IDS,
+  POLICY_LEARNING_EVENT_SOURCE_IDS,
+  POLICY_LEARNING_GUARD_AUDIT_RISK_IDS,
+  POLICY_LEARNING_REASON_IDS,
+  POLICY_LEARNING_TIER_IDS,
+  buildPolicyLearningDecision,
+  buildPolicyLearningDecisionFromBoundedIntent,
+  buildPolicyLearningGuardAudit,
+  getPolicyLearningSource,
+  getPolicyLearningTier,
   isBroadGenreCandidate,
-  listPolicyBuilderPhase6LearningSources,
-  listPolicyBuilderPhase6LearningTiers,
-  validatePolicyBuilderPhase6LearningDecision,
-} from '../../services/policyBuilderPhase6LearningGuard.mjs';
+  listPolicyLearningSources,
+  listPolicyLearningTiers,
+  validatePolicyLearningDecision,
+} from '../../services/policyLearningGuard.mjs';
 
-describe('policyBuilderPhase6LearningGuard', () => {
+describe('policyLearningGuard', () => {
   test('defines the explicit learning tiers in roadmap order', () => {
-    expect(listPolicyBuilderPhase6LearningTiers().map(tier => tier.id)).toEqual([
-      PHASE6R_LEARNING_TIER_IDS.NONE,
-      PHASE6R_LEARNING_TIER_IDS.EXACT_ITEM_MEMORY,
-      PHASE6R_LEARNING_TIER_IDS.COMPATIBILITY_EVIDENCE,
-      PHASE6R_LEARNING_TIER_IDS.IDENTITY_EVIDENCE,
-      PHASE6R_LEARNING_TIER_IDS.HARD_LIMIT_EVIDENCE,
+    expect(listPolicyLearningTiers().map(tier => tier.id)).toEqual([
+      POLICY_LEARNING_TIER_IDS.NONE,
+      POLICY_LEARNING_TIER_IDS.EXACT_ITEM_MEMORY,
+      POLICY_LEARNING_TIER_IDS.COMPATIBILITY_EVIDENCE,
+      POLICY_LEARNING_TIER_IDS.IDENTITY_EVIDENCE,
+      POLICY_LEARNING_TIER_IDS.HARD_LIMIT_EVIDENCE,
     ]);
 
-    expect(getPolicyBuilderPhase6LearningTier(PHASE6R_LEARNING_TIER_IDS.HARD_LIMIT_EVIDENCE))
+    expect(getPolicyLearningTier(POLICY_LEARNING_TIER_IDS.HARD_LIMIT_EVIDENCE))
       .toEqual(expect.objectContaining({
         canWriteLearning: false,
         destinationEvidenceChanging: true,
@@ -47,26 +47,26 @@ describe('policyBuilderPhase6LearningGuard', () => {
       }));
   });
 
-  test('defines all Phase 6R learning event sources as manual-outcome authority', () => {
-    expect(listPolicyBuilderPhase6LearningSources().map(source => source.id)).toEqual([
-      PHASE6R_LEARNING_EVENT_SOURCE_IDS.MANUAL_CLASSIFICATION_CHANGE,
-      PHASE6R_LEARNING_EVENT_SOURCE_IDS.OPERATOR_CONFIRMATION,
-      PHASE6R_LEARNING_EVENT_SOURCE_IDS.DISCORD_PENDING_ANSWER,
-      PHASE6R_LEARNING_EVENT_SOURCE_IDS.REQUEST_DESTINATION_CHOICE,
-      PHASE6R_LEARNING_EVENT_SOURCE_IDS.ARR_ROUTING_OUTCOME,
+  test('defines all policy learning event sources as manual-outcome authority', () => {
+    expect(listPolicyLearningSources().map(source => source.id)).toEqual([
+      POLICY_LEARNING_EVENT_SOURCE_IDS.MANUAL_CLASSIFICATION_CHANGE,
+      POLICY_LEARNING_EVENT_SOURCE_IDS.OPERATOR_CONFIRMATION,
+      POLICY_LEARNING_EVENT_SOURCE_IDS.DISCORD_PENDING_ANSWER,
+      POLICY_LEARNING_EVENT_SOURCE_IDS.REQUEST_DESTINATION_CHOICE,
+      POLICY_LEARNING_EVENT_SOURCE_IDS.ARR_ROUTING_OUTCOME,
     ]);
 
-    listPolicyBuilderPhase6LearningSources().forEach(source => {
+    listPolicyLearningSources().forEach(source => {
       expect(source.authoritySourceId).toBe(AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME);
     });
-    expect(getPolicyBuilderPhase6LearningSource(PHASE6R_LEARNING_EVENT_SOURCE_IDS.DISCORD_PENDING_ANSWER)
+    expect(getPolicyLearningSource(POLICY_LEARNING_EVENT_SOURCE_IDS.DISCORD_PENDING_ANSWER)
       .label)
       .toBe('Discord pending answer');
   });
 
   test('records final outcome separately when no learning is requested', () => {
-    const decision = buildPolicyBuilderPhase6LearningDecision({
-      sourceId: PHASE6R_LEARNING_EVENT_SOURCE_IDS.OPERATOR_CONFIRMATION,
+    const decision = buildPolicyLearningDecision({
+      sourceId: POLICY_LEARNING_EVENT_SOURCE_IDS.OPERATOR_CONFIRMATION,
       answerOutcomeId: ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM,
       answer: {
         label: 'Animated Movies',
@@ -86,8 +86,8 @@ describe('policyBuilderPhase6LearningGuard', () => {
       destinationLibraryName: 'Animated Movies',
     }));
     expect(decision.learning).toEqual(expect.objectContaining({
-      decisionId: PHASE6R_LEARNING_DECISION_IDS.OUTCOME_ONLY,
-      tierId: PHASE6R_LEARNING_TIER_IDS.NONE,
+      decisionId: POLICY_LEARNING_DECISION_IDS.OUTCOME_ONLY,
+      tierId: POLICY_LEARNING_TIER_IDS.NONE,
       canWriteLearning: false,
       writesPerformed: false,
     }));
@@ -95,7 +95,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
   });
 
   test('approves exact-item memory without changing destination profile evidence', () => {
-    const decision = buildPolicyBuilderPhase6LearningDecision({
+    const decision = buildPolicyLearningDecision({
       answerOutcomeId: ANSWER_OUTCOME_IDS.REMEMBER_EXACT_ITEM,
       answer: { label: 'Animated Movies' },
       candidate: {
@@ -107,20 +107,20 @@ describe('policyBuilderPhase6LearningGuard', () => {
     });
 
     expect(decision.learning).toEqual(expect.objectContaining({
-      decisionId: PHASE6R_LEARNING_DECISION_IDS.CANDIDATE,
-      tierId: PHASE6R_LEARNING_TIER_IDS.EXACT_ITEM_MEMORY,
+      decisionId: POLICY_LEARNING_DECISION_IDS.CANDIDATE,
+      tierId: POLICY_LEARNING_TIER_IDS.EXACT_ITEM_MEMORY,
       canWriteLearning: true,
     }));
     expect(decision.profileRefresh.queue).toBe(false);
     expect(decision.learning.reasonCodes).toEqual(expect.arrayContaining([
-      PHASE6R_LEARNING_REASON_IDS.EXACT_ITEM_MEMORY_CANDIDATE,
-      PHASE6R_LEARNING_REASON_IDS.LEARNING_CANDIDATE_APPROVED,
+      POLICY_LEARNING_REASON_IDS.EXACT_ITEM_MEMORY_CANDIDATE,
+      POLICY_LEARNING_REASON_IDS.LEARNING_CANDIDATE_APPROVED,
     ]));
   });
 
   test('approves compatibility evidence from a Discord answer and queues profile refresh', () => {
-    const decision = buildPolicyBuilderPhase6LearningDecision({
-      sourceId: PHASE6R_LEARNING_EVENT_SOURCE_IDS.DISCORD_PENDING_ANSWER,
+    const decision = buildPolicyLearningDecision({
+      sourceId: POLICY_LEARNING_EVENT_SOURCE_IDS.DISCORD_PENDING_ANSWER,
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
       answer: { label: 'Animated Movies' },
       candidate: {
@@ -134,14 +134,14 @@ describe('policyBuilderPhase6LearningGuard', () => {
     });
 
     expect(decision.learning).toEqual(expect.objectContaining({
-      decisionId: PHASE6R_LEARNING_DECISION_IDS.CANDIDATE,
-      tierId: PHASE6R_LEARNING_TIER_IDS.COMPATIBILITY_EVIDENCE,
+      decisionId: POLICY_LEARNING_DECISION_IDS.CANDIDATE,
+      tierId: POLICY_LEARNING_TIER_IDS.COMPATIBILITY_EVIDENCE,
       canWriteLearning: true,
       authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
     }));
     expect(decision.profileRefresh).toEqual({
       queue: true,
-      reasonCodes: [PHASE6R_LEARNING_REASON_IDS.PROFILE_REFRESH_REQUIRED],
+      reasonCodes: [POLICY_LEARNING_REASON_IDS.PROFILE_REFRESH_REQUIRED],
     });
   });
 
@@ -161,10 +161,10 @@ describe('policyBuilderPhase6LearningGuard', () => {
     const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
-    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+    const result = buildPolicyLearningDecisionFromBoundedIntent({
       boundedIntentResult,
       learningInput: {
-        sourceId: PHASE6R_LEARNING_EVENT_SOURCE_IDS.DISCORD_PENDING_ANSWER,
+        sourceId: POLICY_LEARNING_EVENT_SOURCE_IDS.DISCORD_PENDING_ANSWER,
         answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
         answer: { label: 'Animated Movies' },
         candidate: {
@@ -180,10 +180,10 @@ describe('policyBuilderPhase6LearningGuard', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: true,
-      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.READY,
+      statusId: POLICY_LEARNING_BOUNDARY_STATUS_IDS.READY,
       issueCount: 0,
-      nextPhase: expect.objectContaining({
-        phaseId: '6r_4',
+      nextStep: expect.objectContaining({
+        stepId: 'automation_readiness',
       }),
     }));
     expect(result.intentBoundary).toEqual(expect.objectContaining({
@@ -201,8 +201,8 @@ describe('policyBuilderPhase6LearningGuard', () => {
       }),
     }));
     expect(result.decision.learning).toEqual(expect.objectContaining({
-      decisionId: PHASE6R_LEARNING_DECISION_IDS.CANDIDATE,
-      tierId: PHASE6R_LEARNING_TIER_IDS.COMPATIBILITY_EVIDENCE,
+      decisionId: POLICY_LEARNING_DECISION_IDS.CANDIDATE,
+      tierId: POLICY_LEARNING_TIER_IDS.COMPATIBILITY_EVIDENCE,
       canWriteLearning: true,
     }));
     expect(JSON.stringify(result.intentBoundary)).not.toContain('Pixar');
@@ -220,7 +220,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
     const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
-    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+    const result = buildPolicyLearningDecisionFromBoundedIntent({
       boundedIntentResult: {
         ...boundedIntentResult,
         evidenceBoundary: {
@@ -236,13 +236,13 @@ describe('policyBuilderPhase6LearningGuard', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      statusId: POLICY_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
       decision: null,
       learningAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_QUALITY,
+        riskId: POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_QUALITY,
       }),
     ]));
   });
@@ -264,7 +264,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
       nextActionId: 'confirm_destination_identity',
       reasonIds: ['missing_identity_evidence'],
     };
-    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+    const result = buildPolicyLearningDecisionFromBoundedIntent({
       boundedIntentResult: {
         ...boundedIntentResult,
         evidenceBoundary: {
@@ -287,13 +287,13 @@ describe('policyBuilderPhase6LearningGuard', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      statusId: POLICY_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
       decision: null,
       learningAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.INSUFFICIENT_INTENT_EVIDENCE_QUALITY,
+        riskId: POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.INSUFFICIENT_INTENT_EVIDENCE_QUALITY,
         nextActionId: 'confirm_destination_identity',
       }),
     ]));
@@ -310,7 +310,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
     const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
-    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+    const result = buildPolicyLearningDecisionFromBoundedIntent({
       boundedIntentResult: {
         ...boundedIntentResult,
         intent: {
@@ -332,13 +332,13 @@ describe('policyBuilderPhase6LearningGuard', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      statusId: POLICY_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
       decision: null,
       learningAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.INTENT_EVIDENCE_QUALITY_MISMATCH,
+        riskId: POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.INTENT_EVIDENCE_QUALITY_MISMATCH,
       }),
     ]));
   });
@@ -354,7 +354,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
     const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
-    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+    const result = buildPolicyLearningDecisionFromBoundedIntent({
       boundedIntentResult: {
         ...boundedIntentResult,
         evidenceFingerprintAudit: {
@@ -370,13 +370,13 @@ describe('policyBuilderPhase6LearningGuard', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      statusId: POLICY_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
       decision: null,
       learningAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_AUDIT,
+        riskId: POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_AUDIT,
       }),
     ]));
   });
@@ -405,7 +405,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
         },
       },
     };
-    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+    const result = buildPolicyLearningDecisionFromBoundedIntent({
       boundedIntentResult: tamperedIntentResult,
       learningInput: {
         answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
@@ -415,20 +415,20 @@ describe('policyBuilderPhase6LearningGuard', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      statusId: POLICY_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
       decision: null,
       learningAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.INTENT_EVIDENCE_FINGERPRINT_MISMATCH,
+          POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.INTENT_EVIDENCE_FINGERPRINT_MISMATCH,
       }),
     ]));
   });
 
   test('blocks bounded learning when bounded intent failed or lacks evidence fingerprint', () => {
-    const blocked = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+    const blocked = buildPolicyLearningDecisionFromBoundedIntent({
       boundedIntentResult: {
         ok: false,
         intent: null,
@@ -441,20 +441,20 @@ describe('policyBuilderPhase6LearningGuard', () => {
 
     expect(blocked).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      statusId: POLICY_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
       decision: null,
       learningAudit: null,
     }));
     expect(blocked.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_BOUNDED_INTENT,
+        riskId: POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_BOUNDED_INTENT,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_FINGERPRINT,
+        riskId: POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_FINGERPRINT,
       }),
     ]));
 
-    const missingFingerprint = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+    const missingFingerprint = buildPolicyLearningDecisionFromBoundedIntent({
       boundedIntentResult: {
         ok: true,
         statusId: 'ready',
@@ -468,13 +468,13 @@ describe('policyBuilderPhase6LearningGuard', () => {
 
     expect(missingFingerprint.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_FINGERPRINT,
+        riskId: POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_FINGERPRINT,
       }),
     ]));
   });
 
   test('blocks stale question learning while still recording the final outcome', () => {
-    const decision = buildPolicyBuilderPhase6LearningDecision({
+    const decision = buildPolicyLearningDecision({
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_IDENTITY_EVIDENCE,
       question: { stale: true },
       answer: { label: 'Animated Movies' },
@@ -488,17 +488,17 @@ describe('policyBuilderPhase6LearningGuard', () => {
 
     expect(decision.finalOutcome.recorded).toBe(true);
     expect(decision.learning).toEqual(expect.objectContaining({
-      decisionId: PHASE6R_LEARNING_DECISION_IDS.BLOCKED,
-      tierId: PHASE6R_LEARNING_TIER_IDS.IDENTITY_EVIDENCE,
+      decisionId: POLICY_LEARNING_DECISION_IDS.BLOCKED,
+      tierId: POLICY_LEARNING_TIER_IDS.IDENTITY_EVIDENCE,
       canWriteLearning: false,
     }));
     expect(decision.learning.blockedReasonCodes).toContain(
-      PHASE6R_LEARNING_REASON_IDS.STALE_QUESTION_BLOCKED
+      POLICY_LEARNING_REASON_IDS.STALE_QUESTION_BLOCKED
     );
   });
 
   test('blocks ambiguous answer labels', () => {
-    const decision = buildPolicyBuilderPhase6LearningDecision({
+    const decision = buildPolicyLearningDecision({
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
       answer: { label: '', ambiguous: true },
       candidate: {
@@ -509,14 +509,14 @@ describe('policyBuilderPhase6LearningGuard', () => {
       },
     });
 
-    expect(decision.learning.decisionId).toBe(PHASE6R_LEARNING_DECISION_IDS.BLOCKED);
+    expect(decision.learning.decisionId).toBe(POLICY_LEARNING_DECISION_IDS.BLOCKED);
     expect(decision.learning.blockedReasonCodes).toContain(
-      PHASE6R_LEARNING_REASON_IDS.AMBIGUOUS_ANSWER_BLOCKED
+      POLICY_LEARNING_REASON_IDS.AMBIGUOUS_ANSWER_BLOCKED
     );
   });
 
   test('blocks rejected question frames such as broad genre priority', () => {
-    const decision = buildPolicyBuilderPhase6LearningDecision({
+    const decision = buildPolicyLearningDecision({
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
       question: { frameId: REJECTED_QUESTION_FRAME_IDS.BROAD_GENRE_PRIORITY },
       answer: { label: 'Animated Movies' },
@@ -528,14 +528,14 @@ describe('policyBuilderPhase6LearningGuard', () => {
       },
     });
 
-    expect(decision.learning.decisionId).toBe(PHASE6R_LEARNING_DECISION_IDS.BLOCKED);
+    expect(decision.learning.decisionId).toBe(POLICY_LEARNING_DECISION_IDS.BLOCKED);
     expect(decision.learning.blockedReasonCodes).toContain(
-      PHASE6R_LEARNING_REASON_IDS.REJECTED_QUESTION_FRAME_BLOCKED
+      POLICY_LEARNING_REASON_IDS.REJECTED_QUESTION_FRAME_BLOCKED
     );
   });
 
   test('blocks AI text, provider state, replay diagnostics, and TMDB diagnostics', () => {
-    const decision = buildPolicyBuilderPhase6LearningDecision({
+    const decision = buildPolicyLearningDecision({
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
       answer: { label: 'Animated Movies' },
       candidate: {
@@ -552,12 +552,12 @@ describe('policyBuilderPhase6LearningGuard', () => {
       },
     });
 
-    expect(decision.learning.decisionId).toBe(PHASE6R_LEARNING_DECISION_IDS.BLOCKED);
+    expect(decision.learning.decisionId).toBe(POLICY_LEARNING_DECISION_IDS.BLOCKED);
     expect(decision.learning.blockedReasonCodes).toEqual(expect.arrayContaining([
-      PHASE6R_LEARNING_REASON_IDS.AI_EXPLANATION_BLOCKED,
-      PHASE6R_LEARNING_REASON_IDS.PROVIDER_STATE_BLOCKED,
-      PHASE6R_LEARNING_REASON_IDS.REPLAY_DIAGNOSTIC_BLOCKED,
-      PHASE6R_LEARNING_REASON_IDS.TMDB_DIAGNOSTIC_BLOCKED,
+      POLICY_LEARNING_REASON_IDS.AI_EXPLANATION_BLOCKED,
+      POLICY_LEARNING_REASON_IDS.PROVIDER_STATE_BLOCKED,
+      POLICY_LEARNING_REASON_IDS.REPLAY_DIAGNOSTIC_BLOCKED,
+      POLICY_LEARNING_REASON_IDS.TMDB_DIAGNOSTIC_BLOCKED,
     ]));
   });
 
@@ -568,7 +568,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
       signalType: 'genre',
     })).toBe(true);
 
-    const decision = buildPolicyBuilderPhase6LearningDecision({
+    const decision = buildPolicyLearningDecision({
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_IDENTITY_EVIDENCE,
       answer: { label: 'Animated Movies' },
       candidate: {
@@ -579,14 +579,14 @@ describe('policyBuilderPhase6LearningGuard', () => {
       },
     });
 
-    expect(decision.learning.decisionId).toBe(PHASE6R_LEARNING_DECISION_IDS.BLOCKED);
+    expect(decision.learning.decisionId).toBe(POLICY_LEARNING_DECISION_IDS.BLOCKED);
     expect(decision.learning.blockedReasonCodes).toContain(
-      PHASE6R_LEARNING_REASON_IDS.BROAD_ONE_OFF_GENRE_BLOCKED
+      POLICY_LEARNING_REASON_IDS.BROAD_ONE_OFF_GENRE_BLOCKED
     );
   });
 
   test('requires explicit policy edit for hard-limit learning', () => {
-    const decision = buildPolicyBuilderPhase6LearningDecision({
+    const decision = buildPolicyLearningDecision({
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_HARD_LIMIT_EVIDENCE,
       answer: { label: 'Block NC-17' },
       candidate: {
@@ -598,8 +598,8 @@ describe('policyBuilderPhase6LearningGuard', () => {
     });
 
     expect(decision.learning).toEqual(expect.objectContaining({
-      decisionId: PHASE6R_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED,
-      tierId: PHASE6R_LEARNING_TIER_IDS.HARD_LIMIT_EVIDENCE,
+      decisionId: POLICY_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED,
+      tierId: POLICY_LEARNING_TIER_IDS.HARD_LIMIT_EVIDENCE,
       canWriteLearning: false,
       requiresExplicitPolicyEdit: true,
     }));
@@ -607,7 +607,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
   });
 
   test('passes the default learning guard audit', () => {
-    const decision = buildPolicyBuilderPhase6LearningDecision({
+    const decision = buildPolicyLearningDecision({
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
       answer: { label: 'Animated Movies' },
       candidate: {
@@ -617,14 +617,14 @@ describe('policyBuilderPhase6LearningGuard', () => {
         evidenceCount: 4,
       },
     });
-    const audit = buildPolicyBuilderPhase6LearningGuardAudit(decision);
+    const audit = buildPolicyLearningGuardAudit(decision);
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedTierCount).toBe(5);
     expect(audit.checkedSourceCount).toBe(5);
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '6r_4',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'automation_readiness',
       label: 'Automation Readiness Engine',
     }));
   });
@@ -640,7 +640,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
     const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
-    const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+    const result = buildPolicyLearningDecisionFromBoundedIntent({
       boundedIntentResult,
       learningInput: {
         answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
@@ -664,32 +664,32 @@ describe('policyBuilderPhase6LearningGuard', () => {
       },
     };
 
-    expect(validatePolicyBuilderPhase6LearningDecision(tamperedDecision).issues)
+    expect(validatePolicyLearningDecision(tamperedDecision).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_QUALITY,
+          riskId: POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_INTENT_EVIDENCE_QUALITY,
         }),
       ]));
   });
 
   test('rejects invalid decisions that try to write directly or refresh without destination learning', () => {
-    const invalidDecision = buildPolicyBuilderPhase6LearningDecision();
+    const invalidDecision = buildPolicyLearningDecision();
     invalidDecision.learning.writesPerformed = true;
     invalidDecision.profileRefresh.queue = true;
 
-    expect(validatePolicyBuilderPhase6LearningDecision(invalidDecision).issues)
+    expect(validatePolicyLearningDecision(invalidDecision).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.DIRECT_WRITE_PERFORMED,
+          riskId: POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.DIRECT_WRITE_PERFORMED,
         }),
         expect.objectContaining({
-          riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.PROFILE_REFRESH_WITHOUT_DESTINATION_LEARNING,
+          riskId: POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.PROFILE_REFRESH_WITHOUT_DESTINATION_LEARNING,
         }),
       ]));
   });
 
   test('rejects blocked decisions that claim write permission', () => {
-    const invalidDecision = buildPolicyBuilderPhase6LearningDecision({
+    const invalidDecision = buildPolicyLearningDecision({
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_IDENTITY_EVIDENCE,
       question: { stale: true },
       answer: { label: 'Animated Movies' },
@@ -702,17 +702,17 @@ describe('policyBuilderPhase6LearningGuard', () => {
     });
     invalidDecision.learning.canWriteLearning = true;
 
-    expect(validatePolicyBuilderPhase6LearningDecision(invalidDecision).issues)
+    expect(validatePolicyLearningDecision(invalidDecision).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.BLOCKED_DECISION_CAN_WRITE,
+          riskId: POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.BLOCKED_DECISION_CAN_WRITE,
         }),
       ]));
   });
 
   test('exposes immutable tier and source contracts', () => {
-    const tiers = listPolicyBuilderPhase6LearningTiers();
-    const sources = listPolicyBuilderPhase6LearningSources();
+    const tiers = listPolicyLearningTiers();
+    const sources = listPolicyLearningSources();
 
     expect(Object.isFrozen(tiers)).toBe(true);
     expect(Object.isFrozen(tiers[0])).toBe(true);

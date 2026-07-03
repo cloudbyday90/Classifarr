@@ -3304,9 +3304,9 @@ Implementation status:
 - Phase 6R.3 learning guard is documented in
   [Policy Builder Phase 6R Learning Guard](policy-builder-phase-6r-learning-guard.md).
 - The server-owned learning guard contract lives in
-  `server/src/services/policyBuilderPhase6LearningGuard.mjs`.
+  `server/src/services/policyLearningGuard.mjs`.
 - The focused learning-guard test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase6LearningGuard.test.mjs`.
+  `server/src/__tests__/services/policyLearningGuard.test.mjs`.
 - Current implementation evaluates manual classification changes, operator
   confirmations, Discord pending answers, request destination choices, and Arr
   routing outcomes into separate final-outcome and learning decisions.
@@ -6228,6 +6228,14 @@ Implementation status:
   [Policy Intent Engine Module Cutover](policy-intent-engine-module-cutover.md).
 - After the intent-engine cutover, the repository inventory validates with
   15,155 total phase-coded references, 6,857 production references, and 6,879
+  rename candidates.
+- The next durable module cutover renamed the learning guard to
+  `policyLearningGuard.mjs`, renamed its focused test, moved the guard contract
+  to `policy.learning_guard.v1`, and replaced the guard-local phase handoff
+  with `nextStep`:
+  [Policy Learning Guard Module Cutover](policy-learning-guard-module-cutover.md).
+- After the learning-guard cutover, the repository inventory validates with
+  14,856 total phase-coded references, 6,700 production references, and 6,722
   rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover

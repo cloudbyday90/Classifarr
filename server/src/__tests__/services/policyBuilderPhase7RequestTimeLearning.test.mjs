@@ -3,11 +3,11 @@ import {
   REJECTED_QUESTION_FRAME_IDS,
 } from '../../services/policyQuestionLearningVocabulary.mjs';
 import {
-  PHASE6R_LEARNING_DECISION_IDS,
-  PHASE6R_LEARNING_EVENT_SOURCE_IDS,
-  PHASE6R_LEARNING_REASON_IDS,
-  PHASE6R_LEARNING_TIER_IDS,
-} from '../../services/policyBuilderPhase6LearningGuard.mjs';
+  POLICY_LEARNING_DECISION_IDS,
+  POLICY_LEARNING_EVENT_SOURCE_IDS,
+  POLICY_LEARNING_REASON_IDS,
+  POLICY_LEARNING_TIER_IDS,
+} from '../../services/policyLearningGuard.mjs';
 import {
   buildPolicyBuilderPhase7RuntimeQuestionReduction,
 } from '../../services/policyBuilderPhase7RuntimeQuestionReduction.mjs';
@@ -63,7 +63,7 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
       requestedDestination: destination(),
     });
 
-    expect(decision.sourceId).toBe(PHASE6R_LEARNING_EVENT_SOURCE_IDS.REQUEST_DESTINATION_CHOICE);
+    expect(decision.sourceId).toBe(POLICY_LEARNING_EVENT_SOURCE_IDS.REQUEST_DESTINATION_CHOICE);
     expect(decision.selection.requestDestinationChoice).toEqual(expect.objectContaining({
       libraryId: 6,
       libraryName: 'Animated Movies',
@@ -79,8 +79,8 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
     }));
     expect(decision.finalOutcome).not.toBe(decision.selection.requestDestinationChoice);
     expect(decision.learningDecision.learning).toEqual(expect.objectContaining({
-      decisionId: PHASE6R_LEARNING_DECISION_IDS.OUTCOME_ONLY,
-      tierId: PHASE6R_LEARNING_TIER_IDS.NONE,
+      decisionId: POLICY_LEARNING_DECISION_IDS.OUTCOME_ONLY,
+      tierId: POLICY_LEARNING_TIER_IDS.NONE,
       canWriteLearning: false,
     }));
     expect(decision.upstreamEvidenceFingerprint).toEqual(expect.objectContaining({
@@ -132,7 +132,7 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
       },
     });
 
-    expect(decision.sourceId).toBe(PHASE6R_LEARNING_EVENT_SOURCE_IDS.MANUAL_CLASSIFICATION_CHANGE);
+    expect(decision.sourceId).toBe(POLICY_LEARNING_EVENT_SOURCE_IDS.MANUAL_CLASSIFICATION_CHANGE);
     expect(decision.selection.operatorSelectedDestination).toEqual(expect.objectContaining({
       libraryId: 6,
       libraryName: 'Animated Movies',
@@ -142,8 +142,8 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
       actorId: 'admin-1',
     }));
     expect(decision.learningDecision.learning).toEqual(expect.objectContaining({
-      decisionId: PHASE6R_LEARNING_DECISION_IDS.CANDIDATE,
-      tierId: PHASE6R_LEARNING_TIER_IDS.IDENTITY_EVIDENCE,
+      decisionId: POLICY_LEARNING_DECISION_IDS.CANDIDATE,
+      tierId: POLICY_LEARNING_TIER_IDS.IDENTITY_EVIDENCE,
       canWriteLearning: true,
     }));
     expect(decision.dispositionId).toBe(PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE);
@@ -173,7 +173,7 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
       },
     });
 
-    expect(decision.sourceId).toBe(PHASE6R_LEARNING_EVENT_SOURCE_IDS.ARR_ROUTING_OUTCOME);
+    expect(decision.sourceId).toBe(POLICY_LEARNING_EVENT_SOURCE_IDS.ARR_ROUTING_OUTCOME);
     expect(decision.finalOutcome.status).toBe('routed');
     expect(decision.finalOutcome.route).toEqual(expect.objectContaining({
       attempted: true,
@@ -210,7 +210,7 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
       }),
     }));
     expect(decision.learningDecision.learning).toEqual(expect.objectContaining({
-      decisionId: PHASE6R_LEARNING_DECISION_IDS.OUTCOME_ONLY,
+      decisionId: POLICY_LEARNING_DECISION_IDS.OUTCOME_ONLY,
       canWriteLearning: false,
     }));
     expect(decision.profileRefresh.queue).toBe(false);
@@ -240,13 +240,13 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
     });
 
     expect(decision.learningDecision.learning).toEqual(expect.objectContaining({
-      decisionId: PHASE6R_LEARNING_DECISION_IDS.BLOCKED,
+      decisionId: POLICY_LEARNING_DECISION_IDS.BLOCKED,
       canWriteLearning: false,
     }));
     expect(decision.learningDecision.learning.blockedReasonCodes).toEqual(expect.arrayContaining([
-      PHASE6R_LEARNING_REASON_IDS.REJECTED_QUESTION_FRAME_BLOCKED,
-      PHASE6R_LEARNING_REASON_IDS.STALE_QUESTION_BLOCKED,
-      PHASE6R_LEARNING_REASON_IDS.BROAD_ONE_OFF_GENRE_BLOCKED,
+      POLICY_LEARNING_REASON_IDS.REJECTED_QUESTION_FRAME_BLOCKED,
+      POLICY_LEARNING_REASON_IDS.STALE_QUESTION_BLOCKED,
+      POLICY_LEARNING_REASON_IDS.BROAD_ONE_OFF_GENRE_BLOCKED,
     ]));
     expect(decision.dispositionId).toBe(PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.BLOCKED);
     expect(validatePolicyBuilderPhase7RequestTimeLearningDecision(decision).ok).toBe(true);

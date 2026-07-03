@@ -11,9 +11,9 @@ import {
   buildPolicyIntentDraft,
 } from './policyIntentEngine.mjs';
 import {
-  PHASE6R_LEARNING_DECISION_IDS,
-  PHASE6R_LEARNING_TIER_IDS,
-} from './policyBuilderPhase6LearningGuard.mjs';
+  POLICY_LEARNING_DECISION_IDS,
+  POLICY_LEARNING_TIER_IDS,
+} from './policyLearningGuard.mjs';
 
 const PHASE6R_READINESS_STATE_IDS = Object.freeze({
   READY: 'ready',
@@ -233,9 +233,9 @@ function hasHardLimitBlock(input = {}, intent = {}, learningDecision = {}) {
 
   return input.hardLimitConflict === true ||
     intent?.confidence?.level === POLICY_INTENT_CONFIDENCE_LEVEL_IDS.BLOCKED ||
-    learning.decisionId === PHASE6R_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED ||
+    learning.decisionId === POLICY_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED ||
     (
-      learning.tierId === PHASE6R_LEARNING_TIER_IDS.HARD_LIMIT_EVIDENCE &&
+      learning.tierId === POLICY_LEARNING_TIER_IDS.HARD_LIMIT_EVIDENCE &&
       learning.requiresExplicitPolicyEdit === true
     );
 }
@@ -279,7 +279,7 @@ function collectReadinessIssues({
   if (hasHardLimitBlock(input, intent, learningDecision)) {
     issues.push(buildIssue({
       stateId: PHASE6R_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
-      reasonCode: learning.decisionId === PHASE6R_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED
+      reasonCode: learning.decisionId === POLICY_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED
         ? PHASE6R_READINESS_REASON_IDS.LEARNING_POLICY_EDIT_REQUIRED
         : PHASE6R_READINESS_REASON_IDS.HARD_LIMIT_CONFLICT,
       sourceId: PHASE6R_READINESS_INPUT_IDS.INTENT,
@@ -301,11 +301,11 @@ function collectReadinessIssues({
   if (
     asArray(intent.ask_when).length > 0 ||
     hasNonInfoWarnings(intent) ||
-    learning.decisionId === PHASE6R_LEARNING_DECISION_IDS.BLOCKED
+    learning.decisionId === POLICY_LEARNING_DECISION_IDS.BLOCKED
   ) {
     issues.push(buildIssue({
       stateId: PHASE6R_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW,
-      reasonCode: learning.decisionId === PHASE6R_LEARNING_DECISION_IDS.BLOCKED
+      reasonCode: learning.decisionId === POLICY_LEARNING_DECISION_IDS.BLOCKED
         ? PHASE6R_READINESS_REASON_IDS.LEARNING_BLOCKED
         : PHASE6R_READINESS_REASON_IDS.INTENT_REVIEW_REQUIRED,
       sourceId: PHASE6R_READINESS_INPUT_IDS.INTENT,
