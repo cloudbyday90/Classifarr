@@ -9,8 +9,8 @@ import {
   PHASE6R_EVIDENCE_SOURCE_IDS,
 } from '../../services/policyBuilderPhase6EvidenceEngine.mjs';
 import {
-  PHASE6R_EVIDENCE_INPUT_GATE_RISK_IDS,
-} from '../../services/policyBuilderPhase6EvidenceInputGate.mjs';
+  POLICY_EVIDENCE_INPUT_GATE_RISK_IDS,
+} from '../../services/policyEvidenceInputGate.mjs';
 import {
   POLICY_EVIDENCE_FINGERPRINT_AUDIT_RISK_IDS,
   buildPolicyEvidenceFingerprint,
@@ -136,8 +136,8 @@ describe('policyEvidenceBoundary', () => {
       }),
     }));
     expect(result.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE6R_EVIDENCE_INPUT_GATE_RISK_IDS.RAW_PROVIDER_PAYLOAD,
-      PHASE6R_EVIDENCE_INPUT_GATE_RISK_IDS.LIVE_PROVIDER_LOOKUP,
+      POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.RAW_PROVIDER_PAYLOAD,
+      POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.LIVE_PROVIDER_LOOKUP,
     ]));
     expect(JSON.stringify(result)).not.toContain('raw provider payload title');
   });

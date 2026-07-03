@@ -91,15 +91,15 @@ Cons:
 ## Current Repository Outcome
 
 The current repository inventory validates with no unclassified references.
-After the policy evidence boundary module cutover,
+After the policy evidence input gate module cutover,
 `node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid`
 reported:
 
-- total phase-coded references: 16,069,
-- production references: 7,446,
-- rename candidates: 7,468,
-- docs/history references: 3,452,
-- test or migration evidence references: 5,056,
+- total phase-coded references: 15,974,
+- production references: 7,390,
+- rename candidates: 7,412,
+- docs/history references: 3,465,
+- test or migration evidence references: 5,004,
 - obsolete migration tooling references: 93.
 
 The counts are expected to fall as Phase 9R.2 through Phase 9R.5 replace

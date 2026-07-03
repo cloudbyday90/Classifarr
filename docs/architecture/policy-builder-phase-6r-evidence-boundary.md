@@ -132,7 +132,7 @@ Cons:
 - Boundary service:
   `server/src/services/policyEvidenceBoundary.mjs`
 - Evidence input gate:
-  `server/src/services/policyBuilderPhase6EvidenceInputGate.mjs`
+  `server/src/services/policyEvidenceInputGate.mjs`
 - Evidence engine:
   `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
 - Projection fingerprint:

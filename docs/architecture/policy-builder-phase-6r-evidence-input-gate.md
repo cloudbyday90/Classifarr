@@ -110,7 +110,7 @@ Cons:
 
 Use this stack for Phase 6R.1 hardening:
 
-1. `policyBuilderPhase6EvidenceInputGate.mjs` validates input envelope shape and
+1. `policyEvidenceInputGate.mjs` validates input envelope shape and
    unsafe payload markers.
 2. `policyBuilderPhase6EvidenceEngine.mjs` remains the deterministic projection
    builder and projection audit.
@@ -121,7 +121,7 @@ Use this stack for Phase 6R.1 hardening:
 
 Implemented:
 
-- Added `policyBuilderPhase6EvidenceInputGate.mjs`.
+- Added `policyEvidenceInputGate.mjs`.
 - Added a stable Phase 6R evidence input section vocabulary.
 - Added a bounded recursive scan for unsafe keys.
 - Gate issues include risk ID, section ID, and path only; raw values are not

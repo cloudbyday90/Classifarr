@@ -3147,7 +3147,7 @@ Implementation status:
 - Phase 6R.1 evidence input gate hardening is documented in
   [Policy Builder Phase 6R Evidence Input Gate](policy-builder-phase-6r-evidence-input-gate.md).
 - The evidence input gate lives in
-  `server/src/services/policyBuilderPhase6EvidenceInputGate.mjs`.
+  `server/src/services/policyEvidenceInputGate.mjs`.
 - Phase 6R.1 evidence boundary hardening is documented in
   [Policy Builder Phase 6R Evidence Boundary](policy-builder-phase-6r-evidence-boundary.md).
 - The evidence boundary lives in
@@ -6203,6 +6203,14 @@ Implementation status:
   [Policy Evidence Boundary Module Cutover](policy-evidence-boundary-module-cutover.md).
 - After the evidence-boundary cutover, the repository inventory validates with
   16,069 total phase-coded references, 7,446 production references, and 7,468
+  rename candidates.
+- The next durable module cutover renamed the evidence input gate to
+  `policyEvidenceInputGate.mjs`, renamed its focused test, moved the input-gate
+  contract to `policy.evidence.input_gate.v1`, and replaced its local
+  phase-coded audit handoff with `nextStep`:
+  [Policy Evidence Input Gate Module Cutover](policy-evidence-input-gate-module-cutover.md).
+- After the evidence-input-gate cutover, the repository inventory validates with
+  15,974 total phase-coded references, 7,390 production references, and 7,412
   rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover

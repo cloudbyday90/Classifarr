@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the current repository inventory after the
-policy evidence boundary module cutover on July 3, 2026:
+policy evidence input gate module cutover on July 3, 2026:
 
-- production references: `7446`
-- rename candidates: `7468`
+- production references: `7390`
+- rename candidates: `7412`
 - obsolete migration tooling references: `93`
 
 The baseline is intentionally a maximum, not a target. Future durable rename

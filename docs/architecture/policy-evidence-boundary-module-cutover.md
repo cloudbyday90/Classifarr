@@ -67,7 +67,7 @@ Cons:
 - Focused tests:
   `server/src/__tests__/services/policyEvidenceBoundary.test.mjs`
 - Current dependencies:
-  `server/src/services/policyBuilderPhase6EvidenceInputGate.mjs` and
+  `server/src/services/policyEvidenceInputGate.mjs` and
   `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
 - Downstream consumers:
   Phase 6R completion audit and intent/learning/readiness/operator/migration
@@ -90,5 +90,5 @@ counts as maximums.
 ## Next Step
 
 Continue Phase 9R.2 with the next evidence-chain dependency. The highest-value
-target is the evidence input gate because `policyEvidenceBoundary.mjs` still has
-to import that phase-coded module until it receives a durable name.
+target is the evidence projection engine because `policyEvidenceBoundary.mjs`
+still imports that phase-coded module until it receives a durable name.

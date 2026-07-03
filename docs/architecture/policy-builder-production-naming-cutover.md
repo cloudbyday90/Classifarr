@@ -193,10 +193,15 @@ labels, except where an allow-listed migration or history reason is documented.
   boundary contract to `policy.evidence.boundary.v1`, and replaced its
   phase-coded handoff with a product-domain `nextStep`:
   [Policy Evidence Boundary Module Cutover](policy-evidence-boundary-module-cutover.md).
+- The follow-up Phase 9R.2 durable module cutover renamed the evidence input
+  gate to `policyEvidenceInputGate.mjs`, renamed its focused test, moved the
+  input-gate contract to `policy.evidence.input_gate.v1`, and replaced its
+  phase-coded audit handoff with `nextStep`:
+  [Policy Evidence Input Gate Module Cutover](policy-evidence-input-gate-module-cutover.md).
 - Phase 9R.4 now has a durable-named regression audit:
   [Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md).
   The audit consumes the production naming inventory and blocks increases above
   the approved July 3, 2026 baseline while durable rename batches continue.
-- After the evidence-boundary cutover, the regression baseline is 7,446
-  production references, 7,468 rename candidates, and 93 obsolete migration
+- After the evidence-input-gate cutover, the regression baseline is 7,390
+  production references, 7,412 rename candidates, and 93 obsolete migration
   tooling references.

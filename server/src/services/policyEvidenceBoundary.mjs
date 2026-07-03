@@ -1,6 +1,6 @@
 import {
-  buildPolicyBuilderPhase6EvidenceInputGate as buildPolicyEvidenceInputGate,
-} from './policyBuilderPhase6EvidenceInputGate.mjs';
+  buildPolicyEvidenceInputGate,
+} from './policyEvidenceInputGate.mjs';
 import {
   buildPolicyBuilderPhase6EvidenceProjection as buildPolicyEvidenceProjection,
   buildPolicyBuilderPhase6EvidenceProjectionAudit as buildPolicyEvidenceProjectionAudit,
