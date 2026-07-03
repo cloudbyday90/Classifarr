@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Routing Readiness Cutover** — renamed the routing
+  readiness design record and completion-audit entry to durable product-domain
+  names, replaced the phase-coded routing-readiness architecture path with
+  `policy-authoring-routing-readiness.md`, updated completion-audit records to
+  track `policy_authoring_routing_readiness`, and preserved the existing
+  read-only status card, stable routing-readiness anchor, single next action,
+  and client projection behavior.
 - **Policy Authoring Review Triggers Cutover** — renamed the review-trigger
   design record and completion-audit entry to durable product-domain names,
   replaced the phase-coded review-trigger architecture path with

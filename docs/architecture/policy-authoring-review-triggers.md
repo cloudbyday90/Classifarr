@@ -144,7 +144,7 @@ behavior visible without making warnings look like durable policy rules.
 
 ## Follow-Up
 
-The next high-value item is **Policy Authoring Routing Readiness Surface**.
+The next high-value item is **Policy Authoring Routing Readiness**.
 Routing is still represented mostly as a setup-card target and readiness state.
 The next slice should give `Can this destination route?` a bounded, read-only
 readiness surface that explains whether a connected Arr target exists and what

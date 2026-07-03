@@ -1,10 +1,10 @@
-# Policy Builder Phase 3R Vue Routing Readiness Surface
+# Policy Authoring Routing Readiness
 
-Status: implemented as the fourth Vue-facing Phase 3R workflow rewrite slice.
+Status: implemented as the durable policy-authoring routing-readiness surface.
 
 ## Scope
 
-This slice gives the setup-card question **Can this destination route?** a
+This document defines the setup-card question **Can this destination route?** as a
 dedicated read-only surface in the policy builder. It shows whether the selected
 media-server library has enough routing context for approved matches to route
 later, and it gives exactly one next action when setup is incomplete.
@@ -45,7 +45,7 @@ Official sources reviewed as of June 2026:
 
 1. Add a dedicated routing readiness card instead of sending the setup card to
    generic advanced settings.
-2. Keep routing readiness read-only until Phase 6R defines the server-owned
+2. Keep routing readiness read-only until the server-owned
    readiness engine.
 3. Use a small visible state model:
    - choose a destination library,
@@ -66,7 +66,7 @@ Official sources reviewed as of June 2026:
 - Keeps routing setup separate from policy intent editing.
 - Reduces diagnostic noise by showing one status and one action.
 - Preserves the current save and routing behavior.
-- Keeps Phase 6R free to replace the client projection with a server-owned
+- Keeps the runtime readiness work free to replace the client projection with a server-owned
   readiness result later.
 
 ### Cons
@@ -110,7 +110,7 @@ ready, the card shows the selected service and root folder.
 
 ## Follow-Up
 
-The next high-value item is **Phase 3R Vue Setup Card State Binding**. Setup
+The next high-value item is **Policy Authoring Setup Card State Binding**. Setup
 cards are now correctly targeted, but they still render as static guidance. The
 next slice should derive card completion/needs-attention state from existing
 visible projections without adding new persistence, API calls, or automation.

@@ -122,9 +122,9 @@ const POLICY_AUTHORING_VUE_REWRITE_SLICES = Object.freeze([
     evidence: 'Adds Ask When Unsure review triggers through typed draft serialization.',
   },
   {
-    id: 'vue_routing_readiness_surface',
-    label: 'Vue routing readiness surface',
-    docPath: 'docs/architecture/policy-builder-phase-3r-vue-routing-readiness-surface.md',
+    id: 'policy_authoring_routing_readiness',
+    label: 'Policy authoring routing readiness',
+    docPath: 'docs/architecture/policy-authoring-routing-readiness.md',
     testPath: 'client/src/__tests__/PolicyBuilderRoutingReadinessCard.test.js',
     evidence: 'Projects selected-library routing context without executing routing or saving policy intent.',
   },

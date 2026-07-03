@@ -50,7 +50,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_authoring_setup_cards',
       'policy_authoring_destination_sections',
       'policy_authoring_review_triggers',
-      'vue_routing_readiness_surface',
+      'policy_authoring_routing_readiness',
       'vue_setup_card_state_binding',
       'vue_save_defer_action_boundary',
       'vue_starter_template_accelerator',
