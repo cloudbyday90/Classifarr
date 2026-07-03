@@ -61,6 +61,7 @@ const PHASE6R_COMPLETION_RISK_IDS = Object.freeze({
   LEGACY_ARTIFACT_ALLOWED_IN_NORMAL_WORKFLOW: 'legacy_artifact_allowed_in_normal_workflow',
   PHASE8_STORAGE_NOT_BLOCKED: 'phase8_storage_not_blocked',
   BOUNDED_CHAIN_FAILED: 'bounded_chain_failed',
+  BOUNDED_CHAIN_AUDIT_NOT_PASSING: 'bounded_chain_audit_not_passing',
   BOUNDED_CHAIN_PROVENANCE_MISMATCH: 'bounded_chain_provenance_mismatch',
   BOUNDED_CHAIN_RAW_PROVENANCE: 'bounded_chain_raw_provenance',
 });
@@ -379,12 +380,74 @@ function getEvidenceFingerprint(chainStep = {}) {
     null;
 }
 
+function getBoundedStepAuditChecks(step = {}) {
+  const result = step.result || {};
+
+  switch (step.stepId) {
+    case PHASE6R_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE:
+      return [
+        {
+          auditId: 'projection_audit',
+          ok: result.projectionAudit?.ok === true,
+        },
+        {
+          auditId: 'projection_fingerprint_audit',
+          ok: result.projectionFingerprintAudit?.ok === true,
+        },
+      ];
+    case PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE:
+      return [
+        {
+          auditId: 'intent_audit',
+          ok: result.intentAudit?.ok === true,
+        },
+        {
+          auditId: 'evidence_fingerprint_audit',
+          ok: result.evidenceFingerprintAudit?.ok === true,
+        },
+      ];
+    case PHASE6R_COMPLETION_COMPONENT_IDS.LEARNING_GUARD:
+      return [
+        {
+          auditId: 'learning_audit',
+          ok: result.learningAudit?.ok === true,
+        },
+      ];
+    case PHASE6R_COMPLETION_COMPONENT_IDS.READINESS_ENGINE:
+      return [
+        {
+          auditId: 'readiness_audit',
+          ok: result.readinessAudit?.ok === true,
+        },
+      ];
+    case PHASE6R_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW:
+      return [
+        {
+          auditId: 'workflow_audit',
+          ok: result.workflowAudit?.ok === true,
+        },
+      ];
+    case PHASE6R_COMPLETION_COMPONENT_IDS.MIGRATION_DELETION_PATH:
+      return [
+        {
+          auditId: 'migration_audit',
+          ok: result.migrationAudit?.ok === true,
+        },
+      ];
+    default:
+      return [];
+  }
+}
+
 function getBoundedChainStepSnapshot(step) {
   const fingerprint = getEvidenceFingerprint(step);
+  const auditChecks = getBoundedStepAuditChecks(step);
 
   return {
     stepId: step.stepId,
     ok: step.result?.ok === true,
+    auditOk: auditChecks.length > 0 && auditChecks.every(check => check.ok === true),
+    auditChecks,
     statusId: step.result?.statusId || null,
     issueCount: step.result?.issueCount || 0,
     projectionFingerprint: fingerprint,
@@ -447,6 +510,19 @@ function buildPolicyBuilderPhase6BoundedChainCompletionAudit({
           componentId: step.stepId,
           statusId: step.statusId,
           auditIssueCount: step.issueCount,
+        }
+      ));
+    });
+
+  stepSnapshots
+    .filter(step => step.ok === true && step.auditOk !== true)
+    .forEach(step => {
+      issues.push(buildIssue(
+        PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_AUDIT_NOT_PASSING,
+        `Phase 6R bounded completion chain has a non-passing audit at "${step.stepId}".`,
+        {
+          componentId: step.stepId,
+          auditChecks: step.auditChecks,
         }
       ));
     });

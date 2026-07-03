@@ -54,8 +54,8 @@ normal operator workflow.
 3. **Prove the bounded chain composes.**
    Completion should build a deterministic evidence -> intent -> learning ->
    readiness -> workflow -> migration chain and fail when a bounded step fails,
-   evidence projection fingerprints drift, or raw evidence labels leak into
-   boundary provenance.
+   a nested bounded audit is missing or non-passing, evidence projection
+   fingerprints drift, or raw evidence labels leak into boundary provenance.
 
 4. **Treat 6R.0 as a real gate.**
    The artifact inventory and cutline must verify that legacy impact/replay/
@@ -125,6 +125,15 @@ The default audit checks:
 - 6R.5 operator workflow rebuild.
 - 6R.6 migration and deletion path.
 - End-to-end bounded handoff from evidence boundary through migration plan.
+- Nested bounded audit health for every successful handoff:
+  - evidence projection audit,
+  - evidence projection-fingerprint audit,
+  - intent audit,
+  - carried evidence-fingerprint audit,
+  - learning audit,
+  - readiness audit,
+  - workflow audit,
+  - migration/deletion audit.
 - Shared sanitized evidence projection fingerprint across bounded handoffs.
 - Boundary provenance that excludes raw operator/library evidence labels.
 
@@ -132,6 +141,8 @@ The default audit checks:
 
 - Completion is server-owned and deterministic.
 - Component docs, services, and tests must exist.
+- A bounded step cannot count as complete unless its nested audit checks are
+  still passing.
 - Bounded handoffs must share sanitized provenance instead of raw evidence
   labels.
 - Legacy diagnostics cannot remain in normal operator workflow.

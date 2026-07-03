@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Completion Audit Health** — hardened the Phase 6R
+  completion audit so the end-to-end bounded chain fails when any successful
+  evidence, intent, learning, readiness, workflow, or migration handoff has a
+  missing or non-passing nested audit.
 - **Policy Builder Phase 6R Migration Audit Gate** — hardened the bounded Phase
   6R.6 migration/deletion wrapper so migration planning proceeds only when the
   upstream bounded operator workflow audit is passing and its sanitized

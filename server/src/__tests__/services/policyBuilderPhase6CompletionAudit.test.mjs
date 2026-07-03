@@ -81,10 +81,120 @@ describe('policyBuilderPhase6CompletionAudit', () => {
     expect(audit.fingerprintCount).toBe(6);
     expect(audit.sharedProjectionFingerprint).toMatch(/^[a-f0-9]{64}$/);
     expect(new Set(audit.steps.map(step => step.projectionFingerprint)).size).toBe(1);
+    expect(audit.steps.every(step => step.auditOk === true)).toBe(true);
     expect(JSON.stringify(audit.steps)).not.toContain('Animated Movies');
     expect(audit.nextPhase).toEqual(expect.objectContaining({
       phaseId: '7r_1',
     }));
+  });
+
+  test('rejects bounded chain steps with non-passing nested audits', () => {
+    const stableFingerprint = 'a'.repeat(64);
+    const projectionFingerprint = {
+      fingerprint: stableFingerprint,
+    };
+    const audit = buildPolicyBuilderPhase6BoundedChainCompletionAudit({
+      chain: {
+        boundedEvidenceResult: {
+          ok: true,
+          statusId: 'ready',
+          projectionFingerprint,
+          projectionAudit: {
+            ok: true,
+          },
+          projectionFingerprintAudit: {
+            ok: true,
+          },
+        },
+        boundedIntentResult: {
+          ok: true,
+          statusId: 'ready',
+          evidenceBoundary: {
+            projectionFingerprint,
+          },
+          intentAudit: {
+            ok: false,
+          },
+          evidenceFingerprintAudit: {
+            ok: true,
+          },
+        },
+        boundedLearningResult: {
+          ok: true,
+          statusId: 'ready',
+          intentBoundary: {
+            evidenceBoundary: {
+              projectionFingerprint,
+            },
+          },
+          learningAudit: {
+            ok: true,
+          },
+        },
+        boundedReadinessResult: {
+          ok: true,
+          statusId: 'ready',
+          boundaryContext: {
+            evidenceBoundary: {
+              projectionFingerprint,
+            },
+            projectionFingerprintMatch: true,
+          },
+          readinessAudit: {
+            ok: true,
+          },
+        },
+        boundedWorkflowResult: {
+          ok: true,
+          statusId: 'ready',
+          boundaryContext: {
+            intentBoundary: {
+              projectionFingerprint,
+            },
+            readinessBoundary: {
+              projectionFingerprint,
+            },
+            projectionFingerprintMatch: true,
+          },
+          workflowAudit: {
+            ok: true,
+          },
+        },
+        boundedMigrationResult: {
+          ok: true,
+          statusId: 'ready',
+          boundaryContext: {
+            workflowBoundary: {
+              projectionFingerprint,
+            },
+            projectionFingerprintMatch: true,
+          },
+          migrationAudit: {
+            ok: true,
+          },
+        },
+      },
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.sharedProjectionFingerprint).toBe(stableFingerprint);
+    expect(audit.steps.find(step =>
+      step.stepId === PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE
+    )).toEqual(expect.objectContaining({
+      auditOk: false,
+      auditChecks: expect.arrayContaining([
+        expect.objectContaining({
+          auditId: 'intent_audit',
+          ok: false,
+        }),
+      ]),
+    }));
+    expect(audit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_AUDIT_NOT_PASSING,
+        componentId: PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE,
+      }),
+    ]));
   });
 
   test('rejects bounded chain failures, provenance drift, and raw provenance leakage', () => {

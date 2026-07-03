@@ -3505,8 +3505,9 @@ Completion gate:
   expected next-phase chain.
 - The gate also builds the bounded 6R.1 through 6R.6 handoff chain and fails if
   evidence, intent, learning, readiness, workflow, or migration wrappers fail,
-  drift away from the shared sanitized evidence projection fingerprint, or carry
-  raw evidence labels in boundary provenance.
+  have missing or non-passing nested audits, drift away from the shared
+  sanitized evidence projection fingerprint, or carry raw evidence labels in
+  boundary provenance.
 - The gate also fails if legacy replay, impact, provider, TMDB, scoring, or old
   Phase 6 documentation artifacts lack explicit migration/deletion decisions,
   remain allowed in the normal operator workflow, or unblock Phase 8R storage
