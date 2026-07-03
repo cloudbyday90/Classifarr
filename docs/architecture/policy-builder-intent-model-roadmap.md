@@ -3591,6 +3591,11 @@ Implementation status:
 - Current implementation classifies runtime artifacts as
   `keep_runtime_engine_primitive`, `rewrite_around_phase5_6_contracts`,
   `replace_with_readiness_question_contract`, or `delete_after_migration`.
+- The inventory now requires critical runtime surface coverage for
+  classification route entrypoints, pending/correction routes, second-pass
+  diagnostics, metadata enrichment, Discord pending notifications,
+  classification orchestration, routing, and persistence paths so new runtime
+  behavior cannot bypass the cutline silently.
 - Every runtime artifact identifies an authority source before behavior changes:
   media-server contents, declared operator intent, manual outcome, AI output,
   metadata provider evidence, or legacy template compatibility.

@@ -32,7 +32,7 @@ This inventory also calls out two known failure modes:
 
 ## Official Guidance Reviewed
 
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/Projects/ssdf)
+- [NIST Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
   supports secure design and verification before behavioral changes. Phase
   7R.1 adds a testable inventory before runtime wiring changes.
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
@@ -53,21 +53,26 @@ This inventory also calls out two known failure modes:
    Do not connect Phase 6R evidence/readiness into runtime classification until
    current runtime artifacts have keep, rewrite, replace, or delete decisions.
 
-2. **Require authority sources.**
+2. **Guard critical runtime surface coverage.**
+   The inventory should fail when route entrypoints, second-pass diagnostics,
+   metadata enrichment, pending notification, classification, routing, or
+   persistence surfaces are missing from the cutline.
+
+3. **Require authority sources.**
    Every runtime artifact must identify whether it is driven by observed media
    server contents, declared operator intent, manual outcome, AI output,
    metadata evidence, or legacy template compatibility.
 
-3. **Separate classification from routing.**
+4. **Separate classification from routing.**
    Missing Arr mapping or failed Arr push must become a distinct runtime state,
    not a silent classification success.
 
-4. **Replace known bad question paths.**
+5. **Replace known bad question paths.**
    Genre-priority prompts, AI invalid-response prompts, AI disagreement prompts,
    and pending resolution flags that generate rules must be routed through the
    Phase 5R question contract and Phase 6R learning guard.
 
-5. **Keep AI/RAG as evidence.**
+6. **Keep AI/RAG as evidence.**
    AI explanations, RAG neighbors, and provider metadata can support evidence
    quality, but they cannot own final destination intent or durable learning.
 
@@ -76,6 +81,8 @@ This inventory also calls out two known failure modes:
 Pros:
 
 - Prevents Phase 7R from wiring through unclear runtime paths.
+- Catches critical runtime surface drift when new route or decision-facing files
+  are added without a cutline decision.
 - Makes known question and routing risks explicit.
 - Preserves useful runtime primitives such as Arr executors, outcome ledger,
   profile sync, and bounded event persistence.
@@ -85,6 +92,8 @@ Cons:
 
 - Does not yet change runtime classification behavior.
 - Adds a broad inventory that must be maintained as runtime paths change.
+- Requires intentional updates when classification route or metadata surfaces
+  are renamed.
 - Does not delete legacy signal or question code yet.
 
 ## Final Recommendation Stack
@@ -109,6 +118,7 @@ The service exports:
 - `PHASE7R_BAD_QUESTION_PATH_IDS`
 - `listPolicyBuilderPhase7RuntimeArtifacts`
 - `listPolicyBuilderPhase7BadQuestionPaths`
+- `listPolicyBuilderPhase7RequiredRuntimeSurfacePaths`
 - `validateRuntimeArtifact`
 - `buildPolicyBuilderPhase7RuntimeDecisionInventory`
 
@@ -139,9 +149,21 @@ Known bad question paths:
 - AI disagreement questions,
 - pending resolution `generate_rule` behavior.
 
+Required runtime surface coverage now includes:
+
+- classification route entrypoints,
+- pending and correction routes,
+- second-pass diagnostic routes,
+- classification orchestration,
+- AI/RAG/question paths,
+- routing and persistence paths,
+- metadata enrichment paths,
+- Discord pending notification rendering.
+
 ## Security Outcome
 
 - Runtime behavior is not changed before authority and cutline are documented.
+- Critical runtime surfaces cannot fall out of the inventory silently.
 - AI/RAG/provider output is not treated as final authority.
 - Learning side effects are flagged for Phase 6R guard wiring.
 - Routing success and classification success are separated as a required

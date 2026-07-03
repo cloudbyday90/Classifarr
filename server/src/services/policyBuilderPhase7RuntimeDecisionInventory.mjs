@@ -42,6 +42,7 @@ const PHASE7R_RUNTIME_RISK_IDS = Object.freeze({
   BROAD_GENRE_AUTHORITY_RISK_NOT_LISTED: 'broad_genre_authority_risk_not_listed',
   CLASSIFICATION_ROUTING_CONFLATION_NOT_LISTED: 'classification_routing_conflation_not_listed',
   BAD_QUESTION_PATH_NOT_LISTED: 'bad_question_path_not_listed',
+  MISSING_RUNTIME_SURFACE_ARTIFACT: 'missing_runtime_surface_artifact',
   ARTIFACT_PATH_NOT_FOUND: 'artifact_path_not_found',
 });
 
@@ -83,7 +84,60 @@ const REQUIRED_BROAD_GENRE_RISK_PATHS = Object.freeze([
 
 const REQUIRED_BAD_QUESTION_PATH_IDS = Object.freeze(Object.values(PHASE7R_BAD_QUESTION_PATH_IDS));
 
+const REQUIRED_RUNTIME_SURFACE_PATHS = Object.freeze([
+  'server/src/routes/classification.mjs',
+  'server/src/routes/classificationRouteShared.mjs',
+  'server/src/routes/classificationRouteSecondPass.mjs',
+  'server/src/routes/classificationRoutePending.mjs',
+  'server/src/routes/classificationRouteCorrections.mjs',
+  'server/src/services/classification.mjs',
+  'server/src/services/classificationServiceCore.mjs',
+  'server/src/services/classificationPolicyPathService.mjs',
+  'server/src/services/classificationAiService.mjs',
+  'server/src/services/classificationRagLoopService.mjs',
+  'server/src/services/policyQuestionBuilderQuestions.mjs',
+  'server/src/services/classificationRoutingService.mjs',
+  'server/src/services/classificationPersistenceService.mjs',
+  'server/src/services/classificationMetadataService.mjs',
+  'server/src/services/classificationMetadataEnrichmentService.mjs',
+  'server/src/services/discordPendingNotification.mjs',
+]);
+
 const RUNTIME_ARTIFACTS = Object.freeze([
+  {
+    path: 'server/src/routes/classification.mjs',
+    owner: 'classification-route-entrypoint',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    replacementTarget: 'Authenticated classification route entrypoint delegating to Phase 7R runtime contracts',
+    riskIds: [],
+    normalRuntimeAuthorityAllowed: true,
+  },
+  {
+    path: 'server/src/routes/classificationRouteShared.mjs',
+    owner: 'classification-route-entrypoint',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    replacementTarget: 'Phase 7R runtime orchestration entrypoint that separates classify, ask, route, retry, and learn states',
+    riskIds: [
+      'classification_route_entrypoint_can_bypass_runtime_decision_contract',
+    ],
+    normalRuntimeAuthorityAllowed: false,
+  },
+  {
+    path: 'server/src/routes/classificationRouteSecondPass.mjs',
+    owner: 'classification-diagnostics',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.RAG_DECISION,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.DELETE_AFTER_MIGRATION,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
+    replacementTarget: 'Bounded Phase 7R decision trace and evidence projection diagnostics',
+    riskIds: [
+      'second_pass_diagnostic_can_preserve_old_rag_loop_authority',
+    ],
+    normalRuntimeAuthorityAllowed: false,
+  },
   {
     path: 'server/src/services/classification.mjs',
     owner: 'classification-runtime',
@@ -238,6 +292,30 @@ const RUNTIME_ARTIFACTS = Object.freeze([
     riskIds: [
       'unknown_library_neighbors_can_act_like_destination_authority',
       'broad_genre_overlap_can_act_like_destination_authority',
+    ],
+    normalRuntimeAuthorityAllowed: false,
+  },
+  {
+    path: 'server/src/services/classificationMetadataService.mjs',
+    owner: 'classification-metadata',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.AI_ANALYSIS_VERIFICATION,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
+    replacementTarget: 'Phase 7R evidence projection adapter that treats metadata as bounded evidence',
+    riskIds: [
+      'metadata_provider_payload_can_be_overweighted_without_evidence_boundary',
+    ],
+    normalRuntimeAuthorityAllowed: false,
+  },
+  {
+    path: 'server/src/services/classificationMetadataEnrichmentService.mjs',
+    owner: 'classification-metadata',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.AI_ANALYSIS_VERIFICATION,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REWRITE_AROUND_PHASE5_6_CONTRACTS,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
+    replacementTarget: 'Phase 7R metadata evidence source with bounded provider provenance and no final authority',
+    riskIds: [
+      'metadata_enrichment_can_trigger_provider_weight_without_readiness_gate',
     ],
     normalRuntimeAuthorityAllowed: false,
   },
@@ -500,6 +578,18 @@ const RUNTIME_ARTIFACTS = Object.freeze([
     ],
     normalRuntimeAuthorityAllowed: false,
   },
+  {
+    path: 'server/src/services/discordPendingNotification.mjs',
+    owner: 'runtime-discord',
+    stageId: PHASE7R_RUNTIME_STAGE_IDS.QUESTION_GENERATION,
+    decisionId: PHASE7R_RUNTIME_DECISION_IDS.REPLACE_WITH_READINESS_QUESTION_CONTRACT,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
+    replacementTarget: 'Phase 5R question contract renderer with stale-question and learning-eligibility metadata',
+    riskIds: [
+      'pending_discord_notification_can_render_stale_or_unbounded_question',
+    ],
+    normalRuntimeAuthorityAllowed: false,
+  },
 ]);
 
 const BAD_QUESTION_PATHS = Object.freeze([
@@ -556,6 +646,10 @@ function listPolicyBuilderPhase7RuntimeArtifacts() {
 
 function listPolicyBuilderPhase7BadQuestionPaths() {
   return BAD_QUESTION_PATHS;
+}
+
+function listPolicyBuilderPhase7RequiredRuntimeSurfacePaths() {
+  return REQUIRED_RUNTIME_SURFACE_PATHS;
 }
 
 function normalizeRuntimeArtifact(artifact = {}) {
@@ -720,6 +814,16 @@ function buildPolicyBuilderPhase7RuntimeDecisionInventory({
       ));
     });
 
+  REQUIRED_RUNTIME_SURFACE_PATHS
+    .filter(path => !artifactByPath.has(path))
+    .forEach(path => {
+      issues.push(buildIssue(
+        PHASE7R_RUNTIME_RISK_IDS.MISSING_RUNTIME_SURFACE_ARTIFACT,
+        `Critical runtime surface path is missing from the Phase 7R.1 inventory: ${path}.`,
+        { path }
+      ));
+    });
+
   const byDecision = DECISION_IDS.reduce((acc, decisionId) => ({
     ...acc,
     [decisionId]: normalizedArtifacts.filter(artifact => artifact.decisionId === decisionId).length,
@@ -756,6 +860,7 @@ export {
   PHASE7R_RUNTIME_STAGE_IDS,
   buildPolicyBuilderPhase7RuntimeDecisionInventory,
   listPolicyBuilderPhase7BadQuestionPaths,
+  listPolicyBuilderPhase7RequiredRuntimeSurfacePaths,
   listPolicyBuilderPhase7RuntimeArtifacts,
   validateRuntimeArtifact,
 };

@@ -8,6 +8,7 @@ import {
   PHASE7R_RUNTIME_STAGE_IDS,
   buildPolicyBuilderPhase7RuntimeDecisionInventory,
   listPolicyBuilderPhase7BadQuestionPaths,
+  listPolicyBuilderPhase7RequiredRuntimeSurfacePaths,
   listPolicyBuilderPhase7RuntimeArtifacts,
   validateRuntimeArtifact,
 } from '../../services/policyBuilderPhase7RuntimeDecisionInventory.mjs';
@@ -58,6 +59,23 @@ describe('policyBuilderPhase7RuntimeDecisionInventory', () => {
       AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
       AUTHORITY_SOURCE_IDS.LEGACY_TEMPLATE,
     ]));
+  });
+
+  test('requires critical runtime route, metadata, and pending-notification surfaces to be inventoried', () => {
+    const requiredPaths = listPolicyBuilderPhase7RequiredRuntimeSurfacePaths();
+    const inventory = buildPolicyBuilderPhase7RuntimeDecisionInventory();
+
+    expect(requiredPaths).toEqual(expect.arrayContaining([
+      'server/src/routes/classification.mjs',
+      'server/src/routes/classificationRouteShared.mjs',
+      'server/src/routes/classificationRouteSecondPass.mjs',
+      'server/src/services/classificationMetadataService.mjs',
+      'server/src/services/classificationMetadataEnrichmentService.mjs',
+      'server/src/services/discordPendingNotification.mjs',
+    ]));
+    expect(inventory.artifacts.map(artifact => artifact.path)).toEqual(
+      expect.arrayContaining(requiredPaths)
+    );
   });
 
   test('lists known bad question-generation paths for replacement', () => {
@@ -138,7 +156,10 @@ describe('policyBuilderPhase7RuntimeDecisionInventory', () => {
   test('rejects inventories missing required bad question and conflation records', () => {
     const inventory = buildPolicyBuilderPhase7RuntimeDecisionInventory({
       artifacts: listPolicyBuilderPhase7RuntimeArtifacts()
-        .filter(artifact => artifact.path !== 'server/src/services/classificationRoutingService.mjs'),
+        .filter(artifact =>
+          artifact.path !== 'server/src/services/classificationRoutingService.mjs' &&
+          artifact.path !== 'server/src/services/discordPendingNotification.mjs'
+        ),
       badQuestionPaths: listPolicyBuilderPhase7BadQuestionPaths()
         .filter(item => item.id !== PHASE7R_BAD_QUESTION_PATH_IDS.GENRE_PRIORITY_QUESTION),
       checkPathExists: false,
@@ -150,6 +171,9 @@ describe('policyBuilderPhase7RuntimeDecisionInventory', () => {
       }),
       expect.objectContaining({
         riskId: PHASE7R_RUNTIME_RISK_IDS.BAD_QUESTION_PATH_NOT_LISTED,
+      }),
+      expect.objectContaining({
+        riskId: PHASE7R_RUNTIME_RISK_IDS.MISSING_RUNTIME_SURFACE_ARTIFACT,
       }),
     ]));
   });

@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Runtime Surface Coverage Guard** — hardened the
+  runtime decision inventory so classification route entrypoints, pending and
+  correction routes, second-pass diagnostics, metadata enrichment, Discord
+  pending notifications, orchestration, routing, and persistence paths must have
+  explicit cutline decisions before Phase 7R runtime wiring proceeds.
 - **Policy Builder Phase 6R Completion Bounded Chain Audit** — added an
   end-to-end bounded completion audit that proves evidence, intent, learning,
   readiness, workflow, and migration handoffs share sanitized evidence
