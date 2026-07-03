@@ -60,6 +60,8 @@ const PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS = Object.freeze({
   ROUTING_SUCCESS_CONFLATED_WITH_CLASSIFICATION: 'routing_success_conflated_with_classification',
   DECISION_PERFORMED_SIDE_EFFECT: 'decision_performed_side_effect',
   INVALID_RUNTIME_EVIDENCE: 'invalid_runtime_evidence',
+  MISSING_RUNTIME_EVIDENCE_VALIDATION: 'missing_runtime_evidence_validation',
+  TRACE_EVIDENCE_VALID_MISMATCH: 'trace_evidence_valid_mismatch',
   MISSING_EVIDENCE_FINGERPRINT: 'missing_evidence_fingerprint',
   MALFORMED_EVIDENCE_FINGERPRINT: 'malformed_evidence_fingerprint',
   RAW_EVIDENCE_PROVENANCE_EXPOSED: 'raw_evidence_provenance_exposed',
@@ -125,6 +127,8 @@ const STRONG_IDENTITY_COUNT = 2;
 const FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
 const DECISION_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE =
   'classifarr.runtime.decision.evidence_projection_fingerprint';
+const DECISION_EVIDENCE_VALID_TRACE_ATTRIBUTE =
+  'classifarr.runtime.decision.evidence_valid';
 const UNSAFE_PROVENANCE_KEYS = new Set([
   'entries',
   'entry',
@@ -536,6 +540,41 @@ function validateDecisionEvidenceFingerprint(decision = {}) {
   return issues;
 }
 
+function validateDecisionEvidenceValidation(decision = {}) {
+  const issues = [];
+  const validation = decision.evidence?.validation;
+  const hasValidationResult = validation &&
+    typeof validation === 'object' &&
+    typeof validation.ok === 'boolean';
+  const traceEvidenceValid =
+    decision.trace?.attributes?.[DECISION_EVIDENCE_VALID_TRACE_ATTRIBUTE];
+
+  if (!hasValidationResult) {
+    issues.push({
+      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS
+        .MISSING_RUNTIME_EVIDENCE_VALIDATION,
+      message: 'Automation decision must carry the runtime evidence validation result.',
+    });
+    return issues;
+  }
+
+  if (validation.ok !== true) {
+    issues.push({
+      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.INVALID_RUNTIME_EVIDENCE,
+      message: 'Automation decision cannot rely on invalid runtime evidence.',
+    });
+  }
+
+  if (traceEvidenceValid !== validation.ok) {
+    issues.push({
+      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.TRACE_EVIDENCE_VALID_MISMATCH,
+      message: 'Automation decision trace evidence-valid attribute must match runtime evidence validation.',
+    });
+  }
+
+  return issues;
+}
+
 function buildPolicyBuilderPhase7AutomationDecision(input = {}) {
   const evidenceProjection = input.evidenceProjection?.version === 'phase7r.runtime_evidence_projection.v1'
     ? input.evidenceProjection
@@ -641,13 +680,7 @@ function validatePolicyBuilderPhase7AutomationDecision(decision = {}) {
     });
   }
 
-  if (decision.evidence?.validation?.ok === false) {
-    issues.push({
-      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.INVALID_RUNTIME_EVIDENCE,
-      message: 'Automation decision cannot rely on invalid runtime evidence.',
-    });
-  }
-
+  issues.push(...validateDecisionEvidenceValidation(decision));
   issues.push(...validateDecisionEvidenceFingerprint(decision));
 
   if (decision.stateId === PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY) {

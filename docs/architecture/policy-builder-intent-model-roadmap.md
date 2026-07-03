@@ -3715,6 +3715,8 @@ Tasks:
   the decision evidence block and trace attributes.
 - Reject missing, malformed, mismatched, or raw-provenance fingerprints before a
   decision can pass validation.
+- Require the decision evidence block to carry the runtime evidence validation
+  result, and reject trace `evidence_valid` values that drift from that result.
 
 Acceptance criteria:
 
@@ -3747,6 +3749,9 @@ Implementation status:
   runtime evidence projection fingerprint and fails validation when a decision
   lacks that proof, carries malformed fingerprint data, exposes raw provenance,
   or reports a trace fingerprint that differs from the evidence block.
+- The decision contract also requires nested runtime evidence validation proof
+  and rejects decisions whose bounded trace evidence-valid attribute disagrees
+  with the evidence block.
 
 ### 7R.4 Runtime Question Reduction
 

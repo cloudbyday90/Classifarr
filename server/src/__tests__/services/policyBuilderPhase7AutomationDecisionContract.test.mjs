@@ -357,6 +357,59 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
     ]));
   });
 
+  test('rejects automation decisions without runtime evidence validation proof', () => {
+    const decision = buildPolicyBuilderPhase7AutomationDecision({
+      evidenceProjection: buildStrongRuntimeEvidence(),
+      routing: {
+        mapped: true,
+        targetName: 'Radarr Animated Movies',
+      },
+    });
+    const validation = validatePolicyBuilderPhase7AutomationDecision({
+      ...decision,
+      evidence: {
+        ...decision.evidence,
+        validation: undefined,
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS
+          .MISSING_RUNTIME_EVIDENCE_VALIDATION,
+      }),
+    ]));
+  });
+
+  test('rejects automation decisions when trace evidence validity drifts', () => {
+    const decision = buildPolicyBuilderPhase7AutomationDecision({
+      evidenceProjection: buildStrongRuntimeEvidence(),
+      routing: {
+        mapped: true,
+        targetName: 'Radarr Animated Movies',
+      },
+    });
+    const validation = validatePolicyBuilderPhase7AutomationDecision({
+      ...decision,
+      trace: {
+        ...decision.trace,
+        attributes: {
+          ...decision.trace.attributes,
+          'classifarr.runtime.decision.evidence_valid': false,
+        },
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS
+          .TRACE_EVIDENCE_VALID_MISMATCH,
+      }),
+    ]));
+  });
+
   test('passes the default automation decision contract audit', () => {
     const decision = buildPolicyBuilderPhase7AutomationDecision({
       evidenceProjection: buildStrongRuntimeEvidence(),

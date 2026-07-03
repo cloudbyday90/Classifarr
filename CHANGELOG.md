@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Automation Validation Proof** — hardened the
+  automation decision contract so decisions must carry the nested runtime
+  evidence validation result and bounded trace attributes must agree before the
+  decision can pass validation.
 - **Policy Builder Production Naming Cutover Plan** — expanded the roadmap with
   a mandatory production naming stabilization phase and added a design record
   so phase-coded implementation names are inventoried, renamed to durable

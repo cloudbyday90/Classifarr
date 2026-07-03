@@ -108,7 +108,9 @@ Cons:
    sanitized runtime evidence projection fingerprint.
 7. Reject decision objects with missing, malformed, mismatched, or raw-provenance
    fingerprints.
-8. Keep the contract side-effect-free until a later Phase 7R integration slice
+8. Require the decision evidence block to carry the runtime evidence validation
+   result, and require the trace `evidence_valid` attribute to match it.
+9. Keep the contract side-effect-free until a later Phase 7R integration slice
    explicitly wires it to classification and Arr routing.
 
 ## Implemented Files
@@ -180,6 +182,8 @@ The service exports:
   provider payload, or raw evidence keys.
 - Validation fails if the trace fingerprint differs from the decision evidence
   fingerprint.
+- Validation fails if runtime evidence validation proof is missing or the trace
+  `evidence_valid` attribute drifts from the decision evidence block.
 
 ## Trace Shape
 
@@ -213,8 +217,11 @@ The focused test suite verifies:
 - avoid and high-risk evidence require review,
 - weak broad-genre evidence remains insufficient,
 - decisions carry the sanitized runtime evidence projection fingerprint,
+- decisions carry the runtime evidence validation result,
 - fingerprint provenance does not expose raw labels,
 - missing, malformed, raw-provenance, or trace-mismatched fingerprints fail
+  validation,
+- missing validation proof or mismatched trace evidence-valid attributes fail
   validation,
 - unsafe route and side-effect claims fail validation,
 - the component audit points to Phase 7R.4.
