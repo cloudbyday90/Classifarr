@@ -3684,6 +3684,10 @@ Tasks:
 - Treat successful classification without Arr mapping as `classified_not_routed`,
   not a silent success.
 - Emit bounded decision traces for audit and debugging.
+- Carry the Phase 7R.2 sanitized runtime evidence projection fingerprint through
+  the decision evidence block and trace attributes.
+- Reject missing, malformed, mismatched, or raw-provenance fingerprints before a
+  decision can pass validation.
 
 Acceptance criteria:
 
@@ -3712,6 +3716,10 @@ Implementation status:
 - The decision contract is deterministic, side-effect-free, rejects invalid
   runtime evidence, and emits bounded `classifarr.runtime.decision.*` trace
   attributes for later audit and telemetry wiring.
+- The decision contract now binds each automation decision to the sanitized
+  runtime evidence projection fingerprint and fails validation when a decision
+  lacks that proof, carries malformed fingerprint data, exposes raw provenance,
+  or reports a trace fingerprint that differs from the evidence block.
 
 ### 7R.4 Runtime Question Reduction
 

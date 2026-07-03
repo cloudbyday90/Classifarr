@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Automation Evidence Binding** — hardened the
+  automation decision contract so decisions carry the sanitized runtime evidence
+  projection fingerprint, mirror it into bounded trace attributes, and fail
+  validation when fingerprint proof is missing, malformed, mismatched, or exposes
+  raw provenance.
 - **Policy Builder Phase 7R Runtime Evidence Fingerprint** — added stable
   sanitized SHA-256 fingerprints and bounded provenance summaries to runtime
   evidence projections so automation decisions can bind to the exact evidence

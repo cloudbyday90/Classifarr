@@ -60,6 +60,10 @@ const PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS = Object.freeze({
   ROUTING_SUCCESS_CONFLATED_WITH_CLASSIFICATION: 'routing_success_conflated_with_classification',
   DECISION_PERFORMED_SIDE_EFFECT: 'decision_performed_side_effect',
   INVALID_RUNTIME_EVIDENCE: 'invalid_runtime_evidence',
+  MISSING_EVIDENCE_FINGERPRINT: 'missing_evidence_fingerprint',
+  MALFORMED_EVIDENCE_FINGERPRINT: 'malformed_evidence_fingerprint',
+  RAW_EVIDENCE_PROVENANCE_EXPOSED: 'raw_evidence_provenance_exposed',
+  TRACE_FINGERPRINT_MISMATCH: 'trace_fingerprint_mismatch',
 });
 
 const STATE_CONTRACTS = Object.freeze([
@@ -118,6 +122,19 @@ const DECISION_STATE_IDS = Object.freeze(Object.values(PHASE7R_AUTOMATION_DECISI
 const MAX_TRACE_REASONS = 12;
 const STRONG_IDENTITY_CONFIDENCE = 0.75;
 const STRONG_IDENTITY_COUNT = 2;
+const FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
+const DECISION_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE =
+  'classifarr.runtime.decision.evidence_projection_fingerprint';
+const UNSAFE_PROVENANCE_KEYS = new Set([
+  'entries',
+  'entry',
+  'label',
+  'labels',
+  'payload',
+  'providerpayload',
+  'raw',
+  'rawlabel',
+]);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -435,12 +452,97 @@ function buildSideEffectSummary(input = {}) {
   };
 }
 
+function sanitizeProjectionFingerprint(projectionFingerprint = null) {
+  if (!projectionFingerprint?.fingerprint) return null;
+
+  const provenance = asObject(projectionFingerprint.provenance);
+
+  return {
+    version: normalizeString(projectionFingerprint.version) || null,
+    algorithm: normalizeString(projectionFingerprint.algorithm) || null,
+    fingerprint: normalizeString(projectionFingerprint.fingerprint),
+    provenance: {
+      projectionVersion: normalizeString(provenance.projectionVersion) || null,
+      phase6EvidenceVersion: normalizeString(provenance.phase6EvidenceVersion) || null,
+      totalEntryCount: Number.isFinite(Number(provenance.totalEntryCount))
+        ? Number(provenance.totalEntryCount)
+        : 0,
+      sourceIds: asArray(provenance.sourceIds).map(String).sort(),
+      runtimeSourceIds: asArray(provenance.runtimeSourceIds).map(String).sort(),
+      authoritySourceIds: asArray(provenance.authoritySourceIds).map(String).sort(),
+      demotionReasonIds: asArray(provenance.demotionReasonIds).map(String).sort(),
+      warningReasonIds: asArray(provenance.warningReasonIds).map(String).sort(),
+      bucketCounts: asArray(provenance.bucketCounts)
+        .map(bucket => ({
+          bucketId: normalizeString(bucket?.bucketId) || null,
+          entryCount: Number.isFinite(Number(bucket?.entryCount))
+            ? Number(bucket.entryCount)
+            : 0,
+        }))
+        .sort((left, right) => String(left.bucketId).localeCompare(String(right.bucketId))),
+      generatedFromLiveProvider: provenance.generatedFromLiveProvider === true,
+      exposesRawProviderPayloads: provenance.exposesRawProviderPayloads === true,
+      exposesUiChipLanguage: provenance.exposesUiChipLanguage === true,
+    },
+  };
+}
+
+function hasUnsafeProvenanceKey(value = {}) {
+  if (!value || typeof value !== 'object') return false;
+
+  return Object.entries(value).some(([key, nestedValue]) =>
+    UNSAFE_PROVENANCE_KEYS.has(String(key).replace(/[^a-z0-9]/giu, '').toLowerCase()) ||
+    (nestedValue && typeof nestedValue === 'object' && hasUnsafeProvenanceKey(nestedValue))
+  );
+}
+
+function validateDecisionEvidenceFingerprint(decision = {}) {
+  const issues = [];
+  const fingerprint = decision.evidence?.projectionFingerprint;
+  const fingerprintValue = normalizeString(fingerprint?.fingerprint);
+  const traceFingerprint = normalizeString(
+    decision.trace?.attributes?.[DECISION_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE]
+  );
+
+  if (!fingerprintValue) {
+    issues.push({
+      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
+      message: 'Automation decision must carry the runtime evidence projection fingerprint.',
+    });
+    return issues;
+  }
+
+  if (!FINGERPRINT_PATTERN.test(fingerprintValue) || fingerprint?.algorithm !== 'sha256') {
+    issues.push({
+      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.MALFORMED_EVIDENCE_FINGERPRINT,
+      message: 'Automation decision evidence fingerprint must be a SHA-256 hex digest.',
+    });
+  }
+
+  if (hasUnsafeProvenanceKey(fingerprint.provenance)) {
+    issues.push({
+      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.RAW_EVIDENCE_PROVENANCE_EXPOSED,
+      message: 'Automation decision fingerprint provenance must not expose raw labels or payload fields.',
+    });
+  }
+
+  if (traceFingerprint && traceFingerprint !== fingerprintValue) {
+    issues.push({
+      riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+      message: 'Automation decision trace fingerprint must match decision evidence.',
+    });
+  }
+
+  return issues;
+}
+
 function buildPolicyBuilderPhase7AutomationDecision(input = {}) {
   const evidenceProjection = input.evidenceProjection?.version === 'phase7r.runtime_evidence_projection.v1'
     ? input.evidenceProjection
     : buildPolicyBuilderPhase7RuntimeEvidenceProjection(input);
   const evidenceValidation = validatePolicyBuilderPhase7RuntimeEvidenceProjection(evidenceProjection);
   const buckets = getBuckets(evidenceProjection);
+  const projectionFingerprint = sanitizeProjectionFingerprint(evidenceProjection.projectionFingerprint);
   const strongIdentity = buckets.identity.some(isStrongIdentityEntry);
   const routeMapped = isRoutingMapped(input, buckets);
   const routingIntent = hasRoutingIntent(input, buckets);
@@ -456,7 +558,7 @@ function buildPolicyBuilderPhase7AutomationDecision(input = {}) {
   });
   const state = getAutomationDecisionState(chosen.stateId);
 
-  return {
+  const decision = {
     version: 'phase7r.automation_decision.v1',
     stateId: chosen.stateId,
     actionId: state?.actionId || PHASE7R_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
@@ -472,6 +574,7 @@ function buildPolicyBuilderPhase7AutomationDecision(input = {}) {
     evidence: {
       version: evidenceProjection.version,
       validation: evidenceValidation,
+      projectionFingerprint,
       counts: {
         identity: buckets.identity.length,
         compatibility: buckets.compatibility.length,
@@ -493,6 +596,13 @@ function buildPolicyBuilderPhase7AutomationDecision(input = {}) {
       routeMapped,
     }),
   };
+
+  if (projectionFingerprint?.fingerprint) {
+    decision.trace.attributes[DECISION_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE] =
+      projectionFingerprint.fingerprint;
+  }
+
+  return decision;
 }
 
 function validatePolicyBuilderPhase7AutomationDecision(decision = {}) {
@@ -537,6 +647,8 @@ function validatePolicyBuilderPhase7AutomationDecision(decision = {}) {
       message: 'Automation decision cannot rely on invalid runtime evidence.',
     });
   }
+
+  issues.push(...validateDecisionEvidenceFingerprint(decision));
 
   if (decision.stateId === PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY) {
     if (decision.strongIdentity !== true) {

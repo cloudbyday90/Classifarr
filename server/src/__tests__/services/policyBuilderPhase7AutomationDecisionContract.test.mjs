@@ -87,7 +87,20 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
       'classifarr.runtime.decision.state': PHASE7R_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
       'classifarr.runtime.decision.strong_identity': true,
       'classifarr.runtime.decision.route_mapped': true,
+      'classifarr.runtime.decision.evidence_projection_fingerprint':
+        expect.stringMatching(/^[a-f0-9]{64}$/),
     }));
+    expect(decision.evidence.projectionFingerprint).toEqual(expect.objectContaining({
+      algorithm: 'sha256',
+      fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      provenance: expect.objectContaining({
+        totalEntryCount: 4,
+      }),
+    }));
+    expect(decision.trace.attributes['classifarr.runtime.decision.evidence_projection_fingerprint'])
+      .toBe(decision.evidence.projectionFingerprint.fingerprint);
+    expect(JSON.stringify(decision.evidence.projectionFingerprint)).not.toContain('Animated Movies');
+    expect(JSON.stringify(decision.evidence.projectionFingerprint)).not.toContain('Radarr Animated Movies');
     expect(decision.trace.reasons).toEqual([
       expect.objectContaining({
         reasonId: PHASE7R_AUTOMATION_DECISION_REASON_IDS.AUTOMATION_ROUTE_READY,
@@ -291,6 +304,55 @@ describe('policyBuilderPhase7AutomationDecisionContract', () => {
       }),
       expect.objectContaining({
         riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.DECISION_PERFORMED_SIDE_EFFECT,
+      }),
+      expect.objectContaining({
+        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
+      }),
+    ]));
+  });
+
+  test('rejects automation decisions with malformed or unsafe evidence fingerprints', () => {
+    const decision = buildPolicyBuilderPhase7AutomationDecision({
+      evidenceProjection: buildStrongRuntimeEvidence(),
+      routing: {
+        mapped: true,
+        targetName: 'Radarr Animated Movies',
+      },
+    });
+    const validation = validatePolicyBuilderPhase7AutomationDecision({
+      ...decision,
+      evidence: {
+        ...decision.evidence,
+        projectionFingerprint: {
+          ...decision.evidence.projectionFingerprint,
+          algorithm: 'md5',
+          fingerprint: 'not-a-sha256',
+          provenance: {
+            ...decision.evidence.projectionFingerprint.provenance,
+            rawLabel: 'Animated Movies',
+          },
+        },
+      },
+      trace: {
+        ...decision.trace,
+        attributes: {
+          ...decision.trace.attributes,
+          'classifarr.runtime.decision.evidence_projection_fingerprint':
+            decision.evidence.projectionFingerprint.fingerprint,
+        },
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.MALFORMED_EVIDENCE_FINGERPRINT,
+      }),
+      expect.objectContaining({
+        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.RAW_EVIDENCE_PROVENANCE_EXPOSED,
+      }),
+      expect.objectContaining({
+        riskId: PHASE7R_AUTOMATION_DECISION_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
       }),
     ]));
   });
