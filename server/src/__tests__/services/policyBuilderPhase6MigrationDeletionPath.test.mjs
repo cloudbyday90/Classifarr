@@ -5,6 +5,9 @@ import {
   buildPolicyBuilderPhase6BoundedEvidenceProjection,
 } from '../../services/policyBuilderPhase6EvidenceBoundary.mjs';
 import {
+  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
+} from '../../services/policyBuilderPhase6EvidenceQuality.mjs';
+import {
   buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
 } from '../../services/policyBuilderPhase6IntentEngine.mjs';
 import {
@@ -73,6 +76,21 @@ function buildBoundedWorkflowResult() {
     boundedIntentResult,
     boundedReadinessResult,
   });
+}
+
+function clonePlain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function withWorkflowQuality(result, quality) {
+  const nextResult = clonePlain(result);
+  nextResult.boundaryContext.intentBoundary.quality = clonePlain(quality);
+  nextResult.boundaryContext.readinessBoundary.evidenceQuality = clonePlain(quality);
+  nextResult.boundaryContext.readinessBoundary.intentQuality = clonePlain(quality);
+  nextResult.boundaryContext.readinessBoundary.learningQuality = clonePlain(quality);
+  nextResult.boundaryContext.qualityMatch = true;
+  nextResult.workflow.boundaryContext = clonePlain(nextResult.boundaryContext);
+  return nextResult;
 }
 
 describe('policyBuilderPhase6MigrationDeletionPath', () => {
@@ -165,6 +183,12 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
         workflowId: 'destination_first_policy_setup',
       }),
     }));
+    expect(result.boundaryContext.workflowBoundary).toEqual(expect.objectContaining({
+      quality: expect.objectContaining({
+        statusId: boundedWorkflowResult.boundaryContext.intentBoundary.quality.statusId,
+      }),
+      qualityMatch: true,
+    }));
     expect(result.migrationAudit.ok).toBe(true);
     expect(JSON.stringify(result.boundaryContext)).not.toContain('Animated Movies');
   });
@@ -256,6 +280,94 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
+      }),
+    ]));
+  });
+
+  test('blocks bounded migration planning when workflow quality is missing', () => {
+    const boundedWorkflowResult = clonePlain(buildBoundedWorkflowResult());
+    boundedWorkflowResult.workflow.boundaryContext.readinessBoundary.intentQuality = null;
+
+    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+      boundedWorkflowResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      plan: null,
+      migrationAudit: null,
+      boundaryContext: expect.objectContaining({
+        workflowBoundary: expect.objectContaining({
+          qualityMatch: false,
+        }),
+      }),
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+      }),
+    ]));
+  });
+
+  test('blocks bounded migration planning when workflow quality is insufficient', () => {
+    const boundedWorkflowResult = buildBoundedWorkflowResult();
+    const insufficientQuality = {
+      ...boundedWorkflowResult.boundaryContext.intentBoundary.quality,
+      statusId: PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT,
+      nextActionId: 'confirm_destination_identity',
+      reasonIds: ['missing_identity'],
+    };
+
+    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+      boundedWorkflowResult: withWorkflowQuality(boundedWorkflowResult, insufficientQuality),
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      plan: null,
+      migrationAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_QUALITY_INSUFFICIENT,
+        nextActionId: 'confirm_destination_identity',
+      }),
+    ]));
+  });
+
+  test('blocks bounded migration planning when workflow quality no longer matches', () => {
+    const boundedWorkflowResult = clonePlain(buildBoundedWorkflowResult());
+    boundedWorkflowResult.boundaryContext.readinessBoundary.intentQuality = {
+      ...boundedWorkflowResult.boundaryContext.intentBoundary.quality,
+      nextActionId: 'review_evidence',
+      reasonIds: [
+        ...boundedWorkflowResult.boundaryContext.intentBoundary.quality.reasonIds,
+        'review_evidence_present',
+      ].sort(),
+    };
+    boundedWorkflowResult.workflow.boundaryContext =
+      clonePlain(boundedWorkflowResult.boundaryContext);
+
+    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+      boundedWorkflowResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      plan: null,
+      migrationAudit: null,
+      boundaryContext: expect.objectContaining({
+        workflowBoundary: expect.objectContaining({
+          qualityMatch: false,
+        }),
+      }),
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_QUALITY_MISMATCH,
       }),
     ]));
   });

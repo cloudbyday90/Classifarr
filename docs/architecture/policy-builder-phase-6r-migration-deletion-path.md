@@ -23,7 +23,9 @@ and inventory work, but new runtime/rebuild callers should use the bounded
 migration wrapper. That wrapper requires a successful bounded operator workflow
 result before any migration/deletion plan is considered ready. It also requires
 the bounded workflow audit to still be passing, so stale or tampered workflow
-contracts cannot authorize migration/deletion planning.
+contracts cannot authorize migration/deletion planning. The wrapper now also
+requires matching, usable, sanitized workflow quality snapshots before returning
+the migration/deletion plan.
 
 ## Problem
 
@@ -97,6 +99,11 @@ delete replaced surfaces after gates pass
    result so deletion gates cannot be evaluated against stale or mismatched
    evidence, intent, readiness, or workflow state.
 
+7. **Require workflow quality before migration planning.**
+   Migration/deletion planning should block missing, insufficient, or mismatched
+   workflow quality so artifact deletion decisions cannot run on incomplete
+   evidence state.
+
 ## Pros And Cons
 
 Pros:
@@ -108,6 +115,8 @@ Pros:
 - Creates a testable inventory for future cleanup and release readiness.
 - Prevents migration/deletion readiness from being detached from the bounded
   operator workflow and its evidence provenance.
+- Prevents migration/deletion readiness from being detached from the bounded
+  workflow quality that allowed the operator workflow to render.
 
 Cons:
 
@@ -118,6 +127,7 @@ Cons:
   policy.
 - Existing pure plan builders still exist for compatibility until runtime
   migration paths move onto the bounded wrapper.
+- Quality checks add another fixture invariant for bounded migration tests.
 
 ## Final Recommendation Stack
 
@@ -129,6 +139,8 @@ Cons:
   `server/src/__tests__/services/policyBuilderPhase6MigrationDeletionPath.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-migration-deletion-path.md`
+- Quality gate documentation:
+  `docs/architecture/policy-builder-phase-6r-migration-quality-gate.md`
 - Roadmap owner:
   Phase 6R.6 Migration And Deletion Path in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
@@ -198,6 +210,8 @@ workflowBoundary.workflowVersion
 workflowBoundary.workflowId
 workflowBoundary.workflowAuditOk
 workflowBoundary.readinessStateId
+workflowBoundary.quality
+workflowBoundary.qualityMatch
 workflowBoundary.projectionFingerprint
 projectionFingerprintMatch
 ```
@@ -211,9 +225,12 @@ projectionFingerprintMatch
 - The bounded wrapper rejects failed workflow contracts, missing bounded
   provenance, mismatched projection fingerprints, and non-passing bounded
   workflow audits before returning a migration/deletion plan.
+- The bounded wrapper rejects missing, insufficient, or mismatched sanitized
+  workflow quality before returning a migration/deletion plan.
 
 ## Next Step
 
+Run the Phase 6R completion audit against the quality-gated handoff chain, then
 Phase 7R.1 Runtime Decision Inventory And Cutline should inventory the runtime
 classification, routing, question, and learning paths against the completed
 Phase 6R engine contracts.

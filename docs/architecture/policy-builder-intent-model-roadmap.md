@@ -3500,6 +3500,11 @@ Implementation status:
   context to the migration plan before the migration/deletion audit can pass.
 - The bounded migration entry point now also requires the upstream bounded
   workflow audit to pass before migration/deletion planning can proceed.
+- The bounded migration entry point now requires the bounded workflow result and
+  embedded workflow context to carry matching, usable evidence-quality
+  snapshots before migration/deletion planning can proceed.
+- The Phase 6R.6 quality-gated migration hardening is documented in
+  [Policy Builder Phase 6R Migration Quality Gate](policy-builder-phase-6r-migration-quality-gate.md).
 
 ## Phase 6R Work Sequence
 

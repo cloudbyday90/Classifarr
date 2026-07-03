@@ -1,3 +1,7 @@
+import {
+  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
+} from './policyBuilderPhase6EvidenceQuality.mjs';
+
 const PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS = Object.freeze({
   KEEP_ENGINE_PRIMITIVE: 'keep_engine_primitive',
   MIGRATION_VERIFIER: 'migration_verifier',
@@ -41,6 +45,9 @@ const PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS = Object.freeze({
   MISSING_BOUNDED_PROVENANCE: 'missing_bounded_provenance',
   BOUNDED_PROVENANCE_MISMATCH: 'bounded_provenance_mismatch',
   BOUNDED_WORKFLOW_AUDIT_NOT_PASSING: 'bounded_workflow_audit_not_passing',
+  MISSING_BOUNDED_QUALITY: 'missing_bounded_quality',
+  BOUNDED_QUALITY_INSUFFICIENT: 'bounded_quality_insufficient',
+  BOUNDED_QUALITY_MISMATCH: 'bounded_quality_mismatch',
 });
 
 const PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS = Object.freeze({
@@ -563,6 +570,46 @@ function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function normalizeQualitySnapshot(quality = null) {
+  const normalized = asObject(quality);
+  const reasonIds = asArray(normalized.reasonIds)
+    .map(reasonId => normalizeString(reasonId))
+    .filter(Boolean)
+    .sort();
+
+  return {
+    version: normalized.version || null,
+    statusId: normalized.statusId || null,
+    score: Number.isFinite(Number(normalized.score)) ? Number(normalized.score) : null,
+    nextActionId: normalized.nextActionId || null,
+    reasonIds,
+    counts: asObject(normalized.counts),
+    hasIdentityEvidence: normalized.hasIdentityEvidence === true,
+    hasDeclaredIdentityEvidence: normalized.hasDeclaredIdentityEvidence === true,
+    hasObservedIdentityEvidence: normalized.hasObservedIdentityEvidence === true,
+    hasStaleProfileEvidence: normalized.hasStaleProfileEvidence === true,
+  };
+}
+
+function hasQualitySnapshot(quality = null) {
+  return Boolean(normalizeQualitySnapshot(quality).statusId);
+}
+
+function qualitySnapshotsMatch(left = null, right = null) {
+  const leftSnapshot = normalizeQualitySnapshot(left);
+  const rightSnapshot = normalizeQualitySnapshot(right);
+
+  return Boolean(leftSnapshot.statusId) &&
+    leftSnapshot.version === rightSnapshot.version &&
+    leftSnapshot.statusId === rightSnapshot.statusId &&
+    leftSnapshot.nextActionId === rightSnapshot.nextActionId &&
+    leftSnapshot.reasonIds.join('|') === rightSnapshot.reasonIds.join('|');
+}
+
 function listPolicyBuilderPhase6MigrationArtifacts() {
   return DEFAULT_MIGRATION_ARTIFACTS;
 }
@@ -774,14 +821,87 @@ function boundedWorkflowAuditPasses(boundedWorkflowResult = {}) {
   return boundedWorkflowResult?.workflowAudit?.ok === true;
 }
 
+function getWorkflowBoundaryContext(boundedWorkflowResult = {}) {
+  return asObject(
+    boundedWorkflowResult.boundaryContext ||
+    boundedWorkflowResult.workflow?.boundaryContext
+  );
+}
+
+function getEmbeddedWorkflowBoundaryContext(boundedWorkflowResult = {}) {
+  return asObject(boundedWorkflowResult.workflow?.boundaryContext);
+}
+
+function getWorkflowBoundaryQualities(boundaryContext = {}) {
+  const context = asObject(boundaryContext);
+  return [
+    context.intentBoundary?.quality,
+    context.readinessBoundary?.evidenceQuality,
+    context.readinessBoundary?.intentQuality,
+    context.readinessBoundary?.learningQuality,
+  ];
+}
+
+function collectBoundedWorkflowQualityIssues(boundedWorkflowResult = {}) {
+  const issues = [];
+  const sourceBoundary = getWorkflowBoundaryContext(boundedWorkflowResult);
+  const embeddedBoundary = getEmbeddedWorkflowBoundaryContext(boundedWorkflowResult);
+  const qualityValues = [
+    ...getWorkflowBoundaryQualities(sourceBoundary),
+    ...getWorkflowBoundaryQualities(embeddedBoundary),
+  ];
+
+  if (
+    qualityValues.length === 0 ||
+    qualityValues.some(quality => !hasQualitySnapshot(quality))
+  ) {
+    issues.push({
+      riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+      message: 'Migration planning requires sanitized workflow quality snapshots.',
+    });
+    return issues;
+  }
+
+  const normalizedQualities = qualityValues.map(quality => normalizeQualitySnapshot(quality));
+  const insufficientQuality = normalizedQualities.find(quality =>
+    quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+  );
+
+  if (insufficientQuality) {
+    issues.push({
+      riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_QUALITY_INSUFFICIENT,
+      message: 'Migration planning requires usable bounded workflow quality.',
+      qualityStatusId: insufficientQuality.statusId,
+      nextActionId: insufficientQuality.nextActionId,
+      reasonIds: insufficientQuality.reasonIds,
+    });
+  }
+
+  const referenceQuality = qualityValues[0];
+  const qualityMismatch = qualityValues.some(quality =>
+    !qualitySnapshotsMatch(referenceQuality, quality)
+  );
+
+  if (
+    qualityMismatch ||
+    sourceBoundary.qualityMatch !== true ||
+    embeddedBoundary.qualityMatch !== true
+  ) {
+    issues.push({
+      riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_QUALITY_MISMATCH,
+      message: 'Migration planning requires bounded workflow quality to match across workflow contexts.',
+    });
+  }
+
+  return issues;
+}
+
 function buildBoundedMigrationContext(boundedWorkflowResult = {}) {
   const intentFingerprint = getWorkflowIntentFingerprint(boundedWorkflowResult);
   const readinessFingerprint = getWorkflowReadinessFingerprint(boundedWorkflowResult);
-  const sourceBoundary = boundedWorkflowResult.boundaryContext ||
-    boundedWorkflowResult.workflow?.boundaryContext ||
-    null;
+  const sourceBoundary = getWorkflowBoundaryContext(boundedWorkflowResult);
 
-  if (!intentFingerprint || !readinessFingerprint || !sourceBoundary) {
+  if (!intentFingerprint || !readinessFingerprint || !Object.keys(sourceBoundary).length) {
     return null;
   }
 
@@ -792,6 +912,8 @@ function buildBoundedMigrationContext(boundedWorkflowResult = {}) {
       workflowId: boundedWorkflowResult.workflow?.workflowId || null,
       workflowAuditOk: boundedWorkflowAuditPasses(boundedWorkflowResult),
       readinessStateId: boundedWorkflowResult.workflow?.readiness?.stateId || null,
+      quality: normalizeQualitySnapshot(sourceBoundary.intentBoundary?.quality),
+      qualityMatch: collectBoundedWorkflowQualityIssues(boundedWorkflowResult).length === 0,
       projectionFingerprint:
         sourceBoundary.intentBoundary?.projectionFingerprint ||
         sourceBoundary.readinessBoundary?.projectionFingerprint ||
@@ -827,6 +949,13 @@ function buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
       riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_WORKFLOW_AUDIT_NOT_PASSING,
       message: 'Migration planning requires a passing bounded operator workflow audit.',
     });
+  }
+
+  if (
+    boundedWorkflowResult?.ok === true &&
+    boundedWorkflowResult?.workflow
+  ) {
+    boundaryIssues.push(...collectBoundedWorkflowQualityIssues(boundedWorkflowResult));
   }
 
   const boundaryContext = buildBoundedMigrationContext(boundedWorkflowResult);
