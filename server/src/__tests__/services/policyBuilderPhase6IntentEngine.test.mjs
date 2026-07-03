@@ -6,11 +6,16 @@ import {
   buildPolicyBuilderPhase6EvidenceProjection,
 } from '../../services/policyBuilderPhase6EvidenceEngine.mjs';
 import {
+  buildPolicyBuilderPhase6BoundedEvidenceProjection,
+} from '../../services/policyBuilderPhase6EvidenceBoundary.mjs';
+import {
   PHASE6R_INTENT_AUDIT_RISK_IDS,
+  PHASE6R_INTENT_BOUNDARY_STATUS_IDS,
   PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS,
   PHASE6R_INTENT_FIELD_IDS,
   PHASE6R_INTENT_WARNING_IDS,
   buildPolicyBuilderPhase6IntentDraft,
+  buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
   buildPolicyBuilderPhase6IntentEngineAudit,
   getPolicyBuilderPhase6IntentField,
   listPolicyBuilderPhase6IntentFields,
@@ -89,6 +94,97 @@ describe('policyBuilderPhase6IntentEngine', () => {
       expect.objectContaining({ label: 'Recent route succeeded' }),
     ]));
     expect(intent.confidence.level).toBe(PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS.HIGH);
+  });
+
+  test('builds bounded intent only from a successful evidence boundary result', () => {
+    const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        libraryProfile: {
+          identityCandidates: [
+            { key: 'studio:pixar', label: 'Pixar', confidence: 0.94, count: 18 },
+          ],
+        },
+        operatorIntent: {
+          hardLimits: ['No NC-17'],
+        },
+      },
+    });
+
+    const result = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+      boundedEvidenceResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: true,
+      statusId: PHASE6R_INTENT_BOUNDARY_STATUS_IDS.READY,
+      issueCount: 0,
+      nextPhase: expect.objectContaining({
+        phaseId: '6r_3',
+      }),
+    }));
+    expect(result.intent).toEqual(expect.objectContaining({
+      source: 'phase6r_bounded_evidence_boundary',
+      evidenceBoundary: expect.objectContaining({
+        boundaryVersion: boundedEvidenceResult.version,
+        statusId: boundedEvidenceResult.statusId,
+        projectionFingerprint: expect.objectContaining({
+          fingerprint: boundedEvidenceResult.projectionFingerprint.fingerprint,
+        }),
+      }),
+    }));
+    expect(result.intent.belongs_here).toEqual([
+      expect.objectContaining({ label: 'Pixar' }),
+    ]);
+    expect(JSON.stringify(result.intent.evidenceBoundary)).not.toContain('Pixar');
+    expect(result.intentAudit.ok).toBe(true);
+  });
+
+  test('blocks bounded intent when evidence boundary failed or lacks fingerprint', () => {
+    const blockedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        metadataEvidence: [{
+          label: 'Unsafe provider evidence',
+          providerPayload: { title: 'raw' },
+        }],
+      },
+    });
+    const blocked = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+      boundedEvidenceResult: blockedEvidenceResult,
+    });
+
+    expect(blocked).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
+      intent: null,
+      intentAudit: null,
+    }));
+    expect(blocked.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_BOUNDARY,
+      }),
+      expect.objectContaining({
+        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
+      }),
+    ]));
+
+    const validEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+      evidenceInput: {
+        operatorIntent: {
+          belongsHere: ['Animated Movies'],
+        },
+      },
+    });
+    const missingFingerprint = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+      boundedEvidenceResult: {
+        ok: true,
+        projection: validEvidenceResult.projection,
+      },
+    });
+    expect(missingFingerprint.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
+      }),
+    ]));
   });
 
   test('demotes broad genre identity to helpful evidence unless specific support exists', () => {

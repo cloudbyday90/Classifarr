@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Production Naming Cutover Roadmap** — added Phase 9R to the
+  intent-model roadmap so phase-coded production services, contracts, telemetry,
+  and adapters are renamed to durable product-domain names after the rebuilt
+  engine, runtime, storage, and legacy-removal work is proven.
+- **Policy Builder Phase 6R Intent Boundary Alignment** — added a bounded
+  Phase 6R.2 intent entry point that requires a successful Phase 6R.1 evidence
+  boundary result, carries the sanitized evidence projection fingerprint into
+  the intent draft, and blocks failed or unfingerprinted evidence handoffs.
 - **Policy Builder Phase 6R Evidence Projection Fingerprint** — added a
   sanitized SHA-256 fingerprint and provenance summary to the Phase 6R.1
   evidence boundary so downstream engines can correlate bounded evidence

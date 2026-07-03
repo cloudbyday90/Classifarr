@@ -6,7 +6,10 @@ Implemented as the second Phase 6R engine contract.
 
 This slice consumes Phase 6R evidence projection and produces proposed
 destination intent. It does not persist policy intent, create learning,
-execute routing, call providers, or replace runtime classification paths.
+execute routing, call providers, or replace runtime classification paths. New
+runtime and rebuild callers should use the bounded intent entry point, which
+requires the Phase 6R.1 evidence boundary result and carries the evidence
+projection fingerprint forward.
 
 ## Problem
 
@@ -39,6 +42,15 @@ The important boundary is authority:
   provides a basis for verifying application security controls, including
   server-side validation and business-logic controls. The intent engine is
   server-owned and auditable.
+- [OWASP Top 10 for Large Language Model Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+  identifies output validation and overreliance as core LLM risks. The bounded
+  intent entry point treats evidence as validated server data and blocks failed
+  evidence-boundary handoffs before intent inference.
+- [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
+  recommend stable attribute names for operations and data. The intent engine
+  preserves the Phase 6R.1 projection fingerprint and trace attributes so later
+  telemetry can correlate which bounded evidence produced an intent draft
+  without exposing raw evidence labels.
 
 ## Recommendations
 
@@ -66,6 +78,12 @@ The important boundary is authority:
    Confidence is a simple bounded signal with reason codes. It is not a hidden
    policy score and should not become runtime authorization by itself.
 
+7. **Require bounded evidence for new callers.**
+   `buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence` consumes the
+   Phase 6R.1 boundary result, rejects failed evidence boundaries, requires the
+   projection fingerprint, and attaches a sanitized evidence-boundary snapshot
+   to the intent draft.
+
 ## Pros And Cons
 
 Pros:
@@ -75,6 +93,10 @@ Pros:
 - Stops provider metadata from defining destination identity.
 - Provides a clean handoff into Phase 6R.3 Learning Guard.
 - Creates an executable audit for future changes.
+- Prevents new runtime/rebuild callers from bypassing Phase 6R.1 input and
+  projection audits.
+- Carries deterministic evidence provenance into intent without leaking raw
+  evidence labels in the boundary snapshot.
 
 Cons:
 
@@ -82,11 +104,15 @@ Cons:
 - It does not yet merge or compare legacy preset intent contracts.
 - It does not persist native intent storage.
 - It does not run runtime classification or Arr routing.
+- The older direct draft reducer remains for unit-level compatibility and must
+  not be used as a runtime boundary.
 
 ## Final Recommendation Stack
 
 - Evidence input:
   `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
+- Bounded evidence boundary:
+  `server/src/services/policyBuilderPhase6EvidenceBoundary.mjs`
 - Intent engine:
   `server/src/services/policyBuilderPhase6IntentEngine.mjs`
 - Test module:
@@ -115,6 +141,7 @@ assumptions[]
 warnings[]
 learningSideEffects[]
 bridgeCompatibility
+evidenceBoundary
 ```
 
 Each intent entry keeps:
@@ -137,6 +164,27 @@ operatorDeclared
 The contract intentionally keeps `learningSideEffects` empty. Phase 6R.3 owns
 the decision of whether an outcome or answer can become durable learning.
 
+For bounded runtime/rebuild callers, the intent service returns:
+
+```text
+ok
+statusId
+evidenceBoundary
+intent
+intentAudit
+issueCount
+issues
+nextPhase
+```
+
+The bounded status IDs are:
+
+```text
+ready
+blocked_by_evidence_boundary
+blocked_by_intent_audit
+```
+
 ## Security Outcome
 
 - Intent proposals are generated server-side.
@@ -146,6 +194,10 @@ the decision of whether an outcome or answer can become durable learning.
 - Observed absence creates review warnings only.
 - Hard limits and avoid rules require durable operator-declared authority.
 - Legacy templates remain draft seeds and compatibility bridge inputs only.
+- New callers can require a successful evidence boundary and projection
+  fingerprint before intent inference.
+- The intent draft carries a compact evidence-boundary snapshot for traceability
+  without raw provider payloads or evidence labels in the boundary metadata.
 
 ## Next Step
 

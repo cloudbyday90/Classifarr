@@ -10,6 +10,12 @@ import {
   getPolicyBuilderPhase6EvidenceBucket,
 } from './policyBuilderPhase6EvidenceEngine.mjs';
 
+const PHASE6R_INTENT_BOUNDARY_STATUS_IDS = Object.freeze({
+  READY: 'ready',
+  BLOCKED_BY_EVIDENCE_BOUNDARY: 'blocked_by_evidence_boundary',
+  BLOCKED_BY_INTENT_AUDIT: 'blocked_by_intent_audit',
+});
+
 const PHASE6R_INTENT_FIELD_IDS = Object.freeze({
   BELONGS_HERE: 'belongs_here',
   HELPFUL_MATCHES: 'helpful_matches',
@@ -62,6 +68,8 @@ const PHASE6R_INTENT_AUDIT_RISK_IDS = Object.freeze({
   OBSERVED_ABSENCE_PROMOTED_TO_EXCLUSION: 'observed_absence_promoted_to_exclusion',
   LEGACY_TEMPLATE_AS_AUTHORITY: 'legacy_template_as_authority',
   DIRECT_LEARNING_FROM_INTENT: 'direct_learning_from_intent',
+  MISSING_EVIDENCE_BOUNDARY: 'missing_evidence_boundary',
+  MISSING_EVIDENCE_FINGERPRINT: 'missing_evidence_fingerprint',
 });
 
 const BROAD_GENRE_LABELS = Object.freeze([
@@ -306,6 +314,7 @@ function createEmptyIntentDraft() {
   return {
     version: 'phase6r.intent.v1',
     source: 'phase6r_evidence_engine',
+    evidenceBoundary: null,
     belongs_here: [],
     helpful_matches: [],
     hard_limits: [],
@@ -324,6 +333,29 @@ function createEmptyIntentDraft() {
       legacyTemplatesAllowedAs: 'draft_seed_only',
       customSignalsAllowedAs: 'compatibility_bridge_only',
       nativeStorageReady: false,
+    },
+  };
+}
+
+function buildEvidenceBoundarySnapshot(boundedEvidenceResult = {}) {
+  if (!boundedEvidenceResult || typeof boundedEvidenceResult !== 'object') {
+    return null;
+  }
+
+  const projectionFingerprint = boundedEvidenceResult.projectionFingerprint;
+  if (!projectionFingerprint || typeof projectionFingerprint !== 'object') {
+    return null;
+  }
+
+  return {
+    boundaryVersion: boundedEvidenceResult.version || null,
+    statusId: boundedEvidenceResult.statusId || null,
+    projectionFingerprint: {
+      version: projectionFingerprint.version || null,
+      algorithm: projectionFingerprint.algorithm || null,
+      fingerprint: projectionFingerprint.fingerprint || null,
+      provenance: projectionFingerprint.provenance || null,
+      traceAttributes: projectionFingerprint.traceAttributes || null,
     },
   };
 }
@@ -496,6 +528,59 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
   return intent;
 }
 
+function buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+  boundedEvidenceResult,
+} = {}) {
+  const evidenceIssues = [];
+
+  if (boundedEvidenceResult?.ok !== true || !boundedEvidenceResult?.projection) {
+    evidenceIssues.push({
+      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_BOUNDARY,
+      message: 'Intent inference requires a successful Phase 6R.1 bounded evidence result.',
+    });
+  }
+
+  const evidenceBoundary = buildEvidenceBoundarySnapshot(boundedEvidenceResult);
+  if (!evidenceBoundary?.projectionFingerprint?.fingerprint) {
+    evidenceIssues.push({
+      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
+      message: 'Intent inference requires a bounded evidence projection fingerprint.',
+    });
+  }
+
+  if (evidenceIssues.length > 0) {
+    return {
+      ok: false,
+      statusId: PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
+      evidenceBoundary,
+      intent: null,
+      intentAudit: null,
+      issueCount: evidenceIssues.length,
+      issues: evidenceIssues,
+      nextPhase: null,
+    };
+  }
+
+  const intent = buildPolicyBuilderPhase6IntentDraft(boundedEvidenceResult.projection);
+  intent.source = 'phase6r_bounded_evidence_boundary';
+  intent.evidenceBoundary = evidenceBoundary;
+  const intentAudit = buildPolicyBuilderPhase6IntentEngineAudit(intent);
+  const ok = intentAudit.ok === true;
+
+  return {
+    ok,
+    statusId: ok
+      ? PHASE6R_INTENT_BOUNDARY_STATUS_IDS.READY
+      : PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_AUDIT,
+    evidenceBoundary,
+    intent,
+    intentAudit,
+    issueCount: intentAudit.issueCount,
+    issues: intentAudit.validation.issues,
+    nextPhase: ok ? intentAudit.nextPhase : null,
+  };
+}
+
 function getPolicyBuilderPhase6IntentField(fieldId) {
   return PHASE6R_INTENT_FIELD_CONTRACTS.find(field => field.id === fieldId) || null;
 }
@@ -651,6 +736,22 @@ function validatePolicyBuilderPhase6IntentDraft(intent = {}) {
     });
   }
 
+  if (intent?.source === 'phase6r_bounded_evidence_boundary') {
+    if (!intent.evidenceBoundary || typeof intent.evidenceBoundary !== 'object') {
+      issues.push({
+        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_BOUNDARY,
+        message: 'Bounded intent drafts must retain the evidence boundary snapshot.',
+      });
+    }
+
+    if (!normalizeString(intent?.evidenceBoundary?.projectionFingerprint?.fingerprint)) {
+      issues.push({
+        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
+        message: 'Bounded intent drafts must retain the evidence projection fingerprint.',
+      });
+    }
+  }
+
   return {
     ok: issues.length === 0,
     issueCount: issues.length,
@@ -678,12 +779,14 @@ function buildPolicyBuilderPhase6IntentEngineAudit(intent = buildPolicyBuilderPh
 
 export {
   BROAD_GENRE_LABELS,
+  PHASE6R_INTENT_BOUNDARY_STATUS_IDS,
   PHASE6R_INTENT_ASSUMPTION_IDS,
   PHASE6R_INTENT_AUDIT_RISK_IDS,
   PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS,
   PHASE6R_INTENT_FIELD_IDS,
   PHASE6R_INTENT_WARNING_IDS,
   buildPolicyBuilderPhase6IntentDraft,
+  buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
   buildPolicyBuilderPhase6IntentEngineAudit,
   getPolicyBuilderPhase6IntentField,
   listPolicyBuilderPhase6IntentFields,

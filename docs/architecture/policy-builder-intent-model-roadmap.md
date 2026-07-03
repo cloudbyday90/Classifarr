@@ -1099,6 +1099,7 @@ design detail, but this table is the authoritative sequence.
 | 6R | Re-imagined policy engine roadmap | Existing Phase 6 artifacts are classified as keep/rewrite/replace/delete | None directly | Engine contracts replace diagnostic product flow |
 | 7R | Runtime automation and library rebuild | Runtime decisions use the new engine, and library-derived rebuild is explicit, guarded, and reversible | Rollback snapshots only until Phase 8R | Fewer questions and safer policy replacement |
 | 8R | Native intent storage and legacy removal | Native intent becomes the durable policy model after 0R-7R contracts prove stable | New intent tables plus bounded rollback snapshots | Runtime reads native intent and legacy paths are removed after gates |
+| 9R | Production naming and contract stabilization | Phase-coded implementation names are replaced with durable product names | No schema behavior change unless rename migrations are explicitly required | Runtime keeps native behavior while public/internal code names stop referencing roadmap phases |
 
 Non-negotiable sequencing rules:
 
@@ -1111,6 +1112,9 @@ Non-negotiable sequencing rules:
   evidence, intent, learning, readiness, and migration contracts.
 - Do not drop legacy preset/custom-signal storage until Phase 8R parity, backup,
   restore, replay, and rollback are proven.
+- Do not treat phase-coded service, route, contract, event, or test names as
+  permanent production architecture. Phase names are planning language; durable
+  product code must be renamed after the replacement model is proven.
 - Do not treat local Ollama execution as lower risk; local models still go
   through the same semantic normalizer and authority limits.
 
@@ -3228,6 +3232,10 @@ Implementation status:
   proposed destination intent for `belongs_here`, `helpful_matches`,
   `hard_limits`, `avoid`, `ask_when`, `routing_target`, confidence,
   assumptions, and warnings.
+- The intent engine now exposes a bounded entry point that consumes the Phase
+  6R.1 evidence boundary result, requires the projection fingerprint, blocks
+  failed evidence-boundary handoffs, and carries a sanitized evidence-boundary
+  snapshot into the intent draft for downstream correlation.
 - The contract demotes unsupported broad-genre identity to helpful evidence,
   prevents metadata from owning destination identity, treats stale or missing
   evidence as review triggers instead of exclusions, keeps hard limits and avoid
@@ -5779,6 +5787,130 @@ Implementation record:
   decisions, migration reports, rollback retention, native read/write behavior,
   and legacy deletion gates.
 
+## Phase 9R: Production Naming And Contract Stabilization
+
+Intent: remove roadmap-phase language from production code after the rebuilt
+policy engine, runtime automation, native storage, and legacy removal paths have
+been proven. Phase names are useful while planning and migrating; they should
+not become permanent product architecture.
+
+This phase exists because production services named after `Phase6R`, `Phase7R`,
+or `Phase8R` will be misleading once the work is complete. Future roadmap work
+will have different phase labels, and product code should describe durable
+domain concepts instead:
+
+```text
+evidence boundary
+intent inference
+learning eligibility
+automation readiness
+policy migration
+native policy storage
+```
+
+Official guidance alignment:
+
+- [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
+  supports traceable, maintainable software changes. The naming cutover must be
+  inventory-driven, tested, and reversible through normal version control.
+- [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
+  provides a basis for verifying application security controls. Renaming must
+  not weaken server-side validation, auditability, authorization, or business
+  logic boundaries.
+- [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
+  encourage stable names for operations and data. Trace attributes and event
+  names should use durable product-domain terms rather than temporary roadmap
+  phase identifiers.
+
+### 9R.1 Production Name Inventory
+
+Intent: identify every phase-coded production artifact before any rename.
+
+Tasks:
+
+- Inventory production service names, exported functions, constants, route
+  names, scripts, package commands, trace attributes, event names, API payload
+  fields, migration helpers, and generated artifacts containing:
+  - `phase`,
+  - `Phase`,
+  - `6R`,
+  - `7R`,
+  - `8R`,
+  - `R6`,
+  - roadmap-only labels.
+- Classify each reference as:
+  - **Rename in production code**,
+  - **Keep in docs/history**,
+  - **Keep in tests only as migration evidence**,
+  - **Delete with obsolete migration tooling**.
+- Build a rename map from phase-coded names to durable product names.
+
+Acceptance criteria:
+
+- Every phase-coded production reference has a keep/rename/delete decision.
+- Docs may retain phase names; runtime product code cannot without an explicit
+  exemption.
+- The rename map is checked in before code moves.
+
+### 9R.2 Durable Domain Module Cutover
+
+Intent: move server/client production modules to durable domain names.
+
+Tasks:
+
+- Rename Phase 6R evidence, intent, readiness, learning, and workflow modules to
+  product-domain module names.
+- Rename Phase 7R runtime/rebuild modules to runtime-domain names.
+- Rename Phase 8R native storage and migration modules to storage/migration
+  domain names after native storage is stable.
+- Keep temporary adapter exports only when needed for one release window, and
+  record their deletion gate.
+
+Acceptance criteria:
+
+- Runtime imports use durable product module names.
+- Temporary compatibility exports have explicit removal dates/gates.
+- No new production code imports phase-coded modules.
+
+### 9R.3 Contract And Telemetry Naming Cutover
+
+Intent: remove phase-coded labels from payloads, traces, events, and operator
+diagnostics that can live beyond the roadmap.
+
+Tasks:
+
+- Rename internal contract versions from roadmap names to durable names where
+  external compatibility allows it.
+- Rename trace attributes and event labels to product-domain terms.
+- Keep migration-history records clear enough to explain old phase-origin data
+  without exposing phase labels as current product concepts.
+
+Acceptance criteria:
+
+- New runtime traces and events do not use phase-coded identifiers.
+- Public or persisted compatibility fields are changed only through explicit
+  migration/backward-compatibility rules.
+- Diagnostic output describes destination evidence, intent, learning, readiness,
+  migration, and storage directly.
+
+### 9R.4 Naming Regression And Completion Audit
+
+Intent: make the final naming state testable.
+
+Tasks:
+
+- Add a production-code scanner that fails when new phase-coded names appear in
+  runtime modules without an allow-listed reason.
+- Run the scanner in focused tests or CI before the rebuild is called complete.
+- Update docs to show the final production module map.
+
+Acceptance criteria:
+
+- Production-code phase references are either gone or explicitly allow-listed
+  as docs/history/test migration evidence.
+- Full focused server/client tests pass after rename.
+- The roadmap records the final durable module names.
+
 ## Testing Strategy
 
 Required coverage should follow the re-imagined phase boundaries:
@@ -5822,6 +5954,11 @@ Required coverage should follow the re-imagined phase boundaries:
   - converted policies reject legacy write drift,
   - backup/restore includes native intent records,
   - deletion gates are testable before legacy path removal.
+- Phase 9R production naming tests:
+  - production modules no longer import phase-coded service names,
+  - trace attributes and runtime event labels use durable product-domain terms,
+  - any remaining phase-coded references are allow-listed as docs, tests,
+    migration history, or temporary adapter evidence.
 
 ## Risks
 
@@ -5843,6 +5980,8 @@ Required coverage should follow the re-imagined phase boundaries:
   instead of seeding editable declared intent.
 - Test drag: old tests preserve abandoned UI surfaces or legacy payload behavior
   after their deletion gates should have passed.
+- Phase-name drag: production code keeps roadmap phase labels after the roadmap
+  is no longer relevant, making future work harder to reason about.
 
 ## Recommended Next Work
 
@@ -5861,6 +6000,8 @@ Builder lane:
    decisions.
 5. Do not continue replay/provider/TMDB UI work unless the artifact inventory
    classifies it as an engine primitive or migration verifier.
+6. After Phase 8R legacy removal is proven, execute Phase 9R so production code
+   names describe product domains rather than completed roadmap phases.
 
 Runtime lane:
 
