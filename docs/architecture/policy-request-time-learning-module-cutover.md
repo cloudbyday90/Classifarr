@@ -95,7 +95,7 @@ Validation should include:
 
 ```text
 cd server
-node ../scripts/run-jest.mjs --testPathPatterns="policyRequestTimeLearning|policyBuilderPhase7LibraryPolicyRebuild|policyBuilderPhase7RuntimeMetricsTrace|policyBuilderPhase7CompletionAudit|policyRuntimeDecisionInventory|policyBuilderPhase7RuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
+node ../scripts/run-jest.mjs --testPathPatterns="policyRequestTimeLearning|policyLibraryPolicyRebuild|policyBuilderPhase7RuntimeMetricsTrace|policyBuilderPhase7CompletionAudit|policyRuntimeDecisionInventory|policyBuilderPhase7RuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
 npm run lint:docs
 npm --prefix server run lint:security -- --quiet
 node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid
@@ -104,7 +104,7 @@ npm --prefix server run test:unit -- --no-coverage --runInBand
 
 ## Next Step
 
-Cut over Library-Derived Policy Rebuild to a durable product-domain module name
-because request-time learning now exports durable names and the rebuild
-contract is the next direct runtime consumer still carrying Phase 7R production
-naming.
+Cut over Migration Verifier And Rollback Path to a durable product-domain
+module name because library-derived policy rebuild now exports durable names
+and the verifier is the next direct runtime consumer still carrying Phase 7R
+production naming.

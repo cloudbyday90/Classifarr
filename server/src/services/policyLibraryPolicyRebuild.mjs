@@ -20,7 +20,7 @@ import {
   validatePolicyRequestTimeLearningDecision,
 } from './policyRequestTimeLearning.mjs';
 
-const PHASE7R_REBUILD_PROPOSAL_STATUS_IDS = Object.freeze({
+const POLICY_REBUILD_PROPOSAL_STATUS_IDS = Object.freeze({
   READY_FOR_REVIEW: 'ready_for_review',
   NEEDS_MORE_EVIDENCE: 'needs_more_evidence',
   NEEDS_OPERATOR_CONSTRAINT_REVIEW: 'needs_operator_constraint_review',
@@ -29,7 +29,7 @@ const PHASE7R_REBUILD_PROPOSAL_STATUS_IDS = Object.freeze({
   BLOCKED: 'blocked',
 });
 
-const PHASE7R_REBUILD_REASON_IDS = Object.freeze({
+const POLICY_REBUILD_REASON_IDS = Object.freeze({
   LIBRARY_PROFILE_CONSUMED: 'library_profile_consumed',
   GUARDED_OUTCOMES_CONSUMED: 'guarded_outcomes_consumed',
   EXPLICIT_CONSTRAINTS_PRESERVED: 'explicit_constraints_preserved',
@@ -42,7 +42,7 @@ const PHASE7R_REBUILD_REASON_IDS = Object.freeze({
   SIDE_EFFECTS_DISABLED: 'side_effects_disabled',
 });
 
-const PHASE7R_REBUILD_WARNING_IDS = Object.freeze({
+const POLICY_REBUILD_WARNING_IDS = Object.freeze({
   OBSERVED_ABSENCE_WARNING_ONLY: 'observed_absence_warning_only',
   EXPLICIT_CONSTRAINT_REVIEW_REQUIRED: 'explicit_constraint_review_required',
   MISSING_IDENTITY_EVIDENCE: 'missing_identity_evidence',
@@ -53,7 +53,7 @@ const PHASE7R_REBUILD_WARNING_IDS = Object.freeze({
   GUARDED_OUTCOME_INVALID_REQUEST_PROOF: 'guarded_outcome_invalid_request_proof',
 });
 
-const PHASE7R_REBUILD_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_REBUILD_AUDIT_RISK_IDS = Object.freeze({
   MISSING_PROPOSAL_VERSION: 'missing_proposal_version',
   MISSING_INTENT_DRAFT: 'missing_intent_draft',
   INVALID_INTENT_DRAFT: 'invalid_intent_draft',
@@ -190,7 +190,7 @@ function normalizeObservedAbsences(input = {}) {
   return normalizeSignals(input.observedAbsences || input.absentSignals)
     .map(signal => ({
       ...signal,
-      reasonCode: signal.reasonCode || PHASE7R_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY,
+      reasonCode: signal.reasonCode || POLICY_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY,
     }));
 }
 
@@ -262,7 +262,7 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
     if (!hasFingerprint) {
       outcomeSummaries.push({
         ...summary,
-        rejectionReasonId: PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
+        rejectionReasonId: POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
       });
       return;
     }
@@ -270,7 +270,7 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
     if (!outcome.questionReductionProof?.validation) {
       outcomeSummaries.push({
         ...summary,
-        rejectionReasonId: PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF,
+        rejectionReasonId: POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF,
       });
       return;
     }
@@ -278,7 +278,7 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
     if (!requestValidation.ok) {
       outcomeSummaries.push({
         ...summary,
-        rejectionReasonId: PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
+        rejectionReasonId: POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
       });
       return;
     }
@@ -287,7 +287,7 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
         requestTraceFingerprint !== evidenceFingerprint.fingerprint) {
       outcomeSummaries.push({
         ...summary,
-        rejectionReasonId: PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
+        rejectionReasonId: POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
       });
       return;
     }
@@ -321,13 +321,13 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
     .map(outcome => outcome.fingerprint);
   const uniqueFingerprints = Array.from(new Set(acceptedFingerprints)).sort();
   const missingFingerprintCount = outcomeSummaries
-    .filter(outcome => outcome.rejectionReasonId === PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT)
+    .filter(outcome => outcome.rejectionReasonId === POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT)
     .length;
   const missingRequestProofCount = outcomeSummaries
-    .filter(outcome => outcome.rejectionReasonId === PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF)
+    .filter(outcome => outcome.rejectionReasonId === POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF)
     .length;
   const invalidRequestProofCount = outcomeSummaries
-    .filter(outcome => outcome.rejectionReasonId === PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF)
+    .filter(outcome => outcome.rejectionReasonId === POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF)
     .length;
   const requestProofCount = outcomeSummaries
     .filter(outcome => outcome.requestProofValid)
@@ -392,7 +392,7 @@ function buildEvidenceInput(input = {}) {
       key: routing.arrRootFolderPath || routing.targetName,
       label: routing.targetName,
       value: routing.arrRootFolderPath || routing.targetName,
-      reasonCode: PHASE7R_REBUILD_REASON_IDS.ROUTING_CONFIGURATION_CONSUMED,
+      reasonCode: POLICY_REBUILD_REASON_IDS.ROUTING_CONFIGURATION_CONSUMED,
     }]
     : [];
   const freshnessOutliers = profileFreshness.stale
@@ -401,7 +401,7 @@ function buildEvidenceInput(input = {}) {
       label: 'Profile freshness',
       value: 'stale',
       stale: true,
-      reasonCode: PHASE7R_REBUILD_WARNING_IDS.STALE_PROFILE,
+      reasonCode: POLICY_REBUILD_WARNING_IDS.STALE_PROFILE,
     }]
     : [];
 
@@ -490,7 +490,7 @@ function collectWarnings({
 
   if (asArray(evidenceInput.observedAbsences).length > 0) {
     warnings.push(buildWarning(
-      PHASE7R_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY,
+      POLICY_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY,
       'Observed absence is review context only and was not promoted to an avoid or exclusion rule.',
       { target: POLICY_INTENT_FIELD_IDS.ASK_WHEN }
     ));
@@ -498,7 +498,7 @@ function collectWarnings({
 
   if (asArray(intentDraft.belongs_here).length === 0) {
     warnings.push(buildWarning(
-      PHASE7R_REBUILD_WARNING_IDS.MISSING_IDENTITY_EVIDENCE,
+      POLICY_REBUILD_WARNING_IDS.MISSING_IDENTITY_EVIDENCE,
       'The rebuild proposal needs stronger belongs-here evidence before activation.',
       { target: POLICY_INTENT_FIELD_IDS.BELONGS_HERE }
     ));
@@ -506,7 +506,7 @@ function collectWarnings({
 
   if (asArray(intentDraft.hard_limits).length > 0 || asArray(intentDraft.avoid).length > 0) {
     warnings.push(buildWarning(
-      PHASE7R_REBUILD_WARNING_IDS.EXPLICIT_CONSTRAINT_REVIEW_REQUIRED,
+      POLICY_REBUILD_WARNING_IDS.EXPLICIT_CONSTRAINT_REVIEW_REQUIRED,
       'Explicit operator constraints were preserved and should be reviewed before acceptance.',
       { target: POLICY_INTENT_FIELD_IDS.HARD_LIMITS }
     ));
@@ -514,7 +514,7 @@ function collectWarnings({
 
   if (readiness.stateId === POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING) {
     warnings.push(buildWarning(
-      PHASE7R_REBUILD_WARNING_IDS.MISSING_ROUTING_CONFIGURATION,
+      POLICY_REBUILD_WARNING_IDS.MISSING_ROUTING_CONFIGURATION,
       'Routing must be configured before this proposal can support automatic routing.',
       { target: POLICY_INTENT_FIELD_IDS.ROUTING_TARGET }
     ));
@@ -522,7 +522,7 @@ function collectWarnings({
 
   if (readiness.stateId === POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE) {
     warnings.push(buildWarning(
-      PHASE7R_REBUILD_WARNING_IDS.STALE_PROFILE,
+      POLICY_REBUILD_WARNING_IDS.STALE_PROFILE,
       'Refresh the library profile before accepting this proposal.',
       { target: 'profile_refresh' }
     ));
@@ -530,7 +530,7 @@ function collectWarnings({
 
   if (evidenceInput.guardedOutcomeEvidenceSummary?.missingFingerprintCount > 0) {
     warnings.push(buildWarning(
-      PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
+      POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
       'One or more guarded outcomes were ignored because they do not carry an upstream evidence fingerprint.',
       { target: 'guarded_outcomes', severity: 'error' }
     ));
@@ -538,7 +538,7 @@ function collectWarnings({
 
   if (evidenceInput.guardedOutcomeEvidenceSummary?.missingRequestProofCount > 0) {
     warnings.push(buildWarning(
-      PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF,
+      POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF,
       'One or more guarded outcomes were ignored because they do not carry request-time validation proof.',
       { target: 'guarded_outcomes', severity: 'error' }
     ));
@@ -546,7 +546,7 @@ function collectWarnings({
 
   if (evidenceInput.guardedOutcomeEvidenceSummary?.invalidRequestProofCount > 0) {
     warnings.push(buildWarning(
-      PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
+      POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
       'One or more guarded outcomes were ignored because request-time validation proof failed.',
       { target: 'guarded_outcomes', severity: 'error' }
     ));
@@ -555,7 +555,7 @@ function collectWarnings({
   asArray(intentDraft.warnings).forEach(warning => {
     if (warning.reasonCode === POLICY_INTENT_WARNING_IDS.OBSERVED_ABSENCE_NOT_EXCLUSION) {
       warnings.push(buildWarning(
-        PHASE7R_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY,
+        POLICY_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY,
         warning.summary || 'Observed absence stayed a warning rather than an exclusion.',
         { target: POLICY_INTENT_FIELD_IDS.ASK_WHEN }
       ));
@@ -567,47 +567,47 @@ function collectWarnings({
 
 function determineStatus({ intentDraft, readiness, warnings }) {
   if (readiness.stateId === POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE) {
-    return PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.STALE_PROFILE;
+    return POLICY_REBUILD_PROPOSAL_STATUS_IDS.STALE_PROFILE;
   }
 
   if (readiness.stateId === POLICY_AUTOMATION_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT) {
-    return PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED;
+    return POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED;
   }
 
   if (readiness.stateId === POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING) {
-    return PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_ROUTING_CONFIGURATION;
+    return POLICY_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_ROUTING_CONFIGURATION;
   }
 
   if (asArray(intentDraft.belongs_here).length === 0) {
-    return PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_MORE_EVIDENCE;
+    return POLICY_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_MORE_EVIDENCE;
   }
 
   if (warnings.some(warning =>
-    warning.reasonId === PHASE7R_REBUILD_WARNING_IDS.EXPLICIT_CONSTRAINT_REVIEW_REQUIRED
+    warning.reasonId === POLICY_REBUILD_WARNING_IDS.EXPLICIT_CONSTRAINT_REVIEW_REQUIRED
   )) {
-    return PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_OPERATOR_CONSTRAINT_REVIEW;
+    return POLICY_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_OPERATOR_CONSTRAINT_REVIEW;
   }
 
-  return PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW;
+  return POLICY_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW;
 }
 
 function buildTrace({ statusId, evidenceSourceSummary, warnings }) {
   const reasons = [
-    PHASE7R_REBUILD_REASON_IDS.LIBRARY_PROFILE_CONSUMED,
-    PHASE7R_REBUILD_REASON_IDS.GUARDED_OUTCOMES_CONSUMED,
-    PHASE7R_REBUILD_REASON_IDS.EXPLICIT_CONSTRAINTS_PRESERVED,
-    PHASE7R_REBUILD_REASON_IDS.ROUTING_CONFIGURATION_CONSUMED,
-    PHASE7R_REBUILD_REASON_IDS.OUTLIERS_REVIEWED,
-    PHASE7R_REBUILD_REASON_IDS.PROFILE_FRESHNESS_REVIEWED,
-    PHASE7R_REBUILD_REASON_IDS.OPERATOR_ACCEPTANCE_REQUIRED,
-    PHASE7R_REBUILD_REASON_IDS.ROLLBACK_SNAPSHOT_REQUIRED,
-    PHASE7R_REBUILD_REASON_IDS.SIDE_EFFECTS_DISABLED,
+    POLICY_REBUILD_REASON_IDS.LIBRARY_PROFILE_CONSUMED,
+    POLICY_REBUILD_REASON_IDS.GUARDED_OUTCOMES_CONSUMED,
+    POLICY_REBUILD_REASON_IDS.EXPLICIT_CONSTRAINTS_PRESERVED,
+    POLICY_REBUILD_REASON_IDS.ROUTING_CONFIGURATION_CONSUMED,
+    POLICY_REBUILD_REASON_IDS.OUTLIERS_REVIEWED,
+    POLICY_REBUILD_REASON_IDS.PROFILE_FRESHNESS_REVIEWED,
+    POLICY_REBUILD_REASON_IDS.OPERATOR_ACCEPTANCE_REQUIRED,
+    POLICY_REBUILD_REASON_IDS.ROLLBACK_SNAPSHOT_REQUIRED,
+    POLICY_REBUILD_REASON_IDS.SIDE_EFFECTS_DISABLED,
   ];
 
   if (warnings.some(warning =>
-    warning.reasonId === PHASE7R_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY
+    warning.reasonId === POLICY_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY
   )) {
-    reasons.push(PHASE7R_REBUILD_REASON_IDS.OBSERVED_ABSENCE_IS_WARNING_ONLY);
+    reasons.push(POLICY_REBUILD_REASON_IDS.OBSERVED_ABSENCE_IS_WARNING_ONLY);
   }
 
   const boundedReasons = reasons.slice(0, MAX_TRACE_REASONS).map(reasonId => ({
@@ -617,7 +617,7 @@ function buildTrace({ statusId, evidenceSourceSummary, warnings }) {
 
   return {
     attributes: {
-      'classifarr.policy.rebuild.version': 'phase7r.library_policy_rebuild.v1',
+      'classifarr.policy.rebuild.version': 'policy.library_policy_rebuild.v1',
       'classifarr.policy.rebuild.status': statusId,
       'classifarr.policy.rebuild.identity_count': evidenceSourceSummary.libraryProfile.identityCount,
       'classifarr.policy.rebuild.guarded_outcome_count': evidenceSourceSummary.guardedOutcomes.count,
@@ -639,7 +639,7 @@ function buildTrace({ statusId, evidenceSourceSummary, warnings }) {
   };
 }
 
-function buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(input = {}) {
+function buildPolicyLibraryPolicyRebuildProposal(input = {}) {
   const evidenceInput = buildEvidenceInput(input);
   const evidenceProjection = buildPolicyEvidenceProjection(evidenceInput);
   const intentDraft = buildPolicyIntentDraft(evidenceProjection);
@@ -666,7 +666,7 @@ function buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(input = {}) {
   });
 
   return {
-    version: 'phase7r.library_policy_rebuild.v1',
+    version: 'policy.library_policy_rebuild.v1',
     statusId,
     library: {
       libraryId: input.library?.libraryId ?? input.libraryId ?? null,
@@ -681,11 +681,11 @@ function buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(input = {}) {
     assumptions: [
       ...asArray(intentDraft.assumptions),
       {
-        reasonCode: PHASE7R_REBUILD_REASON_IDS.OPERATOR_ACCEPTANCE_REQUIRED,
+        reasonCode: POLICY_REBUILD_REASON_IDS.OPERATOR_ACCEPTANCE_REQUIRED,
         summary: 'The rebuild proposal cannot activate until an operator accepts it.',
       },
       {
-        reasonCode: PHASE7R_REBUILD_REASON_IDS.ROLLBACK_SNAPSHOT_REQUIRED,
+        reasonCode: POLICY_REBUILD_REASON_IDS.ROLLBACK_SNAPSHOT_REQUIRED,
         summary: 'A rollback snapshot is required before any accepted replacement can apply.',
       },
     ],
@@ -716,26 +716,26 @@ function buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(input = {}) {
   };
 }
 
-function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) {
+function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
   const issues = [];
 
-  if (proposal.version !== 'phase7r.library_policy_rebuild.v1') {
+  if (proposal.version !== 'policy.library_policy_rebuild.v1') {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.MISSING_PROPOSAL_VERSION,
-      message: 'Library policy rebuild proposal must use the Phase 7R.6 version.',
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_PROPOSAL_VERSION,
+      message: 'Library policy rebuild proposal must use the policy library rebuild version.',
     });
   }
 
   if (proposal.intentDraft?.version !== 'policy.intent.v1') {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.MISSING_INTENT_DRAFT,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_INTENT_DRAFT,
       message: 'Library policy rebuild proposal must include a Phase 6R intent draft.',
     });
   } else {
     const intentValidation = validatePolicyIntentDraft(proposal.intentDraft);
     if (!intentValidation.ok) {
       issues.push({
-        riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.INVALID_INTENT_DRAFT,
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INVALID_INTENT_DRAFT,
         message: 'Library policy rebuild proposal must include a valid Phase 6R intent draft.',
         details: intentValidation.issues,
       });
@@ -745,7 +745,7 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
   const readinessValidation = validatePolicyAutomationReadiness(proposal.readiness);
   if (!readinessValidation.ok) {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.INVALID_READINESS,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INVALID_READINESS,
       message: 'Library policy rebuild proposal must include valid Phase 6R readiness.',
       details: readinessValidation.issues,
     });
@@ -753,14 +753,14 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
 
   if (proposal.acceptanceGate?.requiresExplicitOperatorAcceptance !== true) {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.MISSING_OPERATOR_ACCEPTANCE_GATE,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_OPERATOR_ACCEPTANCE_GATE,
       message: 'Library policy rebuild proposal must require explicit operator acceptance.',
     });
   }
 
   if (proposal.rollbackGate?.requiresRollbackSnapshot !== true) {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.MISSING_ROLLBACK_GATE,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_ROLLBACK_GATE,
       message: 'Library policy rebuild proposal must require a rollback snapshot before replacement.',
     });
   }
@@ -768,12 +768,12 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
   Object.entries(asObject(proposal.sideEffects)).forEach(([key, value]) => {
     if (value === true) {
       const riskId = {
-        policyActivated: PHASE7R_REBUILD_AUDIT_RISK_IDS.DIRECT_ACTIVATION,
-        policyReplaced: PHASE7R_REBUILD_AUDIT_RISK_IDS.DIRECT_POLICY_REPLACEMENT,
-        policyDeleted: PHASE7R_REBUILD_AUDIT_RISK_IDS.DIRECT_POLICY_DELETE,
-        learningWritten: PHASE7R_REBUILD_AUDIT_RISK_IDS.DIRECT_LEARNING_WRITE,
-        routingWritten: PHASE7R_REBUILD_AUDIT_RISK_IDS.DIRECT_ROUTING_WRITE,
-      }[key] || PHASE7R_REBUILD_AUDIT_RISK_IDS.DIRECT_POLICY_REPLACEMENT;
+        policyActivated: POLICY_REBUILD_AUDIT_RISK_IDS.DIRECT_ACTIVATION,
+        policyReplaced: POLICY_REBUILD_AUDIT_RISK_IDS.DIRECT_POLICY_REPLACEMENT,
+        policyDeleted: POLICY_REBUILD_AUDIT_RISK_IDS.DIRECT_POLICY_DELETE,
+        learningWritten: POLICY_REBUILD_AUDIT_RISK_IDS.DIRECT_LEARNING_WRITE,
+        routingWritten: POLICY_REBUILD_AUDIT_RISK_IDS.DIRECT_ROUTING_WRITE,
+      }[key] || POLICY_REBUILD_AUDIT_RISK_IDS.DIRECT_POLICY_REPLACEMENT;
 
       issues.push({
         riskId,
@@ -783,16 +783,16 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
   });
 
   const observedAbsenceWarnings = asArray(proposal.warnings)
-    .filter(warning => warning.reasonId === PHASE7R_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY);
+    .filter(warning => warning.reasonId === POLICY_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY);
   const observedAbsenceAvoid = asArray(proposal.intentDraft?.avoid)
-    .some(entry => entry.reasonCode === PHASE7R_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY ||
+    .some(entry => entry.reasonCode === POLICY_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY ||
       entry.reasonCode === 'observed_absence');
   if (observedAbsenceAvoid || (
     observedAbsenceWarnings.length > 0 &&
     asArray(proposal.intentDraft?.avoid).some(entry => entry.inferred === true)
   )) {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.OBSERVED_ABSENCE_PROMOTED_TO_AVOID,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.OBSERVED_ABSENCE_PROMOTED_TO_AVOID,
       message: 'Observed absence must remain a warning and cannot become an avoid/exclusion rule.',
     });
   }
@@ -800,14 +800,14 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
   const constraintSummary = proposal.evidenceSourceSummary?.explicitConstraints;
   if (constraintSummary && constraintSummary.preserved !== true) {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.EXPLICIT_CONSTRAINT_NOT_PRESERVED,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.EXPLICIT_CONSTRAINT_NOT_PRESERVED,
       message: 'Explicit operator constraints must be preserved unless the operator changes them.',
     });
   }
 
   if (!proposal.evidenceSourceSummary?.libraryProfile) {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.MISSING_EVIDENCE_SOURCE_SUMMARY,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_EVIDENCE_SOURCE_SUMMARY,
       message: 'Library policy rebuild proposal must explain evidence sources.',
     });
   }
@@ -831,21 +831,21 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
 
   if (guardedOutcomeSummary?.missingFingerprintCount > 0) {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
       message: 'Guarded outcomes must carry upstream sanitized evidence fingerprints before rebuild can consume them.',
     });
   }
 
   if (guardedOutcomeSummary?.missingRequestProofCount > 0) {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF,
       message: 'Guarded outcomes must carry request-time validation proof before rebuild can consume them.',
     });
   }
 
   if (guardedOutcomeSummary?.invalidRequestProofCount > 0) {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
       message: 'Guarded outcomes must pass request-time validation before rebuild can consume them.',
     });
   }
@@ -855,7 +855,7 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
     guardedTraceMissingFingerprintCount !== guardedOutcomeSummary.missingFingerprintCount
   )) {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_FINGERPRINT_MISMATCH,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_FINGERPRINT_MISMATCH,
       message: 'Guarded outcome fingerprint trace counts must match the rebuild source summary.',
     });
   }
@@ -866,21 +866,21 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
     guardedTraceInvalidRequestProofCount !== guardedOutcomeSummary.invalidRequestProofCount
   )) {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_REQUEST_PROOF_MISMATCH,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_REQUEST_PROOF_MISMATCH,
       message: 'Guarded outcome request-proof trace counts must match the rebuild source summary.',
     });
   }
 
   if (!proposal.confidence?.level || !Array.isArray(proposal.confidence?.reasonCodes)) {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.MISSING_CONFIDENCE,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_CONFIDENCE,
       message: 'Library policy rebuild proposal must include confidence and reason codes.',
     });
   }
 
   if (asArray(proposal.trace?.reasons).length === 0) {
     issues.push({
-      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
       message: 'Library policy rebuild proposal must include bounded trace reasons.',
     });
   }
@@ -892,18 +892,18 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
   };
 }
 
-function buildPolicyBuilderPhase7LibraryPolicyRebuildAudit(
-  proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal()
+function buildPolicyLibraryPolicyRebuildAudit(
+  proposal = buildPolicyLibraryPolicyRebuildProposal()
 ) {
-  const validation = validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal);
+  const validation = validatePolicyLibraryPolicyRebuildProposal(proposal);
 
   return {
     ok: validation.ok,
     issueCount: validation.issueCount,
     statusId: proposal.statusId || null,
     validation,
-    nextPhase: {
-      phaseId: '7r_7',
+    nextStep: {
+      stepId: 'migration_verifier_rollback',
       label: 'Migration Verifier And Rollback Path',
       reason: 'Library-derived proposals are now side-effect-free and acceptance-gated, so the next boundary is comparing proposal behavior with legacy behavior and enforcing rollback before replacement.',
     },
@@ -911,11 +911,11 @@ function buildPolicyBuilderPhase7LibraryPolicyRebuildAudit(
 }
 
 export {
-  PHASE7R_REBUILD_AUDIT_RISK_IDS,
-  PHASE7R_REBUILD_PROPOSAL_STATUS_IDS,
-  PHASE7R_REBUILD_REASON_IDS,
-  PHASE7R_REBUILD_WARNING_IDS,
-  buildPolicyBuilderPhase7LibraryPolicyRebuildAudit,
-  buildPolicyBuilderPhase7LibraryPolicyRebuildProposal,
-  validatePolicyBuilderPhase7LibraryPolicyRebuildProposal,
+  POLICY_REBUILD_AUDIT_RISK_IDS,
+  POLICY_REBUILD_PROPOSAL_STATUS_IDS,
+  POLICY_REBUILD_REASON_IDS,
+  POLICY_REBUILD_WARNING_IDS,
+  buildPolicyLibraryPolicyRebuildAudit,
+  buildPolicyLibraryPolicyRebuildProposal,
+  validatePolicyLibraryPolicyRebuildProposal,
 };

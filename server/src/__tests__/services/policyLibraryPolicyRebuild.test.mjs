@@ -15,14 +15,14 @@ import {
   buildPolicyRequestTimeLearningDecision,
 } from '../../services/policyRequestTimeLearning.mjs';
 import {
-  PHASE7R_REBUILD_AUDIT_RISK_IDS,
-  PHASE7R_REBUILD_PROPOSAL_STATUS_IDS,
-  PHASE7R_REBUILD_REASON_IDS,
-  PHASE7R_REBUILD_WARNING_IDS,
-  buildPolicyBuilderPhase7LibraryPolicyRebuildAudit,
-  buildPolicyBuilderPhase7LibraryPolicyRebuildProposal,
-  validatePolicyBuilderPhase7LibraryPolicyRebuildProposal,
-} from '../../services/policyBuilderPhase7LibraryPolicyRebuild.mjs';
+  POLICY_REBUILD_AUDIT_RISK_IDS,
+  POLICY_REBUILD_PROPOSAL_STATUS_IDS,
+  POLICY_REBUILD_REASON_IDS,
+  POLICY_REBUILD_WARNING_IDS,
+  buildPolicyLibraryPolicyRebuildAudit,
+  buildPolicyLibraryPolicyRebuildProposal,
+  validatePolicyLibraryPolicyRebuildProposal,
+} from '../../services/policyLibraryPolicyRebuild.mjs';
 
 function destination(overrides = {}) {
   return {
@@ -125,13 +125,13 @@ function baseInput(overrides = {}) {
   };
 }
 
-describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
+describe('policyLibraryPolicyRebuild', () => {
   test('builds a side-effect-free proposal from profile, guarded outcomes, constraints, and routing', () => {
-    const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput());
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput());
 
-    expect(proposal.version).toBe('phase7r.library_policy_rebuild.v1');
+    expect(proposal.version).toBe('policy.library_policy_rebuild.v1');
     expect(proposal.statusId).toBe(
-      PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_OPERATOR_CONSTRAINT_REVIEW
+      POLICY_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_OPERATOR_CONSTRAINT_REVIEW
     );
     expect(proposal.intentDraft.belongs_here).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -188,7 +188,7 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
       learningWritten: false,
       routingWritten: false,
     });
-    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal).ok).toBe(true);
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).ok).toBe(true);
   });
 
   test('rejects guarded outcomes without upstream evidence fingerprints and does not consume them', () => {
@@ -197,7 +197,7 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
     outcome.learningGuardContext.upstreamEvidenceFingerprint = null;
     outcome.trace.attributes['classifarr.runtime.request_learning.upstream_evidence_fingerprint'] = undefined;
 
-    const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput({
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
       guardedOutcomes: [
         outcome,
       ],
@@ -220,14 +220,14 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
     }));
     expect(proposal.warnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
+        reasonId: POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
         severity: 'error',
       }),
     ]));
-    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal).issues)
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
         }),
       ]));
   });
@@ -240,14 +240,14 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
     invalidProof.questionReductionProof.validation.ok = false;
     invalidProof.questionReductionProof.validation.issueCount = 1;
 
-    const missingProofProposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput({
+    const missingProofProposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
       guardedOutcomes: [missingProof],
       existingConstraints: {
         hardLimits: [],
         avoid: [],
       },
     }));
-    const invalidProofProposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput({
+    const invalidProofProposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
       guardedOutcomes: [invalidProof],
       existingConstraints: {
         hardLimits: [],
@@ -274,38 +274,38 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
         missingRequestProofCount: 0,
         invalidRequestProofCount: 1,
       }));
-    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(missingProofProposal).issues)
+    expect(validatePolicyLibraryPolicyRebuildProposal(missingProofProposal).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF,
         }),
       ]));
-    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(invalidProofProposal).issues)
+    expect(validatePolicyLibraryPolicyRebuildProposal(invalidProofProposal).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
         }),
       ]));
   });
 
   test('rejects guarded outcome fingerprint trace mismatches', () => {
-    const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput());
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput());
     proposal.trace.attributes['classifarr.policy.rebuild.guarded_outcome_fingerprint_count'] = 0;
     proposal.trace.attributes['classifarr.policy.rebuild.guarded_outcome_request_proof_count'] = 0;
 
-    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal).issues)
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_FINGERPRINT_MISMATCH,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_FINGERPRINT_MISMATCH,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_REQUEST_PROOF_MISMATCH,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_REQUEST_PROOF_MISMATCH,
         }),
       ]));
   });
 
   test('keeps observed absence as a warning and never promotes it to avoid', () => {
-    const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput({
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
       existingConstraints: {
         hardLimits: [],
         avoid: [],
@@ -320,7 +320,7 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
 
     expect(proposal.warnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: PHASE7R_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY,
+        reasonId: POLICY_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY,
       }),
     ]));
     expect(proposal.intentDraft.avoid).toHaveLength(0);
@@ -329,11 +329,11 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
         key: 'genre:musical',
       }),
     ]));
-    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal).ok).toBe(true);
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).ok).toBe(true);
   });
 
   test('requires routing configuration when no route target exists', () => {
-    const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput({
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
       libraryProfile: {
         identityCandidates: [
           {
@@ -356,18 +356,18 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
       },
     }));
 
-    expect(proposal.statusId).toBe(PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_ROUTING_CONFIGURATION);
+    expect(proposal.statusId).toBe(POLICY_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_ROUTING_CONFIGURATION);
     expect(proposal.readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING);
     expect(proposal.warnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: PHASE7R_REBUILD_WARNING_IDS.MISSING_ROUTING_CONFIGURATION,
+        reasonId: POLICY_REBUILD_WARNING_IDS.MISSING_ROUTING_CONFIGURATION,
       }),
     ]));
-    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal).ok).toBe(true);
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).ok).toBe(true);
   });
 
   test('requires profile refresh when library profile evidence is stale', () => {
-    const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput({
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
       profileFreshness: {
         stale: true,
         reasonCode: 'stale_profile',
@@ -378,18 +378,18 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
       },
     }));
 
-    expect(proposal.statusId).toBe(PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.STALE_PROFILE);
+    expect(proposal.statusId).toBe(POLICY_REBUILD_PROPOSAL_STATUS_IDS.STALE_PROFILE);
     expect(proposal.readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE);
     expect(proposal.warnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: PHASE7R_REBUILD_WARNING_IDS.STALE_PROFILE,
+        reasonId: POLICY_REBUILD_WARNING_IDS.STALE_PROFILE,
       }),
     ]));
-    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal).ok).toBe(true);
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).ok).toBe(true);
   });
 
   test('requires more evidence when the observed library profile has no identity', () => {
-    const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput({
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
       libraryProfile: {
         identityCandidates: [],
         compatibilityCandidates: [
@@ -405,83 +405,83 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
       },
     }));
 
-    expect(proposal.statusId).toBe(PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_MORE_EVIDENCE);
+    expect(proposal.statusId).toBe(POLICY_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_MORE_EVIDENCE);
     expect(proposal.warnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: PHASE7R_REBUILD_WARNING_IDS.MISSING_IDENTITY_EVIDENCE,
+        reasonId: POLICY_REBUILD_WARNING_IDS.MISSING_IDENTITY_EVIDENCE,
       }),
     ]));
-    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal).ok).toBe(true);
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).ok).toBe(true);
   });
 
   test('rejects direct activation, replacement, deletion, learning, or routing writes', () => {
-    const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput());
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput());
     proposal.sideEffects.policyActivated = true;
     proposal.sideEffects.policyReplaced = true;
     proposal.sideEffects.policyDeleted = true;
     proposal.sideEffects.learningWritten = true;
     proposal.sideEffects.routingWritten = true;
 
-    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal).issues)
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.DIRECT_ACTIVATION,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.DIRECT_ACTIVATION,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.DIRECT_POLICY_REPLACEMENT,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.DIRECT_POLICY_REPLACEMENT,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.DIRECT_POLICY_DELETE,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.DIRECT_POLICY_DELETE,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.DIRECT_LEARNING_WRITE,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.DIRECT_LEARNING_WRITE,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.DIRECT_ROUTING_WRITE,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.DIRECT_ROUTING_WRITE,
         }),
       ]));
   });
 
   test('rejects missing acceptance, rollback, source summary, and preserved-constraint gates', () => {
-    const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput());
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput());
     proposal.acceptanceGate.requiresExplicitOperatorAcceptance = false;
     proposal.rollbackGate.requiresRollbackSnapshot = false;
     proposal.evidenceSourceSummary.explicitConstraints.preserved = false;
     proposal.evidenceSourceSummary.libraryProfile = null;
 
-    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal).issues)
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.MISSING_OPERATOR_ACCEPTANCE_GATE,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_OPERATOR_ACCEPTANCE_GATE,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.MISSING_ROLLBACK_GATE,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_ROLLBACK_GATE,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.EXPLICIT_CONSTRAINT_NOT_PRESERVED,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.EXPLICIT_CONSTRAINT_NOT_PRESERVED,
         }),
         expect.objectContaining({
-          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.MISSING_EVIDENCE_SOURCE_SUMMARY,
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_EVIDENCE_SOURCE_SUMMARY,
         }),
       ]));
   });
 
   test('passes component audit and points to migration verifier rollback work', () => {
-    const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput());
-    const audit = buildPolicyBuilderPhase7LibraryPolicyRebuildAudit(proposal);
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput());
+    const audit = buildPolicyLibraryPolicyRebuildAudit(proposal);
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '7r_7',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'migration_verifier_rollback',
       label: 'Migration Verifier And Rollback Path',
     }));
     expect(proposal.trace.reasons).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: PHASE7R_REBUILD_REASON_IDS.OPERATOR_ACCEPTANCE_REQUIRED,
+        reasonId: POLICY_REBUILD_REASON_IDS.OPERATOR_ACCEPTANCE_REQUIRED,
       }),
       expect.objectContaining({
-        reasonId: PHASE7R_REBUILD_REASON_IDS.ROLLBACK_SNAPSHOT_REQUIRED,
+        reasonId: POLICY_REBUILD_REASON_IDS.ROLLBACK_SNAPSHOT_REQUIRED,
       }),
     ]));
   });

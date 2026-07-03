@@ -147,7 +147,7 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     traceReasons: ['request_learning_guard_rewrite'],
   }),
   Object.freeze({
-    path: 'server/src/__tests__/services/policyBuilderPhase7LibraryPolicyRebuild.test.mjs',
+    path: 'server/src/__tests__/services/policyLibraryPolicyRebuild.test.mjs',
     owner: 'server',
     decisionId: PHASE7R_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER,
     coverageIds: [

@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Library-Derived Policy Rebuild Module Cutover** — renamed the
+  library-derived policy rebuild contract and focused test to durable
+  product-domain names, moved the rebuild proposal contract to
+  `policy.library_policy_rebuild.v1`, replaced the contract-local phase handoff
+  with `nextStep`, updated downstream runtime consumers, and retained the
+  completion-audit adapter for the migration-verifier handoff.
 - **Policy Request-Time Learning Module Cutover** — renamed the request-time
   learning contract and focused test to durable product-domain names, moved the
   request-time learning contract to `policy.request_time_learning.v1`,

@@ -8,8 +8,8 @@ import {
   POLICY_REQUEST_LEARNING_DISPOSITION_IDS,
 } from '../../services/policyRequestTimeLearning.mjs';
 import {
-  PHASE7R_REBUILD_PROPOSAL_STATUS_IDS,
-} from '../../services/policyBuilderPhase7LibraryPolicyRebuild.mjs';
+  POLICY_REBUILD_PROPOSAL_STATUS_IDS,
+} from '../../services/policyLibraryPolicyRebuild.mjs';
 import {
   PHASE7R_MIGRATION_VERIFIER_STATUS_IDS,
 } from '../../services/policyBuilderPhase7MigrationVerifierRollback.mjs';
@@ -18,7 +18,7 @@ import {
   PHASE7R_METRIC_COMPONENT_IDS,
   PHASE7R_METRIC_COUNTER_IDS,
   PHASE7R_METRIC_REASON_IDS,
-  PHASE7R_REBUILD_EVENT_STATUS_IDS,
+  POLICY_REBUILD_EVENT_STATUS_IDS,
   buildPolicyBuilderPhase7RuntimeMetricsTrace,
   buildPolicyBuilderPhase7RuntimeMetricsTraceAudit,
   validatePolicyBuilderPhase7RuntimeMetricsTrace,
@@ -48,13 +48,13 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
       ],
       rebuildProposals: [
         {
-          statusId: PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW,
+          statusId: POLICY_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW,
           acceptanceGate: {
             accepted: true,
           },
         },
         {
-          statusId: PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED,
+          statusId: POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED,
           acceptanceGate: {
             accepted: false,
           },
@@ -69,7 +69,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
         },
       ],
       rebuildEvents: [
-        { statusId: PHASE7R_REBUILD_EVENT_STATUS_IDS.ROLLED_BACK },
+        { statusId: POLICY_REBUILD_EVENT_STATUS_IDS.ROLLED_BACK },
       ],
     });
 
@@ -213,7 +213,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
       ],
       rebuildProposals: [
         {
-          statusId: PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW,
+          statusId: POLICY_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW,
           evidenceSourceSummary: {
             guardedOutcomes: {
               fingerprintCount: 1,
@@ -405,7 +405,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
     const metrics = buildPolicyBuilderPhase7RuntimeMetricsTrace({
       rebuildProposals: [
         {
-          statusId: PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW,
+          statusId: POLICY_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW,
           evidenceSourceSummary: {
             guardedOutcomes: {
               fingerprintCount: 1,

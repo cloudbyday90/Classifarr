@@ -4,8 +4,8 @@
 
 Implemented as the seventh Phase 7R runtime/rebuild contract.
 
-This slice compares a Phase 7R.6 library-derived rebuild proposal against
-sanitized legacy behavior samples, emits only migration-relevant differences,
+This slice compares a library-derived rebuild proposal against sanitized legacy
+behavior samples, emits only migration-relevant differences,
 binds the comparison to a stable sample-set fingerprint, and enforces operator
 acceptance, rollback snapshot, and legacy deletion gates. It does not apply
 policy replacement, create rollback snapshots, delete legacy paths, write
@@ -114,7 +114,7 @@ Cons:
 
 ## Final Recommendation Stack
 
-1. Consume a valid Phase 7R.6 rebuild proposal.
+1. Consume a valid library-derived rebuild proposal.
 2. Consume sanitized representative legacy/proposed comparison samples.
 3. Generate a stable SHA-256 sample-set fingerprint from normalized samples,
    verifier options, and bounded rebuild proposal evidence metadata.
@@ -151,7 +151,7 @@ Cons:
 - Focused tests:
   `server/src/__tests__/services/policyBuilderPhase7MigrationVerifierRollback.test.mjs`
 - Rebuild proposal dependency:
-  `server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs`
+  `server/src/services/policyLibraryPolicyRebuild.mjs`
 - Migration/deletion plan dependency:
   `server/src/services/policyMigrationDeletionPath.mjs`
 - Roadmap owner:

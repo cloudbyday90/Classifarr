@@ -145,7 +145,7 @@ Cons:
 - Request learning dependency:
   `server/src/services/policyRequestTimeLearning.mjs`
 - Rebuild proposal dependency:
-  `server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs`
+  `server/src/services/policyLibraryPolicyRebuild.mjs`
 - Migration verifier dependency:
   `server/src/services/policyBuilderPhase7MigrationVerifierRollback.mjs`
 - Roadmap owner:
@@ -160,7 +160,7 @@ The service exports:
 - `PHASE7R_METRIC_COMPONENT_IDS`
 - `PHASE7R_METRIC_COUNTER_IDS`
 - `PHASE7R_METRIC_REASON_IDS`
-- `PHASE7R_REBUILD_EVENT_STATUS_IDS`
+- `POLICY_REBUILD_EVENT_STATUS_IDS`
 - `buildPolicyBuilderPhase7RuntimeMetricsTrace`
 - `buildPolicyBuilderPhase7RuntimeMetricsTraceAudit`
 - `validatePolicyBuilderPhase7RuntimeMetricsTrace`

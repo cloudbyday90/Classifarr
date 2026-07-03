@@ -6,8 +6,8 @@ import {
   buildPolicyAutomationDecisionContractAudit,
 } from './policyAutomationDecisionContract.mjs';
 import {
-  buildPolicyBuilderPhase7LibraryPolicyRebuildAudit,
-} from './policyBuilderPhase7LibraryPolicyRebuild.mjs';
+  buildPolicyLibraryPolicyRebuildAudit,
+} from './policyLibraryPolicyRebuild.mjs';
 import {
   buildPolicyBuilderPhase7MigrationVerifierAudit,
 } from './policyBuilderPhase7MigrationVerifierRollback.mjs';
@@ -79,6 +79,9 @@ const PHASE7R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
   [PHASE7R_COMPLETION_COMPONENT_IDS.REQUEST_TIME_LEARNING]: Object.freeze({
     library_policy_rebuild: '7r_6',
   }),
+  [PHASE7R_COMPLETION_COMPONENT_IDS.LIBRARY_POLICY_REBUILD]: Object.freeze({
+    migration_verifier_rollback: '7r_7',
+  }),
 });
 
 const PHASE7R_COMPONENT_RECORDS = Object.freeze([
@@ -131,8 +134,8 @@ const PHASE7R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE7R_COMPLETION_COMPONENT_IDS.LIBRARY_POLICY_REBUILD,
     label: 'Library-derived policy rebuild',
     docPath: 'docs/architecture/policy-builder-phase-7r-library-policy-rebuild.md',
-    servicePath: 'server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase7LibraryPolicyRebuild.test.mjs',
+    servicePath: 'server/src/services/policyLibraryPolicyRebuild.mjs',
+    testPath: 'server/src/__tests__/services/policyLibraryPolicyRebuild.test.mjs',
     expectedNextPhaseId: '7r_7',
     evidence: 'Library-derived rebuild proposals are side-effect-free, acceptance-gated, rollback-gated, and preserve explicit constraints.',
   },
@@ -222,7 +225,7 @@ function buildDefaultComponentAudits() {
     [PHASE7R_COMPLETION_COMPONENT_IDS.REQUEST_TIME_LEARNING]:
       buildPassingRequestTimeLearningAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.LIBRARY_POLICY_REBUILD]:
-      buildPolicyBuilderPhase7LibraryPolicyRebuildAudit(),
+      buildPolicyLibraryPolicyRebuildAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.MIGRATION_VERIFIER_ROLLBACK]:
       buildPolicyBuilderPhase7MigrationVerifierAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE]:

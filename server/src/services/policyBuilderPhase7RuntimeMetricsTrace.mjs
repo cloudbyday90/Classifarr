@@ -10,8 +10,8 @@ import {
   POLICY_REQUEST_LEARNING_DISPOSITION_IDS,
 } from './policyRequestTimeLearning.mjs';
 import {
-  PHASE7R_REBUILD_PROPOSAL_STATUS_IDS,
-} from './policyBuilderPhase7LibraryPolicyRebuild.mjs';
+  POLICY_REBUILD_PROPOSAL_STATUS_IDS,
+} from './policyLibraryPolicyRebuild.mjs';
 import {
   PHASE7R_MIGRATION_VERIFIER_STATUS_IDS,
 } from './policyBuilderPhase7MigrationVerifierRollback.mjs';
@@ -40,7 +40,7 @@ const PHASE7R_METRIC_COMPONENT_IDS = Object.freeze({
   REBUILD_EVENT: 'rebuild_event',
 });
 
-const PHASE7R_REBUILD_EVENT_STATUS_IDS = Object.freeze({
+const POLICY_REBUILD_EVENT_STATUS_IDS = Object.freeze({
   ACCEPTED: 'accepted',
   REJECTED: 'rejected',
   ROLLED_BACK: 'rolled_back',
@@ -374,7 +374,7 @@ function processRebuildProposal(counters, traces, proposal = {}) {
   const accepted = proposal.acceptanceGate?.accepted === true;
   const counterIds = accepted
     ? [PHASE7R_METRIC_COUNTER_IDS.REBUILD_ACCEPTED]
-    : proposal.statusId === PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED
+    : proposal.statusId === POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED
       ? [PHASE7R_METRIC_COUNTER_IDS.REBUILD_REJECTED]
       : [];
 
@@ -382,7 +382,7 @@ function processRebuildProposal(counters, traces, proposal = {}) {
   traces.push(buildTraceRecord({
     componentId: PHASE7R_METRIC_COMPONENT_IDS.REBUILD_PROPOSAL,
     source: proposal,
-    outcomeId: accepted ? PHASE7R_REBUILD_EVENT_STATUS_IDS.ACCEPTED : proposal.statusId,
+    outcomeId: accepted ? POLICY_REBUILD_EVENT_STATUS_IDS.ACCEPTED : proposal.statusId,
     counterIds,
     fallbackReasonId: PHASE7R_METRIC_REASON_IDS.REBUILD_PROPOSAL_COUNTED,
   }));
@@ -412,13 +412,13 @@ function processRebuildEvent(counters, traces, event = {}) {
   const statusId = normalizeString(event.statusId ?? event.status);
   const counterIds = [];
 
-  if (statusId === PHASE7R_REBUILD_EVENT_STATUS_IDS.ACCEPTED) {
+  if (statusId === POLICY_REBUILD_EVENT_STATUS_IDS.ACCEPTED) {
     counterIds.push(PHASE7R_METRIC_COUNTER_IDS.REBUILD_ACCEPTED);
   }
-  if (statusId === PHASE7R_REBUILD_EVENT_STATUS_IDS.REJECTED) {
+  if (statusId === POLICY_REBUILD_EVENT_STATUS_IDS.REJECTED) {
     counterIds.push(PHASE7R_METRIC_COUNTER_IDS.REBUILD_REJECTED);
   }
-  if (statusId === PHASE7R_REBUILD_EVENT_STATUS_IDS.ROLLED_BACK) {
+  if (statusId === POLICY_REBUILD_EVENT_STATUS_IDS.ROLLED_BACK) {
     counterIds.push(PHASE7R_METRIC_COUNTER_IDS.REBUILD_ROLLED_BACK);
   }
 
@@ -706,7 +706,7 @@ export {
   PHASE7R_METRIC_COMPONENT_IDS,
   PHASE7R_METRIC_COUNTER_IDS,
   PHASE7R_METRIC_REASON_IDS,
-  PHASE7R_REBUILD_EVENT_STATUS_IDS,
+  POLICY_REBUILD_EVENT_STATUS_IDS,
   buildPolicyBuilderPhase7RuntimeMetricsTrace,
   buildPolicyBuilderPhase7RuntimeMetricsTraceAudit,
   validatePolicyBuilderPhase7RuntimeMetricsTrace,

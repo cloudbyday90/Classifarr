@@ -6,10 +6,10 @@ import {
   validatePolicyMigrationDeletionPlan,
 } from './policyMigrationDeletionPath.mjs';
 import {
-  PHASE7R_REBUILD_PROPOSAL_STATUS_IDS,
-  buildPolicyBuilderPhase7LibraryPolicyRebuildProposal,
-  validatePolicyBuilderPhase7LibraryPolicyRebuildProposal,
-} from './policyBuilderPhase7LibraryPolicyRebuild.mjs';
+  POLICY_REBUILD_PROPOSAL_STATUS_IDS,
+  buildPolicyLibraryPolicyRebuildProposal,
+  validatePolicyLibraryPolicyRebuildProposal,
+} from './policyLibraryPolicyRebuild.mjs';
 
 const PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS = Object.freeze({
   DESTINATION_CHANGE: 'destination_change',
@@ -158,8 +158,8 @@ function normalizeSample(value = {}, proposal = {}) {
     destinationLibraryName: proposal.library?.libraryName ?? '',
     statusId: proposal.statusId,
     routeReady: proposal.readiness?.ready === true,
-    blocked: proposal.statusId === PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED,
-    needsReview: proposal.statusId !== PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW,
+    blocked: proposal.statusId === POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED,
+    needsReview: proposal.statusId !== POLICY_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW,
     confidenceScore: proposal.confidence?.score ?? null,
     confidenceLevel: proposal.confidence?.level ?? '',
   };
@@ -467,9 +467,9 @@ function buildTrace({ statusId, differences, boundedDifferences, sampleSetFinger
 }
 
 function buildPolicyBuilderPhase7MigrationVerifierReport(input = {}) {
-  const proposal = input.proposal?.version === 'phase7r.library_policy_rebuild.v1'
+  const proposal = input.proposal?.version === 'policy.library_policy_rebuild.v1'
     ? input.proposal
-    : buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(input.proposalInput || {});
+    : buildPolicyLibraryPolicyRebuildProposal(input.proposalInput || {});
   const migrationPlan = input.migrationPlan?.version === 'policy.migration_deletion_path.v1'
     ? input.migrationPlan
     : buildPolicyMigrationDeletionPlan();
@@ -508,7 +508,7 @@ function buildPolicyBuilderPhase7MigrationVerifierReport(input = {}) {
     version: 'phase7r.migration_verifier.v1',
     statusId,
     proposal,
-    proposalValidation: validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal),
+    proposalValidation: validatePolicyLibraryPolicyRebuildProposal(proposal),
     migrationPlanValidation: validatePolicyMigrationDeletionPlan(migrationPlan),
     sampleSummary: {
       comparedCount: samples.length,
@@ -545,7 +545,7 @@ function buildPolicyBuilderPhase7MigrationVerifierReport(input = {}) {
 
 function validatePolicyBuilderPhase7MigrationVerifierReport(report = {}) {
   const issues = [];
-  const proposalValidation = validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(
+  const proposalValidation = validatePolicyLibraryPolicyRebuildProposal(
     asObject(report.proposal)
   );
 

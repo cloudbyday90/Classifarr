@@ -3965,9 +3965,9 @@ Implementation status:
 - Phase 7R.6 library-derived policy rebuild is documented in
   [Policy Builder Phase 7R Library-Derived Policy Rebuild](policy-builder-phase-7r-library-policy-rebuild.md).
 - The server-owned rebuild proposal contract lives in
-  `server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs`.
+  `server/src/services/policyLibraryPolicyRebuild.mjs`.
 - The focused rebuild test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase7LibraryPolicyRebuild.test.mjs`.
+  `server/src/__tests__/services/policyLibraryPolicyRebuild.test.mjs`.
 - Current implementation consumes observed library profile evidence,
   fingerprint-bound guarded outcomes, explicit constraints, routing
   configuration, observed outliers, observed absences, and profile freshness.
@@ -6286,6 +6286,14 @@ Implementation status:
 - After the request-time-learning cutover, the repository inventory validates
   with 12,971 total phase-coded references, 5,548 production references, and
   5,570 rename candidates.
+- The next runtime module cutover renamed library-derived policy rebuild to
+  `policyLibraryPolicyRebuild.mjs`, renamed its focused test, moved the
+  rebuild proposal contract to `policy.library_policy_rebuild.v1`, and
+  replaced the contract-local phase handoff with `nextStep`:
+  [Policy Library-Derived Policy Rebuild Module Cutover](policy-library-policy-rebuild-module-cutover.md).
+- After the library-derived-policy-rebuild cutover, the repository inventory
+  validates with 12,769 total phase-coded references, 5,437 production
+  references, and 5,459 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

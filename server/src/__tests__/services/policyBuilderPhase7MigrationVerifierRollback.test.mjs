@@ -1,6 +1,6 @@
 import {
-  buildPolicyBuilderPhase7LibraryPolicyRebuildProposal,
-} from '../../services/policyBuilderPhase7LibraryPolicyRebuild.mjs';
+  buildPolicyLibraryPolicyRebuildProposal,
+} from '../../services/policyLibraryPolicyRebuild.mjs';
 import {
   PHASE7R_MIGRATION_DELETION_CRITERION_IDS,
   PHASE7R_MIGRATION_DIFFERENCE_TYPE_IDS,
@@ -49,7 +49,7 @@ function proposalInput(overrides = {}) {
 }
 
 function acceptedProposal() {
-  const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(proposalInput());
+  const proposal = buildPolicyLibraryPolicyRebuildProposal(proposalInput());
   proposal.acceptanceGate.accepted = true;
   proposal.acceptanceGate.acceptedBy = 'admin-1';
   proposal.acceptanceGate.acceptedAt = '2026-06-30T12:00:00.000Z';
@@ -363,7 +363,7 @@ describe('policyBuilderPhase7MigrationVerifierRollback', () => {
 
   test('does not allow replacement without operator acceptance and rollback', () => {
     const report = buildPolicyBuilderPhase7MigrationVerifierReport({
-      proposal: buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(proposalInput()),
+      proposal: buildPolicyLibraryPolicyRebuildProposal(proposalInput()),
       legacyComparisonSamples: [],
     });
 

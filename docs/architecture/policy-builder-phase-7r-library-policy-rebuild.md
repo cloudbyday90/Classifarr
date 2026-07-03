@@ -1,13 +1,15 @@
-# Policy Builder Phase 7R Library-Derived Policy Rebuild
+# Policy Library-Derived Policy Rebuild
 
 ## Status
 
-Implemented as the sixth Phase 7R runtime/rebuild contract.
+Implemented as the durable library-derived policy rebuild runtime contract. It
+originated as the sixth Phase 7R runtime/rebuild contract and now exposes
+product-domain module, export, and contract names.
 
 This slice creates a side-effect-free rebuild proposal from observed library
 profile evidence, fingerprint-bound guarded outcomes, explicit operator
 constraints, routing configuration, outlier evidence, and profile freshness. It
-produces a Phase 6R intent draft plus readiness, source summaries, warnings,
+produces a policy intent draft plus readiness, source summaries, warnings,
 acceptance gates, and rollback gates. It does not activate, replace, delete, or
 persist policy.
 
@@ -27,9 +29,9 @@ route configuration is operational state
 profile freshness affects trust
 ```
 
-Phase 7R.6 turns those inputs into a reviewable proposal rather than an
-automatic policy replacement. That keeps automation moving toward the new model
-without reintroducing destructive or opaque behavior.
+Library-derived policy rebuild turns those inputs into a reviewable proposal
+rather than an automatic policy replacement. That keeps automation moving
+toward the new model without reintroducing destructive or opaque behavior.
 
 This checkpoint tightens the guarded outcome boundary: a rebuild proposal can
 no longer consume an outcome merely because it has a sanitized fingerprint. The
@@ -42,7 +44,7 @@ question-reduction validation proof and matching trace attributes.
   emphasizes govern, map, measure, and manage functions for AI risk. The
   rebuild contract maps evidence sources, measures confidence/readiness, and
   requires explicit management gates before replacement.
-- [NIST Generative AI Profile](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf)
+- [NIST Generative AI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence)
   emphasizes provenance, monitoring, and risk controls for generative AI
   systems. The proposal preserves source summaries, assumptions, warnings, and
   bounded trace reasons instead of producing an opaque rewritten policy.
@@ -50,9 +52,14 @@ question-reduction validation proof and matching trace attributes.
   highlights excessive agency, insecure output handling, and overreliance. The
   rebuild proposal has no direct activation or persistence side effects.
 - [Microsoft Human-AI Experience Guidelines](https://www.microsoft.com/en-us/haxtoolkit/ai-guidelines/)
-  emphasize user control, clear uncertainty, and graceful recovery. Phase 7R.6
-  requires operator acceptance and a rollback snapshot before any later
-  replacement path can apply the proposal.
+  emphasize user control, clear uncertainty, and graceful recovery.
+  Library-derived policy rebuild requires operator acceptance and a rollback
+  snapshot before any later replacement path can apply the proposal.
+- [OpenTelemetry Semantic Convention Naming](https://opentelemetry.io/docs/specs/semconv/general/naming/)
+  recommends lower-case namespacing, snake_case for multi-word name components,
+  and precise unambiguous terms. The contract uses
+  `policy.library_policy_rebuild.v1` and product-domain step names instead of
+  roadmap phase identifiers.
 
 Additional hardening guidance:
 
@@ -149,9 +156,9 @@ Cons:
 ## Implemented Files
 
 - Library-derived rebuild proposal contract:
-  `server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs`
+  `server/src/services/policyLibraryPolicyRebuild.mjs`
 - Focused tests:
-  `server/src/__tests__/services/policyBuilderPhase7LibraryPolicyRebuild.test.mjs`
+  `server/src/__tests__/services/policyLibraryPolicyRebuild.test.mjs`
 - Evidence dependency:
   `server/src/services/policyEvidenceEngine.mjs`
 - Intent dependency:
@@ -166,13 +173,13 @@ Cons:
 
 The service exports:
 
-- `PHASE7R_REBUILD_AUDIT_RISK_IDS`
-- `PHASE7R_REBUILD_PROPOSAL_STATUS_IDS`
-- `PHASE7R_REBUILD_REASON_IDS`
-- `PHASE7R_REBUILD_WARNING_IDS`
-- `buildPolicyBuilderPhase7LibraryPolicyRebuildProposal`
-- `buildPolicyBuilderPhase7LibraryPolicyRebuildAudit`
-- `validatePolicyBuilderPhase7LibraryPolicyRebuildProposal`
+- `POLICY_REBUILD_AUDIT_RISK_IDS`
+- `POLICY_REBUILD_PROPOSAL_STATUS_IDS`
+- `POLICY_REBUILD_REASON_IDS`
+- `POLICY_REBUILD_WARNING_IDS`
+- `buildPolicyLibraryPolicyRebuildProposal`
+- `buildPolicyLibraryPolicyRebuildAudit`
+- `validatePolicyLibraryPolicyRebuildProposal`
 
 ## Proposal Statuses
 
@@ -245,18 +252,19 @@ The focused test suite verifies:
   validation,
 - missing acceptance, rollback, source summary, or constraint-preservation gates
   fail validation,
-- the component audit points to Phase 7R.7.
+- the component audit points to
+  `nextStep.stepId = migration_verifier_rollback`.
 
 ## Outcome
 
-Phase 7R.6 gives the rebuild path this shape:
+Library-derived policy rebuild gives the rebuild path this shape:
 
 ```text
 library profile + fingerprint-bound guarded outcomes + explicit constraints + routing/freshness
-  -> Phase 6R evidence projection
-  -> Phase 6R intent draft
-  -> Phase 6R readiness
-  -> Phase 7R proposal envelope
+  -> policy evidence projection
+  -> policy intent draft
+  -> policy readiness
+  -> policy rebuild proposal envelope
   -> operator acceptance and rollback required
   -> no direct side effects
 ```
@@ -266,7 +274,7 @@ automatic replacement.
 
 ## Next Step
 
-Phase 7R.7 Migration Verifier And Rollback Path should compare this proposal
-against legacy behavior, show only migration-relevant differences, require a
-rollback snapshot before replacement, and define the deletion criteria for old
+Migration Verifier And Rollback Path should compare this proposal against
+legacy behavior, show only migration-relevant differences, require a rollback
+snapshot before replacement, and define the deletion criteria for old
 preset/custom-signal runtime paths.
