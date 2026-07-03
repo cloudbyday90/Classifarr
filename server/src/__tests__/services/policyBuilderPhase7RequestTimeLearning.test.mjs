@@ -9,8 +9,8 @@ import {
   POLICY_LEARNING_TIER_IDS,
 } from '../../services/policyLearningGuard.mjs';
 import {
-  buildPolicyBuilderPhase7RuntimeQuestionReduction,
-} from '../../services/policyBuilderPhase7RuntimeQuestionReduction.mjs';
+  buildPolicyRuntimeQuestionReduction,
+} from '../../services/policyRuntimeQuestionReduction.mjs';
 import {
   PHASE7R_REQUEST_EVENT_TYPE_IDS,
   PHASE7R_REQUEST_LEARNING_AUDIT_RISK_IDS,
@@ -33,7 +33,7 @@ function destination(overrides = {}) {
 }
 
 function questionReductionPlan(overrides = {}) {
-  return buildPolicyBuilderPhase7RuntimeQuestionReduction({
+  return buildPolicyRuntimeQuestionReduction({
     libraryProfile: {
       identityCandidates: [
         { label: 'Animation', count: 2, confidence: 0.8 },
@@ -97,7 +97,7 @@ describe('policyBuilderPhase7RequestTimeLearning', () => {
       'classifarr.runtime.request_learning.question_reduction_valid': true,
     }));
     expect(decision.questionReductionProof).toEqual(expect.objectContaining({
-      version: 'phase7r.runtime_question_reduction.v1',
+      version: 'policy.runtime_question_reduction.v1',
       validation: {
         ok: true,
         issueCount: 0,

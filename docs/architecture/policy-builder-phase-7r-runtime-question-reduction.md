@@ -1,8 +1,9 @@
-# Policy Builder Phase 7R Runtime Question Reduction
+# Policy Runtime Question Reduction
 
 ## Status
 
-Implemented as the fourth Phase 7R runtime contract.
+Implemented as the durable runtime question reduction contract that originated
+as the fourth Phase 7R runtime contract.
 
 This slice consumes the policy automation decision state and decides whether
 Classifarr should create a bounded operator question, suppress the question,
@@ -21,15 +22,15 @@ What does this provider diagnostic mean?
 What did replay parity show?
 ```
 
-Those prompts increase operator work and create unsafe learning pressure. Phase
-7R.4 reduces runtime questions to destination-focused frames that align with the
-Phase 5R question vocabulary and Phase 6R learning guard.
+Those prompts increase operator work and create unsafe learning pressure. The
+runtime question reducer narrows questions to destination-focused frames that
+align with the server-owned question vocabulary and learning guard.
 
 ## Official Guidance Reviewed
 
 - [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
   highlights prompt injection, insecure output handling, excessive agency, and
-  overreliance risks. Phase 7R.4 keeps AI/provider/replay wording out of
+  overreliance risks. The runtime reducer keeps AI/provider/replay wording out of
   persisted question frames.
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
   recommends allow-listed values and rejection of unexpected content. The
@@ -41,8 +42,12 @@ Phase 5R question vocabulary and Phase 6R learning guard.
   internal model diagnostics.
 - [NIST Generative AI Profile](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf)
   emphasizes governance, measurement, and risk controls for generative AI
-  systems. Phase 7R.4 separates automation state, question shape, final outcome,
+  systems. The reducer separates automation state, question shape, final outcome,
   and learning eligibility.
+- [OpenTelemetry Naming](https://opentelemetry.io/docs/specs/semconv/general/naming/)
+  supports consistent semantic naming. The cutover keeps bounded
+  `classifarr.runtime.question.*` attributes and moves the payload contract into
+  the durable `policy.runtime_question_reduction.v1` namespace.
 
 ## Recommendation
 
@@ -53,7 +58,7 @@ The reducer should answer:
 
 ```text
 Does this runtime state need a question?
-If yes, which approved Phase 5R frame?
+If yes, which approved question frame?
 If no, what is the next action?
 Is an existing pending question stale or legacy?
 Can this answer teach Classifarr?
@@ -102,7 +107,7 @@ Cons:
    - hard-limit review,
    - destination/outlier review,
    - missing evidence review.
-6. Use only Phase 5R acceptable question frames:
+6. Use only approved acceptable question frames:
    - `destination_fit`,
    - `missing_evidence`,
    - `hard_limit_conflict`,
@@ -127,9 +132,9 @@ Cons:
 ## Implemented Files
 
 - Runtime question reduction contract:
-  `server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs`
+  `server/src/services/policyRuntimeQuestionReduction.mjs`
 - Focused tests:
-  `server/src/__tests__/services/policyBuilderPhase7RuntimeQuestionReduction.test.mjs`
+  `server/src/__tests__/services/policyRuntimeQuestionReduction.test.mjs`
 - Automation decision dependency:
   `server/src/services/policyAutomationDecisionContract.mjs`
 - Question vocabulary dependency:
@@ -142,12 +147,12 @@ Cons:
 
 The service exports:
 
-- `PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS`
-- `PHASE7R_RUNTIME_QUESTION_REASON_IDS`
-- `PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS`
-- `buildPolicyBuilderPhase7RuntimeQuestionReduction`
-- `buildPolicyBuilderPhase7RuntimeQuestionReductionAudit`
-- `validatePolicyBuilderPhase7RuntimeQuestionReduction`
+- `POLICY_RUNTIME_QUESTION_DISPOSITION_IDS`
+- `POLICY_RUNTIME_QUESTION_REASON_IDS`
+- `POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS`
+- `buildPolicyRuntimeQuestionReduction`
+- `buildPolicyRuntimeQuestionReductionAudit`
+- `validatePolicyRuntimeQuestionReduction`
 
 ## Dispositions
 
@@ -155,7 +160,7 @@ The service exports:
 : No question should be created. Used for auto-route-ready decisions.
 
 `create_operator_question`
-: A bounded Phase 5R question can be created. Used for hard-limit review,
+: A bounded approved question can be created. Used for hard-limit review,
   destination/outlier review, or missing-evidence review.
 
 `configure_routing`
@@ -208,11 +213,11 @@ The focused test suite verifies:
 - traces must mirror the carried decision-valid state,
 - invalid plans with rejected frames, learning enabled, auto-route questions, or
   side effects fail validation,
-- the component audit points to Phase 7R.5.
+- the component audit points to the request-time learning step.
 
 ## Outcome
 
-Phase 7R.4 gives runtime question creation a hard gate:
+The runtime question reducer gives runtime question creation a hard gate:
 
 ```text
 automation decision state

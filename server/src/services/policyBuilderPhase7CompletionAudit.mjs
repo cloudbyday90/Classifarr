@@ -26,9 +26,9 @@ import {
   buildPolicyBuilderPhase7RuntimeMetricsTraceAudit,
 } from './policyBuilderPhase7RuntimeMetricsTrace.mjs';
 import {
-  buildPolicyBuilderPhase7RuntimeQuestionReduction,
-  buildPolicyBuilderPhase7RuntimeQuestionReductionAudit,
-} from './policyBuilderPhase7RuntimeQuestionReduction.mjs';
+  buildPolicyRuntimeQuestionReduction,
+  buildPolicyRuntimeQuestionReductionAudit,
+} from './policyRuntimeQuestionReduction.mjs';
 import {
   buildPolicyBuilderPhase7RuntimeRebuildTestResetAudit,
 } from './policyBuilderPhase7RuntimeRebuildTestReset.mjs';
@@ -73,6 +73,9 @@ const PHASE7R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
   [PHASE7R_COMPLETION_COMPONENT_IDS.AUTOMATION_DECISION_CONTRACT]: Object.freeze({
     runtime_question_reduction: '7r_4',
   }),
+  [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_QUESTION_REDUCTION]: Object.freeze({
+    request_time_learning: '7r_5',
+  }),
 });
 
 const PHASE7R_COMPONENT_RECORDS = Object.freeze([
@@ -107,8 +110,8 @@ const PHASE7R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_QUESTION_REDUCTION,
     label: 'Runtime question reduction',
     docPath: 'docs/architecture/policy-builder-phase-7r-runtime-question-reduction.md',
-    servicePath: 'server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase7RuntimeQuestionReduction.test.mjs',
+    servicePath: 'server/src/services/policyRuntimeQuestionReduction.mjs',
+    testPath: 'server/src/__tests__/services/policyRuntimeQuestionReduction.test.mjs',
     expectedNextPhaseId: '7r_5',
     evidence: 'Questions are bounded, rare, destination-focused, and carry automation validation proof.',
   },
@@ -177,7 +180,7 @@ function buildIssue(riskId, message, details = {}) {
 }
 
 function buildPassingRequestTimeLearningAudit() {
-  const questionReductionPlan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+  const questionReductionPlan = buildPolicyRuntimeQuestionReduction({
     libraryProfile: {
       identityCandidates: [
         { label: 'Animation', count: 2, confidence: 0.8 },
@@ -212,7 +215,7 @@ function buildDefaultComponentAudits() {
     [PHASE7R_COMPLETION_COMPONENT_IDS.AUTOMATION_DECISION_CONTRACT]:
       buildPolicyAutomationDecisionContractAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.RUNTIME_QUESTION_REDUCTION]:
-      buildPolicyBuilderPhase7RuntimeQuestionReductionAudit(),
+      buildPolicyRuntimeQuestionReductionAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.REQUEST_TIME_LEARNING]:
       buildPassingRequestTimeLearningAudit(),
     [PHASE7R_COMPLETION_COMPONENT_IDS.LIBRARY_POLICY_REBUILD]:

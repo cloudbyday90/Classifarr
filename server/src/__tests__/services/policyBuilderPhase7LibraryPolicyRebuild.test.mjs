@@ -8,8 +8,8 @@ import {
   POLICY_AUTOMATION_READINESS_STATE_IDS,
 } from '../../services/policyAutomationReadinessEngine.mjs';
 import {
-  buildPolicyBuilderPhase7RuntimeQuestionReduction,
-} from '../../services/policyBuilderPhase7RuntimeQuestionReduction.mjs';
+  buildPolicyRuntimeQuestionReduction,
+} from '../../services/policyRuntimeQuestionReduction.mjs';
 import {
   PHASE7R_REQUEST_EVENT_TYPE_IDS,
   buildPolicyBuilderPhase7RequestTimeLearningDecision,
@@ -36,7 +36,7 @@ function destination(overrides = {}) {
 }
 
 function questionReductionPlan(overrides = {}) {
-  return buildPolicyBuilderPhase7RuntimeQuestionReduction({
+  return buildPolicyRuntimeQuestionReduction({
     libraryProfile: {
       identityCandidates: [
         { label: 'Animation', count: 2, confidence: 0.8 },

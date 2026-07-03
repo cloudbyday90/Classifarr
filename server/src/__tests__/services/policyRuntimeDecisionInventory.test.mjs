@@ -94,7 +94,7 @@ describe('policyRuntimeDecisionInventory', () => {
       'server/src/services/policyRuntimeEvidenceProjection.mjs',
       'server/src/services/policyRuntimeEvidenceFingerprint.mjs',
       'server/src/services/policyAutomationDecisionContract.mjs',
-      'server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs',
+      'server/src/services/policyRuntimeQuestionReduction.mjs',
       'server/src/services/policyBuilderPhase7RequestTimeLearning.mjs',
       'server/src/services/policyBuilderPhase7LibraryPolicyRebuild.mjs',
       'server/src/services/policyBuilderPhase7MigrationVerifierRollback.mjs',

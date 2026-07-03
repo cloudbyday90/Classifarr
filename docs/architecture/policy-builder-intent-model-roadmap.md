@@ -3824,9 +3824,9 @@ Implementation status:
 - Phase 7R.4 runtime question reduction is documented in
   [Policy Builder Phase 7R Runtime Question Reduction](policy-builder-phase-7r-runtime-question-reduction.md).
 - The server-owned runtime question reducer lives in
-  `server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs`.
+  `server/src/services/policyRuntimeQuestionReduction.mjs`.
 - The focused runtime-question test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase7RuntimeQuestionReduction.test.mjs`.
+  `server/src/__tests__/services/policyRuntimeQuestionReduction.test.mjs`.
 - Current implementation consumes `policy.automation_decision.v1` and returns
   a disposition instead of directly creating questions: `suppress_question`,
   `create_operator_question`, `configure_routing`, `refresh_profile`,
@@ -3867,7 +3867,7 @@ Tasks:
   evidence.
 - Carry the upstream decision/question evidence fingerprint into the
   request-time decision, learning-guard context, and bounded trace attributes.
-- Carry bounded Phase 7R.4 question-reduction validation proof into the
+- Carry bounded runtime question-reduction validation proof into the
   request-time decision and mirror that validity state into trace attributes.
 
 Acceptance criteria:
@@ -6270,6 +6270,14 @@ Implementation status:
 - After the automation-decision-contract cutover, the repository inventory
   validates with 13,331 total phase-coded references, 5,735 production
   references, and 5,757 rename candidates.
+- The next runtime module cutover renamed runtime question reduction to
+  `policyRuntimeQuestionReduction.mjs`, renamed its focused test, moved the
+  question contract to `policy.runtime_question_reduction.v1`, and replaced the
+  contract-local phase handoff with `nextStep`:
+  [Policy Runtime Question Reduction Module Cutover](policy-runtime-question-reduction-module-cutover.md).
+- After the runtime-question-reduction cutover, the repository inventory
+  validates with 13,161 total phase-coded references, 5,653 production
+  references, and 5,675 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
@@ -6342,7 +6350,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 3, 2026
   baseline for production references, rename candidates, and obsolete migration
   tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `5735` production references, `5757` rename
+- The current baseline is `5653` production references, `5675` rename
   candidates, and `93` obsolete migration tooling references. Future durable
   rename batches should lower this baseline after inventory validation proves
   the debt decreased.

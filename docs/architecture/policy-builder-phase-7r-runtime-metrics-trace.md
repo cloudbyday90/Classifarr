@@ -141,7 +141,7 @@ Cons:
 - Automation decision dependency:
   `server/src/services/policyAutomationDecisionContract.mjs`
 - Runtime question dependency:
-  `server/src/services/policyBuilderPhase7RuntimeQuestionReduction.mjs`
+  `server/src/services/policyRuntimeQuestionReduction.mjs`
 - Request learning dependency:
   `server/src/services/policyBuilderPhase7RequestTimeLearning.mjs`
 - Rebuild proposal dependency:

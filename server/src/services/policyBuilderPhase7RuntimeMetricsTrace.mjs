@@ -4,8 +4,8 @@ import {
   POLICY_AUTOMATION_DECISION_STATE_IDS,
 } from './policyAutomationDecisionContract.mjs';
 import {
-  PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS,
-} from './policyBuilderPhase7RuntimeQuestionReduction.mjs';
+  POLICY_RUNTIME_QUESTION_DISPOSITION_IDS,
+} from './policyRuntimeQuestionReduction.mjs';
 import {
   PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS,
 } from './policyBuilderPhase7RequestTimeLearning.mjs';
@@ -318,16 +318,16 @@ function processAutomationDecision(counters, traces, decision = {}) {
 function processQuestionReduction(counters, traces, plan = {}) {
   const counterIds = [];
 
-  if (plan.dispositionId === PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION) {
+  if (plan.dispositionId === POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION) {
     counterIds.push(PHASE7R_METRIC_COUNTER_IDS.ASKED_FOR_REVIEW);
   }
-  if (plan.dispositionId === PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING) {
+  if (plan.dispositionId === POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING) {
     counterIds.push(PHASE7R_METRIC_COUNTER_IDS.MISSING_ROUTING);
   }
-  if (plan.dispositionId === PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.REFRESH_PROFILE) {
+  if (plan.dispositionId === POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.REFRESH_PROFILE) {
     counterIds.push(PHASE7R_METRIC_COUNTER_IDS.STALE_PROFILE_RETRY);
   }
-  if (plan.dispositionId === PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.BLOCK_AUTOMATION) {
+  if (plan.dispositionId === POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.BLOCK_AUTOMATION) {
     counterIds.push(PHASE7R_METRIC_COUNTER_IDS.BLOCKED_BY_HARD_LIMIT);
   }
 

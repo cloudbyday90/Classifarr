@@ -9,8 +9,8 @@ import {
   validatePolicyLearningDecision,
 } from './policyLearningGuard.mjs';
 import {
-  validatePolicyBuilderPhase7RuntimeQuestionReduction,
-} from './policyBuilderPhase7RuntimeQuestionReduction.mjs';
+  validatePolicyRuntimeQuestionReduction,
+} from './policyRuntimeQuestionReduction.mjs';
 
 const PHASE7R_REQUEST_EVENT_TYPE_IDS = Object.freeze({
   USER_REQUESTED_DESTINATION: 'user_requested_destination',
@@ -199,7 +199,7 @@ function buildQuestionReductionProof(input = {}) {
 
   if (!plan.version) return null;
 
-  const validation = validatePolicyBuilderPhase7RuntimeQuestionReduction(plan);
+  const validation = validatePolicyRuntimeQuestionReduction(plan);
   const decisionEvidenceFingerprint = normalizeEvidenceFingerprint(plan.decisionEvidenceFingerprint);
   const questionEvidenceFingerprint = normalizeEvidenceFingerprint(plan.question?.decisionEvidenceFingerprint);
   const traceEvidenceFingerprint = normalizeString(

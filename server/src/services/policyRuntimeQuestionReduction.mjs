@@ -13,7 +13,7 @@ import {
   validatePolicyAutomationDecision,
 } from './policyAutomationDecisionContract.mjs';
 
-const PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS = Object.freeze({
+const POLICY_RUNTIME_QUESTION_DISPOSITION_IDS = Object.freeze({
   SUPPRESS_QUESTION: 'suppress_question',
   CREATE_OPERATOR_QUESTION: 'create_operator_question',
   CONFIGURE_ROUTING: 'configure_routing',
@@ -23,7 +23,7 @@ const PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS = Object.freeze({
   STALE_QUESTION_CLEANUP: 'stale_question_cleanup',
 });
 
-const PHASE7R_RUNTIME_QUESTION_REASON_IDS = Object.freeze({
+const POLICY_RUNTIME_QUESTION_REASON_IDS = Object.freeze({
   AUTO_ROUTE_DOES_NOT_NEED_QUESTION: 'auto_route_does_not_need_question',
   CLASSIFIED_NOT_ROUTED_NEEDS_ROUTING: 'classified_not_routed_needs_routing',
   HARD_LIMIT_REVIEW_REQUIRED: 'hard_limit_review_required',
@@ -36,7 +36,7 @@ const PHASE7R_RUNTIME_QUESTION_REASON_IDS = Object.freeze({
   UNSUPPORTED_FRAME_REWRITTEN: 'unsupported_frame_rewritten',
 });
 
-const PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_DISPOSITION: 'unknown_disposition',
   QUESTION_WITHOUT_FRAME: 'question_without_frame',
   QUESTION_WITH_REJECTED_FRAME: 'question_with_rejected_frame',
@@ -58,7 +58,7 @@ const PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS = Object.freeze({
   TRACE_FINGERPRINT_MISMATCH: 'trace_fingerprint_mismatch',
 });
 
-const QUESTION_CONTRACT_VERSION = 'phase7r.runtime_question_reduction.v1';
+const QUESTION_CONTRACT_VERSION = 'policy.runtime_question_reduction.v1';
 const MAX_TRACE_REASONS = 10;
 const DECISION_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE =
   'classifarr.runtime.question.decision_evidence_projection_fingerprint';
@@ -112,8 +112,8 @@ function normalizeFrameOverride(input = {}) {
     replacementFrameId: normalized.replacementFrameId || QUESTION_FRAME_IDS.MISSING_EVIDENCE,
     rejectionReason: normalized.rejectionReason,
     reasonId: normalized.frameId
-      ? PHASE7R_RUNTIME_QUESTION_REASON_IDS.REJECTED_LEGACY_FRAME_REWRITTEN
-      : PHASE7R_RUNTIME_QUESTION_REASON_IDS.UNSUPPORTED_FRAME_REWRITTEN,
+      ? POLICY_RUNTIME_QUESTION_REASON_IDS.REJECTED_LEGACY_FRAME_REWRITTEN
+      : POLICY_RUNTIME_QUESTION_REASON_IDS.UNSUPPORTED_FRAME_REWRITTEN,
   };
 }
 
@@ -180,7 +180,7 @@ function buildLearningMetadata({
     ],
     defaultOutcomeId: ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM,
     reason: staleQuestionCleanupRequired
-      ? PHASE7R_RUNTIME_QUESTION_REASON_IDS.STALE_OR_LEGACY_QUESTION_REQUIRES_CLEANUP
+      ? POLICY_RUNTIME_QUESTION_REASON_IDS.STALE_OR_LEGACY_QUESTION_REQUIRES_CLEANUP
       : 'phase7r_questions_resolve_current_item_only',
     frameLearningEligibleByDefault: frame?.learningEligibleByDefault === true,
   };
@@ -266,7 +266,7 @@ function buildTrace(
     'classifarr.runtime.question.disposition': dispositionId,
     'classifarr.runtime.question.reason_count': boundedReasons.length,
     'classifarr.runtime.question.decision_state': decision.stateId,
-    'classifarr.runtime.question.created': dispositionId === PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
+    'classifarr.runtime.question.created': dispositionId === POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
     [DECISION_VALID_TRACE_ATTRIBUTE]: decisionValidation.ok,
   };
 
@@ -299,72 +299,72 @@ function getBaseDisposition(decision = {}) {
   switch (decision.stateId) {
     case POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY:
       return {
-        dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.SUPPRESS_QUESTION,
+        dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.SUPPRESS_QUESTION,
         createQuestion: false,
-        reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.AUTO_ROUTE_DOES_NOT_NEED_QUESTION,
+        reasonId: POLICY_RUNTIME_QUESTION_REASON_IDS.AUTO_ROUTE_DOES_NOT_NEED_QUESTION,
         nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
         frameId: null,
       };
     case POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED:
       return {
-        dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING,
+        dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING,
         createQuestion: false,
-        reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.CLASSIFIED_NOT_ROUTED_NEEDS_ROUTING,
+        reasonId: POLICY_RUNTIME_QUESTION_REASON_IDS.CLASSIFIED_NOT_ROUTED_NEEDS_ROUTING,
         nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING,
         frameId: QUESTION_FRAME_IDS.ROUTING_GAP,
       };
     case POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING:
       return {
-        dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING,
+        dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING,
         createQuestion: false,
-        reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.ROUTING_MAPPING_REQUIRED,
+        reasonId: POLICY_RUNTIME_QUESTION_REASON_IDS.ROUTING_MAPPING_REQUIRED,
         nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING,
         frameId: QUESTION_FRAME_IDS.ROUTING_GAP,
       };
     case POLICY_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY:
       return {
-        dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.REFRESH_PROFILE,
+        dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.REFRESH_PROFILE,
         createQuestion: false,
-        reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.PROFILE_REFRESH_REQUIRED,
+        reasonId: POLICY_RUNTIME_QUESTION_REASON_IDS.PROFILE_REFRESH_REQUIRED,
         nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.REFRESH_PROFILE,
         frameId: QUESTION_FRAME_IDS.STALE_PROFILE,
       };
     case POLICY_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT:
       return {
-        dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
+        dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
         createQuestion: true,
-        reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.HARD_LIMIT_REVIEW_REQUIRED,
+        reasonId: POLICY_RUNTIME_QUESTION_REASON_IDS.HARD_LIMIT_REVIEW_REQUIRED,
         nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
         frameId: QUESTION_FRAME_IDS.HARD_LIMIT_CONFLICT,
       };
     case POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW:
       return {
-        dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
+        dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
         createQuestion: true,
-        reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.OPERATOR_REVIEW_REQUIRED,
+        reasonId: POLICY_RUNTIME_QUESTION_REASON_IDS.OPERATOR_REVIEW_REQUIRED,
         nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
         frameId: chooseFrameForDecision(decision),
       };
     case POLICY_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE:
       return {
-        dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
+        dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
         createQuestion: true,
-        reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.MISSING_EVIDENCE_REVIEW_REQUIRED,
+        reasonId: POLICY_RUNTIME_QUESTION_REASON_IDS.MISSING_EVIDENCE_REVIEW_REQUIRED,
         nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
         frameId: QUESTION_FRAME_IDS.MISSING_EVIDENCE,
       };
     default:
       return {
-        dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.GATHER_EVIDENCE,
+        dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.GATHER_EVIDENCE,
         createQuestion: false,
-        reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.MISSING_EVIDENCE_REVIEW_REQUIRED,
+        reasonId: POLICY_RUNTIME_QUESTION_REASON_IDS.MISSING_EVIDENCE_REVIEW_REQUIRED,
         nextActionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.GATHER_EVIDENCE,
         frameId: QUESTION_FRAME_IDS.MISSING_EVIDENCE,
       };
   }
 }
 
-function buildPolicyBuilderPhase7RuntimeQuestionReduction(input = {}) {
+function buildPolicyRuntimeQuestionReduction(input = {}) {
   const decision = input.automationDecision?.version === 'policy.automation_decision.v1'
     ? input.automationDecision
     : buildPolicyAutomationDecision(input);
@@ -383,8 +383,8 @@ function buildPolicyBuilderPhase7RuntimeQuestionReduction(input = {}) {
 
   if (hasStaleOrLegacyQuestion(input)) {
     const frameId = QUESTION_FRAME_IDS.STALE_PROFILE;
-    const dispositionId = PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.STALE_QUESTION_CLEANUP;
-    reasons.push(buildReason(PHASE7R_RUNTIME_QUESTION_REASON_IDS.STALE_OR_LEGACY_QUESTION_REQUIRES_CLEANUP, {
+    const dispositionId = POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.STALE_QUESTION_CLEANUP;
+    reasons.push(buildReason(POLICY_RUNTIME_QUESTION_REASON_IDS.STALE_OR_LEGACY_QUESTION_REQUIRES_CLEANUP, {
       frameId,
       severity: 'warning',
       summary: 'Existing stale or legacy pending question must be cleaned before answering or learning.',
@@ -492,9 +492,9 @@ function getNextActionLabel(actionId) {
   }
 }
 
-function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
+function validatePolicyRuntimeQuestionReduction(plan = {}) {
   const issues = [];
-  const dispositionIds = Object.values(PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS);
+  const dispositionIds = Object.values(POLICY_RUNTIME_QUESTION_DISPOSITION_IDS);
   const questionFrame = plan.question?.frameId;
   const normalizedQuestionFrame = questionFrame ? normalizeQuestionFrame(questionFrame) : null;
   const decisionValidation = validatePolicyAutomationDecision(asObject(plan.decision));
@@ -512,20 +512,20 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
 
   if (!dispositionIds.includes(plan.dispositionId)) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.UNKNOWN_DISPOSITION,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.UNKNOWN_DISPOSITION,
       message: 'Runtime question reduction must use a supported disposition.',
     });
   }
 
   if (!hasCarriedDecisionValidation) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS
         .MISSING_AUTOMATION_DECISION_VALIDATION,
       message: 'Runtime question reduction must carry the automation decision validation result.',
     });
   } else if (carriedDecisionValidation.ok !== decisionValidation.ok) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS
         .AUTOMATION_DECISION_VALIDATION_MISMATCH,
       message: 'Runtime question reduction validation must match the embedded automation decision.',
     });
@@ -533,85 +533,85 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
 
   if (hasCarriedDecisionValidation && traceDecisionValid !== carriedDecisionValidation.ok) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.TRACE_DECISION_VALID_MISMATCH,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.TRACE_DECISION_VALID_MISMATCH,
       message: 'Runtime question trace decision-valid attribute must match the decision validation result.',
     });
   }
 
   if (carriedDecisionValidation?.ok === false || !decisionValidation.ok) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.AUTOMATION_DECISION_INVALID,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.AUTOMATION_DECISION_INVALID,
       message: 'Runtime question reduction cannot rely on an invalid automation decision.',
     });
   }
 
   if (!planFingerprint) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_DECISION_EVIDENCE_FINGERPRINT,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_DECISION_EVIDENCE_FINGERPRINT,
       message: 'Runtime question reduction must carry the automation decision evidence fingerprint.',
     });
   }
 
   if (plan.createQuestion === true && !questionFingerprint) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_QUESTION_EVIDENCE_FINGERPRINT,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_QUESTION_EVIDENCE_FINGERPRINT,
       message: 'Created runtime questions must carry the decision evidence fingerprint.',
     });
   }
 
   if (!traceFingerprint) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_TRACE_EVIDENCE_FINGERPRINT,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_TRACE_EVIDENCE_FINGERPRINT,
       message: 'Runtime question traces must carry the decision evidence fingerprint.',
     });
   }
 
   if (questionFingerprint && questionFingerprint !== planFingerprint) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_FINGERPRINT_MISMATCH,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_FINGERPRINT_MISMATCH,
       message: 'Planned question fingerprint must match the question-reduction plan.',
     });
   }
 
   if (traceFingerprint && traceFingerprint !== planFingerprint) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
       message: 'Question trace fingerprint must match the question-reduction plan.',
     });
   }
 
   if (plan.createQuestion === true && !questionFrame) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITHOUT_FRAME,
-      message: 'Created questions must include a Phase 5R question frame.',
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITHOUT_FRAME,
+      message: 'Created questions must include an approved question frame.',
     });
   }
 
   if (questionFrame && normalizedQuestionFrame?.accepted !== true) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_REJECTED_FRAME,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_REJECTED_FRAME,
       message: 'Created questions cannot persist rejected or unknown frames.',
     });
   }
 
   if (plan.createQuestion === true && !plan.question?.learning) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITHOUT_LEARNING_METADATA,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITHOUT_LEARNING_METADATA,
       message: 'Created questions must include learning eligibility metadata.',
     });
   }
 
   if (plan.question?.learning?.eligible === true || plan.learning?.eligible === true) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_LEARNING_ENABLED,
-      message: 'Phase 7R.4 questions cannot authorize durable learning directly.',
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_LEARNING_ENABLED,
+      message: 'Runtime questions cannot authorize durable learning directly.',
     });
   }
 
   asArray(plan.question?.options).forEach(option => {
     if (option.learningEligible === true) {
       issues.push({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_LEARNING_ENABLED,
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_LEARNING_ENABLED,
         message: 'Question answer options cannot authorize durable learning directly.',
       });
     }
@@ -622,7 +622,7 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
     plan.createQuestion === true
   ) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_FOR_AUTO_ROUTE,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_FOR_AUTO_ROUTE,
       message: 'Auto-route-ready decisions must not create operator questions.',
     });
   }
@@ -635,24 +635,24 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
     plan.createQuestion === true
   ) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.ROUTING_GAP_AS_OPERATOR_QUESTION,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.ROUTING_GAP_AS_OPERATOR_QUESTION,
       message: 'Routing gaps should create routing actions, not persisted classification questions.',
     });
   }
 
   if (
     plan.staleQuestionCleanup?.required === true &&
-    plan.dispositionId !== PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.STALE_QUESTION_CLEANUP
+    plan.dispositionId !== POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.STALE_QUESTION_CLEANUP
   ) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.STALE_QUESTION_NOT_CLEANED,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.STALE_QUESTION_NOT_CLEANED,
       message: 'Stale or legacy pending questions must be routed through cleanup.',
     });
   }
 
   if (asArray(plan.trace?.reasons).length === 0) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
       message: 'Runtime question reduction must include bounded trace reasons.',
     });
   }
@@ -664,7 +664,7 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
     plan.learningWritten === true
   ) {
     issues.push({
-      riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_SIDE_EFFECT,
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_SIDE_EFFECT,
       message: 'Runtime question reduction can plan questions but cannot persist them.',
     });
   }
@@ -676,19 +676,19 @@ function validatePolicyBuilderPhase7RuntimeQuestionReduction(plan = {}) {
   };
 }
 
-function buildPolicyBuilderPhase7RuntimeQuestionReductionAudit(
-  plan = buildPolicyBuilderPhase7RuntimeQuestionReduction()
+function buildPolicyRuntimeQuestionReductionAudit(
+  plan = buildPolicyRuntimeQuestionReduction()
 ) {
-  const validation = validatePolicyBuilderPhase7RuntimeQuestionReduction(plan);
+  const validation = validatePolicyRuntimeQuestionReduction(plan);
 
   return {
     ok: validation.ok,
     issueCount: validation.issueCount,
-    checkedDispositionCount: Object.values(PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS).length,
+    checkedDispositionCount: Object.values(POLICY_RUNTIME_QUESTION_DISPOSITION_IDS).length,
     checkedRejectedFrameCount: Object.values(REJECTED_QUESTION_FRAME_IDS).length,
     validation,
-    nextPhase: {
-      phaseId: '7r_5',
+    nextStep: {
+      stepId: 'request_time_learning',
       label: 'Request-Time Learning And Destination Selection',
       reason: 'Runtime questions are now bounded and rare enough for request/manual destination choices to pass through the learning guard instead of mutating policy directly.',
     },
@@ -696,10 +696,10 @@ function buildPolicyBuilderPhase7RuntimeQuestionReductionAudit(
 }
 
 export {
-  PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS,
-  PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS,
-  PHASE7R_RUNTIME_QUESTION_REASON_IDS,
-  buildPolicyBuilderPhase7RuntimeQuestionReduction,
-  buildPolicyBuilderPhase7RuntimeQuestionReductionAudit,
-  validatePolicyBuilderPhase7RuntimeQuestionReduction,
+  POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS,
+  POLICY_RUNTIME_QUESTION_DISPOSITION_IDS,
+  POLICY_RUNTIME_QUESTION_REASON_IDS,
+  buildPolicyRuntimeQuestionReduction,
+  buildPolicyRuntimeQuestionReductionAudit,
+  validatePolicyRuntimeQuestionReduction,
 };

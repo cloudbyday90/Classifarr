@@ -123,7 +123,7 @@ Cons:
   a separate learning signal is required before it can mutate policy evidence.
 - Runtime integration must supply the upstream fingerprint from the automation
   decision or question-reduction plan before this contract can validate.
-- Runtime integration must supply a Phase 7R.4 question-reduction plan or
+- Runtime integration must supply a validated runtime question-reduction plan or
   equivalent bounded validation proof before request-time learning can pass.
 
 ## Final Recommendation Stack

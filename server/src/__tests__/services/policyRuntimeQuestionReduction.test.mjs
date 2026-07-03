@@ -9,13 +9,13 @@ import {
   buildPolicyAutomationDecision,
 } from '../../services/policyAutomationDecisionContract.mjs';
 import {
-  PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS,
-  PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS,
-  PHASE7R_RUNTIME_QUESTION_REASON_IDS,
-  buildPolicyBuilderPhase7RuntimeQuestionReduction,
-  buildPolicyBuilderPhase7RuntimeQuestionReductionAudit,
-  validatePolicyBuilderPhase7RuntimeQuestionReduction,
-} from '../../services/policyBuilderPhase7RuntimeQuestionReduction.mjs';
+  POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS,
+  POLICY_RUNTIME_QUESTION_DISPOSITION_IDS,
+  POLICY_RUNTIME_QUESTION_REASON_IDS,
+  buildPolicyRuntimeQuestionReduction,
+  buildPolicyRuntimeQuestionReductionAudit,
+  validatePolicyRuntimeQuestionReduction,
+} from '../../services/policyRuntimeQuestionReduction.mjs';
 import {
   buildPolicyRuntimeEvidenceProjection,
 } from '../../services/policyRuntimeEvidenceProjection.mjs';
@@ -47,13 +47,13 @@ function buildStrongDecision(overrides = {}) {
   });
 }
 
-describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
+describe('policyRuntimeQuestionReduction', () => {
   test('suppresses operator questions for auto-route-ready decisions', () => {
-    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+    const plan = buildPolicyRuntimeQuestionReduction({
       automationDecision: buildStrongDecision(),
     });
 
-    expect(plan.dispositionId).toBe(PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.SUPPRESS_QUESTION);
+    expect(plan.dispositionId).toBe(POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.SUPPRESS_QUESTION);
     expect(plan.createQuestion).toBe(false);
     expect(plan.question).toBeNull();
     expect(plan.nextAction).toEqual(expect.objectContaining({
@@ -73,10 +73,10 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
     expect(JSON.stringify(plan.decisionEvidenceFingerprint)).not.toContain('Radarr Animated Movies');
     expect(plan.trace.reasons).toEqual([
       expect.objectContaining({
-        reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.AUTO_ROUTE_DOES_NOT_NEED_QUESTION,
+        reasonId: POLICY_RUNTIME_QUESTION_REASON_IDS.AUTO_ROUTE_DOES_NOT_NEED_QUESTION,
       }),
     ]);
-    expect(validatePolicyBuilderPhase7RuntimeQuestionReduction(plan).ok).toBe(true);
+    expect(validatePolicyRuntimeQuestionReduction(plan).ok).toBe(true);
   });
 
   test('turns classified_not_routed into routing action instead of a persisted question', () => {
@@ -99,21 +99,21 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
         targetName: 'Radarr Animated Movies',
       },
     });
-    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({ automationDecision: decision });
+    const plan = buildPolicyRuntimeQuestionReduction({ automationDecision: decision });
 
     expect(decision.stateId).toBe(POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED);
-    expect(plan.dispositionId).toBe(PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING);
+    expect(plan.dispositionId).toBe(POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING);
     expect(plan.createQuestion).toBe(false);
     expect(plan.proposedFrameId).toBe(QUESTION_FRAME_IDS.ROUTING_GAP);
     expect(plan.nextAction).toEqual(expect.objectContaining({
       actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING,
       target: QUESTION_FRAME_IDS.ROUTING_GAP,
     }));
-    expect(validatePolicyBuilderPhase7RuntimeQuestionReduction(plan).ok).toBe(true);
+    expect(validatePolicyRuntimeQuestionReduction(plan).ok).toBe(true);
   });
 
   test('creates bounded Phase 5R questions for hard-limit and missing-evidence states', () => {
-    const hardLimitPlan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+    const hardLimitPlan = buildPolicyRuntimeQuestionReduction({
       evidenceProjection: buildPolicyRuntimeEvidenceProjection({
         libraryProfile: {
           identityCandidates: [
@@ -125,7 +125,7 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
         hardLimitSatisfied: false,
       },
     });
-    const missingEvidencePlan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+    const missingEvidencePlan = buildPolicyRuntimeQuestionReduction({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.6 },
@@ -137,9 +137,9 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
     });
 
     expect(hardLimitPlan.dispositionId)
-      .toBe(PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION);
+      .toBe(POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION);
     expect(hardLimitPlan.question).toEqual(expect.objectContaining({
-      contractVersion: 'phase7r.runtime_question_reduction.v1',
+      contractVersion: 'policy.runtime_question_reduction.v1',
       frameId: QUESTION_FRAME_IDS.HARD_LIMIT_CONFLICT,
       decisionStateId: POLICY_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
       decisionEvidenceFingerprint: expect.objectContaining({
@@ -158,12 +158,12 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
       frameId: QUESTION_FRAME_IDS.MISSING_EVIDENCE,
       decisionStateId: POLICY_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE,
     }));
-    expect(validatePolicyBuilderPhase7RuntimeQuestionReduction(hardLimitPlan).ok).toBe(true);
-    expect(validatePolicyBuilderPhase7RuntimeQuestionReduction(missingEvidencePlan).ok).toBe(true);
+    expect(validatePolicyRuntimeQuestionReduction(hardLimitPlan).ok).toBe(true);
+    expect(validatePolicyRuntimeQuestionReduction(missingEvidencePlan).ok).toBe(true);
   });
 
   test('uses outlier review for avoid and high-risk runtime review states', () => {
-    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+    const plan = buildPolicyRuntimeQuestionReduction({
       automationDecision: buildStrongDecision({
         policyEvaluation: {
           avoidRulesSatisfied: false,
@@ -179,7 +179,7 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
   });
 
   test('rewrites rejected broad-genre priority frames before persistence', () => {
-    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+    const plan = buildPolicyRuntimeQuestionReduction({
       requestedQuestionFrameId: REJECTED_QUESTION_FRAME_IDS.BROAD_GENRE_PRIORITY,
       libraryProfile: {
         identityCandidates: [
@@ -196,14 +196,14 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
     expect(plan.question.frameId).toBe(QUESTION_FRAME_IDS.DESTINATION_FIT);
     expect(plan.trace.reasons).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: PHASE7R_RUNTIME_QUESTION_REASON_IDS.REJECTED_LEGACY_FRAME_REWRITTEN,
+        reasonId: POLICY_RUNTIME_QUESTION_REASON_IDS.REJECTED_LEGACY_FRAME_REWRITTEN,
       }),
     ]));
-    expect(validatePolicyBuilderPhase7RuntimeQuestionReduction(plan).ok).toBe(true);
+    expect(validatePolicyRuntimeQuestionReduction(plan).ok).toBe(true);
   });
 
   test('routes stale or legacy pending questions through cleanup before answer or learning', () => {
-    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+    const plan = buildPolicyRuntimeQuestionReduction({
       automationDecision: buildStrongDecision({
         policyEvaluation: {
           avoidRulesSatisfied: false,
@@ -217,7 +217,7 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
       },
     });
 
-    expect(plan.dispositionId).toBe(PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.STALE_QUESTION_CLEANUP);
+    expect(plan.dispositionId).toBe(POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.STALE_QUESTION_CLEANUP);
     expect(plan.createQuestion).toBe(false);
     expect(plan.question).toBeNull();
     expect(plan.staleQuestionCleanup).toEqual({
@@ -226,15 +226,15 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
     });
     expect(plan.learning).toEqual(expect.objectContaining({
       eligible: false,
-      reason: PHASE7R_RUNTIME_QUESTION_REASON_IDS.STALE_OR_LEGACY_QUESTION_REQUIRES_CLEANUP,
+      reason: POLICY_RUNTIME_QUESTION_REASON_IDS.STALE_OR_LEGACY_QUESTION_REQUIRES_CLEANUP,
     }));
-    expect(validatePolicyBuilderPhase7RuntimeQuestionReduction(plan).ok).toBe(true);
+    expect(validatePolicyRuntimeQuestionReduction(plan).ok).toBe(true);
   });
 
   test('rejects invalid question plans with rejected frames, learning, or side effects', () => {
-    const validation = validatePolicyBuilderPhase7RuntimeQuestionReduction({
-      version: 'phase7r.runtime_question_reduction.v1',
-      dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
+    const validation = validatePolicyRuntimeQuestionReduction({
+      version: 'policy.runtime_question_reduction.v1',
+      dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
       createQuestion: true,
       decision: {
         stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
@@ -264,38 +264,38 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_REJECTED_FRAME,
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_REJECTED_FRAME,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_LEARNING_ENABLED,
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_LEARNING_ENABLED,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_FOR_AUTO_ROUTE,
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_FOR_AUTO_ROUTE,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_SIDE_EFFECT,
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_WITH_SIDE_EFFECT,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.AUTOMATION_DECISION_INVALID,
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.AUTOMATION_DECISION_INVALID,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_DECISION_EVIDENCE_FINGERPRINT,
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.MISSING_DECISION_EVIDENCE_FINGERPRINT,
       }),
     ]));
   });
 
   test('rejects question plans with mismatched evidence fingerprints', () => {
-    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+    const plan = buildPolicyRuntimeQuestionReduction({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.6 },
         ],
       },
     });
-    const validation = validatePolicyBuilderPhase7RuntimeQuestionReduction({
+    const validation = validatePolicyRuntimeQuestionReduction({
       ...plan,
       question: {
         ...plan.question,
@@ -317,23 +317,23 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_FINGERPRINT_MISMATCH,
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.QUESTION_FINGERPRINT_MISMATCH,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.TRACE_FINGERPRINT_MISMATCH,
       }),
     ]));
   });
 
   test('rejects question plans without carried automation decision validation proof', () => {
-    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+    const plan = buildPolicyRuntimeQuestionReduction({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.6 },
         ],
       },
     });
-    const validation = validatePolicyBuilderPhase7RuntimeQuestionReduction({
+    const validation = validatePolicyRuntimeQuestionReduction({
       ...plan,
       decisionValidation: undefined,
     });
@@ -341,21 +341,21 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS
           .MISSING_AUTOMATION_DECISION_VALIDATION,
       }),
     ]));
   });
 
   test('rejects question plans when decision validation or trace proof drifts', () => {
-    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+    const plan = buildPolicyRuntimeQuestionReduction({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.6 },
         ],
       },
     });
-    const validation = validatePolicyBuilderPhase7RuntimeQuestionReduction({
+    const validation = validatePolicyRuntimeQuestionReduction({
       ...plan,
       decisionValidation: {
         ...plan.decisionValidation,
@@ -369,7 +369,7 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
         },
       },
     });
-    const traceOnlyValidation = validatePolicyBuilderPhase7RuntimeQuestionReduction({
+    const traceOnlyValidation = validatePolicyRuntimeQuestionReduction({
       ...plan,
       trace: {
         ...plan.trace,
@@ -383,36 +383,36 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS
           .AUTOMATION_DECISION_VALIDATION_MISMATCH,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS
           .TRACE_DECISION_VALID_MISMATCH,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS
           .AUTOMATION_DECISION_INVALID,
       }),
     ]));
     expect(traceOnlyValidation.ok).toBe(false);
     expect(traceOnlyValidation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS
           .TRACE_DECISION_VALID_MISMATCH,
       }),
     ]));
   });
 
   test('rejects created questions or traces without evidence fingerprint proof', () => {
-    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+    const plan = buildPolicyRuntimeQuestionReduction({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.6 },
         ],
       },
     });
-    const validation = validatePolicyBuilderPhase7RuntimeQuestionReduction({
+    const validation = validatePolicyRuntimeQuestionReduction({
       ...plan,
       question: {
         ...plan.question,
@@ -431,31 +431,31 @@ describe('policyBuilderPhase7RuntimeQuestionReduction', () => {
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS
           .MISSING_QUESTION_EVIDENCE_FINGERPRINT,
       }),
       expect.objectContaining({
-        riskId: PHASE7R_RUNTIME_QUESTION_AUDIT_RISK_IDS
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS
           .MISSING_TRACE_EVIDENCE_FINGERPRINT,
       }),
     ]));
   });
 
   test('passes the default runtime question reduction audit', () => {
-    const plan = buildPolicyBuilderPhase7RuntimeQuestionReduction({
+    const plan = buildPolicyRuntimeQuestionReduction({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.6 },
         ],
       },
     });
-    const audit = buildPolicyBuilderPhase7RuntimeQuestionReductionAudit(plan);
+    const audit = buildPolicyRuntimeQuestionReductionAudit(plan);
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedDispositionCount).toBe(7);
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '7r_5',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'request_time_learning',
       label: 'Request-Time Learning And Destination Selection',
     }));
   });

@@ -96,7 +96,7 @@ Validation should include:
 
 ```text
 cd server
-node ../scripts/run-jest.mjs --testPathPatterns="policyAutomationDecisionContract|policyBuilderPhase7RuntimeQuestionReduction|policyBuilderPhase7RuntimeMetricsTrace|policyBuilderPhase7CompletionAudit|policyRuntimeDecisionInventory|policyBuilderPhase7RuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
+node ../scripts/run-jest.mjs --testPathPatterns="policyAutomationDecisionContract|policyRuntimeQuestionReduction|policyBuilderPhase7RuntimeMetricsTrace|policyBuilderPhase7CompletionAudit|policyRuntimeDecisionInventory|policyBuilderPhase7RuntimeRebuildTestReset|policyProductionNamingRegressionAudit" --no-coverage --runInBand
 npm run lint:docs
 npm --prefix server run lint:security -- --quiet
 node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid
@@ -105,6 +105,7 @@ npm --prefix server run test:unit -- --no-coverage --runInBand
 
 ## Next Step
 
-Cut over Runtime Question Reduction to a durable product-domain module name. It
-is the direct consumer of the automation decision contract and is the next
-runtime link that still exposes Phase 7R naming in production imports.
+Cut over Request-Time Learning And Destination Selection to a durable
+product-domain module name. It is the direct consumer of runtime question
+reduction and the next runtime link that still exposes Phase 7R naming in
+production imports.

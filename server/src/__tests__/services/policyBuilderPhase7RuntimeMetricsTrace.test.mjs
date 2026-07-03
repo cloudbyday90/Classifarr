@@ -2,8 +2,8 @@ import {
   POLICY_AUTOMATION_DECISION_STATE_IDS,
 } from '../../services/policyAutomationDecisionContract.mjs';
 import {
-  PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS,
-} from '../../services/policyBuilderPhase7RuntimeQuestionReduction.mjs';
+  POLICY_RUNTIME_QUESTION_DISPOSITION_IDS,
+} from '../../services/policyRuntimeQuestionReduction.mjs';
 import {
   PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS,
 } from '../../services/policyBuilderPhase7RequestTimeLearning.mjs';
@@ -36,9 +36,9 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
         { stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY },
       ],
       questionReductions: [
-        { dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION },
-        { dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING },
-        { dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.REFRESH_PROFILE },
+        { dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION },
+        { dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING },
+        { dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.REFRESH_PROFILE },
       ],
       requestLearningDecisions: [
         { dispositionId: PHASE7R_REQUEST_LEARNING_DISPOSITION_IDS.LEARNING_CANDIDATE },
@@ -193,7 +193,7 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
       ],
       questionReductions: [
         {
-          dispositionId: PHASE7R_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
+          dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CREATE_OPERATOR_QUESTION,
           trace: {
             attributes: {
               'classifarr.runtime.question.decision_evidence_projection_fingerprint': 'b'.repeat(64),
