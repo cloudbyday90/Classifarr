@@ -2,8 +2,8 @@ import {
   ANSWER_OUTCOME_IDS,
 } from '../../services/policyQuestionLearningVocabulary.mjs';
 import {
-  PHASE6R_INTENT_FIELD_IDS,
-} from '../../services/policyBuilderPhase6IntentEngine.mjs';
+  POLICY_INTENT_FIELD_IDS,
+} from '../../services/policyIntentEngine.mjs';
 import {
   PHASE6R_READINESS_STATE_IDS,
 } from '../../services/policyBuilderPhase6ReadinessEngine.mjs';
@@ -137,7 +137,7 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
       expect.objectContaining({
         key: 'studio:disney',
         label: 'Disney',
-        fieldId: PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE,
+        fieldId: POLICY_INTENT_FIELD_IDS.BELONGS_HERE,
       }),
     ]));
     expect(proposal.intentDraft.helpful_matches).toEqual(expect.arrayContaining([

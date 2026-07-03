@@ -3239,9 +3239,9 @@ Implementation status:
 - Phase 6R.2 intent engine is documented in
   [Policy Builder Phase 6R Intent Engine](policy-builder-phase-6r-intent-engine.md).
 - The server-owned intent contract lives in
-  `server/src/services/policyBuilderPhase6IntentEngine.mjs`.
+  `server/src/services/policyIntentEngine.mjs`.
 - The focused intent-engine test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase6IntentEngine.test.mjs`.
+  `server/src/__tests__/services/policyIntentEngine.test.mjs`.
 - Current implementation consumes Phase 6R.1 evidence projection and produces
   proposed destination intent for `belongs_here`, `helpful_matches`,
   `hard_limits`, `avoid`, `ask_when`, `routing_target`, confidence,
@@ -6220,6 +6220,14 @@ Implementation status:
   [Policy Evidence Engine Module Cutover](policy-evidence-engine-module-cutover.md).
 - After the evidence-engine cutover, the repository inventory validates with
   15,429 total phase-coded references, 7,024 production references, and 7,046
+  rename candidates.
+- The next durable module cutover renamed the intent inference engine to
+  `policyIntentEngine.mjs`, renamed its focused test, moved the draft contract
+  to `policy.intent.v1`, and replaced the engine-local phase handoff with
+  `nextStep`:
+  [Policy Intent Engine Module Cutover](policy-intent-engine-module-cutover.md).
+- After the intent-engine cutover, the repository inventory validates with
+  15,155 total phase-coded references, 6,857 production references, and 6,879
   rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover

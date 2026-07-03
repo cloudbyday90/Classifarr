@@ -3,7 +3,7 @@ import {
 } from './policyAuthorityVocabulary.mjs';
 import {
   BROAD_GENRE_LABELS,
-} from './policyBuilderPhase6IntentEngine.mjs';
+} from './policyIntentEngine.mjs';
 import {
   POLICY_EVIDENCE_BUCKET_IDS,
   POLICY_EVIDENCE_SOURCE_IDS,

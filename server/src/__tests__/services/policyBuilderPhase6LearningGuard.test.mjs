@@ -9,8 +9,8 @@ import {
   buildBoundedPolicyEvidenceProjection,
 } from '../../services/policyEvidenceBoundary.mjs';
 import {
-  buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
-} from '../../services/policyBuilderPhase6IntentEngine.mjs';
+  buildPolicyIntentDraftFromBoundedEvidence,
+} from '../../services/policyIntentEngine.mjs';
 import {
   PHASE6R_LEARNING_BOUNDARY_STATUS_IDS,
   PHASE6R_LEARNING_DECISION_IDS,
@@ -158,7 +158,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
         },
       },
     });
-    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
     const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
@@ -217,7 +217,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
         },
       },
     });
-    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
     const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
@@ -255,7 +255,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
         },
       },
     });
-    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
     const insufficientQuality = {
@@ -307,7 +307,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
         },
       },
     });
-    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
     const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
@@ -351,7 +351,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
         },
       },
     });
-    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
     const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
@@ -389,7 +389,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
         },
       },
     });
-    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
     const tamperedIntentResult = {
@@ -459,8 +459,8 @@ describe('policyBuilderPhase6LearningGuard', () => {
         ok: true,
         statusId: 'ready',
         intent: {
-          version: 'phase6r.intent.v1',
-          source: 'phase6r_bounded_evidence_boundary',
+          version: 'policy.intent.v1',
+          source: 'policy_bounded_evidence_boundary',
         },
         evidenceBoundary: {},
       },
@@ -637,7 +637,7 @@ describe('policyBuilderPhase6LearningGuard', () => {
         },
       },
     });
-    const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
     const result = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({

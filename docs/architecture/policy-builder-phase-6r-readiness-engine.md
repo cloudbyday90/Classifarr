@@ -138,7 +138,7 @@ Cons:
 - Evidence input:
   `server/src/services/policyEvidenceEngine.mjs`
 - Intent input:
-  `server/src/services/policyBuilderPhase6IntentEngine.mjs`
+  `server/src/services/policyIntentEngine.mjs`
 - Learning input:
   `server/src/services/policyBuilderPhase6LearningGuard.mjs`
 - Readiness engine:

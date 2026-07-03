@@ -3,11 +3,11 @@ import {
   buildPolicyEvidenceProjection,
 } from './policyEvidenceEngine.mjs';
 import {
-  PHASE6R_INTENT_FIELD_IDS,
-  PHASE6R_INTENT_WARNING_IDS,
-  buildPolicyBuilderPhase6IntentDraft,
-  validatePolicyBuilderPhase6IntentDraft,
-} from './policyBuilderPhase6IntentEngine.mjs';
+  POLICY_INTENT_FIELD_IDS,
+  POLICY_INTENT_WARNING_IDS,
+  buildPolicyIntentDraft,
+  validatePolicyIntentDraft,
+} from './policyIntentEngine.mjs';
 import {
   PHASE6R_READINESS_STATE_IDS,
   buildPolicyBuilderPhase6Readiness,
@@ -492,7 +492,7 @@ function collectWarnings({
     warnings.push(buildWarning(
       PHASE7R_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY,
       'Observed absence is review context only and was not promoted to an avoid or exclusion rule.',
-      { target: PHASE6R_INTENT_FIELD_IDS.ASK_WHEN }
+      { target: POLICY_INTENT_FIELD_IDS.ASK_WHEN }
     ));
   }
 
@@ -500,7 +500,7 @@ function collectWarnings({
     warnings.push(buildWarning(
       PHASE7R_REBUILD_WARNING_IDS.MISSING_IDENTITY_EVIDENCE,
       'The rebuild proposal needs stronger belongs-here evidence before activation.',
-      { target: PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE }
+      { target: POLICY_INTENT_FIELD_IDS.BELONGS_HERE }
     ));
   }
 
@@ -508,7 +508,7 @@ function collectWarnings({
     warnings.push(buildWarning(
       PHASE7R_REBUILD_WARNING_IDS.EXPLICIT_CONSTRAINT_REVIEW_REQUIRED,
       'Explicit operator constraints were preserved and should be reviewed before acceptance.',
-      { target: PHASE6R_INTENT_FIELD_IDS.HARD_LIMITS }
+      { target: POLICY_INTENT_FIELD_IDS.HARD_LIMITS }
     ));
   }
 
@@ -516,7 +516,7 @@ function collectWarnings({
     warnings.push(buildWarning(
       PHASE7R_REBUILD_WARNING_IDS.MISSING_ROUTING_CONFIGURATION,
       'Routing must be configured before this proposal can support automatic routing.',
-      { target: PHASE6R_INTENT_FIELD_IDS.ROUTING_TARGET }
+      { target: POLICY_INTENT_FIELD_IDS.ROUTING_TARGET }
     ));
   }
 
@@ -553,11 +553,11 @@ function collectWarnings({
   }
 
   asArray(intentDraft.warnings).forEach(warning => {
-    if (warning.reasonCode === PHASE6R_INTENT_WARNING_IDS.OBSERVED_ABSENCE_NOT_EXCLUSION) {
+    if (warning.reasonCode === POLICY_INTENT_WARNING_IDS.OBSERVED_ABSENCE_NOT_EXCLUSION) {
       warnings.push(buildWarning(
         PHASE7R_REBUILD_WARNING_IDS.OBSERVED_ABSENCE_WARNING_ONLY,
         warning.summary || 'Observed absence stayed a warning rather than an exclusion.',
-        { target: PHASE6R_INTENT_FIELD_IDS.ASK_WHEN }
+        { target: POLICY_INTENT_FIELD_IDS.ASK_WHEN }
       ));
     }
   });
@@ -642,7 +642,7 @@ function buildTrace({ statusId, evidenceSourceSummary, warnings }) {
 function buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(input = {}) {
   const evidenceInput = buildEvidenceInput(input);
   const evidenceProjection = buildPolicyEvidenceProjection(evidenceInput);
-  const intentDraft = buildPolicyBuilderPhase6IntentDraft(evidenceProjection);
+  const intentDraft = buildPolicyIntentDraft(evidenceProjection);
   const readiness = buildPolicyBuilderPhase6Readiness({
     evidenceProjection,
     intentDraft,
@@ -726,13 +726,13 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
     });
   }
 
-  if (proposal.intentDraft?.version !== 'phase6r.intent.v1') {
+  if (proposal.intentDraft?.version !== 'policy.intent.v1') {
     issues.push({
       riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.MISSING_INTENT_DRAFT,
       message: 'Library policy rebuild proposal must include a Phase 6R intent draft.',
     });
   } else {
-    const intentValidation = validatePolicyBuilderPhase6IntentDraft(proposal.intentDraft);
+    const intentValidation = validatePolicyIntentDraft(proposal.intentDraft);
     if (!intentValidation.ok) {
       issues.push({
         riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.INVALID_INTENT_DRAFT,

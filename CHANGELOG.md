@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Intent Engine Module Cutover** — renamed the intent inference engine
+  and focused test to durable product-domain names, moved the draft contract to
+  `policy.intent.v1`, replaced the engine-local audit handoff with `nextStep`,
+  added a legacy completion-audit adapter, updated downstream imports, and
+  lowered the production naming regression baseline after inventory validation.
 - **Policy Evidence Engine Module Cutover** — renamed the evidence projection
   engine and focused test to durable product-domain names, moved the projection
   and summary contracts to `policy.evidence.v1` and

@@ -10,7 +10,7 @@ import {
 function sampleFiles() {
   return [
     {
-      path: 'server/src/services/policyBuilderPhase6IntentEngine.mjs',
+      path: 'server/src/services/policyIntentEngine.mjs',
       content: `
 const PHASE6_INTENT_VERSION = 'phase6r.intent_engine.v1';
 export function buildPolicyBuilderPhase6IntentEngine() {}
@@ -76,7 +76,7 @@ describe('policyBuilderProductionNameInventory', () => {
 
     expect(inventory.references).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        repoPath: 'server/src/services/policyBuilderPhase6IntentEngine.mjs',
+        repoPath: 'server/src/services/policyIntentEngine.mjs',
         categoryId: PRODUCTION_NAMING_CATEGORY_IDS.PRODUCTION,
         decisionId: PRODUCTION_NAMING_DECISION_IDS.RENAME_IN_PRODUCTION_CODE,
         durableTarget: 'policyIntentInference',
@@ -90,7 +90,7 @@ describe('policyBuilderProductionNameInventory', () => {
     ]));
     expect(inventory.renameMap).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        repoPath: 'server/src/services/policyBuilderPhase6IntentEngine.mjs',
+        repoPath: 'server/src/services/policyIntentEngine.mjs',
         durableTarget: 'policyIntentInference',
       }),
     ]));

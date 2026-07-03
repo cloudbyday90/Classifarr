@@ -155,7 +155,7 @@ Cons:
 - Evidence dependency:
   `server/src/services/policyEvidenceEngine.mjs`
 - Intent dependency:
-  `server/src/services/policyBuilderPhase6IntentEngine.mjs`
+  `server/src/services/policyIntentEngine.mjs`
 - Readiness dependency:
   `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`
 - Roadmap owner:

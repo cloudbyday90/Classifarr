@@ -69,8 +69,8 @@ native policy storage
    or delete.
 
 3. **Rename by domain, not by shorter phase aliases.**
-   `policyBuilderPhase6IntentEngine` should become a name like
-   `policyIntentInference`, not `policyBuilderR6Intent`.
+   Current cutovers should follow durable names like `policyIntentEngine`,
+   not shorter roadmap aliases like `policyBuilderR6Intent`.
 
 4. **Separate mechanical renames from behavior changes.**
    The cutover should be import/path/contract naming work with focused
@@ -202,6 +202,6 @@ labels, except where an allow-listed migration or history reason is documented.
   [Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md).
   The audit consumes the production naming inventory and blocks increases above
   the approved July 3, 2026 baseline while durable rename batches continue.
-- After the evidence-engine cutover, the regression baseline is 7,024
-  production references, 7,046 rename candidates, and 93 obsolete migration
+- After the intent-engine cutover, the regression baseline is 6,857
+  production references, 6,879 rename candidates, and 93 obsolete migration
   tooling references.

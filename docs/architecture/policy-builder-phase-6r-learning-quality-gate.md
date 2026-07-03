@@ -90,7 +90,7 @@ Cons:
 - Evidence quality source:
   `server/src/services/policyEvidenceQuality.mjs`
 - Bounded intent source:
-  `server/src/services/policyBuilderPhase6IntentEngine.mjs`
+  `server/src/services/policyIntentEngine.mjs`
 - Learning quality consumer:
   `server/src/services/policyBuilderPhase6LearningGuard.mjs`
 - Focused tests:

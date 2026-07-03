@@ -8,8 +8,8 @@ import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from '../../services/policyEvidenceQuality.mjs';
 import {
-  buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
-} from '../../services/policyBuilderPhase6IntentEngine.mjs';
+  buildPolicyIntentDraftFromBoundedEvidence,
+} from '../../services/policyIntentEngine.mjs';
 import {
   buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent,
 } from '../../services/policyBuilderPhase6LearningGuard.mjs';
@@ -43,7 +43,7 @@ function buildBoundedWorkflowResult() {
       },
     },
   });
-  const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+  const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
     boundedEvidenceResult,
   });
   const boundedLearningResult = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({

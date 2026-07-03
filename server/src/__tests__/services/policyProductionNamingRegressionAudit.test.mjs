@@ -152,7 +152,7 @@ describe('policyProductionNamingRegressionAudit', () => {
     const audit = buildPolicyProductionNamingRegressionAudit({
       files: [
         {
-          path: 'server/src/services/policyBuilderPhase6IntentEngine.mjs',
+          path: 'server/src/services/policyIntentEngine.mjs',
           content: 'export const phaseName = "Phase 6R";',
         },
       ],

@@ -12,9 +12,9 @@ import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from './policyEvidenceQuality.mjs';
 import {
-  buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
-  buildPolicyBuilderPhase6IntentEngineAudit,
-} from './policyBuilderPhase6IntentEngine.mjs';
+  buildPolicyIntentDraftFromBoundedEvidence,
+  buildPolicyIntentEngineAudit,
+} from './policyIntentEngine.mjs';
 import {
   buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent,
   buildPolicyBuilderPhase6LearningGuardAudit,
@@ -97,8 +97,8 @@ const PHASE6R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE,
     label: 'Intent engine',
     docPath: 'docs/architecture/policy-builder-phase-6r-intent-engine.md',
-    servicePath: 'server/src/services/policyBuilderPhase6IntentEngine.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase6IntentEngine.test.mjs',
+    servicePath: 'server/src/services/policyIntentEngine.mjs',
+    testPath: 'server/src/__tests__/services/policyIntentEngine.test.mjs',
     expectedNextPhaseId: '6r_3',
     evidence: 'Evidence is converted into destination intent without direct learning or storage side effects.',
   },
@@ -143,6 +143,9 @@ const PHASE6R_COMPONENT_RECORDS = Object.freeze([
 const PHASE6R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
   [PHASE6R_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE]: Object.freeze({
     intent_inference: '6r_2',
+  }),
+  [PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE]: Object.freeze({
+    learning_eligibility: '6r_3',
   }),
 });
 
@@ -318,7 +321,7 @@ function buildComponentAuditMap() {
     [PHASE6R_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE]:
       buildPolicyEvidenceEngineAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE]:
-      buildPolicyBuilderPhase6IntentEngineAudit(),
+      buildPolicyIntentEngineAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.LEARNING_GUARD]:
       buildPolicyBuilderPhase6LearningGuardAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.READINESS_ENGINE]:
@@ -340,7 +343,7 @@ function buildDefaultPhase6BoundedCompletionChain() {
       },
     },
   });
-  const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+  const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
     boundedEvidenceResult,
   });
   const boundedLearningResult = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({

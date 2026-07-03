@@ -133,7 +133,7 @@ Cons:
 - Learning guard:
   `server/src/services/policyBuilderPhase6LearningGuard.mjs`
 - Bounded intent input:
-  `server/src/services/policyBuilderPhase6IntentEngine.mjs`
+  `server/src/services/policyIntentEngine.mjs`
 - Test module:
   `server/src/__tests__/services/policyBuilderPhase6LearningGuard.test.mjs`
 - Documentation:

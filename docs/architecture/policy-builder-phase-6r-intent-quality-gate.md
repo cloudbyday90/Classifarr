@@ -51,7 +51,7 @@ Phase 6R.2 therefore needs a server-owned quality gate that:
 
 1. **Require generated quality for bounded intent.**
    Runtime and rebuild callers must use
-   `buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence`, which now requires
+   `buildPolicyIntentDraftFromBoundedEvidence`, which now requires
    a successful Phase 6R.1 result, matching projection fingerprint, and generated
    quality object.
 
@@ -100,9 +100,9 @@ Cons:
 - Evidence quality source:
   `server/src/services/policyEvidenceQuality.mjs`
 - Intent quality consumer:
-  `server/src/services/policyBuilderPhase6IntentEngine.mjs`
+  `server/src/services/policyIntentEngine.mjs`
 - Focused tests:
-  `server/src/__tests__/services/policyBuilderPhase6IntentEngine.test.mjs`
+  `server/src/__tests__/services/policyIntentEngine.test.mjs`
 - Design owner:
   `docs/architecture/policy-builder-phase-6r-intent-engine.md`
 - Roadmap owner:

@@ -88,7 +88,7 @@ Cons:
 - Evidence quality:
   `server/src/services/policyEvidenceQuality.mjs`
 - Bounded intent:
-  `server/src/services/policyBuilderPhase6IntentEngine.mjs`
+  `server/src/services/policyIntentEngine.mjs`
 - Bounded learning:
   `server/src/services/policyBuilderPhase6LearningGuard.mjs`
 - Readiness quality consumer:

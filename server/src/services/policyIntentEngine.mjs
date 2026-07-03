@@ -16,14 +16,14 @@ import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from './policyEvidenceQuality.mjs';
 
-const PHASE6R_INTENT_BOUNDARY_STATUS_IDS = Object.freeze({
+const POLICY_INTENT_BOUNDARY_STATUS_IDS = Object.freeze({
   READY: 'ready',
   BLOCKED_BY_EVIDENCE_BOUNDARY: 'blocked_by_evidence_boundary',
   BLOCKED_BY_EVIDENCE_QUALITY: 'blocked_by_evidence_quality',
   BLOCKED_BY_INTENT_AUDIT: 'blocked_by_intent_audit',
 });
 
-const PHASE6R_INTENT_FIELD_IDS = Object.freeze({
+const POLICY_INTENT_FIELD_IDS = Object.freeze({
   BELONGS_HERE: 'belongs_here',
   HELPFUL_MATCHES: 'helpful_matches',
   HARD_LIMITS: 'hard_limits',
@@ -35,14 +35,14 @@ const PHASE6R_INTENT_FIELD_IDS = Object.freeze({
   WARNINGS: 'warnings',
 });
 
-const PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS = Object.freeze({
+const POLICY_INTENT_CONFIDENCE_LEVEL_IDS = Object.freeze({
   LOW: 'low',
   MEDIUM: 'medium',
   HIGH: 'high',
   BLOCKED: 'blocked',
 });
 
-const PHASE6R_INTENT_WARNING_IDS = Object.freeze({
+const POLICY_INTENT_WARNING_IDS = Object.freeze({
   BROAD_GENRE_IDENTITY_NEEDS_SUPPORT: 'broad_genre_identity_needs_support',
   OBSERVED_ABSENCE_NOT_EXCLUSION: 'observed_absence_not_exclusion',
   INSUFFICIENT_EVIDENCE: 'insufficient_evidence',
@@ -51,7 +51,7 @@ const PHASE6R_INTENT_WARNING_IDS = Object.freeze({
   LEGACY_TEMPLATE_BRIDGE_ONLY: 'legacy_template_bridge_only',
 });
 
-const PHASE6R_INTENT_ASSUMPTION_IDS = Object.freeze({
+const POLICY_INTENT_ASSUMPTION_IDS = Object.freeze({
   OBSERVED_IDENTITY_ACCEPTANCE_REQUIRED: 'observed_identity_acceptance_required',
   DECLARED_CONSTRAINTS_ARE_OPERATOR_AUTHORITY: 'declared_constraints_are_operator_authority',
   FINAL_OUTCOMES_REQUIRE_LEARNING_GUARD: 'final_outcomes_require_learning_guard',
@@ -59,7 +59,7 @@ const PHASE6R_INTENT_ASSUMPTION_IDS = Object.freeze({
   LEGACY_TEMPLATE_IS_DRAFT_SEED_ONLY: 'legacy_template_is_draft_seed_only',
 });
 
-const PHASE6R_INTENT_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_INTENT_AUDIT_RISK_IDS = Object.freeze({
   MISSING_FIELD: 'missing_field',
   INVALID_CONFIDENCE_LEVEL: 'invalid_confidence_level',
   MISSING_CONFIDENCE_REASON: 'missing_confidence_reason',
@@ -121,37 +121,37 @@ function deepFreeze(value) {
   return value;
 }
 
-const PHASE6R_INTENT_FIELD_CONTRACTS = deepFreeze([
+const POLICY_INTENT_FIELD_CONTRACTS = deepFreeze([
   {
-    id: PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE,
+    id: POLICY_INTENT_FIELD_IDS.BELONGS_HERE,
     label: 'Belongs Here',
     evidenceBucketIds: [POLICY_EVIDENCE_BUCKET_IDS.IDENTITY],
     durableAuthorityRequired: false,
     productMeaning: 'Destination identity that is either declared by the operator or strongly supported by specific observed evidence.',
   },
   {
-    id: PHASE6R_INTENT_FIELD_IDS.HELPFUL_MATCHES,
+    id: POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES,
     label: 'Helpful Matches',
     evidenceBucketIds: [POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY],
     durableAuthorityRequired: false,
     productMeaning: 'Compatibility evidence that can support a destination after identity is plausible.',
   },
   {
-    id: PHASE6R_INTENT_FIELD_IDS.HARD_LIMITS,
+    id: POLICY_INTENT_FIELD_IDS.HARD_LIMITS,
     label: 'Hard Limits',
     evidenceBucketIds: [POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT],
     durableAuthorityRequired: true,
     productMeaning: 'Operator-declared constraints that can block automation.',
   },
   {
-    id: PHASE6R_INTENT_FIELD_IDS.AVOID,
+    id: POLICY_INTENT_FIELD_IDS.AVOID,
     label: 'Avoid',
     evidenceBucketIds: [POLICY_EVIDENCE_BUCKET_IDS.AVOID],
     durableAuthorityRequired: true,
     productMeaning: 'Operator-declared poor-fit evidence that lowers confidence without becoming a hard block by default.',
   },
   {
-    id: PHASE6R_INTENT_FIELD_IDS.ASK_WHEN,
+    id: POLICY_INTENT_FIELD_IDS.ASK_WHEN,
     label: 'Ask When',
     evidenceBucketIds: [
       POLICY_EVIDENCE_BUCKET_IDS.OUTLIER,
@@ -161,7 +161,7 @@ const PHASE6R_INTENT_FIELD_CONTRACTS = deepFreeze([
     productMeaning: 'Review triggers produced from missing, stale, conflicting, or outlier evidence.',
   },
   {
-    id: PHASE6R_INTENT_FIELD_IDS.ROUTING_TARGET,
+    id: POLICY_INTENT_FIELD_IDS.ROUTING_TARGET,
     label: 'Routing Target',
     evidenceBucketIds: [POLICY_EVIDENCE_BUCKET_IDS.ROUTING],
     durableAuthorityRequired: false,
@@ -234,7 +234,7 @@ function buildIntentEntry(entry = {}, {
     evidenceBucketId: entry.bucketId,
     evidenceSourceId: entry.sourceId,
     authoritySourceId: entry.authoritySourceId,
-    reasonCode: reasonCode || entry.reasonCode || 'phase6r_evidence',
+    reasonCode: reasonCode || entry.reasonCode || 'policy_evidence',
     evidenceCount: Number.isFinite(Number(entry.count)) ? Number(entry.count) : null,
     evidenceConfidence: normalizeConfidence(entry.confidence),
     inferred: Boolean(inferred),
@@ -272,12 +272,12 @@ function buildAssumption(reasonCode, summary) {
 
 function countEntries(intent) {
   return [
-    PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE,
-    PHASE6R_INTENT_FIELD_IDS.HELPFUL_MATCHES,
-    PHASE6R_INTENT_FIELD_IDS.HARD_LIMITS,
-    PHASE6R_INTENT_FIELD_IDS.AVOID,
-    PHASE6R_INTENT_FIELD_IDS.ASK_WHEN,
-    PHASE6R_INTENT_FIELD_IDS.ROUTING_TARGET,
+    POLICY_INTENT_FIELD_IDS.BELONGS_HERE,
+    POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES,
+    POLICY_INTENT_FIELD_IDS.HARD_LIMITS,
+    POLICY_INTENT_FIELD_IDS.AVOID,
+    POLICY_INTENT_FIELD_IDS.ASK_WHEN,
+    POLICY_INTENT_FIELD_IDS.ROUTING_TARGET,
   ].reduce((count, fieldId) => count + asArray(intent[fieldId]).length, 0);
 }
 
@@ -290,7 +290,7 @@ function calculateConfidence(intent) {
 
   if (intent.hard_limits.some(entry => entry.operatorDeclared === false)) {
     return {
-      level: PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS.BLOCKED,
+      level: POLICY_INTENT_CONFIDENCE_LEVEL_IDS.BLOCKED,
       score: 0,
       reasonCodes: ['invalid_hard_limit_authority'],
     };
@@ -305,9 +305,9 @@ function calculateConfidence(intent) {
 
   score = Math.max(0, Math.min(1, Number(score.toFixed(2))));
 
-  let level = PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS.LOW;
-  if (score >= 0.75) level = PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS.HIGH;
-  else if (score >= 0.5) level = PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS.MEDIUM;
+  let level = POLICY_INTENT_CONFIDENCE_LEVEL_IDS.LOW;
+  if (score >= 0.75) level = POLICY_INTENT_CONFIDENCE_LEVEL_IDS.HIGH;
+  else if (score >= 0.5) level = POLICY_INTENT_CONFIDENCE_LEVEL_IDS.MEDIUM;
 
   return {
     level,
@@ -322,8 +322,8 @@ function calculateConfidence(intent) {
 
 function createEmptyIntentDraft() {
   return {
-    version: 'phase6r.intent.v1',
-    source: 'phase6r_evidence_engine',
+    version: 'policy.intent.v1',
+    source: 'policy_evidence_engine',
     evidenceBoundary: null,
     belongs_here: [],
     helpful_matches: [],
@@ -332,7 +332,7 @@ function createEmptyIntentDraft() {
     ask_when: [],
     routing_target: [],
     confidence: {
-      level: PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS.LOW,
+      level: POLICY_INTENT_CONFIDENCE_LEVEL_IDS.LOW,
       score: 0,
       reasonCodes: [],
     },
@@ -392,14 +392,14 @@ function buildEvidenceBoundarySnapshot(boundedEvidenceResult = {}) {
 function buildEvidenceQualityIssues(quality = null) {
   if (!quality || typeof quality !== 'object' || Array.isArray(quality)) {
     return [{
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_QUALITY,
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_QUALITY,
       message: 'Intent inference requires a generated evidence quality assessment.',
     }];
   }
 
   if (quality.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT) {
     return [{
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.INSUFFICIENT_EVIDENCE_QUALITY,
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.INSUFFICIENT_EVIDENCE_QUALITY,
       message: 'Intent inference is blocked until evidence quality is no longer insufficient.',
       qualityStatusId: quality.statusId,
       nextActionId: quality.nextActionId || null,
@@ -410,7 +410,7 @@ function buildEvidenceQualityIssues(quality = null) {
   return [];
 }
 
-function buildPolicyBuilderPhase6IntentDraft(input = {}) {
+function buildPolicyIntentDraft(input = {}) {
   const projection = input?.version === 'policy.evidence.v1'
     ? input
     : buildPolicyEvidenceProjection(input);
@@ -424,7 +424,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
   identityEntries.forEach(entry => {
     if (isMetadataEvidence(entry)) {
       intent.warnings.push(buildWarning(
-        PHASE6R_INTENT_WARNING_IDS.METADATA_NOT_IDENTITY_AUTHORITY,
+        POLICY_INTENT_WARNING_IDS.METADATA_NOT_IDENTITY_AUTHORITY,
         'Metadata evidence can support compatibility, but cannot define destination identity.',
         { evidenceBucketId: entry.bucketId, evidenceSourceId: entry.sourceId }
       ));
@@ -432,7 +432,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
         ...entry,
         bucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
       }, {
-        fieldId: PHASE6R_INTENT_FIELD_IDS.HELPFUL_MATCHES,
+        fieldId: POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES,
         reasonCode: 'metadata_identity_demoted_to_compatibility',
         inferred: true,
         operatorDeclared: false,
@@ -442,7 +442,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
 
     if (isBroadGenreEvidence(entry) && !isOperatorDeclared(entry) && !hasSpecificSupport) {
       intent.warnings.push(buildWarning(
-        PHASE6R_INTENT_WARNING_IDS.BROAD_GENRE_IDENTITY_NEEDS_SUPPORT,
+        POLICY_INTENT_WARNING_IDS.BROAD_GENRE_IDENTITY_NEEDS_SUPPORT,
         'Broad genre evidence was kept as helpful evidence until specific support or operator intent confirms destination identity.',
         { evidenceBucketId: entry.bucketId, evidenceSourceId: entry.sourceId }
       ));
@@ -450,7 +450,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
         ...entry,
         bucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
       }, {
-        fieldId: PHASE6R_INTENT_FIELD_IDS.HELPFUL_MATCHES,
+        fieldId: POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES,
         reasonCode: 'broad_genre_identity_demoted_to_compatibility',
         inferred: true,
         operatorDeclared: false,
@@ -459,7 +459,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
     }
 
     belongsHere.push(buildIntentEntry(entry, {
-      fieldId: PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE,
+      fieldId: POLICY_INTENT_FIELD_IDS.BELONGS_HERE,
       reasonCode: isOperatorDeclared(entry)
         ? 'operator_declared_destination_identity'
         : 'observed_destination_identity',
@@ -470,7 +470,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
 
   helpfulMatches.push(...getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY)
     .map(entry => buildIntentEntry(entry, {
-      fieldId: PHASE6R_INTENT_FIELD_IDS.HELPFUL_MATCHES,
+      fieldId: POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES,
       reasonCode: isOperatorDeclared(entry)
         ? 'operator_declared_helpful_match'
         : 'evidence_supported_helpful_match',
@@ -483,7 +483,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
   intent.hard_limits = uniqueByKey(getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT)
     .filter(isOperatorDeclared)
     .map(entry => buildIntentEntry(entry, {
-      fieldId: PHASE6R_INTENT_FIELD_IDS.HARD_LIMITS,
+      fieldId: POLICY_INTENT_FIELD_IDS.HARD_LIMITS,
       reasonCode: 'operator_declared_hard_limit',
       inferred: false,
       operatorDeclared: true,
@@ -491,7 +491,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
   intent.avoid = uniqueByKey(getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.AVOID)
     .filter(isOperatorDeclared)
     .map(entry => buildIntentEntry(entry, {
-      fieldId: PHASE6R_INTENT_FIELD_IDS.AVOID,
+      fieldId: POLICY_INTENT_FIELD_IDS.AVOID,
       reasonCode: 'operator_declared_avoid',
       inferred: false,
       operatorDeclared: true,
@@ -499,12 +499,12 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
   intent.ask_when = uniqueByKey([
     ...getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.OUTLIER)
       .map(entry => buildIntentEntry(entry, {
-        fieldId: PHASE6R_INTENT_FIELD_IDS.ASK_WHEN,
+        fieldId: POLICY_INTENT_FIELD_IDS.ASK_WHEN,
         reasonCode: 'outlier_needs_review',
       })),
     ...getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT)
       .map(entry => buildIntentEntry(entry, {
-        fieldId: PHASE6R_INTENT_FIELD_IDS.ASK_WHEN,
+        fieldId: POLICY_INTENT_FIELD_IDS.ASK_WHEN,
         reasonCode: entry.reasonCode === 'stale_profile'
           ? 'stale_profile_needs_review'
           : 'insufficient_evidence_needs_review',
@@ -512,7 +512,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
   ]);
   intent.routing_target = uniqueByKey(getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.ROUTING)
     .map(entry => buildIntentEntry(entry, {
-      fieldId: PHASE6R_INTENT_FIELD_IDS.ROUTING_TARGET,
+      fieldId: POLICY_INTENT_FIELD_IDS.ROUTING_TARGET,
       reasonCode: isOperatorDeclared(entry)
         ? 'operator_declared_routing_target'
         : 'routing_outcome_observed',
@@ -522,7 +522,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
 
   if (intent.ask_when.length > 0) {
     intent.warnings.push(buildWarning(
-      PHASE6R_INTENT_WARNING_IDS.OBSERVED_ABSENCE_NOT_EXCLUSION,
+      POLICY_INTENT_WARNING_IDS.OBSERVED_ABSENCE_NOT_EXCLUSION,
       'Missing, stale, or conflicting evidence created review triggers, not exclusions.',
       { evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT }
     ));
@@ -531,7 +531,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
   if (getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT).length > 0 ||
       projection.warnings?.length > 0) {
     intent.warnings.push(buildWarning(
-      PHASE6R_INTENT_WARNING_IDS.INSUFFICIENT_EVIDENCE,
+      POLICY_INTENT_WARNING_IDS.INSUFFICIENT_EVIDENCE,
       'Some evidence is insufficient for confident automation.',
       { evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT }
     ));
@@ -539,7 +539,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
 
   if (projection.quality?.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT) {
     intent.warnings.push(buildWarning(
-      PHASE6R_INTENT_WARNING_IDS.INSUFFICIENT_EVIDENCE,
+      POLICY_INTENT_WARNING_IDS.INSUFFICIENT_EVIDENCE,
       'Evidence quality is insufficient; intent inference must wait for more evidence or operator confirmation.',
       { evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT }
     ));
@@ -547,7 +547,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
 
   if (intent.ask_when.some(entry => entry.reasonCode === 'stale_profile_needs_review')) {
     intent.warnings.push(buildWarning(
-      PHASE6R_INTENT_WARNING_IDS.STALE_PROFILE,
+      POLICY_INTENT_WARNING_IDS.STALE_PROFILE,
       'The destination profile should be refreshed before treating this intent as current.',
       { evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT }
     ));
@@ -555,29 +555,29 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
 
   intent.assumptions = [
     buildAssumption(
-      PHASE6R_INTENT_ASSUMPTION_IDS.OBSERVED_IDENTITY_ACCEPTANCE_REQUIRED,
+      POLICY_INTENT_ASSUMPTION_IDS.OBSERVED_IDENTITY_ACCEPTANCE_REQUIRED,
       'Observed identity evidence remains a suggestion until operator intent or later automation gates accept it.'
     ),
     buildAssumption(
-      PHASE6R_INTENT_ASSUMPTION_IDS.DECLARED_CONSTRAINTS_ARE_OPERATOR_AUTHORITY,
+      POLICY_INTENT_ASSUMPTION_IDS.DECLARED_CONSTRAINTS_ARE_OPERATOR_AUTHORITY,
       'Hard limits and avoid values are accepted only from operator-declared intent.'
     ),
     buildAssumption(
-      PHASE6R_INTENT_ASSUMPTION_IDS.FINAL_OUTCOMES_REQUIRE_LEARNING_GUARD,
-      'Manual outcomes can inform evidence, but durable learning waits for the Phase 6R learning guard.'
+      POLICY_INTENT_ASSUMPTION_IDS.FINAL_OUTCOMES_REQUIRE_LEARNING_GUARD,
+      'Manual outcomes can inform evidence, but durable learning waits for the learning eligibility guard.'
     ),
     buildAssumption(
-      PHASE6R_INTENT_ASSUMPTION_IDS.METADATA_SUPPORTS_COMPATIBILITY_ONLY,
+      POLICY_INTENT_ASSUMPTION_IDS.METADATA_SUPPORTS_COMPATIBILITY_ONLY,
       'Metadata evidence supports compatibility and freshness, not policy identity by itself.'
     ),
     buildAssumption(
-      PHASE6R_INTENT_ASSUMPTION_IDS.LEGACY_TEMPLATE_IS_DRAFT_SEED_ONLY,
+      POLICY_INTENT_ASSUMPTION_IDS.LEGACY_TEMPLATE_IS_DRAFT_SEED_ONLY,
       'Starter templates remain draft seeds and bridge inputs, not the durable intent authority.'
     ),
   ];
 
   intent.warnings.push(buildWarning(
-    PHASE6R_INTENT_WARNING_IDS.LEGACY_TEMPLATE_BRIDGE_ONLY,
+    POLICY_INTENT_WARNING_IDS.LEGACY_TEMPLATE_BRIDGE_ONLY,
     'Legacy presets and custom signals remain compatibility bridges until native intent storage is ready.',
     { severity: 'info' }
   ));
@@ -586,22 +586,22 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
   return intent;
 }
 
-function buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+function buildPolicyIntentDraftFromBoundedEvidence({
   boundedEvidenceResult,
 } = {}) {
   const evidenceIssues = [];
 
   if (boundedEvidenceResult?.ok !== true || !boundedEvidenceResult?.projection) {
     evidenceIssues.push({
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_BOUNDARY,
-      message: 'Intent inference requires a successful Phase 6R.1 bounded evidence result.',
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_BOUNDARY,
+      message: 'Intent inference requires a successful bounded evidence result.',
     });
   }
 
   const evidenceBoundary = buildEvidenceBoundarySnapshot(boundedEvidenceResult);
   if (!evidenceBoundary?.projectionFingerprint?.fingerprint) {
     evidenceIssues.push({
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
       message: 'Intent inference requires a bounded evidence projection fingerprint.',
     });
   }
@@ -616,7 +616,7 @@ function buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
 
   if (evidenceFingerprintAudit && evidenceFingerprintAudit.ok !== true) {
     evidenceIssues.push({
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.EVIDENCE_FINGERPRINT_MISMATCH,
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.EVIDENCE_FINGERPRINT_MISMATCH,
       message: 'Intent inference requires the evidence fingerprint to match the bounded evidence projection.',
       fingerprintIssues: evidenceFingerprintAudit.issues,
     });
@@ -630,48 +630,48 @@ function buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
     return {
       ok: false,
       statusId: evidenceIssues.some(issue =>
-        issue.riskId === PHASE6R_INTENT_AUDIT_RISK_IDS.INSUFFICIENT_EVIDENCE_QUALITY ||
-        issue.riskId === PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_QUALITY
+        issue.riskId === POLICY_INTENT_AUDIT_RISK_IDS.INSUFFICIENT_EVIDENCE_QUALITY ||
+        issue.riskId === POLICY_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_QUALITY
       )
-        ? PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_QUALITY
-        : PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
+        ? POLICY_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_QUALITY
+        : POLICY_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
       evidenceBoundary,
       evidenceFingerprintAudit,
       intent: null,
       intentAudit: null,
       issueCount: evidenceIssues.length,
       issues: evidenceIssues,
-      nextPhase: null,
+      nextStep: null,
     };
   }
 
-  const intent = buildPolicyBuilderPhase6IntentDraft(boundedEvidenceResult.projection);
-  intent.source = 'phase6r_bounded_evidence_boundary';
+  const intent = buildPolicyIntentDraft(boundedEvidenceResult.projection);
+  intent.source = 'policy_bounded_evidence_boundary';
   intent.evidenceBoundary = evidenceBoundary;
-  const intentAudit = buildPolicyBuilderPhase6IntentEngineAudit(intent);
+  const intentAudit = buildPolicyIntentEngineAudit(intent);
   const ok = intentAudit.ok === true;
 
   return {
     ok,
     statusId: ok
-      ? PHASE6R_INTENT_BOUNDARY_STATUS_IDS.READY
-      : PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_AUDIT,
+      ? POLICY_INTENT_BOUNDARY_STATUS_IDS.READY
+      : POLICY_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_AUDIT,
     evidenceBoundary,
     evidenceFingerprintAudit,
     intent,
     intentAudit,
     issueCount: intentAudit.issueCount,
     issues: intentAudit.validation.issues,
-    nextPhase: ok ? intentAudit.nextPhase : null,
+    nextStep: ok ? intentAudit.nextStep : null,
   };
 }
 
-function getPolicyBuilderPhase6IntentField(fieldId) {
-  return PHASE6R_INTENT_FIELD_CONTRACTS.find(field => field.id === fieldId) || null;
+function getPolicyIntentField(fieldId) {
+  return POLICY_INTENT_FIELD_CONTRACTS.find(field => field.id === fieldId) || null;
 }
 
-function listPolicyBuilderPhase6IntentFields() {
-  return PHASE6R_INTENT_FIELD_CONTRACTS;
+function listPolicyIntentFields() {
+  return POLICY_INTENT_FIELD_CONTRACTS;
 }
 
 function validateIntentEntry(entry = {}, fieldId) {
@@ -680,31 +680,31 @@ function validateIntentEntry(entry = {}, fieldId) {
 
   if (!label) {
     issues.push({
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_ENTRY_LABEL,
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_ENTRY_LABEL,
       message: `${fieldId} entry must have a label.`,
     });
   }
 
   if (!normalizeString(entry.evidenceBucketId)) {
     issues.push({
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_ENTRY_EVIDENCE_BUCKET,
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_ENTRY_EVIDENCE_BUCKET,
       message: `${fieldId} entry must reference its evidence bucket.`,
     });
   } else if (!getPolicyEvidenceBucket(entry.evidenceBucketId)) {
     issues.push({
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.UNKNOWN_ENTRY_EVIDENCE_BUCKET,
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.UNKNOWN_ENTRY_EVIDENCE_BUCKET,
       message: `${fieldId} entry references an unknown evidence bucket.`,
     });
   }
 
   if (!normalizeString(entry.authoritySourceId)) {
     issues.push({
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_ENTRY_AUTHORITY_SOURCE,
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_ENTRY_AUTHORITY_SOURCE,
       message: `${fieldId} entry must reference its authority source.`,
     });
   } else if (!getPolicyAuthoritySource(entry.authoritySourceId)) {
     issues.push({
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.UNKNOWN_ENTRY_AUTHORITY_SOURCE,
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.UNKNOWN_ENTRY_AUTHORITY_SOURCE,
       message: `${fieldId} entry references an unknown authority source.`,
     });
   }
@@ -712,50 +712,50 @@ function validateIntentEntry(entry = {}, fieldId) {
   return issues;
 }
 
-function validatePolicyBuilderPhase6IntentDraft(intent = {}) {
+function validatePolicyIntentDraft(intent = {}) {
   const issues = [];
   const requiredArrayFields = [
-    PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE,
-    PHASE6R_INTENT_FIELD_IDS.HELPFUL_MATCHES,
-    PHASE6R_INTENT_FIELD_IDS.HARD_LIMITS,
-    PHASE6R_INTENT_FIELD_IDS.AVOID,
-    PHASE6R_INTENT_FIELD_IDS.ASK_WHEN,
-    PHASE6R_INTENT_FIELD_IDS.ROUTING_TARGET,
-    PHASE6R_INTENT_FIELD_IDS.ASSUMPTIONS,
-    PHASE6R_INTENT_FIELD_IDS.WARNINGS,
+    POLICY_INTENT_FIELD_IDS.BELONGS_HERE,
+    POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES,
+    POLICY_INTENT_FIELD_IDS.HARD_LIMITS,
+    POLICY_INTENT_FIELD_IDS.AVOID,
+    POLICY_INTENT_FIELD_IDS.ASK_WHEN,
+    POLICY_INTENT_FIELD_IDS.ROUTING_TARGET,
+    POLICY_INTENT_FIELD_IDS.ASSUMPTIONS,
+    POLICY_INTENT_FIELD_IDS.WARNINGS,
   ];
 
   requiredArrayFields.forEach(fieldId => {
     if (!Array.isArray(intent?.[fieldId])) {
       issues.push({
-        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_FIELD,
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_FIELD,
         message: `Intent draft must include array field "${fieldId}".`,
       });
     }
   });
 
   const confidenceLevel = intent?.confidence?.level;
-  if (!Object.values(PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS).includes(confidenceLevel)) {
+  if (!Object.values(POLICY_INTENT_CONFIDENCE_LEVEL_IDS).includes(confidenceLevel)) {
     issues.push({
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.INVALID_CONFIDENCE_LEVEL,
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.INVALID_CONFIDENCE_LEVEL,
       message: 'Intent draft must include a supported confidence level.',
     });
   }
   if (!Array.isArray(intent?.confidence?.reasonCodes) ||
       intent.confidence.reasonCodes.length === 0) {
     issues.push({
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_CONFIDENCE_REASON,
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_CONFIDENCE_REASON,
       message: 'Intent draft confidence must explain its reason codes.',
     });
   }
 
   [
-    PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE,
-    PHASE6R_INTENT_FIELD_IDS.HELPFUL_MATCHES,
-    PHASE6R_INTENT_FIELD_IDS.HARD_LIMITS,
-    PHASE6R_INTENT_FIELD_IDS.AVOID,
-    PHASE6R_INTENT_FIELD_IDS.ASK_WHEN,
-    PHASE6R_INTENT_FIELD_IDS.ROUTING_TARGET,
+    POLICY_INTENT_FIELD_IDS.BELONGS_HERE,
+    POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES,
+    POLICY_INTENT_FIELD_IDS.HARD_LIMITS,
+    POLICY_INTENT_FIELD_IDS.AVOID,
+    POLICY_INTENT_FIELD_IDS.ASK_WHEN,
+    POLICY_INTENT_FIELD_IDS.ROUTING_TARGET,
   ].forEach(fieldId => {
     asArray(intent?.[fieldId]).forEach(entry => {
       issues.push(...validateIntentEntry(entry, fieldId));
@@ -765,7 +765,7 @@ function validatePolicyBuilderPhase6IntentDraft(intent = {}) {
   asArray(intent?.hard_limits).forEach(entry => {
     if (!isDurablePolicyAuthority(entry.authoritySourceId) || entry.operatorDeclared !== true) {
       issues.push({
-        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.HARD_LIMIT_WITHOUT_DURABLE_AUTHORITY,
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.HARD_LIMIT_WITHOUT_DURABLE_AUTHORITY,
         message: 'Hard-limit intent entries must come from operator-declared durable authority.',
       });
     }
@@ -774,7 +774,7 @@ function validatePolicyBuilderPhase6IntentDraft(intent = {}) {
   asArray(intent?.avoid).forEach(entry => {
     if (!isDurablePolicyAuthority(entry.authoritySourceId) || entry.operatorDeclared !== true) {
       issues.push({
-        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.AVOID_WITHOUT_DURABLE_AUTHORITY,
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.AVOID_WITHOUT_DURABLE_AUTHORITY,
         message: 'Avoid intent entries must come from operator-declared durable authority.',
       });
     }
@@ -783,7 +783,7 @@ function validatePolicyBuilderPhase6IntentDraft(intent = {}) {
   asArray(intent?.belongs_here).forEach(entry => {
     if (entry.authoritySourceId === AUTHORITY_SOURCE_IDS.METADATA_PROVIDER) {
       issues.push({
-        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.METADATA_PROMOTED_TO_IDENTITY,
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.METADATA_PROMOTED_TO_IDENTITY,
         message: 'Metadata evidence cannot be promoted to destination identity.',
       });
     }
@@ -791,7 +791,7 @@ function validatePolicyBuilderPhase6IntentDraft(intent = {}) {
         entry.operatorDeclared !== true &&
         !asArray(intent.belongs_here).some(candidate => !isBroadGenreEvidence(candidate))) {
       issues.push({
-        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.BROAD_GENRE_IDENTITY_WITHOUT_SUPPORT,
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.BROAD_GENRE_IDENTITY_WITHOUT_SUPPORT,
         message: 'Broad genre identity requires specific supporting evidence or operator-declared intent.',
       });
     }
@@ -801,7 +801,7 @@ function validatePolicyBuilderPhase6IntentDraft(intent = {}) {
     if (entry.evidenceBucketId === POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT ||
         entry.reasonCode === 'observed_absence') {
       issues.push({
-        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.OBSERVED_ABSENCE_PROMOTED_TO_EXCLUSION,
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.OBSERVED_ABSENCE_PROMOTED_TO_EXCLUSION,
         message: 'Observed absence or insufficient evidence must become review warnings, not exclusions.',
       });
     }
@@ -809,29 +809,29 @@ function validatePolicyBuilderPhase6IntentDraft(intent = {}) {
 
   if (intent?.bridgeCompatibility?.legacyTemplatesAllowedAs !== 'draft_seed_only') {
     issues.push({
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.LEGACY_TEMPLATE_AS_AUTHORITY,
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.LEGACY_TEMPLATE_AS_AUTHORITY,
       message: 'Legacy templates must remain draft seeds only.',
     });
   }
 
   if (asArray(intent?.learningSideEffects).length > 0) {
     issues.push({
-      riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.DIRECT_LEARNING_FROM_INTENT,
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.DIRECT_LEARNING_FROM_INTENT,
       message: 'The intent engine cannot create durable learning side effects.',
     });
   }
 
-  if (intent?.source === 'phase6r_bounded_evidence_boundary') {
+  if (intent?.source === 'policy_bounded_evidence_boundary') {
     if (!intent.evidenceBoundary || typeof intent.evidenceBoundary !== 'object') {
       issues.push({
-        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_BOUNDARY,
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_BOUNDARY,
         message: 'Bounded intent drafts must retain the evidence boundary snapshot.',
       });
     }
 
     if (!normalizeString(intent?.evidenceBoundary?.projectionFingerprint?.fingerprint)) {
       issues.push({
-        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
         message: 'Bounded intent drafts must retain the evidence projection fingerprint.',
       });
     }
@@ -847,17 +847,17 @@ function validatePolicyBuilderPhase6IntentDraft(intent = {}) {
   };
 }
 
-function buildPolicyBuilderPhase6IntentEngineAudit(intent = buildPolicyBuilderPhase6IntentDraft()) {
-  const validation = validatePolicyBuilderPhase6IntentDraft(intent);
+function buildPolicyIntentEngineAudit(intent = buildPolicyIntentDraft()) {
+  const validation = validatePolicyIntentDraft(intent);
 
   return {
     ok: validation.ok,
     issueCount: validation.issueCount,
-    checkedFieldCount: PHASE6R_INTENT_FIELD_CONTRACTS.length,
+    checkedFieldCount: POLICY_INTENT_FIELD_CONTRACTS.length,
     checkedEntryCount: validation.entryCount,
     validation,
-    nextPhase: {
-      phaseId: '6r_3',
+    nextStep: {
+      stepId: 'learning_eligibility',
       label: 'Learning Guard',
       reason: 'Intent proposals now separate inferred evidence from declared constraints, so the next boundary is deciding which outcomes can become durable learning.',
     },
@@ -866,16 +866,16 @@ function buildPolicyBuilderPhase6IntentEngineAudit(intent = buildPolicyBuilderPh
 
 export {
   BROAD_GENRE_LABELS,
-  PHASE6R_INTENT_BOUNDARY_STATUS_IDS,
-  PHASE6R_INTENT_ASSUMPTION_IDS,
-  PHASE6R_INTENT_AUDIT_RISK_IDS,
-  PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS,
-  PHASE6R_INTENT_FIELD_IDS,
-  PHASE6R_INTENT_WARNING_IDS,
-  buildPolicyBuilderPhase6IntentDraft,
-  buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
-  buildPolicyBuilderPhase6IntentEngineAudit,
-  getPolicyBuilderPhase6IntentField,
-  listPolicyBuilderPhase6IntentFields,
-  validatePolicyBuilderPhase6IntentDraft,
+  POLICY_INTENT_BOUNDARY_STATUS_IDS,
+  POLICY_INTENT_ASSUMPTION_IDS,
+  POLICY_INTENT_AUDIT_RISK_IDS,
+  POLICY_INTENT_CONFIDENCE_LEVEL_IDS,
+  POLICY_INTENT_FIELD_IDS,
+  POLICY_INTENT_WARNING_IDS,
+  buildPolicyIntentDraft,
+  buildPolicyIntentDraftFromBoundedEvidence,
+  buildPolicyIntentEngineAudit,
+  getPolicyIntentField,
+  listPolicyIntentFields,
+  validatePolicyIntentDraft,
 };

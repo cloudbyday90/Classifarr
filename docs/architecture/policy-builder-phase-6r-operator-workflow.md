@@ -139,7 +139,7 @@ Cons:
 - Evidence input:
   `server/src/services/policyEvidenceEngine.mjs`
 - Intent input:
-  `server/src/services/policyBuilderPhase6IntentEngine.mjs`
+  `server/src/services/policyIntentEngine.mjs`
 - Readiness input:
   `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`
 - Operator workflow projection:

@@ -64,7 +64,7 @@ Cons:
 - Consuming boundary:
   `server/src/services/policyEvidenceBoundary.mjs`
 - Consuming intent engine:
-  `server/src/services/policyBuilderPhase6IntentEngine.mjs`
+  `server/src/services/policyIntentEngine.mjs`
 - Regression guard:
   `server/src/services/policyProductionNamingRegressionAudit.mjs`
 

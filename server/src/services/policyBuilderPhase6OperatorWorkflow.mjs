@@ -5,9 +5,9 @@ import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from './policyEvidenceQuality.mjs';
 import {
-  PHASE6R_INTENT_FIELD_IDS,
-  buildPolicyBuilderPhase6IntentDraft,
-} from './policyBuilderPhase6IntentEngine.mjs';
+  POLICY_INTENT_FIELD_IDS,
+  buildPolicyIntentDraft,
+} from './policyIntentEngine.mjs';
 import {
   PHASE6R_READINESS_STATE_IDS,
   buildPolicyBuilderPhase6Readiness,
@@ -102,7 +102,7 @@ const WORKFLOW_SECTION_CONTRACTS = Object.freeze([
     plainQuestion: 'What current examples best define this destination?',
     helperText: 'Start from observed library examples. Accept only the examples that should shape this destination.',
     termIds: [POLICY_UX_TERM_IDS.BELONGS_HERE],
-    intentFieldIds: [PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE],
+    intentFieldIds: [POLICY_INTENT_FIELD_IDS.BELONGS_HERE],
     controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.OBSERVED_MULTI_SELECT,
     editable: true,
     primaryActionId: PHASE6R_WORKFLOW_ACTION_IDS.ACCEPT_EXAMPLES,
@@ -119,8 +119,8 @@ const WORKFLOW_SECTION_CONTRACTS = Object.freeze([
       POLICY_UX_TERM_IDS.AVOID,
     ],
     intentFieldIds: [
-      PHASE6R_INTENT_FIELD_IDS.HARD_LIMITS,
-      PHASE6R_INTENT_FIELD_IDS.AVOID,
+      POLICY_INTENT_FIELD_IDS.HARD_LIMITS,
+      POLICY_INTENT_FIELD_IDS.AVOID,
     ],
     controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.DECLARED_MULTI_SELECT,
     editable: true,
@@ -134,7 +134,7 @@ const WORKFLOW_SECTION_CONTRACTS = Object.freeze([
     plainQuestion: 'Which supporting signals help confirm a match after the destination already fits?',
     helperText: 'Helpful signals can raise confidence, but they do not define the destination by themselves.',
     termIds: [POLICY_UX_TERM_IDS.HELPFUL_MATCHES],
-    intentFieldIds: [PHASE6R_INTENT_FIELD_IDS.HELPFUL_MATCHES],
+    intentFieldIds: [POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES],
     controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.OBSERVED_MULTI_SELECT,
     editable: true,
     primaryActionId: PHASE6R_WORKFLOW_ACTION_IDS.REVIEW_HELPERS,
@@ -147,7 +147,7 @@ const WORKFLOW_SECTION_CONTRACTS = Object.freeze([
     plainQuestion: 'When should Classifarr stop and ask before applying this destination?',
     helperText: 'Review triggers describe uncertainty. They are not exclusions by themselves.',
     termIds: [POLICY_UX_TERM_IDS.ASK_WHEN_UNSURE],
-    intentFieldIds: [PHASE6R_INTENT_FIELD_IDS.ASK_WHEN],
+    intentFieldIds: [POLICY_INTENT_FIELD_IDS.ASK_WHEN],
     controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.DECLARED_CHECKLIST,
     editable: true,
     primaryActionId: PHASE6R_WORKFLOW_ACTION_IDS.EDIT_REVIEW_TRIGGERS,
@@ -163,7 +163,7 @@ const WORKFLOW_SECTION_CONTRACTS = Object.freeze([
       POLICY_UX_TERM_IDS.ROUTING_TARGET,
       POLICY_UX_TERM_IDS.READINESS,
     ],
-    intentFieldIds: [PHASE6R_INTENT_FIELD_IDS.ROUTING_TARGET],
+    intentFieldIds: [POLICY_INTENT_FIELD_IDS.ROUTING_TARGET],
     controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.NEXT_ACTION_STATUS,
     editable: false,
     primaryActionId: PHASE6R_WORKFLOW_ACTION_IDS.RESOLVE_READINESS,
@@ -296,10 +296,10 @@ function buildWorkflowSection(section, intent, readiness) {
 }
 
 function buildPolicyBuilderPhase6OperatorWorkflow(input = {}) {
-  const intent = input.intentDraft?.version === 'phase6r.intent.v1' ||
-    input.intent?.version === 'phase6r.intent.v1'
+  const intent = input.intentDraft?.version === 'policy.intent.v1' ||
+    input.intent?.version === 'policy.intent.v1'
     ? input.intentDraft || input.intent
-    : buildPolicyBuilderPhase6IntentDraft(input);
+    : buildPolicyIntentDraft(input);
   const readiness = input.readiness?.version === 'phase6r.readiness.v1'
     ? input.readiness
     : buildPolicyBuilderPhase6Readiness({

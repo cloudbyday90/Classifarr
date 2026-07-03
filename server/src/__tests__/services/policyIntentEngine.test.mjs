@@ -9,31 +9,31 @@ import {
   buildBoundedPolicyEvidenceProjection,
 } from '../../services/policyEvidenceBoundary.mjs';
 import {
-  PHASE6R_INTENT_AUDIT_RISK_IDS,
-  PHASE6R_INTENT_BOUNDARY_STATUS_IDS,
-  PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS,
-  PHASE6R_INTENT_FIELD_IDS,
-  PHASE6R_INTENT_WARNING_IDS,
-  buildPolicyBuilderPhase6IntentDraft,
-  buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
-  buildPolicyBuilderPhase6IntentEngineAudit,
-  getPolicyBuilderPhase6IntentField,
-  listPolicyBuilderPhase6IntentFields,
-  validatePolicyBuilderPhase6IntentDraft,
-} from '../../services/policyBuilderPhase6IntentEngine.mjs';
+  POLICY_INTENT_AUDIT_RISK_IDS,
+  POLICY_INTENT_BOUNDARY_STATUS_IDS,
+  POLICY_INTENT_CONFIDENCE_LEVEL_IDS,
+  POLICY_INTENT_FIELD_IDS,
+  POLICY_INTENT_WARNING_IDS,
+  buildPolicyIntentDraft,
+  buildPolicyIntentDraftFromBoundedEvidence,
+  buildPolicyIntentEngineAudit,
+  getPolicyIntentField,
+  listPolicyIntentFields,
+  validatePolicyIntentDraft,
+} from '../../services/policyIntentEngine.mjs';
 
-describe('policyBuilderPhase6IntentEngine', () => {
-  test('defines the destination intent fields in Phase 6R order', () => {
-    expect(listPolicyBuilderPhase6IntentFields().map(field => field.id)).toEqual([
-      PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE,
-      PHASE6R_INTENT_FIELD_IDS.HELPFUL_MATCHES,
-      PHASE6R_INTENT_FIELD_IDS.HARD_LIMITS,
-      PHASE6R_INTENT_FIELD_IDS.AVOID,
-      PHASE6R_INTENT_FIELD_IDS.ASK_WHEN,
-      PHASE6R_INTENT_FIELD_IDS.ROUTING_TARGET,
+describe('policyIntentEngine', () => {
+  test('defines the destination intent fields in contract order', () => {
+    expect(listPolicyIntentFields().map(field => field.id)).toEqual([
+      POLICY_INTENT_FIELD_IDS.BELONGS_HERE,
+      POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES,
+      POLICY_INTENT_FIELD_IDS.HARD_LIMITS,
+      POLICY_INTENT_FIELD_IDS.AVOID,
+      POLICY_INTENT_FIELD_IDS.ASK_WHEN,
+      POLICY_INTENT_FIELD_IDS.ROUTING_TARGET,
     ]);
 
-    expect(getPolicyBuilderPhase6IntentField(PHASE6R_INTENT_FIELD_IDS.HARD_LIMITS))
+    expect(getPolicyIntentField(POLICY_INTENT_FIELD_IDS.HARD_LIMITS))
       .toEqual(expect.objectContaining({
         durableAuthorityRequired: true,
         evidenceBucketIds: [POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT],
@@ -58,9 +58,9 @@ describe('policyBuilderPhase6IntentEngine', () => {
       routingOutcomes: ['Recent route succeeded'],
     });
 
-    const intent = buildPolicyBuilderPhase6IntentDraft(projection);
+    const intent = buildPolicyIntentDraft(projection);
 
-    expect(intent.version).toBe('phase6r.intent.v1');
+    expect(intent.version).toBe('policy.intent.v1');
     expect(intent.belongs_here).toEqual([
       expect.objectContaining({
         label: 'Pixar',
@@ -93,7 +93,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
       expect.objectContaining({ label: 'Radarr Animated Movies' }),
       expect.objectContaining({ label: 'Recent route succeeded' }),
     ]));
-    expect(intent.confidence.level).toBe(PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS.HIGH);
+    expect(intent.confidence.level).toBe(POLICY_INTENT_CONFIDENCE_LEVEL_IDS.HIGH);
   });
 
   test('builds bounded intent only from a successful evidence boundary result', () => {
@@ -110,20 +110,20 @@ describe('policyBuilderPhase6IntentEngine', () => {
       },
     });
 
-    const result = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    const result = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
 
     expect(result).toEqual(expect.objectContaining({
       ok: true,
-      statusId: PHASE6R_INTENT_BOUNDARY_STATUS_IDS.READY,
+      statusId: POLICY_INTENT_BOUNDARY_STATUS_IDS.READY,
       issueCount: 0,
-      nextPhase: expect.objectContaining({
-        phaseId: '6r_3',
+      nextStep: expect.objectContaining({
+        stepId: 'learning_eligibility',
       }),
     }));
     expect(result.intent).toEqual(expect.objectContaining({
-      source: 'phase6r_bounded_evidence_boundary',
+      source: 'policy_bounded_evidence_boundary',
       evidenceBoundary: expect.objectContaining({
         boundaryVersion: boundedEvidenceResult.version,
         statusId: boundedEvidenceResult.statusId,
@@ -155,17 +155,17 @@ describe('policyBuilderPhase6IntentEngine', () => {
       },
     });
 
-    const result = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    const result = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
 
     expect(boundedEvidenceResult.projection.quality.statusId).toBe('insufficient');
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_QUALITY,
+      statusId: POLICY_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_QUALITY,
       intent: null,
       intentAudit: null,
-      nextPhase: null,
+      nextStep: null,
     }));
     expect(result.evidenceBoundary).toEqual(expect.objectContaining({
       quality: expect.objectContaining({
@@ -175,7 +175,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.INSUFFICIENT_EVIDENCE_QUALITY,
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.INSUFFICIENT_EVIDENCE_QUALITY,
         nextActionId: 'confirm_destination_identity',
       }),
     ]));
@@ -190,7 +190,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
         },
       },
     });
-    const result = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    const result = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult,
     });
     const tamperedIntent = {
@@ -201,10 +201,10 @@ describe('policyBuilderPhase6IntentEngine', () => {
       },
     };
 
-    expect(validatePolicyBuilderPhase6IntentDraft(tamperedIntent).issues)
+    expect(validatePolicyIntentDraft(tamperedIntent).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_QUALITY,
+          riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_QUALITY,
         }),
       ]));
   });
@@ -227,20 +227,20 @@ describe('policyBuilderPhase6IntentEngine', () => {
       },
     };
 
-    const result = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    const result = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult: tamperedBoundary,
     });
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
+      statusId: POLICY_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
       intent: null,
       intentAudit: null,
       evidenceFingerprintAudit: expect.objectContaining({ ok: false }),
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.EVIDENCE_FINGERPRINT_MISMATCH,
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.EVIDENCE_FINGERPRINT_MISMATCH,
       }),
     ]));
   });
@@ -254,22 +254,22 @@ describe('policyBuilderPhase6IntentEngine', () => {
         }],
       },
     });
-    const blocked = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    const blocked = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult: blockedEvidenceResult,
     });
 
     expect(blocked).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
+      statusId: POLICY_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
       intent: null,
       intentAudit: null,
     }));
     expect(blocked.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_BOUNDARY,
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_BOUNDARY,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
       }),
     ]));
 
@@ -280,7 +280,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
         },
       },
     });
-    const missingFingerprint = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    const missingFingerprint = buildPolicyIntentDraftFromBoundedEvidence({
       boundedEvidenceResult: {
         ok: true,
         projection: validEvidenceResult.projection,
@@ -288,13 +288,13 @@ describe('policyBuilderPhase6IntentEngine', () => {
     });
     expect(missingFingerprint.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_EVIDENCE_FINGERPRINT,
       }),
     ]));
   });
 
   test('demotes broad genre identity to helpful evidence unless specific support exists', () => {
-    const intent = buildPolicyBuilderPhase6IntentDraft({
+    const intent = buildPolicyIntentDraft({
       libraryProfile: {
         identityCandidates: [
           { key: 'genre:animation', label: 'Animation', confidence: 0.96, count: 50 },
@@ -311,13 +311,13 @@ describe('policyBuilderPhase6IntentEngine', () => {
     ]);
     expect(intent.warnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonCode: PHASE6R_INTENT_WARNING_IDS.BROAD_GENRE_IDENTITY_NEEDS_SUPPORT,
+        reasonCode: POLICY_INTENT_WARNING_IDS.BROAD_GENRE_IDENTITY_NEEDS_SUPPORT,
       }),
     ]));
   });
 
   test('allows broad genre identity when the operator explicitly declares it', () => {
-    const intent = buildPolicyBuilderPhase6IntentDraft({
+    const intent = buildPolicyIntentDraft({
       operatorIntent: {
         belongsHere: [
           { key: 'genre:animation', label: 'Animation' },
@@ -333,7 +333,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
       }),
     ]);
     expect(intent.warnings.map(warning => warning.reasonCode))
-      .not.toContain(PHASE6R_INTENT_WARNING_IDS.BROAD_GENRE_IDENTITY_NEEDS_SUPPORT);
+      .not.toContain(POLICY_INTENT_WARNING_IDS.BROAD_GENRE_IDENTITY_NEEDS_SUPPORT);
   });
 
   test('keeps metadata as compatibility evidence instead of identity authority', () => {
@@ -363,7 +363,7 @@ describe('policyBuilderPhase6IntentEngine', () => {
       },
     };
 
-    const intent = buildPolicyBuilderPhase6IntentDraft(projection);
+    const intent = buildPolicyIntentDraft(projection);
 
     expect(intent.belongs_here).toEqual([]);
     expect(intent.helpful_matches).toEqual([
@@ -374,13 +374,13 @@ describe('policyBuilderPhase6IntentEngine', () => {
     ]);
     expect(intent.warnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonCode: PHASE6R_INTENT_WARNING_IDS.METADATA_NOT_IDENTITY_AUTHORITY,
+        reasonCode: POLICY_INTENT_WARNING_IDS.METADATA_NOT_IDENTITY_AUTHORITY,
       }),
     ]));
   });
 
   test('turns stale or missing evidence into ask_when warnings, not avoid exclusions', () => {
-    const intent = buildPolicyBuilderPhase6IntentDraft({
+    const intent = buildPolicyIntentDraft({
       profileFreshness: {
         stale: true,
         updatedAt: '2026-05-01T12:00:00.000Z',
@@ -396,16 +396,16 @@ describe('policyBuilderPhase6IntentEngine', () => {
     expect(intent.avoid).toEqual([]);
     expect(intent.warnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonCode: PHASE6R_INTENT_WARNING_IDS.OBSERVED_ABSENCE_NOT_EXCLUSION,
+        reasonCode: POLICY_INTENT_WARNING_IDS.OBSERVED_ABSENCE_NOT_EXCLUSION,
       }),
       expect.objectContaining({
-        reasonCode: PHASE6R_INTENT_WARNING_IDS.STALE_PROFILE,
+        reasonCode: POLICY_INTENT_WARNING_IDS.STALE_PROFILE,
       }),
     ]));
   });
 
   test('does not create durable learning side effects from intent proposals', () => {
-    const intent = buildPolicyBuilderPhase6IntentDraft({
+    const intent = buildPolicyIntentDraft({
       classificationFinalOutcomes: ['Mulan routed to Animated Movies'],
     });
 
@@ -418,31 +418,31 @@ describe('policyBuilderPhase6IntentEngine', () => {
   });
 
   test('passes the default intent engine audit', () => {
-    const intent = buildPolicyBuilderPhase6IntentDraft({
+    const intent = buildPolicyIntentDraft({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
         hardLimits: ['No NC-17'],
       },
     });
-    const audit = buildPolicyBuilderPhase6IntentEngineAudit(intent);
+    const audit = buildPolicyIntentEngineAudit(intent);
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedFieldCount).toBe(6);
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '6r_3',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'learning_eligibility',
       label: 'Learning Guard',
     }));
   });
 
   test('rejects metadata promoted into belongs_here', () => {
-    const invalidIntent = buildPolicyBuilderPhase6IntentDraft({
+    const invalidIntent = buildPolicyIntentDraft({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
       },
     });
     invalidIntent.belongs_here.push({
-      fieldId: PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE,
+      fieldId: POLICY_INTENT_FIELD_IDS.BELONGS_HERE,
       key: 'metadata:genre:animation',
       label: 'Animation',
       evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
@@ -450,23 +450,23 @@ describe('policyBuilderPhase6IntentEngine', () => {
       operatorDeclared: false,
     });
 
-    expect(validatePolicyBuilderPhase6IntentDraft(invalidIntent).issues)
+    expect(validatePolicyIntentDraft(invalidIntent).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.METADATA_PROMOTED_TO_IDENTITY,
+          riskId: POLICY_INTENT_AUDIT_RISK_IDS.METADATA_PROMOTED_TO_IDENTITY,
         }),
       ]));
   });
 
   test('rejects broad genre identity without support', () => {
-    const invalidIntent = buildPolicyBuilderPhase6IntentDraft({
+    const invalidIntent = buildPolicyIntentDraft({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
       },
     });
     invalidIntent.belongs_here = [
       {
-        fieldId: PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE,
+        fieldId: POLICY_INTENT_FIELD_IDS.BELONGS_HERE,
         key: 'genre:animation',
         label: 'Animation',
         evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
@@ -475,22 +475,22 @@ describe('policyBuilderPhase6IntentEngine', () => {
       },
     ];
 
-    expect(validatePolicyBuilderPhase6IntentDraft(invalidIntent).issues)
+    expect(validatePolicyIntentDraft(invalidIntent).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.BROAD_GENRE_IDENTITY_WITHOUT_SUPPORT,
+          riskId: POLICY_INTENT_AUDIT_RISK_IDS.BROAD_GENRE_IDENTITY_WITHOUT_SUPPORT,
         }),
       ]));
   });
 
   test('rejects non-operator hard limits and direct learning side effects', () => {
-    const invalidIntent = buildPolicyBuilderPhase6IntentDraft({
+    const invalidIntent = buildPolicyIntentDraft({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
       },
     });
     invalidIntent.hard_limits.push({
-      fieldId: PHASE6R_INTENT_FIELD_IDS.HARD_LIMITS,
+      fieldId: POLICY_INTENT_FIELD_IDS.HARD_LIMITS,
       key: 'rating:nc17',
       label: 'No NC-17',
       evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
@@ -501,19 +501,19 @@ describe('policyBuilderPhase6IntentEngine', () => {
       type: 'identity_evidence',
     });
 
-    expect(validatePolicyBuilderPhase6IntentDraft(invalidIntent).issues)
+    expect(validatePolicyIntentDraft(invalidIntent).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.HARD_LIMIT_WITHOUT_DURABLE_AUTHORITY,
+          riskId: POLICY_INTENT_AUDIT_RISK_IDS.HARD_LIMIT_WITHOUT_DURABLE_AUTHORITY,
         }),
         expect.objectContaining({
-          riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.DIRECT_LEARNING_FROM_INTENT,
+          riskId: POLICY_INTENT_AUDIT_RISK_IDS.DIRECT_LEARNING_FROM_INTENT,
         }),
       ]));
   });
 
   test('exposes immutable intent field contracts', () => {
-    const fields = listPolicyBuilderPhase6IntentFields();
+    const fields = listPolicyIntentFields();
 
     expect(Object.isFrozen(fields)).toBe(true);
     expect(Object.isFrozen(fields[0])).toBe(true);

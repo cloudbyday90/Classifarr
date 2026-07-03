@@ -84,7 +84,7 @@ The important boundary is authority:
    policy score and should not become runtime authorization by itself.
 
 7. **Require bounded evidence for new callers.**
-   `buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence` consumes the
+   `buildPolicyIntentDraftFromBoundedEvidence` consumes the
    Phase 6R.1 boundary result, rejects failed evidence boundaries, requires the
    projection fingerprint, and attaches a sanitized evidence-boundary snapshot
    to the intent draft.
@@ -135,9 +135,9 @@ Cons:
 - Bounded evidence boundary:
   `server/src/services/policyEvidenceBoundary.mjs`
 - Intent engine:
-  `server/src/services/policyBuilderPhase6IntentEngine.mjs`
+  `server/src/services/policyIntentEngine.mjs`
 - Test module:
-  `server/src/__tests__/services/policyBuilderPhase6IntentEngine.test.mjs`
+  `server/src/__tests__/services/policyIntentEngine.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-intent-engine.md`
 - Quality-gate outcome:

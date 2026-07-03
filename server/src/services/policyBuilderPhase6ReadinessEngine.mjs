@@ -6,10 +6,10 @@ import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from './policyEvidenceQuality.mjs';
 import {
-  PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS,
-  PHASE6R_INTENT_WARNING_IDS,
-  buildPolicyBuilderPhase6IntentDraft,
-} from './policyBuilderPhase6IntentEngine.mjs';
+  POLICY_INTENT_CONFIDENCE_LEVEL_IDS,
+  POLICY_INTENT_WARNING_IDS,
+  buildPolicyIntentDraft,
+} from './policyIntentEngine.mjs';
 import {
   PHASE6R_LEARNING_DECISION_IDS,
   PHASE6R_LEARNING_TIER_IDS,
@@ -153,7 +153,7 @@ function listPolicyBuilderPhase6ReadinessStates() {
 function hasNonInfoWarnings(intent = {}) {
   return asArray(intent.warnings).some(warning =>
     warning?.severity !== 'info' &&
-    warning?.reasonCode !== PHASE6R_INTENT_WARNING_IDS.LEGACY_TEMPLATE_BRIDGE_ONLY
+    warning?.reasonCode !== POLICY_INTENT_WARNING_IDS.LEGACY_TEMPLATE_BRIDGE_ONLY
   );
 }
 
@@ -223,7 +223,7 @@ function hasStaleProfile(input = {}, evidenceProjection = {}, intent = {}, learn
   return profileFreshness.stale === true ||
     staleEvidence ||
     asArray(intent.warnings).some(warning =>
-      warning?.reasonCode === PHASE6R_INTENT_WARNING_IDS.STALE_PROFILE
+      warning?.reasonCode === POLICY_INTENT_WARNING_IDS.STALE_PROFILE
     ) ||
     learningDecision?.profileRefresh?.queue === true;
 }
@@ -232,7 +232,7 @@ function hasHardLimitBlock(input = {}, intent = {}, learningDecision = {}) {
   const learning = asObject(learningDecision.learning);
 
   return input.hardLimitConflict === true ||
-    intent?.confidence?.level === PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS.BLOCKED ||
+    intent?.confidence?.level === POLICY_INTENT_CONFIDENCE_LEVEL_IDS.BLOCKED ||
     learning.decisionId === PHASE6R_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED ||
     (
       learning.tierId === PHASE6R_LEARNING_TIER_IDS.HARD_LIMIT_EVIDENCE &&
@@ -347,10 +347,10 @@ function buildPolicyBuilderPhase6Readiness(input = {}) {
   const evidenceProjection = input.evidenceProjection?.version === 'policy.evidence.v1'
     ? input.evidenceProjection
     : buildPolicyEvidenceProjection(input);
-  const intent = input.intentDraft?.version === 'phase6r.intent.v1' ||
-    input.intent?.version === 'phase6r.intent.v1'
+  const intent = input.intentDraft?.version === 'policy.intent.v1' ||
+    input.intent?.version === 'policy.intent.v1'
     ? input.intentDraft || input.intent
-    : buildPolicyBuilderPhase6IntentDraft(evidenceProjection);
+    : buildPolicyIntentDraft(evidenceProjection);
   const learningDecision = asObject(input.learningDecision);
   const ignoredDiagnostics = collectIgnoredDiagnostics(input);
   const issues = collectReadinessIssues({

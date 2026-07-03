@@ -5,10 +5,10 @@ import {
   buildBoundedPolicyEvidenceProjection,
 } from '../../services/policyEvidenceBoundary.mjs';
 import {
-  PHASE6R_INTENT_WARNING_IDS,
-  buildPolicyBuilderPhase6IntentDraft,
-  buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
-} from '../../services/policyBuilderPhase6IntentEngine.mjs';
+  POLICY_INTENT_WARNING_IDS,
+  buildPolicyIntentDraft,
+  buildPolicyIntentDraftFromBoundedEvidence,
+} from '../../services/policyIntentEngine.mjs';
 import {
   PHASE6R_LEARNING_DECISION_IDS,
   PHASE6R_LEARNING_TIER_IDS,
@@ -56,7 +56,7 @@ function buildBoundedReadyInputs({
       ...evidenceInput,
     },
   });
-  const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+  const boundedIntentResult = buildPolicyIntentDraftFromBoundedEvidence({
     boundedEvidenceResult,
   });
   const boundedLearningResult = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
@@ -384,7 +384,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       boundedIntentResult: {
         ok: true,
         intent: {
-          version: 'phase6r.intent.v1',
+          version: 'policy.intent.v1',
         },
       },
       boundedLearningResult: {
@@ -635,7 +635,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
   });
 
   test('requires operator review for ask-when evidence and non-info intent warnings', () => {
-    const intent = buildPolicyBuilderPhase6IntentDraft({
+    const intent = buildPolicyIntentDraft({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
         routingTargets: ['Radarr Animated Movies'],
@@ -648,7 +648,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       reasonCode: 'outlier_needs_review',
     });
     intent.warnings.push({
-      reasonCode: PHASE6R_INTENT_WARNING_IDS.INSUFFICIENT_EVIDENCE,
+      reasonCode: POLICY_INTENT_WARNING_IDS.INSUFFICIENT_EVIDENCE,
       severity: 'warning',
       summary: 'Some evidence is insufficient.',
     });
