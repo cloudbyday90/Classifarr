@@ -21,6 +21,12 @@ const PHASE6R_READINESS_STATE_IDS = Object.freeze({
   STALE_PROFILE: 'stale_profile',
 });
 
+const PHASE6R_READINESS_BOUNDARY_STATUS_IDS = Object.freeze({
+  READY: 'ready',
+  BLOCKED_BY_BOUNDED_INPUT: 'blocked_by_bounded_input',
+  BLOCKED_BY_READINESS_AUDIT: 'blocked_by_readiness_audit',
+});
+
 const PHASE6R_READINESS_REASON_IDS = Object.freeze({
   READY_FOR_AUTOMATION: 'ready_for_automation',
   HAS_IDENTITY_AND_ROUTING: 'has_identity_and_routing',
@@ -58,6 +64,11 @@ const PHASE6R_READINESS_AUDIT_RISK_IDS = Object.freeze({
   RAW_PAYLOAD_DEPENDENCY: 'raw_payload_dependency',
   LEARNING_WRITE_DEPENDENCY: 'learning_write_dependency',
   UNKNOWN_IGNORED_DIAGNOSTIC: 'unknown_ignored_diagnostic',
+  MISSING_BOUNDED_EVIDENCE: 'missing_bounded_evidence',
+  MISSING_BOUNDED_INTENT: 'missing_bounded_intent',
+  MISSING_BOUNDED_LEARNING: 'missing_bounded_learning',
+  MISSING_BOUNDED_PROVENANCE: 'missing_bounded_provenance',
+  BOUNDED_PROVENANCE_MISMATCH: 'bounded_provenance_mismatch',
 });
 
 const IGNORED_DIAGNOSTIC_INPUT_KEYS = Object.freeze([
@@ -179,6 +190,7 @@ function buildInputsSummary({
   intent,
   learningDecision,
   ignoredDiagnostics,
+  boundaryContext = null,
 }) {
   return {
     evidenceVersion: evidenceProjection?.version || null,
@@ -190,6 +202,7 @@ function buildInputsSummary({
     diagnosticDependencies: [],
     learningWritesPerformed: learningDecision?.learning?.writesPerformed === true,
     ignoredDiagnostics,
+    boundaryContext,
   };
 }
 
@@ -364,6 +377,141 @@ function buildPolicyBuilderPhase6Readiness(input = {}) {
   };
 }
 
+function getProjectionFingerprintFromEvidenceResult(boundedEvidenceResult = {}) {
+  return boundedEvidenceResult?.projectionFingerprint?.fingerprint || null;
+}
+
+function getProjectionFingerprintFromIntentResult(boundedIntentResult = {}) {
+  return boundedIntentResult?.evidenceBoundary?.projectionFingerprint?.fingerprint || null;
+}
+
+function getProjectionFingerprintFromLearningResult(boundedLearningResult = {}) {
+  return boundedLearningResult?.intentBoundary?.evidenceBoundary?.projectionFingerprint?.fingerprint || null;
+}
+
+function buildBoundedReadinessContext({
+  boundedEvidenceResult,
+  boundedIntentResult,
+  boundedLearningResult,
+} = {}) {
+  const evidenceFingerprint = getProjectionFingerprintFromEvidenceResult(boundedEvidenceResult);
+  const intentFingerprint = getProjectionFingerprintFromIntentResult(boundedIntentResult);
+  const learningFingerprint = getProjectionFingerprintFromLearningResult(boundedLearningResult);
+
+  if (!evidenceFingerprint || !intentFingerprint || !learningFingerprint) {
+    return null;
+  }
+
+  return {
+    evidenceBoundary: {
+      version: boundedEvidenceResult.version || null,
+      statusId: boundedEvidenceResult.statusId || null,
+      projectionFingerprint: boundedEvidenceResult.projectionFingerprint,
+    },
+    intentBoundary: {
+      statusId: boundedIntentResult.statusId || null,
+      intentVersion: boundedIntentResult.intent?.version || null,
+      projectionFingerprint:
+        boundedIntentResult.evidenceBoundary?.projectionFingerprint || null,
+    },
+    learningBoundary: {
+      statusId: boundedLearningResult.statusId || null,
+      learningVersion: boundedLearningResult.decision?.version || null,
+      projectionFingerprint:
+        boundedLearningResult.intentBoundary?.evidenceBoundary?.projectionFingerprint || null,
+    },
+    projectionFingerprintMatch:
+      evidenceFingerprint === intentFingerprint
+      && evidenceFingerprint === learningFingerprint,
+  };
+}
+
+function buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+  boundedEvidenceResult,
+  boundedIntentResult,
+  boundedLearningResult,
+  routing = {},
+  profileFreshness = {},
+} = {}) {
+  const boundaryIssues = [];
+
+  if (boundedEvidenceResult?.ok !== true || !boundedEvidenceResult?.projection) {
+    boundaryIssues.push({
+      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_EVIDENCE,
+      message: 'Readiness requires a successful bounded evidence result.',
+    });
+  }
+
+  if (boundedIntentResult?.ok !== true || !boundedIntentResult?.intent) {
+    boundaryIssues.push({
+      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_INTENT,
+      message: 'Readiness requires a successful bounded intent result.',
+    });
+  }
+
+  if (boundedLearningResult?.ok !== true || !boundedLearningResult?.decision) {
+    boundaryIssues.push({
+      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_LEARNING,
+      message: 'Readiness requires a successful bounded learning result.',
+    });
+  }
+
+  const boundaryContext = buildBoundedReadinessContext({
+    boundedEvidenceResult,
+    boundedIntentResult,
+    boundedLearningResult,
+  });
+
+  if (!boundaryContext) {
+    boundaryIssues.push({
+      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_PROVENANCE,
+      message: 'Readiness requires matching bounded evidence provenance.',
+    });
+  } else if (boundaryContext.projectionFingerprintMatch !== true) {
+    boundaryIssues.push({
+      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
+      message: 'Readiness requires all bounded contracts to reference the same evidence projection.',
+    });
+  }
+
+  if (boundaryIssues.length > 0) {
+    return {
+      ok: false,
+      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      boundaryContext,
+      readiness: null,
+      readinessAudit: null,
+      issueCount: boundaryIssues.length,
+      issues: boundaryIssues,
+      nextPhase: null,
+    };
+  }
+
+  const readiness = buildPolicyBuilderPhase6Readiness({
+    evidenceProjection: boundedEvidenceResult.projection,
+    intentDraft: boundedIntentResult.intent,
+    learningDecision: boundedLearningResult.decision,
+    routing,
+    profileFreshness,
+  });
+  readiness.inputs.boundaryContext = boundaryContext;
+  const readinessAudit = buildPolicyBuilderPhase6ReadinessEngineAudit(readiness);
+  const ok = readinessAudit.ok === true;
+
+  return {
+    ok,
+    statusId: ok
+      ? PHASE6R_READINESS_BOUNDARY_STATUS_IDS.READY
+      : PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_READINESS_AUDIT,
+    boundaryContext,
+    readiness,
+    readinessAudit,
+    issueCount: readinessAudit.issueCount,
+    issues: readinessAudit.validation.issues,
+    nextPhase: ok ? readinessAudit.nextPhase : null,
+  };
+}
+
 function validatePolicyBuilderPhase6Readiness(readiness = {}) {
   const issues = [];
 
@@ -481,10 +629,12 @@ function buildPolicyBuilderPhase6ReadinessEngineAudit(
 
 export {
   PHASE6R_READINESS_AUDIT_RISK_IDS,
+  PHASE6R_READINESS_BOUNDARY_STATUS_IDS,
   PHASE6R_READINESS_INPUT_IDS,
   PHASE6R_READINESS_REASON_IDS,
   PHASE6R_READINESS_STATE_IDS,
   buildPolicyBuilderPhase6Readiness,
+  buildPolicyBuilderPhase6ReadinessFromBoundedContracts,
   buildPolicyBuilderPhase6ReadinessEngineAudit,
   getReadinessState,
   listPolicyBuilderPhase6ReadinessStates,

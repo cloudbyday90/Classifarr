@@ -2,19 +2,26 @@ import {
   ANSWER_OUTCOME_IDS,
 } from '../../services/policyQuestionLearningVocabulary.mjs';
 import {
+  buildPolicyBuilderPhase6BoundedEvidenceProjection,
+} from '../../services/policyBuilderPhase6EvidenceBoundary.mjs';
+import {
   PHASE6R_INTENT_WARNING_IDS,
   buildPolicyBuilderPhase6IntentDraft,
+  buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
 } from '../../services/policyBuilderPhase6IntentEngine.mjs';
 import {
   PHASE6R_LEARNING_DECISION_IDS,
   PHASE6R_LEARNING_TIER_IDS,
   buildPolicyBuilderPhase6LearningDecision,
+  buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent,
 } from '../../services/policyBuilderPhase6LearningGuard.mjs';
 import {
   PHASE6R_READINESS_AUDIT_RISK_IDS,
+  PHASE6R_READINESS_BOUNDARY_STATUS_IDS,
   PHASE6R_READINESS_REASON_IDS,
   PHASE6R_READINESS_STATE_IDS,
   buildPolicyBuilderPhase6Readiness,
+  buildPolicyBuilderPhase6ReadinessFromBoundedContracts,
   buildPolicyBuilderPhase6ReadinessEngineAudit,
   getReadinessState,
   listPolicyBuilderPhase6ReadinessStates,
@@ -33,6 +40,46 @@ function buildReadyInput(overrides = {}) {
       targetName: 'Radarr Animated Movies',
     },
     ...overrides,
+  };
+}
+
+function buildBoundedReadyInputs({
+  learningInput = {},
+  evidenceInput = {},
+} = {}) {
+  const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    evidenceInput: {
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+        routingTargets: ['Radarr Animated Movies'],
+      },
+      ...evidenceInput,
+    },
+  });
+  const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    boundedEvidenceResult,
+  });
+  const boundedLearningResult = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+    boundedIntentResult,
+    learningInput: {
+      answerOutcomeId: ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM,
+      answer: {
+        label: 'Animated Movies',
+        destinationLibraryId: 6,
+        destinationLibraryName: 'Animated Movies',
+      },
+      finalOutcome: {
+        itemId: 10674,
+        status: 'resolved',
+      },
+      ...learningInput,
+    },
+  });
+
+  return {
+    boundedEvidenceResult,
+    boundedIntentResult,
+    boundedLearningResult,
   };
 }
 
@@ -86,6 +133,178 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       liveProviderLookupPerformed: false,
       diagnosticDependencies: [],
     }));
+  });
+
+  test('builds bounded readiness from bounded evidence, intent, and learning', () => {
+    const {
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+    } = buildBoundedReadyInputs();
+
+    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+      routing: {
+        configured: true,
+        routeReady: true,
+        targetName: 'Radarr Animated Movies',
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: true,
+      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.READY,
+      issueCount: 0,
+      nextPhase: expect.objectContaining({
+        phaseId: '6r_5',
+      }),
+    }));
+    expect(result.readiness).toEqual(expect.objectContaining({
+      stateId: PHASE6R_READINESS_STATE_IDS.READY,
+      ready: true,
+    }));
+    expect(result.boundaryContext).toEqual(expect.objectContaining({
+      projectionFingerprintMatch: true,
+      evidenceBoundary: expect.objectContaining({
+        projectionFingerprint: expect.objectContaining({
+          fingerprint: boundedEvidenceResult.projectionFingerprint.fingerprint,
+        }),
+      }),
+      intentBoundary: expect.objectContaining({
+        projectionFingerprint: expect.objectContaining({
+          fingerprint: boundedEvidenceResult.projectionFingerprint.fingerprint,
+        }),
+      }),
+      learningBoundary: expect.objectContaining({
+        projectionFingerprint: expect.objectContaining({
+          fingerprint: boundedEvidenceResult.projectionFingerprint.fingerprint,
+        }),
+      }),
+    }));
+    expect(result.readiness.inputs.boundaryContext).toEqual(result.boundaryContext);
+    expect(JSON.stringify(result.boundaryContext)).not.toContain('Animated Movies');
+  });
+
+  test('bounded readiness reflects bounded learning profile-refresh outcomes', () => {
+    const {
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+    } = buildBoundedReadyInputs({
+      learningInput: {
+        answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
+        answer: { label: 'Animated Movies' },
+        candidate: {
+          key: 'studio:pixar',
+          label: 'Pixar',
+          signalType: 'studio',
+          destinationLibraryId: 6,
+          destinationLibraryName: 'Animated Movies',
+          evidenceCount: 8,
+        },
+      },
+    });
+
+    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+      routing: {
+        configured: true,
+        routeReady: true,
+        targetName: 'Radarr Animated Movies',
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.STALE_PROFILE);
+    expect(result.readiness.reasonCodes).toContain(
+      PHASE6R_READINESS_REASON_IDS.PROFILE_REFRESH_QUEUED
+    );
+  });
+
+  test('blocks bounded readiness when bounded inputs or provenance are missing', () => {
+    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+      boundedEvidenceResult: {
+        ok: false,
+      },
+      boundedIntentResult: {
+        ok: true,
+        intent: {
+          version: 'phase6r.intent.v1',
+        },
+      },
+      boundedLearningResult: {
+        ok: true,
+        decision: {
+          version: 'phase6r.learning_guard.v1',
+        },
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      readiness: null,
+      readinessAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_EVIDENCE,
+      }),
+      expect.objectContaining({
+        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_PROVENANCE,
+      }),
+    ]));
+  });
+
+  test('blocks bounded readiness when bounded provenance does not match', () => {
+    const {
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+    } = buildBoundedReadyInputs();
+    const mismatchedLearningResult = {
+      ...boundedLearningResult,
+      intentBoundary: {
+        ...boundedLearningResult.intentBoundary,
+        evidenceBoundary: {
+          ...boundedLearningResult.intentBoundary.evidenceBoundary,
+          projectionFingerprint: {
+            ...boundedLearningResult.intentBoundary.evidenceBoundary.projectionFingerprint,
+            fingerprint: 'f'.repeat(64),
+          },
+        },
+      },
+    };
+
+    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult: mismatchedLearningResult,
+      routing: {
+        configured: true,
+        routeReady: true,
+        targetName: 'Radarr Animated Movies',
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      readiness: null,
+      readinessAudit: null,
+      boundaryContext: expect.objectContaining({
+        projectionFingerprintMatch: false,
+      }),
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
+      }),
+    ]));
   });
 
   test('prioritizes stale profile over all other readiness issues', () => {

@@ -3346,6 +3346,11 @@ Implementation status:
   issues with next actions, treats profile refresh as stale readiness, and
   ignores replay, impact preview, provider, TMDB, and raw scoring diagnostic
   inputs instead of allowing them to become product gates.
+- Readiness now exposes a bounded entry point for new runtime/rebuild callers:
+  it requires successful Phase 6R.1 bounded evidence, Phase 6R.2 bounded
+  intent, and Phase 6R.3 bounded learning results, verifies their shared
+  sanitized evidence projection fingerprint, and attaches a bounded context to
+  the readiness input summary without exposing raw evidence labels.
 
 ### 6R.5 Operator Workflow Rebuild
 

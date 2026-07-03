@@ -9,6 +9,12 @@ freshness into one action-oriented readiness answer. It does not execute
 routing, call providers, write learning, run replay, check TMDB coverage, or
 expose raw scoring panels.
 
+The compatibility reducer remains available for focused tests and internal
+composition, but new runtime/rebuild callers should use the bounded readiness
+entry point. That entry point requires successful Phase 6R.1 bounded evidence,
+Phase 6R.2 bounded intent, and Phase 6R.3 bounded learning contracts before
+readiness can be trusted.
+
 ## Problem
 
 The previous policy-builder direction exposed too many internal diagnostics to
@@ -82,6 +88,11 @@ Phase 6R.4 makes that answer deterministic and server-owned.
    The UI should not infer what to do. The server returns the state, reason
    codes, issue list, and next action target.
 
+6. **Require bounded upstream contracts for new callers.**
+   Runtime and rebuild flows should call the bounded readiness wrapper, which
+   blocks failed evidence, intent, or learning handoffs and rejects missing or
+   mismatched evidence projection fingerprints.
+
 ## Pros And Cons
 
 Pros:
@@ -91,6 +102,8 @@ Pros:
 - Stops provider/TMDB/replay/scoring internals from becoming operator workflow.
 - Gives Phase 6R.5 a clean UI contract.
 - Keeps future telemetry stable through state IDs and reason codes.
+- Prevents stale or cross-run evidence, intent, and learning results from being
+  stitched together into a readiness decision.
 
 Cons:
 
@@ -99,6 +112,8 @@ Cons:
 - It does not persist readiness history.
 - Maintainer diagnostic tooling still needs a separate migration/deletion
   decision.
+- Existing pure reducer callers still exist for compatibility until runtime
+  paths are moved onto the bounded wrapper.
 
 ## Final Recommendation Stack
 
@@ -110,6 +125,8 @@ Cons:
   `server/src/services/policyBuilderPhase6LearningGuard.mjs`
 - Readiness engine:
   `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`
+- Bounded readiness wrapper:
+  `buildPolicyBuilderPhase6ReadinessFromBoundedContracts`
 - Test module:
   `server/src/__tests__/services/policyBuilderPhase6ReadinessEngine.test.mjs`
 - Documentation:
@@ -153,6 +170,43 @@ liveProviderLookupPerformed = false
 exposesRawPayload = false
 diagnosticDependencies = []
 ignoredDiagnostics[]
+boundaryContext
+```
+
+The bounded wrapper returns:
+
+```text
+ok
+statusId
+boundaryContext
+readiness
+readinessAudit
+issueCount
+issues[]
+nextPhase
+```
+
+Supported bounded wrapper status IDs:
+
+```text
+ready
+blocked_by_bounded_input
+blocked_by_readiness_audit
+```
+
+The boundary context carries only sanitized contract metadata:
+
+```text
+evidenceBoundary.version
+evidenceBoundary.statusId
+evidenceBoundary.projectionFingerprint
+intentBoundary.statusId
+intentBoundary.intentVersion
+intentBoundary.projectionFingerprint
+learningBoundary.statusId
+learningBoundary.learningVersion
+learningBoundary.projectionFingerprint
+projectionFingerprintMatch
 ```
 
 ## Security Outcome
@@ -164,6 +218,9 @@ ignoredDiagnostics[]
 - Every non-ready issue carries a reason code and next action.
 - The audit rejects live provider dependency, diagnostic dependency, raw payload
   dependency, missing next action, invalid state, and ready-state mismatch.
+- The bounded wrapper rejects failed upstream contracts, missing projection
+  provenance, and mismatched projection fingerprints before readiness is
+  returned.
 
 ## Next Step
 

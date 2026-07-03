@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Readiness Boundary Alignment** — added a bounded
+  Phase 6R.4 readiness entry point that requires successful bounded evidence,
+  intent, and learning contracts with matching sanitized evidence projection
+  fingerprints before returning automation readiness.
 - **Policy Builder Phase 6R Learning Boundary Alignment** — added a bounded
   Phase 6R.3 learning-guard entry point that requires a successful bounded
   intent result and carried evidence projection fingerprint before evaluating
