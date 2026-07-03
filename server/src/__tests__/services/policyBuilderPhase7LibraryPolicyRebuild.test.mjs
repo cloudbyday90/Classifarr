@@ -1,9 +1,19 @@
 import {
+  ANSWER_OUTCOME_IDS,
+} from '../../services/policyQuestionLearningVocabulary.mjs';
+import {
   PHASE6R_INTENT_FIELD_IDS,
 } from '../../services/policyBuilderPhase6IntentEngine.mjs';
 import {
   PHASE6R_READINESS_STATE_IDS,
 } from '../../services/policyBuilderPhase6ReadinessEngine.mjs';
+import {
+  buildPolicyBuilderPhase7RuntimeQuestionReduction,
+} from '../../services/policyBuilderPhase7RuntimeQuestionReduction.mjs';
+import {
+  PHASE7R_REQUEST_EVENT_TYPE_IDS,
+  buildPolicyBuilderPhase7RequestTimeLearningDecision,
+} from '../../services/policyBuilderPhase7RequestTimeLearning.mjs';
 import {
   PHASE7R_REBUILD_AUDIT_RISK_IDS,
   PHASE7R_REBUILD_PROPOSAL_STATUS_IDS,
@@ -14,28 +24,41 @@ import {
   validatePolicyBuilderPhase7LibraryPolicyRebuildProposal,
 } from '../../services/policyBuilderPhase7LibraryPolicyRebuild.mjs';
 
-function upstreamEvidenceFingerprint(overrides = {}) {
+function destination(overrides = {}) {
   return {
-    algorithm: 'sha256',
-    fingerprint: 'a'.repeat(64),
-    provenance: {
-      projectionVersion: 'phase7r.runtime_evidence_fingerprint.v1',
-      phase6EvidenceVersion: 'phase6r.evidence_projection.v1',
-      totalEntryCount: 4,
-      sourceIds: ['profile', 'runtime'],
-      runtimeSourceIds: ['request'],
-      authoritySourceIds: ['operator'],
-      demotionReasonIds: [],
-      warningReasonIds: [],
-      bucketCounts: [
-        {
-          bucketId: 'compatibility',
-          entryCount: 2,
-        },
+    libraryId: 6,
+    libraryName: 'Animated Movies',
+    arrType: 'radarr',
+    arrConfigId: 1,
+    arrRootFolderPath: '/media/Plexmedia/Animated Movies',
+    ...overrides,
+  };
+}
+
+function questionReductionPlan(overrides = {}) {
+  return buildPolicyBuilderPhase7RuntimeQuestionReduction({
+    libraryProfile: {
+      identityCandidates: [
+        { label: 'Animation', count: 2, confidence: 0.8 },
       ],
     },
     ...overrides,
-  };
+  });
+}
+
+function guardedOutcome(overrides = {}) {
+  return buildPolicyBuilderPhase7RequestTimeLearningDecision({
+    eventTypeId: PHASE7R_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
+    questionReductionPlan: questionReductionPlan(),
+    operatorDestination: destination(),
+    answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
+    candidate: {
+      key: 'studio:pixar',
+      label: 'Pixar',
+      evidenceCount: 4,
+    },
+    ...overrides,
+  });
 }
 
 function baseInput(overrides = {}) {
@@ -70,22 +93,7 @@ function baseInput(overrides = {}) {
       ],
     },
     guardedOutcomes: [
-      {
-        upstreamEvidenceFingerprint: upstreamEvidenceFingerprint(),
-        finalOutcome: {
-          recorded: true,
-          destinationLibraryName: 'Animated Movies',
-        },
-        learning: {
-          decisionId: 'candidate',
-          canWriteLearning: true,
-        },
-        candidate: {
-          key: 'studio:pixar',
-          label: 'Pixar',
-          evidenceCount: 4,
-        },
-      },
+      guardedOutcome(),
     ],
     existingConstraints: {
       hardLimits: [
@@ -142,12 +150,19 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
       count: 1,
       acceptedCount: 1,
       missingFingerprintCount: 0,
+      requestProofCount: 1,
+      missingRequestProofCount: 0,
+      invalidRequestProofCount: 0,
       fingerprintCount: 1,
-      fingerprints: ['a'.repeat(64)],
     }));
+    expect(proposal.evidenceSourceSummary.guardedOutcomes.fingerprints[0])
+      .toMatch(/^[a-f0-9]{64}$/u);
     expect(proposal.trace.attributes).toEqual(expect.objectContaining({
       'classifarr.policy.rebuild.guarded_outcome_fingerprint_count': 1,
       'classifarr.policy.rebuild.guarded_outcome_missing_fingerprint_count': 0,
+      'classifarr.policy.rebuild.guarded_outcome_request_proof_count': 1,
+      'classifarr.policy.rebuild.guarded_outcome_missing_request_proof_count': 0,
+      'classifarr.policy.rebuild.guarded_outcome_invalid_request_proof_count': 0,
     }));
     expect(JSON.stringify(proposal.evidenceSourceSummary.guardedOutcomes.fingerprints))
       .not.toContain('Animated Movies');
@@ -177,23 +192,14 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
   });
 
   test('rejects guarded outcomes without upstream evidence fingerprints and does not consume them', () => {
+    const outcome = guardedOutcome();
+    outcome.upstreamEvidenceFingerprint = null;
+    outcome.learningGuardContext.upstreamEvidenceFingerprint = null;
+    outcome.trace.attributes['classifarr.runtime.request_learning.upstream_evidence_fingerprint'] = undefined;
+
     const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput({
       guardedOutcomes: [
-        {
-          finalOutcome: {
-            recorded: true,
-            destinationLibraryName: 'Animated Movies',
-          },
-          learning: {
-            decisionId: 'candidate',
-            canWriteLearning: true,
-          },
-          candidate: {
-            key: 'studio:pixar',
-            label: 'Pixar',
-            evidenceCount: 4,
-          },
-        },
+        outcome,
       ],
       existingConstraints: {
         hardLimits: [],
@@ -226,14 +232,74 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
       ]));
   });
 
+  test('rejects guarded outcomes without valid request-time proof and does not consume them', () => {
+    const missingProof = guardedOutcome();
+    const invalidProof = guardedOutcome();
+
+    missingProof.questionReductionProof = null;
+    invalidProof.questionReductionProof.validation.ok = false;
+    invalidProof.questionReductionProof.validation.issueCount = 1;
+
+    const missingProofProposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput({
+      guardedOutcomes: [missingProof],
+      existingConstraints: {
+        hardLimits: [],
+        avoid: [],
+      },
+    }));
+    const invalidProofProposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput({
+      guardedOutcomes: [invalidProof],
+      existingConstraints: {
+        hardLimits: [],
+        avoid: [],
+      },
+    }));
+
+    expect(missingProofProposal.intentDraft.helpful_matches).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'studio:pixar',
+      }),
+    ]));
+    expect(missingProofProposal.evidenceSourceSummary.guardedOutcomes)
+      .toEqual(expect.objectContaining({
+        count: 1,
+        acceptedCount: 0,
+        missingRequestProofCount: 1,
+        invalidRequestProofCount: 0,
+      }));
+    expect(invalidProofProposal.evidenceSourceSummary.guardedOutcomes)
+      .toEqual(expect.objectContaining({
+        count: 1,
+        acceptedCount: 0,
+        missingRequestProofCount: 0,
+        invalidRequestProofCount: 1,
+      }));
+    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(missingProofProposal).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF,
+        }),
+      ]));
+    expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(invalidProofProposal).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
+        }),
+      ]));
+  });
+
   test('rejects guarded outcome fingerprint trace mismatches', () => {
     const proposal = buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(baseInput());
     proposal.trace.attributes['classifarr.policy.rebuild.guarded_outcome_fingerprint_count'] = 0;
+    proposal.trace.attributes['classifarr.policy.rebuild.guarded_outcome_request_proof_count'] = 0;
 
     expect(validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_FINGERPRINT_MISMATCH,
+        }),
+        expect.objectContaining({
+          riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_REQUEST_PROOF_MISMATCH,
         }),
       ]));
   });

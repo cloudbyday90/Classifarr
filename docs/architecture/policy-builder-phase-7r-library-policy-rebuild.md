@@ -31,6 +31,11 @@ Phase 7R.6 turns those inputs into a reviewable proposal rather than an
 automatic policy replacement. That keeps automation moving toward the new model
 without reintroducing destructive or opaque behavior.
 
+This checkpoint tightens the guarded outcome boundary: a rebuild proposal can
+no longer consume an outcome merely because it has a sanitized fingerprint. The
+outcome must also pass the request-time learning contract, including bounded
+question-reduction validation proof and matching trace attributes.
+
 ## Official Guidance Reviewed
 
 - [NIST AI Risk Management Framework 1.0](https://www.nist.gov/itl/ai-risk-management-framework)
@@ -57,6 +62,13 @@ Additional hardening guidance:
 - OWASP LLM application guidance supports refusing untrusted or unvalidated
   intermediate outputs. Guarded outcomes without upstream evidence fingerprints
   are now warning/error context, not proposal evidence.
+- OWASP LLM guidance also supports validating intermediate outputs before they
+  influence downstream actions. Guarded outcomes without valid request-time
+  proof are now rejected before they can shape a rebuild proposal.
+- OpenTelemetry semantic convention guidance supports stable, common trace
+  attributes. Rebuild traces now mirror guarded-outcome request-proof counts so
+  migration verifiers can correlate the proposal source summary with bounded
+  telemetry without raw runtime payloads.
 - Microsoft HAX guidance supports clear uncertainty and recovery. Missing
   fingerprints surface as explicit validation risks instead of silently
   influencing the proposed policy.
@@ -96,6 +108,8 @@ Cons:
   constraints.
 - Proposal confidence depends on the quality and freshness of library profile
   evidence.
+- Runtime integrations must provide validated request-time outcome envelopes
+  before guarded outcomes can affect rebuild evidence.
 
 ## Final Recommendation Stack
 
@@ -126,6 +140,11 @@ Cons:
 9. Reject guarded outcome handoffs that lack sanitized SHA-256 upstream
    evidence fingerprints or whose bounded trace counts no longer match source
    summaries.
+10. Reject guarded outcomes that lack request-time validation proof, fail the
+    request-time learning contract, or carry request/question proof that drifts
+    from the guarded outcome fingerprint.
+11. Mirror request-proof accepted/missing/invalid counts into bounded rebuild
+    trace attributes.
 
 ## Implemented Files
 
@@ -190,11 +209,15 @@ The service exports:
 - Guarded outcomes are only consumed as compatibility/outlier proposal evidence
   when they carry a sanitized upstream SHA-256 evidence fingerprint from the
   Phase 7R runtime/question/request-learning chain.
+- Guarded outcomes are only consumed when the request-time learning contract
+  validates successfully, including bounded question-reduction proof.
 - Source summaries store bounded fingerprint counts and digests only; they do
   not store raw library labels, item titles, provider payloads, prompts, or
   runtime diagnostics.
 - Validation rejects missing guarded-outcome fingerprints and trace/source
   summary fingerprint count mismatches before the proposal can pass.
+- Validation rejects missing or invalid request-time proof and request-proof
+  trace/source summary mismatches before the proposal can pass.
 
 ## Test Coverage
 
@@ -203,9 +226,14 @@ The focused test suite verifies:
 - proposals include belongs-here, helpful-match, hard-limit, and routing fields,
 - guarded outcomes with valid upstream evidence fingerprints are consumed as
   proposal evidence,
+- guarded outcomes with valid request-time/question-reduction proof are
+  consumed as proposal evidence,
 - guarded outcomes without upstream evidence fingerprints are not consumed and
   fail validation,
+- guarded outcomes without request-time proof or with invalid request-time proof
+  are not consumed and fail validation,
 - guarded outcome fingerprint trace counts must match source summaries,
+- guarded outcome request-proof trace counts must match source summaries,
 - proposals require explicit operator acceptance,
 - proposals require rollback snapshots,
 - proposal side effects remain disabled,

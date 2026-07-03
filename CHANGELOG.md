@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Rebuild Request Proof Gate** — hardened
+  library-derived rebuild proposals so guarded outcomes must pass request-time
+  learning validation, carry bounded question-reduction proof, and keep
+  request-proof trace counts aligned before they can shape proposal evidence.
 - **Policy Builder Phase 7R Request Learning Validation Proof** — hardened
   request-time learning so request/manual/routing decisions carry bounded
   question-reduction validation proof, mirror that validity state into trace

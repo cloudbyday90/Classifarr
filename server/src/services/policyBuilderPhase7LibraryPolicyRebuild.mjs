@@ -16,6 +16,9 @@ import {
 import {
   PHASE6R_LEARNING_DECISION_IDS,
 } from './policyBuilderPhase6LearningGuard.mjs';
+import {
+  validatePolicyBuilderPhase7RequestTimeLearningDecision,
+} from './policyBuilderPhase7RequestTimeLearning.mjs';
 
 const PHASE7R_REBUILD_PROPOSAL_STATUS_IDS = Object.freeze({
   READY_FOR_REVIEW: 'ready_for_review',
@@ -46,6 +49,8 @@ const PHASE7R_REBUILD_WARNING_IDS = Object.freeze({
   MISSING_ROUTING_CONFIGURATION: 'missing_routing_configuration',
   STALE_PROFILE: 'stale_profile',
   GUARDED_OUTCOME_WITHOUT_FINGERPRINT: 'guarded_outcome_without_fingerprint',
+  GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF: 'guarded_outcome_without_request_proof',
+  GUARDED_OUTCOME_INVALID_REQUEST_PROOF: 'guarded_outcome_invalid_request_proof',
 });
 
 const PHASE7R_REBUILD_AUDIT_RISK_IDS = Object.freeze({
@@ -67,6 +72,9 @@ const PHASE7R_REBUILD_AUDIT_RISK_IDS = Object.freeze({
   MISSING_TRACE_REASON: 'missing_trace_reason',
   GUARDED_OUTCOME_WITHOUT_FINGERPRINT: 'guarded_outcome_without_fingerprint',
   GUARDED_OUTCOME_FINGERPRINT_MISMATCH: 'guarded_outcome_fingerprint_mismatch',
+  GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF: 'guarded_outcome_without_request_proof',
+  GUARDED_OUTCOME_INVALID_REQUEST_PROOF: 'guarded_outcome_invalid_request_proof',
+  GUARDED_OUTCOME_REQUEST_PROOF_MISMATCH: 'guarded_outcome_request_proof_mismatch',
 });
 
 const MAX_TRACE_REASONS = 16;
@@ -131,6 +139,10 @@ function getGuardedOutcomeEvidenceFingerprint(outcome = {}) {
   );
 }
 
+function validateGuardedOutcomeRequestProof(outcome = {}) {
+  return validatePolicyBuilderPhase7RequestTimeLearningDecision(outcome);
+}
+
 function normalizeSignal(value) {
   if (typeof value === 'string') {
     return {
@@ -184,7 +196,11 @@ function normalizeObservedAbsences(input = {}) {
 
 function mapGuardedOutcomeSignal(outcome = {}, reasonCode) {
   const learning = asObject(outcome.learning ?? outcome.learningDecision?.learning);
-  const candidate = asObject(outcome.candidate ?? outcome.learningDecision?.candidate);
+  const candidate = asObject(
+    outcome.candidate ??
+    learning.candidate ??
+    outcome.learningDecision?.candidate
+  );
   const finalOutcome = asObject(outcome.finalOutcome);
   const label = normalizeString(
     candidate.label ??
@@ -218,11 +234,26 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
     const evidenceFingerprint = getGuardedOutcomeEvidenceFingerprint(outcome);
     const hasFingerprint = SHA256_FINGERPRINT_PATTERN.test(evidenceFingerprint?.fingerprint || '') &&
       evidenceFingerprint?.algorithm === 'sha256';
+    const requestValidation = validateGuardedOutcomeRequestProof(outcome);
+    const questionProofFingerprint = normalizeString(
+      outcome.questionReductionProof?.evidenceFingerprint?.fingerprint
+    ).toLowerCase();
+    const requestTraceFingerprint = normalizeString(
+      outcome.trace?.attributes?.['classifarr.runtime.request_learning.upstream_evidence_fingerprint']
+    ).toLowerCase();
     const summary = {
       outcomeIndex: index,
       accepted: false,
       fingerprint: hasFingerprint ? evidenceFingerprint.fingerprint : null,
       algorithm: hasFingerprint ? evidenceFingerprint.algorithm : null,
+      requestProofValid: requestValidation.ok === true,
+      requestProofIssueCount: requestValidation.issueCount,
+      requestProofFingerprint: requestValidation.ok === true && questionProofFingerprint
+        ? questionProofFingerprint
+        : null,
+      requestTraceFingerprint: requestValidation.ok === true && requestTraceFingerprint
+        ? requestTraceFingerprint
+        : null,
       learningDecisionId: learning.decisionId ?? null,
       finalOutcomeRecorded: finalOutcome.recorded === true,
       finalOutcomeStatus: normalizeString(finalOutcome.status) || null,
@@ -232,6 +263,31 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
       outcomeSummaries.push({
         ...summary,
         rejectionReasonId: PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
+      });
+      return;
+    }
+
+    if (!outcome.questionReductionProof?.validation) {
+      outcomeSummaries.push({
+        ...summary,
+        rejectionReasonId: PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF,
+      });
+      return;
+    }
+
+    if (!requestValidation.ok) {
+      outcomeSummaries.push({
+        ...summary,
+        rejectionReasonId: PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
+      });
+      return;
+    }
+
+    if (questionProofFingerprint !== evidenceFingerprint.fingerprint ||
+        requestTraceFingerprint !== evidenceFingerprint.fingerprint) {
+      outcomeSummaries.push({
+        ...summary,
+        rejectionReasonId: PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
       });
       return;
     }
@@ -267,6 +323,15 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
   const missingFingerprintCount = outcomeSummaries
     .filter(outcome => outcome.rejectionReasonId === PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT)
     .length;
+  const missingRequestProofCount = outcomeSummaries
+    .filter(outcome => outcome.rejectionReasonId === PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF)
+    .length;
+  const invalidRequestProofCount = outcomeSummaries
+    .filter(outcome => outcome.rejectionReasonId === PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF)
+    .length;
+  const requestProofCount = outcomeSummaries
+    .filter(outcome => outcome.requestProofValid)
+    .length;
 
   return {
     compatibilityCandidates,
@@ -275,6 +340,9 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
       count: outcomeSummaries.length,
       acceptedCount: outcomeSummaries.filter(outcome => outcome.accepted).length,
       missingFingerprintCount,
+      requestProofCount,
+      missingRequestProofCount,
+      invalidRequestProofCount,
       fingerprintCount: uniqueFingerprints.length,
       fingerprints: uniqueFingerprints.slice(0, MAX_REBUILD_FINGERPRINTS),
       fingerprintListTruncated: uniqueFingerprints.length > MAX_REBUILD_FINGERPRINTS,
@@ -468,6 +536,22 @@ function collectWarnings({
     ));
   }
 
+  if (evidenceInput.guardedOutcomeEvidenceSummary?.missingRequestProofCount > 0) {
+    warnings.push(buildWarning(
+      PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF,
+      'One or more guarded outcomes were ignored because they do not carry request-time validation proof.',
+      { target: 'guarded_outcomes', severity: 'error' }
+    ));
+  }
+
+  if (evidenceInput.guardedOutcomeEvidenceSummary?.invalidRequestProofCount > 0) {
+    warnings.push(buildWarning(
+      PHASE7R_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
+      'One or more guarded outcomes were ignored because request-time validation proof failed.',
+      { target: 'guarded_outcomes', severity: 'error' }
+    ));
+  }
+
   asArray(intentDraft.warnings).forEach(warning => {
     if (warning.reasonCode === PHASE6R_INTENT_WARNING_IDS.OBSERVED_ABSENCE_NOT_EXCLUSION) {
       warnings.push(buildWarning(
@@ -541,6 +625,12 @@ function buildTrace({ statusId, evidenceSourceSummary, warnings }) {
         evidenceSourceSummary.guardedOutcomes.fingerprintCount,
       'classifarr.policy.rebuild.guarded_outcome_missing_fingerprint_count':
         evidenceSourceSummary.guardedOutcomes.missingFingerprintCount,
+      'classifarr.policy.rebuild.guarded_outcome_request_proof_count':
+        evidenceSourceSummary.guardedOutcomes.requestProofCount,
+      'classifarr.policy.rebuild.guarded_outcome_missing_request_proof_count':
+        evidenceSourceSummary.guardedOutcomes.missingRequestProofCount,
+      'classifarr.policy.rebuild.guarded_outcome_invalid_request_proof_count':
+        evidenceSourceSummary.guardedOutcomes.invalidRequestProofCount,
       'classifarr.policy.rebuild.routing_configured': evidenceSourceSummary.routing.configured,
       'classifarr.policy.rebuild.warning_count': warnings.length,
     },
@@ -729,11 +819,34 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
   const guardedTraceMissingFingerprintCount = Number(
     proposal.trace?.attributes?.['classifarr.policy.rebuild.guarded_outcome_missing_fingerprint_count']
   );
+  const guardedTraceRequestProofCount = Number(
+    proposal.trace?.attributes?.['classifarr.policy.rebuild.guarded_outcome_request_proof_count']
+  );
+  const guardedTraceMissingRequestProofCount = Number(
+    proposal.trace?.attributes?.['classifarr.policy.rebuild.guarded_outcome_missing_request_proof_count']
+  );
+  const guardedTraceInvalidRequestProofCount = Number(
+    proposal.trace?.attributes?.['classifarr.policy.rebuild.guarded_outcome_invalid_request_proof_count']
+  );
 
   if (guardedOutcomeSummary?.missingFingerprintCount > 0) {
     issues.push({
       riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT,
       message: 'Guarded outcomes must carry upstream sanitized evidence fingerprints before rebuild can consume them.',
+    });
+  }
+
+  if (guardedOutcomeSummary?.missingRequestProofCount > 0) {
+    issues.push({
+      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF,
+      message: 'Guarded outcomes must carry request-time validation proof before rebuild can consume them.',
+    });
+  }
+
+  if (guardedOutcomeSummary?.invalidRequestProofCount > 0) {
+    issues.push({
+      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
+      message: 'Guarded outcomes must pass request-time validation before rebuild can consume them.',
     });
   }
 
@@ -744,6 +857,17 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
     issues.push({
       riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_FINGERPRINT_MISMATCH,
       message: 'Guarded outcome fingerprint trace counts must match the rebuild source summary.',
+    });
+  }
+
+  if (guardedOutcomeSummary && (
+    guardedTraceRequestProofCount !== guardedOutcomeSummary.requestProofCount ||
+    guardedTraceMissingRequestProofCount !== guardedOutcomeSummary.missingRequestProofCount ||
+    guardedTraceInvalidRequestProofCount !== guardedOutcomeSummary.invalidRequestProofCount
+  )) {
+    issues.push({
+      riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.GUARDED_OUTCOME_REQUEST_PROOF_MISMATCH,
+      message: 'Guarded outcome request-proof trace counts must match the rebuild source summary.',
     });
   }
 

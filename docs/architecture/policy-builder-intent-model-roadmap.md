@@ -3898,16 +3898,24 @@ Tasks:
 - Create rollback snapshots before replacement.
 - Refuse to consume guarded outcomes that do not carry the upstream evidence
   fingerprint chain from runtime decision/question/request-learning contracts.
+- Refuse to consume guarded outcomes that do not pass request-time learning
+  validation, including bounded question-reduction proof.
 - Keep guarded-outcome fingerprint trace counts synchronized with bounded source
   summaries.
+- Keep guarded-outcome request-proof trace counts synchronized with bounded
+  source summaries.
 
 Acceptance criteria:
 
 - Rebuild proposals explain evidence source and confidence.
 - Rebuild proposals only consume guarded outcomes that carry sanitized SHA-256
   upstream evidence fingerprints.
+- Rebuild proposals only consume guarded outcomes that carry valid request-time
+  learning proof and matching question-reduction evidence fingerprints.
 - Missing guarded-outcome fingerprints and trace/source summary mismatches fail
   validation before migration comparison.
+- Missing or invalid guarded-outcome request proof and trace/source summary
+  mismatches fail validation before migration comparison.
 - Rebuild does not automatically delete or replace existing policies.
 - Explicit operator constraints are preserved unless the operator changes them.
 
@@ -3927,9 +3935,12 @@ Implementation status:
 - Proposals include evidence source summaries, confidence, assumptions,
   warnings, an explicit operator acceptance gate, and a rollback snapshot gate.
 - Guarded outcome source summaries now carry bounded accepted/missing
-  fingerprint counts plus sanitized digest lists, and trace attributes mirror
-  those counts without raw labels, prompts, or payloads.
+  fingerprint counts, request-proof counts, sanitized digest lists, and trace
+  attributes mirror those counts without raw labels, prompts, or payloads.
 - Guarded outcomes without upstream evidence fingerprints are not converted
+  into compatibility or outlier proposal evidence and fail validation as an
+  incomplete handoff.
+- Guarded outcomes without valid request-time learning proof are not converted
   into compatibility or outlier proposal evidence and fail validation as an
   incomplete handoff.
 - Observed absence is warning-only review context and cannot become avoid or
