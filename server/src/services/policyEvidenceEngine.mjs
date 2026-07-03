@@ -410,7 +410,7 @@ const POLICY_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
     dispositionId: POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
     normalFlowAllowed: false,
     exposesUiDiagnostic: true,
-    replacementTarget: 'Phase 6R evidence summary and Phase 6R/7R migration verifier output.',
+    replacementTarget: 'Policy evidence summary and migration-verifier output.',
     reason: 'Impact preview exists to compare legacy policy paths; it should not become destination evidence UI.',
   },
   {
@@ -419,7 +419,7 @@ const POLICY_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
     dispositionId: POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
     normalFlowAllowed: false,
     exposesUiDiagnostic: true,
-    replacementTarget: 'Phase 6R evidence projection plus migration-only replay verifier.',
+    replacementTarget: 'Policy evidence projection plus migration-only replay verifier.',
     reason: 'Representative replay is useful verification material, not the normal operator workflow.',
   },
   {
@@ -428,7 +428,7 @@ const POLICY_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
     dispositionId: POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.REWRITE_AS_EVIDENCE_REDUCER,
     normalFlowAllowed: false,
     exposesUiDiagnostic: false,
-    replacementTarget: 'Deterministic Phase 6R evidence reducers for outlier and compatibility buckets.',
+    replacementTarget: 'Deterministic policy evidence reducers for outlier and compatibility buckets.',
     reason: 'Scoring math can be reused only after it emits source-authorized evidence entries instead of replay UI scores.',
   },
   {
@@ -437,7 +437,7 @@ const POLICY_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
     dispositionId: POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.KEEP_OUT_OF_NORMAL_FLOW,
     normalFlowAllowed: false,
     exposesUiDiagnostic: true,
-    replacementTarget: 'Maintainer-only migration diagnostics until Phase 8R deletion gates.',
+    replacementTarget: 'Maintainer-only migration diagnostics until native storage deletion gates.',
     reason: 'Sample diagnostics can help migration verification, but they are not policy meaning.',
   },
 ]);
@@ -770,7 +770,7 @@ function buildPolicyEvidenceProjection(input = {}) {
     projection.warnings.push({
       bucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
       reasonCode: 'no_evidence_inputs',
-      message: 'No Phase 6R evidence inputs were provided.',
+      message: 'No policy evidence inputs were provided.',
     });
   }
 
@@ -791,7 +791,7 @@ function validatePolicyEvidenceBucket(candidate, sources = POLICY_EVIDENCE_SOURC
   if (!getPolicyEvidenceBucket(candidate?.id)) {
     issues.push({
       riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_BUCKET,
-      message: 'Evidence bucket must be part of the Phase 6R evidence vocabulary.',
+      message: 'Evidence bucket must be part of the policy evidence vocabulary.',
     });
   }
 
@@ -879,7 +879,7 @@ function validatePolicyEvidenceSource(candidate, buckets = POLICY_EVIDENCE_BUCKE
   if (!getPolicyEvidenceSource(candidate?.id)) {
     issues.push({
       riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_SOURCE,
-      message: 'Evidence source must be part of the Phase 6R evidence vocabulary.',
+      message: 'Evidence source must be part of the policy evidence vocabulary.',
     });
   }
 
@@ -919,7 +919,7 @@ function validatePolicyEvidenceSource(candidate, buckets = POLICY_EVIDENCE_BUCKE
   if (candidate?.liveLookupAllowed === true) {
     issues.push({
       riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.SOURCE_ALLOWS_LIVE_LOOKUP,
-      message: 'Evidence sources must not perform live provider lookups in Phase 6R.1.',
+      message: 'Evidence sources must not perform live provider lookups in the policy evidence contract.',
     });
   }
 
@@ -960,7 +960,7 @@ function validatePolicyEvidenceSource(candidate, buckets = POLICY_EVIDENCE_BUCKE
       allowedBucketIds.includes(POLICY_EVIDENCE_BUCKET_IDS.IDENTITY)) {
     issues.push({
       riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.METADATA_OWNS_POLICY_MEANING,
-      message: 'Metadata evidence cannot own destination identity in Phase 6R.1.',
+      message: 'Metadata evidence cannot own destination identity in the policy evidence contract.',
     });
   }
 
@@ -1094,7 +1094,7 @@ function validatePolicyEvidenceProjectionEntry(entry = {}, bucketId) {
     pushProjectionIssue(
       issues,
       POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_UNKNOWN_SOURCE,
-      'Evidence projection entry source must be part of the Phase 6R evidence vocabulary.',
+      'Evidence projection entry source must be part of the policy evidence vocabulary.',
       { bucketId, sourceId: entry.sourceId || null }
     );
   } else if (bucket && !bucket.allowedSourceIds.includes(entry.sourceId)) {

@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Engine Diagnostics Cutover** — removed Phase 6R wording
+  from production evidence-engine validation messages and reducer cutline
+  targets, replacing it with durable policy-evidence and native-storage
+  terminology while preserving risk ids, contracts, and behavior.
 - **Policy Engine Completion Audit Module Cutover** — renamed the policy engine
   completion audit contract plus focused test to durable product-domain names,
   replaced phase-coded component ids and `nextPhase` checks with semantic

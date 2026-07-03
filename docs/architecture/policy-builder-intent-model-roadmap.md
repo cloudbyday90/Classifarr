@@ -6339,6 +6339,13 @@ Implementation status:
 - After the policy-engine-completion-audit cutover, the repository inventory
   validates with 11,766 total phase-coded references, 4,907 production
   references, and 4,929 rename candidates.
+- The next diagnostic cutover removed phase-coded wording from the policy
+  evidence engine's production warnings, validation messages, and reducer
+  replacement targets while preserving risk ids and behavior:
+  [Policy Evidence Engine Diagnostics Cutover](policy-evidence-engine-diagnostics-cutover.md).
+- After the policy-evidence-engine diagnostics cutover, the repository
+  inventory validates with 11,767 total phase-coded references, 4,897
+  production references, and 4,919 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
