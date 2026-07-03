@@ -34,12 +34,12 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Classifies current policy-builder surfaces as keep, rewrite, replace, delete, bridge-only, or verifier-only without phase-specific module names.',
   },
   {
-    id: 'destination_first_flow',
-    label: 'Destination-first flow',
-    docPath: 'docs/architecture/policy-builder-phase-3r-destination-first-flow.md',
-    servicePath: 'server/src/services/policyBuilderPhase3DestinationFirstFlow.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase3DestinationFirstFlow.test.mjs',
-    evidence: 'Defines the normal operator sequence from library context through save or defer.',
+    id: 'policy_authoring_destination_flow',
+    label: 'Policy authoring destination flow',
+    docPath: 'docs/architecture/policy-authoring-destination-flow.md',
+    servicePath: 'server/src/services/policyAuthoringDestinationFlow.mjs',
+    testPath: 'server/src/__tests__/services/policyAuthoringDestinationFlow.test.mjs',
+    evidence: 'Defines the normal operator sequence from library context through save or defer without phase-specific module names.',
   },
   {
     id: 'component_system_reset',
@@ -169,7 +169,7 @@ const POLICY_AUTHORING_NORMAL_WORKFLOW_RULES = Object.freeze([
   {
     id: 'destination_context_before_templates',
     label: 'Destination context appears before starter-template mechanics',
-    docPath: 'docs/architecture/policy-builder-phase-3r-destination-first-flow.md',
+    docPath: 'docs/architecture/policy-authoring-destination-flow.md',
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
     evidence: 'Normal workflow starts from library and destination meaning; templates are secondary.',
   },

@@ -4,8 +4,8 @@ import {
   PHASE_3R_OPTION_SOURCE_IDS,
 } from '../../services/policyBuilderPhase3ComponentSystem.mjs';
 import {
-  PHASE_3R_DESTINATION_QUESTION_IDS,
-} from '../../services/policyBuilderPhase3DestinationFirstFlow.mjs';
+  POLICY_AUTHORING_DESTINATION_QUESTION_IDS,
+} from '../../services/policyAuthoringDestinationFlow.mjs';
 import {
   PHASE_3R_EVIDENCE_FIELD_IDS,
   PHASE_3R_OPTION_SELECTION_COMMAND_IDS,
@@ -124,7 +124,7 @@ describe('policyBuilderPhase3EvidenceBackedOptionSelection', () => {
     expect(validatePhase3ROptionCandidate({
       value: 'Animation',
       sourceId: PHASE_3R_OPTION_SOURCE_IDS.COMMON_STATIC_OPTION,
-      questionId: PHASE_3R_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
+      questionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
     })).toEqual(expect.objectContaining({
       valid: false,
       riskId: PHASE_3R_OPTION_SELECTION_RISK_IDS.BROAD_GENRE_WITHOUT_SUPPORTING_EVIDENCE,

@@ -2187,10 +2187,10 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 3R.2 destination-first flow is documented in
-  [Policy Builder Phase 3R Destination-First Flow](policy-builder-phase-3r-destination-first-flow.md).
-- The server-side Phase 3R destination-first flow contract lives in
-  `server/src/services/policyBuilderPhase3DestinationFirstFlow.mjs`.
+- The policy-authoring destination flow is documented in
+  [Policy Authoring Destination Flow](policy-authoring-destination-flow.md).
+- The server-side policy-authoring destination flow contract lives in
+  `server/src/services/policyAuthoringDestinationFlow.mjs`.
 - The normal workflow is now explicitly ordered as select library, review
   observed destination meaning, accept or edit declared intent, confirm hard
   limits, confirm routing readiness, and save or defer.
@@ -2550,8 +2550,8 @@ Implementation record:
   [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 - The policy-authoring workflow inventory is documented in
   [Policy Authoring Workflow Inventory](policy-authoring-workflow-inventory.md).
-- Phase 3R.2 destination-first flow is documented in
-  [Policy Builder Phase 3R Destination-First Flow](policy-builder-phase-3r-destination-first-flow.md).
+- The policy-authoring destination flow is documented in
+  [Policy Authoring Destination Flow](policy-authoring-destination-flow.md).
 - Phase 3R.3 UI component system and interaction reset is documented in
   [Policy Builder Phase 3R UI Component System And Interaction Reset](policy-builder-phase-3r-component-system-reset.md).
 - Phase 3R.4 evidence-backed option selection is documented in
@@ -6363,6 +6363,15 @@ Implementation status:
 - After the policy-authoring workflow inventory cutover, the repository
   inventory validates with 11,420 total phase-coded references, 4,679
   production references, and 4,701 rename candidates.
+- The next authoring workflow cutover renamed the destination-flow contract to
+  `policyAuthoringDestinationFlow.mjs`, renamed its focused test, replaced
+  phase-coded destination exports/helpers with `POLICY_AUTHORING_DESTINATION_*`
+  and `policyAuthoringDestination*`, and moved its standing design record to
+  [Policy Authoring Destination Flow](policy-authoring-destination-flow.md):
+  [Policy Authoring Destination Flow Module Cutover](policy-authoring-destination-flow-module-cutover.md).
+- After the policy-authoring destination flow cutover, the repository inventory
+  validates with 11,128 total phase-coded references, 4,521 production
+  references, and 4,543 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

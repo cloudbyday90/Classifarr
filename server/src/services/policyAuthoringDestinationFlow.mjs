@@ -2,7 +2,7 @@ import {
   POLICY_AUTHORING_WORKFLOW_ROLE_IDS,
 } from './policyAuthoringWorkflowInventory.mjs';
 
-const PHASE_3R_DESTINATION_FLOW_STEP_IDS = Object.freeze({
+const POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS = Object.freeze({
   SELECT_LIBRARY: 'select_library',
   REVIEW_OBSERVED_DESTINATION: 'review_observed_destination',
   ACCEPT_OR_EDIT_DECLARED_INTENT: 'accept_or_edit_declared_intent',
@@ -11,7 +11,7 @@ const PHASE_3R_DESTINATION_FLOW_STEP_IDS = Object.freeze({
   SAVE_OR_DEFER: 'save_or_defer',
 });
 
-const PHASE_3R_DESTINATION_QUESTION_IDS = Object.freeze({
+const POLICY_AUTHORING_DESTINATION_QUESTION_IDS = Object.freeze({
   WHAT_BELONGS_HERE: 'what_belongs_here',
   WHAT_SHOULD_NOT_GO_HERE: 'what_should_not_go_here',
   WHAT_HELPS_BUT_DOES_NOT_DECIDE: 'what_helps_but_does_not_decide',
@@ -19,13 +19,13 @@ const PHASE_3R_DESTINATION_QUESTION_IDS = Object.freeze({
   CAN_THIS_ROUTE: 'can_this_route',
 });
 
-const PHASE_3R_DESTINATION_EMPTY_STATE_IDS = Object.freeze({
+const POLICY_AUTHORING_DESTINATION_EMPTY_STATE_IDS = Object.freeze({
   NEW_LIBRARY: 'new_library',
   SPARSE_LIBRARY: 'sparse_library',
   UNMAPPED_LIBRARY: 'unmapped_library',
 });
 
-const PHASE_3R_DESTINATION_NEXT_ACTION_IDS = Object.freeze({
+const POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS = Object.freeze({
   SELECT_CONNECTED_LIBRARY: 'select_connected_library',
   SYNC_MEDIA_SERVER_LIBRARY: 'sync_media_server_library',
   REVIEW_OBSERVED_PROFILE: 'review_observed_profile',
@@ -37,7 +37,7 @@ const PHASE_3R_DESTINATION_NEXT_ACTION_IDS = Object.freeze({
   DEFER_POLICY: 'defer_policy',
 });
 
-const PHASE_3R_DESTINATION_FORBIDDEN_MECHANIC_IDS = Object.freeze({
+const POLICY_AUTHORING_DESTINATION_FORBIDDEN_MECHANIC_IDS = Object.freeze({
   STARTER_TEMPLATE_FIRST: 'starter_template_first',
   RAW_SCORING_WEIGHTS: 'raw_scoring_weights',
   REPLAY_OR_PROVIDER_DIAGNOSTICS: 'replay_or_provider_diagnostics',
@@ -45,7 +45,7 @@ const PHASE_3R_DESTINATION_FORBIDDEN_MECHANIC_IDS = Object.freeze({
   RAW_BRIDGE_STORAGE: 'raw_bridge_storage',
 });
 
-const PHASE_3R_DESTINATION_RISK_IDS = Object.freeze({
+const POLICY_AUTHORING_DESTINATION_RISK_IDS = Object.freeze({
   MISSING_STEP: 'missing_step',
   WRONG_STEP_ORDER: 'wrong_step_order',
   TEMPLATE_BEFORE_DESTINATION: 'template_before_destination',
@@ -68,76 +68,76 @@ function deepFreeze(value) {
   return value;
 }
 
-const PHASE_3R_DESTINATION_FLOW_STEPS = deepFreeze([
+const POLICY_AUTHORING_DESTINATION_FLOW_STEPS = deepFreeze([
   {
-    id: PHASE_3R_DESTINATION_FLOW_STEP_IDS.SELECT_LIBRARY,
+    id: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.SELECT_LIBRARY,
     order: 1,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.WORKFLOW_SHELL,
     primaryQuestionId: null,
     requiredNextActionIds: [
-      PHASE_3R_DESTINATION_NEXT_ACTION_IDS.SELECT_CONNECTED_LIBRARY,
+      POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.SELECT_CONNECTED_LIBRARY,
     ],
     allowsStarterTemplates: false,
     allowsAdvancedMechanics: false,
     operatorOutcome: 'A connected media-server library is selected as the destination source of truth.',
   },
   {
-    id: PHASE_3R_DESTINATION_FLOW_STEP_IDS.REVIEW_OBSERVED_DESTINATION,
+    id: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.REVIEW_OBSERVED_DESTINATION,
     order: 2,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DESTINATION_CONTEXT,
-    primaryQuestionId: PHASE_3R_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
+    primaryQuestionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
     requiredNextActionIds: [
-      PHASE_3R_DESTINATION_NEXT_ACTION_IDS.REVIEW_OBSERVED_PROFILE,
+      POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.REVIEW_OBSERVED_PROFILE,
     ],
     allowsStarterTemplates: false,
     allowsAdvancedMechanics: false,
     operatorOutcome: 'The operator sees what already appears to belong in this destination before policy mechanics.',
   },
   {
-    id: PHASE_3R_DESTINATION_FLOW_STEP_IDS.ACCEPT_OR_EDIT_DECLARED_INTENT,
+    id: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.ACCEPT_OR_EDIT_DECLARED_INTENT,
     order: 3,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DECLARED_INTENT_EDITING,
-    primaryQuestionId: PHASE_3R_DESTINATION_QUESTION_IDS.WHAT_HELPS_BUT_DOES_NOT_DECIDE,
+    primaryQuestionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_HELPS_BUT_DOES_NOT_DECIDE,
     requiredNextActionIds: [
-      PHASE_3R_DESTINATION_NEXT_ACTION_IDS.ACCEPT_OBSERVED_SUGGESTIONS,
-      PHASE_3R_DESTINATION_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
+      POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.ACCEPT_OBSERVED_SUGGESTIONS,
+      POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
     ],
     allowsStarterTemplates: true,
     allowsAdvancedMechanics: false,
     operatorOutcome: 'Observed suggestions or starter-template hints become declared intent only after explicit acceptance.',
   },
   {
-    id: PHASE_3R_DESTINATION_FLOW_STEP_IDS.CONFIRM_HARD_LIMITS,
+    id: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.CONFIRM_HARD_LIMITS,
     order: 4,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DECLARED_INTENT_EDITING,
-    primaryQuestionId: PHASE_3R_DESTINATION_QUESTION_IDS.WHAT_SHOULD_NOT_GO_HERE,
+    primaryQuestionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_SHOULD_NOT_GO_HERE,
     requiredNextActionIds: [
-      PHASE_3R_DESTINATION_NEXT_ACTION_IDS.CONFIRM_HARD_LIMITS,
+      POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.CONFIRM_HARD_LIMITS,
     ],
     allowsStarterTemplates: false,
     allowsAdvancedMechanics: false,
     operatorOutcome: 'Blocking constraints are explicit and not inferred from absence or broad hints.',
   },
   {
-    id: PHASE_3R_DESTINATION_FLOW_STEP_IDS.CONFIRM_ROUTING_READINESS,
+    id: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.CONFIRM_ROUTING_READINESS,
     order: 5,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.READINESS_NEXT_ACTION,
-    primaryQuestionId: PHASE_3R_DESTINATION_QUESTION_IDS.CAN_THIS_ROUTE,
+    primaryQuestionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.CAN_THIS_ROUTE,
     requiredNextActionIds: [
-      PHASE_3R_DESTINATION_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
+      POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
     ],
     allowsStarterTemplates: false,
     allowsAdvancedMechanics: false,
     operatorOutcome: 'Routing readiness is expressed as a next action, not provider diagnostics or replay mechanics.',
   },
   {
-    id: PHASE_3R_DESTINATION_FLOW_STEP_IDS.SAVE_OR_DEFER,
+    id: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.SAVE_OR_DEFER,
     order: 6,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.WORKFLOW_SHELL,
     primaryQuestionId: null,
     requiredNextActionIds: [
-      PHASE_3R_DESTINATION_NEXT_ACTION_IDS.SAVE_POLICY,
-      PHASE_3R_DESTINATION_NEXT_ACTION_IDS.DEFER_POLICY,
+      POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.SAVE_POLICY,
+      POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.DEFER_POLICY,
     ],
     allowsStarterTemplates: false,
     allowsAdvancedMechanics: false,
@@ -145,9 +145,9 @@ const PHASE_3R_DESTINATION_FLOW_STEPS = deepFreeze([
   },
 ]);
 
-const PHASE_3R_DESTINATION_QUESTIONS = deepFreeze([
+const POLICY_AUTHORING_DESTINATION_QUESTIONS = deepFreeze([
   {
-    id: PHASE_3R_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
+    id: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
     label: 'What belongs here?',
     intentField: 'belongs_here',
     normalPath: true,
@@ -156,7 +156,7 @@ const PHASE_3R_DESTINATION_QUESTIONS = deepFreeze([
     notes: 'Use observed library profile values as suggestions, not automatic rules.',
   },
   {
-    id: PHASE_3R_DESTINATION_QUESTION_IDS.WHAT_SHOULD_NOT_GO_HERE,
+    id: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_SHOULD_NOT_GO_HERE,
     label: 'What should not go here?',
     intentField: 'avoid_or_hard_limits',
     normalPath: true,
@@ -165,7 +165,7 @@ const PHASE_3R_DESTINATION_QUESTIONS = deepFreeze([
     notes: 'Hard limits and avoid rules require declared operator intent.',
   },
   {
-    id: PHASE_3R_DESTINATION_QUESTION_IDS.WHAT_HELPS_BUT_DOES_NOT_DECIDE,
+    id: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_HELPS_BUT_DOES_NOT_DECIDE,
     label: 'What helps but should not decide alone?',
     intentField: 'helpful_matches',
     normalPath: true,
@@ -174,7 +174,7 @@ const PHASE_3R_DESTINATION_QUESTIONS = deepFreeze([
     notes: 'Soft evidence can improve fit but cannot become a destination rule by itself.',
   },
   {
-    id: PHASE_3R_DESTINATION_QUESTION_IDS.WHEN_SHOULD_CLASSIFARR_ASK,
+    id: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHEN_SHOULD_CLASSIFARR_ASK,
     label: 'When should Classifarr ask?',
     intentField: 'review_triggers',
     normalPath: true,
@@ -183,7 +183,7 @@ const PHASE_3R_DESTINATION_QUESTIONS = deepFreeze([
     notes: 'Review triggers describe uncertainty and should not be hidden behind confidence internals.',
   },
   {
-    id: PHASE_3R_DESTINATION_QUESTION_IDS.CAN_THIS_ROUTE,
+    id: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.CAN_THIS_ROUTE,
     label: 'Can this route?',
     intentField: 'routing_readiness',
     normalPath: true,
@@ -193,88 +193,88 @@ const PHASE_3R_DESTINATION_QUESTIONS = deepFreeze([
   },
 ]);
 
-const PHASE_3R_DESTINATION_EMPTY_STATES = deepFreeze([
+const POLICY_AUTHORING_DESTINATION_EMPTY_STATES = deepFreeze([
   {
-    id: PHASE_3R_DESTINATION_EMPTY_STATE_IDS.NEW_LIBRARY,
+    id: POLICY_AUTHORING_DESTINATION_EMPTY_STATE_IDS.NEW_LIBRARY,
     label: 'New library',
     description: 'No observed profile is available yet.',
-    nextActionId: PHASE_3R_DESTINATION_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
+    nextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
     internalDetailsAllowed: false,
   },
   {
-    id: PHASE_3R_DESTINATION_EMPTY_STATE_IDS.SPARSE_LIBRARY,
+    id: POLICY_AUTHORING_DESTINATION_EMPTY_STATE_IDS.SPARSE_LIBRARY,
     label: 'Sparse library',
     description: 'Observed profile has too few examples to safely suggest intent.',
-    nextActionId: PHASE_3R_DESTINATION_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
+    nextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
     internalDetailsAllowed: false,
   },
   {
-    id: PHASE_3R_DESTINATION_EMPTY_STATE_IDS.UNMAPPED_LIBRARY,
+    id: POLICY_AUTHORING_DESTINATION_EMPTY_STATE_IDS.UNMAPPED_LIBRARY,
     label: 'Unmapped library',
     description: 'This destination cannot route until it is mapped to an Arr root folder.',
-    nextActionId: PHASE_3R_DESTINATION_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
+    nextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
     internalDetailsAllowed: false,
   },
 ]);
 
-const PHASE_3R_DESTINATION_FORBIDDEN_MECHANICS = deepFreeze([
+const POLICY_AUTHORING_DESTINATION_FORBIDDEN_MECHANICS = deepFreeze([
   {
-    id: PHASE_3R_DESTINATION_FORBIDDEN_MECHANIC_IDS.STARTER_TEMPLATE_FIRST,
-    riskId: PHASE_3R_DESTINATION_RISK_IDS.TEMPLATE_BEFORE_DESTINATION,
+    id: POLICY_AUTHORING_DESTINATION_FORBIDDEN_MECHANIC_IDS.STARTER_TEMPLATE_FIRST,
+    riskId: POLICY_AUTHORING_DESTINATION_RISK_IDS.TEMPLATE_BEFORE_DESTINATION,
     reason: 'Starter templates can fill gaps only after destination context is visible.',
   },
   {
-    id: PHASE_3R_DESTINATION_FORBIDDEN_MECHANIC_IDS.RAW_SCORING_WEIGHTS,
-    riskId: PHASE_3R_DESTINATION_RISK_IDS.INTERNAL_MECHANIC_IN_NORMAL_FLOW,
+    id: POLICY_AUTHORING_DESTINATION_FORBIDDEN_MECHANIC_IDS.RAW_SCORING_WEIGHTS,
+    riskId: POLICY_AUTHORING_DESTINATION_RISK_IDS.INTERNAL_MECHANIC_IN_NORMAL_FLOW,
     reason: 'Raw scoring weights make operators tune internals instead of declaring destination intent.',
   },
   {
-    id: PHASE_3R_DESTINATION_FORBIDDEN_MECHANIC_IDS.REPLAY_OR_PROVIDER_DIAGNOSTICS,
-    riskId: PHASE_3R_DESTINATION_RISK_IDS.INTERNAL_MECHANIC_IN_NORMAL_FLOW,
+    id: POLICY_AUTHORING_DESTINATION_FORBIDDEN_MECHANIC_IDS.REPLAY_OR_PROVIDER_DIAGNOSTICS,
+    riskId: POLICY_AUTHORING_DESTINATION_RISK_IDS.INTERNAL_MECHANIC_IN_NORMAL_FLOW,
     reason: 'Replay and provider readiness belong to verifier/support flows, not normal authoring.',
   },
   {
-    id: PHASE_3R_DESTINATION_FORBIDDEN_MECHANIC_IDS.LEGACY_PRESET_INTERNALS,
-    riskId: PHASE_3R_DESTINATION_RISK_IDS.INTERNAL_MECHANIC_IN_NORMAL_FLOW,
+    id: POLICY_AUTHORING_DESTINATION_FORBIDDEN_MECHANIC_IDS.LEGACY_PRESET_INTERNALS,
+    riskId: POLICY_AUTHORING_DESTINATION_RISK_IDS.INTERNAL_MECHANIC_IN_NORMAL_FLOW,
     reason: 'Legacy preset internals are compatibility details, not product language.',
   },
   {
-    id: PHASE_3R_DESTINATION_FORBIDDEN_MECHANIC_IDS.RAW_BRIDGE_STORAGE,
-    riskId: PHASE_3R_DESTINATION_RISK_IDS.INTERNAL_MECHANIC_IN_NORMAL_FLOW,
+    id: POLICY_AUTHORING_DESTINATION_FORBIDDEN_MECHANIC_IDS.RAW_BRIDGE_STORAGE,
+    riskId: POLICY_AUTHORING_DESTINATION_RISK_IDS.INTERNAL_MECHANIC_IN_NORMAL_FLOW,
     reason: 'Raw bridge storage must remain hidden behind draft commands and server validation.',
   },
 ]);
 
-function listPhase3RDestinationFlowSteps() {
-  return PHASE_3R_DESTINATION_FLOW_STEPS;
+function listPolicyAuthoringDestinationFlowSteps() {
+  return POLICY_AUTHORING_DESTINATION_FLOW_STEPS;
 }
 
-function listPhase3RDestinationQuestions() {
-  return PHASE_3R_DESTINATION_QUESTIONS;
+function listPolicyAuthoringDestinationQuestions() {
+  return POLICY_AUTHORING_DESTINATION_QUESTIONS;
 }
 
-function listPhase3RDestinationEmptyStates() {
-  return PHASE_3R_DESTINATION_EMPTY_STATES;
+function listPolicyAuthoringDestinationEmptyStates() {
+  return POLICY_AUTHORING_DESTINATION_EMPTY_STATES;
 }
 
-function listPhase3RDestinationForbiddenMechanics() {
-  return PHASE_3R_DESTINATION_FORBIDDEN_MECHANICS;
+function listPolicyAuthoringDestinationForbiddenMechanics() {
+  return POLICY_AUTHORING_DESTINATION_FORBIDDEN_MECHANICS;
 }
 
-function getPhase3RDestinationFlowStep(stepId) {
-  return PHASE_3R_DESTINATION_FLOW_STEPS.find(step => step.id === stepId) || null;
+function getPolicyAuthoringDestinationFlowStep(stepId) {
+  return POLICY_AUTHORING_DESTINATION_FLOW_STEPS.find(step => step.id === stepId) || null;
 }
 
-function getPhase3RDestinationQuestion(questionId) {
-  return PHASE_3R_DESTINATION_QUESTIONS.find(question => question.id === questionId) || null;
+function getPolicyAuthoringDestinationQuestion(questionId) {
+  return POLICY_AUTHORING_DESTINATION_QUESTIONS.find(question => question.id === questionId) || null;
 }
 
-function getPhase3RDestinationEmptyState(emptyStateId) {
-  return PHASE_3R_DESTINATION_EMPTY_STATES.find(emptyState => emptyState.id === emptyStateId) || null;
+function getPolicyAuthoringDestinationEmptyState(emptyStateId) {
+  return POLICY_AUTHORING_DESTINATION_EMPTY_STATES.find(emptyState => emptyState.id === emptyStateId) || null;
 }
 
-function validatePhase3RDestinationFlowSequence(stepIds = []) {
-  const expectedStepIds = PHASE_3R_DESTINATION_FLOW_STEPS.map(step => step.id);
+function validatePolicyAuthoringDestinationFlowSequence(stepIds = []) {
+  const expectedStepIds = POLICY_AUTHORING_DESTINATION_FLOW_STEPS.map(step => step.id);
   const missingStepIds = expectedStepIds.filter(stepId => !stepIds.includes(stepId));
   const unknownStepIds = stepIds.filter(stepId => !expectedStepIds.includes(stepId));
   const wrongOrder = stepIds.some((stepId, index) => expectedStepIds[index] !== stepId);
@@ -282,7 +282,7 @@ function validatePhase3RDestinationFlowSequence(stepIds = []) {
   if (missingStepIds.length > 0) {
     return {
       valid: false,
-      riskId: PHASE_3R_DESTINATION_RISK_IDS.MISSING_STEP,
+      riskId: POLICY_AUTHORING_DESTINATION_RISK_IDS.MISSING_STEP,
       missingStepIds,
       unknownStepIds,
       reason: 'Destination-first flow is missing required steps.',
@@ -292,7 +292,7 @@ function validatePhase3RDestinationFlowSequence(stepIds = []) {
   if (unknownStepIds.length > 0) {
     return {
       valid: false,
-      riskId: PHASE_3R_DESTINATION_RISK_IDS.UNKNOWN_FLOW_ARTIFACT,
+      riskId: POLICY_AUTHORING_DESTINATION_RISK_IDS.UNKNOWN_FLOW_ARTIFACT,
       missingStepIds,
       unknownStepIds,
       reason: 'Destination-first flow includes unknown steps.',
@@ -302,7 +302,7 @@ function validatePhase3RDestinationFlowSequence(stepIds = []) {
   if (wrongOrder) {
     return {
       valid: false,
-      riskId: PHASE_3R_DESTINATION_RISK_IDS.WRONG_STEP_ORDER,
+      riskId: POLICY_AUTHORING_DESTINATION_RISK_IDS.WRONG_STEP_ORDER,
       missingStepIds,
       unknownStepIds,
       reason: 'Destination-first flow steps are out of order.',
@@ -314,16 +314,16 @@ function validatePhase3RDestinationFlowSequence(stepIds = []) {
     riskId: null,
     missingStepIds: [],
     unknownStepIds: [],
-    reason: 'Destination-first flow sequence matches the Phase 3R.2 contract.',
+    reason: 'Destination-first flow sequence matches the policy-authoring destination-flow contract.',
   };
 }
 
-function validatePhase3RStarterTemplatePlacement(stepId) {
-  const step = getPhase3RDestinationFlowStep(stepId);
+function validatePolicyAuthoringStarterTemplatePlacement(stepId) {
+  const step = getPolicyAuthoringDestinationFlowStep(stepId);
   if (!step) {
     return {
       valid: false,
-      riskId: PHASE_3R_DESTINATION_RISK_IDS.UNKNOWN_FLOW_ARTIFACT,
+      riskId: POLICY_AUTHORING_DESTINATION_RISK_IDS.UNKNOWN_FLOW_ARTIFACT,
       reason: 'Unknown destination-first flow step.',
     };
   }
@@ -331,7 +331,7 @@ function validatePhase3RStarterTemplatePlacement(stepId) {
   if (step.order < 3 && step.allowsStarterTemplates) {
     return {
       valid: false,
-      riskId: PHASE_3R_DESTINATION_RISK_IDS.TEMPLATE_BEFORE_DESTINATION,
+      riskId: POLICY_AUTHORING_DESTINATION_RISK_IDS.TEMPLATE_BEFORE_DESTINATION,
       reason: 'Starter templates cannot appear before destination context and observed meaning.',
     };
   }
@@ -343,12 +343,12 @@ function validatePhase3RStarterTemplatePlacement(stepId) {
   };
 }
 
-function validatePhase3REmptyStateNextAction(emptyStateId) {
-  const emptyState = getPhase3RDestinationEmptyState(emptyStateId);
+function validatePolicyAuthoringEmptyStateNextAction(emptyStateId) {
+  const emptyState = getPolicyAuthoringDestinationEmptyState(emptyStateId);
   if (!emptyState) {
     return {
       valid: false,
-      riskId: PHASE_3R_DESTINATION_RISK_IDS.UNKNOWN_FLOW_ARTIFACT,
+      riskId: POLICY_AUTHORING_DESTINATION_RISK_IDS.UNKNOWN_FLOW_ARTIFACT,
       reason: 'Unknown destination-first empty state.',
     };
   }
@@ -356,7 +356,7 @@ function validatePhase3REmptyStateNextAction(emptyStateId) {
   if (!emptyState.nextActionId || emptyState.internalDetailsAllowed) {
     return {
       valid: false,
-      riskId: PHASE_3R_DESTINATION_RISK_IDS.EMPTY_STATE_WITHOUT_ACTION,
+      riskId: POLICY_AUTHORING_DESTINATION_RISK_IDS.EMPTY_STATE_WITHOUT_ACTION,
       reason: 'Empty state must show an operator next action instead of internals.',
     };
   }
@@ -368,14 +368,14 @@ function validatePhase3REmptyStateNextAction(emptyStateId) {
   };
 }
 
-function validatePhase3RForbiddenMechanic(mechanicId) {
-  const mechanic = PHASE_3R_DESTINATION_FORBIDDEN_MECHANICS
+function validatePolicyAuthoringForbiddenMechanic(mechanicId) {
+  const mechanic = POLICY_AUTHORING_DESTINATION_FORBIDDEN_MECHANICS
     .find(record => record.id === mechanicId);
 
   if (!mechanic) {
     return {
       valid: false,
-      riskId: PHASE_3R_DESTINATION_RISK_IDS.UNKNOWN_FLOW_ARTIFACT,
+      riskId: POLICY_AUTHORING_DESTINATION_RISK_IDS.UNKNOWN_FLOW_ARTIFACT,
       reason: 'Unknown destination-first forbidden mechanic.',
     };
   }
@@ -387,11 +387,11 @@ function validatePhase3RForbiddenMechanic(mechanicId) {
   };
 }
 
-function summarizePhase3RDestinationFirstFlow() {
-  const steps = listPhase3RDestinationFlowSteps();
-  const questionIds = listPhase3RDestinationQuestions().map(question => question.id);
-  const emptyStateIds = listPhase3RDestinationEmptyStates().map(emptyState => emptyState.id);
-  const forbiddenMechanicIds = listPhase3RDestinationForbiddenMechanics().map(mechanic => mechanic.id);
+function summarizePolicyAuthoringDestinationFlow() {
+  const steps = listPolicyAuthoringDestinationFlowSteps();
+  const questionIds = listPolicyAuthoringDestinationQuestions().map(question => question.id);
+  const emptyStateIds = listPolicyAuthoringDestinationEmptyStates().map(emptyState => emptyState.id);
+  const forbiddenMechanicIds = listPolicyAuthoringDestinationForbiddenMechanics().map(mechanic => mechanic.id);
   const templateStepIds = steps.filter(step => step.allowsStarterTemplates).map(step => step.id);
   const advancedMechanicStepIds = steps.filter(step => step.allowsAdvancedMechanics).map(step => step.id);
 
@@ -407,28 +407,28 @@ function summarizePhase3RDestinationFirstFlow() {
     templateStepIds,
     advancedMechanicStepIds,
     destinationContextBeforeTemplates: templateStepIds.every(stepId =>
-      getPhase3RDestinationFlowStep(stepId)?.order > 2),
+      getPolicyAuthoringDestinationFlowStep(stepId)?.order > 2),
     normalFlowExposesAdvancedMechanics: advancedMechanicStepIds.length > 0,
   };
 }
 
 export {
-  PHASE_3R_DESTINATION_EMPTY_STATE_IDS,
-  PHASE_3R_DESTINATION_FLOW_STEP_IDS,
-  PHASE_3R_DESTINATION_FORBIDDEN_MECHANIC_IDS,
-  PHASE_3R_DESTINATION_NEXT_ACTION_IDS,
-  PHASE_3R_DESTINATION_QUESTION_IDS,
-  PHASE_3R_DESTINATION_RISK_IDS,
-  getPhase3RDestinationEmptyState,
-  getPhase3RDestinationFlowStep,
-  getPhase3RDestinationQuestion,
-  listPhase3RDestinationEmptyStates,
-  listPhase3RDestinationFlowSteps,
-  listPhase3RDestinationForbiddenMechanics,
-  listPhase3RDestinationQuestions,
-  summarizePhase3RDestinationFirstFlow,
-  validatePhase3RDestinationFlowSequence,
-  validatePhase3REmptyStateNextAction,
-  validatePhase3RForbiddenMechanic,
-  validatePhase3RStarterTemplatePlacement,
+  POLICY_AUTHORING_DESTINATION_EMPTY_STATE_IDS,
+  POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS,
+  POLICY_AUTHORING_DESTINATION_FORBIDDEN_MECHANIC_IDS,
+  POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS,
+  POLICY_AUTHORING_DESTINATION_QUESTION_IDS,
+  POLICY_AUTHORING_DESTINATION_RISK_IDS,
+  getPolicyAuthoringDestinationEmptyState,
+  getPolicyAuthoringDestinationFlowStep,
+  getPolicyAuthoringDestinationQuestion,
+  listPolicyAuthoringDestinationEmptyStates,
+  listPolicyAuthoringDestinationFlowSteps,
+  listPolicyAuthoringDestinationForbiddenMechanics,
+  listPolicyAuthoringDestinationQuestions,
+  summarizePolicyAuthoringDestinationFlow,
+  validatePolicyAuthoringDestinationFlowSequence,
+  validatePolicyAuthoringEmptyStateNextAction,
+  validatePolicyAuthoringForbiddenMechanic,
+  validatePolicyAuthoringStarterTemplatePlacement,
 };

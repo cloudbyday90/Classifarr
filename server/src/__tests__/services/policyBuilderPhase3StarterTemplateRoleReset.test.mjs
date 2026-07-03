@@ -6,8 +6,8 @@ import {
   PHASE_3R_INTERACTION_RULE_IDS,
 } from '../../services/policyBuilderPhase3ComponentSystem.mjs';
 import {
-  PHASE_3R_DESTINATION_FLOW_STEP_IDS,
-} from '../../services/policyBuilderPhase3DestinationFirstFlow.mjs';
+  POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS,
+} from '../../services/policyAuthoringDestinationFlow.mjs';
 import {
   POLICY_AUTHORING_WORKFLOW_DECISION_IDS,
   POLICY_AUTHORING_WORKFLOW_ROLE_IDS,
@@ -24,7 +24,7 @@ import {
   listPhase3RStarterTemplateRoleRecords,
   normalizePhase3RTemplateSuggestion,
   summarizePhase3RStarterTemplateRoleReset,
-  validatePhase3RStarterTemplatePlacement,
+  validatePolicyAuthoringStarterTemplatePlacement,
   validatePhase3RTemplateMechanicSurface,
   validatePhase3RTemplateSuggestion,
 } from '../../services/policyBuilderPhase3StarterTemplateRoleReset.mjs';
@@ -78,7 +78,7 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
   });
 
   test('validates template placement after destination context and never as save requirement', () => {
-    expect(validatePhase3RStarterTemplatePlacement({
+    expect(validatePolicyAuthoringStarterTemplatePlacement({
       destinationContextVisible: false,
     })).toEqual({
       valid: false,
@@ -86,7 +86,7 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
       reason: 'Starter templates can appear only after destination context is visible.',
     });
 
-    expect(validatePhase3RStarterTemplatePlacement({
+    expect(validatePolicyAuthoringStarterTemplatePlacement({
       destinationContextVisible: true,
       templateRequiredToSave: true,
     })).toEqual({
@@ -95,7 +95,7 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
       reason: 'Users must be able to build and save a policy without selecting a starter template.',
     });
 
-    expect(validatePhase3RStarterTemplatePlacement({
+    expect(validatePolicyAuthoringStarterTemplatePlacement({
       destinationContextVisible: true,
       provenancePrimary: true,
     })).toEqual({
@@ -104,7 +104,7 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
       reason: 'Starter-template provenance must remain secondary to destination context and declared intent.',
     });
 
-    expect(validatePhase3RStarterTemplatePlacement({
+    expect(validatePolicyAuthoringStarterTemplatePlacement({
       destinationContextVisible: true,
     })).toEqual({
       valid: true,
@@ -164,7 +164,7 @@ describe('policyBuilderPhase3StarterTemplateRoleReset', () => {
 
     expect(commandPlan).toEqual(expect.objectContaining({
       componentId: PHASE_3R_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
-      flowStepId: PHASE_3R_DESTINATION_FLOW_STEP_IDS.ACCEPT_OR_EDIT_DECLARED_INTENT,
+      flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.ACCEPT_OR_EDIT_DECLARED_INTENT,
       interactionRuleId: PHASE_3R_INTERACTION_RULE_IDS.ADD_VALUES_THROUGH_TYPED_DRAFT_COMMANDS,
       commandBoundary: 'typed_draft_commands',
       commandCount: 4,

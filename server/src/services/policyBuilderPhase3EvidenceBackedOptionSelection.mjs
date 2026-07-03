@@ -5,8 +5,8 @@ import {
   getPhase3ROptionSourceRecord,
 } from './policyBuilderPhase3ComponentSystem.mjs';
 import {
-  PHASE_3R_DESTINATION_QUESTION_IDS,
-} from './policyBuilderPhase3DestinationFirstFlow.mjs';
+  POLICY_AUTHORING_DESTINATION_QUESTION_IDS,
+} from './policyAuthoringDestinationFlow.mjs';
 
 const PHASE_3R_OPTION_SELECTION_STATE_IDS = Object.freeze({
   READ_ONLY_EVIDENCE: 'read_only_evidence',
@@ -219,7 +219,7 @@ function normalizePhase3ROptionCandidate(candidate = {}) {
     sourceId,
     sourceLabel,
     questionId: toCleanString(candidate.questionId) ||
-      PHASE_3R_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
+      POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
     selectionStateId: sourceBehavior?.selectionStateId || null,
     selectable: Boolean(sourceBehavior?.selectable),
     readOnlyEvidence: Boolean(sourceBehavior?.readOnlyEvidence),
@@ -308,7 +308,7 @@ function validatePhase3ROptionCandidate(candidate = {}) {
   }
 
   if (
-    normalizedCandidate.questionId === PHASE_3R_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE &&
+    normalizedCandidate.questionId === POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE &&
     isBroadIdentityGenre(normalizedCandidate.value) &&
     normalizedCandidate.evidence.count <= 0 &&
     [

@@ -1,7 +1,7 @@
 import {
-  PHASE_3R_DESTINATION_FLOW_STEP_IDS,
-  PHASE_3R_DESTINATION_QUESTION_IDS,
-} from '../../services/policyBuilderPhase3DestinationFirstFlow.mjs';
+  POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS,
+  POLICY_AUTHORING_DESTINATION_QUESTION_IDS,
+} from '../../services/policyAuthoringDestinationFlow.mjs';
 import {
   PHASE_3R_ACCESSIBILITY_RULE_IDS,
   PHASE_3R_COMPONENT_DECISION_IDS,
@@ -42,15 +42,15 @@ describe('policyBuilderPhase3ComponentSystem', () => {
 
     expect(getPhase3RTargetComponent(PHASE_3R_COMPONENT_IDS.DESTINATION_CONTEXT_CARD))
       .toEqual(expect.objectContaining({
-        flowStepId: PHASE_3R_DESTINATION_FLOW_STEP_IDS.SELECT_LIBRARY,
+        flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.SELECT_LIBRARY,
         normalPath: true,
         acceptsObservedEvidence: true,
       }));
 
     expect(getPhase3RTargetComponent(PHASE_3R_COMPONENT_IDS.INTENT_SIGNAL_PICKER))
       .toEqual(expect.objectContaining({
-        flowStepId: PHASE_3R_DESTINATION_FLOW_STEP_IDS.ACCEPT_OR_EDIT_DECLARED_INTENT,
-        questionId: PHASE_3R_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
+        flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.ACCEPT_OR_EDIT_DECLARED_INTENT,
+        questionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
         defaultMultiSelect: true,
         commandBoundaryRequired: true,
       }));

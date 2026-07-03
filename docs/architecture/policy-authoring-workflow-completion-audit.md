@@ -32,7 +32,7 @@ product-domain terminology.
    handoff fields stable and semantic.
 3. Use `nextStep.stepId` for downstream handoff decisions instead of roadmap
    phase ids.
-4. Preserve explicit inventory of still-phase-named legacy artifacts until each
+4. Preserve explicit inventory of remaining phase-named artifacts until each
    referenced component receives its own bounded rename or deletion slice.
 5. Keep the audit side-effect-free. It should verify records and artifact
    paths only; it must not mutate policy storage or execute routing.
@@ -48,8 +48,8 @@ product-domain terminology.
 
 ## Cons
 
-- The audit still references legacy phase-named docs, services, and tests as
-  inventory evidence. Those remain production references until the underlying
+- Some referenced policy-authoring components still use phase-coded docs,
+  services, or tests. Those remain production references until the underlying
   components are renamed or deleted in separate bounded slices.
 - This audit proves artifact coverage and classification, not visual
   perfection. Component-specific Vue tests still own rendered behavior.
@@ -77,8 +77,8 @@ product-domain terminology.
 - Replaced production validation messages with policy-authoring terminology.
 - Replaced `nextPhase.phaseId = 6r_1` with `nextStep.stepId =
   policy_evidence_engine`.
-- Preserved legacy artifact path inventory until those referenced components
-  receive their own bounded cutovers.
+- Preserved remaining artifact path inventory while moving cutover-completed
+  workflow inventory and destination-flow records to durable artifact paths.
 
 ## Next Step
 

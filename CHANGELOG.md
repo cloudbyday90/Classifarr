@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Destination Flow Cutover** — renamed the destination-flow
+  contract and focused test to durable product-domain names, replaced
+  phase-coded exported destination constants/helpers with
+  `POLICY_AUTHORING_DESTINATION_*` and `policyAuthoringDestination*`, updated
+  dependent authoring contracts to consume the durable vocabulary, and preserved
+  the ordered destination-first authoring workflow.
 - **Policy Authoring Workflow Inventory Cutover** — renamed the workflow
   inventory contract and focused test to durable product-domain names, replaced
   phase-coded exported workflow constants/helpers with

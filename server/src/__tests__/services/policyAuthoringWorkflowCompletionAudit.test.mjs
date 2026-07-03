@@ -36,7 +36,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
   test('lists all required policy authoring server contracts and Vue rewrite slices', () => {
     expect(listPolicyAuthoringServerContracts().map(record => record.id)).toEqual([
       'policy_authoring_workflow_inventory',
-      'destination_first_flow',
+      'policy_authoring_destination_flow',
       'component_system_reset',
       'evidence_backed_option_selection',
       'hard_limits_avoid_ux',

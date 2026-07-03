@@ -3,9 +3,9 @@ import {
   PHASE_3R_INTERACTION_RULE_IDS,
 } from '../../services/policyBuilderPhase3ComponentSystem.mjs';
 import {
-  PHASE_3R_DESTINATION_FLOW_STEP_IDS,
-  PHASE_3R_DESTINATION_NEXT_ACTION_IDS,
-} from '../../services/policyBuilderPhase3DestinationFirstFlow.mjs';
+  POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS,
+  POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS,
+} from '../../services/policyAuthoringDestinationFlow.mjs';
 import {
   POLICY_AUTHORING_WORKFLOW_DECISION_IDS,
   POLICY_AUTHORING_WORKFLOW_ROLE_IDS,
@@ -64,9 +64,9 @@ describe('policyBuilderPhase3ReadinessNextActionSurface', () => {
       .toEqual(expect.objectContaining({
         stateId: PHASE_3R_READINESS_STATE_IDS.NEEDS_ROUTING,
         nextActionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
-        flowStepId: PHASE_3R_DESTINATION_FLOW_STEP_IDS.CONFIRM_ROUTING_READINESS,
+        flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.CONFIRM_ROUTING_READINESS,
         componentId: PHASE_3R_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
-        destinationNextActionId: PHASE_3R_DESTINATION_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
+        destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
       }));
   });
 
@@ -78,7 +78,7 @@ describe('policyBuilderPhase3ReadinessNextActionSurface', () => {
         nextActionIds: [
           PHASE_3R_READINESS_NEXT_ACTION_IDS.REVIEW_HARD_LIMITS,
         ],
-        flowStepId: PHASE_3R_DESTINATION_FLOW_STEP_IDS.CONFIRM_HARD_LIMITS,
+        flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.CONFIRM_HARD_LIMITS,
         componentId: PHASE_3R_COMPONENT_IDS.HARD_LIMIT_CONTROL,
       }));
   });
@@ -92,9 +92,9 @@ describe('policyBuilderPhase3ReadinessNextActionSurface', () => {
       nextAction: {
         actionId: PHASE_3R_READINESS_NEXT_ACTION_IDS.SAVE_POLICY,
         issueId: null,
-        flowStepId: PHASE_3R_DESTINATION_FLOW_STEP_IDS.SAVE_OR_DEFER,
+        flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.SAVE_OR_DEFER,
         componentId: PHASE_3R_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
-        destinationNextActionId: PHASE_3R_DESTINATION_NEXT_ACTION_IDS.SAVE_POLICY,
+        destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.SAVE_POLICY,
         message: 'Save this policy or defer without changing routing behavior.',
       },
       exposesInternalDiagnostics: false,

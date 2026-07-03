@@ -7,8 +7,8 @@ import {
   PHASE_3R_INTERACTION_RULE_IDS,
 } from './policyBuilderPhase3ComponentSystem.mjs';
 import {
-  PHASE_3R_DESTINATION_FLOW_STEP_IDS,
-} from './policyBuilderPhase3DestinationFirstFlow.mjs';
+  POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS,
+} from './policyAuthoringDestinationFlow.mjs';
 import {
   POLICY_AUTHORING_WORKFLOW_DECISION_IDS,
   POLICY_AUTHORING_WORKFLOW_ROLE_IDS,
@@ -259,7 +259,7 @@ function validatePhase3RTemplateSuggestion(suggestion = {}) {
   };
 }
 
-function validatePhase3RStarterTemplatePlacement({
+function validatePolicyAuthoringStarterTemplatePlacement({
   destinationContextVisible = false,
   templateRequiredToSave = false,
   provenancePrimary = false,
@@ -320,7 +320,7 @@ function buildPhase3RTemplateApplicationCommands({ presetId, suggestions = [] } 
 
   return {
     componentId: PHASE_3R_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
-    flowStepId: PHASE_3R_DESTINATION_FLOW_STEP_IDS.ACCEPT_OR_EDIT_DECLARED_INTENT,
+    flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.ACCEPT_OR_EDIT_DECLARED_INTENT,
     interactionRuleId: PHASE_3R_INTERACTION_RULE_IDS.ADD_VALUES_THROUGH_TYPED_DRAFT_COMMANDS,
     commandBoundary: 'typed_draft_commands',
     commandCount: commands.length,
@@ -397,7 +397,7 @@ export {
   listPhase3RStarterTemplateRoleRecords,
   normalizePhase3RTemplateSuggestion,
   summarizePhase3RStarterTemplateRoleReset,
-  validatePhase3RStarterTemplatePlacement,
+  validatePolicyAuthoringStarterTemplatePlacement,
   validatePhase3RTemplateMechanicSurface,
   validatePhase3RTemplateSuggestion,
 };

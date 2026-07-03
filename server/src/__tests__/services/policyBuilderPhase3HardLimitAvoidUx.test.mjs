@@ -3,8 +3,8 @@ import {
   PHASE_3R_INTERACTION_RULE_IDS,
 } from '../../services/policyBuilderPhase3ComponentSystem.mjs';
 import {
-  PHASE_3R_DESTINATION_QUESTION_IDS,
-} from '../../services/policyBuilderPhase3DestinationFirstFlow.mjs';
+  POLICY_AUTHORING_DESTINATION_QUESTION_IDS,
+} from '../../services/policyAuthoringDestinationFlow.mjs';
 import {
   PHASE_3R_CERTIFICATION_SEMANTIC_IDS,
   PHASE_3R_CONSTRAINT_COMMAND_IDS,
@@ -31,7 +31,7 @@ describe('policyBuilderPhase3HardLimitAvoidUx', () => {
     expect(getPhase3RConstraintControlRecord(PHASE_3R_CONSTRAINT_CONTROL_IDS.HARD_LIMIT))
       .toEqual(expect.objectContaining({
         componentId: PHASE_3R_COMPONENT_IDS.HARD_LIMIT_CONTROL,
-        questionId: PHASE_3R_DESTINATION_QUESTION_IDS.WHAT_SHOULD_NOT_GO_HERE,
+        questionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_SHOULD_NOT_GO_HERE,
         intentId: PHASE_3R_CONSTRAINT_INTENT_IDS.BLOCKING_CONSTRAINT,
         canBlockRouting: true,
         requiresExplicitOperatorAction: true,
