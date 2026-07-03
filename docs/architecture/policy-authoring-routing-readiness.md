@@ -110,7 +110,7 @@ ready, the card shows the selected service and root folder.
 
 ## Follow-Up
 
-The next high-value item is **Policy Authoring Setup Card State Binding**. Setup
+The next high-value item is **Policy Authoring Setup Card Progress**. Setup
 cards are now correctly targeted, but they still render as static guidance. The
 next slice should derive card completion/needs-attention state from existing
 visible projections without adding new persistence, API calls, or automation.

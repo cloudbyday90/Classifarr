@@ -129,9 +129,9 @@ const POLICY_AUTHORING_VUE_REWRITE_SLICES = Object.freeze([
     evidence: 'Projects selected-library routing context without executing routing or saving policy intent.',
   },
   {
-    id: 'vue_setup_card_state_binding',
-    label: 'Vue setup card state binding',
-    docPath: 'docs/architecture/policy-builder-phase-3r-vue-setup-card-state-binding.md',
+    id: 'policy_authoring_setup_card_progress',
+    label: 'Policy authoring setup card progress',
+    docPath: 'docs/architecture/policy-authoring-setup-card-progress.md',
     testPath: 'client/src/__tests__/PolicyBuilderSetupCards.test.js',
     evidence: 'Derives setup progress from existing modal projections without new API calls or diagnostics.',
   },

@@ -70,5 +70,5 @@ status card, anchor target, and client projection behavior unchanged.
 
 ## Next Step
 
-Cut over the policy-authoring setup-card state binding naming because it is the
+Cut over the policy-authoring setup-card progress naming because it is the
 next Vue rewrite slice that still uses phase-coded completion-audit metadata.

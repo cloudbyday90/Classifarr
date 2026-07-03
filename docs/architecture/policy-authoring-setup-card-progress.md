@@ -1,12 +1,12 @@
-# Policy Builder Phase 3R Vue Setup Card State Binding
+# Policy Authoring Setup Card Progress
 
-Status: implemented as the fifth Vue-facing Phase 3R workflow rewrite slice.
+Status: implemented as durable policy-authoring setup-card progress.
 
 ## Scope
 
-This slice turns the Phase 3R setup cards from static guidance into a small
-read-only progress surface. Each card now reflects existing modal state and
-shows whether that step is complete, needs setup, optional, or checking.
+This document defines how setup cards behave as a small read-only progress
+surface. Each card reflects existing modal state and shows whether that step is
+complete, needs setup, optional, or checking.
 
 This slice does not add API calls, persistence, routing execution, learning,
 classification, provider calls, TMDB calls, or Arr writes. It derives setup-card
@@ -60,8 +60,8 @@ Official sources reviewed as of June 2026:
 
 - Operators can see which setup steps still need attention without opening
   every section.
-- Keeps the Phase 3R destination-first flow compact and scan-friendly.
-- Avoids new server or database work before Phase 6R readiness contracts.
+- Keeps the destination-first flow compact and scan-friendly.
+- Avoids new server or database work before server-owned readiness contracts.
 - Reduces the temptation to add more diagnostic panels.
 - Keeps setup status testable outside the Vue component.
 
@@ -70,8 +70,8 @@ Official sources reviewed as of June 2026:
 - The status is only as complete as the existing modal projections.
 - Profile and routing freshness still need future server-owned readiness.
 - The cards do not yet know about manual outcomes or learning eligibility.
-- Optional review-trigger state may become stricter after Phase 6R defines the
-  automation-readiness engine.
+- Optional review-trigger state may become stricter after the
+  automation-readiness engine is finalized.
 
 ## Final Stack
 
@@ -109,7 +109,7 @@ target correction. Cards do not mutate policy, run routing, or call providers.
 
 ## Follow-Up
 
-The next high-value item is **Phase 3R Vue Save And Defer Action Boundary**.
+The next high-value item is **Policy Authoring Save And Defer Action Boundary**.
 The setup flow now shows state, but the modal footer still exposes a generic
 save action. The next slice should clarify save/defer behavior and disabled
 reasons using existing validity/readiness projections without adding routing,

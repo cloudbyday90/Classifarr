@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Setup Card Progress Cutover** — renamed the setup-card
+  progress design record and completion-audit entry to durable product-domain
+  names, replaced the phase-coded setup-card state-binding architecture path
+  with `policy-authoring-setup-card-progress.md`, updated completion-audit
+  records to track `policy_authoring_setup_card_progress`, and preserved the
+  existing read-only setup-card progress projection, stable action targets, and
+  recommended-next-action behavior.
 - **Policy Authoring Routing Readiness Cutover** — renamed the routing
   readiness design record and completion-audit entry to durable product-domain
   names, replaced the phase-coded routing-readiness architecture path with
