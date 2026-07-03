@@ -70,7 +70,7 @@ Cons:
   `server/src/services/policyEvidenceInputGate.mjs` and
   `server/src/services/policyEvidenceEngine.mjs`
 - Downstream consumers:
-  Phase 6R completion audit and intent/learning/readiness/operator/migration
+  policy engine completion audit and intent/learning/readiness/operator/migration
   tests now import `buildBoundedPolicyEvidenceProjection`.
 - Regression guard:
   `server/src/services/policyProductionNamingRegressionAudit.mjs`

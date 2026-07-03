@@ -231,7 +231,7 @@ projectionFingerprintMatch
 
 ## Next Step
 
-Run the Phase 6R completion audit against the quality-gated handoff chain, then
+Run the policy engine completion audit against the quality-gated handoff chain, then
 Phase 7R.1 Runtime Decision Inventory And Cutline should inventory the runtime
 classification, routing, question, and learning paths against the completed
 Phase 6R engine contracts.

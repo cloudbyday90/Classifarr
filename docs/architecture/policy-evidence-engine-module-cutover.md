@@ -47,8 +47,8 @@ The engine now owns the production-named evidence projection contract
 
 - Some Phase 6R and Phase 7R modules still have their own phase-coded names and
   persisted runtime field names. Those require separate bounded cutovers.
-- The legacy Phase 6R completion audit still maps the new `nextStep` field back
-  to its old expected phase id until that audit is renamed or retired.
+- The policy engine completion audit now validates the evidence engine's
+  semantic `nextStep.stepId` handoff directly.
 
 ## Final Recommendation Stack
 
@@ -56,8 +56,8 @@ The engine now owns the production-named evidence projection contract
 - Focused test: `server/src/__tests__/services/policyEvidenceEngine.test.mjs`
 - Evidence contract: `policy.evidence.v1`
 - Evidence summary contract: `policy.evidence.summary.v1`
-- Compatibility adapter:
-  `server/src/services/policyBuilderPhase6CompletionAudit.mjs`
+- Completion checkpoint:
+  `server/src/services/policyEngineCompletionAudit.mjs`
 - Regression guard:
   `server/src/services/policyProductionNamingRegressionAudit.mjs`
 

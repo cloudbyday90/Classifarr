@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Engine Completion Audit Module Cutover** — renamed the policy engine
+  completion audit contract plus focused test to durable product-domain names,
+  replaced phase-coded component ids and `nextPhase` checks with semantic
+  `nextStep.stepId` validation, pointed component evidence at durable
+  module-cutover docs, and retained the side-effect-free runtime-decision
+  inventory readiness gate.
 - **Policy Runtime Completion Audit Module Cutover** — renamed the runtime
   completion audit contract plus focused test to durable product-domain names,
   moved the audit contract to `policy.runtime_completion_audit.v1`, replaced
@@ -230,7 +236,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   question, request-learning, rebuild, migration-verifier, and metrics/trace
   contracts must have explicit cutline decisions before additional runtime
   wiring proceeds.
-- **Policy Builder Phase 6R Completion Audit Health** — hardened the Phase 6R
+- **Policy Engine Completion Audit Health** — hardened the policy engine
   completion audit so the end-to-end bounded chain fails when any successful
   evidence, intent, learning, readiness, workflow, or migration handoff has a
   missing or non-passing nested audit.
@@ -299,7 +305,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Builder Phase 6R Completion Bounded Chain Audit** — added an
   end-to-end bounded completion audit that proves evidence, intent, learning,
   readiness, workflow, and migration handoffs share sanitized evidence
-  projection provenance before Phase 6R completion can pass.
+  projection provenance before policy engine completion can pass.
 - **Policy Builder Phase 6R Migration Boundary Alignment** — added a bounded
   Phase 6R.6 migration/deletion entry point that requires a successful bounded
   operator workflow result and matching sanitized workflow provenance before
@@ -709,10 +715,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   ownership before runtime behavior changes; and explicitly flags broad-genre
   authority risk, bad question-generation paths, and classification/routing
   conflation for replacement.
-- **Policy Builder Phase 6R Completion Audit** — added a server-owned
-  completion gate, architecture record, and audit suite that verifies all seven
-  Phase 6R records have docs, services, tests, passing component audits, and
-  expected next-phase links; broadened the migration cutline so legacy replay,
+- **Policy Engine Completion Audit** — added a server-owned completion gate,
+  architecture record, and audit suite that verifies all seven policy-engine
+  records have docs, services, tests, passing component audits, and expected
+  semantic next-step links; broadened the migration cutline so legacy replay,
   impact, provider, TMDB, scoring, old diagnostic tests, and the pre-6R
   implementation doc have explicit verifier or deletion decisions before Phase
   7R starts.

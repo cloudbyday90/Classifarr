@@ -69,8 +69,8 @@ Cons:
   `policy.migration_deletion_path.v1`
 - Handoff field:
   `nextStep.stepId = runtime_decision_inventory`
-- Compatibility adapter:
-  `server/src/services/policyBuilderPhase6CompletionAudit.mjs`
+- Completion checkpoint:
+  `server/src/services/policyEngineCompletionAudit.mjs`
 - Original design record:
   `docs/architecture/policy-builder-phase-6r-migration-deletion-path.md`
 

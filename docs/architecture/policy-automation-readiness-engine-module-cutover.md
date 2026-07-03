@@ -92,8 +92,8 @@ Cons:
   `policy.automation_readiness.v1`
 - Local handoff:
   `nextStep.stepId = operator_workflow`
-- Legacy adapter:
-  `server/src/services/policyBuilderPhase6CompletionAudit.mjs`
+- Completion checkpoint:
+  `server/src/services/policyEngineCompletionAudit.mjs`
 - Roadmap owner:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 - Existing design owner:
@@ -108,8 +108,8 @@ Cons:
 - Moved the readiness contract version to `policy.automation_readiness.v1`.
 - Replaced the readiness-local phase handoff with `nextStep`.
 - Updated direct server consumers and tests to import the durable module.
-- Added a bounded adapter in the legacy Phase 6R completion audit so
-  `operator_workflow` still satisfies the current completion checkpoint.
+- Updated the policy engine completion audit so `operator_workflow` is
+  validated as the semantic completion checkpoint.
 
 ## Security Outcome
 

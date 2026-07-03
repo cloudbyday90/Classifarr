@@ -48,16 +48,16 @@ The engine now owns the production-named intent draft contract
 - Learning, readiness, workflow, migration, and Phase 7R modules still carry
   their own phase-coded module names and handoff fields. Those require separate
   bounded cutovers.
-- The legacy Phase 6R completion audit still maps the new `nextStep` field back
-  to its old expected phase id until that audit is renamed or retired.
+- The policy engine completion audit now validates the intent engine's semantic
+  `nextStep.stepId` handoff directly.
 
 ## Final Recommendation Stack
 
 - Server module: `server/src/services/policyIntentEngine.mjs`
 - Focused test: `server/src/__tests__/services/policyIntentEngine.test.mjs`
 - Intent contract: `policy.intent.v1`
-- Compatibility adapter:
-  `server/src/services/policyBuilderPhase6CompletionAudit.mjs`
+- Completion checkpoint:
+  `server/src/services/policyEngineCompletionAudit.mjs`
 - Regression guard:
   `server/src/services/policyProductionNamingRegressionAudit.mjs`
 

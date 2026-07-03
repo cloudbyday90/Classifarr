@@ -1,13 +1,13 @@
 import {
-  PHASE6R_COMPLETION_COMPONENT_IDS,
-  PHASE6R_COMPLETION_RISK_IDS,
-  buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit,
-  buildPolicyBuilderPhase6BoundedChainCompletionAudit,
-  buildPolicyBuilderPhase6CompletionAudit,
-  listPolicyBuilderPhase6CompletionComponents,
-  listPolicyBuilderPhase6RequiredLegacyCutlineArtifacts,
-  validatePhase6ComponentCompletion,
-} from '../../services/policyBuilderPhase6CompletionAudit.mjs';
+  POLICY_ENGINE_COMPLETION_COMPONENT_IDS,
+  POLICY_ENGINE_COMPLETION_RISK_IDS,
+  buildPolicyEngineArtifactInventoryCutlineAudit,
+  buildPolicyEngineBoundedChainCompletionAudit,
+  buildPolicyEngineCompletionAudit,
+  listPolicyEngineCompletionComponents,
+  listPolicyEngineRequiredLegacyCutlineArtifacts,
+  validatePolicyEngineComponentCompletion,
+} from '../../services/policyEngineCompletionAudit.mjs';
 import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from '../../services/policyEvidenceQuality.mjs';
@@ -53,22 +53,22 @@ const insufficientQuality = Object.freeze({
   hasObservedIdentityEvidence: false,
 });
 
-describe('policyBuilderPhase6CompletionAudit', () => {
-  test('lists Phase 6R components in roadmap order', () => {
-    expect(listPolicyBuilderPhase6CompletionComponents().map(component => component.id))
+describe('policyEngineCompletionAudit', () => {
+  test('lists policy engine components in handoff order', () => {
+    expect(listPolicyEngineCompletionComponents().map(component => component.id))
       .toEqual([
-        PHASE6R_COMPLETION_COMPONENT_IDS.ARTIFACT_INVENTORY_CUTLINE,
-        PHASE6R_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE,
-        PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE,
-        PHASE6R_COMPLETION_COMPONENT_IDS.LEARNING_GUARD,
-        PHASE6R_COMPLETION_COMPONENT_IDS.READINESS_ENGINE,
-        PHASE6R_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW,
-        PHASE6R_COMPLETION_COMPONENT_IDS.MIGRATION_DELETION_PATH,
+        POLICY_ENGINE_COMPLETION_COMPONENT_IDS.ARTIFACT_INVENTORY_CUTLINE,
+        POLICY_ENGINE_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE,
+        POLICY_ENGINE_COMPLETION_COMPONENT_IDS.INTENT_ENGINE,
+        POLICY_ENGINE_COMPLETION_COMPONENT_IDS.LEARNING_GUARD,
+        POLICY_ENGINE_COMPLETION_COMPONENT_IDS.READINESS_ENGINE,
+        POLICY_ENGINE_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW,
+        POLICY_ENGINE_COMPLETION_COMPONENT_IDS.MIGRATION_DELETION_PATH,
       ]);
   });
 
-  test('requires legacy replay, impact, provider, TMDB, and old Phase 6 docs to have cutline decisions', () => {
-    const requiredPaths = listPolicyBuilderPhase6RequiredLegacyCutlineArtifacts();
+  test('requires legacy replay, impact, provider, TMDB, and old policy-builder docs to have cutline decisions', () => {
+    const requiredPaths = listPolicyEngineRequiredLegacyCutlineArtifacts();
     const classifiedPaths = listPolicyMigrationDeletionArtifacts()
       .map(artifact => artifact.path);
 
@@ -83,20 +83,20 @@ describe('policyBuilderPhase6CompletionAudit', () => {
   });
 
   test('passes the default artifact inventory cutline audit', () => {
-    const audit = buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit();
+    const audit = buildPolicyEngineArtifactInventoryCutlineAudit();
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedArtifactCount).toBeGreaterThanOrEqual(20);
     expect(audit.classifiedArtifactCount).toBeGreaterThan(audit.checkedArtifactCount);
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '6r_1',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'evidence_engine',
       label: 'Evidence Engine',
     }));
   });
 
-  test('passes the default Phase 6R completion audit', () => {
-    const audit = buildPolicyBuilderPhase6CompletionAudit();
+  test('passes the default policy engine completion audit', () => {
+    const audit = buildPolicyEngineCompletionAudit();
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
@@ -105,14 +105,14 @@ describe('policyBuilderPhase6CompletionAudit', () => {
     expect(audit.boundedChainOk).toBe(true);
     expect(audit.boundedChainAudit.checkedStepCount).toBe(6);
     expect(audit.boundedChainAudit.issueCount).toBe(0);
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '7r_1',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'runtime_decision_inventory',
       label: 'Runtime Decision Inventory And Cutline',
     }));
   });
 
-  test('passes the default bounded Phase 6R chain completion audit', () => {
-    const audit = buildPolicyBuilderPhase6BoundedChainCompletionAudit();
+  test('passes the default bounded policy engine chain completion audit', () => {
+    const audit = buildPolicyEngineBoundedChainCompletionAudit();
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
@@ -127,8 +127,8 @@ describe('policyBuilderPhase6CompletionAudit', () => {
     expect(audit.steps.every(step => step.auditOk === true)).toBe(true);
     expect(audit.steps.every(step => step.qualityOk === true)).toBe(true);
     expect(JSON.stringify(audit.steps)).not.toContain('Animated Movies');
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '7r_1',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'runtime_decision_inventory',
     }));
   });
 
@@ -137,7 +137,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
     const projectionFingerprint = {
       fingerprint: stableFingerprint,
     };
-    const audit = buildPolicyBuilderPhase6BoundedChainCompletionAudit({
+    const audit = buildPolicyEngineBoundedChainCompletionAudit({
       chain: {
         boundedEvidenceResult: {
           ok: true,
@@ -252,7 +252,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
     expect(audit.ok).toBe(false);
     expect(audit.sharedProjectionFingerprint).toBe(stableFingerprint);
     expect(audit.steps.find(step =>
-      step.stepId === PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE
+      step.stepId === POLICY_ENGINE_COMPLETION_COMPONENT_IDS.INTENT_ENGINE
     )).toEqual(expect.objectContaining({
       auditOk: false,
       auditChecks: expect.arrayContaining([
@@ -264,8 +264,8 @@ describe('policyBuilderPhase6CompletionAudit', () => {
     }));
     expect(audit.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_AUDIT_NOT_PASSING,
-        componentId: PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_AUDIT_NOT_PASSING,
+        componentId: POLICY_ENGINE_COMPLETION_COMPONENT_IDS.INTENT_ENGINE,
       }),
     ]));
   });
@@ -273,7 +273,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
   test('rejects bounded chain failures, provenance drift, and raw provenance leakage', () => {
     const stableFingerprint = 'a'.repeat(64);
     const driftFingerprint = 'b'.repeat(64);
-    const audit = buildPolicyBuilderPhase6BoundedChainCompletionAudit({
+    const audit = buildPolicyEngineBoundedChainCompletionAudit({
       chain: {
         boundedEvidenceResult: {
           ok: true,
@@ -382,13 +382,13 @@ describe('policyBuilderPhase6CompletionAudit', () => {
     expect(audit.ok).toBe(false);
     expect(audit.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_FAILED,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_FAILED,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_PROVENANCE_MISMATCH,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_PROVENANCE_MISMATCH,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_RAW_PROVENANCE,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_RAW_PROVENANCE,
       }),
     ]));
   });
@@ -406,7 +406,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
         'review_evidence_present',
       ],
     };
-    const audit = buildPolicyBuilderPhase6BoundedChainCompletionAudit({
+    const audit = buildPolicyEngineBoundedChainCompletionAudit({
       chain: {
         boundedEvidenceResult: {
           ok: true,
@@ -522,33 +522,33 @@ describe('policyBuilderPhase6CompletionAudit', () => {
     expect(audit.sharedProjectionFingerprint).toBe(stableFingerprint);
     expect(audit.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_MISSING,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_MISSING,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_INSUFFICIENT,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_INSUFFICIENT,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_MISMATCH,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_QUALITY_MISMATCH,
       }),
     ]));
   });
 
   test('rejects component records that have no path evidence or failed audit', () => {
-    const result = validatePhase6ComponentCompletion({
-      id: PHASE6R_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE,
+    const result = validatePolicyEngineComponentCompletion({
+      id: POLICY_ENGINE_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE,
       label: 'Evidence engine',
       docPath: 'missing-doc.md',
       servicePath: 'missing-service.mjs',
       testPath: 'missing-test.mjs',
-      expectedNextPhaseId: 'wrong_next_phase',
+      expectedNextStepId: 'wrong_next_step',
     }, {
       pathExists: () => false,
       componentAuditMap: {
-        [PHASE6R_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE]: {
+        [POLICY_ENGINE_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE]: {
           ok: false,
           issueCount: 1,
-          nextPhase: {
-            phaseId: '6r_2',
+          nextStep: {
+            stepId: 'intent_inference',
           },
         },
       },
@@ -556,37 +556,37 @@ describe('policyBuilderPhase6CompletionAudit', () => {
 
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.MISSING_EVIDENCE,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.MISSING_EVIDENCE,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.ARTIFACT_PATH_NOT_FOUND,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.ARTIFACT_PATH_NOT_FOUND,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.COMPONENT_AUDIT_FAILED,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.COMPONENT_AUDIT_FAILED,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.NEXT_PHASE_MISMATCH,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.NEXT_STEP_MISMATCH,
       }),
     ]));
   });
 
-  test('rejects missing legacy cutline decisions and premature Phase 8 storage migration', () => {
+  test('rejects missing legacy cutline decisions and premature native storage migration', () => {
     const migrationPlan = buildPolicyMigrationDeletionPlan();
     const artifacts = migrationPlan.artifacts
       .filter(artifact =>
         artifact.path !== 'client/src/components/policies/PolicyIntentImpactPreviewCard.vue' &&
         artifact.decisionId !== POLICY_MIGRATION_ARTIFACT_DECISION_IDS.NATIVE_STORAGE_BLOCKER
       );
-    const audit = buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit({
+    const audit = buildPolicyEngineArtifactInventoryCutlineAudit({
       artifacts,
     });
 
     expect(audit.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.LEGACY_ARTIFACT_WITHOUT_CUTLINE,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.LEGACY_ARTIFACT_WITHOUT_CUTLINE,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.PHASE8_STORAGE_NOT_BLOCKED,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.NATIVE_STORAGE_NOT_BLOCKED,
       }),
     ]));
   });
@@ -597,13 +597,13 @@ describe('policyBuilderPhase6CompletionAudit', () => {
         ? { ...artifact, normalWorkflowAllowed: true }
         : artifact
     );
-    const audit = buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit({
+    const audit = buildPolicyEngineArtifactInventoryCutlineAudit({
       artifacts,
     });
 
     expect(audit.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_COMPLETION_RISK_IDS.LEGACY_ARTIFACT_ALLOWED_IN_NORMAL_WORKFLOW,
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.LEGACY_ARTIFACT_ALLOWED_IN_NORMAL_WORKFLOW,
       }),
     ]));
   });

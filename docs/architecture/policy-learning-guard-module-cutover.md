@@ -91,8 +91,8 @@ Cons:
   `policy.learning_guard.v1`
 - Local handoff:
   `nextStep.stepId = automation_readiness`
-- Legacy adapter:
-  `server/src/services/policyBuilderPhase6CompletionAudit.mjs`
+- Completion checkpoint:
+  `server/src/services/policyEngineCompletionAudit.mjs`
 - Roadmap owner:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 - Existing design owner:
@@ -107,8 +107,8 @@ Cons:
 - Moved the learning decision contract version to `policy.learning_guard.v1`.
 - Replaced the guard-local phase handoff with `nextStep`.
 - Updated direct server consumers and tests to import the durable module.
-- Added a bounded adapter in the legacy Phase 6R completion audit so
-  `automation_readiness` still satisfies the current completion checkpoint.
+- Updated the policy engine completion audit so `automation_readiness` is
+  validated as the semantic completion checkpoint.
 
 ## Security Outcome
 

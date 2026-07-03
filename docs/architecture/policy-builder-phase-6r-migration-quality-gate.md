@@ -76,7 +76,7 @@ Pros:
 - Keeps the quality contract enforced at every Phase 6R handoff.
 - Makes deletion readiness harder to spoof with a successful-looking workflow
   wrapper.
-- Gives Phase 7R runtime inventory a clean, quality-gated Phase 6R completion
+- Gives Phase 7R runtime inventory a clean, quality-gated policy engine completion
   boundary.
 
 Cons:
@@ -135,7 +135,7 @@ boundedWorkflowResult.workflow.boundaryContext
 
 ## Next Step
 
-Run the **Phase 6R completion audit** against the quality-gated handoff chain.
+Run the **policy engine completion audit** against the quality-gated handoff chain.
 That audit should prove evidence, intent, learning, readiness, workflow, and
 migration boundaries all reject incomplete quality/provenance before Phase 7R
 runtime inventory begins.

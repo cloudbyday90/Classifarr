@@ -3530,18 +3530,18 @@ Implement Phase 6R in this order:
 
 Completion gate:
 
-- Phase 6R completion is documented in
-  [Policy Builder Phase 6R Completion Audit](policy-builder-phase-6r-completion-audit.md).
+- Policy engine completion is documented in
+  [Policy Engine Completion Audit](policy-engine-completion-audit.md).
 - The completion audit lives in
-  `server/src/services/policyBuilderPhase6CompletionAudit.mjs`.
+  `server/src/services/policyEngineCompletionAudit.mjs`.
 - The focused completion-audit test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase6CompletionAudit.test.mjs`.
-- Current completion audit verifies seven records: 6R.0 artifact inventory and
-  cutline, 6R.1 evidence engine, 6R.2 intent engine, 6R.3 learning guard,
-  6R.4 readiness engine, 6R.5 operator workflow, and 6R.6 migration/deletion.
+  `server/src/__tests__/services/policyEngineCompletionAudit.test.mjs`.
+- Current completion audit verifies seven policy-engine records: artifact
+  inventory and cutline, evidence engine, intent engine, learning guard,
+  readiness engine, operator workflow, and migration/deletion.
 - The gate fails if any component lacks a doc, service, test, passing audit, or
-  expected next-phase chain.
-- The gate also builds the bounded 6R.1 through 6R.6 handoff chain and fails if
+  expected semantic `nextStep` chain.
+- The gate also builds the bounded policy-engine handoff chain and fails if
   evidence, intent, learning, readiness, workflow, or migration wrappers fail,
   have missing or non-passing nested audits, drift away from the shared
   sanitized evidence projection fingerprint, miss/drop/drift evidence-quality
@@ -3550,9 +3550,9 @@ Completion gate:
 - The completion quality-chain hardening is documented in
   [Policy Builder Phase 6R Completion Quality Chain](policy-builder-phase-6r-completion-quality-chain.md).
 - The gate also fails if legacy replay, impact, provider, TMDB, scoring, or old
-  Phase 6 documentation artifacts lack explicit migration/deletion decisions,
-  remain allowed in the normal operator workflow, or unblock Phase 8R storage
-  prematurely.
+  policy-builder documentation artifacts lack explicit migration/deletion
+  decisions, remain allowed in the normal operator workflow, or unblock native
+  storage prematurely.
 
 Current starting point:
 
@@ -6330,6 +6330,15 @@ Implementation status:
 - After the runtime-completion-audit cutover, the repository inventory validates
   with 12,034 total phase-coded references, 5,050 production references, and
   5,072 rename candidates.
+- The next policy-engine module cutover renamed the completion audit to
+  `policyEngineCompletionAudit.mjs`, renamed its focused test, replaced
+  phase-coded component ids and `nextPhase` handoffs with semantic
+  `nextStep.stepId` validation, and pointed component evidence at durable
+  module-cutover docs:
+  [Policy Engine Completion Audit Module Cutover](policy-engine-completion-audit-module-cutover.md).
+- After the policy-engine-completion-audit cutover, the repository inventory
+  validates with 11,766 total phase-coded references, 4,907 production
+  references, and 4,929 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented as a Phase 6R completion-audit hardening slice.
+Implemented as a policy engine completion-audit hardening slice.
 
 ## Problem
 
@@ -34,7 +34,7 @@ trust a bounded result that no longer reflects the evidence-quality gate.
 
 ## Recommendation
 
-The Phase 6R completion gate should fail unless every bounded component handoff:
+The policy engine completion gate should fail unless every bounded component handoff:
 
 - carries at least one quality snapshot in the expected boundary location;
 - avoids the `insufficient` quality state;
@@ -64,11 +64,11 @@ Cons:
 ## Final Recommendation Stack
 
 - Service:
-  `server/src/services/policyBuilderPhase6CompletionAudit.mjs`
+  `server/src/services/policyEngineCompletionAudit.mjs`
 - Tests:
-  `server/src/__tests__/services/policyBuilderPhase6CompletionAudit.test.mjs`
+  `server/src/__tests__/services/policyEngineCompletionAudit.test.mjs`
 - Primary architecture record:
-  `docs/architecture/policy-builder-phase-6r-completion-audit.md`
+  `docs/architecture/policy-engine-completion-audit.md`
 - Roadmap:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 

@@ -89,8 +89,8 @@ Cons:
   `policy.operator_workflow.v1`
 - Local handoff:
   `nextStep.stepId = migration_deletion_path`
-- Legacy adapter:
-  `server/src/services/policyBuilderPhase6CompletionAudit.mjs`
+- Completion checkpoint:
+  `server/src/services/policyEngineCompletionAudit.mjs`
 - Roadmap owner:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 - Existing design owner:
@@ -105,8 +105,8 @@ Cons:
 - Moved the workflow contract version to `policy.operator_workflow.v1`.
 - Replaced the workflow-local phase handoff with `nextStep`.
 - Updated direct server consumers and tests to import the durable module.
-- Added a bounded adapter in the legacy Phase 6R completion audit so
-  `migration_deletion_path` still satisfies the current completion checkpoint.
+- Updated the policy engine completion audit so `migration_deletion_path` is
+  validated as the semantic completion checkpoint.
 
 ## Security Outcome
 
