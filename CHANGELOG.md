@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Readiness Audit Gate** — hardened the bounded Phase
+  6R.4 readiness wrapper so automation readiness is evaluated only when
+  upstream evidence, intent, evidence-fingerprint, and learning audits are all
+  passing in addition to sharing matching sanitized evidence provenance.
 - **Policy Builder Phase 6R Learning Handoff Integrity** — hardened the
   bounded Phase 6R.3 learning guard so learning candidates are evaluated only
   when the upstream bounded intent evidence-fingerprint audit passed and the

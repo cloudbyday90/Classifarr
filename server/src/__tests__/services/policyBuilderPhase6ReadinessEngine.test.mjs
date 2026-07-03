@@ -260,6 +260,103 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
     ]));
   });
 
+  test('blocks bounded readiness when evidence audits are not passing', () => {
+    const {
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+    } = buildBoundedReadyInputs();
+
+    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+      boundedEvidenceResult: {
+        ...boundedEvidenceResult,
+        projectionFingerprintAudit: {
+          ok: false,
+          issues: [{ riskId: 'fingerprint_mismatch' }],
+        },
+      },
+      boundedIntentResult,
+      boundedLearningResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      readiness: null,
+      readinessAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_EVIDENCE_AUDIT_NOT_PASSING,
+      }),
+    ]));
+  });
+
+  test('blocks bounded readiness when intent evidence audit is not passing', () => {
+    const {
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+    } = buildBoundedReadyInputs();
+
+    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+      boundedEvidenceResult,
+      boundedIntentResult: {
+        ...boundedIntentResult,
+        evidenceFingerprintAudit: {
+          ok: false,
+          issues: [{ riskId: 'fingerprint_mismatch' }],
+        },
+      },
+      boundedLearningResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      readiness: null,
+      readinessAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_INTENT_EVIDENCE_AUDIT_NOT_PASSING,
+      }),
+    ]));
+  });
+
+  test('blocks bounded readiness when learning audit is not passing', () => {
+    const {
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+    } = buildBoundedReadyInputs();
+
+    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult: {
+        ...boundedLearningResult,
+        learningAudit: {
+          ok: false,
+          issues: [{ riskId: 'direct_write_performed' }],
+        },
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      readiness: null,
+      readinessAudit: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_LEARNING_AUDIT_NOT_PASSING,
+      }),
+    ]));
+  });
+
   test('blocks bounded readiness when bounded provenance does not match', () => {
     const {
       boundedEvidenceResult,

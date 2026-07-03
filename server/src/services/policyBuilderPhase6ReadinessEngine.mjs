@@ -69,6 +69,9 @@ const PHASE6R_READINESS_AUDIT_RISK_IDS = Object.freeze({
   MISSING_BOUNDED_LEARNING: 'missing_bounded_learning',
   MISSING_BOUNDED_PROVENANCE: 'missing_bounded_provenance',
   BOUNDED_PROVENANCE_MISMATCH: 'bounded_provenance_mismatch',
+  BOUNDED_EVIDENCE_AUDIT_NOT_PASSING: 'bounded_evidence_audit_not_passing',
+  BOUNDED_INTENT_EVIDENCE_AUDIT_NOT_PASSING: 'bounded_intent_evidence_audit_not_passing',
+  BOUNDED_LEARNING_AUDIT_NOT_PASSING: 'bounded_learning_audit_not_passing',
 });
 
 const IGNORED_DIAGNOSTIC_INPUT_KEYS = Object.freeze([
@@ -453,6 +456,39 @@ function buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
     boundaryIssues.push({
       riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_LEARNING,
       message: 'Readiness requires a successful bounded learning result.',
+    });
+  }
+
+  if (
+    boundedEvidenceResult?.ok === true &&
+    (
+      boundedEvidenceResult.projectionAudit?.ok !== true ||
+      boundedEvidenceResult.projectionFingerprintAudit?.ok !== true
+    )
+  ) {
+    boundaryIssues.push({
+      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_EVIDENCE_AUDIT_NOT_PASSING,
+      message: 'Readiness requires passing bounded evidence projection and fingerprint audits.',
+    });
+  }
+
+  if (
+    boundedIntentResult?.ok === true &&
+    (
+      boundedIntentResult.intentAudit?.ok !== true ||
+      boundedIntentResult.evidenceFingerprintAudit?.ok !== true
+    )
+  ) {
+    boundaryIssues.push({
+      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_INTENT_EVIDENCE_AUDIT_NOT_PASSING,
+      message: 'Readiness requires passing bounded intent and evidence-fingerprint audits.',
+    });
+  }
+
+  if (boundedLearningResult?.ok === true && boundedLearningResult.learningAudit?.ok !== true) {
+    boundaryIssues.push({
+      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_LEARNING_AUDIT_NOT_PASSING,
+      message: 'Readiness requires a passing bounded learning audit.',
     });
   }
 

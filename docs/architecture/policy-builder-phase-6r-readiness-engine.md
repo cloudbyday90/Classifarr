@@ -13,7 +13,9 @@ The compatibility reducer remains available for focused tests and internal
 composition, but new runtime/rebuild callers should use the bounded readiness
 entry point. That entry point requires successful Phase 6R.1 bounded evidence,
 Phase 6R.2 bounded intent, and Phase 6R.3 bounded learning contracts before
-readiness can be trusted.
+readiness can be trusted. July 2026 hardening makes that gate stricter:
+readiness now requires the upstream evidence, intent, evidence-fingerprint, and
+learning audits to pass before automation state is evaluated.
 
 ## Problem
 
@@ -93,6 +95,10 @@ Phase 6R.4 makes that answer deterministic and server-owned.
    blocks failed evidence, intent, or learning handoffs and rejects missing or
    mismatched evidence projection fingerprints.
 
+7. **Require passing upstream audits before automation readiness.**
+   Matching fingerprints are not enough. Readiness should also reject bounded
+   evidence, intent, or learning wrappers whose own audits are not passing.
+
 ## Pros And Cons
 
 Pros:
@@ -104,6 +110,8 @@ Pros:
 - Keeps future telemetry stable through state IDs and reason codes.
 - Prevents stale or cross-run evidence, intent, and learning results from being
   stitched together into a readiness decision.
+- Prevents automation readiness from evaluating wrappers that claim success but
+  carry failed upstream audit state.
 
 Cons:
 
@@ -219,8 +227,8 @@ projectionFingerprintMatch
 - The audit rejects live provider dependency, diagnostic dependency, raw payload
   dependency, missing next action, invalid state, and ready-state mismatch.
 - The bounded wrapper rejects failed upstream contracts, missing projection
-  provenance, and mismatched projection fingerprints before readiness is
-  returned.
+  provenance, mismatched projection fingerprints, and failed upstream evidence,
+  intent, evidence-fingerprint, or learning audits before readiness is returned.
 
 ## Next Step
 

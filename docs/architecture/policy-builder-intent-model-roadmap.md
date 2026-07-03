@@ -3360,6 +3360,9 @@ Implementation status:
   intent, and Phase 6R.3 bounded learning results, verifies their shared
   sanitized evidence projection fingerprint, and attaches a bounded context to
   the readiness input summary without exposing raw evidence labels.
+- The bounded readiness entry point now also requires the upstream evidence,
+  intent, evidence-fingerprint, and learning audits to pass before automation
+  readiness is evaluated.
 
 ### 6R.5 Operator Workflow Rebuild
 
