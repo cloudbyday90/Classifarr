@@ -3468,6 +3468,8 @@ Implementation status:
   callers: it requires a successful bounded Phase 6R.5 operator workflow result,
   verifies sanitized workflow provenance, and attaches the bounded workflow
   context to the migration plan before the migration/deletion audit can pass.
+- The bounded migration entry point now also requires the upstream bounded
+  workflow audit to pass before migration/deletion planning can proceed.
 
 ## Phase 6R Work Sequence
 

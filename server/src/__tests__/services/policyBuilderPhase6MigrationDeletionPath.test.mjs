@@ -192,6 +192,38 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
     ]));
   });
 
+  test('blocks bounded migration planning when bounded workflow audit is not passing', () => {
+    const boundedWorkflowResult = buildBoundedWorkflowResult();
+    const failedWorkflowAuditResult = {
+      ...boundedWorkflowResult,
+      workflowAudit: {
+        ...boundedWorkflowResult.workflowAudit,
+        ok: false,
+      },
+    };
+
+    const result = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+      boundedWorkflowResult: failedWorkflowAuditResult,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      plan: null,
+      migrationAudit: null,
+      boundaryContext: expect.objectContaining({
+        workflowBoundary: expect.objectContaining({
+          workflowAuditOk: false,
+        }),
+      }),
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_WORKFLOW_AUDIT_NOT_PASSING,
+      }),
+    ]));
+  });
+
   test('blocks bounded migration planning when workflow provenance does not match', () => {
     const boundedWorkflowResult = buildBoundedWorkflowResult();
     const mismatchedWorkflowResult = {

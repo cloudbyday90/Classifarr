@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Migration Audit Gate** — hardened the bounded Phase
+  6R.6 migration/deletion wrapper so migration planning proceeds only when the
+  upstream bounded operator workflow audit is passing and its sanitized
+  workflow provenance remains matched.
 - **Policy Builder Phase 6R Workflow Audit Gate** — hardened the bounded Phase
   6R.5 operator workflow wrapper so workflow projections render only when
   upstream bounded intent, evidence-fingerprint, and readiness audits are

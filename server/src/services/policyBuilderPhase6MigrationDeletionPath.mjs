@@ -40,6 +40,7 @@ const PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS = Object.freeze({
   MISSING_BOUNDED_WORKFLOW: 'missing_bounded_workflow',
   MISSING_BOUNDED_PROVENANCE: 'missing_bounded_provenance',
   BOUNDED_PROVENANCE_MISMATCH: 'bounded_provenance_mismatch',
+  BOUNDED_WORKFLOW_AUDIT_NOT_PASSING: 'bounded_workflow_audit_not_passing',
 });
 
 const PHASE6R_MIGRATION_BOUNDARY_STATUS_IDS = Object.freeze({
@@ -769,6 +770,10 @@ function getWorkflowReadinessFingerprint(boundedWorkflowResult = {}) {
     null;
 }
 
+function boundedWorkflowAuditPasses(boundedWorkflowResult = {}) {
+  return boundedWorkflowResult?.workflowAudit?.ok === true;
+}
+
 function buildBoundedMigrationContext(boundedWorkflowResult = {}) {
   const intentFingerprint = getWorkflowIntentFingerprint(boundedWorkflowResult);
   const readinessFingerprint = getWorkflowReadinessFingerprint(boundedWorkflowResult);
@@ -785,6 +790,7 @@ function buildBoundedMigrationContext(boundedWorkflowResult = {}) {
       statusId: boundedWorkflowResult.statusId || null,
       workflowVersion: boundedWorkflowResult.workflow?.version || null,
       workflowId: boundedWorkflowResult.workflow?.workflowId || null,
+      workflowAuditOk: boundedWorkflowAuditPasses(boundedWorkflowResult),
       readinessStateId: boundedWorkflowResult.workflow?.readiness?.stateId || null,
       projectionFingerprint:
         sourceBoundary.intentBoundary?.projectionFingerprint ||
@@ -809,6 +815,17 @@ function buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
     boundaryIssues.push({
       riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_WORKFLOW,
       message: 'Migration planning requires a successful bounded operator workflow result.',
+    });
+  }
+
+  if (
+    boundedWorkflowResult?.ok === true &&
+    boundedWorkflowResult?.workflow &&
+    !boundedWorkflowAuditPasses(boundedWorkflowResult)
+  ) {
+    boundaryIssues.push({
+      riskId: PHASE6R_MIGRATION_DELETION_AUDIT_RISK_IDS.BOUNDED_WORKFLOW_AUDIT_NOT_PASSING,
+      message: 'Migration planning requires a passing bounded operator workflow audit.',
     });
   }
 

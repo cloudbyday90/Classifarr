@@ -21,7 +21,9 @@ in the normal product workflow, or run migration against production data.
 The compatibility migration-plan builder remains available for focused tests
 and inventory work, but new runtime/rebuild callers should use the bounded
 migration wrapper. That wrapper requires a successful bounded operator workflow
-result before any migration/deletion plan is considered ready.
+result before any migration/deletion plan is considered ready. It also requires
+the bounded workflow audit to still be passing, so stale or tampered workflow
+contracts cannot authorize migration/deletion planning.
 
 ## Problem
 
@@ -53,6 +55,15 @@ delete replaced surfaces after gates pass
   emphasizes server-side validation and business-logic controls. The migration
   plan blocks client-side diagnostic authority and keeps old diagnostics outside
   the normal workflow.
+- [OWASP Business Logic Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Business_Logic_Security_Cheat_Sheet.html)
+  recommends enforcing legal state combinations server-side and unit-testing
+  cases where individual fields are valid but their combination is not. The
+  bounded migration wrapper rejects a successful-looking workflow if its audit
+  state is not passing.
+- [OpenTelemetry Context Propagation](https://opentelemetry.io/docs/concepts/context-propagation/)
+  describes correlating signals across process and network boundaries. The
+  migration boundary carries only sanitized workflow fingerprints and audit
+  status to connect migration decisions to their source workflow.
 - [PostgreSQL Backup And Restore](https://www.postgresql.org/docs/current/backup.html)
   documents backup and restore approaches. The cutline treats schema migration
   as a later Phase 8R operation after rollback gates pass.
@@ -185,6 +196,7 @@ The boundary context carries only sanitized workflow metadata:
 workflowBoundary.statusId
 workflowBoundary.workflowVersion
 workflowBoundary.workflowId
+workflowBoundary.workflowAuditOk
 workflowBoundary.readinessStateId
 workflowBoundary.projectionFingerprint
 projectionFingerprintMatch
@@ -197,8 +209,8 @@ projectionFingerprintMatch
 - Rollback snapshots and restore path are mandatory before migration deletion.
 - Native intent storage remains blocked until Phase 8R owns the schema plan.
 - The bounded wrapper rejects failed workflow contracts, missing bounded
-  provenance, and mismatched projection fingerprints before returning a
-  migration/deletion plan.
+  provenance, mismatched projection fingerprints, and non-passing bounded
+  workflow audits before returning a migration/deletion plan.
 
 ## Next Step
 
