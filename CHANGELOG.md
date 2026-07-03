@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Quality Module Cutover** — renamed the evidence-quality
+  helper and focused test to durable product-domain names, moved the internal
+  quality contract version to `policy.evidence.quality.v1`, updated Phase 6R
+  engine imports, and lowered the production naming regression baseline after
+  inventory validation proved reduced phase-coded production debt.
 - **Policy Production Naming Regression Audit** — added a durable-named
   Phase 9R.4 guardrail that consumes the production naming inventory and blocks
   increases in phase-coded production references, rename candidates, obsolete

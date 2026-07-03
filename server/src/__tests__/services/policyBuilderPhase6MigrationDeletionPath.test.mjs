@@ -5,8 +5,8 @@ import {
   buildPolicyBuilderPhase6BoundedEvidenceProjection,
 } from '../../services/policyBuilderPhase6EvidenceBoundary.mjs';
 import {
-  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
-} from '../../services/policyBuilderPhase6EvidenceQuality.mjs';
+  POLICY_EVIDENCE_QUALITY_STATUS_IDS,
+} from '../../services/policyEvidenceQuality.mjs';
 import {
   buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
 } from '../../services/policyBuilderPhase6IntentEngine.mjs';
@@ -314,7 +314,7 @@ describe('policyBuilderPhase6MigrationDeletionPath', () => {
     const boundedWorkflowResult = buildBoundedWorkflowResult();
     const insufficientQuality = {
       ...boundedWorkflowResult.boundaryContext.intentBoundary.quality,
-      statusId: PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT,
+      statusId: POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT,
       nextActionId: 'confirm_destination_identity',
       reasonIds: ['missing_identity'],
     };

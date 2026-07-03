@@ -179,7 +179,14 @@ labels, except where an allow-listed migration or history reason is documented.
   references, 7,467 production references, and 7,489 rename candidates.
   Persisted classification progress storage columns remain deferred to a later
   storage compatibility decision.
+- The next Phase 9R.2 durable module cutover renamed the evidence-quality helper
+  to `policyEvidenceQuality.mjs` and moved the internal quality contract version
+  to `policy.evidence.quality.v1`:
+  [Policy Evidence Quality Module Cutover](policy-evidence-quality-module-cutover.md).
 - Phase 9R.4 now has a durable-named regression audit:
   [Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md).
   The audit consumes the production naming inventory and blocks increases above
   the approved July 3, 2026 baseline while durable rename batches continue.
+- After the evidence-quality cutover, the regression baseline is 7,514
+  production references, 7,536 rename candidates, and 93 obsolete migration
+  tooling references.

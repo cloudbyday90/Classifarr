@@ -86,7 +86,7 @@ Cons:
 ## Final Recommendation Stack
 
 - Evidence quality:
-  `server/src/services/policyBuilderPhase6EvidenceQuality.mjs`
+  `server/src/services/policyEvidenceQuality.mjs`
 - Bounded intent:
   `server/src/services/policyBuilderPhase6IntentEngine.mjs`
 - Bounded learning:

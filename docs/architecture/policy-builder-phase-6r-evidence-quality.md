@@ -78,11 +78,11 @@ Cons:
 ## Final Recommendation Stack
 
 - Quality module:
-  `server/src/services/policyBuilderPhase6EvidenceQuality.mjs`
+  `server/src/services/policyEvidenceQuality.mjs`
 - Evidence projection integration:
   `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
 - Focused tests:
-  `server/src/__tests__/services/policyBuilderPhase6EvidenceQuality.test.mjs`
+  `server/src/__tests__/services/policyEvidenceQuality.test.mjs`
   and
   `server/src/__tests__/services/policyBuilderPhase6EvidenceEngine.test.mjs`
 - Roadmap owner:

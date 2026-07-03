@@ -89,7 +89,7 @@ Cons:
 ## Final Recommendation Stack
 
 - Quality source:
-  `server/src/services/policyBuilderPhase6EvidenceQuality.mjs`
+  `server/src/services/policyEvidenceQuality.mjs`
 - Readiness source:
   `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`
 - Workflow gate:

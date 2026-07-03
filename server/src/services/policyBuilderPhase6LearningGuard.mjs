@@ -9,8 +9,8 @@ import {
   normalizeQuestionFrame,
 } from './policyQuestionLearningVocabulary.mjs';
 import {
-  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
-} from './policyBuilderPhase6EvidenceQuality.mjs';
+  POLICY_EVIDENCE_QUALITY_STATUS_IDS,
+} from './policyEvidenceQuality.mjs';
 
 const PHASE6R_LEARNING_TIER_IDS = Object.freeze({
   NONE: 'none',
@@ -282,8 +282,8 @@ function buildIntentEvidenceQualityIssues(wrapper = {}, intent = {}) {
   }
 
   if (
-    wrapperQuality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT ||
-    intentQuality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+    wrapperQuality.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT ||
+    intentQuality.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
   ) {
     issues.push({
       riskId: PHASE6R_LEARNING_GUARD_AUDIT_RISK_IDS.INSUFFICIENT_INTENT_EVIDENCE_QUALITY,

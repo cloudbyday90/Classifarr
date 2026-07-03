@@ -154,7 +154,7 @@ describe('policyBuilderPhase6EvidenceEngine', () => {
       hasReviewEvidence: true,
     }));
     expect(projection.quality).toEqual(expect.objectContaining({
-      version: 'phase6r.evidence.quality.v1',
+      version: 'policy.evidence.quality.v1',
       statusId: 'needs_review',
       nextActionId: 'review_evidence',
       hasIdentityEvidence: true,

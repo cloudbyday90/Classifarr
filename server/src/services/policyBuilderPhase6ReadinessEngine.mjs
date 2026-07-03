@@ -3,8 +3,8 @@ import {
   buildPolicyBuilderPhase6EvidenceProjection,
 } from './policyBuilderPhase6EvidenceEngine.mjs';
 import {
-  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
-} from './policyBuilderPhase6EvidenceQuality.mjs';
+  POLICY_EVIDENCE_QUALITY_STATUS_IDS,
+} from './policyEvidenceQuality.mjs';
 import {
   PHASE6R_INTENT_CONFIDENCE_LEVEL_IDS,
   PHASE6R_INTENT_WARNING_IDS,
@@ -473,7 +473,7 @@ function collectBoundedQualityIssues({
     normalizeQualitySnapshot(learningQuality),
   ];
   const insufficientQuality = qualitySnapshots.find(quality =>
-    quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+    quality.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
   );
 
   if (insufficientQuality) {

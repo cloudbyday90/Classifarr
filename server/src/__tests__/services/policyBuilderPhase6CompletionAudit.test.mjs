@@ -9,8 +9,8 @@ import {
   validatePhase6ComponentCompletion,
 } from '../../services/policyBuilderPhase6CompletionAudit.mjs';
 import {
-  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
-} from '../../services/policyBuilderPhase6EvidenceQuality.mjs';
+  POLICY_EVIDENCE_QUALITY_STATUS_IDS,
+} from '../../services/policyEvidenceQuality.mjs';
 import {
   PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS,
   buildPolicyBuilderPhase6MigrationPlan,
@@ -18,8 +18,8 @@ import {
 } from '../../services/policyBuilderPhase6MigrationDeletionPath.mjs';
 
 const stableQuality = Object.freeze({
-  version: 'phase6r.evidence.quality.v1',
-  statusId: PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.USABLE,
+  version: 'policy.evidence.quality.v1',
+  statusId: POLICY_EVIDENCE_QUALITY_STATUS_IDS.USABLE,
   score: 0.9,
   nextActionId: 'proceed_to_intent',
   reasonIds: [
@@ -39,7 +39,7 @@ const stableQuality = Object.freeze({
 
 const insufficientQuality = Object.freeze({
   ...stableQuality,
-  statusId: PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT,
+  statusId: POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT,
   score: 0.2,
   nextActionId: 'confirm_destination_identity',
   reasonIds: [
@@ -120,7 +120,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
     expect(audit.fingerprintCount).toBe(6);
     expect(audit.qualitySnapshotCount).toBeGreaterThanOrEqual(6);
     expect(audit.qualityStatuses).toEqual([
-      PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.USABLE,
+      POLICY_EVIDENCE_QUALITY_STATUS_IDS.USABLE,
     ]);
     expect(audit.sharedProjectionFingerprint).toMatch(/^[a-f0-9]{64}$/);
     expect(new Set(audit.steps.map(step => step.projectionFingerprint)).size).toBe(1);
@@ -400,7 +400,7 @@ describe('policyBuilderPhase6CompletionAudit', () => {
     };
     const mismatchedQuality = {
       ...stableQuality,
-      statusId: PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.NEEDS_REVIEW,
+      statusId: POLICY_EVIDENCE_QUALITY_STATUS_IDS.NEEDS_REVIEW,
       nextActionId: 'review_evidence',
       reasonIds: [
         'review_evidence_present',

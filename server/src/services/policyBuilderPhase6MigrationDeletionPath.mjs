@@ -1,6 +1,6 @@
 import {
-  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
-} from './policyBuilderPhase6EvidenceQuality.mjs';
+  POLICY_EVIDENCE_QUALITY_STATUS_IDS,
+} from './policyEvidenceQuality.mjs';
 
 const PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS = Object.freeze({
   KEEP_ENGINE_PRIMITIVE: 'keep_engine_primitive',
@@ -864,7 +864,7 @@ function collectBoundedWorkflowQualityIssues(boundedWorkflowResult = {}) {
 
   const normalizedQualities = qualityValues.map(quality => normalizeQualitySnapshot(quality));
   const insufficientQuality = normalizedQualities.find(quality =>
-    quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+    quality.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
   );
 
   if (insufficientQuality) {

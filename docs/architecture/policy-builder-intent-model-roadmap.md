@@ -3190,7 +3190,7 @@ Implementation status:
 - Phase 6R.1 evidence quality hardening is documented in
   [Policy Builder Phase 6R Evidence Quality](policy-builder-phase-6r-evidence-quality.md).
 - The evidence quality helper lives in
-  `server/src/services/policyBuilderPhase6EvidenceQuality.mjs`.
+  `server/src/services/policyEvidenceQuality.mjs`.
 - Replay and impact reducer artifacts are explicitly classified as delete,
   rewrite-as-evidence-reducer, or maintainer-only migration material; all are
   blocked from normal operator flow until rewritten into Phase 6R evidence
@@ -6177,6 +6177,15 @@ Implementation status:
 - After the follow-up classification progress contract cutover, the repository
   inventory validates with 15,892 total phase-coded references, 7,467
   production references, and 7,489 rename candidates.
+- The policy evidence quality helper has now been cut over to durable
+  product-domain naming:
+  [Policy Evidence Quality Module Cutover](policy-evidence-quality-module-cutover.md).
+  `policyBuilderPhase6EvidenceQuality.mjs` was renamed to
+  `policyEvidenceQuality.mjs`, its focused test was renamed, and the internal
+  contract version moved to `policy.evidence.quality.v1`.
+- After the evidence-quality cutover, the repository inventory validates with
+  16,187 total phase-coded references, 7,514 production references, and 7,536
+  rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
@@ -6249,7 +6258,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 3, 2026
   baseline for production references, rename candidates, and obsolete migration
   tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `7585` production references, `7607` rename
+- The current baseline is `7514` production references, `7536` rename
   candidates, and `93` obsolete migration tooling references. Future durable
   rename batches should lower this baseline after inventory validation proves
   the debt decreased.

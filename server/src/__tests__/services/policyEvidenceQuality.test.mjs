@@ -6,20 +6,20 @@ import {
   buildPolicyBuilderPhase6EvidenceProjection,
 } from '../../services/policyBuilderPhase6EvidenceEngine.mjs';
 import {
-  PHASE6R_EVIDENCE_QUALITY_AUDIT_RISK_IDS,
-  PHASE6R_EVIDENCE_QUALITY_NEXT_ACTION_IDS,
-  PHASE6R_EVIDENCE_QUALITY_REASON_IDS,
-  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
-  buildPolicyBuilderPhase6EvidenceQualityAssessment,
-  validatePolicyBuilderPhase6EvidenceQualityAssessment,
-} from '../../services/policyBuilderPhase6EvidenceQuality.mjs';
+  POLICY_EVIDENCE_QUALITY_AUDIT_RISK_IDS,
+  POLICY_EVIDENCE_QUALITY_NEXT_ACTION_IDS,
+  POLICY_EVIDENCE_QUALITY_REASON_IDS,
+  POLICY_EVIDENCE_QUALITY_STATUS_IDS,
+  buildPolicyEvidenceQualityAssessment,
+  validatePolicyEvidenceQualityAssessment,
+} from '../../services/policyEvidenceQuality.mjs';
 
 const qualityOptions = {
   bucketIds: PHASE6R_EVIDENCE_BUCKET_IDS,
   authoritySourceIds: AUTHORITY_SOURCE_IDS,
 };
 
-describe('policyBuilderPhase6EvidenceQuality', () => {
+describe('policyEvidenceQuality', () => {
   test('builds compact quality for usable observed and declared identity evidence', () => {
     const projection = buildPolicyBuilderPhase6EvidenceProjection({
       libraryProfile: {
@@ -36,14 +36,14 @@ describe('policyBuilderPhase6EvidenceQuality', () => {
       },
     });
 
-    const quality = buildPolicyBuilderPhase6EvidenceQualityAssessment(
+    const quality = buildPolicyEvidenceQualityAssessment(
       projection,
       qualityOptions
     );
 
     expect(quality).toEqual(expect.objectContaining({
-      statusId: PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.USABLE,
-      nextActionId: PHASE6R_EVIDENCE_QUALITY_NEXT_ACTION_IDS.PROCEED_TO_INTENT,
+      statusId: POLICY_EVIDENCE_QUALITY_STATUS_IDS.USABLE,
+      nextActionId: POLICY_EVIDENCE_QUALITY_NEXT_ACTION_IDS.PROCEED_TO_INTENT,
       hasIdentityEvidence: true,
       hasObservedIdentityEvidence: true,
       hasDeclaredIdentityEvidence: true,
@@ -52,11 +52,11 @@ describe('policyBuilderPhase6EvidenceQuality', () => {
     }));
     expect(quality.score).toBe(1);
     expect(quality.reasonIds).toEqual(expect.arrayContaining([
-      PHASE6R_EVIDENCE_QUALITY_REASON_IDS.OBSERVED_IDENTITY_PRESENT,
-      PHASE6R_EVIDENCE_QUALITY_REASON_IDS.DECLARED_IDENTITY_PRESENT,
-      PHASE6R_EVIDENCE_QUALITY_REASON_IDS.COMPATIBILITY_PRESENT,
-      PHASE6R_EVIDENCE_QUALITY_REASON_IDS.ROUTING_PRESENT,
-      PHASE6R_EVIDENCE_QUALITY_REASON_IDS.FRESHNESS_PRESENT,
+      POLICY_EVIDENCE_QUALITY_REASON_IDS.OBSERVED_IDENTITY_PRESENT,
+      POLICY_EVIDENCE_QUALITY_REASON_IDS.DECLARED_IDENTITY_PRESENT,
+      POLICY_EVIDENCE_QUALITY_REASON_IDS.COMPATIBILITY_PRESENT,
+      POLICY_EVIDENCE_QUALITY_REASON_IDS.ROUTING_PRESENT,
+      POLICY_EVIDENCE_QUALITY_REASON_IDS.FRESHNESS_PRESENT,
     ]));
     expect(JSON.stringify(quality)).not.toContain('Animation');
     expect(JSON.stringify(quality)).not.toContain('Animated Movies');
@@ -71,13 +71,13 @@ describe('policyBuilderPhase6EvidenceQuality', () => {
     });
 
     expect(projection.quality).toEqual(expect.objectContaining({
-      statusId: PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT,
+      statusId: POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT,
       nextActionId:
-        PHASE6R_EVIDENCE_QUALITY_NEXT_ACTION_IDS.CONFIRM_DESTINATION_IDENTITY,
+        POLICY_EVIDENCE_QUALITY_NEXT_ACTION_IDS.CONFIRM_DESTINATION_IDENTITY,
       hasIdentityEvidence: false,
     }));
     expect(projection.quality.reasonIds).toEqual(expect.arrayContaining([
-      PHASE6R_EVIDENCE_QUALITY_REASON_IDS.MISSING_IDENTITY,
+      POLICY_EVIDENCE_QUALITY_REASON_IDS.MISSING_IDENTITY,
     ]));
     expect(projection.quality.score).toBeLessThanOrEqual(0.35);
   });
@@ -94,13 +94,13 @@ describe('policyBuilderPhase6EvidenceQuality', () => {
     });
 
     expect(projection.quality).toEqual(expect.objectContaining({
-      statusId: PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.NEEDS_REVIEW,
-      nextActionId: PHASE6R_EVIDENCE_QUALITY_NEXT_ACTION_IDS.REFRESH_PROFILE,
+      statusId: POLICY_EVIDENCE_QUALITY_STATUS_IDS.NEEDS_REVIEW,
+      nextActionId: POLICY_EVIDENCE_QUALITY_NEXT_ACTION_IDS.REFRESH_PROFILE,
       hasStaleProfileEvidence: true,
     }));
     expect(projection.quality.reasonIds).toEqual(expect.arrayContaining([
-      PHASE6R_EVIDENCE_QUALITY_REASON_IDS.STALE_PROFILE,
-      PHASE6R_EVIDENCE_QUALITY_REASON_IDS.REVIEW_EVIDENCE_PRESENT,
+      POLICY_EVIDENCE_QUALITY_REASON_IDS.STALE_PROFILE,
+      POLICY_EVIDENCE_QUALITY_REASON_IDS.REVIEW_EVIDENCE_PRESENT,
     ]));
   });
 
@@ -111,7 +111,7 @@ describe('policyBuilderPhase6EvidenceQuality', () => {
       },
     });
 
-    expect(validatePolicyBuilderPhase6EvidenceQualityAssessment(
+    expect(validatePolicyEvidenceQualityAssessment(
       projection,
       qualityOptions
     )).toEqual(expect.objectContaining({
@@ -125,7 +125,7 @@ describe('policyBuilderPhase6EvidenceQuality', () => {
       leakedLabel: 'Animation',
     };
 
-    const audit = validatePolicyBuilderPhase6EvidenceQualityAssessment(
+    const audit = validatePolicyEvidenceQualityAssessment(
       projection,
       qualityOptions
     );
@@ -133,11 +133,11 @@ describe('policyBuilderPhase6EvidenceQuality', () => {
     expect(audit.ok).toBe(false);
     expect(audit.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_EVIDENCE_QUALITY_AUDIT_RISK_IDS.QUALITY_MISMATCH,
+        riskId: POLICY_EVIDENCE_QUALITY_AUDIT_RISK_IDS.QUALITY_MISMATCH,
       }),
       expect.objectContaining({
         riskId:
-          PHASE6R_EVIDENCE_QUALITY_AUDIT_RISK_IDS.QUALITY_EXPOSES_ENTRY_LABELS,
+          POLICY_EVIDENCE_QUALITY_AUDIT_RISK_IDS.QUALITY_EXPOSES_ENTRY_LABELS,
       }),
     ]));
   });

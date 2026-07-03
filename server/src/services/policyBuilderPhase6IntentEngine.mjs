@@ -13,8 +13,8 @@ import {
   validatePolicyBuilderPhase6EvidenceProjectionFingerprint,
 } from './policyBuilderPhase6EvidenceProjectionFingerprint.mjs';
 import {
-  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
-} from './policyBuilderPhase6EvidenceQuality.mjs';
+  POLICY_EVIDENCE_QUALITY_STATUS_IDS,
+} from './policyEvidenceQuality.mjs';
 
 const PHASE6R_INTENT_BOUNDARY_STATUS_IDS = Object.freeze({
   READY: 'ready',
@@ -397,7 +397,7 @@ function buildEvidenceQualityIssues(quality = null) {
     }];
   }
 
-  if (quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT) {
+  if (quality.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT) {
     return [{
       riskId: PHASE6R_INTENT_AUDIT_RISK_IDS.INSUFFICIENT_EVIDENCE_QUALITY,
       message: 'Intent inference is blocked until evidence quality is no longer insufficient.',
@@ -537,7 +537,7 @@ function buildPolicyBuilderPhase6IntentDraft(input = {}) {
     ));
   }
 
-  if (projection.quality?.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT) {
+  if (projection.quality?.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT) {
     intent.warnings.push(buildWarning(
       PHASE6R_INTENT_WARNING_IDS.INSUFFICIENT_EVIDENCE,
       'Evidence quality is insufficient; intent inference must wait for more evidence or operator confirmation.',

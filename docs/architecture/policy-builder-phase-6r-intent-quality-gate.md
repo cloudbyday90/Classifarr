@@ -98,7 +98,7 @@ Cons:
 ## Final Recommendation Stack
 
 - Evidence quality source:
-  `server/src/services/policyBuilderPhase6EvidenceQuality.mjs`
+  `server/src/services/policyEvidenceQuality.mjs`
 - Intent quality consumer:
   `server/src/services/policyBuilderPhase6IntentEngine.mjs`
 - Focused tests:

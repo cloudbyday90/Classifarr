@@ -138,10 +138,10 @@ Cons:
 - Server module:
   `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`
 - Quality module:
-  `server/src/services/policyBuilderPhase6EvidenceQuality.mjs`
+  `server/src/services/policyEvidenceQuality.mjs`
 - Test module:
   `server/src/__tests__/services/policyBuilderPhase6EvidenceEngine.test.mjs`
-  and `server/src/__tests__/services/policyBuilderPhase6EvidenceQuality.test.mjs`
+  and `server/src/__tests__/services/policyEvidenceQuality.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-evidence-engine.md`
 - Roadmap owner:

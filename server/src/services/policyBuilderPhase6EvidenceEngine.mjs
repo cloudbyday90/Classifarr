@@ -7,9 +7,9 @@ import {
   POLICY_UX_TERM_IDS,
 } from './policyUserMentalModel.mjs';
 import {
-  buildPolicyBuilderPhase6EvidenceQualityAssessment,
-  validatePolicyBuilderPhase6EvidenceQualityAssessment,
-} from './policyBuilderPhase6EvidenceQuality.mjs';
+  buildPolicyEvidenceQualityAssessment,
+  validatePolicyEvidenceQualityAssessment,
+} from './policyEvidenceQuality.mjs';
 
 const PHASE6R_EVIDENCE_BUCKET_IDS = Object.freeze({
   IDENTITY: 'identity_evidence',
@@ -775,7 +775,7 @@ function buildPolicyBuilderPhase6EvidenceProjection(input = {}) {
   }
 
   projection.summary = summarizePolicyBuilderPhase6EvidenceProjection(projection);
-  projection.quality = buildPolicyBuilderPhase6EvidenceQualityAssessment(projection, {
+  projection.quality = buildPolicyEvidenceQualityAssessment(projection, {
     bucketIds: PHASE6R_EVIDENCE_BUCKET_IDS,
     authoritySourceIds: AUTHORITY_SOURCE_IDS,
   });
@@ -1045,7 +1045,7 @@ function validatePolicyBuilderPhase6EvidenceProjectionSummary(projection = {}) {
 }
 
 function validatePolicyBuilderPhase6EvidenceProjectionQuality(projection = {}) {
-  const result = validatePolicyBuilderPhase6EvidenceQualityAssessment(projection, {
+  const result = validatePolicyEvidenceQualityAssessment(projection, {
     bucketIds: PHASE6R_EVIDENCE_BUCKET_IDS,
     authoritySourceIds: AUTHORITY_SOURCE_IDS,
   });
@@ -1355,14 +1355,14 @@ export {
   buildPolicyBuilderPhase6EvidenceEngineAudit,
   buildPolicyBuilderPhase6EvidenceProjection,
   buildPolicyBuilderPhase6EvidenceProjectionAudit,
-  buildPolicyBuilderPhase6EvidenceQualityAssessment,
+  buildPolicyEvidenceQualityAssessment,
   getPolicyBuilderPhase6EvidenceBucket,
   getPolicyBuilderPhase6EvidenceSource,
   listPolicyBuilderPhase6EvidenceBuckets,
   listPolicyBuilderPhase6EvidenceReducerCutlines,
   listPolicyBuilderPhase6EvidenceSources,
   summarizePolicyBuilderPhase6EvidenceProjection,
-  validatePolicyBuilderPhase6EvidenceQualityAssessment,
+  validatePolicyEvidenceQualityAssessment,
   validatePolicyBuilderPhase6EvidenceBucket,
   validatePolicyBuilderPhase6EvidenceProjectionEntry,
   validatePolicyBuilderPhase6EvidenceSource,

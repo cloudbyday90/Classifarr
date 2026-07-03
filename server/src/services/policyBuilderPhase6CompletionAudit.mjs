@@ -9,8 +9,8 @@ import {
   buildPolicyBuilderPhase6EvidenceEngineAudit,
 } from './policyBuilderPhase6EvidenceEngine.mjs';
 import {
-  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
-} from './policyBuilderPhase6EvidenceQuality.mjs';
+  POLICY_EVIDENCE_QUALITY_STATUS_IDS,
+} from './policyEvidenceQuality.mjs';
 import {
   buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
   buildPolicyBuilderPhase6IntentEngineAudit,
@@ -479,7 +479,7 @@ function collectStepQualityIssues(stepSnapshot = {}) {
   }
 
   const insufficientQuality = stepSnapshot.normalizedQualitySnapshots.find(quality =>
-    quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+    quality.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
   );
   if (insufficientQuality) {
     issues.push(buildIssue(
@@ -590,7 +590,7 @@ function getBoundedChainStepSnapshot(step) {
       qualitySnapshots.length > 0 &&
       qualitySnapshots.every(quality => hasQualitySnapshot(quality)) &&
       normalizedQualitySnapshots.every(quality =>
-        quality.statusId !== PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+        quality.statusId !== POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
       ) &&
       qualitySnapshots.every(quality => qualitySnapshotsMatch(qualitySnapshots[0], quality)),
     qualitySnapshots: normalizedQualitySnapshots.map(quality => ({
@@ -704,7 +704,7 @@ function buildPolicyBuilderPhase6BoundedChainCompletionAudit({
   } else {
     const referenceQuality = allQualitySnapshots[0];
     const chainHasInsufficientQuality = allQualitySnapshots.some(quality =>
-      quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+      quality.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
     );
     if (chainHasInsufficientQuality) {
       issues.push(buildIssue(

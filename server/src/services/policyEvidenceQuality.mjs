@@ -1,13 +1,13 @@
-const PHASE6R_EVIDENCE_QUALITY_VERSION = 'phase6r.evidence.quality.v1';
+const POLICY_EVIDENCE_QUALITY_VERSION = 'policy.evidence.quality.v1';
 
-const PHASE6R_EVIDENCE_QUALITY_STATUS_IDS = Object.freeze({
+const POLICY_EVIDENCE_QUALITY_STATUS_IDS = Object.freeze({
   USABLE: 'usable',
   USABLE_WITH_CONSTRAINTS: 'usable_with_constraints',
   NEEDS_REVIEW: 'needs_review',
   INSUFFICIENT: 'insufficient',
 });
 
-const PHASE6R_EVIDENCE_QUALITY_REASON_IDS = Object.freeze({
+const POLICY_EVIDENCE_QUALITY_REASON_IDS = Object.freeze({
   NO_EVIDENCE: 'no_evidence',
   MISSING_IDENTITY: 'missing_identity',
   OBSERVED_IDENTITY_PRESENT: 'observed_identity_present',
@@ -20,7 +20,7 @@ const PHASE6R_EVIDENCE_QUALITY_REASON_IDS = Object.freeze({
   FRESHNESS_PRESENT: 'freshness_present',
 });
 
-const PHASE6R_EVIDENCE_QUALITY_NEXT_ACTION_IDS = Object.freeze({
+const POLICY_EVIDENCE_QUALITY_NEXT_ACTION_IDS = Object.freeze({
   COLLECT_EVIDENCE: 'collect_evidence',
   CONFIRM_DESTINATION_IDENTITY: 'confirm_destination_identity',
   REFRESH_PROFILE: 'refresh_profile',
@@ -29,7 +29,7 @@ const PHASE6R_EVIDENCE_QUALITY_NEXT_ACTION_IDS = Object.freeze({
   PROCEED_TO_INTENT: 'proceed_to_intent',
 });
 
-const PHASE6R_EVIDENCE_QUALITY_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_EVIDENCE_QUALITY_AUDIT_RISK_IDS = Object.freeze({
   MISSING_QUALITY: 'missing_quality',
   QUALITY_MISMATCH: 'quality_mismatch',
   QUALITY_EXPOSES_ENTRY_LABELS: 'quality_exposes_entry_labels',
@@ -83,7 +83,7 @@ function calculateScore({
   return clampScore(score);
 }
 
-function buildPolicyBuilderPhase6EvidenceQualityAssessment(projection = {}, {
+function buildPolicyEvidenceQualityAssessment(projection = {}, {
   bucketIds = {},
   authoritySourceIds = {},
 } = {}) {
@@ -129,45 +129,45 @@ function buildPolicyBuilderPhase6EvidenceQualityAssessment(projection = {}, {
   const hasStaleProfileEvidence = hasReasonEntry(insufficientEntries, 'stale_profile');
 
   const reasonIds = new Set();
-  if (!hasEvidence) reasonIds.add(PHASE6R_EVIDENCE_QUALITY_REASON_IDS.NO_EVIDENCE);
-  if (!hasIdentityEvidence) reasonIds.add(PHASE6R_EVIDENCE_QUALITY_REASON_IDS.MISSING_IDENTITY);
+  if (!hasEvidence) reasonIds.add(POLICY_EVIDENCE_QUALITY_REASON_IDS.NO_EVIDENCE);
+  if (!hasIdentityEvidence) reasonIds.add(POLICY_EVIDENCE_QUALITY_REASON_IDS.MISSING_IDENTITY);
   if (hasObservedIdentityEvidence) {
-    reasonIds.add(PHASE6R_EVIDENCE_QUALITY_REASON_IDS.OBSERVED_IDENTITY_PRESENT);
+    reasonIds.add(POLICY_EVIDENCE_QUALITY_REASON_IDS.OBSERVED_IDENTITY_PRESENT);
   }
   if (hasDeclaredIdentityEvidence) {
-    reasonIds.add(PHASE6R_EVIDENCE_QUALITY_REASON_IDS.DECLARED_IDENTITY_PRESENT);
+    reasonIds.add(POLICY_EVIDENCE_QUALITY_REASON_IDS.DECLARED_IDENTITY_PRESENT);
   }
   if (counts.compatibility > 0) {
-    reasonIds.add(PHASE6R_EVIDENCE_QUALITY_REASON_IDS.COMPATIBILITY_PRESENT);
+    reasonIds.add(POLICY_EVIDENCE_QUALITY_REASON_IDS.COMPATIBILITY_PRESENT);
   }
-  if (hasHardLimitEvidence) reasonIds.add(PHASE6R_EVIDENCE_QUALITY_REASON_IDS.HARD_LIMIT_PRESENT);
-  if (hasRoutingEvidence) reasonIds.add(PHASE6R_EVIDENCE_QUALITY_REASON_IDS.ROUTING_PRESENT);
-  if (hasReviewEvidence) reasonIds.add(PHASE6R_EVIDENCE_QUALITY_REASON_IDS.REVIEW_EVIDENCE_PRESENT);
-  if (hasStaleProfileEvidence) reasonIds.add(PHASE6R_EVIDENCE_QUALITY_REASON_IDS.STALE_PROFILE);
-  if (hasFreshnessEvidence) reasonIds.add(PHASE6R_EVIDENCE_QUALITY_REASON_IDS.FRESHNESS_PRESENT);
+  if (hasHardLimitEvidence) reasonIds.add(POLICY_EVIDENCE_QUALITY_REASON_IDS.HARD_LIMIT_PRESENT);
+  if (hasRoutingEvidence) reasonIds.add(POLICY_EVIDENCE_QUALITY_REASON_IDS.ROUTING_PRESENT);
+  if (hasReviewEvidence) reasonIds.add(POLICY_EVIDENCE_QUALITY_REASON_IDS.REVIEW_EVIDENCE_PRESENT);
+  if (hasStaleProfileEvidence) reasonIds.add(POLICY_EVIDENCE_QUALITY_REASON_IDS.STALE_PROFILE);
+  if (hasFreshnessEvidence) reasonIds.add(POLICY_EVIDENCE_QUALITY_REASON_IDS.FRESHNESS_PRESENT);
 
-  let statusId = PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.USABLE;
-  let nextActionId = PHASE6R_EVIDENCE_QUALITY_NEXT_ACTION_IDS.PROCEED_TO_INTENT;
+  let statusId = POLICY_EVIDENCE_QUALITY_STATUS_IDS.USABLE;
+  let nextActionId = POLICY_EVIDENCE_QUALITY_NEXT_ACTION_IDS.PROCEED_TO_INTENT;
 
   if (!hasEvidence) {
-    statusId = PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT;
-    nextActionId = PHASE6R_EVIDENCE_QUALITY_NEXT_ACTION_IDS.COLLECT_EVIDENCE;
+    statusId = POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT;
+    nextActionId = POLICY_EVIDENCE_QUALITY_NEXT_ACTION_IDS.COLLECT_EVIDENCE;
   } else if (!hasIdentityEvidence) {
-    statusId = PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT;
-    nextActionId = PHASE6R_EVIDENCE_QUALITY_NEXT_ACTION_IDS.CONFIRM_DESTINATION_IDENTITY;
+    statusId = POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT;
+    nextActionId = POLICY_EVIDENCE_QUALITY_NEXT_ACTION_IDS.CONFIRM_DESTINATION_IDENTITY;
   } else if (hasStaleProfileEvidence) {
-    statusId = PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.NEEDS_REVIEW;
-    nextActionId = PHASE6R_EVIDENCE_QUALITY_NEXT_ACTION_IDS.REFRESH_PROFILE;
+    statusId = POLICY_EVIDENCE_QUALITY_STATUS_IDS.NEEDS_REVIEW;
+    nextActionId = POLICY_EVIDENCE_QUALITY_NEXT_ACTION_IDS.REFRESH_PROFILE;
   } else if (hasInsufficientEvidence || hasReviewEvidence) {
-    statusId = PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.NEEDS_REVIEW;
-    nextActionId = PHASE6R_EVIDENCE_QUALITY_NEXT_ACTION_IDS.REVIEW_EVIDENCE;
+    statusId = POLICY_EVIDENCE_QUALITY_STATUS_IDS.NEEDS_REVIEW;
+    nextActionId = POLICY_EVIDENCE_QUALITY_NEXT_ACTION_IDS.REVIEW_EVIDENCE;
   } else if (hasHardLimitEvidence) {
-    statusId = PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.USABLE_WITH_CONSTRAINTS;
-    nextActionId = PHASE6R_EVIDENCE_QUALITY_NEXT_ACTION_IDS.VERIFY_CONSTRAINTS;
+    statusId = POLICY_EVIDENCE_QUALITY_STATUS_IDS.USABLE_WITH_CONSTRAINTS;
+    nextActionId = POLICY_EVIDENCE_QUALITY_NEXT_ACTION_IDS.VERIFY_CONSTRAINTS;
   }
 
   return {
-    version: PHASE6R_EVIDENCE_QUALITY_VERSION,
+    version: POLICY_EVIDENCE_QUALITY_VERSION,
     statusId,
     score: calculateScore({
       hasIdentityEvidence,
@@ -192,14 +192,14 @@ function buildPolicyBuilderPhase6EvidenceQualityAssessment(projection = {}, {
   };
 }
 
-function validatePolicyBuilderPhase6EvidenceQualityAssessment(projection = {}, options = {}) {
-  const expectedQuality = buildPolicyBuilderPhase6EvidenceQualityAssessment(projection, options);
+function validatePolicyEvidenceQualityAssessment(projection = {}, options = {}) {
+  const expectedQuality = buildPolicyEvidenceQualityAssessment(projection, options);
   const quality = asPlainObject(projection.quality);
   const issues = [];
 
   if (!quality.version) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_QUALITY_AUDIT_RISK_IDS.MISSING_QUALITY,
+      riskId: POLICY_EVIDENCE_QUALITY_AUDIT_RISK_IDS.MISSING_QUALITY,
       message: 'Evidence projection must include a generated quality assessment.',
     });
     return {
@@ -227,7 +227,7 @@ function validatePolicyBuilderPhase6EvidenceQualityAssessment(projection = {}, o
 
   if (JSON.stringify(comparableQuality) !== JSON.stringify(expectedQuality)) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_QUALITY_AUDIT_RISK_IDS.QUALITY_MISMATCH,
+      riskId: POLICY_EVIDENCE_QUALITY_AUDIT_RISK_IDS.QUALITY_MISMATCH,
       message: 'Evidence projection quality must match the generated bucket/source assessment.',
     });
   }
@@ -239,7 +239,7 @@ function validatePolicyBuilderPhase6EvidenceQualityAssessment(projection = {}, o
     .filter(label => typeof label === 'string' && label.length > 0);
   if (allEntryLabels.some(label => serializedQuality.includes(label))) {
     issues.push({
-      riskId: PHASE6R_EVIDENCE_QUALITY_AUDIT_RISK_IDS.QUALITY_EXPOSES_ENTRY_LABELS,
+      riskId: POLICY_EVIDENCE_QUALITY_AUDIT_RISK_IDS.QUALITY_EXPOSES_ENTRY_LABELS,
       message: 'Evidence quality must not expose raw evidence entry labels.',
     });
   }
@@ -252,11 +252,11 @@ function validatePolicyBuilderPhase6EvidenceQualityAssessment(projection = {}, o
 }
 
 export {
-  PHASE6R_EVIDENCE_QUALITY_AUDIT_RISK_IDS,
-  PHASE6R_EVIDENCE_QUALITY_NEXT_ACTION_IDS,
-  PHASE6R_EVIDENCE_QUALITY_REASON_IDS,
-  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
-  PHASE6R_EVIDENCE_QUALITY_VERSION,
-  buildPolicyBuilderPhase6EvidenceQualityAssessment,
-  validatePolicyBuilderPhase6EvidenceQualityAssessment,
+  POLICY_EVIDENCE_QUALITY_AUDIT_RISK_IDS,
+  POLICY_EVIDENCE_QUALITY_NEXT_ACTION_IDS,
+  POLICY_EVIDENCE_QUALITY_REASON_IDS,
+  POLICY_EVIDENCE_QUALITY_STATUS_IDS,
+  POLICY_EVIDENCE_QUALITY_VERSION,
+  buildPolicyEvidenceQualityAssessment,
+  validatePolicyEvidenceQualityAssessment,
 };

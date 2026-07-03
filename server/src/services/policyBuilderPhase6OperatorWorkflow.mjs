@@ -2,8 +2,8 @@ import {
   AUTHORITY_SOURCE_IDS,
 } from './policyAuthorityVocabulary.mjs';
 import {
-  PHASE6R_EVIDENCE_QUALITY_STATUS_IDS,
-} from './policyBuilderPhase6EvidenceQuality.mjs';
+  POLICY_EVIDENCE_QUALITY_STATUS_IDS,
+} from './policyEvidenceQuality.mjs';
 import {
   PHASE6R_INTENT_FIELD_IDS,
   buildPolicyBuilderPhase6IntentDraft,
@@ -439,7 +439,7 @@ function collectBoundedWorkflowQualityIssues({
 
   const normalizedSnapshots = qualityValues.map(quality => normalizeQualitySnapshot(quality));
   const insufficientQuality = normalizedSnapshots.find(quality =>
-    quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
+    quality.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT
   );
 
   if (insufficientQuality) {
@@ -487,7 +487,7 @@ function collectWorkflowBoundaryContextQualityIssues(boundaryContext = {}) {
 
   const insufficientQuality = qualities
     .map(quality => normalizeQualitySnapshot(quality))
-    .find(quality => quality.statusId === PHASE6R_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT);
+    .find(quality => quality.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT);
 
   if (insufficientQuality) {
     return [{
