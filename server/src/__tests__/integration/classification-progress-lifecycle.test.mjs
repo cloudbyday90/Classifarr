@@ -94,7 +94,9 @@ describe('Classification Progress Integration Tests', () => {
             expect(Array.isArray(res.body)).toBe(true);
             if (res.body.length > 0) {
                 expect(res.body[0]).toHaveProperty('taskId');
+                expect(res.body[0]).toHaveProperty('currentStage');
                 expect(res.body[0]).toHaveProperty('currentPhase');
+                expect(res.body[0]).toHaveProperty('stages');
                 expect(res.body[0]).toHaveProperty('progress');
             }
         });
@@ -115,7 +117,10 @@ describe('Classification Progress Integration Tests', () => {
 
             expect(res.status).toBe(200);
             expect(res.body.taskId).toBe(task.id);
+            expect(res.body.currentStage).toBe('classification');
             expect(res.body.currentPhase).toBe('classification');
+            expect(res.body.stageIndex).toBe(3);
+            expect(res.body.phaseIndex).toBe(3);
             expect(res.body.status).toBe('processing');
         });
 

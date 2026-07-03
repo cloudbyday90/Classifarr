@@ -73,7 +73,7 @@ describe('CommandCenter extracted panels', () => {
       props: {
         ...processingHelpers,
         aiGenerationTelemetryLine: 'gpt-model - 120 tokens - 1.2s',
-        completedPhaseCount: () => 3,
+        completedStageCount: () => 3,
         formatMediaType: value => String(value || '').toUpperCase(),
         librarySyncCurrentLibrary: '',
         librarySyncIsRunning: false,
@@ -81,11 +81,11 @@ describe('CommandCenter extracted panels', () => {
         librarySyncProcessedCount: 6634,
         librarySyncRemainingCount: 0,
         librarySyncTotalCount: 6634,
-        nextPhaseLabel: () => 'Signal Combination',
+        nextStageLabel: () => 'Signal Combination',
         primaryActiveTask: {
           id: 55,
           title: 'Spider-Verse',
-          currentPhase: 'rag_analysis',
+          currentStage: 'rag_analysis',
           media_type: 'movie',
         },
         queuePendingCount: 4,
@@ -98,7 +98,7 @@ describe('CommandCenter extracted panels', () => {
 
     expect(wrapper.text()).toContain('Classifying Now')
     expect(wrapper.text()).toContain('Spider-Verse')
-    expect(wrapper.text()).toContain('Current phase: Rag Analysis')
+    expect(wrapper.text()).toContain('Current stage: Rag Analysis')
     expect(wrapper.text()).toContain('Media: MOVIE')
     expect(wrapper.text()).toContain('Pending queue: 4')
     expect(wrapper.text()).toContain('Up next (4)')

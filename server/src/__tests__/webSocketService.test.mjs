@@ -72,7 +72,7 @@ describe('WebSocketService', () => {
       const mockHttpServer = {};
       webSocketService.initialize(mockHttpServer);
 
-      webSocketService.emitTaskProgress(123, { phase: 'analyzing', progress: 50 });
+      webSocketService.emitTaskProgress(123, { stage: 'analyzing', progress: 50 });
 
       expect(mockIo.to).toHaveBeenCalledWith('task:123');
       expect(mockIo.emit).toHaveBeenCalled();
@@ -81,9 +81,19 @@ describe('WebSocketService', () => {
     it('should not emit if not initialized', () => {
       webSocketService.io = null;
 
-      webSocketService.emitTaskProgress(123, { phase: 'analyzing' });
+      webSocketService.emitTaskProgress(123, { stage: 'analyzing' });
 
       expect(mockIo.to).not.toHaveBeenCalled();
+    });
+
+    it('should tolerate legacy phase-only progress payloads', () => {
+      const mockHttpServer = {};
+      webSocketService.initialize(mockHttpServer);
+
+      webSocketService.emitTaskProgress(123, { phase: 'analyzing', progress: 50 });
+
+      expect(mockIo.to).toHaveBeenCalledWith('task:123');
+      expect(mockIo.emit).toHaveBeenCalled();
     });
   });
 

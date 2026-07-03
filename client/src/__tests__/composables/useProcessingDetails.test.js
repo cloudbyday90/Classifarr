@@ -8,13 +8,13 @@ import { ref } from 'vue'
 import { useProcessingDetails } from '@/composables/useProcessingDetails'
 
 describe('useProcessingDetails composable', () => {
-  it('computes the processing phase rows and summaries from task state', () => {
+  it('computes the processing stage rows and summaries from task state', () => {
     const activeProcessingTasks = ref([
       {
         taskId: 42,
-        currentPhase: 'rag_analysis',
-        phaseIndex: 4,
-        phases: [
+        currentStage: 'rag_analysis',
+        stageIndex: 4,
+        stages: [
           { name: 'queued', status: 'complete', duration_ms: 500 },
           { name: 'metadata_fetch', status: 'complete', duration_ms: 1000 },
           { name: 'policy_eval', status: 'complete', duration_ms: 1500 },
@@ -25,25 +25,25 @@ describe('useProcessingDetails composable', () => {
     ])
     const isMobileViewport = ref(false)
 
-    const { completedPhaseCount, nextPhaseLabel, phaseRows } = useProcessingDetails({
+    const { completedStageCount, nextStageLabel, stageRows } = useProcessingDetails({
       activeProcessingTasks,
       isMobileViewport,
     })
 
-    const rows = phaseRows(activeProcessingTasks.value[0])
+    const rows = stageRows(activeProcessingTasks.value[0])
 
     expect(rows).toHaveLength(8)
     expect(rows[0]).toMatchObject({ name: 'queued', status: 'complete', timing: '0.5s' })
     expect(rows[3]).toMatchObject({ name: 'rag_analysis', status: 'in_progress', timing: 'running...' })
     expect(rows[4]).toMatchObject({ name: 'signal_combine', status: 'pending' })
-    expect(completedPhaseCount(activeProcessingTasks.value[0])).toBe(3)
-    expect(nextPhaseLabel(activeProcessingTasks.value[0])).toBe('Signal Combination')
+    expect(completedStageCount(activeProcessingTasks.value[0])).toBe(3)
+    expect(nextStageLabel(activeProcessingTasks.value[0])).toBe('Signal Combination')
   })
 
   it('toggles the selected processing task and clears it on close', () => {
     const activeProcessingTasks = ref([
-      { taskId: 1, title: 'Task One', currentPhase: 'queued', phases: [] },
-      { taskId: 2, title: 'Task Two', currentPhase: 'queued', phases: [] },
+      { taskId: 1, title: 'Task One', currentStage: 'queued', stages: [] },
+      { taskId: 2, title: 'Task Two', currentStage: 'queued', stages: [] },
     ])
     const isMobileViewport = ref(false)
 
@@ -67,23 +67,38 @@ describe('useProcessingDetails composable', () => {
     expect(processingDetailTask.value).toBeNull()
   })
 
-  it('derives phase statuses from phaseIndex when currentPhase is absent', () => {
+  it('derives stage statuses from stageIndex when currentStage is absent', () => {
     const activeProcessingTasks = ref([
-      { taskId: 10, phaseIndex: 4, phases: [], currentPhase: null },
+      { taskId: 10, stageIndex: 4, stages: [], currentStage: null },
     ])
     const isMobileViewport = ref(false)
 
-    const { phaseRows } = useProcessingDetails({ activeProcessingTasks, isMobileViewport })
+    const { stageRows } = useProcessingDetails({ activeProcessingTasks, isMobileViewport })
 
-    const rows = phaseRows(activeProcessingTasks.value[0])
+    const rows = stageRows(activeProcessingTasks.value[0])
 
     expect(rows[0].status).toBe('complete')
     expect(rows[2].status).toBe('complete')
     expect(rows[3].status).toBe('in_progress')
     expect(rows[4].status).toBe('pending')
 
-    const rowsFresh = phaseRows({ phaseIndex: 0, phases: [], currentPhase: null })
+    const rowsFresh = stageRows({ stageIndex: 0, stages: [], currentStage: null })
     expect(rowsFresh[0].status).toBe('in_progress')
     expect(rowsFresh[1].status).toBe('pending')
+  })
+
+  it('keeps compatibility with legacy phase-shaped task progress', () => {
+    const activeProcessingTasks = ref([
+      { taskId: 11, phaseIndex: 2, phases: [], currentPhase: 'metadata_fetch' },
+    ])
+    const isMobileViewport = ref(false)
+
+    const { stageRows } = useProcessingDetails({ activeProcessingTasks, isMobileViewport })
+
+    const rows = stageRows(activeProcessingTasks.value[0])
+
+    expect(rows[0].status).toBe('complete')
+    expect(rows[1].status).toBe('in_progress')
+    expect(rows[2].status).toBe('pending')
   })
 })

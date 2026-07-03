@@ -95,12 +95,12 @@ describe('CommandCenter action modules', () => {
         title: 'Inception',
         year: 2010,
         mediaType: 'movie',
-        currentPhase: 'queued',
-        phaseIndex: 1,
-        totalPhases: 8,
+        currentStage: 'queued',
+        stageIndex: 1,
+        totalStages: 8,
         progress: 3,
-        phaseDuration: 120,
-        phases: [
+        stageDuration: 120,
+        stages: [
           { name: 'queued', label: 'Queued', status: 'in_progress' },
           { name: 'metadata_fetch', label: 'Metadata Fetch', status: 'pending' },
         ],

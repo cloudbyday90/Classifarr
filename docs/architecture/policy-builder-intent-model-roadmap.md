@@ -6136,9 +6136,9 @@ Implementation status:
   They are owned by Phase 9R.3 contract and telemetry naming cutover.
 - Outcome record:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
-- The repository inventory validates after this batch with 15,951 total
-  phase-coded references, 7,521 production references, and 7,543 rename
-  candidates.
+- After the follow-up classification progress contract cutover, the repository
+  inventory validates with 15,892 total phase-coded references, 7,467
+  production references, and 7,489 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
@@ -6164,6 +6164,20 @@ Acceptance criteria:
   migration/backward-compatibility rules.
 - Diagnostic output describes destination evidence, intent, learning, readiness,
   migration, and storage directly.
+
+Implementation status:
+
+- The first contract cutover is complete for classification progress API and
+  WebSocket payloads. Responses/events now carry stage-first fields while
+  retaining legacy phase aliases for compatibility.
+- The server-owned alias mapper lives in
+  `server/src/services/classificationProgressStageContract.mjs`.
+- Command Center processing UI now reads stage fields first and uses
+  operator-facing stage copy.
+- Persisted task queue columns remain unchanged and are explicitly deferred to
+  a later storage compatibility decision.
+- Outcome record:
+  [Classification Progress Stage Contract Cutover](classification-progress-stage-contract-cutover.md).
 
 ### 9R.4 Naming Regression And Completion Audit
 

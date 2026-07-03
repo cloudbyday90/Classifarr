@@ -13,6 +13,7 @@ import {
     getStageCount as _getStageCount,
 } from './classificationProgressStageUtils.mjs';
 import { getProgress as _getProgress, getActiveClassifications as _getActiveClassifications, resumeFromStage as _resumeFromStage } from './classificationProgressStageQueries.mjs';
+import { buildStageProgressEvent } from './classificationProgressStageContract.mjs';
 
 const logger = createLogger('classificationProgressStageService');
 
@@ -99,7 +100,16 @@ export class ClassificationProgressStageService {
                 method: payload?.method
             });
 
-            return { taskId, phase: stage, phaseIndex: stageIndex, history };
+            return {
+                taskId,
+                stage,
+                stageIndex,
+                totalStages: STAGES.length,
+                phase: stage,
+                phaseIndex: stageIndex,
+                totalPhases: STAGES.length,
+                history
+            };
         } catch (error) {
             logger.error('Failed to update classification progress stage', { taskId, stage, error: error.message });
             throw error;
@@ -162,15 +172,15 @@ export class ClassificationProgressStageService {
             );
 
             if (this.webSocketService) {
-                this.webSocketService.emitTaskProgress(taskId, {
+                this.webSocketService.emitTaskProgress(taskId, buildStageProgressEvent({
                     taskId,
-                    phase: 'completed',
-                    phaseIndex: STAGES.length,
-                    totalPhases: STAGES.length,
+                    stage: 'completed',
+                    stageIndex: STAGES.length,
+                    totalStages: STAGES.length,
                     progress: 100,
                     completed: true,
                     result: finalResult
-                });
+                }));
             }
 
             logger.info('Classification progress stage tracking completed', { taskId, totalStages: history.length });
@@ -191,11 +201,11 @@ export class ClassificationProgressStageService {
 
         const stageInfo = STAGE_METADATA[stage] || { icon: '⏳', label: stage };
 
-        this.webSocketService.emitTaskProgress(taskId, {
+        this.webSocketService.emitTaskProgress(taskId, buildStageProgressEvent({
             taskId,
-            phase: stage,
-            phaseIndex: stageIndex,
-            totalPhases: STAGES.length,
+            stage,
+            stageIndex,
+            totalStages: STAGES.length,
             progress: Math.round((stageIndex / STAGES.length) * 100),
             startedAt: new Date().toISOString(),
             icon: stageInfo.icon,
@@ -203,7 +213,7 @@ export class ClassificationProgressStageService {
             description: stageInfo.description,
             title: metadata.title,
             ...metadata
-        });
+        }));
     }
 
     buildStageList(task) {

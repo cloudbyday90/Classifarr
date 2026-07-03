@@ -171,7 +171,11 @@ labels, except where an allow-listed migration or history reason is documented.
 - The first Phase 9R.2 module cutover renamed classification progress
   production modules from phase terminology to stage terminology:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
-- After that cutover, the production naming inventory validates with 15,951
-  total phase-coded references, 7,521 production references, and 7,543 rename
-  candidates. Persisted/API classification progress fields remain deferred to
-  Phase 9R.3 contract naming work.
+- The first Phase 9R.3 contract cutover added stage-first classification
+  progress API/WebSocket fields while preserving legacy phase aliases:
+  [Classification Progress Stage Contract Cutover](classification-progress-stage-contract-cutover.md).
+- After the classification progress naming and contract cutovers, the
+  production naming inventory validates with 15,892 total phase-coded
+  references, 7,467 production references, and 7,489 rename candidates.
+  Persisted classification progress storage columns remain deferred to a later
+  storage compatibility decision.

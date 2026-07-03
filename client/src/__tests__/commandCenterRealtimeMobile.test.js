@@ -118,12 +118,12 @@ describe('CommandCenter realtime and mobile behavior', () => {
         title: 'Inception',
         year: 2010,
         mediaType: 'movie',
-        currentPhase: 'ai_analysis',
-        phaseIndex: 6,
-        totalPhases: 8,
+        currentStage: 'ai_analysis',
+        stageIndex: 6,
+        totalStages: 8,
         progress: 67,
-        phaseDuration: 3200,
-        phases: [{ name: 'ai_analysis', label: 'AI Analysis', status: 'in_progress' }],
+        stageDuration: 3200,
+        stages: [{ name: 'ai_analysis', label: 'AI Analysis', status: 'in_progress' }],
       },
     ])
     apiMock.getQueuePending.mockResolvedValue([])

@@ -90,12 +90,12 @@ Cons:
 
 The service, utility, query module, imports, and focused tests now use
 classification progress stage naming. Runtime behavior and public response
-shape remain unchanged. The production naming inventory validates and now
-reports:
+shape remain unchanged. After the follow-up contract cutover, the production
+naming inventory validates and reports:
 
-- total phase-coded references: 15,951,
-- production references: 7,521,
-- rename candidates: 7,543,
-- docs/history references: 3,229,
-- test or migration evidence references: 5,086,
+- total phase-coded references: 15,892,
+- production references: 7,467,
+- rename candidates: 7,489,
+- docs/history references: 3,260,
+- test or migration evidence references: 5,050,
 - obsolete migration tooling references: 93.

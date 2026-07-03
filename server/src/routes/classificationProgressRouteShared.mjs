@@ -36,8 +36,11 @@ export function createClassificationProgressRouter({
    *                     type: integer
    *                   title:
    *                     type: string
+   *                   currentStage:
+   *                     type: string
    *                   currentPhase:
    *                     type: string
+   *                     deprecated: true
    *                   progress:
    *                     type: integer
    */

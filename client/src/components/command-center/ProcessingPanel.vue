@@ -32,11 +32,11 @@
           />
         </div>
 
-        <div class="processing-phase-info">
-          <span class="processing-phase-current">Plex inventory import</span>
+        <div class="processing-stage-info">
+          <span class="processing-stage-current">Plex inventory import</span>
           <span
             v-if="librarySyncCurrentLibrary"
-            class="processing-phase-step"
+            class="processing-stage-step"
           >Current library: {{ librarySyncCurrentLibrary }}</span>
           <span>{{ formatNumber(librarySyncRemainingCount) }} waiting to sync</span>
         </div>
@@ -68,10 +68,10 @@
           />
         </div>
 
-        <div class="processing-phase-info">
-          <span class="processing-phase-current">Current phase: {{ phaseLabelText(primaryActiveTask.currentPhase) }}</span>
+        <div class="processing-stage-info">
+          <span class="processing-stage-current">Current stage: {{ stageLabelText(taskCurrentStage(primaryActiveTask)) }}</span>
           <span v-if="activeTaskMediaType(primaryActiveTask)">Media: {{ activeTaskMediaType(primaryActiveTask) }}</span>
-          <span>Next phase: {{ activeTaskNextPhaseLabel(primaryActiveTask) }}</span>
+          <span>Next stage: {{ activeTaskNextStageLabel(primaryActiveTask) }}</span>
         </div>
 
         <div class="processing-queue-stats">
@@ -166,7 +166,7 @@
 <script setup>
 const props = defineProps({
   aiGenerationTelemetryLine: { type: String, default: '' },
-  completedPhaseCount: { type: Function, default: null },
+  completedStageCount: { type: Function, default: null },
   formatMediaType: { type: Function, default: null },
   formatNumber: { type: Function, required: true },
   librarySyncCurrentLibrary: { type: String, default: '' },
@@ -175,7 +175,7 @@ const props = defineProps({
   librarySyncProcessedCount: { type: Number, default: 0 },
   librarySyncRemainingCount: { type: Number, default: 0 },
   librarySyncTotalCount: { type: Number, default: 0 },
-  nextPhaseLabel: { type: Function, default: null },
+  nextStageLabel: { type: Function, default: null },
   primaryActiveTask: { type: Object, default: null },
   queuePendingCount: { type: Number, default: 0 },
   safePercent: { type: Function, required: true },
@@ -185,7 +185,7 @@ const props = defineProps({
   upNextTasks: { type: Array, default: () => [] },
 })
 
-const TOTAL_CLASSIFICATION_PHASES = 8
+const TOTAL_CLASSIFICATION_STAGES = 8
 
 function toSafePercent(value) {
   const n = Number(value)
@@ -195,11 +195,15 @@ function toSafePercent(value) {
   return Math.round(n)
 }
 
-function phaseLabelText(value) {
+function stageLabelText(value) {
   if (!value) return 'Queued'
   return String(value)
     .replaceAll('_', ' ')
     .replace(/\b\w/g, char => char.toUpperCase())
+}
+
+function taskCurrentStage(task) {
+  return task?.currentStage || task?.currentPhase || null
 }
 
 function activeTaskPercent(task) {
@@ -207,10 +211,10 @@ function activeTaskPercent(task) {
     return toSafePercent(task.progress)
   }
 
-  if (props.completedPhaseCount) {
-    const completed = Number(props.completedPhaseCount(task))
-    const percent = TOTAL_CLASSIFICATION_PHASES > 0
-      ? (Math.max(0, completed) / TOTAL_CLASSIFICATION_PHASES) * 100
+  if (props.completedStageCount) {
+    const completed = Number(props.completedStageCount(task))
+    const percent = TOTAL_CLASSIFICATION_STAGES > 0
+      ? (Math.max(0, completed) / TOTAL_CLASSIFICATION_STAGES) * 100
       : 0
     return toSafePercent(percent)
   }
@@ -242,9 +246,9 @@ function activeTaskMediaType(task) {
   return ''
 }
 
-function activeTaskNextPhaseLabel(task) {
-  if (props.nextPhaseLabel) {
-    const label = props.nextPhaseLabel(task)
+function activeTaskNextStageLabel(task) {
+  if (props.nextStageLabel) {
+    const label = props.nextStageLabel(task)
     if (label) return label
   }
   return 'Queued'
@@ -340,7 +344,7 @@ function queueTaskTitle(task) {
   transition: width 0.3s ease;
 }
 
-.processing-phase-info {
+.processing-stage-info {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem 1rem;
@@ -348,7 +352,7 @@ function queueTaskTitle(task) {
   color: #9ca3af;
 }
 
-.processing-phase-current {
+.processing-stage-current {
   color: #60a5fa;
   font-weight: 500;
 }

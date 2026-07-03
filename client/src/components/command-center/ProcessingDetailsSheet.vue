@@ -53,11 +53,11 @@
             >({{ task.year }})</span>
           </p>
           <p class="mobile-sheet-item-meta">
-            Phase: {{ phaseLabel(task.currentPhase) }} • Step {{ task.phaseIndex || 1 }}/{{ task.totalPhases || 8 }}
+            Stage: {{ stageLabel(taskCurrentStage(task)) }} • Step {{ taskStageIndex(task) }}/{{ taskTotalStages(task) }}
           </p>
           <div class="mobile-sheet-stepper">
             <div
-              v-for="row in phaseRows(task)"
+              v-for="row in stageRows(task)"
               :key="`mobile-${row.name}`"
               class="mobile-stepper-item"
             >
@@ -89,11 +89,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  phaseLabel: {
+  stageLabel: {
     type: Function,
     required: true,
   },
-  phaseRows: {
+  stageRows: {
     type: Function,
     required: true,
   },
@@ -106,6 +106,18 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const closeButtonRef = ref(null)
+
+function taskCurrentStage(task) {
+  return task?.currentStage || task?.currentPhase || null
+}
+
+function taskStageIndex(task) {
+  return task?.stageIndex || task?.phaseIndex || 1
+}
+
+function taskTotalStages(task) {
+  return task?.totalStages || task?.totalPhases || 8
+}
 
 function handleSheetKeydown(event) {
   if (event.key === 'Escape') {

@@ -5,7 +5,7 @@
 
 import { computed, nextTick, ref, watch } from 'vue'
 
-const phaseLabels = Object.freeze({
+const stageLabels = Object.freeze({
   queued: 'Queued',
   metadata_fetch: 'Metadata Fetch',
   policy_eval: 'Policy Evaluation',
@@ -16,7 +16,7 @@ const phaseLabels = Object.freeze({
   notification: 'Notification',
 })
 
-const lockedPhaseOrder = Object.freeze([
+const lockedStageOrder = Object.freeze([
   'queued',
   'metadata_fetch',
   'policy_eval',
@@ -27,8 +27,8 @@ const lockedPhaseOrder = Object.freeze([
   'notification',
 ])
 
-function phaseLabel(phaseId) {
-  return phaseLabels[phaseId] || phaseId || 'Unknown'
+function stageLabel(stageId) {
+  return stageLabels[stageId] || stageId || 'Unknown'
 }
 
 function formatDurationMs(value) {
@@ -36,25 +36,39 @@ function formatDurationMs(value) {
   return Number.isFinite(n) && n > 0 ? `${(n / 1000).toFixed(1)}s` : '0.0s'
 }
 
-function phaseRows(task) {
-  const phases = Array.isArray(task?.phases) ? task.phases : []
-  const phaseByName = new Map(phases.map((phase) => [phase.name, phase]))
-  const currentPhase = task?.currentPhase || null
-  const currentPhaseIndex = lockedPhaseOrder.indexOf(currentPhase)
-  const phaseIndex = Number(task?.phaseIndex || 0)
+function taskStages(task) {
+  return Array.isArray(task?.stages)
+    ? task.stages
+    : (Array.isArray(task?.phases) ? task.phases : [])
+}
 
-  return lockedPhaseOrder.map((phaseName, index) => {
-    const source = phaseByName.get(phaseName) || {}
+function taskCurrentStage(task) {
+  return task?.currentStage || task?.currentPhase || null
+}
+
+function taskStageIndex(task) {
+  return Number(task?.stageIndex || task?.phaseIndex || 0)
+}
+
+function stageRows(task) {
+  const stages = taskStages(task)
+  const stageByName = new Map(stages.map((stage) => [stage.name, stage]))
+  const currentStage = taskCurrentStage(task)
+  const currentStageIndex = lockedStageOrder.indexOf(currentStage)
+  const stageIndex = taskStageIndex(task)
+
+  return lockedStageOrder.map((stageName, index) => {
+    const source = stageByName.get(stageName) || {}
     let status = source.status
 
     if (!status) {
-      if (currentPhaseIndex >= 0) {
-        if (index < currentPhaseIndex) status = 'complete'
-        else if (index === currentPhaseIndex) status = 'in_progress'
+      if (currentStageIndex >= 0) {
+        if (index < currentStageIndex) status = 'complete'
+        else if (index === currentStageIndex) status = 'in_progress'
         else status = 'pending'
-      } else if (phaseIndex > 0) {
-        if (index < phaseIndex - 1) status = 'complete'
-        else if (index === phaseIndex - 1) status = 'in_progress'
+      } else if (stageIndex > 0) {
+        if (index < stageIndex - 1) status = 'complete'
+        else if (index === stageIndex - 1) status = 'in_progress'
         else status = 'pending'
       } else {
         status = index === 0 ? 'in_progress' : 'pending'
@@ -68,21 +82,21 @@ function phaseRows(task) {
         : (status === 'skipped' ? 'skipped' : ''))
 
     return {
-      name: phaseName,
-      label: source.label || phaseLabel(phaseName),
+      name: stageName,
+      label: source.label || stageLabel(stageName),
       status,
       timing,
     }
   })
 }
 
-function completedPhaseCount(task) {
-  return (Array.isArray(task?.phases) ? task.phases : []).filter((phase) => phase.status === 'complete').length
+function completedStageCount(task) {
+  return taskStages(task).filter((stage) => stage.status === 'complete').length
 }
 
-function nextPhaseLabel(task) {
-  const next = (Array.isArray(task?.phases) ? task.phases : []).find((phase) => phase.status === 'pending')
-  return next ? (next.label || phaseLabel(next.name)) : 'Complete'
+function nextStageLabel(task) {
+  const next = taskStages(task).find((stage) => stage.status === 'pending')
+  return next ? (next.label || stageLabel(next.name)) : 'Complete'
 }
 
 export function useProcessingDetails({ activeProcessingTasks, isMobileViewport }) {
@@ -123,12 +137,12 @@ export function useProcessingDetails({ activeProcessingTasks, isMobileViewport }
 
   return {
     closeProcessingDetails,
-    completedPhaseCount,
+    completedStageCount,
     expandedProcessingTaskId,
-    nextPhaseLabel,
+    nextStageLabel,
     openProcessingDetails,
-    phaseLabel,
-    phaseRows,
+    stageLabel,
+    stageRows,
     processingDetailTask,
     processingDetailTriggerRef,
     showProcessingBottomSheet,

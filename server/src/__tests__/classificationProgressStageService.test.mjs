@@ -35,7 +35,7 @@ describe('classificationProgressStageService', () => {
     });
 
     describe('updateStage', () => {
-        it('should update phase and emit progress event for a task', async () => {
+        it('should update stage and emit progress event for a task with legacy aliases', async () => {
             mockQuery.mockResolvedValueOnce({
                 rows: [{
                     current_phase: 'queued',
@@ -51,6 +51,9 @@ describe('classificationProgressStageService', () => {
             expect(mockQuery).toHaveBeenCalledTimes(2);
             expect(result).toMatchObject({
                 taskId: 1,
+                stage: 'metadata_fetch',
+                stageIndex: 2,
+                totalStages: 8,
                 phase: 'metadata_fetch',
                 phaseIndex: 2
             });
@@ -58,6 +61,9 @@ describe('classificationProgressStageService', () => {
                 1,
                 expect.objectContaining({
                     taskId: 1,
+                    stage: 'metadata_fetch',
+                    stageIndex: 2,
+                    totalStages: 8,
                     phase: 'metadata_fetch',
                     phaseIndex: 2,
                     totalPhases: 8
@@ -65,7 +71,7 @@ describe('classificationProgressStageService', () => {
             );
         });
 
-        it('should return null for invalid phase', async () => {
+        it('should return null for invalid stage', async () => {
             const result = await classificationProgressStageService.updateStage(1, 'invalid_phase');
             expect(result).toBeNull();
         });
@@ -78,7 +84,7 @@ describe('classificationProgressStageService', () => {
             expect(result).toBeNull();
         });
 
-        it('should persist skipped phases when transition metadata includes skippedPhases', async () => {
+        it('should persist skipped stages when transition metadata includes skippedPhases', async () => {
             mockQuery.mockResolvedValueOnce({
                 rows: [{
                     current_phase: 'rag_analysis',
@@ -100,6 +106,9 @@ describe('classificationProgressStageService', () => {
 
             expect(result).toMatchObject({
                 taskId: 1,
+                stage: 'ai_analysis',
+                stageIndex: 6,
+                totalStages: 8,
                 phase: 'ai_analysis',
                 phaseIndex: 6
             });
@@ -153,6 +162,9 @@ describe('classificationProgressStageService', () => {
             expect(result).toMatchObject({
                 taskId: 1,
                 title: 'Test Movie',
+                currentStage: 'rag_analysis',
+                stageIndex: 4,
+                totalStages: 8,
                 currentPhase: 'rag_analysis',
                 phaseIndex: 4,
                 totalPhases: 8
@@ -183,8 +195,18 @@ describe('classificationProgressStageService', () => {
             const result = await classificationProgressStageService.getActiveClassifications();
 
             expect(result).toHaveLength(2);
-            expect(result[0]).toMatchObject({ taskId: 1, title: 'Test Movie 1', currentPhase: 'metadata_fetch' });
-            expect(result[1]).toMatchObject({ taskId: 2, title: 'Test Movie 2', currentPhase: 'rag_analysis' });
+            expect(result[0]).toMatchObject({
+                taskId: 1,
+                title: 'Test Movie 1',
+                currentStage: 'metadata_fetch',
+                currentPhase: 'metadata_fetch'
+            });
+            expect(result[1]).toMatchObject({
+                taskId: 2,
+                title: 'Test Movie 2',
+                currentStage: 'rag_analysis',
+                currentPhase: 'rag_analysis'
+            });
         });
 
         it('should return empty array when no active classifications', async () => {
@@ -218,13 +240,16 @@ describe('classificationProgressStageService', () => {
                 taskId: 42,
                 title: 'From Media Payload',
                 year: 2025,
-                mediaType: 'tv'
+                mediaType: 'tv',
+                currentStage: 'ai_analysis',
+                stageMetadata: expect.objectContaining({ label: 'AI Analysis' }),
+                phaseMetadata: expect.objectContaining({ label: 'AI Analysis' })
             });
         });
     });
 
     describe('completeTracking', () => {
-        it('should complete phase tracking and clear current phase', async () => {
+        it('should complete stage tracking and clear current progress stage', async () => {
             mockQuery.mockResolvedValueOnce({
                 rows: [{ current_phase: 'notification', phase_started_at: new Date().toISOString(), phase_history: [] }]
             });
@@ -241,7 +266,12 @@ describe('classificationProgressStageService', () => {
                 1,
                 expect.objectContaining({
                     taskId: 1,
+                    stage: 'completed',
+                    stageIndex: 8,
+                    totalStages: 8,
                     phase: 'completed',
+                    phaseIndex: 8,
+                    totalPhases: 8,
                     progress: 100,
                     completed: true
                 })
@@ -258,7 +288,7 @@ describe('classificationProgressStageService', () => {
     });
 
     describe('resumeFromStage', () => {
-        it('should return the phase to resume from', async () => {
+        it('should return the stage to resume from', async () => {
             mockQuery.mockResolvedValueOnce({
                 rows: [{ current_phase: 'rag_analysis', phase_index: 4 }]
             });
@@ -278,7 +308,7 @@ describe('classificationProgressStageService', () => {
     });
 
     describe('getStageMetadata', () => {
-        it('should return phase metadata for all phases', () => {
+        it('should return stage metadata for all stages', () => {
             const metadata = classificationProgressStageService.getStageMetadata();
 
             expect(metadata).toHaveLength(8);
@@ -288,15 +318,15 @@ describe('classificationProgressStageService', () => {
     });
 
     describe('isValidStage', () => {
-        it('should return true for valid phases', () => {
-            const validPhases = ['queued', 'metadata_fetch', 'policy_eval', 'rag_analysis', 'signal_combine', 'ai_analysis', 'decision', 'notification'];
+        it('should return true for valid stages', () => {
+            const validStages = ['queued', 'metadata_fetch', 'policy_eval', 'rag_analysis', 'signal_combine', 'ai_analysis', 'decision', 'notification'];
 
-            validPhases.forEach(phase => {
-                expect(classificationProgressStageService.isValidStage(phase)).toBe(true);
+            validStages.forEach(stage => {
+                expect(classificationProgressStageService.isValidStage(stage)).toBe(true);
             });
         });
 
-        it('should return false for invalid phases', () => {
+        it('should return false for invalid stages', () => {
             expect(classificationProgressStageService.isValidStage('invalid_phase')).toBe(false);
             expect(classificationProgressStageService.isValidStage('policy_evaluation')).toBe(false);
             expect(classificationProgressStageService.isValidStage('signal_combination')).toBe(false);
@@ -304,7 +334,7 @@ describe('classificationProgressStageService', () => {
     });
 
     describe('buildStageList', () => {
-        it('should build phase list with correct statuses', () => {
+        it('should build stage list with correct statuses', () => {
             const mockTask = {
                 current_phase: 'rag_analysis',
                 phase_started_at: new Date().toISOString(),
@@ -315,20 +345,20 @@ describe('classificationProgressStageService', () => {
                 ]
             };
 
-            const phases = classificationProgressStageService.buildStageList(mockTask);
+            const stages = classificationProgressStageService.buildStageList(mockTask);
 
-            expect(phases).toHaveLength(8);
-            expect(phases[0].status).toBe('complete');
-            expect(phases[1].status).toBe('complete');
-            expect(phases[2].status).toBe('complete');
-            expect(phases[3].status).toBe('in_progress');
-            expect(phases[4].status).toBe('pending');
-            expect(phases[5].status).toBe('pending');
-            expect(phases[6].status).toBe('pending');
-            expect(phases[7].status).toBe('pending');
+            expect(stages).toHaveLength(8);
+            expect(stages[0].status).toBe('complete');
+            expect(stages[1].status).toBe('complete');
+            expect(stages[2].status).toBe('complete');
+            expect(stages[3].status).toBe('in_progress');
+            expect(stages[4].status).toBe('pending');
+            expect(stages[5].status).toBe('pending');
+            expect(stages[6].status).toBe('pending');
+            expect(stages[7].status).toBe('pending');
         });
 
-        it('should preserve skipped phase state from history', () => {
+        it('should preserve skipped stage state from history', () => {
             const mockTask = {
                 current_phase: 'decision',
                 phase_started_at: new Date().toISOString(),
@@ -342,15 +372,15 @@ describe('classificationProgressStageService', () => {
                 ]
             };
 
-            const phases = classificationProgressStageService.buildStageList(mockTask);
+            const stages = classificationProgressStageService.buildStageList(mockTask);
 
-            expect(phases[4].status).toBe('skipped');
-            expect(phases[6].status).toBe('in_progress');
+            expect(stages[4].status).toBe('skipped');
+            expect(stages[6].status).toBe('in_progress');
         });
     });
 
     describe('getStageCount', () => {
-        it('should return 8 phases', () => {
+        it('should return 8 stages', () => {
             expect(classificationProgressStageService.getStageCount()).toBe(8);
         });
     });

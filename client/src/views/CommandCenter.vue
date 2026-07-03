@@ -130,7 +130,7 @@
           <ProcessingPanel
             :ai-generation-telemetry-line="aiGenerationTelemetryLine"
             :ai-online="aiOnline"
-            :completed-phase-count="completedPhaseCount"
+            :completed-stage-count="completedStageCount"
             :format-duration-ms="formatDurationMs"
             :format-media-type="formatMediaType"
             :format-number="formatNumber"
@@ -145,9 +145,9 @@
             :library-sync-processed-count="librarySyncProcessedCount"
             :library-sync-remaining-count="librarySyncRemainingCount"
             :library-sync-total-count="librarySyncTotalCount"
-            :next-phase-label="nextPhaseLabel"
-            :phase-label="phaseLabel"
-            :phase-rows="phaseRows"
+            :next-stage-label="nextStageLabel"
+            :stage-label="stageLabel"
+            :stage-rows="stageRows"
             :primary-active-task="primaryActiveTask"
             :queue-pending-count="queuePendingCount"
             :safe-percent="safePercent"
@@ -198,8 +198,8 @@
         <ProcessingDetailsSheet
           :open="showProcessingBottomSheet"
           :task="processingDetailTask"
-          :phase-label="phaseLabel"
-          :phase-rows="phaseRows"
+          :stage-label="stageLabel"
+          :stage-rows="stageRows"
           @close="closeProcessingDetails"
         />
 
@@ -370,11 +370,11 @@ const {
 
 const {
   closeProcessingDetails,
-  completedPhaseCount,
-  nextPhaseLabel,
+  completedStageCount,
+  nextStageLabel,
   openProcessingDetails,
-  phaseLabel,
-  phaseRows,
+  stageLabel,
+  stageRows,
   processingDetailTask,
   showProcessingBottomSheet,
 } = useProcessingDetails({

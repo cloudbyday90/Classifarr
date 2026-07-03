@@ -7,27 +7,35 @@ import {
     extractDisplayInfo,
     buildStageList
 } from './classificationProgressStageUtils.mjs';
+import { buildStageProgressFields } from './classificationProgressStageContract.mjs';
 
 const logger = createLogger('classificationProgressStageService');
 
-function buildProgressEntry(task) {
+function buildProgressEntry(task, options = {}) {
     const payload = parsePayload(task.payload);
     const displayInfo = extractDisplayInfo(payload);
+    const stageIndex = task.phase_index || 0;
+    const stageStartedAt = task.phase_started_at;
+    const stageDuration = stageStartedAt
+        ? Date.now() - new Date(stageStartedAt).getTime()
+        : 0;
+    const stages = buildStageList(task);
 
     return {
         taskId: task.id,
         title: displayInfo.title,
         year: displayInfo.year,
         mediaType: displayInfo.mediaType,
-        currentPhase: task.current_phase,
-        phaseIndex: task.phase_index || 0,
-        totalPhases: STAGES.length,
-        progress: task.phase_index ? Math.round((task.phase_index / STAGES.length) * 100) : 0,
-        phaseStartedAt: task.phase_started_at,
-        phaseDuration: task.phase_started_at
-            ? Date.now() - new Date(task.phase_started_at).getTime()
-            : 0,
-        phases: buildStageList(task),
+        ...buildStageProgressFields({
+            currentStage: task.current_phase,
+            stageIndex,
+            totalStages: STAGES.length,
+            stageStartedAt,
+            stageDuration,
+            stages,
+            stageMetadata: options.stageMetadata || null,
+        }),
+        progress: stageIndex ? Math.round((stageIndex / STAGES.length) * 100) : 0,
     };
 }
 
@@ -66,9 +74,10 @@ export async function getActiveClassifications() {
         );
 
         return result.rows.map(task => ({
-            ...buildProgressEntry(task),
+            ...buildProgressEntry(task, {
+                stageMetadata: STAGE_METADATA[task.current_phase] || null,
+            }),
             createdAt: task.created_at,
-            phaseMetadata: STAGE_METADATA[task.current_phase] || null,
         }));
     } catch (error) {
         logger.error('Failed to get active classifications', { error: error.message });

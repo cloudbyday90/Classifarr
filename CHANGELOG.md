@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Classification Progress Stage Contract Cutover** — added stage-first
+  classification progress API/WebSocket fields, centralized legacy phase alias
+  mapping, and moved Command Center processing UI copy/readers to stage
+  terminology while retaining compatibility with existing phase-shaped
+  payloads.
 - **Classification Progress Stage Naming Cutover** — renamed the classification
   progress phase service, utility, query module, imports, and focused tests to
   durable stage terminology while preserving persisted/API phase-shaped fields

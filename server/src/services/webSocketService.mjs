@@ -96,7 +96,7 @@ export class WebSocketService {
         this.io.to(`task:${taskId}`).emit('classification:progress', data);
         this.io.to('activity').emit('classification:progress', data);
 
-        this._log.debug('Emitted task progress', { taskId, phase: data.phase });
+        this._log.debug('Emitted task progress', { taskId, stage: data.stage || data.phase });
     }
 
     emitClassificationComplete(taskId, result) {
