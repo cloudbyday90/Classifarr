@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Rebuild Metrics Source Fingerprints** — hardened
+  runtime metrics traces so rebuild proposal records carry a derived sanitized
+  guarded-outcome fingerprint-set digest, while validation rejects malformed or
+  mismatched trace fingerprint handoffs.
 - **Policy Builder Phase 7R Migration Verifier Validation Freshness** —
   hardened migration verifier reports so embedded rebuild proposal validation
   is recomputed, stale validation proof is rejected, and sample-set provenance

@@ -211,6 +211,21 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
           },
         },
       ],
+      rebuildProposals: [
+        {
+          statusId: PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW,
+          evidenceSourceSummary: {
+            guardedOutcomes: {
+              fingerprintCount: 1,
+              missingFingerprintCount: 0,
+              requestProofCount: 1,
+              missingRequestProofCount: 0,
+              invalidRequestProofCount: 0,
+              fingerprints: ['e'.repeat(64)],
+            },
+          },
+        },
+      ],
       migrationVerifierReports: [
         {
           statusId: PHASE7R_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES,
@@ -223,12 +238,33 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
       ],
     });
 
+    expect(metrics.traces.map(trace => trace.sourceFingerprint?.attributeId))
+      .toEqual([
+        'classifarr.runtime.decision.evidence_projection_fingerprint',
+        'classifarr.runtime.question.decision_evidence_projection_fingerprint',
+        'classifarr.runtime.request_learning.upstream_evidence_fingerprint',
+        'classifarr.policy.rebuild.guarded_outcome_fingerprint_set',
+        'classifarr.policy.migration_verifier.sample_set_fingerprint',
+      ]);
     expect(metrics.traces.map(trace => trace.sourceFingerprint?.fingerprint))
-      .toEqual(['a'.repeat(64), 'b'.repeat(64), 'c'.repeat(64), 'd'.repeat(64)]);
+      .toEqual([
+        'a'.repeat(64),
+        'b'.repeat(64),
+        'c'.repeat(64),
+        expect.stringMatching(/^[a-f0-9]{64}$/u),
+        'd'.repeat(64),
+      ]);
+    expect(metrics.traces[3].sourceFingerprint.fingerprint).not.toBe('e'.repeat(64));
     expect(metrics.traces[0].attributes).toEqual(expect.objectContaining({
       'classifarr.phase7r.trace.source_fingerprint': 'a'.repeat(64),
       'classifarr.phase7r.trace.source_fingerprint_attribute':
         'classifarr.runtime.decision.evidence_projection_fingerprint',
+    }));
+    expect(metrics.traces[3].attributes).toEqual(expect.objectContaining({
+      'classifarr.phase7r.trace.source_fingerprint':
+        metrics.traces[3].sourceFingerprint.fingerprint,
+      'classifarr.phase7r.trace.source_fingerprint_attribute':
+        'classifarr.policy.rebuild.guarded_outcome_fingerprint_set',
     }));
     expect(JSON.stringify(metrics.traces)).not.toContain('Mulan');
     expect(validatePolicyBuilderPhase7RuntimeMetricsTrace(metrics).ok).toBe(true);
@@ -358,6 +394,40 @@ describe('policyBuilderPhase7RuntimeMetricsTrace', () => {
         }),
       ]));
     expect(validatePolicyBuilderPhase7RuntimeMetricsTrace(mismatched).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: PHASE7R_METRIC_AUDIT_RISK_IDS.TRACE_SOURCE_FINGERPRINT_MISMATCH,
+        }),
+      ]));
+  });
+
+  test('rejects drifted rebuild proposal source fingerprint traces', () => {
+    const metrics = buildPolicyBuilderPhase7RuntimeMetricsTrace({
+      rebuildProposals: [
+        {
+          statusId: PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW,
+          evidenceSourceSummary: {
+            guardedOutcomes: {
+              fingerprintCount: 1,
+              missingFingerprintCount: 0,
+              requestProofCount: 1,
+              missingRequestProofCount: 0,
+              invalidRequestProofCount: 0,
+              fingerprints: ['e'.repeat(64)],
+            },
+          },
+        },
+      ],
+    });
+
+    expect(metrics.traces[0].sourceFingerprint).toEqual(expect.objectContaining({
+      attributeId: 'classifarr.policy.rebuild.guarded_outcome_fingerprint_set',
+      fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/u),
+    }));
+
+    metrics.traces[0].attributes['classifarr.phase7r.trace.source_fingerprint'] = 'f'.repeat(64);
+
+    expect(validatePolicyBuilderPhase7RuntimeMetricsTrace(metrics).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           riskId: PHASE7R_METRIC_AUDIT_RISK_IDS.TRACE_SOURCE_FINGERPRINT_MISMATCH,

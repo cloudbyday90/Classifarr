@@ -4068,8 +4068,10 @@ Implementation status:
   limit.
 - Trace records now carry supported upstream SHA-256 source fingerprints from
   automation decisions, question reductions, request-time learning decisions,
-  and migration verifier reports, with validation rejecting malformed or
-  mismatched trace fingerprint attributes.
+  rebuild proposals, and migration verifier reports. Rebuild proposal traces use
+  a derived guarded-outcome fingerprint-set digest so metrics can correlate to
+  rebuild evidence without copying labels, item titles, or raw evidence.
+- Validation rejects malformed or mismatched trace fingerprint attributes.
 - Raw provider payloads, raw replay/impact payloads, prompts, embeddings,
   provider payloads, and diagnostic internals are suppressed from trace output.
 - Operator summaries are limited to action-oriented next steps such as configure

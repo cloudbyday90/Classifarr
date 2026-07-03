@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import {
   PHASE7R_AUTOMATION_DECISION_STATE_IDS,
 } from './policyBuilderPhase7AutomationDecisionContract.mjs';
@@ -77,6 +79,10 @@ const MAX_TRACE_REASONS = 12;
 const SOURCE_FINGERPRINT_TRACE_ATTRIBUTE = 'classifarr.phase7r.trace.source_fingerprint';
 const SOURCE_FINGERPRINT_ATTRIBUTE_TRACE_ATTRIBUTE =
   'classifarr.phase7r.trace.source_fingerprint_attribute';
+const REBUILD_GUARDED_OUTCOME_FINGERPRINT_SET_ATTRIBUTE =
+  'classifarr.policy.rebuild.guarded_outcome_fingerprint_set';
+const REBUILD_GUARDED_OUTCOME_FINGERPRINT_SET_VERSION =
+  'phase7r.rebuild_guarded_outcome_fingerprint_set.v1';
 const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
 const COUNTER_IDS = Object.freeze(Object.values(PHASE7R_METRIC_COUNTER_IDS));
 const COMPONENT_IDS = Object.freeze(Object.values(PHASE7R_METRIC_COMPONENT_IDS));
@@ -84,6 +90,7 @@ const SOURCE_FINGERPRINT_ATTRIBUTE_IDS = Object.freeze([
   'classifarr.runtime.decision.evidence_projection_fingerprint',
   'classifarr.runtime.question.decision_evidence_projection_fingerprint',
   'classifarr.runtime.request_learning.upstream_evidence_fingerprint',
+  REBUILD_GUARDED_OUTCOME_FINGERPRINT_SET_ATTRIBUTE,
   'classifarr.policy.migration_verifier.sample_set_fingerprint',
 ]);
 const DIAGNOSTIC_KEYS = Object.freeze([
@@ -105,6 +112,37 @@ function asObject(value) {
 
 function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function asSafeCount(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isInteger(number) && number >= 0 ? number : fallback;
+}
+
+function stableValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(stableValue);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  return Object.keys(value)
+    .sort()
+    .reduce((normalized, key) => {
+      const child = stableValue(value[key]);
+      if (child !== undefined) {
+        normalized[key] = child;
+      }
+      return normalized;
+    }, {});
+}
+
+function sha256(value) {
+  return createHash('sha256')
+    .update(JSON.stringify(stableValue(value)))
+    .digest('hex');
 }
 
 function createEmptyCounters() {
@@ -170,6 +208,29 @@ function getSourceFingerprint(source = {}) {
   };
 }
 
+function getRebuildSourceFingerprint(source = {}) {
+  const guardedOutcomes = asObject(source.evidenceSourceSummary?.guardedOutcomes);
+  const fingerprints = asArray(guardedOutcomes.fingerprints)
+    .map(fingerprint => normalizeString(fingerprint).toLowerCase())
+    .filter(fingerprint => SHA256_FINGERPRINT_PATTERN.test(fingerprint))
+    .sort();
+
+  if (fingerprints.length === 0) return null;
+
+  return {
+    attributeId: REBUILD_GUARDED_OUTCOME_FINGERPRINT_SET_ATTRIBUTE,
+    fingerprint: sha256({
+      version: REBUILD_GUARDED_OUTCOME_FINGERPRINT_SET_VERSION,
+      fingerprintCount: asSafeCount(guardedOutcomes.fingerprintCount, fingerprints.length),
+      missingFingerprintCount: asSafeCount(guardedOutcomes.missingFingerprintCount),
+      requestProofCount: asSafeCount(guardedOutcomes.requestProofCount),
+      missingRequestProofCount: asSafeCount(guardedOutcomes.missingRequestProofCount),
+      invalidRequestProofCount: asSafeCount(guardedOutcomes.invalidRequestProofCount),
+      fingerprints,
+    }),
+  };
+}
+
 function buildTraceRecord({
   componentId,
   source = {},
@@ -179,7 +240,7 @@ function buildTraceRecord({
 }) {
   const reasonRecords = getTraceReasons(source, fallbackReasonId);
   const sensitiveRiskId = sensitiveReasonForEvent(source);
-  const sourceFingerprint = getSourceFingerprint(source);
+  const sourceFingerprint = getSourceFingerprint(source) || getRebuildSourceFingerprint(source);
   const attributes = {
     'classifarr.phase7r.trace.version': 'phase7r.runtime_metrics_trace.v1',
     'classifarr.phase7r.trace.component': componentId,

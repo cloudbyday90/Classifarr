@@ -83,7 +83,7 @@ Pros:
 - Gives runtime/rebuild behavior auditable counters.
 - Keeps trace records bounded and reason-coded.
 - Preserves safe source-fingerprint correlation for automation, question,
-  request-learning, and migration-verifier outputs.
+  request-learning, rebuild-proposal, and migration-verifier outputs.
 - Prevents raw payload, prompt, embedding, provider, or diagnostic leakage.
 - Produces operator summaries only when they support a next action.
 - Creates a stable handoff to Phase 7R.9 test reset.
@@ -95,7 +95,8 @@ Cons:
 - Counts are only as complete as the Phase 7R contract events passed into the
   projection.
 - Source correlation is intentionally limited to known SHA-256 fingerprint
-  attributes; unsupported ad hoc trace fields are ignored.
+  attributes and derived rebuild fingerprint-set digests; unsupported ad hoc
+  trace fields are ignored.
 
 ## Final Recommendation Stack
 
@@ -121,6 +122,7 @@ Cons:
    - automation evidence projection fingerprint,
    - question decision-evidence fingerprint,
    - request-learning upstream evidence fingerprint,
+   - derived rebuild guarded-outcome fingerprint-set digest,
    - migration-verifier sample-set fingerprint.
 6. Validate that source fingerprints are SHA-256 digests and match trace
    attributes.
@@ -173,6 +175,9 @@ The service exports:
 - Trace records can carry supported upstream SHA-256 source fingerprints for
   correlation, with the originating source attribute name mirrored in bounded
   trace attributes.
+- Rebuild proposal traces derive a SHA-256 fingerprint-set digest from
+  sanitized guarded-outcome fingerprints and request-proof counts; they do not
+  copy library labels, item titles, raw evidence, or request payloads.
 - Validation rejects malformed or mismatched source fingerprints.
 - Operator summaries require action ids and labels.
 - Security flags must remain false for exposed sensitive data categories.
@@ -186,6 +191,8 @@ The focused test suite verifies:
 - trace reason arrays are bounded,
 - supported upstream source fingerprints are carried into bounded trace
   attributes,
+- rebuild proposal source correlation uses a derived guarded-outcome
+  fingerprint-set digest,
 - malformed or mismatched source fingerprints fail validation,
 - raw payloads, prompts, embeddings, provider payloads, and diagnostic internals
   are suppressed,
