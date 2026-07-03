@@ -136,9 +136,9 @@ const POLICY_AUTHORING_VUE_REWRITE_SLICES = Object.freeze([
     evidence: 'Derives setup progress from existing modal projections without new API calls or diagnostics.',
   },
   {
-    id: 'vue_save_defer_action_boundary',
-    label: 'Vue save and defer action boundary',
-    docPath: 'docs/architecture/policy-builder-phase-3r-vue-save-defer-action-boundary.md',
+    id: 'policy_authoring_save_defer_action_boundary',
+    label: 'Policy authoring save and defer action boundary',
+    docPath: 'docs/architecture/policy-authoring-save-defer-action-boundary.md',
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
     evidence: 'Exposes save readiness, disabled reasons, and defer-without-saving while preserving event contracts.',
   },

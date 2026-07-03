@@ -1,14 +1,14 @@
-# Policy Builder Phase 3R Vue Save And Defer Action Boundary
+# Policy Authoring Save And Defer Action Boundary
 
-Status: implemented as the sixth Vue-facing Phase 3R workflow rewrite slice.
+Status: implemented as durable policy-authoring save/defer behavior.
 
 ## Scope
 
-This slice replaces the generic policy-builder footer with an explicit
+This design replaces the generic policy-builder footer with an explicit
 save/defer boundary. Operators can now see whether saving is available, why it
 is disabled, and that deferring closes the workflow without saving.
 
-This slice does not add draft persistence, classification, learning, routing,
+This design does not add draft persistence, classification, learning, routing,
 provider calls, TMDB calls, Arr writes, database schema, or server routes. It
 preserves the existing save payload path and the existing close event.
 
@@ -51,8 +51,8 @@ Official sources reviewed as of June 2026:
    - scoring weights total 100%.
 3. Treat starter templates as optional accelerators, not save requirements.
 4. Treat incomplete routing as a non-blocking save warning, not a save blocker.
-5. Rename cancel to **Defer for now** to match the Phase 3R workflow language
-   without inventing draft persistence.
+5. Rename cancel to **Defer for now** to match the policy-authoring workflow
+   language without inventing draft persistence.
 6. Expose disabled reasons in visible status text and button title text.
 7. Preserve modal public events: defer emits the existing close event, save
    emits the existing save payload.
@@ -108,8 +108,8 @@ event. The defer path emits only the existing `close` event.
 
 ## Follow-Up
 
-The next high-value item is **Phase 3R Vue Starter Template Role Reset**. The
-footer now allows save without a starter template, but starter template
-mechanics still occupy a large normal-path surface. The next slice should move
+The next high-value item is **Policy Authoring Starter Template Accelerator**.
+The footer now allows save without a starter template, but starter template
+mechanics still occupy a large normal-path surface. The next design should move
 templates into an optional accelerator disclosure without changing routing,
 classification, storage, or draft persistence.

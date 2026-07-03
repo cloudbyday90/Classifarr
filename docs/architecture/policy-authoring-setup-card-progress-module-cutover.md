@@ -50,7 +50,7 @@ Cons:
 
 - The progress projection still depends on modal-local projections until
   server-owned readiness contracts replace them.
-- Save/defer action boundary metadata still needs its own durable naming
+- Starter-template accelerator metadata still needs its own durable naming
   cutover.
 
 ## Final Recommendation Stack
@@ -72,6 +72,6 @@ setup-card progress projection and Vue behavior unchanged.
 
 ## Next Step
 
-Cut over the policy-authoring save/defer action boundary naming because it is
+Cut over the policy-authoring starter-template accelerator naming because it is
 the next Vue rewrite slice that still uses phase-coded completion-audit
-metadata.
+metadata after the save/defer action-boundary cutover.

@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Save And Defer Action Boundary Cutover** — renamed the
+  save/defer action-boundary design record and completion-audit entry to
+  durable product-domain names, replaced the phase-coded save/defer
+  architecture path with `policy-authoring-save-defer-action-boundary.md`,
+  updated completion-audit records to track
+  `policy_authoring_save_defer_action_boundary`, and preserved the existing
+  visible save-readiness status, disabled reasons, save payload event, and
+  defer-without-saving close event.
 - **Policy Authoring Setup Card Progress Cutover** — renamed the setup-card
   progress design record and completion-audit entry to durable product-domain
   names, replaced the phase-coded setup-card state-binding architecture path

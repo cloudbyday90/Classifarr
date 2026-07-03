@@ -109,8 +109,8 @@ target correction. Cards do not mutate policy, run routing, or call providers.
 
 ## Follow-Up
 
-The next high-value item is **Policy Authoring Save And Defer Action Boundary**.
-The setup flow now shows state, but the modal footer still exposes a generic
-save action. The next slice should clarify save/defer behavior and disabled
-reasons using existing validity/readiness projections without adding routing,
-learning, provider, or classification side effects.
+The next high-value item is **Policy Authoring Starter Template Accelerator**.
+The setup flow now shows state and the modal footer has an explicit save/defer
+boundary, but starter-template mechanics still occupy a large normal-path
+surface. The next slice should keep templates as optional accelerators without
+adding routing, learning, provider, or classification side effects.

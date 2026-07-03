@@ -2621,10 +2621,16 @@ Implementation record:
   [Policy Authoring Setup Card Progress Module Cutover](policy-authoring-setup-card-progress-module-cutover.md)
   as the outcome record.
 - The sixth Vue-facing rewrite slice is documented in
-  [Policy Builder Phase 3R Vue Save And Defer Action Boundary](policy-builder-phase-3r-vue-save-defer-action-boundary.md).
+  [Policy Authoring Save And Defer Action Boundary](policy-authoring-save-defer-action-boundary.md).
   The modal footer now exposes save readiness, disabled reasons, and a
   defer-without-saving action while preserving the existing close and save event
   contracts.
+- The policy-authoring save/defer action-boundary cutover renamed that design
+  record and completion-audit entry to durable product-domain names, updated
+  the workflow completion audit id to
+  `policy_authoring_save_defer_action_boundary`, and added
+  [Policy Authoring Save And Defer Action Boundary Module Cutover](policy-authoring-save-defer-action-boundary-module-cutover.md)
+  as the outcome record.
 - The seventh Vue-facing rewrite slice is documented in
   [Policy Builder Phase 3R Vue Starter Template Accelerator](policy-builder-phase-3r-vue-starter-template-accelerator.md).
   Starter templates are now optional accelerators: save readiness no longer
@@ -6474,6 +6480,9 @@ Implementation status:
 - After the policy-authoring setup-card progress cutover, the repository
   inventory validates with 9,641 total phase-coded references, 3,745
   production references, and 3,767 rename candidates.
+- After the policy-authoring save/defer action-boundary cutover, the repository
+  inventory validates with 9,640 total phase-coded references, 3,744
+  production references, and 3,766 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
@@ -6546,7 +6555,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 3, 2026
   baseline for production references, rename candidates, and obsolete migration
   tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `3745` production references, `3767` rename
+- The current baseline is `3744` production references, `3766` rename
   candidates, and `93` obsolete migration tooling references. Future durable
   rename batches should lower this baseline after inventory validation proves
   the debt decreased.
