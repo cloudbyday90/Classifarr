@@ -2578,10 +2578,16 @@ Implementation record:
 - The first Vue-facing rewrite slice is documented in
   [Policy Authoring Setup Cards](policy-authoring-setup-cards.md).
 - The second Vue-facing rewrite slice is documented in
-  [Policy Builder Phase 3R Vue Destination Section Split](policy-builder-phase-3r-vue-destination-section-split.md).
+  [Policy Authoring Destination Sections](policy-authoring-destination-sections.md).
   The current intent editor now has distinct review behavior, destination
   identity, destination rules, and confidence-support anchors so setup-card
   actions no longer collapse into one monolithic editor target.
+- The policy-authoring destination-section cutover renamed that design record
+  and completion-audit entry to durable product-domain names, updated the
+  workflow completion audit id to `policy_authoring_destination_sections`, and
+  added
+  [Policy Authoring Destination Sections Module Cutover](policy-authoring-destination-sections-module-cutover.md)
+  as the outcome record.
 - The third Vue-facing rewrite slice is documented in
   [Policy Builder Phase 3R Vue Review Trigger Control](policy-builder-phase-3r-vue-review-trigger-control.md).
   The review behavior group now has an **Ask When Unsure** checkbox control
@@ -6440,6 +6446,9 @@ Implementation status:
 - After the policy-authoring setup-cards cutover, the repository inventory
   validates with 9,646 total phase-coded references, 3,749 production
   references, and 3,771 rename candidates.
+- After the policy-authoring destination-sections cutover, the repository
+  inventory validates with 9,650 total phase-coded references, 3,748
+  production references, and 3,770 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
@@ -6512,7 +6521,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 3, 2026
   baseline for production references, rename candidates, and obsolete migration
   tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `3749` production references, `3771` rename
+- The current baseline is `3748` production references, `3770` rename
   candidates, and `93` obsolete migration tooling references. Future durable
   rename batches should lower this baseline after inventory validation proves
   the debt decreased.

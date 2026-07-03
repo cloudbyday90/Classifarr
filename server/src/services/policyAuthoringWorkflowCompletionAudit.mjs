@@ -108,9 +108,9 @@ const POLICY_AUTHORING_VUE_REWRITE_SLICES = Object.freeze([
     evidence: 'Renders four setup cards after library context and keeps verifier panels out of default workflow.',
   },
   {
-    id: 'vue_destination_section_split',
-    label: 'Vue destination section split',
-    docPath: 'docs/architecture/policy-builder-phase-3r-vue-destination-section-split.md',
+    id: 'policy_authoring_destination_sections',
+    label: 'Policy authoring destination sections',
+    docPath: 'docs/architecture/policy-authoring-destination-sections.md',
     testPath: 'client/src/__tests__/PolicyIntentEditor.test.js',
     evidence: 'Splits review behavior, destination identity, destination rules, and confidence support anchors.',
   },

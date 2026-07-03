@@ -104,4 +104,4 @@ Migration verifier panels remain outside the default workflow through
 The setup cards now target distinct review behavior and destination-rule
 sections instead of pointing both actions at one editor anchor. That follow-up
 is documented in
-[Policy Builder Phase 3R Vue Destination Section Split](policy-builder-phase-3r-vue-destination-section-split.md).
+[Policy Authoring Destination Sections](policy-authoring-destination-sections.md).

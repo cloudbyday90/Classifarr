@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Destination Sections Cutover** — renamed the destination
+  section design record and completion-audit entry to durable product-domain
+  names, replaced the phase-coded destination-section architecture path with
+  `policy-authoring-destination-sections.md`, updated completion-audit records
+  to track `policy_authoring_destination_sections`, and preserved the existing
+  review behavior, destination identity, destination rules, confidence-support
+  anchors, and typed draft-command behavior.
 - **Policy Authoring Setup Cards Cutover** — renamed the setup-card design
   record and completion-audit entry to durable product-domain names, replaced
   the phase-coded setup-card architecture path with

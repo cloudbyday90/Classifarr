@@ -48,7 +48,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
 
     expect(listPolicyAuthoringVueRewriteSlices().map(record => record.id)).toEqual([
       'policy_authoring_setup_cards',
-      'vue_destination_section_split',
+      'policy_authoring_destination_sections',
       'vue_review_trigger_control',
       'vue_routing_readiness_surface',
       'vue_setup_card_state_binding',

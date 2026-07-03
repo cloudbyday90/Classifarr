@@ -1,12 +1,13 @@
-# Policy Builder Phase 3R Vue Destination Section Split
+# Policy Authoring Destination Sections
 
-Status: implemented as the second Vue-facing Phase 3R workflow rewrite slice.
+Status: implemented as the durable policy-authoring destination-section layout.
 
 ## Scope
 
-This slice splits the current policy intent editor into setup-aligned sections
-without changing policy persistence, draft command semantics, server routes,
-classification behavior, learning behavior, or routing.
+This document defines the current policy intent editor sections that support
+destination-first authoring without changing policy persistence, draft command
+semantics, server routes, classification behavior, learning behavior, or
+routing.
 
 The prior setup-card slice gave operators four plain actions, but two actions
 still pointed to the same monolithic editor target. This slice gives those
@@ -34,6 +35,10 @@ Official sources reviewed as of June 2026:
 - GOV.UK Design System, Content Design:
   <https://design-system.service.gov.uk/styles/content/>
   - Section text should stay plain, direct, and action-oriented.
+- GOV.UK Design System, Complete Multiple Tasks:
+  <https://design-system.service.gov.uk/patterns/complete-multiple-tasks/>
+  - Task-oriented workflow sections help operators understand the order of
+    setup decisions and what has been completed.
 
 ## Recommendations
 
