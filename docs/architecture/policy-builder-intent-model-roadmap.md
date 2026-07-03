@@ -2335,10 +2335,10 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 3R.5 hard limits and avoid UX is documented in
-  [Policy Builder Phase 3R Hard Limits And Avoid UX](policy-builder-phase-3r-hard-limit-avoid-ux.md).
-- The server-side Phase 3R constraint UX contract lives in
-  `server/src/services/policyBuilderPhase3HardLimitAvoidUx.mjs`.
+- Policy authoring constraints are documented in
+  [Policy Authoring Constraints](policy-authoring-constraints.md).
+- The server-side policy authoring constraints contract lives in
+  `server/src/services/policyAuthoringConstraints.mjs`.
 - Constraint controls are split into hard limit, avoid, and review warning
   records with explicit blocking/advisory intent semantics.
 - Hard limits and avoid controls require explicit operator action and typed
@@ -2556,8 +2556,8 @@ Implementation record:
   [Policy Authoring Component System](policy-authoring-component-system.md).
 - Policy authoring option selection is documented in
   [Policy Authoring Option Selection](policy-authoring-option-selection.md).
-- Phase 3R.5 hard limits and avoid UX is documented in
-  [Policy Builder Phase 3R Hard Limits And Avoid UX](policy-builder-phase-3r-hard-limit-avoid-ux.md).
+- Policy authoring constraints are documented in
+  [Policy Authoring Constraints](policy-authoring-constraints.md).
 - Phase 3R.6 readiness and next action surface is documented in
   [Policy Builder Phase 3R Readiness And Next Action Surface](policy-builder-phase-3r-readiness-next-action-surface.md).
 - Phase 3R.7 starter template role reset is documented in
@@ -6393,6 +6393,17 @@ Implementation status:
 - After the policy-authoring option-selection cutover, the repository inventory
   validates with 10,578 total phase-coded references, 4,211 production
   references, and 4,233 rename candidates.
+- The next authoring workflow cutover renamed the constraints contract to
+  `policyAuthoringConstraints.mjs`, renamed its focused test, replaced
+  phase-coded constraint and certification exports/helpers with
+  `POLICY_AUTHORING_CONSTRAINT_*`,
+  `POLICY_AUTHORING_CERTIFICATION_SEMANTIC_IDS`, and
+  `policyAuthoringConstraint*`, and moved its standing design record to
+  [Policy Authoring Constraints](policy-authoring-constraints.md):
+  [Policy Authoring Constraints Module Cutover](policy-authoring-constraints-module-cutover.md).
+- After the policy-authoring constraints cutover, the repository inventory
+  validates with 10,400 total phase-coded references, 4,137 production
+  references, and 4,159 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

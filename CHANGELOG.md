@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Constraints Cutover** — renamed the hard-limit and avoid
+  UX contract and focused test to durable product-domain names, replaced
+  phase-coded constraint, certification, command, source, risk, and helper
+  exports with `POLICY_AUTHORING_CONSTRAINT_*`,
+  `POLICY_AUTHORING_CERTIFICATION_SEMANTIC_IDS`, and
+  `policyAuthoringConstraint*`, updated completion-audit records to track
+  `policy_authoring_constraints`, and preserved explicit-action,
+  absence-guardrail, rating-semantics, block-example, and typed-command
+  validation behavior.
 - **Policy Authoring Option Selection Cutover** — renamed the option-selection
   contract and focused test to durable product-domain names, replaced
   phase-coded option-selection state, command, risk, evidence-field, and helper

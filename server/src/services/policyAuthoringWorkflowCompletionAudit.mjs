@@ -58,12 +58,12 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Separates option sources, observed evidence, selectable suggestions, disabled choices, and typed add commands.',
   },
   {
-    id: 'hard_limits_avoid_ux',
-    label: 'Hard limits and avoid UX',
-    docPath: 'docs/architecture/policy-builder-phase-3r-hard-limit-avoid-ux.md',
-    servicePath: 'server/src/services/policyBuilderPhase3HardLimitAvoidUx.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase3HardLimitAvoidUx.test.mjs',
-    evidence: 'Separates blockers, avoid warnings, and review warnings with explicit operator-action requirements.',
+    id: 'policy_authoring_constraints',
+    label: 'Policy authoring constraints',
+    docPath: 'docs/architecture/policy-authoring-constraints.md',
+    servicePath: 'server/src/services/policyAuthoringConstraints.mjs',
+    testPath: 'server/src/__tests__/services/policyAuthoringConstraints.test.mjs',
+    evidence: 'Separates hard limits, avoid values, review warnings, certification semantics, and explicit operator-action requirements.',
   },
   {
     id: 'readiness_next_action_surface',
@@ -183,7 +183,7 @@ const POLICY_AUTHORING_NORMAL_WORKFLOW_RULES = Object.freeze([
   {
     id: 'hard_limits_explicit',
     label: 'Hard limits require explicit operator action',
-    docPath: 'docs/architecture/policy-builder-phase-3r-hard-limit-avoid-ux.md',
+    docPath: 'docs/architecture/policy-authoring-constraints.md',
     testPath: 'client/src/__tests__/PolicyIntentCertificationControl.test.js',
     evidence: 'Blockers are separate from avoid hints and require explicit declared intent.',
   },

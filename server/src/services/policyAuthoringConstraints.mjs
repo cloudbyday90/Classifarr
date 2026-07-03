@@ -6,37 +6,37 @@ import {
   POLICY_AUTHORING_DESTINATION_QUESTION_IDS,
 } from './policyAuthoringDestinationFlow.mjs';
 
-const PHASE_3R_CONSTRAINT_CONTROL_IDS = Object.freeze({
+const POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS = Object.freeze({
   HARD_LIMIT: 'hard_limit',
   AVOID: 'avoid',
   REVIEW_WARNING: 'review_warning',
 });
 
-const PHASE_3R_CONSTRAINT_INTENT_IDS = Object.freeze({
+const POLICY_AUTHORING_CONSTRAINT_INTENT_IDS = Object.freeze({
   BLOCKING_CONSTRAINT: 'blocking_constraint',
   ADVISORY_AVOID: 'advisory_avoid',
   NON_BLOCKING_WARNING: 'non_blocking_warning',
 });
 
-const PHASE_3R_CERTIFICATION_SEMANTIC_IDS = Object.freeze({
+const POLICY_AUTHORING_CERTIFICATION_SEMANTIC_IDS = Object.freeze({
   MAX_ALLOWED_RATING: 'max_allowed_rating',
   AVOID_RATING: 'avoid_rating',
 });
 
-const PHASE_3R_CONSTRAINT_COMMAND_IDS = Object.freeze({
+const POLICY_AUTHORING_CONSTRAINT_COMMAND_IDS = Object.freeze({
   SET_HARD_LIMIT: 'set_hard_limit',
   ADD_AVOID_VALUE: 'add_avoid_value',
   ADD_REVIEW_WARNING: 'add_review_warning',
 });
 
-const PHASE_3R_CONSTRAINT_SOURCE_IDS = Object.freeze({
+const POLICY_AUTHORING_CONSTRAINT_SOURCE_IDS = Object.freeze({
   OPERATOR_DECLARED: 'operator_declared',
   STARTER_TEMPLATE_SUGGESTION: 'starter_template_suggestion',
   OBSERVED_ABSENCE_WARNING: 'observed_absence_warning',
   OBSERVED_CONFLICT_EXAMPLE: 'observed_conflict_example',
 });
 
-const PHASE_3R_CONSTRAINT_RISK_IDS = Object.freeze({
+const POLICY_AUTHORING_CONSTRAINT_RISK_IDS = Object.freeze({
   UNKNOWN_CONTROL: 'unknown_control',
   UNKNOWN_SOURCE: 'unknown_source',
   UNKNOWN_CERTIFICATION_SEMANTIC: 'unknown_certification_semantic',
@@ -72,41 +72,41 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-const PHASE_3R_CONSTRAINT_CONTROL_RECORDS = deepFreeze([
+const POLICY_AUTHORING_CONSTRAINT_CONTROL_RECORDS = deepFreeze([
   {
-    controlId: PHASE_3R_CONSTRAINT_CONTROL_IDS.HARD_LIMIT,
+    controlId: POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS.HARD_LIMIT,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
     questionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_SHOULD_NOT_GO_HERE,
-    intentId: PHASE_3R_CONSTRAINT_INTENT_IDS.BLOCKING_CONSTRAINT,
-    commandId: PHASE_3R_CONSTRAINT_COMMAND_IDS.SET_HARD_LIMIT,
+    intentId: POLICY_AUTHORING_CONSTRAINT_INTENT_IDS.BLOCKING_CONSTRAINT,
+    commandId: POLICY_AUTHORING_CONSTRAINT_COMMAND_IDS.SET_HARD_LIMIT,
     visibleLabel: 'Hard limit',
     operatorCopy: 'Blocks items that violate this destination boundary.',
     requiresExplicitOperatorAction: true,
     canBlockRouting: true,
     learnsFromAbsence: false,
     requiresBlockExampleWhenAvailable: true,
-    certificationSemanticId: PHASE_3R_CERTIFICATION_SEMANTIC_IDS.MAX_ALLOWED_RATING,
+    certificationSemanticId: POLICY_AUTHORING_CERTIFICATION_SEMANTIC_IDS.MAX_ALLOWED_RATING,
   },
   {
-    controlId: PHASE_3R_CONSTRAINT_CONTROL_IDS.AVOID,
+    controlId: POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS.AVOID,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
     questionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_SHOULD_NOT_GO_HERE,
-    intentId: PHASE_3R_CONSTRAINT_INTENT_IDS.ADVISORY_AVOID,
-    commandId: PHASE_3R_CONSTRAINT_COMMAND_IDS.ADD_AVOID_VALUE,
+    intentId: POLICY_AUTHORING_CONSTRAINT_INTENT_IDS.ADVISORY_AVOID,
+    commandId: POLICY_AUTHORING_CONSTRAINT_COMMAND_IDS.ADD_AVOID_VALUE,
     visibleLabel: 'Avoid',
     operatorCopy: 'Lowers confidence or asks for review without becoming a hard block by default.',
     requiresExplicitOperatorAction: true,
     canBlockRouting: false,
     learnsFromAbsence: false,
     requiresBlockExampleWhenAvailable: false,
-    certificationSemanticId: PHASE_3R_CERTIFICATION_SEMANTIC_IDS.AVOID_RATING,
+    certificationSemanticId: POLICY_AUTHORING_CERTIFICATION_SEMANTIC_IDS.AVOID_RATING,
   },
   {
-    controlId: PHASE_3R_CONSTRAINT_CONTROL_IDS.REVIEW_WARNING,
+    controlId: POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS.REVIEW_WARNING,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
     questionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHEN_SHOULD_CLASSIFARR_ASK,
-    intentId: PHASE_3R_CONSTRAINT_INTENT_IDS.NON_BLOCKING_WARNING,
-    commandId: PHASE_3R_CONSTRAINT_COMMAND_IDS.ADD_REVIEW_WARNING,
+    intentId: POLICY_AUTHORING_CONSTRAINT_INTENT_IDS.NON_BLOCKING_WARNING,
+    commandId: POLICY_AUTHORING_CONSTRAINT_COMMAND_IDS.ADD_REVIEW_WARNING,
     visibleLabel: 'Review warning',
     operatorCopy: 'Asks the operator when evidence is weak or missing.',
     requiresExplicitOperatorAction: false,
@@ -118,23 +118,23 @@ const PHASE_3R_CONSTRAINT_CONTROL_RECORDS = deepFreeze([
 ]);
 
 const CONTROL_BY_ID = new Map(
-  PHASE_3R_CONSTRAINT_CONTROL_RECORDS.map(record => [record.controlId, record]),
+  POLICY_AUTHORING_CONSTRAINT_CONTROL_RECORDS.map(record => [record.controlId, record]),
 );
 
-const VALID_SOURCE_IDS = new Set(Object.values(PHASE_3R_CONSTRAINT_SOURCE_IDS));
-const VALID_CERTIFICATION_SEMANTIC_IDS = new Set(Object.values(PHASE_3R_CERTIFICATION_SEMANTIC_IDS));
+const VALID_SOURCE_IDS = new Set(Object.values(POLICY_AUTHORING_CONSTRAINT_SOURCE_IDS));
+const VALID_CERTIFICATION_SEMANTIC_IDS = new Set(Object.values(POLICY_AUTHORING_CERTIFICATION_SEMANTIC_IDS));
 
-function listPhase3RConstraintControlRecords() {
-  return PHASE_3R_CONSTRAINT_CONTROL_RECORDS;
+function listPolicyAuthoringConstraintControlRecords() {
+  return POLICY_AUTHORING_CONSTRAINT_CONTROL_RECORDS;
 }
 
-function getPhase3RConstraintControlRecord(controlId) {
+function getPolicyAuthoringConstraintControlRecord(controlId) {
   return CONTROL_BY_ID.get(controlId) || null;
 }
 
-function normalizePhase3RConstraintCandidate(candidate = {}) {
+function normalizePolicyAuthoringConstraintCandidate(candidate = {}) {
   const controlId = toCleanString(candidate.controlId);
-  const control = getPhase3RConstraintControlRecord(controlId);
+  const control = getPolicyAuthoringConstraintControlRecord(controlId);
   const values = asArray(candidate.values)
     .map(value => toCleanString(value))
     .filter(Boolean);
@@ -164,14 +164,14 @@ function normalizePhase3RConstraintCandidate(candidate = {}) {
   };
 }
 
-function validatePhase3RConstraintCandidate(candidate = {}) {
-  const normalizedCandidate = normalizePhase3RConstraintCandidate(candidate);
-  const control = getPhase3RConstraintControlRecord(normalizedCandidate.controlId);
+function validatePolicyAuthoringConstraintCandidate(candidate = {}) {
+  const normalizedCandidate = normalizePolicyAuthoringConstraintCandidate(candidate);
+  const control = getPolicyAuthoringConstraintControlRecord(normalizedCandidate.controlId);
 
   if (!control) {
     return {
       valid: false,
-      riskId: PHASE_3R_CONSTRAINT_RISK_IDS.UNKNOWN_CONTROL,
+      riskId: POLICY_AUTHORING_CONSTRAINT_RISK_IDS.UNKNOWN_CONTROL,
       normalizedCandidate,
       reason: 'Constraint candidate uses an unknown control.',
     };
@@ -180,7 +180,7 @@ function validatePhase3RConstraintCandidate(candidate = {}) {
   if (!VALID_SOURCE_IDS.has(normalizedCandidate.sourceId)) {
     return {
       valid: false,
-      riskId: PHASE_3R_CONSTRAINT_RISK_IDS.UNKNOWN_SOURCE,
+      riskId: POLICY_AUTHORING_CONSTRAINT_RISK_IDS.UNKNOWN_SOURCE,
       normalizedCandidate,
       reason: 'Constraint candidate source is not allowlisted.',
     };
@@ -189,7 +189,7 @@ function validatePhase3RConstraintCandidate(candidate = {}) {
   if (normalizedCandidate.commandBoundary !== 'typed_draft_commands') {
     return {
       valid: false,
-      riskId: PHASE_3R_CONSTRAINT_RISK_IDS.RAW_BRIDGE_MUTATION,
+      riskId: POLICY_AUTHORING_CONSTRAINT_RISK_IDS.RAW_BRIDGE_MUTATION,
       normalizedCandidate,
       reason: 'Constraint controls must emit typed draft commands.',
     };
@@ -198,7 +198,7 @@ function validatePhase3RConstraintCandidate(candidate = {}) {
   if (normalizedCandidate.values.length === 0) {
     return {
       valid: false,
-      riskId: PHASE_3R_CONSTRAINT_RISK_IDS.MISSING_VALUE,
+      riskId: POLICY_AUTHORING_CONSTRAINT_RISK_IDS.MISSING_VALUE,
       normalizedCandidate,
       reason: 'Constraint candidate must include at least one value.',
     };
@@ -207,43 +207,43 @@ function validatePhase3RConstraintCandidate(candidate = {}) {
   if (control.requiresExplicitOperatorAction && !normalizedCandidate.explicitOperatorAction) {
     return {
       valid: false,
-      riskId: PHASE_3R_CONSTRAINT_RISK_IDS.MISSING_EXPLICIT_OPERATOR_ACTION,
+      riskId: POLICY_AUTHORING_CONSTRAINT_RISK_IDS.MISSING_EXPLICIT_OPERATOR_ACTION,
       normalizedCandidate,
       reason: 'Hard limits and avoid values require explicit operator action.',
     };
   }
 
   if (
-    normalizedCandidate.controlId === PHASE_3R_CONSTRAINT_CONTROL_IDS.HARD_LIMIT &&
+    normalizedCandidate.controlId === POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS.HARD_LIMIT &&
     normalizedCandidate.inferredFromAbsence
   ) {
     return {
       valid: false,
-      riskId: PHASE_3R_CONSTRAINT_RISK_IDS.ABSENCE_INFERRED_HARD_LIMIT,
+      riskId: POLICY_AUTHORING_CONSTRAINT_RISK_IDS.ABSENCE_INFERRED_HARD_LIMIT,
       normalizedCandidate,
       reason: 'Observed absence cannot create a hard limit.',
     };
   }
 
   if (
-    normalizedCandidate.controlId === PHASE_3R_CONSTRAINT_CONTROL_IDS.AVOID &&
+    normalizedCandidate.controlId === POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS.AVOID &&
     normalizedCandidate.inferredFromAbsence
   ) {
     return {
       valid: false,
-      riskId: PHASE_3R_CONSTRAINT_RISK_IDS.ABSENCE_INFERRED_AVOID,
+      riskId: POLICY_AUTHORING_CONSTRAINT_RISK_IDS.ABSENCE_INFERRED_AVOID,
       normalizedCandidate,
       reason: 'Observed absence cannot silently create an avoid rule.',
     };
   }
 
   if (
-    normalizedCandidate.controlId === PHASE_3R_CONSTRAINT_CONTROL_IDS.HARD_LIMIT &&
-    normalizedCandidate.sourceId === PHASE_3R_CONSTRAINT_SOURCE_IDS.OBSERVED_ABSENCE_WARNING
+    normalizedCandidate.controlId === POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS.HARD_LIMIT &&
+    normalizedCandidate.sourceId === POLICY_AUTHORING_CONSTRAINT_SOURCE_IDS.OBSERVED_ABSENCE_WARNING
   ) {
     return {
       valid: false,
-      riskId: PHASE_3R_CONSTRAINT_RISK_IDS.HINT_ESCALATED_TO_BLOCKER,
+      riskId: POLICY_AUTHORING_CONSTRAINT_RISK_IDS.HINT_ESCALATED_TO_BLOCKER,
       normalizedCandidate,
       reason: 'Absence warnings must remain review warnings, not blocking hard limits.',
     };
@@ -255,31 +255,31 @@ function validatePhase3RConstraintCandidate(candidate = {}) {
   ) {
     return {
       valid: false,
-      riskId: PHASE_3R_CONSTRAINT_RISK_IDS.UNKNOWN_CERTIFICATION_SEMANTIC,
+      riskId: POLICY_AUTHORING_CONSTRAINT_RISK_IDS.UNKNOWN_CERTIFICATION_SEMANTIC,
       normalizedCandidate,
       reason: 'Certification constraint semantic is not supported.',
     };
   }
 
   if (
-    normalizedCandidate.controlId === PHASE_3R_CONSTRAINT_CONTROL_IDS.HARD_LIMIT &&
-    normalizedCandidate.certificationSemanticId === PHASE_3R_CERTIFICATION_SEMANTIC_IDS.AVOID_RATING
+    normalizedCandidate.controlId === POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS.HARD_LIMIT &&
+    normalizedCandidate.certificationSemanticId === POLICY_AUTHORING_CERTIFICATION_SEMANTIC_IDS.AVOID_RATING
   ) {
     return {
       valid: false,
-      riskId: PHASE_3R_CONSTRAINT_RISK_IDS.MAX_AND_AVOID_RATING_CONFLATED,
+      riskId: POLICY_AUTHORING_CONSTRAINT_RISK_IDS.MAX_AND_AVOID_RATING_CONFLATED,
       normalizedCandidate,
       reason: 'Hard-limit rating controls must use max-allowed-rating semantics.',
     };
   }
 
   if (
-    normalizedCandidate.controlId === PHASE_3R_CONSTRAINT_CONTROL_IDS.AVOID &&
-    normalizedCandidate.certificationSemanticId === PHASE_3R_CERTIFICATION_SEMANTIC_IDS.MAX_ALLOWED_RATING
+    normalizedCandidate.controlId === POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS.AVOID &&
+    normalizedCandidate.certificationSemanticId === POLICY_AUTHORING_CERTIFICATION_SEMANTIC_IDS.MAX_ALLOWED_RATING
   ) {
     return {
       valid: false,
-      riskId: PHASE_3R_CONSTRAINT_RISK_IDS.MAX_AND_AVOID_RATING_CONFLATED,
+      riskId: POLICY_AUTHORING_CONSTRAINT_RISK_IDS.MAX_AND_AVOID_RATING_CONFLATED,
       normalizedCandidate,
       reason: 'Avoid rating controls must use avoid-rating semantics.',
     };
@@ -287,12 +287,12 @@ function validatePhase3RConstraintCandidate(candidate = {}) {
 
   if (
     control.requiresBlockExampleWhenAvailable &&
-    normalizedCandidate.sourceId === PHASE_3R_CONSTRAINT_SOURCE_IDS.OBSERVED_CONFLICT_EXAMPLE &&
+    normalizedCandidate.sourceId === POLICY_AUTHORING_CONSTRAINT_SOURCE_IDS.OBSERVED_CONFLICT_EXAMPLE &&
     normalizedCandidate.blockExamples.length === 0
   ) {
     return {
       valid: false,
-      riskId: PHASE_3R_CONSTRAINT_RISK_IDS.MISSING_BLOCK_EXAMPLE,
+      riskId: POLICY_AUTHORING_CONSTRAINT_RISK_IDS.MISSING_BLOCK_EXAMPLE,
       normalizedCandidate,
       reason: 'Hard-limit conflict suggestions need an example of what would be blocked.',
     };
@@ -306,8 +306,8 @@ function validatePhase3RConstraintCandidate(candidate = {}) {
   };
 }
 
-function buildPhase3RConstraintCommandPlan(candidates = []) {
-  const validationResults = candidates.map(candidate => validatePhase3RConstraintCandidate(candidate));
+function buildPolicyAuthoringConstraintCommandPlan(candidates = []) {
+  const validationResults = candidates.map(candidate => validatePolicyAuthoringConstraintCandidate(candidate));
   const commands = validationResults
     .filter(result => result.valid)
     .map(result => result.normalizedCandidate)
@@ -341,35 +341,35 @@ function buildPhase3RConstraintCommandPlan(candidates = []) {
   };
 }
 
-function summarizePhase3RHardLimitAvoidUx() {
+function summarizePolicyAuthoringConstraints() {
   return {
-    controlCount: PHASE_3R_CONSTRAINT_CONTROL_RECORDS.length,
-    blockingControlIds: PHASE_3R_CONSTRAINT_CONTROL_RECORDS
+    controlCount: POLICY_AUTHORING_CONSTRAINT_CONTROL_RECORDS.length,
+    blockingControlIds: POLICY_AUTHORING_CONSTRAINT_CONTROL_RECORDS
       .filter(record => record.canBlockRouting)
       .map(record => record.controlId),
-    advisoryControlIds: PHASE_3R_CONSTRAINT_CONTROL_RECORDS
+    advisoryControlIds: POLICY_AUTHORING_CONSTRAINT_CONTROL_RECORDS
       .filter(record => !record.canBlockRouting)
       .map(record => record.controlId),
-    explicitOperatorActionControlIds: PHASE_3R_CONSTRAINT_CONTROL_RECORDS
+    explicitOperatorActionControlIds: POLICY_AUTHORING_CONSTRAINT_CONTROL_RECORDS
       .filter(record => record.requiresExplicitOperatorAction)
       .map(record => record.controlId),
     absenceCanCreateConstraint: false,
-    certificationSemanticIds: Object.values(PHASE_3R_CERTIFICATION_SEMANTIC_IDS),
+    certificationSemanticIds: Object.values(POLICY_AUTHORING_CERTIFICATION_SEMANTIC_IDS),
     commandBoundary: 'typed_draft_commands',
   };
 }
 
 export {
-  PHASE_3R_CERTIFICATION_SEMANTIC_IDS,
-  PHASE_3R_CONSTRAINT_COMMAND_IDS,
-  PHASE_3R_CONSTRAINT_CONTROL_IDS,
-  PHASE_3R_CONSTRAINT_INTENT_IDS,
-  PHASE_3R_CONSTRAINT_RISK_IDS,
-  PHASE_3R_CONSTRAINT_SOURCE_IDS,
-  buildPhase3RConstraintCommandPlan,
-  getPhase3RConstraintControlRecord,
-  listPhase3RConstraintControlRecords,
-  normalizePhase3RConstraintCandidate,
-  summarizePhase3RHardLimitAvoidUx,
-  validatePhase3RConstraintCandidate,
+  POLICY_AUTHORING_CERTIFICATION_SEMANTIC_IDS,
+  POLICY_AUTHORING_CONSTRAINT_COMMAND_IDS,
+  POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS,
+  POLICY_AUTHORING_CONSTRAINT_INTENT_IDS,
+  POLICY_AUTHORING_CONSTRAINT_RISK_IDS,
+  POLICY_AUTHORING_CONSTRAINT_SOURCE_IDS,
+  buildPolicyAuthoringConstraintCommandPlan,
+  getPolicyAuthoringConstraintControlRecord,
+  listPolicyAuthoringConstraintControlRecords,
+  normalizePolicyAuthoringConstraintCandidate,
+  summarizePolicyAuthoringConstraints,
+  validatePolicyAuthoringConstraintCandidate,
 };
