@@ -141,7 +141,7 @@ Cons:
 - Intent input:
   `server/src/services/policyIntentEngine.mjs`
 - Readiness input:
-  `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`
+  `server/src/services/policyAutomationReadinessEngine.mjs`
 - Operator workflow projection:
   `server/src/services/policyBuilderPhase6OperatorWorkflow.mjs`
 - Bounded workflow wrapper:

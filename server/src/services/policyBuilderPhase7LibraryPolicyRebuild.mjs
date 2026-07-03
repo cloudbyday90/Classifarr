@@ -9,10 +9,10 @@ import {
   validatePolicyIntentDraft,
 } from './policyIntentEngine.mjs';
 import {
-  PHASE6R_READINESS_STATE_IDS,
-  buildPolicyBuilderPhase6Readiness,
-  validatePolicyBuilderPhase6Readiness,
-} from './policyBuilderPhase6ReadinessEngine.mjs';
+  POLICY_AUTOMATION_READINESS_STATE_IDS,
+  buildPolicyAutomationReadiness,
+  validatePolicyAutomationReadiness,
+} from './policyAutomationReadinessEngine.mjs';
 import {
   POLICY_LEARNING_DECISION_IDS,
 } from './policyLearningGuard.mjs';
@@ -512,7 +512,7 @@ function collectWarnings({
     ));
   }
 
-  if (readiness.stateId === PHASE6R_READINESS_STATE_IDS.NEEDS_ROUTING) {
+  if (readiness.stateId === POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING) {
     warnings.push(buildWarning(
       PHASE7R_REBUILD_WARNING_IDS.MISSING_ROUTING_CONFIGURATION,
       'Routing must be configured before this proposal can support automatic routing.',
@@ -520,7 +520,7 @@ function collectWarnings({
     ));
   }
 
-  if (readiness.stateId === PHASE6R_READINESS_STATE_IDS.STALE_PROFILE) {
+  if (readiness.stateId === POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE) {
     warnings.push(buildWarning(
       PHASE7R_REBUILD_WARNING_IDS.STALE_PROFILE,
       'Refresh the library profile before accepting this proposal.',
@@ -566,15 +566,15 @@ function collectWarnings({
 }
 
 function determineStatus({ intentDraft, readiness, warnings }) {
-  if (readiness.stateId === PHASE6R_READINESS_STATE_IDS.STALE_PROFILE) {
+  if (readiness.stateId === POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE) {
     return PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.STALE_PROFILE;
   }
 
-  if (readiness.stateId === PHASE6R_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT) {
+  if (readiness.stateId === POLICY_AUTOMATION_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT) {
     return PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED;
   }
 
-  if (readiness.stateId === PHASE6R_READINESS_STATE_IDS.NEEDS_ROUTING) {
+  if (readiness.stateId === POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING) {
     return PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_ROUTING_CONFIGURATION;
   }
 
@@ -643,7 +643,7 @@ function buildPolicyBuilderPhase7LibraryPolicyRebuildProposal(input = {}) {
   const evidenceInput = buildEvidenceInput(input);
   const evidenceProjection = buildPolicyEvidenceProjection(evidenceInput);
   const intentDraft = buildPolicyIntentDraft(evidenceProjection);
-  const readiness = buildPolicyBuilderPhase6Readiness({
+  const readiness = buildPolicyAutomationReadiness({
     evidenceProjection,
     intentDraft,
     routing: evidenceInput.routing,
@@ -742,7 +742,7 @@ function validatePolicyBuilderPhase7LibraryPolicyRebuildProposal(proposal = {}) 
     }
   }
 
-  const readinessValidation = validatePolicyBuilderPhase6Readiness(proposal.readiness);
+  const readinessValidation = validatePolicyAutomationReadiness(proposal.readiness);
   if (!readinessValidation.ok) {
     issues.push({
       riskId: PHASE7R_REBUILD_AUDIT_RISK_IDS.INVALID_READINESS,

@@ -16,17 +16,17 @@ import {
   buildPolicyLearningDecisionFromBoundedIntent,
 } from '../../services/policyLearningGuard.mjs';
 import {
-  PHASE6R_READINESS_AUDIT_RISK_IDS,
-  PHASE6R_READINESS_BOUNDARY_STATUS_IDS,
-  PHASE6R_READINESS_REASON_IDS,
-  PHASE6R_READINESS_STATE_IDS,
-  buildPolicyBuilderPhase6Readiness,
-  buildPolicyBuilderPhase6ReadinessFromBoundedContracts,
-  buildPolicyBuilderPhase6ReadinessEngineAudit,
-  getReadinessState,
-  listPolicyBuilderPhase6ReadinessStates,
-  validatePolicyBuilderPhase6Readiness,
-} from '../../services/policyBuilderPhase6ReadinessEngine.mjs';
+  POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS,
+  POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS,
+  POLICY_AUTOMATION_READINESS_REASON_IDS,
+  POLICY_AUTOMATION_READINESS_STATE_IDS,
+  buildPolicyAutomationReadiness,
+  buildPolicyAutomationReadinessFromBoundedContracts,
+  buildPolicyAutomationReadinessEngineAudit,
+  getPolicyAutomationReadinessState,
+  listPolicyAutomationReadinessStates,
+  validatePolicyAutomationReadiness,
+} from '../../services/policyAutomationReadinessEngine.mjs';
 
 function buildReadyInput(overrides = {}) {
   return {
@@ -83,18 +83,18 @@ function buildBoundedReadyInputs({
   };
 }
 
-describe('policyBuilderPhase6ReadinessEngine', () => {
+describe('policyAutomationReadinessEngine', () => {
   test('defines the explicit readiness states in roadmap order', () => {
-    expect(listPolicyBuilderPhase6ReadinessStates().map(state => state.id)).toEqual([
-      PHASE6R_READINESS_STATE_IDS.READY,
-      PHASE6R_READINESS_STATE_IDS.NEEDS_MORE_EXAMPLES,
-      PHASE6R_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW,
-      PHASE6R_READINESS_STATE_IDS.NEEDS_ROUTING,
-      PHASE6R_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
-      PHASE6R_READINESS_STATE_IDS.STALE_PROFILE,
+    expect(listPolicyAutomationReadinessStates().map(state => state.id)).toEqual([
+      POLICY_AUTOMATION_READINESS_STATE_IDS.READY,
+      POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_MORE_EXAMPLES,
+      POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW,
+      POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING,
+      POLICY_AUTOMATION_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
+      POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE,
     ]);
 
-    expect(getReadinessState(PHASE6R_READINESS_STATE_IDS.NEEDS_ROUTING))
+    expect(getPolicyAutomationReadinessState(POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING))
       .toEqual(expect.objectContaining({
         label: 'Needs routing',
         defaultActionId: 'configure_routing',
@@ -102,15 +102,15 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
   });
 
   test('defaults to needs-more-examples when destination identity is missing', () => {
-    const readiness = buildPolicyBuilderPhase6Readiness();
+    const readiness = buildPolicyAutomationReadiness();
 
     expect(readiness).toEqual(expect.objectContaining({
-      version: 'phase6r.readiness.v1',
-      stateId: PHASE6R_READINESS_STATE_IDS.NEEDS_MORE_EXAMPLES,
+      version: 'policy.automation_readiness.v1',
+      stateId: POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_MORE_EXAMPLES,
       ready: false,
     }));
     expect(readiness.reasonCodes).toContain(
-      PHASE6R_READINESS_REASON_IDS.MISSING_IDENTITY_EVIDENCE
+      POLICY_AUTOMATION_READINESS_REASON_IDS.MISSING_IDENTITY_EVIDENCE
     );
     expect(readiness.nextAction).toEqual(expect.objectContaining({
       actionId: 'add_destination_examples',
@@ -119,14 +119,14 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
   });
 
   test('returns ready when identity and routing are present with no review blockers', () => {
-    const readiness = buildPolicyBuilderPhase6Readiness(buildReadyInput());
+    const readiness = buildPolicyAutomationReadiness(buildReadyInput());
 
-    expect(readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.READY);
+    expect(readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.READY);
     expect(readiness.ready).toBe(true);
     expect(readiness.issues).toEqual([]);
     expect(readiness.reasonCodes).toEqual([
-      PHASE6R_READINESS_REASON_IDS.READY_FOR_AUTOMATION,
-      PHASE6R_READINESS_REASON_IDS.HAS_IDENTITY_AND_ROUTING,
+      POLICY_AUTOMATION_READINESS_REASON_IDS.READY_FOR_AUTOMATION,
+      POLICY_AUTOMATION_READINESS_REASON_IDS.HAS_IDENTITY_AND_ROUTING,
     ]);
     expect(readiness.inputs).toEqual(expect.objectContaining({
       usesCachedStateOnly: true,
@@ -142,7 +142,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       boundedLearningResult,
     } = buildBoundedReadyInputs();
 
-    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    const result = buildPolicyAutomationReadinessFromBoundedContracts({
       boundedEvidenceResult,
       boundedIntentResult,
       boundedLearningResult,
@@ -155,14 +155,14 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: true,
-      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.READY,
+      statusId: POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.READY,
       issueCount: 0,
-      nextPhase: expect.objectContaining({
-        phaseId: '6r_5',
+      nextStep: expect.objectContaining({
+        stepId: 'operator_workflow',
       }),
     }));
     expect(result.readiness).toEqual(expect.objectContaining({
-      stateId: PHASE6R_READINESS_STATE_IDS.READY,
+      stateId: POLICY_AUTOMATION_READINESS_STATE_IDS.READY,
       ready: true,
     }));
     expect(result.boundaryContext).toEqual(expect.objectContaining({
@@ -218,7 +218,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       },
     });
 
-    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    const result = buildPolicyAutomationReadinessFromBoundedContracts({
       boundedEvidenceResult,
       boundedIntentResult,
       boundedLearningResult,
@@ -230,9 +230,9 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(result.readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.STALE_PROFILE);
+    expect(result.readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE);
     expect(result.readiness.reasonCodes).toContain(
-      PHASE6R_READINESS_REASON_IDS.PROFILE_REFRESH_QUEUED
+      POLICY_AUTOMATION_READINESS_REASON_IDS.PROFILE_REFRESH_QUEUED
     );
   });
 
@@ -243,7 +243,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       boundedLearningResult,
     } = buildBoundedReadyInputs();
 
-    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    const result = buildPolicyAutomationReadinessFromBoundedContracts({
       boundedEvidenceResult,
       boundedIntentResult: {
         ...boundedIntentResult,
@@ -262,13 +262,13 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      statusId: POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
       readiness: null,
       readinessAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+        riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
       }),
     ]));
   });
@@ -286,7 +286,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       reasonIds: ['missing_identity_evidence'],
     };
 
-    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    const result = buildPolicyAutomationReadinessFromBoundedContracts({
       boundedEvidenceResult: {
         ...boundedEvidenceResult,
         projection: {
@@ -320,13 +320,13 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      statusId: POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
       readiness: null,
       readinessAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_QUALITY_INSUFFICIENT,
+        riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.BOUNDED_QUALITY_INSUFFICIENT,
         nextActionId: 'confirm_destination_identity',
       }),
     ]));
@@ -352,7 +352,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       },
     };
 
-    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    const result = buildPolicyAutomationReadinessFromBoundedContracts({
       boundedEvidenceResult,
       boundedIntentResult,
       boundedLearningResult: mismatchedLearningResult,
@@ -365,19 +365,19 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      statusId: POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
       readiness: null,
       readinessAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_QUALITY_MISMATCH,
+        riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.BOUNDED_QUALITY_MISMATCH,
       }),
     ]));
   });
 
   test('blocks bounded readiness when bounded inputs or provenance are missing', () => {
-    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    const result = buildPolicyAutomationReadinessFromBoundedContracts({
       boundedEvidenceResult: {
         ok: false,
       },
@@ -397,16 +397,16 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      statusId: POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
       readiness: null,
       readinessAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_EVIDENCE,
+        riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_EVIDENCE,
       }),
       expect.objectContaining({
-        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_PROVENANCE,
+        riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_PROVENANCE,
       }),
     ]));
   });
@@ -418,7 +418,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       boundedLearningResult,
     } = buildBoundedReadyInputs();
 
-    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    const result = buildPolicyAutomationReadinessFromBoundedContracts({
       boundedEvidenceResult: {
         ...boundedEvidenceResult,
         projectionFingerprintAudit: {
@@ -432,13 +432,13 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      statusId: POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
       readiness: null,
       readinessAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_EVIDENCE_AUDIT_NOT_PASSING,
+        riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.BOUNDED_EVIDENCE_AUDIT_NOT_PASSING,
       }),
     ]));
   });
@@ -450,7 +450,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       boundedLearningResult,
     } = buildBoundedReadyInputs();
 
-    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    const result = buildPolicyAutomationReadinessFromBoundedContracts({
       boundedEvidenceResult,
       boundedIntentResult: {
         ...boundedIntentResult,
@@ -464,14 +464,14 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      statusId: POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
       readiness: null,
       readinessAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_INTENT_EVIDENCE_AUDIT_NOT_PASSING,
+          POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.BOUNDED_INTENT_EVIDENCE_AUDIT_NOT_PASSING,
       }),
     ]));
   });
@@ -483,7 +483,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       boundedLearningResult,
     } = buildBoundedReadyInputs();
 
-    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    const result = buildPolicyAutomationReadinessFromBoundedContracts({
       boundedEvidenceResult,
       boundedIntentResult,
       boundedLearningResult: {
@@ -497,13 +497,13 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      statusId: POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
       readiness: null,
       readinessAudit: null,
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_LEARNING_AUDIT_NOT_PASSING,
+        riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.BOUNDED_LEARNING_AUDIT_NOT_PASSING,
       }),
     ]));
   });
@@ -528,7 +528,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       },
     };
 
-    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    const result = buildPolicyAutomationReadinessFromBoundedContracts({
       boundedEvidenceResult,
       boundedIntentResult,
       boundedLearningResult: mismatchedLearningResult,
@@ -541,7 +541,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
 
     expect(result).toEqual(expect.objectContaining({
       ok: false,
-      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      statusId: POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
       readiness: null,
       readinessAudit: null,
       boundaryContext: expect.objectContaining({
@@ -550,13 +550,13 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
     }));
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
+        riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
       }),
     ]));
   });
 
   test('prioritizes stale profile over all other readiness issues', () => {
-    const readiness = buildPolicyBuilderPhase6Readiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
       profileFreshness: {
         stale: true,
         updatedAt: '2026-06-01T00:00:00.000Z',
@@ -567,7 +567,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       },
     }));
 
-    expect(readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.STALE_PROFILE);
+    expect(readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE);
     expect(readiness.nextAction).toEqual(expect.objectContaining({
       actionId: 'refresh_profile',
       target: 'profile_refresh',
@@ -586,13 +586,13 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       },
     });
 
-    const readiness = buildPolicyBuilderPhase6Readiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
       learningDecision,
     }));
 
-    expect(readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.STALE_PROFILE);
+    expect(readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE);
     expect(readiness.reasonCodes).toContain(
-      PHASE6R_READINESS_REASON_IDS.PROFILE_REFRESH_QUEUED
+      POLICY_AUTOMATION_READINESS_REASON_IDS.PROFILE_REFRESH_QUEUED
     );
   });
 
@@ -608,13 +608,13 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       },
     });
 
-    const readiness = buildPolicyBuilderPhase6Readiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
       learningDecision,
     }));
 
-    expect(readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT);
+    expect(readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT);
     expect(readiness.reasonCodes).toContain(
-      PHASE6R_READINESS_REASON_IDS.LEARNING_POLICY_EDIT_REQUIRED
+      POLICY_AUTOMATION_READINESS_REASON_IDS.LEARNING_POLICY_EDIT_REQUIRED
     );
     expect(readiness.nextAction).toEqual(expect.objectContaining({
       actionId: 'edit_hard_limit',
@@ -623,7 +623,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
   });
 
   test('does not block automation merely because a configured hard limit exists', () => {
-    const readiness = buildPolicyBuilderPhase6Readiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
         hardLimits: ['No NC-17'],
@@ -631,7 +631,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       },
     }));
 
-    expect(readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.READY);
+    expect(readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.READY);
   });
 
   test('requires operator review for ask-when evidence and non-info intent warnings', () => {
@@ -653,11 +653,11 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       summary: 'Some evidence is insufficient.',
     });
 
-    const readiness = buildPolicyBuilderPhase6Readiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
       intentDraft: intent,
     }));
 
-    expect(readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW);
+    expect(readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW);
     expect(readiness.nextAction).toEqual(expect.objectContaining({
       actionId: 'review_destination_intent',
       target: 'ask_when',
@@ -665,7 +665,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
   });
 
   test('requires operator review when the learning guard blocks learning', () => {
-    const readiness = buildPolicyBuilderPhase6Readiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
       learningDecision: {
         version: 'policy.learning_guard.v1',
         learning: {
@@ -681,14 +681,14 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       },
     }));
 
-    expect(readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW);
+    expect(readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW);
     expect(readiness.reasonCodes).toContain(
-      PHASE6R_READINESS_REASON_IDS.LEARNING_BLOCKED
+      POLICY_AUTOMATION_READINESS_REASON_IDS.LEARNING_BLOCKED
     );
   });
 
   test('requires routing after identity is known but no routing target is available', () => {
-    const readiness = buildPolicyBuilderPhase6Readiness({
+    const readiness = buildPolicyAutomationReadiness({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
       },
@@ -698,7 +698,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       },
     });
 
-    expect(readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.NEEDS_ROUTING);
+    expect(readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING);
     expect(readiness.nextAction).toEqual(expect.objectContaining({
       actionId: 'configure_routing',
       target: 'routing_target',
@@ -706,14 +706,14 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
   });
 
   test('ignores legacy diagnostic inputs instead of making them readiness gates', () => {
-    const readiness = buildPolicyBuilderPhase6Readiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
       providerReadiness: { state: 'limited' },
       replayParity: { state: 'different' },
       tmdbCoverage: { state: 'partial' },
       rawScoringPanel: { score: 0.74 },
     }));
 
-    expect(readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.READY);
+    expect(readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.READY);
     expect(readiness.inputs.diagnosticDependencies).toEqual([]);
     expect(readiness.inputs.ignoredDiagnostics.map(diagnostic => diagnostic.key))
       .toEqual([
@@ -725,15 +725,15 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
   });
 
   test('passes the default readiness engine audit', () => {
-    const audit = buildPolicyBuilderPhase6ReadinessEngineAudit(
-      buildPolicyBuilderPhase6Readiness(buildReadyInput())
+    const audit = buildPolicyAutomationReadinessEngineAudit(
+      buildPolicyAutomationReadiness(buildReadyInput())
     );
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedStateCount).toBe(6);
-    expect(audit.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '6r_5',
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'operator_workflow',
       label: 'Operator Workflow Rebuild',
     }));
   });
@@ -744,7 +744,7 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       boundedIntentResult,
       boundedLearningResult,
     } = buildBoundedReadyInputs();
-    const result = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    const result = buildPolicyAutomationReadinessFromBoundedContracts({
       boundedEvidenceResult,
       boundedIntentResult,
       boundedLearningResult,
@@ -768,44 +768,44 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
       },
     };
 
-    expect(validatePolicyBuilderPhase6Readiness(tamperedReadiness).issues)
+    expect(validatePolicyAutomationReadiness(tamperedReadiness).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+          riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
         }),
       ]));
   });
 
   test('rejects readiness contracts that depend on live diagnostics or miss actions', () => {
-    const invalidReadiness = buildPolicyBuilderPhase6Readiness(buildReadyInput());
+    const invalidReadiness = buildPolicyAutomationReadiness(buildReadyInput());
     invalidReadiness.nextAction = null;
     invalidReadiness.ready = false;
     invalidReadiness.inputs.liveProviderLookupPerformed = true;
     invalidReadiness.inputs.exposesRawPayload = true;
     invalidReadiness.inputs.diagnosticDependencies = ['tmdbCoverage'];
 
-    expect(validatePolicyBuilderPhase6Readiness(invalidReadiness).issues)
+    expect(validatePolicyAutomationReadiness(invalidReadiness).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_NEXT_ACTION,
+          riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_NEXT_ACTION,
         }),
         expect.objectContaining({
-          riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.READY_STATE_MISMATCH,
+          riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.READY_STATE_MISMATCH,
         }),
         expect.objectContaining({
-          riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.LIVE_PROVIDER_DEPENDENCY,
+          riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.LIVE_PROVIDER_DEPENDENCY,
         }),
         expect.objectContaining({
-          riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.RAW_PAYLOAD_DEPENDENCY,
+          riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.RAW_PAYLOAD_DEPENDENCY,
         }),
         expect.objectContaining({
-          riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.DIAGNOSTIC_DEPENDENCY,
+          riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.DIAGNOSTIC_DEPENDENCY,
         }),
       ]));
   });
 
   test('rejects readiness derived from a learning decision that already wrote', () => {
-    const readiness = buildPolicyBuilderPhase6Readiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
       learningDecision: {
         version: 'policy.learning_guard.v1',
         learning: {
@@ -821,10 +821,10 @@ describe('policyBuilderPhase6ReadinessEngine', () => {
     }));
 
     expect(readiness.inputs.learningWritesPerformed).toBe(true);
-    expect(validatePolicyBuilderPhase6Readiness(readiness).issues)
+    expect(validatePolicyAutomationReadiness(readiness).issues)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
-          riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.LEARNING_WRITE_DEPENDENCY,
+          riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.LEARNING_WRITE_DEPENDENCY,
         }),
       ]));
   });

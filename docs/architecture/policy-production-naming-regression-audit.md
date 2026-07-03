@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the current repository inventory after the
-policy learning guard module cutover on July 3, 2026:
+policy automation readiness engine module cutover on July 3, 2026:
 
-- production references: `6700`
-- rename candidates: `6722`
+- production references: `6584`
+- rename candidates: `6606`
 - obsolete migration tooling references: `93`
 
 The baseline is intentionally a maximum, not a target. Future durable rename

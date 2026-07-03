@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Automation Readiness Engine Module Cutover** — renamed the
+  automation readiness engine and focused test to durable product-domain names,
+  moved the readiness contract to `policy.automation_readiness.v1`, replaced
+  the readiness-local audit handoff with `nextStep`, updated direct runtime
+  imports, and added a legacy completion-audit adapter for the
+  operator-workflow handoff.
 - **Policy Learning Guard Module Cutover** — renamed the learning guard and
   focused test to durable product-domain names, moved the guard contract to
   `policy.learning_guard.v1`, replaced the guard-local audit handoff with

@@ -30,9 +30,9 @@ import {
   buildPolicyBuilderPhase6OperatorWorkflowAudit,
 } from './policyBuilderPhase6OperatorWorkflow.mjs';
 import {
-  buildPolicyBuilderPhase6ReadinessFromBoundedContracts,
-  buildPolicyBuilderPhase6ReadinessEngineAudit,
-} from './policyBuilderPhase6ReadinessEngine.mjs';
+  buildPolicyAutomationReadinessFromBoundedContracts,
+  buildPolicyAutomationReadinessEngineAudit,
+} from './policyAutomationReadinessEngine.mjs';
 import {
   ANSWER_OUTCOME_IDS,
 } from './policyQuestionLearningVocabulary.mjs';
@@ -115,8 +115,8 @@ const PHASE6R_COMPONENT_RECORDS = Object.freeze([
     id: PHASE6R_COMPLETION_COMPONENT_IDS.READINESS_ENGINE,
     label: 'Automation readiness engine',
     docPath: 'docs/architecture/policy-builder-phase-6r-readiness-engine.md',
-    servicePath: 'server/src/services/policyBuilderPhase6ReadinessEngine.mjs',
-    testPath: 'server/src/__tests__/services/policyBuilderPhase6ReadinessEngine.test.mjs',
+    servicePath: 'server/src/services/policyAutomationReadinessEngine.mjs',
+    testPath: 'server/src/__tests__/services/policyAutomationReadinessEngine.test.mjs',
     expectedNextPhaseId: '6r_5',
     evidence: 'Readiness returns one action-oriented state and ignores legacy diagnostic gates.',
   },
@@ -149,6 +149,9 @@ const PHASE6R_COMPONENT_NEXT_STEP_PHASE_IDS = Object.freeze({
   }),
   [PHASE6R_COMPLETION_COMPONENT_IDS.LEARNING_GUARD]: Object.freeze({
     automation_readiness: '6r_4',
+  }),
+  [PHASE6R_COMPLETION_COMPONENT_IDS.READINESS_ENGINE]: Object.freeze({
+    operator_workflow: '6r_5',
   }),
 });
 
@@ -328,7 +331,7 @@ function buildComponentAuditMap() {
     [PHASE6R_COMPLETION_COMPONENT_IDS.LEARNING_GUARD]:
       buildPolicyLearningGuardAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.READINESS_ENGINE]:
-      buildPolicyBuilderPhase6ReadinessEngineAudit(),
+      buildPolicyAutomationReadinessEngineAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW]:
       buildPolicyBuilderPhase6OperatorWorkflowAudit(),
     [PHASE6R_COMPLETION_COMPONENT_IDS.MIGRATION_DELETION_PATH]:
@@ -364,7 +367,7 @@ function buildDefaultPhase6BoundedCompletionChain() {
       },
     },
   });
-  const boundedReadinessResult = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+  const boundedReadinessResult = buildPolicyAutomationReadinessFromBoundedContracts({
     boundedEvidenceResult,
     boundedIntentResult,
     boundedLearningResult,

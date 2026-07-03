@@ -92,9 +92,9 @@ Cons:
 - Bounded learning:
   `server/src/services/policyLearningGuard.mjs`
 - Readiness quality consumer:
-  `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`
+  `server/src/services/policyAutomationReadinessEngine.mjs`
 - Focused tests:
-  `server/src/__tests__/services/policyBuilderPhase6ReadinessEngine.test.mjs`
+  `server/src/__tests__/services/policyAutomationReadinessEngine.test.mjs`
 - Design owner:
   `docs/architecture/policy-builder-phase-6r-readiness-engine.md`
 - Roadmap owner:

@@ -14,9 +14,9 @@ import {
   buildPolicyLearningDecisionFromBoundedIntent,
 } from '../../services/policyLearningGuard.mjs';
 import {
-  PHASE6R_READINESS_STATE_IDS,
-  buildPolicyBuilderPhase6ReadinessFromBoundedContracts,
-} from '../../services/policyBuilderPhase6ReadinessEngine.mjs';
+  POLICY_AUTOMATION_READINESS_STATE_IDS,
+  buildPolicyAutomationReadinessFromBoundedContracts,
+} from '../../services/policyAutomationReadinessEngine.mjs';
 import {
   PHASE6R_WORKFLOW_AUDIT_RISK_IDS,
   PHASE6R_WORKFLOW_BOUNDARY_STATUS_IDS,
@@ -81,7 +81,7 @@ function buildBoundedWorkflowInputs({
       ...learningInput,
     },
   });
-  const boundedReadinessResult = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+  const boundedReadinessResult = buildPolicyAutomationReadinessFromBoundedContracts({
     boundedEvidenceResult,
     boundedIntentResult,
     boundedLearningResult,
@@ -148,7 +148,7 @@ describe('policyBuilderPhase6OperatorWorkflow', () => {
     }));
     expect(workflow.sections).toHaveLength(5);
     expect(workflow.readiness).toEqual(expect.objectContaining({
-      stateId: PHASE6R_READINESS_STATE_IDS.READY,
+      stateId: POLICY_AUTOMATION_READINESS_STATE_IDS.READY,
       ready: true,
     }));
   });
@@ -179,7 +179,7 @@ describe('policyBuilderPhase6OperatorWorkflow', () => {
       }),
     }));
     expect(result.workflow.readiness).toEqual(expect.objectContaining({
-      stateId: PHASE6R_READINESS_STATE_IDS.READY,
+      stateId: POLICY_AUTOMATION_READINESS_STATE_IDS.READY,
       ready: true,
     }));
     expect(result.workflow.sections).toHaveLength(5);
@@ -492,13 +492,13 @@ describe('policyBuilderPhase6OperatorWorkflow', () => {
       section.sectionId === PHASE6R_WORKFLOW_SECTION_IDS.CAN_THIS_ROUTE
     );
 
-    expect(workflow.readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.NEEDS_ROUTING);
+    expect(workflow.readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING);
     expect(routeSection).toEqual(expect.objectContaining({
       editable: false,
       statusId: PHASE6R_WORKFLOW_STATUS_IDS.NEEDS_ACTION,
     }));
     expect(routeSection.readiness).toEqual(expect.objectContaining({
-      stateId: PHASE6R_READINESS_STATE_IDS.NEEDS_ROUTING,
+      stateId: POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING,
       nextAction: expect.objectContaining({
         actionId: 'configure_routing',
       }),
@@ -517,7 +517,7 @@ describe('policyBuilderPhase6OperatorWorkflow', () => {
       section.sectionId === PHASE6R_WORKFLOW_SECTION_IDS.WHAT_BELONGS_HERE
     );
 
-    expect(workflow.readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.NEEDS_MORE_EXAMPLES);
+    expect(workflow.readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_MORE_EXAMPLES);
     expect(belongsHere).toEqual(expect.objectContaining({
       statusId: PHASE6R_WORKFLOW_STATUS_IDS.NEEDS_ACTION,
       primaryAction: expect.objectContaining({
@@ -542,7 +542,7 @@ describe('policyBuilderPhase6OperatorWorkflow', () => {
       ].join(' '))
       .join(' ');
 
-    expect(workflow.readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.READY);
+    expect(workflow.readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.READY);
     expect(workflow.normalWorkflowExclusions).toEqual([
       PHASE6R_WORKFLOW_PROHIBITED_NORMAL_SURFACE_IDS.IMPACT_PREVIEW,
       PHASE6R_WORKFLOW_PROHIBITED_NORMAL_SURFACE_IDS.REPLAY_PREVIEW,

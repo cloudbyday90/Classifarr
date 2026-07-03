@@ -14,8 +14,8 @@ import {
   buildPolicyLearningDecisionFromBoundedIntent,
 } from '../../services/policyLearningGuard.mjs';
 import {
-  buildPolicyBuilderPhase6ReadinessFromBoundedContracts,
-} from '../../services/policyBuilderPhase6ReadinessEngine.mjs';
+  buildPolicyAutomationReadinessFromBoundedContracts,
+} from '../../services/policyAutomationReadinessEngine.mjs';
 import {
   buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness,
 } from '../../services/policyBuilderPhase6OperatorWorkflow.mjs';
@@ -61,7 +61,7 @@ function buildBoundedWorkflowResult() {
       },
     },
   });
-  const boundedReadinessResult = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+  const boundedReadinessResult = buildPolicyAutomationReadinessFromBoundedContracts({
     boundedEvidenceResult,
     boundedIntentResult,
     boundedLearningResult,

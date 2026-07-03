@@ -3366,9 +3366,9 @@ Implementation status:
 - Phase 6R.4 automation readiness engine is documented in
   [Policy Builder Phase 6R Automation Readiness Engine](policy-builder-phase-6r-readiness-engine.md).
 - The server-owned readiness contract lives in
-  `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`.
+  `server/src/services/policyAutomationReadinessEngine.mjs`.
 - The focused readiness-engine test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase6ReadinessEngine.test.mjs`.
+  `server/src/__tests__/services/policyAutomationReadinessEngine.test.mjs`.
 - Current implementation consumes Phase 6R evidence, intent, learning,
   routing, and profile freshness inputs into one state: `ready`,
   `needs_more_examples`, `needs_operator_review`, `needs_routing`,
@@ -6237,6 +6237,14 @@ Implementation status:
 - After the learning-guard cutover, the repository inventory validates with
   14,856 total phase-coded references, 6,700 production references, and 6,722
   rename candidates.
+- The next durable module cutover renamed the automation readiness engine to
+  `policyAutomationReadinessEngine.mjs`, renamed its focused test, moved the
+  readiness contract to `policy.automation_readiness.v1`, and replaced the
+  readiness-local phase handoff with `nextStep`:
+  [Policy Automation Readiness Engine Module Cutover](policy-automation-readiness-engine-module-cutover.md).
+- After the automation-readiness cutover, the repository inventory validates
+  with 14,634 total phase-coded references, 6,584 production references, and
+  6,606 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

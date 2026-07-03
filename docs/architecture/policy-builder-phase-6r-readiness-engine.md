@@ -142,11 +142,11 @@ Cons:
 - Learning input:
   `server/src/services/policyLearningGuard.mjs`
 - Readiness engine:
-  `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`
+  `server/src/services/policyAutomationReadinessEngine.mjs`
 - Bounded readiness wrapper:
-  `buildPolicyBuilderPhase6ReadinessFromBoundedContracts`
+  `buildPolicyAutomationReadinessFromBoundedContracts`
 - Test module:
-  `server/src/__tests__/services/policyBuilderPhase6ReadinessEngine.test.mjs`
+  `server/src/__tests__/services/policyAutomationReadinessEngine.test.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-6r-readiness-engine.md`
 - Quality-gate outcome:

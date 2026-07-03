@@ -15,7 +15,7 @@ import {
   POLICY_LEARNING_TIER_IDS,
 } from './policyLearningGuard.mjs';
 
-const PHASE6R_READINESS_STATE_IDS = Object.freeze({
+const POLICY_AUTOMATION_READINESS_STATE_IDS = Object.freeze({
   READY: 'ready',
   NEEDS_MORE_EXAMPLES: 'needs_more_examples',
   NEEDS_OPERATOR_REVIEW: 'needs_operator_review',
@@ -24,13 +24,13 @@ const PHASE6R_READINESS_STATE_IDS = Object.freeze({
   STALE_PROFILE: 'stale_profile',
 });
 
-const PHASE6R_READINESS_BOUNDARY_STATUS_IDS = Object.freeze({
+const POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS = Object.freeze({
   READY: 'ready',
   BLOCKED_BY_BOUNDED_INPUT: 'blocked_by_bounded_input',
   BLOCKED_BY_READINESS_AUDIT: 'blocked_by_readiness_audit',
 });
 
-const PHASE6R_READINESS_REASON_IDS = Object.freeze({
+const POLICY_AUTOMATION_READINESS_REASON_IDS = Object.freeze({
   READY_FOR_AUTOMATION: 'ready_for_automation',
   HAS_IDENTITY_AND_ROUTING: 'has_identity_and_routing',
   MISSING_IDENTITY_EVIDENCE: 'missing_identity_evidence',
@@ -47,7 +47,7 @@ const PHASE6R_READINESS_REASON_IDS = Object.freeze({
   DIAGNOSTIC_STATE_IGNORED: 'diagnostic_state_ignored',
 });
 
-const PHASE6R_READINESS_INPUT_IDS = Object.freeze({
+const POLICY_AUTOMATION_READINESS_INPUT_IDS = Object.freeze({
   EVIDENCE: 'evidence',
   INTENT: 'intent',
   LEARNING: 'learning',
@@ -55,7 +55,7 @@ const PHASE6R_READINESS_INPUT_IDS = Object.freeze({
   PROFILE_FRESHNESS: 'profile_freshness',
 });
 
-const PHASE6R_READINESS_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS = Object.freeze({
   MISSING_STATE: 'missing_state',
   UNKNOWN_STATE: 'unknown_state',
   READY_STATE_MISMATCH: 'ready_state_mismatch',
@@ -93,37 +93,37 @@ const IGNORED_DIAGNOSTIC_INPUT_KEYS = Object.freeze([
 
 const STATE_CONTRACTS = Object.freeze([
   {
-    id: PHASE6R_READINESS_STATE_IDS.READY,
+    id: POLICY_AUTOMATION_READINESS_STATE_IDS.READY,
     label: 'Ready',
     defaultActionId: 'continue_automation',
     defaultActionLabel: 'Continue automation',
   },
   {
-    id: PHASE6R_READINESS_STATE_IDS.NEEDS_MORE_EXAMPLES,
+    id: POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_MORE_EXAMPLES,
     label: 'Needs examples',
     defaultActionId: 'add_destination_examples',
     defaultActionLabel: 'Add examples',
   },
   {
-    id: PHASE6R_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW,
+    id: POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW,
     label: 'Needs review',
     defaultActionId: 'review_destination_intent',
     defaultActionLabel: 'Review intent',
   },
   {
-    id: PHASE6R_READINESS_STATE_IDS.NEEDS_ROUTING,
+    id: POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING,
     label: 'Needs routing',
     defaultActionId: 'configure_routing',
     defaultActionLabel: 'Configure routing',
   },
   {
-    id: PHASE6R_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
+    id: POLICY_AUTOMATION_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
     label: 'Blocked by hard limit',
     defaultActionId: 'edit_hard_limit',
     defaultActionLabel: 'Review hard limit',
   },
   {
-    id: PHASE6R_READINESS_STATE_IDS.STALE_PROFILE,
+    id: POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE,
     label: 'Stale profile',
     defaultActionId: 'refresh_profile',
     defaultActionLabel: 'Refresh profile',
@@ -142,11 +142,11 @@ function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function getReadinessState(stateId) {
+function getPolicyAutomationReadinessState(stateId) {
   return STATE_CONTRACTS.find(state => state.id === stateId) || null;
 }
 
-function listPolicyBuilderPhase6ReadinessStates() {
+function listPolicyAutomationReadinessStates() {
   return STATE_CONTRACTS;
 }
 
@@ -158,7 +158,7 @@ function hasNonInfoWarnings(intent = {}) {
 }
 
 function buildNextAction(stateId, reasonCode, overrides = {}) {
-  const state = getReadinessState(stateId);
+  const state = getPolicyAutomationReadinessState(stateId);
 
   return {
     actionId: overrides.actionId || state?.defaultActionId || 'review_readiness',
@@ -189,8 +189,8 @@ function collectIgnoredDiagnostics(input = {}) {
     .filter(key => Object.prototype.hasOwnProperty.call(input, key))
     .map(key => ({
       key,
-      reasonCode: PHASE6R_READINESS_REASON_IDS.DIAGNOSTIC_STATE_IGNORED,
-      message: `${key} is intentionally ignored by Phase 6R automation readiness.`,
+      reasonCode: POLICY_AUTOMATION_READINESS_REASON_IDS.DIAGNOSTIC_STATE_IGNORED,
+      message: `${key} is intentionally ignored by policy automation readiness.`,
     }));
 }
 
@@ -266,11 +266,11 @@ function collectReadinessIssues({
 
   if (hasStaleProfile(input, evidenceProjection, intent, learningDecision)) {
     issues.push(buildIssue({
-      stateId: PHASE6R_READINESS_STATE_IDS.STALE_PROFILE,
+      stateId: POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE,
       reasonCode: learningDecision?.profileRefresh?.queue === true
-        ? PHASE6R_READINESS_REASON_IDS.PROFILE_REFRESH_QUEUED
-        : PHASE6R_READINESS_REASON_IDS.STALE_PROFILE,
-      sourceId: PHASE6R_READINESS_INPUT_IDS.PROFILE_FRESHNESS,
+        ? POLICY_AUTOMATION_READINESS_REASON_IDS.PROFILE_REFRESH_QUEUED
+        : POLICY_AUTOMATION_READINESS_REASON_IDS.STALE_PROFILE,
+      sourceId: POLICY_AUTOMATION_READINESS_INPUT_IDS.PROFILE_FRESHNESS,
       summary: 'Refresh the destination profile before automation trusts this intent.',
       target: 'profile_refresh',
     }));
@@ -278,11 +278,11 @@ function collectReadinessIssues({
 
   if (hasHardLimitBlock(input, intent, learningDecision)) {
     issues.push(buildIssue({
-      stateId: PHASE6R_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
+      stateId: POLICY_AUTOMATION_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
       reasonCode: learning.decisionId === POLICY_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED
-        ? PHASE6R_READINESS_REASON_IDS.LEARNING_POLICY_EDIT_REQUIRED
-        : PHASE6R_READINESS_REASON_IDS.HARD_LIMIT_CONFLICT,
-      sourceId: PHASE6R_READINESS_INPUT_IDS.INTENT,
+        ? POLICY_AUTOMATION_READINESS_REASON_IDS.LEARNING_POLICY_EDIT_REQUIRED
+        : POLICY_AUTOMATION_READINESS_REASON_IDS.HARD_LIMIT_CONFLICT,
+      sourceId: POLICY_AUTOMATION_READINESS_INPUT_IDS.INTENT,
       summary: 'Resolve the hard-limit conflict or make an explicit policy edit.',
       target: 'hard_limits',
     }));
@@ -290,9 +290,9 @@ function collectReadinessIssues({
 
   if (asArray(intent.belongs_here).length === 0) {
     issues.push(buildIssue({
-      stateId: PHASE6R_READINESS_STATE_IDS.NEEDS_MORE_EXAMPLES,
-      reasonCode: PHASE6R_READINESS_REASON_IDS.MISSING_IDENTITY_EVIDENCE,
-      sourceId: PHASE6R_READINESS_INPUT_IDS.EVIDENCE,
+      stateId: POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_MORE_EXAMPLES,
+      reasonCode: POLICY_AUTOMATION_READINESS_REASON_IDS.MISSING_IDENTITY_EVIDENCE,
+      sourceId: POLICY_AUTOMATION_READINESS_INPUT_IDS.EVIDENCE,
       summary: 'Add or accept destination examples before automation can continue.',
       target: 'belongs_here',
     }));
@@ -304,11 +304,11 @@ function collectReadinessIssues({
     learning.decisionId === POLICY_LEARNING_DECISION_IDS.BLOCKED
   ) {
     issues.push(buildIssue({
-      stateId: PHASE6R_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW,
+      stateId: POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW,
       reasonCode: learning.decisionId === POLICY_LEARNING_DECISION_IDS.BLOCKED
-        ? PHASE6R_READINESS_REASON_IDS.LEARNING_BLOCKED
-        : PHASE6R_READINESS_REASON_IDS.INTENT_REVIEW_REQUIRED,
-      sourceId: PHASE6R_READINESS_INPUT_IDS.INTENT,
+        ? POLICY_AUTOMATION_READINESS_REASON_IDS.LEARNING_BLOCKED
+        : POLICY_AUTOMATION_READINESS_REASON_IDS.INTENT_REVIEW_REQUIRED,
+      sourceId: POLICY_AUTOMATION_READINESS_INPUT_IDS.INTENT,
       summary: 'Review the destination intent before automation continues.',
       target: 'ask_when',
     }));
@@ -317,11 +317,11 @@ function collectReadinessIssues({
   if (!hasRoutingReady(input, intent)) {
     const routing = asObject(input.routing);
     issues.push(buildIssue({
-      stateId: PHASE6R_READINESS_STATE_IDS.NEEDS_ROUTING,
+      stateId: POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING,
       reasonCode: routing.configured === false || routing.routeReady === false
-        ? PHASE6R_READINESS_REASON_IDS.ROUTING_NOT_READY
-        : PHASE6R_READINESS_REASON_IDS.MISSING_ROUTING_TARGET,
-      sourceId: PHASE6R_READINESS_INPUT_IDS.ROUTING,
+        ? POLICY_AUTOMATION_READINESS_REASON_IDS.ROUTING_NOT_READY
+        : POLICY_AUTOMATION_READINESS_REASON_IDS.MISSING_ROUTING_TARGET,
+      sourceId: POLICY_AUTOMATION_READINESS_INPUT_IDS.ROUTING,
       summary: 'Choose or configure the routing target for confirmed matches.',
       target: 'routing_target',
     }));
@@ -332,18 +332,18 @@ function collectReadinessIssues({
 
 function chooseReadinessState(issues) {
   const priority = [
-    PHASE6R_READINESS_STATE_IDS.STALE_PROFILE,
-    PHASE6R_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
-    PHASE6R_READINESS_STATE_IDS.NEEDS_MORE_EXAMPLES,
-    PHASE6R_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW,
-    PHASE6R_READINESS_STATE_IDS.NEEDS_ROUTING,
+    POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE,
+    POLICY_AUTOMATION_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
+    POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_MORE_EXAMPLES,
+    POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW,
+    POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING,
   ];
 
   return priority.find(stateId => issues.some(issue => issue.stateId === stateId)) ||
-    PHASE6R_READINESS_STATE_IDS.READY;
+    POLICY_AUTOMATION_READINESS_STATE_IDS.READY;
 }
 
-function buildPolicyBuilderPhase6Readiness(input = {}) {
+function buildPolicyAutomationReadiness(input = {}) {
   const evidenceProjection = input.evidenceProjection?.version === 'policy.evidence.v1'
     ? input.evidenceProjection
     : buildPolicyEvidenceProjection(input);
@@ -360,20 +360,20 @@ function buildPolicyBuilderPhase6Readiness(input = {}) {
     learningDecision,
   });
   const stateId = chooseReadinessState(issues);
-  const ready = stateId === PHASE6R_READINESS_STATE_IDS.READY;
+  const ready = stateId === POLICY_AUTOMATION_READINESS_STATE_IDS.READY;
   const reasonCodes = ready
     ? [
-      PHASE6R_READINESS_REASON_IDS.READY_FOR_AUTOMATION,
-      PHASE6R_READINESS_REASON_IDS.HAS_IDENTITY_AND_ROUTING,
+      POLICY_AUTOMATION_READINESS_REASON_IDS.READY_FOR_AUTOMATION,
+      POLICY_AUTOMATION_READINESS_REASON_IDS.HAS_IDENTITY_AND_ROUTING,
     ]
     : [...new Set(issues.map(issue => issue.reasonCode))];
 
   return {
-    version: 'phase6r.readiness.v1',
+    version: 'policy.automation_readiness.v1',
     stateId,
     ready,
     nextAction: ready
-      ? buildNextAction(stateId, PHASE6R_READINESS_REASON_IDS.READY_FOR_AUTOMATION)
+      ? buildNextAction(stateId, POLICY_AUTOMATION_READINESS_REASON_IDS.READY_FOR_AUTOMATION)
       : issues.find(issue => issue.stateId === stateId)?.nextAction || null,
     issues,
     reasonCodes,
@@ -461,7 +461,7 @@ function collectBoundedQualityIssues({
     !hasQualitySnapshot(learningQuality)
   ) {
     issues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
       message: 'Readiness requires bounded evidence, intent, and learning quality snapshots.',
     });
     return issues;
@@ -478,7 +478,7 @@ function collectBoundedQualityIssues({
 
   if (insufficientQuality) {
     issues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_QUALITY_INSUFFICIENT,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.BOUNDED_QUALITY_INSUFFICIENT,
       message: 'Readiness requires usable bounded evidence quality before automation can be evaluated.',
       qualityStatusId: insufficientQuality.statusId,
       nextActionId: insufficientQuality.nextActionId,
@@ -491,7 +491,7 @@ function collectBoundedQualityIssues({
     !qualitySnapshotsMatch(evidenceQuality, learningQuality)
   ) {
     issues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_QUALITY_MISMATCH,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.BOUNDED_QUALITY_MISMATCH,
       message: 'Readiness requires bounded evidence, intent, and learning quality to match.',
     });
   }
@@ -539,7 +539,7 @@ function buildBoundedReadinessContext({
   };
 }
 
-function buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+function buildPolicyAutomationReadinessFromBoundedContracts({
   boundedEvidenceResult,
   boundedIntentResult,
   boundedLearningResult,
@@ -550,21 +550,21 @@ function buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
 
   if (boundedEvidenceResult?.ok !== true || !boundedEvidenceResult?.projection) {
     boundaryIssues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_EVIDENCE,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_EVIDENCE,
       message: 'Readiness requires a successful bounded evidence result.',
     });
   }
 
   if (boundedIntentResult?.ok !== true || !boundedIntentResult?.intent) {
     boundaryIssues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_INTENT,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_INTENT,
       message: 'Readiness requires a successful bounded intent result.',
     });
   }
 
   if (boundedLearningResult?.ok !== true || !boundedLearningResult?.decision) {
     boundaryIssues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_LEARNING,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_LEARNING,
       message: 'Readiness requires a successful bounded learning result.',
     });
   }
@@ -577,7 +577,7 @@ function buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
     )
   ) {
     boundaryIssues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_EVIDENCE_AUDIT_NOT_PASSING,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.BOUNDED_EVIDENCE_AUDIT_NOT_PASSING,
       message: 'Readiness requires passing bounded evidence projection and fingerprint audits.',
     });
   }
@@ -590,14 +590,14 @@ function buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
     )
   ) {
     boundaryIssues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_INTENT_EVIDENCE_AUDIT_NOT_PASSING,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.BOUNDED_INTENT_EVIDENCE_AUDIT_NOT_PASSING,
       message: 'Readiness requires passing bounded intent and evidence-fingerprint audits.',
     });
   }
 
   if (boundedLearningResult?.ok === true && boundedLearningResult.learningAudit?.ok !== true) {
     boundaryIssues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_LEARNING_AUDIT_NOT_PASSING,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.BOUNDED_LEARNING_AUDIT_NOT_PASSING,
       message: 'Readiness requires a passing bounded learning audit.',
     });
   }
@@ -622,12 +622,12 @@ function buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
 
   if (!boundaryContext) {
     boundaryIssues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_PROVENANCE,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_BOUNDED_PROVENANCE,
       message: 'Readiness requires matching bounded evidence provenance.',
     });
   } else if (boundaryContext.projectionFingerprintMatch !== true) {
     boundaryIssues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.BOUNDED_PROVENANCE_MISMATCH,
       message: 'Readiness requires all bounded contracts to reference the same evidence projection.',
     });
   }
@@ -635,17 +635,17 @@ function buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
   if (boundaryIssues.length > 0) {
     return {
       ok: false,
-      statusId: PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      statusId: POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
       boundaryContext,
       readiness: null,
       readinessAudit: null,
       issueCount: boundaryIssues.length,
       issues: boundaryIssues,
-      nextPhase: null,
+      nextStep: null,
     };
   }
 
-  const readiness = buildPolicyBuilderPhase6Readiness({
+  const readiness = buildPolicyAutomationReadiness({
     evidenceProjection: boundedEvidenceResult.projection,
     intentDraft: boundedIntentResult.intent,
     learningDecision: boundedLearningResult.decision,
@@ -653,56 +653,56 @@ function buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
     profileFreshness,
   });
   readiness.inputs.boundaryContext = boundaryContext;
-  const readinessAudit = buildPolicyBuilderPhase6ReadinessEngineAudit(readiness);
+  const readinessAudit = buildPolicyAutomationReadinessEngineAudit(readiness);
   const ok = readinessAudit.ok === true;
 
   return {
     ok,
     statusId: ok
-      ? PHASE6R_READINESS_BOUNDARY_STATUS_IDS.READY
-      : PHASE6R_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_READINESS_AUDIT,
+      ? POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.READY
+      : POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_READINESS_AUDIT,
     boundaryContext,
     readiness,
     readinessAudit,
     issueCount: readinessAudit.issueCount,
     issues: readinessAudit.validation.issues,
-    nextPhase: ok ? readinessAudit.nextPhase : null,
+    nextStep: ok ? readinessAudit.nextStep : null,
   };
 }
 
-function validatePolicyBuilderPhase6Readiness(readiness = {}) {
+function validatePolicyAutomationReadiness(readiness = {}) {
   const issues = [];
 
   if (!normalizeString(readiness.stateId)) {
     issues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_STATE,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_STATE,
       message: 'Readiness must include a state id.',
     });
-  } else if (!getReadinessState(readiness.stateId)) {
+  } else if (!getPolicyAutomationReadinessState(readiness.stateId)) {
     issues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.UNKNOWN_STATE,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.UNKNOWN_STATE,
       message: 'Readiness must use a supported state id.',
     });
   }
 
   if ((readiness.ready === true) !==
-      (readiness.stateId === PHASE6R_READINESS_STATE_IDS.READY)) {
+      (readiness.stateId === POLICY_AUTOMATION_READINESS_STATE_IDS.READY)) {
     issues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.READY_STATE_MISMATCH,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.READY_STATE_MISMATCH,
       message: 'Readiness ready boolean must match the ready state.',
     });
   }
 
   if (!readiness.nextAction?.actionId) {
     issues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_NEXT_ACTION,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_NEXT_ACTION,
       message: 'Readiness must include a next action.',
     });
   }
 
   if (asArray(readiness.reasonCodes).length === 0) {
     issues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_REASON_CODE,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_REASON_CODE,
       message: 'Readiness must include reason codes.',
     });
   }
@@ -710,13 +710,13 @@ function validatePolicyBuilderPhase6Readiness(readiness = {}) {
   asArray(readiness.issues).forEach(issue => {
     if (!issue?.reasonCode) {
       issues.push({
-        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.MISSING_REASON_CODE,
+        riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.MISSING_REASON_CODE,
         message: 'Each readiness issue must include a reason code.',
       });
     }
     if (!issue?.nextAction?.actionId) {
       issues.push({
-        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.ISSUE_WITHOUT_NEXT_ACTION,
+        riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.ISSUE_WITHOUT_NEXT_ACTION,
         message: 'Each readiness issue must include a next action.',
       });
     }
@@ -724,21 +724,21 @@ function validatePolicyBuilderPhase6Readiness(readiness = {}) {
 
   if (readiness.inputs?.liveProviderLookupPerformed === true) {
     issues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.LIVE_PROVIDER_DEPENDENCY,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.LIVE_PROVIDER_DEPENDENCY,
       message: 'Readiness must not depend on live provider lookups.',
     });
   }
 
   if (readiness.inputs?.exposesRawPayload === true) {
     issues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.RAW_PAYLOAD_DEPENDENCY,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.RAW_PAYLOAD_DEPENDENCY,
       message: 'Readiness must not expose raw provider, replay, or scoring payloads.',
     });
   }
 
   if (asArray(readiness.inputs?.diagnosticDependencies).length > 0) {
     issues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.DIAGNOSTIC_DEPENDENCY,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.DIAGNOSTIC_DEPENDENCY,
       message: 'Readiness must not depend on replay, TMDB, provider, or scoring diagnostics.',
     });
   }
@@ -746,7 +746,7 @@ function validatePolicyBuilderPhase6Readiness(readiness = {}) {
   asArray(readiness.inputs?.ignoredDiagnostics).forEach(diagnostic => {
     if (!IGNORED_DIAGNOSTIC_INPUT_KEYS.includes(diagnostic?.key)) {
       issues.push({
-        riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.UNKNOWN_IGNORED_DIAGNOSTIC,
+        riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.UNKNOWN_IGNORED_DIAGNOSTIC,
         message: 'Ignored diagnostics must be from the known legacy diagnostic list.',
       });
     }
@@ -754,7 +754,7 @@ function validatePolicyBuilderPhase6Readiness(readiness = {}) {
 
   if (readiness.inputs?.learningWritesPerformed === true) {
     issues.push({
-      riskId: PHASE6R_READINESS_AUDIT_RISK_IDS.LEARNING_WRITE_DEPENDENCY,
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.LEARNING_WRITE_DEPENDENCY,
       message: 'Readiness must not depend on learning writes having already occurred.',
     });
   }
@@ -792,10 +792,10 @@ function validatePolicyBuilderPhase6Readiness(readiness = {}) {
   };
 }
 
-function buildPolicyBuilderPhase6ReadinessEngineAudit(
-  readiness = buildPolicyBuilderPhase6Readiness()
+function buildPolicyAutomationReadinessEngineAudit(
+  readiness = buildPolicyAutomationReadiness()
 ) {
-  const validation = validatePolicyBuilderPhase6Readiness(readiness);
+  const validation = validatePolicyAutomationReadiness(readiness);
 
   return {
     ok: validation.ok,
@@ -803,8 +803,8 @@ function buildPolicyBuilderPhase6ReadinessEngineAudit(
     checkedStateCount: STATE_CONTRACTS.length,
     ignoredDiagnosticInputCount: IGNORED_DIAGNOSTIC_INPUT_KEYS.length,
     validation,
-    nextPhase: {
-      phaseId: '6r_5',
+    nextStep: {
+      stepId: 'operator_workflow',
       label: 'Operator Workflow Rebuild',
       reason: 'Automation readiness now returns a single action-oriented state, so the product surface can replace diagnostic panels with the next operator action.',
     },
@@ -812,15 +812,15 @@ function buildPolicyBuilderPhase6ReadinessEngineAudit(
 }
 
 export {
-  PHASE6R_READINESS_AUDIT_RISK_IDS,
-  PHASE6R_READINESS_BOUNDARY_STATUS_IDS,
-  PHASE6R_READINESS_INPUT_IDS,
-  PHASE6R_READINESS_REASON_IDS,
-  PHASE6R_READINESS_STATE_IDS,
-  buildPolicyBuilderPhase6Readiness,
-  buildPolicyBuilderPhase6ReadinessFromBoundedContracts,
-  buildPolicyBuilderPhase6ReadinessEngineAudit,
-  getReadinessState,
-  listPolicyBuilderPhase6ReadinessStates,
-  validatePolicyBuilderPhase6Readiness,
+  POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS,
+  POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS,
+  POLICY_AUTOMATION_READINESS_INPUT_IDS,
+  POLICY_AUTOMATION_READINESS_REASON_IDS,
+  POLICY_AUTOMATION_READINESS_STATE_IDS,
+  buildPolicyAutomationReadiness,
+  buildPolicyAutomationReadinessFromBoundedContracts,
+  buildPolicyAutomationReadinessEngineAudit,
+  getPolicyAutomationReadinessState,
+  listPolicyAutomationReadinessStates,
+  validatePolicyAutomationReadiness,
 };

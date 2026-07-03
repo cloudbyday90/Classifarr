@@ -9,9 +9,9 @@ import {
   buildPolicyIntentDraft,
 } from './policyIntentEngine.mjs';
 import {
-  PHASE6R_READINESS_STATE_IDS,
-  buildPolicyBuilderPhase6Readiness,
-} from './policyBuilderPhase6ReadinessEngine.mjs';
+  POLICY_AUTOMATION_READINESS_STATE_IDS,
+  buildPolicyAutomationReadiness,
+} from './policyAutomationReadinessEngine.mjs';
 import {
   POLICY_SETUP_FIELD_CONTROL_KIND_IDS,
   POLICY_UX_TERM_IDS,
@@ -229,7 +229,7 @@ function getSectionStatus(section, intent, readiness) {
 
   if (section.sectionId === PHASE6R_WORKFLOW_SECTION_IDS.WHEN_TO_ASK) {
     return countSectionEntries(section, intent) > 0 ||
-      readiness.stateId === PHASE6R_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW
+      readiness.stateId === POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW
       ? PHASE6R_WORKFLOW_STATUS_IDS.NEEDS_ACTION
       : PHASE6R_WORKFLOW_STATUS_IDS.OPTIONAL;
   }
@@ -300,9 +300,9 @@ function buildPolicyBuilderPhase6OperatorWorkflow(input = {}) {
     input.intent?.version === 'policy.intent.v1'
     ? input.intentDraft || input.intent
     : buildPolicyIntentDraft(input);
-  const readiness = input.readiness?.version === 'phase6r.readiness.v1'
+  const readiness = input.readiness?.version === 'policy.automation_readiness.v1'
     ? input.readiness
-    : buildPolicyBuilderPhase6Readiness({
+    : buildPolicyAutomationReadiness({
       ...input,
       intentDraft: intent,
     });

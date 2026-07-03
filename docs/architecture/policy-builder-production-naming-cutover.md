@@ -213,3 +213,11 @@ labels, except where an allow-listed migration or history reason is documented.
 - After the learning-guard cutover, the regression baseline is 6,700
   production references, 6,722 rename candidates, and 93 obsolete migration
   tooling references.
+- The next Phase 9R.2 durable module cutover renamed the automation readiness
+  engine to `policyAutomationReadinessEngine.mjs`, moved its focused test,
+  moved the readiness contract to `policy.automation_readiness.v1`, and
+  replaced its readiness-local audit handoff with `nextStep`:
+  [Policy Automation Readiness Engine Module Cutover](policy-automation-readiness-engine-module-cutover.md).
+- After the automation-readiness cutover, the regression baseline is 6,584
+  production references, 6,606 rename candidates, and 93 obsolete migration
+  tooling references.

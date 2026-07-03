@@ -91,7 +91,7 @@ Cons:
 - Quality source:
   `server/src/services/policyEvidenceQuality.mjs`
 - Readiness source:
-  `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`
+  `server/src/services/policyAutomationReadinessEngine.mjs`
 - Workflow gate:
   `server/src/services/policyBuilderPhase6OperatorWorkflow.mjs`
 - Test module:

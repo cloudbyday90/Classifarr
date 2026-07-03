@@ -157,7 +157,7 @@ Cons:
 - Intent dependency:
   `server/src/services/policyIntentEngine.mjs`
 - Readiness dependency:
-  `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`
+  `server/src/services/policyAutomationReadinessEngine.mjs`
 - Roadmap owner:
   Phase 7R.6 Library-Derived Policy Rebuild in
   `docs/architecture/policy-builder-intent-model-roadmap.md`

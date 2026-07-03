@@ -5,8 +5,8 @@ import {
   POLICY_INTENT_FIELD_IDS,
 } from '../../services/policyIntentEngine.mjs';
 import {
-  PHASE6R_READINESS_STATE_IDS,
-} from '../../services/policyBuilderPhase6ReadinessEngine.mjs';
+  POLICY_AUTOMATION_READINESS_STATE_IDS,
+} from '../../services/policyAutomationReadinessEngine.mjs';
 import {
   buildPolicyBuilderPhase7RuntimeQuestionReduction,
 } from '../../services/policyBuilderPhase7RuntimeQuestionReduction.mjs';
@@ -357,7 +357,7 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
     }));
 
     expect(proposal.statusId).toBe(PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_ROUTING_CONFIGURATION);
-    expect(proposal.readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.NEEDS_ROUTING);
+    expect(proposal.readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING);
     expect(proposal.warnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
         reasonId: PHASE7R_REBUILD_WARNING_IDS.MISSING_ROUTING_CONFIGURATION,
@@ -379,7 +379,7 @@ describe('policyBuilderPhase7LibraryPolicyRebuild', () => {
     }));
 
     expect(proposal.statusId).toBe(PHASE7R_REBUILD_PROPOSAL_STATUS_IDS.STALE_PROFILE);
-    expect(proposal.readiness.stateId).toBe(PHASE6R_READINESS_STATE_IDS.STALE_PROFILE);
+    expect(proposal.readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE);
     expect(proposal.warnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
         reasonId: PHASE7R_REBUILD_WARNING_IDS.STALE_PROFILE,
