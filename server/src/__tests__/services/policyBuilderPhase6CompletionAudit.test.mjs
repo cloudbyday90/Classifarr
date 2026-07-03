@@ -2,6 +2,7 @@ import {
   PHASE6R_COMPLETION_COMPONENT_IDS,
   PHASE6R_COMPLETION_RISK_IDS,
   buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit,
+  buildPolicyBuilderPhase6BoundedChainCompletionAudit,
   buildPolicyBuilderPhase6CompletionAudit,
   listPolicyBuilderPhase6CompletionComponents,
   listPolicyBuilderPhase6RequiredLegacyCutlineArtifacts,
@@ -62,10 +63,122 @@ describe('policyBuilderPhase6CompletionAudit', () => {
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedComponentCount).toBe(7);
     expect(audit.requiredComponentCount).toBe(7);
+    expect(audit.boundedChainOk).toBe(true);
+    expect(audit.boundedChainAudit.checkedStepCount).toBe(6);
+    expect(audit.boundedChainAudit.issueCount).toBe(0);
     expect(audit.nextPhase).toEqual(expect.objectContaining({
       phaseId: '7r_1',
       label: 'Runtime Decision Inventory And Cutline',
     }));
+  });
+
+  test('passes the default bounded Phase 6R chain completion audit', () => {
+    const audit = buildPolicyBuilderPhase6BoundedChainCompletionAudit();
+
+    expect(audit.ok).toBe(true);
+    expect(audit.issueCount).toBe(0);
+    expect(audit.checkedStepCount).toBe(6);
+    expect(audit.fingerprintCount).toBe(6);
+    expect(audit.sharedProjectionFingerprint).toMatch(/^[a-f0-9]{64}$/);
+    expect(new Set(audit.steps.map(step => step.projectionFingerprint)).size).toBe(1);
+    expect(JSON.stringify(audit.steps)).not.toContain('Animated Movies');
+    expect(audit.nextPhase).toEqual(expect.objectContaining({
+      phaseId: '7r_1',
+    }));
+  });
+
+  test('rejects bounded chain failures, provenance drift, and raw provenance leakage', () => {
+    const stableFingerprint = 'a'.repeat(64);
+    const driftFingerprint = 'b'.repeat(64);
+    const audit = buildPolicyBuilderPhase6BoundedChainCompletionAudit({
+      chain: {
+        boundedEvidenceResult: {
+          ok: true,
+          statusId: 'ready',
+          projectionFingerprint: {
+            fingerprint: stableFingerprint,
+          },
+        },
+        boundedIntentResult: {
+          ok: false,
+          statusId: 'blocked_by_intent_audit',
+          issueCount: 1,
+          evidenceBoundary: {
+            projectionFingerprint: {
+              fingerprint: driftFingerprint,
+              provenance: {
+                rawLabel: 'Animated Movies',
+              },
+            },
+          },
+        },
+        boundedLearningResult: {
+          ok: true,
+          statusId: 'ready',
+          intentBoundary: {
+            evidenceBoundary: {
+              projectionFingerprint: {
+                fingerprint: stableFingerprint,
+              },
+            },
+          },
+        },
+        boundedReadinessResult: {
+          ok: true,
+          statusId: 'ready',
+          boundaryContext: {
+            evidenceBoundary: {
+              projectionFingerprint: {
+                fingerprint: stableFingerprint,
+              },
+            },
+            projectionFingerprintMatch: true,
+          },
+        },
+        boundedWorkflowResult: {
+          ok: true,
+          statusId: 'ready',
+          boundaryContext: {
+            intentBoundary: {
+              projectionFingerprint: {
+                fingerprint: stableFingerprint,
+              },
+            },
+            readinessBoundary: {
+              projectionFingerprint: {
+                fingerprint: stableFingerprint,
+              },
+            },
+            projectionFingerprintMatch: true,
+          },
+        },
+        boundedMigrationResult: {
+          ok: true,
+          statusId: 'ready',
+          boundaryContext: {
+            workflowBoundary: {
+              projectionFingerprint: {
+                fingerprint: stableFingerprint,
+              },
+            },
+            projectionFingerprintMatch: true,
+          },
+        },
+      },
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_FAILED,
+      }),
+      expect.objectContaining({
+        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_PROVENANCE_MISMATCH,
+      }),
+      expect.objectContaining({
+        riskId: PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_RAW_PROVENANCE,
+      }),
+    ]));
   });
 
   test('rejects component records that have no path evidence or failed audit', () => {

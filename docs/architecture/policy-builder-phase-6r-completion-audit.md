@@ -26,7 +26,7 @@ normal operator workflow.
 
 ## Official Guidance Reviewed
 
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/Projects/ssdf)
+- [NIST Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
   supports verification, release integrity, and secure change control. The
   completion audit requires each component to have a service, test, architecture
   record, and passing component audit.
@@ -51,15 +51,21 @@ normal operator workflow.
    Completion should call the evidence, intent, learning, readiness, workflow,
    and migration audit functions instead of duplicating their logic.
 
-3. **Treat 6R.0 as a real gate.**
+3. **Prove the bounded chain composes.**
+   Completion should build a deterministic evidence -> intent -> learning ->
+   readiness -> workflow -> migration chain and fail when a bounded step fails,
+   evidence projection fingerprints drift, or raw evidence labels leak into
+   boundary provenance.
+
+4. **Treat 6R.0 as a real gate.**
    The artifact inventory and cutline must verify that legacy impact/replay/
    provider/TMDB/scoring artifacts have migration or deletion decisions.
 
-4. **Verify files exist.**
+5. **Verify files exist.**
    Completion records should fail when their documented service, test, or
    architecture record is missing.
 
-5. **Keep Phase 8R blocked.**
+6. **Keep Phase 8R blocked.**
    Native intent storage remains out of scope until the Phase 6R completion and
    migration gates prove stable.
 
@@ -69,6 +75,7 @@ Pros:
 
 - Gives a concrete proof point before Phase 7R begins.
 - Catches missing docs, tests, services, and broken phase sequencing.
+- Catches broken bounded handoffs before Phase 7R runtime work depends on them.
 - Prevents old replay/TMDB diagnostics from surviving without a cutline.
 - Makes Phase 6R completion repeatable in CI or release workflows later.
 
@@ -76,6 +83,8 @@ Cons:
 
 - Adds another server-side audit contract.
 - Does not remove legacy diagnostic code by itself.
+- Does not prove live runtime data quality; Phase 7R still inventories those
+  paths against the completed contracts.
 - Does not execute Phase 7R runtime migration or Phase 8R native storage work.
 
 ## Final Recommendation Stack
@@ -99,6 +108,7 @@ The service exports:
 - `PHASE6R_COMPLETION_COMPONENT_IDS`
 - `PHASE6R_COMPLETION_RISK_IDS`
 - `buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit`
+- `buildPolicyBuilderPhase6BoundedChainCompletionAudit`
 - `buildPolicyBuilderPhase6CompletionAudit`
 - `listPolicyBuilderPhase6CompletionComponents`
 - `listPolicyBuilderPhase6RequiredLegacyCutlineArtifacts`
@@ -114,11 +124,16 @@ The default audit checks:
 - 6R.4 automation readiness engine.
 - 6R.5 operator workflow rebuild.
 - 6R.6 migration and deletion path.
+- End-to-end bounded handoff from evidence boundary through migration plan.
+- Shared sanitized evidence projection fingerprint across bounded handoffs.
+- Boundary provenance that excludes raw operator/library evidence labels.
 
 ## Security Outcome
 
 - Completion is server-owned and deterministic.
 - Component docs, services, and tests must exist.
+- Bounded handoffs must share sanitized provenance instead of raw evidence
+  labels.
 - Legacy diagnostics cannot remain in normal operator workflow.
 - Phase 8R storage migration remains blocked until the migration gates pass.
 

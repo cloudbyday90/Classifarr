@@ -3,25 +3,36 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  buildPolicyBuilderPhase6BoundedEvidenceProjection,
+} from './policyBuilderPhase6EvidenceBoundary.mjs';
+import {
   buildPolicyBuilderPhase6EvidenceEngineAudit,
 } from './policyBuilderPhase6EvidenceEngine.mjs';
 import {
+  buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence,
   buildPolicyBuilderPhase6IntentEngineAudit,
 } from './policyBuilderPhase6IntentEngine.mjs';
 import {
+  buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent,
   buildPolicyBuilderPhase6LearningGuardAudit,
 } from './policyBuilderPhase6LearningGuard.mjs';
 import {
   PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS,
   buildPolicyBuilderPhase6MigrationDeletionAudit,
+  buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow,
   listPolicyBuilderPhase6MigrationArtifacts,
 } from './policyBuilderPhase6MigrationDeletionPath.mjs';
 import {
+  buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness,
   buildPolicyBuilderPhase6OperatorWorkflowAudit,
 } from './policyBuilderPhase6OperatorWorkflow.mjs';
 import {
+  buildPolicyBuilderPhase6ReadinessFromBoundedContracts,
   buildPolicyBuilderPhase6ReadinessEngineAudit,
 } from './policyBuilderPhase6ReadinessEngine.mjs';
+import {
+  ANSWER_OUTCOME_IDS,
+} from './policyQuestionLearningVocabulary.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -49,6 +60,9 @@ const PHASE6R_COMPLETION_RISK_IDS = Object.freeze({
   LEGACY_ARTIFACT_WITHOUT_CUTLINE: 'legacy_artifact_without_cutline',
   LEGACY_ARTIFACT_ALLOWED_IN_NORMAL_WORKFLOW: 'legacy_artifact_allowed_in_normal_workflow',
   PHASE8_STORAGE_NOT_BLOCKED: 'phase8_storage_not_blocked',
+  BOUNDED_CHAIN_FAILED: 'bounded_chain_failed',
+  BOUNDED_CHAIN_PROVENANCE_MISMATCH: 'bounded_chain_provenance_mismatch',
+  BOUNDED_CHAIN_RAW_PROVENANCE: 'bounded_chain_raw_provenance',
 });
 
 const REQUIRED_COMPONENT_IDS = Object.freeze(Object.values(PHASE6R_COMPLETION_COMPONENT_IDS));
@@ -299,6 +313,187 @@ function buildComponentAuditMap() {
   };
 }
 
+function buildDefaultPhase6BoundedCompletionChain() {
+  const boundedEvidenceResult = buildPolicyBuilderPhase6BoundedEvidenceProjection({
+    evidenceInput: {
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+        helpfulMatches: ['Disney'],
+        routingTargets: ['Radarr Animated Movies'],
+      },
+    },
+  });
+  const boundedIntentResult = buildPolicyBuilderPhase6IntentDraftFromBoundedEvidence({
+    boundedEvidenceResult,
+  });
+  const boundedLearningResult = buildPolicyBuilderPhase6LearningDecisionFromBoundedIntent({
+    boundedIntentResult,
+    learningInput: {
+      answerOutcomeId: ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM,
+      answer: {
+        label: 'Animated Movies',
+        destinationLibraryId: 6,
+        destinationLibraryName: 'Animated Movies',
+      },
+      finalOutcome: {
+        itemId: 10674,
+        status: 'resolved',
+      },
+    },
+  });
+  const boundedReadinessResult = buildPolicyBuilderPhase6ReadinessFromBoundedContracts({
+    boundedEvidenceResult,
+    boundedIntentResult,
+    boundedLearningResult,
+    routing: {
+      configured: true,
+      routeReady: true,
+      targetName: 'Radarr Animated Movies',
+    },
+  });
+  const boundedWorkflowResult = buildPolicyBuilderPhase6OperatorWorkflowFromBoundedReadiness({
+    boundedIntentResult,
+    boundedReadinessResult,
+  });
+  const boundedMigrationResult = buildPolicyBuilderPhase6MigrationPlanFromBoundedWorkflow({
+    boundedWorkflowResult,
+  });
+
+  return {
+    boundedEvidenceResult,
+    boundedIntentResult,
+    boundedLearningResult,
+    boundedReadinessResult,
+    boundedWorkflowResult,
+    boundedMigrationResult,
+  };
+}
+
+function getEvidenceFingerprint(chainStep = {}) {
+  return chainStep?.result?.projectionFingerprint?.fingerprint ||
+    chainStep?.result?.evidenceBoundary?.projectionFingerprint?.fingerprint ||
+    chainStep?.result?.intentBoundary?.evidenceBoundary?.projectionFingerprint?.fingerprint ||
+    chainStep?.result?.boundaryContext?.evidenceBoundary?.projectionFingerprint?.fingerprint ||
+    chainStep?.result?.boundaryContext?.intentBoundary?.projectionFingerprint?.fingerprint ||
+    chainStep?.result?.boundaryContext?.workflowBoundary?.projectionFingerprint?.fingerprint ||
+    null;
+}
+
+function getBoundedChainStepSnapshot(step) {
+  const fingerprint = getEvidenceFingerprint(step);
+
+  return {
+    stepId: step.stepId,
+    ok: step.result?.ok === true,
+    statusId: step.result?.statusId || null,
+    issueCount: step.result?.issueCount || 0,
+    projectionFingerprint: fingerprint,
+  };
+}
+
+function containsRawCompletionEvidence(value) {
+  const serialized = JSON.stringify(value || {});
+
+  return [
+    'Animated Movies',
+    'Disney',
+    'Radarr Animated Movies',
+  ].some(rawValue => serialized.includes(rawValue));
+}
+
+function buildPolicyBuilderPhase6BoundedChainCompletionAudit({
+  chain = buildDefaultPhase6BoundedCompletionChain(),
+} = {}) {
+  const steps = [
+    {
+      stepId: PHASE6R_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE,
+      result: chain.boundedEvidenceResult,
+    },
+    {
+      stepId: PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE,
+      result: chain.boundedIntentResult,
+    },
+    {
+      stepId: PHASE6R_COMPLETION_COMPONENT_IDS.LEARNING_GUARD,
+      result: chain.boundedLearningResult,
+    },
+    {
+      stepId: PHASE6R_COMPLETION_COMPONENT_IDS.READINESS_ENGINE,
+      result: chain.boundedReadinessResult,
+    },
+    {
+      stepId: PHASE6R_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW,
+      result: chain.boundedWorkflowResult,
+    },
+    {
+      stepId: PHASE6R_COMPLETION_COMPONENT_IDS.MIGRATION_DELETION_PATH,
+      result: chain.boundedMigrationResult,
+    },
+  ];
+  const stepSnapshots = steps.map(getBoundedChainStepSnapshot);
+  const fingerprints = stepSnapshots
+    .map(step => step.projectionFingerprint)
+    .filter(Boolean);
+  const uniqueFingerprints = new Set(fingerprints);
+  const issues = [];
+
+  stepSnapshots
+    .filter(step => step.ok !== true)
+    .forEach(step => {
+      issues.push(buildIssue(
+        PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_FAILED,
+        `Phase 6R bounded completion chain failed at "${step.stepId}".`,
+        {
+          componentId: step.stepId,
+          statusId: step.statusId,
+          auditIssueCount: step.issueCount,
+        }
+      ));
+    });
+
+  if (fingerprints.length !== steps.length || uniqueFingerprints.size !== 1) {
+    issues.push(buildIssue(
+      PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_PROVENANCE_MISMATCH,
+      'Phase 6R bounded completion chain must carry one shared evidence projection fingerprint.',
+      {
+        checkedStepCount: steps.length,
+        fingerprintCount: fingerprints.length,
+        uniqueFingerprintCount: uniqueFingerprints.size,
+      }
+    ));
+  }
+
+  if (containsRawCompletionEvidence([
+    chain.boundedIntentResult?.evidenceBoundary,
+    chain.boundedLearningResult?.intentBoundary,
+    chain.boundedReadinessResult?.boundaryContext,
+    chain.boundedWorkflowResult?.boundaryContext,
+    chain.boundedMigrationResult?.boundaryContext,
+  ])) {
+    issues.push(buildIssue(
+      PHASE6R_COMPLETION_RISK_IDS.BOUNDED_CHAIN_RAW_PROVENANCE,
+      'Phase 6R bounded completion chain must not carry raw evidence labels in boundary provenance.'
+    ));
+  }
+
+  return {
+    ok: issues.length === 0,
+    issueCount: issues.length,
+    checkedStepCount: steps.length,
+    fingerprintCount: fingerprints.length,
+    sharedProjectionFingerprint: fingerprints.length === steps.length && uniqueFingerprints.size === 1
+      ? fingerprints[0]
+      : null,
+    steps: stepSnapshots,
+    issues,
+    nextPhase: {
+      phaseId: '7r_1',
+      label: 'Runtime Decision Inventory And Cutline',
+      reason: 'The Phase 6R bounded chain is composable, so runtime decision paths can be inventoried against the new contract surface.',
+    },
+  };
+}
+
 function validatePhase6ComponentCompletion(record, {
   componentAuditMap = buildComponentAuditMap(),
   pathExists = defaultPathExists,
@@ -350,6 +545,7 @@ function validatePhase6ComponentCompletion(record, {
 function buildPolicyBuilderPhase6CompletionAudit({
   components = PHASE6R_COMPONENT_RECORDS,
   componentAuditMap = buildComponentAuditMap(),
+  boundedChainAudit = buildPolicyBuilderPhase6BoundedChainCompletionAudit(),
   pathExists = defaultPathExists,
 } = {}) {
   const records = asArray(components);
@@ -370,6 +566,7 @@ function buildPolicyBuilderPhase6CompletionAudit({
   const issues = [
     ...componentResults.flatMap(result => result.issues),
     ...missingComponentIssues,
+    ...asArray(boundedChainAudit.issues),
   ];
 
   return {
@@ -377,6 +574,8 @@ function buildPolicyBuilderPhase6CompletionAudit({
     issueCount: issues.length,
     checkedComponentCount: componentResults.length,
     requiredComponentCount: REQUIRED_COMPONENT_IDS.length,
+    boundedChainOk: boundedChainAudit.ok === true,
+    boundedChainAudit,
     componentResults,
     issues,
     nextPhase: {
@@ -399,6 +598,7 @@ export {
   PHASE6R_COMPLETION_COMPONENT_IDS,
   PHASE6R_COMPLETION_RISK_IDS,
   buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit,
+  buildPolicyBuilderPhase6BoundedChainCompletionAudit,
   buildPolicyBuilderPhase6CompletionAudit,
   listPolicyBuilderPhase6CompletionComponents,
   listPolicyBuilderPhase6RequiredLegacyCutlineArtifacts,

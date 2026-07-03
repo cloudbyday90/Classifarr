@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Completion Bounded Chain Audit** — added an
+  end-to-end bounded completion audit that proves evidence, intent, learning,
+  readiness, workflow, and migration handoffs share sanitized evidence
+  projection provenance before Phase 6R completion can pass.
 - **Policy Builder Phase 6R Migration Boundary Alignment** — added a bounded
   Phase 6R.6 migration/deletion entry point that requires a successful bounded
   operator workflow result and matching sanitized workflow provenance before
