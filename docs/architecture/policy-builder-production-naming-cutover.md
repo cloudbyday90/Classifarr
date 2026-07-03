@@ -179,3 +179,7 @@ labels, except where an allow-listed migration or history reason is documented.
   references, 7,467 production references, and 7,489 rename candidates.
   Persisted classification progress storage columns remain deferred to a later
   storage compatibility decision.
+- Phase 9R.4 now has a durable-named regression audit:
+  [Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md).
+  The audit consumes the production naming inventory and blocks increases above
+  the approved July 3, 2026 baseline while durable rename batches continue.

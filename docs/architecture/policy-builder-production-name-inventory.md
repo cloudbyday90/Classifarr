@@ -116,6 +116,9 @@ scanner boundary.
 
 ## Next Step
 
-Proceed to **Phase 9R.2 Durable Domain Module Cutover**. Start with a narrow
-mechanical rename batch for the highest-value production domain, preserving
-behavior and adding focused import/contract regression tests.
+Use the Phase 9R.4
+[Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md)
+as the guardrail while proceeding with **Phase 9R.2 Durable Domain Module
+Cutover**. Start with a narrow mechanical rename batch for the highest-value
+production domain, preserving behavior and adding focused import/contract
+regression tests.

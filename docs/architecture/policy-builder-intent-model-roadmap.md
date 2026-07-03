@@ -6237,6 +6237,23 @@ Acceptance criteria:
 - Full focused server/client tests pass after rename.
 - The roadmap records the final durable module names.
 
+Implementation status:
+
+- Phase 9R.4 naming regression is documented in
+  [Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md).
+- The durable-named regression audit lives in
+  `server/src/services/policyProductionNamingRegressionAudit.mjs`.
+- The focused regression test suite lives in
+  `server/src/__tests__/services/policyProductionNamingRegressionAudit.test.mjs`.
+- Current implementation consumes the production naming inventory, requires a
+  valid classification result, blocks increases above the approved July 3, 2026
+  baseline for production references, rename candidates, and obsolete migration
+  tooling, and rejects temporary adapters without deletion gates.
+- The current baseline is `7585` production references, `7607` rename
+  candidates, and `93` obsolete migration tooling references. Future durable
+  rename batches should lower this baseline after inventory validation proves
+  the debt decreased.
+
 ### 9R.5 Final Product-Language Audit
 
 Intent: verify the completed platform can be understood without knowing the

@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Production Naming Regression Audit** — added a durable-named
+  Phase 9R.4 guardrail that consumes the production naming inventory and blocks
+  increases in phase-coded production references, rename candidates, obsolete
+  migration tooling, or temporary adapters without deletion gates while durable
+  module cutovers continue.
 - **Policy Builder Phase 6R Completion Quality Chain** — hardened the Phase 6R
   completion audit so the bounded evidence → intent → learning → readiness →
   workflow → migration handoff rejects missing, insufficient, or mismatched
