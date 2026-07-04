@@ -1,6 +1,6 @@
 import { buildPolicyIntentContract } from './policyIntentContract.mjs';
 import {
-  PHASE8R_CONVERSION_STEP_STATUS_IDS,
+  PHASE8R_CONVERSION_STEP_STATUS_IDS as POLICY_CONVERSION_STEP_STATUS_IDS,
 } from './policyBuilderPhase8ExplicitConversionWorkflow.mjs';
 import {
   DRY_RUN_CURRENT_WINDOW_MINUTES,
@@ -10,11 +10,11 @@ import {
   loadPolicyPostUpgradePolicies,
 } from './policyPostUpgradeDryRun.mjs';
 
-const PHASE8R_POST_UPGRADE_APPLY_GATE_VERSION = 'phase8r.post_upgrade_apply_gate.v1';
+const POLICY_POST_UPGRADE_APPLY_GATE_VERSION = 'policy.post_upgrade_apply_gate.v1';
 const DEFAULT_TARGET_VERSION = 1;
 const DEFAULT_ROLLBACK_WINDOW_DAYS = 14;
 
-const PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS = Object.freeze({
+const POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS = Object.freeze({
   READY_TO_APPLY: 'ready_to_apply',
   APPLIED: 'applied',
   BLOCKED_BY_DRY_RUN: 'blocked_by_dry_run',
@@ -24,7 +24,7 @@ const PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS = Object.freeze({
   FAILED_ROLLED_BACK: 'failed_rolled_back',
 });
 
-const PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS = Object.freeze({
+const POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS = Object.freeze({
   DRY_RUN_REQUIRED: 'dry_run_required',
   DRY_RUN_INVALID: 'dry_run_invalid',
   DRY_RUN_STALE: 'dry_run_stale',
@@ -66,7 +66,7 @@ function isTimestampExpired(expiresAt, now) {
 function getReadySteps(dryRun = {}) {
   const normalizedDryRun = asObject(dryRun);
   return asArray(normalizedDryRun.conversionWorkflow?.steps)
-    .filter(step => step.statusId === PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY);
+    .filter(step => step.statusId === POLICY_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY);
 }
 
 function unique(values) {
@@ -80,7 +80,7 @@ function getDryRunOperatorErrors(dryRun = {}) {
 
 function determineApplyGateStatus({ dryRun, now, readySteps, hasTransactionBoundary }) {
   if (!dryRun) {
-    return PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_DRY_RUN;
+    return POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_DRY_RUN;
   }
 
   if (
@@ -88,56 +88,56 @@ function determineApplyGateStatus({ dryRun, now, readySteps, hasTransactionBound
     dryRun.statusId !== POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE ||
     getDryRunOperatorErrors(dryRun).length > 0
   ) {
-    return PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_DRY_RUN;
+    return POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_DRY_RUN;
   }
 
   if (isTimestampExpired(dryRun.expiresAt, now)) {
-    return PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_STALE_DRY_RUN;
+    return POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_STALE_DRY_RUN;
   }
 
   if (readySteps.length === 0) {
-    return PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_NO_READY_STEPS;
+    return POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_NO_READY_STEPS;
   }
 
   if (!hasTransactionBoundary) {
-    return PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_TRANSACTION_BOUNDARY;
+    return POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_TRANSACTION_BOUNDARY;
   }
 
-  return PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.READY_TO_APPLY;
+  return POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.READY_TO_APPLY;
 }
 
 function buildApplyGateOperatorErrorIds({ dryRun, statusId }) {
   const errors = [];
 
   if (!dryRun) {
-    errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_REQUIRED);
+    errors.push(POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_REQUIRED);
   } else {
     if (dryRun.validation?.ok !== true ||
         dryRun.statusId !== POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE) {
-      errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_INVALID);
+      errors.push(POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_INVALID);
     }
 
     if (getDryRunOperatorErrors(dryRun).length > 0) {
-      errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_INVALID);
+      errors.push(POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_INVALID);
     }
   }
 
-  if (statusId === PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_STALE_DRY_RUN) {
-    errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_STALE);
+  if (statusId === POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_STALE_DRY_RUN) {
+    errors.push(POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_STALE);
   }
 
-  if (statusId === PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_NO_READY_STEPS) {
-    errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.NO_READY_STEPS);
+  if (statusId === POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_NO_READY_STEPS) {
+    errors.push(POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.NO_READY_STEPS);
   }
 
-  if (statusId === PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_TRANSACTION_BOUNDARY) {
-    errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.TRANSACTION_BOUNDARY_REQUIRED);
+  if (statusId === POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_TRANSACTION_BOUNDARY) {
+    errors.push(POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.TRANSACTION_BOUNDARY_REQUIRED);
   }
 
   return unique(errors);
 }
 
-function buildPolicyBuilderPhase8PostUpgradeApplyGate({
+function buildPolicyPostUpgradeApplyGate({
   dryRun = null,
   hasTransactionBoundary = false,
   now = null,
@@ -155,7 +155,7 @@ function buildPolicyBuilderPhase8PostUpgradeApplyGate({
     statusId,
   });
   const gate = {
-    version: PHASE8R_POST_UPGRADE_APPLY_GATE_VERSION,
+    version: POLICY_POST_UPGRADE_APPLY_GATE_VERSION,
     mode: 'apply_gate',
     statusId,
     evaluatedAt,
@@ -177,8 +177,8 @@ function buildPolicyBuilderPhase8PostUpgradeApplyGate({
       legacyPathsDeleted: false,
       policyStorageMutated: false,
     },
-    nextPhase: {
-      phaseId: '8r_13',
+    nextStep: {
+      stepId: 'native_runtime_cutover_verification',
       label: 'Native Runtime Cutover Verification',
       reason: 'Post-upgrade apply can now be transaction-gated, so the next step is proving converted runtime reads and support rollback behavior before deleting compatibility paths.',
     },
@@ -186,22 +186,22 @@ function buildPolicyBuilderPhase8PostUpgradeApplyGate({
 
   return {
     ...gate,
-    validation: validatePolicyBuilderPhase8PostUpgradeApplyGate(gate),
+    validation: validatePolicyPostUpgradeApplyGate(gate),
   };
 }
 
-function validatePolicyBuilderPhase8PostUpgradeApplyGate(gate = {}) {
+function validatePolicyPostUpgradeApplyGate(gate = {}) {
   const issues = [];
 
   if (gate.mode !== 'apply_gate') {
     issues.push({
       riskId: 'apply_gate_wrong_mode',
-      message: 'Phase 8R post-upgrade apply must run through an apply gate.',
+      message: 'Policy post-upgrade apply must run through an apply gate.',
     });
   }
 
   if (
-    gate.statusId === PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.READY_TO_APPLY &&
+    gate.statusId === POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.READY_TO_APPLY &&
     gate.summary?.transactionBoundaryAvailable !== true
   ) {
     issues.push({
@@ -211,7 +211,7 @@ function validatePolicyBuilderPhase8PostUpgradeApplyGate(gate = {}) {
   }
 
   if (
-    gate.statusId === PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.READY_TO_APPLY &&
+    gate.statusId === POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.READY_TO_APPLY &&
     asArray(gate.readyPolicyIds).length === 0
   ) {
     issues.push({
@@ -221,7 +221,7 @@ function validatePolicyBuilderPhase8PostUpgradeApplyGate(gate = {}) {
   }
 
   Object.entries(asObject(gate.sideEffects)).forEach(([key, value]) => {
-    if (value === true && gate.statusId !== PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.APPLIED) {
+    if (value === true && gate.statusId !== POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.APPLIED) {
       issues.push({
         riskId: 'apply_gate_side_effect_before_apply',
         message: `Apply gate cannot report side effect "${key}" before successful apply.`,
@@ -442,7 +442,7 @@ async function insertRollbackSnapshot({ client, intentId, policy, contract, step
       policy.id,
       DEFAULT_TARGET_VERSION,
       JSON.stringify(payload),
-      step.rollbackSnapshot?.restorePath || `phase8r/rollback/policies/${policy.id}/v${DEFAULT_TARGET_VERSION}`,
+      step.rollbackSnapshot?.restorePath || `policy/post-upgrade/rollback/policies/${policy.id}/v${DEFAULT_TARGET_VERSION}`,
       expiresAt,
     ]
   );
@@ -584,7 +584,7 @@ async function applyReadyStep({ client, policy, step, actorId, appliedAt, target
   const contract = buildPolicyIntentContract(policy);
   if (contract.validation?.valid !== true) {
     const error = new Error(`Policy ${policy.id} failed native intent validation during apply.`);
-    error.operatorErrorId = PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.CONTRACT_VALIDATION_FAILED;
+    error.operatorErrorId = POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.CONTRACT_VALIDATION_FAILED;
     throw error;
   }
 
@@ -603,8 +603,8 @@ async function applyReadyStep({ client, policy, step, actorId, appliedAt, target
     policyId: policy.id,
     eventType: 'conversion_started',
     actorId,
-    reasonCode: 'phase8r_post_upgrade_apply',
-    summary: 'Phase 8R post-upgrade native intent conversion started.',
+    reasonCode: 'policy_post_upgrade_apply',
+    summary: 'Policy post-upgrade native intent conversion started.',
     metadata: { idempotencyKey: step.idempotencyKey },
     targetVersion,
   });
@@ -615,7 +615,7 @@ async function applyReadyStep({ client, policy, step, actorId, appliedAt, target
     policyId: policy.id,
     eventType: 'rollback_snapshot_created',
     actorId,
-    reasonCode: 'phase8r_post_upgrade_apply',
+    reasonCode: 'policy_post_upgrade_apply',
     summary: 'Rollback snapshot created before native intent conversion.',
     metadata: { restorePath: step.rollbackSnapshot?.restorePath ?? null },
     targetVersion,
@@ -630,8 +630,8 @@ async function applyReadyStep({ client, policy, step, actorId, appliedAt, target
     policyId: policy.id,
     eventType: 'conversion_applied',
     actorId,
-    reasonCode: 'phase8r_post_upgrade_apply',
-    summary: 'Phase 8R post-upgrade native intent conversion applied.',
+    reasonCode: 'policy_post_upgrade_apply',
+    summary: 'Policy post-upgrade native intent conversion applied.',
     metadata: {
       idempotencyKey: step.idempotencyKey,
       rulesInserted,
@@ -649,7 +649,7 @@ async function applyReadyStep({ client, policy, step, actorId, appliedAt, target
   };
 }
 
-async function applyPolicyBuilderPhase8PostUpgradeApplyGate({
+async function applyPolicyPostUpgradeApplyGate({
   dbClient,
   dryRun,
   policies = [],
@@ -658,13 +658,13 @@ async function applyPolicyBuilderPhase8PostUpgradeApplyGate({
   targetVersion = DEFAULT_TARGET_VERSION,
 } = {}) {
   const appliedAt = normalizeTimestamp(now);
-  const gate = buildPolicyBuilderPhase8PostUpgradeApplyGate({
+  const gate = buildPolicyPostUpgradeApplyGate({
     dryRun,
     hasTransactionBoundary: typeof dbClient?.withTransaction === 'function',
     now: appliedAt,
   });
 
-  if (gate.statusId !== PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.READY_TO_APPLY) {
+  if (gate.statusId !== POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.READY_TO_APPLY) {
     return {
       ...gate,
       applied: false,
@@ -683,8 +683,8 @@ async function applyPolicyBuilderPhase8PostUpgradeApplyGate({
       for (const step of readySteps) {
         const policy = policyMap.get(String(step.policyId));
         if (!policy) {
-          const error = new Error(`Policy input missing for Phase 8R apply: ${step.policyId}`);
-          error.operatorErrorId = PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.POLICY_INPUT_MISSING;
+          const error = new Error(`Policy input missing for post-upgrade apply: ${step.policyId}`);
+          error.operatorErrorId = POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.POLICY_INPUT_MISSING;
           throw error;
         }
 
@@ -703,7 +703,7 @@ async function applyPolicyBuilderPhase8PostUpgradeApplyGate({
 
     return {
       ...gate,
-      statusId: PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.APPLIED,
+      statusId: POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.APPLIED,
       applied: true,
       appliedPolicyCount: results.filter(result => result.alreadyConverted !== true).length,
       alreadyConvertedCount: results.filter(result => result.alreadyConverted === true).length,
@@ -724,13 +724,13 @@ async function applyPolicyBuilderPhase8PostUpgradeApplyGate({
   } catch (error) {
     return {
       ...gate,
-      statusId: PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.FAILED_ROLLED_BACK,
+      statusId: POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.FAILED_ROLLED_BACK,
       applied: false,
       appliedPolicyCount: 0,
       results: [],
       operatorErrorIds: unique([
         ...asArray(gate.operatorErrorIds),
-        error.operatorErrorId || PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.APPLY_FAILED_ROLLED_BACK,
+        error.operatorErrorId || POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.APPLY_FAILED_ROLLED_BACK,
       ]),
       rollback: {
         assumedComplete: true,
@@ -752,7 +752,7 @@ async function applyPolicyBuilderPhase8PostUpgradeApplyGate({
   }
 }
 
-async function runPolicyBuilderPhase8PostUpgradeApplyGate({
+async function runPolicyPostUpgradeApplyGate({
   dbClient,
   maxPolicies,
   now = null,
@@ -768,7 +768,7 @@ async function runPolicyBuilderPhase8PostUpgradeApplyGate({
     now,
   });
 
-  return applyPolicyBuilderPhase8PostUpgradeApplyGate({
+  return applyPolicyPostUpgradeApplyGate({
     dbClient,
     dryRun,
     policies,
@@ -778,11 +778,11 @@ async function runPolicyBuilderPhase8PostUpgradeApplyGate({
 }
 
 export {
-  PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS,
-  PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS,
-  PHASE8R_POST_UPGRADE_APPLY_GATE_VERSION,
-  applyPolicyBuilderPhase8PostUpgradeApplyGate,
-  buildPolicyBuilderPhase8PostUpgradeApplyGate,
-  runPolicyBuilderPhase8PostUpgradeApplyGate,
-  validatePolicyBuilderPhase8PostUpgradeApplyGate,
+  POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS,
+  POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS,
+  POLICY_POST_UPGRADE_APPLY_GATE_VERSION,
+  applyPolicyPostUpgradeApplyGate,
+  buildPolicyPostUpgradeApplyGate,
+  runPolicyPostUpgradeApplyGate,
+  validatePolicyPostUpgradeApplyGate,
 };

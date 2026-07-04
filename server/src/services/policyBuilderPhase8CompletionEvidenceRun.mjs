@@ -119,12 +119,12 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_12',
     label: 'Post-Upgrade Apply Gate',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-post-upgrade-apply-gate.md'],
+    designDocPaths: ['docs/architecture/policy-post-upgrade-apply-gate.md'],
     contractPaths: [
-      'server/src/services/policyBuilderPhase8PostUpgradeApplyGate.mjs',
+      'server/src/services/policyPostUpgradeApplyGate.mjs',
       'server/src/services/postUpgradeService.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8PostUpgradeApplyGate.test.mjs'],
+    testPaths: ['server/src/__tests__/services/policyPostUpgradeApplyGate.test.mjs'],
   },
   {
     phaseId: '8r_13',

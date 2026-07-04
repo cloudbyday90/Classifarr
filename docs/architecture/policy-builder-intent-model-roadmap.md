@@ -4908,15 +4908,23 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R post-upgrade apply gate is documented in
-  [Policy Builder Phase 8R Post-Upgrade Apply Gate](policy-builder-phase-8r-post-upgrade-apply-gate.md).
+- Post-upgrade apply gate is documented in
+  [Policy Post-Upgrade Apply Gate](policy-post-upgrade-apply-gate.md).
 - The apply-gate service lives in
-  `server/src/services/policyBuilderPhase8PostUpgradeApplyGate.mjs`.
-- The `phase8r_native_intent_apply_gate` action is wired into
+  `server/src/services/policyPostUpgradeApplyGate.mjs`.
+- The `policy_post_upgrade_apply_gate` action is wired into
   `postUpgradeService` but is not registered as an automatic release-version
   task.
 - Focused tests cover missing dry-run, stale dry-run, successful transaction
   apply, and rollback-safe failure reporting.
+- The module cutover renamed the production service, focused test, architecture
+  record, payload version, builder/apply exports, post-upgrade action, migration
+  reason code, rollback restore path, and post-upgrade runner import to durable
+  policy post-upgrade apply-gate names; replaced the apply-gate handoff with
+  `nextStep.stepId = native_runtime_cutover_verification`; and preserved the
+  transaction boundary, rollback snapshot, idempotency, migration events,
+  no-legacy-deletion behavior, and bounded operator errors:
+  [Policy Post-Upgrade Apply Gate Module Cutover](policy-post-upgrade-apply-gate-module-cutover.md).
 
 ### 8R.13 Native Runtime Cutover Verification
 

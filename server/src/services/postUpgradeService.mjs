@@ -12,7 +12,7 @@ import path from 'node:path';
 import * as db from '../config/database.mjs';
 import { persistRagAuditLog } from './ragAuditLogService.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
-import { runPolicyBuilderPhase8PostUpgradeApplyGate } from './policyBuilderPhase8PostUpgradeApplyGate.mjs';
+import { runPolicyPostUpgradeApplyGate as runPolicyPostUpgradeApplyGateService } from './policyPostUpgradeApplyGate.mjs';
 import { runPolicyPostUpgradeDryRun } from './policyPostUpgradeDryRun.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
@@ -243,8 +243,8 @@ class PostUpgradeService {
             case 'policy_native_intent_dry_run':
                 return await this.runPolicyPostUpgradeDryRun();
 
-            case 'phase8r_native_intent_apply_gate':
-                return await this.runPhase8rNativeIntentApplyGate();
+            case 'policy_post_upgrade_apply_gate':
+                return await this.runPolicyPostUpgradeApplyGate();
 
             default:
                 throw new Error(`Unknown task action: ${task.action}`);
@@ -437,16 +437,16 @@ class PostUpgradeService {
     }
 
     /**
-     * Task Action: apply native intent conversion only through the Phase 8R gate.
+     * Task Action: apply native intent conversion only through the policy apply gate.
      */
-    async runPhase8rNativeIntentApplyGate() {
-        logger.info('Running Phase 8R native intent post-upgrade apply gate...');
+    async runPolicyPostUpgradeApplyGate() {
+        logger.info('Running policy post-upgrade apply gate...');
 
-        const result = await runPolicyBuilderPhase8PostUpgradeApplyGate({
+        const result = await runPolicyPostUpgradeApplyGateService({
             dbClient: db
         });
 
-        logger.info('Phase 8R native intent post-upgrade apply gate complete', {
+        logger.info('Policy post-upgrade apply gate complete', {
             statusId: result.statusId,
             appliedPolicyCount: result.appliedPolicyCount,
             alreadyConvertedCount: result.alreadyConvertedCount,

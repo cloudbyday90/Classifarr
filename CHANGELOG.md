@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Post-Upgrade Apply Gate Module Cutover** — renamed the post-upgrade
+  apply-gate service, focused test, and architecture record to
+  `policyPostUpgradeApplyGate.mjs`, `policyPostUpgradeApplyGate.test.mjs`, and
+  `policy-post-upgrade-apply-gate.md`, moved the payload version to
+  `policy.post_upgrade_apply_gate.v1`, replaced phase-coded builder/apply
+  exports, post-upgrade action, migration reason code, rollback restore path,
+  and runtime handoff with durable policy-domain names, updated evidence-map and
+  roadmap references, and preserved current dry-run validation,
+  transaction-bound apply, rollback snapshots, idempotency, migration events,
+  no-legacy-deletion behavior, and bounded operator error IDs.
 - **Policy Post-Upgrade Dry-Run Wiring Module Cutover** — renamed the
   post-upgrade dry-run service, focused test, and architecture record to
   `policyPostUpgradeDryRun.mjs`, `policyPostUpgradeDryRun.test.mjs`, and

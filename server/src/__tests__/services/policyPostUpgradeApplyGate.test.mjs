@@ -1,10 +1,10 @@
 import { jest } from '@jest/globals';
 import {
-  PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS,
-  PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS,
-  applyPolicyBuilderPhase8PostUpgradeApplyGate,
-  buildPolicyBuilderPhase8PostUpgradeApplyGate,
-} from '../../services/policyBuilderPhase8PostUpgradeApplyGate.mjs';
+  POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS,
+  POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS,
+  applyPolicyPostUpgradeApplyGate,
+  buildPolicyPostUpgradeApplyGate,
+} from '../../services/policyPostUpgradeApplyGate.mjs';
 import {
   buildPolicyPostUpgradeDryRun,
 } from '../../services/policyPostUpgradeDryRun.mjs';
@@ -88,31 +88,36 @@ function createApplyClient({ failOnRules = false } = {}) {
   return client;
 }
 
-describe('policyBuilderPhase8PostUpgradeApplyGate', () => {
+describe('policyPostUpgradeApplyGate', () => {
   test('blocks apply when no dry-run is supplied', () => {
-    const gate = buildPolicyBuilderPhase8PostUpgradeApplyGate({
+    const gate = buildPolicyPostUpgradeApplyGate({
       dryRun: null,
       hasTransactionBoundary: true,
       now: '2026-07-01T12:00:00.000Z',
     });
 
-    expect(gate.statusId).toBe(PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_DRY_RUN);
+    expect(gate.version).toBe('policy.post_upgrade_apply_gate.v1');
+    expect(gate.statusId).toBe(POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_DRY_RUN);
     expect(gate.operatorErrorIds).toEqual([
-      PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_REQUIRED,
+      POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_REQUIRED,
     ]);
     expect(gate.validation.ok).toBe(true);
+    expect(gate.nextStep).toEqual(expect.objectContaining({
+      stepId: 'native_runtime_cutover_verification',
+    }));
+    expect(gate.nextPhase).toBeUndefined();
   });
 
   test('blocks apply when the dry-run has expired', () => {
-    const gate = buildPolicyBuilderPhase8PostUpgradeApplyGate({
+    const gate = buildPolicyPostUpgradeApplyGate({
       dryRun: readyDryRun('2026-07-01T12:00:00.000Z'),
       hasTransactionBoundary: true,
       now: '2026-07-01T12:16:00.000Z',
     });
 
-    expect(gate.statusId).toBe(PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_STALE_DRY_RUN);
+    expect(gate.statusId).toBe(POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_STALE_DRY_RUN);
     expect(gate.operatorErrorIds).toEqual([
-      PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_STALE,
+      POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_STALE,
     ]);
   });
 
@@ -122,7 +127,7 @@ describe('policyBuilderPhase8PostUpgradeApplyGate', () => {
       withTransaction: jest.fn(async (work) => work(client)),
     };
 
-    const result = await applyPolicyBuilderPhase8PostUpgradeApplyGate({
+    const result = await applyPolicyPostUpgradeApplyGate({
       dbClient,
       dryRun: readyDryRun(),
       policies: [policy()],
@@ -131,7 +136,7 @@ describe('policyBuilderPhase8PostUpgradeApplyGate', () => {
     });
 
     expect(dbClient.withTransaction).toHaveBeenCalledTimes(1);
-    expect(result.statusId).toBe(PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.APPLIED);
+    expect(result.statusId).toBe(POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.APPLIED);
     expect(result.applied).toBe(true);
     expect(result.appliedPolicyCount).toBe(1);
     expect(result.results).toEqual([
@@ -165,17 +170,17 @@ describe('policyBuilderPhase8PostUpgradeApplyGate', () => {
       withTransaction: jest.fn(async (work) => work(client)),
     };
 
-    const result = await applyPolicyBuilderPhase8PostUpgradeApplyGate({
+    const result = await applyPolicyPostUpgradeApplyGate({
       dbClient,
       dryRun: readyDryRun(),
       policies: [policy()],
       now: '2026-07-01T12:00:00.000Z',
     });
 
-    expect(result.statusId).toBe(PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.FAILED_ROLLED_BACK);
+    expect(result.statusId).toBe(POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.FAILED_ROLLED_BACK);
     expect(result.applied).toBe(false);
     expect(result.operatorErrorIds).toEqual([
-      PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.APPLY_FAILED_ROLLED_BACK,
+      POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.APPLY_FAILED_ROLLED_BACK,
     ]);
     expect(result.rollback).toEqual(expect.objectContaining({
       assumedComplete: true,

@@ -1,4 +1,4 @@
-# Policy Builder Phase 8R Post-Upgrade Apply Gate
+# Policy Post-Upgrade Apply Gate
 
 ## Intent
 
@@ -91,7 +91,7 @@ Pros:
 
 - conversion can be tested before compatibility paths disappear,
 - rollback and support remain possible during the bounded window,
-- deletion remains controlled by later Phase 8R gates.
+- deletion remains controlled by later compatibility-removal gates.
 
 Cons:
 
@@ -100,7 +100,7 @@ Cons:
 
 ## Final Recommendation Stack
 
-Use this stack for Phase 8R.12:
+Use this stack for post-upgrade apply gate:
 
 1. Require `policy.post_upgrade_dry_run.v1` output that is valid, ready, and
    not expired.
@@ -119,14 +119,14 @@ Use this stack for Phase 8R.12:
 
 Implemented:
 
-- Added `policyBuilderPhase8PostUpgradeApplyGate.mjs`.
+- Added `policyPostUpgradeApplyGate.mjs`.
 - Added a pure apply-gate evaluator for missing, invalid, stale, no-ready-step,
   missing transaction-boundary, and ready states.
 - Added transaction-only apply that writes native intent header, rollback
   snapshot, rules, routing target, template applications, validation status, and
   migration events.
 - Added idempotency guard for already-active target-version native intents.
-- Wired `phase8r_native_intent_apply_gate` into `postUpgradeService` without
+- Wired `policy_post_upgrade_apply_gate` into `postUpgradeService` without
   registering it as an automatic version task.
 - Added focused tests for missing dry-run, stale dry-run, successful
   transaction apply, and rollback-safe failure reporting.
@@ -141,7 +141,7 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Phase 8R.13 Native Runtime Cutover Verification**. That task
-should prove converted policies read from native intent in real route/service
-paths, expose safe support diagnostics, and keep rollback available before any
-legacy compatibility code is deleted.
+Proceed with **Native Runtime Cutover Verification**. That task should prove
+converted policies read from native intent in real route/service paths, expose
+safe support diagnostics, and keep rollback available before any legacy
+compatibility code is deleted.
