@@ -61,7 +61,7 @@ Pros:
 
 Cons:
 
-- Leaves runtime/rebuild test reset phase-coded until the next cutover slice.
+- Leaves runtime completion audit architecture naming for a later cutover slice.
 - Does not persist or export telemetry; transport and retention remain later
   integration work.
 - Requires downstream consumers to import the renamed metrics contract.
@@ -123,4 +123,5 @@ npm --prefix server run test:unit -- --no-coverage --runInBand
 
 ## Next Step
 
-Continue with runtime/rebuild test reset and native intent storage readiness after the runtime completion audit cutover.
+Continue with runtime completion audit architecture naming and native intent
+storage readiness after runtime cutover records are durable.

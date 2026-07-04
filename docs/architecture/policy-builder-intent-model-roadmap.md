@@ -4270,7 +4270,9 @@ Acceptance criteria:
 Implementation status:
 
 - Runtime and rebuild test reset is documented in
-  [Policy Runtime And Rebuild Test Reset](policy-builder-phase-7r-runtime-rebuild-test-reset.md).
+  [Policy Runtime And Rebuild Test Reset](policy-runtime-rebuild-test-reset.md).
+- The active architecture-name cutover is documented in
+  [Policy Runtime And Rebuild Test Reset Architecture Cutover](policy-runtime-rebuild-test-reset-architecture-cutover.md).
 - Current implementation adds a server-owned reset manifest that classifies
   runtime/rebuild tests as kept regressions, runtime contract rewrites, or
   abandoned impact/replay diagnostic deletion candidates.
@@ -6447,6 +6449,15 @@ Implementation status:
 - After the runtime/rebuild-test-reset cutover, the repository inventory
   validates with 12,214 total phase-coded references, 5,142 production
   references, and 5,164 rename candidates.
+- The policy runtime and rebuild test reset architecture cutover renamed the
+  active test-reset design record to `policy-runtime-rebuild-test-reset.md`,
+  added a durable architecture cutover record, updated roadmap/module
+  references to the durable test-reset contract, and updated the preceding
+  metrics-trace records now that this cutover is no longer pending:
+  [Policy Runtime And Rebuild Test Reset Architecture Cutover](policy-runtime-rebuild-test-reset-architecture-cutover.md).
+- After the runtime/rebuild-test-reset architecture cutover, the repository
+  inventory validates with 9,407 total phase-coded references, 3,740 production
+  references, and 3,762 rename candidates.
 - The next runtime module cutover renamed the completion audit to
   `policyRuntimeCompletionAudit.mjs`, renamed its focused test, moved the audit
   contract to `policy.runtime_completion_audit.v1`, replaced roadmap handoff

@@ -77,7 +77,7 @@ Pros:
 Cons:
 
 - Does not add persistence, retention, dashboards, or OpenTelemetry transport.
-- Leaves runtime/rebuild test reset as the next active architecture cutover.
+- Leaves runtime completion audit as a later active architecture cutover.
 - Requires roadmap and module-cutover references to be kept in sync with the
   renamed active document.
 
@@ -119,6 +119,6 @@ Cons:
 
 ## Next Step
 
-Runtime And Rebuild Test Reset should receive the next architecture cutover so
-its active design record uses the durable test-reset contract name and points at
-the already-renamed `policyRuntimeRebuildTestReset.mjs` service.
+Runtime And Rebuild Test Reset now has a durable active architecture record.
+Runtime Completion Audit should receive the next architecture cutover so its
+active design record uses the durable completion-audit contract name.

@@ -1,7 +1,8 @@
 # Policy Runtime And Rebuild Test Reset
 
-Status: implemented as a durable runtime/rebuild test reset contract that
-originated as the ninth Phase 7R runtime/rebuild checkpoint.
+## Status
+
+Implemented as the durable runtime/rebuild test reset contract.
 
 ## Problem
 

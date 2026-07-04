@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime And Rebuild Test Reset Architecture Cutover** — renamed the
+  active runtime/rebuild test reset architecture record to
+  `policy-runtime-rebuild-test-reset.md`, updated the roadmap and module
+  cutover note to point at the durable
+  `policy.runtime_rebuild_test_reset.v1` contract, added a runtime/rebuild test
+  reset architecture cutover record, updated the preceding metrics-trace notes
+  now that the reset cutover is complete, and preserved the existing
+  `policyRuntimeRebuildTestReset.mjs` side-effect-free manifest, artifact
+  availability, authority-boundary, routing-distinction, rollback-safety, and
+  deletion-gate behavior.
 - **Policy Runtime Metrics And Decision Trace Architecture Cutover** — renamed
   the active runtime metrics and decision trace architecture record to
   `policy-runtime-metrics-trace.md`, updated the roadmap and module cutover

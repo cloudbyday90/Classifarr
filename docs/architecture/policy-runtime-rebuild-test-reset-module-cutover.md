@@ -2,8 +2,8 @@
 
 ## Status
 
-Implemented as a Phase 9R durable module-name cutover for runtime and rebuild
-test reset evidence.
+Implemented as the durable module-name cutover for runtime and rebuild test
+reset evidence.
 
 This change does not rewrite or delete tests. It removes temporary roadmap
 naming from the production test reset contract while preserving side-effect-free
@@ -96,6 +96,13 @@ Runtime and rebuild test reset now uses durable production naming while
 preserving the same deterministic artifact manifest, coverage mapping,
 authority checks, routing checks, old diagnostic deletion gates, side-effect
 flags, and completion-audit handoff. The runtime completion audit imports the durable reset contract.
+
+## Related Active Architecture
+
+- Active architecture:
+  [Policy Runtime And Rebuild Test Reset](policy-runtime-rebuild-test-reset.md)
+- Architecture cutover:
+  [Policy Runtime And Rebuild Test Reset Architecture Cutover](policy-runtime-rebuild-test-reset-architecture-cutover.md)
 
 ## Validation
 
