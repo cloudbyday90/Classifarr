@@ -4209,7 +4209,9 @@ Acceptance criteria:
 Implementation status:
 
 - Runtime metrics and decision trace is documented in
-  [Policy Runtime Metrics And Decision Trace](policy-builder-phase-7r-runtime-metrics-trace.md).
+  [Policy Runtime Metrics And Decision Trace](policy-runtime-metrics-trace.md).
+- The active architecture-name cutover is documented in
+  [Policy Runtime Metrics And Decision Trace Architecture Cutover](policy-runtime-metrics-trace-architecture-cutover.md).
 - The server-owned metrics/trace projection lives in
   `server/src/services/policyRuntimeMetricsTrace.mjs`.
 - The focused metrics/trace test suite lives in
@@ -6429,6 +6431,14 @@ Implementation status:
 - After the runtime-metrics cutover, the repository inventory validates with
   12,373 total phase-coded references, 5,237 production references, and 5,259
   rename candidates.
+- The policy runtime metrics and decision trace architecture cutover renamed
+  the active runtime metrics design record to `policy-runtime-metrics-trace.md`,
+  added a durable architecture cutover record, and updated roadmap/module
+  references to the durable metrics/trace contract:
+  [Policy Runtime Metrics And Decision Trace Architecture Cutover](policy-runtime-metrics-trace-architecture-cutover.md).
+- After the runtime-metrics architecture cutover, the repository inventory
+  validates with 9,407 total phase-coded references, 3,740 production
+  references, and 3,762 rename candidates.
 - The next runtime module cutover renamed runtime and rebuild test reset to
   `policyRuntimeRebuildTestReset.mjs`, renamed its focused test, moved the
   reset contract to `policy.runtime_rebuild_test_reset.v1`, and replaced the

@@ -2,16 +2,16 @@
 
 ## Status
 
-Implemented as a durable runtime metrics and decision trace contract that
-originated as the eighth Phase 7R runtime/rebuild checkpoint.
+Implemented as the durable runtime metrics and decision trace contract.
 
-This slice projects automation decisions, runtime question plans, request-time
-learning decisions, rebuild proposals, migration verifier reports, and rebuild
-lifecycle events into bounded counters, sanitized trace records, and
-action-oriented operator summaries. Trace records retain supported upstream
-source fingerprints for correlation without copying raw evidence. It does not
-persist telemetry, export to an observability backend, expose raw provider
-payloads, or surface diagnostic internals as normal policy UI.
+This projection turns automation decisions, runtime question plans,
+request-time learning decisions, rebuild proposals, migration verifier
+reports, and rebuild lifecycle events into bounded counters, sanitized trace
+records, and action-oriented operator summaries. Trace records retain
+supported upstream source fingerprints for correlation without copying raw
+evidence. It does not persist telemetry, export to an observability backend,
+expose raw provider payloads, or surface diagnostic internals as normal policy
+UI.
 
 ## Problem
 
@@ -39,7 +39,7 @@ small and action-oriented.
   attributes for future telemetry
   wiring.
 - [OpenTelemetry Signals](https://opentelemetry.io/docs/concepts/signals/)
-  separates traces, metrics, and logs. This slice keeps counters and trace
+  separates traces, metrics, and logs. This contract keeps counters and trace
   records as a local projection and does not conflate them with raw logs.
 - [OpenTelemetry Context Propagation](https://opentelemetry.io/docs/concepts/context-propagation/)
   explains that propagated context lets traces, logs, and metrics be correlated.
@@ -95,8 +95,8 @@ Cons:
 
 - Does not yet persist metrics or export to OpenTelemetry.
 - Later integration must decide retention and transport.
-- Counts are only as complete as the Phase 7R contract events passed into the
-  projection.
+- Counts are only as complete as the policy runtime contract events passed into
+  the projection.
 - Source correlation is intentionally limited to known SHA-256 fingerprint
   attributes and derived rebuild fingerprint-set digests; unsupported ad hoc
   trace fields are ignored.

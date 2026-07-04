@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Metrics And Decision Trace Architecture Cutover** — renamed
+  the active runtime metrics and decision trace architecture record to
+  `policy-runtime-metrics-trace.md`, updated the roadmap and module cutover
+  note to point at the durable `policy.runtime_metrics_trace.v1` contract,
+  added a runtime metrics architecture cutover record, and preserved the
+  existing `policyRuntimeMetricsTrace.mjs` side-effect-free bounded counters,
+  supported source fingerprints, sensitive payload suppression, trace naming,
+  and validation behavior.
 - **Policy Migration Verifier And Rollback Architecture Cutover** — renamed
   the active migration verifier and rollback architecture record to
   `policy-migration-verifier-rollback.md`, updated the roadmap and module

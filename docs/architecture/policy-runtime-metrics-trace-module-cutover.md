@@ -2,8 +2,8 @@
 
 ## Status
 
-Implemented as a Phase 9R durable module-name cutover for runtime metrics and
-decision trace projection.
+Implemented as the durable module-name cutover for runtime metrics and decision
+trace projection.
 
 This change does not persist telemetry, export spans, or add an observability
 backend. It removes temporary roadmap naming from the production metrics/trace
@@ -100,6 +100,13 @@ preserving the same deterministic counters, bounded trace records, source
 fingerprint validation, security suppression checks, and operator summary
 shape. Completion-audit, decision inventory, and runtime/rebuild test reset
 consumers now import the durable metrics contract.
+
+## Related Active Architecture
+
+- Active architecture:
+  [Policy Runtime Metrics And Decision Trace](policy-runtime-metrics-trace.md)
+- Architecture cutover:
+  [Policy Runtime Metrics And Decision Trace Architecture Cutover](policy-runtime-metrics-trace-architecture-cutover.md)
 
 ## Validation
 
