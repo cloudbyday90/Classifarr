@@ -3547,7 +3547,9 @@ Implementation status:
 - Policy operator workflow architecture cutover is documented in
   [Policy Operator Workflow Architecture Cutover](policy-operator-workflow-architecture-cutover.md).
 - Policy operator workflow quality-gate hardening is documented in
-  [Policy Builder Phase 6R Workflow Quality Gate](policy-builder-phase-6r-workflow-quality-gate.md).
+  [Policy Operator Workflow Quality Gate](policy-operator-workflow-quality-gate.md).
+- Policy operator workflow quality-gate architecture cutover is documented in
+  [Policy Operator Workflow Quality Gate Architecture Cutover](policy-operator-workflow-quality-gate-architecture-cutover.md).
 
 ### 6R.6 Migration And Deletion Path
 
@@ -6623,6 +6625,17 @@ Implementation status:
   references, and 3,762 rename candidates. The production phase-coded baseline
   remains unchanged, but runtime-facing audit labels now use durable policy
   operator workflow wording.
+- The policy operator workflow quality-gate architecture cutover renamed the
+  active workflow quality-gate design record to
+  `policy-operator-workflow-quality-gate.md`, added a durable architecture
+  cutover record, and aligned workflow quality-gate documentation with the
+  existing server-owned bounded quality checks:
+  [Policy Operator Workflow Quality Gate Architecture Cutover](policy-operator-workflow-quality-gate-architecture-cutover.md).
+- After the policy operator workflow quality-gate architecture cutover, the
+  repository inventory validates with 9,483 total phase-coded references, 3,740
+  production references, and 3,762 rename candidates. The production baseline
+  remains unchanged because enforcement already lives in the durable operator
+  workflow.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

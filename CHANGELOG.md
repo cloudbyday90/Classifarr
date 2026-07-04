@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Operator Workflow Quality Gate Architecture Cutover** — renamed the
+  active workflow quality-gate architecture record to
+  `policy-operator-workflow-quality-gate.md`, updated the roadmap to point at
+  the durable workflow quality-gate contract, added a workflow quality-gate
+  architecture cutover record, and preserved the existing
+  `policyOperatorWorkflow.mjs` missing-quality, insufficient-quality,
+  mismatched-quality, and tampered-quality validation before normal workflow
+  rendering.
 - **Policy Operator Workflow Architecture Cutover** — renamed the active
   operator workflow architecture record to `policy-operator-workflow.md`,
   updated runtime-facing readiness and completion labels from operator workflow
