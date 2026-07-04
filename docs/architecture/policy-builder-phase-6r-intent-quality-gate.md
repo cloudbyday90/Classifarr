@@ -104,7 +104,7 @@ Cons:
 - Focused tests:
   `server/src/__tests__/services/policyIntentEngine.test.mjs`
 - Design owner:
-  `docs/architecture/policy-builder-phase-6r-intent-engine.md`
+  `docs/architecture/policy-intent-engine.md`
 - Roadmap owner:
   Phase 6R.2 in
   `docs/architecture/policy-builder-intent-model-roadmap.md`

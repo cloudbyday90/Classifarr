@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Intent Engine Architecture Cutover** — renamed the active
+  intent-engine architecture record to `policy-intent-engine.md`, updated the
+  roadmap to point at the durable `policy.intent.v1` contract, added a bounded
+  architecture cutover record, and preserved the existing
+  `policyIntentEngine.mjs` bounded evidence, evidence quality, fingerprint,
+  durable-authority, side-effect-free, and `nextStep` handoff behavior.
 - **Policy Evidence Quality Architecture Cutover** — renamed the active
   evidence-quality architecture record to `policy-evidence-quality.md`, updated
   the roadmap to point at the durable quality contract, added a bounded

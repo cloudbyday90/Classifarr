@@ -3308,8 +3308,11 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 6R.2 intent engine is documented in
-  [Policy Builder Phase 6R Intent Engine](policy-builder-phase-6r-intent-engine.md).
+- Policy intent engine is documented in
+  [Policy Intent Engine](policy-intent-engine.md).
+- The policy intent engine architecture cutover renamed the active intent
+  design record to durable product-domain naming and recorded the outcome in
+  [Policy Intent Engine Architecture Cutover](policy-intent-engine-architecture-cutover.md).
 - The server-owned intent contract lives in
   `server/src/services/policyIntentEngine.mjs`.
 - The focused intent-engine test suite lives in
@@ -6554,6 +6557,10 @@ Implementation status:
   production references, and 3,763 rename candidates. The production baseline
   remains unchanged because the server module and test names were already
   durable.
+- After the policy intent engine architecture cutover, the repository inventory
+  validates with 9,572 total phase-coded references, 3,741 production
+  references, and 3,763 rename candidates. The production baseline remains
+  unchanged because the server module and test names were already durable.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

@@ -2,8 +2,8 @@
 
 ## Context
 
-Phase 9R production naming work renamed the intent inference engine from a
-roadmap-phase module to a durable product-domain module:
+Production naming work renamed the intent inference engine from a roadmap-phase
+module to a durable product-domain module:
 
 - `server/src/services/policyBuilderPhase6IntentEngine.mjs` ->
   `server/src/services/policyIntentEngine.mjs`
@@ -37,16 +37,16 @@ The engine now owns the production-named intent draft contract
 
 ## Pros
 
-- Removes the Phase 6R intent-engine name from production imports.
+- Removes the old roadmap-phase intent-engine name from production imports.
 - Gives downstream modules a stable `policy.intent.v1` contract surface.
-- Keeps `policyIntentEngine.mjs` free of roadmap handoff fields by using
-  `nextStep` instead of `nextPhase`.
+- Keeps `policyIntentEngine.mjs` free of roadmap handoff fields by using a
+  product-domain `nextStep` handoff.
 - Lowers the production naming regression baseline.
 
 ## Cons
 
-- Learning, readiness, workflow, migration, and Phase 7R modules still carry
-  their own phase-coded module names and handoff fields. Those require separate
+- Learning, readiness, workflow, migration, and runtime modules still carry
+  their own phase-coded module names or handoff fields. Those require separate
   bounded cutovers.
 - The policy engine completion audit now validates the intent engine's semantic
   `nextStep.stepId` handoff directly.
@@ -72,5 +72,5 @@ The engine now owns the production-named intent draft contract
 
 ## Next Step
 
-Cut over the learning guard to a durable product-domain module once the intent
-engine cutover has passed the full validation suite.
+Cut over the policy intent engine architecture record to durable product-domain
+language, then continue with the learning guard architecture cutover.

@@ -1,20 +1,19 @@
-# Policy Builder Phase 6R Intent Engine
+# Policy Intent Engine
 
 ## Status
 
-Implemented as the second Phase 6R engine contract.
+Implemented as the durable policy intent engine contract.
 
-This slice consumes Phase 6R evidence projection and produces proposed
+This design consumes bounded policy evidence projection and produces proposed
 destination intent. It does not persist policy intent, create learning,
 execute routing, call providers, or replace runtime classification paths. New
 runtime and rebuild callers should use the bounded intent entry point, which
-requires the Phase 6R.1 evidence boundary result and carries the evidence
-projection fingerprint forward. July 2026 hardening makes that handoff stricter:
-the intent boundary now validates that the evidence projection fingerprint,
-trace attributes, and sanitized provenance still match the bounded evidence
-projection before producing an intent draft. It also consumes the Phase 6R.1
-evidence quality assessment and blocks intent inference when evidence quality is
-insufficient.
+requires the policy evidence boundary result and carries the evidence projection
+fingerprint forward. July 2026 hardening makes that handoff stricter: the
+intent boundary now validates that the evidence projection fingerprint, trace
+attributes, and sanitized provenance still match the bounded evidence projection
+before producing an intent draft. It also consumes the policy evidence quality
+assessment and blocks intent inference when evidence quality is insufficient.
 
 ## Problem
 
@@ -38,8 +37,8 @@ The important boundary is authority:
   confidence reason codes instead of silently promoting inferred evidence.
 - [NIST Generative AI Profile](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf)
   highlights provenance, reliability, and lifecycle risk management for
-  generative AI. Phase 6R.2 keeps model/provider output outside durable policy
-  authority and requires deterministic validation.
+  generative AI. The policy intent engine keeps model/provider output outside
+  durable policy authority and requires deterministic validation.
 - [OWASP Top 10 for Large Language Model Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
   identifies insecure output handling and overreliance risks. Classifarr should
   not let AI or provider suggestions directly create policy meaning.
@@ -53,17 +52,17 @@ The important boundary is authority:
   evidence-boundary handoffs before intent inference.
 - [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
   recommend stable attribute names for operations and data. The intent engine
-  preserves the Phase 6R.1 projection fingerprint and trace attributes so later
-  telemetry can correlate which bounded evidence produced an intent draft
+  preserves the policy evidence projection fingerprint and trace attributes so
+  later telemetry can correlate which bounded evidence produced an intent draft
   without exposing raw evidence labels.
 
 ## Recommendations
 
 1. **Keep intent proposal separate from persistence.**
-   The output is a proposal, not a write model. Phase 8R will own native
-   storage after engine contracts stabilize.
+   The output is a proposal, not a write model. Native policy storage owns
+   persistence after engine contracts stabilize.
 
-2. **Use the Phase 6R evidence buckets as the only input model.**
+2. **Use policy evidence buckets as the only input model.**
    The intent engine should not read replay, impact preview, provider payload,
    TMDB coverage, UI chip state, or raw legacy preset payloads.
 
@@ -85,17 +84,17 @@ The important boundary is authority:
 
 7. **Require bounded evidence for new callers.**
    `buildPolicyIntentDraftFromBoundedEvidence` consumes the
-   Phase 6R.1 boundary result, rejects failed evidence boundaries, requires the
+   policy evidence boundary result, rejects failed evidence boundaries, requires the
    projection fingerprint, and attaches a sanitized evidence-boundary snapshot
    to the intent draft.
 
 8. **Validate evidence handoff integrity.**
-   The intent boundary recomputes the Phase 6R.1 projection fingerprint audit
+   The intent boundary recomputes the policy evidence projection fingerprint audit
    before producing intent. A stale, malformed, or tampered fingerprint blocks
    intent generation.
 
 9. **Consume generated evidence quality before inference.**
-   Bounded intent generation requires the Phase 6R.1 quality object. Missing or
+   Bounded intent generation requires the policy evidence quality object. Missing or
    insufficient quality returns `blocked_by_evidence_quality` with stable reason
    IDs and a next action instead of producing policy intent.
 
@@ -106,10 +105,10 @@ Pros:
 - Converts evidence into a product-facing destination meaning contract.
 - Keeps inferred evidence, declared constraints, and review triggers separate.
 - Stops provider metadata from defining destination identity.
-- Provides a clean handoff into Phase 6R.3 Learning Guard.
+- Provides a clean handoff into the policy learning guard.
 - Creates an executable audit for future changes.
-- Prevents new runtime/rebuild callers from bypassing Phase 6R.1 input and
-  projection audits.
+- Prevents new runtime/rebuild callers from bypassing policy evidence input,
+  projection, and fingerprint audits.
 - Carries deterministic evidence provenance into intent without leaking raw
   evidence labels in the boundary snapshot.
 - Prevents stale or tampered evidence correlation handles from becoming intent
@@ -139,11 +138,11 @@ Cons:
 - Test module:
   `server/src/__tests__/services/policyIntentEngine.test.mjs`
 - Documentation:
-  `docs/architecture/policy-builder-phase-6r-intent-engine.md`
+  `docs/architecture/policy-intent-engine.md`
 - Quality-gate outcome:
-  `docs/architecture/policy-builder-phase-6r-intent-quality-gate.md`
+  downstream policy intent quality-gate architecture record pending cutover.
 - Roadmap owner:
-  Phase 6R.2 Intent Engine in
+  Policy Intent Engine in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
@@ -200,8 +199,9 @@ inferred
 operatorDeclared
 ```
 
-The contract intentionally keeps `learningSideEffects` empty. Phase 6R.3 owns
-the decision of whether an outcome or answer can become durable learning.
+The contract intentionally keeps `learningSideEffects` empty. The policy
+learning guard owns the decision of whether an outcome or answer can
+become durable learning.
 
 For bounded runtime/rebuild callers, the intent service returns:
 
@@ -213,7 +213,7 @@ intent
 intentAudit
 issueCount
 issues
-nextPhase
+nextStep
 ```
 
 The bounded status IDs are:
@@ -247,7 +247,7 @@ blocked_by_intent_audit
 
 ## Next Step
 
-Proceed to **Phase 6R.3 Learning Guard**. That component should require
-quality-gated bounded intent before manual outcomes, Discord answers,
+Proceed to **Policy Learning Guard** architecture cutover. That component should
+require quality-gated bounded intent before manual outcomes, Discord answers,
 confirmations, routing outcomes, and request choices can become durable
 learning, exact-item memory, profile evidence, or outcome history only.
