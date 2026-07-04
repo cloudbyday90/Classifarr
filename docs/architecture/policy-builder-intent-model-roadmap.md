@@ -4073,8 +4073,10 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 7R.6 library-derived policy rebuild is documented in
-  [Policy Builder Phase 7R Library-Derived Policy Rebuild](policy-builder-phase-7r-library-policy-rebuild.md).
+- Library-derived policy rebuild is documented in
+  [Policy Library-Derived Policy Rebuild](policy-library-policy-rebuild.md).
+- Policy library-derived policy rebuild architecture cutover is documented in
+  [Policy Library-Derived Policy Rebuild Architecture Cutover](policy-library-policy-rebuild-architecture-cutover.md).
 - The server-owned rebuild proposal contract lives in
   `server/src/services/policyLibraryPolicyRebuild.mjs`.
 - The focused rebuild test suite lives in
@@ -4082,7 +4084,7 @@ Implementation status:
 - Current implementation consumes observed library profile evidence,
   fingerprint-bound guarded outcomes, explicit constraints, routing
   configuration, observed outliers, observed absences, and profile freshness.
-- Rebuild output reuses Phase 6R evidence projection, intent draft, and
+- Rebuild output reuses policy evidence projection, intent draft, and
   readiness contracts instead of inventing a separate policy schema.
 - Proposals include evidence source summaries, confidence, assumptions,
   warnings, an explicit operator acceptance gate, and a rollback snapshot gate.
@@ -6735,6 +6737,17 @@ Implementation status:
   inventory validates with 9,404 total phase-coded references, 3,740 production
   references, and 3,762 rename candidates. The production phase-coded baseline
   remains unchanged, but the active request-time learning documentation now
+  uses durable policy-domain wording.
+- The policy library-derived rebuild architecture cutover renamed the active
+  library-derived policy rebuild design record to
+  `policy-library-policy-rebuild.md`, added a durable architecture cutover
+  record, and updated roadmap/module references to the durable rebuild
+  proposal contract:
+  [Policy Library-Derived Policy Rebuild Architecture Cutover](policy-library-policy-rebuild-architecture-cutover.md).
+- After the policy library-derived rebuild architecture cutover, the repository
+  inventory validates with 9,404 total phase-coded references, 3,740 production
+  references, and 3,762 rename candidates. The production phase-coded baseline
+  remains unchanged, but the active library-derived rebuild documentation now
   uses durable policy-domain wording.
 
 ### 9R.3 Contract And Telemetry Naming Cutover

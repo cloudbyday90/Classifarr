@@ -2,11 +2,10 @@
 
 ## Status
 
-Implemented as the durable library-derived policy rebuild runtime contract. It
-originated as the sixth Phase 7R runtime/rebuild contract and now exposes
+Implemented as the durable library-derived policy rebuild runtime contract with
 product-domain module, export, and contract names.
 
-This slice creates a side-effect-free rebuild proposal from observed library
+This contract creates a side-effect-free rebuild proposal from observed library
 profile evidence, fingerprint-bound guarded outcomes, explicit operator
 constraints, routing configuration, outlier evidence, and profile freshness. It
 produces a policy intent draft plus readiness, source summaries, warnings,
@@ -127,7 +126,7 @@ Cons:
    - routing configuration,
    - outlier signals,
    - profile freshness.
-2. Reuse Phase 6R evidence, intent, and readiness contracts for proposal
+2. Reuse policy evidence, intent, and readiness contracts for proposal
    generation.
 3. Produce a proposal envelope with:
    - proposed intent draft,
@@ -166,7 +165,7 @@ Cons:
 - Readiness dependency:
   `server/src/services/policyAutomationReadinessEngine.mjs`
 - Roadmap owner:
-  Phase 7R.6 Library-Derived Policy Rebuild in
+  Library-Derived Policy Rebuild in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
@@ -215,7 +214,7 @@ The service exports:
 - Trace output uses bounded reason codes and counts, not raw payloads or prompts.
 - Guarded outcomes are only consumed as compatibility/outlier proposal evidence
   when they carry a sanitized upstream SHA-256 evidence fingerprint from the
-  Phase 7R runtime/question/request-learning chain.
+  runtime decision, question-reduction, and request-learning chain.
 - Guarded outcomes are only consumed when the request-time learning contract
   validates successfully, including bounded question-reduction proof.
 - Source summaries store bounded fingerprint counts and digests only; they do

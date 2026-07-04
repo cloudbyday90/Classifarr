@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Library-Derived Policy Rebuild Architecture Cutover** — renamed the
+  active library-derived policy rebuild architecture record to
+  `policy-library-policy-rebuild.md`, updated the roadmap and module cutover
+  note to point at the durable `policy.library_policy_rebuild.v1` contract,
+  added a library-derived rebuild architecture cutover record, and preserved
+  the existing `policyLibraryPolicyRebuild.mjs` side-effect-free proposal
+  generation, guarded-outcome proof, observed-absence warning, operator
+  acceptance, rollback gate, source-summary, and bounded trace behavior.
 - **Policy Request-Time Learning Architecture Cutover** — renamed the active
   request-time learning architecture record to
   `policy-request-time-learning.md`, updated the roadmap and module cutover

@@ -2,8 +2,8 @@
 
 ## Status
 
-Implemented as a Phase 9R durable module-name cutover for library-derived
-policy rebuild proposals.
+Implemented as a durable module-name cutover for library-derived policy rebuild
+proposals.
 
 This change does not apply or persist policy replacements. It removes temporary
 roadmap naming from the production rebuild proposal contract while preserving
@@ -112,3 +112,10 @@ Cut over Runtime Metrics And Decision Trace to a durable product-domain module
 name because library-derived policy rebuild and migration verification now
 export durable names, and metrics/trace is the next direct runtime consumer
 still carrying Phase 7R production naming.
+
+## Related Active Architecture
+
+The active library-derived policy rebuild design record is now
+[Policy Library-Derived Policy Rebuild](policy-library-policy-rebuild.md).
+The architecture naming cutover is recorded in
+[Policy Library-Derived Policy Rebuild Architecture Cutover](policy-library-policy-rebuild-architecture-cutover.md).
