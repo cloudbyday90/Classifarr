@@ -1,22 +1,23 @@
-# Policy Builder Phase 6R Readiness Quality Gate
+# Policy Automation Readiness Quality Gate
 
 ## Status
 
-Implemented as a Phase 6R.4 hardening slice.
+Implemented as the durable quality-gate hardening record for policy automation
+readiness.
 
-This document covers the bounded handoff from Phase 6R.1 evidence, Phase 6R.2
-intent, and Phase 6R.3 learning into Phase 6R.4 automation readiness.
-Readiness can only evaluate automation when all bounded upstream contracts carry
-matching, usable, label-free evidence quality.
+This document covers the bounded handoff from policy evidence, policy intent,
+and policy learning into automation readiness. Readiness can evaluate
+automation only when all bounded upstream contracts carry matching, usable,
+label-free evidence quality.
 
 ## Problem
 
 Automation readiness is the operator-facing answer to whether Classifarr can
 continue. If readiness accepts mismatched or insufficient upstream quality, the
-UI can show a confident action even though evidence or learning was produced
-from a weaker state.
+UI can show a confident action even though evidence, intent, or learning was
+produced from a weaker state.
 
-Phase 6R.4 therefore needs to validate:
+The readiness quality gate therefore validates:
 
 - bounded evidence quality,
 - bounded intent quality,
@@ -27,16 +28,22 @@ Phase 6R.4 therefore needs to validate:
 
 ## Official Guidance Reviewed
 
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
-  emphasizes outcome-based secure design and verification. The readiness gate
-  makes automation readiness a verified output of bounded upstream contracts.
+- [NIST Secure Software Development Framework SP 800-218](https://csrc.nist.gov/pubs/sp/800/218/final)
+  emphasizes verified secure design and lifecycle traceability. The readiness
+  quality gate makes automation readiness a verified output of bounded upstream
+  contracts.
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
-  supports incorporating trustworthiness considerations into AI system design
-  and evaluation. Readiness uses explicit quality and reason IDs instead of
-  hidden confidence.
+  supports trustworthy AI characteristics such as validity, reliability,
+  security, resilience, accountability, and transparency. Readiness uses
+  explicit quality and reason IDs instead of hidden confidence.
 - [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
-  provides a basis for testing application security controls. Phase 6R.4
-  validates business workflow state before declaring automation ready.
+  provides a basis for testing application security controls and validating
+  business workflow state. The quality gate validates server-side workflow
+  state before declaring automation ready.
+- [OWASP Web Security Testing Guide: Business Logic Data Validation](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/01-Test_Business_Logic_Data_Validation)
+  emphasizes that logically valid data must be enforced server-side, not only
+  in the frontend. Readiness quality is therefore checked in the server-owned
+  bounded wrapper.
 - [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
   recommend stable names for operations and data. The readiness boundary keeps
   stable quality and fingerprint fields that can later be traced without raw
@@ -45,12 +52,12 @@ Phase 6R.4 therefore needs to validate:
 ## Recommendations
 
 1. **Require quality continuity across bounded contracts.**
-   Evidence, intent, and learning must carry the same quality status, action,
-   and reason IDs before readiness can be evaluated.
+   Evidence, intent, and learning must carry matching quality status, action,
+   reason IDs, and sanitized counts before readiness can be evaluated.
 
 2. **Block insufficient quality before readiness.**
    `insufficient` quality returns `blocked_by_bounded_input`, not a readiness
-   state such as `needs_review` or `ready`.
+   state such as `needs_operator_review` or `ready`.
 
 3. **Carry label-free quality context.**
    The readiness boundary context should include quality status, score, action,
@@ -64,6 +71,10 @@ Phase 6R.4 therefore needs to validate:
    Quality gates should block invalid upstream state before readiness. Once the
    gate passes, readiness still returns one small operator action.
 
+6. **Keep quality validation server-owned.**
+   The UI can display readiness results, but it should not rebuild quality
+   continuity from raw diagnostics or hidden client-side assumptions.
+
 ## Pros And Cons
 
 Pros:
@@ -74,6 +85,7 @@ Pros:
 - Keeps the operator-facing readiness answer simple while strengthening the
   server boundary.
 - Preserves traceability without evidence labels or provider payloads.
+- Keeps future telemetry stable through durable readiness quality names.
 
 Cons:
 
@@ -97,8 +109,9 @@ Cons:
   `server/src/__tests__/services/policyAutomationReadinessEngine.test.mjs`
 - Design owner:
   `docs/architecture/policy-automation-readiness-engine.md`
+- Quality-gate owner:
+  `docs/architecture/policy-automation-readiness-quality-gate.md`
 - Roadmap owner:
-  Phase 6R.4 in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Outcome
@@ -116,7 +129,7 @@ Cons:
 
 ## Security Outcome
 
-- Readiness remains side-effect-free.
+- Readiness remains side-effect free.
 - Automation readiness cannot be evaluated from missing, insufficient, or
   mismatched upstream quality.
 - Quality metadata remains label-free and provider-payload-free.
@@ -124,6 +137,6 @@ Cons:
 
 ## Next Step
 
-Proceed to **Phase 6R.5 Operator Workflow Rebuild** and ensure the UI consumes
-the quality-gated readiness state directly instead of rebuilding readiness from
-diagnostic panels.
+Continue with **Policy Operator Workflow Architecture Cutover**. That component
+should move the active operator workflow design record to durable naming and
+preserve consumption of the quality-gated readiness state.

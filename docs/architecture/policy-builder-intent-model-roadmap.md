@@ -3478,7 +3478,9 @@ Implementation status:
 - Policy automation readiness architecture cutover is documented in
   [Policy Automation Readiness Engine Architecture Cutover](policy-automation-readiness-engine-architecture-cutover.md).
 - Policy automation readiness quality-gate hardening is documented in
-  [Policy Builder Phase 6R Readiness Quality Gate](policy-builder-phase-6r-readiness-quality-gate.md).
+  [Policy Automation Readiness Quality Gate](policy-automation-readiness-quality-gate.md).
+- Policy automation readiness quality-gate architecture cutover is documented in
+  [Policy Automation Readiness Quality Gate Architecture Cutover](policy-automation-readiness-quality-gate-architecture-cutover.md).
 
 ### 6R.5 Operator Workflow Rebuild
 
@@ -6595,6 +6597,17 @@ Implementation status:
   [Policy Automation Readiness Engine Architecture Cutover](policy-automation-readiness-engine-architecture-cutover.md).
 - After the policy automation readiness engine architecture cutover, the
   repository inventory validates with 9,515 total phase-coded references, 3,740
+  production references, and 3,762 rename candidates. The production baseline
+  remains unchanged because enforcement already lives in the durable readiness
+  engine.
+- The policy automation readiness quality-gate architecture cutover renamed the
+  active readiness quality-gate design record to
+  `policy-automation-readiness-quality-gate.md`, added a durable architecture
+  cutover record, and aligned readiness quality-gate documentation with the
+  existing server-owned bounded quality checks:
+  [Policy Automation Readiness Quality Gate Architecture Cutover](policy-automation-readiness-quality-gate-architecture-cutover.md).
+- After the policy automation readiness quality-gate architecture cutover, the
+  repository inventory validates with 9,507 total phase-coded references, 3,740
   production references, and 3,762 rename candidates. The production baseline
   remains unchanged because enforcement already lives in the durable readiness
   engine.

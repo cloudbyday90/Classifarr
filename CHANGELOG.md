@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Automation Readiness Quality Gate Architecture Cutover** — renamed
+  the active readiness quality-gate architecture record to
+  `policy-automation-readiness-quality-gate.md`, updated the roadmap to point
+  at the durable bounded quality-gate contract, added a readiness
+  quality-gate architecture cutover record, and preserved the existing
+  `policyAutomationReadinessEngine.mjs` missing-quality,
+  insufficient-quality, mismatched-quality, and tampered-boundary validation.
 - **Policy Automation Readiness Engine Architecture Cutover** — renamed the
   active readiness-engine architecture record to
   `policy-automation-readiness-engine.md`, updated the roadmap and module
