@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Workflow Completion Gate Audit** — renamed active client
+  workflow coverage records away from rewrite-slice terminology, added a
+  completion-record guard that fails active `policy-builder-phase-*` artifact
+  paths, updated the completion-gate documentation with the durable
+  `client_workflow_component` contract, and preserved the existing
+  side-effect-free workflow, normal-path exclusion, and evidence-engine handoff
+  behavior.
 - **Policy Authoring Presentation Test Reset Cutover** — renamed the
   presentation-test reset design record and completion-audit entry to durable
   product-domain names, replaced the phase-coded presentation-test reset

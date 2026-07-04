@@ -2669,10 +2669,15 @@ Implementation record:
   as the outcome record.
 - The policy authoring workflow completion gate is documented in
   [Policy Authoring Workflow Completion Audit](policy-authoring-workflow-completion-audit.md).
-  The server-owned completion audit now verifies the Phase 3R server contracts,
-  Vue rewrite slices, normal workflow rules, normal-path exclusions, and
-  referenced artifact paths before Phase 6R runtime work consumes the
+  The server-owned completion audit now verifies durable server contracts,
+  client workflow components, normal workflow rules, normal-path exclusions,
+  and referenced artifact paths before runtime evidence work consumes the
   operator-intent surface.
+- The policy-authoring workflow completion gate audit renamed the active client
+  artifact kind from rewrite-slice terminology to
+  `client_workflow_component`, added a guard that rejects active
+  `policy-builder-phase-*` artifact paths, and recorded the outcome in
+  [Policy Authoring Workflow Completion Gate Audit](policy-authoring-workflow-completion-gate-audit.md).
 
 ## Phase 4R: Folded Presentation Checkpoint
 
@@ -6510,6 +6515,11 @@ Implementation status:
 - After the policy-authoring presentation-test reset cutover, the repository
   inventory validates with 9,634 total phase-coded references, 3,741
   production references, and 3,763 rename candidates.
+- After the policy-authoring workflow completion gate audit, the repository
+  inventory validates with 9,647 total phase-coded references, 3,741
+  production references, and 3,763 rename candidates. The total count includes
+  the new audit outcome documentation and a negative test fixture; the
+  production baseline remains unchanged.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

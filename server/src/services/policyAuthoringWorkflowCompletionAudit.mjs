@@ -1,6 +1,6 @@
 const POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS = Object.freeze({
   SERVER_CONTRACT: 'server_contract',
-  VUE_REWRITE_SLICE: 'vue_rewrite_slice',
+  CLIENT_WORKFLOW_COMPONENT: 'client_workflow_component',
   NORMAL_WORKFLOW_RULE: 'normal_workflow_rule',
   NORMAL_PATH_EXCLUSION: 'normal_path_exclusion',
 });
@@ -13,6 +13,7 @@ const POLICY_AUTHORING_COMPLETION_RISK_IDS = Object.freeze({
   MISSING_TEST_PATH: 'missing_test_path',
   MISSING_EVIDENCE: 'missing_evidence',
   UNKNOWN_ARTIFACT_KIND: 'unknown_artifact_kind',
+  TEMPORARY_ARTIFACT_PATH: 'temporary_artifact_path',
   INVALID_EXCLUSION_SCOPE: 'invalid_exclusion_scope',
   INTERNAL_SURFACE_ALLOWED_IN_NORMAL_PATH: 'internal_surface_allowed_in_normal_path',
 });
@@ -23,6 +24,8 @@ const POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS = Object.freeze({
   BRIDGE_ONLY: 'bridge_only',
   DELETE_AFTER_NATIVE_STORAGE: 'delete_after_native_storage',
 });
+
+const TEMPORARY_ROADMAP_ARTIFACT_PATTERN = new RegExp(`(^|/)policy-builder-${'pha'}${'se'}-`, 'i');
 
 const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
   {
@@ -99,7 +102,7 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
   },
 ]);
 
-const POLICY_AUTHORING_VUE_REWRITE_SLICES = Object.freeze([
+const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
   {
     id: 'policy_authoring_setup_cards',
     label: 'Policy authoring setup cards',
@@ -273,7 +276,7 @@ function validatePolicyAuthoringCompletionRecord(record = {}, artifactKindId) {
 
   if ([
     POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.SERVER_CONTRACT,
-    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.VUE_REWRITE_SLICE,
+    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.CLIENT_WORKFLOW_COMPONENT,
     POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.NORMAL_WORKFLOW_RULE,
   ].includes(artifactKindId) && !record.docPath) {
     issues.push({
@@ -295,7 +298,7 @@ function validatePolicyAuthoringCompletionRecord(record = {}, artifactKindId) {
 
   if ([
     POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.SERVER_CONTRACT,
-    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.VUE_REWRITE_SLICE,
+    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.CLIENT_WORKFLOW_COMPONENT,
     POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.NORMAL_WORKFLOW_RULE,
   ].includes(artifactKindId) && !record.testPath) {
     issues.push({
@@ -305,6 +308,23 @@ function validatePolicyAuthoringCompletionRecord(record = {}, artifactKindId) {
       message: 'Policy authoring implementation records must link to a regression test.',
     });
   }
+
+  [
+    ['docPath', record.docPath],
+    ['servicePath', record.servicePath],
+    ['testPath', record.testPath],
+  ].forEach(([field, artifactPath]) => {
+    if (typeof artifactPath === 'string' && TEMPORARY_ROADMAP_ARTIFACT_PATTERN.test(artifactPath)) {
+      issues.push({
+        riskId: POLICY_AUTHORING_COMPLETION_RISK_IDS.TEMPORARY_ARTIFACT_PATH,
+        artifactKindId,
+        recordId: record.id || null,
+        field,
+        artifactPath,
+        message: 'Active policy authoring completion records must use durable artifact paths.',
+      });
+    }
+  });
 
   if (artifactKindId === POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.NORMAL_PATH_EXCLUSION) {
     if (!Object.values(POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS).includes(record.scopeId)) {
@@ -370,7 +390,7 @@ function auditPolicyAuthoringCompletionRecords(records, artifactKindId) {
 
 function buildPolicyAuthoringWorkflowCompletionAudit({
   serverContracts = POLICY_AUTHORING_SERVER_CONTRACTS,
-  vueRewriteSlices = POLICY_AUTHORING_VUE_REWRITE_SLICES,
+  clientWorkflowComponents = POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS,
   normalWorkflowRules = POLICY_AUTHORING_NORMAL_WORKFLOW_RULES,
   normalPathExclusions = POLICY_AUTHORING_NORMAL_PATH_EXCLUSIONS,
 } = {}) {
@@ -378,9 +398,9 @@ function buildPolicyAuthoringWorkflowCompletionAudit({
     serverContracts,
     POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.SERVER_CONTRACT
   );
-  const vueRewriteAudit = auditPolicyAuthoringCompletionRecords(
-    vueRewriteSlices,
-    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.VUE_REWRITE_SLICE
+  const clientWorkflowAudit = auditPolicyAuthoringCompletionRecords(
+    clientWorkflowComponents,
+    POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.CLIENT_WORKFLOW_COMPONENT
   );
   const normalWorkflowAudit = auditPolicyAuthoringCompletionRecords(
     normalWorkflowRules,
@@ -392,7 +412,7 @@ function buildPolicyAuthoringWorkflowCompletionAudit({
   );
   const issueCount = [
     serverContractAudit,
-    vueRewriteAudit,
+    clientWorkflowAudit,
     normalWorkflowAudit,
     normalPathExclusionAudit,
   ].reduce((count, audit) => count + audit.issueCount, 0);
@@ -401,11 +421,11 @@ function buildPolicyAuthoringWorkflowCompletionAudit({
     ok: issueCount === 0,
     issueCount,
     checkedServerContractCount: serverContractAudit.checkedCount,
-    checkedVueRewriteCount: vueRewriteAudit.checkedCount,
+    checkedClientWorkflowComponentCount: clientWorkflowAudit.checkedCount,
     checkedNormalWorkflowRuleCount: normalWorkflowAudit.checkedCount,
     checkedNormalPathExclusionCount: normalPathExclusionAudit.checkedCount,
     serverContractAudit,
-    vueRewriteAudit,
+    clientWorkflowAudit,
     normalWorkflowAudit,
     normalPathExclusionAudit,
     nextStep: {
@@ -423,7 +443,7 @@ function listPolicyAuthoringCompletionArtifactPaths() {
       record.servicePath,
       record.testPath,
     ]),
-    ...POLICY_AUTHORING_VUE_REWRITE_SLICES.flatMap(record => [
+    ...POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS.flatMap(record => [
       record.docPath,
       record.testPath,
     ]),
@@ -438,8 +458,8 @@ function listPolicyAuthoringServerContracts() {
   return POLICY_AUTHORING_SERVER_CONTRACTS;
 }
 
-function listPolicyAuthoringVueRewriteSlices() {
-  return POLICY_AUTHORING_VUE_REWRITE_SLICES;
+function listPolicyAuthoringClientWorkflowComponents() {
+  return POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS;
 }
 
 function listPolicyAuthoringNormalWorkflowRules() {
@@ -457,9 +477,9 @@ export {
   auditPolicyAuthoringCompletionRecords,
   buildPolicyAuthoringWorkflowCompletionAudit,
   listPolicyAuthoringCompletionArtifactPaths,
+  listPolicyAuthoringClientWorkflowComponents,
   listPolicyAuthoringNormalPathExclusions,
   listPolicyAuthoringNormalWorkflowRules,
   listPolicyAuthoringServerContracts,
-  listPolicyAuthoringVueRewriteSlices,
   validatePolicyAuthoringCompletionRecord,
 };

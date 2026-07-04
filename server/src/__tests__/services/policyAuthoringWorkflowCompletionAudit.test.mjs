@@ -6,11 +6,11 @@ import {
   POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS,
   auditPolicyAuthoringCompletionRecords,
   buildPolicyAuthoringWorkflowCompletionAudit,
+  listPolicyAuthoringClientWorkflowComponents,
   listPolicyAuthoringCompletionArtifactPaths,
   listPolicyAuthoringNormalPathExclusions,
   listPolicyAuthoringNormalWorkflowRules,
   listPolicyAuthoringServerContracts,
-  listPolicyAuthoringVueRewriteSlices,
   validatePolicyAuthoringCompletionRecord,
 } from '../../services/policyAuthoringWorkflowCompletionAudit.mjs';
 
@@ -24,7 +24,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       ok: true,
       issueCount: 0,
       checkedServerContractCount: 9,
-      checkedVueRewriteCount: 9,
+      checkedClientWorkflowComponentCount: 9,
       checkedNormalWorkflowRuleCount: 5,
       checkedNormalPathExclusionCount: 6,
       nextStep: expect.objectContaining({
@@ -33,7 +33,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
     }));
   });
 
-  test('lists all required policy authoring server contracts and Vue rewrite slices', () => {
+  test('lists all required policy authoring server contracts and client workflow components', () => {
     expect(listPolicyAuthoringServerContracts().map(record => record.id)).toEqual([
       'policy_authoring_workflow_inventory',
       'policy_authoring_destination_flow',
@@ -46,7 +46,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_authoring_presentation_tests',
     ]);
 
-    expect(listPolicyAuthoringVueRewriteSlices().map(record => record.id)).toEqual([
+    expect(listPolicyAuthoringClientWorkflowComponents().map(record => record.id)).toEqual([
       'policy_authoring_setup_cards',
       'policy_authoring_destination_sections',
       'policy_authoring_review_triggers',
@@ -56,6 +56,23 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_authoring_starter_template_accelerator',
       'policy_authoring_accessibility_decision_load_audit',
       'policy_authoring_presentation_test_reset',
+    ]);
+  });
+
+  test('fails active records with temporary roadmap artifact paths', () => {
+    const result = validatePolicyAuthoringCompletionRecord({
+      id: 'legacy_phase_doc',
+      label: 'Legacy phase doc',
+      docPath: 'docs/architecture/policy-builder-phase-3r-vue-example.md',
+      testPath: 'client/src/__tests__/Example.test.js',
+      evidence: 'Should fail because active completion records need durable artifact paths.',
+    }, POLICY_AUTHORING_COMPLETION_ARTIFACT_KIND_IDS.CLIENT_WORKFLOW_COMPONENT);
+
+    expect(result.issues).toEqual([
+      expect.objectContaining({
+        riskId: POLICY_AUTHORING_COMPLETION_RISK_IDS.TEMPORARY_ARTIFACT_PATH,
+        field: 'docPath',
+      }),
     ]);
   });
 
