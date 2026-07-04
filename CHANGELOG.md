@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Question Reduction Architecture Cutover** — renamed the
+  active runtime question reduction architecture record to
+  `policy-runtime-question-reduction.md`, updated the roadmap and module
+  cutover note to point at the durable
+  `policy.runtime_question_reduction.v1` contract, added a runtime question
+  reduction architecture cutover record, and preserved the existing
+  `policyRuntimeQuestionReduction.mjs` side-effect-free disposition planning,
+  accepted/rejected frame validation, stale-question cleanup, decision
+  fingerprint binding, learning-ineligible defaults, and bounded trace behavior.
 - **Policy Automation Decision Contract Architecture Cutover** — renamed the
   active automation decision contract architecture record to
   `policy-automation-decision-contract.md`, updated the roadmap and module

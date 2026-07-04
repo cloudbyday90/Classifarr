@@ -2,8 +2,7 @@
 
 ## Status
 
-Implemented as a Phase 9R durable module-name cutover for runtime question
-reduction.
+Implemented as a durable module-name cutover for runtime question reduction.
 
 This change does not wire new pending-question behavior. It removes temporary
 roadmap naming from the production question-reduction contract while preserving
@@ -111,3 +110,10 @@ Cut over Library-Derived Policy Rebuild to a durable product-domain module name
 because request-time learning now exports durable names and the rebuild
 contract is the next direct runtime consumer still carrying Phase 7R production
 naming.
+
+## Related Active Architecture
+
+The active runtime question reduction design record is now
+[Policy Runtime Question Reduction](policy-runtime-question-reduction.md).
+The architecture naming cutover is recorded in
+[Policy Runtime Question Reduction Architecture Cutover](policy-runtime-question-reduction-architecture-cutover.md).

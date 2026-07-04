@@ -2,10 +2,9 @@
 
 ## Status
 
-Implemented as the durable runtime question reduction contract that originated
-as the fourth Phase 7R runtime contract.
+Implemented as the durable runtime question reduction contract.
 
-This slice consumes the policy automation decision state and decides whether
+This contract consumes the policy automation decision state and decides whether
 Classifarr should create a bounded operator question, suppress the question,
 ask for routing configuration, refresh the profile, block automation, gather
 evidence, or clean up a stale pending question. It does not persist questions,
@@ -120,7 +119,7 @@ Cons:
    - `provider_specific_diagnostic`,
    - `replay_parity_interpretation`.
 8. Mark every planned question as learning-ineligible by default. Durable
-   learning remains owned by the Phase 6R learning guard.
+   learning remains owned by the policy learning guard.
 9. Carry the automation decision evidence fingerprint through the
    question-reduction plan, planned question, and bounded trace attributes.
 10. Reject plans where the question or trace fingerprint differs from the plan
@@ -140,7 +139,7 @@ Cons:
 - Question vocabulary dependency:
   `server/src/services/policyQuestionLearningVocabulary.mjs`
 - Roadmap owner:
-  Phase 7R.4 Runtime Question Reduction in
+  Runtime Question Reduction in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
@@ -232,6 +231,6 @@ must be cleaned before learning.
 
 ## Next Step
 
-Phase 7R.5 Request-Time Learning And Destination Selection should use this
-question-reduction contract with the Phase 6R learning guard so request-time and
+Request-time learning and destination selection should use this
+question-reduction contract with the policy learning guard so request-time and
 manual destination choices become guarded evidence only when eligible.

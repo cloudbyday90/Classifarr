@@ -3907,7 +3907,7 @@ Intent: ask fewer, better questions only when automation cannot proceed safely.
 
 Tasks:
 
-- Use Phase 5R question contracts for all runtime review prompts.
+- Use policy question contracts for all runtime review prompts.
 - Ask only for destination-fit uncertainty, hard-limit conflicts, routing gaps,
   stale profile conditions, or insufficient identity evidence.
 - Reject or rewrite genre-priority questions before persistence.
@@ -3928,8 +3928,10 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 7R.4 runtime question reduction is documented in
-  [Policy Builder Phase 7R Runtime Question Reduction](policy-builder-phase-7r-runtime-question-reduction.md).
+- Runtime question reduction is documented in
+  [Policy Runtime Question Reduction](policy-runtime-question-reduction.md).
+- Policy runtime question reduction architecture cutover is documented in
+  [Policy Runtime Question Reduction Architecture Cutover](policy-runtime-question-reduction-architecture-cutover.md).
 - The server-owned runtime question reducer lives in
   `server/src/services/policyRuntimeQuestionReduction.mjs`.
 - The focused runtime-question test suite lives in
@@ -3942,7 +3944,7 @@ Implementation status:
   `needs_routing_mapping` become routing actions; stale profiles become refresh
   actions; stale or legacy pending questions must go through cleanup before
   answer or learning.
-- Operator questions are limited to accepted Phase 5R frames and include
+- Operator questions are limited to accepted policy question frames and include
   learning eligibility metadata with durable learning disabled by default.
 - Rejected legacy frames such as broad-genre priority, AI-authored policy edit,
   provider-specific diagnostic, and replay parity interpretation are rewritten
@@ -6711,6 +6713,17 @@ Implementation status:
   production references, and 3,762 rename candidates. The production
   phase-coded baseline remains unchanged, but the active automation decision
   documentation now uses durable policy-domain wording.
+- The policy runtime question reduction architecture cutover renamed the active
+  runtime question reduction design record to
+  `policy-runtime-question-reduction.md`, added a durable architecture cutover
+  record, and updated roadmap/module references to the durable question
+  reduction contract:
+  [Policy Runtime Question Reduction Architecture Cutover](policy-runtime-question-reduction-architecture-cutover.md).
+- After the policy runtime question reduction architecture cutover, the
+  repository inventory validates with 9,410 total phase-coded references, 3,740
+  production references, and 3,762 rename candidates. The production
+  phase-coded baseline remains unchanged, but the active runtime question
+  reduction documentation now uses durable policy-domain wording.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
