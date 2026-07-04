@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Boundary Architecture Cutover** — renamed the active
+  evidence-boundary architecture record to `policy-evidence-boundary.md`,
+  updated the roadmap to point at the durable boundary contract, added a
+  bounded architecture cutover record, and preserved the existing
+  `policyEvidenceBoundary.mjs` input gate, projection audit, fingerprint audit,
+  side-effect flags, and `nextStep` handoff behavior.
 - **Policy Evidence Input Gate Architecture Cutover** — renamed the active
   input-gate architecture record to `policy-evidence-input-gate.md`, updated
   the roadmap to point at the durable input-boundary contract, added a bounded

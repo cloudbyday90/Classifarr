@@ -1,26 +1,26 @@
-# Policy Builder Phase 6R Evidence Boundary
+# Policy Evidence Boundary
 
 ## Status
 
-Implemented as Phase 6R.1 boundary hardening.
+Implemented as the durable policy evidence boundary.
 
-This slice adds a single server-owned entry point for Phase 6R evidence
+This design provides a single server-owned entry point for policy evidence
 projection. Callers pass the public evidence input envelope into the boundary;
 the boundary validates the envelope, adapts section names into the evidence
 engine input shape, builds the projection, and audits the projection before
-Phase 6R.2 or later runtime work can consume it. The boundary also emits a
-sanitized SHA-256 projection fingerprint so later engines can prove which
-bounded evidence they consumed without copying raw evidence labels or provider
-payloads into trace metadata.
+intent, readiness, learning, or runtime work can consume it. The boundary also
+emits a sanitized SHA-256 projection fingerprint so downstream engines can prove
+which bounded evidence they consumed without copying raw evidence labels or
+provider payloads into trace metadata.
 
 July 2026 hardening adds an explicit fingerprint audit at the boundary. The
 boundary now validates that the fingerprint value, trace attributes, and
-sanitized provenance match the projection being returned before Phase 6R.2 can
-consume the handoff.
+sanitized provenance match the projection being returned before downstream
+engines can consume the handoff.
 
 ## Problem
 
-Phase 6R.1 already had two strong pieces:
+The evidence system already had two strong pieces:
 
 - an input gate that rejects unsafe evidence envelopes,
 - an evidence engine that creates and audits deterministic projections.
@@ -40,9 +40,9 @@ another, or bypass the input gate and call the projection helper directly.
   generative AI systems. The boundary therefore keeps raw provider/model data
   out of the evidence contract and exposes only normalized evidence.
 - [OWASP LLM01:2025 Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
-  treats untrusted model inputs as a primary LLM risk. Phase 6R.1 keeps LLM or
-  provider output as data that must pass deterministic gates, not instructions
-  or policy authority.
+  treats untrusted model inputs as a primary LLM risk. The evidence boundary
+  keeps LLM or provider output as data that must pass deterministic gates, not
+  instructions or policy authority.
 - [OWASP API4:2023 Unrestricted Resource Consumption](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/)
   warns about missing or inappropriate resource limits. The boundary performs
   no live provider calls, quota reads, writes, or background work.
@@ -52,7 +52,7 @@ another, or bypass the input gate and call the projection helper directly.
   evidence authority in deterministic server code.
 - [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
   encourage stable names for operations and data. The boundary preserves stable
-  Phase 6R source and bucket IDs so later tracing can attach to evidence
+  policy evidence source and bucket IDs so later tracing can attach to evidence
   without exposing raw values.
 - [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
   recommends verified, traceable software changes and retained integrity
@@ -66,7 +66,7 @@ another, or bypass the input gate and call the projection helper directly.
 
 ## Recommendations
 
-1. **Expose one safe Phase 6R.1 boundary.**
+1. **Expose one safe policy evidence boundary.**
    Future runtime, rebuild, or policy-builder callers should use
    `buildBoundedPolicyEvidenceProjection` instead of composing
    gate and projection steps manually.
@@ -109,12 +109,14 @@ another, or bypass the input gate and call the projection helper directly.
 
 Pros:
 
-- Gives Phase 6R.2 one safe evidence input instead of multiple helper calls.
+- Gives downstream engines one safe evidence input instead of multiple helper
+  calls.
 - Prevents public-envelope/internal-projection naming drift.
 - Blocks unsafe inputs before projection builds any evidence.
 - Keeps evidence projection deterministic and offline.
 - Makes side-effect expectations testable.
-- Gives Phase 6R.2/7R a compact correlation handle for bounded evidence.
+- Gives downstream intent, readiness, and learning engines a compact correlation
+  handle for bounded evidence.
 - Avoids leaking titles or provider data into trace metadata.
 - Blocks stale or tampered evidence correlation handles before downstream
   engines can consume them.
@@ -142,7 +144,7 @@ Cons:
   and
   `server/src/__tests__/services/policyEvidenceFingerprint.test.mjs`
 - Roadmap owner:
-  Phase 6R.1 Evidence Engine in
+  Policy Evidence Engine in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
@@ -175,7 +177,7 @@ projectionFingerprintAudit
 issueCount
 issues
 sideEffects
-nextPhase
+nextStep
 ```
 
 ## Security Outcome
@@ -190,11 +192,12 @@ nextPhase
 - Successful projections include a deterministic fingerprint and sanitized
   provenance for trace correlation without raw evidence leakage.
 - Successful projections must pass a fingerprint audit, so a stale/tampered
-  fingerprint or mismatched trace/provenance data cannot pass the Phase 6R.1
+  fingerprint or mismatched trace/provenance data cannot pass the policy evidence
   boundary.
 
 ## Next Step
 
-Proceed to **Phase 6R.2 Intent Engine boundary alignment**. That work should
-consume the bounded evidence projection result instead of raw projections, so
-intent inference cannot bypass Phase 6R.1 input and projection audits.
+Proceed to **Policy Intent Engine boundary alignment**. That work should consume
+the bounded evidence projection result instead of raw projections, so intent
+inference cannot bypass policy evidence input, projection, and fingerprint
+audits.

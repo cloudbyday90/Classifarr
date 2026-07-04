@@ -1,6 +1,6 @@
 # Policy Evidence Boundary Module Cutover
 
-Status: implemented as a Phase 9R.2 durable-domain module cutover.
+Status: implemented as a durable-domain module cutover.
 
 ## Problem
 
@@ -8,8 +8,8 @@ The bounded evidence boundary is the entry point that adapts policy-builder
 input, gates unsafe evidence, builds a sanitized evidence projection, attaches a
 stable fingerprint, and returns the handoff consumed by intent inference. Its
 old module name and exported symbols still encoded roadmap phase labels, and
-the boundary-local handoff used `nextPhase` / `phaseId` even though downstream
-runtime code did not consume that field.
+the boundary-local handoff used roadmap-phase terminology even though
+downstream runtime code did not consume that field.
 
 ## Official Guidance Reviewed
 
@@ -37,10 +37,10 @@ runtime code did not consume that field.
    `POLICY_EVIDENCE_BOUNDARY_STATUS_IDS`, `adaptPolicyEvidenceInput`, and
    `buildBoundedPolicyEvidenceProjection`.
 4. Move the contract version to `policy.evidence.boundary.v1`.
-5. Replace the boundary-local `nextPhase` object with `nextStep` because the
-   boundary owns a product workflow handoff, not a roadmap planning handoff.
-6. Leave the input gate and projection engine imports in place until their own
-   durable module cutovers run.
+5. Replace the boundary-local roadmap handoff object with `nextStep` because
+   the boundary owns a product workflow handoff, not a roadmap planning handoff.
+6. Keep the input gate and projection engine imports on their durable
+   policy-evidence modules so the boundary owns orchestration only.
 
 ## Pros And Cons
 
@@ -54,11 +54,9 @@ Pros:
 
 Cons:
 
-- The boundary still imports phase-coded input-gate and projection-engine
-  modules until those components are renamed.
-- Existing Phase 6R docs retain historical labels for traceability.
-- Downstream Phase 6R services still contain their own phase-coded contracts and
-  need later cutovers.
+- Existing phase-coded docs remain as historical implementation traceability.
+- Downstream intent, readiness, learning, and storage architecture records still
+  contain their own phase-coded contracts and need later cutovers.
 
 ## Final Recommendation Stack
 
@@ -89,6 +87,5 @@ counts as maximums.
 
 ## Next Step
 
-Continue Phase 9R.2 with the next evidence-chain dependency. The highest-value
-target is the evidence projection engine because `policyEvidenceBoundary.mjs`
-still imports that phase-coded module until it receives a durable name.
+Continue with the policy evidence boundary architecture cutover so the active
+design record uses the same durable vocabulary as the module and tests.
