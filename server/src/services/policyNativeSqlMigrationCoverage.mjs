@@ -7,19 +7,19 @@ import {
   validatePolicyNativeSchemaContract,
 } from './policyNativeSchemaContract.mjs';
 
-const PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_VERSION =
-  'phase8r.native_sql_migration_coverage.v1';
+const POLICY_NATIVE_SQL_MIGRATION_COVERAGE_VERSION =
+  'policy.native_sql_migration_coverage.v1';
 
-const PHASE8R_NATIVE_SQL_MIGRATION_FILENAME =
+const POLICY_NATIVE_SQL_MIGRATION_FILENAME =
   '20260701_160000_add_policy_intent_native_storage.sql';
 
-const PHASE8R_NATIVE_SQL_MIGRATION_PATH = path.resolve(
+const POLICY_NATIVE_SQL_MIGRATION_PATH = path.resolve(
   import.meta.dirname,
   '../../../database/migrations',
-  PHASE8R_NATIVE_SQL_MIGRATION_FILENAME
+  POLICY_NATIVE_SQL_MIGRATION_FILENAME
 );
 
-const PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS = Object.freeze({
+const POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS = Object.freeze({
   MISSING_MIGRATION_FILE: 'missing_migration_file',
   EMPTY_MIGRATION_SQL: 'empty_migration_sql',
   SCHEMA_CONTRACT_INVALID: 'schema_contract_invalid',
@@ -32,7 +32,7 @@ const PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS = Object.freeze({
   SIDE_EFFECT_PERFORMED: 'side_effect_performed',
 });
 
-const PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_REASON_IDS = Object.freeze({
+const POLICY_NATIVE_SQL_MIGRATION_COVERAGE_REASON_IDS = Object.freeze({
   CANONICAL_MIGRATION_FILE_READ: 'canonical_migration_file_read',
   SCHEMA_CONTRACT_COMPARED: 'schema_contract_compared',
   TABLES_AND_COLUMNS_COVERED: 'tables_and_columns_covered',
@@ -97,11 +97,11 @@ function normalizeString(value) {
 }
 
 function readCanonicalMigrationSql() {
-  if (!existsSync(PHASE8R_NATIVE_SQL_MIGRATION_PATH)) {
+  if (!existsSync(POLICY_NATIVE_SQL_MIGRATION_PATH)) {
     return null;
   }
 
-  return readFileSync(PHASE8R_NATIVE_SQL_MIGRATION_PATH, 'utf8');
+  return readFileSync(POLICY_NATIVE_SQL_MIGRATION_PATH, 'utf8');
 }
 
 function stripSqlLineComments(sql) {
@@ -212,7 +212,7 @@ function buildForbiddenFieldFindings(migrationSql) {
   return FORBIDDEN_NATIVE_SQL_FIELDS
     .filter(fieldName => normalizedSql.includes(fieldName.toLowerCase()))
     .map(fieldName => ({
-      riskId: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.FORBIDDEN_LEGACY_FIELD,
+      riskId: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.FORBIDDEN_LEGACY_FIELD,
       fieldName,
       message: `Native intent SQL migration must not create durable legacy/transient field "${fieldName}".`,
     }));
@@ -234,12 +234,12 @@ function hasJsonbShapeChecks(migrationSql) {
   ].every(constraintName => migrationSql.includes(constraintName));
 }
 
-function validatePolicyBuilderPhase8NativeSqlMigrationCoverage(coverage = {}) {
+function validatePolicyNativeSqlMigrationCoverage(coverage = {}) {
   const issues = [];
 
   if (coverage.migrationFileExists !== true) {
     issues.push({
-      riskId: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_MIGRATION_FILE,
+      riskId: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_MIGRATION_FILE,
       migrationPath: coverage.migrationPath,
       message: 'Canonical native policy intent SQL migration file must exist.',
     });
@@ -247,7 +247,7 @@ function validatePolicyBuilderPhase8NativeSqlMigrationCoverage(coverage = {}) {
 
   if (normalizeString(coverage.migrationSql).length === 0) {
     issues.push({
-      riskId: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.EMPTY_MIGRATION_SQL,
+      riskId: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.EMPTY_MIGRATION_SQL,
       migrationPath: coverage.migrationPath,
       message: 'Native policy intent SQL migration must not be empty.',
     });
@@ -255,7 +255,7 @@ function validatePolicyBuilderPhase8NativeSqlMigrationCoverage(coverage = {}) {
 
   if (coverage.schemaContractValidation?.ok !== true) {
     issues.push({
-      riskId: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.SCHEMA_CONTRACT_INVALID,
+      riskId: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.SCHEMA_CONTRACT_INVALID,
       message: 'Native SQL migration coverage cannot pass when the schema contract is invalid.',
       contractIssues: asArray(coverage.schemaContractValidation?.issues),
     });
@@ -264,7 +264,7 @@ function validatePolicyBuilderPhase8NativeSqlMigrationCoverage(coverage = {}) {
   asArray(coverage.tableCoverage).forEach(tableResult => {
     if (tableResult.present !== true) {
       issues.push({
-        riskId: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_TABLE_DDL,
+        riskId: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_TABLE_DDL,
         tableId: tableResult.tableId,
         message: `Native SQL migration is missing table DDL for ${tableResult.tableId}.`,
       });
@@ -272,7 +272,7 @@ function validatePolicyBuilderPhase8NativeSqlMigrationCoverage(coverage = {}) {
 
     asArray(tableResult.missingColumns).forEach(columnName => {
       issues.push({
-        riskId: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_COLUMN_DDL,
+        riskId: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_COLUMN_DDL,
         tableId: tableResult.tableId,
         columnName,
         message: `Native SQL migration is missing column ${tableResult.tableId}.${columnName}.`,
@@ -284,7 +284,7 @@ function validatePolicyBuilderPhase8NativeSqlMigrationCoverage(coverage = {}) {
     .filter(indexResult => indexResult.present !== true)
     .forEach(indexResult => {
       issues.push({
-        riskId: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_INDEX_DDL,
+        riskId: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_INDEX_DDL,
         tableId: indexResult.tableId,
         indexId: indexResult.indexId,
         sqlIndexName: indexResult.sqlIndexName,
@@ -294,14 +294,14 @@ function validatePolicyBuilderPhase8NativeSqlMigrationCoverage(coverage = {}) {
 
   if (coverage.jsonbShapeChecksPresent !== true) {
     issues.push({
-      riskId: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_JSONB_SHAPE_CHECK,
+      riskId: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_JSONB_SHAPE_CHECK,
       message: 'Native SQL migration must constrain JSONB columns to expected object/array shapes.',
     });
   }
 
   if (coverage.rollbackExpiryBoundaryPresent !== true) {
     issues.push({
-      riskId: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_ROLLBACK_EXPIRY_BOUNDARY,
+      riskId: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_ROLLBACK_EXPIRY_BOUNDARY,
       message: 'Native rollback snapshots must enforce expires_at > created_at.',
     });
   }
@@ -311,7 +311,7 @@ function validatePolicyBuilderPhase8NativeSqlMigrationCoverage(coverage = {}) {
   Object.entries(coverage.sideEffects || {}).forEach(([sideEffectId, performed]) => {
     if (performed === true) {
       issues.push({
-        riskId: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        riskId: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.SIDE_EFFECT_PERFORMED,
         sideEffectId,
         message: `Native SQL migration coverage audit cannot perform side effect "${sideEffectId}".`,
       });
@@ -325,12 +325,12 @@ function validatePolicyBuilderPhase8NativeSqlMigrationCoverage(coverage = {}) {
   };
 }
 
-function buildPolicyBuilderPhase8NativeSqlMigrationCoverage(options = {}) {
+function buildPolicyNativeSqlMigrationCoverage(options = {}) {
   const schemaContract = options.schemaContract || buildPolicyNativeSchemaContract();
   const schemaContractValidation = validatePolicyNativeSchemaContract(schemaContract);
   const migrationFileExists = options.migrationSql
     ? true
-    : existsSync(PHASE8R_NATIVE_SQL_MIGRATION_PATH);
+    : existsSync(POLICY_NATIVE_SQL_MIGRATION_PATH);
   const migrationSql = options.migrationSql ?? readCanonicalMigrationSql() ?? '';
   const migrationDdlSql = stripSqlLineComments(migrationSql);
   const tables = asArray(schemaContract.tables);
@@ -338,9 +338,9 @@ function buildPolicyBuilderPhase8NativeSqlMigrationCoverage(options = {}) {
   const indexCoverage = buildIndexCoverage(tables, migrationDdlSql);
 
   const coverage = {
-    version: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_VERSION,
-    migrationFilename: PHASE8R_NATIVE_SQL_MIGRATION_FILENAME,
-    migrationPath: PHASE8R_NATIVE_SQL_MIGRATION_PATH,
+    version: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_VERSION,
+    migrationFilename: POLICY_NATIVE_SQL_MIGRATION_FILENAME,
+    migrationPath: POLICY_NATIVE_SQL_MIGRATION_PATH,
     migrationFileExists,
     migrationSql,
     migrationDdlSql,
@@ -351,7 +351,7 @@ function buildPolicyBuilderPhase8NativeSqlMigrationCoverage(options = {}) {
     jsonbShapeChecksPresent: hasJsonbShapeChecks(migrationDdlSql),
     rollbackExpiryBoundaryPresent: hasRollbackExpiryBoundary(migrationDdlSql),
     forbiddenFieldFindings: buildForbiddenFieldFindings(migrationDdlSql),
-    traceReasons: Object.values(PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_REASON_IDS),
+    traceReasons: Object.values(POLICY_NATIVE_SQL_MIGRATION_COVERAGE_REASON_IDS),
     sideEffects: {
       writesDatabase: false,
       mutatesSchema: false,
@@ -362,10 +362,10 @@ function buildPolicyBuilderPhase8NativeSqlMigrationCoverage(options = {}) {
 
   return {
     ...coverage,
-    validation: validatePolicyBuilderPhase8NativeSqlMigrationCoverage(coverage),
-    nextPhase: {
-      phaseId: '8r_10',
-      label: 'Native Backup And Restore Wiring',
+    validation: validatePolicyNativeSqlMigrationCoverage(coverage),
+    nextStep: {
+      stepId: 'native_storage_operational_wiring',
+      label: 'Native Storage Operational Wiring',
       reason:
         'Native SQL storage coverage is now tied to the schema contract; operational recovery wiring remains the next live-storage risk.',
     },
@@ -373,10 +373,10 @@ function buildPolicyBuilderPhase8NativeSqlMigrationCoverage(options = {}) {
 }
 
 export {
-  PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_REASON_IDS,
-  PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS,
-  PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_VERSION,
-  PHASE8R_NATIVE_SQL_MIGRATION_FILENAME,
-  buildPolicyBuilderPhase8NativeSqlMigrationCoverage,
-  validatePolicyBuilderPhase8NativeSqlMigrationCoverage,
+  POLICY_NATIVE_SQL_MIGRATION_COVERAGE_REASON_IDS,
+  POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS,
+  POLICY_NATIVE_SQL_MIGRATION_COVERAGE_VERSION,
+  POLICY_NATIVE_SQL_MIGRATION_FILENAME,
+  buildPolicyNativeSqlMigrationCoverage,
+  validatePolicyNativeSqlMigrationCoverage,
 };

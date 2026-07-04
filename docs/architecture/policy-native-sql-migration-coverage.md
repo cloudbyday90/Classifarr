@@ -1,14 +1,12 @@
-# Policy Builder Phase 8R Native SQL Migration Coverage
+# Policy Native SQL Migration Coverage
 
-Status: implemented as the native SQL migration coverage follow-up identified by
-Phase 8R.9.
+Status: implemented as the durable native SQL migration coverage contract.
 
 ## Problem
 
-Phase 8R.9 correctly identified a gap: the native schema contract described the
-target durable model, but the repository did not yet include a SQL migration or
-schema snapshot coverage proving fresh-install and upgraded-install paths could
-create that model.
+The native schema contract described the target durable model, but the
+repository still needed a SQL migration and schema snapshot coverage proving
+fresh-install and upgraded-install paths could create that model.
 
 This component closes that gap by adding the actual native intent tables,
 indexes, constraints, schema snapshot, migration tests, and a deterministic
@@ -34,10 +32,10 @@ native schema contract.
   documents schema-change constraints and lock behavior. This migration avoids
   rewriting existing legacy policy rows and creates additive native tables
   instead.
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
+- [NIST Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
   recommends verification and change-management practices for secure software.
-  The migration is paired with schema snapshot tests and Phase 8R reset coverage
-  so the SQL path is not treated as complete without evidence.
+  The migration is paired with schema snapshot tests and reset coverage so the
+  SQL path is not treated as complete without evidence.
 
 ## Recommendations
 
@@ -103,13 +101,13 @@ Cons:
 - Migration tests:
   `server/src/__tests__/migrations.test.mjs`
 - Migration coverage contract:
-  `server/src/services/policyBuilderPhase8NativeSqlMigrationCoverage.mjs`
+  `server/src/services/policyNativeSqlMigrationCoverage.mjs`
 - Migration coverage tests:
-  `server/src/__tests__/services/policyBuilderPhase8NativeSqlMigrationCoverage.test.mjs`
+  `server/src/__tests__/services/policyNativeSqlMigrationCoverage.test.mjs`
 - Reset coverage contract:
   `server/src/services/policyBuilderPhase8NativeStorageTestReset.mjs`
 - Documentation:
-  `docs/architecture/policy-builder-phase-8r-native-sql-migration-coverage.md`
+  `docs/architecture/policy-native-sql-migration-coverage.md`
 
 ## Implemented Schema
 
@@ -153,6 +151,6 @@ It adds indexes for:
 ## Next Step
 
 Proceed to **Native Storage Operational Wiring**. That work should move the
-Phase 8R backup/restore and post-upgrade safety contracts into live flows:
-native table export/import, restore validation, post-upgrade dry-run reporting,
-and atomic apply-mode conversion.
+backup/restore and post-upgrade safety contracts into live flows: native table
+export/import, restore validation, post-upgrade dry-run reporting, and atomic
+apply-mode conversion.

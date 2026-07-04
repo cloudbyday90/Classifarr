@@ -11,6 +11,17 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Native SQL Migration Coverage Module Cutover** — renamed the native
+  SQL migration coverage service, focused test, and architecture record to
+  `policyNativeSqlMigrationCoverage.mjs`,
+  `policyNativeSqlMigrationCoverage.test.mjs`, and
+  `policy-native-sql-migration-coverage.md`, moved the payload version to
+  `policy.native_sql_migration_coverage.v1`, replaced phase-local constants
+  and handoff fields with durable `POLICY_NATIVE_SQL_MIGRATION_*` exports and
+  `nextStep.stepId = native_storage_operational_wiring`, updated roadmap and
+  native-schema handoff references, and preserved the side-effect-free SQL
+  coverage validator, table/column/index DDL checks, JSONB shape checks,
+  rollback-expiry boundary, and executable forbidden-field rejection.
 - **Policy Native Schema Contract Module Cutover** — renamed the native schema
   contract service, focused test, and architecture record to
   `policyNativeSchemaContract.mjs`, `policyNativeSchemaContract.test.mjs`, and
@@ -537,7 +548,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   reference for rename/keep/delete/adapter treatment; and emits a durable
   product-domain rename map through a repository scan adapter before Phase 9R
   module cutover begins.
-- **Policy Builder Phase 8R Native SQL Migration Coverage** — added a
+- **Policy Native SQL Migration Coverage** — added a
   server-owned coverage contract that reads the canonical native intent
   migration, compares executable DDL to the native schema contract, and
   rejects missing table/column/index coverage, unbounded rollback storage, or
@@ -880,7 +891,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   IDs before inserting native child rows; replace-mode cleanup clears native
   intent tables explicitly; and restore stats now include bounded native intent
   recovery counts without logging raw policy payloads.
-- **Policy Builder Phase 8R Native SQL Migration Coverage** — added the native
+- **Policy Native SQL Migration Coverage** — added the native
   policy intent storage migration, regenerated the authoritative schema
   snapshot, and expanded migration/reset tests to prove native intent headers,
   rules, routing targets, starter-template provenance, migration events,

@@ -111,13 +111,13 @@ Validation should include:
 
 ```text
 cd server
-node ../scripts/run-jest.mjs --testPathPatterns="policyNativeSchemaContract|policyBuilderPhase8NativeSqlMigrationCoverage|policyBuilderPhase8BackupRestoreSafety|policyBuilderPhase8ExplicitConversionWorkflow|policyBuilderPhase8NativeStorageTestReset|policyBuilderProductionNameInventory" --no-coverage --runInBand
+node ../scripts/run-jest.mjs --testPathPatterns="policyNativeSchemaContract|policyNativeSqlMigrationCoverage|policyBuilderPhase8BackupRestoreSafety|policyBuilderPhase8ExplicitConversionWorkflow|policyBuilderPhase8NativeStorageTestReset|policyBuilderProductionNameInventory" --no-coverage --runInBand
 npm run lint:docs
 node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid
 ```
 
-## Next Step
+## Completed Handoff
 
-Native SQL Migration Coverage should receive the next module cutover because it
-directly consumes the native schema contract and still carries phase-coded
-production naming.
+Native SQL Migration Coverage received the next module cutover and now uses
+durable product-domain naming:
+[Policy Native SQL Migration Coverage Module Cutover](policy-native-sql-migration-coverage-module-cutover.md).

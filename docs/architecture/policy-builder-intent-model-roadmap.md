@@ -4773,10 +4773,10 @@ Implementation status:
   `database/schema/current.sql`, and `server/src/__tests__/migrations.test.mjs`.
 - Native SQL migration coverage is also tied back to the native schema
   contract by
-  `server/src/services/policyBuilderPhase8NativeSqlMigrationCoverage.mjs` and
-  `server/src/__tests__/services/policyBuilderPhase8NativeSqlMigrationCoverage.test.mjs`.
+  `server/src/services/policyNativeSqlMigrationCoverage.mjs` and
+  `server/src/__tests__/services/policyNativeSqlMigrationCoverage.test.mjs`.
 - The native SQL migration coverage follow-up is documented in
-  [Policy Builder Phase 8R Native SQL Migration Coverage](policy-builder-phase-8r-native-sql-migration-coverage.md).
+  [Policy Native SQL Migration Coverage](policy-native-sql-migration-coverage.md).
 - Legacy payload preservation tests are allowed only for unconverted policy
   compatibility, rollback snapshot restore, or maintainer migration fixtures.
 - Abandoned diagnostic impact/replay tests must be deletion-scoped and cannot
@@ -6808,6 +6808,16 @@ Implementation status:
 - After the native-schema-contract module cutover, the repository inventory
   validates with 9,155 total phase-coded references, 3,603 production
   references, and 3,625 rename candidates.
+- The native SQL migration coverage module cutover renamed the coverage
+  contract to `policyNativeSqlMigrationCoverage.mjs`, renamed its focused test,
+  moved the contract to `policy.native_sql_migration_coverage.v1`, replaced
+  phase-local constants and handoff fields with durable names and
+  `nextStep.stepId = native_storage_operational_wiring`, and updated roadmap
+  and native-schema handoff references:
+  [Policy Native SQL Migration Coverage Module Cutover](policy-native-sql-migration-coverage-module-cutover.md).
+- After the native-SQL-migration-coverage module cutover, the repository
+  inventory validates with 9,093 total phase-coded references, 3,568
+  production references, and 3,590 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
