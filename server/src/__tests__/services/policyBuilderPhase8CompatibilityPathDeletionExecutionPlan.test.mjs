@@ -5,8 +5,8 @@ import {
   buildPolicyBuilderPhase8LegacyCodeDeletionGates,
 } from '../../services/policyBuilderPhase8LegacyCodeDeletionGates.mjs';
 import {
-  buildPolicyBuilderPhase8NativeRuntimeCutoverVerification,
-} from '../../services/policyBuilderPhase8NativeRuntimeCutoverVerification.mjs';
+  buildPolicyNativeRuntimeCutoverVerification,
+} from '../../services/policyNativeRuntimeCutoverVerification.mjs';
 import {
   buildPolicyBuilderPhase8CompatibilityPathDeletionReadiness,
 } from '../../services/policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs';
@@ -88,7 +88,7 @@ function nativePolicy(overrides = {}) {
 }
 
 function readyCutover() {
-  return buildPolicyBuilderPhase8NativeRuntimeCutoverVerification({
+  return buildPolicyNativeRuntimeCutoverVerification({
     convertedPolicy: nativePolicy(),
     unconvertedPolicy: policy({ id: 15 }),
     rollbackAvailable: true,

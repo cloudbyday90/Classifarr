@@ -1,7 +1,7 @@
 import {
   attachNativeIntentToPolicy,
   buildNativeContractFromRows,
-} from '../../services/policyBuilderPhase8NativePolicyReadService.mjs';
+} from '../../services/policyNativePolicyReadService.mjs';
 
 function policy(overrides = {}) {
   return {
@@ -61,7 +61,7 @@ function rule(overrides = {}) {
   };
 }
 
-describe('policyBuilderPhase8NativePolicyReadService', () => {
+describe('policyNativePolicyReadService', () => {
   test('builds a native contract from persisted native rows', () => {
     const contract = buildNativeContractFromRows({
       policy: policy(),

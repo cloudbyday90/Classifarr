@@ -3,9 +3,9 @@ import {
   buildPolicyBuilderPhase8LegacyCodeDeletionGates,
 } from './policyBuilderPhase8LegacyCodeDeletionGates.mjs';
 import {
-  PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS,
-  buildPolicyBuilderPhase8NativeRuntimeCutoverVerification,
-} from './policyBuilderPhase8NativeRuntimeCutoverVerification.mjs';
+  POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS,
+  buildPolicyNativeRuntimeCutoverVerification,
+} from './policyNativeRuntimeCutoverVerification.mjs';
 
 const PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_VERSION =
   'phase8r.compatibility_path_deletion_readiness.v1';
@@ -46,7 +46,7 @@ function buildRisk(riskId, message, metadata = {}) {
 }
 
 function buildDefaultCutoverVerification() {
-  return buildPolicyBuilderPhase8NativeRuntimeCutoverVerification();
+  return buildPolicyNativeRuntimeCutoverVerification();
 }
 
 function buildDefaultDeletionGatePlan() {
@@ -78,7 +78,7 @@ function evaluateCutover(cutoverVerification) {
 
   if (
     verification.statusId !==
-    PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.READY_FOR_CUTOVER_MONITORING
+    POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.READY_FOR_CUTOVER_MONITORING
   ) {
     risks.push(buildRisk(
       PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_RISK_IDS.CUTOVER_NOT_READY,

@@ -1,9 +1,9 @@
-# Policy Builder Phase 8R Native Runtime Cutover Verification
+# Policy Native Runtime Cutover Verification
 
 ## Intent
 
 Prove converted policies can read from native intent in real policy read paths
-before deleting compatibility code. Phase 8R.13 is a cutover verification step,
+before deleting compatibility code. This is a cutover verification component,
 not a deletion step: native reads are enabled for converted policies, unconverted
 policies stay on the compatibility bridge, rollback remains available, and
 support diagnostics stay bounded.
@@ -43,7 +43,7 @@ Sources:
 
 Detailed policy reads should attach active native intent storage before calling
 the existing projection mapper. The mapper can then choose native intent or
-compatibility bridge through the Phase 8R runtime read path.
+compatibility bridge through the runtime read path.
 
 Pros:
 
@@ -97,25 +97,25 @@ Cons:
 
 ## Final Recommendation Stack
 
-Use this stack for Phase 8R.13:
+Use this stack for native runtime cutover verification:
 
-1. `policyBuilderPhase8NativePolicyReadService.mjs` attaches active native
+1. `policyNativePolicyReadService.mjs` attaches active native
    intent rows to detailed policy read models.
 2. `policyIntentMapper.mjs` continues to produce the public projection shape.
 3. `policyBuilderPhase8NativeRuntimeReadPath.mjs` selects native intent for
    converted policies and compatibility fallback for unconverted policies.
-4. `policyBuilderPhase8NativeRuntimeCutoverVerification.mjs` audits cutover
-   readiness and keeps deletion blocked until the next phase.
+4. `policyNativeRuntimeCutoverVerification.mjs` audits cutover
+   readiness and keeps deletion blocked until the next readiness gate.
 
 ## Implementation Outcome
 
 Implemented:
 
-- Added `policyBuilderPhase8NativePolicyReadService.mjs`.
+- Added `policyNativePolicyReadService.mjs`.
 - Detailed `GET /api/policies/:id` now attaches active native intent before
   building `configuration_view`, `policy_intent_contract`, and
   `policy_intent_read_trace`.
-- Added `policyBuilderPhase8NativeRuntimeCutoverVerification.mjs`.
+- Added `policyNativeRuntimeCutoverVerification.mjs`.
 - Added tests for native row contract building, route-level native policy
   projection, converted/unconverted cutover verification, rollback blocking, and
   deletion blocking.
@@ -129,7 +129,6 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Phase 8R.14 Compatibility Path Deletion Readiness**. That task
-should prove every replaced compatibility path has native/runtime parity,
-rollback coverage, support diagnostics, and explicit deletion criteria before
-any code is removed.
+Proceed with **Compatibility Path Deletion Readiness**. That task should prove
+every replaced compatibility path has native/runtime parity, rollback coverage,
+support diagnostics, and explicit deletion criteria before any code is removed.

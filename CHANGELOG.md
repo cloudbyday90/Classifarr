@@ -11,6 +11,18 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Native Runtime Cutover Verification Module Cutover** — renamed the
+  native policy read service, runtime cutover verifier, focused tests, and
+  architecture record to `policyNativePolicyReadService.mjs`,
+  `policyNativeRuntimeCutoverVerification.mjs`,
+  `policyNativePolicyReadService.test.mjs`,
+  `policyNativeRuntimeCutoverVerification.test.mjs`, and
+  `policy-native-runtime-cutover-verification.md`, moved the verifier payload
+  version to `policy.native_runtime_cutover_verification.v1`, replaced
+  phase-coded verifier constants/builders and runtime handoff with durable
+  policy-domain names, updated route/deletion-readiness/evidence-map imports,
+  and preserved converted/native read verification, unconverted compatibility
+  fallback, rollback/deletion/support blockers, and no-side-effect validation.
 - **Policy Post-Upgrade Apply Gate Module Cutover** — renamed the post-upgrade
   apply-gate service, focused test, and architecture record to
   `policyPostUpgradeApplyGate.mjs`, `policyPostUpgradeApplyGate.test.mjs`, and

@@ -104,7 +104,7 @@ Use this stack for Phase 8R.14:
 
 1. `policyBuilderPhase8LegacyCodeDeletionGates.mjs` proves compatibility
    deletion gates and coverage.
-2. `policyBuilderPhase8NativeRuntimeCutoverVerification.mjs` proves converted
+2. `policyNativeRuntimeCutoverVerification.mjs` proves converted
    and unconverted runtime read behavior.
 3. `policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs` composes both
    outputs with residual-reference and safety confirmations.

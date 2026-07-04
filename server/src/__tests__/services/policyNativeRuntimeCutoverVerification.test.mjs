@@ -1,8 +1,8 @@
 import {
-  PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS,
-  PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS,
-  buildPolicyBuilderPhase8NativeRuntimeCutoverVerification,
-} from '../../services/policyBuilderPhase8NativeRuntimeCutoverVerification.mjs';
+  POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS,
+  POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS,
+  buildPolicyNativeRuntimeCutoverVerification,
+} from '../../services/policyNativeRuntimeCutoverVerification.mjs';
 
 function policy(overrides = {}) {
   return {
@@ -66,9 +66,9 @@ function nativePolicy(overrides = {}) {
   });
 }
 
-describe('policyBuilderPhase8NativeRuntimeCutoverVerification', () => {
+describe('policyNativeRuntimeCutoverVerification', () => {
   test('verifies native read cutover while preserving unconverted fallback', () => {
-    const verification = buildPolicyBuilderPhase8NativeRuntimeCutoverVerification({
+    const verification = buildPolicyNativeRuntimeCutoverVerification({
       convertedPolicy: nativePolicy(),
       unconvertedPolicy: policy({ id: 15 }),
       rollbackAvailable: true,
@@ -77,7 +77,8 @@ describe('policyBuilderPhase8NativeRuntimeCutoverVerification', () => {
     });
 
     expect(verification.statusId)
-      .toBe(PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.READY_FOR_CUTOVER_MONITORING);
+      .toBe(POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.READY_FOR_CUTOVER_MONITORING);
+    expect(verification.version).toBe('policy.native_runtime_cutover_verification.v1');
     expect(verification.validation.ok).toBe(true);
     expect(verification.convertedRead).toEqual(expect.objectContaining({
       sourceId: 'native_intent',
@@ -92,26 +93,30 @@ describe('policyBuilderPhase8NativeRuntimeCutoverVerification', () => {
       dependsOnCustomSignals: true,
     }));
     expect(Object.values(verification.sideEffects).some(Boolean)).toBe(false);
+    expect(verification.nextStep).toEqual(expect.objectContaining({
+      stepId: 'compatibility_path_deletion_readiness',
+    }));
+    expect(verification.nextPhase).toBeUndefined();
   });
 
   test('blocks when converted policy does not read from native intent', () => {
-    const verification = buildPolicyBuilderPhase8NativeRuntimeCutoverVerification({
+    const verification = buildPolicyNativeRuntimeCutoverVerification({
       convertedPolicy: policy(),
       unconvertedPolicy: policy({ id: 15 }),
       rollbackAvailable: true,
     });
 
     expect(verification.statusId)
-      .toBe(PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_NATIVE_READ);
+      .toBe(POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_NATIVE_READ);
     expect(verification.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_POLICY_NOT_NATIVE,
+        riskId: POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_POLICY_NOT_NATIVE,
       }),
     ]));
   });
 
   test('blocks when rollback availability or deletion gates are missing', () => {
-    const verification = buildPolicyBuilderPhase8NativeRuntimeCutoverVerification({
+    const verification = buildPolicyNativeRuntimeCutoverVerification({
       convertedPolicy: nativePolicy(),
       unconvertedPolicy: policy({ id: 15 }),
       rollbackAvailable: false,
@@ -120,11 +125,11 @@ describe('policyBuilderPhase8NativeRuntimeCutoverVerification', () => {
     });
 
     expect(verification.statusId)
-      .toBe(PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_ROLLBACK);
+      .toBe(POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_ROLLBACK);
     expect(verification.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.ROLLBACK_NOT_AVAILABLE,
-      PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.LEGACY_DELETION_NOT_BLOCKED,
-      PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.SUPPORT_DIAGNOSTICS_NOT_SAFE,
+      POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.ROLLBACK_NOT_AVAILABLE,
+      POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.LEGACY_DELETION_NOT_BLOCKED,
+      POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.SUPPORT_DIAGNOSTICS_NOT_SAFE,
     ]));
   });
 });

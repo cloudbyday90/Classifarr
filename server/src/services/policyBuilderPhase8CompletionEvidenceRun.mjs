@@ -129,14 +129,14 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_13',
     label: 'Native Runtime Cutover Verification',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-native-runtime-cutover-verification.md'],
+    designDocPaths: ['docs/architecture/policy-native-runtime-cutover-verification.md'],
     contractPaths: [
-      'server/src/services/policyBuilderPhase8NativeRuntimeCutoverVerification.mjs',
-      'server/src/services/policyBuilderPhase8NativePolicyReadService.mjs',
+      'server/src/services/policyNativeRuntimeCutoverVerification.mjs',
+      'server/src/services/policyNativePolicyReadService.mjs',
     ],
     testPaths: [
-      'server/src/__tests__/services/policyBuilderPhase8NativeRuntimeCutoverVerification.test.mjs',
-      'server/src/__tests__/services/policyBuilderPhase8NativePolicyReadService.test.mjs',
+      'server/src/__tests__/services/policyNativeRuntimeCutoverVerification.test.mjs',
+      'server/src/__tests__/services/policyNativePolicyReadService.test.mjs',
     ],
   },
   {

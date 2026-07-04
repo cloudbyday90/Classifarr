@@ -4,8 +4,8 @@ import {
   buildPolicyBuilderPhase8LegacyCodeDeletionGates,
 } from '../../services/policyBuilderPhase8LegacyCodeDeletionGates.mjs';
 import {
-  buildPolicyBuilderPhase8NativeRuntimeCutoverVerification,
-} from '../../services/policyBuilderPhase8NativeRuntimeCutoverVerification.mjs';
+  buildPolicyNativeRuntimeCutoverVerification,
+} from '../../services/policyNativeRuntimeCutoverVerification.mjs';
 import {
   PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_RISK_IDS,
   PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_STATUS_IDS,
@@ -83,7 +83,7 @@ function nativePolicy(overrides = {}) {
 }
 
 function readyCutover() {
-  return buildPolicyBuilderPhase8NativeRuntimeCutoverVerification({
+  return buildPolicyNativeRuntimeCutoverVerification({
     convertedPolicy: nativePolicy(),
     unconvertedPolicy: policy({ id: 15 }),
     rollbackAvailable: true,
@@ -141,7 +141,7 @@ describe('policyBuilderPhase8CompatibilityPathDeletionReadiness', () => {
 
   test('blocks readiness when runtime cutover is not ready', () => {
     const readiness = readyReadiness({
-      cutoverVerification: buildPolicyBuilderPhase8NativeRuntimeCutoverVerification({
+      cutoverVerification: buildPolicyNativeRuntimeCutoverVerification({
         convertedPolicy: policy(),
         unconvertedPolicy: policy({ id: 15 }),
         rollbackAvailable: true,

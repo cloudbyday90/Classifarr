@@ -4955,17 +4955,25 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R native runtime cutover verification is documented in
-  [Policy Builder Phase 8R Native Runtime Cutover Verification](policy-builder-phase-8r-native-runtime-cutover-verification.md).
+- Policy native runtime cutover verification is documented in
+  [Policy Native Runtime Cutover Verification](policy-native-runtime-cutover-verification.md).
 - The native policy read loader lives in
-  `server/src/services/policyBuilderPhase8NativePolicyReadService.mjs`.
+  `server/src/services/policyNativePolicyReadService.mjs`.
 - The cutover verification contract lives in
-  `server/src/services/policyBuilderPhase8NativeRuntimeCutoverVerification.mjs`.
+  `server/src/services/policyNativeRuntimeCutoverVerification.mjs`.
 - Detailed `GET /api/policies/:id` now attaches active native intent before
   projection.
 - Focused tests cover native row contract building, converted route projection,
   converted/unconverted cutover verification, rollback blocking, and deletion
   blocking.
+- The module cutover renamed the route-facing native policy read service,
+  runtime cutover verifier, focused tests, architecture record, payload version,
+  exported verifier constants/builders, and runtime handoff to durable
+  policy-domain names; updated route, deletion-readiness, evidence-map, and
+  focused-test imports; and preserved converted/native read verification,
+  unconverted compatibility fallback, rollback/deletion/support blockers, and
+  no-side-effect validation:
+  [Policy Native Runtime Cutover Verification Module Cutover](policy-native-runtime-cutover-verification-module-cutover.md).
 
 ### 8R.14 Compatibility Path Deletion Readiness
 

@@ -1,13 +1,13 @@
 import {
-  PHASE8R_RUNTIME_READ_SOURCE_IDS,
-  PHASE8R_RUNTIME_READ_STATUS_IDS,
+  PHASE8R_RUNTIME_READ_SOURCE_IDS as POLICY_RUNTIME_READ_SOURCE_IDS,
+  PHASE8R_RUNTIME_READ_STATUS_IDS as POLICY_RUNTIME_READ_STATUS_IDS,
   buildPolicyBuilderPhase8NativeRuntimeReadPath,
 } from './policyBuilderPhase8NativeRuntimeReadPath.mjs';
 
-const PHASE8R_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION =
-  'phase8r.native_runtime_cutover_verification.v1';
+const POLICY_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION =
+  'policy.native_runtime_cutover_verification.v1';
 
-const PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS = Object.freeze({
+const POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS = Object.freeze({
   READY_FOR_CUTOVER_MONITORING: 'ready_for_cutover_monitoring',
   BLOCKED_BY_NATIVE_READ: 'blocked_by_native_read',
   BLOCKED_BY_COMPATIBILITY_FALLBACK: 'blocked_by_compatibility_fallback',
@@ -15,7 +15,7 @@ const PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS = Object.freeze({
   BLOCKED_BY_DELETION_GATE: 'blocked_by_deletion_gate',
 });
 
-const PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS = Object.freeze({
+const POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS = Object.freeze({
   CONVERTED_POLICY_NOT_NATIVE: 'converted_policy_not_native',
   CONVERTED_NATIVE_READ_INVALID: 'converted_native_read_invalid',
   UNCONVERTED_POLICY_NOT_COMPATIBILITY: 'unconverted_policy_not_compatibility',
@@ -43,20 +43,20 @@ function evaluateConvertedRead(convertedPolicy) {
   });
   const risks = [];
 
-  if (readPath.sourceId !== PHASE8R_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT) {
+  if (readPath.sourceId !== POLICY_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT) {
     risks.push(buildRisk(
-      PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_POLICY_NOT_NATIVE,
+      POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_POLICY_NOT_NATIVE,
       'Converted policy did not read from native intent.',
       { sourceId: readPath.sourceId }
     ));
   }
 
   if (
-    readPath.statusId !== PHASE8R_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_ACTIVE ||
+    readPath.statusId !== POLICY_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_ACTIVE ||
     readPath.validation?.ok !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_NATIVE_READ_INVALID,
+      POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_NATIVE_READ_INVALID,
       'Converted native read path is not active and valid.',
       { statusId: readPath.statusId }
     ));
@@ -71,9 +71,9 @@ function evaluateUnconvertedRead(unconvertedPolicy) {
   });
   const risks = [];
 
-  if (readPath.sourceId !== PHASE8R_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE) {
+  if (readPath.sourceId !== POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE) {
     risks.push(buildRisk(
-      PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.UNCONVERTED_POLICY_NOT_COMPATIBILITY,
+      POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.UNCONVERTED_POLICY_NOT_COMPATIBILITY,
       'Unconverted policy did not stay on compatibility bridge fallback.',
       { sourceId: readPath.sourceId }
     ));
@@ -84,35 +84,35 @@ function evaluateUnconvertedRead(unconvertedPolicy) {
 
 function determineStatusId(risks) {
   if (risks.some(risk => [
-    PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_POLICY_NOT_NATIVE,
-    PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_NATIVE_READ_INVALID,
+    POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_POLICY_NOT_NATIVE,
+    POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_NATIVE_READ_INVALID,
   ].includes(risk.riskId))) {
-    return PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_NATIVE_READ;
+    return POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_NATIVE_READ;
   }
 
   if (risks.some(risk =>
-    risk.riskId === PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.UNCONVERTED_POLICY_NOT_COMPATIBILITY
+    risk.riskId === POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.UNCONVERTED_POLICY_NOT_COMPATIBILITY
   )) {
-    return PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_COMPATIBILITY_FALLBACK;
+    return POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_COMPATIBILITY_FALLBACK;
   }
 
   if (risks.some(risk =>
-    risk.riskId === PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.ROLLBACK_NOT_AVAILABLE
+    risk.riskId === POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.ROLLBACK_NOT_AVAILABLE
   )) {
-    return PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_ROLLBACK;
+    return POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_ROLLBACK;
   }
 
   if (risks.some(risk => [
-    PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.LEGACY_DELETION_NOT_BLOCKED,
-    PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.SUPPORT_DIAGNOSTICS_NOT_SAFE,
+    POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.LEGACY_DELETION_NOT_BLOCKED,
+    POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.SUPPORT_DIAGNOSTICS_NOT_SAFE,
   ].includes(risk.riskId))) {
-    return PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_DELETION_GATE;
+    return POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_DELETION_GATE;
   }
 
-  return PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.READY_FOR_CUTOVER_MONITORING;
+  return POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.READY_FOR_CUTOVER_MONITORING;
 }
 
-function buildPolicyBuilderPhase8NativeRuntimeCutoverVerification({
+function buildPolicyNativeRuntimeCutoverVerification({
   convertedPolicy = {},
   unconvertedPolicy = {},
   rollbackAvailable = false,
@@ -128,27 +128,27 @@ function buildPolicyBuilderPhase8NativeRuntimeCutoverVerification({
 
   if (rollbackAvailable !== true) {
     risks.push(buildRisk(
-      PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.ROLLBACK_NOT_AVAILABLE,
+      POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.ROLLBACK_NOT_AVAILABLE,
       'Native runtime cutover verification requires rollback availability before deletion.'
     ));
   }
 
   if (legacyDeletionBlocked !== true) {
     risks.push(buildRisk(
-      PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.LEGACY_DELETION_NOT_BLOCKED,
+      POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.LEGACY_DELETION_NOT_BLOCKED,
       'Legacy compatibility deletion must remain blocked until later deletion gates pass.'
     ));
   }
 
   if (supportDiagnosticsSafe !== true) {
     risks.push(buildRisk(
-      PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.SUPPORT_DIAGNOSTICS_NOT_SAFE,
+      POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.SUPPORT_DIAGNOSTICS_NOT_SAFE,
       'Support diagnostics must remain bounded and avoid raw policy payload exposure.'
     ));
   }
 
   const verification = {
-    version: PHASE8R_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION,
+    version: POLICY_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION,
     statusId: determineStatusId(risks),
     convertedRead: {
       sourceId: converted.readPath.sourceId,
@@ -175,8 +175,8 @@ function buildPolicyBuilderPhase8NativeRuntimeCutoverVerification({
       rollbackSnapshotsWritten: false,
       legacyPathsDeleted: false,
     },
-    nextPhase: {
-      phaseId: '8r_14',
+    nextStep: {
+      stepId: 'compatibility_path_deletion_readiness',
       label: 'Compatibility Path Deletion Readiness',
       reason: 'Runtime cutover can now be verified; the next step is proving deletion readiness without removing rollback support prematurely.',
     },
@@ -184,14 +184,14 @@ function buildPolicyBuilderPhase8NativeRuntimeCutoverVerification({
 
   return {
     ...verification,
-    validation: validatePolicyBuilderPhase8NativeRuntimeCutoverVerification(verification),
+    validation: validatePolicyNativeRuntimeCutoverVerification(verification),
   };
 }
 
-function validatePolicyBuilderPhase8NativeRuntimeCutoverVerification(verification = {}) {
+function validatePolicyNativeRuntimeCutoverVerification(verification = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS).includes(verification.statusId)) {
+  if (!Object.values(POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS).includes(verification.statusId)) {
     issues.push({
       riskId: 'unknown_status',
       message: 'Native runtime cutover verification status must be known.',
@@ -201,7 +201,7 @@ function validatePolicyBuilderPhase8NativeRuntimeCutoverVerification(verificatio
   Object.entries(verification.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push({
-        riskId: PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        riskId: POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.SIDE_EFFECT_PERFORMED,
         message: `Native runtime cutover verification cannot perform side effect "${key}".`,
       });
     }
@@ -222,9 +222,9 @@ function validatePolicyBuilderPhase8NativeRuntimeCutoverVerification(verificatio
 }
 
 export {
-  PHASE8R_NATIVE_RUNTIME_CUTOVER_RISK_IDS,
-  PHASE8R_NATIVE_RUNTIME_CUTOVER_STATUS_IDS,
-  PHASE8R_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION,
-  buildPolicyBuilderPhase8NativeRuntimeCutoverVerification,
-  validatePolicyBuilderPhase8NativeRuntimeCutoverVerification,
+  POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS,
+  POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS,
+  POLICY_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION,
+  buildPolicyNativeRuntimeCutoverVerification,
+  validatePolicyNativeRuntimeCutoverVerification,
 };
