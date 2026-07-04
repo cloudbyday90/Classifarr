@@ -3965,7 +3965,7 @@ Tasks:
 
 - Define how request/import flows provide destination intent signals.
 - Record request-time destination choice separately from final routed outcome.
-- Pass request-time decisions through Phase 5R learning guard before profile or
+- Pass request-time decisions through the policy learning guard before profile or
   policy evidence changes.
 - Distinguish:
   - user requested this destination,
@@ -3991,8 +3991,10 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 7R.5 request-time learning and destination selection is documented in
-  [Policy Builder Phase 7R Request-Time Learning And Destination Selection](policy-builder-phase-7r-request-time-learning.md).
+- Request-time learning and destination selection is documented in
+  [Policy Request-Time Learning And Destination Selection](policy-request-time-learning.md).
+- Policy request-time learning architecture cutover is documented in
+  [Policy Request-Time Learning Architecture Cutover](policy-request-time-learning-architecture-cutover.md).
 - The server-owned request-time learning contract lives in
   `server/src/services/policyRequestTimeLearning.mjs`.
 - The focused request-time learning test suite lives in
@@ -4002,7 +4004,7 @@ Implementation status:
   `route_succeeded`, and `route_failed_missing_mapping`.
 - Destination selection is recorded separately from final outcome so request
   preference, operator change, and routed result cannot be conflated.
-- Request-time and manual decisions are passed through the Phase 6R learning
+- Request-time and manual decisions are passed through the policy learning
   guard before they can become learning candidates or request profile refresh.
 - Successful Arr routing records a routed final outcome but cannot write durable
   learning directly.
@@ -4311,7 +4313,7 @@ Current starting point:
 - Do not treat current impact/replay preview UI as the Phase 7R migration
   surface until it is classified by Phase 5R/6R.
 - Do not let runtime classification learn from manual outcomes without the
-  Phase 5R learning guard.
+  policy learning guard.
 - Use Phase 7R as the runtime/rebuild contract that Phase 8R native storage must
   preserve.
 
@@ -6724,6 +6726,16 @@ Implementation status:
   production references, and 3,762 rename candidates. The production
   phase-coded baseline remains unchanged, but the active runtime question
   reduction documentation now uses durable policy-domain wording.
+- The policy request-time learning architecture cutover renamed the active
+  request-time learning design record to `policy-request-time-learning.md`,
+  added a durable architecture cutover record, and updated roadmap/module
+  references to the durable request-learning contract:
+  [Policy Request-Time Learning Architecture Cutover](policy-request-time-learning-architecture-cutover.md).
+- After the policy request-time learning architecture cutover, the repository
+  inventory validates with 9,404 total phase-coded references, 3,740 production
+  references, and 3,762 rename candidates. The production phase-coded baseline
+  remains unchanged, but the active request-time learning documentation now
+  uses durable policy-domain wording.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

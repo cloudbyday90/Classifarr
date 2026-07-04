@@ -2,8 +2,8 @@
 
 ## Status
 
-Implemented as a Phase 9R durable module-name cutover for request-time learning
-and destination selection.
+Implemented as a durable module-name cutover for request-time learning and
+destination selection.
 
 This change does not wire new request/import persistence. It removes temporary
 roadmap naming from the production request-time learning contract while
@@ -107,3 +107,10 @@ Cut over Migration Verifier And Rollback Path to a durable product-domain
 module name because library-derived policy rebuild now exports durable names
 and the verifier is the next direct runtime consumer still carrying Phase 7R
 production naming.
+
+## Related Active Architecture
+
+The active request-time learning design record is now
+[Policy Request-Time Learning And Destination Selection](policy-request-time-learning.md).
+The architecture naming cutover is recorded in
+[Policy Request-Time Learning Architecture Cutover](policy-request-time-learning-architecture-cutover.md).

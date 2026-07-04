@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Request-Time Learning Architecture Cutover** — renamed the active
+  request-time learning architecture record to
+  `policy-request-time-learning.md`, updated the roadmap and module cutover
+  note to point at the durable `policy.request_time_learning.v1` contract,
+  added a request-time learning architecture cutover record, and preserved the
+  existing `policyRequestTimeLearning.mjs` side-effect-free event normalization,
+  guarded learning, route-failure blocking, manual-change reversibility,
+  question-proof, evidence-fingerprint, and bounded trace validation behavior.
 - **Policy Runtime Question Reduction Architecture Cutover** — renamed the
   active runtime question reduction architecture record to
   `policy-runtime-question-reduction.md`, updated the roadmap and module

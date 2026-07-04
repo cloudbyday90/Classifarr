@@ -2,11 +2,10 @@
 
 ## Status
 
-Implemented as the durable request-time learning runtime contract. It originated
-as the fifth Phase 7R runtime contract and now exposes product-domain module,
-export, and contract names.
+Implemented as the durable request-time learning runtime contract with
+product-domain module, export, and contract names.
 
-This slice normalizes request-time destination choices, operator manual
+This contract normalizes request-time destination choices, operator manual
 destination changes, successful routing outcomes, and routing failures into a
 side-effect-free server decision. It records the event shape, final outcome, and
 learning-guard result without directly mutating policy, profile evidence, or
@@ -33,9 +32,9 @@ outcomes are allowed to influence future automation.
 
 This checkpoint tightens that boundary further: request-time learning can no
 longer rely on a loose upstream fingerprint alone. It must carry a bounded
-question-reduction proof showing that the previous Phase 7R question contract
-validated successfully, and that the same sanitized evidence fingerprint was
-preserved into the request-time decision and trace.
+runtime question-reduction proof showing that the previous question-reduction
+contract validated successfully, and that the same sanitized evidence
+fingerprint was preserved into the request-time decision and trace.
 
 ## Official Guidance Reviewed
 
@@ -49,7 +48,7 @@ preserved into the request-time decision and trace.
   prevents raw runtime events from directly becoming durable learning.
 - [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
   calls out excessive agency, insecure output handling, and overreliance risks.
-  This slice does not let request-time or AI-adjacent runtime outputs perform
+  This contract does not let request-time or AI-adjacent runtime outputs perform
   profile or policy writes directly.
 - [OpenTelemetry Semantic Convention Naming](https://opentelemetry.io/docs/specs/semconv/general/naming/)
   recommends lower-case namespacing, snake_case for multi-word name components,
@@ -57,7 +56,7 @@ preserved into the request-time decision and trace.
   `policy.request_time_learning.v1` and product-domain step names instead of
   roadmap phase identifiers.
 - [OpenTelemetry Traces](https://opentelemetry.io/docs/concepts/signals/traces/)
-  describes traces as correlated spans and attributes. This slice keeps
+  describes traces as correlated spans and attributes. This contract keeps
   traceable request-learning attributes bounded, stable, and aligned with the
   carried validation proof so later runtime wiring can correlate decisions
   without storing raw evidence payloads.
@@ -109,7 +108,7 @@ Pros:
 
 - Keeps request destination choice separate from final outcome.
 - Prevents failed routes from becoming positive destination evidence.
-- Routes all durable learning through the Phase 6R learning guard.
+- Routes all durable learning through the policy learning guard.
 - Allows operator manual changes to improve future decisions only when the
   learning guard approves the evidence.
 - Keeps the slice side-effect-free until runtime persistence is intentionally
@@ -136,9 +135,9 @@ Cons:
    - `operator_manual_destination_change`,
    - `route_succeeded`,
    - `route_failed_missing_mapping`.
-2. Map each event to a Phase 6R learning source.
+2. Map each event to a policy learning source.
 3. Record destination selection separately from final outcome.
-4. Run every request-time learning candidate through the Phase 6R learning
+4. Run every request-time learning candidate through the policy learning
    guard.
 5. Treat successful Arr routing as final outcome only, not direct durable
    learning.
@@ -170,7 +169,7 @@ Cons:
 - Question vocabulary dependency:
   `server/src/services/policyQuestionLearningVocabulary.mjs`
 - Roadmap owner:
-  Phase 7R.5 Request-Time Learning And Destination Selection in
+  Request-Time Learning And Destination Selection in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
@@ -194,7 +193,7 @@ The service exports:
 
 `operator_manual_destination_change`
 : An operator changed the destination. The change is auditable, reversible, and
-  may become a learning candidate only through the Phase 6R learning guard.
+  may become a learning candidate only through the policy learning guard.
 
 `route_succeeded`
 : Arr routing succeeded. This records a routed final outcome, but it cannot
@@ -254,7 +253,7 @@ shape:
 request or routing event
   -> normalized destination selection
   -> final outcome record
-  -> Phase 6R learning guard
+  -> policy learning guard
   -> optional guarded profile-refresh recommendation
   -> no direct side effects
 ```
