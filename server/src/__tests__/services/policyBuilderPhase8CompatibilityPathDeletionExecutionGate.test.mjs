@@ -8,8 +8,8 @@ import {
   buildPolicyNativeRuntimeCutoverVerification,
 } from '../../services/policyNativeRuntimeCutoverVerification.mjs';
 import {
-  buildPolicyBuilderPhase8CompatibilityPathDeletionReadiness,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs';
+  buildPolicyCompatibilityDeletionReadiness,
+} from '../../services/policyCompatibilityDeletionReadiness.mjs';
 import {
   buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan,
 } from '../../services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs';
@@ -109,7 +109,7 @@ function readyDeletionGates() {
 }
 
 function readyReadiness() {
-  return buildPolicyBuilderPhase8CompatibilityPathDeletionReadiness({
+  return buildPolicyCompatibilityDeletionReadiness({
     cutoverVerification: readyCutover(),
     deletionGatePlan: readyDeletionGates(),
     backupRestoreVerified: true,

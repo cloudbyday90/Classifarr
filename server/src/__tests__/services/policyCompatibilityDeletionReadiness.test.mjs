@@ -7,11 +7,11 @@ import {
   buildPolicyNativeRuntimeCutoverVerification,
 } from '../../services/policyNativeRuntimeCutoverVerification.mjs';
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_RISK_IDS,
-  PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_STATUS_IDS,
-  buildPolicyBuilderPhase8CompatibilityPathDeletionReadiness,
-  validatePolicyBuilderPhase8CompatibilityPathDeletionReadiness,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs';
+  POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS,
+  POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS,
+  buildPolicyCompatibilityDeletionReadiness,
+  validatePolicyCompatibilityDeletionReadiness,
+} from '../../services/policyCompatibilityDeletionReadiness.mjs';
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
@@ -102,7 +102,7 @@ function readyDeletionGates() {
 }
 
 function readyReadiness(overrides = {}) {
-  return buildPolicyBuilderPhase8CompatibilityPathDeletionReadiness({
+  return buildPolicyCompatibilityDeletionReadiness({
     cutoverVerification: readyCutover(),
     deletionGatePlan: readyDeletionGates(),
     backupRestoreVerified: true,
@@ -113,12 +113,12 @@ function readyReadiness(overrides = {}) {
   });
 }
 
-describe('policyBuilderPhase8CompatibilityPathDeletionReadiness', () => {
+describe('policyCompatibilityDeletionReadiness', () => {
   test('marks compatibility path deletion ready only after cutover, gates, and safety confirmations pass', () => {
     const readiness = readyReadiness();
 
     expect(readiness.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS
         .READY_FOR_DELETION_EXECUTION_PLAN);
     expect(readiness.readyForDeletionExecutionPlan).toBe(true);
     expect(readiness.validation.ok).toBe(true);
@@ -136,6 +136,11 @@ describe('policyBuilderPhase8CompatibilityPathDeletionReadiness', () => {
       executeDeletionNow: false,
       requireExecutionPlan: true,
     }));
+    expect(readiness.nextStep).toEqual(expect.objectContaining({
+      stepId: 'compatibility_deletion_execution_plan',
+      label: 'Compatibility Path Deletion Execution Plan',
+    }));
+    expect(readiness.nextPhase).toBeUndefined();
     expect(Object.values(readiness.sideEffects).some(Boolean)).toBe(false);
   });
 
@@ -151,11 +156,11 @@ describe('policyBuilderPhase8CompatibilityPathDeletionReadiness', () => {
     });
 
     expect(readiness.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS
         .BLOCKED_BY_RUNTIME_CUTOVER);
     expect(readiness.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_RISK_IDS.CUTOVER_NOT_READY,
+        riskId: POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.CUTOVER_NOT_READY,
       }),
     ]));
   });
@@ -171,11 +176,11 @@ describe('policyBuilderPhase8CompatibilityPathDeletionReadiness', () => {
     });
 
     expect(readiness.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS
         .BLOCKED_BY_DELETION_GATES);
     expect(readiness.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_RISK_IDS.DELETION_GATES_NOT_READY,
+        riskId: POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.DELETION_GATES_NOT_READY,
       }),
     ]));
   });
@@ -190,11 +195,11 @@ describe('policyBuilderPhase8CompatibilityPathDeletionReadiness', () => {
     });
 
     expect(readiness.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS
         .BLOCKED_BY_RESIDUAL_COMPATIBILITY_REFERENCES);
     expect(readiness.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_RISK_IDS
+        riskId: POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
           .RESIDUAL_COMPATIBILITY_REFERENCE,
         path: 'server/src/services/policyIntentMapper.mjs',
       }),
@@ -202,7 +207,7 @@ describe('policyBuilderPhase8CompatibilityPathDeletionReadiness', () => {
   });
 
   test('blocks readiness until backup, rollback, diagnostics, and manifest confirmations pass', () => {
-    const readiness = buildPolicyBuilderPhase8CompatibilityPathDeletionReadiness({
+    const readiness = buildPolicyCompatibilityDeletionReadiness({
       cutoverVerification: readyCutover(),
       deletionGatePlan: readyDeletionGates(),
       backupRestoreVerified: false,
@@ -212,19 +217,19 @@ describe('policyBuilderPhase8CompatibilityPathDeletionReadiness', () => {
     });
 
     expect(readiness.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS
         .BLOCKED_BY_SAFETY_CONFIRMATION);
     expect(readiness.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_RISK_IDS.BACKUP_RESTORE_NOT_VERIFIED,
-      PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_RISK_IDS.ROLLBACK_SUPPORT_NOT_VERIFIED,
-      PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_RISK_IDS.SUPPORT_DIAGNOSTICS_NOT_VERIFIED,
-      PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_RISK_IDS.DELETION_MANIFEST_NOT_APPROVED,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.BACKUP_RESTORE_NOT_VERIFIED,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.ROLLBACK_SUPPORT_NOT_VERIFIED,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.SUPPORT_DIAGNOSTICS_NOT_VERIFIED,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.DELETION_MANIFEST_NOT_APPROVED,
     ]));
   });
 
   test('rejects mutated readiness output with side effects or stale risk count', () => {
     const readiness = readyReadiness();
-    const validation = validatePolicyBuilderPhase8CompatibilityPathDeletionReadiness({
+    const validation = validatePolicyCompatibilityDeletionReadiness({
       ...readiness,
       riskCount: 99,
       sideEffects: {
@@ -235,8 +240,8 @@ describe('policyBuilderPhase8CompatibilityPathDeletionReadiness', () => {
 
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_RISK_IDS.RISK_COUNT_MISMATCH,
-      PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.SIDE_EFFECT_PERFORMED,
     ]));
   });
 });

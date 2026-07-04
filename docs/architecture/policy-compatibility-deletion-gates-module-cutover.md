@@ -86,7 +86,7 @@ Cons:
 - Durable design record:
   `docs/architecture/policy-compatibility-deletion-gates.md`
 - Downstream consumers updated:
-  `server/src/services/policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs`
+  `server/src/services/policyCompatibilityDeletionReadiness.mjs`
   and
   `server/src/services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs`
 - Evidence-map and reset references:

@@ -2,8 +2,8 @@ import {
   POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS,
 } from '../../services/policyCompatibilityDeletionGates.mjs';
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_STATUS_IDS,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs';
+  POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS,
+} from '../../services/policyCompatibilityDeletionReadiness.mjs';
 import {
   PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs';
@@ -21,7 +21,7 @@ function readyInput(overrides = {}) {
   return {
     deletionReadiness: {
       statusId:
-        PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_STATUS_IDS
+        POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS
           .READY_FOR_DELETION_EXECUTION_PLAN,
       readyForDeletionExecutionPlan: true,
       validation: {

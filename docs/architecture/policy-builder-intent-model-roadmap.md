@@ -5027,14 +5027,20 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.14 compatibility path deletion readiness is documented in
-  [Policy Builder Phase 8R Compatibility Path Deletion Readiness](policy-builder-phase-8r-compatibility-path-deletion-readiness.md).
+- Compatibility path deletion readiness is documented in
+  [Policy Compatibility Deletion Readiness](policy-compatibility-deletion-readiness.md).
+- The module cutover renamed the service, focused test, architecture record,
+  exported constants/helpers, version, and runtime handoff to durable
+  policy-domain names while preserving cutover validation, deletion-gate
+  validation, residual-reference blockers, backup/rollback/diagnostic/manifest
+  confirmations, risk-count validation, and no-side-effect guarantees:
+  [Policy Compatibility Deletion Readiness Module Cutover](policy-compatibility-deletion-readiness-module-cutover.md).
 - The deletion-readiness contract lives in
-  `server/src/services/policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs`.
+  `server/src/services/policyCompatibilityDeletionReadiness.mjs`.
 - The focused deletion-readiness test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8CompatibilityPathDeletionReadiness.test.mjs`.
-- Current implementation composes Phase 8R.7 deletion gates and Phase 8R.13
-  cutover verification, blocks residual references and missing safety
+  `server/src/__tests__/services/policyCompatibilityDeletionReadiness.test.mjs`.
+- Current implementation composes compatibility deletion gates and native
+  runtime cutover verification, blocks residual references and missing safety
   confirmations, and validates that no deletion side effects occur.
 
 ### 8R.15 Compatibility Path Deletion Execution Plan

@@ -8,8 +8,8 @@ import {
   buildPolicyNativeRuntimeCutoverVerification,
 } from '../../services/policyNativeRuntimeCutoverVerification.mjs';
 import {
-  buildPolicyBuilderPhase8CompatibilityPathDeletionReadiness,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs';
+  buildPolicyCompatibilityDeletionReadiness,
+} from '../../services/policyCompatibilityDeletionReadiness.mjs';
 import {
   PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS,
   PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS,
@@ -107,7 +107,7 @@ function readyDeletionGates() {
 }
 
 function readyReadiness() {
-  return buildPolicyBuilderPhase8CompatibilityPathDeletionReadiness({
+  return buildPolicyCompatibilityDeletionReadiness({
     cutoverVerification: readyCutover(),
     deletionGatePlan: readyDeletionGates(),
     backupRestoreVerified: true,
@@ -176,7 +176,7 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionPlan', () => {
 
   test('blocks execution planning when Phase 8R.14 readiness has not passed', () => {
     const plan = readyExecutionPlan({
-      deletionReadiness: buildPolicyBuilderPhase8CompatibilityPathDeletionReadiness(),
+      deletionReadiness: buildPolicyCompatibilityDeletionReadiness(),
     });
 
     expect(plan.statusId)

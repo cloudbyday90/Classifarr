@@ -11,6 +11,18 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Compatibility Deletion Readiness Module Cutover** — renamed the
+  compatibility deletion-readiness service, focused test, and architecture
+  record to `policyCompatibilityDeletionReadiness.mjs`,
+  `policyCompatibilityDeletionReadiness.test.mjs`, and
+  `policy-compatibility-deletion-readiness.md`, replaced phase-coded exported
+  constants, builders, validation helpers, payload versioning, and
+  `nextPhase.phaseId` with durable policy-domain names and `nextStep.stepId`,
+  updated execution-plan, controlled-removal, execution-artifact, roadmap, and
+  evidence-map references, and preserved runtime cutover validation,
+  deletion-gate validation, residual-reference blockers,
+  backup/rollback/diagnostic/manifest confirmations, risk-count validation,
+  and no-side-effect guarantees.
 - **Policy Compatibility Deletion Gates Module Cutover** — renamed the
   compatibility deletion-gate service, focused test, and architecture record to
   `policyCompatibilityDeletionGates.mjs`,
@@ -956,7 +968,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   legacy deletion categories, enumerates exact compatibility paths with action
   IDs and replacement evidence, and blocks execution planning without rollback
   stance, support stance, and explicit approval.
-- **Policy Builder Phase 8R Compatibility Path Deletion Readiness** — added a
+- **Policy Compatibility Deletion Readiness** — added a
   side-effect-free readiness report that composes native runtime cutover
   verification with legacy deletion gates, blocks on residual compatibility
   references and missing backup/rollback/support/manifest confirmations, and

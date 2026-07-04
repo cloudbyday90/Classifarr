@@ -1,15 +1,14 @@
-# Policy Builder Phase 8R Compatibility Path Deletion Readiness
+# Policy Compatibility Deletion Readiness
 
 ## Intent
 
-Phase 8R.14 proves whether compatibility paths are ready for a deletion
-execution plan. It does not delete files, remove routes, drop tests, archive
+Policy compatibility deletion readiness proves whether compatibility paths are ready for a deletion execution plan. It does not delete files, remove routes, drop tests, archive
 code, or mutate storage.
 
-This component composes earlier Phase 8R evidence:
+This component composes existing policy migration evidence:
 
-- Phase 8R.7 legacy code deletion gates,
-- Phase 8R.13 native runtime cutover verification,
+- compatibility deletion gates,
+- native runtime cutover verification,
 - residual compatibility-reference review,
 - backup, restore, rollback, support diagnostics, and deletion-manifest
   confirmations.
@@ -20,17 +19,15 @@ a later execution manifest explicitly names the files and replacement evidence.
 ## Official-Source Research
 
 - OWASP API Security API9:2023 highlights improper inventory management and the
-  risk of deprecated endpoints or stale versions being exploitable. Phase 8R.14
-  applies that principle by requiring compatibility-path inventory before
+  risk of deprecated endpoints or stale versions being exploitable. This contract applies that principle by requiring compatibility-path inventory before
   deletion planning.
 - CISA Secure by Design guidance prioritizes secure upgrade paths over unsafe
-  legacy feature retention. Phase 8R.14 therefore does not allow replaced
+  legacy feature retention. This contract therefore does not allow replaced
   compatibility paths to become a permanent hidden model.
 - NIST SSDF defines secure software development practices that must be
-  integrated into the SDLC. Phase 8R.14 treats deletion as a gated software
+  integrated into the SDLC. This contract treats deletion as a gated software
   lifecycle step with validation evidence.
-- NIST SP 800-34 provides contingency-planning and recovery guidance. Phase
-  8R.14 requires backup/restore and rollback verification before deletion can
+- NIST SP 800-34 provides contingency-planning and recovery guidance. This contract requires backup/restore and rollback verification before deletion can
   move to execution planning.
 
 Sources:
@@ -40,17 +37,16 @@ Sources:
 - CISA Secure by Design:
   <https://www.cisa.gov/securebydesign>
 - NIST Secure Software Development Framework:
-  <https://csrc.nist.gov/projects/ssdf>
+  <https://csrc.nist.gov/pubs/sp/800/218/final>
 - NIST SP 800-34 Rev. 1:
   <https://csrc.nist.gov/pubs/sp/800/34/r1/upd1/final>
 
 ## Recommendations
 
-### Compose Existing Phase 8R Gates
+### Compose Existing Gates
 
 Compatibility deletion readiness should not maintain a second deletion model.
-It should consume the Phase 8R.7 deletion-gate plan and Phase 8R.13 cutover
-verification.
+It should consume the compatibility deletion-gate plan and native runtime cutover verification.
 
 Pros:
 
@@ -100,22 +96,22 @@ Cons:
 
 ## Final Recommendation Stack
 
-Use this stack for Phase 8R.14:
+Use this stack:
 
 1. `policyCompatibilityDeletionGates.mjs` proves compatibility
    deletion gates and coverage.
 2. `policyNativeRuntimeCutoverVerification.mjs` proves converted
    and unconverted runtime read behavior.
-3. `policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs` composes both
+3. `policyCompatibilityDeletionReadiness.mjs` composes both
    outputs with residual-reference and safety confirmations.
-4. A later Phase 8R component should create an execution manifest before any
+4. A later component should create an execution manifest before any
    compatibility path is removed.
 
 ## Implementation Outcome
 
 Implemented:
 
-- Added `policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs`.
+- Added `policyCompatibilityDeletionReadiness.mjs`.
 - Added a readiness status vocabulary:
   - ready for deletion execution plan,
   - blocked by runtime cutover,
@@ -139,7 +135,7 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Phase 8R.15 Compatibility Path Deletion Execution Plan**. That
+Proceed with **Compatibility Path Deletion Execution Plan**. That
 task should create an explicit, reviewable manifest of exact compatibility files
 or code paths to remove, their replacement evidence, rollback/support stance,
 and execution prerequisites before any deletion occurs.

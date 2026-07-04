@@ -2,9 +2,9 @@ import {
   POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS,
 } from './policyCompatibilityDeletionGates.mjs';
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_STATUS_IDS,
-  buildPolicyBuilderPhase8CompatibilityPathDeletionReadiness,
-} from './policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs';
+  POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS,
+  buildPolicyCompatibilityDeletionReadiness,
+} from './policyCompatibilityDeletionReadiness.mjs';
 
 const PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_PLAN_VERSION =
   'phase8r.compatibility_path_deletion_execution_plan.v1';
@@ -101,12 +101,12 @@ function buildManifestEntries({ deletionGatePlan = {}, replacementEvidence = {} 
 }
 
 function evaluateReadiness(deletionReadiness) {
-  const readiness = deletionReadiness || buildPolicyBuilderPhase8CompatibilityPathDeletionReadiness();
+  const readiness = deletionReadiness || buildPolicyCompatibilityDeletionReadiness();
   const risks = [];
 
   if (
     readiness.statusId !==
-    PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_STATUS_IDS.READY_FOR_DELETION_EXECUTION_PLAN ||
+    POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS.READY_FOR_DELETION_EXECUTION_PLAN ||
     readiness.readyForDeletionExecutionPlan !== true
   ) {
     risks.push(buildRisk(

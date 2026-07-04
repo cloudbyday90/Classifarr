@@ -103,7 +103,7 @@ Cons:
 
 Use this stack for Phase 8R.15:
 
-1. `policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs` proves deletion
+1. `policyCompatibilityDeletionReadiness.mjs` proves deletion
    readiness.
 2. `policyCompatibilityDeletionGates.mjs` supplies compatibility
    categories and paths.
