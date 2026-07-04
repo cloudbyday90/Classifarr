@@ -403,7 +403,7 @@ describe('policyMigrationDeletionPath', () => {
     expect(audit.deleteCount).toBeGreaterThan(0);
     expect(audit.nextStep).toEqual(expect.objectContaining({
       stepId: 'runtime_decision_inventory',
-      label: 'Runtime Decision Inventory And Cutline',
+      label: 'Policy Runtime Decision Inventory',
     }));
   });
 

@@ -586,7 +586,7 @@ describe('policyOperatorWorkflow', () => {
     expect(audit.prohibitedNormalSurfaceCount).toBe(8);
     expect(audit.nextStep).toEqual(expect.objectContaining({
       stepId: 'migration_deletion_path',
-      label: 'Migration And Deletion Path',
+      label: 'Policy Migration Deletion Path',
     }));
   });
 

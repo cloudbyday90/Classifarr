@@ -72,7 +72,7 @@ Cons:
 - Completion checkpoint:
   `server/src/services/policyEngineCompletionAudit.mjs`
 - Original design record:
-  `docs/architecture/policy-builder-phase-6r-migration-deletion-path.md`
+  `docs/architecture/policy-migration-deletion-path.md`
 
 ## Outcome
 
@@ -80,7 +80,7 @@ Cons:
   policy-domain names.
 - Renamed exported constants and builder functions to `POLICY_MIGRATION_*` and
   `buildPolicyMigrationDeletion*`.
-- Replaced `phaseId`/`nextPhase` in the migration module with
+- Replaced roadmap handoff fields in the migration module with
   `stepId`/`nextStep`.
 - Replaced `phase8StorageMigrationAllowed` and
   `phase8StorageMigrationBlocked` with native-storage field names.

@@ -107,7 +107,7 @@ describe('policyEngineCompletionAudit', () => {
     expect(audit.boundedChainAudit.issueCount).toBe(0);
     expect(audit.nextStep).toEqual(expect.objectContaining({
       stepId: 'runtime_decision_inventory',
-      label: 'Runtime Decision Inventory And Cutline',
+      label: 'Policy Runtime Decision Inventory',
     }));
   });
 

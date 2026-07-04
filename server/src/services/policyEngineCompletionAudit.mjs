@@ -754,7 +754,7 @@ function buildPolicyEngineBoundedChainCompletionAudit({
     issues,
     nextStep: {
       stepId: 'runtime_decision_inventory',
-      label: 'Runtime Decision Inventory And Cutline',
+      label: 'Policy Runtime Decision Inventory',
       reason: 'The policy engine bounded chain is composable, so runtime decision paths can be inventoried against the new contract surface.',
     },
   };
@@ -848,7 +848,7 @@ function buildPolicyEngineCompletionAudit({
     issues,
     nextStep: {
       stepId: 'runtime_decision_inventory',
-      label: 'Runtime Decision Inventory And Cutline',
+      label: 'Policy Runtime Decision Inventory',
       reason: 'Policy engine contracts are complete, documented, tested, and migration-gated, so runtime decision paths can be inventoried against them.',
     },
   };

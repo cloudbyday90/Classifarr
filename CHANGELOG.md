@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Migration Deletion Path Architecture Cutover** — renamed the active
+  migration/deletion architecture record to
+  `policy-migration-deletion-path.md`, updated runtime-facing workflow,
+  migration, and completion-audit labels to policy migration/deletion and
+  policy runtime inventory wording, added a durable architecture cutover
+  record, and preserved the existing `policyMigrationDeletionPath.mjs`
+  verifier, deletion, rollback, native-storage-blocker, bounded workflow,
+  and workflow-quality behavior.
 - **Policy Operator Workflow Quality Gate Architecture Cutover** — renamed the
   active workflow quality-gate architecture record to
   `policy-operator-workflow-quality-gate.md`, updated the roadmap to point at

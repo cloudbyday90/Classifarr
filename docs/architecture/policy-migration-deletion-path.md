@@ -1,10 +1,10 @@
-# Policy Builder Phase 6R Migration And Deletion Path
+# Policy Migration Deletion Path
 
 ## Status
 
-Implemented as the sixth Phase 6R engine cutline contract.
+Implemented as the durable policy migration/deletion cutline contract.
 
-This slice classifies old policy-builder impact, replay, provider readiness,
+This contract classifies old policy-builder impact, replay, provider readiness,
 TMDB coverage, scoring, write-route, and schema artifacts as one of four
 decisions:
 
@@ -12,20 +12,20 @@ decisions:
 keep engine primitive
 migration verifier
 delete after migration
-Phase 8 storage blocker
+native storage blocker
 ```
 
 It does not delete code yet, add native intent storage, expose old diagnostics
 in the normal product workflow, or run migration against production data.
 
 The compatibility migration-plan builder remains available for focused tests
-and inventory work, but new runtime/rebuild callers should use the bounded
+and inventory work, but runtime and rebuild callers should use the bounded
 migration wrapper. That wrapper requires a successful bounded operator workflow
 result before any migration/deletion plan is considered ready. It also requires
 the bounded workflow audit to still be passing, so stale or tampered workflow
-contracts cannot authorize migration/deletion planning. The wrapper now also
-requires matching, usable, sanitized workflow quality snapshots before returning
-the migration/deletion plan.
+contracts cannot authorize migration/deletion planning. The wrapper requires
+matching, usable, sanitized workflow quality snapshots before returning the
+migration/deletion plan.
 
 ## Problem
 
@@ -34,26 +34,27 @@ parallel system. Impact preview, replay preview, provider readiness, TMDB
 coverage, and raw scoring can help verify migration, but they should not remain
 the operator workflow.
 
-Phase 6R.6 creates a server-owned cutline for migration safety:
+The policy migration/deletion path creates a server-owned cutline for migration
+safety:
 
 ```text
 compare old behavior
 preserve rollback
-block Phase 8 storage
+block native storage
 delete replaced surfaces after gates pass
 ```
 
 ## Official Guidance Reviewed
 
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/Projects/ssdf)
+- [NIST Secure Software Development Framework SP 800-218](https://csrc.nist.gov/pubs/sp/800/218/final)
   supports secure design, verification, and controlled release practices. The
-  cutline is deterministic and testable before any deletion or storage migration
-  happens.
+  migration cutline is deterministic and testable before any deletion or
+  storage migration happens.
 - [NIST SP 800-53 Revision 5](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final)
-  includes contingency, backup, recovery, and system integrity control families.
-  Phase 6R.6 requires rollback snapshots, a restore path, and an explicit
-  retention window.
-- [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/)
+  provides security and privacy controls that include contingency, backup,
+  recovery, and system integrity considerations. The migration path requires
+  rollback snapshots, a restore path, and an explicit retention window.
+- [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
   emphasizes server-side validation and business-logic controls. The migration
   plan blocks client-side diagnostic authority and keeps old diagnostics outside
   the normal workflow.
@@ -62,19 +63,16 @@ delete replaced surfaces after gates pass
   cases where individual fields are valid but their combination is not. The
   bounded migration wrapper rejects a successful-looking workflow if its audit
   state is not passing.
-- [OpenTelemetry Context Propagation](https://opentelemetry.io/docs/concepts/context-propagation/)
-  describes correlating signals across process and network boundaries. The
-  migration boundary carries only sanitized workflow fingerprints and audit
-  status to connect migration decisions to their source workflow.
 - [PostgreSQL Backup And Restore](https://www.postgresql.org/docs/current/backup.html)
-  documents backup and restore approaches. The cutline treats schema migration
-  as a later Phase 8R operation after rollback gates pass.
+  documents backup and restore approaches and the need to understand backup
+  assumptions. The cutline treats schema migration as a later native-storage
+  operation after rollback gates pass.
 
 ## Recommendations
 
 1. **Classify every replaced artifact.**
    Each policy-builder artifact must declare whether it is kept, verifier-only,
-   deleted after migration, or blocking Phase 8 storage work.
+   deleted after migration, or blocking native storage work.
 
 2. **Keep migration diagnostics out of the normal workflow.**
    Impact preview, replay preview, replay parity, provider readiness, TMDB
@@ -82,22 +80,23 @@ delete replaced surfaces after gates pass
    but not product controls.
 
 3. **Require migration gates before deletion.**
-   Deletion requires stable Phase 6R contracts, representative comparison,
-   rollback snapshot, rollback window, explicit deletion checklist, and Phase 8
+   Deletion requires stable policy engine contracts, representative comparison,
+   rollback snapshot, rollback window, explicit deletion checklist, and native
    storage still blocked.
 
 4. **Preserve rollback data for a defined window.**
    The initial contract uses a 30-day rollback retention window. The window is
    explicit so future release work can tune it without weakening the gate.
 
-5. **Block native storage until Phase 8R.**
-   Phase 6R proves engine behavior and migration safety. Phase 8R owns native
-   schema migration after those gates pass.
+5. **Block native storage until migration readiness is proven.**
+   The engine proves behavior and migration safety first. Native schema
+   migration should be owned by a separate storage migration plan after those
+   gates pass.
 
 6. **Require bounded workflow evidence before migration planning.**
-   Migration/deletion planning should consume the bounded Phase 6R.5 workflow
-   result so deletion gates cannot be evaluated against stale or mismatched
-   evidence, intent, readiness, or workflow state.
+   Migration/deletion planning should consume the bounded policy operator
+   workflow result so deletion gates cannot be evaluated against stale or
+   mismatched evidence, intent, readiness, or workflow state.
 
 7. **Require workflow quality before migration planning.**
    Migration/deletion planning should block missing, insufficient, or mismatched
@@ -120,8 +119,8 @@ Pros:
 
 Cons:
 
-- This slice does not delete the old components or services yet.
-- It does not implement the runtime migration verifier endpoint.
+- This contract does not delete the old components or services yet.
+- It does not implement a runtime migration verifier endpoint.
 - It adds one more server contract before the UI can be simplified.
 - The 30-day retention window is a starting contract, not a final release
   policy.
@@ -138,11 +137,10 @@ Cons:
 - Test module:
   `server/src/__tests__/services/policyMigrationDeletionPath.test.mjs`
 - Documentation:
-  `docs/architecture/policy-builder-phase-6r-migration-deletion-path.md`
+  `docs/architecture/policy-migration-deletion-path.md`
 - Quality gate documentation:
-  `docs/architecture/policy-builder-phase-6r-migration-quality-gate.md`
+  Pending durable architecture cutover.
 - Roadmap owner:
-  Phase 6R.6 Migration And Deletion Path in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
@@ -168,8 +166,8 @@ Default decisions:
   machinery when their deterministic reducers remain useful for parity.
 - Mark old client impact/replay panels, preview composables, preview utilities,
   old diagnostic tests, provider-readiness replay helpers, TMDB adapter
-  execution helpers, and the pre-6R implementation document for deletion after
-  migration gates pass.
+  execution helpers, and the pre-durable implementation document for deletion
+  after migration gates pass.
 - Treat `database/schema/current.sql` as a native-storage blocker.
 
 Default gates:
@@ -231,7 +229,6 @@ projectionFingerprintMatch
 
 ## Next Step
 
-Run the policy engine completion audit against the quality-gated handoff chain, then
-Phase 7R.1 Runtime Decision Inventory And Cutline should inventory the runtime
-classification, routing, question, and learning paths against the completed
-Phase 6R engine contracts.
+Continue with **Policy Migration Quality Gate Architecture Cutover**. That
+component should rename the active migration quality-gate design record and
+preserve the bounded workflow quality checks that protect migration planning.

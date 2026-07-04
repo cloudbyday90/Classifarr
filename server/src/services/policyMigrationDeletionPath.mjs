@@ -1077,7 +1077,7 @@ function buildPolicyMigrationDeletionAudit(
     validation,
     nextStep: {
       stepId: 'runtime_decision_inventory',
-      label: 'Runtime Decision Inventory And Cutline',
+      label: 'Policy Runtime Decision Inventory',
       reason: 'Policy engine and workflow contracts now have an explicit migration/deletion path, so runtime classification, routing, question, and learning paths can be inventoried against those contracts.',
     },
   };

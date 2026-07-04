@@ -872,7 +872,7 @@ function buildPolicyOperatorWorkflowAudit(
     validation,
     nextStep: {
       stepId: 'migration_deletion_path',
-      label: 'Migration And Deletion Path',
+      label: 'Policy Migration Deletion Path',
       reason: 'The operator workflow now has a destination-first server contract, so replaced diagnostic surfaces can be classified for migration verification or deletion.',
     },
   };

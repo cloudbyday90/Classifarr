@@ -96,7 +96,7 @@ Cons:
 - Test module:
   `server/src/__tests__/services/policyMigrationDeletionPath.test.mjs`
 - Existing migration record:
-  `docs/architecture/policy-builder-phase-6r-migration-deletion-path.md`
+  `docs/architecture/policy-migration-deletion-path.md`
 - Roadmap owner:
   Phase 6R.6 in `docs/architecture/policy-builder-intent-model-roadmap.md`
 

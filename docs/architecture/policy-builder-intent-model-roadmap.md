@@ -3577,8 +3577,8 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 6R.6 migration and deletion path is documented in
-  [Policy Builder Phase 6R Migration And Deletion Path](policy-builder-phase-6r-migration-deletion-path.md).
+- Policy migration deletion path is documented in
+  [Policy Migration Deletion Path](policy-migration-deletion-path.md).
 - The server-owned migration cutline lives in
   `server/src/services/policyMigrationDeletionPath.mjs`.
 - The focused migration/deletion test suite lives in
@@ -3589,11 +3589,11 @@ Implementation status:
 - Old impact preview, replay preview, provider readiness, TMDB coverage, raw
   scoring, and policy-write diagnostics are verifier-only or delete-after-
   migration targets, never normal operator workflow.
-- Migration deletion requires stable Phase 6R contracts, representative
+- Migration deletion requires stable policy engine contracts, representative
   comparison, rollback snapshot, rollback window, deletion checklist, and
-  native storage blocked until Phase 8R.
+  native storage blocked until storage migration readiness is proven.
 - Migration planning now exposes a bounded entry point for new runtime/rebuild
-  callers: it requires a successful bounded Phase 6R.5 operator workflow result,
+  callers: it requires a successful bounded policy operator workflow result,
   verifies sanitized workflow provenance, and attaches the bounded workflow
   context to the migration plan before the migration/deletion audit can pass.
 - The bounded migration entry point now also requires the upstream bounded
@@ -3601,7 +3601,9 @@ Implementation status:
 - The bounded migration entry point now requires the bounded workflow result and
   embedded workflow context to carry matching, usable evidence-quality
   snapshots before migration/deletion planning can proceed.
-- The Phase 6R.6 quality-gated migration hardening is documented in
+- Policy migration deletion path architecture cutover is documented in
+  [Policy Migration Deletion Path Architecture Cutover](policy-migration-deletion-path-architecture-cutover.md).
+- Policy migration quality-gate hardening is documented in
   [Policy Builder Phase 6R Migration Quality Gate](policy-builder-phase-6r-migration-quality-gate.md).
 
 ## Phase 6R Work Sequence
@@ -6636,6 +6638,16 @@ Implementation status:
   production references, and 3,762 rename candidates. The production baseline
   remains unchanged because enforcement already lives in the durable operator
   workflow.
+- The policy migration deletion path architecture cutover renamed the active
+  migration/deletion design record to `policy-migration-deletion-path.md`,
+  added a durable architecture cutover record, and updated runtime-facing audit
+  labels to policy migration/deletion and policy runtime inventory wording:
+  [Policy Migration Deletion Path Architecture Cutover](policy-migration-deletion-path-architecture-cutover.md).
+- After the policy migration deletion path architecture cutover, the repository
+  inventory validates with 9,457 total phase-coded references, 3,740 production
+  references, and 3,762 rename candidates. The production phase-coded baseline
+  remains unchanged, but runtime-facing migration/deletion and runtime inventory
+  labels now use durable policy-domain wording.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
