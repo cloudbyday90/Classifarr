@@ -2,8 +2,8 @@ import {
   PHASE8R_CONVERSION_ACTOR_SOURCE_IDS,
 } from './policyBuilderPhase8ExplicitConversionWorkflow.mjs';
 import {
-  PHASE8R_NATIVE_SCHEMA_TABLE_IDS,
-} from './policyBuilderPhase8NativeSchemaContract.mjs';
+  POLICY_NATIVE_SCHEMA_TABLE_IDS,
+} from './policyNativeSchemaContract.mjs';
 
 const PHASE8R_ROLLBACK_SNAPSHOT_WINDOW_VERSION = 'phase8r.rollback_snapshot_window.v1';
 
@@ -367,7 +367,7 @@ function buildPolicyBuilderPhase8RollbackSnapshotWindow({
     evaluatedAt: nowIso,
     snapshot: {
       planned: actorAllowed,
-      tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
+      tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
       policyId,
       intentId,
       snapshotVersion,

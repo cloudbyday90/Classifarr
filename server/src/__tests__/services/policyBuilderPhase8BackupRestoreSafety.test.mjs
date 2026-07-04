@@ -9,13 +9,13 @@ import {
   validatePolicyBuilderPhase8BackupRestoreSafetyPlan,
 } from '../../services/policyBuilderPhase8BackupRestoreSafety.mjs';
 import {
-  PHASE8R_NATIVE_SCHEMA_TABLE_IDS,
-} from '../../services/policyBuilderPhase8NativeSchemaContract.mjs';
+  POLICY_NATIVE_SCHEMA_TABLE_IDS,
+} from '../../services/policyNativeSchemaContract.mjs';
 import {
   POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
 } from '../../services/policyIntentSchema.mjs';
 
-const NATIVE_TABLE_IDS = Object.freeze(Object.values(PHASE8R_NATIVE_SCHEMA_TABLE_IDS));
+const NATIVE_TABLE_IDS = Object.freeze(Object.values(POLICY_NATIVE_SCHEMA_TABLE_IDS));
 const RESTORE_VALIDATION_IDS = Object.freeze(
   Object.values(PHASE8R_BACKUP_RESTORE_VALIDATION_IDS)
 );
@@ -80,7 +80,7 @@ describe('policyBuilderPhase8BackupRestoreSafety', () => {
   test('blocks when any native table is missing from backup coverage', () => {
     const plan = buildPolicyBuilderPhase8BackupRestoreSafetyPlan(buildCompleteSafetyInput({
       backupTableIds: NATIVE_TABLE_IDS.filter(tableId => (
-        tableId !== PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS
+        tableId !== POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS
       )),
     }));
 
@@ -90,13 +90,13 @@ describe('policyBuilderPhase8BackupRestoreSafety', () => {
     expect(plan.blockers).toEqual(expect.arrayContaining([
       expect.objectContaining({
         blockerId: 'native_table_missing_from_backup',
-        tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
+        tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
       }),
     ]));
     expect(plan.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: PHASE8R_BACKUP_RESTORE_RISK_IDS.MISSING_NATIVE_TABLE_BACKUP,
-        tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
+        tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
       }),
     ]));
   });

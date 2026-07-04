@@ -1,8 +1,8 @@
 import {
-  PHASE8R_NATIVE_SCHEMA_TABLE_IDS,
-  buildPolicyBuilderPhase8NativeSchemaContract,
-  validatePolicyBuilderPhase8NativeSchemaContract,
-} from './policyBuilderPhase8NativeSchemaContract.mjs';
+  POLICY_NATIVE_SCHEMA_TABLE_IDS,
+  buildPolicyNativeSchemaContract,
+  validatePolicyNativeSchemaContract,
+} from './policyNativeSchemaContract.mjs';
 
 const PHASE8R_BACKUP_RESTORE_SAFETY_VERSION = 'phase8r.backup_restore_safety.v1';
 
@@ -60,7 +60,7 @@ const PHASE8R_BACKUP_RESTORE_REASON_IDS = Object.freeze({
   SIDE_EFFECTS_DISABLED: 'side_effects_disabled',
 });
 
-const NATIVE_TABLE_IDS = Object.freeze(Object.values(PHASE8R_NATIVE_SCHEMA_TABLE_IDS));
+const NATIVE_TABLE_IDS = Object.freeze(Object.values(POLICY_NATIVE_SCHEMA_TABLE_IDS));
 const RESTORE_VALIDATION_IDS = Object.freeze(Object.values(PHASE8R_BACKUP_RESTORE_VALIDATION_IDS));
 const OPERATOR_ERROR_IDS = Object.freeze(Object.values(PHASE8R_POST_UPGRADE_OPERATOR_ERROR_IDS));
 
@@ -125,10 +125,10 @@ function getMissingRestoreValidationIds(restoreValidations = []) {
 }
 
 function buildSchemaParity({
-  nativeSchemaContract = buildPolicyBuilderPhase8NativeSchemaContract(),
+  nativeSchemaContract = buildPolicyNativeSchemaContract(),
   schemaParity = {},
 } = {}) {
-  const nativeSchemaValidation = validatePolicyBuilderPhase8NativeSchemaContract(nativeSchemaContract);
+  const nativeSchemaValidation = validatePolicyNativeSchemaContract(nativeSchemaContract);
   const freshInstallSchemaVersion = schemaParity.freshInstallSchemaVersion ?? null;
   const upgradedInstallSchemaVersion = schemaParity.upgradedInstallSchemaVersion ?? null;
   const freshInstallChecksum = schemaParity.freshInstallChecksum ?? null;
@@ -314,7 +314,7 @@ function buildBlockers({
 }
 
 function buildPolicyBuilderPhase8BackupRestoreSafetyPlan({
-  nativeSchemaContract = buildPolicyBuilderPhase8NativeSchemaContract(),
+  nativeSchemaContract = buildPolicyNativeSchemaContract(),
   backupTableIds = [],
   restoreTableIds = [],
   restoreValidationIds = [],
@@ -362,7 +362,7 @@ function buildPolicyBuilderPhase8BackupRestoreSafetyPlan({
     reasons: [
       buildReason(
         PHASE8R_BACKUP_RESTORE_REASON_IDS.NATIVE_TABLES_ENUMERATED,
-        'Native intent storage tables are enumerated from the Phase 8R.1 schema contract.'
+        'Native intent storage tables are enumerated from the native schema contract.'
       ),
       buildReason(
         PHASE8R_BACKUP_RESTORE_REASON_IDS.BACKUP_RESTORE_COVERAGE_REQUIRED,

@@ -6,9 +6,9 @@
  * See LICENSE file for details.
  */
 
--- Phase 8R native policy intent storage.
+-- Native policy intent storage.
 -- This migration creates the durable native intent tables defined by the
--- Phase 8R.1 schema contract. It intentionally stores final intent authority,
+-- policy native schema contract. It intentionally stores final intent authority,
 -- migration events, bounded rollback snapshots, and validation status without
 -- preserving legacy customSignals as a permanent second policy model.
 

@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Native Schema Contract Module Cutover** — renamed the native schema
+  contract service, focused test, and architecture record to
+  `policyNativeSchemaContract.mjs`, `policyNativeSchemaContract.test.mjs`, and
+  `policy-native-schema-contract.md`, moved the payload version to
+  `policy.native_schema_contract.v1`, replaced schema-local phase constants,
+  risk IDs, and handoff fields with durable `POLICY_NATIVE_SCHEMA_*` exports
+  and `nextStep.stepId = migration_candidate_report`, updated direct native
+  storage consumers, and preserved the side-effect-free schema validator,
+  required table/index coverage, server-validation gate, rollback-expiry check,
+  and forbidden durable-field rejection.
 - **Policy Runtime Completion Audit Architecture Cutover** — normalized the
   active runtime completion audit architecture record, updated the roadmap and
   module cutover note to point at the durable
@@ -529,7 +539,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   module cutover begins.
 - **Policy Builder Phase 8R Native SQL Migration Coverage** — added a
   server-owned coverage contract that reads the canonical native intent
-  migration, compares executable DDL to the Phase 8R.1 schema contract, and
+  migration, compares executable DDL to the native schema contract, and
   rejects missing table/column/index coverage, unbounded rollback storage, or
   durable legacy/transient fields.
 - **Policy Builder Phase 7R Completion Audit** — added a server-owned
@@ -967,7 +977,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   and rejects reports that mutate storage, omit deletion-impact details, hide
   blockers behind generic statuses, or expose raw legacy JSON outside explicit
   maintainer mode.
-- **Policy Builder Phase 8R Native Schema Contract** — added a server-owned
+- **Policy Native Schema Contract** — added a server-owned
   native intent schema contract, architecture record, and audit suite that
   defines side-effect-free storage boundaries for native policy headers, intent
   rules, routing targets, starter-template provenance, migration events,

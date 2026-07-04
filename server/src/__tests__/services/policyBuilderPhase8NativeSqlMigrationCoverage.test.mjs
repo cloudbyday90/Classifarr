@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
-  PHASE8R_NATIVE_SCHEMA_TABLE_IDS,
-  buildPolicyBuilderPhase8NativeSchemaContract,
-  listPolicyBuilderPhase8NativeSchemaTables,
-} from '../../services/policyBuilderPhase8NativeSchemaContract.mjs';
+  POLICY_NATIVE_SCHEMA_TABLE_IDS,
+  buildPolicyNativeSchemaContract,
+  listPolicyNativeSchemaTables,
+} from '../../services/policyNativeSchemaContract.mjs';
 import {
   PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS,
   buildPolicyBuilderPhase8NativeSqlMigrationCoverage,
@@ -27,7 +27,7 @@ describe('policyBuilderPhase8NativeSqlMigrationCoverage', () => {
     expect(coverage.validation.ok).toBe(true);
     expect(coverage.migrationFilename).toBe('20260701_160000_add_policy_intent_native_storage.sql');
     expect(coverage.tableCoverage.map(tableResult => tableResult.tableId)).toEqual(
-      expect.arrayContaining(Object.values(PHASE8R_NATIVE_SCHEMA_TABLE_IDS))
+      expect.arrayContaining(Object.values(POLICY_NATIVE_SCHEMA_TABLE_IDS))
     );
     expect(coverage.tableCoverage.every(tableResult => tableResult.present)).toBe(true);
     expect(coverage.indexCoverage.every(indexResult => indexResult.present)).toBe(true);
@@ -53,11 +53,11 @@ describe('policyBuilderPhase8NativeSqlMigrationCoverage', () => {
     expect(coverage.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_TABLE_DDL,
-        tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
+        tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
       }),
       expect.objectContaining({
         riskId: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_COLUMN_DDL,
-        tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
+        tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
         columnName: 'signal_type',
       }),
     ]));
@@ -72,7 +72,7 @@ describe('policyBuilderPhase8NativeSqlMigrationCoverage', () => {
     expect(coverage.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: PHASE8R_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_INDEX_DDL,
-        tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
+        tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
         sqlIndexName: 'idx_policy_intent_rules_values_gin',
       }),
     ]));
@@ -119,9 +119,9 @@ ALTER TABLE policy_intents ADD COLUMN embedding vector;`;
   });
 
   test('rejects invalid schema-contract handoffs and side effects', () => {
-    const schemaContract = buildPolicyBuilderPhase8NativeSchemaContract({
-      tables: listPolicyBuilderPhase8NativeSchemaTables().filter(table =>
-        table.tableId !== PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES
+    const schemaContract = buildPolicyNativeSchemaContract({
+      tables: listPolicyNativeSchemaTables().filter(table =>
+        table.tableId !== POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES
       ),
     });
     const coverage = buildPolicyBuilderPhase8NativeSqlMigrationCoverage({ schemaContract });

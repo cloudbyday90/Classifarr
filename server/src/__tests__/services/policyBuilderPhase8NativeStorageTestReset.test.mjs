@@ -28,7 +28,7 @@ describe('policyBuilderPhase8NativeStorageTestReset', () => {
     expect(plan.requiredCoverageIds).toEqual(COVERAGE_IDS);
     expect(plan.testRecords.map(record => record.path)).toEqual(expect.arrayContaining([
       'server/src/__tests__/migrations.test.mjs',
-      'server/src/__tests__/services/policyBuilderPhase8NativeSchemaContract.test.mjs',
+      'server/src/__tests__/services/policyNativeSchemaContract.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8MigrationCandidateReport.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8ExplicitConversionWorkflow.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8NativeRuntimeReadPath.test.mjs',

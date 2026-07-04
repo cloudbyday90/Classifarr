@@ -87,7 +87,7 @@ Cons:
 - Test coverage:
   `server/src/__tests__/services/policyBuilderPhase8RollbackSnapshotWindow.test.mjs`
 - Existing schema boundary:
-  `server/src/services/policyBuilderPhase8NativeSchemaContract.mjs`
+  `server/src/services/policyNativeSchemaContract.mjs`
 - Existing conversion workflow boundary:
   `server/src/services/policyBuilderPhase8ExplicitConversionWorkflow.mjs`
 

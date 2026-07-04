@@ -17,9 +17,9 @@ export function buildPolicyBuilderPhase6IntentEngine() {}
 `,
     },
     {
-      path: 'server/src/services/policyBuilderPhase8NativeSchemaContract.mjs',
+      path: 'server/src/services/policyBuilderPhase8MigrationCandidateReport.mjs',
       content: `
-const PHASE8R_NATIVE_SCHEMA_CONTRACT_VERSION = 'phase8r.native_schema_contract.v1';
+const PHASE8R_MIGRATION_CANDIDATE_REPORT_VERSION = 'phase8r.migration_candidate_report.v1';
 `,
     },
     {
@@ -31,7 +31,7 @@ const PHASE8R_NATIVE_SCHEMA_CONTRACT_VERSION = 'phase8r.native_schema_contract.v
       content: '## Phase 8R: Native Intent Storage And Legacy Removal',
     },
     {
-      path: 'server/src/__tests__/services/policyBuilderPhase8NativeSchemaContract.test.mjs',
+      path: 'server/src/__tests__/services/policyNativeSchemaContract.test.mjs',
       content: "test('keeps Phase 8R migration evidence', () => {});",
     },
     {
@@ -82,10 +82,10 @@ describe('policyBuilderProductionNameInventory', () => {
         durableTarget: 'policyIntentInference',
       }),
       expect.objectContaining({
-        repoPath: 'server/src/services/policyBuilderPhase8NativeSchemaContract.mjs',
+        repoPath: 'server/src/services/policyBuilderPhase8MigrationCandidateReport.mjs',
         categoryId: PRODUCTION_NAMING_CATEGORY_IDS.PRODUCTION,
         decisionId: PRODUCTION_NAMING_DECISION_IDS.RENAME_IN_PRODUCTION_CODE,
-        durableTarget: 'nativePolicyIntentSchemaContract',
+        durableTarget: 'policyIntentMigrationCandidateReport',
       }),
     ]));
     expect(inventory.renameMap).toEqual(expect.arrayContaining([
@@ -115,7 +115,7 @@ describe('policyBuilderProductionNameInventory', () => {
         decisionId: PRODUCTION_NAMING_DECISION_IDS.KEEP_DOCS_HISTORY,
       }),
       expect.objectContaining({
-        repoPath: 'server/src/__tests__/services/policyBuilderPhase8NativeSchemaContract.test.mjs',
+        repoPath: 'server/src/__tests__/services/policyNativeSchemaContract.test.mjs',
         categoryId: PRODUCTION_NAMING_CATEGORY_IDS.TEST,
         decisionId: PRODUCTION_NAMING_DECISION_IDS.KEEP_TEST_MIGRATION_EVIDENCE,
       }),

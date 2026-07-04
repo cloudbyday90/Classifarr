@@ -8,9 +8,9 @@ import {
   SUPPORTED_POLICY_INTENT_SIGNAL_TYPES,
 } from './policyIntentSchema.mjs';
 
-const PHASE8R_NATIVE_SCHEMA_CONTRACT_VERSION = 'phase8r.native_schema_contract.v1';
+const POLICY_NATIVE_SCHEMA_CONTRACT_VERSION = 'policy.native_schema_contract.v1';
 
-const PHASE8R_NATIVE_SCHEMA_TABLE_IDS = Object.freeze({
+const POLICY_NATIVE_SCHEMA_TABLE_IDS = Object.freeze({
   POLICY_INTENTS: 'policy_intents',
   POLICY_INTENT_RULES: 'policy_intent_rules',
   POLICY_INTENT_ROUTING_TARGETS: 'policy_intent_routing_targets',
@@ -20,7 +20,7 @@ const PHASE8R_NATIVE_SCHEMA_TABLE_IDS = Object.freeze({
   POLICY_INTENT_VALIDATION_STATUS: 'policy_intent_validation_status',
 });
 
-const PHASE8R_NATIVE_SCHEMA_SECTION_IDS = Object.freeze({
+const POLICY_NATIVE_SCHEMA_SECTION_IDS = Object.freeze({
   HEADER: 'header',
   RULES: 'rules',
   ROUTING_TARGET: 'routing_target',
@@ -30,7 +30,7 @@ const PHASE8R_NATIVE_SCHEMA_SECTION_IDS = Object.freeze({
   VALIDATION_AND_SCHEMA_VERSION: 'validation_and_schema_version',
 });
 
-const PHASE8R_NATIVE_SCHEMA_INDEX_IDS = Object.freeze({
+const POLICY_NATIVE_SCHEMA_INDEX_IDS = Object.freeze({
   POLICY_LOOKUP: 'policy_lookup',
   LIBRARY_LOOKUP: 'library_lookup',
   ACTIVE_INTENT_VERSION: 'active_intent_version',
@@ -42,7 +42,7 @@ const PHASE8R_NATIVE_SCHEMA_INDEX_IDS = Object.freeze({
   VALIDATION_STATUS: 'validation_status',
 });
 
-const PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS = Object.freeze({
   MISSING_TABLE: 'missing_table',
   MISSING_SECTION: 'missing_section',
   MISSING_COLUMN: 'missing_column',
@@ -50,8 +50,8 @@ const PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS = Object.freeze({
   MISSING_FOREIGN_KEY: 'missing_foreign_key',
   MISSING_ACTIVE_UNIQUE_INDEX: 'missing_active_unique_index',
   FORBIDDEN_DURABLE_FIELD: 'forbidden_durable_field',
-  RULES_NOT_MAPPED_TO_PHASE5_CONTRACT: 'rules_not_mapped_to_phase5_contract',
-  PHASE6_OUTPUT_NOT_REPRESENTABLE: 'phase6_output_not_representable',
+  RULES_NOT_MAPPED_TO_SERVER_CONTRACT: 'rules_not_mapped_to_server_contract',
+  INTENT_ENGINE_OUTPUT_NOT_REPRESENTABLE: 'intent_engine_output_not_representable',
   MIGRATION_METADATA_NOT_SEPARATED: 'migration_metadata_not_separated',
   ROLLBACK_SNAPSHOT_UNBOUNDED: 'rollback_snapshot_unbounded',
   SERVER_VALIDATION_NOT_REQUIRED: 'server_validation_not_required',
@@ -59,9 +59,9 @@ const PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS = Object.freeze({
   MISSING_TRACE_REASON: 'missing_trace_reason',
 });
 
-const TABLE_IDS = Object.freeze(Object.values(PHASE8R_NATIVE_SCHEMA_TABLE_IDS));
-const SECTION_IDS = Object.freeze(Object.values(PHASE8R_NATIVE_SCHEMA_SECTION_IDS));
-const INDEX_IDS = Object.freeze(Object.values(PHASE8R_NATIVE_SCHEMA_INDEX_IDS));
+const TABLE_IDS = Object.freeze(Object.values(POLICY_NATIVE_SCHEMA_TABLE_IDS));
+const SECTION_IDS = Object.freeze(Object.values(POLICY_NATIVE_SCHEMA_SECTION_IDS));
+const INDEX_IDS = Object.freeze(Object.values(POLICY_NATIVE_SCHEMA_INDEX_IDS));
 
 const FORBIDDEN_DURABLE_FIELD_NAMES = Object.freeze([
   'ui_draft_state',
@@ -155,11 +155,11 @@ function table(tableId, sectionId, columns, indexes, options = {}) {
   };
 }
 
-function listPolicyBuilderPhase8NativeSchemaTables() {
+function listPolicyNativeSchemaTables() {
   return [
     table(
-      PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS,
-      PHASE8R_NATIVE_SCHEMA_SECTION_IDS.HEADER,
+      POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS,
+      POLICY_NATIVE_SCHEMA_SECTION_IDS.HEADER,
       [
         column('id', 'bigserial'),
         column('policy_id', 'integer', { foreignKey: 'library_policies(id)' }),
@@ -189,10 +189,10 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
         }),
       ],
       [
-        index(PHASE8R_NATIVE_SCHEMA_INDEX_IDS.POLICY_LOOKUP, ['policy_id']),
-        index(PHASE8R_NATIVE_SCHEMA_INDEX_IDS.LIBRARY_LOOKUP, ['library_id']),
+        index(POLICY_NATIVE_SCHEMA_INDEX_IDS.POLICY_LOOKUP, ['policy_id']),
+        index(POLICY_NATIVE_SCHEMA_INDEX_IDS.LIBRARY_LOOKUP, ['library_id']),
         index(
-          PHASE8R_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_INTENT_VERSION,
+          POLICY_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_INTENT_VERSION,
           ['policy_id', 'intent_version'],
           {
             unique: true,
@@ -200,7 +200,7 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
             purpose: 'Only one active native intent version may exist per policy.',
           }
         ),
-        index(PHASE8R_NATIVE_SCHEMA_INDEX_IDS.VALIDATION_STATUS, ['validation_status']),
+        index(POLICY_NATIVE_SCHEMA_INDEX_IDS.VALIDATION_STATUS, ['validation_status']),
       ],
       {
         purpose: 'Durable native policy intent header and active version boundary.',
@@ -208,8 +208,8 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
       }
     ),
     table(
-      PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
-      PHASE8R_NATIVE_SCHEMA_SECTION_IDS.RULES,
+      POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
+      POLICY_NATIVE_SCHEMA_SECTION_IDS.RULES,
       [
         column('id', 'bigserial'),
         column('intent_id', 'bigint', { foreignKey: 'policy_intents(id)' }),
@@ -234,12 +234,12 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
         column('created_at', 'timestamp with time zone', { default: 'now()' }),
       ],
       [
-        index(PHASE8R_NATIVE_SCHEMA_INDEX_IDS.RULE_LOOKUP, [
+        index(POLICY_NATIVE_SCHEMA_INDEX_IDS.RULE_LOOKUP, [
           'intent_id',
           'intent_role',
           'signal_type',
         ]),
-        index(PHASE8R_NATIVE_SCHEMA_INDEX_IDS.RULE_VALUES_GIN, ['values'], {
+        index(POLICY_NATIVE_SCHEMA_INDEX_IDS.RULE_VALUES_GIN, ['values'], {
           method: 'gin',
           purpose: 'Supports containment queries for bounded native rule values.',
         }),
@@ -250,8 +250,8 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
       }
     ),
     table(
-      PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROUTING_TARGETS,
-      PHASE8R_NATIVE_SCHEMA_SECTION_IDS.ROUTING_TARGET,
+      POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROUTING_TARGETS,
+      POLICY_NATIVE_SCHEMA_SECTION_IDS.ROUTING_TARGET,
       [
         column('id', 'bigserial'),
         column('intent_id', 'bigint', { foreignKey: 'policy_intents(id)' }),
@@ -266,7 +266,7 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
         column('updated_at', 'timestamp with time zone', { default: 'now()' }),
       ],
       [
-        index(PHASE8R_NATIVE_SCHEMA_INDEX_IDS.ROUTING_TARGET_LOOKUP, [
+        index(POLICY_NATIVE_SCHEMA_INDEX_IDS.ROUTING_TARGET_LOOKUP, [
           'intent_id',
           'library_id',
           'target_status',
@@ -278,8 +278,8 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
       }
     ),
     table(
-      PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_TEMPLATE_APPLICATIONS,
-      PHASE8R_NATIVE_SCHEMA_SECTION_IDS.TEMPLATE_PROVENANCE,
+      POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_TEMPLATE_APPLICATIONS,
+      POLICY_NATIVE_SCHEMA_SECTION_IDS.TEMPLATE_PROVENANCE,
       [
         column('id', 'bigserial'),
         column('intent_id', 'bigint', { foreignKey: 'policy_intents(id)' }),
@@ -292,7 +292,7 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
         column('applied_at', 'timestamp with time zone', { default: 'now()' }),
       ],
       [
-        index(PHASE8R_NATIVE_SCHEMA_INDEX_IDS.POLICY_LOOKUP, ['intent_id', 'preset_id']),
+        index(POLICY_NATIVE_SCHEMA_INDEX_IDS.POLICY_LOOKUP, ['intent_id', 'preset_id']),
       ],
       {
         purpose: 'Starter-template provenance, not durable policy authority by itself.',
@@ -300,8 +300,8 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
       }
     ),
     table(
-      PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_MIGRATION_EVENTS,
-      PHASE8R_NATIVE_SCHEMA_SECTION_IDS.MIGRATION_EVENTS,
+      POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_MIGRATION_EVENTS,
+      POLICY_NATIVE_SCHEMA_SECTION_IDS.MIGRATION_EVENTS,
       [
         column('id', 'bigserial'),
         column('intent_id', 'bigint', { nullable: true, foreignKey: 'policy_intents(id)' }),
@@ -317,7 +317,7 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
         column('created_at', 'timestamp with time zone', { default: 'now()' }),
       ],
       [
-        index(PHASE8R_NATIVE_SCHEMA_INDEX_IDS.MIGRATION_STATE, [
+        index(POLICY_NATIVE_SCHEMA_INDEX_IDS.MIGRATION_STATE, [
           'policy_id',
           'event_type',
           'created_at',
@@ -329,8 +329,8 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
       }
     ),
     table(
-      PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
-      PHASE8R_NATIVE_SCHEMA_SECTION_IDS.ROLLBACK_SNAPSHOTS,
+      POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
+      POLICY_NATIVE_SCHEMA_SECTION_IDS.ROLLBACK_SNAPSHOTS,
       [
         column('id', 'bigserial'),
         column('intent_id', 'bigint', { foreignKey: 'policy_intents(id)' }),
@@ -344,7 +344,7 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
         column('restored_at', 'timestamp with time zone', { nullable: true }),
       ],
       [
-        index(PHASE8R_NATIVE_SCHEMA_INDEX_IDS.ROLLBACK_EXPIRY, [
+        index(POLICY_NATIVE_SCHEMA_INDEX_IDS.ROLLBACK_EXPIRY, [
           'policy_id',
           'expires_at',
         ]),
@@ -355,8 +355,8 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
       }
     ),
     table(
-      PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_VALIDATION_STATUS,
-      PHASE8R_NATIVE_SCHEMA_SECTION_IDS.VALIDATION_AND_SCHEMA_VERSION,
+      POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_VALIDATION_STATUS,
+      POLICY_NATIVE_SCHEMA_SECTION_IDS.VALIDATION_AND_SCHEMA_VERSION,
       [
         column('id', 'bigserial'),
         column('intent_id', 'bigint', { foreignKey: 'policy_intents(id)' }),
@@ -372,7 +372,7 @@ function listPolicyBuilderPhase8NativeSchemaTables() {
         column('validated_at', 'timestamp with time zone', { default: 'now()' }),
       ],
       [
-        index(PHASE8R_NATIVE_SCHEMA_INDEX_IDS.VALIDATION_STATUS, [
+        index(POLICY_NATIVE_SCHEMA_INDEX_IDS.VALIDATION_STATUS, [
           'intent_id',
           'status',
           'validated_at',
@@ -455,18 +455,18 @@ function findForbiddenFields(tables) {
   return forbidden;
 }
 
-function buildPolicyBuilderPhase8NativeSchemaContract({
-  tables = listPolicyBuilderPhase8NativeSchemaTables(),
+function buildPolicyNativeSchemaContract({
+  tables = listPolicyNativeSchemaTables(),
   writeGate = {},
 } = {}) {
   const normalizedTables = asArray(tables).map(normalizeTable);
   const contract = {
-    version: PHASE8R_NATIVE_SCHEMA_CONTRACT_VERSION,
+    version: POLICY_NATIVE_SCHEMA_CONTRACT_VERSION,
     sourceContract: {
       policyIntentSchemaVersion: POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
-      preservesPhase5ServerValidation: true,
-      preservesPhase6IntentEngineOutput: true,
-      preservesPhase7RuntimeVerifierOutput: true,
+      preservesServerValidation: true,
+      preservesIntentEngineOutput: true,
+      preservesRuntimeVerifierOutput: true,
     },
     tables: normalizedTables,
     forbiddenDurableFields: [...FORBIDDEN_DURABLE_FIELD_NAMES],
@@ -490,8 +490,8 @@ function buildPolicyBuilderPhase8NativeSchemaContract({
         .filter(columnSpec => columnSpec.jsonb).length,
       forbiddenDurableFieldCount: findForbiddenFields(normalizedTables).length,
     },
-    nextPhase: {
-      phaseId: '8r_2',
+    nextStep: {
+      stepId: 'migration_candidate_report',
       label: 'Migration Candidate Report',
       reason: 'The native schema boundary is defined, so the next step is a dry-run report that identifies which existing policies can safely convert without mutating storage.',
     },
@@ -499,11 +499,11 @@ function buildPolicyBuilderPhase8NativeSchemaContract({
 
   return {
     ...contract,
-    validation: validatePolicyBuilderPhase8NativeSchemaContract(contract),
+    validation: validatePolicyNativeSchemaContract(contract),
   };
 }
 
-function validatePolicyBuilderPhase8NativeSchemaContract(contract = {}) {
+function validatePolicyNativeSchemaContract(contract = {}) {
   const issues = [];
   const tables = asArray(contract.tables);
   const tableIds = new Set(tables.map(tableSpec => tableSpec.tableId));
@@ -512,7 +512,7 @@ function validatePolicyBuilderPhase8NativeSchemaContract(contract = {}) {
   TABLE_IDS.forEach(tableId => {
     if (!tableIds.has(tableId)) {
       issues.push({
-        riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_TABLE,
+        riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_TABLE,
         tableId,
         message: 'Native schema contract is missing a required table.',
       });
@@ -522,48 +522,48 @@ function validatePolicyBuilderPhase8NativeSchemaContract(contract = {}) {
   SECTION_IDS.forEach(sectionId => {
     if (!sectionIds.has(sectionId)) {
       issues.push({
-        riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_SECTION,
+        riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_SECTION,
         sectionId,
         message: 'Native schema contract is missing a required storage section.',
       });
     }
   });
 
-  const headerTable = getTable(contract, PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS);
+  const headerTable = getTable(contract, POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS);
   REQUIRED_HEADER_COLUMNS.forEach(columnName => {
     if (!tableHasColumn(headerTable, columnName)) {
       issues.push({
-        riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_COLUMN,
-        tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS,
+        riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_COLUMN,
+        tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS,
         columnName,
         message: 'Native intent header is missing a required contract column.',
       });
     }
   });
 
-  const rulesTable = getTable(contract, PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES);
+  const rulesTable = getTable(contract, POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES);
   REQUIRED_RULE_COLUMNS.forEach(columnName => {
     if (!tableHasColumn(rulesTable, columnName)) {
       issues.push({
-        riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.RULES_NOT_MAPPED_TO_PHASE5_CONTRACT,
-        tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
+        riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.RULES_NOT_MAPPED_TO_SERVER_CONTRACT,
+        tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
         columnName,
-        message: 'Native intent rules do not map directly to the Phase 5R server contract.',
+        message: 'Native intent rules do not map directly to the server policy intent contract.',
       });
     }
   });
 
   [
-    [PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS, 'policy_id'],
-    [PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS, 'library_id'],
-    [PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES, 'intent_id'],
-    [PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROUTING_TARGETS, 'intent_id'],
-    [PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS, 'intent_id'],
-    [PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_VALIDATION_STATUS, 'intent_id'],
+    [POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS, 'policy_id'],
+    [POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS, 'library_id'],
+    [POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES, 'intent_id'],
+    [POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROUTING_TARGETS, 'intent_id'],
+    [POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS, 'intent_id'],
+    [POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_VALIDATION_STATUS, 'intent_id'],
   ].forEach(([tableId, columnName]) => {
     if (!tableHasForeignKey(getTable(contract, tableId), columnName)) {
       issues.push({
-        riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_FOREIGN_KEY,
+        riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_FOREIGN_KEY,
         tableId,
         columnName,
         message: 'Native schema contract is missing a required referential boundary.',
@@ -574,7 +574,7 @@ function validatePolicyBuilderPhase8NativeSchemaContract(contract = {}) {
   INDEX_IDS.forEach(indexId => {
     if (!tableHasIndex(contract, indexId)) {
       issues.push({
-        riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_INDEX,
+        riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_INDEX,
         indexId,
         message: 'Native schema contract is missing a required lookup or safety index.',
       });
@@ -582,53 +582,53 @@ function validatePolicyBuilderPhase8NativeSchemaContract(contract = {}) {
   });
 
   const activeIndex = asArray(headerTable?.indexes).find(indexSpec =>
-    indexSpec.indexId === PHASE8R_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_INTENT_VERSION
+    indexSpec.indexId === POLICY_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_INTENT_VERSION
   );
   if (!activeIndex?.unique || activeIndex.partialWhere !== 'active = true') {
     issues.push({
-      riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_ACTIVE_UNIQUE_INDEX,
+      riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_ACTIVE_UNIQUE_INDEX,
       message: 'Native schema must enforce one active native intent version per policy.',
     });
   }
 
   findForbiddenFields(tables).forEach(forbidden => {
     issues.push({
-      riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.FORBIDDEN_DURABLE_FIELD,
+      riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.FORBIDDEN_DURABLE_FIELD,
       ...forbidden,
       message: 'Native durable intent storage cannot include UI-only or transient diagnostic fields.',
     });
   });
 
-  const routingTable = getTable(contract, PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROUTING_TARGETS);
+  const routingTable = getTable(contract, POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROUTING_TARGETS);
   if (!routingTable || !tableHasColumn(routingTable, 'library_id')) {
     issues.push({
-      riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.PHASE6_OUTPUT_NOT_REPRESENTABLE,
-      tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROUTING_TARGETS,
-      message: 'Phase 6R destination/readiness output requires a native routing target reference.',
+      riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.INTENT_ENGINE_OUTPUT_NOT_REPRESENTABLE,
+      tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROUTING_TARGETS,
+      message: 'destination/readiness engine output requires a native routing target reference.',
     });
   }
 
-  const migrationTable = getTable(contract, PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_MIGRATION_EVENTS);
+  const migrationTable = getTable(contract, POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_MIGRATION_EVENTS);
   if (!migrationTable || !tableHasColumn(migrationTable, 'event_type')) {
     issues.push({
-      riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.MIGRATION_METADATA_NOT_SEPARATED,
-      tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_MIGRATION_EVENTS,
+      riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.MIGRATION_METADATA_NOT_SEPARATED,
+      tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_MIGRATION_EVENTS,
       message: 'Migration metadata must be stored outside durable intent rules.',
     });
   }
 
-  const rollbackTable = getTable(contract, PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS);
+  const rollbackTable = getTable(contract, POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS);
   if (!tableHasColumn(rollbackTable, 'expires_at')) {
     issues.push({
-      riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.ROLLBACK_SNAPSHOT_UNBOUNDED,
-      tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
+      riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.ROLLBACK_SNAPSHOT_UNBOUNDED,
+      tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
       message: 'Rollback snapshots must have an expiration boundary.',
     });
   }
 
   if (contract.writeGate?.serverValidationRequired !== true) {
     issues.push({
-      riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.SERVER_VALIDATION_NOT_REQUIRED,
+      riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.SERVER_VALIDATION_NOT_REQUIRED,
       message: 'Native writes must require server validation before activation.',
     });
   }
@@ -636,7 +636,7 @@ function validatePolicyBuilderPhase8NativeSchemaContract(contract = {}) {
   tables.forEach(tableSpec => {
     if (asArray(tableSpec.traceReasons).length === 0) {
       issues.push({
-        riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
+        riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
         tableId: tableSpec.tableId,
         message: 'Each native schema table decision must include a bounded trace reason.',
       });
@@ -646,8 +646,8 @@ function validatePolicyBuilderPhase8NativeSchemaContract(contract = {}) {
   Object.entries(contract.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push({
-        riskId: PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
-        message: `Phase 8R.1 schema contract cannot perform side effect "${key}".`,
+        riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        message: `Native schema contract cannot perform side effect "${key}".`,
       });
     }
   });
@@ -659,10 +659,10 @@ function validatePolicyBuilderPhase8NativeSchemaContract(contract = {}) {
   };
 }
 
-function buildPolicyBuilderPhase8NativeSchemaContractAudit(
-  contract = buildPolicyBuilderPhase8NativeSchemaContract()
+function buildPolicyNativeSchemaContractAudit(
+  contract = buildPolicyNativeSchemaContract()
 ) {
-  const validation = validatePolicyBuilderPhase8NativeSchemaContract(contract);
+  const validation = validatePolicyNativeSchemaContract(contract);
 
   return {
     ok: validation.ok,
@@ -670,8 +670,8 @@ function buildPolicyBuilderPhase8NativeSchemaContractAudit(
     tableCount: asArray(contract.tables).length,
     sectionCount: new Set(asArray(contract.tables).map(tableSpec => tableSpec.sectionId)).size,
     validation,
-    nextPhase: contract.nextPhase || {
-      phaseId: '8r_2',
+    nextStep: contract.nextStep || {
+      stepId: 'migration_candidate_report',
       label: 'Migration Candidate Report',
       reason: 'Native schema is defined; conversion readiness can now be reported without writing.',
     },
@@ -679,13 +679,13 @@ function buildPolicyBuilderPhase8NativeSchemaContractAudit(
 }
 
 export {
-  PHASE8R_NATIVE_SCHEMA_AUDIT_RISK_IDS,
-  PHASE8R_NATIVE_SCHEMA_CONTRACT_VERSION,
-  PHASE8R_NATIVE_SCHEMA_INDEX_IDS,
-  PHASE8R_NATIVE_SCHEMA_SECTION_IDS,
-  PHASE8R_NATIVE_SCHEMA_TABLE_IDS,
-  buildPolicyBuilderPhase8NativeSchemaContract,
-  buildPolicyBuilderPhase8NativeSchemaContractAudit,
-  listPolicyBuilderPhase8NativeSchemaTables,
-  validatePolicyBuilderPhase8NativeSchemaContract,
+  POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS,
+  POLICY_NATIVE_SCHEMA_CONTRACT_VERSION,
+  POLICY_NATIVE_SCHEMA_INDEX_IDS,
+  POLICY_NATIVE_SCHEMA_SECTION_IDS,
+  POLICY_NATIVE_SCHEMA_TABLE_IDS,
+  buildPolicyNativeSchemaContract,
+  buildPolicyNativeSchemaContractAudit,
+  listPolicyNativeSchemaTables,
+  validatePolicyNativeSchemaContract,
 };

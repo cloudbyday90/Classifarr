@@ -14,8 +14,8 @@ import {
   validatePolicyBuilderPhase8ExplicitConversionWorkflow,
 } from '../../services/policyBuilderPhase8ExplicitConversionWorkflow.mjs';
 import {
-  PHASE8R_NATIVE_SCHEMA_TABLE_IDS,
-} from '../../services/policyBuilderPhase8NativeSchemaContract.mjs';
+  POLICY_NATIVE_SCHEMA_TABLE_IDS,
+} from '../../services/policyNativeSchemaContract.mjs';
 
 function preset(overrides = {}) {
   return {
@@ -90,22 +90,22 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
     }));
     expect(step.rollbackSnapshot).toEqual(expect.objectContaining({
       planned: true,
-      tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
+      tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
       restorePath: 'phase8r/rollback/policies/14/v2',
       expiresAt: '2026-06-15T00:00:00.000Z',
       retentionWindowDays: 14,
     }));
     expect(step.migrationEvent).toEqual(expect.objectContaining({
       planned: true,
-      tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_MIGRATION_EVENTS,
+      tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_MIGRATION_EVENTS,
       actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
     }));
     expect(step.nativeRecords.map(record => record.tableId)).toEqual(expect.arrayContaining([
-      PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS,
-      PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
-      PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROUTING_TARGETS,
-      PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_TEMPLATE_APPLICATIONS,
-      PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_VALIDATION_STATUS,
+      POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS,
+      POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
+      POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROUTING_TARGETS,
+      POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_TEMPLATE_APPLICATIONS,
+      POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_VALIDATION_STATUS,
     ]));
     expect(step.reasons).toEqual(expect.arrayContaining([
       expect.objectContaining({

@@ -1980,7 +1980,7 @@ Acceptance criteria:
 - The client draft bridge is clearly subordinate to server validation.
 - Native intent storage can replace legacy serialization without rewriting the
   product components.
-- Phase 5R server contract and Phase 6R engine contracts have a clear insertion
+- server policy intent contract and Phase 6R engine contracts have a clear insertion
   point.
 - The server authority contract has an executable audit that fails client
   authority confusion, server authority loss, raw draft echo, missing insertion
@@ -4390,7 +4390,7 @@ Tasks:
   - migration events,
   - rollback snapshots,
   - validation status and schema version.
-- Ensure schema maps directly to Phase 5R server contract fields and Phase 6R
+- Ensure schema maps directly to server policy intent contract fields and Phase 6R
   intent engine output.
 - Avoid storing UI-only draft state, transient readiness, provider payloads,
   prompts, traces, embeddings, or replay diagnostics as durable policy intent.
@@ -4406,8 +4406,10 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.1 native schema contract is documented in
-  [Policy Builder Phase 8R Native Schema Contract](policy-builder-phase-8r-native-schema-contract.md).
+- Native schema contract is documented in
+  [Policy Native Schema Contract](policy-native-schema-contract.md).
+- The module-name cutover is documented in
+  [Policy Native Schema Contract Module Cutover](policy-native-schema-contract-module-cutover.md).
 - Current implementation defines a side-effect-free server schema contract for
   native policy intent header, intent rules, routing target reference,
   starter-template application provenance, migration events, rollback snapshots,
@@ -4415,10 +4417,11 @@ Implementation status:
 - The contract requires lookup indexes for policy, library, active intent
   version, rule lookup, rule JSONB values, routing target, migration state,
   rollback expiry, and validation status.
-- Validation rejects legacy `customSignals`-style storage gaps, missing Phase 5R
-  rule fields, unbounded rollback snapshots, missing server validation gates,
-  missing referential boundaries, missing active-version uniqueness, and durable
-  UI/provider/prompt/trace/embedding/replay diagnostic fields.
+- Validation rejects legacy `customSignals`-style storage gaps, missing server
+  policy intent rule fields, unbounded rollback snapshots, missing server
+  validation gates, missing referential boundaries, missing active-version
+  uniqueness, and durable UI/provider/prompt/trace/embedding/replay diagnostic
+  fields.
 - This component does not create database tables yet; SQL migration and
   conversion are reserved for later Phase 8R components after the candidate
   report and explicit conversion workflow are defined.
@@ -4761,14 +4764,14 @@ Implementation status:
   `server/src/services/policyBuilderPhase8NativeStorageTestReset.mjs`.
 - The focused reset test suite lives in
   `server/src/__tests__/services/policyBuilderPhase8NativeStorageTestReset.test.mjs`.
-- Current implementation inventories Phase 8R native schema contract,
+- Current implementation inventories the native schema contract,
   dry-run candidate report, explicit conversion, native runtime read path,
   rollback/reversion, legacy write-blocking, backup/restore safety, and
   deletion-gate tests.
 - Native SQL migration coverage is now supplied by
   `database/migrations/20260701_160000_add_policy_intent_native_storage.sql`,
   `database/schema/current.sql`, and `server/src/__tests__/migrations.test.mjs`.
-- Native SQL migration coverage is also tied back to the Phase 8R.1 schema
+- Native SQL migration coverage is also tied back to the native schema
   contract by
   `server/src/services/policyBuilderPhase8NativeSqlMigrationCoverage.mjs` and
   `server/src/__tests__/services/policyBuilderPhase8NativeSqlMigrationCoverage.test.mjs`.
@@ -6795,6 +6798,16 @@ Implementation status:
   production references, and 3,762 rename candidates. The production
   phase-coded baseline remains unchanged, but the active migration verifier
   documentation now uses durable policy-domain wording.
+- The native schema contract module cutover renamed the schema contract to
+  `policyNativeSchemaContract.mjs`, renamed its focused test, moved the
+  contract to `policy.native_schema_contract.v1`, replaced schema-local phase
+  risk ids and handoff fields with durable names and
+  `nextStep.stepId = migration_candidate_report`, and updated direct native
+  storage consumers:
+  [Policy Native Schema Contract Module Cutover](policy-native-schema-contract-module-cutover.md).
+- After the native-schema-contract module cutover, the repository inventory
+  validates with 9,155 total phase-coded references, 3,603 production
+  references, and 3,625 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

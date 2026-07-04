@@ -46,7 +46,7 @@ enable apply mode.
 ## Recommendations
 
 1. **Treat backup coverage as an allow-list.**
-   Native tables must be enumerated from the Phase 8R.1 schema contract and each
+   Native tables must be enumerated from the native schema contract and each
    table must be present in both backup and restore coverage.
 
 2. **Validate more than row restoration.**
@@ -99,7 +99,7 @@ Cons:
 - Test module:
   `server/src/__tests__/services/policyBuilderPhase8BackupRestoreSafety.test.mjs`
 - Native schema input:
-  `server/src/services/policyBuilderPhase8NativeSchemaContract.mjs`
+  `server/src/services/policyNativeSchemaContract.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-8r-backup-restore-post-upgrade-safety.md`
 - Live backup/restore wiring:
@@ -125,7 +125,7 @@ Default status is `blocked_by_schema_mismatch` because fresh/upgraded schema
 parity and backup/restore coverage are not assumed. A plan becomes
 `ready_for_operational_apply` only when:
 
-- the Phase 8R native schema contract validates,
+- the native schema contract validates,
 - fresh-install and upgraded-install schema versions match,
 - optional schema checksums match when supplied,
 - every native intent table is covered by backup and restore,

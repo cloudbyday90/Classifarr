@@ -26,13 +26,13 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_1',
     label: 'Native Schema Contract',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-native-schema-contract.md'],
+    designDocPaths: ['docs/architecture/policy-native-schema-contract.md'],
     contractPaths: [
-      'server/src/services/policyBuilderPhase8NativeSchemaContract.mjs',
+      'server/src/services/policyNativeSchemaContract.mjs',
       'database/migrations/20260701_160000_add_policy_intent_native_storage.sql',
     ],
     testPaths: [
-      'server/src/__tests__/services/policyBuilderPhase8NativeSchemaContract.test.mjs',
+      'server/src/__tests__/services/policyNativeSchemaContract.test.mjs',
       'server/src/__tests__/migrations.test.mjs',
     ],
   },

@@ -13,7 +13,7 @@ create that model.
 This component closes that gap by adding the actual native intent tables,
 indexes, constraints, schema snapshot, migration tests, and a deterministic
 server-side coverage contract that compares the SQL migration back to the
-Phase 8R.1 native schema contract.
+native schema contract.
 
 ## Official Guidance Reviewed
 
@@ -79,7 +79,7 @@ Phase 8R.1 native schema contract.
 
 Pros:
 
-- Converts Phase 8R native schema from contract-only to actual SQL coverage.
+- Converts native schema from contract-only to actual SQL coverage.
 - Keeps migration additive and rollback-safe for existing installs.
 - Gives backup/restore and post-upgrade work concrete tables to include.
 - Makes schema drift visible through the existing migration and snapshot tests.

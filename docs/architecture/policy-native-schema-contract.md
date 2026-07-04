@@ -1,12 +1,14 @@
-# Policy Builder Phase 8R Native Schema Contract
+# Policy Native Schema Contract
 
-Status: implemented as the first Phase 8R storage-boundary component.
+## Status
+
+Implemented as the durable native policy intent schema contract.
 
 ## Problem
 
-Phase 8R moves policy intent from compatibility projection into durable native
-storage. The first component must define the storage model without creating
-tables yet, so later migration work cannot drift back into legacy
+Native intent storage moves policy intent from compatibility projection into
+durable native storage. The schema contract defines the storage model without
+creating tables yet, so later migration work cannot drift back into legacy
 `customSignals` compatibility or persist transient UI/runtime diagnostics.
 
 ## Official Guidance Reviewed
@@ -49,18 +51,19 @@ Pros:
 - Ends the `customSignals`-as-product-model pattern for converted policies.
 - Keeps rollback and migration metadata auditable without making rollback
   snapshots a second permanent policy model.
-- Preserves Phase 5R validation, Phase 6R intent/readiness output, and Phase 7R
-  runtime/verifier contracts.
+- Preserves server validation, intent/readiness output, and runtime/verifier
+  contracts.
 
 Cons:
 
 - Does not yet migrate or read any runtime policy from native storage.
-- Requires the next Phase 8R components to convert this contract into SQL,
+- Requires the next native storage components to convert this contract into SQL,
   dry-run reporting, conversion workflow, read paths, and deletion gates.
 
 ## Final Recommendation Stack
 
-- Contract service: `policyBuilderPhase8NativeSchemaContract.mjs`
+- Contract service: `policyNativeSchemaContract.mjs`
+- Contract version: `policy.native_schema_contract.v1`
 - Native tables:
   - `policy_intents`
   - `policy_intent_rules`
@@ -79,18 +82,19 @@ Cons:
   - migration state,
   - rollback expiry,
   - validation status.
-- Next component: Phase 8R.2 Migration Candidate Report.
+- Next component: Migration Candidate Report.
 
 ## Implemented Files
 
-- `server/src/services/policyBuilderPhase8NativeSchemaContract.mjs`
-- `server/src/__tests__/services/policyBuilderPhase8NativeSchemaContract.test.mjs`
+- `server/src/services/policyNativeSchemaContract.mjs`
+- `server/src/__tests__/services/policyNativeSchemaContract.test.mjs`
 
 ## Outcome
 
-Phase 8R.1 now has a side-effect-free native schema contract and validator.
+Native intent storage now has a side-effect-free native schema contract and
+validator.
 Validation fails when required tables, storage sections, indexes, foreign keys,
-Phase 5R rule fields, active-version uniqueness, rollback expiry, or server
-validation gates are missing. It also rejects forbidden durable fields such as
-UI draft state, provider payloads, prompts, traces, embeddings, replay
+server policy intent rule fields, active-version uniqueness, rollback expiry,
+or server validation gates are missing. It also rejects forbidden durable fields
+such as UI draft state, provider payloads, prompts, traces, embeddings, replay
 diagnostics, and impact-preview payloads.

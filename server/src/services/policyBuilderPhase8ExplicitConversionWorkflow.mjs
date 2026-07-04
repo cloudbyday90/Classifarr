@@ -7,8 +7,8 @@ import {
   validatePolicyBuilderPhase8MigrationCandidateReport,
 } from './policyBuilderPhase8MigrationCandidateReport.mjs';
 import {
-  PHASE8R_NATIVE_SCHEMA_TABLE_IDS,
-} from './policyBuilderPhase8NativeSchemaContract.mjs';
+  POLICY_NATIVE_SCHEMA_TABLE_IDS,
+} from './policyNativeSchemaContract.mjs';
 
 const PHASE8R_EXPLICIT_CONVERSION_WORKFLOW_VERSION = 'phase8r.explicit_conversion_workflow.v1';
 const PHASE8R_CONVERSION_ROLLBACK_WINDOW_DAYS = 14;
@@ -124,7 +124,7 @@ function buildRollbackSnapshotPlan(candidate, options = {}) {
   const targetVersion = options.targetVersion ?? 1;
   return {
     planned: options.rollbackSnapshot?.planned !== false,
-    tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
+    tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
     policyId: candidate.policyId,
     snapshotVersion: targetVersion,
     payloadRedacted: true,
@@ -139,7 +139,7 @@ function buildNativeRecordPlan(candidate, options = {}) {
   const targetVersion = options.targetVersion ?? 1;
   return [
     {
-      tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS,
+      tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS,
       policyId: candidate.policyId,
       libraryId: candidate.libraryId,
       intentVersion: targetVersion,
@@ -147,23 +147,23 @@ function buildNativeRecordPlan(candidate, options = {}) {
       inferenceState: candidate.intentContract.inferenceState,
     },
     {
-      tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
+      tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_RULES,
       policyId: candidate.policyId,
       intentVersion: targetVersion,
       sourceContract: 'policy_intent_contract',
     },
     {
-      tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROUTING_TARGETS,
+      tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROUTING_TARGETS,
       policyId: candidate.policyId,
       routingTarget: candidate.routingTarget,
     },
     {
-      tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_TEMPLATE_APPLICATIONS,
+      tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_TEMPLATE_APPLICATIONS,
       policyId: candidate.policyId,
       sourceContract: 'template_links',
     },
     {
-      tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_VALIDATION_STATUS,
+      tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_VALIDATION_STATUS,
       policyId: candidate.policyId,
       status: 'valid',
       errorCount: candidate.intentContract.errorCount,
@@ -176,7 +176,7 @@ function buildMigrationEventPlan(candidate, action = {}, options = {}) {
   const targetVersion = options.targetVersion ?? 1;
   return {
     planned: true,
-    tableId: PHASE8R_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_MIGRATION_EVENTS,
+    tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_MIGRATION_EVENTS,
     policyId: candidate.policyId,
     eventType: 'native_intent_conversion_planned',
     actorSourceId: action.actorSourceId,
