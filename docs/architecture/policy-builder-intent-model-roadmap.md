@@ -3380,8 +3380,12 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 6R.3 learning guard is documented in
-  [Policy Builder Phase 6R Learning Guard](policy-builder-phase-6r-learning-guard.md).
+- Policy learning guard is documented in
+  [Policy Learning Guard](policy-learning-guard.md).
+- The policy learning guard architecture cutover renamed the active learning
+  design record to durable product-domain naming, removed a production-facing
+  roadmap-phase audit message, and recorded the outcome in
+  [Policy Learning Guard Architecture Cutover](policy-learning-guard-architecture-cutover.md).
 - The server-owned learning guard contract lives in
   `server/src/services/policyLearningGuard.mjs`.
 - The focused learning-guard test suite lives in
@@ -3399,8 +3403,8 @@ Implementation status:
 - Compatibility and identity learning candidates queue profile refresh
   instructions; hard-limit learning requires an explicit policy edit and cannot
   write directly.
-- The learning guard now exposes a bounded entry point that consumes the Phase
-  6R.2 bounded intent result, requires the carried Phase 6R.1 evidence
+- The learning guard now exposes a bounded entry point that consumes the policy
+  intent result, requires the carried policy evidence
   projection fingerprint, blocks failed or unfingerprinted intent handoffs, and
   attaches a sanitized intent/evidence boundary snapshot to the learning
   decision wrapper.
@@ -3410,7 +3414,7 @@ Implementation status:
 - The bounded learning entry point now also requires wrapper and embedded intent
   evidence-quality snapshots to exist, match, and avoid the `insufficient`
   status before any durable learning candidate is evaluated.
-- The Phase 6R.3 quality-gated learning hardening is documented in
+- Policy learning quality-gate hardening is documented in
   [Policy Builder Phase 6R Learning Quality Gate](policy-builder-phase-6r-learning-quality-gate.md).
 
 ### 6R.4 Automation Readiness Engine
@@ -6569,6 +6573,11 @@ Implementation status:
   inventory validates with 9,557 total phase-coded references, 3,741 production
   references, and 3,763 rename candidates. The production baseline remains
   unchanged because enforcement already lives in the durable intent engine.
+- After the policy learning guard architecture cutover, the repository
+  inventory validates with 9,544 total phase-coded references, 3,740 production
+  references, and 3,762 rename candidates. The production baseline improves
+  because a request-time learning audit message now uses durable policy-learning
+  language.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

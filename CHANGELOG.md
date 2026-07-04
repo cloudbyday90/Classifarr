@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Learning Guard Architecture Cutover** — renamed the active
+  learning-guard architecture record to `policy-learning-guard.md`, updated the
+  roadmap to point at the durable `policy.learning_guard.v1` contract, added a
+  bounded architecture cutover record, cleaned a production request-time
+  learning audit message to say “policy learning guard,” and preserved the
+  existing `policyLearningGuard.mjs` no-write, bounded-intent, evidence-quality,
+  fingerprint, profile-refresh, and `nextStep` behavior.
 - **Policy Intent Quality Gate Architecture Cutover** — renamed the active
   intent quality-gate architecture record to `policy-intent-quality-gate.md`,
   updated the roadmap to point at the durable quality-gate contract, added a

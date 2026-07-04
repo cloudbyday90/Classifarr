@@ -96,7 +96,7 @@ Cons:
 - Focused tests:
   `server/src/__tests__/services/policyLearningGuard.test.mjs`
 - Design owner:
-  `docs/architecture/policy-builder-phase-6r-learning-guard.md`
+  `docs/architecture/policy-learning-guard.md`
 - Roadmap owner:
   Phase 6R.3 in
   `docs/architecture/policy-builder-intent-model-roadmap.md`

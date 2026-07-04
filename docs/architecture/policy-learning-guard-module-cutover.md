@@ -2,8 +2,7 @@
 
 ## Status
 
-Implemented as a durable-domain module cutover for the Phase 6R.3 learning
-guard slice.
+Implemented as a durable-domain module cutover for the policy learning guard.
 
 The production service now uses:
 
@@ -54,7 +53,7 @@ would keep phase-coded fields in local handoff contracts.
 4. **Update direct runtime consumers only.**
    This cutover should update imports and version checks in readiness, library
    rebuild, and request-time learning consumers without renaming those larger
-   components in the same slice.
+   components in the same batch.
 
 5. **Keep the operation side-effect free.**
    The learning guard still returns decisions only. It does not write policy,
@@ -76,8 +75,8 @@ Pros:
 Cons:
 
 - Direct consumers needed import and contract-version updates.
-- Existing Phase 6R and Phase 7R components still contain roadmap names until
-  their own cutover slices.
+- Existing downstream components still contain roadmap names until their own
+  cutover batches.
 - The legacy completion audit still maps durable `nextStep` values back to
   phase checkpoints until the audit itself is retired or renamed.
 
@@ -96,7 +95,7 @@ Cons:
 - Roadmap owner:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 - Existing design owner:
-  `docs/architecture/policy-builder-phase-6r-learning-guard.md`
+  `docs/architecture/policy-learning-guard.md`
 
 ## Implementation Outcome
 

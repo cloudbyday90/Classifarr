@@ -1,19 +1,19 @@
-# Policy Builder Phase 6R Learning Guard
+# Policy Learning Guard
 
 ## Status
 
-Implemented as the third Phase 6R engine contract.
+Implemented as the durable policy learning guard contract.
 
-This slice decides whether a concrete operator/routing/request outcome may
+This design decides whether a concrete operator/routing/request outcome may
 create a learning candidate. It does not write learning data, update profiles,
 mutate policy intent, or execute routing. New runtime and rebuild callers
-should use the bounded learning entry point, which requires a successful Phase
-6R.2 bounded intent result and the carried Phase 6R.1 evidence projection
-fingerprint. July 2026 hardening makes that boundary stricter: the learning
-guard now requires the upstream bounded intent evidence-fingerprint audit to
-pass and rejects intent wrappers whose evidence fingerprint no longer matches
-the embedded intent snapshot. It also requires the wrapper and embedded intent
-draft to carry matching, usable evidence-quality snapshots before any learning
+should use the bounded learning entry point, which requires a successful policy
+intent result and the carried policy evidence projection fingerprint.
+July 2026 hardening makes that boundary stricter: the learning guard now
+requires the upstream bounded intent evidence-fingerprint audit to pass and
+rejects intent wrappers whose evidence fingerprint no longer matches the
+embedded intent snapshot. It also requires the wrapper and embedded intent draft
+to carry matching, usable evidence-quality snapshots before any learning
 candidate can be evaluated.
 
 ## Problem
@@ -27,7 +27,7 @@ final outcome = what happened to this item
 learning = what Classifarr is allowed to generalize
 ```
 
-Phase 6R.3 makes that boundary executable.
+The policy learning guard makes that boundary executable.
 
 ## Official Guidance Reviewed
 
@@ -83,12 +83,12 @@ Phase 6R.3 makes that boundary executable.
 
 6. **Require bounded intent for new callers.**
    `buildPolicyLearningDecisionFromBoundedIntent` consumes the
-   Phase 6R.2 bounded intent result, blocks failed or unfingerprinted handoffs,
+   policy intent result, blocks failed or unfingerprinted handoffs,
    and attaches a sanitized intent/evidence boundary snapshot to the learning
    decision wrapper.
 
 7. **Validate intent handoff integrity before learning.**
-   The learning boundary requires the Phase 6R.2 evidence-fingerprint audit to
+   The learning boundary requires the policy intent evidence-fingerprint audit to
    pass and verifies that the bounded intent wrapper and intent draft carry the
    same evidence projection fingerprint.
 
@@ -117,10 +117,10 @@ Pros:
 
 Cons:
 
-- This slice does not persist learning candidates.
+- This component does not persist learning candidates.
 - It does not yet consume live pending-question rows.
 - Profile refresh is represented as an instruction, not queued here.
-- Runtime code must still be wired to call the guard in Phase 7R.
+- Runtime code must continue calling the guard before durable learning writes.
 - The original pure decision reducer remains for focused tests and existing
   internal callers; runtime code should use the bounded entry point.
 - Conservative quality gating can pause learning until upstream evidence has a
@@ -137,11 +137,11 @@ Cons:
 - Test module:
   `server/src/__tests__/services/policyLearningGuard.test.mjs`
 - Documentation:
-  `docs/architecture/policy-builder-phase-6r-learning-guard.md`
+  `docs/architecture/policy-learning-guard.md`
 - Quality-gate outcome:
-  `docs/architecture/policy-builder-phase-6r-learning-quality-gate.md`
+  downstream policy learning quality-gate architecture record pending cutover.
 - Roadmap owner:
-  Phase 6R.3 Learning Guard in
+  Policy Learning Guard in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
@@ -238,7 +238,7 @@ blocked_by_learning_audit
 
 ## Next Step
 
-Proceed to **Phase 6R.4 Automation Readiness Engine**. That component should
+Proceed to **Policy Learning Quality Gate** architecture cutover. That component should
 consume only quality-gated bounded learning results while combining evidence,
 intent, routing, profile freshness, and learning state into a small readiness
 answer such as `ready`, `needs_more_examples`, `needs_operator_review`,

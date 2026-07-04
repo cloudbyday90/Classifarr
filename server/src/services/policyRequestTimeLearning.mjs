@@ -555,7 +555,7 @@ function validatePolicyRequestTimeLearningDecision(decision = {}) {
   if (!decision.learningDecision?.version || decision.learningDecision.version !== 'policy.learning_guard.v1') {
     issues.push({
       riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_LEARNING_GUARD,
-      message: 'Request-time learning must pass through the Phase 6R learning guard.',
+      message: 'Request-time learning must pass through the policy learning guard.',
     });
   }
 
