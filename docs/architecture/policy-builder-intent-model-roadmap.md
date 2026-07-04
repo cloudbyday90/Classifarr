@@ -3872,8 +3872,10 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 7R.3 automation decision contract is documented in
-  [Policy Builder Phase 7R Automation Decision Contract](policy-builder-phase-7r-automation-decision-contract.md).
+- Automation decision contract is documented in
+  [Policy Automation Decision Contract](policy-automation-decision-contract.md).
+- Policy automation decision contract architecture cutover is documented in
+  [Policy Automation Decision Contract Architecture Cutover](policy-automation-decision-contract-architecture-cutover.md).
 - The server-owned automation decision contract lives in
   `server/src/services/policyAutomationDecisionContract.mjs`.
 - The focused automation-decision test suite lives in
@@ -6698,6 +6700,17 @@ Implementation status:
   production references, and 3,762 rename candidates. The production
   phase-coded baseline remains unchanged, but the active runtime evidence
   projection documentation now uses durable policy-domain wording.
+- The policy automation decision contract architecture cutover renamed the
+  active automation decision design record to
+  `policy-automation-decision-contract.md`, added a durable architecture
+  cutover record, and updated roadmap/module references to the durable decision
+  contract:
+  [Policy Automation Decision Contract Architecture Cutover](policy-automation-decision-contract-architecture-cutover.md).
+- After the policy automation decision contract architecture cutover, the
+  repository inventory validates with 9,412 total phase-coded references, 3,740
+  production references, and 3,762 rename candidates. The production
+  phase-coded baseline remains unchanged, but the active automation decision
+  documentation now uses durable policy-domain wording.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

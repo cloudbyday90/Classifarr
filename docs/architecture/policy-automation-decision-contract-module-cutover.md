@@ -2,8 +2,8 @@
 
 ## Status
 
-Implemented as a Phase 9R durable module-name cutover for the runtime
-automation decision contract.
+Implemented as a durable module-name cutover for the runtime automation
+decision contract.
 
 This change does not alter routing behavior. It removes temporary roadmap
 naming from the production automation-decision contract, keeps the contract
@@ -108,3 +108,10 @@ Cut over Request-Time Learning And Destination Selection to a durable
 product-domain module name. It is the direct consumer of runtime question
 reduction and the next runtime link that still exposes Phase 7R naming in
 production imports.
+
+## Related Active Architecture
+
+The active automation decision design record is now
+[Policy Automation Decision Contract](policy-automation-decision-contract.md).
+The architecture naming cutover is recorded in
+[Policy Automation Decision Contract Architecture Cutover](policy-automation-decision-contract-architecture-cutover.md).

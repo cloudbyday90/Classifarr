@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Automation Decision Contract Architecture Cutover** — renamed the
+  active automation decision contract architecture record to
+  `policy-automation-decision-contract.md`, updated the roadmap and module
+  cutover note to point at the durable `policy.automation_decision.v1`
+  contract, added an automation decision architecture cutover record, and
+  preserved the existing `policyAutomationDecisionContract.mjs`
+  side-effect-free state machine, evidence-fingerprint binding, route-mapping,
+  hard-limit, stale-profile, and bounded trace validation behavior.
 - **Policy Runtime Evidence Projection Architecture Cutover** — renamed the
   active runtime evidence projection architecture record to
   `policy-runtime-evidence-projection.md`, updated the roadmap and module
