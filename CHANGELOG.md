@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Post-Upgrade Dry-Run Wiring Module Cutover** — renamed the
+  post-upgrade dry-run service, focused test, and architecture record to
+  `policyPostUpgradeDryRun.mjs`, `policyPostUpgradeDryRun.test.mjs`, and
+  `policy-post-upgrade-dry-run-wiring.md`, moved the payload version to
+  `policy.post_upgrade_dry_run.v1`, replaced phase-coded builder exports and
+  the post-upgrade runner method with durable policy-domain names, replaced the
+  dry-run handoff with `nextStep.stepId = post_upgrade_apply_gate`, updated the
+  adjacent apply-gate imports, and preserved bounded loading, plan-only
+  conversion workflow composition, no-side-effect validation, bounded operator
+  error IDs, and operator-safe logging.
 - **Policy Native Backup And Restore Wiring Architecture Cutover** — renamed the
   active native backup/restore architecture record to
   `policy-native-backup-restore-wiring.md`, updated Phase 8R evidence and

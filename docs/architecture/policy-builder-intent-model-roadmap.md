@@ -4865,14 +4865,21 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R post-upgrade dry-run wiring is documented in
-  [Policy Builder Phase 8R Post-Upgrade Dry-Run Wiring](policy-builder-phase-8r-post-upgrade-dry-run-wiring.md).
+- Post-upgrade dry-run wiring is documented in
+  [Policy Post-Upgrade Dry-Run Wiring](policy-post-upgrade-dry-run-wiring.md).
 - The dry-run service lives in
-  `server/src/services/policyBuilderPhase8PostUpgradeDryRun.mjs`.
-- The `phase8r_native_intent_dry_run` action is wired into
+  `server/src/services/policyPostUpgradeDryRun.mjs`.
+- The `policy_native_intent_dry_run` action is wired into
   `postUpgradeService`.
 - Focused service tests cover ready, review-required, no-policy, loader mapping,
   and orchestration paths.
+- The module cutover renamed the production service, focused test, architecture
+  record, payload version, builder exports, and post-upgrade runner method to
+  durable policy post-upgrade dry-run names; replaced the dry-run handoff with
+  `nextStep.stepId = post_upgrade_apply_gate`; and preserved bounded loading,
+  plan-only conversion workflow composition, no-side-effect checks, and
+  operator-safe logging:
+  [Policy Post-Upgrade Dry-Run Wiring Module Cutover](policy-post-upgrade-dry-run-wiring-module-cutover.md).
 
 ### 8R.12 Post-Upgrade Apply Gate
 
@@ -4881,7 +4888,7 @@ and a transaction boundary is available.
 
 Tasks:
 
-- Consume current Phase 8R.11 dry-run output.
+- Consume current post-upgrade dry-run output.
 - Block missing, invalid, stale, or no-ready-step dry-run reports.
 - Require `db.withTransaction` before native apply writes.
 - Write native intent header, rollback snapshot, rules, routing target,

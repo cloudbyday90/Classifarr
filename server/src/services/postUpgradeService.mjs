@@ -13,7 +13,7 @@ import * as db from '../config/database.mjs';
 import { persistRagAuditLog } from './ragAuditLogService.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
 import { runPolicyBuilderPhase8PostUpgradeApplyGate } from './policyBuilderPhase8PostUpgradeApplyGate.mjs';
-import { runPolicyBuilderPhase8PostUpgradeDryRun } from './policyBuilderPhase8PostUpgradeDryRun.mjs';
+import { runPolicyPostUpgradeDryRun } from './policyPostUpgradeDryRun.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
@@ -240,8 +240,8 @@ class PostUpgradeService {
             case 'reset_stale_normalizations':
                 return await this.resetStaleNormalizations();
 
-            case 'phase8r_native_intent_dry_run':
-                return await this.runPhase8rNativeIntentDryRun();
+            case 'policy_native_intent_dry_run':
+                return await this.runPolicyPostUpgradeDryRun();
 
             case 'phase8r_native_intent_apply_gate':
                 return await this.runPhase8rNativeIntentApplyGate();
@@ -410,14 +410,14 @@ class PostUpgradeService {
     /**
      * Task Action: report native intent conversion readiness without applying.
      */
-    async runPhase8rNativeIntentDryRun() {
-        logger.info('Running Phase 8R native intent post-upgrade dry-run...');
+    async runPolicyPostUpgradeDryRun() {
+        logger.info('Running policy post-upgrade dry-run...');
 
-        const dryRun = await runPolicyBuilderPhase8PostUpgradeDryRun({
+        const dryRun = await runPolicyPostUpgradeDryRun({
             dbClient: db
         });
 
-        logger.info('Phase 8R native intent post-upgrade dry-run complete', {
+        logger.info('Policy post-upgrade dry-run complete', {
             statusId: dryRun.statusId,
             summary: dryRun.summary,
             operatorErrorIds: dryRun.operatorErrorIds

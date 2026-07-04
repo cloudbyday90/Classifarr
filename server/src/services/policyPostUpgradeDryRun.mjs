@@ -7,19 +7,19 @@ import {
   buildPolicyBuilderPhase8ExplicitConversionWorkflow,
 } from './policyBuilderPhase8ExplicitConversionWorkflow.mjs';
 
-const PHASE8R_POST_UPGRADE_DRY_RUN_VERSION = 'phase8r.post_upgrade_dry_run.v1';
+const POLICY_POST_UPGRADE_DRY_RUN_VERSION = 'policy.post_upgrade_dry_run.v1';
 const MAX_POST_UPGRADE_DRY_RUN_POLICIES = 100;
 const MAX_OPERATOR_ERROR_IDS = 12;
 const DRY_RUN_CURRENT_WINDOW_MINUTES = 15;
 
-const PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS = Object.freeze({
+const POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS = Object.freeze({
   READY_FOR_APPLY_GATE: 'ready_for_apply_gate',
   REVIEW_REQUIRED: 'review_required',
   NO_POLICIES_FOUND: 'no_policies_found',
   INVALID_DRY_RUN: 'invalid_dry_run',
 });
 
-const PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS = Object.freeze({
+const POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS = Object.freeze({
   NO_POLICIES_FOUND: 'no_policies_found',
   NO_READY_CANDIDATES: 'no_ready_candidates',
   CANDIDATE_REPORT_INVALID: 'candidate_report_invalid',
@@ -89,7 +89,7 @@ function normalizePolicyRow(row = {}) {
   };
 }
 
-async function loadPolicyBuilderPhase8PostUpgradePolicies({
+async function loadPolicyPostUpgradePolicies({
   dbClient,
   maxPolicies = MAX_POST_UPGRADE_DRY_RUN_POLICIES,
 } = {}) {
@@ -167,23 +167,23 @@ function buildOperatorErrorIds({ candidateReport, conversionWorkflow }) {
   const errorIds = [];
 
   if (candidateReport?.summary?.totalPolicyCount === 0) {
-    errorIds.push(PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.NO_POLICIES_FOUND);
+    errorIds.push(POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.NO_POLICIES_FOUND);
   }
 
   if (candidateReport?.validation?.ok !== true) {
-    errorIds.push(PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.CANDIDATE_REPORT_INVALID);
+    errorIds.push(POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.CANDIDATE_REPORT_INVALID);
   }
 
   if ((candidateReport?.summary?.convertibleCount ?? 0) === 0 && candidateReport?.summary?.totalPolicyCount > 0) {
-    errorIds.push(PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.NO_READY_CANDIDATES);
+    errorIds.push(POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.NO_READY_CANDIDATES);
   }
 
   if ((candidateReport?.summary?.reviewRequiredCount ?? 0) > 0) {
-    errorIds.push(PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.OPERATOR_REVIEW_REQUIRED);
+    errorIds.push(POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.OPERATOR_REVIEW_REQUIRED);
   }
 
   if (conversionWorkflow && conversionWorkflow.validation?.ok !== true) {
-    errorIds.push(PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.CONVERSION_WORKFLOW_INVALID);
+    errorIds.push(POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.CONVERSION_WORKFLOW_INVALID);
   }
 
   return [...new Set(errorIds)].slice(0, MAX_OPERATOR_ERROR_IDS);
@@ -191,24 +191,24 @@ function buildOperatorErrorIds({ candidateReport, conversionWorkflow }) {
 
 function determineStatusId({ candidateReport, conversionWorkflow, operatorErrorIds }) {
   if (
-    operatorErrorIds.includes(PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.CANDIDATE_REPORT_INVALID) ||
-    operatorErrorIds.includes(PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.CONVERSION_WORKFLOW_INVALID)
+    operatorErrorIds.includes(POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.CANDIDATE_REPORT_INVALID) ||
+    operatorErrorIds.includes(POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.CONVERSION_WORKFLOW_INVALID)
   ) {
-    return PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS.INVALID_DRY_RUN;
+    return POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.INVALID_DRY_RUN;
   }
 
   if (candidateReport?.summary?.totalPolicyCount === 0) {
-    return PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS.NO_POLICIES_FOUND;
+    return POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.NO_POLICIES_FOUND;
   }
 
   if (conversionWorkflow?.summary?.readyToApplyCount > 0) {
-    return PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE;
+    return POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE;
   }
 
-  return PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS.REVIEW_REQUIRED;
+  return POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.REVIEW_REQUIRED;
 }
 
-function buildPolicyBuilderPhase8PostUpgradeDryRun({
+function buildPolicyPostUpgradeDryRun({
   policies = [],
   candidateReport = null,
   maxPolicies = MAX_POST_UPGRADE_DRY_RUN_POLICIES,
@@ -228,7 +228,7 @@ function buildPolicyBuilderPhase8PostUpgradeDryRun({
       selectedPolicyIds: readyPolicyIds,
       action: {
         actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY,
-        reasonCode: 'phase8r_post_upgrade_dry_run',
+        reasonCode: 'policy_post_upgrade_dry_run',
         requestedAt: now,
       },
       now,
@@ -244,7 +244,7 @@ function buildPolicyBuilderPhase8PostUpgradeDryRun({
     operatorErrorIds,
   });
   const dryRun = {
-    version: PHASE8R_POST_UPGRADE_DRY_RUN_VERSION,
+    version: POLICY_POST_UPGRADE_DRY_RUN_VERSION,
     mode: 'dry_run',
     generatedAt,
     expiresAt: addMinutes(generatedAt, DRY_RUN_CURRENT_WINDOW_MINUTES),
@@ -272,8 +272,8 @@ function buildPolicyBuilderPhase8PostUpgradeDryRun({
       legacyPathsDeleted: false,
       postUpgradeApplied: false,
     },
-    nextPhase: {
-      phaseId: '8r_12',
+    nextStep: {
+      stepId: 'post_upgrade_apply_gate',
       label: 'Post-Upgrade Apply Gate',
       reason: 'Dry-run reporting is wired; the next step is an explicit apply gate with transaction rollback and operator-facing failure states.',
     },
@@ -281,18 +281,18 @@ function buildPolicyBuilderPhase8PostUpgradeDryRun({
 
   return {
     ...dryRun,
-    validation: validatePolicyBuilderPhase8PostUpgradeDryRun(dryRun),
+    validation: validatePolicyPostUpgradeDryRun(dryRun),
   };
 }
 
-function validatePolicyBuilderPhase8PostUpgradeDryRun(dryRun = {}) {
+function validatePolicyPostUpgradeDryRun(dryRun = {}) {
   const issues = [];
   const sideEffects = asObject(dryRun.sideEffects);
 
   if (dryRun.mode !== 'dry_run') {
     issues.push({
       riskId: 'post_upgrade_dry_run_not_dry_run',
-      message: 'Phase 8R post-upgrade wiring must run in dry-run mode before apply is enabled.',
+      message: 'Post-upgrade dry-run wiring must run in dry-run mode before apply is enabled.',
     });
   }
 
@@ -338,17 +338,17 @@ function validatePolicyBuilderPhase8PostUpgradeDryRun(dryRun = {}) {
   };
 }
 
-async function runPolicyBuilderPhase8PostUpgradeDryRun({
+async function runPolicyPostUpgradeDryRun({
   dbClient,
   maxPolicies = MAX_POST_UPGRADE_DRY_RUN_POLICIES,
   now = null,
 } = {}) {
-  const policies = await loadPolicyBuilderPhase8PostUpgradePolicies({
+  const policies = await loadPolicyPostUpgradePolicies({
     dbClient,
     maxPolicies,
   });
 
-  return buildPolicyBuilderPhase8PostUpgradeDryRun({
+  return buildPolicyPostUpgradeDryRun({
     policies,
     maxPolicies,
     now,
@@ -358,11 +358,11 @@ async function runPolicyBuilderPhase8PostUpgradeDryRun({
 export {
   DRY_RUN_CURRENT_WINDOW_MINUTES,
   MAX_POST_UPGRADE_DRY_RUN_POLICIES,
-  PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS,
-  PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS,
-  PHASE8R_POST_UPGRADE_DRY_RUN_VERSION,
-  buildPolicyBuilderPhase8PostUpgradeDryRun,
-  loadPolicyBuilderPhase8PostUpgradePolicies,
-  runPolicyBuilderPhase8PostUpgradeDryRun,
-  validatePolicyBuilderPhase8PostUpgradeDryRun,
+  POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS,
+  POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS,
+  POLICY_POST_UPGRADE_DRY_RUN_VERSION,
+  buildPolicyPostUpgradeDryRun,
+  loadPolicyPostUpgradePolicies,
+  runPolicyPostUpgradeDryRun,
+  validatePolicyPostUpgradeDryRun,
 };

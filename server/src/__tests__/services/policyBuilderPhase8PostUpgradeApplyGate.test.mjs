@@ -6,8 +6,8 @@ import {
   buildPolicyBuilderPhase8PostUpgradeApplyGate,
 } from '../../services/policyBuilderPhase8PostUpgradeApplyGate.mjs';
 import {
-  buildPolicyBuilderPhase8PostUpgradeDryRun,
-} from '../../services/policyBuilderPhase8PostUpgradeDryRun.mjs';
+  buildPolicyPostUpgradeDryRun,
+} from '../../services/policyPostUpgradeDryRun.mjs';
 
 function preset(overrides = {}) {
   return {
@@ -60,7 +60,7 @@ function policy(overrides = {}) {
 }
 
 function readyDryRun(now = '2026-07-01T12:00:00.000Z') {
-  return buildPolicyBuilderPhase8PostUpgradeDryRun({
+  return buildPolicyPostUpgradeDryRun({
     policies: [policy()],
     now,
   });

@@ -4,11 +4,11 @@ import {
 } from './policyBuilderPhase8ExplicitConversionWorkflow.mjs';
 import {
   DRY_RUN_CURRENT_WINDOW_MINUTES,
-  PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS,
-  PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS,
-  buildPolicyBuilderPhase8PostUpgradeDryRun,
-  loadPolicyBuilderPhase8PostUpgradePolicies,
-} from './policyBuilderPhase8PostUpgradeDryRun.mjs';
+  POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS,
+  POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS,
+  buildPolicyPostUpgradeDryRun,
+  loadPolicyPostUpgradePolicies,
+} from './policyPostUpgradeDryRun.mjs';
 
 const PHASE8R_POST_UPGRADE_APPLY_GATE_VERSION = 'phase8r.post_upgrade_apply_gate.v1';
 const DEFAULT_TARGET_VERSION = 1;
@@ -75,7 +75,7 @@ function unique(values) {
 
 function getDryRunOperatorErrors(dryRun = {}) {
   return asArray(dryRun.operatorErrorIds)
-    .filter(errorId => errorId !== PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.OPERATOR_REVIEW_REQUIRED);
+    .filter(errorId => errorId !== POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.OPERATOR_REVIEW_REQUIRED);
 }
 
 function determineApplyGateStatus({ dryRun, now, readySteps, hasTransactionBoundary }) {
@@ -85,7 +85,7 @@ function determineApplyGateStatus({ dryRun, now, readySteps, hasTransactionBound
 
   if (
     dryRun.validation?.ok !== true ||
-    dryRun.statusId !== PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE ||
+    dryRun.statusId !== POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE ||
     getDryRunOperatorErrors(dryRun).length > 0
   ) {
     return PHASE8R_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_DRY_RUN;
@@ -113,7 +113,7 @@ function buildApplyGateOperatorErrorIds({ dryRun, statusId }) {
     errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_REQUIRED);
   } else {
     if (dryRun.validation?.ok !== true ||
-        dryRun.statusId !== PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE) {
+        dryRun.statusId !== POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE) {
       errors.push(PHASE8R_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.DRY_RUN_INVALID);
     }
 
@@ -758,11 +758,11 @@ async function runPolicyBuilderPhase8PostUpgradeApplyGate({
   now = null,
   actorId = null,
 } = {}) {
-  const policies = await loadPolicyBuilderPhase8PostUpgradePolicies({
+  const policies = await loadPolicyPostUpgradePolicies({
     dbClient,
     maxPolicies,
   });
-  const dryRun = buildPolicyBuilderPhase8PostUpgradeDryRun({
+  const dryRun = buildPolicyPostUpgradeDryRun({
     policies,
     maxPolicies,
     now,

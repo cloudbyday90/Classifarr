@@ -3,7 +3,7 @@
 ## Intent
 
 Add the first real native intent conversion apply gate for post-upgrade work
-without scheduling it automatically. The gate consumes a current Phase 8R.11
+without scheduling it automatically. The gate consumes a current post-upgrade
 dry-run, blocks stale or invalid reports, requires a database transaction
 boundary, creates rollback snapshots, writes native intent records, and records
 migration events atomically.
@@ -102,7 +102,7 @@ Cons:
 
 Use this stack for Phase 8R.12:
 
-1. Require `phase8r.post_upgrade_dry_run.v1` output that is valid, ready, and
+1. Require `policy.post_upgrade_dry_run.v1` output that is valid, ready, and
    not expired.
 2. Require `db.withTransaction` before any native apply writes.
 3. For each ready policy:

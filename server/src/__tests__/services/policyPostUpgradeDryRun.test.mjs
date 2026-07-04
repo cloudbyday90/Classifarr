@@ -1,11 +1,11 @@
 import { jest } from '@jest/globals';
 import {
-  PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS,
-  PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS,
-  buildPolicyBuilderPhase8PostUpgradeDryRun,
-  loadPolicyBuilderPhase8PostUpgradePolicies,
-  runPolicyBuilderPhase8PostUpgradeDryRun,
-} from '../../services/policyBuilderPhase8PostUpgradeDryRun.mjs';
+  POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS,
+  POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS,
+  buildPolicyPostUpgradeDryRun,
+  loadPolicyPostUpgradePolicies,
+  runPolicyPostUpgradeDryRun,
+} from '../../services/policyPostUpgradeDryRun.mjs';
 
 function preset(overrides = {}) {
   return {
@@ -49,15 +49,16 @@ function policy(overrides = {}) {
   };
 }
 
-describe('policyBuilderPhase8PostUpgradeDryRun', () => {
+describe('policyPostUpgradeDryRun', () => {
   test('builds an operator-safe post-upgrade dry-run from ready policies', () => {
-    const dryRun = buildPolicyBuilderPhase8PostUpgradeDryRun({
+    const dryRun = buildPolicyPostUpgradeDryRun({
       policies: [policy()],
       now: '2026-07-01T12:00:00.000Z',
     });
 
     expect(dryRun.mode).toBe('dry_run');
-    expect(dryRun.statusId).toBe(PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE);
+    expect(dryRun.version).toBe('policy.post_upgrade_dry_run.v1');
+    expect(dryRun.statusId).toBe(POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE);
     expect(dryRun.validation.ok).toBe(true);
     expect(dryRun.selectedPolicyIds).toEqual([14]);
     expect(dryRun.summary).toEqual(expect.objectContaining({
@@ -79,10 +80,14 @@ describe('policyBuilderPhase8PostUpgradeDryRun', () => {
       legacyPathsDeleted: false,
       postUpgradeApplied: false,
     });
+    expect(dryRun.nextStep).toEqual(expect.objectContaining({
+      stepId: 'post_upgrade_apply_gate',
+    }));
+    expect(dryRun.nextPhase).toBeUndefined();
   });
 
   test('reports review-required status without building an invalid empty-selection workflow', () => {
-    const dryRun = buildPolicyBuilderPhase8PostUpgradeDryRun({
+    const dryRun = buildPolicyPostUpgradeDryRun({
       policies: [policy({
         id: 15,
         name: 'Missing Route',
@@ -90,26 +95,26 @@ describe('policyBuilderPhase8PostUpgradeDryRun', () => {
       })],
     });
 
-    expect(dryRun.statusId).toBe(PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS.REVIEW_REQUIRED);
+    expect(dryRun.statusId).toBe(POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.REVIEW_REQUIRED);
     expect(dryRun.validation.ok).toBe(true);
     expect(dryRun.conversionWorkflow).toBeNull();
     expect(dryRun.operatorErrorIds).toEqual(expect.arrayContaining([
-      PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.NO_READY_CANDIDATES,
-      PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.OPERATOR_REVIEW_REQUIRED,
+      POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.NO_READY_CANDIDATES,
+      POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.OPERATOR_REVIEW_REQUIRED,
     ]));
   });
 
   test('reports no-policy dry-run without side effects', () => {
-    const dryRun = buildPolicyBuilderPhase8PostUpgradeDryRun({
+    const dryRun = buildPolicyPostUpgradeDryRun({
       policies: [],
     });
 
-    expect(dryRun.statusId).toBe(PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS.NO_POLICIES_FOUND);
+    expect(dryRun.statusId).toBe(POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.NO_POLICIES_FOUND);
     expect(dryRun.validation.ok).toBe(true);
     expect(dryRun.summary.totalPolicyCount).toBe(0);
     expect(dryRun.conversionWorkflow).toBeNull();
     expect(dryRun.operatorErrorIds).toEqual([
-      PHASE8R_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.NO_POLICIES_FOUND,
+      POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.NO_POLICIES_FOUND,
     ]);
     expect(Object.values(dryRun.sideEffects).some(Boolean)).toBe(false);
   });
@@ -135,7 +140,7 @@ describe('policyBuilderPhase8PostUpgradeDryRun', () => {
       }),
     };
 
-    const policies = await loadPolicyBuilderPhase8PostUpgradePolicies({
+    const policies = await loadPolicyPostUpgradePolicies({
       dbClient,
       maxPolicies: 7,
     });
@@ -174,13 +179,13 @@ describe('policyBuilderPhase8PostUpgradeDryRun', () => {
       }),
     };
 
-    const dryRun = await runPolicyBuilderPhase8PostUpgradeDryRun({
+    const dryRun = await runPolicyPostUpgradeDryRun({
       dbClient,
       maxPolicies: 10,
       now: '2026-07-01T12:00:00.000Z',
     });
 
-    expect(dryRun.statusId).toBe(PHASE8R_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE);
+    expect(dryRun.statusId).toBe(POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE);
     expect(dryRun.validation.ok).toBe(true);
     expect(dryRun.summary.readyToApplyCount).toBe(1);
   });

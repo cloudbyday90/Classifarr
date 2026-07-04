@@ -109,12 +109,12 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_11',
     label: 'Post-Upgrade Dry-Run Wiring',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-post-upgrade-dry-run-wiring.md'],
+    designDocPaths: ['docs/architecture/policy-post-upgrade-dry-run-wiring.md'],
     contractPaths: [
-      'server/src/services/policyBuilderPhase8PostUpgradeDryRun.mjs',
+      'server/src/services/policyPostUpgradeDryRun.mjs',
       'server/src/services/postUpgradeService.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8PostUpgradeDryRun.test.mjs'],
+    testPaths: ['server/src/__tests__/services/policyPostUpgradeDryRun.test.mjs'],
   },
   {
     phaseId: '8r_12',

@@ -1,4 +1,4 @@
-# Policy Builder Phase 8R Post-Upgrade Dry-Run Wiring
+# Policy Post-Upgrade Dry-Run Wiring
 
 ## Intent
 
@@ -45,9 +45,9 @@ Sources:
 
 ## Recommendations
 
-### Use The Existing Phase 8R Contracts
+### Use The Existing Native Conversion Contracts
 
-The dry-run must compose existing Phase 8R services:
+The dry-run must compose existing native conversion services:
 
 - migration candidate report,
 - explicit conversion workflow,
@@ -57,7 +57,7 @@ The dry-run must compose existing Phase 8R services:
 Pros:
 
 - avoids another policy interpretation path,
-- keeps all readiness reasons aligned with prior Phase 8R tests,
+- keeps all readiness reasons aligned with the native conversion tests,
 - makes later apply mode consume the same plan shape.
 
 Cons:
@@ -86,7 +86,7 @@ Cons:
 
 ### Report Instead Of Applying
 
-The post-upgrade action is wired as `phase8r_native_intent_dry_run`. It returns
+The post-upgrade action is wired as `policy_native_intent_dry_run`. It returns
 status, counts, selected ready policy IDs, bounded operator error IDs, and
 validation state.
 
@@ -103,9 +103,9 @@ Cons:
 
 ## Final Recommendation Stack
 
-Use this stack for Phase 8R.11:
+Use this stack for post-upgrade dry-run:
 
-1. `policyBuilderPhase8PostUpgradeDryRun.mjs` owns bounded policy loading,
+1. `policyPostUpgradeDryRun.mjs` owns bounded policy loading,
    candidate reporting, explicit workflow planning, and dry-run validation.
 2. `postUpgradeService.mjs` remains orchestration-only and invokes the dry-run
    service through a named action.
@@ -118,12 +118,12 @@ Use this stack for Phase 8R.11:
 
 Implemented:
 
-- Added `policyBuilderPhase8PostUpgradeDryRun.mjs`.
+- Added `policyPostUpgradeDryRun.mjs`.
 - Added a bounded SQL loader for policy, library, ARR mapping, and preset input.
-- Built post-upgrade dry-run output from the Phase 8R migration candidate report
+- Built post-upgrade dry-run output from the native migration candidate report
   and explicit conversion workflow.
 - Used the existing `post_upgrade_apply` actor source in plan-only mode.
-- Wired `phase8r_native_intent_dry_run` into `postUpgradeService`.
+- Wired `policy_native_intent_dry_run` into `postUpgradeService`.
 - Added focused tests for ready, review-required, no-policy, loader mapping, and
   orchestration paths.
 
@@ -138,7 +138,7 @@ Not implemented in this component:
 
 ## Follow-Up
 
-Phase 8R.12 now consumes this dry-run output through the post-upgrade apply
-gate. The remaining follow-up is **Phase 8R.13 Native Runtime Cutover
-Verification**, which should prove converted policies read from native intent in
-real route/service paths before compatibility paths are deleted.
+The **Post-Upgrade Apply Gate** now consumes this dry-run output. Its own module
+cutover should remove phase-coded apply-gate service names while preserving the
+transaction boundary, rollback snapshot, idempotency, and operator error
+contracts already implemented.
