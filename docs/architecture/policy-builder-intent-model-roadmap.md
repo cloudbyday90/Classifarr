@@ -3742,12 +3742,14 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 7R.1 runtime decision inventory is documented in
-  [Policy Builder Phase 7R Runtime Decision Inventory And Cutline](policy-builder-phase-7r-runtime-decision-inventory.md).
+- Runtime decision inventory is documented in
+  [Policy Runtime Decision Inventory](policy-runtime-decision-inventory.md).
 - The server-owned runtime inventory lives in
   `server/src/services/policyRuntimeDecisionInventory.mjs`.
 - The focused runtime-inventory test suite lives in
   `server/src/__tests__/services/policyRuntimeDecisionInventory.test.mjs`.
+- Policy runtime decision inventory architecture cutover is documented in
+  [Policy Runtime Decision Inventory Architecture Cutover](policy-runtime-decision-inventory-architecture-cutover.md).
 - Current implementation classifies runtime artifacts as
   `keep_runtime_engine_primitive`, `rewrite_around_policy_contracts`,
   `replace_with_readiness_question_contract`, or `delete_after_migration`.
@@ -6673,6 +6675,16 @@ Implementation status:
   production references, and 3,762 rename candidates. The production
   phase-coded baseline remains unchanged, but the active completion
   quality-chain documentation now uses durable policy-domain wording.
+- The policy runtime decision inventory architecture cutover renamed the active
+  runtime inventory design record to `policy-runtime-decision-inventory.md`,
+  added a durable architecture cutover record, and updated roadmap/module
+  references to the durable runtime cutline contract:
+  [Policy Runtime Decision Inventory Architecture Cutover](policy-runtime-decision-inventory-architecture-cutover.md).
+- After the policy runtime decision inventory architecture cutover, the
+  repository inventory validates with 9,423 total phase-coded references, 3,740
+  production references, and 3,762 rename candidates. The production
+  phase-coded baseline remains unchanged, but the active runtime inventory
+  documentation now uses durable policy-domain wording.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

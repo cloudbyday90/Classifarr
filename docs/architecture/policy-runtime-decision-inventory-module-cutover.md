@@ -67,8 +67,8 @@ Cons:
   `nextStep.stepId = runtime_evidence_projection`
 - Compatibility adapter:
   `server/src/services/policyRuntimeCompletionAudit.mjs`
-- Original design record:
-  `docs/architecture/policy-builder-phase-7r-runtime-decision-inventory.md`
+- Active architecture record:
+  `docs/architecture/policy-runtime-decision-inventory.md`
 
 ## Outcome
 

@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Decision Inventory Architecture Cutover** — renamed the
+  active runtime decision inventory architecture record to
+  `policy-runtime-decision-inventory.md`, updated the roadmap and module
+  cutover note to point at the durable `policy.runtime_decision_inventory.v1`
+  contract, added a runtime inventory architecture cutover record, and
+  preserved the existing `policyRuntimeDecisionInventory.mjs` authority-source,
+  required-surface, bad-question-path, broad-genre-risk, routing-conflation,
+  and side-effect-free inventory behavior.
 - **Policy Engine Completion Quality Chain Architecture Cutover** — renamed the
   active completion quality-chain architecture record to
   `policy-engine-completion-quality-chain.md`, updated the roadmap to point at

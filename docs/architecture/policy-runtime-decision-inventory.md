@@ -1,28 +1,27 @@
-# Policy Builder Phase 7R Runtime Decision Inventory And Cutline
+# Policy Runtime Decision Inventory
 
 ## Status
 
-Implemented as the first Phase 7R runtime contract.
+Implemented as the durable runtime decision inventory and cutline.
 
-This slice inventories current runtime classification, routing, question,
-learning, RAG, AI, media-profile, queue, and retry paths before Phase 7R wires
-the Phase 6R engine contracts into runtime behavior.
-
-It does not change classification behavior, execute routing differently, modify
-learning writes, add new questions, or delete runtime code.
+This inventory classifies current runtime classification, routing, question,
+learning, RAG, AI, media-profile, queue, and retry paths before the policy
+engine is wired into runtime behavior. It does not change classification
+behavior, execute routing differently, modify learning writes, add questions,
+or delete runtime code.
 
 ## Problem
 
-Phase 7R moves the re-imagined engine from policy-builder setup into runtime
-classification and routing. That is high-risk unless every current runtime path
+Classifarr is moving policy intent from a setup-only concept into runtime
+classification and routing. That is high risk unless every current runtime path
 has an owner decision first.
 
-The first runtime question is:
+The runtime inventory answers:
 
 ```text
 Which current services are engine primitives, which need to be rewritten around
-Phase 5R/6R contracts, which question/readiness paths need replacement, and
-which legacy paths should be deleted after migration?
+policy contracts, which question/readiness paths need replacement, and which
+legacy paths should be deleted after migration?
 ```
 
 This inventory also calls out two known failure modes:
@@ -32,25 +31,29 @@ This inventory also calls out two known failure modes:
 
 ## Official Guidance Reviewed
 
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
-  supports secure design and verification before behavioral changes. Phase
-  7R.1 adds a testable inventory before runtime wiring changes.
+- [NIST Secure Software Development Framework SP 800-218](https://csrc.nist.gov/pubs/sp/800/218/final)
+  supports secure design and verification before behavioral changes. The
+  runtime inventory adds a testable cutline before runtime wiring changes.
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
   emphasizes governed, mapped, measured, and managed AI behavior. AI, RAG, and
   metadata signals are classified as evidence or suggestions, not final runtime
   authority.
-- [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/)
-  emphasizes server-side validation and business logic controls. Runtime paths
+- [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
+  provides a basis for testing application security controls. Runtime paths
   must identify their authority source before behavior changes.
 - [OpenTelemetry Traces](https://opentelemetry.io/docs/concepts/signals/traces/)
-  describes structured traces with spans and attributes. Phase 7R.1 keeps
-  bounded stage, risk, and decision identifiers that can later feed decision
-  traces without exposing raw payloads.
+  describes structured traces with spans and attributes. The inventory keeps
+  bounded stage, risk, and decision identifiers that can feed decision traces
+  without exposing raw payloads.
+- [W3C Cool URIs](https://www.w3.org/Provider/Style/URI)
+  reinforces stable, implementation-independent identifiers. The runtime
+  inventory uses durable policy-domain names instead of roadmap sequencing
+  labels.
 
 ## Recommendations
 
 1. **Inventory before wiring.**
-   Do not connect Phase 6R evidence/readiness into runtime classification until
+   Do not connect policy evidence/readiness into runtime classification until
    current runtime artifacts have keep, rewrite, replace, or delete decisions.
 
 2. **Guard critical runtime surface coverage.**
@@ -58,10 +61,10 @@ This inventory also calls out two known failure modes:
    metadata enrichment, pending notification, classification, routing, or
    persistence surfaces are missing from the cutline.
 
-3. **Guard Phase 7R contract surface coverage.**
-   The runtime/rebuild contracts that replace old behavior must also be listed
-   as inventory artifacts. A new contract service without an explicit cutline
-   decision should fail the inventory before later runtime wiring proceeds.
+3. **Guard runtime contract surface coverage.**
+   Runtime/rebuild contracts that replace old behavior must also be listed as
+   inventory artifacts. A new contract service without an explicit cutline
+   decision should fail inventory before later runtime wiring proceeds.
 
 4. **Require authority sources.**
    Every runtime artifact must identify whether it is driven by observed media
@@ -75,7 +78,7 @@ This inventory also calls out two known failure modes:
 6. **Replace known bad question paths.**
    Genre-priority prompts, AI invalid-response prompts, AI disagreement prompts,
    and pending resolution flags that generate rules must be routed through the
-   Phase 5R question contract and Phase 6R learning guard.
+   policy question contract and policy learning guard.
 
 7. **Keep AI/RAG as evidence.**
    AI explanations, RAG neighbors, and provider metadata can support evidence
@@ -85,17 +88,17 @@ This inventory also calls out two known failure modes:
 
 Pros:
 
-- Prevents Phase 7R from wiring through unclear runtime paths.
-- Catches critical runtime surface drift when new route or decision-facing files
-  are added without a cutline decision.
+- Prevents runtime wiring through unclear runtime paths.
+- Catches critical runtime surface drift when new route or decision-facing
+  files are added without a cutline decision.
 - Makes known question and routing risks explicit.
 - Preserves useful runtime primitives such as Arr executors, outcome ledger,
   profile sync, and bounded event persistence.
-- Creates a stable handoff to Phase 7R.2 runtime evidence projection.
+- Creates a stable handoff to runtime evidence projection.
 
 Cons:
 
-- Does not yet change runtime classification behavior.
+- Does not change runtime classification behavior by itself.
 - Adds a broad inventory that must be maintained as runtime paths change.
 - Requires intentional updates when classification route or metadata surfaces
   are renamed.
@@ -108,9 +111,10 @@ Cons:
 - Runtime inventory tests:
   `server/src/__tests__/services/policyRuntimeDecisionInventory.test.mjs`
 - Documentation:
-  `docs/architecture/policy-builder-phase-7r-runtime-decision-inventory.md`
+  `docs/architecture/policy-runtime-decision-inventory.md`
+- Module cutover:
+  `docs/architecture/policy-runtime-decision-inventory-module-cutover.md`
 - Roadmap owner:
-  Phase 7R.1 Runtime Decision Inventory And Cutline in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
@@ -163,7 +167,7 @@ Known bad question paths:
 - AI disagreement questions,
 - pending resolution `generate_rule` behavior.
 
-Required runtime surface coverage now includes:
+Required runtime surface coverage includes:
 
 - classification route entrypoints,
 - pending and correction routes,
@@ -174,7 +178,7 @@ Required runtime surface coverage now includes:
 - metadata enrichment paths,
 - Discord pending notification rendering.
 
-Required policy runtime/rebuild contract surface coverage now includes:
+Required policy runtime/rebuild contract surface coverage includes:
 
 - runtime evidence projection,
 - runtime evidence fingerprinting,
@@ -197,6 +201,6 @@ Required policy runtime/rebuild contract surface coverage now includes:
 
 ## Next Step
 
-The next roadmap step, Runtime Evidence Projection, should build the runtime
-evidence projection that maps current classification inputs into policy evidence
-buckets before automation decisions are changed.
+Continue with **Runtime Evidence Projection Architecture Cutover** so the next
+runtime boundary also uses durable naming and consumes this inventory
+deliberately.
