@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Intent Quality Gate Architecture Cutover** — renamed the active
+  intent quality-gate architecture record to `policy-intent-quality-gate.md`,
+  updated the roadmap to point at the durable quality-gate contract, added a
+  bounded architecture cutover record, and preserved the existing
+  `policyIntentEngine.mjs` missing-quality, insufficient-quality,
+  sanitized-quality-snapshot, and `blocked_by_evidence_quality` behavior.
 - **Policy Intent Engine Architecture Cutover** — renamed the active
   intent-engine architecture record to `policy-intent-engine.md`, updated the
   roadmap to point at the durable `policy.intent.v1` contract, added a bounded

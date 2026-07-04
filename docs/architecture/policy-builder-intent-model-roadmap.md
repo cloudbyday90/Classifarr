@@ -3322,18 +3322,22 @@ Implementation status:
   `hard_limits`, `avoid`, `ask_when`, `routing_target`, confidence,
   assumptions, and warnings.
 - The intent engine now exposes a bounded entry point that consumes the Phase
-  6R.1 evidence boundary result, requires the projection fingerprint, blocks
+  policy evidence boundary result, requires the projection fingerprint, blocks
   failed evidence-boundary handoffs, and carries a sanitized evidence-boundary
   snapshot into the intent draft for downstream correlation.
 - The bounded intent entry point now audits the evidence projection fingerprint,
-  trace attributes, and sanitized provenance against the returned Phase 6R.1
+  trace attributes, and sanitized provenance against the returned policy evidence
   projection before producing an intent draft.
-- The bounded intent entry point now consumes the Phase 6R.1 evidence quality
+- The bounded intent entry point now consumes the policy evidence quality
   assessment, carries a sanitized quality snapshot into the evidence boundary,
   and blocks missing or insufficient quality with
   `blocked_by_evidence_quality` before intent inference.
-- The Phase 6R.2 quality-gate hardening is documented in
-  [Policy Builder Phase 6R Intent Quality Gate](policy-builder-phase-6r-intent-quality-gate.md).
+- Policy intent quality-gate hardening is documented in
+  [Policy Intent Quality Gate](policy-intent-quality-gate.md).
+- The policy intent quality-gate architecture cutover renamed the active
+  quality-gate design record to durable product-domain naming and recorded the
+  outcome in
+  [Policy Intent Quality Gate Architecture Cutover](policy-intent-quality-gate-architecture-cutover.md).
 - The contract demotes unsupported broad-genre identity to helpful evidence,
   prevents metadata from owning destination identity, treats stale or missing
   evidence as review triggers instead of exclusions, keeps hard limits and avoid
@@ -6561,6 +6565,10 @@ Implementation status:
   validates with 9,572 total phase-coded references, 3,741 production
   references, and 3,763 rename candidates. The production baseline remains
   unchanged because the server module and test names were already durable.
+- After the policy intent quality-gate architecture cutover, the repository
+  inventory validates with 9,557 total phase-coded references, 3,741 production
+  references, and 3,763 rename candidates. The production baseline remains
+  unchanged because enforcement already lives in the durable intent engine.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

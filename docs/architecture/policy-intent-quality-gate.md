@@ -1,14 +1,14 @@
-# Policy Builder Phase 6R Intent Quality Gate
+# Policy Intent Quality Gate
 
 ## Status
 
-Implemented as a Phase 6R.2 hardening slice.
+Implemented as the durable policy intent quality gate.
 
-This document covers the bounded handoff between Phase 6R.1 evidence quality
-and Phase 6R.2 intent inference. The goal is simple: intent can only be inferred
-from a successful evidence boundary that includes a generated, label-free
-quality assessment. If the evidence is insufficient, the system asks for better
-identity evidence or operator confirmation instead of producing policy intent.
+This document covers the bounded handoff between policy evidence quality and
+policy intent inference. The goal is simple: intent can only be inferred from a
+successful evidence boundary that includes a generated, label-free quality
+assessment. If the evidence is insufficient, the system asks for better identity
+evidence or operator confirmation instead of producing policy intent.
 
 ## Problem
 
@@ -17,9 +17,9 @@ enough to infer destination meaning. For example, metadata-only genre evidence
 or a fresh-but-empty profile can be useful diagnostic context, but it should not
 become a policy intent draft.
 
-Phase 6R.2 therefore needs a server-owned quality gate that:
+The policy intent engine therefore needs a server-owned quality gate that:
 
-- consumes Phase 6R.1 quality instead of recalculating ad hoc confidence,
+- consumes policy evidence quality instead of recalculating ad hoc confidence,
 - blocks insufficient evidence before intent generation,
 - keeps only sanitized quality IDs and counts in the intent boundary, and
 - rejects bounded intent drafts that drop the quality snapshot.
@@ -32,8 +32,8 @@ Phase 6R.2 therefore needs a server-owned quality gate that:
   become hidden automation state.
 - [NIST AI Trustworthiness Characteristics](https://airc.nist.gov/airmf-resources/airmf/3-sec-characteristics/)
   describe reliability, validity, safety, security, accountability, and
-  transparency as cross-cutting characteristics. Phase 6R.2 applies those
-  characteristics by carrying stable quality reason IDs and refusing
+  transparency as cross-cutting characteristics. The policy intent quality gate
+  applies those characteristics by carrying stable quality reason IDs and refusing
   insufficient evidence handoffs.
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
   recommends validating inputs against allowlisted structure and semantics. The
@@ -52,11 +52,11 @@ Phase 6R.2 therefore needs a server-owned quality gate that:
 1. **Require generated quality for bounded intent.**
    Runtime and rebuild callers must use
    `buildPolicyIntentDraftFromBoundedEvidence`, which now requires
-   a successful Phase 6R.1 result, matching projection fingerprint, and generated
-   quality object.
+   a successful policy evidence boundary result, matching projection
+   fingerprint, and generated quality object.
 
 2. **Block insufficient quality before inference.**
-   When Phase 6R.1 returns `insufficient`, Phase 6R.2 returns
+   When policy evidence quality returns `insufficient`, policy intent inference returns
    `blocked_by_evidence_quality` with reason IDs and next action. It does not
    produce an intent draft.
 
@@ -79,10 +79,9 @@ Pros:
 
 - Prevents weak metadata or stale profile evidence from becoming destination
   intent.
-- Keeps Phase 6R.1 evidence quality as the single source of truth for the
-  Phase 6R.2 handoff.
-- Gives downstream Phase 6R.3 Learning Guard a deterministic quality status and
-  reason set.
+- Keeps policy evidence quality as the single source of truth for the policy
+  intent handoff.
+- Gives the policy learning guard a deterministic quality status and reason set.
 - Preserves traceability without exposing raw labels or provider content.
 - Makes tampering or partial boundary replay detectable by the intent audit.
 
@@ -106,7 +105,7 @@ Cons:
 - Design owner:
   `docs/architecture/policy-intent-engine.md`
 - Roadmap owner:
-  Phase 6R.2 in
+  Policy Intent Engine in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Outcome
@@ -116,7 +115,7 @@ Cons:
   risks.
 - Added a sanitized `evidenceBoundary.quality` snapshot to bounded intent
   drafts.
-- Blocked bounded intent generation when Phase 6R.1 quality is insufficient.
+- Blocked bounded intent generation when policy evidence quality is insufficient.
 - Rejected bounded intent drafts that omit or downgrade the quality snapshot
   during audit validation.
 - Added intent warnings for direct diagnostic drafts when evidence quality is
@@ -132,6 +131,6 @@ Cons:
 
 ## Next Step
 
-Proceed to **Phase 6R.3 Learning Guard** and require quality-gated bounded
-intent before any manual outcome, Discord answer, confirmation, or routing
-result can become durable learning.
+Proceed to **Policy Learning Guard** architecture cutover and require
+quality-gated bounded intent before any manual outcome, Discord answer,
+confirmation, or routing result can become durable learning.
