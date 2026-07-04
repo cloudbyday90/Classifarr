@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Legacy Write Boundary Module Cutover** — renamed the legacy write
+  shutdown service, focused test, and architecture record to
+  `policyLegacyWriteBoundary.mjs`, `policyLegacyWriteBoundary.test.mjs`, and
+  `policy-legacy-write-boundary.md`, replaced phase-coded exported constants,
+  builders, validation helpers, payload versioning, and `nextPhase.phaseId`
+  with durable policy-domain names and `nextStep.stepId`, updated storage-reset
+  and evidence-map references, and preserved converted-policy write blocking,
+  unconverted compatibility warnings, native write readiness gating, native
+  default gating, removal checklist validation, and no-side-effect guarantees.
 - **Policy Rollback Snapshot Window Module Cutover** — renamed the rollback
   snapshot and reversion-window service, focused test, and architecture record
   to `policyRollbackSnapshotWindow.mjs`,

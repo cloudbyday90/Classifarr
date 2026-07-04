@@ -1,6 +1,6 @@
-const PHASE8R_LEGACY_WRITE_SHUTDOWN_VERSION = 'phase8r.legacy_write_path_shutdown.v1';
+const POLICY_LEGACY_WRITE_BOUNDARY_VERSION = 'policy.legacy_write_boundary.v1';
 
-const PHASE8R_LEGACY_WRITE_OPERATION_IDS = Object.freeze({
+const POLICY_LEGACY_WRITE_OPERATION_IDS = Object.freeze({
   CREATE_POLICY: 'create_policy',
   UPDATE_POLICY: 'update_policy',
   RESET_POLICY: 'reset_policy',
@@ -12,7 +12,7 @@ const PHASE8R_LEGACY_WRITE_OPERATION_IDS = Object.freeze({
   NATIVE_INTENT_WRITE: 'native_intent_write',
 });
 
-const PHASE8R_LEGACY_WRITE_STATUS_IDS = Object.freeze({
+const POLICY_LEGACY_WRITE_STATUS_IDS = Object.freeze({
   CONVERTED_LEGACY_WRITE_BLOCKED: 'converted_legacy_write_blocked',
   CONVERTED_METADATA_WRITE_ALLOWED: 'converted_metadata_write_allowed',
   UNCONVERTED_COMPATIBILITY_WRITE_ALLOWED: 'unconverted_compatibility_write_allowed',
@@ -22,7 +22,7 @@ const PHASE8R_LEGACY_WRITE_STATUS_IDS = Object.freeze({
   NEW_POLICY_NATIVE_DEFAULT_REQUIRED: 'new_policy_native_default_required',
 });
 
-const PHASE8R_LEGACY_WRITE_REASON_IDS = Object.freeze({
+const POLICY_LEGACY_WRITE_REASON_IDS = Object.freeze({
   CONVERTED_POLICY_DETECTED: 'converted_policy_detected',
   LEGACY_BEHAVIOR_WRITE_DETECTED: 'legacy_behavior_write_detected',
   LEGACY_WRITE_BLOCKED_FOR_CONVERTED_POLICY: 'legacy_write_blocked_for_converted_policy',
@@ -36,7 +36,7 @@ const PHASE8R_LEGACY_WRITE_REASON_IDS = Object.freeze({
   SIDE_EFFECTS_DISABLED: 'side_effects_disabled',
 });
 
-const PHASE8R_LEGACY_WRITE_RISK_IDS = Object.freeze({
+const POLICY_LEGACY_WRITE_RISK_IDS = Object.freeze({
   CONVERTED_LEGACY_WRITE_ALLOWED: 'converted_legacy_write_allowed',
   CONVERTED_RESET_TO_LEGACY_ALLOWED: 'converted_reset_to_legacy_allowed',
   NATIVE_WRITE_ALLOWED_WITHOUT_READY_PATH: 'native_write_allowed_without_ready_path',
@@ -48,7 +48,7 @@ const PHASE8R_LEGACY_WRITE_RISK_IDS = Object.freeze({
   UNKNOWN_OPERATION: 'unknown_operation',
 });
 
-const PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS = Object.freeze({
+const POLICY_LEGACY_WRITE_FIELD_GROUP_IDS = Object.freeze({
   PRESET_ATTACHMENTS: 'preset_attachments',
   PRESET_CUSTOM_SIGNALS: 'preset_custom_signals',
   LEGACY_SCORING_WEIGHTS: 'legacy_scoring_weights',
@@ -59,80 +59,80 @@ const PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS = Object.freeze({
   METADATA: 'metadata',
 });
 
-const VALID_OPERATION_IDS = Object.freeze(Object.values(PHASE8R_LEGACY_WRITE_OPERATION_IDS));
+const VALID_OPERATION_IDS = Object.freeze(Object.values(POLICY_LEGACY_WRITE_OPERATION_IDS));
 
 const LEGACY_BEHAVIOR_FIELD_DEFINITIONS = Object.freeze([
   {
     field: 'presets',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_ATTACHMENTS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_ATTACHMENTS,
   },
   {
     field: 'preset_id',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_ATTACHMENTS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_ATTACHMENTS,
   },
   {
     field: 'presetId',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_ATTACHMENTS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_ATTACHMENTS,
   },
   {
     field: 'customSignals',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_CUSTOM_SIGNALS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_CUSTOM_SIGNALS,
   },
   {
     field: 'custom_signals',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_CUSTOM_SIGNALS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_CUSTOM_SIGNALS,
   },
   {
     field: 'legacyCustomSignals',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_CUSTOM_SIGNALS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_CUSTOM_SIGNALS,
   },
   {
     field: 'preset_weight',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_SCORING_WEIGHTS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_SCORING_WEIGHTS,
   },
   {
     field: 'profile_weight',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_SCORING_WEIGHTS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_SCORING_WEIGHTS,
   },
   {
     field: 'pattern_weight',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_SCORING_WEIGHTS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_SCORING_WEIGHTS,
   },
   {
     field: 'rag_weight',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_SCORING_WEIGHTS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_SCORING_WEIGHTS,
   },
   {
     field: 'history_weight',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_SCORING_WEIGHTS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_SCORING_WEIGHTS,
   },
   {
     field: 'trust_patterns',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_TRUST_FLAGS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_TRUST_FLAGS,
   },
   {
     field: 'trust_rag',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_TRUST_FLAGS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_TRUST_FLAGS,
   },
   {
     field: 'trust_history',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_TRUST_FLAGS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_TRUST_FLAGS,
   },
   {
     field: 'auto_classify_threshold',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_DECISION_THRESHOLDS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_DECISION_THRESHOLDS,
   },
   {
     field: 'prompt_threshold',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_DECISION_THRESHOLDS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_DECISION_THRESHOLDS,
   },
   {
     field: 'require_ai_validation',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_DECISION_THRESHOLDS,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_DECISION_THRESHOLDS,
   },
   {
     field: 'combination_mode',
-    groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_COMBINATION_MODE,
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_COMBINATION_MODE,
   },
 ]);
 
@@ -214,16 +214,16 @@ function detectLegacyBehaviorFields(payload = {}, operationId) {
   });
 
   if (
-    operationId === PHASE8R_LEGACY_WRITE_OPERATION_IDS.ATTACH_PRESET ||
-    operationId === PHASE8R_LEGACY_WRITE_OPERATION_IDS.DETACH_PRESET ||
-    operationId === PHASE8R_LEGACY_WRITE_OPERATION_IDS.REPLACE_PRESETS ||
-    operationId === PHASE8R_LEGACY_WRITE_OPERATION_IDS.UPDATE_PRESET_CUSTOM_SIGNALS
+    operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.ATTACH_PRESET ||
+    operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.DETACH_PRESET ||
+    operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.REPLACE_PRESETS ||
+    operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.UPDATE_PRESET_CUSTOM_SIGNALS
   ) {
     fields.push({
       field: operationId,
-      groupId: operationId === PHASE8R_LEGACY_WRITE_OPERATION_IDS.UPDATE_PRESET_CUSTOM_SIGNALS
-        ? PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_CUSTOM_SIGNALS
-        : PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_ATTACHMENTS,
+      groupId: operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.UPDATE_PRESET_CUSTOM_SIGNALS
+        ? POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_CUSTOM_SIGNALS
+        : POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_ATTACHMENTS,
     });
   }
 
@@ -232,7 +232,7 @@ function detectLegacyBehaviorFields(payload = {}, operationId) {
       if (hasOwn(preset, 'customSignals') || hasOwn(preset, 'custom_signals')) {
         fields.push({
           field: `presets[${index}].customSignals`,
-          groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_CUSTOM_SIGNALS,
+          groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_CUSTOM_SIGNALS,
         });
       }
     });
@@ -246,7 +246,7 @@ function detectNativeIntentFields(payload = {}) {
     .filter(field => hasOwn(payload, field))
     .map(field => ({
       field,
-      groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.NATIVE_INTENT,
+      groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.NATIVE_INTENT,
     }));
 }
 
@@ -255,7 +255,7 @@ function detectMetadataFields(payload = {}) {
     .filter(field => hasOwn(payload, field))
     .map(field => ({
       field,
-      groupId: PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS.METADATA,
+      groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.METADATA,
     }));
 }
 
@@ -277,62 +277,62 @@ function determineBoundaryStatus({
   nativeDefaultReady,
 }) {
   if (isCreate && legacyWriteDetected && nativeDefaultReady) {
-    return PHASE8R_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_NATIVE_DEFAULT_REQUIRED;
+    return POLICY_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_NATIVE_DEFAULT_REQUIRED;
   }
 
   if (isCreate && legacyWriteDetected) {
-    return PHASE8R_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_LEGACY_DEFAULT_ALLOWED;
+    return POLICY_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_LEGACY_DEFAULT_ALLOWED;
   }
 
-  if (converted && operationId === PHASE8R_LEGACY_WRITE_OPERATION_IDS.RESET_POLICY) {
-    return PHASE8R_LEGACY_WRITE_STATUS_IDS.CONVERTED_LEGACY_WRITE_BLOCKED;
+  if (converted && operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.RESET_POLICY) {
+    return POLICY_LEGACY_WRITE_STATUS_IDS.CONVERTED_LEGACY_WRITE_BLOCKED;
   }
 
   if (converted && legacyWriteDetected) {
-    return PHASE8R_LEGACY_WRITE_STATUS_IDS.CONVERTED_LEGACY_WRITE_BLOCKED;
+    return POLICY_LEGACY_WRITE_STATUS_IDS.CONVERTED_LEGACY_WRITE_BLOCKED;
   }
 
   if (converted && nativeWriteDetected && nativeWriteReady !== true) {
-    return PHASE8R_LEGACY_WRITE_STATUS_IDS.NATIVE_WRITE_PATH_REQUIRED;
+    return POLICY_LEGACY_WRITE_STATUS_IDS.NATIVE_WRITE_PATH_REQUIRED;
   }
 
   if (converted && nativeWriteDetected && nativeWriteReady === true) {
-    return PHASE8R_LEGACY_WRITE_STATUS_IDS.NATIVE_WRITE_ALLOWED;
+    return POLICY_LEGACY_WRITE_STATUS_IDS.NATIVE_WRITE_ALLOWED;
   }
 
   if (converted && metadataWriteDetected) {
-    return PHASE8R_LEGACY_WRITE_STATUS_IDS.CONVERTED_METADATA_WRITE_ALLOWED;
+    return POLICY_LEGACY_WRITE_STATUS_IDS.CONVERTED_METADATA_WRITE_ALLOWED;
   }
 
-  return PHASE8R_LEGACY_WRITE_STATUS_IDS.UNCONVERTED_COMPATIBILITY_WRITE_ALLOWED;
+  return POLICY_LEGACY_WRITE_STATUS_IDS.UNCONVERTED_COMPATIBILITY_WRITE_ALLOWED;
 }
 
 function isWriteAllowed(statusId) {
   return [
-    PHASE8R_LEGACY_WRITE_STATUS_IDS.CONVERTED_METADATA_WRITE_ALLOWED,
-    PHASE8R_LEGACY_WRITE_STATUS_IDS.UNCONVERTED_COMPATIBILITY_WRITE_ALLOWED,
-    PHASE8R_LEGACY_WRITE_STATUS_IDS.NATIVE_WRITE_ALLOWED,
-    PHASE8R_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_LEGACY_DEFAULT_ALLOWED,
+    POLICY_LEGACY_WRITE_STATUS_IDS.CONVERTED_METADATA_WRITE_ALLOWED,
+    POLICY_LEGACY_WRITE_STATUS_IDS.UNCONVERTED_COMPATIBILITY_WRITE_ALLOWED,
+    POLICY_LEGACY_WRITE_STATUS_IDS.NATIVE_WRITE_ALLOWED,
+    POLICY_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_LEGACY_DEFAULT_ALLOWED,
   ].includes(statusId);
 }
 
-function buildPolicyBuilderPhase8LegacyWritePathShutdown({
+function buildPolicyLegacyWriteBoundary({
   policy = {},
   payload = {},
-  operationId = PHASE8R_LEGACY_WRITE_OPERATION_IDS.UPDATE_POLICY,
+  operationId = POLICY_LEGACY_WRITE_OPERATION_IDS.UPDATE_POLICY,
   nativeWriteReady = false,
   nativeDefaultReady = false,
 } = {}) {
   const converted = detectConvertedPolicy(policy);
-  const isCreate = operationId === PHASE8R_LEGACY_WRITE_OPERATION_IDS.CREATE_POLICY ||
+  const isCreate = operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.CREATE_POLICY ||
     !policy.id && !policy.policy_id;
   const legacyFields = detectLegacyBehaviorFields(payload, operationId);
   const nativeFields = detectNativeIntentFields(payload);
   const metadataFields = detectMetadataFields(payload);
   const legacyWriteDetected = legacyFields.length > 0 ||
-    operationId === PHASE8R_LEGACY_WRITE_OPERATION_IDS.RESET_POLICY;
+    operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.RESET_POLICY;
   const nativeWriteDetected = nativeFields.length > 0 ||
-    operationId === PHASE8R_LEGACY_WRITE_OPERATION_IDS.NATIVE_INTENT_WRITE;
+    operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.NATIVE_INTENT_WRITE;
   const metadataWriteDetected = metadataFields.length > 0 &&
     legacyWriteDetected === false &&
     nativeWriteDetected === false;
@@ -351,8 +351,8 @@ function buildPolicyBuilderPhase8LegacyWritePathShutdown({
   const migrationBlockers = [];
 
   if (
-    statusId === PHASE8R_LEGACY_WRITE_STATUS_IDS.UNCONVERTED_COMPATIBILITY_WRITE_ALLOWED ||
-    statusId === PHASE8R_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_LEGACY_DEFAULT_ALLOWED
+    statusId === POLICY_LEGACY_WRITE_STATUS_IDS.UNCONVERTED_COMPATIBILITY_WRITE_ALLOWED ||
+    statusId === POLICY_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_LEGACY_DEFAULT_ALLOWED
   ) {
     warnings.push({
       warningId: 'compatibility_write_time_bounded',
@@ -370,30 +370,30 @@ function buildPolicyBuilderPhase8LegacyWritePathShutdown({
   const reasons = [
     converted
       ? buildReason(
-        PHASE8R_LEGACY_WRITE_REASON_IDS.CONVERTED_POLICY_DETECTED,
+        POLICY_LEGACY_WRITE_REASON_IDS.CONVERTED_POLICY_DETECTED,
         'Policy has active native intent and must not accept legacy behavior writes.'
       )
       : buildReason(
-        PHASE8R_LEGACY_WRITE_REASON_IDS.COMPATIBILITY_WRITE_RETAINED_FOR_UNCONVERTED_POLICY,
+        POLICY_LEGACY_WRITE_REASON_IDS.COMPATIBILITY_WRITE_RETAINED_FOR_UNCONVERTED_POLICY,
         'Policy is unconverted or new, so compatibility writes remain time-bounded.',
         'info'
       ),
     legacyWriteDetected
       ? buildReason(
-        PHASE8R_LEGACY_WRITE_REASON_IDS.LEGACY_BEHAVIOR_WRITE_DETECTED,
+        POLICY_LEGACY_WRITE_REASON_IDS.LEGACY_BEHAVIOR_WRITE_DETECTED,
         'Payload or operation targets legacy preset/custom-signal behavior.',
         converted ? 'blocker' : 'warning',
         { legacyFieldCount: legacyFields.length }
       )
       : buildReason(
-        PHASE8R_LEGACY_WRITE_REASON_IDS.METADATA_ONLY_WRITE_ALLOWED,
+        POLICY_LEGACY_WRITE_REASON_IDS.METADATA_ONLY_WRITE_ALLOWED,
         'Payload does not change legacy policy behavior fields.'
       ),
   ];
 
-  if (statusId === PHASE8R_LEGACY_WRITE_STATUS_IDS.CONVERTED_LEGACY_WRITE_BLOCKED) {
+  if (statusId === POLICY_LEGACY_WRITE_STATUS_IDS.CONVERTED_LEGACY_WRITE_BLOCKED) {
     reasons.push(buildReason(
-      PHASE8R_LEGACY_WRITE_REASON_IDS.LEGACY_WRITE_BLOCKED_FOR_CONVERTED_POLICY,
+      POLICY_LEGACY_WRITE_REASON_IDS.LEGACY_WRITE_BLOCKED_FOR_CONVERTED_POLICY,
       'Converted policies cannot drift back to legacy preset/custom-signal storage.',
       'blocker'
     ));
@@ -401,13 +401,13 @@ function buildPolicyBuilderPhase8LegacyWritePathShutdown({
 
   if (nativeWriteDetected && nativeWriteReady !== true) {
     reasons.push(buildReason(
-      PHASE8R_LEGACY_WRITE_REASON_IDS.NATIVE_WRITE_PATH_NOT_READY,
+      POLICY_LEGACY_WRITE_REASON_IDS.NATIVE_WRITE_PATH_NOT_READY,
       'Native intent write payload was detected, but native write persistence is not marked ready.',
       'blocker'
     ));
   } else if (nativeWriteDetected) {
     reasons.push(buildReason(
-      PHASE8R_LEGACY_WRITE_REASON_IDS.NATIVE_WRITE_PATH_READY,
+      POLICY_LEGACY_WRITE_REASON_IDS.NATIVE_WRITE_PATH_READY,
       'Native intent write payload can use native storage.',
       'info'
     ));
@@ -415,13 +415,13 @@ function buildPolicyBuilderPhase8LegacyWritePathShutdown({
 
   if (isCreate && nativeDefaultReady === true) {
     reasons.push(buildReason(
-      PHASE8R_LEGACY_WRITE_REASON_IDS.NEW_POLICY_NATIVE_DEFAULT_READY,
+      POLICY_LEGACY_WRITE_REASON_IDS.NEW_POLICY_NATIVE_DEFAULT_READY,
       'New policy creation should default to native intent because conversion gates and rollback tools are ready.',
-      statusId === PHASE8R_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_NATIVE_DEFAULT_REQUIRED ? 'blocker' : 'info'
+      statusId === POLICY_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_NATIVE_DEFAULT_REQUIRED ? 'blocker' : 'info'
     ));
   } else if (isCreate) {
     reasons.push(buildReason(
-      PHASE8R_LEGACY_WRITE_REASON_IDS.NEW_POLICY_NATIVE_DEFAULT_NOT_READY,
+      POLICY_LEGACY_WRITE_REASON_IDS.NEW_POLICY_NATIVE_DEFAULT_NOT_READY,
       'New policy creation can continue compatibility mode until native default gates pass.',
       'warning'
     ));
@@ -429,17 +429,17 @@ function buildPolicyBuilderPhase8LegacyWritePathShutdown({
 
   reasons.push(
     buildReason(
-      PHASE8R_LEGACY_WRITE_REASON_IDS.LEGACY_REMOVAL_CHECKLIST_ATTACHED,
+      POLICY_LEGACY_WRITE_REASON_IDS.LEGACY_REMOVAL_CHECKLIST_ATTACHED,
       'Legacy write shutdown includes route and writer removal checklist items.'
     ),
     buildReason(
-      PHASE8R_LEGACY_WRITE_REASON_IDS.SIDE_EFFECTS_DISABLED,
-      'Phase 8R.6 write shutdown contract performs no route writes, native inserts, or legacy deletes.'
+      POLICY_LEGACY_WRITE_REASON_IDS.SIDE_EFFECTS_DISABLED,
+      'Policy legacy write boundary performs no route writes, native inserts, or legacy deletes.'
     )
   );
 
   const boundary = {
-    version: PHASE8R_LEGACY_WRITE_SHUTDOWN_VERSION,
+    version: POLICY_LEGACY_WRITE_BOUNDARY_VERSION,
     operationId,
     statusId,
     allowed,
@@ -462,8 +462,8 @@ function buildPolicyBuilderPhase8LegacyWritePathShutdown({
       draftSidecarPersisted: false,
     },
     reasons,
-    nextPhase: {
-      phaseId: '8r_7',
+    nextStep: {
+      stepId: 'legacy_code_deletion_gates',
       label: 'Legacy Code Deletion Gates',
       reason: 'Converted policies have a legacy write shutdown contract, so replaced compatibility code can next receive deletion gates.',
     },
@@ -471,11 +471,11 @@ function buildPolicyBuilderPhase8LegacyWritePathShutdown({
 
   return {
     ...boundary,
-    validation: validatePolicyBuilderPhase8LegacyWritePathShutdown(boundary),
+    validation: validatePolicyLegacyWriteBoundary(boundary),
   };
 }
 
-function validatePolicyBuilderPhase8LegacyWritePathShutdown(boundary = {}) {
+function validatePolicyLegacyWriteBoundary(boundary = {}) {
   const issues = [];
   const reasons = asArray(boundary.reasons);
   const legacyFields = asArray(boundary.detectedFields?.legacyBehavior);
@@ -485,7 +485,7 @@ function validatePolicyBuilderPhase8LegacyWritePathShutdown(boundary = {}) {
 
   if (!VALID_OPERATION_IDS.includes(boundary.operationId)) {
     issues.push({
-      riskId: PHASE8R_LEGACY_WRITE_RISK_IDS.UNKNOWN_OPERATION,
+      riskId: POLICY_LEGACY_WRITE_RISK_IDS.UNKNOWN_OPERATION,
       operationId: boundary.operationId || null,
       message: 'Legacy write shutdown must classify a known policy write operation.',
     });
@@ -497,18 +497,18 @@ function validatePolicyBuilderPhase8LegacyWritePathShutdown(boundary = {}) {
     boundary.allowed === true
   ) {
     issues.push({
-      riskId: PHASE8R_LEGACY_WRITE_RISK_IDS.CONVERTED_LEGACY_WRITE_ALLOWED,
+      riskId: POLICY_LEGACY_WRITE_RISK_IDS.CONVERTED_LEGACY_WRITE_ALLOWED,
       message: 'Converted policies must not allow legacy preset/custom-signal behavior writes.',
     });
   }
 
   if (
     boundary.convertedPolicy === true &&
-    boundary.operationId === PHASE8R_LEGACY_WRITE_OPERATION_IDS.RESET_POLICY &&
+    boundary.operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.RESET_POLICY &&
     boundary.allowed === true
   ) {
     issues.push({
-      riskId: PHASE8R_LEGACY_WRITE_RISK_IDS.CONVERTED_RESET_TO_LEGACY_ALLOWED,
+      riskId: POLICY_LEGACY_WRITE_RISK_IDS.CONVERTED_RESET_TO_LEGACY_ALLOWED,
       message: 'Converted policy reset must not recreate legacy-only policy behavior.',
     });
   }
@@ -519,27 +519,27 @@ function validatePolicyBuilderPhase8LegacyWritePathShutdown(boundary = {}) {
     boundary.nativeWriteReady !== true
   ) {
     issues.push({
-      riskId: PHASE8R_LEGACY_WRITE_RISK_IDS.NATIVE_WRITE_ALLOWED_WITHOUT_READY_PATH,
+      riskId: POLICY_LEGACY_WRITE_RISK_IDS.NATIVE_WRITE_ALLOWED_WITHOUT_READY_PATH,
       message: 'Native intent writes cannot be allowed until native write persistence is ready.',
     });
   }
 
   if (
-    boundary.statusId === PHASE8R_LEGACY_WRITE_STATUS_IDS.UNCONVERTED_COMPATIBILITY_WRITE_ALLOWED &&
+    boundary.statusId === POLICY_LEGACY_WRITE_STATUS_IDS.UNCONVERTED_COMPATIBILITY_WRITE_ALLOWED &&
     asArray(boundary.warnings).length === 0
   ) {
     issues.push({
-      riskId: PHASE8R_LEGACY_WRITE_RISK_IDS.UNCONVERTED_COMPATIBILITY_WRITE_WITHOUT_WARNING,
+      riskId: POLICY_LEGACY_WRITE_RISK_IDS.UNCONVERTED_COMPATIBILITY_WRITE_WITHOUT_WARNING,
       message: 'Unconverted compatibility writes must remain visibly time-bounded.',
     });
   }
 
   if (
-    boundary.statusId === PHASE8R_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_NATIVE_DEFAULT_REQUIRED &&
+    boundary.statusId === POLICY_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_NATIVE_DEFAULT_REQUIRED &&
     boundary.allowed === true
   ) {
     issues.push({
-      riskId: PHASE8R_LEGACY_WRITE_RISK_IDS.NEW_POLICY_LEGACY_DEFAULT_WITH_NATIVE_READY,
+      riskId: POLICY_LEGACY_WRITE_RISK_IDS.NEW_POLICY_LEGACY_DEFAULT_WITH_NATIVE_READY,
       message: 'New policy legacy defaults cannot remain allowed once native default gates are ready.',
     });
   }
@@ -547,7 +547,7 @@ function validatePolicyBuilderPhase8LegacyWritePathShutdown(boundary = {}) {
   REQUIRED_REMOVAL_CHECKLIST_ITEMS.forEach(itemId => {
     if (!checklistIds.includes(itemId)) {
       issues.push({
-        riskId: PHASE8R_LEGACY_WRITE_RISK_IDS.MISSING_REMOVAL_CHECKLIST,
+        riskId: POLICY_LEGACY_WRITE_RISK_IDS.MISSING_REMOVAL_CHECKLIST,
         itemId,
         message: 'Legacy write shutdown must carry the route/writer removal checklist.',
       });
@@ -556,14 +556,14 @@ function validatePolicyBuilderPhase8LegacyWritePathShutdown(boundary = {}) {
 
   if (Object.values(sideEffects).some(value => value === true)) {
     issues.push({
-      riskId: PHASE8R_LEGACY_WRITE_RISK_IDS.SIDE_EFFECT_PERFORMED,
-      message: 'Phase 8R.6 write shutdown planning must not perform route writes, inserts, or deletes.',
+      riskId: POLICY_LEGACY_WRITE_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      message: 'Policy legacy write boundary planning must not perform route writes, inserts, or deletes.',
     });
   }
 
   if (reasons.length === 0) {
     issues.push({
-      riskId: PHASE8R_LEGACY_WRITE_RISK_IDS.MISSING_REASON,
+      riskId: POLICY_LEGACY_WRITE_RISK_IDS.MISSING_REASON,
       message: 'Legacy write shutdown output must include bounded reasons.',
     });
   }
@@ -575,11 +575,11 @@ function validatePolicyBuilderPhase8LegacyWritePathShutdown(boundary = {}) {
   };
 }
 
-function buildPolicyBuilderPhase8LegacyWritePathShutdownAudit(
-  boundary = buildPolicyBuilderPhase8LegacyWritePathShutdown()
+function buildPolicyLegacyWriteBoundaryAudit(
+  boundary = buildPolicyLegacyWriteBoundary()
 ) {
   const validation = boundary.validation ||
-    validatePolicyBuilderPhase8LegacyWritePathShutdown(boundary);
+    validatePolicyLegacyWriteBoundary(boundary);
 
   return {
     ok: validation.ok,
@@ -594,18 +594,18 @@ function buildPolicyBuilderPhase8LegacyWritePathShutdownAudit(
     migrationBlockerCount: asArray(boundary.migrationBlockers).length,
     removalChecklistCount: asArray(boundary.removalChecklist).length,
     issueIds: asArray(validation.issues).map(issue => issue.riskId),
-    nextPhase: boundary.nextPhase || null,
+    nextStep: boundary.nextStep || null,
   };
 }
 
 export {
-  PHASE8R_LEGACY_WRITE_FIELD_GROUP_IDS,
-  PHASE8R_LEGACY_WRITE_OPERATION_IDS,
-  PHASE8R_LEGACY_WRITE_REASON_IDS,
-  PHASE8R_LEGACY_WRITE_RISK_IDS,
-  PHASE8R_LEGACY_WRITE_SHUTDOWN_VERSION,
-  PHASE8R_LEGACY_WRITE_STATUS_IDS,
-  buildPolicyBuilderPhase8LegacyWritePathShutdown,
-  buildPolicyBuilderPhase8LegacyWritePathShutdownAudit,
-  validatePolicyBuilderPhase8LegacyWritePathShutdown,
+  POLICY_LEGACY_WRITE_FIELD_GROUP_IDS,
+  POLICY_LEGACY_WRITE_OPERATION_IDS,
+  POLICY_LEGACY_WRITE_REASON_IDS,
+  POLICY_LEGACY_WRITE_RISK_IDS,
+  POLICY_LEGACY_WRITE_BOUNDARY_VERSION,
+  POLICY_LEGACY_WRITE_STATUS_IDS,
+  buildPolicyLegacyWriteBoundary,
+  buildPolicyLegacyWriteBoundaryAudit,
+  validatePolicyLegacyWriteBoundary,
 };

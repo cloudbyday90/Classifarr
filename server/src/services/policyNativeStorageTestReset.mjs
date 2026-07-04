@@ -127,7 +127,7 @@ const CURRENT_NATIVE_STORAGE_TEST_RECORDS = Object.freeze([
     legacyScopeId: POLICY_NATIVE_STORAGE_TEST_LEGACY_SCOPE_IDS.ROLLBACK_SNAPSHOT_RESTORE,
   },
   {
-    path: 'server/src/__tests__/services/policyBuilderPhase8LegacyWritePathShutdown.test.mjs',
+    path: 'server/src/__tests__/services/policyLegacyWriteBoundary.test.mjs',
     coverageIds: [POLICY_NATIVE_STORAGE_TEST_COVERAGE_IDS.LEGACY_WRITE_BLOCKING_TESTS],
     finalNativeStorageContract: true,
   },

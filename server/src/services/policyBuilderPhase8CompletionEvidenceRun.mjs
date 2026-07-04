@@ -67,9 +67,9 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_6',
     label: 'Legacy Write Path Shutdown',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-legacy-write-path-shutdown.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8LegacyWritePathShutdown.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8LegacyWritePathShutdown.test.mjs'],
+    designDocPaths: ['docs/architecture/policy-legacy-write-boundary.md'],
+    contractPaths: ['server/src/services/policyLegacyWriteBoundary.mjs'],
+    testPaths: ['server/src/__tests__/services/policyLegacyWriteBoundary.test.mjs'],
   },
   {
     phaseId: '8r_7',

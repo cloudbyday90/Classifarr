@@ -4631,8 +4631,15 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.6 legacy write shutdown behavior is documented in
-  [Policy Builder Phase 8R Legacy Write Path Shutdown](policy-builder-phase-8r-legacy-write-path-shutdown.md).
+- Legacy write-boundary behavior is documented in
+  [Policy Legacy Write Boundary](policy-legacy-write-boundary.md).
+- The module cutover renamed the service, focused test, architecture record,
+  exported constants/helpers, version, and runtime handoff to durable
+  policy-domain names while preserving converted-policy blocking,
+  unconverted-policy compatibility warnings, native write readiness gating,
+  native default gating, removal checklist validation, and no-side-effect
+  guarantees:
+  [Policy Legacy Write Boundary Module Cutover](policy-legacy-write-boundary-module-cutover.md).
 - Current implementation adds a side-effect-free server write-boundary service
   that classifies policy write operations before route mutation or SQL writes.
 - Converted policies block legacy behavior writes for preset attachments,

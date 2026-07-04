@@ -1,11 +1,11 @@
 import {
-  PHASE8R_LEGACY_WRITE_OPERATION_IDS,
-  PHASE8R_LEGACY_WRITE_RISK_IDS,
-  PHASE8R_LEGACY_WRITE_STATUS_IDS,
-  buildPolicyBuilderPhase8LegacyWritePathShutdown,
-  buildPolicyBuilderPhase8LegacyWritePathShutdownAudit,
-  validatePolicyBuilderPhase8LegacyWritePathShutdown,
-} from '../../services/policyBuilderPhase8LegacyWritePathShutdown.mjs';
+  POLICY_LEGACY_WRITE_OPERATION_IDS,
+  POLICY_LEGACY_WRITE_RISK_IDS,
+  POLICY_LEGACY_WRITE_STATUS_IDS,
+  buildPolicyLegacyWriteBoundary,
+  buildPolicyLegacyWriteBoundaryAudit,
+  validatePolicyLegacyWriteBoundary,
+} from '../../services/policyLegacyWriteBoundary.mjs';
 
 function policy(overrides = {}) {
   return {
@@ -18,11 +18,11 @@ function policy(overrides = {}) {
   };
 }
 
-describe('policyBuilderPhase8LegacyWritePathShutdown', () => {
+describe('policyLegacyWriteBoundary', () => {
   test('blocks legacy preset and custom-signal writes for converted policies', () => {
-    const boundary = buildPolicyBuilderPhase8LegacyWritePathShutdown({
+    const boundary = buildPolicyLegacyWriteBoundary({
       policy: policy(),
-      operationId: PHASE8R_LEGACY_WRITE_OPERATION_IDS.UPDATE_POLICY,
+      operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.UPDATE_POLICY,
       payload: {
         presets: [
           {
@@ -43,7 +43,7 @@ describe('policyBuilderPhase8LegacyWritePathShutdown', () => {
     expect(boundary.validation.ok).toBe(true);
     expect(boundary.allowed).toBe(false);
     expect(boundary.statusId)
-      .toBe(PHASE8R_LEGACY_WRITE_STATUS_IDS.CONVERTED_LEGACY_WRITE_BLOCKED);
+      .toBe(POLICY_LEGACY_WRITE_STATUS_IDS.CONVERTED_LEGACY_WRITE_BLOCKED);
     expect(boundary.detectedFields.legacyBehavior.map(field => field.field))
       .toEqual(expect.arrayContaining([
         'presets',
@@ -62,9 +62,9 @@ describe('policyBuilderPhase8LegacyWritePathShutdown', () => {
   });
 
   test('allows converted metadata-only policy edits', () => {
-    const boundary = buildPolicyBuilderPhase8LegacyWritePathShutdown({
+    const boundary = buildPolicyLegacyWriteBoundary({
       policy: policy(),
-      operationId: PHASE8R_LEGACY_WRITE_OPERATION_IDS.UPDATE_POLICY,
+      operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.UPDATE_POLICY,
       payload: {
         name: 'Animated Movies',
         description: 'Destination for animated movies',
@@ -75,19 +75,19 @@ describe('policyBuilderPhase8LegacyWritePathShutdown', () => {
     expect(boundary.validation.ok).toBe(true);
     expect(boundary.allowed).toBe(true);
     expect(boundary.statusId)
-      .toBe(PHASE8R_LEGACY_WRITE_STATUS_IDS.CONVERTED_METADATA_WRITE_ALLOWED);
+      .toBe(POLICY_LEGACY_WRITE_STATUS_IDS.CONVERTED_METADATA_WRITE_ALLOWED);
     expect(boundary.detectedFields.legacyBehavior).toHaveLength(0);
     expect(boundary.detectedFields.metadata.map(field => field.field))
       .toEqual(expect.arrayContaining(['name', 'description', 'enabled']));
   });
 
   test('keeps unconverted compatibility writes allowed with warning and removal checklist', () => {
-    const boundary = buildPolicyBuilderPhase8LegacyWritePathShutdown({
+    const boundary = buildPolicyLegacyWriteBoundary({
       policy: policy({
         native_intent_active: false,
         native_intent_version: null,
       }),
-      operationId: PHASE8R_LEGACY_WRITE_OPERATION_IDS.ATTACH_PRESET,
+      operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.ATTACH_PRESET,
       payload: {
         preset_id: 11,
         weight: 0.8,
@@ -97,7 +97,7 @@ describe('policyBuilderPhase8LegacyWritePathShutdown', () => {
     expect(boundary.validation.ok).toBe(true);
     expect(boundary.allowed).toBe(true);
     expect(boundary.statusId)
-      .toBe(PHASE8R_LEGACY_WRITE_STATUS_IDS.UNCONVERTED_COMPATIBILITY_WRITE_ALLOWED);
+      .toBe(POLICY_LEGACY_WRITE_STATUS_IDS.UNCONVERTED_COMPATIBILITY_WRITE_ALLOWED);
     expect(boundary.warnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
         warningId: 'compatibility_write_time_bounded',
@@ -112,9 +112,9 @@ describe('policyBuilderPhase8LegacyWritePathShutdown', () => {
   });
 
   test('requires native write readiness before allowing converted native intent writes', () => {
-    const blocked = buildPolicyBuilderPhase8LegacyWritePathShutdown({
+    const blocked = buildPolicyLegacyWriteBoundary({
       policy: policy(),
-      operationId: PHASE8R_LEGACY_WRITE_OPERATION_IDS.NATIVE_INTENT_WRITE,
+      operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.NATIVE_INTENT_WRITE,
       payload: {
         policy_intent_contract: {
           source: 'native_intent',
@@ -122,9 +122,9 @@ describe('policyBuilderPhase8LegacyWritePathShutdown', () => {
       },
       nativeWriteReady: false,
     });
-    const allowed = buildPolicyBuilderPhase8LegacyWritePathShutdown({
+    const allowed = buildPolicyLegacyWriteBoundary({
       policy: policy(),
-      operationId: PHASE8R_LEGACY_WRITE_OPERATION_IDS.NATIVE_INTENT_WRITE,
+      operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.NATIVE_INTENT_WRITE,
       payload: {
         policy_intent_contract: {
           source: 'native_intent',
@@ -136,16 +136,16 @@ describe('policyBuilderPhase8LegacyWritePathShutdown', () => {
     expect(blocked.validation.ok).toBe(true);
     expect(blocked.allowed).toBe(false);
     expect(blocked.statusId)
-      .toBe(PHASE8R_LEGACY_WRITE_STATUS_IDS.NATIVE_WRITE_PATH_REQUIRED);
+      .toBe(POLICY_LEGACY_WRITE_STATUS_IDS.NATIVE_WRITE_PATH_REQUIRED);
     expect(allowed.validation.ok).toBe(true);
     expect(allowed.allowed).toBe(true);
-    expect(allowed.statusId).toBe(PHASE8R_LEGACY_WRITE_STATUS_IDS.NATIVE_WRITE_ALLOWED);
+    expect(allowed.statusId).toBe(POLICY_LEGACY_WRITE_STATUS_IDS.NATIVE_WRITE_ALLOWED);
   });
 
   test('blocks legacy defaults for new policies once native default gates are ready', () => {
-    const boundary = buildPolicyBuilderPhase8LegacyWritePathShutdown({
+    const boundary = buildPolicyLegacyWriteBoundary({
       policy: {},
-      operationId: PHASE8R_LEGACY_WRITE_OPERATION_IDS.CREATE_POLICY,
+      operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.CREATE_POLICY,
       nativeDefaultReady: true,
       payload: {
         name: 'Movies',
@@ -162,13 +162,13 @@ describe('policyBuilderPhase8LegacyWritePathShutdown', () => {
     expect(boundary.validation.ok).toBe(true);
     expect(boundary.allowed).toBe(false);
     expect(boundary.statusId)
-      .toBe(PHASE8R_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_NATIVE_DEFAULT_REQUIRED);
+      .toBe(POLICY_LEGACY_WRITE_STATUS_IDS.NEW_POLICY_NATIVE_DEFAULT_REQUIRED);
   });
 
   test('validation rejects weakened converted legacy allowance and missing shutdown checklist', () => {
-    const boundary = buildPolicyBuilderPhase8LegacyWritePathShutdown({
+    const boundary = buildPolicyLegacyWriteBoundary({
       policy: policy(),
-      operationId: PHASE8R_LEGACY_WRITE_OPERATION_IDS.RESET_POLICY,
+      operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.RESET_POLICY,
       payload: {},
     });
     const weakened = {
@@ -181,38 +181,39 @@ describe('policyBuilderPhase8LegacyWritePathShutdown', () => {
         legacyRowsWritten: true,
       },
     };
-    const riskIds = validatePolicyBuilderPhase8LegacyWritePathShutdown(weakened)
+    const riskIds = validatePolicyLegacyWriteBoundary(weakened)
       .issues
       .map(issue => issue.riskId);
 
     expect(riskIds).toEqual(expect.arrayContaining([
-      PHASE8R_LEGACY_WRITE_RISK_IDS.CONVERTED_RESET_TO_LEGACY_ALLOWED,
-      PHASE8R_LEGACY_WRITE_RISK_IDS.MISSING_REMOVAL_CHECKLIST,
-      PHASE8R_LEGACY_WRITE_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      POLICY_LEGACY_WRITE_RISK_IDS.CONVERTED_RESET_TO_LEGACY_ALLOWED,
+      POLICY_LEGACY_WRITE_RISK_IDS.MISSING_REMOVAL_CHECKLIST,
+      POLICY_LEGACY_WRITE_RISK_IDS.SIDE_EFFECT_PERFORMED,
     ]));
   });
 
   test('audits cleanly and points to deletion gates next', () => {
-    const boundary = buildPolicyBuilderPhase8LegacyWritePathShutdown({
+    const boundary = buildPolicyLegacyWriteBoundary({
       policy: policy(),
-      operationId: PHASE8R_LEGACY_WRITE_OPERATION_IDS.UPDATE_POLICY,
+      operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.UPDATE_POLICY,
       payload: {
         name: 'Animated Movies',
       },
     });
-    const audit = buildPolicyBuilderPhase8LegacyWritePathShutdownAudit(boundary);
+    const audit = buildPolicyLegacyWriteBoundaryAudit(boundary);
 
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
-      operationId: PHASE8R_LEGACY_WRITE_OPERATION_IDS.UPDATE_POLICY,
-      statusId: PHASE8R_LEGACY_WRITE_STATUS_IDS.CONVERTED_METADATA_WRITE_ALLOWED,
+      operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.UPDATE_POLICY,
+      statusId: POLICY_LEGACY_WRITE_STATUS_IDS.CONVERTED_METADATA_WRITE_ALLOWED,
       allowed: true,
       convertedPolicy: true,
       legacyFieldCount: 0,
-      nextPhase: expect.objectContaining({
-        phaseId: '8r_7',
+      nextStep: expect.objectContaining({
+        stepId: 'legacy_code_deletion_gates',
       }),
     }));
+    expect(audit.nextPhase).toBeUndefined();
   });
 });

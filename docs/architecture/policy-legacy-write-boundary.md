@@ -1,6 +1,6 @@
-# Policy Builder Phase 8R Legacy Write Path Shutdown
+# Policy Legacy Write Boundary
 
-Status: implemented as the sixth Phase 8R storage-migration component.
+Status: implemented as the durable policy legacy write-boundary contract.
 
 ## Problem
 
@@ -13,21 +13,21 @@ routes, preset delete routes, auto-learning writers, or reset flows.
 
 - [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/)
   provides a basis for testing application security controls and secure
-  development requirements. Phase 8R.6 applies this by making write authority a
-  server-side decision rather than relying on client UI state.
+  development requirements. This boundary applies that guidance by making write
+  authority a server-side decision rather than relying on client UI state.
 - [OWASP API Security API3:2023 Broken Object Property Level Authorization](https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/)
   warns that APIs are vulnerable when clients can change object properties they
-  should not be allowed to manipulate. Phase 8R.6 treats legacy behavior fields
-  on converted policies as blocked object properties.
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
+  should not be allowed to manipulate. This boundary treats legacy behavior
+  fields on converted policies as blocked object properties.
+- [NIST Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
   recommends risk-based secure development, tracking security requirements and
-  design decisions, and integrating security practices into the SDLC. Phase 8R.6
-  records the shutdown contract and keeps a deletion checklist before route
-  mutation is introduced.
+  design decisions, and integrating security practices into the SDLC. This
+  boundary records the shutdown contract and keeps a deletion checklist before
+  route mutation is introduced.
 - [OWASP AI Agent Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/AI_Agent_Security_Cheat_Sheet.html)
   recommends high-impact action previews, audit trails, exact-action approval,
-  expiry, replay protection, and fail-closed execution. Phase 8R.6 separates the
-  write-boundary decision from execution and fails closed when converted
+  expiry, replay protection, and fail-closed execution. This boundary separates
+  the write-boundary decision from execution and fails closed when converted
   policies receive legacy behavior writes.
 
 ## Recommendations
@@ -73,14 +73,14 @@ Cons:
   write persistence is not present in the current database schema.
 - Auto-learning writers still need later integration to call this boundary for
   converted policies.
-- Native create/update payload execution remains a later Phase 8R storage task.
+- Native create/update payload execution remains a later native storage task.
 
 ## Final Recommendation Stack
 
 - Server write-boundary service:
-  `server/src/services/policyBuilderPhase8LegacyWritePathShutdown.mjs`
+  `server/src/services/policyLegacyWriteBoundary.mjs`
 - Test coverage:
-  `server/src/__tests__/services/policyBuilderPhase8LegacyWritePathShutdown.test.mjs`
+  `server/src/__tests__/services/policyLegacyWriteBoundary.test.mjs`
 - Existing route surfaces to guard later:
   `server/src/routes/policiesRoutePolicyWrite.mjs`
   and `server/src/routes/policiesRoutePolicyPresets.mjs`
@@ -118,7 +118,7 @@ removalChecklist
 sideEffects
 reasons
 validation
-nextPhase
+nextStep
 ```
 
 Converted policies block legacy behavior writes for:
@@ -158,6 +158,6 @@ Converted policies allow metadata-only edits for:
 
 ## Next Step
 
-Proceed to **Phase 8R.7 Legacy Code Deletion Gates**. With converted-policy
-legacy write shutdown defined, the remaining compatibility code can be assigned
-deletion gates instead of being preserved as a parallel policy model.
+Proceed to **Legacy Code Deletion Gates**. With converted-policy legacy write
+shutdown defined, the remaining compatibility code can be assigned deletion
+gates instead of being preserved as a parallel policy model.
