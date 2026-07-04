@@ -1,49 +1,48 @@
-# Policy Builder Phase 6R Migration Quality Gate
+# Policy Migration Quality Gate
 
 ## Status
 
-Implemented as a hardening slice on top of Phase 6R.6 Migration And Deletion
-Path.
+Implemented as the durable quality gate for policy migration/deletion planning.
 
-The bounded migration/deletion entry point now requires the sanitized workflow
-quality snapshots produced by Phase 6R.5. Migration planning blocks when
+The bounded migration/deletion entry point requires sanitized workflow-quality
+snapshots from the policy operator workflow. Migration planning blocks when
 workflow quality is missing, insufficient, or mismatched across the bounded
 workflow result and the embedded workflow context.
 
 ## Problem
 
-Phase 6R.6 classifies old diagnostic artifacts as engine primitives,
-migration verifiers, deletion targets, or Phase 8R storage blockers. That
-classification must not be detached from the evidence quality that allowed the
-operator workflow to render.
+The policy migration/deletion path classifies old diagnostic artifacts as
+engine primitives, migration verifiers, deletion targets, or native-storage
+blockers. That classification must remain attached to the evidence quality that
+allowed the operator workflow to render.
 
 Without a migration-side quality check, a caller could pass a successful-looking
 bounded workflow result with stripped or drifted quality metadata. That would
 let migration/deletion planning proceed from a workflow context that no longer
-proves the same evidence quality used by intent, readiness, and the operator
-workflow.
+proves the same evidence quality used by intent, learning, automation
+readiness, and the operator workflow.
 
 ## Official Guidance Reviewed
 
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
-  recommends integrating secure development practices into the lifecycle. The
-  migration boundary keeps quality validation deterministic and testable before
-  deletion or storage work can proceed.
+- [NIST Secure Software Development Framework SP 800-218](https://csrc.nist.gov/pubs/sp/800/218/final)
+  supports secure design, verification, and controlled release practices. The
+  migration boundary keeps workflow-quality validation deterministic and
+  testable before deletion or storage work can proceed.
 - [NIST SP 800-53 Revision 5](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final)
-  covers contingency planning, backup, recovery, and system integrity controls.
-  The migration cutline keeps rollback/storage gates separate from evidence
-  quality gates.
+  provides security and privacy controls that include contingency, backup,
+  recovery, and system integrity considerations. The migration quality gate
+  keeps rollback and storage gates separate from evidence-quality gates.
 - [OWASP Business Logic Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Business_Logic_Security_Cheat_Sheet.html)
   recommends enforcing legal state combinations server-side and testing invalid
-  combinations. The migration wrapper now rejects successful-looking workflow
+  combinations. The migration wrapper rejects successful-looking workflow
   results when their quality combination is invalid.
 - [OWASP Web Security Testing Guide: Business Logic Data Validation](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/01-Test_Business_Logic_Data_Validation)
   emphasizes validating logical data directly server-side, not only in the
   frontend. This gate validates workflow quality at the migration boundary.
 - [PostgreSQL Backup And Restore](https://www.postgresql.org/docs/current/backup.html)
-  describes backup approaches and the need to understand assumptions. This
-  slice preserves the existing separation: quality gates decide whether planning
-  may proceed, while rollback/storage gates decide when data changes are safe.
+  documents backup approaches and the need to understand operational
+  assumptions. This quality gate does not authorize mutation; rollback and
+  storage gates still decide when data changes are safe.
 
 ## Recommendations
 
@@ -67,25 +66,28 @@ workflow.
    Migration context may carry quality status, next action, reason IDs, counts,
    and booleans. It must not carry raw evidence labels.
 
+6. **Keep mutation authorization separate.**
+   Passing quality gates means the workflow handoff is trustworthy enough for
+   planning. It does not imply deletion, rollback, or storage migration is safe.
+
 ## Pros And Cons
 
 Pros:
 
 - Prevents migration/deletion planning from running on incomplete workflow
   evidence state.
-- Keeps the quality contract enforced at every Phase 6R handoff.
+- Keeps the quality contract enforced at every policy-engine handoff.
 - Makes deletion readiness harder to spoof with a successful-looking workflow
   wrapper.
-- Gives Phase 7R runtime inventory a clean, quality-gated policy engine completion
-  boundary.
+- Gives runtime inventory and completion-audit checks a clean, quality-gated
+  policy migration/deletion boundary.
 
 Cons:
 
 - Adds another invariant to migration fixtures.
 - Does not remove old verifier/deletion target code by itself.
-- Historical phase-coded migration module names have been cut over to durable
-  policy-domain names; remaining cleanup stays tied to explicit migration
-  gates.
+- Requires callers to preserve sanitized quality metadata across bounded
+  workflow handoffs.
 
 ## Final Recommendation Stack
 
@@ -93,16 +95,18 @@ Cons:
   `server/src/services/policyOperatorWorkflow.mjs`
 - Migration boundary:
   `server/src/services/policyMigrationDeletionPath.mjs`
-- Test module:
+- Focused tests:
   `server/src/__tests__/services/policyMigrationDeletionPath.test.mjs`
-- Existing migration record:
+- Existing migration/deletion record:
   `docs/architecture/policy-migration-deletion-path.md`
+- Quality gate owner:
+  `docs/architecture/policy-migration-quality-gate.md`
 - Roadmap owner:
-  Phase 6R.6 in `docs/architecture/policy-builder-intent-model-roadmap.md`
+  `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
 
-The bounded migration context now includes:
+The bounded migration context includes:
 
 ```text
 workflowBoundary.quality
@@ -130,12 +134,11 @@ boundedWorkflowResult.workflow.boundaryContext
 - Insufficient workflow quality cannot authorize migration/deletion planning.
 - Drifted workflow quality cannot authorize migration/deletion planning.
 - Migration context stays label-free.
-- Rollback, deletion, and Phase 8R storage gates remain separate from quality
-  gates, so quality success cannot imply safe mutation.
+- Rollback, deletion, and storage gates remain separate from quality gates, so
+  quality success cannot imply safe mutation.
 
 ## Next Step
 
-Run the **policy engine completion audit** against the quality-gated handoff chain.
-That audit should prove evidence, intent, learning, readiness, workflow, and
-migration boundaries all reject incomplete quality/provenance before Phase 7R
-runtime inventory begins.
+Continue with **Policy Engine Completion Audit Architecture Cutover** so the
+completion gate records the durable handoff chain across evidence, intent,
+learning, readiness, workflow, and migration boundaries.

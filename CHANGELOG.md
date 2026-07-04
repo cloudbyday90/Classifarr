@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Migration Quality Gate Architecture Cutover** — renamed the active
+  migration quality-gate architecture record to
+  `policy-migration-quality-gate.md`, updated the roadmap to point at the
+  durable workflow-quality continuity contract, added a migration quality-gate
+  architecture cutover record, and preserved the existing
+  `policyMigrationDeletionPath.mjs` missing-quality, insufficient-quality,
+  mismatched-quality, label-free metadata, and mutation-gate separation
+  behavior before migration/deletion planning.
 - **Policy Migration Deletion Path Architecture Cutover** — renamed the active
   migration/deletion architecture record to
   `policy-migration-deletion-path.md`, updated runtime-facing workflow,

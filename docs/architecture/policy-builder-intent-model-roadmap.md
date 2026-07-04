@@ -3604,7 +3604,9 @@ Implementation status:
 - Policy migration deletion path architecture cutover is documented in
   [Policy Migration Deletion Path Architecture Cutover](policy-migration-deletion-path-architecture-cutover.md).
 - Policy migration quality-gate hardening is documented in
-  [Policy Builder Phase 6R Migration Quality Gate](policy-builder-phase-6r-migration-quality-gate.md).
+  [Policy Migration Quality Gate](policy-migration-quality-gate.md).
+- Policy migration quality-gate architecture cutover is documented in
+  [Policy Migration Quality Gate Architecture Cutover](policy-migration-quality-gate-architecture-cutover.md).
 
 ## Phase 6R Work Sequence
 
@@ -6648,6 +6650,16 @@ Implementation status:
   references, and 3,762 rename candidates. The production phase-coded baseline
   remains unchanged, but runtime-facing migration/deletion and runtime inventory
   labels now use durable policy-domain wording.
+- The policy migration quality-gate architecture cutover renamed the active
+  migration quality-gate design record to `policy-migration-quality-gate.md`,
+  added a durable architecture cutover record, and updated roadmap links to the
+  durable workflow-quality continuity contract:
+  [Policy Migration Quality Gate Architecture Cutover](policy-migration-quality-gate-architecture-cutover.md).
+- After the policy migration quality-gate architecture cutover, the repository
+  inventory validates with 9,447 total phase-coded references, 3,740 production
+  references, and 3,762 rename candidates. The production phase-coded baseline
+  remains unchanged, but the active migration quality-gate documentation now
+  uses durable policy-domain wording.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
