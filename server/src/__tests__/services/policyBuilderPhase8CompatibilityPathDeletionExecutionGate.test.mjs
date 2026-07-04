@@ -11,8 +11,8 @@ import {
   buildPolicyCompatibilityDeletionReadiness,
 } from '../../services/policyCompatibilityDeletionReadiness.mjs';
 import {
-  buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs';
+  buildPolicyCompatibilityDeletionExecutionPlan,
+} from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
   PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS,
   PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_STATUS_IDS,
@@ -130,7 +130,7 @@ function replacementEvidence() {
 }
 
 function readyExecutionPlan(overrides = {}) {
-  return buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan({
+  return buildPolicyCompatibilityDeletionExecutionPlan({
     deletionReadiness: readyReadiness(),
     deletionGatePlan: readyDeletionGates(),
     replacementEvidence: replacementEvidence(),
@@ -193,7 +193,7 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionGate', () => {
 
   test('blocks when the execution plan is not ready', () => {
     const gate = readyGate({
-      executionPlan: buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan(),
+      executionPlan: buildPolicyCompatibilityDeletionExecutionPlan(),
     });
 
     expect(gate.statusId)

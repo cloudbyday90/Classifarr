@@ -1,7 +1,7 @@
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS,
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
+} from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
   PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
 } from '../../services/policyBuilderPhase8ControlledCompatibilityPathRemoval.mjs';
@@ -18,7 +18,7 @@ const MANIFEST_PATH =
 function executionPlan(overrides = {}) {
   return {
     statusId:
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,
     validation: {
       ok: true,
@@ -32,7 +32,7 @@ function executionPlan(overrides = {}) {
       entries: [{
         categoryId: 'client_bridge_ui',
         actionId:
-          PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
+          POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
         path: MANIFEST_PATH,
         deletionIntent: 'Remove bridge-only UI after native replacement.',
         replacementEvidence: {

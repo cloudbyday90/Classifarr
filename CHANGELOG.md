@@ -11,6 +11,18 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Compatibility Deletion Execution Plan Module Cutover** — renamed the
+  compatibility deletion execution-plan service, focused test, and architecture
+  record to `policyCompatibilityDeletionExecutionPlan.mjs`,
+  `policyCompatibilityDeletionExecutionPlan.test.mjs`, and
+  `policy-compatibility-deletion-execution-plan.md`, replaced phase-coded
+  exported constants, builders, validation helpers, payload versioning, and
+  `nextPhase.phaseId` with durable policy-domain names and `nextStep.stepId`,
+  updated execution-gate, controlled-removal, controlled-apply,
+  artifact-export, batch-authorization, completion-audit, roadmap, and
+  evidence-map references, and preserved manifest evidence checks,
+  rollback/support stance requirements, approval requirements, risk-count
+  validation, and no-side-effect guarantees.
 - **Policy Compatibility Deletion Readiness Module Cutover** — renamed the
   compatibility deletion-readiness service, focused test, and architecture
   record to `policyCompatibilityDeletionReadiness.mjs`,
@@ -963,7 +975,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   execution plan and blocks controlled deletion unless the worktree, backup and
   restore evidence, operator approval, final rollback/support stances, and
   manifest freshness are confirmed.
-- **Policy Builder Phase 8R Compatibility Path Deletion Execution Plan** —
+- **Policy Compatibility Deletion Execution Plan** —
   added a side-effect-free manifest builder that consumes deletion readiness and
   legacy deletion categories, enumerates exact compatibility paths with action
   IDs and replacement evidence, and blocks execution planning without rollback

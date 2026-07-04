@@ -5,8 +5,8 @@ import {
   POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionReadiness.mjs';
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
+} from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
   PHASE8R_EXECUTION_PLAN_ARTIFACT_RISK_IDS,
   PHASE8R_EXECUTION_PLAN_ARTIFACT_STATUS_IDS,
@@ -64,7 +64,7 @@ describe('policyBuilderPhase8ExecutionPlanArtifact', () => {
     expect(artifact.ready).toBe(true);
     expect(artifact.validation.ok).toBe(true);
     expect(artifact.executionPlan.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS
         .READY_FOR_EXECUTION_GATE);
     expect(artifact.executionPlan.manifest).toEqual(expect.objectContaining({
       approved: true,

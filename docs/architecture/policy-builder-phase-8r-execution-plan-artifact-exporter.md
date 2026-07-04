@@ -100,7 +100,7 @@ Use this stack for Phase 8R execution-plan artifact generation:
 
 1. Require an explicit input evidence JSON file.
 2. Build the nested Phase 8R.15 execution plan through
-   `policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs`.
+   `policyCompatibilityDeletionExecutionPlan.mjs`.
 3. Wrap the plan with generated timestamp, readiness status, risks, validation,
    and no-side-effect evidence.
 4. Refuse to write ready execution-plan output when readiness is blocked unless

@@ -1,6 +1,6 @@
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
+} from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
   PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
 } from '../../services/policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs';
@@ -17,7 +17,7 @@ const MANIFEST_PATHS = Object.freeze([
 function executionPlan(overrides = {}) {
   return {
     statusId:
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,
     validation: {
       ok: true,

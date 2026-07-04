@@ -71,8 +71,8 @@ Pros:
 
 Cons:
 
-- Downstream compatibility-removal modules still carry their own phase-coded
-  names until their scoped cutover components are completed.
+- Downstream execution-gate and controlled-removal modules still carry their own
+  phase-coded names until their scoped cutover components are completed.
 - Actual file deletion remains intentionally out of scope for this component.
 - Historical Phase 8R evidence inventory still uses phase labels until its
   evidence-run cutover is reached.
@@ -88,7 +88,7 @@ Cons:
 - Downstream consumers updated:
   `server/src/services/policyCompatibilityDeletionReadiness.mjs`
   and
-  `server/src/services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs`
+  `server/src/services/policyCompatibilityDeletionExecutionPlan.mjs`
 - Evidence-map and reset references:
   `server/src/services/policyBuilderPhase8CompletionEvidenceRun.mjs`
   and `server/src/services/policyNativeStorageTestReset.mjs`

@@ -6,23 +6,23 @@ import {
   buildPolicyCompatibilityDeletionReadiness,
 } from './policyCompatibilityDeletionReadiness.mjs';
 
-const PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_PLAN_VERSION =
-  'phase8r.compatibility_path_deletion_execution_plan.v1';
+const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION =
+  'policy.compatibility_deletion_execution_plan.v1';
 
-const PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS = Object.freeze({
+const POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS = Object.freeze({
   READY_FOR_EXECUTION_GATE: 'ready_for_execution_gate',
   BLOCKED_BY_READINESS: 'blocked_by_readiness',
   BLOCKED_BY_MANIFEST_EVIDENCE: 'blocked_by_manifest_evidence',
   BLOCKED_BY_APPROVAL: 'blocked_by_approval',
 });
 
-const PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS = Object.freeze({
+const POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS = Object.freeze({
   DELETE_FILE: 'delete_file',
   REPLACE_CODE_PATH: 'replace_code_path',
   REMOVE_TEST: 'remove_test',
 });
 
-const PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS = Object.freeze({
+const POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS = Object.freeze({
   READINESS_NOT_READY: 'readiness_not_ready',
   READINESS_VALIDATION_FAILED: 'readiness_validation_failed',
   MISSING_DELETION_CATEGORY: 'missing_deletion_category',
@@ -38,17 +38,17 @@ const PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS = Object.freeze({
 
 const CATEGORY_ACTION_IDS = Object.freeze({
   [POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI]:
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
   [POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.LEGACY_SERIALIZER_DESERIALIZER]:
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.REPLACE_CODE_PATH,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REPLACE_CODE_PATH,
   [POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CUSTOM_SIGNAL_MUTATION_HELPERS]:
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.REPLACE_CODE_PATH,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REPLACE_CODE_PATH,
   [POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.PRESET_AS_POLICY_RUNTIME]:
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.REPLACE_CODE_PATH,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REPLACE_CODE_PATH,
   [POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.OLD_PREVIEW_REPLAY_DIAGNOSTICS]:
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
   [POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.STALE_COMPATIBILITY_TESTS]:
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.REMOVE_TEST,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_TEST,
 });
 
 function asArray(value) {
@@ -91,7 +91,7 @@ function buildManifestEntries({ deletionGatePlan = {}, replacementEvidence = {} 
         categoryId: category.categoryId || null,
         actionId:
           CATEGORY_ACTION_IDS[category.categoryId] ||
-          PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.REPLACE_CODE_PATH,
+          POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REPLACE_CODE_PATH,
         path: normalizedPath,
         deletionIntent: category.deletionIntent || null,
         replacementEvidence: evidence,
@@ -110,15 +110,15 @@ function evaluateReadiness(deletionReadiness) {
     readiness.readyForDeletionExecutionPlan !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.READINESS_NOT_READY,
-      'Compatibility path deletion execution planning requires a ready Phase 8R.14 readiness report.',
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.READINESS_NOT_READY,
+      'Compatibility path deletion execution planning requires a ready compatibility deletion readiness report.',
       { statusId: readiness.statusId || null }
     ));
   }
 
   if (readiness.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.READINESS_VALIDATION_FAILED,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.READINESS_VALIDATION_FAILED,
       'Compatibility path deletion readiness must validate before an execution plan can be approved.',
       { issueCount: readiness.validation?.issueCount ?? null }
     ));
@@ -135,7 +135,7 @@ function evaluateManifestEntries(entries = []) {
 
   if (entries.length === 0) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MISSING_DELETION_CATEGORY,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_DELETION_CATEGORY,
       'Compatibility path deletion execution planning requires at least one manifest entry.'
     ));
   }
@@ -143,7 +143,7 @@ function evaluateManifestEntries(entries = []) {
   entries.forEach(entry => {
     if (!entry.path) {
       risks.push(buildRisk(
-        PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MISSING_MANIFEST_ENTRY_PATH,
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_MANIFEST_ENTRY_PATH,
         'Each compatibility deletion manifest entry requires an exact file or code path.',
         { categoryId: entry.categoryId }
       ));
@@ -151,7 +151,7 @@ function evaluateManifestEntries(entries = []) {
 
     if (!entry.replacementEvidence) {
       risks.push(buildRisk(
-        PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MISSING_REPLACEMENT_EVIDENCE,
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_REPLACEMENT_EVIDENCE,
         'Each compatibility deletion manifest entry requires replacement evidence before deletion can be planned.',
         {
           categoryId: entry.categoryId,
@@ -173,21 +173,21 @@ function evaluateApproval({
 
   if (!rollbackStance) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MISSING_ROLLBACK_STANCE,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_ROLLBACK_STANCE,
       'Compatibility path deletion execution planning requires a rollback or post-window recovery stance.'
     ));
   }
 
   if (!supportStance) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MISSING_SUPPORT_STANCE,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_SUPPORT_STANCE,
       'Compatibility path deletion execution planning requires a support stance for converted native policies.'
     ));
   }
 
   if (manifestApproved !== true) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MANIFEST_NOT_APPROVED,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MANIFEST_NOT_APPROVED,
       'Compatibility path deletion execution planning requires explicit manifest approval.'
     ));
   }
@@ -197,33 +197,33 @@ function evaluateApproval({
 
 function determineStatusId(risks = []) {
   if (risks.some(risk => [
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.READINESS_NOT_READY,
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.READINESS_VALIDATION_FAILED,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.READINESS_NOT_READY,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.READINESS_VALIDATION_FAILED,
   ].includes(risk.riskId))) {
-    return PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS.BLOCKED_BY_READINESS;
+    return POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.BLOCKED_BY_READINESS;
   }
 
   if (risks.some(risk => [
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MISSING_DELETION_CATEGORY,
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MISSING_MANIFEST_ENTRY_PATH,
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MISSING_REPLACEMENT_EVIDENCE,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_DELETION_CATEGORY,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_MANIFEST_ENTRY_PATH,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_REPLACEMENT_EVIDENCE,
   ].includes(risk.riskId))) {
-    return PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS
+    return POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS
       .BLOCKED_BY_MANIFEST_EVIDENCE;
   }
 
   if (risks.some(risk => [
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MISSING_ROLLBACK_STANCE,
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MISSING_SUPPORT_STANCE,
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MANIFEST_NOT_APPROVED,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_ROLLBACK_STANCE,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_SUPPORT_STANCE,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MANIFEST_NOT_APPROVED,
   ].includes(risk.riskId))) {
-    return PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS.BLOCKED_BY_APPROVAL;
+    return POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.BLOCKED_BY_APPROVAL;
   }
 
-  return PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE;
+  return POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE;
 }
 
-function buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan({
+function buildPolicyCompatibilityDeletionExecutionPlan({
   deletionReadiness = null,
   deletionGatePlan = null,
   replacementEvidence = {},
@@ -247,7 +247,7 @@ function buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan({
     }),
   ];
   const plan = {
-    version: PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_PLAN_VERSION,
+    version: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
     statusId: determineStatusId(risks),
     readyForExecutionGate: risks.length === 0,
     readiness: {
@@ -281,8 +281,8 @@ function buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan({
       storageChanged: false,
       manifestWritten: false,
     },
-    nextPhase: {
-      phaseId: '8r_16',
+    nextStep: {
+      stepId: 'compatibility_deletion_execution_gate',
       label: 'Compatibility Path Deletion Execution Gate',
       reason:
         'The execution plan can now be reviewed; the next gate should verify worktree, backup, and operator approval immediately before deletion.',
@@ -291,24 +291,24 @@ function buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan({
 
   return {
     ...plan,
-    validation: validatePolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan(plan),
+    validation: validatePolicyCompatibilityDeletionExecutionPlan(plan),
   };
 }
 
-function validatePolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan(plan = {}) {
+function validatePolicyCompatibilityDeletionExecutionPlan(plan = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS)
+  if (!Object.values(POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS)
     .includes(plan.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.UNKNOWN_STATUS,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.UNKNOWN_STATUS,
       'Compatibility path deletion execution plan status must be known.'
     ));
   }
 
   if (plan.riskCount !== asArray(plan.risks).length) {
     issues.push(buildRisk(
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.RISK_COUNT_MISMATCH,
       'Compatibility path deletion execution plan risk count must match risk list length.'
     ));
   }
@@ -316,7 +316,7 @@ function validatePolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan(plan 
   Object.entries(plan.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
-        PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.SIDE_EFFECT_PERFORMED,
         `Compatibility path deletion execution plan cannot perform side effect "${key}".`
       ));
     }
@@ -330,10 +330,10 @@ function validatePolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan(plan 
 }
 
 export {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS,
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_PLAN_VERSION,
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS,
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS,
-  buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan,
-  validatePolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
+  buildPolicyCompatibilityDeletionExecutionPlan,
+  validatePolicyCompatibilityDeletionExecutionPlan,
 };

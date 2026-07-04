@@ -95,7 +95,7 @@ Cons:
 
 Use this stack for Phase 8R.16:
 
-1. `policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs` creates the
+1. `policyCompatibilityDeletionExecutionPlan.mjs` creates the
    exact manifest.
 2. `policyBuilderPhase8CompatibilityPathDeletionExecutionGate.mjs` validates
    final worktree, recovery, approval, support, and manifest freshness signals.

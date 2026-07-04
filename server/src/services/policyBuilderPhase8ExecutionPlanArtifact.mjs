@@ -1,7 +1,7 @@
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS,
-  buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan,
-} from './policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
+  buildPolicyCompatibilityDeletionExecutionPlan,
+} from './policyCompatibilityDeletionExecutionPlan.mjs';
 
 const PHASE8R_EXECUTION_PLAN_ARTIFACT_VERSION =
   'phase8r.execution_plan_artifact.v1';
@@ -39,7 +39,7 @@ function normalizeGeneratedAt(value) {
 function buildPlanFromInput(input = {}) {
   const evidence = asObject(input);
 
-  return buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan({
+  return buildPolicyCompatibilityDeletionExecutionPlan({
     deletionReadiness: evidence.deletionReadiness,
     deletionGatePlan: evidence.deletionGatePlan,
     replacementEvidence: evidence.replacementEvidence,
@@ -66,7 +66,7 @@ function buildArtifactRisks({
 
   if (
     executionPlan.statusId !==
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE ||
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE ||
     executionPlan.readyForExecutionGate !== true
   ) {
     risks.push(buildRisk(

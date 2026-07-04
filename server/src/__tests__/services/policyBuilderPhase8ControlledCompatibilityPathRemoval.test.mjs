@@ -11,8 +11,8 @@ import {
   buildPolicyCompatibilityDeletionReadiness,
 } from '../../services/policyCompatibilityDeletionReadiness.mjs';
 import {
-  buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs';
+  buildPolicyCompatibilityDeletionExecutionPlan,
+} from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
   buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionGate,
 } from '../../services/policyBuilderPhase8CompatibilityPathDeletionExecutionGate.mjs';
@@ -133,7 +133,7 @@ function replacementEvidence() {
 }
 
 function readyExecutionPlan(overrides = {}) {
-  return buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan({
+  return buildPolicyCompatibilityDeletionExecutionPlan({
     deletionReadiness: readyReadiness(),
     deletionGatePlan: readyDeletionGates(),
     replacementEvidence: replacementEvidence(),
@@ -221,7 +221,7 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemoval', () => {
   });
 
   test('blocks when the execution plan is not ready', () => {
-    const executionPlan = buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan();
+    const executionPlan = buildPolicyCompatibilityDeletionExecutionPlan();
     const removal = readyRemoval({
       executionPlan,
       executionGate: readyGate(readyExecutionPlan()),

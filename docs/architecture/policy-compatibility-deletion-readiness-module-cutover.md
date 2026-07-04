@@ -71,8 +71,8 @@ Pros:
 
 Cons:
 
-- Downstream execution-plan and controlled-removal modules still carry their own
-  phase-coded names until their scoped cutovers are completed.
+- Downstream controlled-removal modules still carry their own phase-coded names
+  until their scoped cutovers are completed.
 - Readiness remains conservative and cannot pass without explicit backup,
   rollback, diagnostics, and manifest confirmations.
 - Actual deletion execution remains out of scope for this component.
@@ -89,7 +89,7 @@ Cons:
   `server/src/services/policyCompatibilityDeletionGates.mjs`
   and `server/src/services/policyNativeRuntimeCutoverVerification.mjs`
 - Downstream consumer:
-  `server/src/services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs`
+  `server/src/services/policyCompatibilityDeletionExecutionPlan.mjs`
 
 ## Implementation Outcome
 

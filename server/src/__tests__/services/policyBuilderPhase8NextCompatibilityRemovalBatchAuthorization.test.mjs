@@ -1,6 +1,6 @@
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
+} from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
   PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
 } from '../../services/policyBuilderPhase8PostRemovalRuntimeVerification.mjs';
@@ -36,7 +36,7 @@ function executionPlan(overrides = {}) {
 
   return {
     statusId:
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,
     validation: {
       ok: true,
@@ -152,7 +152,7 @@ describe('policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization', () => 
   test('blocks when the execution plan is not ready or has no manifest entries', () => {
     const notReady = readyAuthorization({
       executionPlan: executionPlan({
-        statusId: PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS
+        statusId: POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS
           .BLOCKED_BY_APPROVAL,
         readyForExecutionGate: false,
         validation: {

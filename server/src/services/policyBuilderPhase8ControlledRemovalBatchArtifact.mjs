@@ -1,6 +1,6 @@
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS,
-} from './policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
+} from './policyCompatibilityDeletionExecutionPlan.mjs';
 import {
   PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_STATUS_IDS,
   buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionGate,
@@ -89,7 +89,7 @@ function buildArtifactRisks({
 
   if (
     executionPlan.statusId !==
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE ||
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE ||
     executionPlan.readyForExecutionGate !== true
   ) {
     risks.push(buildRisk(

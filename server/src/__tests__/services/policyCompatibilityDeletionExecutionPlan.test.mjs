@@ -11,12 +11,12 @@ import {
   buildPolicyCompatibilityDeletionReadiness,
 } from '../../services/policyCompatibilityDeletionReadiness.mjs';
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS,
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS,
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS,
-  buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan,
-  validatePolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
+  buildPolicyCompatibilityDeletionExecutionPlan,
+  validatePolicyCompatibilityDeletionExecutionPlan,
+} from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
@@ -121,48 +121,48 @@ function replacementEvidence() {
   return Object.fromEntries(
     Object.values(POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS)
       .map(categoryId => [categoryId, {
-        replacement: `Phase 8R native replacement for ${categoryId}`,
-        tests: ['server phase8r focused coverage'],
+        replacement: `Native policy replacement for ${categoryId}`,
+        tests: ['server focused compatibility-deletion coverage'],
       }])
   );
 }
 
 function readyExecutionPlan(overrides = {}) {
-  return buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan({
+  return buildPolicyCompatibilityDeletionExecutionPlan({
     deletionReadiness: readyReadiness(),
     deletionGatePlan: readyDeletionGates(),
     replacementEvidence: replacementEvidence(),
     rollbackStance: 'Rollback snapshots retained until post-window support stance is approved.',
     supportStance: 'Converted native policies use bounded support diagnostics.',
     manifestApproved: true,
-    approvedBy: 'phase8r-maintainer',
+    approvedBy: 'policy-maintainer',
     ...overrides,
   });
 }
 
-describe('policyBuilderPhase8CompatibilityPathDeletionExecutionPlan', () => {
+describe('policyCompatibilityDeletionExecutionPlan', () => {
   test('builds an approved side-effect-free execution manifest from deletion categories', () => {
     const plan = readyExecutionPlan();
 
     expect(plan.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE);
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE);
     expect(plan.readyForExecutionGate).toBe(true);
     expect(plan.validation.ok).toBe(true);
     expect(plan.manifest).toEqual(expect.objectContaining({
       approved: true,
-      approvedBy: 'phase8r-maintainer',
+      approvedBy: 'policy-maintainer',
       entryCount: 22,
     }));
     expect(plan.manifest.entries).toEqual(expect.arrayContaining([
       expect.objectContaining({
         categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI,
-        actionId: PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
+        actionId: POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
         path: 'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
         ready: true,
       }),
       expect.objectContaining({
         categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.STALE_COMPATIBILITY_TESTS,
-        actionId: PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.REMOVE_TEST,
+        actionId: POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_TEST,
         ready: true,
       }),
     ]));
@@ -171,19 +171,24 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionPlan', () => {
       requireSeparateExecutionGate: true,
       requireCleanWorktreeBeforeExecution: true,
     }));
+    expect(plan.nextStep).toEqual(expect.objectContaining({
+      stepId: 'compatibility_deletion_execution_gate',
+      label: 'Compatibility Path Deletion Execution Gate',
+    }));
+    expect(plan.nextPhase).toBeUndefined();
     expect(Object.values(plan.sideEffects).some(Boolean)).toBe(false);
   });
 
-  test('blocks execution planning when Phase 8R.14 readiness has not passed', () => {
+  test('blocks execution planning when compatibility deletion readiness has not passed', () => {
     const plan = readyExecutionPlan({
       deletionReadiness: buildPolicyCompatibilityDeletionReadiness(),
     });
 
     expect(plan.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS.BLOCKED_BY_READINESS);
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.BLOCKED_BY_READINESS);
     expect(plan.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.READINESS_NOT_READY,
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.READINESS_NOT_READY,
       }),
     ]));
   });
@@ -198,10 +203,10 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionPlan', () => {
     });
 
     expect(plan.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS
         .BLOCKED_BY_MANIFEST_EVIDENCE);
     expect(plan.risks.map(risk => risk.riskId)).toContain(
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MISSING_REPLACEMENT_EVIDENCE
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_REPLACEMENT_EVIDENCE
     );
     expect(plan.manifest.entries.some(entry => entry.ready === false)).toBe(true);
   });
@@ -214,17 +219,17 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionPlan', () => {
     });
 
     expect(plan.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS.BLOCKED_BY_APPROVAL);
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.BLOCKED_BY_APPROVAL);
     expect(plan.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MISSING_ROLLBACK_STANCE,
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MISSING_SUPPORT_STANCE,
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.MANIFEST_NOT_APPROVED,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_ROLLBACK_STANCE,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_SUPPORT_STANCE,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MANIFEST_NOT_APPROVED,
     ]));
   });
 
   test('rejects mutated execution plan output with side effects or stale risk count', () => {
     const plan = readyExecutionPlan();
-    const validation = validatePolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan({
+    const validation = validatePolicyCompatibilityDeletionExecutionPlan({
       ...plan,
       riskCount: 99,
       sideEffects: {
@@ -235,8 +240,8 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionPlan', () => {
 
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.RISK_COUNT_MISMATCH,
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.SIDE_EFFECT_PERFORMED,
     ]));
   });
 });

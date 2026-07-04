@@ -5050,8 +5050,8 @@ execution manifest without deleting code.
 
 Tasks:
 
-- Consume Phase 8R.14 deletion readiness.
-- Consume Phase 8R.7 deletion categories and exact compatibility paths.
+- Consume compatibility deletion readiness.
+- Consume compatibility deletion categories and exact compatibility paths.
 - Generate manifest entries with:
   - deletion category,
   - action ID,
@@ -5065,7 +5065,7 @@ Tasks:
 
 Acceptance criteria:
 
-- Execution planning is blocked unless Phase 8R.14 readiness passed.
+- Execution planning is blocked unless compatibility deletion readiness passed.
 - Every manifest entry has an exact path and replacement evidence.
 - Missing rollback/support stance or manifest approval blocks the plan.
 - Output never deletes files, archives files, removes routes, removes tests,
@@ -5075,15 +5075,17 @@ Acceptance criteria:
 Implementation status:
 
 - Phase 8R.15 compatibility path deletion execution plan is documented in
-  [Policy Builder Phase 8R Compatibility Path Deletion Execution Plan](policy-builder-phase-8r-compatibility-path-deletion-execution-plan.md).
+  [Policy Compatibility Deletion Execution Plan](policy-compatibility-deletion-execution-plan.md).
+- The production-name cutover is documented in
+  [Policy Compatibility Deletion Execution Plan Module Cutover](policy-compatibility-deletion-execution-plan-module-cutover.md).
 - The execution-plan contract lives in
-  `server/src/services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs`.
+  `server/src/services/policyCompatibilityDeletionExecutionPlan.mjs`.
 - The focused execution-plan test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.test.mjs`.
-- Current implementation builds exact manifest entries from Phase 8R.7
-  categories and paths, requires replacement evidence by path or category,
-  requires rollback/support/approval stances, and validates that no deletion
-  side effects occur.
+  `server/src/__tests__/services/policyCompatibilityDeletionExecutionPlan.test.mjs`.
+- Current implementation builds exact manifest entries from compatibility
+  deletion categories and paths, requires replacement evidence by path or
+  category, requires rollback/support/approval stances, emits a semantic
+  `nextStep.stepId`, and validates that no deletion side effects occur.
 
 ### 8R.16 Compatibility Path Deletion Execution Gate
 
@@ -5092,7 +5094,7 @@ can move to a separate controlled deletion step.
 
 Tasks:
 
-- Consume Phase 8R.15 execution plan.
+- Consume the compatibility deletion execution plan.
 - Require a clean worktree confirmation.
 - Require verified and fresh backup/restore evidence.
 - Require explicit operator approval with an approving actor.

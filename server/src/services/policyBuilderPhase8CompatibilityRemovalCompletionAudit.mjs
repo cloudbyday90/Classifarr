@@ -1,7 +1,7 @@
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS,
-  buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan,
-} from './policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
+  buildPolicyCompatibilityDeletionExecutionPlan,
+} from './policyCompatibilityDeletionExecutionPlan.mjs';
 import {
   PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
 } from './policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.mjs';
@@ -113,7 +113,7 @@ function evaluateExecutionPlan(executionPlan = {}) {
 
   if (
     executionPlan.statusId !==
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE ||
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE ||
     executionPlan.readyForExecutionGate !== true
   ) {
     risks.push(buildRisk(
@@ -365,7 +365,7 @@ function buildPolicyBuilderPhase8CompatibilityRemovalCompletionAudit({
   sideEffects = {},
 } = {}) {
   const resolvedExecutionPlan =
-    executionPlan || buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionPlan();
+    executionPlan || buildPolicyCompatibilityDeletionExecutionPlan();
   const authorizationEvaluation = evaluateCompletionAuthorization(completionAuthorization);
   const executionPlanEvaluation = evaluateExecutionPlan(resolvedExecutionPlan);
   const removalEvaluation = evaluateRemovalVerifications(removalVerifications);
