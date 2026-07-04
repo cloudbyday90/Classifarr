@@ -1,12 +1,13 @@
-# Policy Builder Phase 6R Evidence Engine
+# Policy Evidence Engine
 
 ## Status
 
-Implemented as the first Phase 6R engine contract.
+Implemented as the durable policy evidence contract.
 
-This slice creates a server-owned evidence vocabulary and deterministic
+This design creates a server-owned evidence vocabulary and deterministic
 projection helper. It does not wire runtime classification, learning, routing,
-native intent storage, or UI changes. Those remain later Phase 6R/7R/8R work.
+native intent storage, or UI changes. Those remain later bounded runtime and
+storage work.
 
 June 2026 hardening adds a projection summary and legacy reducer cutline
 inventory. The summary gives downstream engines a bounded, deterministic view
@@ -24,12 +25,13 @@ without reusing replay/provider diagnostics.
 
 ## Problem
 
-The previous Phase 6 direction exposed too many implementation diagnostics in
+The previous policy-builder direction exposed too many implementation diagnostics in
 the policy builder: replay preview, impact preview, provider readiness, TMDB
 coverage, parity panels, and scoring internals. That made operators reason
 about tools instead of destination meaning.
 
-Phase 6R.1 starts the replacement engine by answering one narrower question:
+The policy evidence engine starts the replacement runtime path by answering one
+narrower question:
 
 ```text
 What does Classifarr know about this destination, and which authority source
@@ -51,13 +53,14 @@ supports each piece of evidence?
   keeps server-side validation and audited contracts as the boundary instead of
   trusting client/UI state.
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
-  recommends clear allow-list validation and bounded canonical inputs. Phase
-  6R.1 applies that pattern to evidence bucket IDs, source IDs, authority
-  source IDs, reducer dispositions, and summary counts.
+  recommends clear allow-list validation and bounded canonical inputs. The
+  evidence contract applies that pattern to evidence bucket IDs, source IDs,
+  authority source IDs, reducer dispositions, and summary counts.
 - [OpenTelemetry traces](https://opentelemetry.io/docs/concepts/signals/traces/)
-  define spans, attributes, events, and context propagation. Phase 6R.1 does
-  not adopt telemetry, but each evidence bucket now has a stable trace attribute
-  so later decision tracing can map evidence without renaming the model.
+  define spans, attributes, events, and context propagation. The evidence
+  engine does not adopt telemetry, but each evidence bucket now has a stable
+  trace attribute so later decision tracing can map evidence without renaming
+  the model.
 - [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
   define common names for operations and data. The evidence summary keeps trace
   attributes stable while avoiding sensitive raw values.
@@ -86,7 +89,7 @@ supports each piece of evidence?
    UI chip labels.
 
 4. **Stay offline and deterministic.**
-   Phase 6R.1 evidence projection uses cached/provided inputs only. It never
+   Policy evidence projection uses cached/provided inputs only. It never
    performs live TMDB or other provider calls.
 
 5. **Make the contract auditable.**
@@ -115,12 +118,12 @@ supports each piece of evidence?
 Pros:
 
 - Creates a small engine primitive instead of another policy-builder panel.
-- Gives Phase 6R.2 a stable input model for intent suggestions.
+- Gives the policy intent engine a stable input model for intent suggestions.
 - Keeps server-side authority explicit and testable.
 - Makes provider data useful without making provider state the product model.
 - Avoids live API calls in policy-building evidence projection.
-- Gives Phase 6R.2 and Phase 6R.4 a compact summary instead of forcing each
-  engine to rescan bucket entries or reuse diagnostic panels.
+- Gives downstream intent and readiness engines a compact summary instead of
+  forcing each engine to rescan bucket entries or reuse diagnostic panels.
 - Makes old replay/impact reducer disposition explicit before future cleanup.
 - Gives downstream engines a label-free quality assessment for usable,
   constrained, review-needed, and insufficient evidence.
@@ -130,8 +133,8 @@ Cons:
 - This is not yet a full profile reducer for all current library data.
 - Existing replay/impact reducers are not deleted in this slice; they are
   classified for rewrite, deletion, or maintainer-only migration use.
-- Runtime classification still uses current paths until Phase 7R integration.
-- Native storage waits until Phase 8R after engine contracts prove stable.
+- Runtime classification still uses current paths until runtime integration.
+- Native storage waits until runtime engine contracts prove stable.
 
 ## Final Recommendation Stack
 
@@ -143,10 +146,9 @@ Cons:
   `server/src/__tests__/services/policyEvidenceEngine.test.mjs`
   and `server/src/__tests__/services/policyEvidenceQuality.test.mjs`
 - Documentation:
-  `docs/architecture/policy-builder-phase-6r-evidence-engine.md`
+  `docs/architecture/policy-evidence-engine.md`
 - Roadmap owner:
-  Phase 6R.1 Evidence Engine in
-  `docs/architecture/policy-builder-intent-model-roadmap.md`
+  Policy Evidence Engine in `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
 
@@ -169,7 +171,7 @@ The server module exports:
 Boundary callers should use
 `buildBoundedPolicyEvidenceProjection` from
 `server/src/services/policyEvidenceBoundary.mjs` when they need a
-complete Phase 6R.1 handoff. That boundary runs the input gate first, maps
+complete policy-evidence handoff. That boundary runs the input gate first, maps
 public section names into the projection input shape, builds the projection,
 and runs the projection audit.
 
@@ -280,8 +282,8 @@ fails when a projection:
 
 ## Next Step
 
-Proceed to **Phase 6R.2 Intent Engine** consumption hardening. That component
-should consume evidence buckets plus generated quality, block insufficient
-evidence handoffs, and produce proposed destination intent with assumptions,
-warnings, confidence, and review needs while keeping inferred evidence separate
-from operator-declared constraints.
+Proceed to **Policy Intent Engine** consumption hardening. That component should
+consume evidence buckets plus generated quality, block insufficient evidence
+handoffs, and produce proposed destination intent with assumptions, warnings,
+confidence, and review needs while keeping inferred evidence separate from
+operator-declared constraints.

@@ -54,6 +54,7 @@ The engine now owns the production-named evidence projection contract
 
 - Server module: `server/src/services/policyEvidenceEngine.mjs`
 - Focused test: `server/src/__tests__/services/policyEvidenceEngine.test.mjs`
+- Architecture record: `docs/architecture/policy-evidence-engine.md`
 - Evidence contract: `policy.evidence.v1`
 - Evidence summary contract: `policy.evidence.summary.v1`
 - Completion checkpoint:
@@ -72,5 +73,5 @@ The engine now owns the production-named evidence projection contract
 
 ## Next Step
 
-Cut over the Phase 6R intent engine to a durable product-domain module once the
+Cut over the policy intent engine to a durable product-domain module once the
 evidence engine cutover has passed the full validation suite.

@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Engine Architecture Cutover** — renamed the active evidence
+  engine architecture record to `policy-evidence-engine.md`, updated the
+  roadmap to point at the durable evidence-engine contract, added a bounded
+  architecture cutover record, and preserved the existing
+  `policyEvidenceEngine.mjs`, evidence projection, summary, quality,
+  fingerprint, and audit behavior.
 - **Policy Authoring Workflow Completion Gate Audit** — renamed active client
   workflow coverage records away from rewrite-slice terminology, added a
   completion-record guard that fails active `policy-builder-phase-*` artifact

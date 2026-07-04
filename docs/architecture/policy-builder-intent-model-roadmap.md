@@ -3191,8 +3191,8 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 6R.1 evidence engine is documented in
-  [Policy Builder Phase 6R Evidence Engine](policy-builder-phase-6r-evidence-engine.md).
+- The policy evidence engine is documented in
+  [Policy Evidence Engine](policy-evidence-engine.md).
 - The server-owned evidence contract lives in
   `server/src/services/policyEvidenceEngine.mjs`.
 - The focused evidence-engine test suite lives in
@@ -3202,6 +3202,10 @@ Implementation status:
   audit that blocks live provider lookups, raw provider payloads, UI chip
   language, provider quota/cooldown state, metadata-owned identity, and direct
   learning from final outcomes.
+- The policy evidence engine architecture cutover renamed the active evidence
+  engine design record to durable product-domain naming and recorded the
+  outcome in
+  [Policy Evidence Engine Architecture Cutover](policy-evidence-engine-architecture-cutover.md).
 - Phase 6R.1 evidence input gate hardening is documented in
   [Policy Builder Phase 6R Evidence Input Gate](policy-builder-phase-6r-evidence-input-gate.md).
 - The evidence input gate lives in
@@ -3225,7 +3229,7 @@ Implementation status:
   diagnostic strings.
 - The boundary now audits the generated projection fingerprint, trace
   attributes, and sanitized provenance against the returned projection before
-  downstream engines can consume the Phase 6R.1 handoff.
+  downstream engines can consume the policy-evidence handoff.
 - The boundary maps `classificationOutcomes` to
   `classificationFinalOutcomes` and `arrRoutingOutcomes` to `routingOutcomes`
   so the public gate envelope and internal projection contract cannot drift.
@@ -6520,6 +6524,11 @@ Implementation status:
   production references, and 3,763 rename candidates. The total count includes
   the new audit outcome documentation and a negative test fixture; the
   production baseline remains unchanged.
+- After the policy evidence engine architecture cutover, the repository
+  inventory validates with 9,630 total phase-coded references, 3,741
+  production references, and 3,763 rename candidates. The production baseline
+  remains unchanged because the server module and test names were already
+  durable.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
