@@ -150,9 +150,9 @@ const POLICY_AUTHORING_VUE_REWRITE_SLICES = Object.freeze([
     evidence: 'Makes starter templates optional accelerators collapsed behind an accessible disclosure.',
   },
   {
-    id: 'vue_policy_authoring_accessibility_audit',
-    label: 'Vue accessibility decision-load audit',
-    docPath: 'docs/architecture/policy-builder-phase-3r-vue-accessibility-decision-load-audit.md',
+    id: 'policy_authoring_accessibility_decision_load_audit',
+    label: 'Policy authoring accessibility and decision-load audit',
+    docPath: 'docs/architecture/policy-authoring-accessibility-decision-load-audit.md',
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
     evidence: 'Marks one recommended next action and routes setup links to existing targets.',
   },

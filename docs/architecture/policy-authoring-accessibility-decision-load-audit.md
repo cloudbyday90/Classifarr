@@ -1,10 +1,10 @@
-# Policy Builder Phase 3R Vue Accessibility Decision Load Audit
+# Policy Authoring Accessibility And Decision Load Audit
 
-Status: implemented as the eighth Vue-facing Phase 3R workflow rewrite slice.
+Status: implemented as durable policy-authoring accessibility and decision-load behavior.
 
 ## Scope
 
-This slice applies the durable
+This design applies the durable
 [Policy Authoring Accessibility](policy-authoring-accessibility.md) contract to
 the current Vue setup-card workflow.
 
@@ -13,7 +13,7 @@ the recommended next action. Secondary setup links remain available, and action
 links now describe their status and completion context for assistive
 technology.
 
-This slice does not change policy saves, scoring, routing, database schema,
+This design does not change policy saves, scoring, routing, database schema,
 runtime learning, AI calls, provider calls, Arr writes, or native intent
 storage.
 
@@ -113,8 +113,8 @@ The policy-builder setup card surface now:
 
 ## Follow-Up
 
-The next high-value item is **Phase 3R Vue Presentation Test Reset**. Now that
-the visible setup flow exposes one recommended next action, presentation tests
-should stop preserving old diagnostic-heavy modal assumptions and instead lock
-the simplified order, next-action behavior, accessible link state, and absence
-of normal-path internal diagnostics.
+The next high-value item is **Policy Authoring Presentation Test Reset**. Now
+that the visible setup flow exposes one recommended next action, presentation
+tests should stop preserving old diagnostic-heavy modal assumptions and instead
+lock the simplified order, next-action behavior, accessible link state, and
+absence of normal-path internal diagnostics.

@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Accessibility And Decision Load Audit Cutover** — renamed
+  the accessibility and decision-load design record and completion-audit entry
+  to durable product-domain names, replaced the phase-coded accessibility audit
+  architecture path with
+  `policy-authoring-accessibility-decision-load-audit.md`, updated
+  completion-audit records to track
+  `policy_authoring_accessibility_decision_load_audit`, and preserved the
+  existing one recommended setup action, `aria-current="step"` marker,
+  accessible link descriptions, and no-template fallback targets.
 - **Policy Authoring Starter Template Accelerator Cutover** — renamed the
   starter-template accelerator design record and completion-audit entry to
   durable product-domain names, replaced the phase-coded starter-template

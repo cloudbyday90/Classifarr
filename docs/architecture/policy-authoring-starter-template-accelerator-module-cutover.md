@@ -52,8 +52,7 @@ Cons:
   delete or replace them.
 - No-template intent editing remains conservative because current draft
   commands still target selected templates.
-- The product label still says "accelerator"; that is intentional durable UI
-  language, not phase metadata.
+- Presentation-test reset metadata still needs its own durable naming cutover.
 
 ## Final Recommendation Stack
 
@@ -74,6 +73,6 @@ unchanged.
 
 ## Next Step
 
-Cut over the policy-authoring accessibility and decision-load audit naming
-because it is the next Vue rewrite slice that still uses phase-coded
-completion-audit metadata.
+Cut over the policy-authoring presentation test reset naming because it is the
+next Vue rewrite slice that still uses phase-coded completion-audit metadata
+after the accessibility and decision-load audit cutover.
