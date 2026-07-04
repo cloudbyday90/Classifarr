@@ -103,7 +103,7 @@ Cons:
 - Documentation:
   `docs/architecture/policy-native-storage-operational-safety.md`
 - Live backup/restore wiring:
-  `docs/architecture/policy-builder-phase-8r-native-backup-restore-wiring.md`
+  `docs/architecture/policy-native-backup-restore-wiring.md`
 - Roadmap owner:
   native intent storage and legacy-removal roadmap in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
@@ -155,7 +155,7 @@ parity and backup/restore coverage are not assumed. A plan becomes
 
 Native intent tables are now included in the real backup/export and
 transactional restore flow. The implementation is documented in
-[Native Backup And Restore Wiring](policy-builder-phase-8r-native-backup-restore-wiring.md).
+[Native Backup And Restore Wiring](policy-native-backup-restore-wiring.md).
 
 Live backup export includes native intent headers, rules, routing targets,
 starter-template provenance, migration events, rollback snapshots, and

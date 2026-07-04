@@ -4720,7 +4720,7 @@ Implementation status:
   events, rollback snapshots, and validation status; restore remaps old policy,
   library, and native intent IDs before restoring child rows.
 - Live wiring is documented in
-  [Native Backup And Restore Wiring](policy-builder-phase-8r-native-backup-restore-wiring.md).
+  [Native Backup And Restore Wiring](policy-native-backup-restore-wiring.md).
 - Post-upgrade apply mode is blocked unless dry-run reporting is current,
   conversion is atomic, failure rolls back, legacy behavior stays active until
   commit, mixed partial native/legacy writes are prevented, and clear
@@ -4795,7 +4795,7 @@ Implementation status:
 
 ### 8R.10 Native Backup And Restore Wiring
 
-Intent: make Phase 8R native intent recoverable through the real backup and
+Intent: make native intent recoverable through the real backup and
 restore path before any post-upgrade conversion apply mode is enabled.
 
 Tasks:
@@ -4810,7 +4810,7 @@ Tasks:
 
 Acceptance criteria:
 
-- Backups contain all Phase 8R native intent tables.
+- Backups contain all native intent tables.
 - Restores attach native rows to restored policy/library IDs, not stale IDs.
 - Restore remains transactional.
 - Orphaned native rows are skipped fail-closed.
@@ -4819,8 +4819,14 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R native backup/restore wiring is documented in
-  [Policy Builder Phase 8R Native Backup And Restore Wiring](policy-builder-phase-8r-native-backup-restore-wiring.md).
+- Native backup/restore wiring is documented in
+  [Policy Native Backup And Restore Wiring](policy-native-backup-restore-wiring.md).
+- The architecture cutover renamed the standing record from
+  `policy-builder-phase-8r-native-backup-restore-wiring.md` to
+  `policy-native-backup-restore-wiring.md`, updated the Phase 8R evidence map,
+  and confirmed the live production service names are already durable
+  backup/restore domain names:
+  [Policy Native Backup And Restore Wiring Module Cutover](policy-native-backup-restore-wiring-module-cutover.md).
 - Backup export includes native intent headers, rules, routing targets,
   starter-template provenance, migration events, rollback snapshots, and
   validation status.
@@ -6847,6 +6853,16 @@ Implementation status:
 - After the native-storage-test-reset module cutover, the repository inventory
   validates with 8,823 total phase-coded references, 3,417 production
   references, and 3,439 rename candidates.
+- The native backup/restore wiring architecture cutover renamed the standing
+  recovery record to `policy-native-backup-restore-wiring.md`, updated the
+  Phase 8R evidence map and native storage safety references, and intentionally
+  kept `backupService.mjs`, `backupRestore.mjs`, and
+  `backupRestoreTables.mjs` because those production names already describe
+  product behavior:
+  [Policy Native Backup And Restore Wiring Module Cutover](policy-native-backup-restore-wiring-module-cutover.md).
+- After the native-backup-restore-wiring architecture cutover, the repository
+  inventory validates with 8,823 total phase-coded references, 3,416
+  production references, and 3,438 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

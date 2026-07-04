@@ -95,7 +95,7 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_10',
     label: 'Native Backup And Restore Wiring',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-native-backup-restore-wiring.md'],
+    designDocPaths: ['docs/architecture/policy-native-backup-restore-wiring.md'],
     contractPaths: [
       'server/src/services/backupService.mjs',
       'server/src/services/backupRestore.mjs',

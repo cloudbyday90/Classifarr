@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Native Backup And Restore Wiring Architecture Cutover** — renamed the
+  active native backup/restore architecture record to
+  `policy-native-backup-restore-wiring.md`, updated Phase 8R evidence and
+  native storage safety references to the durable path, documented that the
+  live `backupService.mjs`, `backupRestore.mjs`, and
+  `backupRestoreTables.mjs` production service names are already durable
+  product-domain names, and preserved transactional native intent restore,
+  old-ID remapping, fail-closed orphan handling, bounded restore stats, and
+  encrypted backup flow behavior.
 - **Policy Native Storage Test Reset Module Cutover** — renamed the native
   storage test reset service, focused test, and architecture record to
   `policyNativeStorageTestReset.mjs`,

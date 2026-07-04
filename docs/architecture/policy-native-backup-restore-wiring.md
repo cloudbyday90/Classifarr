@@ -1,13 +1,13 @@
-# Policy Builder Phase 8R Native Backup And Restore Wiring
+# Policy Native Backup And Restore Wiring
 
-Status: implemented as an operational follow-up to Phase 8R.8 and Phase 8R.9.
+Status: implemented as the native storage backup/restore recovery boundary.
 
 ## Problem
 
-Phase 8R native intent storage now has SQL migration coverage, but backup and
-restore were still legacy-policy only. That created a concrete recovery gap:
-converted policy intent could exist in native tables, while exported backups
-would only preserve `library_policies` and other legacy configuration tables.
+Native intent storage now has SQL migration coverage, but backup and restore
+were still legacy-policy only. That created a concrete recovery gap: converted
+policy intent could exist in native tables, while exported backups would only
+preserve `library_policies` and other legacy configuration tables.
 
 This component wires native intent tables into the real backup and transactional
 restore path without enabling automatic native conversion apply.
@@ -16,8 +16,8 @@ restore path without enabling automatic native conversion apply.
 
 - [PostgreSQL `pg_dump`](https://www.postgresql.org/docs/current/app-pgdump.html)
   and [SQL dump backup guidance](https://www.postgresql.org/docs/current/backup-dump.html)
-  describe logical backup and restore as explicit recovery mechanisms. Phase 8R
-  applies that principle by making every native intent table part of the
+  describe logical backup and restore as explicit recovery mechanisms. This
+  component applies that principle by making every native intent table part of the
   application backup payload.
 - [PostgreSQL transaction documentation](https://www.postgresql.org/docs/current/tutorial-transactions.html)
   and [`SAVEPOINT`](https://www.postgresql.org/docs/current/sql-savepoint.html)
@@ -61,7 +61,7 @@ restore path without enabling automatic native conversion apply.
 
 Pros:
 
-- Closes the most immediate Phase 8R recovery gap.
+- Closes the most immediate native-storage recovery gap.
 - Preserves native policy intent through existing backup/export flows.
 - Restores native records with remapped IDs instead of stale foreign keys.
 - Keeps restore atomic by using the existing transaction wrapper.
@@ -125,6 +125,6 @@ Restore now:
 
 ## Next Step
 
-Proceed to **Phase 8R Post-Upgrade Dry-Run Wiring**. That task should connect
-the candidate report and explicit conversion workflow to a post-upgrade
-dry-run action that reports readiness and blockers without applying conversion.
+Proceed to **Post-Upgrade Dry-Run Wiring**. That task should connect the
+candidate report and explicit conversion workflow to a post-upgrade dry-run
+action that reports readiness and blockers without applying conversion.
