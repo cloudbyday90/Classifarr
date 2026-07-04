@@ -2,8 +2,8 @@
 
 ## Status
 
-Implemented as a Phase 9R durable module-name cutover for the runtime
-completion audit.
+Implemented as the durable module-name cutover for the runtime completion
+audit.
 
 This change removes temporary roadmap naming from the production completion
 audit while preserving the same side-effect-free current-state verification
@@ -95,6 +95,13 @@ Cons:
 Runtime completion audit now uses durable production naming while preserving the
 same current-state artifact checks, local audit composition, request-time
 learning proof sample, side-effect-free posture, and native-storage handoff.
+
+## Related Active Architecture
+
+- Active architecture:
+  [Policy Runtime Completion Audit](policy-runtime-completion-audit.md)
+- Architecture cutover:
+  [Policy Runtime Completion Audit Architecture Cutover](policy-runtime-completion-audit-architecture-cutover.md)
 
 ## Validation
 

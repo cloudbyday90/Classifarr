@@ -77,7 +77,8 @@ Cons:
 - Does not remove legacy preview/replay tests; deletion remains gated by parity
   and replacement coverage.
 - Requires the reset manifest to stay current when test files move.
-- Leaves runtime completion audit as the next active architecture cutover.
+- Leaves native intent storage readiness as the next active architecture
+  cutover family.
 
 ## Final Recommendation Stack
 
@@ -120,6 +121,6 @@ Cons:
 
 ## Next Step
 
-Runtime Completion Audit should receive the next architecture cutover so its
-active design record uses the durable completion-audit contract name and points
-at the already-renamed `policyRuntimeCompletionAudit.mjs` service.
+Runtime Completion Audit now has a durable active architecture record. Native
+intent storage readiness should receive the next architecture cutover before
+Phase 6R implementation work resumes.

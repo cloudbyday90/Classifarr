@@ -1,6 +1,8 @@
 # Policy Runtime Completion Audit
 
-Status: implemented as the durable runtime/rebuild completion gate.
+## Status
+
+Implemented as the durable runtime/rebuild completion gate.
 
 ## Problem
 

@@ -77,7 +77,8 @@ Pros:
 Cons:
 
 - Does not add persistence, retention, dashboards, or OpenTelemetry transport.
-- Leaves runtime completion audit as a later active architecture cutover.
+- Leaves native intent storage readiness as the next architecture cutover
+  family.
 - Requires roadmap and module-cutover references to be kept in sync with the
   renamed active document.
 
@@ -120,5 +121,6 @@ Cons:
 ## Next Step
 
 Runtime And Rebuild Test Reset now has a durable active architecture record.
-Runtime Completion Audit should receive the next architecture cutover so its
-active design record uses the durable completion-audit contract name.
+Runtime Completion Audit now has a durable active architecture record. Native
+intent storage readiness should receive the next architecture cutover before
+Phase 6R implementation work resumes.

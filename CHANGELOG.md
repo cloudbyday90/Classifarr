@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Completion Audit Architecture Cutover** — normalized the
+  active runtime completion audit architecture record, updated the roadmap and
+  module cutover note to point at the durable
+  `policy.runtime_completion_audit.v1` contract, added a runtime completion
+  audit architecture cutover record, updated preceding runtime records now that
+  completion-audit architecture naming is complete, and preserved the existing
+  `policyRuntimeCompletionAudit.mjs` side-effect-free artifact checks,
+  component-audit composition, semantic handoff validation, bounded
+  request-time learning proof sample, and native-storage readiness handoff.
 - **Policy Runtime And Rebuild Test Reset Architecture Cutover** — renamed the
   active runtime/rebuild test reset architecture record to
   `policy-runtime-rebuild-test-reset.md`, updated the roadmap and module

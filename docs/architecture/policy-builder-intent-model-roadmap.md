@@ -4330,6 +4330,8 @@ Implementation record:
 
 - Runtime completion audit is documented in
   [Policy Runtime Completion Audit](policy-runtime-completion-audit.md).
+- The active architecture-name cutover is documented in
+  [Policy Runtime Completion Audit Architecture Cutover](policy-runtime-completion-audit-architecture-cutover.md).
 - The server-owned completion gate lives in
   `server/src/services/policyRuntimeCompletionAudit.mjs`.
 - The focused completion audit suite lives in
@@ -6467,6 +6469,15 @@ Implementation status:
 - After the runtime-completion-audit cutover, the repository inventory validates
   with 12,034 total phase-coded references, 5,050 production references, and
   5,072 rename candidates.
+- The policy runtime completion audit architecture cutover normalized the
+  active completion-audit design record, added a durable architecture cutover
+  record, updated roadmap/module references to the durable completion-audit
+  contract, and updated preceding runtime records now that completion-audit
+  architecture naming is no longer pending:
+  [Policy Runtime Completion Audit Architecture Cutover](policy-runtime-completion-audit-architecture-cutover.md).
+- After the runtime-completion-audit architecture cutover, the repository
+  inventory validates with 9,411 total phase-coded references, 3,740 production
+  references, and 3,762 rename candidates.
 - The next policy-engine module cutover renamed the completion audit to
   `policyEngineCompletionAudit.mjs`, renamed its focused test, replaced
   phase-coded component ids and `nextPhase` handoffs with semantic

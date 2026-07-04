@@ -61,7 +61,8 @@ Pros:
 
 Cons:
 
-- Leaves runtime completion audit architecture naming for a later cutover slice.
+- Leaves native intent storage readiness architecture naming for a later
+  cutover slice.
 - Does not persist or export telemetry; transport and retention remain later
   integration work.
 - Requires downstream consumers to import the renamed metrics contract.
@@ -123,5 +124,5 @@ npm --prefix server run test:unit -- --no-coverage --runInBand
 
 ## Next Step
 
-Continue with runtime completion audit architecture naming and native intent
-storage readiness after runtime cutover records are durable.
+Continue with native intent storage readiness after runtime cutover records are
+durable.
