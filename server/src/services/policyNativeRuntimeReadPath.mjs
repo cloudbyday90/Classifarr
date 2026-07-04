@@ -7,20 +7,20 @@ import {
   validatePolicyIntentContract,
 } from './policyIntentSchema.mjs';
 
-const PHASE8R_NATIVE_RUNTIME_READ_PATH_VERSION = 'phase8r.native_runtime_read_path.v1';
+const POLICY_NATIVE_RUNTIME_READ_PATH_VERSION = 'policy.native_runtime_read_path.v1';
 
-const PHASE8R_RUNTIME_READ_SOURCE_IDS = Object.freeze({
+const POLICY_RUNTIME_READ_SOURCE_IDS = Object.freeze({
   NATIVE_INTENT: 'native_intent',
   COMPATIBILITY_BRIDGE: 'compatibility_bridge',
 });
 
-const PHASE8R_RUNTIME_READ_STATUS_IDS = Object.freeze({
+const POLICY_RUNTIME_READ_STATUS_IDS = Object.freeze({
   NATIVE_INTENT_ACTIVE: 'native_intent_active',
   NATIVE_INTENT_INVALID: 'native_intent_invalid',
   COMPATIBILITY_BRIDGE_FALLBACK: 'compatibility_bridge_fallback',
 });
 
-const PHASE8R_RUNTIME_READ_REASON_IDS = Object.freeze({
+const POLICY_RUNTIME_READ_REASON_IDS = Object.freeze({
   ACTIVE_NATIVE_INTENT_FOUND: 'active_native_intent_found',
   NATIVE_CONTRACT_VALIDATED: 'native_contract_validated',
   NATIVE_CONTRACT_INVALID: 'native_contract_invalid',
@@ -31,7 +31,7 @@ const PHASE8R_RUNTIME_READ_REASON_IDS = Object.freeze({
   SIDE_EFFECTS_DISABLED: 'side_effects_disabled',
 });
 
-const PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_RUNTIME_READ_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_SOURCE: 'unknown_source',
   UNKNOWN_STATUS: 'unknown_status',
   MISSING_CONTRACT: 'missing_contract',
@@ -64,8 +64,8 @@ const REQUIRED_CONTRACT_KEYS = Object.freeze([
   'validation',
 ]);
 
-const VALID_SOURCE_IDS = Object.freeze(Object.values(PHASE8R_RUNTIME_READ_SOURCE_IDS));
-const VALID_STATUS_IDS = Object.freeze(Object.values(PHASE8R_RUNTIME_READ_STATUS_IDS));
+const VALID_SOURCE_IDS = Object.freeze(Object.values(POLICY_RUNTIME_READ_SOURCE_IDS));
+const VALID_STATUS_IDS = Object.freeze(Object.values(POLICY_RUNTIME_READ_STATUS_IDS));
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -91,10 +91,10 @@ function buildTrace({
     policy_id: policyId ?? null,
     intent_version: intentVersion,
     attributes: {
-      'classifarr.phase8r.read.source': sourceId,
-      'classifarr.phase8r.read.status': statusId,
-      'classifarr.phase8r.read.policy_id': policyId ?? null,
-      'classifarr.phase8r.read.intent_version': intentVersion,
+      'classifarr.policy.read.source': sourceId,
+      'classifarr.policy.read.status': statusId,
+      'classifarr.policy.read.policy_id': policyId ?? null,
+      'classifarr.policy.read.intent_version': intentVersion,
     },
   };
 }
@@ -185,7 +185,7 @@ function buildConfigurationViewFromIntentContract(contract = {}) {
     schema_version: contract.schema_version ?? POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
     policy_id: contract.policy_id ?? null,
     library_id: contract.library_id ?? null,
-    source: PHASE8R_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT,
+    source: POLICY_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT,
     presets: [],
     identity_signals: asArray(contract.purpose),
     strict_constraints: asArray(contract.hard_limits),
@@ -212,11 +212,11 @@ function buildCompatibilityReadModel(policy = {}) {
   const policyIntentContract = policy.policy_intent_contract || buildPolicyIntentContract(policy, {
     configurationView,
   });
-  const sourceId = PHASE8R_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE;
-  const statusId = PHASE8R_RUNTIME_READ_STATUS_IDS.COMPATIBILITY_BRIDGE_FALLBACK;
+  const sourceId = POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE;
+  const statusId = POLICY_RUNTIME_READ_STATUS_IDS.COMPATIBILITY_BRIDGE_FALLBACK;
 
   return {
-    version: PHASE8R_NATIVE_RUNTIME_READ_PATH_VERSION,
+    version: POLICY_NATIVE_RUNTIME_READ_PATH_VERSION,
     sourceId,
     statusId,
     configuration_view: configurationView,
@@ -235,15 +235,15 @@ function buildCompatibilityReadModel(policy = {}) {
     },
     reasons: [
       buildReason(
-        PHASE8R_RUNTIME_READ_REASON_IDS.COMPATIBILITY_BRIDGE_USED,
+        POLICY_RUNTIME_READ_REASON_IDS.COMPATIBILITY_BRIDGE_USED,
         'No active native intent was attached, so the compatibility bridge remains the read source.'
       ),
       buildReason(
-        PHASE8R_RUNTIME_READ_REASON_IDS.SOURCE_TRACE_ATTACHED,
+        POLICY_RUNTIME_READ_REASON_IDS.SOURCE_TRACE_ATTACHED,
         'Read projection includes bounded source trace metadata.'
       ),
       buildReason(
-        PHASE8R_RUNTIME_READ_REASON_IDS.SIDE_EFFECTS_DISABLED,
+        POLICY_RUNTIME_READ_REASON_IDS.SIDE_EFFECTS_DISABLED,
         'Runtime read projection performs no storage mutation.'
       ),
     ],
@@ -253,14 +253,14 @@ function buildCompatibilityReadModel(policy = {}) {
 function buildNativeReadModel(policy = {}, nativeIntent = {}) {
   const policyIntentContract = normalizeNativeContract(policy, nativeIntent);
   const valid = policyIntentContract.validation?.valid === true;
-  const sourceId = PHASE8R_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT;
+  const sourceId = POLICY_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT;
   const statusId = valid
-    ? PHASE8R_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_ACTIVE
-    : PHASE8R_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_INVALID;
+    ? POLICY_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_ACTIVE
+    : POLICY_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_INVALID;
   const intentVersion = getNativeIntentVersion(nativeIntent);
 
   return {
-    version: PHASE8R_NATIVE_RUNTIME_READ_PATH_VERSION,
+    version: POLICY_NATIVE_RUNTIME_READ_PATH_VERSION,
     sourceId,
     statusId,
     configuration_view: policy.configuration_view ||
@@ -281,39 +281,39 @@ function buildNativeReadModel(policy = {}, nativeIntent = {}) {
     },
     reasons: [
       buildReason(
-        PHASE8R_RUNTIME_READ_REASON_IDS.ACTIVE_NATIVE_INTENT_FOUND,
+        POLICY_RUNTIME_READ_REASON_IDS.ACTIVE_NATIVE_INTENT_FOUND,
         'Active native intent was attached to the policy read model.'
       ),
       buildReason(
         valid
-          ? PHASE8R_RUNTIME_READ_REASON_IDS.NATIVE_CONTRACT_VALIDATED
-          : PHASE8R_RUNTIME_READ_REASON_IDS.NATIVE_CONTRACT_INVALID,
+          ? POLICY_RUNTIME_READ_REASON_IDS.NATIVE_CONTRACT_VALIDATED
+          : POLICY_RUNTIME_READ_REASON_IDS.NATIVE_CONTRACT_INVALID,
         valid
           ? 'Native policy intent contract passed server validation.'
           : 'Native policy intent contract failed server validation.',
         valid ? 'info' : 'blocker'
       ),
       buildReason(
-        PHASE8R_RUNTIME_READ_REASON_IDS.CONTRACT_SHAPE_STABLE,
+        POLICY_RUNTIME_READ_REASON_IDS.CONTRACT_SHAPE_STABLE,
         'Native and compatibility read paths expose the same policy_intent_contract shape.'
       ),
       buildReason(
-        PHASE8R_RUNTIME_READ_REASON_IDS.SOURCE_TRACE_ATTACHED,
+        POLICY_RUNTIME_READ_REASON_IDS.SOURCE_TRACE_ATTACHED,
         'Read projection includes bounded source trace metadata.'
       ),
       buildReason(
-        PHASE8R_RUNTIME_READ_REASON_IDS.CUSTOM_SIGNALS_SUPPRESSED_FOR_NATIVE,
+        POLICY_RUNTIME_READ_REASON_IDS.CUSTOM_SIGNALS_SUPPRESSED_FOR_NATIVE,
         'Native runtime read path does not depend on legacy customSignals.'
       ),
       buildReason(
-        PHASE8R_RUNTIME_READ_REASON_IDS.SIDE_EFFECTS_DISABLED,
+        POLICY_RUNTIME_READ_REASON_IDS.SIDE_EFFECTS_DISABLED,
         'Runtime read projection performs no storage mutation.'
       ),
     ],
   };
 }
 
-function buildPolicyBuilderPhase8NativeRuntimeReadPath({ policy = {} } = {}) {
+function buildPolicyNativeRuntimeReadPath({ policy = {} } = {}) {
   const nativeIntent = findNativeIntentRecord(policy);
   const readModel = nativeIntent && isNativeIntentActive(nativeIntent)
     ? buildNativeReadModel(policy, nativeIntent)
@@ -321,9 +321,9 @@ function buildPolicyBuilderPhase8NativeRuntimeReadPath({ policy = {} } = {}) {
 
   return {
     ...readModel,
-    validation: validatePolicyBuilderPhase8NativeRuntimeReadPath(readModel),
-    nextPhase: {
-      phaseId: '8r_5',
+    validation: validatePolicyNativeRuntimeReadPath(readModel),
+    nextStep: {
+      stepId: 'rollback_snapshot_and_reversion_window',
       label: 'Rollback Snapshot And Reversion Window',
       reason: 'Runtime reads can now identify native versus compatibility source, so rollback snapshots need bounded restore behavior.',
     },
@@ -334,13 +334,13 @@ function findMissingContractKeys(contract = {}) {
   return REQUIRED_CONTRACT_KEYS.filter(key => !Object.prototype.hasOwnProperty.call(contract, key));
 }
 
-function validatePolicyBuilderPhase8NativeRuntimeReadPath(readModel = {}) {
+function validatePolicyNativeRuntimeReadPath(readModel = {}) {
   const issues = [];
   const contract = asObject(readModel.policy_intent_contract);
 
   if (!VALID_SOURCE_IDS.includes(readModel.sourceId)) {
     issues.push({
-      riskId: PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS.UNKNOWN_SOURCE,
+      riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.UNKNOWN_SOURCE,
       sourceId: readModel.sourceId || null,
       message: 'Runtime read source must be native intent or compatibility bridge.',
     });
@@ -348,52 +348,52 @@ function validatePolicyBuilderPhase8NativeRuntimeReadPath(readModel = {}) {
 
   if (!VALID_STATUS_IDS.includes(readModel.statusId)) {
     issues.push({
-      riskId: PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS.UNKNOWN_STATUS,
+      riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.UNKNOWN_STATUS,
       statusId: readModel.statusId || null,
-      message: 'Runtime read status must be part of the Phase 8R.4 vocabulary.',
+      message: 'Runtime read status must be part of the policy runtime read vocabulary.',
     });
   }
 
   if (Object.keys(contract).length === 0) {
     issues.push({
-      riskId: PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS.MISSING_CONTRACT,
+      riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.MISSING_CONTRACT,
       message: 'Runtime read path must expose a policy_intent_contract.',
     });
   }
 
   findMissingContractKeys(contract).forEach(contractKey => {
     issues.push({
-      riskId: PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS.CONTRACT_SHAPE_MISMATCH,
+      riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.CONTRACT_SHAPE_MISMATCH,
       contractKey,
       message: 'Runtime read path must preserve the policy intent contract shape.',
     });
   });
 
   if (contract.validation?.valid !== true &&
-      readModel.statusId !== PHASE8R_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_INVALID) {
+      readModel.statusId !== POLICY_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_INVALID) {
     issues.push({
-      riskId: PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS.INVALID_CONTRACT,
+      riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.INVALID_CONTRACT,
       message: 'Invalid policy intent contracts must not be exposed as successful runtime reads.',
     });
   }
 
   if (!readModel.trace?.source) {
     issues.push({
-      riskId: PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS.MISSING_SOURCE_TRACE,
+      riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.MISSING_SOURCE_TRACE,
       message: 'Runtime read path must include bounded source trace metadata.',
     });
   } else if (readModel.trace.source !== readModel.sourceId ||
-      readModel.trace.attributes?.['classifarr.phase8r.read.source'] !== readModel.sourceId) {
+      readModel.trace.attributes?.['classifarr.policy.read.source'] !== readModel.sourceId) {
     issues.push({
-      riskId: PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS.SOURCE_TRACE_MISMATCH,
+      riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.SOURCE_TRACE_MISMATCH,
       message: 'Runtime read trace source must match the selected read source.',
     });
   }
 
-  if (readModel.sourceId === PHASE8R_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT &&
+  if (readModel.sourceId === POLICY_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT &&
       readModel.dependsOnCustomSignals === true) {
     issues.push({
-      riskId: PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS.NATIVE_READ_DEPENDS_ON_CUSTOM_SIGNALS,
+      riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.NATIVE_READ_DEPENDS_ON_CUSTOM_SIGNALS,
       message: 'Converted native runtime reads must not depend on legacy customSignals.',
     });
   }
@@ -401,15 +401,15 @@ function validatePolicyBuilderPhase8NativeRuntimeReadPath(readModel = {}) {
   Object.entries(readModel.sideEffects || {}).forEach(([key, value]) => {
     if (key !== 'nativeRowsRead' && key !== 'compatibilityProjectionBuilt' && value === true) {
       issues.push({
-        riskId: PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
-        message: `Phase 8R.4 native runtime read path cannot perform side effect "${key}".`,
+        riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        message: `Policy native runtime read path cannot perform side effect "${key}".`,
       });
     }
   });
 
   if (asArray(readModel.reasons).length === 0) {
     issues.push({
-      riskId: PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS.MISSING_REASON,
+      riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.MISSING_REASON,
       message: 'Runtime read path must include bounded read-source reasons.',
     });
   }
@@ -421,10 +421,10 @@ function validatePolicyBuilderPhase8NativeRuntimeReadPath(readModel = {}) {
   };
 }
 
-function buildPolicyBuilderPhase8NativeRuntimeReadPathAudit(
-  readModel = buildPolicyBuilderPhase8NativeRuntimeReadPath()
+function buildPolicyNativeRuntimeReadPathAudit(
+  readModel = buildPolicyNativeRuntimeReadPath()
 ) {
-  const validation = validatePolicyBuilderPhase8NativeRuntimeReadPath(readModel);
+  const validation = validatePolicyNativeRuntimeReadPath(readModel);
 
   return {
     ok: validation.ok,
@@ -432,8 +432,8 @@ function buildPolicyBuilderPhase8NativeRuntimeReadPathAudit(
     sourceId: readModel.sourceId || null,
     statusId: readModel.statusId || null,
     validation,
-    nextPhase: readModel.nextPhase || {
-      phaseId: '8r_5',
+    nextStep: readModel.nextStep || {
+      stepId: 'rollback_snapshot_and_reversion_window',
       label: 'Rollback Snapshot And Reversion Window',
       reason: 'Native runtime reads are source-traceable; bounded rollback behavior is next.',
     },
@@ -441,12 +441,12 @@ function buildPolicyBuilderPhase8NativeRuntimeReadPathAudit(
 }
 
 export {
-  PHASE8R_NATIVE_RUNTIME_READ_PATH_VERSION,
-  PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS,
-  PHASE8R_RUNTIME_READ_REASON_IDS,
-  PHASE8R_RUNTIME_READ_SOURCE_IDS,
-  PHASE8R_RUNTIME_READ_STATUS_IDS,
-  buildPolicyBuilderPhase8NativeRuntimeReadPath,
-  buildPolicyBuilderPhase8NativeRuntimeReadPathAudit,
-  validatePolicyBuilderPhase8NativeRuntimeReadPath,
+  POLICY_NATIVE_RUNTIME_READ_PATH_VERSION,
+  POLICY_RUNTIME_READ_AUDIT_RISK_IDS,
+  POLICY_RUNTIME_READ_REASON_IDS,
+  POLICY_RUNTIME_READ_SOURCE_IDS,
+  POLICY_RUNTIME_READ_STATUS_IDS,
+  buildPolicyNativeRuntimeReadPath,
+  buildPolicyNativeRuntimeReadPathAudit,
+  validatePolicyNativeRuntimeReadPath,
 };

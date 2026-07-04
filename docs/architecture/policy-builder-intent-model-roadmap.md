@@ -4534,8 +4534,8 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.4 native runtime read path is documented in
-  [Policy Builder Phase 8R Native Runtime Read Path](policy-builder-phase-8r-native-runtime-read-path.md).
+- Policy native runtime read path is documented in
+  [Policy Native Runtime Read Path](policy-native-runtime-read-path.md).
 - Current implementation adds a focused server read-path service that prefers an
   attached active native intent contract for converted policies and falls back
   to the compatibility bridge for unconverted policies.
@@ -4544,10 +4544,15 @@ Implementation status:
 - Active invalid native intent is surfaced as `native_intent_invalid` instead of
   silently falling back to legacy custom-signal behavior.
 - Read trace metadata records `native_intent` or `compatibility_bridge` with
-  bounded `classifarr.phase8r.read.*` attributes.
+  bounded `classifarr.policy.read.*` attributes.
 - Validation rejects missing or mismatched read-source trace metadata, unstable
   contract shape, native reads that depend on custom signals, and read-path
   storage side effects.
+- The module cutover renamed the read-path service, focused test, architecture
+  record, payload version, exported constants/helpers, trace attributes, and
+  runtime handoff to durable policy-domain names while preserving source
+  selection and compatibility fallback behavior:
+  [Policy Native Runtime Read Path Module Cutover](policy-native-runtime-read-path-module-cutover.md).
 
 ### 8R.5 Rollback Snapshot And Reversion Window
 

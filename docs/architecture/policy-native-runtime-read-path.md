@@ -1,24 +1,23 @@
-# Policy Builder Phase 8R Native Runtime Read Path
+# Policy Native Runtime Read Path
 
-Status: implemented as the fourth Phase 8R storage-migration component.
+Status: implemented as the durable native policy runtime read-path contract.
 
 ## Problem
 
-Phase 8R.3 can plan explicit native conversion, but converted policies still
-need a runtime read boundary that makes native intent the authority without
-breaking unconverted policies. The read path must expose one product contract to
-clients while clearly tracing whether the data came from native intent storage
-or the legacy compatibility bridge.
+Converted policies need a runtime read boundary that makes native intent the
+authority without breaking unconverted policies. The read path must expose one
+product contract to clients while clearly tracing whether the data came from
+native intent storage or the legacy compatibility bridge.
 
 ## Official Guidance Reviewed
 
 - [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
   recommend common names for operations and data so traces, logs, and metrics
-  can use a standardized naming scheme across a codebase. Phase 8R.4 applies
-  this by emitting bounded `classifarr.phase8r.read.*` attributes for read
+  can use a standardized naming scheme across a codebase. This contract applies
+  this by emitting bounded `classifarr.policy.read.*` attributes for read
   source, status, policy id, and native intent version.
 - [PostgreSQL materialized views](https://www.postgresql.org/docs/current/rules-materializedviews.html)
-  distinguish persisted table-like derived data from ordinary views. Phase 8R.4
+  distinguish persisted table-like derived data from ordinary views. The read path
   keeps native runtime records conceptually separate from compatibility
   projection and does not pretend a projection is durable native storage.
 - [PostgreSQL CREATE VIEW](https://www.postgresql.org/docs/current/sql-createview.html)
@@ -27,10 +26,10 @@ or the legacy compatibility bridge.
   compatibility projection and native persisted intent.
 - [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
   emphasizes secure development practices, provenance, security requirement
-  tracking, and risk-based implementation. Phase 8R.4 records source provenance
+  tracking, and risk-based implementation. The read path records source provenance
   and rejects native reads that depend on legacy custom-signal behavior.
 - [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/)
-  provides a basis for verifying web application security controls. Phase 8R.4
+  provides a basis for verifying web application security controls. The read path
   keeps read-source selection and validation server-side instead of allowing
   client state to decide which policy authority applies.
 
@@ -58,7 +57,7 @@ or the legacy compatibility bridge.
    provider payloads, prompts, embeddings, or replay diagnostics.
 
 5. **Keep this slice side-effect-free.**
-   Phase 8R.4 is a read-path contract. It does not create migrations, insert
+   This is a read-path contract. It does not create migrations, insert
    native rows, write migration events, delete legacy rows, or disable writes.
 
 ## Pros And Cons
@@ -77,19 +76,19 @@ Cons:
 - The route can only use native intent when native data is attached to the
   policy read model by later storage work.
 - Compatibility reads still depend on legacy preset/custom-signal projection
-  until later Phase 8R write shutdown and deletion gates.
+  until write shutdown and deletion gates finish.
 
 ## Final Recommendation Stack
 
 - Server read-path service:
-  `server/src/services/policyBuilderPhase8NativeRuntimeReadPath.mjs`
+  `server/src/services/policyNativeRuntimeReadPath.mjs`
 - Existing mapper integration:
   `server/src/services/policyIntentMapper.mjs`
 - Test coverage:
-  `server/src/__tests__/services/policyBuilderPhase8NativeRuntimeReadPath.test.mjs`
+  `server/src/__tests__/services/policyNativeRuntimeReadPath.test.mjs`
   plus mapper/schema contract tests
 - Documentation:
-  `docs/architecture/policy-builder-phase-8r-native-runtime-read-path.md`
+  `docs/architecture/policy-native-runtime-read-path.md`
 
 ## Implemented Contract
 
@@ -115,7 +114,7 @@ dependsOnCustomSignals
 sideEffects
 reasons
 validation
-nextPhase
+nextStep
 ```
 
 Source behavior:
@@ -144,7 +143,7 @@ Status behavior:
 
 ## Next Step
 
-Proceed to **Phase 8R.5 Rollback Snapshot And Reversion Window**. Now that the
-read path can identify native versus compatibility authority, rollback needs a
-bounded restore contract before converted policies can safely move through
-apply-mode migration.
+Proceed to **Rollback Snapshot And Reversion Window**. Now that the read path
+can identify native versus compatibility authority, rollback needs a bounded
+restore contract before converted policies can safely move through apply-mode
+migration.

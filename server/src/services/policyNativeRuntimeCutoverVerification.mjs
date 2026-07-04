@@ -1,8 +1,8 @@
 import {
-  PHASE8R_RUNTIME_READ_SOURCE_IDS as POLICY_RUNTIME_READ_SOURCE_IDS,
-  PHASE8R_RUNTIME_READ_STATUS_IDS as POLICY_RUNTIME_READ_STATUS_IDS,
-  buildPolicyBuilderPhase8NativeRuntimeReadPath,
-} from './policyBuilderPhase8NativeRuntimeReadPath.mjs';
+  POLICY_RUNTIME_READ_SOURCE_IDS,
+  POLICY_RUNTIME_READ_STATUS_IDS,
+  buildPolicyNativeRuntimeReadPath,
+} from './policyNativeRuntimeReadPath.mjs';
 
 const POLICY_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION =
   'policy.native_runtime_cutover_verification.v1';
@@ -38,7 +38,7 @@ function buildRisk(riskId, message, metadata = {}) {
 }
 
 function evaluateConvertedRead(convertedPolicy) {
-  const readPath = buildPolicyBuilderPhase8NativeRuntimeReadPath({
+  const readPath = buildPolicyNativeRuntimeReadPath({
     policy: convertedPolicy,
   });
   const risks = [];
@@ -66,7 +66,7 @@ function evaluateConvertedRead(convertedPolicy) {
 }
 
 function evaluateUnconvertedRead(unconvertedPolicy) {
-  const readPath = buildPolicyBuilderPhase8NativeRuntimeReadPath({
+  const readPath = buildPolicyNativeRuntimeReadPath({
     policy: unconvertedPolicy,
   });
   const risks = [];

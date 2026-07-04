@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Native Runtime Read Path Module Cutover** — renamed the native
+  runtime read-path service, focused test, and architecture record to
+  `policyNativeRuntimeReadPath.mjs`, `policyNativeRuntimeReadPath.test.mjs`,
+  and `policy-native-runtime-read-path.md`, replaced phase-coded runtime read
+  constants/builders/versioning and `nextPhase.phaseId` with durable
+  policy-domain names and `nextStep.stepId`, moved trace attributes from
+  `classifarr.phase8r.read.*` to `classifarr.policy.read.*`, updated mapper,
+  cutover-verifier, storage-reset, and evidence-map references, and preserved
+  active native intent selection, compatibility fallback, invalid native intent
+  surfacing, stable contract validation, and no-side-effect runtime reads.
 - **Policy Native Runtime Cutover Verification Module Cutover** — renamed the
   native policy read service, runtime cutover verifier, focused tests, and
   architecture record to `policyNativePolicyReadService.mjs`,

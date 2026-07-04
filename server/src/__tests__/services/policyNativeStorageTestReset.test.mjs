@@ -31,7 +31,7 @@ describe('policyNativeStorageTestReset', () => {
       'server/src/__tests__/services/policyNativeSchemaContract.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8MigrationCandidateReport.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8ExplicitConversionWorkflow.test.mjs',
-      'server/src/__tests__/services/policyBuilderPhase8NativeRuntimeReadPath.test.mjs',
+      'server/src/__tests__/services/policyNativeRuntimeReadPath.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8RollbackSnapshotWindow.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8LegacyWritePathShutdown.test.mjs',
       'server/src/__tests__/services/policyNativeStorageOperationalSafety.test.mjs',

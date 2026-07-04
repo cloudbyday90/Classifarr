@@ -53,9 +53,9 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_4',
     label: 'Native Runtime Read Path',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-native-runtime-read-path.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8NativeRuntimeReadPath.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8NativeRuntimeReadPath.test.mjs'],
+    designDocPaths: ['docs/architecture/policy-native-runtime-read-path.md'],
+    contractPaths: ['server/src/services/policyNativeRuntimeReadPath.mjs'],
+    testPaths: ['server/src/__tests__/services/policyNativeRuntimeReadPath.test.mjs'],
   },
   {
     phaseId: '8r_5',

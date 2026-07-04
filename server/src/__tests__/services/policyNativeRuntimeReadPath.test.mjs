@@ -5,13 +5,14 @@ import {
   POLICY_INTENT_SOURCES,
 } from '../../services/policyIntentSchema.mjs';
 import {
-  PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS,
-  PHASE8R_RUNTIME_READ_SOURCE_IDS,
-  PHASE8R_RUNTIME_READ_STATUS_IDS,
-  buildPolicyBuilderPhase8NativeRuntimeReadPath,
-  buildPolicyBuilderPhase8NativeRuntimeReadPathAudit,
-  validatePolicyBuilderPhase8NativeRuntimeReadPath,
-} from '../../services/policyBuilderPhase8NativeRuntimeReadPath.mjs';
+  POLICY_NATIVE_RUNTIME_READ_PATH_VERSION,
+  POLICY_RUNTIME_READ_AUDIT_RISK_IDS,
+  POLICY_RUNTIME_READ_SOURCE_IDS,
+  POLICY_RUNTIME_READ_STATUS_IDS,
+  buildPolicyNativeRuntimeReadPath,
+  buildPolicyNativeRuntimeReadPathAudit,
+  validatePolicyNativeRuntimeReadPath,
+} from '../../services/policyNativeRuntimeReadPath.mjs';
 
 function policy(overrides = {}) {
   return {
@@ -85,29 +86,30 @@ function nativeContract(overrides = {}) {
   };
 }
 
-describe('policyBuilderPhase8NativeRuntimeReadPath', () => {
+describe('policyNativeRuntimeReadPath', () => {
   test('uses compatibility bridge for unconverted policies and emits source trace', () => {
-    const readPath = buildPolicyBuilderPhase8NativeRuntimeReadPath({
+    const readPath = buildPolicyNativeRuntimeReadPath({
       policy: policy(),
     });
 
     expect(readPath.validation.ok).toBe(true);
-    expect(readPath.sourceId).toBe(PHASE8R_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE);
+    expect(readPath.version).toBe(POLICY_NATIVE_RUNTIME_READ_PATH_VERSION);
+    expect(readPath.sourceId).toBe(POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE);
     expect(readPath.statusId)
-      .toBe(PHASE8R_RUNTIME_READ_STATUS_IDS.COMPATIBILITY_BRIDGE_FALLBACK);
+      .toBe(POLICY_RUNTIME_READ_STATUS_IDS.COMPATIBILITY_BRIDGE_FALLBACK);
     expect(readPath.policy_intent_contract.source).toBe(POLICY_INTENT_SOURCES.LEGACY_PRESETS);
     expect(readPath.dependsOnCustomSignals).toBe(true);
     expect(readPath.trace).toEqual(expect.objectContaining({
-      source: PHASE8R_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE,
-      status: PHASE8R_RUNTIME_READ_STATUS_IDS.COMPATIBILITY_BRIDGE_FALLBACK,
+      source: POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE,
+      status: POLICY_RUNTIME_READ_STATUS_IDS.COMPATIBILITY_BRIDGE_FALLBACK,
       policy_id: 14,
     }));
-    expect(readPath.trace.attributes['classifarr.phase8r.read.source'])
-      .toBe(PHASE8R_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE);
+    expect(readPath.trace.attributes['classifarr.policy.read.source'])
+      .toBe(POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE);
   });
 
   test('uses active native intent over legacy custom signals for converted policies', () => {
-    const readPath = buildPolicyBuilderPhase8NativeRuntimeReadPath({
+    const readPath = buildPolicyNativeRuntimeReadPath({
       policy: policy({
         native_intent: {
           active: true,
@@ -118,8 +120,8 @@ describe('policyBuilderPhase8NativeRuntimeReadPath', () => {
     });
 
     expect(readPath.validation.ok).toBe(true);
-    expect(readPath.sourceId).toBe(PHASE8R_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT);
-    expect(readPath.statusId).toBe(PHASE8R_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_ACTIVE);
+    expect(readPath.sourceId).toBe(POLICY_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT);
+    expect(readPath.statusId).toBe(POLICY_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_ACTIVE);
     expect(readPath.dependsOnCustomSignals).toBe(false);
     expect(readPath.sideEffects).toEqual(expect.objectContaining({
       policyStorageMutated: false,
@@ -140,11 +142,11 @@ describe('policyBuilderPhase8NativeRuntimeReadPath', () => {
     }));
     expect(readPath.policy_intent_contract.purpose[0].values)
       .toEqual({ require_any: ['Animation'] });
-    expect(readPath.trace.attributes['classifarr.phase8r.read.intent_version']).toBe(3);
+    expect(readPath.trace.attributes['classifarr.policy.read.intent_version']).toBe(3);
   });
 
   test('keeps invalid native intent on native source instead of falling back to compatibility', () => {
-    const readPath = buildPolicyBuilderPhase8NativeRuntimeReadPath({
+    const readPath = buildPolicyNativeRuntimeReadPath({
       policy: policy({
         native_intent_contract: nativeContract({
           purpose: [
@@ -163,8 +165,8 @@ describe('policyBuilderPhase8NativeRuntimeReadPath', () => {
       }),
     });
 
-    expect(readPath.sourceId).toBe(PHASE8R_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT);
-    expect(readPath.statusId).toBe(PHASE8R_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_INVALID);
+    expect(readPath.sourceId).toBe(POLICY_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT);
+    expect(readPath.statusId).toBe(POLICY_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_INVALID);
     expect(readPath.validation.ok).toBe(true);
     expect(readPath.dependsOnCustomSignals).toBe(false);
     expect(readPath.policy_intent_contract.validation.valid).toBe(false);
@@ -176,10 +178,10 @@ describe('policyBuilderPhase8NativeRuntimeReadPath', () => {
   });
 
   test('preserves required policy intent contract shape for native and compatibility reads', () => {
-    const compatibility = buildPolicyBuilderPhase8NativeRuntimeReadPath({
+    const compatibility = buildPolicyNativeRuntimeReadPath({
       policy: policy(),
     });
-    const native = buildPolicyBuilderPhase8NativeRuntimeReadPath({
+    const native = buildPolicyNativeRuntimeReadPath({
       policy: policy({
         native_intent: {
           active: true,
@@ -193,7 +195,7 @@ describe('policyBuilderPhase8NativeRuntimeReadPath', () => {
   });
 
   test('validation rejects source trace mismatch and native custom signal dependency', () => {
-    const readPath = buildPolicyBuilderPhase8NativeRuntimeReadPath({
+    const readPath = buildPolicyNativeRuntimeReadPath({
       policy: policy({
         native_intent: {
           active: true,
@@ -206,10 +208,10 @@ describe('policyBuilderPhase8NativeRuntimeReadPath', () => {
       dependsOnCustomSignals: true,
       trace: {
         ...readPath.trace,
-        source: PHASE8R_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE,
+        source: POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE,
         attributes: {
           ...readPath.trace.attributes,
-          'classifarr.phase8r.read.source': PHASE8R_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE,
+          'classifarr.policy.read.source': POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE,
         },
       },
       sideEffects: {
@@ -217,19 +219,19 @@ describe('policyBuilderPhase8NativeRuntimeReadPath', () => {
         policyStorageMutated: true,
       },
     };
-    const riskIds = validatePolicyBuilderPhase8NativeRuntimeReadPath(weakened)
+    const riskIds = validatePolicyNativeRuntimeReadPath(weakened)
       .issues
       .map(issue => issue.riskId);
 
     expect(riskIds).toEqual(expect.arrayContaining([
-      PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS.SOURCE_TRACE_MISMATCH,
-      PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS.NATIVE_READ_DEPENDS_ON_CUSTOM_SIGNALS,
-      PHASE8R_RUNTIME_READ_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      POLICY_RUNTIME_READ_AUDIT_RISK_IDS.SOURCE_TRACE_MISMATCH,
+      POLICY_RUNTIME_READ_AUDIT_RISK_IDS.NATIVE_READ_DEPENDS_ON_CUSTOM_SIGNALS,
+      POLICY_RUNTIME_READ_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
     ]));
   });
 
   test('audits cleanly and points to rollback snapshot work next', () => {
-    const readPath = buildPolicyBuilderPhase8NativeRuntimeReadPath({
+    const readPath = buildPolicyNativeRuntimeReadPath({
       policy: policy({
         native_intent: {
           active: true,
@@ -237,15 +239,16 @@ describe('policyBuilderPhase8NativeRuntimeReadPath', () => {
         },
       }),
     });
-    const audit = buildPolicyBuilderPhase8NativeRuntimeReadPathAudit(readPath);
+    const audit = buildPolicyNativeRuntimeReadPathAudit(readPath);
 
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
-      sourceId: PHASE8R_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT,
-      nextPhase: expect.objectContaining({
-        phaseId: '8r_5',
+      sourceId: POLICY_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT,
+      nextStep: expect.objectContaining({
+        stepId: 'rollback_snapshot_and_reversion_window',
       }),
     }));
+    expect(audit.nextPhase).toBeUndefined();
   });
 });
