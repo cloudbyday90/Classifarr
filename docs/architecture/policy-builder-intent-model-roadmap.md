@@ -3256,8 +3256,11 @@ Implementation status:
   status, score, next-action ID, reason IDs, bucket counts, and identity/routing
   booleans so downstream engines can distinguish usable, constrained,
   review-needed, and insufficient evidence without carrying raw evidence labels.
-- Phase 6R.1 evidence quality hardening is documented in
-  [Policy Builder Phase 6R Evidence Quality](policy-builder-phase-6r-evidence-quality.md).
+- Policy evidence quality hardening is documented in
+  [Policy Evidence Quality](policy-evidence-quality.md).
+- The policy evidence quality architecture cutover renamed the active quality
+  design record to durable product-domain naming and recorded the outcome in
+  [Policy Evidence Quality Architecture Cutover](policy-evidence-quality-architecture-cutover.md).
 - The evidence quality helper lives in
   `server/src/services/policyEvidenceQuality.mjs`.
 - The evidence projection fingerprint helper now lives in
@@ -6543,6 +6546,11 @@ Implementation status:
   durable.
 - After the policy evidence boundary architecture cutover, the repository
   inventory validates with 9,601 total phase-coded references, 3,741
+  production references, and 3,763 rename candidates. The production baseline
+  remains unchanged because the server module and test names were already
+  durable.
+- After the policy evidence quality architecture cutover, the repository
+  inventory validates with 9,593 total phase-coded references, 3,741
   production references, and 3,763 rename candidates. The production baseline
   remains unchanged because the server module and test names were already
   durable.

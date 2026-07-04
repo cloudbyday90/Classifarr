@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented as a narrow Phase 9R.2 durable-domain module cutover batch.
+Implemented as a narrow durable-domain module cutover batch.
 
 ## Problem
 
@@ -53,13 +53,14 @@ Pros:
 - Reduces phase-coded production references.
 - Makes downstream quality imports product-domain oriented.
 - Avoids adding a temporary adapter that would become cleanup work later.
-- Keeps behavior covered by the existing Phase 6R quality-gate tests.
+- Keeps behavior covered by the existing evidence quality and downstream
+  quality-gate tests.
 
 Cons:
 
-- Touches several Phase 6R services that import the quality constants.
-- Historical docs and tests still mention Phase 6R as migration evidence.
-- The rest of the Phase 6R engine modules still need later durable-name
+- Touches several downstream services that import the quality constants.
+- Historical docs and tests still mention roadmap phases as migration evidence.
+- Remaining downstream engine architecture records still need later durable-name
   cutover batches.
 
 ## Final Recommendation Stack
@@ -87,6 +88,5 @@ baseline update.
 
 ## Next Step
 
-Continue Phase 9R.2 with another narrow durable-domain module cutover. The next
-candidate should be a similarly isolated helper or boundary module where no
-public or persisted compatibility adapter is required.
+Continue with the policy evidence quality architecture cutover so the active
+design record uses the same durable vocabulary as the module and tests.

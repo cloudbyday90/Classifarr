@@ -1,10 +1,10 @@
-# Policy Builder Phase 6R Evidence Quality
+# Policy Evidence Quality
 
 ## Status
 
-Implemented as a Phase 6R.1 hardening slice.
+Implemented as the durable policy evidence quality assessment.
 
-This slice adds a deterministic quality assessment to the server-owned evidence
+This design adds a deterministic quality assessment to the server-owned evidence
 projection. It does not add UI panels, live provider calls, policy writes,
 routing actions, or learning behavior.
 
@@ -62,7 +62,8 @@ operator workflow.
 
 Pros:
 
-- Gives Phase 6R.2 one deterministic handoff instead of ad hoc bucket scans.
+- Gives downstream intent, readiness, and learning engines one deterministic
+  handoff instead of ad hoc bucket scans.
 - Keeps evidence quality separate from operator-facing UI.
 - Prevents metadata-only evidence from becoming destination identity.
 - Makes stale profile and missing identity states explicit.
@@ -73,7 +74,8 @@ Cons:
 - Quality scoring is intentionally coarse; it is readiness guidance, not a final
   classification score.
 - The quality result is generated from current evidence buckets only; broader
-  runtime policy readiness still belongs to Phase 6R.4 and Phase 7R.
+  runtime policy readiness still belongs to downstream readiness and operator
+  workflow engines.
 
 ## Final Recommendation Stack
 
@@ -86,7 +88,7 @@ Cons:
   and
   `server/src/__tests__/services/policyEvidenceEngine.test.mjs`
 - Roadmap owner:
-  Phase 6R.1 Evidence Engine in
+  Policy Evidence Engine in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
@@ -140,6 +142,6 @@ raw evidence labels.
 
 ## Next Step
 
-Proceed to **Phase 6R.2 Intent Engine** consumption hardening. The next slice
+Proceed to **Policy Intent Engine** consumption hardening. The next component
 should make the intent engine consume the evidence quality status and block
 intent inference when the evidence quality is `insufficient`.

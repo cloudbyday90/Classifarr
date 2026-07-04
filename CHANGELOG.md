@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Quality Architecture Cutover** — renamed the active
+  evidence-quality architecture record to `policy-evidence-quality.md`, updated
+  the roadmap to point at the durable quality contract, added a bounded
+  architecture cutover record, and preserved the existing
+  `policyEvidenceQuality.mjs` status, reason, next-action, score, count,
+  projection-audit, and label-leakage guard behavior.
 - **Policy Evidence Boundary Architecture Cutover** — renamed the active
   evidence-boundary architecture record to `policy-evidence-boundary.md`,
   updated the roadmap to point at the durable boundary contract, added a
