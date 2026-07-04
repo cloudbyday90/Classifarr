@@ -1,11 +1,11 @@
-# Policy Builder Phase 6R Learning Quality Gate
+# Policy Learning Quality Gate
 
 ## Status
 
-Implemented as a Phase 6R.3 hardening slice.
+Implemented as the durable policy learning quality gate.
 
-This document covers the bounded handoff between Phase 6R.2 intent inference
-and Phase 6R.3 learning eligibility. Learning can only be evaluated after the
+This document covers the bounded handoff between policy intent inference and
+policy learning eligibility. Learning can only be evaluated after the
 bounded intent wrapper and embedded intent draft both carry matching, usable,
 label-free evidence quality.
 
@@ -16,7 +16,7 @@ decision into future behavior. A final outcome can be recorded from a manual
 decision, but durable learning should not happen when the upstream evidence was
 insufficient, missing, or tampered after intent generation.
 
-Phase 6R.3 therefore needs to:
+The policy learning guard therefore needs to:
 
 - require successful bounded intent,
 - require a passing evidence-fingerprint audit,
@@ -30,9 +30,9 @@ Phase 6R.3 therefore needs to:
   emphasizes governed, measured, and managed AI behavior. The learning gate
   treats generalization as a managed risk, not a side effect of a single answer.
 - [NIST AI RMF Core](https://airc.nist.gov/airmf-resources/airmf/5-sec-core/)
-  frames risk work around Govern, Map, Measure, and Manage functions. Phase
-  6R.3 uses reason-coded boundary outcomes so learning decisions are measurable
-  and auditable.
+  frames risk work around Govern, Map, Measure, and Manage functions. The
+  learning quality gate uses reason-coded boundary outcomes so learning
+  decisions are measurable and auditable.
 - [OWASP Top 10 for Large Language Model Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
   identifies insecure output handling and overreliance risks. The learning gate
   refuses to learn from unchecked or insufficient upstream intent state.
@@ -51,7 +51,7 @@ Phase 6R.3 therefore needs to:
    embedded intent draft must both carry evidence quality.
 
 2. **Block insufficient quality before candidate evaluation.**
-   If the upstream quality status is `insufficient`, Phase 6R.3 returns
+   If the upstream quality status is `insufficient`, the learning boundary returns
    `blocked_by_intent_boundary` and does not build a learning decision.
 
 3. **Reject mismatched quality snapshots.**
@@ -98,7 +98,7 @@ Cons:
 - Design owner:
   `docs/architecture/policy-learning-guard.md`
 - Roadmap owner:
-  Phase 6R.3 in
+  Policy Learning Guard in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Outcome
@@ -124,6 +124,6 @@ Cons:
 
 ## Next Step
 
-Continue with **Phase 6R.4 Automation Readiness quality-gated learning
+Continue with **Policy Automation Readiness quality-gated learning
 consumption** so readiness accepts only learning results that came from a
 quality-gated bounded intent handoff.

@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Learning Quality Gate Architecture Cutover** — renamed the active
+  learning quality-gate architecture record to
+  `policy-learning-quality-gate.md`, updated the roadmap to point at the
+  durable quality-gated learning contract, added a bounded architecture cutover
+  record, and preserved the existing `policyLearningGuard.mjs`
+  missing-quality, insufficient-quality, mismatched-quality, fingerprint, and
+  side-effect-free learning behavior.
 - **Policy Learning Guard Architecture Cutover** — renamed the active
   learning-guard architecture record to `policy-learning-guard.md`, updated the
   roadmap to point at the durable `policy.learning_guard.v1` contract, added a

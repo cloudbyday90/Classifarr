@@ -3415,7 +3415,11 @@ Implementation status:
   evidence-quality snapshots to exist, match, and avoid the `insufficient`
   status before any durable learning candidate is evaluated.
 - Policy learning quality-gate hardening is documented in
-  [Policy Builder Phase 6R Learning Quality Gate](policy-builder-phase-6r-learning-quality-gate.md).
+  [Policy Learning Quality Gate](policy-learning-quality-gate.md).
+- The policy learning quality-gate architecture cutover renamed the active
+  quality-gate design record to durable product-domain naming and recorded the
+  outcome in
+  [Policy Learning Quality Gate Architecture Cutover](policy-learning-quality-gate-architecture-cutover.md).
 
 ### 6R.4 Automation Readiness Engine
 
@@ -6578,6 +6582,10 @@ Implementation status:
   references, and 3,762 rename candidates. The production baseline improves
   because a request-time learning audit message now uses durable policy-learning
   language.
+- After the policy learning quality-gate architecture cutover, the repository
+  inventory validates with 9,538 total phase-coded references, 3,740 production
+  references, and 3,762 rename candidates. The production baseline remains
+  unchanged because enforcement already lives in the durable learning guard.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
