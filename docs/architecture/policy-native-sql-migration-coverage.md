@@ -105,7 +105,7 @@ Cons:
 - Migration coverage tests:
   `server/src/__tests__/services/policyNativeSqlMigrationCoverage.test.mjs`
 - Reset coverage contract:
-  `server/src/services/policyBuilderPhase8NativeStorageTestReset.mjs`
+  `server/src/services/policyNativeStorageTestReset.mjs`
 - Documentation:
   `docs/architecture/policy-native-sql-migration-coverage.md`
 

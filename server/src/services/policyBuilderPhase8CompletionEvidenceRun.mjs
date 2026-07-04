@@ -88,9 +88,9 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_9',
     label: 'Native Storage Test Reset',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-native-storage-test-reset.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8NativeStorageTestReset.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8NativeStorageTestReset.test.mjs'],
+    designDocPaths: ['docs/architecture/policy-native-storage-test-reset.md'],
+    contractPaths: ['server/src/services/policyNativeStorageTestReset.mjs'],
+    testPaths: ['server/src/__tests__/services/policyNativeStorageTestReset.test.mjs'],
   },
   {
     phaseId: '8r_10',

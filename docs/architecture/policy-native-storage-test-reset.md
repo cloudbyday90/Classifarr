@@ -1,18 +1,18 @@
-# Policy Builder Phase 8R Native Storage Test Reset
+# Policy Native Storage Test Reset
 
-Status: implemented as the ninth Phase 8R storage-migration component.
+Status: implemented as the durable native-storage test reset contract.
 
 ## Problem
 
-Phase 8R now has contracts for native schema shape, migration candidate
-reporting, explicit conversion, native runtime reads, rollback snapshots, legacy
-write shutdown, deletion gates, and backup/restore/post-upgrade safety. The
-test suite must now protect the final native-storage model instead of preserving
-the transition model indefinitely.
+The native-storage migration now has contracts for native schema shape,
+migration candidate reporting, explicit conversion, native runtime reads,
+rollback snapshots, legacy write shutdown, deletion gates, and
+backup/restore/post-upgrade safety. The test suite must now protect the final
+native-storage model instead of preserving the transition model indefinitely.
 
 The risk is subtle: legacy-preservation tests and old diagnostic preview/replay
-tests can make the old builder behavior look permanent. Phase 8R.9 defines a
-test reset contract that answers:
+tests can make the old builder behavior look permanent. This test reset
+contract answers:
 
 ```text
 Which tests prove native storage, which tests are only migration/rollback
@@ -27,20 +27,20 @@ boundary and requires native SQL migration coverage to be proven explicitly.
 - [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
   and [NIST SP 800-218](https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-218.pdf)
   recommend integrating security practices and verification into the software
-  lifecycle. Phase 8R.9 applies that by converting the native-storage test plan
-  into an explicit, auditable coverage contract.
+  lifecycle. This component applies that by converting the native-storage test
+  plan into an explicit, auditable coverage contract.
 - [OWASP Web Security Testing Guide](https://owasp.org/www-project-web-security-testing-guide/)
   emphasizes structured testing across development, deployment, and maintenance.
-  Phase 8R.9 uses that principle to separate final native-storage coverage from
-  migration-only compatibility tests.
+  This component uses that principle to separate final native-storage coverage
+  from migration-only compatibility tests.
 - [PostgreSQL SQL dump guidance](https://www.postgresql.org/docs/current/backup-dump.html)
   notes that restore can be performed as a single transaction to avoid partial
-  restore state. Phase 8R.9 therefore keeps backup/restore and transaction
+  restore state. This component therefore keeps backup/restore and transaction
   behavior as required native-storage test coverage.
 - [CISA Secure by Design](https://www.cisa.gov/securebydesign) emphasizes secure
-  defaults and transparent upgrade paths. Phase 8R.9 applies this by requiring
-  native storage tests to prove upgrade and deletion gates before the legacy path
-  is treated as removable.
+  defaults and transparent upgrade paths. This component applies that by
+  requiring native storage tests to prove upgrade and deletion gates before the
+  legacy path is treated as removable.
 
 ## Recommendations
 
@@ -53,8 +53,8 @@ boundary and requires native SQL migration coverage to be proven explicitly.
 
 2. **Do not infer SQL migration coverage from schema-contract tests.**
    The schema contract proves intended shape. It does not prove an actual SQL
-   migration, fresh-install path, or upgraded-install path. Phase 8R.9 requires
-   a real migration test path before reset readiness.
+   migration, fresh-install path, or upgraded-install path. This contract
+   requires a real migration test path before reset readiness.
 
 3. **Scope legacy-preservation tests narrowly.**
    Legacy payload preservation is allowed only for unconverted policy
@@ -64,7 +64,7 @@ boundary and requires native SQL migration coverage to be proven explicitly.
 4. **Deletion-scope old diagnostic tests.**
    Impact preview and replay preview tests should not be final native-storage
    contract coverage. They can remain only as deletion-scoped migration
-   material until Phase 8R deletion gates pass.
+   material until native-storage deletion gates pass.
 
 5. **Keep reset planning side-effect-free.**
    This component does not delete tests, rewrite tests, generate coverage files,
@@ -90,15 +90,15 @@ Cons:
 ## Final Recommendation Stack
 
 - Server module:
-  `server/src/services/policyBuilderPhase8NativeStorageTestReset.mjs`
+  `server/src/services/policyNativeStorageTestReset.mjs`
 - Test module:
-  `server/src/__tests__/services/policyBuilderPhase8NativeStorageTestReset.test.mjs`
+  `server/src/__tests__/services/policyNativeStorageTestReset.test.mjs`
 - Related safety contract:
   `server/src/services/policyNativeStorageOperationalSafety.mjs`
 - Documentation:
-  `docs/architecture/policy-builder-phase-8r-native-storage-test-reset.md`
+  `docs/architecture/policy-native-storage-test-reset.md`
 - Roadmap owner:
-  Phase 8R.9 in
+  Native storage test reset in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
@@ -148,12 +148,12 @@ A reset plan becomes `ready_for_native_storage_test_reset` only when:
 - Legacy compatibility tests are restricted to migration/rollback boundaries.
 - Abandoned diagnostic UI tests cannot become final native-storage authority.
 - Deletion after gates pass is enforceable.
-- The contract validates that Phase 8R.9 performs no destructive test or schema
-  side effects.
+- The contract validates that native storage reset planning performs no
+  destructive test or schema side effects.
 
 ## Next Step
 
-Proceed to **Native Storage Operational Wiring**. That work should move the
-Phase 8R backup/restore and post-upgrade safety contracts into live flows:
-native table export/import, restore validation, post-upgrade dry-run reporting,
-and atomic apply-mode conversion.
+Proceed to **Native Backup And Restore Wiring**. That work should move the
+backup/restore safety contract into live flows: native table export/import,
+restore validation, and restore parity checks before post-upgrade apply wiring
+continues.

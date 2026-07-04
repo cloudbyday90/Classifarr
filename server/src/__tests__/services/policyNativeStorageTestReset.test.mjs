@@ -1,14 +1,14 @@
 import {
-  PHASE8R_NATIVE_STORAGE_TEST_COVERAGE_IDS,
-  PHASE8R_NATIVE_STORAGE_TEST_LEGACY_SCOPE_IDS,
-  PHASE8R_NATIVE_STORAGE_TEST_RISK_IDS,
-  PHASE8R_NATIVE_STORAGE_TEST_STATUS_IDS,
-  buildPolicyBuilderPhase8NativeStorageTestReset,
-  buildPolicyBuilderPhase8NativeStorageTestResetAudit,
-  validatePolicyBuilderPhase8NativeStorageTestReset,
-} from '../../services/policyBuilderPhase8NativeStorageTestReset.mjs';
+  POLICY_NATIVE_STORAGE_TEST_COVERAGE_IDS,
+  POLICY_NATIVE_STORAGE_TEST_LEGACY_SCOPE_IDS,
+  POLICY_NATIVE_STORAGE_TEST_RISK_IDS,
+  POLICY_NATIVE_STORAGE_TEST_STATUS_IDS,
+  buildPolicyNativeStorageTestReset,
+  buildPolicyNativeStorageTestResetAudit,
+  validatePolicyNativeStorageTestReset,
+} from '../../services/policyNativeStorageTestReset.mjs';
 
-const COVERAGE_IDS = Object.freeze(Object.values(PHASE8R_NATIVE_STORAGE_TEST_COVERAGE_IDS));
+const COVERAGE_IDS = Object.freeze(Object.values(POLICY_NATIVE_STORAGE_TEST_COVERAGE_IDS));
 
 function buildCompleteTestRecords(overrides = []) {
   return COVERAGE_IDS.map(coverageId => ({
@@ -18,12 +18,12 @@ function buildCompleteTestRecords(overrides = []) {
   })).concat(overrides);
 }
 
-describe('policyBuilderPhase8NativeStorageTestReset', () => {
-  test('inventories current Phase 8R test coverage including native SQL migration coverage', () => {
-    const plan = buildPolicyBuilderPhase8NativeStorageTestReset();
+describe('policyNativeStorageTestReset', () => {
+  test('inventories current native-storage test coverage including native SQL migration coverage', () => {
+    const plan = buildPolicyNativeStorageTestReset();
 
     expect(plan.statusId)
-      .toBe(PHASE8R_NATIVE_STORAGE_TEST_STATUS_IDS.READY_FOR_NATIVE_STORAGE_TEST_RESET);
+      .toBe(POLICY_NATIVE_STORAGE_TEST_STATUS_IDS.READY_FOR_NATIVE_STORAGE_TEST_RESET);
     expect(plan.resetReady).toBe(true);
     expect(plan.requiredCoverageIds).toEqual(COVERAGE_IDS);
     expect(plan.testRecords.map(record => record.path)).toEqual(expect.arrayContaining([
@@ -42,23 +42,23 @@ describe('policyBuilderPhase8NativeStorageTestReset', () => {
   });
 
   test('still rejects reset plans when native SQL migration coverage is missing', () => {
-    const plan = buildPolicyBuilderPhase8NativeStorageTestReset({
+    const plan = buildPolicyNativeStorageTestReset({
       testRecords: buildCompleteTestRecords().filter(record => !record.coverageIds.includes(
-        PHASE8R_NATIVE_STORAGE_TEST_COVERAGE_IDS.NATIVE_SCHEMA_SQL_MIGRATION_TESTS
+        POLICY_NATIVE_STORAGE_TEST_COVERAGE_IDS.NATIVE_SCHEMA_SQL_MIGRATION_TESTS
       )),
     });
 
     expect(plan.statusId)
-      .toBe(PHASE8R_NATIVE_STORAGE_TEST_STATUS_IDS.BLOCKED_BY_MISSING_NATIVE_COVERAGE);
+      .toBe(POLICY_NATIVE_STORAGE_TEST_STATUS_IDS.BLOCKED_BY_MISSING_NATIVE_COVERAGE);
     expect(plan.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_NATIVE_STORAGE_TEST_RISK_IDS.NATIVE_SQL_MIGRATION_COVERAGE_MISSING,
+        riskId: POLICY_NATIVE_STORAGE_TEST_RISK_IDS.NATIVE_SQL_MIGRATION_COVERAGE_MISSING,
       }),
     ]));
   });
 
   test('requires legacy payload preservation tests to be scoped to migration or rollback boundaries', () => {
-    const plan = buildPolicyBuilderPhase8NativeStorageTestReset({
+    const plan = buildPolicyNativeStorageTestReset({
       testRecords: buildCompleteTestRecords([
         {
           path: 'server/src/__tests__/legacy/unscoped-preservation.test.mjs',
@@ -68,7 +68,7 @@ describe('policyBuilderPhase8NativeStorageTestReset', () => {
     });
 
     expect(plan.statusId)
-      .toBe(PHASE8R_NATIVE_STORAGE_TEST_STATUS_IDS.BLOCKED_BY_LEGACY_SCOPE);
+      .toBe(POLICY_NATIVE_STORAGE_TEST_STATUS_IDS.BLOCKED_BY_LEGACY_SCOPE);
     expect(plan.blockers).toEqual(expect.arrayContaining([
       expect.objectContaining({
         blockerId: 'legacy_preservation_test_unscoped',
@@ -78,28 +78,28 @@ describe('policyBuilderPhase8NativeStorageTestReset', () => {
   });
 
   test('allows legacy preservation tests only for unconverted policies, rollback snapshots, or maintainer fixtures', () => {
-    const plan = buildPolicyBuilderPhase8NativeStorageTestReset({
+    const plan = buildPolicyNativeStorageTestReset({
       testRecords: buildCompleteTestRecords([
         {
           path: 'server/src/__tests__/legacy/unconverted-policy-compatibility.test.mjs',
           preservesLegacyPayload: true,
           legacyScopeId:
-            PHASE8R_NATIVE_STORAGE_TEST_LEGACY_SCOPE_IDS.UNCONVERTED_POLICY_COMPATIBILITY,
+            POLICY_NATIVE_STORAGE_TEST_LEGACY_SCOPE_IDS.UNCONVERTED_POLICY_COMPATIBILITY,
         },
         {
           path: 'server/src/__tests__/legacy/rollback-snapshot-restore.test.mjs',
           preservesLegacyPayload: true,
-          legacyScopeId: PHASE8R_NATIVE_STORAGE_TEST_LEGACY_SCOPE_IDS.ROLLBACK_SNAPSHOT_RESTORE,
+          legacyScopeId: POLICY_NATIVE_STORAGE_TEST_LEGACY_SCOPE_IDS.ROLLBACK_SNAPSHOT_RESTORE,
         },
       ]),
     });
 
     expect(plan.validation.issues.map(issue => issue.riskId))
-      .not.toContain(PHASE8R_NATIVE_STORAGE_TEST_RISK_IDS.LEGACY_PRESERVATION_UNSCOPED);
+      .not.toContain(POLICY_NATIVE_STORAGE_TEST_RISK_IDS.LEGACY_PRESERVATION_UNSCOPED);
   });
 
   test('keeps abandoned diagnostic UI tests deletion-scoped until deletion gates pass', () => {
-    const unscoped = buildPolicyBuilderPhase8NativeStorageTestReset({
+    const unscoped = buildPolicyNativeStorageTestReset({
       testRecords: buildCompleteTestRecords([
         {
           path: 'server/src/__tests__/services/policyIntentImpactPreview.test.mjs',
@@ -107,64 +107,65 @@ describe('policyBuilderPhase8NativeStorageTestReset', () => {
         },
       ]),
     });
-    const afterGates = buildPolicyBuilderPhase8NativeStorageTestReset({
+    const afterGates = buildPolicyNativeStorageTestReset({
       deletionGatesPassed: true,
       testRecords: buildCompleteTestRecords([
         {
           path: 'server/src/__tests__/services/policyIntentImpactPreview.test.mjs',
           abandonedDiagnosticUi: true,
-          deleteAfterPhase8rGates: true,
+          deleteAfterNativeStorageGates: true,
         },
       ]),
     });
 
     expect(unscoped.statusId)
-      .toBe(PHASE8R_NATIVE_STORAGE_TEST_STATUS_IDS.BLOCKED_BY_DELETION_GATE_SCOPE);
+      .toBe(POLICY_NATIVE_STORAGE_TEST_STATUS_IDS.BLOCKED_BY_DELETION_GATE_SCOPE);
     expect(unscoped.validation.issues.map(issue => issue.riskId)).toContain(
-      PHASE8R_NATIVE_STORAGE_TEST_RISK_IDS.DIAGNOSTIC_UI_TEST_NOT_DELETION_SCOPED
+      POLICY_NATIVE_STORAGE_TEST_RISK_IDS.DIAGNOSTIC_UI_TEST_NOT_DELETION_SCOPED
     );
     expect(afterGates.validation.issues.map(issue => issue.riskId)).toContain(
-      PHASE8R_NATIVE_STORAGE_TEST_RISK_IDS.DELETION_GATES_PASSED_WITH_DIAGNOSTIC_TESTS
+      POLICY_NATIVE_STORAGE_TEST_RISK_IDS.DELETION_GATES_PASSED_WITH_DIAGNOSTIC_TESTS
     );
   });
 
   test('marks reset ready when all native coverage exists and legacy/diagnostic tests are properly scoped', () => {
-    const plan = buildPolicyBuilderPhase8NativeStorageTestReset({
+    const plan = buildPolicyNativeStorageTestReset({
       testRecords: buildCompleteTestRecords([
         {
           path: 'server/src/__tests__/legacy/unconverted-policy-compatibility.test.mjs',
           preservesLegacyPayload: true,
           legacyScopeId:
-            PHASE8R_NATIVE_STORAGE_TEST_LEGACY_SCOPE_IDS.UNCONVERTED_POLICY_COMPATIBILITY,
+            POLICY_NATIVE_STORAGE_TEST_LEGACY_SCOPE_IDS.UNCONVERTED_POLICY_COMPATIBILITY,
         },
         {
           path: 'server/src/__tests__/services/policyIntentReplayPreview.test.mjs',
           abandonedDiagnosticUi: true,
-          deleteAfterPhase8rGates: true,
+          deleteAfterNativeStorageGates: true,
         },
       ]),
     });
 
     expect(plan.statusId)
-      .toBe(PHASE8R_NATIVE_STORAGE_TEST_STATUS_IDS.READY_FOR_NATIVE_STORAGE_TEST_RESET);
+      .toBe(POLICY_NATIVE_STORAGE_TEST_STATUS_IDS.READY_FOR_NATIVE_STORAGE_TEST_RESET);
     expect(plan.resetReady).toBe(true);
     expect(plan.validation.ok).toBe(true);
-    expect(plan.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '8r_operational_wiring',
+    expect(plan.nextStep).toEqual(expect.objectContaining({
+      stepId: 'native_backup_restore_wiring',
     }));
+    expect(plan.nextPhase).toBeUndefined();
   });
 
   test('rejects tampered reset plans that mark diagnostics final or perform side effects', () => {
-    const plan = buildPolicyBuilderPhase8NativeStorageTestReset({
+    const plan = buildPolicyNativeStorageTestReset({
       testRecords: buildCompleteTestRecords(),
     });
-    const validation = validatePolicyBuilderPhase8NativeStorageTestReset({
+    const validation = validatePolicyNativeStorageTestReset({
       ...plan,
       testRecords: plan.testRecords.concat([
         {
           path: 'server/src/__tests__/services/policyIntentImpactPreview.test.mjs',
           abandonedDiagnosticUi: true,
-          deleteAfterPhase8rGates: true,
+          deleteAfterNativeStorageGates: true,
           finalNativeStorageContract: true,
         },
         {
@@ -181,21 +182,21 @@ describe('policyBuilderPhase8NativeStorageTestReset', () => {
 
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_NATIVE_STORAGE_TEST_RISK_IDS.LEGACY_PRESERVATION_UNSCOPED,
-      PHASE8R_NATIVE_STORAGE_TEST_RISK_IDS.ABANDONED_DIAGNOSTIC_MARKED_FINAL,
-      PHASE8R_NATIVE_STORAGE_TEST_RISK_IDS.SIDE_EFFECT_PERFORMED,
-      PHASE8R_NATIVE_STORAGE_TEST_RISK_IDS.MISSING_REASON,
+      POLICY_NATIVE_STORAGE_TEST_RISK_IDS.LEGACY_PRESERVATION_UNSCOPED,
+      POLICY_NATIVE_STORAGE_TEST_RISK_IDS.ABANDONED_DIAGNOSTIC_MARKED_FINAL,
+      POLICY_NATIVE_STORAGE_TEST_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      POLICY_NATIVE_STORAGE_TEST_RISK_IDS.MISSING_REASON,
     ]));
   });
 
-  test('summarizes reset readiness for the Phase 8R audit chain', () => {
-    const audit = buildPolicyBuilderPhase8NativeStorageTestResetAudit(
-      buildPolicyBuilderPhase8NativeStorageTestReset({
+  test('summarizes reset readiness for the native storage audit chain', () => {
+    const audit = buildPolicyNativeStorageTestResetAudit(
+      buildPolicyNativeStorageTestReset({
         testRecords: buildCompleteTestRecords([
           {
             path: 'server/src/__tests__/services/policyIntentImpactPreview.test.mjs',
             abandonedDiagnosticUi: true,
-            deleteAfterPhase8rGates: true,
+            deleteAfterNativeStorageGates: true,
           },
         ]),
       })
@@ -204,16 +205,17 @@ describe('policyBuilderPhase8NativeStorageTestReset', () => {
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
-      statusId: PHASE8R_NATIVE_STORAGE_TEST_STATUS_IDS.READY_FOR_NATIVE_STORAGE_TEST_RESET,
+      statusId: POLICY_NATIVE_STORAGE_TEST_STATUS_IDS.READY_FOR_NATIVE_STORAGE_TEST_RESET,
       resetReady: true,
       requiredCoverageCount: COVERAGE_IDS.length,
       missingCoverageIds: [],
       diagnosticDeletionCandidatePaths: [
         'server/src/__tests__/services/policyIntentImpactPreview.test.mjs',
       ],
-      nextPhase: expect.objectContaining({
-        phaseId: '8r_operational_wiring',
+      nextStep: expect.objectContaining({
+        stepId: 'native_backup_restore_wiring',
       }),
     }));
+    expect(audit.nextPhase).toBeUndefined();
   });
 });

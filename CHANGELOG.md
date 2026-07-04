@@ -11,6 +11,20 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Native Storage Test Reset Module Cutover** — renamed the native
+  storage test reset service, focused test, and architecture record to
+  `policyNativeStorageTestReset.mjs`,
+  `policyNativeStorageTestReset.test.mjs`, and
+  `policy-native-storage-test-reset.md`, moved the payload version to
+  `policy.native_storage_test_reset.v1`, replaced phase-local constants,
+  builder exports, diagnostic deletion markers, and handoff fields with durable
+  `POLICY_NATIVE_STORAGE_TEST_*` exports,
+  `policyNativeStorageTestReset*` builders,
+  `deleteAfterNativeStorageGates`, and
+  `nextStep.stepId = native_backup_restore_wiring`, updated Phase 8R evidence
+  and roadmap references, and preserved fail-closed native coverage, migration
+  SQL coverage, legacy compatibility scoping, diagnostic deletion scoping, and
+  no-side-effect checks.
 - **Policy Native Storage Operational Safety Module Cutover** — renamed the
   backup/restore and post-upgrade safety service, focused test, and
   architecture record to `policyNativeStorageOperationalSafety.mjs`,

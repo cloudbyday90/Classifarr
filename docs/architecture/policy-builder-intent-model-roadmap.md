@@ -4758,12 +4758,19 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.9 native storage test reset is documented in
-  [Policy Builder Phase 8R Native Storage Test Reset](policy-builder-phase-8r-native-storage-test-reset.md).
+- Native storage test reset is documented in
+  [Policy Native Storage Test Reset](policy-native-storage-test-reset.md).
 - The side-effect-free test reset contract lives in
-  `server/src/services/policyBuilderPhase8NativeStorageTestReset.mjs`.
+  `server/src/services/policyNativeStorageTestReset.mjs`.
 - The focused reset test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8NativeStorageTestReset.test.mjs`.
+  `server/src/__tests__/services/policyNativeStorageTestReset.test.mjs`.
+- The module cutover removed phase-coded production identifiers, replaced
+  `policyBuilderPhase8NativeStorageTestReset*` exports with
+  `policyNativeStorageTestReset*`, moved the contract version to
+  `policy.native_storage_test_reset.v1`, replaced `nextPhase` with
+  `nextStep.stepId = native_backup_restore_wiring`, and renamed diagnostic
+  deletion markers to `deleteAfterNativeStorageGates`:
+  [Policy Native Storage Test Reset Module Cutover](policy-native-storage-test-reset-module-cutover.md).
 - Current implementation inventories the native schema contract,
   dry-run candidate report, explicit conversion, native runtime read path,
   rollback/reversion, legacy write-blocking, backup/restore safety, and
@@ -6829,6 +6836,17 @@ Implementation status:
 - After the native-storage-operational-safety module cutover, the repository
   inventory validates with 8,957 total phase-coded references, 3,502
   production references, and 3,524 rename candidates.
+- The native storage test reset module cutover renamed the reset contract to
+  `policyNativeStorageTestReset.mjs`, renamed its focused test and standing
+  architecture record, moved the contract to
+  `policy.native_storage_test_reset.v1`, replaced phase-local constants,
+  builder exports, diagnostic deletion fields, and handoff fields with durable
+  names and `nextStep.stepId = native_backup_restore_wiring`, and updated the
+  Phase 8R evidence map:
+  [Policy Native Storage Test Reset Module Cutover](policy-native-storage-test-reset-module-cutover.md).
+- After the native-storage-test-reset module cutover, the repository inventory
+  validates with 8,823 total phase-coded references, 3,417 production
+  references, and 3,439 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
