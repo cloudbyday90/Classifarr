@@ -1,9 +1,9 @@
 import {
-  PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS,
-  PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS,
-  PHASE8R_LEGACY_CODE_DELETION_SUPPORT_STANCE_IDS,
-  buildPolicyBuilderPhase8LegacyCodeDeletionGates,
-} from '../../services/policyBuilderPhase8LegacyCodeDeletionGates.mjs';
+  POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS,
+  POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS,
+  POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS,
+  buildPolicyCompatibilityDeletionGates,
+} from '../../services/policyCompatibilityDeletionGates.mjs';
 import {
   buildPolicyNativeRuntimeCutoverVerification,
 } from '../../services/policyNativeRuntimeCutoverVerification.mjs';
@@ -22,7 +22,7 @@ import {
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
-    Object.values(PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS)
+    Object.values(POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS)
       .map(coverageId => [coverageId, true])
   );
 }
@@ -100,10 +100,10 @@ function readyCutover() {
 }
 
 function readyDeletionGates() {
-  return buildPolicyBuilderPhase8LegacyCodeDeletionGates({
+  return buildPolicyCompatibilityDeletionGates({
     coverage: buildCompleteCoverage(),
     supportStanceId:
-      PHASE8R_LEGACY_CODE_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
+      POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
     unconvertedPolicyCount: 0,
   });
 }
@@ -121,7 +121,7 @@ function readyReadiness() {
 
 function replacementEvidence() {
   return Object.fromEntries(
-    Object.values(PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS)
+    Object.values(POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS)
       .map(categoryId => [categoryId, {
         replacement: `Phase 8R native replacement for ${categoryId}`,
         tests: ['server phase8r focused coverage'],

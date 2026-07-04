@@ -11,6 +11,18 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Compatibility Deletion Gates Module Cutover** — renamed the
+  compatibility deletion-gate service, focused test, and architecture record to
+  `policyCompatibilityDeletionGates.mjs`,
+  `policyCompatibilityDeletionGates.test.mjs`, and
+  `policy-compatibility-deletion-gates.md`, replaced phase-coded exported
+  constants, builders, validation helpers, payload versioning, and
+  `nextPhase.phaseId` with durable policy-domain names and `nextStep.stepId`,
+  updated deletion-readiness, execution-plan, controlled-removal,
+  execution-artifact, storage-reset, and evidence-map references, and preserved
+  deletion categories, replacement coverage requirements, explicit support
+  stance requirements, unconverted-policy blockers, compatibility inventory
+  validation, and no-side-effect guarantees.
 - **Policy Legacy Write Boundary Module Cutover** — renamed the legacy write
   shutdown service, focused test, and architecture record to
   `policyLegacyWriteBoundary.mjs`, `policyLegacyWriteBoundary.test.mjs`, and

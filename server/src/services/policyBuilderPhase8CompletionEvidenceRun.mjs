@@ -74,9 +74,9 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_7',
     label: 'Legacy Code Deletion Gates',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-legacy-code-deletion-gates.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8LegacyCodeDeletionGates.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8LegacyCodeDeletionGates.test.mjs'],
+    designDocPaths: ['docs/architecture/policy-compatibility-deletion-gates.md'],
+    contractPaths: ['server/src/services/policyCompatibilityDeletionGates.mjs'],
+    testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionGates.test.mjs'],
   },
   {
     phaseId: '8r_8',

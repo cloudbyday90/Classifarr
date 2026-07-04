@@ -1,9 +1,9 @@
 import {
-  PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS,
-  PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS,
-  PHASE8R_LEGACY_CODE_DELETION_SUPPORT_STANCE_IDS,
-  buildPolicyBuilderPhase8LegacyCodeDeletionGates,
-} from '../../services/policyBuilderPhase8LegacyCodeDeletionGates.mjs';
+  POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS,
+  POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS,
+  POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS,
+  buildPolicyCompatibilityDeletionGates,
+} from '../../services/policyCompatibilityDeletionGates.mjs';
 import {
   buildPolicyNativeRuntimeCutoverVerification,
 } from '../../services/policyNativeRuntimeCutoverVerification.mjs';
@@ -20,7 +20,7 @@ import {
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
-    Object.values(PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS)
+    Object.values(POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS)
       .map(coverageId => [coverageId, true])
   );
 }
@@ -98,10 +98,10 @@ function readyCutover() {
 }
 
 function readyDeletionGates() {
-  return buildPolicyBuilderPhase8LegacyCodeDeletionGates({
+  return buildPolicyCompatibilityDeletionGates({
     coverage: buildCompleteCoverage(),
     supportStanceId:
-      PHASE8R_LEGACY_CODE_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
+      POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
     unconvertedPolicyCount: 0,
   });
 }
@@ -119,7 +119,7 @@ function readyReadiness() {
 
 function replacementEvidence() {
   return Object.fromEntries(
-    Object.values(PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS)
+    Object.values(POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS)
       .map(categoryId => [categoryId, {
         replacement: `Phase 8R native replacement for ${categoryId}`,
         tests: ['server phase8r focused coverage'],
@@ -155,13 +155,13 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionPlan', () => {
     }));
     expect(plan.manifest.entries).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        categoryId: PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI,
+        categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI,
         actionId: PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
         path: 'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
         ready: true,
       }),
       expect.objectContaining({
-        categoryId: PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS.STALE_COMPATIBILITY_TESTS,
+        categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.STALE_COMPATIBILITY_TESTS,
         actionId: PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.REMOVE_TEST,
         ready: true,
       }),
@@ -191,7 +191,7 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionPlan', () => {
   test('blocks execution planning when manifest entries lack replacement evidence', () => {
     const plan = readyExecutionPlan({
       replacementEvidence: {
-        [PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI]: {
+        [POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI]: {
           replacement: 'Only one category has evidence.',
         },
       },

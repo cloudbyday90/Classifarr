@@ -1,7 +1,7 @@
 import {
-  PHASE8R_LEGACY_CODE_DELETION_STATUS_IDS,
-  buildPolicyBuilderPhase8LegacyCodeDeletionGates,
-} from './policyBuilderPhase8LegacyCodeDeletionGates.mjs';
+  POLICY_COMPATIBILITY_DELETION_STATUS_IDS,
+  buildPolicyCompatibilityDeletionGates,
+} from './policyCompatibilityDeletionGates.mjs';
 import {
   POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS,
   buildPolicyNativeRuntimeCutoverVerification,
@@ -50,7 +50,7 @@ function buildDefaultCutoverVerification() {
 }
 
 function buildDefaultDeletionGatePlan() {
-  return buildPolicyBuilderPhase8LegacyCodeDeletionGates();
+  return buildPolicyCompatibilityDeletionGates();
 }
 
 function normalizeResidualReferences(references = []) {
@@ -105,7 +105,7 @@ function evaluateDeletionGates(deletionGatePlan) {
   const risks = [];
   const plan = deletionGatePlan || buildDefaultDeletionGatePlan();
 
-  if (plan.statusId !== PHASE8R_LEGACY_CODE_DELETION_STATUS_IDS.READY_TO_DELETE) {
+  if (plan.statusId !== POLICY_COMPATIBILITY_DELETION_STATUS_IDS.READY_TO_DELETE) {
     risks.push(buildRisk(
       PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_RISK_IDS.DELETION_GATES_NOT_READY,
       'Legacy code deletion gates must be ready before compatibility path deletion can proceed.',

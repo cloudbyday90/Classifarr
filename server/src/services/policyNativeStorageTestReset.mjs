@@ -137,7 +137,7 @@ const CURRENT_NATIVE_STORAGE_TEST_RECORDS = Object.freeze([
     finalNativeStorageContract: true,
   },
   {
-    path: 'server/src/__tests__/services/policyBuilderPhase8LegacyCodeDeletionGates.test.mjs',
+    path: 'server/src/__tests__/services/policyCompatibilityDeletionGates.test.mjs',
     coverageIds: [POLICY_NATIVE_STORAGE_TEST_COVERAGE_IDS.DELETION_GATE_TESTS],
     finalNativeStorageContract: true,
   },

@@ -4689,12 +4689,19 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.7 legacy code deletion gates are documented in
-  [Policy Builder Phase 8R Legacy Code Deletion Gates](policy-builder-phase-8r-legacy-code-deletion-gates.md).
+- Compatibility deletion gates are documented in
+  [Policy Compatibility Deletion Gates](policy-compatibility-deletion-gates.md).
+- The module cutover renamed the service, focused test, architecture record,
+  exported constants/helpers, version, and runtime handoff to durable
+  policy-domain names while preserving deletion categories, replacement
+  coverage requirements, explicit support stance requirements,
+  unconverted-policy blockers, compatibility inventory validation, and
+  no-side-effect validation:
+  [Policy Compatibility Deletion Gates Module Cutover](policy-compatibility-deletion-gates-module-cutover.md).
 - The side-effect-free deletion-gate contract lives in
-  `server/src/services/policyBuilderPhase8LegacyCodeDeletionGates.mjs`.
+  `server/src/services/policyCompatibilityDeletionGates.mjs`.
 - The focused deletion-gate test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8LegacyCodeDeletionGates.test.mjs`.
+  `server/src/__tests__/services/policyCompatibilityDeletionGates.test.mjs`.
 - Current implementation consumes the existing legacy compatibility boundary
   inventory, defines all required deletion categories and coverage gates, blocks
   deletion while unconverted policy count is unknown or non-zero, requires an

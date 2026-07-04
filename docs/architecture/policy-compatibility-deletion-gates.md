@@ -1,17 +1,17 @@
-# Policy Builder Phase 8R Legacy Code Deletion Gates
+# Policy Compatibility Deletion Gates
 
-Status: implemented as the seventh Phase 8R storage-migration component.
+Status: implemented as the durable policy compatibility deletion-gate contract.
 
 ## Problem
 
-Phase 8R has begun defining native policy intent storage, conversion planning,
-runtime reads, rollback windows, and legacy write shutdown. The next risk is
-allowing replaced compatibility code to remain indefinitely. That would leave
-Classifarr with two policy models: native intent for converted policies and
-legacy preset/custom-signal behavior for everything else.
+Classifarr is moving from legacy preset/custom-signal compatibility behavior to
+native policy intent. The next risk is allowing replaced compatibility code to
+remain indefinitely. That would leave Classifarr with two policy models: native
+intent for converted policies and legacy preset/custom-signal behavior for
+everything else.
 
-Phase 8R.7 does not delete files yet. It creates a side-effect-free deletion
-gate contract that answers:
+This service does not delete files. It creates a side-effect-free deletion-gate
+contract that answers:
 
 ```text
 Which legacy compatibility surfaces can be removed, what replacement coverage
@@ -20,20 +20,20 @@ must prove safety, and what still blocks deletion?
 
 ## Official Guidance Reviewed
 
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
+- [NIST Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
   recommends risk-based secure software practices and gap-driven action plans.
-  Phase 8R.7 applies this by turning compatibility removal into explicit gates
-  rather than an informal cleanup task.
+  This contract applies that guidance by turning compatibility removal into
+  explicit gates rather than an informal cleanup task.
 - [OWASP API Security: Improper Inventory Management](https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/)
   warns that deprecated versions and stale endpoints can be exploited. The same
   principle applies to stale policy behavior paths: keep an inventory, then
   decommission replaced surfaces after coverage and migration gates pass.
 - [CISA Secure by Design](https://www.cisa.gov/securebydesign) and its secure
   by design guidance discourage unsafe legacy features and prioritize clear
-  upgrade paths over indefinite backwards compatibility. Phase 8R.7 therefore
+  upgrade paths over indefinite backwards compatibility. This contract therefore
   rejects hiding or preserving replaced compatibility code permanently.
 - [NIST SP 800-34 Rev. 1](https://csrc.nist.gov/pubs/sp/800/34/r1/upd1/final)
-  provides contingency-planning and recovery guidance. Phase 8R.7 requires
+  provides contingency-planning and recovery guidance. This contract requires
   backup/restore and rollback coverage before deletion readiness.
 
 ## Recommendations
@@ -63,8 +63,8 @@ must prove safety, and what still blocks deletion?
    time-bounded, or unsupported after a defined window. The default is to block
    deletion.
 
-6. **Plan only in this slice.**
-   Phase 8R.7 performs no file deletion, archive moves, route removal, test
+6. **Plan only in this contract.**
+   The service performs no file deletion, archive moves, route removal, test
    removal, or storage mutation. Deletion execution is a later controlled step.
 
 ## Pros And Cons
@@ -87,15 +87,14 @@ Cons:
 ## Final Recommendation Stack
 
 - Server module:
-  `server/src/services/policyBuilderPhase8LegacyCodeDeletionGates.mjs`
+  `server/src/services/policyCompatibilityDeletionGates.mjs`
 - Test module:
-  `server/src/__tests__/services/policyBuilderPhase8LegacyCodeDeletionGates.test.mjs`
+  `server/src/__tests__/services/policyCompatibilityDeletionGates.test.mjs`
 - Compatibility inventory input:
   `server/src/services/policyBuilderLegacyCompatibilityBoundary.mjs`
 - Documentation:
-  `docs/architecture/policy-builder-phase-8r-legacy-code-deletion-gates.md`
+  `docs/architecture/policy-compatibility-deletion-gates.md`
 - Roadmap owner:
-  Phase 8R.7 in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
@@ -129,12 +128,12 @@ proceed until the remaining unconverted-policy count is measured. A plan becomes
 - Unconverted policies block deletion.
 - Support stance must be explicit.
 - Replacement coverage is allow-listed and auditable.
-- The service validates that Phase 8R.7 performs no deletion, archive, route,
+- The service validates that this contract performs no deletion, archive, route,
   test, or storage side effects.
 
 ## Next Step
 
-Proceed to **Phase 8R.8 Backup, Restore, And Post-Upgrade Safety**. That
-component should provide the operational proof required by the deletion gates:
-backup coverage, restore validation, post-upgrade dry-run reporting, apply-mode
-safety, and mixed-write failure protection.
+Proceed to **Backup, Restore, And Post-Upgrade Safety**. That component should
+provide the operational proof required by the deletion gates: backup coverage,
+restore validation, post-upgrade dry-run reporting, apply-mode safety, and
+mixed-write failure protection.

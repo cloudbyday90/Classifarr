@@ -1,6 +1,6 @@
 import {
-  PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS,
-} from '../../services/policyBuilderPhase8LegacyCodeDeletionGates.mjs';
+  POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS,
+} from '../../services/policyCompatibilityDeletionGates.mjs';
 import {
   PHASE8R_COMPATIBILITY_PATH_DELETION_READINESS_STATUS_IDS,
 } from '../../services/policyBuilderPhase8CompatibilityPathDeletionReadiness.mjs';
@@ -32,13 +32,13 @@ function readyInput(overrides = {}) {
     },
     deletionGatePlan: {
       categories: [{
-        categoryId: PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI,
+        categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI,
         paths: [MANIFEST_PATH],
         deletionIntent: 'Delete bridge-only UI after native replacement.',
       }],
     },
     replacementEvidence: {
-      [PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI]: {
+      [POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI]: {
         replacement: 'Native policy builder destination context replaces this UI.',
         tests: ['PolicyBuilderLibraryContext.test.js'],
       },

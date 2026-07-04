@@ -35,7 +35,7 @@ describe('policyNativeStorageTestReset', () => {
       'server/src/__tests__/services/policyRollbackSnapshotWindow.test.mjs',
       'server/src/__tests__/services/policyLegacyWriteBoundary.test.mjs',
       'server/src/__tests__/services/policyNativeStorageOperationalSafety.test.mjs',
-      'server/src/__tests__/services/policyBuilderPhase8LegacyCodeDeletionGates.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityDeletionGates.test.mjs',
     ]));
     expect(plan.blockers).toEqual([]);
     expect(plan.validation.ok).toBe(true);

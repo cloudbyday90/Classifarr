@@ -3,9 +3,9 @@ import {
   listLegacyCompatibilityModuleRecords,
 } from './policyBuilderLegacyCompatibilityBoundary.mjs';
 
-const PHASE8R_LEGACY_CODE_DELETION_GATES_VERSION = 'phase8r.legacy_code_deletion_gates.v1';
+const POLICY_COMPATIBILITY_DELETION_GATES_VERSION = 'policy.compatibility_deletion_gates.v1';
 
-const PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS = Object.freeze({
+const POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS = Object.freeze({
   CLIENT_BRIDGE_UI: 'client_bridge_ui',
   LEGACY_SERIALIZER_DESERIALIZER: 'legacy_serializer_deserializer',
   CUSTOM_SIGNAL_MUTATION_HELPERS: 'custom_signal_mutation_helpers',
@@ -14,7 +14,7 @@ const PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS = Object.freeze({
   STALE_COMPATIBILITY_TESTS: 'stale_compatibility_tests',
 });
 
-const PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS = Object.freeze({
+const POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS = Object.freeze({
   NATIVE_READ_WRITE_TESTS: 'native_read_write_tests',
   RUNTIME_NATIVE_DECISION_TESTS: 'runtime_native_decision_tests',
   CONVERSION_REVERSION_TESTS: 'conversion_reversion_tests',
@@ -23,21 +23,21 @@ const PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS = Object.freeze({
   DELETION_GATE_TESTS: 'deletion_gate_tests',
 });
 
-const PHASE8R_LEGACY_CODE_DELETION_SUPPORT_STANCE_IDS = Object.freeze({
+const POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS = Object.freeze({
   BLOCK_DELETION: 'block_deletion',
   COMPATIBILITY_UNTIL_CONVERTED: 'compatibility_until_converted',
   SUPPORTED_TIME_BOUND: 'supported_time_bound',
   UNSUPPORTED_AFTER_WINDOW: 'unsupported_after_window',
 });
 
-const PHASE8R_LEGACY_CODE_DELETION_STATUS_IDS = Object.freeze({
+const POLICY_COMPATIBILITY_DELETION_STATUS_IDS = Object.freeze({
   BLOCKED_BY_UNCONVERTED_POLICIES: 'blocked_by_unconverted_policies',
   BLOCKED_BY_SUPPORT_STANCE: 'blocked_by_support_stance',
   BLOCKED_BY_MISSING_COVERAGE: 'blocked_by_missing_coverage',
   READY_TO_DELETE: 'ready_to_delete',
 });
 
-const PHASE8R_LEGACY_CODE_DELETION_RISK_IDS = Object.freeze({
+const POLICY_COMPATIBILITY_DELETION_RISK_IDS = Object.freeze({
   MISSING_DELETION_CATEGORY: 'missing_deletion_category',
   MISSING_COVERAGE_REQUIREMENT: 'missing_coverage_requirement',
   MISSING_COMPATIBILITY_INVENTORY: 'missing_compatibility_inventory',
@@ -49,7 +49,7 @@ const PHASE8R_LEGACY_CODE_DELETION_RISK_IDS = Object.freeze({
   MISSING_REASON: 'missing_reason',
 });
 
-const PHASE8R_LEGACY_CODE_DELETION_REASON_IDS = Object.freeze({
+const POLICY_COMPATIBILITY_DELETION_REASON_IDS = Object.freeze({
   COMPATIBILITY_INVENTORY_CONSUMED: 'compatibility_inventory_consumed',
   DELETION_CATEGORIES_DEFINED: 'deletion_categories_defined',
   COVERAGE_REQUIREMENTS_DEFINED: 'coverage_requirements_defined',
@@ -62,7 +62,7 @@ const PHASE8R_LEGACY_CODE_DELETION_REASON_IDS = Object.freeze({
 
 const DELETION_CATEGORY_DEFINITIONS = Object.freeze([
   {
-    categoryId: PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI,
+    categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI,
     label: 'Client bridge-only UI surfaces',
     paths: [
       'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
@@ -73,7 +73,7 @@ const DELETION_CATEGORY_DEFINITIONS = Object.freeze([
       'Delete or replace UI that only explains starter-template compatibility.',
   },
   {
-    categoryId: PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS.LEGACY_SERIALIZER_DESERIALIZER,
+    categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.LEGACY_SERIALIZER_DESERIALIZER,
     label: 'Legacy serializer/deserializer paths',
     paths: [
       'client/src/utils/policyIntentDraftBridge.js',
@@ -85,7 +85,7 @@ const DELETION_CATEGORY_DEFINITIONS = Object.freeze([
       'Delete draft-to-legacy serialization once native intent is authoritative.',
   },
   {
-    categoryId: PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS.CUSTOM_SIGNAL_MUTATION_HELPERS,
+    categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CUSTOM_SIGNAL_MUTATION_HELPERS,
     label: 'Custom-signal mutation helpers',
     paths: [
       'server/src/services/autoLearningPreferenceWriters.mjs',
@@ -97,7 +97,7 @@ const DELETION_CATEGORY_DEFINITIONS = Object.freeze([
       'Delete code that mutates custom signals as policy behavior authority.',
   },
   {
-    categoryId: PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS.PRESET_AS_POLICY_RUNTIME,
+    categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.PRESET_AS_POLICY_RUNTIME,
     label: 'Preset-as-policy runtime behavior',
     paths: [
       'server/src/routes/policiesRoutePolicyRead.mjs',
@@ -109,7 +109,7 @@ const DELETION_CATEGORY_DEFINITIONS = Object.freeze([
       'Delete behavior that treats preset attachments as the durable policy model.',
   },
   {
-    categoryId: PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS.OLD_PREVIEW_REPLAY_DIAGNOSTICS,
+    categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.OLD_PREVIEW_REPLAY_DIAGNOSTICS,
     label: 'Old preview/replay diagnostic UI',
     paths: [
       'server/src/services/policyIntentImpactPreview.mjs',
@@ -121,7 +121,7 @@ const DELETION_CATEGORY_DEFINITIONS = Object.freeze([
       'Delete or move replay/impact diagnostics after native migration verifiers exist.',
   },
   {
-    categoryId: PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS.STALE_COMPATIBILITY_TESTS,
+    categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.STALE_COMPATIBILITY_TESTS,
     label: 'Stale compatibility tests',
     paths: [
       'client/src/__tests__/PolicyBuilderModal.test.js',
@@ -135,27 +135,27 @@ const DELETION_CATEGORY_DEFINITIONS = Object.freeze([
 
 const COVERAGE_REQUIREMENTS = Object.freeze([
   {
-    coverageId: PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS.NATIVE_READ_WRITE_TESTS,
+    coverageId: POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS.NATIVE_READ_WRITE_TESTS,
     label: 'Native read/write tests',
   },
   {
-    coverageId: PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS.RUNTIME_NATIVE_DECISION_TESTS,
+    coverageId: POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS.RUNTIME_NATIVE_DECISION_TESTS,
     label: 'Runtime native decision tests',
   },
   {
-    coverageId: PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS.CONVERSION_REVERSION_TESTS,
+    coverageId: POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS.CONVERSION_REVERSION_TESTS,
     label: 'Conversion/reversion tests',
   },
   {
-    coverageId: PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS.BACKUP_RESTORE_TESTS,
+    coverageId: POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS.BACKUP_RESTORE_TESTS,
     label: 'Backup/restore tests',
   },
   {
-    coverageId: PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS.POST_UPGRADE_DRY_RUN_APPLY_TESTS,
+    coverageId: POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS.POST_UPGRADE_DRY_RUN_APPLY_TESTS,
     label: 'Post-upgrade dry-run/apply tests',
   },
   {
-    coverageId: PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS.DELETION_GATE_TESTS,
+    coverageId: POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS.DELETION_GATE_TESTS,
     label: 'Deletion-gate tests',
   },
 ]);
@@ -170,9 +170,9 @@ function normalizePath(value = '') {
 
 function isExplicitSupportStance(supportStanceId) {
   return [
-    PHASE8R_LEGACY_CODE_DELETION_SUPPORT_STANCE_IDS.COMPATIBILITY_UNTIL_CONVERTED,
-    PHASE8R_LEGACY_CODE_DELETION_SUPPORT_STANCE_IDS.SUPPORTED_TIME_BOUND,
-    PHASE8R_LEGACY_CODE_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
+    POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.COMPATIBILITY_UNTIL_CONVERTED,
+    POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.SUPPORTED_TIME_BOUND,
+    POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
   ].includes(supportStanceId);
 }
 
@@ -221,18 +221,18 @@ function determineDeletionStatus({
   missingCoverageIds,
 }) {
   if (unconvertedPolicyCount === null || unconvertedPolicyCount > 0) {
-    return PHASE8R_LEGACY_CODE_DELETION_STATUS_IDS.BLOCKED_BY_UNCONVERTED_POLICIES;
+    return POLICY_COMPATIBILITY_DELETION_STATUS_IDS.BLOCKED_BY_UNCONVERTED_POLICIES;
   }
 
   if (!isExplicitSupportStance(supportStanceId)) {
-    return PHASE8R_LEGACY_CODE_DELETION_STATUS_IDS.BLOCKED_BY_SUPPORT_STANCE;
+    return POLICY_COMPATIBILITY_DELETION_STATUS_IDS.BLOCKED_BY_SUPPORT_STANCE;
   }
 
   if (missingCoverageIds.length > 0) {
-    return PHASE8R_LEGACY_CODE_DELETION_STATUS_IDS.BLOCKED_BY_MISSING_COVERAGE;
+    return POLICY_COMPATIBILITY_DELETION_STATUS_IDS.BLOCKED_BY_MISSING_COVERAGE;
   }
 
-  return PHASE8R_LEGACY_CODE_DELETION_STATUS_IDS.READY_TO_DELETE;
+  return POLICY_COMPATIBILITY_DELETION_STATUS_IDS.READY_TO_DELETE;
 }
 
 function buildBlockers({ unconvertedPolicyCount, supportStanceId, missingCoverageIds }) {
@@ -270,12 +270,12 @@ function buildBlockers({ unconvertedPolicyCount, supportStanceId, missingCoverag
   return blockers;
 }
 
-function buildPolicyBuilderPhase8LegacyCodeDeletionGates({
+function buildPolicyCompatibilityDeletionGates({
   compatibilityModules = listLegacyCompatibilityModuleRecords(),
   compatibilityDeletionGates = listLegacyCompatibilityDeletionGates(),
   coverage = {},
   unconvertedPolicyCount = null,
-  supportStanceId = PHASE8R_LEGACY_CODE_DELETION_SUPPORT_STANCE_IDS.BLOCK_DELETION,
+  supportStanceId = POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.BLOCK_DELETION,
 } = {}) {
   const normalizedUnconvertedPolicyCount =
     normalizeUnconvertedPolicyCount(unconvertedPolicyCount);
@@ -288,10 +288,10 @@ function buildPolicyBuilderPhase8LegacyCodeDeletionGates({
     missingCoverageIds,
   });
   const readyToDelete =
-    statusId === PHASE8R_LEGACY_CODE_DELETION_STATUS_IDS.READY_TO_DELETE;
+    statusId === POLICY_COMPATIBILITY_DELETION_STATUS_IDS.READY_TO_DELETE;
 
   const plan = {
-    version: PHASE8R_LEGACY_CODE_DELETION_GATES_VERSION,
+    version: POLICY_COMPATIBILITY_DELETION_GATES_VERSION,
     statusId,
     readyToDelete,
     supportStanceId,
@@ -320,40 +320,40 @@ function buildPolicyBuilderPhase8LegacyCodeDeletionGates({
     },
     reasons: [
       buildReason(
-        PHASE8R_LEGACY_CODE_DELETION_REASON_IDS.COMPATIBILITY_INVENTORY_CONSUMED,
+        POLICY_COMPATIBILITY_DELETION_REASON_IDS.COMPATIBILITY_INVENTORY_CONSUMED,
         'The deletion plan consumes the declared compatibility inventory.'
       ),
       buildReason(
-        PHASE8R_LEGACY_CODE_DELETION_REASON_IDS.DELETION_CATEGORIES_DEFINED,
+        POLICY_COMPATIBILITY_DELETION_REASON_IDS.DELETION_CATEGORIES_DEFINED,
         'Every required deletion category is represented explicitly.'
       ),
       buildReason(
-        PHASE8R_LEGACY_CODE_DELETION_REASON_IDS.COVERAGE_REQUIREMENTS_DEFINED,
+        POLICY_COMPATIBILITY_DELETION_REASON_IDS.COVERAGE_REQUIREMENTS_DEFINED,
         'Replacement coverage is required before deletion.'
       ),
       buildReason(
-        PHASE8R_LEGACY_CODE_DELETION_REASON_IDS.UNCONVERTED_POLICIES_TRACKED,
+        POLICY_COMPATIBILITY_DELETION_REASON_IDS.UNCONVERTED_POLICIES_TRACKED,
         'Deletion readiness tracks remaining unconverted policies.'
       ),
       buildReason(
-        PHASE8R_LEGACY_CODE_DELETION_REASON_IDS.SUPPORT_STANCE_REQUIRED,
+        POLICY_COMPATIBILITY_DELETION_REASON_IDS.SUPPORT_STANCE_REQUIRED,
         'Remaining compatibility requires an explicit support stance.'
       ),
       buildReason(
-        PHASE8R_LEGACY_CODE_DELETION_REASON_IDS.DELETION_BLOCKED_UNTIL_GATES_PASS,
+        POLICY_COMPATIBILITY_DELETION_REASON_IDS.DELETION_BLOCKED_UNTIL_GATES_PASS,
         'Deletion is blocked until required gates and coverage pass.'
       ),
       buildReason(
-        PHASE8R_LEGACY_CODE_DELETION_REASON_IDS.DELETE_REPLACED_CODE_NOT_HIDE,
+        POLICY_COMPATIBILITY_DELETION_REASON_IDS.DELETE_REPLACED_CODE_NOT_HIDE,
         'Replaced compatibility code is deleted after gates, not hidden.'
       ),
       buildReason(
-        PHASE8R_LEGACY_CODE_DELETION_REASON_IDS.SIDE_EFFECTS_DISABLED,
+        POLICY_COMPATIBILITY_DELETION_REASON_IDS.SIDE_EFFECTS_DISABLED,
         'This contract plans deletion gates but performs no deletion.'
       ),
     ],
-    nextPhase: {
-      phaseId: '8r_8',
+    nextStep: {
+      stepId: 'backup_restore_post_upgrade_safety',
       label: 'Backup, Restore, And Post-Upgrade Safety',
       reason:
         'Deletion gates now require backup, restore, and post-upgrade proof before legacy code can be removed.',
@@ -362,11 +362,11 @@ function buildPolicyBuilderPhase8LegacyCodeDeletionGates({
 
   return {
     ...plan,
-    validation: validatePolicyBuilderPhase8LegacyCodeDeletionGates(plan),
+    validation: validatePolicyCompatibilityDeletionGates(plan),
   };
 }
 
-function validatePolicyBuilderPhase8LegacyCodeDeletionGates(plan = {}) {
+function validatePolicyCompatibilityDeletionGates(plan = {}) {
   const issues = [];
   const categories = asArray(plan.categories);
   const coverageRequirements = asArray(plan.coverageRequirements);
@@ -377,20 +377,20 @@ function validatePolicyBuilderPhase8LegacyCodeDeletionGates(plan = {}) {
   const deletionPolicy = plan.deletionPolicy || {};
   const sideEffects = plan.sideEffects || {};
 
-  Object.values(PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS).forEach(categoryId => {
+  Object.values(POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS).forEach(categoryId => {
     if (!categoryIds.includes(categoryId)) {
       issues.push({
-        riskId: PHASE8R_LEGACY_CODE_DELETION_RISK_IDS.MISSING_DELETION_CATEGORY,
+        riskId: POLICY_COMPATIBILITY_DELETION_RISK_IDS.MISSING_DELETION_CATEGORY,
         categoryId,
         message: 'Every required legacy deletion category must be defined.',
       });
     }
   });
 
-  Object.values(PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS).forEach(coverageId => {
+  Object.values(POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS).forEach(coverageId => {
     if (!coverageIds.includes(coverageId)) {
       issues.push({
-        riskId: PHASE8R_LEGACY_CODE_DELETION_RISK_IDS.MISSING_COVERAGE_REQUIREMENT,
+        riskId: POLICY_COMPATIBILITY_DELETION_RISK_IDS.MISSING_COVERAGE_REQUIREMENT,
         coverageId,
         message: 'Every required replacement coverage gate must be defined.',
       });
@@ -399,28 +399,28 @@ function validatePolicyBuilderPhase8LegacyCodeDeletionGates(plan = {}) {
 
   if (compatibilityDeletionGates.length === 0) {
     issues.push({
-      riskId: PHASE8R_LEGACY_CODE_DELETION_RISK_IDS.MISSING_COMPATIBILITY_INVENTORY,
+      riskId: POLICY_COMPATIBILITY_DELETION_RISK_IDS.MISSING_COMPATIBILITY_INVENTORY,
       message: 'Deletion gates must consume the compatibility boundary inventory.',
     });
   }
 
   if (plan.readyToDelete === true && Number(plan.unconvertedPolicyCount) > 0) {
     issues.push({
-      riskId: PHASE8R_LEGACY_CODE_DELETION_RISK_IDS.DELETE_WITH_UNCONVERTED_POLICIES,
+      riskId: POLICY_COMPATIBILITY_DELETION_RISK_IDS.DELETE_WITH_UNCONVERTED_POLICIES,
       message: 'Compatibility code cannot be deleted while unconverted policies remain.',
     });
   }
 
   if (plan.readyToDelete === true && !isExplicitSupportStance(plan.supportStanceId)) {
     issues.push({
-      riskId: PHASE8R_LEGACY_CODE_DELETION_RISK_IDS.DELETE_WITHOUT_SUPPORT_STANCE,
+      riskId: POLICY_COMPATIBILITY_DELETION_RISK_IDS.DELETE_WITHOUT_SUPPORT_STANCE,
       message: 'Compatibility code cannot be deleted without an explicit support stance.',
     });
   }
 
   if (plan.readyToDelete === true && missingCoverageIds.length > 0) {
     issues.push({
-      riskId: PHASE8R_LEGACY_CODE_DELETION_RISK_IDS.DELETE_WITHOUT_COVERAGE,
+      riskId: POLICY_COMPATIBILITY_DELETION_RISK_IDS.DELETE_WITHOUT_COVERAGE,
       missingCoverageIds,
       message: 'Compatibility code cannot be deleted until coverage gates pass.',
     });
@@ -432,21 +432,21 @@ function validatePolicyBuilderPhase8LegacyCodeDeletionGates(plan = {}) {
     categories.some(category => category.preservePermanently === true)
   ) {
     issues.push({
-      riskId: PHASE8R_LEGACY_CODE_DELETION_RISK_IDS.PRESERVE_REPLACED_CODE_PERMANENTLY,
+      riskId: POLICY_COMPATIBILITY_DELETION_RISK_IDS.PRESERVE_REPLACED_CODE_PERMANENTLY,
       message: 'Replaced compatibility code must not remain as a permanent model.',
     });
   }
 
   if (Object.values(sideEffects).some(value => value === true)) {
     issues.push({
-      riskId: PHASE8R_LEGACY_CODE_DELETION_RISK_IDS.SIDE_EFFECT_PERFORMED,
-      message: 'Phase 8R.7 deletion gates must not delete files or mutate storage.',
+      riskId: POLICY_COMPATIBILITY_DELETION_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      message: 'Policy compatibility deletion gates must not delete files or mutate storage.',
     });
   }
 
   if (asArray(plan.reasons).length === 0) {
     issues.push({
-      riskId: PHASE8R_LEGACY_CODE_DELETION_RISK_IDS.MISSING_REASON,
+      riskId: POLICY_COMPATIBILITY_DELETION_RISK_IDS.MISSING_REASON,
       message: 'Deletion-gate output must include bounded reasons.',
     });
   }
@@ -458,11 +458,11 @@ function validatePolicyBuilderPhase8LegacyCodeDeletionGates(plan = {}) {
   };
 }
 
-function buildPolicyBuilderPhase8LegacyCodeDeletionGatesAudit(
-  plan = buildPolicyBuilderPhase8LegacyCodeDeletionGates()
+function buildPolicyCompatibilityDeletionGatesAudit(
+  plan = buildPolicyCompatibilityDeletionGates()
 ) {
   const validation = plan.validation ||
-    validatePolicyBuilderPhase8LegacyCodeDeletionGates(plan);
+    validatePolicyCompatibilityDeletionGates(plan);
 
   return {
     ok: validation.ok,
@@ -476,19 +476,19 @@ function buildPolicyBuilderPhase8LegacyCodeDeletionGatesAudit(
     missingCoverageIds: getMissingCoverageIds(plan.coverageRequirements),
     blockerCount: asArray(plan.blockers).length,
     issueIds: asArray(validation.issues).map(issue => issue.riskId),
-    nextPhase: plan.nextPhase || null,
+    nextStep: plan.nextStep || null,
   };
 }
 
 export {
-  PHASE8R_LEGACY_CODE_DELETION_CATEGORY_IDS,
-  PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS,
-  PHASE8R_LEGACY_CODE_DELETION_GATES_VERSION,
-  PHASE8R_LEGACY_CODE_DELETION_REASON_IDS,
-  PHASE8R_LEGACY_CODE_DELETION_RISK_IDS,
-  PHASE8R_LEGACY_CODE_DELETION_STATUS_IDS,
-  PHASE8R_LEGACY_CODE_DELETION_SUPPORT_STANCE_IDS,
-  buildPolicyBuilderPhase8LegacyCodeDeletionGates,
-  buildPolicyBuilderPhase8LegacyCodeDeletionGatesAudit,
-  validatePolicyBuilderPhase8LegacyCodeDeletionGates,
+  POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS,
+  POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS,
+  POLICY_COMPATIBILITY_DELETION_GATES_VERSION,
+  POLICY_COMPATIBILITY_DELETION_REASON_IDS,
+  POLICY_COMPATIBILITY_DELETION_RISK_IDS,
+  POLICY_COMPATIBILITY_DELETION_STATUS_IDS,
+  POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS,
+  buildPolicyCompatibilityDeletionGates,
+  buildPolicyCompatibilityDeletionGatesAudit,
+  validatePolicyCompatibilityDeletionGates,
 };

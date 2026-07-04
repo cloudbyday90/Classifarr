@@ -102,7 +102,7 @@ Cons:
 
 Use this stack for Phase 8R.14:
 
-1. `policyBuilderPhase8LegacyCodeDeletionGates.mjs` proves compatibility
+1. `policyCompatibilityDeletionGates.mjs` proves compatibility
    deletion gates and coverage.
 2. `policyNativeRuntimeCutoverVerification.mjs` proves converted
    and unconverted runtime read behavior.

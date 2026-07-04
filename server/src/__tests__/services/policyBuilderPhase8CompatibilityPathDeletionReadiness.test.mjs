@@ -1,8 +1,8 @@
 import {
-  PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS,
-  PHASE8R_LEGACY_CODE_DELETION_SUPPORT_STANCE_IDS,
-  buildPolicyBuilderPhase8LegacyCodeDeletionGates,
-} from '../../services/policyBuilderPhase8LegacyCodeDeletionGates.mjs';
+  POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS,
+  POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS,
+  buildPolicyCompatibilityDeletionGates,
+} from '../../services/policyCompatibilityDeletionGates.mjs';
 import {
   buildPolicyNativeRuntimeCutoverVerification,
 } from '../../services/policyNativeRuntimeCutoverVerification.mjs';
@@ -15,7 +15,7 @@ import {
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
-    Object.values(PHASE8R_LEGACY_CODE_DELETION_COVERAGE_IDS)
+    Object.values(POLICY_COMPATIBILITY_DELETION_COVERAGE_IDS)
       .map(coverageId => [coverageId, true])
   );
 }
@@ -93,10 +93,10 @@ function readyCutover() {
 }
 
 function readyDeletionGates() {
-  return buildPolicyBuilderPhase8LegacyCodeDeletionGates({
+  return buildPolicyCompatibilityDeletionGates({
     coverage: buildCompleteCoverage(),
     supportStanceId:
-      PHASE8R_LEGACY_CODE_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
+      POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
     unconvertedPolicyCount: 0,
   });
 }
@@ -162,10 +162,10 @@ describe('policyBuilderPhase8CompatibilityPathDeletionReadiness', () => {
 
   test('blocks readiness when deletion gates are not ready', () => {
     const readiness = readyReadiness({
-      deletionGatePlan: buildPolicyBuilderPhase8LegacyCodeDeletionGates({
+      deletionGatePlan: buildPolicyCompatibilityDeletionGates({
         coverage: buildCompleteCoverage(),
         supportStanceId:
-          PHASE8R_LEGACY_CODE_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
+          POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
         unconvertedPolicyCount: 2,
       }),
     });
