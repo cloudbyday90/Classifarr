@@ -2,8 +2,8 @@
 
 ## Status
 
-Implemented as a Phase 9R durable module-name cutover for migration
-verification and rollback gating.
+Implemented as a durable module-name cutover for migration verification and
+rollback gating.
 
 This change does not apply policy replacement, create rollback snapshots, or
 delete legacy paths. It removes temporary roadmap naming from the production
@@ -122,3 +122,10 @@ Cut over Runtime And Rebuild Test Reset to a durable product-domain module name
 because migration verification and runtime metrics now export durable names,
 and test reset is the next direct runtime consumer still carrying Phase 7R
 production naming.
+
+## Related Active Architecture
+
+The active migration verifier and rollback design record is now
+[Policy Migration Verifier And Rollback Path](policy-migration-verifier-rollback.md).
+The architecture naming cutover is recorded in
+[Policy Migration Verifier And Rollback Architecture Cutover](policy-migration-verifier-rollback-architecture-cutover.md).

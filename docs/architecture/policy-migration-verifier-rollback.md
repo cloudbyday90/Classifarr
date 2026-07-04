@@ -2,10 +2,9 @@
 
 ## Status
 
-Implemented as a durable migration-verifier contract that originated as the
-seventh Phase 7R runtime/rebuild checkpoint.
+Implemented as a durable migration-verifier and rollback contract.
 
-This slice compares a library-derived rebuild proposal against sanitized legacy
+This contract compares a library-derived rebuild proposal against sanitized legacy
 behavior samples, emits only migration-relevant differences,
 binds the comparison to a stable sample-set fingerprint, and enforces operator
 acceptance, rollback snapshot, and legacy deletion gates. It does not apply
@@ -39,7 +38,7 @@ legacy deletion criteria
 
 ## Official Guidance Reviewed
 
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/Projects/ssdf)
+- [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
   emphasizes secure release, verification, and tested changes. The migration
   verifier uses deterministic checks before any replacement path can apply a
   proposal.

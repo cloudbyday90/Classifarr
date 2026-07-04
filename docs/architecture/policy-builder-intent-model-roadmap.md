@@ -4110,7 +4110,7 @@ Intent: verify generated intent behavior before replacing legacy behavior.
 
 Tasks:
 
-- Use Phase 5R/6R verifier pieces to compare legacy compatibility behavior with
+- Use policy verifier pieces to compare legacy compatibility behavior with
   generated intent behavior.
 - Keep verifier output bounded and side-effect-free.
 - Bind verifier output to a stable sample-set fingerprint built from normalized
@@ -4145,10 +4145,13 @@ Acceptance criteria:
 Implementation status:
 
 - Migration verifier and rollback path is documented in
-  [Policy Migration Verifier And Rollback Path](policy-builder-phase-7r-migration-verifier-rollback.md).
+  [Policy Migration Verifier And Rollback Path](policy-migration-verifier-rollback.md).
+- Policy migration verifier and rollback architecture cutover is documented in
+  [Policy Migration Verifier And Rollback Architecture Cutover](policy-migration-verifier-rollback-architecture-cutover.md).
 - The server-owned verifier contract lives in
   `server/src/services/policyMigrationVerifierRollback.mjs`.
 - The focused verifier test suite lives in
+  `server/src/__tests__/services/policyMigrationVerifierRollback.test.mjs`.
 - Current implementation consumes a durable library-derived rebuild proposal and sanitized
   representative legacy/proposed comparison samples.
 - Verifier reports now carry a stable sample-set fingerprint with bounded
@@ -6749,6 +6752,17 @@ Implementation status:
   references, and 3,762 rename candidates. The production phase-coded baseline
   remains unchanged, but the active library-derived rebuild documentation now
   uses durable policy-domain wording.
+- The policy migration verifier and rollback architecture cutover renamed the
+  active migration verifier design record to
+  `policy-migration-verifier-rollback.md`, added a durable architecture cutover
+  record, and updated roadmap/module references to the durable verifier
+  contract:
+  [Policy Migration Verifier And Rollback Architecture Cutover](policy-migration-verifier-rollback-architecture-cutover.md).
+- After the policy migration verifier and rollback architecture cutover, the
+  repository inventory validates with 9,408 total phase-coded references, 3,740
+  production references, and 3,762 rename candidates. The production
+  phase-coded baseline remains unchanged, but the active migration verifier
+  documentation now uses durable policy-domain wording.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

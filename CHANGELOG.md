@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Migration Verifier And Rollback Architecture Cutover** — renamed
+  the active migration verifier and rollback architecture record to
+  `policy-migration-verifier-rollback.md`, updated the roadmap and module
+  cutover note to point at the durable `policy.migration_verifier.v1` and
+  `policy.migration_verifier_sample_set_fingerprint.v1` contracts, added a
+  migration verifier architecture cutover record, and preserved the existing
+  `policyMigrationVerifierRollback.mjs` side-effect-free verifier report,
+  sample-set fingerprint, proposal-validation, operator-acceptance, rollback,
+  deletion-gate, and bounded trace behavior.
 - **Policy Library-Derived Policy Rebuild Architecture Cutover** — renamed the
   active library-derived policy rebuild architecture record to
   `policy-library-policy-rebuild.md`, updated the roadmap and module cutover
