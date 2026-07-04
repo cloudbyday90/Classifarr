@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Engine Completion Quality Chain Architecture Cutover** — renamed the
+  active completion quality-chain architecture record to
+  `policy-engine-completion-quality-chain.md`, updated the roadmap to point at
+  the durable quality-continuity contract, added a completion quality-chain
+  architecture cutover record, and preserved the existing
+  `policyEngineCompletionAudit.mjs` missing-quality, insufficient-quality,
+  mismatched-quality, label-free metadata, and side-effect-free completion
+  behavior before runtime work consumes the policy-engine handoff.
 - **Policy Migration Quality Gate Architecture Cutover** — renamed the active
   migration quality-gate architecture record to
   `policy-migration-quality-gate.md`, updated the roadmap to point at the

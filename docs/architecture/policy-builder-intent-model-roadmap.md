@@ -3647,7 +3647,9 @@ Completion gate:
   snapshots, carry insufficient quality, or carry raw evidence labels in
   boundary provenance.
 - The completion quality-chain hardening is documented in
-  [Policy Builder Phase 6R Completion Quality Chain](policy-builder-phase-6r-completion-quality-chain.md).
+  [Policy Engine Completion Quality Chain](policy-engine-completion-quality-chain.md).
+- Policy engine completion quality-chain architecture cutover is documented in
+  [Policy Engine Completion Quality Chain Architecture Cutover](policy-engine-completion-quality-chain-architecture-cutover.md).
 - The gate also fails if legacy replay, impact, provider, TMDB, scoring, or old
   policy-builder documentation artifacts lack explicit migration/deletion
   decisions, remain allowed in the normal operator workflow, or unblock native
@@ -6660,6 +6662,17 @@ Implementation status:
   references, and 3,762 rename candidates. The production phase-coded baseline
   remains unchanged, but the active migration quality-gate documentation now
   uses durable policy-domain wording.
+- The policy engine completion quality-chain architecture cutover renamed the
+  active completion quality-chain design record to
+  `policy-engine-completion-quality-chain.md`, added a durable architecture
+  cutover record, and updated roadmap links to the durable quality-continuity
+  contract:
+  [Policy Engine Completion Quality Chain Architecture Cutover](policy-engine-completion-quality-chain-architecture-cutover.md).
+- After the policy engine completion quality-chain architecture cutover, the
+  repository inventory validates with 9,440 total phase-coded references, 3,740
+  production references, and 3,762 rename candidates. The production
+  phase-coded baseline remains unchanged, but the active completion
+  quality-chain documentation now uses durable policy-domain wording.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 
