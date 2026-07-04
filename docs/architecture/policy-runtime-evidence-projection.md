@@ -1,10 +1,10 @@
-# Policy Builder Phase 7R Runtime Evidence Projection
+# Policy Runtime Evidence Projection
 
 ## Status
 
-Implemented as the second Phase 7R runtime contract. The runtime projection
-and fingerprint helpers now use durable product-domain module names while this
-document remains the roadmap implementation record.
+Implemented as the durable runtime evidence projection contract. The runtime
+projection and fingerprint helpers use product-domain module names, product
+contract versions, and semantic handoffs.
 
 This slice projects runtime classification inputs into the policy evidence
 bucket vocabulary. It does not change classification behavior, route items,
@@ -26,12 +26,13 @@ profile freshness
 ```
 
 Without a single projection, those signals can become competing authorities.
-That is the failure mode Phase 7R is trying to remove: broad genre overlap,
+That is the failure mode this runtime contract removes: broad genre overlap,
 unknown-library RAG evidence, stale profiles, and metadata hints can look more
-authoritative than they are.
+authoritative than they are when no server-owned projection boundary exists.
 
-Phase 7R.2 creates a deterministic adapter that maps runtime facts into policy
-evidence buckets before automation decisions are allowed to change.
+The runtime evidence projection creates a deterministic adapter that maps
+runtime facts into policy evidence buckets before automation decisions are
+allowed to change.
 
 ## Official Guidance Reviewed
 
@@ -44,8 +45,8 @@ evidence buckets before automation decisions are allowed to change.
 - [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/)
   emphasizes server-side validation and business-logic controls. The projection
   validates bucket/source/authority relationships server-side.
-- [OpenTelemetry Traces](https://opentelemetry.io/docs/concepts/signals/traces/)
-  describes bounded trace attributes and events. The projection emits stable
+- [OpenTelemetry Trace Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/general/trace/)
+  describe common attributes for operation traces. The projection emits stable
   reason codes and counts without exposing raw provider payloads.
 
 ## Recommendations
@@ -71,8 +72,8 @@ evidence buckets before automation decisions are allowed to change.
 
 5. **Fingerprint sanitized evidence projections.**
    Runtime evidence should emit a stable SHA-256 fingerprint with bounded
-   provenance so Phase 7R.3 can bind automation decisions to the exact evidence
-   projection it evaluated without carrying raw labels forward.
+   provenance so automation decisions can bind to the exact evidence projection
+   they evaluated without carrying raw labels forward.
 
 6. **Verify fingerprint integrity before handoff.**
    Validation should recompute the sanitized projection fingerprint, compare the
@@ -89,7 +90,7 @@ evidence buckets before automation decisions are allowed to change.
 Pros:
 
 - Aligns runtime evidence with rebuild/readiness evidence.
-- Gives Phase 7R.3 a stable input contract.
+- Gives automation decisions a stable input contract.
 - Makes weak RAG, stale profile, failed routing, and broad-genre cases
   explicit.
 - Gives automation decisions a stable sanitized evidence identity.
@@ -117,9 +118,9 @@ Cons:
 - Policy evidence vocabulary:
   `server/src/services/policyEvidenceEngine.mjs`
 - Documentation:
-  `docs/architecture/policy-builder-phase-7r-runtime-evidence-projection.md`
+  `docs/architecture/policy-runtime-evidence-projection.md`
 - Roadmap owner:
-  Phase 7R.2 Runtime Evidence Projection in
+  Runtime Evidence Projection in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
@@ -195,6 +196,6 @@ rejects:
 
 ## Next Step
 
-Phase 7R.3 Automation Decision Contract should consume this runtime evidence
+The automation decision contract should consume this runtime evidence
 projection and define the allowed runtime states for classify, route, ask, skip,
 and block behavior.

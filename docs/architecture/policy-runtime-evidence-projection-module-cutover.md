@@ -3,8 +3,8 @@
 ## Status
 
 Implemented on July 3, 2026 as part of the production naming stabilization
-work. This document records the Phase 7R.2 runtime evidence projection cutover
-from roadmap-phase implementation names to durable product-domain module names.
+work. This document records the runtime evidence projection cutover from
+roadmap-phase implementation names to durable product-domain module names.
 
 ## Goal
 
@@ -110,3 +110,10 @@ Cons:
   demotion reasons, and bucket counts, without raw evidence labels.
 - Completion-audit compatibility is handled by a semantic next-step adapter
   rather than preserving phase-coded production names.
+
+## Related Active Architecture
+
+The active runtime evidence projection design record is now
+[Policy Runtime Evidence Projection](policy-runtime-evidence-projection.md).
+The architecture naming cutover is recorded in
+[Policy Runtime Evidence Projection Architecture Cutover](policy-runtime-evidence-projection-architecture-cutover.md).

@@ -3770,7 +3770,7 @@ Implementation status:
   questions, AI invalid-response questions, AI disagreement questions, and
   pending resolution rule-generation flags.
 - Classification/routing conflation and broad-genre authority risks are
-  explicit cutline risks before Phase 7R.2 evidence projection work begins.
+  explicit cutline risks before runtime evidence projection work begins.
 
 ### 7R.2 Runtime Evidence Projection
 
@@ -3805,15 +3805,17 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 7R.2 runtime evidence projection is documented in
-  [Policy Builder Phase 7R Runtime Evidence Projection](policy-builder-phase-7r-runtime-evidence-projection.md).
+- Runtime evidence projection is documented in
+  [Policy Runtime Evidence Projection](policy-runtime-evidence-projection.md).
+- Policy runtime evidence projection architecture cutover is documented in
+  [Policy Runtime Evidence Projection Architecture Cutover](policy-runtime-evidence-projection-architecture-cutover.md).
 - The server-owned runtime evidence projection lives in
   `server/src/services/policyRuntimeEvidenceProjection.mjs`.
 - The focused runtime-evidence test suite lives in
   `server/src/__tests__/services/policyRuntimeEvidenceProjection.test.mjs`.
 - Current implementation maps runtime library profile, operator intent,
   classification history, manual corrections, pending answers, RAG neighbors,
-  metadata signals, Arr routing outcomes, and profile freshness into Phase 6R
+  metadata signals, Arr routing outcomes, and profile freshness into policy
   evidence buckets.
 - Low-trust RAG neighbors, unknown-library evidence, stale profile state,
   failed routing, raw provider payloads, and unsupported broad genre overlap are
@@ -3822,8 +3824,8 @@ Implementation status:
   providers, suppresses raw payloads, and emits bounded trace attributes for
   later runtime decision tracing.
 - Each runtime evidence projection now includes a stable sanitized SHA-256
-  fingerprint with bounded provenance counts/source ids, allowing Phase 7R.3
-  automation decisions to bind to the exact evidence projection without
+  fingerprint with bounded provenance counts/source ids, allowing automation
+  decisions to bind to the exact evidence projection without
   carrying raw evidence labels forward.
 - The projection audit now recomputes the sanitized fingerprint, verifies the
   carried provenance and trace attributes, and rejects stale, malformed, or
@@ -3855,8 +3857,8 @@ Tasks:
 - Treat successful classification without Arr mapping as `classified_not_routed`,
   not a silent success.
 - Emit bounded decision traces for audit and debugging.
-- Carry the Phase 7R.2 sanitized runtime evidence projection fingerprint through
-  the decision evidence block and trace attributes.
+- Carry the sanitized runtime evidence projection fingerprint through the
+  decision evidence block and trace attributes.
 - Reject missing, malformed, mismatched, or raw-provenance fingerprints before a
   decision can pass validation.
 - Require the decision evidence block to carry the runtime evidence validation
@@ -6685,6 +6687,17 @@ Implementation status:
   production references, and 3,762 rename candidates. The production
   phase-coded baseline remains unchanged, but the active runtime inventory
   documentation now uses durable policy-domain wording.
+- The policy runtime evidence projection architecture cutover renamed the
+  active runtime evidence projection design record to
+  `policy-runtime-evidence-projection.md`, added a durable architecture cutover
+  record, and updated roadmap/module references to the durable projection
+  contract:
+  [Policy Runtime Evidence Projection Architecture Cutover](policy-runtime-evidence-projection-architecture-cutover.md).
+- After the policy runtime evidence projection architecture cutover, the
+  repository inventory validates with 9,415 total phase-coded references, 3,740
+  production references, and 3,762 rename candidates. The production
+  phase-coded baseline remains unchanged, but the active runtime evidence
+  projection documentation now uses durable policy-domain wording.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

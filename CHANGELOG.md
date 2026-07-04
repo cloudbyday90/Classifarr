@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Evidence Projection Architecture Cutover** — renamed the
+  active runtime evidence projection architecture record to
+  `policy-runtime-evidence-projection.md`, updated the roadmap and module
+  cutover note to point at the durable runtime evidence projection contract,
+  added a runtime evidence projection architecture cutover record, and
+  preserved the existing `policyRuntimeEvidenceProjection.mjs` deterministic,
+  side-effect-free, demotion, sanitized fingerprint, provenance, and
+  raw-payload suppression behavior.
 - **Policy Runtime Decision Inventory Architecture Cutover** — renamed the
   active runtime decision inventory architecture record to
   `policy-runtime-decision-inventory.md`, updated the roadmap and module
