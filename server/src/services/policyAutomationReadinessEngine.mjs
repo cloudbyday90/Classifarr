@@ -805,7 +805,7 @@ function buildPolicyAutomationReadinessEngineAudit(
     validation,
     nextStep: {
       stepId: 'operator_workflow',
-      label: 'Operator Workflow Rebuild',
+      label: 'Policy Operator Workflow',
       reason: 'Automation readiness now returns a single action-oriented state, so the product surface can replace diagnostic panels with the next operator action.',
     },
   };

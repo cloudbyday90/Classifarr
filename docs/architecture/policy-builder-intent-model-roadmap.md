@@ -3518,8 +3518,8 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 6R.5 operator workflow rebuild is documented in
-  [Policy Builder Phase 6R Operator Workflow Rebuild](policy-builder-phase-6r-operator-workflow.md).
+- Policy operator workflow is documented in
+  [Policy Operator Workflow](policy-operator-workflow.md).
 - The server-owned workflow projection lives in
   `server/src/services/policyOperatorWorkflow.mjs`.
 - The focused operator-workflow test suite lives in
@@ -3528,7 +3528,7 @@ Implementation status:
   sections: `what_belongs_here`, `what_should_not_go_here`,
   `what_helps_but_should_not_decide_alone`,
   `when_should_classifarr_ask`, and `can_this_route`.
-- The workflow projection consumes Phase 6R intent and readiness, keeps routing
+- The workflow projection consumes policy intent and readiness, keeps routing
   readiness read-only, returns one primary action per section, blocks direct
   policy persistence or routing execution, and explicitly excludes impact
   preview, replay preview, replay parity, provider gates, provider readiness,
@@ -3544,7 +3544,9 @@ Implementation status:
   boundary context, and embedded readiness input context to carry matching,
   usable evidence-quality snapshots before any operator workflow projection is
   returned.
-- The Phase 6R.5 quality-gated workflow hardening is documented in
+- Policy operator workflow architecture cutover is documented in
+  [Policy Operator Workflow Architecture Cutover](policy-operator-workflow-architecture-cutover.md).
+- Policy operator workflow quality-gate hardening is documented in
   [Policy Builder Phase 6R Workflow Quality Gate](policy-builder-phase-6r-workflow-quality-gate.md).
 
 ### 6R.6 Migration And Deletion Path
@@ -6611,6 +6613,16 @@ Implementation status:
   production references, and 3,762 rename candidates. The production baseline
   remains unchanged because enforcement already lives in the durable readiness
   engine.
+- The policy operator workflow architecture cutover renamed the active workflow
+  design record to `policy-operator-workflow.md`, added a durable architecture
+  cutover record, and updated runtime-facing audit labels to say policy
+  operator workflow:
+  [Policy Operator Workflow Architecture Cutover](policy-operator-workflow-architecture-cutover.md).
+- After the policy operator workflow architecture cutover, the repository
+  inventory validates with 9,491 total phase-coded references, 3,740 production
+  references, and 3,762 rename candidates. The production phase-coded baseline
+  remains unchanged, but runtime-facing audit labels now use durable policy
+  operator workflow wording.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

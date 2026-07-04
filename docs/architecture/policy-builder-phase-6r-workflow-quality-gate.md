@@ -97,7 +97,7 @@ Cons:
 - Test module:
   `server/src/__tests__/services/policyOperatorWorkflow.test.mjs`
 - Existing operator workflow record:
-  `docs/architecture/policy-builder-phase-6r-operator-workflow.md`
+  `docs/architecture/policy-operator-workflow.md`
 - Roadmap owner:
   Phase 6R.5 in `docs/architecture/policy-builder-intent-model-roadmap.md`
 

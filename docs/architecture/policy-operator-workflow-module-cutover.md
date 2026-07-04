@@ -2,8 +2,8 @@
 
 ## Status
 
-Implemented as a durable-domain module cutover for the Phase 6R.5 operator
-workflow slice.
+Implemented as a durable-domain module cutover for the policy operator
+workflow.
 
 The production service now uses:
 
@@ -15,8 +15,9 @@ The production service now uses:
 The operator workflow is a durable product concept, not a roadmap phase. It
 defines the destination-first policy setup surface that operators should see
 after evidence, intent, learning, and readiness have been validated. Keeping
-the production module named after Phase 6R would preserve delivery-plan
-language in the policy engine after the re-imagined builder is complete.
+the production module named after a roadmap checkpoint would preserve
+delivery-plan language in the policy engine after the re-imagined builder is
+complete.
 
 ## Official Guidance Reviewed
 
@@ -52,7 +53,7 @@ language in the policy engine after the re-imagined builder is complete.
    those audits still exist, but the workflow itself should not emit phase ids.
 
 4. **Update direct runtime consumers only.**
-   This slice should update completion audit and migration/deletion imports
+   This component should update completion audit and migration/deletion imports
    without renaming the migration/deletion component in the same change.
 
 5. **Keep workflow behavior side-effect free.**
@@ -75,7 +76,7 @@ Cons:
 
 - Direct consumers needed import and contract-version updates.
 - The migration/deletion component still carries roadmap names until its own
-  cutover slice.
+  cutover component.
 - The completion audit still maps durable `nextStep` values back to roadmap
   checkpoints until that audit is retired or renamed.
 
@@ -94,7 +95,7 @@ Cons:
 - Roadmap owner:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 - Existing design owner:
-  `docs/architecture/policy-builder-phase-6r-operator-workflow.md`
+  `docs/architecture/policy-operator-workflow.md`
 
 ## Implementation Outcome
 

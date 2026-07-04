@@ -122,7 +122,7 @@ const POLICY_ENGINE_COMPONENT_RECORDS = Object.freeze([
   },
   {
     id: POLICY_ENGINE_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW,
-    label: 'Operator workflow rebuild',
+    label: 'Policy operator workflow',
     docPath: 'docs/architecture/policy-operator-workflow-module-cutover.md',
     servicePath: 'server/src/services/policyOperatorWorkflow.mjs',
     testPath: 'server/src/__tests__/services/policyOperatorWorkflow.test.mjs',

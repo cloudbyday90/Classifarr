@@ -734,7 +734,7 @@ describe('policyAutomationReadinessEngine', () => {
     expect(audit.checkedStateCount).toBe(6);
     expect(audit.nextStep).toEqual(expect.objectContaining({
       stepId: 'operator_workflow',
-      label: 'Operator Workflow Rebuild',
+      label: 'Policy Operator Workflow',
     }));
   });
 

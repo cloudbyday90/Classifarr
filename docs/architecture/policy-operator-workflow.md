@@ -1,23 +1,23 @@
-# Policy Builder Phase 6R Operator Workflow Rebuild
+# Policy Operator Workflow
 
 ## Status
 
-Implemented as the fifth Phase 6R engine contract.
+Implemented as the durable server-owned policy operator workflow projection.
 
-This slice defines the server-owned product workflow projection that the policy
-builder should render. It does not replace the Vue modal yet, persist policy,
-execute routing, run provider checks, run replay, or expose migration verifier
+This document defines the product workflow projection that the policy builder
+should render. It does not replace the Vue modal yet, persist policy, execute
+routing, run provider checks, run replay, or expose migration verifier
 diagnostics in the normal operator flow.
 
 The pure projection remains available for focused tests and internal
-composition, but new runtime/rebuild callers should use the bounded workflow
-entry point. That entry point requires a successful bounded intent result and a
-successful bounded readiness result before a workflow projection is returned.
-It also requires the upstream intent, evidence-fingerprint, and readiness
-audits to still be passing so stale or tampered bounded contracts cannot render
-as an operator workflow. The boundary now also requires matching, usable,
-sanitized evidence-quality snapshots from bounded intent, readiness boundary
-context, and embedded readiness input context before returning the workflow.
+composition, but runtime and rebuild callers should use the bounded workflow
+entry point. That entry point requires successful bounded intent and readiness
+results before a workflow projection is returned. It also requires the upstream
+intent, evidence-fingerprint, and readiness audits to still be passing so stale
+or tampered bounded contracts cannot render as an operator workflow. The
+boundary requires matching, usable, sanitized evidence-quality snapshots from
+bounded intent, readiness boundary context, and embedded readiness input context
+before returning the workflow.
 
 ## Problem
 
@@ -36,7 +36,8 @@ That conflicts with the re-imagined goal. Policy setup should start from the
 media-server library and ask only the small set of questions needed to confirm
 destination intent.
 
-Phase 6R.5 turns the engine contracts into a simple workflow target:
+The operator workflow turns server-owned policy contracts into a simple product
+surface:
 
 ```text
 What belongs here?
@@ -49,23 +50,22 @@ Can this route?
 ## Official Guidance Reviewed
 
 - [W3C WCAG 2.2](https://www.w3.org/TR/WCAG22/) includes guidance for labels,
-  instructions, error identification, and status messages. The workflow uses one
-  plain question, helper text, status, and next action per section.
+  instructions, error identification, and status messages. The workflow uses
+  one plain question, helper text, status, and next action per section.
 - [W3C WAI Forms Tutorial](https://www.w3.org/WAI/tutorials/forms/)
-  emphasizes clear grouping, labels, instructions, and accessible form controls.
-  The workflow groups destination setup into five sections with explicit control
-  kinds.
+  emphasizes clear grouping, labels, instructions, and accessible form
+  controls. The workflow groups destination setup into five sections with
+  explicit control kinds.
+- [W3C WAI Grouping Controls](https://www.w3.org/WAI/tutorials/forms/grouping/)
+  explains that grouping related controls makes forms easier to understand and
+  navigate. The workflow keeps destination questions in small, related groups.
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
   emphasizes governed, measured, and managed AI system behavior. The workflow
   keeps readiness and learning server-owned, reason-coded, and auditable.
-- [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/)
+- [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
   supports server-side validation and business-logic controls. The workflow
   explicitly prevents client-side direct persistence, routing execution, and
   diagnostic-panel authority.
-- [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
-  calls out validation failures and output validation failures as security
-  events. The workflow boundary records failed upstream audit handoffs as
-  structured risk IDs instead of rendering a partial workflow.
 - [OpenTelemetry Context Propagation](https://opentelemetry.io/docs/concepts/context-propagation/)
   describes propagating causal context across boundaries. The workflow carries
   only sanitized evidence projection fingerprints and audit booleans to
@@ -86,8 +86,8 @@ Can this route?
    section has one primary action and one target.
 
 3. **Use server-owned readiness.**
-   The route/readiness section is read-only. It reports the Phase 6R readiness
-   state and next action; it does not execute routing.
+   The route/readiness section is read-only. It reports the policy automation
+   readiness state and next action; it does not execute routing.
 
 4. **Treat old diagnostics as exclusions from the normal flow.**
    Impact preview, replay preview, replay parity, provider gates, provider
@@ -99,7 +99,7 @@ Can this route?
    readiness, policy persistence, learning, or routing execution.
 
 6. **Require bounded readiness before workflow projection.**
-   Runtime and rebuild flows should call the bounded workflow wrapper, which
+   Runtime and rebuild flows should call the bounded workflow wrapper. It
    blocks failed bounded intent/readiness handoffs and rejects missing or
    mismatched evidence projection fingerprints.
 
@@ -108,13 +108,18 @@ Can this route?
    mismatched evidence-quality snapshots so the normal operator workflow cannot
    render from incomplete evidence state.
 
+8. **Keep labels stable and accessible.**
+   Workflow headings, questions, helper text, status, and actions should stay
+   plain-language and durable so UI and telemetry can reuse the same server
+   contract without roadmap-specific labels.
+
 ## Pros And Cons
 
 Pros:
 
 - Gives the UI a simple destination-first contract before changing components.
 - Prevents old diagnostic panels from being treated as workflow requirements.
-- Aligns section copy with Phase 0R user terms and Phase 6R engine fields.
+- Aligns section copy with durable user terms and policy engine fields.
 - Uses the readiness engine directly instead of duplicating routing logic in the
   client.
 - Creates an audit target for later deletion/migration work.
@@ -125,7 +130,7 @@ Pros:
 
 Cons:
 
-- This slice does not yet remove existing Vue panels.
+- This contract does not yet remove existing Vue panels.
 - It does not add a new endpoint for the projection.
 - It does not persist native policy intent.
 - It does not decide which old replay/provider services are migration verifiers
@@ -149,11 +154,10 @@ Cons:
 - Test module:
   `server/src/__tests__/services/policyOperatorWorkflow.test.mjs`
 - Documentation:
-  `docs/architecture/policy-builder-phase-6r-operator-workflow.md`
+  `docs/architecture/policy-operator-workflow.md`
 - Quality gate documentation:
-  `docs/architecture/policy-builder-phase-6r-workflow-quality-gate.md`
+  Pending durable architecture cutover.
 - Roadmap owner:
-  Phase 6R.5 Operator Workflow Rebuild in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
 ## Implemented Contract
@@ -203,7 +207,7 @@ workflow
 workflowAudit
 issueCount
 issues[]
-nextPhase
+nextStep
 ```
 
 Supported bounded wrapper status IDs:
@@ -251,6 +255,6 @@ qualityMatch
 
 ## Next Step
 
-Proceed to **Phase 6R.6 Migration And Deletion Path**. That component should
-classify replaced policy-builder diagnostics as migration verifier machinery or
-delete targets, with explicit rollback and removal criteria.
+Continue with **Policy Operator Workflow Quality Gate Architecture Cutover**.
+That component should rename the active workflow quality-gate design record and
+preserve the bounded quality checks that protect the normal operator workflow.

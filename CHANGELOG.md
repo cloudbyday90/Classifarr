@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Operator Workflow Architecture Cutover** — renamed the active
+  operator workflow architecture record to `policy-operator-workflow.md`,
+  updated runtime-facing readiness and completion labels from operator workflow
+  rebuild wording to policy operator workflow wording, added a durable
+  architecture cutover record, and preserved the existing
+  `policyOperatorWorkflow.mjs` destination-first sections, bounded readiness,
+  evidence-quality, no-routing, no-persistence, and diagnostic-exclusion
+  behavior.
 - **Policy Automation Readiness Quality Gate Architecture Cutover** — renamed
   the active readiness quality-gate architecture record to
   `policy-automation-readiness-quality-gate.md`, updated the roadmap to point
