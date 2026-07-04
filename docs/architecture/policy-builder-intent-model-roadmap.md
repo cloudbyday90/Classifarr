@@ -3206,8 +3206,12 @@ Implementation status:
   engine design record to durable product-domain naming and recorded the
   outcome in
   [Policy Evidence Engine Architecture Cutover](policy-evidence-engine-architecture-cutover.md).
-- Phase 6R.1 evidence input gate hardening is documented in
-  [Policy Builder Phase 6R Evidence Input Gate](policy-builder-phase-6r-evidence-input-gate.md).
+- Policy evidence input-gate hardening is documented in
+  [Policy Evidence Input Gate](policy-evidence-input-gate.md).
+- The policy evidence input-gate architecture cutover renamed the active input
+  boundary design record to durable product-domain naming and recorded the
+  outcome in
+  [Policy Evidence Input Gate Architecture Cutover](policy-evidence-input-gate-architecture-cutover.md).
 - The evidence input gate lives in
   `server/src/services/policyEvidenceInputGate.mjs`.
 - Phase 6R.1 evidence boundary hardening is documented in
@@ -6526,6 +6530,11 @@ Implementation status:
   production baseline remains unchanged.
 - After the policy evidence engine architecture cutover, the repository
   inventory validates with 9,630 total phase-coded references, 3,741
+  production references, and 3,763 rename candidates. The production baseline
+  remains unchanged because the server module and test names were already
+  durable.
+- After the policy evidence input-gate architecture cutover, the repository
+  inventory validates with 9,619 total phase-coded references, 3,741
   production references, and 3,763 rename candidates. The production baseline
   remains unchanged because the server module and test names were already
   durable.

@@ -1,6 +1,6 @@
 # Policy Evidence Input Gate Module Cutover
 
-Status: implemented as a Phase 9R.2 durable-domain module cutover.
+Status: implemented as a durable-domain module cutover.
 
 ## Problem
 
@@ -39,8 +39,8 @@ to import phase-coded production code.
    `validatePolicyEvidenceInputSection`.
 4. Move the contract version to `policy.evidence.input_gate.v1`.
 5. Replace the input-gate audit's local `nextPhase` handoff with `nextStep`.
-6. Leave evidence source IDs imported from the current projection engine until
-   the projection engine receives its own durable module cutover.
+6. Keep evidence source IDs imported from the durable policy evidence engine so
+   the gate and projection contract share one source vocabulary.
 
 ## Pros And Cons
 
@@ -53,11 +53,9 @@ Pros:
 
 Cons:
 
-- The input gate still depends on source IDs from the phase-coded projection
-  engine until that engine is renamed.
-- Phase 6R documentation remains as historical implementation traceability.
-- Downstream Phase 6R services still contain their own phase-coded contracts and
-  need separate cutovers.
+- Phase-coded documentation remains as historical implementation traceability.
+- Downstream intent, readiness, learning, and storage architecture records still
+  contain their own phase-coded contracts and need separate cutovers.
 
 ## Final Recommendation Stack
 
@@ -86,6 +84,5 @@ counts as maximums.
 
 ## Next Step
 
-Continue Phase 9R.2 with the evidence projection engine cutover. That is the
-remaining phase-coded evidence-chain dependency imported by
-`policyEvidenceBoundary.mjs`.
+Continue with the policy evidence input-gate architecture cutover so the active
+design record uses the same durable vocabulary as the module and tests.

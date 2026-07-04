@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Input Gate Architecture Cutover** — renamed the active
+  input-gate architecture record to `policy-evidence-input-gate.md`, updated
+  the roadmap to point at the durable input-boundary contract, added a bounded
+  architecture cutover record, and preserved the existing
+  `policyEvidenceInputGate.mjs` envelope validation, unsafe-marker rejection,
+  source-authority mapping, and bounded diagnostic behavior.
 - **Policy Evidence Engine Architecture Cutover** — renamed the active evidence
   engine architecture record to `policy-evidence-engine.md`, updated the
   roadmap to point at the durable evidence-engine contract, added a bounded

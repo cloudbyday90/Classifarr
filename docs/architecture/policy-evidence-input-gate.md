@@ -1,12 +1,12 @@
-# Policy Builder Phase 6R Evidence Input Gate
+# Policy Evidence Input Gate
 
 ## Intent
 
-Harden Phase 6R.1 by validating the evidence input envelope before the
-evidence projection builder consumes it. The gate keeps the engine offline,
+Validate the policy evidence input envelope before the evidence projection
+builder consumes it. The gate keeps the evidence engine offline,
 deterministic, and source-bounded: raw provider payloads, live lookup markers,
 provider quota/cooldown state, UI diagnostic labels, and replay/impact preview
-payloads are rejected before they can become evidence.
+payloads are rejected before they can become policy evidence.
 
 This is not a new policy authoring surface. It is a server-side boundary check
 for the evidence engine.
@@ -14,7 +14,7 @@ for the evidence engine.
 ## Official-Source Research
 
 - OWASP Input Validation recommends allow-list validation for structured
-  inputs. Phase 6R evidence inputs therefore use a known section list rather
+  inputs. Policy evidence inputs therefore use a known section list rather
   than accepting arbitrary top-level evidence objects.
 - OWASP REST Security guidance recommends validating type, range, format, and
   rejecting unexpected content. The input gate rejects unknown sections and
@@ -27,7 +27,7 @@ for the evidence engine.
   engines can preserve provenance.
 - OpenTelemetry Semantic Conventions promote stable names for operations and
   data. The gate keeps section and source IDs stable for future trace mapping
-  without adopting full telemetry in this slice.
+  without adopting full telemetry in this component.
 
 Sources:
 
@@ -59,7 +59,7 @@ The allowed sections are:
 
 Pros:
 
-- makes the Phase 6R.1 input boundary auditable,
+- makes the policy evidence input boundary auditable,
 - prevents provider diagnostics from becoming evidence by accident,
 - keeps future runtime integration from passing arbitrary objects into the
   projection builder.
@@ -83,7 +83,7 @@ Pros:
 
 - protects the evidence contract before projection,
 - avoids leaking sensitive values into gate diagnostics,
-- keeps Phase 6R.1 deterministic and offline.
+- keeps policy evidence projection deterministic and offline.
 
 Cons:
 
@@ -93,7 +93,7 @@ Cons:
 
 ### Keep Authority Mapping Server-Owned
 
-Each input section maps to a Phase 6R evidence source and a Phase 0R authority
+Each input section maps to a server-owned policy evidence source and authority
 source.
 
 Pros:
@@ -108,21 +108,21 @@ Cons:
 
 ## Final Recommendation Stack
 
-Use this stack for Phase 6R.1 hardening:
+Use this stack for policy evidence input hardening:
 
 1. `policyEvidenceInputGate.mjs` validates input envelope shape and
    unsafe payload markers.
 2. `policyEvidenceEngine.mjs` remains the deterministic projection
    builder and projection audit.
-3. Phase 6R.2 intent inference consumes projection output only after Phase 6R.1
-   input and projection audits pass.
+3. Policy intent inference consumes projection output only after policy
+   evidence input and projection audits pass.
 
 ## Implementation Outcome
 
 Implemented:
 
 - Added `policyEvidenceInputGate.mjs`.
-- Added a stable Phase 6R evidence input section vocabulary.
+- Added a stable policy evidence input section vocabulary.
 - Added a bounded recursive scan for unsafe keys.
 - Gate issues include risk ID, section ID, and path only; raw values are not
   copied into diagnostics.
@@ -141,7 +141,7 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Phase 6R.2 Intent Engine**. The next component should consume
-only gated Phase 6R.1 evidence projections and produce bounded destination
-intent suggestions without turning observed evidence or AI output into durable
-policy authority.
+Proceed with the **Policy Evidence Boundary** architecture cutover. The next
+component should expose one durable evidence-boundary record that runs the
+input gate, projection builder, fingerprint audit, provenance summary, and
+quality check before downstream intent engines consume evidence.
