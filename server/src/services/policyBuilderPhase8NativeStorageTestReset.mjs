@@ -132,7 +132,7 @@ const CURRENT_PHASE8R_TEST_RECORDS = Object.freeze([
     finalNativeStorageContract: true,
   },
   {
-    path: 'server/src/__tests__/services/policyBuilderPhase8BackupRestoreSafety.test.mjs',
+    path: 'server/src/__tests__/services/policyNativeStorageOperationalSafety.test.mjs',
     coverageIds: [PHASE8R_NATIVE_STORAGE_TEST_COVERAGE_IDS.BACKUP_RESTORE_COVERAGE_TESTS],
     finalNativeStorageContract: true,
   },

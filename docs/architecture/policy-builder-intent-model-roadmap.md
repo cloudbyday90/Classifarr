@@ -4704,14 +4704,14 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.8 backup, restore, and post-upgrade safety is documented in
-  [Policy Builder Phase 8R Backup, Restore, And Post-Upgrade Safety](policy-builder-phase-8r-backup-restore-post-upgrade-safety.md).
+- Native storage operational safety is documented in
+  [Policy Native Storage Operational Safety](policy-native-storage-operational-safety.md).
 - The side-effect-free operational safety contract lives in
-  `server/src/services/policyBuilderPhase8BackupRestoreSafety.mjs`.
+  `server/src/services/policyNativeStorageOperationalSafety.mjs`.
 - The focused safety test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8BackupRestoreSafety.test.mjs`.
-- Current implementation enumerates native intent tables from the Phase 8R.1
-  schema contract, requires every native table in backup and restore coverage,
+  `server/src/__tests__/services/policyNativeStorageOperationalSafety.test.mjs`.
+- Current implementation enumerates native intent tables from the native schema
+  contract, requires every native table in backup and restore coverage,
   requires restore validation for native policy recovery, rollback snapshots,
   migration events, and schema versions, and blocks readiness until
   fresh-install/upgraded-install schema parity is proven.
@@ -4720,7 +4720,7 @@ Implementation status:
   events, rollback snapshots, and validation status; restore remaps old policy,
   library, and native intent IDs before restoring child rows.
 - Live wiring is documented in
-  [Policy Builder Phase 8R Native Backup And Restore Wiring](policy-builder-phase-8r-native-backup-restore-wiring.md).
+  [Native Backup And Restore Wiring](policy-builder-phase-8r-native-backup-restore-wiring.md).
 - Post-upgrade apply mode is blocked unless dry-run reporting is current,
   conversion is atomic, failure rolls back, legacy behavior stays active until
   commit, mixed partial native/legacy writes are prevented, and clear
@@ -6818,6 +6818,17 @@ Implementation status:
 - After the native-SQL-migration-coverage module cutover, the repository
   inventory validates with 9,093 total phase-coded references, 3,568
   production references, and 3,590 rename candidates.
+- The native storage operational safety module cutover renamed the
+  backup/restore and post-upgrade safety contract to
+  `policyNativeStorageOperationalSafety.mjs`, renamed its focused test, moved
+  the contract to `policy.native_storage_operational_safety.v1`, replaced
+  phase-local constants and handoff fields with durable names and
+  `nextStep.stepId = native_storage_test_reset`, and updated roadmap plus
+  upstream SQL coverage handoff references:
+  [Policy Native Storage Operational Safety Module Cutover](policy-native-storage-operational-safety-module-cutover.md).
+- After the native-storage-operational-safety module cutover, the repository
+  inventory validates with 8,957 total phase-coded references, 3,502
+  production references, and 3,524 rename candidates.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

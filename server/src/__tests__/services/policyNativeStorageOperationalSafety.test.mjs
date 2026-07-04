@@ -1,13 +1,13 @@
 import {
-  PHASE8R_BACKUP_RESTORE_MODE_IDS,
-  PHASE8R_BACKUP_RESTORE_RISK_IDS,
-  PHASE8R_BACKUP_RESTORE_STATUS_IDS,
-  PHASE8R_BACKUP_RESTORE_VALIDATION_IDS,
-  PHASE8R_POST_UPGRADE_OPERATOR_ERROR_IDS,
-  buildPolicyBuilderPhase8BackupRestoreSafetyAudit,
-  buildPolicyBuilderPhase8BackupRestoreSafetyPlan,
-  validatePolicyBuilderPhase8BackupRestoreSafetyPlan,
-} from '../../services/policyBuilderPhase8BackupRestoreSafety.mjs';
+  POLICY_NATIVE_STORAGE_OPERATIONAL_MODE_IDS,
+  POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS,
+  POLICY_NATIVE_STORAGE_OPERATIONAL_STATUS_IDS,
+  POLICY_NATIVE_STORAGE_OPERATIONAL_VALIDATION_IDS,
+  POLICY_NATIVE_STORAGE_OPERATOR_ERROR_IDS,
+  buildPolicyNativeStorageOperationalSafetyAudit,
+  buildPolicyNativeStorageOperationalSafetyPlan,
+  validatePolicyNativeStorageOperationalSafetyPlan,
+} from '../../services/policyNativeStorageOperationalSafety.mjs';
 import {
   POLICY_NATIVE_SCHEMA_TABLE_IDS,
 } from '../../services/policyNativeSchemaContract.mjs';
@@ -17,9 +17,9 @@ import {
 
 const NATIVE_TABLE_IDS = Object.freeze(Object.values(POLICY_NATIVE_SCHEMA_TABLE_IDS));
 const RESTORE_VALIDATION_IDS = Object.freeze(
-  Object.values(PHASE8R_BACKUP_RESTORE_VALIDATION_IDS)
+  Object.values(POLICY_NATIVE_STORAGE_OPERATIONAL_VALIDATION_IDS)
 );
-const OPERATOR_ERROR_IDS = Object.freeze(Object.values(PHASE8R_POST_UPGRADE_OPERATOR_ERROR_IDS));
+const OPERATOR_ERROR_IDS = Object.freeze(Object.values(POLICY_NATIVE_STORAGE_OPERATOR_ERROR_IDS));
 
 function buildCompleteSafetyInput(overrides = {}) {
   return {
@@ -31,11 +31,11 @@ function buildCompleteSafetyInput(overrides = {}) {
       matches: true,
       freshInstallSchemaVersion: POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
       upgradedInstallSchemaVersion: POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
-      freshInstallChecksum: 'phase8r-native-schema',
-      upgradedInstallChecksum: 'phase8r-native-schema',
+      freshInstallChecksum: 'native-policy-intent-schema',
+      upgradedInstallChecksum: 'native-policy-intent-schema',
     },
     postUpgrade: {
-      modeId: PHASE8R_BACKUP_RESTORE_MODE_IDS.APPLY,
+      modeId: POLICY_NATIVE_STORAGE_OPERATIONAL_MODE_IDS.APPLY,
       dryRunReportReady: true,
       applyModeRequested: true,
       operatorErrorIds: OPERATOR_ERROR_IDS,
@@ -50,12 +50,12 @@ function buildCompleteSafetyInput(overrides = {}) {
   };
 }
 
-describe('policyBuilderPhase8BackupRestoreSafety', () => {
+describe('policyNativeStorageOperationalSafety', () => {
   test('defaults to a fail-closed operational safety plan with no side effects', () => {
-    const plan = buildPolicyBuilderPhase8BackupRestoreSafetyPlan();
+    const plan = buildPolicyNativeStorageOperationalSafetyPlan();
 
     expect(plan.statusId)
-      .toBe(PHASE8R_BACKUP_RESTORE_STATUS_IDS.BLOCKED_BY_SCHEMA_MISMATCH);
+      .toBe(POLICY_NATIVE_STORAGE_OPERATIONAL_STATUS_IDS.BLOCKED_BY_SCHEMA_MISMATCH);
     expect(plan.readyForOperationalApply).toBe(false);
     expect(plan.requiredNativeTableIds).toEqual(NATIVE_TABLE_IDS);
     expect(plan.tableCoverage).toHaveLength(NATIVE_TABLE_IDS.length);
@@ -68,24 +68,24 @@ describe('policyBuilderPhase8BackupRestoreSafety', () => {
     });
     expect(plan.validation.ok).toBe(false);
     expect(plan.validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.MISSING_NATIVE_TABLE_BACKUP,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.MISSING_NATIVE_TABLE_RESTORE,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.MISSING_RESTORE_VALIDATION,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.MISSING_SCHEMA_VERSION_CHECK,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.FRESH_UPGRADE_SCHEMA_MISMATCH,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.MIXED_PARTIAL_WRITES_ALLOWED,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.MISSING_NATIVE_TABLE_BACKUP,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.MISSING_NATIVE_TABLE_RESTORE,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.MISSING_RESTORE_VALIDATION,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.MISSING_SCHEMA_VERSION_CHECK,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.FRESH_UPGRADE_SCHEMA_MISMATCH,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.MIXED_PARTIAL_WRITES_ALLOWED,
     ]));
   });
 
   test('blocks when any native table is missing from backup coverage', () => {
-    const plan = buildPolicyBuilderPhase8BackupRestoreSafetyPlan(buildCompleteSafetyInput({
+    const plan = buildPolicyNativeStorageOperationalSafetyPlan(buildCompleteSafetyInput({
       backupTableIds: NATIVE_TABLE_IDS.filter(tableId => (
         tableId !== POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS
       )),
     }));
 
     expect(plan.statusId)
-      .toBe(PHASE8R_BACKUP_RESTORE_STATUS_IDS.BLOCKED_BY_BACKUP_RESTORE_GAPS);
+      .toBe(POLICY_NATIVE_STORAGE_OPERATIONAL_STATUS_IDS.BLOCKED_BY_BACKUP_RESTORE_GAPS);
     expect(plan.readyForOperationalApply).toBe(false);
     expect(plan.blockers).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -95,38 +95,38 @@ describe('policyBuilderPhase8BackupRestoreSafety', () => {
     ]));
     expect(plan.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_BACKUP_RESTORE_RISK_IDS.MISSING_NATIVE_TABLE_BACKUP,
+        riskId: POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.MISSING_NATIVE_TABLE_BACKUP,
         tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
       }),
     ]));
   });
 
   test('blocks when restore validation does not prove rollback snapshots and migration events', () => {
-    const plan = buildPolicyBuilderPhase8BackupRestoreSafetyPlan(buildCompleteSafetyInput({
+    const plan = buildPolicyNativeStorageOperationalSafetyPlan(buildCompleteSafetyInput({
       restoreValidationIds: [
-        PHASE8R_BACKUP_RESTORE_VALIDATION_IDS.NATIVE_POLICY_RECOVERY,
-        PHASE8R_BACKUP_RESTORE_VALIDATION_IDS.SCHEMA_VERSION_RESTORE,
+        POLICY_NATIVE_STORAGE_OPERATIONAL_VALIDATION_IDS.NATIVE_POLICY_RECOVERY,
+        POLICY_NATIVE_STORAGE_OPERATIONAL_VALIDATION_IDS.SCHEMA_VERSION_RESTORE,
       ],
     }));
 
     expect(plan.statusId)
-      .toBe(PHASE8R_BACKUP_RESTORE_STATUS_IDS.BLOCKED_BY_BACKUP_RESTORE_GAPS);
+      .toBe(POLICY_NATIVE_STORAGE_OPERATIONAL_STATUS_IDS.BLOCKED_BY_BACKUP_RESTORE_GAPS);
     expect(plan.blockers).toEqual(expect.arrayContaining([
       expect.objectContaining({
         blockerId: 'restore_validation_missing',
-        validationId: PHASE8R_BACKUP_RESTORE_VALIDATION_IDS.ROLLBACK_SNAPSHOT_RESTORE,
+        validationId: POLICY_NATIVE_STORAGE_OPERATIONAL_VALIDATION_IDS.ROLLBACK_SNAPSHOT_RESTORE,
       }),
       expect.objectContaining({
         blockerId: 'restore_validation_missing',
-        validationId: PHASE8R_BACKUP_RESTORE_VALIDATION_IDS.MIGRATION_EVENT_RESTORE,
+        validationId: POLICY_NATIVE_STORAGE_OPERATIONAL_VALIDATION_IDS.MIGRATION_EVENT_RESTORE,
       }),
     ]));
   });
 
   test('blocks post-upgrade apply when dry-run or transaction safety is incomplete', () => {
-    const plan = buildPolicyBuilderPhase8BackupRestoreSafetyPlan(buildCompleteSafetyInput({
+    const plan = buildPolicyNativeStorageOperationalSafetyPlan(buildCompleteSafetyInput({
       postUpgrade: {
-        modeId: PHASE8R_BACKUP_RESTORE_MODE_IDS.APPLY,
+        modeId: POLICY_NATIVE_STORAGE_OPERATIONAL_MODE_IDS.APPLY,
         dryRunReportReady: false,
         applyModeRequested: true,
         operatorErrorIds: OPERATOR_ERROR_IDS,
@@ -140,31 +140,31 @@ describe('policyBuilderPhase8BackupRestoreSafety', () => {
     }));
 
     expect(plan.statusId)
-      .toBe(PHASE8R_BACKUP_RESTORE_STATUS_IDS.BLOCKED_BY_POST_UPGRADE_DRY_RUN);
+      .toBe(POLICY_NATIVE_STORAGE_OPERATIONAL_STATUS_IDS.BLOCKED_BY_POST_UPGRADE_DRY_RUN);
     expect(plan.readyForOperationalApply).toBe(false);
     expect(plan.validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.APPLY_WITHOUT_DRY_RUN,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.MIXED_PARTIAL_WRITES_ALLOWED,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.APPLY_WITHOUT_DRY_RUN,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.MIXED_PARTIAL_WRITES_ALLOWED,
     ]));
   });
 
   test('marks operational apply ready only when backup, restore, schema, dry-run, transaction, and operator errors pass', () => {
-    const plan = buildPolicyBuilderPhase8BackupRestoreSafetyPlan(buildCompleteSafetyInput());
+    const plan = buildPolicyNativeStorageOperationalSafetyPlan(buildCompleteSafetyInput());
 
     expect(plan.statusId)
-      .toBe(PHASE8R_BACKUP_RESTORE_STATUS_IDS.READY_FOR_OPERATIONAL_APPLY);
+      .toBe(POLICY_NATIVE_STORAGE_OPERATIONAL_STATUS_IDS.READY_FOR_OPERATIONAL_APPLY);
     expect(plan.readyForOperationalApply).toBe(true);
     expect(plan.validation.ok).toBe(true);
     expect(plan.blockers).toEqual([]);
-    expect(plan.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '8r_9',
+    expect(plan.nextStep).toEqual(expect.objectContaining({
+      stepId: 'native_storage_test_reset',
       label: 'Native Storage Test Reset',
     }));
   });
 
   test('rejects tampered safety plans that hide operator errors or perform side effects', () => {
-    const plan = buildPolicyBuilderPhase8BackupRestoreSafetyPlan(buildCompleteSafetyInput());
-    const validation = validatePolicyBuilderPhase8BackupRestoreSafetyPlan({
+    const plan = buildPolicyNativeStorageOperationalSafetyPlan(buildCompleteSafetyInput());
+    const validation = validatePolicyNativeStorageOperationalSafetyPlan({
       ...plan,
       tableCoverage: plan.tableCoverage.slice(1),
       restoreValidations: plan.restoreValidations.slice(1),
@@ -179,7 +179,7 @@ describe('policyBuilderPhase8BackupRestoreSafety', () => {
         dryRunReportReady: false,
         transactionSafe: false,
         missingOperatorErrorIds: [
-          PHASE8R_POST_UPGRADE_OPERATOR_ERROR_IDS.APPLY_FAILED_ROLLED_BACK,
+          POLICY_NATIVE_STORAGE_OPERATOR_ERROR_IDS.APPLY_FAILED_ROLLED_BACK,
         ],
       },
       sideEffects: {
@@ -191,35 +191,35 @@ describe('policyBuilderPhase8BackupRestoreSafety', () => {
 
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.MISSING_NATIVE_TABLE_BACKUP,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.MISSING_RESTORE_VALIDATION,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.MISSING_SCHEMA_VERSION_CHECK,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.FRESH_UPGRADE_SCHEMA_MISMATCH,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.APPLY_WITHOUT_DRY_RUN,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.MIXED_PARTIAL_WRITES_ALLOWED,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.POST_UPGRADE_ERROR_NOT_OPERATOR_FACING,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.SIDE_EFFECT_PERFORMED,
-      PHASE8R_BACKUP_RESTORE_RISK_IDS.MISSING_REASON,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.MISSING_NATIVE_TABLE_BACKUP,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.MISSING_RESTORE_VALIDATION,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.MISSING_SCHEMA_VERSION_CHECK,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.FRESH_UPGRADE_SCHEMA_MISMATCH,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.APPLY_WITHOUT_DRY_RUN,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.MIXED_PARTIAL_WRITES_ALLOWED,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.POST_UPGRADE_ERROR_NOT_OPERATOR_FACING,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      POLICY_NATIVE_STORAGE_OPERATIONAL_RISK_IDS.MISSING_REASON,
     ]));
   });
 
-  test('summarizes operational safety for the Phase 8R audit chain', () => {
-    const audit = buildPolicyBuilderPhase8BackupRestoreSafetyAudit(
-      buildPolicyBuilderPhase8BackupRestoreSafetyPlan(buildCompleteSafetyInput())
+  test('summarizes operational safety for the native storage audit chain', () => {
+    const audit = buildPolicyNativeStorageOperationalSafetyAudit(
+      buildPolicyNativeStorageOperationalSafetyPlan(buildCompleteSafetyInput())
     );
 
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
-      statusId: PHASE8R_BACKUP_RESTORE_STATUS_IDS.READY_FOR_OPERATIONAL_APPLY,
+      statusId: POLICY_NATIVE_STORAGE_OPERATIONAL_STATUS_IDS.READY_FOR_OPERATIONAL_APPLY,
       readyForOperationalApply: true,
       nativeTableCount: NATIVE_TABLE_IDS.length,
       missingBackupTableIds: [],
       missingRestoreTableIds: [],
       missingRestoreValidationIds: [],
       missingOperatorErrorIds: [],
-      nextPhase: expect.objectContaining({
-        phaseId: '8r_9',
+      nextStep: expect.objectContaining({
+        stepId: 'native_storage_test_reset',
       }),
     }));
   });

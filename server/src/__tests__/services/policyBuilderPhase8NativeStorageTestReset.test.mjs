@@ -34,7 +34,7 @@ describe('policyBuilderPhase8NativeStorageTestReset', () => {
       'server/src/__tests__/services/policyBuilderPhase8NativeRuntimeReadPath.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8RollbackSnapshotWindow.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8LegacyWritePathShutdown.test.mjs',
-      'server/src/__tests__/services/policyBuilderPhase8BackupRestoreSafety.test.mjs',
+      'server/src/__tests__/services/policyNativeStorageOperationalSafety.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8LegacyCodeDeletionGates.test.mjs',
     ]));
     expect(plan.blockers).toEqual([]);

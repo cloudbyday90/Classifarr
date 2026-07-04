@@ -81,9 +81,9 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_8',
     label: 'Backup, Restore, And Post-Upgrade Safety',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-backup-restore-post-upgrade-safety.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8BackupRestoreSafety.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8BackupRestoreSafety.test.mjs'],
+    designDocPaths: ['docs/architecture/policy-native-storage-operational-safety.md'],
+    contractPaths: ['server/src/services/policyNativeStorageOperationalSafety.mjs'],
+    testPaths: ['server/src/__tests__/services/policyNativeStorageOperationalSafety.test.mjs'],
   },
   {
     phaseId: '8r_9',

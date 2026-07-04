@@ -11,6 +11,18 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Native Storage Operational Safety Module Cutover** — renamed the
+  backup/restore and post-upgrade safety service, focused test, and
+  architecture record to `policyNativeStorageOperationalSafety.mjs`,
+  `policyNativeStorageOperationalSafety.test.mjs`, and
+  `policy-native-storage-operational-safety.md`, moved the payload version to
+  `policy.native_storage_operational_safety.v1`, replaced phase-local
+  constants and handoff fields with durable
+  `POLICY_NATIVE_STORAGE_OPERATIONAL_*` exports and
+  `nextStep.stepId = native_storage_test_reset`, updated roadmap and upstream
+  handoff references, and preserved fail-closed backup/restore coverage,
+  restore-validation, schema-parity, dry-run, transaction-boundary,
+  operator-error, and no-side-effect checks.
 - **Policy Native SQL Migration Coverage Module Cutover** — renamed the native
   SQL migration coverage service, focused test, and architecture record to
   `policyNativeSqlMigrationCoverage.mjs`,
@@ -908,7 +920,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   snapshots, or maintainer fixtures; and marks abandoned impact/replay
   diagnostic tests as deletion-scoped rather than final native-storage product
   coverage.
-- **Policy Builder Phase 8R Backup, Restore, And Post-Upgrade Safety** — added a
+- **Policy Native Storage Operational Safety** — added a
   side-effect-free operational safety service, architecture record, and audit
   suite that enumerates native intent tables from the Phase 8R schema contract;
   requires native table backup and restore coverage; requires restore validation

@@ -108,14 +108,13 @@ Validation should include:
 
 ```text
 cd server
-node ../scripts/run-jest.mjs --testPathPatterns="policyNativeSchemaContract|policyNativeSqlMigrationCoverage|policyBuilderPhase8BackupRestoreSafety|policyBuilderPhase8ExplicitConversionWorkflow|policyBuilderPhase8NativeStorageTestReset|policyBuilderProductionNameInventory" --no-coverage --runInBand
+node ../scripts/run-jest.mjs --testPathPatterns="policyNativeSchemaContract|policyNativeSqlMigrationCoverage|policyNativeStorageOperationalSafety|policyBuilderPhase8ExplicitConversionWorkflow|policyBuilderPhase8NativeStorageTestReset|policyBuilderProductionNameInventory" --no-coverage --runInBand
 npm run lint:docs
 node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid
 ```
 
-## Next Step
+## Completed Handoff
 
-Native Storage Operational Wiring should receive the next module cutover because
-the SQL migration verifier now has durable product-domain naming and the next
-remaining risk is the backup/restore plus post-upgrade flow that consumes
-native storage coverage.
+Native Storage Operational Safety received the next module cutover and now uses
+durable product-domain naming:
+[Policy Native Storage Operational Safety Module Cutover](policy-native-storage-operational-safety-module-cutover.md).

@@ -94,7 +94,7 @@ Cons:
 - Test module:
   `server/src/__tests__/services/policyBuilderPhase8NativeStorageTestReset.test.mjs`
 - Related safety contract:
-  `server/src/services/policyBuilderPhase8BackupRestoreSafety.mjs`
+  `server/src/services/policyNativeStorageOperationalSafety.mjs`
 - Documentation:
   `docs/architecture/policy-builder-phase-8r-native-storage-test-reset.md`
 - Roadmap owner:
