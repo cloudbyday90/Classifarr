@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Automation Readiness Engine Architecture Cutover** — renamed the
+  active readiness-engine architecture record to
+  `policy-automation-readiness-engine.md`, updated the roadmap and module
+  cutover note to point at the durable `policy.automation_readiness.v1`
+  contract, added a bounded architecture cutover record, and preserved the
+  existing `policyAutomationReadinessEngine.mjs` bounded evidence, intent,
+  learning, fingerprint, quality, and next-action readiness behavior.
 - **Policy Learning Quality Gate Architecture Cutover** — renamed the active
   learning quality-gate architecture record to
   `policy-learning-quality-gate.md`, updated the roadmap to point at the

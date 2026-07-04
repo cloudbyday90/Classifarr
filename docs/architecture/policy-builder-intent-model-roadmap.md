@@ -3450,14 +3450,14 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 6R.4 automation readiness engine is documented in
-  [Policy Builder Phase 6R Automation Readiness Engine](policy-builder-phase-6r-readiness-engine.md).
+- Policy automation readiness engine is documented in
+  [Policy Automation Readiness Engine](policy-automation-readiness-engine.md).
 - The server-owned readiness contract lives in
   `server/src/services/policyAutomationReadinessEngine.mjs`.
 - The focused readiness-engine test suite lives in
   `server/src/__tests__/services/policyAutomationReadinessEngine.test.mjs`.
-- Current implementation consumes Phase 6R evidence, intent, learning,
-  routing, and profile freshness inputs into one state: `ready`,
+- Current implementation consumes bounded evidence, intent, learning, routing,
+  and profile freshness inputs into one state: `ready`,
   `needs_more_examples`, `needs_operator_review`, `needs_routing`,
   `blocked_by_hard_limit`, or `stale_profile`.
 - Readiness is computed from cached/local state only, returns reason-coded
@@ -3465,17 +3465,19 @@ Implementation status:
   ignores replay, impact preview, provider, TMDB, and raw scoring diagnostic
   inputs instead of allowing them to become product gates.
 - Readiness now exposes a bounded entry point for new runtime/rebuild callers:
-  it requires successful Phase 6R.1 bounded evidence, Phase 6R.2 bounded
-  intent, and Phase 6R.3 bounded learning results, verifies their shared
-  sanitized evidence projection fingerprint, and attaches a bounded context to
-  the readiness input summary without exposing raw evidence labels.
+  it requires successful bounded evidence, intent, and learning results,
+  verifies their shared sanitized evidence projection fingerprint, and attaches
+  a bounded context to the readiness input summary without exposing raw
+  evidence labels.
 - The bounded readiness entry point now also requires the upstream evidence,
   intent, evidence-fingerprint, and learning audits to pass before automation
   readiness is evaluated.
 - The bounded readiness entry point now requires evidence, intent, and learning
   to carry matching, usable evidence-quality snapshots before any automation
   readiness state is returned.
-- The Phase 6R.4 quality-gated readiness hardening is documented in
+- Policy automation readiness architecture cutover is documented in
+  [Policy Automation Readiness Engine Architecture Cutover](policy-automation-readiness-engine-architecture-cutover.md).
+- Policy automation readiness quality-gate hardening is documented in
   [Policy Builder Phase 6R Readiness Quality Gate](policy-builder-phase-6r-readiness-quality-gate.md).
 
 ### 6R.5 Operator Workflow Rebuild
@@ -6586,6 +6588,16 @@ Implementation status:
   inventory validates with 9,538 total phase-coded references, 3,740 production
   references, and 3,762 rename candidates. The production baseline remains
   unchanged because enforcement already lives in the durable learning guard.
+- The policy automation readiness engine architecture cutover renamed the
+  active readiness design record to `policy-automation-readiness-engine.md`,
+  added a durable architecture cutover record, and aligned roadmap links with
+  the existing `policy.automation_readiness.v1` runtime contract:
+  [Policy Automation Readiness Engine Architecture Cutover](policy-automation-readiness-engine-architecture-cutover.md).
+- After the policy automation readiness engine architecture cutover, the
+  repository inventory validates with 9,515 total phase-coded references, 3,740
+  production references, and 3,762 rename candidates. The production baseline
+  remains unchanged because enforcement already lives in the durable readiness
+  engine.
 
 ### 9R.3 Contract And Telemetry Naming Cutover
 

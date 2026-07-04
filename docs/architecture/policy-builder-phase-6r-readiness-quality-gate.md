@@ -96,7 +96,7 @@ Cons:
 - Focused tests:
   `server/src/__tests__/services/policyAutomationReadinessEngine.test.mjs`
 - Design owner:
-  `docs/architecture/policy-builder-phase-6r-readiness-engine.md`
+  `docs/architecture/policy-automation-readiness-engine.md`
 - Roadmap owner:
   Phase 6R.4 in
   `docs/architecture/policy-builder-intent-model-roadmap.md`

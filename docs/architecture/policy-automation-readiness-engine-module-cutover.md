@@ -2,8 +2,8 @@
 
 ## Status
 
-Implemented as a durable-domain module cutover for the Phase 6R.4 automation
-readiness slice.
+Implemented as a durable-domain module cutover for the policy automation
+readiness engine.
 
 The production service now uses:
 
@@ -15,9 +15,9 @@ The production service now uses:
 Automation readiness is a durable policy-engine concept, not a roadmap phase.
 It decides whether the current evidence, intent, and learning state is good
 enough for automation to proceed, or whether the operator needs to provide a
-missing action. Keeping the production module named after Phase 6R would keep
-temporary roadmap language in the engine after the re-imagined policy builder
-is complete.
+missing action. Keeping the production module named after a roadmap checkpoint
+would keep temporary delivery language in the engine after the re-imagined
+policy builder is complete.
 
 ## Official Guidance Reviewed
 
@@ -54,8 +54,9 @@ is complete.
    those audits still exist, but readiness itself should not emit phase ids.
 
 4. **Update direct runtime consumers only.**
-   This slice should update operator workflow, migration/deletion, and library
-   rebuild imports without renaming those larger components in the same change.
+   This component should update operator workflow, migration/deletion, and
+   library rebuild imports without renaming those larger components in the same
+   change.
 
 5. **Keep readiness deterministic and side-effect free.**
    Readiness can evaluate bounded inputs and return an automation state. It
@@ -77,8 +78,8 @@ Pros:
 Cons:
 
 - Direct consumers needed import and contract-version updates.
-- Phase 6R operator workflow and Phase 7R runtime components still carry
-  roadmap names until their own cutover slices.
+- Operator workflow and runtime components still carry roadmap names until
+  their own cutover components.
 - The completion audit still maps durable `nextStep` values back to roadmap
   checkpoints until that audit is retired or renamed.
 
@@ -97,7 +98,7 @@ Cons:
 - Roadmap owner:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 - Existing design owner:
-  `docs/architecture/policy-builder-phase-6r-readiness-engine.md`
+  `docs/architecture/policy-automation-readiness-engine.md`
 
 ## Implementation Outcome
 
