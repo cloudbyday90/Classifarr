@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Starter Template Accelerator Cutover** — renamed the
+  starter-template accelerator design record and completion-audit entry to
+  durable product-domain names, replaced the phase-coded starter-template
+  accelerator architecture path with
+  `policy-authoring-starter-template-accelerator.md`, updated completion-audit
+  records to track `policy_authoring_starter_template_accelerator`, and
+  preserved the existing optional disclosure, template-selection events,
+  compatibility payload behavior, and save-readiness rules.
 - **Policy Authoring Save And Defer Action Boundary Cutover** — renamed the
   save/defer action-boundary design record and completion-audit entry to
   durable product-domain names, replaced the phase-coded save/defer

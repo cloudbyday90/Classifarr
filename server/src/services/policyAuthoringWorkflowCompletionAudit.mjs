@@ -143,9 +143,9 @@ const POLICY_AUTHORING_VUE_REWRITE_SLICES = Object.freeze([
     evidence: 'Exposes save readiness, disabled reasons, and defer-without-saving while preserving event contracts.',
   },
   {
-    id: 'vue_starter_template_accelerator',
-    label: 'Vue starter template accelerator',
-    docPath: 'docs/architecture/policy-builder-phase-3r-vue-starter-template-accelerator.md',
+    id: 'policy_authoring_starter_template_accelerator',
+    label: 'Policy authoring starter template accelerator',
+    docPath: 'docs/architecture/policy-authoring-starter-template-accelerator.md',
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
     evidence: 'Makes starter templates optional accelerators collapsed behind an accessible disclosure.',
   },

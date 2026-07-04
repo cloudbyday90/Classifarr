@@ -53,7 +53,8 @@ Cons:
 - Defer remains close-only until native draft persistence is designed.
 - Save validation is still client-projected until server-owned policy
   validation replaces it.
-- Routing readiness is intentionally warning-only in this component.
+- Accessibility and decision-load audit metadata still needs its own durable
+  naming cutover.
 
 ## Final Recommendation Stack
 
@@ -74,6 +75,6 @@ durable artifact, and kept the existing Vue save/defer behavior unchanged.
 
 ## Next Step
 
-Cut over the policy-authoring starter-template accelerator naming because it is
-the next Vue rewrite slice that still uses phase-coded completion-audit
-metadata.
+Cut over the policy-authoring accessibility and decision-load audit naming
+because it is the next Vue rewrite slice that still uses phase-coded
+completion-audit metadata after the starter-template accelerator cutover.

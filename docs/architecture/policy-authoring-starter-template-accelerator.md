@@ -1,10 +1,10 @@
-# Policy Builder Phase 3R Vue Starter Template Accelerator
+# Policy Authoring Starter Template Accelerator
 
-Status: implemented as the seventh Vue-facing Phase 3R workflow rewrite slice.
+Status: implemented as durable policy-authoring starter-template behavior.
 
 ## Scope
 
-This slice applies the durable
+This design applies the durable
 [Policy Authoring Starter Templates](policy-authoring-starter-templates.md)
 contract to the current Vue policy-builder workflow.
 
@@ -13,7 +13,7 @@ with valid scoring weights can be saved without a selected starter template.
 Template browsing remains available, but it is behind an accessible disclosure
 instead of being an always-open normal-path step.
 
-This slice does not add native intent storage, draft persistence,
+This design does not add native intent storage, draft persistence,
 classification, routing execution, provider calls, TMDB calls, AI calls, Arr
 writes, database schema, or server routes.
 
@@ -61,7 +61,7 @@ Official sources reviewed as of June 2026:
 6. Remove product warnings that say starter templates are required.
 7. Preserve existing starter-template events and legacy bridge payload behavior
    when an operator does choose a template.
-8. Keep no-template editing conservative until Phase 8R native intent storage
+8. Keep no-template editing conservative until native intent storage
    replaces preset-backed draft targets.
 
 ## Pros And Cons
@@ -78,9 +78,9 @@ Official sources reviewed as of June 2026:
 
 - No-template policies can currently save only through the existing
   legacy-compatible payload path with an empty template attachment list.
-- Full no-template intent editing still needs the later native intent storage
+- Full no-template intent editing still needs the native intent storage
   cutover because the current draft command bridge targets selected templates.
-- The template browser still exists until Phase 8R decides which bridge
+- The template browser still exists until native storage decides which bridge
   mechanics are deleted.
 
 ## Final Stack
@@ -120,8 +120,8 @@ The policy builder now:
 
 ## Follow-Up
 
-The next high-value item is **Phase 3R Vue Accessibility And Decision Load
+The next high-value item is **Policy Authoring Accessibility And Decision Load
 Audit**. Now that starter templates no longer block save or occupy the default
-path, the next slice should audit the visible modal for repeated warnings,
+path, the next design should audit the visible modal for repeated warnings,
 keyboard flow, disabled reasons, and places where advanced settings or summary
 copy still increase decision load.
