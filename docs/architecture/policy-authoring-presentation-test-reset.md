@@ -1,10 +1,10 @@
-# Policy Builder Phase 3R Vue Presentation Test Reset
+# Policy Authoring Presentation Test Reset
 
-Status: implemented as the ninth Vue-facing Phase 3R rewrite slice.
+Status: implemented as durable policy-authoring presentation-test behavior.
 
 ## Scope
 
-This slice applies the Phase 3R.9 presentation test reset to the highest-risk
+This design applies the policy-authoring presentation test reset to the highest-risk
 client tests. It keeps the simplified policy-builder workflow protected while
 stopping verifier-only impact and replay details from becoming normal
 policy-authoring UI requirements.
@@ -81,14 +81,14 @@ Official sources reviewed as of June 2026:
 
 - The replay card component still contains diagnostic sections for verifier
   mode; this slice only resets the test contract.
-- Future Phase 6R work still needs to decide which replay/verifier component
+- Future runtime work still needs to decide which replay/verifier component
   surfaces remain, move, or are removed.
 - Fewer exact diagnostic assertions means server-side contracts must remain the
   owner for provider, TMDB, scoring, and parity details.
 
 ## Final Recommendation
 
-Use this split for Phase 3R presentation tests:
+Use this split for policy-authoring presentation tests:
 
 ```text
 Normal workflow tests -> setup path, one next action, accessible labels
@@ -129,6 +129,6 @@ Client tests updated:
 
 ## Next Step
 
-The next high-value item is Phase 6R.1: define the simplified runtime decision
-pipeline contract that consumes the Phase 3R operator intent without carrying
-the old replay/provider diagnostics into the normal authoring workflow.
+The next high-value item is the simplified runtime decision pipeline contract
+that consumes operator intent without carrying the old replay/provider
+diagnostics into the normal authoring workflow.

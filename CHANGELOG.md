@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Presentation Test Reset Cutover** — renamed the
+  presentation-test reset design record and completion-audit entry to durable
+  product-domain names, replaced the phase-coded presentation-test reset
+  architecture path with `policy-authoring-presentation-test-reset.md`,
+  updated completion-audit records to track
+  `policy_authoring_presentation_test_reset`, and preserved the existing split
+  between normal workflow presentation tests, read-only verifier preview tests,
+  and server-owned diagnostic contracts.
 - **Policy Authoring Accessibility And Decision Load Audit Cutover** — renamed
   the accessibility and decision-load design record and completion-audit entry
   to durable product-domain names, replaced the phase-coded accessibility audit

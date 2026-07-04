@@ -13,7 +13,7 @@ policy-builder test files, identifies required future presentation behaviors,
 and prevents old diagnostic panels or draft-bridge internals from becoming
 normal workflow test requirements. The first Vue-facing application of this
 contract remains documented separately in
-[Policy Builder Phase 3R Vue Presentation Test Reset](policy-builder-phase-3r-vue-presentation-test-reset.md).
+[Policy Authoring Presentation Test Reset](policy-authoring-presentation-test-reset.md).
 
 This contract does not rewrite client tests, change Vue rendering, change
 policy saves, change scoring or routing, alter database schema, call AI, call

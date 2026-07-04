@@ -52,7 +52,8 @@ Cons:
 - Accessibility remains component/test guarded until broader manual assistive
   technology checks are run in the deployed app.
 - Native intent storage may later replace some no-template fallback targets.
-- Presentation-test reset metadata still needs its own durable naming cutover.
+- Runtime pipeline naming still needs follow-up after the Vue rewrite slice
+  metadata is fully cut over.
 
 ## Final Recommendation Stack
 
@@ -75,5 +76,6 @@ unchanged.
 
 ## Next Step
 
-Cut over the policy-authoring presentation test reset naming because it is the
-next Vue rewrite slice that still uses phase-coded completion-audit metadata.
+Run a completion-audit pass over the policy-authoring workflow completion gate
+because the presentation-test reset cutover removes the final Vue rewrite slice
+metadata that used phase-coded completion-audit names.

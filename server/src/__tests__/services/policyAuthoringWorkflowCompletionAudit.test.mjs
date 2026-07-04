@@ -55,7 +55,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_authoring_save_defer_action_boundary',
       'policy_authoring_starter_template_accelerator',
       'policy_authoring_accessibility_decision_load_audit',
-      'vue_policy_authoring_presentation_tests',
+      'policy_authoring_presentation_test_reset',
     ]);
   });
 

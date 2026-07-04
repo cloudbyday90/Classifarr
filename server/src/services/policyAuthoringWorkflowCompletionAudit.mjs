@@ -157,9 +157,9 @@ const POLICY_AUTHORING_VUE_REWRITE_SLICES = Object.freeze([
     evidence: 'Marks one recommended next action and routes setup links to existing targets.',
   },
   {
-    id: 'vue_policy_authoring_presentation_tests',
-    label: 'Vue policy authoring presentation tests',
-    docPath: 'docs/architecture/policy-builder-phase-3r-vue-presentation-test-reset.md',
+    id: 'policy_authoring_presentation_test_reset',
+    label: 'Policy authoring presentation test reset',
+    docPath: 'docs/architecture/policy-authoring-presentation-test-reset.md',
     testPath: 'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
     evidence: 'Resets impact and replay preview tests around read-only verifier behavior, no execution, and opt-in gates.',
   },
