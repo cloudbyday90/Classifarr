@@ -1,17 +1,17 @@
 import {
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS,
-} from './policyBuilderPhase8ExplicitConversionWorkflow.mjs';
+  POLICY_CONVERSION_ACTOR_SOURCE_IDS,
+} from './policyConversionActorSources.mjs';
 import {
   POLICY_NATIVE_SCHEMA_TABLE_IDS,
 } from './policyNativeSchemaContract.mjs';
 
-const PHASE8R_ROLLBACK_SNAPSHOT_WINDOW_VERSION = 'phase8r.rollback_snapshot_window.v1';
+const POLICY_ROLLBACK_SNAPSHOT_WINDOW_VERSION = 'policy.rollback_snapshot_window.v1';
 
-const PHASE8R_ROLLBACK_WINDOW_DEFAULT_DAYS = 14;
-const PHASE8R_ROLLBACK_WINDOW_MIN_DAYS = 1;
-const PHASE8R_ROLLBACK_WINDOW_MAX_DAYS = 30;
+const POLICY_ROLLBACK_WINDOW_DEFAULT_DAYS = 14;
+const POLICY_ROLLBACK_WINDOW_MIN_DAYS = 1;
+const POLICY_ROLLBACK_WINDOW_MAX_DAYS = 30;
 
-const PHASE8R_ROLLBACK_STATUS_IDS = Object.freeze({
+const POLICY_ROLLBACK_STATUS_IDS = Object.freeze({
   SNAPSHOT_READY: 'snapshot_ready',
   SNAPSHOT_BLOCKED: 'snapshot_blocked',
   REVERT_READY: 'revert_ready',
@@ -19,7 +19,7 @@ const PHASE8R_ROLLBACK_STATUS_IDS = Object.freeze({
   RETENTION_CLEANUP_DUE: 'retention_cleanup_due',
 });
 
-const PHASE8R_ROLLBACK_REASON_IDS = Object.freeze({
+const POLICY_ROLLBACK_REASON_IDS = Object.freeze({
   SNAPSHOT_REQUIRED: 'snapshot_required',
   REQUIRED_SECTIONS_INCLUDED: 'required_sections_included',
   ACTOR_AND_REASON_BOUND: 'actor_and_reason_bound',
@@ -31,7 +31,7 @@ const PHASE8R_ROLLBACK_REASON_IDS = Object.freeze({
   SIDE_EFFECTS_DISABLED: 'side_effects_disabled',
 });
 
-const PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS = Object.freeze({
+const POLICY_ROLLBACK_PAYLOAD_SECTION_IDS = Object.freeze({
   PRESET_ATTACHMENTS: 'preset_attachments',
   WEIGHTS: 'weights',
   THRESHOLDS: 'thresholds',
@@ -41,11 +41,11 @@ const PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS = Object.freeze({
   MIGRATION_REASON: 'migration_reason',
 });
 
-const PHASE8R_ROLLBACK_POST_WINDOW_ACTION_IDS = Object.freeze({
+const POLICY_ROLLBACK_POST_WINDOW_ACTION_IDS = Object.freeze({
   DELETE_BULKY_PAYLOAD_KEEP_AUDIT: 'delete_bulky_payload_keep_audit',
 });
 
-const PHASE8R_ROLLBACK_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_ROLLBACK_AUDIT_RISK_IDS = Object.freeze({
   MISSING_POLICY_ID: 'missing_policy_id',
   MISSING_INTENT_ID: 'missing_intent_id',
   MISSING_SNAPSHOT_SECTION: 'missing_snapshot_section',
@@ -64,19 +64,19 @@ const PHASE8R_ROLLBACK_AUDIT_RISK_IDS = Object.freeze({
 });
 
 const REQUIRED_SNAPSHOT_SECTIONS = Object.freeze(
-  Object.values(PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS)
+  Object.values(POLICY_ROLLBACK_PAYLOAD_SECTION_IDS)
 );
 
 const ALLOWED_ACTOR_SOURCE_IDS = Object.freeze([
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY,
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.TEST_FIXTURE,
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.MAINTAINER_MIGRATION_TOOL,
+  POLICY_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
+  POLICY_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY,
+  POLICY_CONVERSION_ACTOR_SOURCE_IDS.TEST_FIXTURE,
+  POLICY_CONVERSION_ACTOR_SOURCE_IDS.MAINTAINER_MIGRATION_TOOL,
 ]);
 
 const BLOCKED_ACTOR_SOURCE_IDS = Object.freeze([
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.ORDINARY_POLICY_READ,
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.UNRELATED_POLICY_SAVE,
+  POLICY_CONVERSION_ACTOR_SOURCE_IDS.ORDINARY_POLICY_READ,
+  POLICY_CONVERSION_ACTOR_SOURCE_IDS.UNRELATED_POLICY_SAVE,
 ]);
 
 const MINIMAL_AUDIT_METADATA_FIELDS = Object.freeze([
@@ -122,10 +122,10 @@ function addDays(isoDate, days) {
 }
 
 function boundWindowDays(value) {
-  const parsed = toInteger(value, PHASE8R_ROLLBACK_WINDOW_DEFAULT_DAYS);
+  const parsed = toInteger(value, POLICY_ROLLBACK_WINDOW_DEFAULT_DAYS);
   return Math.min(
-    PHASE8R_ROLLBACK_WINDOW_MAX_DAYS,
-    Math.max(PHASE8R_ROLLBACK_WINDOW_MIN_DAYS, parsed)
+    POLICY_ROLLBACK_WINDOW_MAX_DAYS,
+    Math.max(POLICY_ROLLBACK_WINDOW_MIN_DAYS, parsed)
   );
 }
 
@@ -224,7 +224,7 @@ function summarizeActor(action = {}) {
 function summarizeReason(action = {}) {
   return {
     included: true,
-    reasonCode: action.reasonCode ?? action.reason_code ?? 'phase8r_native_intent_conversion',
+    reasonCode: action.reasonCode ?? action.reason_code ?? 'native_intent_conversion',
     reason: action.reason ?? null,
   };
 }
@@ -232,43 +232,43 @@ function summarizeReason(action = {}) {
 function buildSnapshotSections({ policy = {}, action = {} } = {}) {
   return [
     {
-      sectionId: PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS.PRESET_ATTACHMENTS,
+      sectionId: POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.PRESET_ATTACHMENTS,
       restoreRequired: true,
       reportRedacted: false,
       summary: summarizePresetAttachments(policy),
     },
     {
-      sectionId: PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS.WEIGHTS,
+      sectionId: POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.WEIGHTS,
       restoreRequired: true,
       reportRedacted: false,
       summary: summarizeWeights(policy),
     },
     {
-      sectionId: PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS.THRESHOLDS,
+      sectionId: POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.THRESHOLDS,
       restoreRequired: true,
       reportRedacted: false,
       summary: summarizeThresholds(policy),
     },
     {
-      sectionId: PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS.CUSTOM_SIGNALS,
+      sectionId: POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.CUSTOM_SIGNALS,
       restoreRequired: true,
       reportRedacted: true,
       summary: summarizeCustomSignals(policy),
     },
     {
-      sectionId: PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS.ROUTING_MAPPING_REFERENCES,
+      sectionId: POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.ROUTING_MAPPING_REFERENCES,
       restoreRequired: true,
       reportRedacted: false,
       summary: summarizeRoutingReferences(policy),
     },
     {
-      sectionId: PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS.MIGRATION_ACTOR,
+      sectionId: POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.MIGRATION_ACTOR,
       restoreRequired: true,
       reportRedacted: false,
       summary: summarizeActor(action),
     },
     {
-      sectionId: PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS.MIGRATION_REASON,
+      sectionId: POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.MIGRATION_REASON,
       restoreRequired: true,
       reportRedacted: false,
       summary: summarizeReason(action),
@@ -277,7 +277,7 @@ function buildSnapshotSections({ policy = {}, action = {} } = {}) {
 }
 
 function buildRestorePath(policyId, snapshotVersion) {
-  return `phase8r/rollback/policies/${policyId}/v${snapshotVersion}`;
+  return `policy/rollback/policies/${policyId}/v${snapshotVersion}`;
 }
 
 function isExpired(nowIso, expiresAt) {
@@ -285,17 +285,17 @@ function isExpired(nowIso, expiresAt) {
 }
 
 function determineStatus({ actorAllowed, expired, retentionDue }) {
-  if (!actorAllowed) return PHASE8R_ROLLBACK_STATUS_IDS.SNAPSHOT_BLOCKED;
-  if (retentionDue) return PHASE8R_ROLLBACK_STATUS_IDS.RETENTION_CLEANUP_DUE;
-  if (expired) return PHASE8R_ROLLBACK_STATUS_IDS.REVERT_EXPIRED;
-  return PHASE8R_ROLLBACK_STATUS_IDS.REVERT_READY;
+  if (!actorAllowed) return POLICY_ROLLBACK_STATUS_IDS.SNAPSHOT_BLOCKED;
+  if (retentionDue) return POLICY_ROLLBACK_STATUS_IDS.RETENTION_CLEANUP_DUE;
+  if (expired) return POLICY_ROLLBACK_STATUS_IDS.REVERT_EXPIRED;
+  return POLICY_ROLLBACK_STATUS_IDS.REVERT_READY;
 }
 
-function buildPolicyBuilderPhase8RollbackSnapshotWindow({
+function buildPolicyRollbackSnapshotWindow({
   policy = {},
   action = {},
   targetVersion = 1,
-  rollbackWindowDays = PHASE8R_ROLLBACK_WINDOW_DEFAULT_DAYS,
+  rollbackWindowDays = POLICY_ROLLBACK_WINDOW_DEFAULT_DAYS,
   now = new Date(),
   snapshot = {},
 } = {}) {
@@ -318,49 +318,49 @@ function buildPolicyBuilderPhase8RollbackSnapshotWindow({
   const statusId = determineStatus({ actorAllowed, expired, retentionDue });
   const reasons = [
     buildReason(
-      PHASE8R_ROLLBACK_REASON_IDS.SNAPSHOT_REQUIRED,
+      POLICY_ROLLBACK_REASON_IDS.SNAPSHOT_REQUIRED,
       'Conversion or accepted rebuild requires a rollback snapshot before native intent becomes active.'
     ),
     buildReason(
-      PHASE8R_ROLLBACK_REASON_IDS.REQUIRED_SECTIONS_INCLUDED,
+      POLICY_ROLLBACK_REASON_IDS.REQUIRED_SECTIONS_INCLUDED,
       'Rollback snapshot manifest includes preset attachments, weights, thresholds, custom signals, routing references, actor, and reason.'
     ),
     buildReason(
-      PHASE8R_ROLLBACK_REASON_IDS.ACTOR_AND_REASON_BOUND,
+      POLICY_ROLLBACK_REASON_IDS.ACTOR_AND_REASON_BOUND,
       'Rollback snapshot binds the actor source and migration reason to the restore manifest.'
     ),
     buildReason(
-      PHASE8R_ROLLBACK_REASON_IDS.ROLLBACK_WINDOW_BOUNDED,
+      POLICY_ROLLBACK_REASON_IDS.ROLLBACK_WINDOW_BOUNDED,
       'Rollback window is bounded and cannot become permanent alternate policy storage.',
       'info',
       { rollbackWindowDays: boundedWindowDays }
     ),
     expired
       ? buildReason(
-        PHASE8R_ROLLBACK_REASON_IDS.REVERT_BLOCKED_AFTER_EXPIRY,
+        POLICY_ROLLBACK_REASON_IDS.REVERT_BLOCKED_AFTER_EXPIRY,
         'Revert is blocked after the rollback window expires.',
         'blocker'
       )
       : buildReason(
-        PHASE8R_ROLLBACK_REASON_IDS.REVERT_ALLOWED_DURING_WINDOW,
+        POLICY_ROLLBACK_REASON_IDS.REVERT_ALLOWED_DURING_WINDOW,
         'Revert path is eligible during the rollback window for approved actor sources.'
       ),
     buildReason(
-      PHASE8R_ROLLBACK_REASON_IDS.BULKY_PAYLOAD_DELETE_AFTER_WINDOW,
+      POLICY_ROLLBACK_REASON_IDS.BULKY_PAYLOAD_DELETE_AFTER_WINDOW,
       'Retention cleanup deletes bulky legacy snapshot payload after expiry.'
     ),
     buildReason(
-      PHASE8R_ROLLBACK_REASON_IDS.MINIMAL_AUDIT_METADATA_RETAINED,
+      POLICY_ROLLBACK_REASON_IDS.MINIMAL_AUDIT_METADATA_RETAINED,
       'Post-window retention keeps only bounded audit metadata needed for support and compliance.'
     ),
     buildReason(
-      PHASE8R_ROLLBACK_REASON_IDS.SIDE_EFFECTS_DISABLED,
-      'This Phase 8R.5 contract plans rollback behavior but performs no writes, deletes, or restores.'
+      POLICY_ROLLBACK_REASON_IDS.SIDE_EFFECTS_DISABLED,
+      'This rollback snapshot window contract plans rollback behavior but performs no writes, deletes, or restores.'
     ),
   ];
 
   const windowPlan = {
-    version: PHASE8R_ROLLBACK_SNAPSHOT_WINDOW_VERSION,
+    version: POLICY_ROLLBACK_SNAPSHOT_WINDOW_VERSION,
     statusId,
     policyId,
     intentId,
@@ -391,12 +391,12 @@ function buildPolicyBuilderPhase8RollbackSnapshotWindow({
       blockedOrdinaryActor,
       allowedActorSourceIds: [...ALLOWED_ACTOR_SOURCE_IDS],
       restorePath,
-      idempotencyKey: `phase8r:rollback:${policyId}:v${snapshotVersion}`,
+      idempotencyKey: `policy:rollback:${policyId}:v${snapshotVersion}`,
     },
     retention: {
       windowDays: boundedWindowDays,
       expiresAt,
-      postWindowActionId: PHASE8R_ROLLBACK_POST_WINDOW_ACTION_IDS.DELETE_BULKY_PAYLOAD_KEEP_AUDIT,
+      postWindowActionId: POLICY_ROLLBACK_POST_WINDOW_ACTION_IDS.DELETE_BULKY_PAYLOAD_KEEP_AUDIT,
       deleteBulkyPayloadAfterExpiry: true,
       retainBulkPayloadAfterExpiry: false,
       minimalAuditMetadataFields: [...MINIMAL_AUDIT_METADATA_FIELDS],
@@ -410,8 +410,8 @@ function buildPolicyBuilderPhase8RollbackSnapshotWindow({
       legacyRowsChanged: false,
     },
     reasons,
-    nextPhase: {
-      phaseId: '8r_6',
+    nextStep: {
+      stepId: 'legacy_write_path_shutdown',
       label: 'Legacy Write Path Shutdown',
       reason: 'Rollback window behavior is defined, so converted policies can next block legacy write drift.',
     },
@@ -419,11 +419,11 @@ function buildPolicyBuilderPhase8RollbackSnapshotWindow({
 
   return {
     ...windowPlan,
-    validation: validatePolicyBuilderPhase8RollbackSnapshotWindow(windowPlan),
+    validation: validatePolicyRollbackSnapshotWindow(windowPlan),
   };
 }
 
-function validatePolicyBuilderPhase8RollbackSnapshotWindow(windowPlan = {}) {
+function validatePolicyRollbackSnapshotWindow(windowPlan = {}) {
   const issues = [];
   const snapshot = asObject(windowPlan.snapshot);
   const revert = asObject(windowPlan.revert);
@@ -432,20 +432,20 @@ function validatePolicyBuilderPhase8RollbackSnapshotWindow(windowPlan = {}) {
   const reasons = asArray(windowPlan.reasons);
   const sectionIds = asArray(snapshot.payloadSections).map(section => section.sectionId);
   const actorSection = asArray(snapshot.payloadSections)
-    .find(section => section.sectionId === PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS.MIGRATION_ACTOR);
+    .find(section => section.sectionId === POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.MIGRATION_ACTOR);
   const reasonSection = asArray(snapshot.payloadSections)
-    .find(section => section.sectionId === PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS.MIGRATION_REASON);
+    .find(section => section.sectionId === POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.MIGRATION_REASON);
 
   if (windowPlan.policyId === null || windowPlan.policyId === undefined) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.MISSING_POLICY_ID,
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.MISSING_POLICY_ID,
       message: 'Rollback snapshot window must identify the policy being converted or reverted.',
     });
   }
 
   if (windowPlan.intentId === null || windowPlan.intentId === undefined) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.MISSING_INTENT_ID,
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.MISSING_INTENT_ID,
       message: 'Rollback snapshot window must bind to the native intent id or planned intent id.',
     });
   }
@@ -453,7 +453,7 @@ function validatePolicyBuilderPhase8RollbackSnapshotWindow(windowPlan = {}) {
   REQUIRED_SNAPSHOT_SECTIONS.forEach(sectionId => {
     if (!sectionIds.includes(sectionId)) {
       issues.push({
-        riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.MISSING_SNAPSHOT_SECTION,
+        riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.MISSING_SNAPSHOT_SECTION,
         sectionId,
         message: 'Rollback snapshot is missing a required restore section.',
       });
@@ -462,7 +462,7 @@ function validatePolicyBuilderPhase8RollbackSnapshotWindow(windowPlan = {}) {
 
   if (!normalizeString(snapshot.restorePath)) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.MISSING_RESTORE_PATH,
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.MISSING_RESTORE_PATH,
       message: 'Rollback snapshot must include a restore path.',
     });
   }
@@ -470,7 +470,7 @@ function validatePolicyBuilderPhase8RollbackSnapshotWindow(windowPlan = {}) {
   if (!normalizeString(actorSection?.summary?.actorSourceId) ||
       !normalizeString(reasonSection?.summary?.reasonCode)) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.MISSING_ACTOR_OR_REASON,
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.MISSING_ACTOR_OR_REASON,
       message: 'Rollback snapshots must bind actor source and migration reason.',
     });
   }
@@ -478,7 +478,7 @@ function validatePolicyBuilderPhase8RollbackSnapshotWindow(windowPlan = {}) {
   if (normalizeString(actorSection?.summary?.actorSourceId) &&
       !ALLOWED_ACTOR_SOURCE_IDS.includes(actorSection.summary.actorSourceId)) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.UNKNOWN_ACTOR_SOURCE,
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.UNKNOWN_ACTOR_SOURCE,
       actorSourceId: actorSection.summary.actorSourceId,
       message: 'Rollback snapshot actor source must be an approved migration action source.',
     });
@@ -486,24 +486,24 @@ function validatePolicyBuilderPhase8RollbackSnapshotWindow(windowPlan = {}) {
 
   if (!normalizeString(snapshot.expiresAt) ||
       !Number.isFinite(Number(retention.windowDays)) ||
-      Number(retention.windowDays) < PHASE8R_ROLLBACK_WINDOW_MIN_DAYS ||
-      Number(retention.windowDays) > PHASE8R_ROLLBACK_WINDOW_MAX_DAYS) {
+      Number(retention.windowDays) < POLICY_ROLLBACK_WINDOW_MIN_DAYS ||
+      Number(retention.windowDays) > POLICY_ROLLBACK_WINDOW_MAX_DAYS) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.UNBOUNDED_SNAPSHOT_WINDOW,
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.UNBOUNDED_SNAPSHOT_WINDOW,
       message: 'Rollback snapshot window must be bounded between one and thirty days.',
     });
   }
 
   if (snapshot.permanentAlternateStorage === true) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.SNAPSHOT_PERMANENT_ALTERNATE_STORAGE,
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.SNAPSHOT_PERMANENT_ALTERNATE_STORAGE,
       message: 'Rollback snapshots must not become permanent alternate legacy policy storage.',
     });
   }
 
   if (snapshot.rawPayloadExposed === true || snapshot.payloadRedactedForReports !== true) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
       message: 'Rollback reports must not expose raw legacy payloads.',
     });
   }
@@ -512,14 +512,14 @@ function validatePolicyBuilderPhase8RollbackSnapshotWindow(windowPlan = {}) {
   if (revert.eligible === true &&
       new Date(snapshot.expiresAt).getTime() < new Date(evaluatedAt).getTime()) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.REVERT_AFTER_EXPIRY_ALLOWED,
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.REVERT_AFTER_EXPIRY_ALLOWED,
       message: 'Rollback revert must not be eligible after snapshot expiry.',
     });
   }
 
   if (revert.blockedOrdinaryActor === true && revert.eligible === true) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.ORDINARY_READ_WRITE_REVERT,
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.ORDINARY_READ_WRITE_REVERT,
       message: 'Ordinary policy reads and unrelated saves cannot trigger revert.',
     });
   }
@@ -528,28 +528,28 @@ function validatePolicyBuilderPhase8RollbackSnapshotWindow(windowPlan = {}) {
       retention.deleteBulkyPayloadAfterExpiry !== true ||
       asArray(retention.minimalAuditMetadataFields).length === 0) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.MISSING_RETENTION_POLICY,
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.MISSING_RETENTION_POLICY,
       message: 'Rollback window must define post-window deletion and minimal audit retention.',
     });
   }
 
   if (retention.retainBulkPayloadAfterExpiry === true) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.BULKY_PAYLOAD_RETAINED_AFTER_EXPIRY,
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.BULKY_PAYLOAD_RETAINED_AFTER_EXPIRY,
       message: 'Bulky legacy snapshot payload cannot be retained after rollback expiry.',
     });
   }
 
   if (Object.values(sideEffects).some(value => value === true)) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
-      message: 'Phase 8R.5 rollback snapshot window planning must not perform writes, deletes, or restores.',
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      message: 'Policy rollback snapshot window planning must not perform writes, deletes, or restores.',
     });
   }
 
   if (reasons.length === 0) {
     issues.push({
-      riskId: PHASE8R_ROLLBACK_AUDIT_RISK_IDS.MISSING_REASON,
+      riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.MISSING_REASON,
       message: 'Rollback snapshot window output must include bounded reasons.',
     });
   }
@@ -561,9 +561,9 @@ function validatePolicyBuilderPhase8RollbackSnapshotWindow(windowPlan = {}) {
   };
 }
 
-function buildPolicyBuilderPhase8RollbackSnapshotWindowAudit(windowPlan = {}) {
+function buildPolicyRollbackSnapshotWindowAudit(windowPlan = {}) {
   const validation = windowPlan.validation ||
-    validatePolicyBuilderPhase8RollbackSnapshotWindow(windowPlan);
+    validatePolicyRollbackSnapshotWindow(windowPlan);
 
   return {
     ok: validation.ok,
@@ -576,18 +576,18 @@ function buildPolicyBuilderPhase8RollbackSnapshotWindowAudit(windowPlan = {}) {
     revertEligible: windowPlan.revert?.eligible === true,
     retentionDue: windowPlan.retention?.retentionDue === true,
     issueIds: asArray(validation.issues).map(issue => issue.riskId),
-    nextPhase: windowPlan.nextPhase || null,
+    nextStep: windowPlan.nextStep || null,
   };
 }
 
 export {
-  PHASE8R_ROLLBACK_AUDIT_RISK_IDS,
-  PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS,
-  PHASE8R_ROLLBACK_POST_WINDOW_ACTION_IDS,
-  PHASE8R_ROLLBACK_REASON_IDS,
-  PHASE8R_ROLLBACK_SNAPSHOT_WINDOW_VERSION,
-  PHASE8R_ROLLBACK_STATUS_IDS,
-  buildPolicyBuilderPhase8RollbackSnapshotWindow,
-  buildPolicyBuilderPhase8RollbackSnapshotWindowAudit,
-  validatePolicyBuilderPhase8RollbackSnapshotWindow,
+  POLICY_ROLLBACK_AUDIT_RISK_IDS,
+  POLICY_ROLLBACK_PAYLOAD_SECTION_IDS,
+  POLICY_ROLLBACK_POST_WINDOW_ACTION_IDS,
+  POLICY_ROLLBACK_REASON_IDS,
+  POLICY_ROLLBACK_SNAPSHOT_WINDOW_VERSION,
+  POLICY_ROLLBACK_STATUS_IDS,
+  buildPolicyRollbackSnapshotWindow,
+  buildPolicyRollbackSnapshotWindowAudit,
+  validatePolicyRollbackSnapshotWindow,
 };

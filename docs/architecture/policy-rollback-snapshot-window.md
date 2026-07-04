@@ -1,36 +1,36 @@
-# Policy Builder Phase 8R Rollback Snapshot And Reversion Window
+# Policy Rollback Snapshot And Reversion Window
 
-Status: implemented as the fifth Phase 8R storage-migration component.
+Status: implemented as the durable policy rollback snapshot and reversion-window contract.
 
 ## Problem
 
-Phase 8R conversion needs a safe way to reverse a native-intent conversion
-without preserving the old preset/custom-signal model forever. Rollback must be
-possible during a short support window, but the snapshot cannot become a second
-durable policy authority.
+Native-intent conversion needs a safe way to reverse a policy migration without
+preserving the old preset/custom-signal model forever. Rollback must be possible
+during a short support window, but the snapshot cannot become a second durable
+policy authority.
 
 ## Official Guidance Reviewed
 
 - [NIST SP 800-34 Rev. 1](https://csrc.nist.gov/pubs/sp/800/34/r1/upd1/final)
-  provides practical contingency planning and recovery guidance. Phase 8R.5
-  applies this by requiring a restore manifest before conversion and by making
+  provides practical contingency planning and recovery guidance. The rollback
+  snapshot window applies this by requiring a restore manifest before conversion and by making
   recovery criteria explicit instead of relying on ad hoc manual repair.
 - [PostgreSQL Backup and Restore](https://www.postgresql.org/docs/current/backup.html)
   distinguishes backup approaches and stresses understanding assumptions around
-  valuable data. Phase 8R.5 keeps policy rollback snapshots scoped to policy
+  valuable data. The rollback snapshot window keeps policy rollback snapshots scoped to policy
   conversion, while full database backup/restore remains the broader disaster
   recovery path.
 - [OWASP Top 10 A09: Security Logging and Monitoring Failures](https://owasp.org/Top10/2021/A09_2021-Security_Logging_and_Monitoring_Failures/)
   recommends auditable trails for high-value transactions with integrity
-  controls. Phase 8R.5 records bounded actor, reason, restore path, expiry, and
+  controls. The rollback snapshot window records bounded actor, reason, restore path, expiry, and
   post-window metadata for native policy conversion and reversion decisions.
 - [OWASP AI Agent Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/AI_Agent_Security_Cheat_Sheet.html)
   recommends separating decision-making from execution, binding approvals to the
   exact action, using expiry, and enforcing retention/deletion policies for
-  high-impact automated actions. Phase 8R.5 keeps the rollback contract
+  high-impact automated actions. The rollback snapshot window keeps the rollback contract
   side-effect-free and blocks ordinary reads or unrelated saves from reverting.
 - [NIST Privacy Framework](https://www.nist.gov/privacy-framework) frames
-  privacy and data management as enterprise risk management. Phase 8R.5 applies
+  privacy and data management as enterprise risk management. The rollback snapshot window applies
   that principle by retaining only minimal audit metadata after the rollback
   window and deleting bulky legacy payload snapshots.
 
@@ -56,7 +56,7 @@ durable policy authority.
    path, and payload digest.
 
 5. **Keep planning separate from execution.**
-   Phase 8R.5 produces a rollback/revert/retention plan and validation output.
+   The rollback snapshot window produces a rollback/revert/retention plan and validation output.
    Later storage work can write the plan transactionally, but this component
    performs no writes, deletes, or restores.
 
@@ -83,13 +83,13 @@ Cons:
 ## Final Recommendation Stack
 
 - Server rollback-window service:
-  `server/src/services/policyBuilderPhase8RollbackSnapshotWindow.mjs`
+  `server/src/services/policyRollbackSnapshotWindow.mjs`
 - Test coverage:
-  `server/src/__tests__/services/policyBuilderPhase8RollbackSnapshotWindow.test.mjs`
+  `server/src/__tests__/services/policyRollbackSnapshotWindow.test.mjs`
 - Existing schema boundary:
   `server/src/services/policyNativeSchemaContract.mjs`
-- Existing conversion workflow boundary:
-  `server/src/services/policyBuilderPhase8ExplicitConversionWorkflow.mjs`
+- Shared conversion actor-source vocabulary:
+  `server/src/services/policyConversionActorSources.mjs`
 
 ## Implemented Contract
 
@@ -118,7 +118,7 @@ retention
 sideEffects
 reasons
 validation
-nextPhase
+nextStep
 ```
 
 Required snapshot sections:
@@ -156,6 +156,6 @@ Security and retention behavior:
 
 ## Next Step
 
-Proceed to **Phase 8R.6 Legacy Write Path Shutdown**. With bounded rollback
-behavior defined, converted policies can next block accidental drift back into
-legacy preset/custom-signal write paths.
+Proceed to **Legacy Write Path Shutdown**. With bounded rollback behavior
+defined, converted policies can next block accidental drift back into legacy
+preset/custom-signal write paths.

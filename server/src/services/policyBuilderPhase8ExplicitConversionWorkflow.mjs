@@ -2,6 +2,9 @@ import {
   POLICY_MIGRATION_VERIFIER_STATUS_IDS,
 } from './policyMigrationVerifierRollback.mjs';
 import {
+  POLICY_CONVERSION_ACTOR_SOURCE_IDS,
+} from './policyConversionActorSources.mjs';
+import {
   PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS,
   buildPolicyBuilderPhase8MigrationCandidateReport,
   validatePolicyBuilderPhase8MigrationCandidateReport,
@@ -12,15 +15,7 @@ import {
 
 const PHASE8R_EXPLICIT_CONVERSION_WORKFLOW_VERSION = 'phase8r.explicit_conversion_workflow.v1';
 const PHASE8R_CONVERSION_ROLLBACK_WINDOW_DAYS = 14;
-
-const PHASE8R_CONVERSION_ACTOR_SOURCE_IDS = Object.freeze({
-  MANUAL_OPERATOR: 'manual_operator',
-  POST_UPGRADE_APPLY: 'post_upgrade_apply',
-  TEST_FIXTURE: 'test_fixture',
-  MAINTAINER_MIGRATION_TOOL: 'maintainer_migration_tool',
-  ORDINARY_POLICY_READ: 'ordinary_policy_read',
-  UNRELATED_POLICY_SAVE: 'unrelated_policy_save',
-});
+const PHASE8R_CONVERSION_ACTOR_SOURCE_IDS = POLICY_CONVERSION_ACTOR_SOURCE_IDS;
 
 const PHASE8R_CONVERSION_STEP_STATUS_IDS = Object.freeze({
   READY_TO_APPLY: 'ready_to_apply',
@@ -128,7 +123,7 @@ function buildRollbackSnapshotPlan(candidate, options = {}) {
     policyId: candidate.policyId,
     snapshotVersion: targetVersion,
     payloadRedacted: true,
-    restorePath: `phase8r/rollback/policies/${candidate.policyId}/v${targetVersion}`,
+    restorePath: `policy/rollback/policies/${candidate.policyId}/v${targetVersion}`,
     expiresAt: buildDefaultRollbackExpiry(options),
     retentionWindowDays: PHASE8R_CONVERSION_ROLLBACK_WINDOW_DAYS,
     reasonId: PHASE8R_CONVERSION_REASON_IDS.ROLLBACK_SNAPSHOT_PLANNED,

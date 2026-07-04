@@ -11,6 +11,18 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Rollback Snapshot Window Module Cutover** — renamed the rollback
+  snapshot and reversion-window service, focused test, and architecture record
+  to `policyRollbackSnapshotWindow.mjs`,
+  `policyRollbackSnapshotWindow.test.mjs`, and
+  `policy-rollback-snapshot-window.md`, replaced phase-coded rollback
+  constants/builders/versioning, restore paths, idempotency keys, default
+  reason code, and `nextPhase.phaseId` with durable policy-domain names and
+  `nextStep.stepId`, extracted shared conversion actor sources to
+  `policyConversionActorSources.mjs`, updated storage-reset and evidence-map
+  references, and preserved rollback window bounds, required restore sections,
+  actor gating, retention cleanup, raw-payload suppression, and no-side-effect
+  validation.
 - **Policy Native Runtime Read Path Module Cutover** — renamed the native
   runtime read-path service, focused test, and architecture record to
   `policyNativeRuntimeReadPath.mjs`, `policyNativeRuntimeReadPath.test.mjs`,

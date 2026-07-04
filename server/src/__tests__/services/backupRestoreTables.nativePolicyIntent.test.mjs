@@ -81,7 +81,7 @@ describe('backupRestoreTables native policy intent restore', () => {
           snapshot_version: 1,
           snapshot_payload: { policy: { id: 10 } },
           payload_redacted: true,
-          restore_path: 'phase8r/rollback/policies/10/v1',
+          restore_path: 'policy/rollback/policies/10/v1',
           expires_at: '2026-07-15T00:00:00.000Z',
         }],
         policyIntentValidationStatus: [{

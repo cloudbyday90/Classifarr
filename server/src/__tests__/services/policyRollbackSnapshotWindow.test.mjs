@@ -1,14 +1,15 @@
 import {
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS,
-} from '../../services/policyBuilderPhase8ExplicitConversionWorkflow.mjs';
+  POLICY_CONVERSION_ACTOR_SOURCE_IDS,
+} from '../../services/policyConversionActorSources.mjs';
 import {
-  PHASE8R_ROLLBACK_AUDIT_RISK_IDS,
-  PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS,
-  PHASE8R_ROLLBACK_STATUS_IDS,
-  buildPolicyBuilderPhase8RollbackSnapshotWindow,
-  buildPolicyBuilderPhase8RollbackSnapshotWindowAudit,
-  validatePolicyBuilderPhase8RollbackSnapshotWindow,
-} from '../../services/policyBuilderPhase8RollbackSnapshotWindow.mjs';
+  POLICY_ROLLBACK_SNAPSHOT_WINDOW_VERSION,
+  POLICY_ROLLBACK_AUDIT_RISK_IDS,
+  POLICY_ROLLBACK_PAYLOAD_SECTION_IDS,
+  POLICY_ROLLBACK_STATUS_IDS,
+  buildPolicyRollbackSnapshotWindow,
+  buildPolicyRollbackSnapshotWindowAudit,
+  validatePolicyRollbackSnapshotWindow,
+} from '../../services/policyRollbackSnapshotWindow.mjs';
 
 function policy(overrides = {}) {
   return {
@@ -51,17 +52,17 @@ function policy(overrides = {}) {
 
 function action(overrides = {}) {
   return {
-    actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
+    actorSourceId: POLICY_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
     actorId: 'admin:1',
-    reasonCode: 'phase8r_native_intent_conversion',
+    reasonCode: 'native_intent_conversion',
     reason: 'operator accepted native intent conversion',
     ...overrides,
   };
 }
 
-describe('policyBuilderPhase8RollbackSnapshotWindow', () => {
+describe('policyRollbackSnapshotWindow', () => {
   test('plans a bounded rollback snapshot with all required restore sections', () => {
-    const windowPlan = buildPolicyBuilderPhase8RollbackSnapshotWindow({
+    const windowPlan = buildPolicyRollbackSnapshotWindow({
       policy: policy(),
       action: action(),
       targetVersion: 2,
@@ -71,12 +72,13 @@ describe('policyBuilderPhase8RollbackSnapshotWindow', () => {
     const sectionIds = windowPlan.snapshot.payloadSections.map(section => section.sectionId);
 
     expect(windowPlan.validation.ok).toBe(true);
-    expect(windowPlan.statusId).toBe(PHASE8R_ROLLBACK_STATUS_IDS.REVERT_READY);
+    expect(windowPlan.version).toBe(POLICY_ROLLBACK_SNAPSHOT_WINDOW_VERSION);
+    expect(windowPlan.statusId).toBe(POLICY_ROLLBACK_STATUS_IDS.REVERT_READY);
     expect(windowPlan.snapshot).toEqual(expect.objectContaining({
       policyId: 44,
       intentId: 101,
       snapshotVersion: 2,
-      restorePath: 'phase8r/rollback/policies/44/v2',
+      restorePath: 'policy/rollback/policies/44/v2',
       expiresAt: '2026-06-15T00:00:00.000Z',
       rollbackWindowDays: 14,
       payloadRedactedForReports: true,
@@ -84,10 +86,10 @@ describe('policyBuilderPhase8RollbackSnapshotWindow', () => {
       permanentAlternateStorage: false,
     }));
     expect(sectionIds).toEqual(expect.arrayContaining(Object.values(
-      PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS
+      POLICY_ROLLBACK_PAYLOAD_SECTION_IDS
     )));
     expect(windowPlan.snapshot.payloadSections.find(section =>
-      section.sectionId === PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS.CUSTOM_SIGNALS
+      section.sectionId === POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.CUSTOM_SIGNALS
     )).toEqual(expect.objectContaining({
       restoreRequired: true,
       reportRedacted: true,
@@ -104,32 +106,34 @@ describe('policyBuilderPhase8RollbackSnapshotWindow', () => {
       migrationEventWritten: false,
       legacyRowsChanged: false,
     });
-    expect(windowPlan.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '8r_6',
+    expect(windowPlan.revert.idempotencyKey).toBe('policy:rollback:44:v2');
+    expect(windowPlan.nextStep).toEqual(expect.objectContaining({
+      stepId: 'legacy_write_path_shutdown',
     }));
+    expect(windowPlan.nextPhase).toBeUndefined();
   });
 
   test('blocks ordinary read or unrelated save actors from revert eligibility', () => {
-    const windowPlan = buildPolicyBuilderPhase8RollbackSnapshotWindow({
+    const windowPlan = buildPolicyRollbackSnapshotWindow({
       policy: policy(),
       action: action({
-        actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.ORDINARY_POLICY_READ,
+        actorSourceId: POLICY_CONVERSION_ACTOR_SOURCE_IDS.ORDINARY_POLICY_READ,
       }),
       now: '2026-06-01T00:00:00.000Z',
     });
     const riskIds = windowPlan.validation.issues.map(issue => issue.riskId);
 
-    expect(windowPlan.statusId).toBe(PHASE8R_ROLLBACK_STATUS_IDS.SNAPSHOT_BLOCKED);
+    expect(windowPlan.statusId).toBe(POLICY_ROLLBACK_STATUS_IDS.SNAPSHOT_BLOCKED);
     expect(windowPlan.revert).toEqual(expect.objectContaining({
       eligible: false,
       blockedReason: 'actor_source_not_allowed',
       blockedOrdinaryActor: true,
     }));
-    expect(riskIds).toContain(PHASE8R_ROLLBACK_AUDIT_RISK_IDS.UNKNOWN_ACTOR_SOURCE);
+    expect(riskIds).toContain(POLICY_ROLLBACK_AUDIT_RISK_IDS.UNKNOWN_ACTOR_SOURCE);
   });
 
   test('marks expired snapshots as cleanup due and blocks revert after expiry', () => {
-    const windowPlan = buildPolicyBuilderPhase8RollbackSnapshotWindow({
+    const windowPlan = buildPolicyRollbackSnapshotWindow({
       policy: policy(),
       action: action(),
       now: '2026-06-20T00:00:00.000Z',
@@ -140,7 +144,7 @@ describe('policyBuilderPhase8RollbackSnapshotWindow', () => {
     });
 
     expect(windowPlan.validation.ok).toBe(true);
-    expect(windowPlan.statusId).toBe(PHASE8R_ROLLBACK_STATUS_IDS.RETENTION_CLEANUP_DUE);
+    expect(windowPlan.statusId).toBe(POLICY_ROLLBACK_STATUS_IDS.RETENTION_CLEANUP_DUE);
     expect(windowPlan.revert).toEqual(expect.objectContaining({
       eligible: false,
       blockedReason: 'rollback_window_expired',
@@ -159,7 +163,7 @@ describe('policyBuilderPhase8RollbackSnapshotWindow', () => {
   });
 
   test('validation rejects unbounded permanent snapshots, raw payload exposure, and side effects', () => {
-    const windowPlan = buildPolicyBuilderPhase8RollbackSnapshotWindow({
+    const windowPlan = buildPolicyRollbackSnapshotWindow({
       policy: policy(),
       action: action(),
       now: '2026-06-01T00:00:00.000Z',
@@ -173,7 +177,7 @@ describe('policyBuilderPhase8RollbackSnapshotWindow', () => {
         rawPayloadExposed: true,
         payloadRedactedForReports: false,
         payloadSections: windowPlan.snapshot.payloadSections.filter(section =>
-          section.sectionId !== PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS.THRESHOLDS
+          section.sectionId !== POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.THRESHOLDS
         ),
       },
       revert: {
@@ -194,42 +198,43 @@ describe('policyBuilderPhase8RollbackSnapshotWindow', () => {
         policyRestored: true,
       },
     };
-    const riskIds = validatePolicyBuilderPhase8RollbackSnapshotWindow(weakened)
+    const riskIds = validatePolicyRollbackSnapshotWindow(weakened)
       .issues
       .map(issue => issue.riskId);
 
     expect(riskIds).toEqual(expect.arrayContaining([
-      PHASE8R_ROLLBACK_AUDIT_RISK_IDS.MISSING_SNAPSHOT_SECTION,
-      PHASE8R_ROLLBACK_AUDIT_RISK_IDS.UNBOUNDED_SNAPSHOT_WINDOW,
-      PHASE8R_ROLLBACK_AUDIT_RISK_IDS.SNAPSHOT_PERMANENT_ALTERNATE_STORAGE,
-      PHASE8R_ROLLBACK_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
-      PHASE8R_ROLLBACK_AUDIT_RISK_IDS.ORDINARY_READ_WRITE_REVERT,
-      PHASE8R_ROLLBACK_AUDIT_RISK_IDS.MISSING_RETENTION_POLICY,
-      PHASE8R_ROLLBACK_AUDIT_RISK_IDS.BULKY_PAYLOAD_RETAINED_AFTER_EXPIRY,
-      PHASE8R_ROLLBACK_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      POLICY_ROLLBACK_AUDIT_RISK_IDS.MISSING_SNAPSHOT_SECTION,
+      POLICY_ROLLBACK_AUDIT_RISK_IDS.UNBOUNDED_SNAPSHOT_WINDOW,
+      POLICY_ROLLBACK_AUDIT_RISK_IDS.SNAPSHOT_PERMANENT_ALTERNATE_STORAGE,
+      POLICY_ROLLBACK_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
+      POLICY_ROLLBACK_AUDIT_RISK_IDS.ORDINARY_READ_WRITE_REVERT,
+      POLICY_ROLLBACK_AUDIT_RISK_IDS.MISSING_RETENTION_POLICY,
+      POLICY_ROLLBACK_AUDIT_RISK_IDS.BULKY_PAYLOAD_RETAINED_AFTER_EXPIRY,
+      POLICY_ROLLBACK_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
     ]));
   });
 
   test('audits cleanly and points to legacy write path shutdown next', () => {
-    const windowPlan = buildPolicyBuilderPhase8RollbackSnapshotWindow({
+    const windowPlan = buildPolicyRollbackSnapshotWindow({
       policy: policy(),
       action: action(),
       now: '2026-06-01T00:00:00.000Z',
     });
-    const audit = buildPolicyBuilderPhase8RollbackSnapshotWindowAudit(windowPlan);
+    const audit = buildPolicyRollbackSnapshotWindowAudit(windowPlan);
 
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
       policyId: 44,
       intentId: 101,
-      snapshotSectionCount: Object.values(PHASE8R_ROLLBACK_PAYLOAD_SECTION_IDS).length,
+      snapshotSectionCount: Object.values(POLICY_ROLLBACK_PAYLOAD_SECTION_IDS).length,
       rollbackWindowDays: 14,
       revertEligible: true,
       retentionDue: false,
-      nextPhase: expect.objectContaining({
-        phaseId: '8r_6',
+      nextStep: expect.objectContaining({
+        stepId: 'legacy_write_path_shutdown',
       }),
     }));
+    expect(audit.nextPhase).toBeUndefined();
   });
 });

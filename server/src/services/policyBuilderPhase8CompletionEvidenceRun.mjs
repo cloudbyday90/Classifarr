@@ -60,9 +60,9 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_5',
     label: 'Rollback Snapshot And Reversion Window',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-rollback-snapshot-window.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8RollbackSnapshotWindow.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8RollbackSnapshotWindow.test.mjs'],
+    designDocPaths: ['docs/architecture/policy-rollback-snapshot-window.md'],
+    contractPaths: ['server/src/services/policyRollbackSnapshotWindow.mjs'],
+    testPaths: ['server/src/__tests__/services/policyRollbackSnapshotWindow.test.mjs'],
   },
   {
     phaseId: '8r_6',

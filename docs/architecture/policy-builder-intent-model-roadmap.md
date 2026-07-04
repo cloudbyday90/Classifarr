@@ -4581,8 +4581,8 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.5 rollback snapshot and reversion-window behavior is documented in
-  [Policy Builder Phase 8R Rollback Snapshot And Reversion Window](policy-builder-phase-8r-rollback-snapshot-window.md).
+- Policy rollback snapshot and reversion-window behavior is documented in
+  [Policy Rollback Snapshot And Reversion Window](policy-rollback-snapshot-window.md).
 - Current implementation adds a side-effect-free server service that builds a
   rollback snapshot manifest, revert eligibility contract, and post-window
   retention plan for native policy conversion/rebuild work.
@@ -4600,6 +4600,12 @@ Implementation status:
   unbounded snapshots, raw payload exposure, permanent alternate storage,
   ordinary read/write revert, missing retention policy, bulky payload retention
   after expiry, and planning side effects.
+- The module cutover renamed the rollback service, focused test, architecture
+  record, exported constants/helpers, version, restore path, idempotency key,
+  default reason code, and runtime handoff to durable policy-domain names while
+  preserving rollback window bounds, required restore sections, actor gating,
+  retention cleanup, raw-payload suppression, and no-side-effect validation:
+  [Policy Rollback Snapshot Window Module Cutover](policy-rollback-snapshot-window-module-cutover.md).
 
 ### 8R.6 Legacy Write Path Shutdown
 

@@ -91,7 +91,7 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
     expect(step.rollbackSnapshot).toEqual(expect.objectContaining({
       planned: true,
       tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_ROLLBACK_SNAPSHOTS,
-      restorePath: 'phase8r/rollback/policies/14/v2',
+      restorePath: 'policy/rollback/policies/14/v2',
       expiresAt: '2026-06-15T00:00:00.000Z',
       retentionWindowDays: 14,
     }));

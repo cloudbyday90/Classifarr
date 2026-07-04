@@ -120,7 +120,7 @@ const CURRENT_NATIVE_STORAGE_TEST_RECORDS = Object.freeze([
     finalNativeStorageContract: true,
   },
   {
-    path: 'server/src/__tests__/services/policyBuilderPhase8RollbackSnapshotWindow.test.mjs',
+    path: 'server/src/__tests__/services/policyRollbackSnapshotWindow.test.mjs',
     coverageIds: [POLICY_NATIVE_STORAGE_TEST_COVERAGE_IDS.ROLLBACK_REVERSION_TESTS],
     finalNativeStorageContract: true,
     preservesLegacyPayload: true,
