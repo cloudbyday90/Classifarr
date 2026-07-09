@@ -72,9 +72,9 @@ Cons:
 
 ### Preserve Historical Phase IDs Only In Roadmap Evidence
 
-The final requirement audit still inventories the 8R sequence, so phase IDs can
-remain as planning evidence. They should not define the storage closure module
-identity.
+The policy storage closure requirement audit still inventories the roadmap
+sequence, so historical component IDs can remain as planning evidence. They
+should not define the storage closure module identity.
 
 Pros:
 
@@ -115,11 +115,11 @@ Implemented:
 - Replaced phase-coded builder, validator, status, and risk exports with
   durable policy-storage names.
 - Replaced `nextPhase.phaseId` with `nextStep.stepId`.
-- Updated final-requirement, validation-evidence, roadmap, and changelog
+- Updated storage closure requirement, validation-evidence, roadmap, and changelog
   references to the durable module names.
 
 ## Next Step
 
-Proceed with **Final Requirement Completion Audit module naming cutover** so the
+Proceed with **Storage Closure Requirement Audit module naming cutover** so the
 last storage-closure audit layer can consume durable current-closure evidence
 without phase-coded module identity.

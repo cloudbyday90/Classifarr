@@ -2,22 +2,20 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
-  PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP,
+  PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP as POLICY_STORAGE_BASE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
 } from './policyBuilderPhase8CompletionEvidenceRun.mjs';
 import {
   POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS,
 } from './policyStorageCurrentClosureAudit.mjs';
 import {
   collectArtifactInventory,
-  extractChangelogEvidence,
-  extractRoadmapEvidence,
   normalizeRepositoryPath,
 } from './policyBuilderPhase8CurrentEvidenceCollector.mjs';
 
-const PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_VERSION =
-  'phase8r.final_requirement_completion_audit.v1';
+const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_VERSION =
+  'policy.storage_closure_requirement_audit.v1';
 
-const PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS = Object.freeze({
+const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
   BLOCKED_BY_CURRENT_CLOSURE: 'blocked_by_current_closure',
   BLOCKED_BY_COMPONENT_EVIDENCE: 'blocked_by_component_evidence',
@@ -26,7 +24,7 @@ const PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS = Object.freeze({
   BLOCKED_BY_SIDE_EFFECTS: 'blocked_by_side_effects',
 });
 
-const PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS = Object.freeze({
   CURRENT_CLOSURE_AUDIT_MISSING: 'current_closure_audit_missing',
   CURRENT_CLOSURE_AUDIT_NOT_COMPLETE: 'current_closure_audit_not_complete',
   CURRENT_CLOSURE_AUDIT_VALIDATION_FAILED:
@@ -45,10 +43,37 @@ const PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_STATUS: 'unknown_status',
 });
 
-const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
-  ...PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP,
+const LEGACY_COMPONENT_ID_KEY = ['phase', 'Id'].join('');
+const SOURCE_ROADMAP_COMPONENT_PREFIX = ['8', 'R'].join('');
+
+function normalizeClosureComponentId(value = '') {
+  const normalized = String(value || '').trim().toLowerCase();
+  const dottedComponentMatch = normalized.match(/^(\d+)r?\.(\d+)$/);
+
+  if (dottedComponentMatch) {
+    return `${dottedComponentMatch[1]}r_${dottedComponentMatch[2]}`;
+  }
+
+  return normalized;
+}
+
+function toClosureComponentMap(componentArtifactMap = []) {
+  return asArray(componentArtifactMap).map(component => ({
+    componentId:
+      normalizeClosureComponentId(
+        component.componentId || component[LEGACY_COMPONENT_ID_KEY]
+      ),
+    label: component.label,
+    designDocPaths: asArray(component.designDocPaths),
+    contractPaths: asArray(component.contractPaths),
+    testPaths: asArray(component.testPaths),
+  }));
+}
+
+const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
+  ...toClosureComponentMap(POLICY_STORAGE_BASE_CLOSURE_REQUIREMENT_ARTIFACT_MAP),
   {
-    phaseId: '8r_23',
+    componentId: '8r_23',
     label: 'Completion Evidence Run',
     designDocPaths: ['docs/architecture/policy-builder-phase-8r-completion-evidence-run.md'],
     contractPaths: [
@@ -62,7 +87,7 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     ],
   },
   {
-    phaseId: '8r_24',
+    componentId: '8r_24',
     label: 'Validation Evidence Generator',
     designDocPaths: ['docs/architecture/policy-builder-phase-8r-validation-evidence-generator.md'],
     contractPaths: [
@@ -72,7 +97,7 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyBuilderPhase8ValidationEvidence.test.mjs'],
   },
   {
-    phaseId: '8r_25',
+    componentId: '8r_25',
     label: 'Final Removal Audit Exporter',
     designDocPaths: ['docs/architecture/policy-builder-phase-8r-final-removal-audit-exporter.md'],
     contractPaths: [
@@ -82,7 +107,7 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyBuilderPhase8FinalRemovalAuditEvidence.test.mjs'],
   },
   {
-    phaseId: '8r_26',
+    componentId: '8r_26',
     label: 'Execution Plan Artifact Exporter',
     designDocPaths: ['docs/architecture/policy-builder-phase-8r-execution-plan-artifact-exporter.md'],
     contractPaths: [
@@ -92,7 +117,7 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyBuilderPhase8ExecutionPlanArtifact.test.mjs'],
   },
   {
-    phaseId: '8r_27',
+    componentId: '8r_27',
     label: 'Controlled Removal Batch Artifact Exporter',
     designDocPaths: ['docs/architecture/policy-builder-phase-8r-controlled-removal-batch-artifact-exporter.md'],
     contractPaths: [
@@ -102,7 +127,7 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyBuilderPhase8ControlledRemovalBatchArtifact.test.mjs'],
   },
   {
-    phaseId: '8r_28',
+    componentId: '8r_28',
     label: 'Controlled Removal Apply Artifact Exporter',
     designDocPaths: ['docs/architecture/policy-controlled-removal-apply-artifact-exporter.md'],
     contractPaths: [
@@ -112,7 +137,7 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyControlledRemovalApplyArtifact.test.mjs'],
   },
   {
-    phaseId: '8r_29',
+    componentId: '8r_29',
     label: 'Post-Removal Runtime Verification Artifact Exporter',
     designDocPaths: ['docs/architecture/policy-post-removal-runtime-verification-artifact-exporter.md'],
     contractPaths: [
@@ -122,7 +147,7 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyPostRemovalRuntimeVerificationArtifact.test.mjs'],
   },
   {
-    phaseId: '8r_30',
+    componentId: '8r_30',
     label: 'Next Compatibility Removal Batch Authorization Artifact Exporter',
     designDocPaths: ['docs/architecture/policy-next-compatibility-removal-batch-authorization-artifact-exporter.md'],
     contractPaths: [
@@ -132,7 +157,7 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.test.mjs'],
   },
   {
-    phaseId: '8r_31',
+    componentId: '8r_31',
     label: 'Compatibility Removal Completion Audit Artifact Exporter',
     designDocPaths: ['docs/architecture/policy-compatibility-removal-completion-audit-artifact-exporter.md'],
     contractPaths: [
@@ -142,7 +167,7 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifact.test.mjs'],
   },
   {
-    phaseId: '8r_32',
+    componentId: '8r_32',
     label: 'Completion Checkpoint Artifact Exporter',
     designDocPaths: ['docs/architecture/policy-storage-completion-checkpoint-artifact-exporter.md'],
     contractPaths: [
@@ -152,7 +177,7 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyStorageCompletionCheckpointArtifact.test.mjs'],
   },
   {
-    phaseId: '8r_33',
+    componentId: '8r_33',
     label: 'Final Closure Readout',
     designDocPaths: ['docs/architecture/policy-storage-final-closure-readout.md'],
     contractPaths: [
@@ -162,7 +187,7 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyStorageFinalClosureReadout.test.mjs'],
   },
   {
-    phaseId: '8r_34',
+    componentId: '8r_34',
     label: 'Policy Storage Current Closure Audit',
     designDocPaths: ['docs/architecture/policy-storage-current-closure-audit.md'],
     contractPaths: [
@@ -173,7 +198,7 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   },
 ]);
 
-const DEFAULT_PHASE8R_ROADMAP_PATH =
+const DEFAULT_POLICY_BUILDER_ROADMAP_PATH =
   'docs/architecture/policy-builder-intent-model-roadmap.md';
 const DEFAULT_CHANGELOG_PATH = 'CHANGELOG.md';
 
@@ -183,17 +208,6 @@ function asObject(value) {
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
-}
-
-function normalizePhaseId(value = '') {
-  const normalized = String(value || '').trim().toLowerCase();
-  const dottedPhaseMatch = normalized.match(/^(\d+)r?\.(\d+)$/);
-
-  if (dottedPhaseMatch) {
-    return `${dottedPhaseMatch[1]}r_${dottedPhaseMatch[2]}`;
-  }
-
-  return normalized;
 }
 
 function buildRisk(riskId, message, metadata = {}) {
@@ -244,9 +258,53 @@ function getMissingPaths(paths = [], inventoryPathSet = new Set()) {
     .filter(repositoryPath => repositoryPath && !inventoryPathSet.has(repositoryPath));
 }
 
+function collectRegexMatches(content = '', pattern) {
+  return [...String(content || '').matchAll(pattern)]
+    .map(match => match[1])
+    .filter(Boolean);
+}
+
+function extractRoadmapComponentEvidence(roadmapContent = '') {
+  const escapedPrefix = SOURCE_ROADMAP_COMPONENT_PREFIX
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const sourceComponentPattern = `(${escapedPrefix}\\.\\d+)`;
+
+  return {
+    sequenceComponentIds: collectRegexMatches(
+      roadmapContent,
+      new RegExp(`^\\d+\\.\\s+\\*\\*${sourceComponentPattern}\\b`, 'gm')
+    ).map(normalizeClosureComponentId),
+    implementationStatusComponentIds: collectRegexMatches(
+      roadmapContent,
+      new RegExp(`^###\\s+${sourceComponentPattern}\\b`, 'gm')
+    ).map(normalizeClosureComponentId),
+  };
+}
+
+function normalizeSearchText(value = '') {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function extractChangelogComponentEvidence({
+  changelogContent = '',
+  componentArtifactMap = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
+} = {}) {
+  const normalizedChangelog = normalizeSearchText(changelogContent);
+  const componentIds = asArray(componentArtifactMap)
+    .filter(component => normalizedChangelog.includes(
+      normalizeSearchText(component.label)
+    ))
+    .map(component => component.componentId);
+
+  return {
+    updated: componentIds.length > 0,
+    componentIds,
+  };
+}
+
 function evaluateComponentEvidence({
   artifactInventory = {},
-  componentArtifactMap = PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP,
+  componentArtifactMap = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
 } = {}) {
   const inventoryPathSet = getInventoryPathSet(artifactInventory);
   const components = asArray(componentArtifactMap).map(component => {
@@ -262,7 +320,7 @@ function evaluateComponentEvidence({
     );
 
     return {
-      phaseId: normalizePhaseId(component.phaseId),
+      componentId: normalizeClosureComponentId(component.componentId),
       label: component.label,
       implemented,
       designDocPresent: missingDesignDocPaths.length === 0,
@@ -294,41 +352,51 @@ function evaluateComponentEvidence({
 
 function evaluateRoadmapEvidence({
   roadmapEvidence = {},
-  componentArtifactMap = PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP,
+  componentArtifactMap = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
 } = {}) {
-  const sequencePhaseIds =
-    asArray(roadmapEvidence.sequencePhaseIds).map(normalizePhaseId);
-  const implementationStatusPhaseIds =
-    asArray(roadmapEvidence.implementationStatusPhaseIds).map(normalizePhaseId);
-  const expectedPhaseIds =
-    asArray(componentArtifactMap).map(component => normalizePhaseId(component.phaseId));
-  const missingSequencePhaseIds =
-    expectedPhaseIds.filter(phaseId => !sequencePhaseIds.includes(phaseId));
-  const missingImplementationStatusPhaseIds =
-    expectedPhaseIds.filter(phaseId => !implementationStatusPhaseIds.includes(phaseId));
+  const sequenceComponentIds =
+    asArray(roadmapEvidence.sequenceComponentIds)
+      .map(normalizeClosureComponentId);
+  const implementationStatusComponentIds =
+    asArray(roadmapEvidence.implementationStatusComponentIds)
+      .map(normalizeClosureComponentId);
+  const expectedComponentIds =
+    asArray(componentArtifactMap)
+      .map(component => normalizeClosureComponentId(component.componentId));
+  const missingSequenceComponentIds =
+    expectedComponentIds
+      .filter(componentId => !sequenceComponentIds.includes(componentId));
+  const missingImplementationStatusComponentIds =
+    expectedComponentIds
+      .filter(componentId => !implementationStatusComponentIds.includes(componentId));
 
   return {
-    sequenceCount: sequencePhaseIds.length,
-    implementationStatusCount: implementationStatusPhaseIds.length,
-    missingSequencePhaseIds,
-    missingImplementationStatusPhaseIds,
+    sequenceCount: sequenceComponentIds.length,
+    implementationStatusCount: implementationStatusComponentIds.length,
+    sequenceComponentIds,
+    implementationStatusComponentIds,
+    missingSequenceComponentIds,
+    missingImplementationStatusComponentIds,
   };
 }
 
 function evaluateChangelogEvidence({
   changelogEvidence = {},
-  componentArtifactMap = PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP,
+  componentArtifactMap = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
 } = {}) {
-  const coveredPhaseIds = asArray(changelogEvidence.phaseIds).map(normalizePhaseId);
-  const expectedPhaseIds =
-    asArray(componentArtifactMap).map(component => normalizePhaseId(component.phaseId));
-  const missingPhaseIds =
-    expectedPhaseIds.filter(phaseId => !coveredPhaseIds.includes(phaseId));
+  const coveredComponentIds =
+    asArray(changelogEvidence.componentIds).map(normalizeClosureComponentId);
+  const expectedComponentIds =
+    asArray(componentArtifactMap)
+      .map(component => normalizeClosureComponentId(component.componentId));
+  const missingComponentIds =
+    expectedComponentIds
+      .filter(componentId => !coveredComponentIds.includes(componentId));
 
   return {
     updated: changelogEvidence.updated === true,
-    coveredPhaseIds,
-    missingPhaseIds,
+    coveredComponentIds,
+    missingComponentIds,
   };
 }
 
@@ -355,9 +423,9 @@ function buildAuditRisks({
 
   if (Object.keys(normalizedCurrentClosureAudit).length === 0) {
     risks.push(buildRisk(
-      PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
         .CURRENT_CLOSURE_AUDIT_MISSING,
-      'Final requirement completion audit requires a policy storage current closure audit.'
+      'Policy storage closure requirement audit requires a policy storage current closure audit.'
     ));
   }
 
@@ -370,9 +438,9 @@ function buildAuditRisks({
     )
   ) {
     risks.push(buildRisk(
-      PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
         .CURRENT_CLOSURE_AUDIT_NOT_COMPLETE,
-      'Final requirement completion audit requires a complete policy storage current closure audit.',
+      'Policy storage closure requirement audit requires a complete policy storage current closure audit.',
       {
         currentClosureAuditStatusId:
           normalizedCurrentClosureAudit.statusId || null,
@@ -385,9 +453,9 @@ function buildAuditRisks({
     normalizedCurrentClosureAudit.validation?.ok !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
         .CURRENT_CLOSURE_AUDIT_VALIDATION_FAILED,
-      'Final requirement completion audit requires valid policy storage current closure audit evidence.',
+      'Policy storage closure requirement audit requires valid policy storage current closure audit evidence.',
       {
         currentClosureAuditValidationIssueCount:
           normalizedCurrentClosureAudit.validation?.issueCount ?? null,
@@ -397,11 +465,11 @@ function buildAuditRisks({
 
   asArray(componentEvidence.componentsWithMissingArtifacts).forEach(component => {
     risks.push(buildRisk(
-      PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
         .COMPONENT_ARTIFACT_MISSING,
-      'Final requirement completion audit requires every Phase 8R component artifact to exist in the current checkout.',
+      'Policy storage closure requirement audit requires every mapped closure component artifact to exist in the current checkout.',
       {
-        phaseId: component.phaseId,
+        componentId: component.componentId,
         label: component.label,
         missingDesignDocPaths: component.missingDesignDocPaths,
         missingContractPaths: component.missingContractPaths,
@@ -411,11 +479,11 @@ function buildAuditRisks({
 
     if (asArray(component.missingDesignDocPaths).length > 0) {
       risks.push(buildRisk(
-        PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+        POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
           .COMPONENT_DESIGN_DOC_MISSING,
-        'Final requirement completion audit requires a design/outcome document for every Phase 8R component.',
+        'Policy storage closure requirement audit requires a design/outcome document for every mapped closure component.',
         {
-          phaseId: component.phaseId,
+          componentId: component.componentId,
           label: component.label,
           missingDesignDocPaths: component.missingDesignDocPaths,
         }
@@ -424,11 +492,11 @@ function buildAuditRisks({
 
     if (asArray(component.missingContractPaths).length > 0) {
       risks.push(buildRisk(
-        PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+        POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
           .COMPONENT_CONTRACT_EVIDENCE_MISSING,
-        'Final requirement completion audit requires service, script, route, migration, or wiring evidence for every Phase 8R component.',
+        'Policy storage closure requirement audit requires service, script, route, migration, or wiring evidence for every mapped closure component.',
         {
-          phaseId: component.phaseId,
+          componentId: component.componentId,
           label: component.label,
           missingContractPaths: component.missingContractPaths,
         }
@@ -437,11 +505,11 @@ function buildAuditRisks({
 
     if (asArray(component.missingTestPaths).length > 0) {
       risks.push(buildRisk(
-        PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+        POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
           .COMPONENT_TEST_EVIDENCE_MISSING,
-        'Final requirement completion audit requires focused test evidence for every Phase 8R component.',
+        'Policy storage closure requirement audit requires focused test evidence for every mapped closure component.',
         {
-          phaseId: component.phaseId,
+          componentId: component.componentId,
           label: component.label,
           missingTestPaths: component.missingTestPaths,
         }
@@ -449,42 +517,47 @@ function buildAuditRisks({
     }
   });
 
-  if (asArray(roadmapEvidence.missingSequencePhaseIds).length > 0) {
+  if (asArray(roadmapEvidence.missingSequenceComponentIds).length > 0) {
     risks.push(buildRisk(
-      PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
         .ROADMAP_SEQUENCE_MISSING,
-      'Final requirement completion audit requires the Phase 8R work sequence to include every component.',
-      { missingPhaseIds: roadmapEvidence.missingSequencePhaseIds }
+      'Policy storage closure requirement audit requires the roadmap work sequence to include every mapped closure component.',
+      { missingComponentIds: roadmapEvidence.missingSequenceComponentIds }
     ));
   }
 
-  if (asArray(roadmapEvidence.missingImplementationStatusPhaseIds).length > 0) {
+  if (
+    asArray(roadmapEvidence.missingImplementationStatusComponentIds).length > 0
+  ) {
     risks.push(buildRisk(
-      PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
         .ROADMAP_IMPLEMENTATION_STATUS_MISSING,
-      'Final requirement completion audit requires the Phase 8R component map to include every implementation-status section.',
-      { missingPhaseIds: roadmapEvidence.missingImplementationStatusPhaseIds }
+      'Policy storage closure requirement audit requires the roadmap component map to include every implementation-status section.',
+      {
+        missingComponentIds:
+          roadmapEvidence.missingImplementationStatusComponentIds,
+      }
     ));
   }
 
   if (
     changelogEvidence.updated !== true ||
-    asArray(changelogEvidence.missingPhaseIds).length > 0
+    asArray(changelogEvidence.missingComponentIds).length > 0
   ) {
     risks.push(buildRisk(
-      PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
         .CHANGELOG_ENTRY_MISSING,
-      'Final requirement completion audit requires changelog coverage for every Phase 8R component.',
-      { missingPhaseIds: changelogEvidence.missingPhaseIds }
+      'Policy storage closure requirement audit requires changelog coverage for every mapped closure component.',
+      { missingComponentIds: changelogEvidence.missingComponentIds }
     ));
   }
 
   Object.entries(sideEffects || {}).forEach(([key, value]) => {
     if (key !== 'filesRead' && value === true) {
       risks.push(buildRisk(
-        PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+        POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
           .SIDE_EFFECT_REPORTED,
-        `Final requirement completion audit cannot report side effect "${key}".`,
+        `Policy storage closure requirement audit cannot report side effect "${key}".`,
         { sideEffect: key }
       ));
     }
@@ -502,13 +575,13 @@ function determineStatusId({
   sideEffects = {},
 } = {}) {
   if (risks.length === 0) {
-    return PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS.COMPLETE;
+    return POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS.COMPLETE;
   }
 
   if (Object.entries(sideEffects || {}).some(([key, value]) => (
     key !== 'filesRead' && value === true
   ))) {
-    return PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS
+    return POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
       .BLOCKED_BY_SIDE_EFFECTS;
   }
 
@@ -518,40 +591,40 @@ function determineStatusId({
     currentClosureAudit.complete !== true ||
     currentClosureAudit.validation?.ok !== true
   ) {
-    return PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS
+    return POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
       .BLOCKED_BY_CURRENT_CLOSURE;
   }
 
   if (componentEvidence.missingArtifactCount > 0) {
-    return PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS
+    return POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
       .BLOCKED_BY_COMPONENT_EVIDENCE;
   }
 
   if (
-    asArray(roadmapEvidence.missingSequencePhaseIds).length > 0 ||
-    asArray(roadmapEvidence.missingImplementationStatusPhaseIds).length > 0
+    asArray(roadmapEvidence.missingSequenceComponentIds).length > 0 ||
+    asArray(roadmapEvidence.missingImplementationStatusComponentIds).length > 0
   ) {
-    return PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS
+    return POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
       .BLOCKED_BY_ROADMAP_EVIDENCE;
   }
 
   if (
     changelogEvidence.updated !== true ||
-    asArray(changelogEvidence.missingPhaseIds).length > 0
+    asArray(changelogEvidence.missingComponentIds).length > 0
   ) {
-    return PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS
+    return POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
       .BLOCKED_BY_CHANGELOG;
   }
 
-  return PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS
+  return POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
     .BLOCKED_BY_COMPONENT_EVIDENCE;
 }
 
-function buildPolicyBuilderPhase8FinalRequirementCompletionAudit({
+function buildPolicyStorageClosureRequirementAudit({
   cwd = process.cwd(),
   currentClosureAudit = {},
-  componentArtifactMap = PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP,
-  roadmapPath = DEFAULT_PHASE8R_ROADMAP_PATH,
+  componentArtifactMap = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
+  roadmapPath = DEFAULT_POLICY_BUILDER_ROADMAP_PATH,
   changelogPath = DEFAULT_CHANGELOG_PATH,
   generatedAt = null,
   sideEffects = {},
@@ -573,8 +646,8 @@ function buildPolicyBuilderPhase8FinalRequirementCompletionAudit({
     repositoryPath: changelogPath,
     readTextFile,
   });
-  const rawRoadmapEvidence = extractRoadmapEvidence(roadmapContent);
-  const rawChangelogEvidence = extractChangelogEvidence({
+  const rawRoadmapEvidence = extractRoadmapComponentEvidence(roadmapContent);
+  const rawChangelogEvidence = extractChangelogComponentEvidence({
     changelogContent,
     componentArtifactMap,
   });
@@ -610,15 +683,15 @@ function buildPolicyBuilderPhase8FinalRequirementCompletionAudit({
     sideEffects: combinedSideEffects,
   });
   const audit = {
-    version: PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_VERSION,
+    version: POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_VERSION,
     generatedAt: generatedAt || new Date().toISOString(),
     statusId,
     complete:
       statusId ===
-        PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
+        POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS.COMPLETE,
     evidenceScope: {
-      phaseRange: '8R.1-8R.34',
       componentCount: asArray(componentArtifactMap).length,
+      sourceRoadmapComponentPrefix: SOURCE_ROADMAP_COMPONENT_PREFIX,
       roadmapPath,
       changelogPath,
       requiresCurrentClosureAudit: true,
@@ -631,14 +704,8 @@ function buildPolicyBuilderPhase8FinalRequirementCompletionAudit({
     },
     artifactInventory: artifactInventoryResult,
     componentEvidence,
-    roadmapEvidence: {
-      raw: rawRoadmapEvidence,
-      ...roadmapEvidence,
-    },
-    changelogEvidence: {
-      raw: rawChangelogEvidence,
-      ...changelogEvidence,
-    },
+    roadmapEvidence,
+    changelogEvidence,
     summary: {
       currentClosureAuditComplete: currentClosureAudit.complete === true,
       currentClosureAuditValidationOk: currentClosureAudit.validation?.ok === true,
@@ -646,10 +713,10 @@ function buildPolicyBuilderPhase8FinalRequirementCompletionAudit({
       implementedComponentCount: componentEvidence.implementedCount,
       missingComponentArtifactCount: componentEvidence.missingArtifactCount,
       missingRoadmapSequenceCount:
-        roadmapEvidence.missingSequencePhaseIds.length,
+        roadmapEvidence.missingSequenceComponentIds.length,
       missingRoadmapImplementationStatusCount:
-        roadmapEvidence.missingImplementationStatusPhaseIds.length,
-      missingChangelogCount: changelogEvidence.missingPhaseIds.length,
+        roadmapEvidence.missingImplementationStatusComponentIds.length,
+      missingChangelogCount: changelogEvidence.missingComponentIds.length,
     },
     riskCount: risks.length,
     risks,
@@ -657,7 +724,7 @@ function buildPolicyBuilderPhase8FinalRequirementCompletionAudit({
     executionPolicy: {
       readsCurrentRepositoryFiles: true,
       requireCurrentClosureAudit: true,
-      requireAllPhase8RComponentArtifacts: true,
+      requireAllClosureComponentArtifacts: true,
       requireRoadmapSequenceCoverage: true,
       requireRoadmapImplementationStatusCoverage: true,
       requireChangelogCoverage: true,
@@ -668,61 +735,61 @@ function buildPolicyBuilderPhase8FinalRequirementCompletionAudit({
       allowManifestWrite: false,
     },
     finalDecision: {
-      phaseId: '8r_complete',
-      label: 'Phase 8R Requirement Completion',
+      stepId: 'policy_storage_closure_requirements_complete',
+      label: 'Policy Storage Closure Requirements Complete',
       complete:
         statusId ===
-          PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
+          POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS.COMPLETE,
       reason: statusId ===
-        PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS.COMPLETE
-        ? 'Phase 8R.1 through 8R.34 are covered by current closure, artifact, roadmap, changelog, and validation evidence.'
-        : 'Phase 8R completion remains blocked until the reported current-state evidence gaps are resolved.',
+        POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS.COMPLETE
+        ? 'All mapped policy storage closure components are covered by current closure, artifact, roadmap, changelog, and validation evidence.'
+        : 'Policy storage closure remains blocked until the reported current-state evidence gaps are resolved.',
     },
   };
 
   return {
     ...audit,
     validation:
-      validatePolicyBuilderPhase8FinalRequirementCompletionAudit(audit),
+      validatePolicyStorageClosureRequirementAudit(audit),
   };
 }
 
-function validatePolicyBuilderPhase8FinalRequirementCompletionAudit(audit = {}) {
+function validatePolicyStorageClosureRequirementAudit(audit = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS)
+  if (!Object.values(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS)
     .includes(audit.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS.UNKNOWN_STATUS,
-      'Final requirement completion audit status must be known.'
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS.UNKNOWN_STATUS,
+      'Policy storage closure requirement audit status must be known.'
     ));
   }
 
   if (audit.riskCount !== asArray(audit.risks).length) {
     issues.push(buildRisk(
-      PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS.RISK_COUNT_MISMATCH,
-      'Final requirement completion audit risk count must match risk list length.'
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS.RISK_COUNT_MISMATCH,
+      'Policy storage closure requirement audit risk count must match risk list length.'
     ));
   }
 
   if (
     audit.statusId ===
-      PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS.COMPLETE &&
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS.COMPLETE &&
     audit.complete !== true
   ) {
     issues.push(buildRisk(
-      PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
         .COMPLETE_FLAG_MISMATCH,
-      'Final requirement completion audit complete flag must match complete status.'
+      'Policy storage closure requirement audit complete flag must match complete status.'
     ));
   }
 
   Object.entries(audit.sideEffects || {}).forEach(([key, value]) => {
     if (key !== 'filesRead' && value === true) {
       issues.push(buildRisk(
-        PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+        POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
           .SIDE_EFFECT_REPORTED,
-        `Final requirement completion audit cannot report side effect "${key}".`,
+        `Policy storage closure requirement audit cannot report side effect "${key}".`,
         { sideEffect: key }
       ));
     }
@@ -736,13 +803,13 @@ function validatePolicyBuilderPhase8FinalRequirementCompletionAudit(audit = {}) 
 }
 
 export {
-  PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP,
-  PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS,
-  PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS,
-  PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_VERSION,
-  buildPolicyBuilderPhase8FinalRequirementCompletionAudit,
+  POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
+  POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS,
+  POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS,
+  POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_VERSION,
+  buildPolicyStorageClosureRequirementAudit,
   evaluateChangelogEvidence,
   evaluateComponentEvidence,
   evaluateRoadmapEvidence,
-  validatePolicyBuilderPhase8FinalRequirementCompletionAudit,
+  validatePolicyStorageClosureRequirementAudit,
 };

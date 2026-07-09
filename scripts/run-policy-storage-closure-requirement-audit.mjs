@@ -14,8 +14,8 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  buildPolicyBuilderPhase8FinalRequirementCompletionAudit,
-} from '../server/src/services/policyBuilderPhase8FinalRequirementCompletionAudit.mjs';
+  buildPolicyStorageClosureRequirementAudit,
+} from '../server/src/services/policyStorageClosureRequirementAudit.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -71,12 +71,12 @@ function parseArgs(argv = []) {
 
 function usage() {
   return [
-    'Usage: node scripts/run-policy-builder-phase-8r-final-requirement-audit.mjs [options]',
+    'Usage: node scripts/run-policy-storage-closure-requirement-audit.mjs [options]',
     '',
     'Options:',
     '  --cwd <path>                    Repository root. Defaults to process cwd.',
     '  --current-closure-audit <json>  Required policy storage current closure audit JSON.',
-    '  --output <json>                 Write full final requirement audit JSON.',
+    '  --output <json>                 Write full policy storage closure requirement audit JSON.',
     '  --allow-blocked                 Allow writing blocked audit output.',
     '  --require-complete              Exit non-zero unless the audit is complete.',
     '  --generated-at <iso>            Optional generatedAt timestamp for stable tests.',
@@ -134,7 +134,7 @@ function main() {
   try {
     currentClosureAudit = readJsonFile(
       options.currentClosureAuditPath,
-      'current closure audit',
+      'policy storage current closure audit',
       { required: true }
     );
   } catch (err) {
@@ -142,7 +142,7 @@ function main() {
     process.exit(2);
   }
 
-  const audit = buildPolicyBuilderPhase8FinalRequirementCompletionAudit({
+  const audit = buildPolicyStorageClosureRequirementAudit({
     cwd: path.resolve(process.cwd(), options.cwd),
     currentClosureAudit,
     generatedAt: options.generatedAt,
@@ -150,7 +150,7 @@ function main() {
 
   if (audit.statusId !== 'complete' && options.allowBlocked !== true) {
     console.error(
-      'Phase 8R final requirement completion audit is blocked; pass --allow-blocked to write diagnostic output.'
+      'Policy storage closure requirement audit is blocked; pass --allow-blocked to write diagnostic output.'
     );
     console.error(JSON.stringify({
       statusId: audit.statusId,
@@ -165,7 +165,7 @@ function main() {
   try {
     writeJsonFile(options.outputPath, audit);
   } catch (err) {
-    console.error(`Could not write Phase 8R final requirement audit JSON: ${err.message}`);
+    console.error(`Could not write policy storage closure requirement audit JSON: ${err.message}`);
     process.exit(2);
   }
 

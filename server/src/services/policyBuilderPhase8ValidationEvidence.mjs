@@ -28,7 +28,7 @@ const PHASE8R_VALIDATION_COMMANDS = Object.freeze([
     command: 'node',
     args: [
       './scripts/run-jest.mjs',
-      '--testPathPatterns=policyBuilderPhase8CurrentEvidenceCollector|policyBuilderPhase8CompletionEvidenceRun|policyStorageCompletionCheckpoint|policyStorageCompletionCheckpointArtifact|policyStorageCurrentClosureAudit|policyBuilderPhase8FinalRequirementCompletionAudit|policyCompatibilityRemovalCompletionAudit|policyCompatibilityRemovalCompletionAuditArtifact|policyBuilderPhase8ValidationEvidence|policyBuilderPhase8ExecutionPlanArtifact|policyBuilderPhase8ControlledRemovalBatchArtifact|policyControlledRemovalApplyArtifact|policyPostRemovalRuntimeVerificationArtifact|policyNextCompatibilityRemovalBatchAuthorizationArtifact|policyBuilderPhase8FinalRemovalAuditEvidence|policyStorageFinalClosureReadout|policyBuilderPhase8ImpactMigrationVerifier|policyBuilderPhase8ReplayMigrationVerifier',
+      '--testPathPatterns=policyBuilderPhase8CurrentEvidenceCollector|policyBuilderPhase8CompletionEvidenceRun|policyStorageCompletionCheckpoint|policyStorageCompletionCheckpointArtifact|policyStorageCurrentClosureAudit|policyStorageClosureRequirementAudit|policyCompatibilityRemovalCompletionAudit|policyCompatibilityRemovalCompletionAuditArtifact|policyBuilderPhase8ValidationEvidence|policyBuilderPhase8ExecutionPlanArtifact|policyBuilderPhase8ControlledRemovalBatchArtifact|policyControlledRemovalApplyArtifact|policyPostRemovalRuntimeVerificationArtifact|policyNextCompatibilityRemovalBatchAuthorizationArtifact|policyBuilderPhase8FinalRemovalAuditEvidence|policyStorageFinalClosureReadout|policyBuilderPhase8ImpactMigrationVerifier|policyBuilderPhase8ReplayMigrationVerifier',
       '--no-coverage',
       '--runInBand',
     ],
@@ -70,7 +70,8 @@ const PHASE8R_VALIDATION_COMMANDS = Object.freeze([
       'docs/architecture/policy-storage-final-closure-readout-module-cutover.md',
       'docs/architecture/policy-storage-current-closure-audit.md',
       'docs/architecture/policy-storage-current-closure-audit-module-cutover.md',
-      'docs/architecture/policy-builder-phase-8r-final-requirement-completion-audit.md',
+      'docs/architecture/policy-storage-closure-requirement-audit.md',
+      'docs/architecture/policy-storage-closure-requirement-audit-module-cutover.md',
       'docs/architecture/policy-builder-phase-8r-validation-evidence-generator.md',
       'docs/architecture/policy-builder-phase-8r-final-removal-audit-exporter.md',
       'docs/architecture/policy-builder-phase-8r-impact-preview-removal.md',

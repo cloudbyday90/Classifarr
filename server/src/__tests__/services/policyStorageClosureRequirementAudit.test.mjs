@@ -2,24 +2,24 @@ import {
   POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS,
 } from '../../services/policyStorageCurrentClosureAudit.mjs';
 import {
-  PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP,
-  PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS,
-  PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS,
-  buildPolicyBuilderPhase8FinalRequirementCompletionAudit,
-  validatePolicyBuilderPhase8FinalRequirementCompletionAudit,
-} from '../../services/policyBuilderPhase8FinalRequirementCompletionAudit.mjs';
+  POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
+  POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS,
+  POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS,
+  buildPolicyStorageClosureRequirementAudit,
+  validatePolicyStorageClosureRequirementAudit,
+} from '../../services/policyStorageClosureRequirementAudit.mjs';
 
 function completeRoadmapContent() {
-  const componentSections = PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP
+  const componentSections = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP
     .map(component => {
-      const number = component.phaseId.replace('8r_', '');
+      const number = component.componentId.replace('8r_', '');
 
       return `### 8R.${number} ${component.label}`;
     })
     .join('\n');
-  const sequenceItems = PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP
+  const sequenceItems = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP
     .map((component, index) => {
-      const number = component.phaseId.replace('8r_', '');
+      const number = component.componentId.replace('8r_', '');
 
       return `${index + 1}. **8R.${number} ${component.label}**`;
     })
@@ -31,8 +31,8 @@ function completeRoadmapContent() {
 function completeChangelogContent({
   excludedPhaseId = null,
 } = {}) {
-  return PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP
-    .filter(component => component.phaseId !== excludedPhaseId)
+  return POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP
+    .filter(component => component.componentId !== excludedPhaseId)
     .map(component => `- **Policy Builder Phase 8R ${component.label}**`)
     .join('\n');
 }
@@ -66,7 +66,7 @@ function readTextFileFactory({
 }
 
 function completeAudit(overrides = {}) {
-  return buildPolicyBuilderPhase8FinalRequirementCompletionAudit({
+  return buildPolicyStorageClosureRequirementAudit({
     cwd: '/repo',
     currentClosureAudit: currentClosureAudit(),
     generatedAt: '2026-06-25T18:00:00.000Z',
@@ -76,17 +76,17 @@ function completeAudit(overrides = {}) {
   });
 }
 
-describe('policyBuilderPhase8FinalRequirementCompletionAudit', () => {
+describe('policyStorageClosureRequirementAudit', () => {
   test('completes when current closure and all 8R.1 through 8R.34 evidence pass', () => {
     const audit = completeAudit();
 
     expect(audit.statusId)
-      .toBe(PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS.COMPLETE);
+      .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS.COMPLETE);
     expect(audit.complete).toBe(true);
     expect(audit.validation.ok).toBe(true);
     expect(audit.evidenceScope).toEqual(expect.objectContaining({
-      phaseRange: '8R.1-8R.34',
       componentCount: 34,
+      sourceRoadmapComponentPrefix: '8R',
     }));
     expect(audit.summary).toEqual(expect.objectContaining({
       expectedComponentCount: 34,
@@ -109,12 +109,12 @@ describe('policyBuilderPhase8FinalRequirementCompletionAudit', () => {
     });
 
     expect(audit.statusId)
-      .toBe(PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS
+      .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
         .BLOCKED_BY_CURRENT_CLOSURE);
     expect(audit.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+          POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
             .CURRENT_CLOSURE_AUDIT_NOT_COMPLETE,
       }),
     ]));
@@ -130,20 +130,20 @@ describe('policyBuilderPhase8FinalRequirementCompletionAudit', () => {
     });
 
     expect(audit.statusId)
-      .toBe(PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS
+      .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
         .BLOCKED_BY_COMPONENT_EVIDENCE);
     expect(audit.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+          POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
             .COMPONENT_ARTIFACT_MISSING,
-        phaseId: '8r_34',
+        componentId: '8r_34',
       }),
       expect.objectContaining({
         riskId:
-          PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+          POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
             .COMPONENT_CONTRACT_EVIDENCE_MISSING,
-        phaseId: '8r_34',
+        componentId: '8r_34',
       }),
     ]));
   });
@@ -156,9 +156,10 @@ describe('policyBuilderPhase8FinalRequirementCompletionAudit', () => {
     });
 
     expect(audit.statusId)
-      .toBe(PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS
+      .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
         .BLOCKED_BY_ROADMAP_EVIDENCE);
-    expect(audit.roadmapEvidence.missingSequencePhaseIds).toContain('8r_34');
+    expect(audit.roadmapEvidence.missingSequenceComponentIds)
+      .toContain('8r_34');
   });
 
   test('blocks when changelog coverage omits a late Phase 8R component', () => {
@@ -171,9 +172,9 @@ describe('policyBuilderPhase8FinalRequirementCompletionAudit', () => {
     });
 
     expect(audit.statusId)
-      .toBe(PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS
+      .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
         .BLOCKED_BY_CHANGELOG);
-    expect(audit.changelogEvidence.missingPhaseIds).toContain('8r_33');
+    expect(audit.changelogEvidence.missingComponentIds).toContain('8r_33');
   });
 
   test('blocks on side effects other than repository file reads', () => {
@@ -188,19 +189,19 @@ describe('policyBuilderPhase8FinalRequirementCompletionAudit', () => {
     });
 
     expect(audit.statusId)
-      .toBe(PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_STATUS_IDS
+      .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
         .BLOCKED_BY_SIDE_EFFECTS);
     expect(audit.validation.ok).toBe(false);
     expect(audit.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+          POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
             .SIDE_EFFECT_REPORTED,
         sideEffect: 'filesWritten',
       }),
       expect.objectContaining({
         riskId:
-          PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+          POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
             .SIDE_EFFECT_REPORTED,
         sideEffect: 'manifestWritten',
       }),
@@ -209,7 +210,7 @@ describe('policyBuilderPhase8FinalRequirementCompletionAudit', () => {
 
   test('validates status and risk-count invariants', () => {
     const validation =
-      validatePolicyBuilderPhase8FinalRequirementCompletionAudit({
+      validatePolicyStorageClosureRequirementAudit({
         statusId: 'unexpected',
         complete: false,
         riskCount: 1,
@@ -223,11 +224,11 @@ describe('policyBuilderPhase8FinalRequirementCompletionAudit', () => {
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS.UNKNOWN_STATUS,
+          POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS.UNKNOWN_STATUS,
       }),
       expect.objectContaining({
         riskId:
-          PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS
+          POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
             .RISK_COUNT_MISMATCH,
       }),
     ]));

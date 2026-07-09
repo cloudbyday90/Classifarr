@@ -6039,16 +6039,16 @@ Implementation status:
   blocked closure audits without writing files, mutating storage, running
   commands, or running Git.
 
-### 8R.35 Final Requirement Completion Audit
+### 8R.35 Policy Storage Closure Requirement Audit
 
-Intent: prove the full current Phase 8R sequence requirement by requirement
-before Phase 8R is treated as complete.
+Intent: prove every mapped policy storage closure component requirement by
+requirement before the closure sequence is treated as complete.
 
 Tasks:
 
 - Require a complete and valid policy storage current closure audit.
-- Inventory mapped current checkout artifacts for every Phase 8R component from
-  8R.1 through 8R.34.
+- Inventory mapped current checkout artifacts for every closure component in
+  the current roadmap range.
 - Require design/outcome document evidence for every component.
 - Require service, script, route, migration, or wiring evidence for every
   component.
@@ -6062,30 +6062,35 @@ Acceptance criteria:
 
 - Completion is blocked without complete policy storage current closure
   evidence.
-- Completion is blocked when any 8R.1 through 8R.34 mapped artifact is missing.
+- Completion is blocked when any mapped closure component artifact is missing.
 - Completion is blocked when the roadmap component map or work sequence omits
-  any Phase 8R component.
-- Completion is blocked when changelog coverage omits any Phase 8R component.
+  any mapped closure component.
+- Completion is blocked when changelog coverage omits any mapped closure
+  component.
 - The audit emits exact missing evidence rather than relying on narrative
   completion status.
+- The audit emits component-oriented evidence fields instead of phase-oriented
+  public payload fields.
 - The service reads repository files only and performs no writes, storage
   mutation, command execution, manifest writes, or Git operations.
 
 Implementation status:
 
-- Phase 8R.35 final requirement completion audit is documented in
-  [Policy Builder Phase 8R Final Requirement Completion Audit](policy-builder-phase-8r-final-requirement-completion-audit.md).
-- The final requirement audit contract lives in
-  `server/src/services/policyBuilderPhase8FinalRequirementCompletionAudit.mjs`.
+- Policy storage closure requirement audit is documented in
+  [Policy Storage Closure Requirement Audit](policy-storage-closure-requirement-audit.md).
+- The durable module naming cutover is documented in
+  [Policy Storage Closure Requirement Audit Module Cutover](policy-storage-closure-requirement-audit-module-cutover.md).
+- The policy storage closure requirement audit contract lives in
+  `server/src/services/policyStorageClosureRequirementAudit.mjs`.
 - The exporter script lives in
-  `scripts/run-policy-builder-phase-8r-final-requirement-audit.mjs`.
+  `scripts/run-policy-storage-closure-requirement-audit.mjs`.
 - The root runner is exposed as
-  `npm run policy:phase8r:final-requirement-audit`.
-- The focused final requirement audit test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8FinalRequirementCompletionAudit.test.mjs`.
-- Current implementation verifies the complete 8R.1 through 8R.34 evidence
-  range so later artifact/exporter closure components cannot be skipped by the
-  older policy storage checkpoint range.
+  `npm run policy:storage-closure-requirement-audit`.
+- The focused policy storage closure requirement audit test suite lives in
+  `server/src/__tests__/services/policyStorageClosureRequirementAudit.test.mjs`.
+- Current implementation verifies the complete mapped closure component range
+  so later artifact/exporter closure components cannot be skipped by the older
+  policy storage checkpoint range.
 - Final closure inventory sync is documented in
   [Policy Builder Phase 8R Closure Inventory Sync](policy-builder-phase-8r-closure-inventory-sync.md).
 - Current validation hardening classifies
@@ -6213,10 +6218,10 @@ Implement Phase 8R in this order:
     Audits the current checkout by composing current artifact, roadmap,
     changelog, completion-audit, validation, checkpoint, and final-readout
     evidence into one completion decision.
-35. **8R.35 Final Requirement Completion Audit**
-    Verifies the full current Phase 8R.1 through 8R.34 sequence against
-    current closure, artifact, roadmap, changelog, and focused-test evidence
-    before the Phase 8R objective is marked complete.
+35. **8R.35 Policy Storage Closure Requirement Audit**
+    Verifies the mapped closure component sequence against current closure,
+    artifact, roadmap, changelog, and focused-test evidence before the closure
+    objective is marked complete.
 
 Current starting point:
 

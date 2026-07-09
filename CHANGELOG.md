@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Storage Closure Requirement Audit Module Cutover** — renamed the
+  closure requirement audit service, focused tests, docs, CLI script, and npm
+  runner to durable policy-storage closure requirement names, replaced
+  phase-coded constants/builders/versioning and public `phaseId` evidence fields
+  with component-oriented `componentId`, `sourceRoadmapComponentPrefix`,
+  `missing*ComponentIds`, and semantic `finalDecision.stepId` output, updated
+  validation-evidence, roadmap, and handoff references, and preserved
+  current-closure gating, component artifact coverage, roadmap coverage,
+  changelog coverage, side-effect rejection, and complete/blocked final
+  decisions.
 - **Policy Storage Current Closure Audit Module Cutover** — renamed the current
   closure audit service, focused tests, docs, CLI script, and npm runner to
   durable policy-storage names, replaced phase-coded constants/builders/versioning
@@ -909,11 +919,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   public section names into the evidence projection shape, builds the
   projection, runs the projection audit, and blocks unsafe inputs before
   downstream intent/readiness engines can consume evidence.
-- **Policy Builder Phase 8R Final Requirement Completion Audit** — added a
+- **Policy Storage Closure Requirement Audit** — added a
   final current-state completion audit and
-  `npm run policy:phase8r:final-requirement-audit` to verify the full 8R.1
-  through 8R.34 sequence against current closure, artifact, roadmap, changelog,
-  and focused-test evidence before Phase 8R can be marked complete.
+  `npm run policy:storage-closure-requirement-audit` to verify the mapped
+  closure component sequence against current closure, artifact, roadmap,
+  changelog, and focused-test evidence before the storage closure sequence can
+  be marked complete.
 - **Policy Storage Current Closure Audit** — added a policy-storage
   current-closure audit contract and
   `npm run policy:storage-current-closure-audit` to compose current artifact,
