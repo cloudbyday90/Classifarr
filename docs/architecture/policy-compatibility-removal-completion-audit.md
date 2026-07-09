@@ -164,7 +164,7 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Policy Storage Final Closure Readout module naming cutover**.
+Proceed with **Current Repository Closure Audit module naming cutover**.
 That task should consume semantic storage-completion checkpoint evidence and
 remove the remaining phase-coded final closure readout names from production
 code.

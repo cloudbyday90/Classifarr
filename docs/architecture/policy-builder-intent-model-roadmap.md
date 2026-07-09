@@ -5943,10 +5943,10 @@ Implementation status:
   semantic `nextStep` evidence and without collecting evidence, running
   commands, mutating storage, or running Git.
 
-### 8R.33 Final Closure Readout
+### 8R.33 Policy Storage Final Closure Readout
 
-Intent: generate the final operator-facing Phase 8R closure decision from the
-policy storage completion-checkpoint artifact.
+Intent: generate the final operator-facing policy storage closure decision from
+the policy storage completion-checkpoint artifact.
 
 Tasks:
 
@@ -5963,34 +5963,38 @@ Tasks:
 Acceptance criteria:
 
 - The exporter refuses missing checkpoint-artifact JSON.
-- A complete Phase 8R.32 artifact yields a complete readout.
-- Missing or invalid Phase 8R.32 evidence blocks with artifact-validation
+- A complete policy storage completion-checkpoint artifact yields a complete
+  readout.
+- Missing or invalid policy storage checkpoint evidence blocks with artifact-validation
   status.
 - Nested checkpoint failures preserve their blocker category.
 - Any side effect prevents complete readout status.
-- Generated readout JSON can be used for the final Phase 8R completion audit.
+- Generated readout JSON can be used by the current repository closure audit.
 
 Implementation status:
 
-- Phase 8R.33 final closure readout is documented in
-  [Policy Builder Phase 8R Final Closure Readout](policy-builder-phase-8r-final-closure-readout.md).
+- Policy storage final closure readout is documented in
+  [Policy Storage Final Closure Readout](policy-storage-final-closure-readout.md).
+- The durable module naming cutover is documented in
+  [Policy Storage Final Closure Readout Module Cutover](policy-storage-final-closure-readout-module-cutover.md).
 - The final closure readout contract lives in
-  `server/src/services/policyBuilderPhase8FinalClosureReadout.mjs`.
+  `server/src/services/policyStorageFinalClosureReadout.mjs`.
 - The exporter script lives in
-  `scripts/generate-policy-builder-phase-8r-final-closure-readout.mjs`.
+  `scripts/generate-policy-storage-final-closure-readout.mjs`.
 - The root runner is exposed as
-  `npm run policy:phase8r:final-closure-readout`.
+  `npm run policy:storage-final-closure-readout`.
 - The focused final closure readout test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8FinalClosureReadout.test.mjs`.
+  `server/src/__tests__/services/policyStorageFinalClosureReadout.test.mjs`.
 - Current implementation emits complete or blocked final readouts without
-  collecting evidence, running commands, mutating storage, or running Git.
+  collecting evidence, running commands, mutating storage, or running Git; it
+  emits semantic `nextStep` evidence for policy storage closure completion.
 
 ### 8R.34 Current Repository Closure Audit
 
-Intent: audit the current checkout against the Phase 8R closure chain by
+Intent: audit the current checkout against the storage closure chain by
 combining current repository evidence, compatibility-removal completion-audit evidence,
-validation evidence, the Phase 8R.32 checkpoint artifact, and the Phase 8R.33
-final closure readout.
+validation evidence, the policy storage completion-checkpoint artifact, and the
+policy storage final closure readout.
 
 Tasks:
 
@@ -6001,7 +6005,7 @@ Tasks:
 - Require focused, lint, markdown, and full validation evidence.
 - Compose the existing Phase 8R.23 current evidence run.
 - Compose the Phase 8R.32 checkpoint artifact from current evidence.
-- Compose the Phase 8R.33 final closure readout.
+- Compose the policy storage final closure readout.
 - Reject file writes, manifest writes, storage mutation, command execution, and
   Git commands inside the service.
 
@@ -6197,9 +6201,10 @@ Implement Phase 8R in this order:
 32. **8R.32 Completion Checkpoint Artifact Exporter**
     Generates a machine-readable completion-checkpoint artifact from explicit
     component, roadmap, completion-audit, validation, and changelog evidence.
-33. **8R.33 Final Closure Readout**
-    Generates the final operator-facing Phase 8R closure decision from the
-    Phase 8R.32 checkpoint artifact, preserving exact blocker categories.
+33. **8R.33 Policy Storage Final Closure Readout**
+    Generates the final operator-facing policy storage closure decision from
+    the storage completion-checkpoint artifact, preserving exact blocker
+    categories.
 34. **8R.34 Current Repository Closure Audit**
     Audits the current checkout by composing current artifact, roadmap,
     changelog, completion-audit, validation, checkpoint, and final-readout

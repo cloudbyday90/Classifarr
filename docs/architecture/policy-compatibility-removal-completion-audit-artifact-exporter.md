@@ -143,4 +143,4 @@ npm run --silent policy:compatibility-removal-completion-audit -- \
 
 Use the generated audit JSON as input for the policy storage completion
 checkpoint artifact export. After that artifact is complete, proceed with
-**Policy Storage Final Closure Readout module naming cutover**.
+**Current Repository Closure Audit module naming cutover**.

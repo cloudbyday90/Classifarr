@@ -5,10 +5,10 @@ import {
   POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
 } from './policyStorageCompletionCheckpoint.mjs';
 
-const PHASE8R_FINAL_CLOSURE_READOUT_VERSION =
-  'phase8r.final_closure_readout.v1';
+const POLICY_STORAGE_FINAL_CLOSURE_READOUT_VERSION =
+  'policy.storage_final_closure_readout.v1';
 
-const PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS = Object.freeze({
+const POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
   BLOCKED_BY_COMPONENT_EVIDENCE: 'blocked_by_component_evidence',
   BLOCKED_BY_ROADMAP_EVIDENCE: 'blocked_by_roadmap_evidence',
@@ -20,7 +20,7 @@ const PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS = Object.freeze({
   BLOCKED_BY_UNKNOWN_CHECKPOINT_STATE: 'blocked_by_unknown_checkpoint_state',
 });
 
-const PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS = Object.freeze({
+const POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS = Object.freeze({
   CHECKPOINT_ARTIFACT_MISSING: 'checkpoint_artifact_missing',
   CHECKPOINT_ARTIFACT_NOT_COMPLETE: 'checkpoint_artifact_not_complete',
   CHECKPOINT_ARTIFACT_VALIDATION_FAILED:
@@ -104,8 +104,8 @@ function buildReadoutRisks({
 
   if (!normalized.artifactPresent) {
     risks.push(buildRisk(
-      PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS.CHECKPOINT_ARTIFACT_MISSING,
-      'Phase 8R final closure readout requires a Phase 8R.32 checkpoint artifact.'
+      POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS.CHECKPOINT_ARTIFACT_MISSING,
+      'Policy storage final closure readout requires a policy storage completion-checkpoint artifact.'
     ));
   }
 
@@ -118,9 +118,9 @@ function buildReadoutRisks({
     )
   ) {
     risks.push(buildRisk(
-      PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS
+      POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS
         .CHECKPOINT_ARTIFACT_NOT_COMPLETE,
-      'Phase 8R final closure readout requires a complete Phase 8R.32 checkpoint artifact.',
+      'Policy storage final closure readout requires a complete policy storage completion-checkpoint artifact.',
       {
         artifactStatusId: normalized.artifactStatusId,
         artifactComplete: normalized.artifactComplete,
@@ -133,9 +133,9 @@ function buildReadoutRisks({
     normalized.artifactValidationOk !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS
+      POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS
         .CHECKPOINT_ARTIFACT_VALIDATION_FAILED,
-      'Phase 8R final closure readout requires valid Phase 8R.32 checkpoint artifact output.',
+      'Policy storage final closure readout requires valid policy storage completion-checkpoint artifact output.',
       {
         artifactValidationIssueCount:
           normalized.artifact.validation?.issueCount ?? null,
@@ -145,8 +145,8 @@ function buildReadoutRisks({
 
   if (!normalized.checkpointPresent) {
     risks.push(buildRisk(
-      PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS.CHECKPOINT_MISSING,
-      'Phase 8R final closure readout requires nested policy storage checkpoint evidence.'
+      POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS.CHECKPOINT_MISSING,
+      'Policy storage final closure readout requires nested policy storage checkpoint evidence.'
     ));
   }
 
@@ -160,8 +160,8 @@ function buildReadoutRisks({
     )
   ) {
     risks.push(buildRisk(
-      PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS.CHECKPOINT_NOT_COMPLETE,
-      'Phase 8R final closure readout requires the nested policy storage checkpoint to be complete and valid.',
+      POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS.CHECKPOINT_NOT_COMPLETE,
+      'Policy storage final closure readout requires the nested policy storage checkpoint to be complete and valid.',
       {
         checkpointStatusId: normalized.checkpointStatusId,
         checkpointComplete: normalized.checkpointComplete,
@@ -173,8 +173,8 @@ function buildReadoutRisks({
   Object.entries(sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       risks.push(buildRisk(
-        PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS.SIDE_EFFECT_REPORTED,
-        `Phase 8R final closure readout cannot report side effect "${key}".`,
+        POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS.SIDE_EFFECT_REPORTED,
+        `Policy storage final closure readout cannot report side effect "${key}".`,
         { sideEffect: key }
       ));
     }
@@ -187,7 +187,7 @@ function determineBlockedStatusId({ checkpointArtifact = {}, sideEffects = {} } 
   const normalized = normalizeCheckpointArtifact(checkpointArtifact);
 
   if (hasAnySideEffect(sideEffects)) {
-    return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_SIDE_EFFECTS;
+    return POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_SIDE_EFFECTS;
   }
 
   if (
@@ -196,27 +196,27 @@ function determineBlockedStatusId({ checkpointArtifact = {}, sideEffects = {} } 
     normalized.artifactStatusId !==
       POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE
   ) {
-    return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS
+    return POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS
       .BLOCKED_BY_ARTIFACT_VALIDATION;
   }
 
   switch (normalized.checkpointStatusId) {
     case POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS
       .BLOCKED_BY_COMPONENT_COVERAGE:
-      return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS
+      return POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS
         .BLOCKED_BY_COMPONENT_EVIDENCE;
     case POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_ROADMAP_EVIDENCE:
-      return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS
+      return POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS
         .BLOCKED_BY_ROADMAP_EVIDENCE;
     case POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_FINAL_REMOVAL_AUDIT:
-      return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS
+      return POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS
         .BLOCKED_BY_REMOVAL_AUDIT;
     case POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_VALIDATION:
-      return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_VALIDATION;
+      return POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_VALIDATION;
     case POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_CHANGELOG:
-      return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_CHANGELOG;
+      return POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_CHANGELOG;
     default:
-      return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS
+      return POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS
         .BLOCKED_BY_UNKNOWN_CHECKPOINT_STATE;
   }
 }
@@ -227,7 +227,7 @@ function determineStatusId({
   sideEffects = {},
 } = {}) {
   if (risks.length === 0) {
-    return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE;
+    return POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE;
   }
 
   return determineBlockedStatusId({ checkpointArtifact, sideEffects });
@@ -243,19 +243,19 @@ function buildOperatorSummary({
   const artifactRisks = asArray(normalized.artifact.risks);
   const checkpointRisks = asArray(checkpoint.risks);
 
-  if (statusId === PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE) {
+  if (statusId === POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE) {
     return {
       decision: 'complete',
       message:
-        'Phase 8R closure evidence is complete. Native storage migration, compatibility removal, validation, roadmap, and changelog proof are aligned.',
-      nextAction: 'Phase 8R can be treated as complete.',
+        'Policy storage closure evidence is complete. Native storage migration, compatibility removal, validation, roadmap, and changelog proof are aligned.',
+      nextAction: 'Policy storage closure can be treated as complete.',
     };
   }
 
   return {
     decision: 'blocked',
     message:
-      'Phase 8R closure evidence is not complete. Resolve the reported evidence category before claiming Phase 8R complete.',
+      'Policy storage closure evidence is not complete. Resolve the reported evidence category before claiming storage closure complete.',
     nextAction: buildNextAction(statusId),
     artifactRiskCount: artifactRisks.length,
     checkpointRiskCount: checkpointRisks.length,
@@ -265,29 +265,29 @@ function buildOperatorSummary({
 
 function buildNextAction(statusId) {
   switch (statusId) {
-    case PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS
+    case POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS
       .BLOCKED_BY_COMPONENT_EVIDENCE:
       return 'Fix missing implementation, design-doc, contract, or test evidence.';
-    case PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS
+    case POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS
       .BLOCKED_BY_ROADMAP_EVIDENCE:
       return 'Update the roadmap sequence and implementation status evidence.';
-    case PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_REMOVAL_AUDIT:
+    case POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_REMOVAL_AUDIT:
       return 'Complete the compatibility-removal audit or continue the removal loop.';
-    case PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_VALIDATION:
+    case POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_VALIDATION:
       return 'Refresh focused, lint, markdown, and full validation evidence.';
-    case PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_CHANGELOG:
-      return 'Update changelog evidence for the missing Phase 8R components.';
-    case PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_SIDE_EFFECTS:
+    case POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_CHANGELOG:
+      return 'Update changelog evidence for the missing policy storage components.';
+    case POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_SIDE_EFFECTS:
       return 'Regenerate the readout without side effects in the evidence contract.';
-    case PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS
+    case POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS
       .BLOCKED_BY_ARTIFACT_VALIDATION:
-      return 'Regenerate or fix the Phase 8R.32 checkpoint artifact.';
+      return 'Regenerate or fix the policy storage completion-checkpoint artifact.';
     default:
       return 'Inspect the checkpoint artifact and nested checkpoint status.';
   }
 }
 
-function buildPolicyBuilderPhase8FinalClosureReadout({
+function buildPolicyStorageFinalClosureReadout({
   checkpointArtifact = {},
   generatedAt = null,
   sideEffects = {},
@@ -307,10 +307,10 @@ function buildPolicyBuilderPhase8FinalClosureReadout({
     sideEffects: combinedSideEffects,
   });
   const readout = {
-    version: PHASE8R_FINAL_CLOSURE_READOUT_VERSION,
+    version: POLICY_STORAGE_FINAL_CLOSURE_READOUT_VERSION,
     generatedAt: normalizeGeneratedAt(generatedAt),
     statusId,
-    complete: statusId === PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE,
+    complete: statusId === POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE,
     operatorSummary: buildOperatorSummary({
       statusId,
       checkpointArtifact,
@@ -350,53 +350,53 @@ function buildPolicyBuilderPhase8FinalClosureReadout({
       allowCommandExecutionInsideService: false,
       allowManifestWrite: false,
     },
-    nextPhase: {
-      phaseId: '8r_complete',
-      label: 'Phase 8R Complete',
+    nextStep: {
+      stepId: 'policy_storage_closure_complete',
+      label: 'Policy Storage Closure Complete',
       reason:
-        'The final closure readout is the operator-facing completion decision for Phase 8R.',
+        'The final closure readout is the operator-facing completion decision for policy storage migration closure.',
     },
   };
 
   return {
     ...readout,
-    validation: validatePolicyBuilderPhase8FinalClosureReadout(readout),
+    validation: validatePolicyStorageFinalClosureReadout(readout),
   };
 }
 
-function validatePolicyBuilderPhase8FinalClosureReadout(readout = {}) {
+function validatePolicyStorageFinalClosureReadout(readout = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS)
+  if (!Object.values(POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS)
     .includes(readout.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS.UNKNOWN_STATUS,
-      'Phase 8R final closure readout status must be known.'
+      POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS.UNKNOWN_STATUS,
+      'Policy storage final closure readout status must be known.'
     ));
   }
 
   if (readout.riskCount !== asArray(readout.risks).length) {
     issues.push(buildRisk(
-      PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS.RISK_COUNT_MISMATCH,
-      'Phase 8R final closure readout risk count must match risk list length.'
+      POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS.RISK_COUNT_MISMATCH,
+      'Policy storage final closure readout risk count must match risk list length.'
     ));
   }
 
   if (
-    readout.statusId === PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE &&
+    readout.statusId === POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE &&
     readout.complete !== true
   ) {
     issues.push(buildRisk(
-      PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS.COMPLETE_FLAG_MISMATCH,
-      'Phase 8R final closure readout complete flag must match complete status.'
+      POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS.COMPLETE_FLAG_MISMATCH,
+      'Policy storage final closure readout complete flag must match complete status.'
     ));
   }
 
   Object.entries(readout.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
-        PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS.SIDE_EFFECT_REPORTED,
-        `Phase 8R final closure readout cannot report side effect "${key}".`,
+        POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS.SIDE_EFFECT_REPORTED,
+        `Policy storage final closure readout cannot report side effect "${key}".`,
         { sideEffect: key }
       ));
     }
@@ -410,9 +410,9 @@ function validatePolicyBuilderPhase8FinalClosureReadout(readout = {}) {
 }
 
 export {
-  PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS,
-  PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS,
-  PHASE8R_FINAL_CLOSURE_READOUT_VERSION,
-  buildPolicyBuilderPhase8FinalClosureReadout,
-  validatePolicyBuilderPhase8FinalClosureReadout,
+  POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS,
+  POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS,
+  POLICY_STORAGE_FINAL_CLOSURE_READOUT_VERSION,
+  buildPolicyStorageFinalClosureReadout,
+  validatePolicyStorageFinalClosureReadout,
 };

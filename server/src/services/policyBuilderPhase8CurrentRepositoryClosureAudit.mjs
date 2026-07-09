@@ -9,9 +9,9 @@ import {
   buildPolicyStorageCompletionCheckpointArtifact,
 } from './policyStorageCompletionCheckpointArtifact.mjs';
 import {
-  PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS,
-  buildPolicyBuilderPhase8FinalClosureReadout,
-} from './policyBuilderPhase8FinalClosureReadout.mjs';
+  POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS,
+  buildPolicyStorageFinalClosureReadout,
+} from './policyStorageFinalClosureReadout.mjs';
 
 const PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_VERSION =
   'phase8r.current_repository_closure_audit.v1';
@@ -181,7 +181,7 @@ function buildAuditRisks({
     risks.push(buildRisk(
       PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
         .CHECKPOINT_ARTIFACT_NOT_COMPLETE,
-      'Current repository closure audit requires a complete Phase 8R.32 checkpoint artifact.',
+      'Current repository closure audit requires a complete policy storage completion-checkpoint artifact.',
       {
         checkpointArtifactStatusId: checkpointArtifact.statusId || null,
         checkpointArtifactRiskCount: checkpointArtifact.riskCount ?? null,
@@ -190,13 +190,13 @@ function buildAuditRisks({
   }
 
   if (
-    finalReadout.statusId !== PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE ||
+    finalReadout.statusId !== POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE ||
     finalReadout.complete !== true
   ) {
     risks.push(buildRisk(
       PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
         .FINAL_READOUT_NOT_COMPLETE,
-      'Current repository closure audit requires a complete Phase 8R.33 final closure readout.',
+      'Current repository closure audit requires a complete policy storage final closure readout.',
       {
         finalReadoutStatusId: finalReadout.statusId || null,
         finalReadoutRiskCount: finalReadout.riskCount ?? null,
@@ -254,7 +254,7 @@ function determineStatusId({
   }
 
   if (
-    finalReadout.statusId !== PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE ||
+    finalReadout.statusId !== POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE ||
     finalReadout.complete !== true
   ) {
     return PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS
@@ -292,7 +292,7 @@ function buildPolicyBuilderPhase8CurrentRepositoryClosureAudit({
     generatedAt,
     sideEffects,
   });
-  const finalReadout = buildPolicyBuilderPhase8FinalClosureReadout({
+  const finalReadout = buildPolicyStorageFinalClosureReadout({
     checkpointArtifact,
     generatedAt,
     sideEffects,

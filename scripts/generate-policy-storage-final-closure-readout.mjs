@@ -14,8 +14,8 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  buildPolicyBuilderPhase8FinalClosureReadout,
-} from '../server/src/services/policyBuilderPhase8FinalClosureReadout.mjs';
+  buildPolicyStorageFinalClosureReadout,
+} from '../server/src/services/policyStorageFinalClosureReadout.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -65,11 +65,11 @@ function parseArgs(argv = []) {
 
 function usage() {
   return [
-    'Usage: node scripts/generate-policy-builder-phase-8r-final-closure-readout.mjs [options]',
+    'Usage: node scripts/generate-policy-storage-final-closure-readout.mjs [options]',
     '',
     'Options:',
-    '  --checkpoint-artifact <json> Required Phase 8R.32 checkpoint artifact JSON.',
-    '  --output <json>              Write final closure readout JSON to this path.',
+    '  --checkpoint-artifact <json> Required policy storage completion-checkpoint artifact JSON.',
+    '  --output <json>              Write policy storage final closure readout JSON to this path.',
     '  --allow-blocked              Allow writing blocked readout output.',
     '  --require-complete           Exit non-zero unless the readout is complete.',
     '  --generated-at <iso>         Optional generatedAt timestamp for stable tests.',
@@ -135,14 +135,14 @@ function main() {
     process.exit(2);
   }
 
-  const readout = buildPolicyBuilderPhase8FinalClosureReadout({
+  const readout = buildPolicyStorageFinalClosureReadout({
     checkpointArtifact,
     generatedAt: options.generatedAt,
   });
 
   if (readout.statusId !== 'complete' && options.allowBlocked !== true) {
     console.error(
-      'Phase 8R final closure readout is blocked; pass --allow-blocked to write diagnostic output.'
+      'Policy storage final closure readout is blocked; pass --allow-blocked to write diagnostic output.'
     );
     console.error(JSON.stringify({
       statusId: readout.statusId,
@@ -158,7 +158,7 @@ function main() {
   try {
     writeJsonFile(options.outputPath, readout);
   } catch (err) {
-    console.error(`Could not write Phase 8R final closure readout JSON: ${err.message}`);
+    console.error(`Could not write policy storage final closure readout JSON: ${err.message}`);
     process.exit(2);
   }
 

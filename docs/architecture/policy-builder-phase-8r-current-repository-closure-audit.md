@@ -16,7 +16,7 @@ It then builds:
 
 - the existing Phase 8R.23 current evidence run,
 - a policy storage completion-checkpoint artifact,
-- a Phase 8R.33 final closure readout,
+- a policy storage final closure readout,
 - a single current-repository closure audit JSON.
 
 The service reads repository files but does not run tests, run Git, write files,
@@ -53,9 +53,9 @@ Sources:
 
 ### Reuse Existing Closure Contracts
 
-The current repository audit should compose the Phase 8R.23 evidence run, 8R.32
-checkpoint artifact, and 8R.33 final readout instead of adding another scoring
-model.
+The current repository audit should compose the Phase 8R.23 evidence run,
+policy storage completion-checkpoint artifact, and policy storage final closure
+readout instead of adding another scoring model.
 
 Pros:
 
@@ -109,8 +109,9 @@ Use this stack for Phase 8R.34:
 4. Require a complete and valid compatibility-removal completion-audit artifact.
 5. Require focused, lint, markdown, and full validation evidence to pass.
 6. Build the Phase 8R.23 evidence run.
-7. Build the Phase 8R.32 checkpoint artifact from current evidence.
-8. Build the Phase 8R.33 final closure readout.
+7. Build the policy storage completion-checkpoint artifact from current
+   evidence.
+8. Build the policy storage final closure readout.
 9. Emit complete only when all three layers complete.
 10. Reject file writes, storage mutation, command execution, Git commands, and
     manifest writes.

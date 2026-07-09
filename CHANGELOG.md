@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Storage Final Closure Readout Module Cutover** — renamed the final
+  closure readout service, focused tests, docs, CLI script, and npm runner to
+  durable policy-storage names, replaced phase-coded constants/builders/versioning
+  and `nextPhase.phaseId` with semantic `nextStep.stepId`, updated current
+  closure, validation, final-requirement, and roadmap references, and preserved
+  checkpoint-artifact validation, nested-checkpoint blocker mapping,
+  operator-summary output, side-effect rejection, and completion handoff
+  behavior.
 - **Policy Storage Completion Checkpoint Module Cutover** — renamed the
   storage completion checkpoint service, artifact exporter, focused tests,
   docs, CLI script, and npm runner to durable policy-domain names, replaced
@@ -903,11 +911,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   `npm run policy:phase8r:current-closure-audit` to compose current artifact,
   roadmap, changelog, compatibility-removal completion-audit, validation,
   checkpoint, and final-readout evidence into one completion decision.
-- **Policy Builder Phase 8R Final Closure Readout** — added a
+- **Policy Storage Final Closure Readout** — added a
   machine-readable final readout contract and
-  `npm run policy:phase8r:final-closure-readout` to classify Phase 8R closure
-  as complete or blocked by component, roadmap, removal-audit, validation,
-  changelog, artifact-validation, or side-effect evidence.
+  `npm run policy:storage-final-closure-readout` to classify policy storage
+  closure as complete or blocked by component, roadmap, removal-audit,
+  validation, changelog, artifact-validation, or side-effect evidence.
 - **Policy Storage Completion Checkpoint Artifact Exporter** — added
   a machine-readable checkpoint artifact contract and
   `npm run policy:storage-completion-checkpoint` to consume component,

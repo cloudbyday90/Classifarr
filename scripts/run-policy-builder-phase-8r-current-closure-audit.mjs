@@ -97,7 +97,7 @@ function usage() {
     '  --validation-evidence <json>         Required Phase 8R validation evidence JSON.',
     '  --output <json>                      Write full current closure audit JSON.',
     '  --checkpoint-artifact-output <json>  Write generated Phase 8R.32 checkpoint artifact JSON.',
-    '  --final-readout-output <json>        Write generated Phase 8R.33 final readout JSON.',
+    '  --final-readout-output <json>        Write generated policy storage final closure readout JSON.',
     '  --allow-blocked                      Allow writing blocked audit output.',
     '  --require-complete                   Exit non-zero unless the audit is complete.',
     '  --generated-at <iso>                 Optional generatedAt timestamp for stable tests.',

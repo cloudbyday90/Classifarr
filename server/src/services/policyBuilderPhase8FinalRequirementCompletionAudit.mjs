@@ -154,12 +154,12 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_33',
     label: 'Final Closure Readout',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-final-closure-readout.md'],
+    designDocPaths: ['docs/architecture/policy-storage-final-closure-readout.md'],
     contractPaths: [
-      'server/src/services/policyBuilderPhase8FinalClosureReadout.mjs',
-      'scripts/generate-policy-builder-phase-8r-final-closure-readout.mjs',
+      'server/src/services/policyStorageFinalClosureReadout.mjs',
+      'scripts/generate-policy-storage-final-closure-readout.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8FinalClosureReadout.test.mjs'],
+    testPaths: ['server/src/__tests__/services/policyStorageFinalClosureReadout.test.mjs'],
   },
   {
     phaseId: '8r_34',
