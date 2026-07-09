@@ -133,8 +133,8 @@ Implemented:
   - incomplete checkpoint evidence,
   - forbidden side-effect rejection,
   - artifact validation invariants.
-- Added the checkpoint artifact suite and this design doc to the fixed
-  validation evidence command set.
+- Added the checkpoint artifact suite and this design doc to the fixed policy
+  storage closure validation evidence command set.
 
 Example:
 
@@ -143,7 +143,7 @@ npm run --silent policy:storage-completion-checkpoint -- \
   --component-evidence .tmp/phase8r/component-evidence.json \
   --roadmap-evidence .tmp/phase8r/roadmap-evidence.json \
   --completion-audit-artifact .tmp/phase8r/completion-audit-artifact.json \
-  --validation-evidence .tmp/phase8r/validation-evidence.json \
+  --validation-evidence .tmp/policy-storage/validation-evidence.json \
   --changelog-evidence .tmp/phase8r/changelog-evidence.json \
   --output .tmp/phase8r/completion-checkpoint.json \
   --artifact-output .tmp/phase8r/completion-checkpoint-artifact.json

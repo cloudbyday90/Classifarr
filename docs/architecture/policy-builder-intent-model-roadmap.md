@@ -5513,16 +5513,16 @@ Implementation status:
   correctly blocks closure until machine-readable Phase 8R.21 final removal
   audit evidence and validation evidence are supplied.
 
-### 8R.24 Validation Evidence Generator
+### 8R.24 Policy Storage Closure Validation Evidence
 
-Intent: generate the machine-readable validation JSON required by the Phase
-8R.23 evidence run without moving validation execution into the completion
-checkpoint.
+Intent: generate the machine-readable validation JSON required by the policy
+storage closure evidence run without moving validation execution into the
+completion checkpoint.
 
 Tasks:
 
-- Define fixed validation command specs for focused Phase 8R tests, server lint,
-  markdown validation, and full server validation.
+- Define fixed validation command specs for focused policy storage closure tests,
+  server lint, markdown validation, and full server validation.
 - Execute those commands from a root script with array arguments and no
   user-controlled shell command construction.
 - Record bounded command evidence with command string, pass/fail state, exit
@@ -5531,7 +5531,8 @@ Tasks:
   not hide other broken gates.
 - Emit checkpoint-compatible JSON with `focused`, `lint`, `markdown`, and
   `full` entries.
-- Keep the Phase 8R.23 evidence run responsible for final closure decisions.
+- Keep the policy storage closure evidence run responsible for final closure
+  decisions.
 
 Acceptance criteria:
 
@@ -5540,25 +5541,27 @@ Acceptance criteria:
 - Failed checks preserve bounded failure metadata without storing full logs in
   the JSON artifact.
 - Unknown check IDs and reported file/storage/Git side effects are rejected.
-- The generator can write JSON to `.tmp/phase8r/validation-evidence.json`.
+- The generator can write JSON to `.tmp/policy-storage/validation-evidence.json`.
 - The generator does not mutate policy storage, run Git, or change checkpoint
   semantics.
 
 Implementation status:
 
-- Phase 8R.24 validation evidence generation is documented in
-  [Policy Builder Phase 8R Validation Evidence Generator](policy-builder-phase-8r-validation-evidence-generator.md).
+- Policy storage closure validation evidence generation is documented in
+  [Policy Storage Closure Validation Evidence](policy-storage-closure-validation-evidence.md).
+- The validation evidence module cutover is documented in
+  [Policy Storage Closure Validation Evidence Module Cutover](policy-storage-closure-validation-evidence-module-cutover.md).
 - The validation evidence contract lives in
-  `server/src/services/policyBuilderPhase8ValidationEvidence.mjs`.
+  `server/src/services/policyStorageClosureValidationEvidence.mjs`.
 - The generator script lives in
-  `scripts/generate-policy-builder-phase-8r-validation-evidence.mjs`.
-- The root runner is exposed as `npm run policy:phase8r:validation-evidence`.
+  `scripts/generate-policy-storage-closure-validation-evidence.mjs`.
+- The root runner is exposed as `npm run policy:storage-closure-validation-evidence`.
 - The focused validation evidence test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8ValidationEvidence.test.mjs`.
+  `server/src/__tests__/services/policyStorageClosureValidationEvidence.test.mjs`.
 - Current implementation generates the validation JSON input still required by
-  the Phase 8R.23 evidence run.
+  the storage closure evidence run.
 - Current execution produced complete validation evidence and cleared validation
-  blockers in the Phase 8R.23 evidence run; final-removal-audit JSON remains
+  blockers in the storage closure evidence run; final-removal-audit JSON remains
   the next closure input.
 
 ### 8R.25 Final Removal Audit Exporter
@@ -6174,9 +6177,9 @@ Implement Phase 8R in this order:
     Runs the policy storage checkpoint against current-state evidence and resolves
     any missing component, roadmap, validation, or changelog proof before the
     Phase 8R objective is marked complete.
-24. **8R.24 Validation Evidence Generator**
+24. **8R.24 Policy Storage Closure Validation Evidence**
     Generates machine-readable focused, lint, markdown, and full validation
-    evidence for the Phase 8R.23 closure run without changing checkpoint
+    evidence for the storage closure evidence run without changing checkpoint
     semantics.
 25. **8R.25 Final Removal Audit Exporter**
     Generates machine-readable Phase 8R.21 final-removal-audit evidence from an

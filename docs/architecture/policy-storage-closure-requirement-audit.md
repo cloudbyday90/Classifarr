@@ -141,6 +141,6 @@ npm run --silent policy:storage-closure-requirement-audit -- \
 
 ## Next Step
 
-Proceed with **Validation Evidence Generator module naming cutover** so the
+Proceed with **Storage Closure Validation Evidence module naming cutover** so the
 remaining validation command surface can reference durable storage-closure audit
 names without phase-coded module identity.

@@ -121,7 +121,7 @@ Implemented:
   - side-effect rejection,
   - artifact validation invariants.
 - Added the execution-plan artifact suite and this design doc to the fixed
-  Phase 8R validation evidence command set.
+  policy storage closure validation evidence command set.
 
 Example:
 
@@ -137,7 +137,7 @@ Then pass the generated execution plan into the final-removal audit exporter:
 ```bash
 npm run --silent policy:phase8r:final-removal-audit -- \
   --execution-plan .tmp/phase8r/execution-plan.json \
-  --validation-evidence .tmp/phase8r/validation-evidence.json \
+  --validation-evidence .tmp/policy-storage/validation-evidence.json \
   --output .tmp/phase8r/final-removal-audit.json
 ```
 

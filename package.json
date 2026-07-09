@@ -36,7 +36,7 @@
     "policy:storage-final-closure-readout": "node scripts/generate-policy-storage-final-closure-readout.mjs",
     "policy:storage-current-closure-audit": "node scripts/run-policy-storage-current-closure-audit.mjs",
     "policy:storage-closure-requirement-audit": "node scripts/run-policy-storage-closure-requirement-audit.mjs",
-    "policy:phase8r:validation-evidence": "node scripts/generate-policy-builder-phase-8r-validation-evidence.mjs",
+    "policy:storage-closure-validation-evidence": "node scripts/generate-policy-storage-closure-validation-evidence.mjs",
     "policy:phase8r:final-removal-audit": "node scripts/generate-policy-builder-phase-8r-final-removal-audit.mjs",
     "test:coverage": "node scripts/run-workspace-tests.mjs test:coverage:server test:coverage:client",
     "test:coverage:server": "cd server && npm run test:coverage",

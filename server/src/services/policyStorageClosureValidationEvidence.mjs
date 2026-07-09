@@ -1,49 +1,49 @@
-const PHASE8R_VALIDATION_EVIDENCE_VERSION =
-  'phase8r.validation_evidence.v1';
+const POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_VERSION =
+  'policy.storage_closure_validation_evidence.v1';
 
-const PHASE8R_VALIDATION_CHECK_IDS = Object.freeze({
+const POLICY_STORAGE_CLOSURE_VALIDATION_CHECK_IDS = Object.freeze({
   FOCUSED: 'focused',
   LINT: 'lint',
   MARKDOWN: 'markdown',
   FULL: 'full',
 });
 
-const PHASE8R_VALIDATION_EVIDENCE_STATUS_IDS = Object.freeze({
+const POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_STATUS_IDS = Object.freeze({
   PASSED: 'passed',
   FAILED: 'failed',
   INCOMPLETE: 'incomplete',
 });
 
-const PHASE8R_VALIDATION_EVIDENCE_RISK_IDS = Object.freeze({
+const POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS = Object.freeze({
   MISSING_CHECK_RESULT: 'missing_check_result',
   CHECK_FAILED: 'check_failed',
   UNKNOWN_CHECK_ID: 'unknown_check_id',
   SIDE_EFFECT_REPORTED: 'side_effect_reported',
 });
 
-const PHASE8R_VALIDATION_COMMANDS = Object.freeze([
+const POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS = Object.freeze([
   {
-    checkId: PHASE8R_VALIDATION_CHECK_IDS.FOCUSED,
-    label: 'Focused Phase 8R validation',
+    checkId: POLICY_STORAGE_CLOSURE_VALIDATION_CHECK_IDS.FOCUSED,
+    label: 'Focused policy storage closure validation',
     command: 'node',
     args: [
       './scripts/run-jest.mjs',
-      '--testPathPatterns=policyBuilderPhase8CurrentEvidenceCollector|policyBuilderPhase8CompletionEvidenceRun|policyStorageCompletionCheckpoint|policyStorageCompletionCheckpointArtifact|policyStorageCurrentClosureAudit|policyStorageClosureRequirementAudit|policyCompatibilityRemovalCompletionAudit|policyCompatibilityRemovalCompletionAuditArtifact|policyBuilderPhase8ValidationEvidence|policyBuilderPhase8ExecutionPlanArtifact|policyBuilderPhase8ControlledRemovalBatchArtifact|policyControlledRemovalApplyArtifact|policyPostRemovalRuntimeVerificationArtifact|policyNextCompatibilityRemovalBatchAuthorizationArtifact|policyBuilderPhase8FinalRemovalAuditEvidence|policyStorageFinalClosureReadout|policyBuilderPhase8ImpactMigrationVerifier|policyBuilderPhase8ReplayMigrationVerifier',
+      '--testPathPatterns=policyBuilderPhase8CurrentEvidenceCollector|policyBuilderPhase8CompletionEvidenceRun|policyStorageCompletionCheckpoint|policyStorageCompletionCheckpointArtifact|policyStorageCurrentClosureAudit|policyStorageClosureRequirementAudit|policyCompatibilityRemovalCompletionAudit|policyCompatibilityRemovalCompletionAuditArtifact|policyStorageClosureValidationEvidence|policyBuilderPhase8ExecutionPlanArtifact|policyBuilderPhase8ControlledRemovalBatchArtifact|policyControlledRemovalApplyArtifact|policyPostRemovalRuntimeVerificationArtifact|policyNextCompatibilityRemovalBatchAuthorizationArtifact|policyBuilderPhase8FinalRemovalAuditEvidence|policyStorageFinalClosureReadout|policyBuilderPhase8ImpactMigrationVerifier|policyBuilderPhase8ReplayMigrationVerifier',
       '--no-coverage',
       '--runInBand',
     ],
     cwd: 'server',
   },
   {
-    checkId: PHASE8R_VALIDATION_CHECK_IDS.LINT,
+    checkId: POLICY_STORAGE_CLOSURE_VALIDATION_CHECK_IDS.LINT,
     label: 'Server lint validation',
     command: 'npm',
     args: ['run', 'lint'],
     cwd: 'server',
   },
   {
-    checkId: PHASE8R_VALIDATION_CHECK_IDS.MARKDOWN,
-    label: 'Phase 8R markdown validation',
+    checkId: POLICY_STORAGE_CLOSURE_VALIDATION_CHECK_IDS.MARKDOWN,
+    label: 'Policy storage closure markdown validation',
     command: 'npx',
     args: [
       'markdownlint-cli2',
@@ -72,7 +72,8 @@ const PHASE8R_VALIDATION_COMMANDS = Object.freeze([
       'docs/architecture/policy-storage-current-closure-audit-module-cutover.md',
       'docs/architecture/policy-storage-closure-requirement-audit.md',
       'docs/architecture/policy-storage-closure-requirement-audit-module-cutover.md',
-      'docs/architecture/policy-builder-phase-8r-validation-evidence-generator.md',
+      'docs/architecture/policy-storage-closure-validation-evidence.md',
+      'docs/architecture/policy-storage-closure-validation-evidence-module-cutover.md',
       'docs/architecture/policy-builder-phase-8r-final-removal-audit-exporter.md',
       'docs/architecture/policy-builder-phase-8r-impact-preview-removal.md',
       'docs/architecture/policy-builder-phase-8r-replay-preview-removal.md',
@@ -81,7 +82,7 @@ const PHASE8R_VALIDATION_COMMANDS = Object.freeze([
     cwd: '.',
   },
   {
-    checkId: PHASE8R_VALIDATION_CHECK_IDS.FULL,
+    checkId: POLICY_STORAGE_CLOSURE_VALIDATION_CHECK_IDS.FULL,
     label: 'Full server validation',
     command: 'npm',
     args: ['--prefix', 'server', 'test'],
@@ -109,7 +110,7 @@ function buildRisk(riskId, message, metadata = {}) {
 }
 
 function getValidationCommandById(
-  validationCommands = PHASE8R_VALIDATION_COMMANDS
+  validationCommands = POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS
 ) {
   return new Map(asArray(validationCommands)
     .map(commandSpec => [commandSpec.checkId, commandSpec]));
@@ -141,9 +142,9 @@ function buildValidationCheckEvidence({
   };
 }
 
-function buildPolicyBuilderPhase8ValidationEvidence({
+function buildPolicyStorageClosureValidationEvidence({
   commandResults = [],
-  validationCommands = PHASE8R_VALIDATION_COMMANDS,
+  validationCommands = POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS,
   sideEffects = {},
 } = {}) {
   const commandResultsByCheckId = new Map(asArray(commandResults)
@@ -160,8 +161,8 @@ function buildPolicyBuilderPhase8ValidationEvidence({
 
     if (!commandResult) {
       risks.push(buildRisk(
-        PHASE8R_VALIDATION_EVIDENCE_RISK_IDS.MISSING_CHECK_RESULT,
-        'Phase 8R validation evidence requires every configured check result.',
+        POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS.MISSING_CHECK_RESULT,
+        'Policy storage closure validation evidence requires every configured check result.',
         { checkId: commandSpec.checkId }
       ));
       return;
@@ -175,8 +176,8 @@ function buildPolicyBuilderPhase8ValidationEvidence({
 
     if (evidence.passed !== true) {
       risks.push(buildRisk(
-        PHASE8R_VALIDATION_EVIDENCE_RISK_IDS.CHECK_FAILED,
-        'Phase 8R validation command failed.',
+        POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS.CHECK_FAILED,
+        'Policy storage closure validation command failed.',
         {
           checkId: commandSpec.checkId,
           command: evidence.command,
@@ -189,8 +190,8 @@ function buildPolicyBuilderPhase8ValidationEvidence({
 
   unknownCheckIds.forEach(checkId => {
     risks.push(buildRisk(
-      PHASE8R_VALIDATION_EVIDENCE_RISK_IDS.UNKNOWN_CHECK_ID,
-      'Phase 8R validation evidence received an unknown check result.',
+      POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS.UNKNOWN_CHECK_ID,
+      'Policy storage closure validation evidence received an unknown check result.',
       { checkId }
     ));
   });
@@ -198,26 +199,26 @@ function buildPolicyBuilderPhase8ValidationEvidence({
   Object.entries(sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       risks.push(buildRisk(
-        PHASE8R_VALIDATION_EVIDENCE_RISK_IDS.SIDE_EFFECT_REPORTED,
-        `Phase 8R validation evidence cannot report side effect "${key}".`
+        POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS.SIDE_EFFECT_REPORTED,
+        `Policy storage closure validation evidence cannot report side effect "${key}".`
       ));
     }
   });
 
   const statusId = risks.length === 0
-    ? PHASE8R_VALIDATION_EVIDENCE_STATUS_IDS.PASSED
+    ? POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_STATUS_IDS.PASSED
     : (
       risks.some(risk => (
-        risk.riskId === PHASE8R_VALIDATION_EVIDENCE_RISK_IDS.MISSING_CHECK_RESULT
+        risk.riskId === POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS.MISSING_CHECK_RESULT
       ))
-        ? PHASE8R_VALIDATION_EVIDENCE_STATUS_IDS.INCOMPLETE
-        : PHASE8R_VALIDATION_EVIDENCE_STATUS_IDS.FAILED
+        ? POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_STATUS_IDS.INCOMPLETE
+        : POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_STATUS_IDS.FAILED
     );
 
   return {
-    version: PHASE8R_VALIDATION_EVIDENCE_VERSION,
+    version: POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_VERSION,
     statusId,
-    complete: statusId === PHASE8R_VALIDATION_EVIDENCE_STATUS_IDS.PASSED,
+    complete: statusId === POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_STATUS_IDS.PASSED,
     ...checks,
     checkCount: asArray(validationCommands).length,
     passedCount: Object.values(checks).filter(check => check.passed).length,
@@ -232,12 +233,12 @@ function buildPolicyBuilderPhase8ValidationEvidence({
 }
 
 export {
-  PHASE8R_VALIDATION_CHECK_IDS,
-  PHASE8R_VALIDATION_COMMANDS,
-  PHASE8R_VALIDATION_EVIDENCE_RISK_IDS,
-  PHASE8R_VALIDATION_EVIDENCE_STATUS_IDS,
-  PHASE8R_VALIDATION_EVIDENCE_VERSION,
-  buildPolicyBuilderPhase8ValidationEvidence,
+  POLICY_STORAGE_CLOSURE_VALIDATION_CHECK_IDS,
+  POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS,
+  POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS,
+  POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_STATUS_IDS,
+  POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_VERSION,
+  buildPolicyStorageClosureValidationEvidence,
   buildValidationCheckEvidence,
   commandToString,
 };

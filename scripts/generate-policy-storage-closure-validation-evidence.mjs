@@ -15,10 +15,10 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  PHASE8R_VALIDATION_COMMANDS,
-  buildPolicyBuilderPhase8ValidationEvidence,
+  POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS,
+  buildPolicyStorageClosureValidationEvidence,
   commandToString,
-} from '../server/src/services/policyBuilderPhase8ValidationEvidence.mjs';
+} from '../server/src/services/policyStorageClosureValidationEvidence.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -57,7 +57,7 @@ function parseArgs(argv = []) {
 
 function usage() {
   return [
-    'Usage: node scripts/generate-policy-builder-phase-8r-validation-evidence.mjs [options]',
+    'Usage: node scripts/generate-policy-storage-closure-validation-evidence.mjs [options]',
     '',
     'Options:',
     '  --cwd <path>       Repository root. Defaults to process cwd.',
@@ -207,8 +207,8 @@ async function main() {
   const cwd = path.resolve(process.cwd(), options.cwd);
   const commandResults = [];
 
-  for (const commandSpec of PHASE8R_VALIDATION_COMMANDS) {
-    console.error(`[phase8r-validation] ${commandSpec.label}`);
+  for (const commandSpec of POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS) {
+    console.error(`[policy-storage-closure-validation] ${commandSpec.label}`);
     const commandResult = await runCommand(commandSpec, { cwd });
     commandResults.push(commandResult);
 
@@ -217,7 +217,7 @@ async function main() {
     }
   }
 
-  const evidence = buildPolicyBuilderPhase8ValidationEvidence({
+  const evidence = buildPolicyStorageClosureValidationEvidence({
     commandResults,
   });
 

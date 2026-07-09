@@ -110,7 +110,7 @@ function usage() {
     'Options:',
     '  --cwd <path>                    Repository root. Defaults to process cwd.',
     '  --execution-plan <json>         Required Phase 8R.15 execution-plan JSON.',
-    '  --validation-evidence <json>    Optional Phase 8R validation evidence JSON.',
+    '  --validation-evidence <json>    Optional policy storage closure validation evidence JSON.',
     '  --output <json>                 Write final-removal-audit JSON to this path.',
     '  --require-complete              Exit non-zero unless the audit completes.',
     '  --help                          Print this help message.',

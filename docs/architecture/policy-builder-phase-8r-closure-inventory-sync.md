@@ -69,7 +69,7 @@ Cons:
   and
   `server/src/__tests__/services/policyAuthoringWorkflowInventory.test.mjs`
 - Completion evidence:
-  rerun Phase 8R validation evidence after the sync.
+  rerun policy storage closure validation evidence after the sync.
 
 ## Implementation Outcome
 
@@ -91,5 +91,5 @@ Implemented:
 
 ## Next Step
 
-Regenerate Phase 8R validation evidence and then refresh the final closure
+Regenerate policy storage closure validation evidence and then refresh the final closure
 artifact chain.

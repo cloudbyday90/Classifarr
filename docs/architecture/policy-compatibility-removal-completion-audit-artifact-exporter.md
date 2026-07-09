@@ -122,7 +122,7 @@ Implemented:
   - forbidden side-effect rejection,
   - artifact validation invariants.
 - Added the completion-audit artifact suite and this design doc to the fixed
-  Phase 8R validation evidence command set.
+  policy storage closure validation evidence command set.
 - The artifact now emits `version =
   policy.compatibility_removal_completion_audit_artifact.v1` and
   `nextStep.stepId = policy_storage_completion_checkpoint`; production output

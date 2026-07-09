@@ -126,7 +126,7 @@ Implemented:
   - forbidden side-effect rejection,
   - artifact validation invariants.
 - Added the next-batch authorization artifact suite and this design doc to the
-  fixed Phase 8R validation evidence command set.
+  fixed policy storage closure validation evidence command set.
 - The artifact now emits `version =
   policy.next_compatibility_removal_batch_authorization_artifact.v1` and
   `nextStep.stepId = compatibility_removal_completion_audit`; production output

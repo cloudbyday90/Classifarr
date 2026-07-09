@@ -78,7 +78,7 @@ Cons:
 - Dependent diagnostics:
   `server/src/services/policyIntentReplaySampleDiagnostics.mjs`
 - Validation evidence:
-  `server/src/services/policyBuilderPhase8ValidationEvidence.mjs`
+  `server/src/services/policyStorageClosureValidationEvidence.mjs`
 
 ## Implementation Outcome
 
@@ -93,8 +93,8 @@ Implemented:
 - Replaced the focused replay service test with
   `policyBuilderPhase8ReplayMigrationVerifier.test.mjs`.
 - Updated route coverage to expect `read_only_replay_migration_verifier`.
-- Added the verifier test and this design document to Phase 8R validation
-  evidence.
+- Added the verifier test and this design document to policy storage closure
+  validation evidence.
 
 ## Security Outcome
 

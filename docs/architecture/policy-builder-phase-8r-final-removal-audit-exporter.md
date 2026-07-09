@@ -131,7 +131,7 @@ Example:
 ```bash
 npm run --silent policy:phase8r:final-removal-audit -- \
   --execution-plan .tmp/phase8r/execution-plan.json \
-  --validation-evidence .tmp/phase8r/validation-evidence.json \
+  --validation-evidence .tmp/policy-storage/validation-evidence.json \
   --output .tmp/phase8r/final-removal-audit.json
 ```
 
@@ -140,7 +140,7 @@ Then pass the generated audit into the closure evidence run:
 ```bash
 npm run --silent policy:phase8r:evidence -- \
   --final-removal-audit .tmp/phase8r/final-removal-audit.json \
-  --validation-evidence .tmp/phase8r/validation-evidence.json
+  --validation-evidence .tmp/policy-storage/validation-evidence.json
 ```
 
 ## Next Step

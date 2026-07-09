@@ -88,13 +88,13 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   },
   {
     componentId: '8r_24',
-    label: 'Validation Evidence Generator',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-validation-evidence-generator.md'],
+    label: 'Storage Closure Validation Evidence',
+    designDocPaths: ['docs/architecture/policy-storage-closure-validation-evidence.md'],
     contractPaths: [
-      'server/src/services/policyBuilderPhase8ValidationEvidence.mjs',
-      'scripts/generate-policy-builder-phase-8r-validation-evidence.mjs',
+      'server/src/services/policyStorageClosureValidationEvidence.mjs',
+      'scripts/generate-policy-storage-closure-validation-evidence.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8ValidationEvidence.test.mjs'],
+    testPaths: ['server/src/__tests__/services/policyStorageClosureValidationEvidence.test.mjs'],
   },
   {
     componentId: '8r_25',

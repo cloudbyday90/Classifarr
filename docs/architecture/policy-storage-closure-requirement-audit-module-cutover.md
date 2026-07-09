@@ -120,6 +120,6 @@ Implemented:
 
 ## Next Step
 
-Proceed with **Validation Evidence Generator module naming cutover** so the
+Proceed with **Storage Closure Validation Evidence module naming cutover** so the
 remaining validation command surface can stop naming this closure chain after an
 implementation phase.

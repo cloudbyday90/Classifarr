@@ -1,15 +1,15 @@
 import {
-  PHASE8R_VALIDATION_CHECK_IDS,
-  PHASE8R_VALIDATION_COMMANDS,
-  PHASE8R_VALIDATION_EVIDENCE_RISK_IDS,
-  PHASE8R_VALIDATION_EVIDENCE_STATUS_IDS,
-  buildPolicyBuilderPhase8ValidationEvidence,
+  POLICY_STORAGE_CLOSURE_VALIDATION_CHECK_IDS,
+  POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS,
+  POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS,
+  POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_STATUS_IDS,
+  buildPolicyStorageClosureValidationEvidence,
   buildValidationCheckEvidence,
   commandToString,
-} from '../../services/policyBuilderPhase8ValidationEvidence.mjs';
+} from '../../services/policyStorageClosureValidationEvidence.mjs';
 
 function commandResults(overrides = {}) {
-  return PHASE8R_VALIDATION_COMMANDS.map(commandSpec => ({
+  return POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS.map(commandSpec => ({
     checkId: commandSpec.checkId,
     exitCode: 0,
     signal: null,
@@ -20,16 +20,16 @@ function commandResults(overrides = {}) {
   }));
 }
 
-describe('policyBuilderPhase8ValidationEvidence', () => {
+describe('policyStorageClosureValidationEvidence', () => {
   test('defines checkpoint-compatible validation command evidence', () => {
-    const evidence = buildPolicyBuilderPhase8ValidationEvidence({
+    const evidence = buildPolicyStorageClosureValidationEvidence({
       commandResults: commandResults(),
     });
 
-    expect(evidence.statusId).toBe(PHASE8R_VALIDATION_EVIDENCE_STATUS_IDS.PASSED);
+    expect(evidence.statusId).toBe(POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_STATUS_IDS.PASSED);
     expect(evidence.complete).toBe(true);
-    expect(evidence.checkCount).toBe(PHASE8R_VALIDATION_COMMANDS.length);
-    expect(evidence.passedCount).toBe(PHASE8R_VALIDATION_COMMANDS.length);
+    expect(evidence.checkCount).toBe(POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS.length);
+    expect(evidence.passedCount).toBe(POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS.length);
     expect(evidence.riskCount).toBe(0);
     expect(evidence.focused).toEqual(expect.objectContaining({
       passed: true,
@@ -50,6 +50,8 @@ describe('policyBuilderPhase8ValidationEvidence', () => {
       .toContain('policy-builder-phase-8r-execution-plan-artifact-exporter.md');
     expect(evidence.markdown.command)
       .toContain('policy-builder-phase-8r-controlled-removal-batch-artifact-exporter.md');
+    expect(evidence.markdown.command)
+      .toContain('policy-storage-closure-validation-evidence-module-cutover.md');
     expect(evidence.full.command).toBe('npm --prefix server test');
   });
 
@@ -62,7 +64,7 @@ describe('policyBuilderPhase8ValidationEvidence', () => {
 
   test('builds failed check evidence with bounded failure metadata', () => {
     const evidence = buildValidationCheckEvidence({
-      commandSpec: PHASE8R_VALIDATION_COMMANDS[0],
+      commandSpec: POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS[0],
       commandResult: {
         exitCode: 1,
         signal: null,
@@ -80,16 +82,16 @@ describe('policyBuilderPhase8ValidationEvidence', () => {
   });
 
   test('fails when any configured validation command fails', () => {
-    const evidence = buildPolicyBuilderPhase8ValidationEvidence({
+    const evidence = buildPolicyStorageClosureValidationEvidence({
       commandResults: commandResults({
-        [PHASE8R_VALIDATION_CHECK_IDS.FULL]: {
+        [POLICY_STORAGE_CLOSURE_VALIDATION_CHECK_IDS.FULL]: {
           exitCode: 1,
           message: 'full suite failed',
         },
       }),
     });
 
-    expect(evidence.statusId).toBe(PHASE8R_VALIDATION_EVIDENCE_STATUS_IDS.FAILED);
+    expect(evidence.statusId).toBe(POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_STATUS_IDS.FAILED);
     expect(evidence.complete).toBe(false);
     expect(evidence.full).toEqual(expect.objectContaining({
       passed: false,
@@ -98,29 +100,29 @@ describe('policyBuilderPhase8ValidationEvidence', () => {
     }));
     expect(evidence.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_VALIDATION_EVIDENCE_RISK_IDS.CHECK_FAILED,
-        checkId: PHASE8R_VALIDATION_CHECK_IDS.FULL,
+        riskId: POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS.CHECK_FAILED,
+        checkId: POLICY_STORAGE_CLOSURE_VALIDATION_CHECK_IDS.FULL,
       }),
     ]));
   });
 
   test('marks evidence incomplete when a configured check result is missing', () => {
-    const evidence = buildPolicyBuilderPhase8ValidationEvidence({
+    const evidence = buildPolicyStorageClosureValidationEvidence({
       commandResults: commandResults()
-        .filter(result => result.checkId !== PHASE8R_VALIDATION_CHECK_IDS.MARKDOWN),
+        .filter(result => result.checkId !== POLICY_STORAGE_CLOSURE_VALIDATION_CHECK_IDS.MARKDOWN),
     });
 
-    expect(evidence.statusId).toBe(PHASE8R_VALIDATION_EVIDENCE_STATUS_IDS.INCOMPLETE);
+    expect(evidence.statusId).toBe(POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_STATUS_IDS.INCOMPLETE);
     expect(evidence.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_VALIDATION_EVIDENCE_RISK_IDS.MISSING_CHECK_RESULT,
-        checkId: PHASE8R_VALIDATION_CHECK_IDS.MARKDOWN,
+        riskId: POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS.MISSING_CHECK_RESULT,
+        checkId: POLICY_STORAGE_CLOSURE_VALIDATION_CHECK_IDS.MARKDOWN,
       }),
     ]));
   });
 
   test('rejects unknown command results and reported side effects', () => {
-    const evidence = buildPolicyBuilderPhase8ValidationEvidence({
+    const evidence = buildPolicyStorageClosureValidationEvidence({
       commandResults: [
         ...commandResults(),
         {
@@ -135,10 +137,10 @@ describe('policyBuilderPhase8ValidationEvidence', () => {
       },
     });
 
-    expect(evidence.statusId).toBe(PHASE8R_VALIDATION_EVIDENCE_STATUS_IDS.FAILED);
+    expect(evidence.statusId).toBe(POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_STATUS_IDS.FAILED);
     expect(evidence.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_VALIDATION_EVIDENCE_RISK_IDS.UNKNOWN_CHECK_ID,
-      PHASE8R_VALIDATION_EVIDENCE_RISK_IDS.SIDE_EFFECT_REPORTED,
+      POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS.UNKNOWN_CHECK_ID,
+      POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS.SIDE_EFFECT_REPORTED,
     ]));
   });
 });

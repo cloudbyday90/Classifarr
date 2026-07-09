@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Storage Closure Validation Evidence Module Cutover** — renamed the
+  validation evidence service, focused tests, docs, CLI script, and npm runner
+  to durable policy-storage closure validation names, replaced phase-coded
+  constants/builders/versioning and operator messages with the
+  `policy.storage_closure_validation_evidence.v1` contract, updated closure
+  requirement audit, roadmap, changelog, and handoff references, and preserved
+  fixed focused/lint/markdown/full command specs, bounded command metadata,
+  unknown-check rejection, side-effect rejection, and shell-free command
+  execution.
 - **Policy Storage Closure Requirement Audit Module Cutover** — renamed the
   closure requirement audit service, focused tests, docs, CLI script, and npm
   runner to durable policy-storage closure requirement names, replaced
@@ -903,11 +912,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   `policyIntentReplayPreview.mjs` compatibility service path, replaced it with
   a Phase 8R replay migration verifier, updated policy write routes and replay
   diagnostics to use the verifier utilities, refreshed focused replay/route
-  coverage, and added the verifier to Phase 8R validation evidence.
+  coverage, and added the verifier to policy storage closure validation evidence.
 - **Policy Builder Phase 8R Impact Preview Removal** — removed the
   `policyIntentImpactPreview.mjs` compatibility service path, replaced it with
   a Phase 8R impact migration verifier, updated policy write routes and focused
-  route/service tests, and added the verifier to Phase 8R validation evidence.
+  route/service tests, and added the verifier to policy storage closure validation evidence.
 - **Policy Builder Phase 8R Starter Template Mechanics Removal** — removed the
   `PolicyStarterTemplateMechanics.vue` compatibility path from product code,
   replaced it with `PolicyStarterTemplateAccelerator.vue`, updated focused
@@ -992,11 +1001,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   gather mapped artifact, roadmap, and changelog evidence from the checkout
   while requiring caller-supplied final-removal-audit and validation JSON before
   completion can pass.
-- **Policy Builder Phase 8R Validation Evidence Generator** — added a fixed
+- **Policy Storage Closure Validation Evidence** — added a fixed
   command-spec validation evidence contract and
-  `npm run policy:phase8r:validation-evidence` to generate checkpoint-compatible
-  focused, lint, markdown, and full server validation JSON for the Phase 8R
-  closure evidence run.
+  `npm run policy:storage-closure-validation-evidence` to generate
+  checkpoint-compatible focused, lint, markdown, and full server validation JSON
+  for the policy storage closure evidence run.
 - **Policy Storage Completion Checkpoint** — added a
   side-effect-free phase completion checkpoint that consumes component,
   roadmap, final-removal-audit, validation, and changelog evidence for the full

@@ -65,7 +65,7 @@ name and be treated as a verifier, not a durable policy-authoring engine.
 
 5. **Update focused tests and validation evidence.**
    Route tests and service tests should target the replacement verifier so
-   Phase 8R validation proves the current path.
+   policy storage closure validation proves the current path.
 
 ## Pros And Cons
 
@@ -99,7 +99,7 @@ Cons:
 - Route coverage:
   `server/src/__tests__/policies-routes.coverage.test.mjs`
 - Validation evidence:
-  `server/src/services/policyBuilderPhase8ValidationEvidence.mjs`
+  `server/src/services/policyStorageClosureValidationEvidence.mjs`
 
 ## Implementation Outcome
 
@@ -112,7 +112,8 @@ Implemented:
 - Replaced the focused service test with
   `policyBuilderPhase8ImpactMigrationVerifier.test.mjs`.
 - Updated route coverage to expect `non_persistent_migration_verifier`.
-- Added the verifier test and this design document to Phase 8R validation
+- Added the verifier test and this design document to policy storage closure
+  validation
   evidence.
 
 ## Security Outcome

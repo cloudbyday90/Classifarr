@@ -118,7 +118,7 @@ Implemented:
   - side-effect rejection,
   - artifact validation invariants.
 - Added the controlled-removal batch artifact suite and this design doc to the
-  fixed Phase 8R validation evidence command set.
+  fixed policy storage closure validation evidence command set.
 
 Example:
 
