@@ -2,9 +2,9 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_STATUS_IDS,
-  buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionGate,
-} from './policyBuilderPhase8CompatibilityPathDeletionExecutionGate.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS,
+  buildPolicyCompatibilityDeletionExecutionGate,
+} from './policyCompatibilityDeletionExecutionGate.mjs';
 import {
   PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
   buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval,
@@ -49,7 +49,7 @@ function normalizeGeneratedAt(value) {
 function buildGateFromInput({ executionPlan = {}, input = {} } = {}) {
   const evidence = asObject(input);
 
-  return buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionGate({
+  return buildPolicyCompatibilityDeletionExecutionGate({
     executionPlan,
     worktreeClean: evidence.worktreeClean,
     backupRestoreVerified: evidence.backupRestoreVerified,
@@ -110,7 +110,7 @@ function buildArtifactRisks({
 
   if (
     executionGate.statusId !==
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_STATUS_IDS
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
       .READY_FOR_CONTROLLED_DELETION ||
     executionGate.allowControlledDeletion !== true
   ) {

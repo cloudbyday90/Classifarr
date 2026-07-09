@@ -5106,7 +5106,8 @@ Tasks:
 
 Acceptance criteria:
 
-- Gate is blocked unless Phase 8R.15 execution plan is ready and valid.
+- Gate is blocked unless the compatibility deletion execution plan is ready
+  and valid.
 - Dirty worktree blocks the gate.
 - Missing or stale backup/restore evidence blocks the gate.
 - Missing approval, approving actor, rollback stance, or support stance blocks
@@ -5118,26 +5119,28 @@ Acceptance criteria:
 Implementation status:
 
 - Phase 8R.16 compatibility path deletion execution gate is documented in
-  [Policy Builder Phase 8R Compatibility Path Deletion Execution Gate](policy-builder-phase-8r-compatibility-path-deletion-execution-gate.md).
+  [Policy Compatibility Deletion Execution Gate](policy-compatibility-deletion-execution-gate.md).
+- The production-name cutover is documented in
+  [Policy Compatibility Deletion Execution Gate Module Cutover](policy-compatibility-deletion-execution-gate-module-cutover.md).
 - The execution-gate contract lives in
-  `server/src/services/policyBuilderPhase8CompatibilityPathDeletionExecutionGate.mjs`.
+  `server/src/services/policyCompatibilityDeletionExecutionGate.mjs`.
 - The focused execution-gate test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8CompatibilityPathDeletionExecutionGate.test.mjs`.
+  `server/src/__tests__/services/policyCompatibilityDeletionExecutionGate.test.mjs`.
 - Current implementation verifies execution-plan readiness, worktree
   cleanliness, backup/restore freshness, operator approval, final support
-  stances, manifest freshness, and validates that no deletion side effects
-  occur.
+  stances, manifest freshness, emits a semantic `nextStep.stepId`, and
+  validates that no deletion side effects occur.
 
 ### 8R.17 Controlled Compatibility Path Removal
 
-Intent: consume a ready Phase 8R.15 execution plan and Phase 8R.16 final gate,
-then produce a small, reviewable compatibility path removal batch without
-performing destructive changes.
+Intent: consume a ready compatibility deletion execution plan and compatibility
+deletion execution gate, then produce a small, reviewable compatibility path
+removal batch without performing destructive changes.
 
 Tasks:
 
-- Consume Phase 8R.15 approved manifest entries.
-- Consume Phase 8R.16 final preflight gate output.
+- Consume approved compatibility deletion manifest entries.
+- Consume compatibility deletion execution-gate output.
 - Require selected paths to exist in the approved manifest.
 - Require selected manifest entries to include replacement evidence.
 - Require a narrow maximum batch size.

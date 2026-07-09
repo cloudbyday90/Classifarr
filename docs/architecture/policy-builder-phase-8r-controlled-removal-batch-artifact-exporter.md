@@ -97,7 +97,7 @@ Use this stack for Phase 8R controlled removal batch generation:
    operator approval, final rollback/support stance, manifest freshness, and
    selected paths.
 3. Build the Phase 8R.16 execution gate through
-   `policyBuilderPhase8CompatibilityPathDeletionExecutionGate.mjs`.
+   `policyCompatibilityDeletionExecutionGate.mjs`.
 4. Build the Phase 8R.17 removal batch through
    `policyBuilderPhase8ControlledCompatibilityPathRemoval.mjs`.
 5. Refuse ready output unless both gate and batch validate.

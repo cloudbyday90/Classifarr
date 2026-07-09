@@ -14,8 +14,8 @@ import {
   buildPolicyCompatibilityDeletionExecutionPlan,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionGate,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionExecutionGate.mjs';
+  buildPolicyCompatibilityDeletionExecutionGate,
+} from '../../services/policyCompatibilityDeletionExecutionGate.mjs';
 import {
   PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS,
   PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
@@ -146,7 +146,7 @@ function readyExecutionPlan(overrides = {}) {
 }
 
 function readyGate(executionPlan, overrides = {}) {
-  return buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionGate({
+  return buildPolicyCompatibilityDeletionExecutionGate({
     executionPlan,
     worktreeClean: true,
     backupRestoreVerified: true,

@@ -14,8 +14,8 @@ import {
   buildPolicyCompatibilityDeletionExecutionPlan,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionGate,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionExecutionGate.mjs';
+  buildPolicyCompatibilityDeletionExecutionGate,
+} from '../../services/policyCompatibilityDeletionExecutionGate.mjs';
 import {
   buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval,
 } from '../../services/policyBuilderPhase8ControlledCompatibilityPathRemoval.mjs';
@@ -149,7 +149,7 @@ function readyExecutionPlan(overrides = {}) {
 }
 
 function readyGate(executionPlan, overrides = {}) {
-  return buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionGate({
+  return buildPolicyCompatibilityDeletionExecutionGate({
     executionPlan,
     worktreeClean: true,
     backupRestoreVerified: true,

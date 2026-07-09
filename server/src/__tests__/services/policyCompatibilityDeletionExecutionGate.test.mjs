@@ -14,11 +14,11 @@ import {
   buildPolicyCompatibilityDeletionExecutionPlan,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS,
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_STATUS_IDS,
-  buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionGate,
-  validatePolicyBuilderPhase8CompatibilityPathDeletionExecutionGate,
-} from '../../services/policyBuilderPhase8CompatibilityPathDeletionExecutionGate.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS,
+  buildPolicyCompatibilityDeletionExecutionGate,
+  validatePolicyCompatibilityDeletionExecutionGate,
+} from '../../services/policyCompatibilityDeletionExecutionGate.mjs';
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
@@ -123,8 +123,8 @@ function replacementEvidence() {
   return Object.fromEntries(
     Object.values(POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS)
       .map(categoryId => [categoryId, {
-        replacement: `Phase 8R native replacement for ${categoryId}`,
-        tests: ['server phase8r focused coverage'],
+        replacement: `Native policy replacement for ${categoryId}`,
+        tests: ['server focused compatibility-deletion coverage'],
       }])
   );
 }
@@ -137,20 +137,20 @@ function readyExecutionPlan(overrides = {}) {
     rollbackStance: 'Rollback snapshots retained until post-window support stance is approved.',
     supportStance: 'Converted native policies use bounded support diagnostics.',
     manifestApproved: true,
-    approvedBy: 'phase8r-maintainer',
+    approvedBy: 'policy-maintainer',
     ...overrides,
   });
 }
 
 function readyGate(overrides = {}) {
-  return buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionGate({
+  return buildPolicyCompatibilityDeletionExecutionGate({
     executionPlan: readyExecutionPlan(),
     worktreeClean: true,
     backupRestoreVerified: true,
     backupRestoreFresh: true,
     operatorApproval: {
       approved: true,
-      approvedBy: 'phase8r-maintainer',
+      approvedBy: 'policy-maintainer',
     },
     rollbackStanceFinal: true,
     supportStanceFinal: true,
@@ -160,12 +160,12 @@ function readyGate(overrides = {}) {
   });
 }
 
-describe('policyBuilderPhase8CompatibilityPathDeletionExecutionGate', () => {
+describe('policyCompatibilityDeletionExecutionGate', () => {
   test('allows a separate controlled deletion step only when final preflight checks pass', () => {
     const gate = readyGate();
 
     expect(gate.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
         .READY_FOR_CONTROLLED_DELETION);
     expect(gate.allowControlledDeletion).toBe(true);
     expect(gate.validation.ok).toBe(true);
@@ -188,6 +188,11 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionGate', () => {
       executeDeletionNow: false,
       requireSeparateControlledDeletionStep: true,
     }));
+    expect(gate.nextStep).toEqual(expect.objectContaining({
+      stepId: 'controlled_compatibility_path_removal',
+      label: 'Controlled Compatibility Path Removal',
+    }));
+    expect(gate.nextPhase).toBeUndefined();
     expect(Object.values(gate.sideEffects).some(Boolean)).toBe(false);
   });
 
@@ -197,11 +202,11 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionGate', () => {
     });
 
     expect(gate.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
         .BLOCKED_BY_EXECUTION_PLAN);
     expect(gate.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
           .EXECUTION_PLAN_NOT_READY,
       }),
     ]));
@@ -213,11 +218,11 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionGate', () => {
     });
 
     expect(gate.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
         .BLOCKED_BY_WORKTREE);
     expect(gate.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS.WORKTREE_NOT_CLEAN,
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.WORKTREE_NOT_CLEAN,
       }),
     ]));
   });
@@ -229,11 +234,11 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionGate', () => {
     });
 
     expect(gate.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
         .BLOCKED_BY_RECOVERY_EVIDENCE);
     expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS.BACKUP_RESTORE_NOT_VERIFIED,
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS.BACKUP_RESTORE_NOT_FRESH,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.BACKUP_RESTORE_NOT_VERIFIED,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.BACKUP_RESTORE_NOT_FRESH,
     ]));
   });
 
@@ -248,13 +253,13 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionGate', () => {
     });
 
     expect(gate.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
         .BLOCKED_BY_APPROVAL);
     expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS.OPERATOR_APPROVAL_MISSING,
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS.OPERATOR_APPROVAL_ACTOR_MISSING,
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS.ROLLBACK_STANCE_NOT_FINAL,
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS.SUPPORT_STANCE_NOT_FINAL,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.OPERATOR_APPROVAL_MISSING,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.OPERATOR_APPROVAL_ACTOR_MISSING,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.ROLLBACK_STANCE_NOT_FINAL,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.SUPPORT_STANCE_NOT_FINAL,
     ]));
   });
 
@@ -265,17 +270,17 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionGate', () => {
     });
 
     expect(gate.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
         .BLOCKED_BY_MANIFEST_FRESHNESS);
     expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS.MANIFEST_NOT_FRESH,
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS.MANIFEST_NOT_CURRENT,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.MANIFEST_NOT_FRESH,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.MANIFEST_NOT_CURRENT,
     ]));
   });
 
   test('rejects mutated gate output with side effects or stale risk count', () => {
     const gate = readyGate();
-    const validation = validatePolicyBuilderPhase8CompatibilityPathDeletionExecutionGate({
+    const validation = validatePolicyCompatibilityDeletionExecutionGate({
       ...gate,
       riskCount: 99,
       sideEffects: {
@@ -287,8 +292,8 @@ describe('policyBuilderPhase8CompatibilityPathDeletionExecutionGate', () => {
 
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS.RISK_COUNT_MISMATCH,
-      PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.SIDE_EFFECT_PERFORMED,
     ]));
   });
 });

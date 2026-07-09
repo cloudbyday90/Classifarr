@@ -1,15 +1,15 @@
-# Policy Builder Phase 8R Compatibility Path Deletion Execution Gate
+# Policy Compatibility Deletion Execution Gate
 
 ## Intent
 
-Phase 8R.16 is the final pre-execution gate before compatibility path deletion
-can move to a separate controlled deletion step. It does not delete files,
-archive files, remove routes, remove tests, mutate storage, write manifests, or
-run Git commands.
+Policy compatibility deletion execution gate is the final pre-execution gate
+before compatibility path deletion can move to a separate controlled deletion
+step. It does not delete files, archive files, remove routes, remove tests,
+mutate storage, write manifests, or run Git commands.
 
 The gate verifies:
 
-- Phase 8R.15 execution plan is ready and valid,
+- compatibility deletion execution plan is ready and valid,
 - worktree cleanliness has been confirmed,
 - backup and restore evidence is verified and fresh,
 - operator approval exists and names the approving actor,
@@ -19,18 +19,18 @@ The gate verifies:
 
 ## Official-Source Research
 
-- Git `status` documentation defines how to inspect worktree state. Phase 8R.16
+- Git `status` documentation defines how to inspect worktree state. This gate
   treats clean-worktree confirmation as a required precondition, but the
   contract itself does not run Git commands.
 - NIST SSDF recommends integrating secure software practices into the SDLC and
-  following change-management discipline for software updates. Phase 8R.16
+  following change-management discipline for software updates. This gate
   applies that by requiring explicit operator approval and a valid execution
   plan before deletion.
 - OWASP API9:2023 Improper Inventory Management highlights risk from stale or
-  deprecated surfaces. Phase 8R.16 keeps deletion tied to a current manifest so
+  deprecated surfaces. This gate keeps deletion tied to a current manifest so
   stale compatibility paths are not removed ad hoc.
-- NIST SP 800-34 provides contingency-planning and recovery guidance. Phase
-  8R.16 requires fresh backup/restore evidence and final recovery stance before
+- NIST SP 800-34 provides contingency-planning and recovery guidance. This gate
+  requires fresh backup/restore evidence and final recovery stance before
   allowing deletion execution to proceed.
 
 Sources:
@@ -38,7 +38,7 @@ Sources:
 - Git `status` documentation:
   <https://git-scm.com/docs/git-status>
 - NIST Secure Software Development Framework:
-  <https://csrc.nist.gov/projects/ssdf>
+  <https://csrc.nist.gov/pubs/sp/800/218/final>
 - OWASP API9:2023 Improper Inventory Management:
   <https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/>
 - NIST SP 800-34 Rev. 1:
@@ -93,11 +93,11 @@ Cons:
 
 ## Final Recommendation Stack
 
-Use this stack for Phase 8R.16:
+Use this stack:
 
 1. `policyCompatibilityDeletionExecutionPlan.mjs` creates the
    exact manifest.
-2. `policyBuilderPhase8CompatibilityPathDeletionExecutionGate.mjs` validates
+2. `policyCompatibilityDeletionExecutionGate.mjs` validates
    final worktree, recovery, approval, support, and manifest freshness signals.
 3. A later controlled deletion component may consume a ready gate output, but
    only that later step should perform file removal.
@@ -106,7 +106,7 @@ Use this stack for Phase 8R.16:
 
 Implemented:
 
-- Added `policyBuilderPhase8CompatibilityPathDeletionExecutionGate.mjs`.
+- Added `policyCompatibilityDeletionExecutionGate.mjs`.
 - Added gate status IDs for:
   - ready for controlled deletion,
   - blocked by execution plan,
@@ -132,7 +132,7 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Phase 8R.17 Controlled Compatibility Path Removal**. That task
-should be the first component allowed to remove compatibility paths, and only
-after it consumes a ready Phase 8R.16 gate output and performs a narrow,
-reviewable deletion scope.
+Proceed with **Controlled Compatibility Path Removal**. That task should be the
+first component allowed to remove compatibility paths, and only after it
+consumes a ready compatibility deletion execution-gate output and performs a
+narrow, reviewable deletion scope.

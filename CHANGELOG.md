@@ -11,6 +11,19 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Compatibility Deletion Execution Gate Module Cutover** — renamed the
+  compatibility deletion execution-gate service, focused test, and architecture
+  record to `policyCompatibilityDeletionExecutionGate.mjs`,
+  `policyCompatibilityDeletionExecutionGate.test.mjs`, and
+  `policy-compatibility-deletion-execution-gate.md`, replaced phase-coded
+  exported constants, builders, validation helpers, payload versioning, and
+  `nextPhase.phaseId` with durable policy-domain names and `nextStep.stepId`,
+  updated controlled-removal, controlled-removal batch artifact,
+  controlled-apply artifact, roadmap, and evidence-map references, and
+  preserved execution-plan readiness validation, worktree blockers,
+  backup/restore freshness checks, operator approval checks,
+  rollback/support finality checks, manifest freshness checks, risk-count
+  validation, and no-side-effect guarantees.
 - **Policy Compatibility Deletion Execution Plan Module Cutover** — renamed the
   compatibility deletion execution-plan service, focused test, and architecture
   record to `policyCompatibilityDeletionExecutionPlan.mjs`,
@@ -970,7 +983,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   narrow reviewed batch, requires removal reason and reviewer metadata, blocks
   empty, unknown, or too-broad selections, and defers destructive application to
   a later controlled apply step.
-- **Policy Builder Phase 8R Compatibility Path Deletion Execution Gate** —
+- **Policy Compatibility Deletion Execution Gate** —
   added a final side-effect-free preflight gate that consumes the deletion
   execution plan and blocks controlled deletion unless the worktree, backup and
   restore evidence, operator approval, final rollback/support stances, and

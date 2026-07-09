@@ -156,9 +156,9 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_16',
     label: 'Compatibility Path Deletion Execution Gate',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-compatibility-path-deletion-execution-gate.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8CompatibilityPathDeletionExecutionGate.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8CompatibilityPathDeletionExecutionGate.test.mjs'],
+    designDocPaths: ['docs/architecture/policy-compatibility-deletion-execution-gate.md'],
+    contractPaths: ['server/src/services/policyCompatibilityDeletionExecutionGate.mjs'],
+    testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionExecutionGate.test.mjs'],
   },
   {
     phaseId: '8r_17',

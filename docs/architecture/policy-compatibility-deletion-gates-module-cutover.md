@@ -71,8 +71,8 @@ Pros:
 
 Cons:
 
-- Downstream execution-gate and controlled-removal modules still carry their own
-  phase-coded names until their scoped cutover components are completed.
+- Downstream controlled-removal modules still carry their own phase-coded names
+  until their scoped cutover components are completed.
 - Actual file deletion remains intentionally out of scope for this component.
 - Historical Phase 8R evidence inventory still uses phase labels until its
   evidence-run cutover is reached.

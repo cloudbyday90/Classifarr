@@ -3,9 +3,9 @@ import {
   buildPolicyCompatibilityDeletionExecutionPlan,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_STATUS_IDS,
-  buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionGate,
-} from './policyBuilderPhase8CompatibilityPathDeletionExecutionGate.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS,
+  buildPolicyCompatibilityDeletionExecutionGate,
+} from './policyCompatibilityDeletionExecutionGate.mjs';
 
 const PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_VERSION =
   'phase8r.controlled_compatibility_path_removal.v1';
@@ -86,12 +86,12 @@ function evaluateExecutionPlan(executionPlan) {
 }
 
 function evaluateExecutionGate(executionGate) {
-  const gate = executionGate || buildPolicyBuilderPhase8CompatibilityPathDeletionExecutionGate();
+  const gate = executionGate || buildPolicyCompatibilityDeletionExecutionGate();
   const risks = [];
 
   if (
     gate.statusId !==
-    PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_GATE_STATUS_IDS.READY_FOR_CONTROLLED_DELETION ||
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS.READY_FOR_CONTROLLED_DELETION ||
     gate.allowControlledDeletion !== true
   ) {
     risks.push(buildRisk(

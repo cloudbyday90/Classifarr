@@ -72,8 +72,8 @@ Pros:
 
 Cons:
 
-- Downstream execution-gate and controlled-removal modules still carry their own
-  phase-coded names until their scoped cutovers are completed.
+- Downstream controlled-removal modules still carry their own phase-coded names
+  until their scoped cutovers are completed.
 - Actual deletion remains intentionally out of scope for this component.
 - The manifest cannot be ready until replacement evidence and approval metadata
   are complete.
@@ -110,6 +110,6 @@ Cons:
 
 ## Next High-Value Item
 
-Proceed to **Compatibility Path Deletion Execution Gate module naming cutover**.
-That component consumes this execution-plan contract and still carries
-phase-coded production service/test names.
+Proceed to **Controlled Compatibility Path Removal module naming cutover**.
+That component consumes the execution-plan and execution-gate contracts and
+still carries phase-coded production service/test names.
