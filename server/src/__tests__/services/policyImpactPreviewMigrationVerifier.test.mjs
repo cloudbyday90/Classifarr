@@ -8,9 +8,9 @@ import {
   POLICY_INTENT_DRAFT_REQUEST_SCHEMA_VERSION,
 } from '../../services/policyIntentRequestValidator.mjs';
 import {
-  POLICY_BUILDER_PHASE8_IMPACT_MIGRATION_VERIFIER_SCHEMA_VERSION,
-  buildPolicyBuilderPhase8ImpactMigrationVerifier,
-} from '../../services/policyBuilderPhase8ImpactMigrationVerifier.mjs';
+  POLICY_IMPACT_PREVIEW_MIGRATION_VERIFIER_SCHEMA_VERSION,
+  buildPolicyImpactPreviewMigrationVerifier,
+} from '../../services/policyImpactPreviewMigrationVerifier.mjs';
 
 function policy(overrides = {}) {
   return {
@@ -80,9 +80,9 @@ function validDraft(overrides = {}) {
   };
 }
 
-describe('policyBuilderPhase8ImpactMigrationVerifier', () => {
+describe('policyImpactPreviewMigrationVerifier', () => {
   test('reports matching parity without exposing raw draft content', () => {
-    const preview = buildPolicyBuilderPhase8ImpactMigrationVerifier({
+    const preview = buildPolicyImpactPreviewMigrationVerifier({
       policy: policy(),
       payload: {
         policyIntentDraft: validDraft(),
@@ -90,7 +90,7 @@ describe('policyBuilderPhase8ImpactMigrationVerifier', () => {
     });
 
     expect(preview).toEqual(expect.objectContaining({
-      schema_version: POLICY_BUILDER_PHASE8_IMPACT_MIGRATION_VERIFIER_SCHEMA_VERSION,
+      schema_version: POLICY_IMPACT_PREVIEW_MIGRATION_VERIFIER_SCHEMA_VERSION,
       mode: 'non_persistent_migration_verifier',
       persistence_enabled: false,
       validation: {
@@ -136,7 +136,7 @@ describe('policyBuilderPhase8ImpactMigrationVerifier', () => {
       }],
     });
 
-    const preview = buildPolicyBuilderPhase8ImpactMigrationVerifier({
+    const preview = buildPolicyImpactPreviewMigrationVerifier({
       policy: policy(),
       payload: {
         policyIntentDraft: draft,
@@ -161,7 +161,7 @@ describe('policyBuilderPhase8ImpactMigrationVerifier', () => {
   });
 
   test('returns unavailable verifier when no draft is supplied', () => {
-    const preview = buildPolicyBuilderPhase8ImpactMigrationVerifier({
+    const preview = buildPolicyImpactPreviewMigrationVerifier({
       policy: policy(),
       payload: {},
     });

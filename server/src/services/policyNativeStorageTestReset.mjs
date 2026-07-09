@@ -149,7 +149,7 @@ const CURRENT_NATIVE_STORAGE_TEST_RECORDS = Object.freeze([
       POLICY_NATIVE_STORAGE_TEST_LEGACY_SCOPE_IDS.UNCONVERTED_POLICY_COMPATIBILITY,
   },
   {
-    path: 'server/src/__tests__/services/policyBuilderPhase8ImpactMigrationVerifier.test.mjs',
+    path: 'server/src/__tests__/services/policyImpactPreviewMigrationVerifier.test.mjs',
     coverageIds: [],
     abandonedDiagnosticUi: true,
     deleteAfterNativeStorageGates: true,

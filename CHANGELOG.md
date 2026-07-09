@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Impact Preview Migration Verifier Module Cutover** — renamed the
+  impact-preview migration verifier service, focused test, exports, validation
+  evidence, roadmap references, and design docs to durable product-domain names
+  while preserving the non-persistent verifier route behavior, bounded parity
+  response, and raw-draft redaction.
 - **Policy Controlled Compatibility Removal Batch Artifact Module Cutover** —
   renamed the controlled removal batch service, focused tests, docs, CLI script,
   payload version, builder/validator exports, and npm runner to durable
@@ -945,9 +950,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   a Phase 8R replay migration verifier, updated policy write routes and replay
   diagnostics to use the verifier utilities, refreshed focused replay/route
   coverage, and added the verifier to policy storage closure validation evidence.
-- **Policy Builder Phase 8R Impact Preview Removal** — removed the
+- **Policy Impact Preview Migration Verifier** — removed the
   `policyIntentImpactPreview.mjs` compatibility service path, replaced it with
-  a Phase 8R impact migration verifier, updated policy write routes and focused
+  a durable impact migration verifier, updated policy write routes and focused
   route/service tests, and added the verifier to policy storage closure validation evidence.
 - **Policy Builder Phase 8R Starter Template Mechanics Removal** — removed the
   `PolicyStarterTemplateMechanics.vue` compatibility path from product code,

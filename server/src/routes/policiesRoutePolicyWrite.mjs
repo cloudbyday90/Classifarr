@@ -2,7 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { withPolicyIntentProjection } from '../services/policyIntentMapper.mjs';
-import { buildPolicyBuilderPhase8ImpactMigrationVerifier } from '../services/policyBuilderPhase8ImpactMigrationVerifier.mjs';
+import { buildPolicyImpactPreviewMigrationVerifier } from '../services/policyImpactPreviewMigrationVerifier.mjs';
 import {
   buildPolicyBuilderPhase8ReplayMigrationVerifier,
   buildPolicyBuilderPhase8ReplayMigrationSampleQuery,
@@ -115,7 +115,7 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
     try {
       buildRouteIntentWritePreflight(req.body);
       const previewPolicy = await buildPreviewPolicyFromPayload(req.body);
-      const preview = buildPolicyBuilderPhase8ImpactMigrationVerifier({
+      const preview = buildPolicyImpactPreviewMigrationVerifier({
         policy: previewPolicy,
         payload: req.body,
       });
@@ -136,7 +136,7 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
     try {
       buildRouteIntentWritePreflight(req.body);
       const previewPolicy = await buildPreviewPolicyFromPayload(req.body);
-      const impactPreview = buildPolicyBuilderPhase8ImpactMigrationVerifier({
+      const impactPreview = buildPolicyImpactPreviewMigrationVerifier({
         policy: previewPolicy,
         payload: req.body,
       });
