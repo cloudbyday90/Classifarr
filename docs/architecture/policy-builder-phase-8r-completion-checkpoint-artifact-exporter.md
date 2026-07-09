@@ -9,7 +9,7 @@ The artifact consumes explicit evidence:
 
 - Phase 8R component evidence,
 - Phase 8R roadmap evidence,
-- Phase 8R.31 completion-audit artifact evidence,
+- compatibility-removal completion-audit artifact evidence,
 - focused, lint, markdown, and full validation evidence,
 - changelog evidence.
 
@@ -30,7 +30,7 @@ a stable JSON contract.
   Phase 8R is marked complete.
 - OWASP API9:2023 Improper Inventory Management treats unmanaged or stale
   surfaces as attack-surface risk. The artifact keeps compatibility-removal
-  inventory visible through the Phase 8R.31 completion-audit artifact.
+  inventory visible through the compatibility-removal completion-audit artifact.
 - Git `status --porcelain` is documented as script-stable output. This supports
   the broader pattern of feeding machine-readable evidence into audit tooling,
   while this service itself remains side-effect-free and does not call Git.
@@ -103,7 +103,7 @@ Use this stack for Phase 8R.32:
 
 1. Require explicit component evidence.
 2. Require explicit roadmap evidence.
-3. Require a complete and valid Phase 8R.31 completion-audit artifact.
+3. Require a complete and valid compatibility-removal completion-audit artifact.
 4. Require focused, lint, markdown, and full validation evidence.
 5. Require changelog evidence.
 6. Reuse the existing Phase 8R.22 completion checkpoint contract.

@@ -1,6 +1,6 @@
 import {
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-} from './policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs';
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
+} from './policyCompatibilityRemovalCompletionAudit.mjs';
 
 const PHASE8R_COMPLETION_CHECKPOINT_VERSION =
   'phase8r.completion_checkpoint.v1';
@@ -224,7 +224,7 @@ function evaluateFinalRemovalAudit(finalRemovalAudit = {}) {
 
   if (
     finalRemovalAudit.statusId !==
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE ||
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE ||
     finalRemovalAudit.complete !== true
   ) {
     risks.push(buildRisk(

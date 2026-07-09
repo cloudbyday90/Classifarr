@@ -5309,13 +5309,13 @@ Implementation status:
 
 Intent: consume verified removal-loop evidence and prove whether all approved
 compatibility manifest paths are gone, or report the bounded remaining
-inventory that still needs another 8R.17 through 8R.20 loop.
+inventory that still needs another controlled removal loop.
 
 Tasks:
 
-- Require Phase 8R.20 completion authorization evidence.
-- Require the approved Phase 8R.15 execution manifest.
-- Require verified Phase 8R.19 removal verification evidence.
+- Require complete next-batch authorization evidence.
+- Require the approved compatibility deletion execution manifest.
+- Require verified post-removal runtime verification evidence.
 - Prove every approved manifest path is covered by verified removal evidence.
 - Require final import/reference scan evidence for every approved manifest
   path.
@@ -5327,7 +5327,7 @@ Tasks:
 
 Acceptance criteria:
 
-- Completion is blocked unless Phase 8R.20 reports no remaining paths.
+- Completion is blocked unless authorization reports no remaining paths.
 - Completion is blocked unless the execution manifest is ready and valid.
 - Completion is blocked unless verified removal evidence covers every approved
   manifest path.
@@ -5342,16 +5342,19 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.21 compatibility removal completion audit is documented in
-  [Policy Builder Phase 8R Compatibility Removal Completion Audit](policy-builder-phase-8r-compatibility-removal-completion-audit.md).
+- Compatibility removal completion audit is documented in
+  [Policy Compatibility Removal Completion Audit](policy-compatibility-removal-completion-audit.md).
+- The module naming cutover is documented in
+  [Policy Compatibility Removal Completion Audit Module Cutover](policy-compatibility-removal-completion-audit-module-cutover.md).
 - The audit contract lives in
-  `server/src/services/policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs`.
+  `server/src/services/policyCompatibilityRemovalCompletionAudit.mjs`.
 - The focused audit test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8CompatibilityRemovalCompletionAudit.test.mjs`.
+  `server/src/__tests__/services/policyCompatibilityRemovalCompletionAudit.test.mjs`.
 - Current implementation consumes completion authorization, execution manifest,
   verified removal evidence, final scan evidence, and focused/full validation
   evidence; reports remaining inventory separately; blocks incomplete
-  completion claims; and advances to a Phase 8R completion checkpoint.
+  completion claims; and emits semantic `nextStep` evidence for the storage
+  completion checkpoint.
 
 Current removal slice:
 
@@ -5839,25 +5842,25 @@ Implementation status:
 
 ### 8R.31 Compatibility Removal Completion Audit Artifact Exporter
 
-Intent: generate the machine-readable Phase 8R.21 compatibility-removal
-completion audit artifact from Phase 8R.20 authorization/completion evidence,
-Phase 8R.15 execution-plan JSON, verified Phase 8R.19 removal evidence, final
+Intent: generate the machine-readable compatibility-removal completion audit
+artifact from authorization/completion evidence, compatibility deletion
+execution-plan JSON, verified post-removal runtime evidence, final
 import/reference scan evidence, and focused/full validation evidence.
 
 Tasks:
 
-- Require Phase 8R.20 authorization or completion JSON.
-- Require Phase 8R.15 execution-plan JSON with approved manifest entries.
-- Require verified Phase 8R.19 removal verification evidence.
+- Require next-batch authorization or completion JSON.
+- Require compatibility deletion execution-plan JSON with approved manifest
+  entries.
+- Require verified post-removal runtime verification evidence.
 - Require final import/reference scan evidence covering every approved manifest
   path.
 - Block completion when final scan references remain.
 - Preserve remaining-inventory as a valid non-complete artifact state.
-- Reuse the existing Phase 8R.21 compatibility-removal completion audit
-  contract.
+- Reuse the existing compatibility-removal completion audit contract.
 - Avoid deleting files, archiving, writing manifests, mutating storage, running
   tests/scans, or running Git.
-- Write nested audit JSON for Phase 8R.22 checkpoint inputs.
+- Write nested audit JSON for completion checkpoint inputs.
 
 Acceptance criteria:
 
@@ -5868,23 +5871,23 @@ Acceptance criteria:
 - Missing or failing final scan, removal, validation, or execution-plan
   evidence blocks the artifact.
 - Any side effect prevents complete or remaining artifact status.
-- Generated audit JSON can feed the Phase 8R.22 completion checkpoint.
+- Generated audit JSON can feed the completion checkpoint.
 
 Implementation status:
 
-- Phase 8R.31 completion audit artifact export is documented in
-  [Policy Builder Phase 8R Compatibility Removal Completion Audit Artifact Exporter](policy-builder-phase-8r-compatibility-removal-completion-audit-artifact-exporter.md).
+- Completion audit artifact export is documented in
+  [Policy Compatibility Removal Completion Audit Artifact Exporter](policy-compatibility-removal-completion-audit-artifact-exporter.md).
 - The completion-audit artifact contract lives in
-  `server/src/services/policyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact.mjs`.
+  `server/src/services/policyCompatibilityRemovalCompletionAuditArtifact.mjs`.
 - The exporter script lives in
-  `scripts/generate-policy-builder-phase-8r-completion-audit.mjs`.
+  `scripts/generate-policy-compatibility-removal-completion-audit.mjs`.
 - The root runner is exposed as
-  `npm run policy:phase8r:completion-audit`.
+  `npm run policy:compatibility-removal-completion-audit`.
 - The focused completion-audit artifact test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact.test.mjs`.
+  `server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifact.test.mjs`.
 - Current implementation emits complete, remaining-inventory, or blocked audit
-  artifacts without performing removal, scan, manifest, storage, or Git side
-  effects.
+  artifacts with semantic `nextStep` output and without performing removal,
+  scan, manifest, storage, or Git side effects.
 
 ### 8R.32 Completion Checkpoint Artifact Exporter
 
@@ -5897,7 +5900,7 @@ Tasks:
 
 - Require component evidence for the Phase 8R implementation set.
 - Require roadmap sequence and implementation-status evidence.
-- Require a complete and valid Phase 8R.31 completion-audit artifact.
+- Require a complete and valid compatibility-removal completion-audit artifact.
 - Require focused, lint, markdown, and full validation evidence.
 - Require changelog evidence covering Phase 8R components.
 - Reuse the existing Phase 8R.22 completion checkpoint contract.
@@ -5977,7 +5980,7 @@ Implementation status:
 ### 8R.34 Current Repository Closure Audit
 
 Intent: audit the current checkout against the Phase 8R closure chain by
-combining current repository evidence, Phase 8R.31 completion-audit evidence,
+combining current repository evidence, compatibility-removal completion-audit evidence,
 validation evidence, the Phase 8R.32 checkpoint artifact, and the Phase 8R.33
 final closure readout.
 
@@ -5986,7 +5989,7 @@ Tasks:
 - Read current mapped Phase 8R artifact inventory from the checkout.
 - Read current roadmap sequence and implementation-status evidence.
 - Read current changelog coverage evidence.
-- Require a complete and valid Phase 8R.31 completion-audit artifact.
+- Require a complete and valid compatibility-removal completion-audit artifact.
 - Require focused, lint, markdown, and full validation evidence.
 - Compose the existing Phase 8R.23 current evidence run.
 - Compose the Phase 8R.32 checkpoint artifact from current evidence.
@@ -6176,17 +6179,16 @@ Implement Phase 8R in this order:
     controlled-removal apply, reference-scan, runtime-check, and validation
     evidence before the next compatibility-removal batch can be authorized.
 30. **8R.30 Next Compatibility Removal Batch Authorization Artifact Exporter**
-    Generates a machine-readable Phase 8R.20 authorization artifact from
+    Generates a machine-readable next-batch authorization artifact from
     verified post-removal evidence, the approved execution manifest, requested
     remaining paths, and operator authorization metadata.
 31. **8R.31 Compatibility Removal Completion Audit Artifact Exporter**
-    Generates a machine-readable Phase 8R.21 completion-audit artifact from
-    Phase 8R.20 authorization, the approved execution manifest, removal
-    verification, final scan, and validation evidence.
+    Generates a machine-readable compatibility-removal completion-audit
+    artifact from next-batch authorization, the approved execution manifest,
+    removal verification, final scan, and validation evidence.
 32. **8R.32 Completion Checkpoint Artifact Exporter**
-    Generates a machine-readable Phase 8R.22 completion-checkpoint artifact
-    from explicit component, roadmap, completion-audit, validation, and
-    changelog evidence.
+    Generates a machine-readable completion-checkpoint artifact from explicit
+    component, roadmap, completion-audit, validation, and changelog evidence.
 33. **8R.33 Final Closure Readout**
     Generates the final operator-facing Phase 8R closure decision from the
     Phase 8R.32 checkpoint artifact, preserving exact blocker categories.

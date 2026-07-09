@@ -9,7 +9,7 @@ It consumes:
 - the current repository files for mapped Phase 8R artifact inventory,
 - the current roadmap,
 - the current changelog,
-- an explicit Phase 8R.31 completion-audit artifact,
+- an explicit compatibility-removal completion-audit artifact,
 - explicit Phase 8R validation evidence.
 
 It then builds:
@@ -85,7 +85,7 @@ Cons:
 
 ### Require Explicit Removal And Validation Artifacts
 
-The audit should require a complete Phase 8R.31 completion-audit artifact and
+The audit should require a complete compatibility-removal completion-audit artifact and
 complete validation evidence.
 
 Pros:
@@ -106,7 +106,7 @@ Use this stack for Phase 8R.34:
 1. Read current mapped Phase 8R artifact inventory.
 2. Read the current Phase 8R roadmap evidence.
 3. Read the current changelog evidence.
-4. Require a complete and valid Phase 8R.31 completion-audit artifact.
+4. Require a complete and valid compatibility-removal completion-audit artifact.
 5. Require focused, lint, markdown, and full validation evidence to pass.
 6. Build the Phase 8R.23 evidence run.
 7. Build the Phase 8R.32 checkpoint artifact from current evidence.
@@ -146,7 +146,8 @@ npm run --silent policy:phase8r:current-closure-audit -- \
 
 ## Next Step
 
-Run the current repository closure audit with real Phase 8R.31 completion-audit
-and validation evidence. If it completes, perform the final requirement-by-
-requirement goal completion audit before marking Phase 8R complete. If it
-blocks, continue with the exact blocker category in the audit summary.
+Run the current repository closure audit with real compatibility-removal
+completion-audit and validation evidence. If it completes, perform the final
+requirement-by-requirement goal completion audit before marking Phase 8R
+complete. If it blocks, continue with the exact blocker category in the audit
+summary.

@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Compatibility Removal Completion Audit Module Cutover** — renamed
+  the completion audit service, artifact exporter, focused tests, docs, CLI
+  script, and npm runner to durable policy-domain names, replaced phase-coded
+  constants/builders/versioning and `nextPhase.phaseId` with semantic
+  `nextStep.stepId`, updated downstream checkpoint, evidence, and validation
+  references, and preserved remaining-inventory, manifest coverage,
+  verification, final-scan, validation, side-effect rejection, and storage
+  completion-checkpoint handoff behavior.
 - **Policy Next Compatibility Removal Batch Authorization Module Cutover** —
   renamed the next-batch authorization service, artifact exporter, focused
   tests, docs, CLI script, and npm runner to durable policy-domain names,
@@ -885,8 +893,8 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Builder Phase 8R Current Repository Closure Audit** — added a
   current-checkout closure audit contract and
   `npm run policy:phase8r:current-closure-audit` to compose current artifact,
-  roadmap, changelog, Phase 8R.31 completion-audit, validation, checkpoint, and
-  final-readout evidence into one completion decision.
+  roadmap, changelog, compatibility-removal completion-audit, validation,
+  checkpoint, and final-readout evidence into one completion decision.
 - **Policy Builder Phase 8R Final Closure Readout** — added a
   machine-readable final readout contract and
   `npm run policy:phase8r:final-closure-readout` to classify Phase 8R closure
@@ -895,14 +903,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Builder Phase 8R Completion Checkpoint Artifact Exporter** — added
   a machine-readable checkpoint artifact contract and
   `npm run policy:phase8r:completion-checkpoint` to consume component,
-  roadmap, Phase 8R.31 completion-audit, validation, and changelog evidence
-  before Phase 8R is claimed complete.
-- **Policy Builder Phase 8R Compatibility Removal Completion Audit Artifact
-  Exporter** — added a machine-readable audit artifact contract and
-  `npm run policy:phase8r:completion-audit` to consume Phase 8R.20
-  authorization, the approved execution manifest, verified removal evidence,
-  final reference scan, and validation evidence before the Phase 8R completion
-  checkpoint.
+  roadmap, compatibility-removal completion-audit, validation, and changelog
+  evidence before Phase 8R is claimed complete.
+- **Policy Compatibility Removal Completion Audit Artifact Exporter** — added a
+  machine-readable audit artifact contract and
+  `npm run policy:compatibility-removal-completion-audit` to consume
+  next-batch authorization, the approved execution manifest, verified removal
+  evidence, final reference scan, and validation evidence before the storage
+  completion checkpoint.
 - **Policy Next Compatibility Removal Batch Authorization Artifact
   Exporter** — added a machine-readable authorization artifact contract and
   `npm run policy:next-batch-authorization` to consume verified post-removal
@@ -960,13 +968,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   Phase 8R sequence; blocks closure when any expected phase lacks
   implementation, design-doc, contract, focused-test, roadmap, changelog, or
   validation proof.
-- **Policy Builder Phase 8R Compatibility Removal Completion Audit** — added a
-  side-effect-free audit service that consumes Phase 8R.20 completion
-  authorization, the approved deletion manifest, verified removal evidence,
-  final import/reference scan evidence, and focused/full validation results;
-  reports remaining compatibility inventory separately from failed evidence and
-  blocks completion claims when coverage, scans, validation, or side-effect
-  invariants are not proven.
+- **Policy Compatibility Removal Completion Audit** — added a side-effect-free
+  audit service that consumes next-batch completion authorization, the approved
+  deletion manifest, verified removal evidence, final import/reference scan
+  evidence, and focused/full validation results; reports remaining
+  compatibility inventory separately from failed evidence and blocks completion
+  claims when coverage, scans, validation, or side-effect invariants are not
+  proven.
 - **Policy Next Compatibility Removal Batch Authorization** — added a
   side-effect-free authorizer that consumes verified post-removal runtime
   evidence and the approved deletion manifest, calculates remaining

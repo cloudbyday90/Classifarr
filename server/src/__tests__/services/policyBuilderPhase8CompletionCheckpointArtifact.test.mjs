@@ -3,8 +3,8 @@ import {
   PHASE8R_EXPECTED_COMPONENTS,
 } from '../../services/policyBuilderPhase8CompletionCheckpoint.mjs';
 import {
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-} from '../../services/policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs';
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
+} from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 import {
   PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS,
   PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
@@ -47,7 +47,7 @@ function completionAuditArtifact(overrides = {}) {
     riskCount: 0,
     risks: [],
     audit: {
-      statusId: PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
+      statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
       complete: true,
       validation: {
         ok: true,
@@ -116,7 +116,7 @@ describe('policyBuilderPhase8CompletionCheckpointArtifact', () => {
       componentImplementedCount: PHASE8R_EXPECTED_COMPONENTS.length,
       checkpointRiskCount: 0,
       finalRemovalAuditStatusId:
-        PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
+        POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
       validationPassedCount: 4,
     }));
     expect(artifact.completionAuditArtifact).toEqual(expect.objectContaining({
@@ -127,7 +127,7 @@ describe('policyBuilderPhase8CompletionCheckpointArtifact', () => {
     }));
   });
 
-  test('blocks when the Phase 8R.31 completion-audit artifact is missing', () => {
+  test('blocks when the compatibility-removal completion-audit artifact is missing', () => {
     const artifact = completeArtifact({
       completionAuditArtifact: {},
     });
@@ -143,14 +143,14 @@ describe('policyBuilderPhase8CompletionCheckpointArtifact', () => {
     ]));
   });
 
-  test('blocks when the Phase 8R.31 completion-audit artifact is not complete', () => {
+  test('blocks when the compatibility-removal completion-audit artifact is not complete', () => {
     const artifact = completeArtifact({
       completionAuditArtifact: completionAuditArtifact({
         statusId: 'remaining_inventory',
         complete: false,
         audit: {
           statusId:
-            PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+            POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
               .REMAINING_INVENTORY,
           complete: false,
           validation: {

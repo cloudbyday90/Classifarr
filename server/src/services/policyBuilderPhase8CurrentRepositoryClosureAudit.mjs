@@ -115,7 +115,7 @@ function buildAuditRisks({
     risks.push(buildRisk(
       PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_MISSING,
-      'Current repository closure audit requires a Phase 8R.31 completion-audit artifact.'
+      'Current repository closure audit requires compatibility-removal completion-audit artifact evidence.'
     ));
   }
 
@@ -126,7 +126,7 @@ function buildAuditRisks({
     risks.push(buildRisk(
       PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_NOT_COMPLETE,
-      'Current repository closure audit requires a complete Phase 8R.31 completion-audit artifact.',
+      'Current repository closure audit requires a complete compatibility-removal completion-audit artifact.',
       {
         completionAuditArtifactStatusId:
           normalizedCompletionArtifact.statusId || null,
@@ -141,7 +141,7 @@ function buildAuditRisks({
     risks.push(buildRisk(
       PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_VALIDATION_FAILED,
-      'Current repository closure audit requires valid Phase 8R.31 completion-audit artifact evidence.',
+      'Current repository closure audit requires valid compatibility-removal completion-audit artifact evidence.',
       {
         completionAuditArtifactValidationIssueCount:
           normalizedCompletionArtifact.validation?.issueCount ?? null,

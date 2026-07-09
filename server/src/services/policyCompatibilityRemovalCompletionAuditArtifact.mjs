@@ -1,19 +1,19 @@
 import {
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-  buildPolicyBuilderPhase8CompatibilityRemovalCompletionAudit,
-} from './policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs';
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
+  buildPolicyCompatibilityRemovalCompletionAudit,
+} from './policyCompatibilityRemovalCompletionAudit.mjs';
 
-const PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION =
-  'phase8r.compatibility_removal_completion_audit_artifact.v1';
+const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION =
+  'policy.compatibility_removal_completion_audit_artifact.v1';
 
-const PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS =
+const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS =
   Object.freeze({
     COMPLETE: 'complete',
     REMAINING_INVENTORY: 'remaining_inventory',
     BLOCKED: 'blocked',
   });
 
-const PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS =
+const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS =
   Object.freeze({
     AUDIT_BLOCKED: 'audit_blocked',
     AUDIT_VALIDATION_FAILED: 'audit_validation_failed',
@@ -71,15 +71,15 @@ function summarizeSideEffects(audit = {}, sideEffects = {}) {
 
 function determineArtifactStatusId(audit = {}, risks = []) {
   if (risks.length > 0) {
-    return PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS
+    return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS
       .BLOCKED;
   }
 
-  if (audit.statusId === PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE) {
-    return PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS.COMPLETE;
+  if (audit.statusId === POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE) {
+    return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS.COMPLETE;
   }
 
-  return PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS
+  return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS
     .REMAINING_INVENTORY;
 }
 
@@ -89,15 +89,15 @@ function buildArtifactRisks({
 } = {}) {
   const risks = [];
   const acceptableStatusIds = [
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.REMAINING_INVENTORY,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.REMAINING_INVENTORY,
   ];
 
   if (!acceptableStatusIds.includes(audit.statusId)) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
         .AUDIT_BLOCKED,
-      'Compatibility removal completion audit artifact requires complete or remaining-inventory Phase 8R.21 evidence.',
+      'Compatibility removal completion audit artifact requires complete or remaining-inventory audit evidence.',
       {
         statusId: audit.statusId || null,
         auditRiskCount: audit.riskCount ?? null,
@@ -107,9 +107,9 @@ function buildArtifactRisks({
 
   if (audit.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
         .AUDIT_VALIDATION_FAILED,
-      'Compatibility removal completion audit artifact requires valid Phase 8R.21 evidence.',
+      'Compatibility removal completion audit artifact requires valid completion audit evidence.',
       { issueCount: audit.validation?.issueCount ?? null }
     ));
   }
@@ -117,7 +117,7 @@ function buildArtifactRisks({
   Object.entries(sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       risks.push(buildRisk(
-        PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+        POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
           .SIDE_EFFECT_REPORTED,
         `Compatibility removal completion audit artifact cannot report side effect "${key}".`,
         { sideEffect: key }
@@ -128,7 +128,7 @@ function buildArtifactRisks({
   return risks;
 }
 
-function buildPolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact({
+function buildPolicyCompatibilityRemovalCompletionAuditArtifact({
   completionAuthorization = {},
   executionPlan = {},
   input = {},
@@ -136,7 +136,7 @@ function buildPolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact({
   sideEffects = {},
 } = {}) {
   const evidence = asObject(input);
-  const audit = buildPolicyBuilderPhase8CompatibilityRemovalCompletionAudit({
+  const audit = buildPolicyCompatibilityRemovalCompletionAudit({
     completionAuthorization,
     executionPlan,
     removalVerifications: asArray(evidence.removalVerifications),
@@ -150,17 +150,17 @@ function buildPolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact({
     sideEffects: combinedSideEffects,
   });
   const artifact = {
-    version: PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
+    version: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
     generatedAt: normalizeGeneratedAt(generatedAt),
     statusId: determineArtifactStatusId(audit, risks),
     complete:
       risks.length === 0 &&
-      audit.statusId === PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE &&
+      audit.statusId === POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE &&
       audit.complete === true,
     remainingInventory:
       risks.length === 0 &&
       audit.statusId ===
-        PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.REMAINING_INVENTORY,
+        POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.REMAINING_INVENTORY,
     audit,
     auditSummary: {
       manifestTotalCount: audit.manifestInventory?.totalCount ?? 0,
@@ -186,30 +186,30 @@ function buildPolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact({
       allowManifestWrite: false,
       allowGitCommandsInsideArtifact: false,
     },
-    nextPhase: {
-      phaseId: '8r_22',
-      label: 'Phase 8R Completion Checkpoint',
+    nextStep: {
+      stepId: 'policy_storage_completion_checkpoint',
+      label: 'Policy Storage Completion Checkpoint',
       reason:
-        'Complete compatibility removal audit evidence can feed the Phase 8R completion checkpoint; remaining inventory should continue the bounded removal loop.',
+        'Complete compatibility removal audit evidence can feed the storage completion checkpoint; remaining inventory should continue the bounded removal loop.',
     },
   };
 
   return {
     ...artifact,
     validation:
-      validatePolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact(artifact),
+      validatePolicyCompatibilityRemovalCompletionAuditArtifact(artifact),
   };
 }
 
-function validatePolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact(
+function validatePolicyCompatibilityRemovalCompletionAuditArtifact(
   artifact = {}
 ) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS)
+  if (!Object.values(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS)
     .includes(artifact.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
         .UNKNOWN_STATUS,
       'Compatibility removal completion audit artifact status must be known.'
     ));
@@ -217,7 +217,7 @@ function validatePolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact(
 
   if (artifact.riskCount !== asArray(artifact.risks).length) {
     issues.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
         .RISK_COUNT_MISMATCH,
       'Compatibility removal completion audit artifact risk count must match risk list length.'
     ));
@@ -225,11 +225,11 @@ function validatePolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact(
 
   if (
     artifact.statusId ===
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS.COMPLETE &&
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS.COMPLETE &&
     artifact.complete !== true
   ) {
     issues.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
         .COMPLETE_FLAG_MISMATCH,
       'Compatibility removal completion audit artifact complete flag must match complete status.'
     ));
@@ -238,7 +238,7 @@ function validatePolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact(
   Object.entries(artifact.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
-        PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+        POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
           .SIDE_EFFECT_REPORTED,
         `Compatibility removal completion audit artifact cannot report side effect "${key}".`,
         { sideEffect: key }
@@ -254,9 +254,9 @@ function validatePolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact(
 }
 
 export {
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS,
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS,
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
-  buildPolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact,
-  validatePolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact,
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS,
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS,
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
+  buildPolicyCompatibilityRemovalCompletionAuditArtifact,
+  validatePolicyCompatibilityRemovalCompletionAuditArtifact,
 };

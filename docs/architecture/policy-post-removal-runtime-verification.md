@@ -131,6 +131,6 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Compatibility Removal Completion Audit module naming cutover**.
-That task should consume semantic next-batch authorization evidence and remove
-the remaining phase-coded completion audit contract names from production code.
+Proceed with **Completion Checkpoint module naming cutover** after semantic
+next-batch authorization and completion-audit evidence report no remaining
+approved manifest paths.

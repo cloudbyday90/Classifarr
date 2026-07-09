@@ -6,8 +6,8 @@ import {
   validatePolicyBuilderPhase8CompletionEvidenceRun,
 } from '../../services/policyBuilderPhase8CompletionEvidenceRun.mjs';
 import {
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-} from '../../services/policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs';
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
+} from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 
 const PHASE_IDS = PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP
   .map(component => component.phaseId);
@@ -47,7 +47,7 @@ function roadmapEvidence(overrides = {}) {
 
 function finalRemovalAudit(overrides = {}) {
   return {
-    statusId: PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
+    statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
     complete: true,
     validation: {
       ok: true,
@@ -219,7 +219,7 @@ describe('policyBuilderPhase8CompletionEvidenceRun', () => {
     const removalAuditBlocked = completeRun({
       finalRemovalAudit: finalRemovalAudit({
         statusId:
-          PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
             .BLOCKED_BY_FINAL_SCAN,
         complete: false,
       }),

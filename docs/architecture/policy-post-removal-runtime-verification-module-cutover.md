@@ -114,4 +114,6 @@ Implemented:
 
 ## Next Step
 
-Proceed to **Compatibility Removal Completion Audit module naming cutover**.
+Proceed to **Completion Checkpoint module naming cutover** after
+post-removal verification, next-batch authorization, and completion-audit
+evidence report no remaining approved manifest paths.

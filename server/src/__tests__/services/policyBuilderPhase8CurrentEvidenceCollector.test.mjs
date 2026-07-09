@@ -12,8 +12,8 @@ import {
   PHASE8R_COMPLETION_EVIDENCE_RUN_STATUS_IDS,
 } from '../../services/policyBuilderPhase8CompletionEvidenceRun.mjs';
 import {
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-} from '../../services/policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs';
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
+} from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 
 const ALL_MAPPED_PATHS = PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP
   .flatMap(component => [
@@ -49,7 +49,7 @@ function completeChangelogContent() {
 
 function completeFinalRemovalAudit() {
   return {
-    statusId: PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
+    statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
     complete: true,
     validation: {
       ok: true,

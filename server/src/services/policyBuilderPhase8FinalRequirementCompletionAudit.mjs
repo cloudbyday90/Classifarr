@@ -134,12 +134,12 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_31',
     label: 'Compatibility Removal Completion Audit Artifact Exporter',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-compatibility-removal-completion-audit-artifact-exporter.md'],
+    designDocPaths: ['docs/architecture/policy-compatibility-removal-completion-audit-artifact-exporter.md'],
     contractPaths: [
-      'server/src/services/policyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact.mjs',
-      'scripts/generate-policy-builder-phase-8r-completion-audit.mjs',
+      'server/src/services/policyCompatibilityRemovalCompletionAuditArtifact.mjs',
+      'scripts/generate-policy-compatibility-removal-completion-audit.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact.test.mjs'],
+    testPaths: ['server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifact.test.mjs'],
   },
   {
     phaseId: '8r_32',

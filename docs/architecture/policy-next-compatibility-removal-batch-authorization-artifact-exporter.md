@@ -146,6 +146,6 @@ npm run --silent policy:next-batch-authorization -- \
 ## Next Step
 
 Use the generated authorization JSON as input for the compatibility removal
-completion-audit artifact export. That exporter should produce completion audit
-JSON from authorization, manifest, remaining path, reference scan, and
-validation evidence.
+completion-audit artifact export. When that audit reports no remaining
+approved manifest paths, proceed to **Completion Checkpoint module naming
+cutover** so checkpoint contracts consume semantic completion-audit evidence.

@@ -161,9 +161,11 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Compatibility Removal Completion Audit module naming cutover**.
-That task should remove phase-coded names from the completion audit consumer
-while preserving the bounded remaining-inventory behavior.
+Proceed with **Completion Checkpoint module naming cutover** after the
+compatibility removal completion audit artifact reports no remaining approved
+manifest paths. That task should consume semantic completion-audit evidence and
+remove the remaining phase-coded checkpoint contract names from production
+code.
 The payload now emits `version =
 policy.next_compatibility_removal_batch_authorization.v1` and
 `nextStep.stepId = compatibility_removal_completion_audit`; production output

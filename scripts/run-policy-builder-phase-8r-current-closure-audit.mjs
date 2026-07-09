@@ -93,7 +93,7 @@ function usage() {
     '',
     'Options:',
     '  --cwd <path>                         Repository root. Defaults to process cwd.',
-    '  --completion-audit-artifact <json>   Required Phase 8R.31 completion-audit artifact JSON.',
+    '  --completion-audit-artifact <json>   Required compatibility-removal completion-audit artifact JSON.',
     '  --validation-evidence <json>         Required Phase 8R validation evidence JSON.',
     '  --output <json>                      Write full current closure audit JSON.',
     '  --checkpoint-artifact-output <json>  Write generated Phase 8R.32 checkpoint artifact JSON.',

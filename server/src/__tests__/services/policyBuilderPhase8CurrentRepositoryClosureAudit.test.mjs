@@ -2,8 +2,8 @@ import {
   PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP,
 } from '../../services/policyBuilderPhase8CompletionEvidenceRun.mjs';
 import {
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-} from '../../services/policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs';
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
+} from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 import {
   PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS,
   PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS,
@@ -48,7 +48,7 @@ function completionAuditArtifact(overrides = {}) {
     riskCount: 0,
     risks: [],
     audit: {
-      statusId: PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
+      statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
       complete: true,
       validation: {
         ok: true,
@@ -163,7 +163,7 @@ describe('policyBuilderPhase8CurrentRepositoryClosureAudit', () => {
         complete: false,
         audit: {
           statusId:
-            PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+            POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
               .REMAINING_INVENTORY,
           complete: false,
           validation: {

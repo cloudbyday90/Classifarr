@@ -88,7 +88,7 @@ function buildArtifactRisks({
   if (!completionAudit.auditPresent) {
     risks.push(buildRisk(
       PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.COMPLETION_AUDIT_MISSING,
-      'Phase 8R completion checkpoint artifact requires the Phase 8R.31 completion-audit artifact.'
+      'Phase 8R completion checkpoint artifact requires compatibility-removal completion-audit artifact evidence.'
     ));
   }
 
@@ -99,7 +99,7 @@ function buildArtifactRisks({
     risks.push(buildRisk(
       PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_NOT_COMPLETE,
-      'Phase 8R completion checkpoint artifact requires a complete Phase 8R.31 completion-audit artifact.',
+      'Phase 8R completion checkpoint artifact requires a complete compatibility-removal completion-audit artifact.',
       {
         artifactStatusId: completionAudit.artifactStatusId,
         artifactComplete: completionAudit.artifactComplete,
@@ -114,7 +114,7 @@ function buildArtifactRisks({
     risks.push(buildRisk(
       PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_VALIDATION_FAILED,
-      'Phase 8R completion checkpoint artifact requires valid Phase 8R.31 completion-audit artifact evidence.',
+      'Phase 8R completion checkpoint artifact requires valid compatibility-removal completion-audit artifact evidence.',
       {
         artifactValidationIssueCount:
           completionAudit.artifact.validation?.issueCount ?? null,

@@ -9,10 +9,10 @@ import {
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
 } from './policyPostRemovalRuntimeVerification.mjs';
 
-const PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_VERSION =
-  'phase8r.compatibility_removal_completion_audit.v1';
+const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_VERSION =
+  'policy.compatibility_removal_completion_audit.v1';
 
-const PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS = Object.freeze({
+const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
   REMAINING_INVENTORY: 'remaining_inventory',
   BLOCKED_BY_AUTHORIZATION_EVIDENCE: 'blocked_by_authorization_evidence',
@@ -22,7 +22,7 @@ const PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS = Object.freeze(
   BLOCKED_BY_VALIDATION: 'blocked_by_validation',
 });
 
-const PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS = Object.freeze({
   AUTHORIZATION_NOT_COMPLETE: 'authorization_not_complete',
   AUTHORIZATION_VALIDATION_FAILED: 'authorization_validation_failed',
   EXECUTION_PLAN_NOT_READY: 'execution_plan_not_ready',
@@ -82,18 +82,18 @@ function evaluateCompletionAuthorization(completionAuthorization = {}) {
     completionAuthorization.completedNoRemainingPaths !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
         .AUTHORIZATION_NOT_COMPLETE,
-      'Compatibility removal completion audit requires Phase 8R.20 completion evidence.',
+      'Compatibility removal completion audit requires complete next-batch authorization evidence.',
       { statusId: completionAuthorization.statusId || null }
     ));
   }
 
   if (completionAuthorization.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
         .AUTHORIZATION_VALIDATION_FAILED,
-      'Compatibility removal completion audit requires valid Phase 8R.20 evidence.',
+      'Compatibility removal completion audit requires valid next-batch authorization evidence.',
       { issueCount: completionAuthorization.validation?.issueCount ?? null }
     ));
   }
@@ -117,24 +117,24 @@ function evaluateExecutionPlan(executionPlan = {}) {
     executionPlan.readyForExecutionGate !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.EXECUTION_PLAN_NOT_READY,
-      'Compatibility removal completion audit requires a ready Phase 8R.15 execution plan.',
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.EXECUTION_PLAN_NOT_READY,
+      'Compatibility removal completion audit requires a ready compatibility deletion execution plan.',
       { statusId: executionPlan.statusId || null }
     ));
   }
 
   if (executionPlan.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
         .EXECUTION_PLAN_VALIDATION_FAILED,
-      'Compatibility removal completion audit requires a valid Phase 8R.15 execution plan.',
+      'Compatibility removal completion audit requires a valid compatibility deletion execution plan.',
       { issueCount: executionPlan.validation?.issueCount ?? null }
     ));
   }
 
   if (entries.length === 0) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.NO_MANIFEST_ENTRIES,
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.NO_MANIFEST_ENTRIES,
       'Compatibility removal completion audit requires approved manifest entries.'
     ));
   }
@@ -155,9 +155,9 @@ function evaluateRemovalVerifications(removalVerifications = []) {
 
   if (verifications.length === 0) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
         .REMOVAL_VERIFICATION_MISSING,
-      'Compatibility removal completion audit requires verified Phase 8R.19 removal evidence.'
+      'Compatibility removal completion audit requires verified post-removal runtime evidence.'
     ));
   }
 
@@ -168,7 +168,7 @@ function evaluateRemovalVerifications(removalVerifications = []) {
       verification.validation?.ok !== true
     ) {
       risks.push(buildRisk(
-        PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
           .REMOVAL_VERIFICATION_NOT_VERIFIED,
         'Every removal verification used for completion must be verified and valid.',
         {
@@ -207,7 +207,7 @@ function evaluatePathCoverage({
   }
 
   return [buildRisk(
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
       .REMOVED_PATH_COVERAGE_INCOMPLETE,
     'Compatibility removal completion audit requires every approved manifest path to be covered by verified removal evidence.',
     { missingPaths }
@@ -228,7 +228,7 @@ function evaluateFinalImportScan({
 
   if (finalImportScan.completed !== true || checkedPaths.length === 0) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FINAL_SCAN_MISSING,
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FINAL_SCAN_MISSING,
       'Compatibility removal completion audit requires completed final import/reference scan evidence.'
     ));
   }
@@ -236,7 +236,7 @@ function evaluateFinalImportScan({
   manifestPaths.forEach(path => {
     if (!checkedPathSet.has(path)) {
       risks.push(buildRisk(
-        PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FINAL_SCAN_PATH_MISSING,
+        POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FINAL_SCAN_PATH_MISSING,
         'Final import/reference scan must include every approved manifest path.',
         { path }
       ));
@@ -247,7 +247,7 @@ function evaluateFinalImportScan({
     .filter(reference => reference.path)
     .forEach(reference => {
       risks.push(buildRisk(
-        PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
           .FINAL_SCAN_REFERENCE_FOUND,
         'Final import/reference scan found a remaining reference to a removed compatibility path.',
         reference
@@ -267,13 +267,13 @@ function evaluateValidationEvidence(validationEvidence = {}) {
 
   if (!validationEvidence.focused) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
         .FOCUSED_VALIDATION_MISSING,
       'Compatibility removal completion audit requires focused validation evidence.'
     ));
   } else if (validationEvidence.focused.passed !== true) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
         .FOCUSED_VALIDATION_FAILED,
       'Compatibility removal completion audit focused validation failed.',
       {
@@ -285,13 +285,13 @@ function evaluateValidationEvidence(validationEvidence = {}) {
 
   if (!validationEvidence.full) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
         .FULL_VALIDATION_MISSING,
       'Compatibility removal completion audit requires full validation evidence.'
     ));
   } else if (validationEvidence.full.passed !== true) {
     risks.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FULL_VALIDATION_FAILED,
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FULL_VALIDATION_FAILED,
       'Compatibility removal completion audit full validation failed.',
       {
         command: validationEvidence.full.command || null,
@@ -305,58 +305,58 @@ function evaluateValidationEvidence(validationEvidence = {}) {
 
 function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
   if (risks.some(risk => [
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.AUTHORIZATION_NOT_COMPLETE,
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.AUTHORIZATION_NOT_COMPLETE,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
       .AUTHORIZATION_VALIDATION_FAILED,
   ].includes(risk.riskId))) {
     if (remainingCount > 0) {
-      return PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.REMAINING_INVENTORY;
+      return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.REMAINING_INVENTORY;
     }
 
-    return PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+    return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
       .BLOCKED_BY_AUTHORIZATION_EVIDENCE;
   }
 
   if (risks.some(risk => [
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.EXECUTION_PLAN_NOT_READY,
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.EXECUTION_PLAN_NOT_READY,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
       .EXECUTION_PLAN_VALIDATION_FAILED,
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.NO_MANIFEST_ENTRIES,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.NO_MANIFEST_ENTRIES,
   ].includes(risk.riskId))) {
-    return PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+    return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
       .BLOCKED_BY_EXECUTION_PLAN;
   }
 
   if (risks.some(risk => [
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
       .REMOVAL_VERIFICATION_MISSING,
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
       .REMOVAL_VERIFICATION_NOT_VERIFIED,
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
       .REMOVED_PATH_COVERAGE_INCOMPLETE,
   ].includes(risk.riskId))) {
-    return PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+    return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
       .BLOCKED_BY_REMOVAL_EVIDENCE;
   }
 
   if (risks.some(risk => [
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FINAL_SCAN_MISSING,
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FINAL_SCAN_PATH_MISSING,
-    PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FINAL_SCAN_REFERENCE_FOUND,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FINAL_SCAN_MISSING,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FINAL_SCAN_PATH_MISSING,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FINAL_SCAN_REFERENCE_FOUND,
   ].includes(risk.riskId))) {
-    return PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+    return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
       .BLOCKED_BY_FINAL_SCAN;
   }
 
   if (risks.length > 0) {
-    return PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+    return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
       .BLOCKED_BY_VALIDATION;
   }
 
-  return PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE;
+  return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE;
 }
 
-function buildPolicyBuilderPhase8CompatibilityRemovalCompletionAudit({
+function buildPolicyCompatibilityRemovalCompletionAudit({
   completionAuthorization = {},
   executionPlan = null,
   removalVerifications = [],
@@ -390,10 +390,10 @@ function buildPolicyBuilderPhase8CompatibilityRemovalCompletionAudit({
     remainingCount: authorizationEvaluation.remainingCount,
   });
   const audit = {
-    version: PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_VERSION,
+    version: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_VERSION,
     statusId,
     complete:
-      statusId === PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
+      statusId === POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
     completionAuthorization: {
       statusId: completionAuthorization.statusId || null,
       validationOk: completionAuthorization.validation?.ok === true,
@@ -443,34 +443,34 @@ function buildPolicyBuilderPhase8CompatibilityRemovalCompletionAudit({
       manifestWritten: sideEffects.manifestWritten === true,
       gitCommandsRun: sideEffects.gitCommandsRun === true,
     },
-    nextPhase: {
-      phaseId: '8r_22',
-      label: 'Phase 8R Completion Checkpoint',
+    nextStep: {
+      stepId: 'policy_storage_completion_checkpoint',
+      label: 'Policy Storage Completion Checkpoint',
       reason:
-        'After compatibility removal completion is proven, Phase 8R should run a final checkpoint against the roadmap before the goal is considered complete.',
+        'After compatibility removal completion is proven, run a final checkpoint against the roadmap before the storage-removal goal is considered complete.',
     },
   };
 
   return {
     ...audit,
-    validation: validatePolicyBuilderPhase8CompatibilityRemovalCompletionAudit(audit),
+    validation: validatePolicyCompatibilityRemovalCompletionAudit(audit),
   };
 }
 
-function validatePolicyBuilderPhase8CompatibilityRemovalCompletionAudit(audit = {}) {
+function validatePolicyCompatibilityRemovalCompletionAudit(audit = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS)
+  if (!Object.values(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS)
     .includes(audit.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.UNKNOWN_STATUS,
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.UNKNOWN_STATUS,
       'Compatibility removal completion audit status must be known.'
     ));
   }
 
   if (audit.riskCount !== asArray(audit.risks).length) {
     issues.push(buildRisk(
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.RISK_COUNT_MISMATCH,
       'Compatibility removal completion audit risk count must match risk list length.'
     ));
   }
@@ -478,7 +478,7 @@ function validatePolicyBuilderPhase8CompatibilityRemovalCompletionAudit(audit = 
   Object.entries(audit.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
-        PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
         `Compatibility removal completion audit cannot perform side effect "${key}".`
       ));
     }
@@ -492,9 +492,9 @@ function validatePolicyBuilderPhase8CompatibilityRemovalCompletionAudit(audit = 
 }
 
 export {
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS,
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_VERSION,
-  buildPolicyBuilderPhase8CompatibilityRemovalCompletionAudit,
-  validatePolicyBuilderPhase8CompatibilityRemovalCompletionAudit,
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS,
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_VERSION,
+  buildPolicyCompatibilityRemovalCompletionAudit,
+  validatePolicyCompatibilityRemovalCompletionAudit,
 };

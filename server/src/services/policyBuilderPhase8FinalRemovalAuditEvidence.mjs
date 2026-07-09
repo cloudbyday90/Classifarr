@@ -1,7 +1,7 @@
 import {
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-  buildPolicyBuilderPhase8CompatibilityRemovalCompletionAudit,
-} from './policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs';
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
+  buildPolicyCompatibilityRemovalCompletionAudit,
+} from './policyCompatibilityRemovalCompletionAudit.mjs';
 import {
   POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
 } from './policyNextCompatibilityRemovalBatchAuthorization.mjs';
@@ -130,7 +130,7 @@ function buildPolicyBuilderPhase8FinalRemovalAuditEvidence({
     manifestPaths: pathState.manifestPaths,
     referenceScan,
   });
-  const audit = buildPolicyBuilderPhase8CompatibilityRemovalCompletionAudit({
+  const audit = buildPolicyCompatibilityRemovalCompletionAudit({
     completionAuthorization: buildCompletionAuthorization(pathState),
     executionPlan,
     removalVerifications: buildRemovalVerifications(pathState),
@@ -143,7 +143,7 @@ function buildPolicyBuilderPhase8FinalRemovalAuditEvidence({
     statusId: audit.statusId,
     complete:
       audit.statusId ===
-      PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE &&
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE &&
       audit.complete === true,
     pathState,
     finalImportScan,

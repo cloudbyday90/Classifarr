@@ -97,5 +97,5 @@ Implemented:
 
 Next:
 
-- Cut over the compatibility removal completion audit modules, docs, and
-  runners to durable policy-domain names.
+- Cut over completion checkpoint modules, docs, and runners to durable
+  policy-domain names.

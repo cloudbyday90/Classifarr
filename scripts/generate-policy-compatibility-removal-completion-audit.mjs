@@ -14,8 +14,8 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  buildPolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact,
-} from '../server/src/services/policyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact.mjs';
+  buildPolicyCompatibilityRemovalCompletionAuditArtifact,
+} from '../server/src/services/policyCompatibilityRemovalCompletionAuditArtifact.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -83,12 +83,12 @@ function parseArgs(argv = []) {
 
 function usage() {
   return [
-    'Usage: node scripts/generate-policy-builder-phase-8r-completion-audit.mjs [options]',
+    'Usage: node scripts/generate-policy-compatibility-removal-completion-audit.mjs [options]',
     '',
     'Options:',
-    '  --completion-authorization <json>  Required Phase 8R.20 authorization JSON.',
-    '  --execution-plan <json>            Required Phase 8R.15 execution-plan JSON.',
-    '  --input <json>                     Required Phase 8R.21 audit input JSON.',
+    '  --completion-authorization <json>  Required next-batch authorization JSON.',
+    '  --execution-plan <json>            Required compatibility deletion execution-plan JSON.',
+    '  --input <json>                     Required completion audit input JSON.',
     '  --output <json>                    Write nested audit JSON to this path.',
     '  --artifact-output <json>           Write wrapper artifact JSON to this path.',
     '  --allow-blocked                    Allow writing blocked audit output.',
@@ -164,7 +164,7 @@ function main() {
     process.exit(2);
   }
 
-  const artifact = buildPolicyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact({
+  const artifact = buildPolicyCompatibilityRemovalCompletionAuditArtifact({
     completionAuthorization,
     executionPlan,
     input,
@@ -173,7 +173,7 @@ function main() {
 
   if (artifact.statusId === 'blocked' && options.allowBlocked !== true) {
     console.error(
-      'Phase 8R compatibility removal completion audit artifact is blocked; pass --allow-blocked to write diagnostic output.'
+      'Compatibility removal completion audit artifact is blocked; pass --allow-blocked to write diagnostic output.'
     );
     console.error(JSON.stringify({
       statusId: artifact.statusId,

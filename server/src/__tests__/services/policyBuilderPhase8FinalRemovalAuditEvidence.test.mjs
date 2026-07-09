@@ -2,8 +2,8 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-} from '../../services/policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs';
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
+} from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 import {
   buildManifestPathState,
   buildPolicyBuilderPhase8FinalRemovalAuditEvidence,
@@ -85,7 +85,7 @@ describe('policyBuilderPhase8FinalRemovalAuditEvidence', () => {
     });
 
     expect(evidence.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
         .REMAINING_INVENTORY);
     expect(evidence.complete).toBe(false);
     expect(evidence.pathState).toEqual(expect.objectContaining({
@@ -108,7 +108,7 @@ describe('policyBuilderPhase8FinalRemovalAuditEvidence', () => {
     });
 
     expect(evidence.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE);
+      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE);
     expect(evidence.complete).toBe(true);
     expect(evidence.pathState).toEqual(expect.objectContaining({
       existingCount: 0,
@@ -134,7 +134,7 @@ describe('policyBuilderPhase8FinalRemovalAuditEvidence', () => {
     });
 
     expect(evidence.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
         .BLOCKED_BY_FINAL_SCAN);
     expect(evidence.audit.finalImportScan.referenceCount).toBe(1);
   });
@@ -151,7 +151,7 @@ describe('policyBuilderPhase8FinalRemovalAuditEvidence', () => {
     });
 
     expect(evidence.statusId)
-      .toBe(PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
         .BLOCKED_BY_VALIDATION);
     expect(evidence.audit.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
       'focused_validation_missing',

@@ -100,7 +100,7 @@ function usage() {
     'Options:',
     '  --component-evidence <json>        Required Phase 8R component evidence array JSON.',
     '  --roadmap-evidence <json>          Required Phase 8R roadmap evidence JSON.',
-    '  --completion-audit-artifact <json> Required Phase 8R.31 completion-audit artifact JSON.',
+    '  --completion-audit-artifact <json> Required compatibility-removal completion-audit artifact JSON.',
     '  --validation-evidence <json>       Required Phase 8R validation evidence JSON.',
     '  --changelog-evidence <json>        Required Phase 8R changelog evidence JSON.',
     '  --output <json>                    Write nested checkpoint JSON to this path.',

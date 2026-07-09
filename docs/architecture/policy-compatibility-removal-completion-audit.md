@@ -1,17 +1,17 @@
-# Policy Builder Phase 8R Compatibility Removal Completion Audit
+# Policy Compatibility Removal Completion Audit
 
 ## Intent
 
-Phase 8R.21 proves whether the approved compatibility removal inventory is
-actually complete. It is a side-effect-free completion verifier: it does not
-delete files, archive code, mutate storage, write manifests, run tests, run Git
-commands, or execute source searches.
+Policy compatibility removal completion audit proves whether the approved
+compatibility removal inventory is actually complete. It is a side-effect-free
+completion verifier: it does not delete files, archive code, mutate storage,
+write manifests, run tests, run Git commands, or execute source searches.
 
 The component consumes bounded evidence:
 
-- Phase 8R.20 completion authorization,
-- the approved Phase 8R.15 compatibility deletion manifest,
-- verified Phase 8R.19 removal evidence,
+- complete next-batch authorization evidence,
+- the approved compatibility deletion manifest,
+- verified post-removal runtime evidence,
 - final import/reference scan evidence,
 - focused and full validation evidence.
 
@@ -21,33 +21,33 @@ incomplete, the audit blocks with explicit risk IDs.
 
 ## Official-Source Research
 
-- Git `grep` documents bounded searches across tracked files, the index, or
-  tree objects. Phase 8R.21 consumes final source-search evidence, but it does
-  not execute searches itself.
-- Git pathspecs define exact path matching for scoped Git operations. Phase
-  8R.21 keeps completion evidence tied to exact approved manifest paths rather
-  than broad selectors.
 - NIST SP 800-128 frames configuration management around controlled change and
-  monitoring for system integrity. Phase 8R.21 applies that by verifying the
-  end state after controlled removals before the phase exits compatibility
-  removal mode.
+  monitoring for system integrity. This audit verifies the end state after
+  controlled removals before storage cleanup exits compatibility removal mode.
 - NIST SSDF recommends secure development practices through the software
-  lifecycle. Phase 8R.21 preserves auditable evidence that old compatibility
-  code is removed only after validation and reference checks pass.
+  lifecycle. This audit preserves evidence that old compatibility code is
+  removed only after validation and reference checks pass.
+- OWASP Logging guidance recommends event records with enough context to
+  support operational and security review. This audit records manifest coverage,
+  removal verification counts, final reference-scan results, validation inputs,
+  risks, and side-effect status.
+- Git `mv` documents explicit tracked file movement. The cutover uses explicit
+  renames so filenames, imports, runners, and docs reflect the durable audit
+  contract.
 - OWASP API9:2023 Improper Inventory Management highlights stale, undocumented,
-  or deprecated surfaces as risk. Phase 8R.21 treats legacy compatibility paths
+  or deprecated surfaces as risk. This audit treats legacy compatibility paths
   as inventory that must be proven gone or explicitly reported as remaining.
 
 Sources:
 
-- Git `grep` documentation:
-  <https://git-scm.com/docs/git-grep>
-- Git glossary pathspec documentation:
-  <https://git-scm.com/docs/gitglossary>
 - NIST SP 800-128:
   <https://csrc.nist.gov/pubs/sp/800/128/upd1/final>
 - NIST Secure Software Development Framework:
-  <https://csrc.nist.gov/pubs/sp/800/218/final>
+  <https://csrc.nist.gov/projects/ssdf>
+- OWASP Logging Cheat Sheet:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html>
+- Git `mv` documentation:
+  <https://git-scm.com/docs/git-mv>
 - OWASP API9:2023 Improper Inventory Management:
   <https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/>
 
@@ -56,7 +56,7 @@ Sources:
 ### Treat Completion As A Proof, Not A Search Miss
 
 Do not claim compatibility removal is complete just because no obvious work is
-visible. Require affirmative evidence: completed 8R.20 authorization, manifest
+visible. Require affirmative evidence: complete authorization, manifest
 coverage, verified removals, final scan evidence, and validation results.
 
 Pros:
@@ -76,7 +76,7 @@ collapsing it into a generic failure.
 
 Pros:
 
-- tells operators to continue the 8R.17 through 8R.20 loop,
+- tells operators to continue the bounded removal loop,
 - avoids treating expected incremental work as corruption,
 - keeps completion and continuation distinct.
 
@@ -101,7 +101,7 @@ Cons:
 
 ### Require Focused And Full Validation
 
-Focused checks prove the affected Phase 8R surfaces. Full validation proves
+Focused checks prove the affected policy cleanup surfaces. Full validation proves
 broader platform behavior after the removal loop.
 
 Pros:
@@ -116,11 +116,12 @@ Cons:
 
 ## Final Recommendation Stack
 
-Use this stack for Phase 8R.21:
+Use this stack for compatibility removal completion audit:
 
-1. Require valid Phase 8R.20 `complete_no_remaining_paths` evidence.
-2. Require a valid Phase 8R.15 execution plan with approved manifest entries.
-3. Require at least one verified Phase 8R.19 removal verification.
+1. Require valid `complete_no_remaining_paths` authorization evidence.
+2. Require a valid compatibility deletion execution plan with approved manifest
+   entries.
+3. Require at least one verified post-removal runtime verification.
 4. Prove every approved manifest path is covered by verified removal evidence.
 5. Require final import/reference scan evidence for every manifest path.
 6. Block if the final scan reports any remaining reference.
@@ -132,7 +133,7 @@ Use this stack for Phase 8R.21:
 
 Implemented:
 
-- Added `policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs`.
+- Added `policyCompatibilityRemovalCompletionAudit.mjs`.
 - Added status IDs for:
   - complete,
   - remaining inventory,
@@ -163,7 +164,10 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Phase 8R.22 Phase Completion Checkpoint**. That task should
-audit the Phase 8R roadmap, service contracts, tests, docs, and changelog
-coverage before deciding whether Phase 8R is fully implemented or whether a
-remaining component still needs work.
+Proceed with **Completion Checkpoint module naming cutover**. That task should
+remove the remaining phase-coded checkpoint service, artifact, script, and test
+names from production code.
+The payload now emits `version =
+policy.compatibility_removal_completion_audit.v1` and
+`nextStep.stepId = policy_storage_completion_checkpoint`; production output
+does not expose `nextPhase.phaseId`.

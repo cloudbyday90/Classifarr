@@ -191,9 +191,9 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_21',
     label: 'Compatibility Removal Completion Audit',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-compatibility-removal-completion-audit.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8CompatibilityRemovalCompletionAudit.test.mjs'],
+    designDocPaths: ['docs/architecture/policy-compatibility-removal-completion-audit.md'],
+    contractPaths: ['server/src/services/policyCompatibilityRemovalCompletionAudit.mjs'],
+    testPaths: ['server/src/__tests__/services/policyCompatibilityRemovalCompletionAudit.test.mjs'],
   },
   {
     phaseId: '8r_22',
