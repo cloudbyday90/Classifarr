@@ -4,10 +4,10 @@ import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { withPolicyIntentProjection } from '../services/policyIntentMapper.mjs';
 import { buildPolicyImpactPreviewMigrationVerifier } from '../services/policyImpactPreviewMigrationVerifier.mjs';
 import {
-  buildPolicyBuilderPhase8ReplayMigrationVerifier,
-  buildPolicyBuilderPhase8ReplayMigrationSampleQuery,
-  normalizePolicyBuilderPhase8ReplayMigrationLimit,
-} from '../services/policyBuilderPhase8ReplayMigrationVerifier.mjs';
+  buildPolicyReplayPreviewMigrationVerifier,
+  buildPolicyReplayPreviewMigrationSampleQuery,
+  normalizePolicyReplayPreviewMigrationLimit,
+} from '../services/policyReplayPreviewMigrationVerifier.mjs';
 import { createPolicyIntentReplayExecutionContext } from '../services/policyIntentReplayExecutionContext.mjs';
 import { buildPolicyIntentReplayScoring } from '../services/policyIntentReplayScoring.mjs';
 import {
@@ -140,8 +140,8 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
         policy: previewPolicy,
         payload: req.body,
       });
-      const replayLimit = normalizePolicyBuilderPhase8ReplayMigrationLimit(req.body?.replay_limit);
-      const sampleQuery = buildPolicyBuilderPhase8ReplayMigrationSampleQuery({
+      const replayLimit = normalizePolicyReplayPreviewMigrationLimit(req.body?.replay_limit);
+      const sampleQuery = buildPolicyReplayPreviewMigrationSampleQuery({
         libraryId: previewPolicy.library_id,
         mediaType: previewPolicy.library_media_type,
         limit: replayLimit,
@@ -196,7 +196,7 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
         evidenceCompleteness,
         tmdbMetadataAdapterPreview,
       });
-      const preview = buildPolicyBuilderPhase8ReplayMigrationVerifier({
+      const preview = buildPolicyReplayPreviewMigrationVerifier({
         impactPreview,
         samples: sampleRows.rows || [],
         scoring,

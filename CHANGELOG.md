@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Replay Preview Migration Verifier Module Cutover** — renamed the
+  replay-preview migration verifier service, focused test, exports, diagnostics
+  import, validation evidence, roadmap references, and design docs to durable
+  product-domain names while preserving bounded representative replay queries,
+  sanitized sample output, disabled execution flags, and read-only verifier
+  behavior.
 - **Policy Impact Preview Migration Verifier Module Cutover** — renamed the
   impact-preview migration verifier service, focused test, exports, validation
   evidence, roadmap references, and design docs to durable product-domain names
@@ -945,9 +951,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   `PolicyStarterTemplateAccelerator.vue` replacement in the Phase 1R boundary
   and Phase 3R workflow inventories, added focused inventory assertions, and
   documented the validation gap that blocked Phase 8R final closure evidence.
-- **Policy Builder Phase 8R Replay Preview Removal** — removed the
+- **Policy Replay Preview Migration Verifier** — removed the
   `policyIntentReplayPreview.mjs` compatibility service path, replaced it with
-  a Phase 8R replay migration verifier, updated policy write routes and replay
+  a durable replay migration verifier, updated policy write routes and replay
   diagnostics to use the verifier utilities, refreshed focused replay/route
   coverage, and added the verifier to policy storage closure validation evidence.
 - **Policy Impact Preview Migration Verifier** — removed the

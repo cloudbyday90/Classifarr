@@ -155,7 +155,7 @@ const CURRENT_NATIVE_STORAGE_TEST_RECORDS = Object.freeze([
     deleteAfterNativeStorageGates: true,
   },
   {
-    path: 'server/src/__tests__/policyBuilderPhase8ReplayMigrationVerifier.test.mjs',
+    path: 'server/src/__tests__/policyReplayPreviewMigrationVerifier.test.mjs',
     coverageIds: [],
     abandonedDiagnosticUi: true,
     deleteAfterNativeStorageGates: true,

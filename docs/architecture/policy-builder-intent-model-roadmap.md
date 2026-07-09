@@ -5382,17 +5382,19 @@ Current removal slice:
   endpoint, but it no longer imports the deleted compatibility service path.
 - The focused service test now targets
   `server/src/__tests__/services/policyImpactPreviewMigrationVerifier.test.mjs`.
-- Replay-preview service removal is documented in
-  [Policy Builder Phase 8R Replay Preview Removal](policy-builder-phase-8r-replay-preview-removal.md).
+- Replay-preview migration verification is documented in
+  [Policy Replay Preview Migration Verifier](policy-replay-preview-migration-verifier.md)
+  and
+  [Policy Replay Preview Migration Verifier Module Cutover](policy-replay-preview-migration-verifier-module-cutover.md).
 - The approved compatibility path
   `server/src/services/policyIntentReplayPreview.mjs` has been removed from
   product/runtime code and replaced by
-  `server/src/services/policyBuilderPhase8ReplayMigrationVerifier.mjs`.
+  `server/src/services/policyReplayPreviewMigrationVerifier.mjs`.
 - The policy write route still exposes the current replay-preview endpoint for
-  the existing UI, but server composition now runs through the Phase 8R
-  migration verifier.
+  the existing UI, but server composition now runs through the durable migration
+  verifier.
 - The focused replay service test now targets
-  `server/src/__tests__/policyBuilderPhase8ReplayMigrationVerifier.test.mjs`.
+  `server/src/__tests__/policyReplayPreviewMigrationVerifier.test.mjs`.
 
 ### 8R.22 Policy Storage Completion Checkpoint
 

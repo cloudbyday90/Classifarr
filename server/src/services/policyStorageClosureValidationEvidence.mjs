@@ -28,7 +28,7 @@ const POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS = Object.freeze([
     command: 'node',
     args: [
       './scripts/run-jest.mjs',
-      '--testPathPatterns=policyStorageClosureCurrentEvidenceCollector|policyStorageClosureEvidenceRun|policyStorageCompletionCheckpoint|policyStorageCompletionCheckpointArtifact|policyStorageCurrentClosureAudit|policyStorageClosureRequirementAudit|policyCompatibilityRemovalCompletionAudit|policyCompatibilityRemovalCompletionAuditArtifact|policyStorageClosureValidationEvidence|policyCompatibilityDeletionExecutionPlanArtifact|policyControlledCompatibilityRemovalBatchArtifact|policyControlledRemovalApplyArtifact|policyPostRemovalRuntimeVerificationArtifact|policyNextCompatibilityRemovalBatchAuthorizationArtifact|policyStorageClosureFinalRemovalAudit|policyStorageFinalClosureReadout|policyImpactPreviewMigrationVerifier|policyBuilderPhase8ReplayMigrationVerifier',
+      '--testPathPatterns=policyStorageClosureCurrentEvidenceCollector|policyStorageClosureEvidenceRun|policyStorageCompletionCheckpoint|policyStorageCompletionCheckpointArtifact|policyStorageCurrentClosureAudit|policyStorageClosureRequirementAudit|policyCompatibilityRemovalCompletionAudit|policyCompatibilityRemovalCompletionAuditArtifact|policyStorageClosureValidationEvidence|policyCompatibilityDeletionExecutionPlanArtifact|policyControlledCompatibilityRemovalBatchArtifact|policyControlledRemovalApplyArtifact|policyPostRemovalRuntimeVerificationArtifact|policyNextCompatibilityRemovalBatchAuthorizationArtifact|policyStorageClosureFinalRemovalAudit|policyStorageFinalClosureReadout|policyImpactPreviewMigrationVerifier|policyReplayPreviewMigrationVerifier',
       '--no-coverage',
       '--runInBand',
     ],
@@ -81,7 +81,8 @@ const POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS = Object.freeze([
       'docs/architecture/policy-storage-closure-final-removal-audit-module-cutover.md',
       'docs/architecture/policy-impact-preview-migration-verifier.md',
       'docs/architecture/policy-impact-preview-migration-verifier-module-cutover.md',
-      'docs/architecture/policy-builder-phase-8r-replay-preview-removal.md',
+      'docs/architecture/policy-replay-preview-migration-verifier.md',
+      'docs/architecture/policy-replay-preview-migration-verifier-module-cutover.md',
       'docs/architecture/policy-builder-phase-8r-closure-inventory-sync.md',
     ],
     cwd: '.',

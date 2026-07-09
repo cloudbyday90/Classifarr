@@ -9,9 +9,9 @@
 import { ValidationError } from '../utils/appError.mjs';
 import { buildPolicyIntentReplayParityDelta } from './policyIntentReplayParityDelta.mjs';
 
-export const POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_SCHEMA_VERSION = 1;
-export const POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_DEFAULT_LIMIT = 10;
-export const POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_MAX_LIMIT = 25;
+export const POLICY_REPLAY_PREVIEW_MIGRATION_VERIFIER_SCHEMA_VERSION = 1;
+export const POLICY_REPLAY_PREVIEW_MIGRATION_VERIFIER_DEFAULT_LIMIT = 10;
+export const POLICY_REPLAY_PREVIEW_MIGRATION_VERIFIER_MAX_LIMIT = 25;
 
 const FINAL_SUCCESS_STATUSES = new Set(['completed', 'routed', 'verified', 'reclassified']);
 const ALLOWED_MEDIA_TYPES = new Set(['movie', 'tv']);
@@ -53,23 +53,23 @@ function normalizeMediaType(value) {
   return ALLOWED_MEDIA_TYPES.has(normalized) ? normalized : null;
 }
 
-export function normalizePolicyBuilderPhase8ReplayMigrationLimit(value) {
+export function normalizePolicyReplayPreviewMigrationLimit(value) {
   if (value === null || value === undefined || value === '') {
-    return POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_DEFAULT_LIMIT;
+    return POLICY_REPLAY_PREVIEW_MIGRATION_VERIFIER_DEFAULT_LIMIT;
   }
 
   const parsed = Number.parseInt(value, 10);
   if (!Number.isInteger(parsed)) {
-    return POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_DEFAULT_LIMIT;
+    return POLICY_REPLAY_PREVIEW_MIGRATION_VERIFIER_DEFAULT_LIMIT;
   }
 
   return Math.min(
-    POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_MAX_LIMIT,
+    POLICY_REPLAY_PREVIEW_MIGRATION_VERIFIER_MAX_LIMIT,
     Math.max(1, parsed)
   );
 }
 
-export function buildPolicyBuilderPhase8ReplayMigrationSampleQuery({
+export function buildPolicyReplayPreviewMigrationSampleQuery({
   libraryId,
   mediaType = null,
   limit,
@@ -79,7 +79,7 @@ export function buildPolicyBuilderPhase8ReplayMigrationSampleQuery({
     throw new ValidationError('A valid library_id is required for replay migration verification');
   }
 
-  const normalizedLimit = normalizePolicyBuilderPhase8ReplayMigrationLimit(limit);
+  const normalizedLimit = normalizePolicyReplayPreviewMigrationLimit(limit);
   const normalizedMediaType = normalizeMediaType(mediaType);
   const values = [parsedLibraryId];
   const predicates = ['library_id = $1'];
@@ -122,7 +122,7 @@ export function buildPolicyBuilderPhase8ReplayMigrationSampleQuery({
   };
 }
 
-export function sanitizePolicyBuilderPhase8ReplayMigrationSample(row = {}, index = 0) {
+export function sanitizePolicyReplayPreviewMigrationSample(row = {}, index = 0) {
   const status = boundedString(row.status, 32, 'unknown');
 
   return {
@@ -139,7 +139,7 @@ export function sanitizePolicyBuilderPhase8ReplayMigrationSample(row = {}, index
   };
 }
 
-export function buildPolicyBuilderPhase8ReplayMigrationVerifier({
+export function buildPolicyReplayPreviewMigrationVerifier({
   impactPreview,
   samples = [],
   scoring = null,
@@ -150,11 +150,11 @@ export function buildPolicyBuilderPhase8ReplayMigrationVerifier({
   enrichmentAdapterContract = null,
   tmdbMetadataAdapterPreview = null,
   tmdbMetadataCoverageComparison = null,
-  requestedLimit = POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_DEFAULT_LIMIT,
+  requestedLimit = POLICY_REPLAY_PREVIEW_MIGRATION_VERIFIER_DEFAULT_LIMIT,
 } = {}) {
-  const normalizedLimit = normalizePolicyBuilderPhase8ReplayMigrationLimit(requestedLimit);
+  const normalizedLimit = normalizePolicyReplayPreviewMigrationLimit(requestedLimit);
   const sanitizedSamples = samples.map((sample, index) => (
-    sanitizePolicyBuilderPhase8ReplayMigrationSample(sample, index)
+    sanitizePolicyReplayPreviewMigrationSample(sample, index)
   ));
   const comparison = impactPreview?.comparison ?? {};
   const parityDelta = buildPolicyIntentReplayParityDelta({
@@ -163,7 +163,7 @@ export function buildPolicyBuilderPhase8ReplayMigrationVerifier({
   });
 
   return {
-    schema_version: POLICY_BUILDER_PHASE8_REPLAY_MIGRATION_VERIFIER_SCHEMA_VERSION,
+    schema_version: POLICY_REPLAY_PREVIEW_MIGRATION_VERIFIER_SCHEMA_VERSION,
     mode: 'read_only_replay_migration_verifier',
     persistence_enabled: false,
     execution: {

@@ -7,23 +7,23 @@
  */
 
 import {
-  buildPolicyBuilderPhase8ReplayMigrationVerifier,
-  buildPolicyBuilderPhase8ReplayMigrationSampleQuery,
-  normalizePolicyBuilderPhase8ReplayMigrationLimit,
-  sanitizePolicyBuilderPhase8ReplayMigrationSample,
-} from '../services/policyBuilderPhase8ReplayMigrationVerifier.mjs';
+  buildPolicyReplayPreviewMigrationVerifier,
+  buildPolicyReplayPreviewMigrationSampleQuery,
+  normalizePolicyReplayPreviewMigrationLimit,
+  sanitizePolicyReplayPreviewMigrationSample,
+} from '../services/policyReplayPreviewMigrationVerifier.mjs';
 
-describe('policyBuilderPhase8ReplayMigrationVerifier', () => {
+describe('policyReplayPreviewMigrationVerifier', () => {
   test('normalizes replay limits with defaults and caps', () => {
-    expect(normalizePolicyBuilderPhase8ReplayMigrationLimit(undefined)).toBe(10);
-    expect(normalizePolicyBuilderPhase8ReplayMigrationLimit('not-a-number')).toBe(10);
-    expect(normalizePolicyBuilderPhase8ReplayMigrationLimit(0)).toBe(1);
-    expect(normalizePolicyBuilderPhase8ReplayMigrationLimit(99)).toBe(25);
-    expect(normalizePolicyBuilderPhase8ReplayMigrationLimit('7')).toBe(7);
+    expect(normalizePolicyReplayPreviewMigrationLimit(undefined)).toBe(10);
+    expect(normalizePolicyReplayPreviewMigrationLimit('not-a-number')).toBe(10);
+    expect(normalizePolicyReplayPreviewMigrationLimit(0)).toBe(1);
+    expect(normalizePolicyReplayPreviewMigrationLimit(99)).toBe(25);
+    expect(normalizePolicyReplayPreviewMigrationLimit('7')).toBe(7);
   });
 
   test('builds parameterized representative sample queries', () => {
-    const query = buildPolicyBuilderPhase8ReplayMigrationSampleQuery({
+    const query = buildPolicyReplayPreviewMigrationSampleQuery({
       libraryId: 12,
       mediaType: 'movie',
       limit: 3,
@@ -41,7 +41,7 @@ describe('policyBuilderPhase8ReplayMigrationVerifier', () => {
   });
 
   test('rejects missing library id for replay samples', () => {
-    expect(() => buildPolicyBuilderPhase8ReplayMigrationSampleQuery({
+    expect(() => buildPolicyReplayPreviewMigrationSampleQuery({
       libraryId: null,
       mediaType: 'movie',
       limit: 3,
@@ -49,7 +49,7 @@ describe('policyBuilderPhase8ReplayMigrationVerifier', () => {
   });
 
   test('sanitizes sample rows without raw metadata identifiers', () => {
-    const sample = sanitizePolicyBuilderPhase8ReplayMigrationSample({
+    const sample = sanitizePolicyReplayPreviewMigrationSample({
       id: 42,
       tmdb_id: 10674,
       title: 'Mulan',
@@ -83,7 +83,7 @@ describe('policyBuilderPhase8ReplayMigrationVerifier', () => {
   });
 
   test('builds no-execution replay readiness preview', () => {
-    const preview = buildPolicyBuilderPhase8ReplayMigrationVerifier({
+    const preview = buildPolicyReplayPreviewMigrationVerifier({
       impactPreview: {
         validation: { valid: true, errors: [] },
         comparison: {

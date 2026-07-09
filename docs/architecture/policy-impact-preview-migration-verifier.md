@@ -118,6 +118,5 @@ Implemented:
 
 ## Next Step
 
-Replay-preview service removal is tracked in
-[Policy Builder Phase 8R Replay Preview Removal](policy-builder-phase-8r-replay-preview-removal.md).
-Its verifier still needs the same durable production-name cutover.
+Replay-preview migration verification is tracked in
+[Policy Replay Preview Migration Verifier](policy-replay-preview-migration-verifier.md).
