@@ -9,8 +9,8 @@ import {
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
 } from './policyPostRemovalRuntimeVerification.mjs';
 
-const PHASE8R_FINAL_REMOVAL_AUDIT_EVIDENCE_VERSION =
-  'phase8r.final_removal_audit_evidence.v1';
+const POLICY_STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT_VERSION =
+  'policy.storage_closure_final_removal_audit.v1';
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -116,7 +116,7 @@ function buildFinalImportScan({
   };
 }
 
-function buildPolicyBuilderPhase8FinalRemovalAuditEvidence({
+function buildPolicyStorageClosureFinalRemovalAudit({
   executionPlan = {},
   validationEvidence = {},
   referenceScan = {},
@@ -139,7 +139,7 @@ function buildPolicyBuilderPhase8FinalRemovalAuditEvidence({
   });
 
   return {
-    version: PHASE8R_FINAL_REMOVAL_AUDIT_EVIDENCE_VERSION,
+    version: POLICY_STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT_VERSION,
     statusId: audit.statusId,
     complete:
       audit.statusId ===
@@ -152,11 +152,11 @@ function buildPolicyBuilderPhase8FinalRemovalAuditEvidence({
 }
 
 export {
-  PHASE8R_FINAL_REMOVAL_AUDIT_EVIDENCE_VERSION,
+  POLICY_STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT_VERSION,
   buildCompletionAuthorization,
   buildFinalImportScan,
   buildManifestPathState,
-  buildPolicyBuilderPhase8FinalRemovalAuditEvidence,
+  buildPolicyStorageClosureFinalRemovalAudit,
   buildRemovalVerifications,
   getExecutionPlanManifestPaths,
 };

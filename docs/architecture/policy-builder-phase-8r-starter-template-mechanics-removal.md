@@ -93,7 +93,7 @@ Cons:
 - Focused test:
   `client/src/__tests__/PolicyStarterTemplateAccelerator.test.js`
 - Final-removal scanner:
-  `scripts/generate-policy-builder-phase-8r-final-removal-audit.mjs`
+  `scripts/generate-policy-storage-closure-final-removal-audit.mjs`
 
 ## Implementation Outcome
 
@@ -104,8 +104,9 @@ Implemented:
 - Updated `PolicyBuilderModal.vue` to import/use the replacement.
 - Replaced the focused component test with
   `PolicyStarterTemplateAccelerator.test.js`.
-- Hardened the Phase 8R final-removal reference scanner to exclude test files,
-  Phase control-plane services, and the legacy compatibility inventory service.
+- Hardened the storage-closure final-removal reference scanner to exclude test
+  files, Phase control-plane services, and the legacy compatibility inventory
+  service.
 
 ## Security Outcome
 

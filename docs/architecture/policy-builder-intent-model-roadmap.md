@@ -5568,24 +5568,25 @@ Implementation status:
   blockers in the storage closure evidence run; final-removal-audit JSON remains
   the next closure input.
 
-### 8R.25 Final Removal Audit Exporter
+### 8R.25 Policy Storage Closure Final Removal Audit
 
-Intent: generate the machine-readable Phase 8R.21 final-removal-audit JSON that
-the Phase 8R.23 evidence run requires, without claiming completion while
+Intent: generate the machine-readable final-removal-audit JSON that the policy
+storage closure evidence run requires, without claiming completion while
 approved manifest paths still exist.
 
 Tasks:
 
-- Require a Phase 8R.15 execution-plan JSON artifact as the manifest source.
+- Require an approved compatibility deletion execution-plan JSON artifact as
+  the manifest source.
 - Read approved manifest paths from the execution plan.
 - Inspect current checkout path existence for every manifest path.
-- Build Phase 8R.20-compatible completion authorization evidence from current
-  removed and remaining path state.
-- Build Phase 8R.19-compatible removal verification evidence for paths that no
-  longer exist.
+- Build next-batch authorization evidence from current removed and remaining
+  path state.
+- Build post-removal runtime verification evidence for paths that no longer
+  exist.
 - Scan source roots for exact manifest path references and feed that into the
   final import/reference scan evidence.
-- Compose the existing Phase 8R.21 compatibility-removal completion audit.
+- Compose the existing policy compatibility removal completion audit.
 - Emit audit JSON without deleting files, mutating storage, running Git, or
   changing checkpoint semantics.
 
@@ -5601,24 +5602,26 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.25 final removal audit export is documented in
-  [Policy Builder Phase 8R Final Removal Audit Exporter](policy-builder-phase-8r-final-removal-audit-exporter.md).
+- Policy storage closure final removal audit is documented in
+  [Policy Storage Closure Final Removal Audit](policy-storage-closure-final-removal-audit.md).
+- The module naming cutover is documented in
+  [Policy Storage Closure Final Removal Audit Module Cutover](policy-storage-closure-final-removal-audit-module-cutover.md).
 - The final-removal audit evidence contract lives in
-  `server/src/services/policyBuilderPhase8FinalRemovalAuditEvidence.mjs`.
+  `server/src/services/policyStorageClosureFinalRemovalAudit.mjs`.
 - The exporter script lives in
-  `scripts/generate-policy-builder-phase-8r-final-removal-audit.mjs`.
-- The root runner is exposed as `npm run policy:phase8r:final-removal-audit`.
+  `scripts/generate-policy-storage-closure-final-removal-audit.mjs`.
+- The root runner is exposed as `npm run policy:storage-closure-final-removal-audit`.
 - The focused final-removal audit evidence test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8FinalRemovalAuditEvidence.test.mjs`.
+  `server/src/__tests__/services/policyStorageClosureFinalRemovalAudit.test.mjs`.
 - Current implementation can generate the final-removal-audit JSON input for
-  the Phase 8R.23 evidence run; completion remains dependent on the real
-  execution-plan artifact and current checkout removal state.
+  the policy storage closure evidence run; completion remains dependent on the
+  real execution-plan artifact and current checkout removal state.
 
 ### 8R.26 Execution Plan Artifact Exporter
 
 Intent: generate the machine-readable Phase 8R.15 execution-plan JSON that the
-Phase 8R.25 final-removal audit exporter requires, without fabricating deletion
-readiness or performing compatibility path removal.
+policy storage closure final-removal audit requires, without fabricating
+deletion readiness or performing compatibility path removal.
 
 Tasks:
 
@@ -5629,7 +5632,8 @@ Tasks:
   execution-plan contract.
 - Wrap the generated plan with bounded artifact metadata, risks, validation,
   and no-side-effect evidence.
-- Write the nested execution-plan JSON for downstream Phase 8R.25 tooling.
+- Write the nested execution-plan JSON for downstream storage-closure final
+  audit tooling.
 - Optionally write the wrapper artifact for audit trails.
 - Block by default when the generated execution plan is not ready.
 - Avoid deleting files, archiving files, mutating storage, running Git, or
@@ -5642,7 +5646,7 @@ Acceptance criteria:
 - Ready input writes a valid Phase 8R.15 execution-plan JSON artifact.
 - Blocked diagnostic output requires explicit `--allow-blocked`.
 - The generated execution-plan JSON can be passed to
-  `npm run policy:phase8r:final-removal-audit`.
+  `npm run policy:storage-closure-final-removal-audit`.
 - The exporter does not delete files, archive files, mutate storage, run Git, or
   apply removal batches.
 
@@ -5658,8 +5662,8 @@ Implementation status:
 - The focused execution-plan artifact test suite lives in
   `server/src/__tests__/services/policyBuilderPhase8ExecutionPlanArtifact.test.mjs`.
 - Current implementation generates the execution-plan JSON input required by
-  the Phase 8R.25 final-removal audit exporter while keeping deletion readiness
-  caller-owned and explicit.
+  the policy storage closure final-removal audit while keeping deletion
+  readiness caller-owned and explicit.
 
 ### 8R.27 Controlled Removal Batch Artifact Exporter
 
@@ -6185,10 +6189,10 @@ Implement Phase 8R in this order:
     Generates machine-readable focused, lint, markdown, and full validation
     evidence for the storage closure evidence run without changing checkpoint
     semantics.
-25. **8R.25 Final Removal Audit Exporter**
-    Generates machine-readable Phase 8R.21 final-removal-audit evidence from an
-    explicit execution-plan manifest, current path state, source reference scan,
-    and validation JSON.
+25. **8R.25 Policy Storage Closure Final Removal Audit**
+    Generates machine-readable final-removal-audit evidence from an explicit
+    execution-plan manifest, current path state, source reference scan, and
+    validation JSON.
 26. **8R.26 Execution Plan Artifact Exporter**
     Generates the machine-readable Phase 8R.15 execution-plan JSON from
     explicit readiness, manifest, replacement, approval, rollback, and support

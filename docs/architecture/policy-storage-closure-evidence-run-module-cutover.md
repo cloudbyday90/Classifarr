@@ -112,4 +112,4 @@ Implemented:
 
 ## Next Step
 
-Proceed with **Final Removal Audit Exporter module naming cutover**.
+Proceed with **Execution Plan Artifact Exporter module naming cutover**.

@@ -6,8 +6,8 @@ import {
 } from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 import {
   buildManifestPathState,
-  buildPolicyBuilderPhase8FinalRemovalAuditEvidence,
-} from '../../services/policyBuilderPhase8FinalRemovalAuditEvidence.mjs';
+  buildPolicyStorageClosureFinalRemovalAudit,
+} from '../../services/policyStorageClosureFinalRemovalAudit.mjs';
 
 const MANIFEST_PATHS = Object.freeze([
   'server/src/services/legacyA.mjs',
@@ -55,7 +55,7 @@ function validationEvidence(overrides = {}) {
   };
 }
 
-describe('policyBuilderPhase8FinalRemovalAuditEvidence', () => {
+describe('policyStorageClosureFinalRemovalAudit', () => {
   test('summarizes manifest path state from the current checkout', () => {
     const state = buildManifestPathState({
       executionPlan: executionPlan(),
@@ -73,7 +73,7 @@ describe('policyBuilderPhase8FinalRemovalAuditEvidence', () => {
   });
 
   test('reports remaining inventory when approved manifest paths still exist', () => {
-    const evidence = buildPolicyBuilderPhase8FinalRemovalAuditEvidence({
+    const evidence = buildPolicyStorageClosureFinalRemovalAudit({
       executionPlan: executionPlan(),
       validationEvidence: validationEvidence(),
       fileExists: () => true,
@@ -96,7 +96,7 @@ describe('policyBuilderPhase8FinalRemovalAuditEvidence', () => {
   });
 
   test('completes when manifest paths are removed, scanned, and validated', () => {
-    const evidence = buildPolicyBuilderPhase8FinalRemovalAuditEvidence({
+    const evidence = buildPolicyStorageClosureFinalRemovalAudit({
       executionPlan: executionPlan(),
       validationEvidence: validationEvidence(),
       fileExists: () => false,
@@ -118,7 +118,7 @@ describe('policyBuilderPhase8FinalRemovalAuditEvidence', () => {
   });
 
   test('blocks completion when final scan still reports references', () => {
-    const evidence = buildPolicyBuilderPhase8FinalRemovalAuditEvidence({
+    const evidence = buildPolicyStorageClosureFinalRemovalAudit({
       executionPlan: executionPlan(),
       validationEvidence: validationEvidence(),
       fileExists: () => false,
@@ -140,7 +140,7 @@ describe('policyBuilderPhase8FinalRemovalAuditEvidence', () => {
   });
 
   test('blocks completion when validation evidence is missing', () => {
-    const evidence = buildPolicyBuilderPhase8FinalRemovalAuditEvidence({
+    const evidence = buildPolicyStorageClosureFinalRemovalAudit({
       executionPlan: executionPlan(),
       fileExists: () => false,
       referenceScan: {

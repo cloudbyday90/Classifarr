@@ -14,9 +14,9 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  buildPolicyBuilderPhase8FinalRemovalAuditEvidence,
+  buildPolicyStorageClosureFinalRemovalAudit,
   getExecutionPlanManifestPaths,
-} from '../server/src/services/policyBuilderPhase8FinalRemovalAuditEvidence.mjs';
+} from '../server/src/services/policyStorageClosureFinalRemovalAudit.mjs';
 
 const DEFAULT_SCAN_ROOTS = Object.freeze([
   'client/src',
@@ -105,11 +105,11 @@ function parseArgs(argv = []) {
 
 function usage() {
   return [
-    'Usage: node scripts/generate-policy-builder-phase-8r-final-removal-audit.mjs [options]',
+    'Usage: node scripts/generate-policy-storage-closure-final-removal-audit.mjs [options]',
     '',
     'Options:',
     '  --cwd <path>                    Repository root. Defaults to process cwd.',
-    '  --execution-plan <json>         Required Phase 8R.15 execution-plan JSON.',
+    '  --execution-plan <json>         Required compatibility deletion execution-plan JSON.',
     '  --validation-evidence <json>    Optional policy storage closure validation evidence JSON.',
     '  --output <json>                 Write final-removal-audit JSON to this path.',
     '  --require-complete              Exit non-zero unless the audit completes.',
@@ -280,7 +280,7 @@ function main() {
   }
 
   const manifestPaths = getExecutionPlanManifestPaths(executionPlan);
-  const evidence = buildPolicyBuilderPhase8FinalRemovalAuditEvidence({
+  const evidence = buildPolicyStorageClosureFinalRemovalAudit({
     executionPlan,
     validationEvidence,
     referenceScan: scanReferences({

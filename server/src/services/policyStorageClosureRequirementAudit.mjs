@@ -98,13 +98,13 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   },
   {
     componentId: '8r_25',
-    label: 'Final Removal Audit Exporter',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-final-removal-audit-exporter.md'],
+    label: 'Policy Storage Closure Final Removal Audit',
+    designDocPaths: ['docs/architecture/policy-storage-closure-final-removal-audit.md'],
     contractPaths: [
-      'server/src/services/policyBuilderPhase8FinalRemovalAuditEvidence.mjs',
-      'scripts/generate-policy-builder-phase-8r-final-removal-audit.mjs',
+      'server/src/services/policyStorageClosureFinalRemovalAudit.mjs',
+      'scripts/generate-policy-storage-closure-final-removal-audit.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8FinalRemovalAuditEvidence.test.mjs'],
+    testPaths: ['server/src/__tests__/services/policyStorageClosureFinalRemovalAudit.test.mjs'],
   },
   {
     componentId: '8r_26',

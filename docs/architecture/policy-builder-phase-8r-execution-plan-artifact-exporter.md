@@ -2,9 +2,10 @@
 
 ## Intent
 
-Phase 8R.25 final-removal audit requires a concrete Phase 8R.15 execution-plan
-JSON artifact. The execution-plan artifact exporter creates that JSON from
-explicit input evidence and the existing Phase 8R.15 execution-plan contract.
+Policy storage closure final-removal audit requires a concrete Phase 8R.15
+execution-plan JSON artifact. The execution-plan artifact exporter creates that
+JSON from explicit input evidence and the existing Phase 8R.15 execution-plan
+contract.
 
 The exporter does not generate deletion readiness by assumption. It requires
 caller-supplied evidence for:
@@ -71,9 +72,10 @@ later tools expect, while optionally writing the wrapper artifact for audit.
 
 Pros:
 
-- keeps Phase 8R.25 final-removal-audit input simple,
+- keeps policy storage closure final-removal-audit input simple,
 - preserves richer generation metadata when desired,
-- avoids changing existing Phase 8R.15 and 8R.25 contracts.
+- avoids changing the existing Phase 8R.15 execution-plan contract or the
+  policy storage closure final-removal audit contract.
 
 Cons:
 
@@ -105,7 +107,8 @@ Use this stack for Phase 8R execution-plan artifact generation:
    and no-side-effect evidence.
 4. Refuse to write ready execution-plan output when readiness is blocked unless
    `--allow-blocked` is passed.
-5. Write the nested execution-plan JSON for downstream 8R.25 audit tooling.
+5. Write the nested execution-plan JSON for downstream storage-closure final
+   audit tooling.
 6. Optionally write the wrapper artifact for audit trails.
 
 ## Implementation Outcome
@@ -132,13 +135,14 @@ npm run --silent policy:phase8r:execution-plan -- \
   --artifact-output .tmp/phase8r/execution-plan-artifact.json
 ```
 
-Then pass the generated execution plan into the final-removal audit exporter:
+Then pass the generated execution plan into the storage-closure final-removal
+audit exporter:
 
 ```bash
-npm run --silent policy:phase8r:final-removal-audit -- \
+npm run --silent policy:storage-closure-final-removal-audit -- \
   --execution-plan .tmp/phase8r/execution-plan.json \
   --validation-evidence .tmp/policy-storage/validation-evidence.json \
-  --output .tmp/phase8r/final-removal-audit.json
+  --output .tmp/policy-storage/final-removal-audit.json
 ```
 
 ## Next Step

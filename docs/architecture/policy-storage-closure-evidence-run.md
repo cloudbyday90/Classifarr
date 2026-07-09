@@ -147,13 +147,13 @@ Example:
 
 ```bash
 node scripts/run-policy-storage-closure-evidence.mjs \
-  --final-removal-audit .tmp/phase8r/final-removal-audit.json \
+  --final-removal-audit .tmp/policy-storage/final-removal-audit.json \
   --validation-evidence .tmp/policy-storage/validation-evidence.json \
   --require-complete
 ```
 
 ## Next Step
 
-Proceed with **Final Removal Audit Exporter module naming cutover** so the next
-storage closure input stops exposing phase-coded service, script, and payload
-names.
+Proceed with **Execution Plan Artifact Exporter module naming cutover** so the
+execution-plan input used by the final removal audit stops exposing phase-coded
+service, script, and runner names.

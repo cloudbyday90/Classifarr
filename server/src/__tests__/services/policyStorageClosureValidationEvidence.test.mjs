@@ -37,7 +37,7 @@ describe('policyStorageClosureValidationEvidence', () => {
       command: expect.stringContaining('policyStorageClosureCurrentEvidenceCollector'),
     }));
     expect(evidence.focused.command)
-      .toContain('policyBuilderPhase8FinalRemovalAuditEvidence');
+      .toContain('policyStorageClosureFinalRemovalAudit');
     expect(evidence.focused.command)
       .toContain('policyBuilderPhase8ExecutionPlanArtifact');
     expect(evidence.focused.command)
@@ -47,7 +47,9 @@ describe('policyStorageClosureValidationEvidence', () => {
     expect(evidence.markdown.command)
       .toContain('policy-storage-closure-evidence-run-module-cutover.md');
     expect(evidence.markdown.command)
-      .toContain('policy-builder-phase-8r-final-removal-audit-exporter.md');
+      .toContain('policy-storage-closure-final-removal-audit.md');
+    expect(evidence.markdown.command)
+      .toContain('policy-storage-closure-final-removal-audit-module-cutover.md');
     expect(evidence.markdown.command)
       .toContain('policy-builder-phase-8r-execution-plan-artifact-exporter.md');
     expect(evidence.markdown.command)

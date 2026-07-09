@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Storage Closure Final Removal Audit Module Cutover** — renamed the
+  final-removal audit service, focused tests, docs, CLI script, payload
+  version, builder export, and npm runner to durable policy-storage closure
+  names, updated closure requirement audit, validation evidence, roadmap, and
+  handoff references, and preserved execution-plan manifest input, current path
+  state derivation, product/runtime reference scanning, remaining-inventory
+  reporting, validation blockers, and side-effect-free JSON generation.
 - **Policy Storage Closure Evidence Run Module Cutover** — renamed the storage
   closure evidence-run service, current-state collector, focused tests,
   design docs, CLI script, and npm runner to durable policy-storage closure
@@ -930,9 +937,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Builder Phase 8R Starter Template Mechanics Removal** — removed the
   `PolicyStarterTemplateMechanics.vue` compatibility path from product code,
   replaced it with `PolicyStarterTemplateAccelerator.vue`, updated focused
-  component coverage, and hardened the Phase 8R final-removal reference scanner
-  so control-plane manifest strings and tests do not block product/runtime
-  removal evidence.
+  component coverage, and hardened the storage-closure final-removal reference
+  scanner so control-plane manifest strings and tests do not block
+  product/runtime removal evidence.
 - **Policy Builder Phase 6R Evidence Boundary** — added a server-owned Phase
   6R.1 boundary that validates the public evidence input envelope, adapts
   public section names into the evidence projection shape, builds the
@@ -995,9 +1002,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   execution-plan JSON from explicit readiness, deletion-gate, replacement,
   rollback, support, approval, and actor evidence without fabricating readiness
   or applying compatibility removals.
-- **Policy Builder Phase 8R Final Removal Audit Exporter** — added a
+- **Policy Storage Closure Final Removal Audit** — added a
   machine-readable final-removal-audit evidence contract and
-  `npm run policy:phase8r:final-removal-audit` to compose the Phase 8R.21 audit
+  `npm run policy:storage-closure-final-removal-audit` to compose the
+  policy compatibility removal completion audit
   from an explicit execution-plan manifest, current checkout path state, source
   reference scan, and validation JSON; reports remaining inventory instead of
   claiming closure when approved manifest paths still exist.

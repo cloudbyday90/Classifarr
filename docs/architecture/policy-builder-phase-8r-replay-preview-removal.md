@@ -109,7 +109,7 @@ Implemented:
 
 ## Next Step
 
-Run the Phase 8R final-removal audit against the approved execution manifest and
+Run the storage-closure final-removal audit against the approved execution manifest and
 updated validation evidence. If it reports zero remaining approved manifest
 paths and no product/runtime references, proceed to the Phase 8R completion
 checkpoint artifact refresh.
