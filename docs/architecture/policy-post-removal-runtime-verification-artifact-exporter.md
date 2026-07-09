@@ -135,7 +135,6 @@ npm run --silent policy:post-removal-verification -- \
 
 ## Next Step
 
-Use the generated verification JSON as the input for
-**Next Compatibility Removal Batch Authorization module naming cutover**. That
-authorizer should compare verified removed paths against the approved manifest
-and permit only the next small batch.
+Use the generated verification JSON as input to the semantic next-batch
+authorization contract. The next module cutover should be **Compatibility
+Removal Completion Audit module naming cutover**.

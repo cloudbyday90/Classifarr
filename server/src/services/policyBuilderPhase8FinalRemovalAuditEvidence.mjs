@@ -3,8 +3,8 @@ import {
   buildPolicyBuilderPhase8CompatibilityRemovalCompletionAudit,
 } from './policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs';
 import {
-  PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
-} from './policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.mjs';
+  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
+} from './policyNextCompatibilityRemovalBatchAuthorization.mjs';
 import {
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
 } from './policyPostRemovalRuntimeVerification.mjs';
@@ -57,9 +57,9 @@ function buildCompletionAuthorization(pathState = {}) {
 
   return {
     statusId: complete
-      ? PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+      ? POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
         .COMPLETE_NO_REMAINING_PATHS
-      : PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+      : POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
         .READY_FOR_NEXT_BATCH,
     completedNoRemainingPaths: complete,
     validation: {

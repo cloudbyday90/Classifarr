@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Next Compatibility Removal Batch Authorization Module Cutover** —
+  renamed the next-batch authorization service, artifact exporter, focused
+  tests, docs, CLI script, and npm runner to durable policy-domain names,
+  replaced phase-coded constants/builders/versioning and `nextPhase.phaseId`
+  with semantic `nextStep.stepId`, updated downstream evidence references, and
+  preserved remaining-manifest selection, operator authorization, small-batch
+  bounds, side-effect rejection, and completion-audit handoff behavior.
 - **Policy Compatibility Deletion Execution Gate Module Cutover** — renamed the
   compatibility deletion execution-gate service, focused test, and architecture
   record to `policyCompatibilityDeletionExecutionGate.mjs`,
@@ -896,11 +903,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   authorization, the approved execution manifest, verified removal evidence,
   final reference scan, and validation evidence before the Phase 8R completion
   checkpoint.
-- **Policy Builder Phase 8R Next Compatibility Removal Batch Authorization
-  Artifact Exporter** — added a machine-readable authorization artifact
-  contract and `npm run policy:phase8r:next-batch-authorization` to consume
-  verified Phase 8R.19 evidence, the approved execution manifest, requested
-  remaining paths, and operator authorization metadata before continuing the
+- **Policy Next Compatibility Removal Batch Authorization Artifact
+  Exporter** — added a machine-readable authorization artifact contract and
+  `npm run policy:next-batch-authorization` to consume verified post-removal
+  runtime evidence, the approved execution manifest, requested remaining paths,
+  and operator authorization metadata before continuing the
   compatibility-removal loop.
 - **Policy Post-Removal Runtime Verification** — cut over the runtime verifier
   and artifact exporter to durable service, test, script, and npm runner names;
@@ -960,9 +967,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   reports remaining compatibility inventory separately from failed evidence and
   blocks completion claims when coverage, scans, validation, or side-effect
   invariants are not proven.
-- **Policy Builder Phase 8R Next Compatibility Removal Batch Authorization** —
-  added a side-effect-free authorizer that consumes verified post-removal
-  runtime evidence and the approved deletion manifest, calculates remaining
+- **Policy Next Compatibility Removal Batch Authorization** — added a
+  side-effect-free authorizer that consumes verified post-removal runtime
+  evidence and the approved deletion manifest, calculates remaining
   compatibility paths, blocks unknown or already removed path selections,
   bounds the next batch size, requires operator authorization context, and
   advances to a completion audit when no approved manifest paths remain.

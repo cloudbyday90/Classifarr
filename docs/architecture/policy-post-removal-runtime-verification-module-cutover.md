@@ -114,5 +114,4 @@ Implemented:
 
 ## Next Step
 
-Proceed to **Next Compatibility Removal Batch Authorization module naming
-cutover**.
+Proceed to **Compatibility Removal Completion Audit module naming cutover**.

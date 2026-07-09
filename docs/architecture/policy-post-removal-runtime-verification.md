@@ -131,7 +131,6 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Next Compatibility Removal Batch Authorization module naming
-cutover**. That task should consume verified runtime evidence, calculate
-remaining manifest paths, and authorize only the next narrow batch without
-re-opening already removed compatibility paths.
+Proceed with **Compatibility Removal Completion Audit module naming cutover**.
+That task should consume semantic next-batch authorization evidence and remove
+the remaining phase-coded completion audit contract names from production code.

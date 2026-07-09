@@ -124,12 +124,12 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_30',
     label: 'Next Compatibility Removal Batch Authorization Artifact Exporter',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-next-compatibility-removal-batch-authorization-artifact-exporter.md'],
+    designDocPaths: ['docs/architecture/policy-next-compatibility-removal-batch-authorization-artifact-exporter.md'],
     contractPaths: [
-      'server/src/services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact.mjs',
-      'scripts/generate-policy-builder-phase-8r-next-batch-authorization.mjs',
+      'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs',
+      'scripts/generate-policy-next-batch-authorization.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact.test.mjs'],
+    testPaths: ['server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.test.mjs'],
   },
   {
     phaseId: '8r_31',

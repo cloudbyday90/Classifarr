@@ -14,8 +14,8 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact,
-} from '../server/src/services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact.mjs';
+  buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact,
+} from '../server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -78,12 +78,12 @@ function parseArgs(argv = []) {
 
 function usage() {
   return [
-    'Usage: node scripts/generate-policy-builder-phase-8r-next-batch-authorization.mjs [options]',
+    'Usage: node scripts/generate-policy-next-batch-authorization.mjs [options]',
     '',
     'Options:',
-    '  --post-removal-verification <json>  Required Phase 8R.19 verification JSON.',
-    '  --execution-plan <json>             Required Phase 8R.15 execution-plan JSON.',
-    '  --input <json>                      Required Phase 8R.20 authorization input JSON.',
+    '  --post-removal-verification <json>  Required post-removal runtime verification JSON.',
+    '  --execution-plan <json>             Required compatibility deletion execution-plan JSON.',
+    '  --input <json>                      Required next-batch authorization input JSON.',
     '  --output <json>                     Write nested authorization JSON to this path.',
     '  --artifact-output <json>            Write wrapper artifact JSON to this path.',
     '  --allow-blocked                     Allow writing blocked authorization output.',
@@ -159,7 +159,7 @@ function main() {
   }
 
   const artifact =
-    buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact({
+    buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
       postRemovalVerification,
       executionPlan,
       input,
@@ -172,7 +172,7 @@ function main() {
     options.allowBlocked !== true
   ) {
     console.error(
-      'Phase 8R next compatibility removal batch authorization artifact is blocked; pass --allow-blocked to write diagnostic output.'
+      'Next compatibility removal batch authorization artifact is blocked; pass --allow-blocked to write diagnostic output.'
     );
     console.error(JSON.stringify({
       statusId: artifact.statusId,

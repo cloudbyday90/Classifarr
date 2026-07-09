@@ -8,8 +8,8 @@ import {
   validatePolicyBuilderPhase8CompatibilityRemovalCompletionAudit,
 } from '../../services/policyBuilderPhase8CompatibilityRemovalCompletionAudit.mjs';
 import {
-  PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
-} from '../../services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.mjs';
+  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
+} from '../../services/policyNextCompatibilityRemovalBatchAuthorization.mjs';
 import {
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
 } from '../../services/policyPostRemovalRuntimeVerification.mjs';
@@ -57,7 +57,7 @@ function executionPlan(overrides = {}) {
 function completionAuthorization(overrides = {}) {
   return {
     statusId:
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
         .COMPLETE_NO_REMAINING_PATHS,
     completedNoRemainingPaths: true,
     validation: {
@@ -171,7 +171,7 @@ describe('policyBuilderPhase8CompatibilityRemovalCompletionAudit', () => {
     const audit = completeAudit({
       completionAuthorization: completionAuthorization({
         statusId:
-          PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+          POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
             .READY_FOR_NEXT_BATCH,
         completedNoRemainingPaths: false,
         remainingManifest: {
@@ -200,7 +200,7 @@ describe('policyBuilderPhase8CompatibilityRemovalCompletionAudit', () => {
     const audit = completeAudit({
       completionAuthorization: completionAuthorization({
         statusId:
-          PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+          POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
             .BLOCKED_BY_AUTHORIZATION,
         completedNoRemainingPaths: false,
         validation: {

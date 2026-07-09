@@ -6,10 +6,10 @@ import {
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
 } from './policyPostRemovalRuntimeVerification.mjs';
 
-const PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_VERSION =
-  'phase8r.next_compatibility_removal_batch_authorization.v1';
+const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_VERSION =
+  'policy.next_compatibility_removal_batch_authorization.v1';
 
-const PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS =
+const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS =
   Object.freeze({
     READY_FOR_NEXT_BATCH: 'ready_for_next_batch',
     COMPLETE_NO_REMAINING_PATHS: 'complete_no_remaining_paths',
@@ -20,7 +20,7 @@ const PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS =
     BLOCKED_BY_AUTHORIZATION: 'blocked_by_authorization',
   });
 
-const PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS =
+const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS =
   Object.freeze({
     POST_REMOVAL_NOT_VERIFIED: 'post_removal_not_verified',
     POST_REMOVAL_VALIDATION_FAILED: 'post_removal_validation_failed',
@@ -82,18 +82,18 @@ function evaluatePostRemovalVerification(postRemovalVerification = {}) {
     postRemovalVerification.verified !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
         .POST_REMOVAL_NOT_VERIFIED,
-      'Next compatibility removal batch authorization requires verified Phase 8R.19 evidence.',
+      'Next compatibility removal batch authorization requires verified post-removal runtime evidence.',
       { statusId: postRemovalVerification.statusId || null }
     ));
   }
 
   if (postRemovalVerification.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
         .POST_REMOVAL_VALIDATION_FAILED,
-      'Next compatibility removal batch authorization requires valid Phase 8R.19 evidence.',
+      'Next compatibility removal batch authorization requires valid post-removal runtime evidence.',
       { issueCount: postRemovalVerification.validation?.issueCount ?? null }
     ));
   }
@@ -114,25 +114,25 @@ function evaluateExecutionPlan(executionPlan = {}) {
     executionPlan.readyForExecutionGate !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
         .EXECUTION_PLAN_NOT_READY,
-      'Next compatibility removal batch authorization requires a ready Phase 8R.15 execution plan.',
+      'Next compatibility removal batch authorization requires a ready compatibility deletion execution plan.',
       { statusId: executionPlan.statusId || null }
     ));
   }
 
   if (executionPlan.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
         .EXECUTION_PLAN_VALIDATION_FAILED,
-      'Next compatibility removal batch authorization requires a valid Phase 8R.15 execution plan.',
+      'Next compatibility removal batch authorization requires a valid compatibility deletion execution plan.',
       { issueCount: executionPlan.validation?.issueCount ?? null }
     ));
   }
 
   if (entries.length === 0) {
     risks.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.NO_MANIFEST_ENTRIES,
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.NO_MANIFEST_ENTRIES,
       'Next compatibility removal batch authorization requires approved manifest entries.'
     ));
   }
@@ -179,14 +179,14 @@ function evaluateRequestedBatch({
 
   if (normalizedRequestedPaths.length === 0) {
     risks.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.NO_PATHS_REQUESTED,
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.NO_PATHS_REQUESTED,
       'Next compatibility removal batch authorization requires at least one requested remaining path.'
     ));
   }
 
   if (normalizedRequestedPaths.length > maxBatchSize) {
     risks.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.BATCH_SCOPE_TOO_BROAD,
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.BATCH_SCOPE_TOO_BROAD,
       'Next compatibility removal batch is wider than the configured maximum batch size.',
       {
         requestedCount: normalizedRequestedPaths.length,
@@ -198,14 +198,14 @@ function evaluateRequestedBatch({
   normalizedRequestedPaths.forEach(path => {
     if (!manifestPathSet.has(path)) {
       risks.push(buildRisk(
-        PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
           .REQUESTED_PATH_NOT_IN_MANIFEST,
         'Requested compatibility removal path is not in the approved manifest.',
         { path }
       ));
     } else if (removedPathSet.has(path) || !remainingPathSet.has(path)) {
       risks.push(buildRisk(
-        PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
           .REQUESTED_PATH_ALREADY_REMOVED,
         'Requested compatibility removal path was already removed and cannot re-enter a batch.',
         { path }
@@ -237,7 +237,7 @@ function evaluateAuthorization({
 
   if (!normalizeText(authorizationReason)) {
     risks.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
         .MISSING_AUTHORIZATION_REASON,
       'Next compatibility removal batch authorization requires an authorization reason.'
     ));
@@ -245,7 +245,7 @@ function evaluateAuthorization({
 
   if (!normalizeText(authorizedBy)) {
     risks.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.MISSING_AUTHORIZER,
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.MISSING_AUTHORIZER,
       'Next compatibility removal batch authorization requires the authorizing operator.'
     ));
   }
@@ -255,61 +255,61 @@ function evaluateAuthorization({
 
 function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
   if (risks.some(risk => [
-    PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
       .POST_REMOVAL_NOT_VERIFIED,
-    PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
       .POST_REMOVAL_VALIDATION_FAILED,
   ].includes(risk.riskId))) {
-    return PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+    return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
       .BLOCKED_BY_POST_REMOVAL_VERIFICATION;
   }
 
   if (risks.some(risk => [
-    PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
       .EXECUTION_PLAN_NOT_READY,
-    PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
       .EXECUTION_PLAN_VALIDATION_FAILED,
-    PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.NO_MANIFEST_ENTRIES,
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.NO_MANIFEST_ENTRIES,
   ].includes(risk.riskId))) {
-    return PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+    return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
       .BLOCKED_BY_EXECUTION_PLAN;
   }
 
   if (remainingCount === 0) {
-    return PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+    return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
       .COMPLETE_NO_REMAINING_PATHS;
   }
 
   if (risks.some(risk => risk.riskId ===
-    PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.BATCH_SCOPE_TOO_BROAD)) {
-    return PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.BATCH_SCOPE_TOO_BROAD)) {
+    return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
       .BLOCKED_BY_SCOPE;
   }
 
   if (risks.some(risk => [
-    PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.NO_PATHS_REQUESTED,
-    PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.NO_PATHS_REQUESTED,
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
       .REQUESTED_PATH_NOT_IN_MANIFEST,
-    PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
       .REQUESTED_PATH_ALREADY_REMOVED,
   ].includes(risk.riskId))) {
-    return PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+    return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
       .BLOCKED_BY_SELECTION;
   }
 
   if (risks.some(risk => [
-    PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
       .MISSING_AUTHORIZATION_REASON,
-    PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.MISSING_AUTHORIZER,
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.MISSING_AUTHORIZER,
   ].includes(risk.riskId))) {
-    return PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+    return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
       .BLOCKED_BY_AUTHORIZATION;
   }
 
-  return PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS.READY_FOR_NEXT_BATCH;
+  return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS.READY_FOR_NEXT_BATCH;
 }
 
-function buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization({
+function buildPolicyNextCompatibilityRemovalBatchAuthorization({
   postRemovalVerification = {},
   executionPlan = null,
   requestedPaths = [],
@@ -346,14 +346,14 @@ function buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization({
     remainingCount: remainingManifest.remainingCount,
   });
   const authorization = {
-    version: PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_VERSION,
+    version: POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_VERSION,
     statusId,
     readyForNextBatch:
       statusId ===
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS.READY_FOR_NEXT_BATCH,
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS.READY_FOR_NEXT_BATCH,
     completedNoRemainingPaths:
       statusId ===
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
         .COMPLETE_NO_REMAINING_PATHS,
     postRemovalVerification: {
       statusId: postRemovalVerification.statusId || null,
@@ -372,7 +372,7 @@ function buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization({
       requestedCount: batchEvaluation.requestedPaths.length,
       authorizedCount:
         statusId ===
-        PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS.READY_FOR_NEXT_BATCH
+        POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS.READY_FOR_NEXT_BATCH
           ? batchEvaluation.entries.length
           : 0,
       maxBatchSize,
@@ -380,7 +380,7 @@ function buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization({
       authorizationReason: normalizeText(authorizationReason) || null,
       entries:
         statusId ===
-        PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS.READY_FOR_NEXT_BATCH
+        POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS.READY_FOR_NEXT_BATCH
           ? batchEvaluation.entries
           : [],
     },
@@ -388,7 +388,7 @@ function buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization({
     risks,
     executionPolicy: {
       executeDeletionNow: false,
-      requirePhase8R17BatchBuilder: true,
+      requireControlledRemovalBatchBuilder: true,
       requireVerifiedPostRemoval: true,
       requireRemainingManifestPath: true,
       requireSmallBatch: true,
@@ -403,37 +403,37 @@ function buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization({
       manifestWritten: false,
       gitCommandsRun: false,
     },
-    nextPhase: {
-      phaseId: '8r_21',
+    nextStep: {
+      stepId: 'compatibility_removal_completion_audit',
       label: 'Compatibility Removal Completion Audit',
       reason:
-        'After the next batch is authorized, the removal loop should either repeat through 8R.17-8R.20 or audit that no approved compatibility paths remain.',
+        'After the next batch is authorized, the removal loop should either run the next controlled removal batch or audit that no approved compatibility paths remain.',
     },
   };
 
   return {
     ...authorization,
     validation:
-      validatePolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization(authorization),
+      validatePolicyNextCompatibilityRemovalBatchAuthorization(authorization),
   };
 }
 
-function validatePolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization(
+function validatePolicyNextCompatibilityRemovalBatchAuthorization(
   authorization = {}
 ) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS)
+  if (!Object.values(POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS)
     .includes(authorization.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.UNKNOWN_STATUS,
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.UNKNOWN_STATUS,
       'Next compatibility removal batch authorization status must be known.'
     ));
   }
 
   if (authorization.riskCount !== asArray(authorization.risks).length) {
     issues.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.RISK_COUNT_MISMATCH,
       'Next compatibility removal batch authorization risk count must match risk list length.'
     ));
   }
@@ -441,7 +441,7 @@ function validatePolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization(
   Object.entries(authorization.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
-        PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
           .SIDE_EFFECT_PERFORMED,
         `Next compatibility removal batch authorization cannot perform side effect "${key}".`
       ));
@@ -456,9 +456,9 @@ function validatePolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization(
 }
 
 export {
-  PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS,
-  PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
-  PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_VERSION,
-  buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization,
-  validatePolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization,
+  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS,
+  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
+  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_VERSION,
+  buildPolicyNextCompatibilityRemovalBatchAuthorization,
+  validatePolicyNextCompatibilityRemovalBatchAuthorization,
 };

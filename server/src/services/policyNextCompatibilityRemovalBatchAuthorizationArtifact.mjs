@@ -1,19 +1,19 @@
 import {
-  PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
-  buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization,
-} from './policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.mjs';
+  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
+  buildPolicyNextCompatibilityRemovalBatchAuthorization,
+} from './policyNextCompatibilityRemovalBatchAuthorization.mjs';
 
-const PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_VERSION =
-  'phase8r.next_compatibility_removal_batch_authorization_artifact.v1';
+const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_VERSION =
+  'policy.next_compatibility_removal_batch_authorization_artifact.v1';
 
-const PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS =
+const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS =
   Object.freeze({
     READY_FOR_NEXT_BATCH: 'ready_for_next_batch',
     COMPLETE_NO_REMAINING_PATHS: 'complete_no_remaining_paths',
     BLOCKED: 'blocked',
   });
 
-const PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS =
+const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS =
   Object.freeze({
     AUTHORIZATION_NOT_READY: 'authorization_not_ready',
     AUTHORIZATION_VALIDATION_FAILED: 'authorization_validation_failed',
@@ -72,16 +72,16 @@ function summarizeSideEffects(authorization = {}, sideEffects = {}) {
 
 function determineArtifactStatusId(authorization = {}, risks = []) {
   if (risks.length > 0) {
-    return PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
+    return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
       .BLOCKED;
   }
 
   if (authorization.completedNoRemainingPaths === true) {
-    return PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
+    return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
       .COMPLETE_NO_REMAINING_PATHS;
   }
 
-  return PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
+  return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
     .READY_FOR_NEXT_BATCH;
 }
 
@@ -91,16 +91,16 @@ function buildArtifactRisks({
 } = {}) {
   const risks = [];
   const acceptableStatusIds = [
-    PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS.READY_FOR_NEXT_BATCH,
-    PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS.READY_FOR_NEXT_BATCH,
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
       .COMPLETE_NO_REMAINING_PATHS,
   ];
 
   if (!acceptableStatusIds.includes(authorization.statusId)) {
     risks.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
         .AUTHORIZATION_NOT_READY,
-      'Next compatibility removal batch authorization artifact requires ready or complete Phase 8R.20 evidence.',
+      'Next compatibility removal batch authorization artifact requires ready or complete next-batch authorization evidence.',
       {
         statusId: authorization.statusId || null,
         authorizationRiskCount: authorization.riskCount ?? null,
@@ -110,9 +110,9 @@ function buildArtifactRisks({
 
   if (authorization.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
         .AUTHORIZATION_VALIDATION_FAILED,
-      'Next compatibility removal batch authorization artifact requires valid Phase 8R.20 evidence.',
+      'Next compatibility removal batch authorization artifact requires valid next-batch authorization evidence.',
       { issueCount: authorization.validation?.issueCount ?? null }
     ));
   }
@@ -120,7 +120,7 @@ function buildArtifactRisks({
   Object.entries(sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       risks.push(buildRisk(
-        PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
+        POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
           .SIDE_EFFECT_REPORTED,
         `Next compatibility removal batch authorization artifact cannot report side effect "${key}".`,
         { sideEffect: key }
@@ -131,7 +131,7 @@ function buildArtifactRisks({
   return risks;
 }
 
-function buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact({
+function buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
   postRemovalVerification = {},
   executionPlan = {},
   input = {},
@@ -140,7 +140,7 @@ function buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtif
 } = {}) {
   const evidence = asObject(input);
   const authorization =
-    buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorization({
+    buildPolicyNextCompatibilityRemovalBatchAuthorization({
       postRemovalVerification,
       executionPlan,
       requestedPaths: evidence.requestedPaths,
@@ -154,7 +154,7 @@ function buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtif
     sideEffects: combinedSideEffects,
   });
   const artifact = {
-    version: PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_VERSION,
+    version: POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_VERSION,
     generatedAt: normalizeGeneratedAt(generatedAt),
     statusId: determineArtifactStatusId(authorization, risks),
     readyForNextBatch:
@@ -173,8 +173,8 @@ function buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtif
     risks,
     sideEffects: combinedSideEffects,
     executionPolicy: {
-      requireVerifiedPhase8R19Evidence: true,
-      requireReadyPhase8R15Manifest: true,
+      requireVerifiedPostRemovalEvidence: true,
+      requireReadyCompatibilityDeletionManifest: true,
       requireRemainingManifestSelection: true,
       requireSmallBatch: true,
       allowFileDeletion: false,
@@ -183,8 +183,8 @@ function buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtif
       allowManifestWrite: false,
       allowGitCommandsInsideArtifact: false,
     },
-    nextPhase: {
-      phaseId: '8r_21',
+    nextStep: {
+      stepId: 'compatibility_removal_completion_audit',
       label: 'Compatibility Removal Completion Audit',
       reason:
         'Authorized next-batch evidence must either feed the next removal loop or prove no approved compatibility paths remain.',
@@ -194,19 +194,19 @@ function buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtif
   return {
     ...artifact,
     validation:
-      validatePolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact(artifact),
+      validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifact(artifact),
   };
 }
 
-function validatePolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact(
+function validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifact(
   artifact = {}
 ) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS)
+  if (!Object.values(POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS)
     .includes(artifact.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
         .UNKNOWN_STATUS,
       'Next compatibility removal batch authorization artifact status must be known.'
     ));
@@ -214,7 +214,7 @@ function validatePolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationAr
 
   if (artifact.riskCount !== asArray(artifact.risks).length) {
     issues.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
         .RISK_COUNT_MISMATCH,
       'Next compatibility removal batch authorization artifact risk count must match risk list length.'
     ));
@@ -222,12 +222,12 @@ function validatePolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationAr
 
   if (
     artifact.statusId ===
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
         .READY_FOR_NEXT_BATCH &&
     artifact.readyForNextBatch !== true
   ) {
     issues.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
         .READY_FLAG_MISMATCH,
       'Next compatibility removal batch authorization artifact ready flag must match ready status.'
     ));
@@ -235,12 +235,12 @@ function validatePolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationAr
 
   if (
     artifact.statusId ===
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
         .COMPLETE_NO_REMAINING_PATHS &&
     artifact.completedNoRemainingPaths !== true
   ) {
     issues.push(buildRisk(
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
         .COMPLETION_FLAG_MISMATCH,
       'Next compatibility removal batch authorization artifact completion flag must match completion status.'
     ));
@@ -249,7 +249,7 @@ function validatePolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationAr
   Object.entries(artifact.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
-        PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
+        POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
           .SIDE_EFFECT_REPORTED,
         `Next compatibility removal batch authorization artifact cannot report side effect "${key}".`,
         { sideEffect: key }
@@ -265,9 +265,9 @@ function validatePolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationAr
 }
 
 export {
-  PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS,
-  PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS,
-  PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_VERSION,
-  buildPolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact,
-  validatePolicyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact,
+  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS,
+  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS,
+  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_VERSION,
+  buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact,
+  validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifact,
 };

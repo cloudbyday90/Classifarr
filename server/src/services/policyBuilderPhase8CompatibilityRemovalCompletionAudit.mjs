@@ -3,8 +3,8 @@ import {
   buildPolicyCompatibilityDeletionExecutionPlan,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
-} from './policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.mjs';
+  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
+} from './policyNextCompatibilityRemovalBatchAuthorization.mjs';
 import {
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
 } from './policyPostRemovalRuntimeVerification.mjs';
@@ -77,7 +77,7 @@ function evaluateCompletionAuthorization(completionAuthorization = {}) {
 
   if (
     completionAuthorization.statusId !==
-      PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
         .COMPLETE_NO_REMAINING_PATHS ||
     completionAuthorization.completedNoRemainingPaths !== true
   ) {

@@ -5261,15 +5261,15 @@ Implementation status:
 
 ### 8R.20 Next Compatibility Removal Batch Authorization
 
-Intent: consume verified Phase 8R.19 evidence and the approved compatibility
-deletion manifest, calculate remaining manifest paths, prevent already removed
-paths from re-entering a batch, and authorize only the next narrow removal
-batch.
+Intent: consume verified post-removal runtime evidence and the approved
+compatibility deletion manifest, calculate remaining manifest paths, prevent
+already removed paths from re-entering a batch, and authorize only the next
+narrow removal batch.
 
 Tasks:
 
-- Require Phase 8R.19 status to be verified and valid.
-- Require Phase 8R.15 execution-plan evidence to be ready and valid.
+- Require post-removal runtime evidence to be verified and valid.
+- Require compatibility deletion execution-plan evidence to be ready and valid.
 - Calculate remaining manifest paths from approved entries minus applied paths.
 - Block unknown requested paths.
 - Block requested paths that were already removed.
@@ -5293,15 +5293,17 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.20 next compatibility removal batch authorization is documented in
-  [Policy Builder Phase 8R Next Compatibility Removal Batch Authorization](policy-builder-phase-8r-next-compatibility-removal-batch-authorization.md).
+- Next compatibility removal batch authorization is documented in
+  [Policy Next Compatibility Removal Batch Authorization](policy-next-compatibility-removal-batch-authorization.md).
+- The module naming cutover is documented in
+  [Policy Next Compatibility Removal Batch Authorization Module Cutover](policy-next-compatibility-removal-batch-authorization-module-cutover.md).
 - The authorization contract lives in
-  `server/src/services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.mjs`.
+  `server/src/services/policyNextCompatibilityRemovalBatchAuthorization.mjs`.
 - The focused authorization test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.test.mjs`.
+  `server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorization.test.mjs`.
 - Current implementation authorizes only requested remaining manifest paths,
   blocks already removed or unknown paths, caps batch size, requires operator
-  context, and advances to a completion audit.
+  context, and emits semantic `nextStep` evidence for the completion audit.
 
 ### 8R.21 Compatibility Removal Completion Audit
 
@@ -5789,22 +5791,23 @@ Implementation status:
 
 ### 8R.30 Next Compatibility Removal Batch Authorization Artifact Exporter
 
-Intent: generate the machine-readable Phase 8R.20 next-batch authorization
-artifact from verified Phase 8R.19 evidence, a ready Phase 8R.15 execution
+Intent: generate the machine-readable next-batch authorization artifact from
+verified post-removal runtime evidence, a ready compatibility deletion execution
 plan, requested remaining manifest paths, and operator authorization metadata.
 
 Tasks:
 
-- Require verified Phase 8R.19 post-removal runtime verification JSON.
-- Require ready Phase 8R.15 execution-plan JSON with approved manifest entries.
+- Require verified post-removal runtime verification JSON.
+- Require ready compatibility deletion execution-plan JSON with approved
+  manifest entries.
 - Compute remaining manifest inventory from verified applied paths.
 - Block unknown, already removed, empty, or overly broad requested batches.
 - Require authorizing operator and reason while remaining paths exist.
-- Reuse the existing Phase 8R.20 next-batch authorization contract.
+- Reuse the existing next-batch authorization contract.
 - Avoid deleting files, writing manifests, mutating storage, running tests,
   running scans, or running Git.
-- Write the nested authorization JSON for Phase 8R.21 completion audit or the
-  next 8R.17 removal-batch loop.
+- Write the nested authorization JSON for the completion audit or the next
+  controlled removal-batch loop.
 
 Acceptance criteria:
 
@@ -5820,18 +5823,19 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.30 next-batch authorization artifact export is documented in
-  [Policy Builder Phase 8R Next Compatibility Removal Batch Authorization Artifact Exporter](policy-builder-phase-8r-next-compatibility-removal-batch-authorization-artifact-exporter.md).
+- Next-batch authorization artifact export is documented in
+  [Policy Next Compatibility Removal Batch Authorization Artifact Exporter](policy-next-compatibility-removal-batch-authorization-artifact-exporter.md).
 - The next-batch authorization artifact contract lives in
-  `server/src/services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact.mjs`.
+  `server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs`.
 - The exporter script lives in
-  `scripts/generate-policy-builder-phase-8r-next-batch-authorization.mjs`.
+  `scripts/generate-policy-next-batch-authorization.mjs`.
 - The root runner is exposed as
-  `npm run policy:phase8r:next-batch-authorization`.
+  `npm run policy:next-batch-authorization`.
 - The focused next-batch authorization artifact test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact.test.mjs`.
-- Current implementation emits Phase 8R.20 authorization or completion evidence
-  without performing removal, scan, manifest, storage, or Git side effects.
+  `server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.test.mjs`.
+- Current implementation emits next-batch authorization or completion evidence
+  with semantic `nextStep` output and without performing removal, scan,
+  manifest, storage, or Git side effects.
 
 ### 8R.31 Compatibility Removal Completion Audit Artifact Exporter
 

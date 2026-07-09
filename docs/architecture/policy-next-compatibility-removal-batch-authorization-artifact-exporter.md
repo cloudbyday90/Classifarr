@@ -1,12 +1,13 @@
-# Policy Builder Phase 8R Next Compatibility Removal Batch Authorization Artifact Exporter
+# Policy Next Compatibility Removal Batch Authorization Artifact Exporter
 
 ## Intent
 
-Phase 8R.30 generates a machine-readable Phase 8R.20 next compatibility removal
-batch authorization artifact from:
+The next-batch authorization artifact exporter generates a machine-readable
+policy next compatibility removal batch authorization artifact from:
 
-- verified Phase 8R.19 post-removal runtime verification JSON,
-- a ready Phase 8R.15 execution-plan JSON with approved manifest entries,
+- verified post-removal runtime verification JSON,
+- a ready compatibility deletion execution-plan JSON with approved manifest
+  entries,
 - requested remaining manifest paths,
 - authorizing operator and reason.
 
@@ -16,34 +17,38 @@ or records that no approved manifest paths remain.
 
 ## Official-Source Research
 
-- Git `grep` documents bounded source searching across tracked files, index, or
-  tree objects. Phase 8R.30 consumes verification evidence from the prior stage
-  instead of running a fresh scan implicitly.
-- Git glossary pathspec documentation defines exact path and constrained path
-  selection concepts. The exporter authorizes only exact approved manifest
-  paths instead of free-form deletion selectors.
 - NIST SP 800-128 frames configuration management as controlled change with
   integrity monitoring. The exporter keeps compatibility cleanup iterative:
   verify the previous removal, calculate remaining inventory, and authorize one
   small next change.
+- NIST SSDF recommends evidence-producing secure development practices. The
+  exporter keeps deletion authorization reviewable and machine-readable without
+  executing the deletion itself.
+- OWASP Logging guidance calls for event records with enough context to support
+  operational and security review. The artifact records authorizer, reason,
+  selected paths, remaining inventory, risk status, and side-effect summary.
+- Git `mv` documents explicit tracked renames. The exporter cutover keeps the
+  CLI and module names aligned with durable policy-domain behavior.
 - OWASP API9:2023 Improper Inventory Management treats stale or unmanaged
   surfaces as a security risk. This exporter keeps cleanup tied to the approved
   compatibility inventory and blocks unknown or already removed paths.
 
 Sources:
 
-- Git `grep` documentation:
-  <https://git-scm.com/docs/git-grep>
-- Git glossary pathspec documentation:
-  <https://git-scm.com/docs/gitglossary>
 - NIST SP 800-128:
   <https://csrc.nist.gov/pubs/sp/800/128/upd1/final>
+- NIST Secure Software Development Framework:
+  <https://csrc.nist.gov/projects/ssdf>
+- OWASP Logging Cheat Sheet:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html>
+- Git `mv` documentation:
+  <https://git-scm.com/docs/git-mv>
 - OWASP API9:2023 Improper Inventory Management:
   <https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/>
 
 ## Recommendations
 
-### Consume Verified 8R.19 Evidence
+### Consume Verified Post-Removal Evidence
 
 The exporter should require verified post-removal runtime evidence before
 authorizing another batch.
@@ -93,10 +98,12 @@ Cons:
 
 ## Final Recommendation Stack
 
-Use this stack for Phase 8R next-batch authorization:
+Use this stack for next-batch authorization:
 
-1. Require Phase 8R.19 verification JSON with `verified=true` and valid output.
-2. Require Phase 8R.15 execution-plan JSON with ready approved manifest entries.
+1. Require post-removal verification JSON with `verified=true` and valid
+   output.
+2. Require compatibility deletion execution-plan JSON with ready approved
+   manifest entries.
 3. Compute remaining manifest inventory from verified applied paths.
 4. Block unknown, already removed, empty, or overly broad requested batches.
 5. Require `authorizationReason` and `authorizedBy` while remaining paths exist.
@@ -109,9 +116,9 @@ Use this stack for Phase 8R next-batch authorization:
 Implemented:
 
 - Added
-  `policyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact.mjs`.
-- Added `generate-policy-builder-phase-8r-next-batch-authorization.mjs`.
-- Added root npm script `policy:phase8r:next-batch-authorization`.
+  `policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs`.
+- Added `generate-policy-next-batch-authorization.mjs`.
+- Added root npm script `policy:next-batch-authorization`.
 - Added focused tests for:
   - ready next-batch authorization artifact generation,
   - complete-no-remaining-paths artifact generation,
@@ -120,11 +127,15 @@ Implemented:
   - artifact validation invariants.
 - Added the next-batch authorization artifact suite and this design doc to the
   fixed Phase 8R validation evidence command set.
+- The artifact now emits `version =
+  policy.next_compatibility_removal_batch_authorization_artifact.v1` and
+  `nextStep.stepId = compatibility_removal_completion_audit`; production output
+  does not expose `nextPhase.phaseId`.
 
 Example:
 
 ```bash
-npm run --silent policy:phase8r:next-batch-authorization -- \
+npm run --silent policy:next-batch-authorization -- \
   --post-removal-verification .tmp/phase8r/post-removal-verification.json \
   --execution-plan .tmp/phase8r/execution-plan.json \
   --input .tmp/phase8r/next-batch-authorization-input.json \
@@ -134,7 +145,7 @@ npm run --silent policy:phase8r:next-batch-authorization -- \
 
 ## Next Step
 
-Use the generated Phase 8R.20 authorization JSON as input for Phase 8R.31
-completion-audit artifact export. That exporter should produce the Phase 8R.21
-audit JSON from authorization, manifest, remaining path, reference scan, and
+Use the generated authorization JSON as input for the compatibility removal
+completion-audit artifact export. That exporter should produce completion audit
+JSON from authorization, manifest, remaining path, reference scan, and
 validation evidence.

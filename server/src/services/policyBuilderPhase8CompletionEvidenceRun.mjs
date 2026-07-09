@@ -184,9 +184,9 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_20',
     label: 'Next Compatibility Removal Batch Authorization',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-next-compatibility-removal-batch-authorization.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.test.mjs'],
+    designDocPaths: ['docs/architecture/policy-next-compatibility-removal-batch-authorization.md'],
+    contractPaths: ['server/src/services/policyNextCompatibilityRemovalBatchAuthorization.mjs'],
+    testPaths: ['server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorization.test.mjs'],
   },
   {
     phaseId: '8r_21',
