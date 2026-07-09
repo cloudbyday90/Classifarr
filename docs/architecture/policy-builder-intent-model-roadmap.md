@@ -5159,15 +5159,18 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.17 controlled compatibility path removal is documented in
-  [Policy Builder Phase 8R Controlled Compatibility Path Removal](policy-builder-phase-8r-controlled-compatibility-path-removal.md).
+- Controlled compatibility path removal is documented in
+  [Policy Controlled Compatibility Path Removal](policy-controlled-compatibility-path-removal.md).
+- The module naming cutover is documented in
+  [Policy Controlled Compatibility Path Removal Module Cutover](policy-controlled-compatibility-path-removal-module-cutover.md).
 - The removal-batch contract lives in
-  `server/src/services/policyBuilderPhase8ControlledCompatibilityPathRemoval.mjs`.
+  `server/src/services/policyControlledCompatibilityPathRemoval.mjs`.
 - The focused removal-batch test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8ControlledCompatibilityPathRemoval.test.mjs`.
+  `server/src/__tests__/services/policyControlledCompatibilityPathRemoval.test.mjs`.
 - Current implementation builds a side-effect-free removal review batch from
-  selected manifest paths and defers destructive application to Phase 8R.18
-  because candidate paths still have live imports.
+  selected manifest paths, emits a semantic `nextStep.stepId`, and defers
+  destructive application to the controlled apply boundary because candidate
+  paths still have live imports.
 
 ### 8R.18 Controlled Compatibility Path Removal Apply
 
@@ -6106,8 +6109,8 @@ Implement Phase 8R in this order:
     before any compatibility path deletion is allowed.
 17. **8R.17 Controlled Compatibility Path Removal**
     Builds the first narrow compatibility path removal batch only after
-    consuming a ready Phase 8R.16 gate output, selected approved manifest paths,
-    and review metadata.
+    consuming a ready compatibility deletion execution gate output, selected
+    approved manifest paths, and review metadata.
 18. **8R.18 Controlled Compatibility Path Removal Apply**
     Applies one reviewed Phase 8R.17 removal batch through an explicit adapter,
     verifies result parity, and emits evidence for import/runtime validation

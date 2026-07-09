@@ -6,9 +6,9 @@ import {
   buildPolicyCompatibilityDeletionExecutionGate,
 } from './policyCompatibilityDeletionExecutionGate.mjs';
 import {
-  PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
-  buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval,
-} from './policyBuilderPhase8ControlledCompatibilityPathRemoval.mjs';
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
+  buildPolicyControlledCompatibilityPathRemoval,
+} from './policyControlledCompatibilityPathRemoval.mjs';
 
 const PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_VERSION =
   'phase8r.controlled_removal_batch_artifact.v1';
@@ -69,7 +69,7 @@ function buildRemovalBatchFromInput({
 } = {}) {
   const evidence = asObject(input);
 
-  return buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
+  return buildPolicyControlledCompatibilityPathRemoval({
     executionPlan,
     executionGate,
     selectedPaths: evidence.selectedPaths,
@@ -132,7 +132,7 @@ function buildArtifactRisks({
 
   if (
     removalBatch.statusId !==
-    PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.READY_FOR_REMOVAL_REVIEW ||
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.READY_FOR_REMOVAL_REVIEW ||
     removalBatch.readyForRemovalReview !== true
   ) {
     risks.push(buildRisk(

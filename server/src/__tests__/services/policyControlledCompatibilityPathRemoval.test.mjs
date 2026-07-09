@@ -17,11 +17,11 @@ import {
   buildPolicyCompatibilityDeletionExecutionGate,
 } from '../../services/policyCompatibilityDeletionExecutionGate.mjs';
 import {
-  PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS,
-  PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
-  buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval,
-  validatePolicyBuilderPhase8ControlledCompatibilityPathRemoval,
-} from '../../services/policyBuilderPhase8ControlledCompatibilityPathRemoval.mjs';
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS,
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
+  buildPolicyControlledCompatibilityPathRemoval,
+  validatePolicyControlledCompatibilityPathRemoval,
+} from '../../services/policyControlledCompatibilityPathRemoval.mjs';
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
@@ -126,8 +126,8 @@ function replacementEvidence() {
   return Object.fromEntries(
     Object.values(POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS)
       .map(categoryId => [categoryId, {
-        replacement: `Phase 8R native replacement for ${categoryId}`,
-        tests: ['server phase8r focused coverage'],
+        replacement: `Native policy replacement for ${categoryId}`,
+        tests: ['server focused coverage'],
       }])
   );
 }
@@ -140,7 +140,7 @@ function readyExecutionPlan(overrides = {}) {
     rollbackStance: 'Rollback snapshots retained until post-window support stance is approved.',
     supportStance: 'Converted native policies use bounded support diagnostics.',
     manifestApproved: true,
-    approvedBy: 'phase8r-maintainer',
+    approvedBy: 'policy-maintainer',
     ...overrides,
   });
 }
@@ -153,7 +153,7 @@ function readyGate(executionPlan, overrides = {}) {
     backupRestoreFresh: true,
     operatorApproval: {
       approved: true,
-      approvedBy: 'phase8r-maintainer',
+      approvedBy: 'policy-maintainer',
     },
     rollbackStanceFinal: true,
     supportStanceFinal: true,
@@ -165,7 +165,7 @@ function readyGate(executionPlan, overrides = {}) {
 
 function readyRemoval(overrides = {}) {
   const executionPlan = readyExecutionPlan();
-  return buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
+  return buildPolicyControlledCompatibilityPathRemoval({
     executionPlan,
     executionGate: readyGate(executionPlan),
     selectedPaths: [
@@ -173,17 +173,17 @@ function readyRemoval(overrides = {}) {
       'server/src/services/policyIntentImpactPreview.mjs',
     ],
     removalReason: 'First narrow removal review batch after native runtime parity.',
-    reviewedBy: 'phase8r-maintainer',
+    reviewedBy: 'policy-maintainer',
     ...overrides,
   });
 }
 
-describe('policyBuilderPhase8ControlledCompatibilityPathRemoval', () => {
+describe('policyControlledCompatibilityPathRemoval', () => {
   test('builds a narrow side-effect-free removal review batch from approved manifest paths', () => {
     const removal = readyRemoval();
 
     expect(removal.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
         .READY_FOR_REMOVAL_REVIEW);
     expect(removal.readyForRemovalReview).toBe(true);
     expect(removal.validation.ok).toBe(true);
@@ -202,7 +202,7 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemoval', () => {
       selectedCount: 2,
       requestedPathCount: 2,
       maxBatchSize: 3,
-      reviewedBy: 'phase8r-maintainer',
+      reviewedBy: 'policy-maintainer',
     }));
     expect(removal.removalBatch.entries).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -217,6 +217,11 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemoval', () => {
       requireManualApplyStep: true,
       requireFreshGateForApply: true,
     }));
+    expect(removal.nextStep).toEqual(expect.objectContaining({
+      stepId: 'controlled_compatibility_path_removal_apply',
+      label: 'Controlled Compatibility Path Removal Apply',
+    }));
+    expect(removal.nextPhase).toBeUndefined();
     expect(Object.values(removal.sideEffects).some(Boolean)).toBe(false);
   });
 
@@ -228,12 +233,12 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemoval', () => {
     });
 
     expect(removal.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
         .BLOCKED_BY_EXECUTION_PLAN);
     expect(removal.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_NOT_READY,
+          POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_NOT_READY,
       }),
     ]));
   });
@@ -248,12 +253,12 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemoval', () => {
     });
 
     expect(removal.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
         .BLOCKED_BY_EXECUTION_GATE);
     expect(removal.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_NOT_READY,
+          POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_NOT_READY,
       }),
     ]));
   });
@@ -267,14 +272,14 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemoval', () => {
     });
 
     expect(emptySelection.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SELECTION);
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SELECTION);
     expect(emptySelection.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.NO_PATHS_SELECTED,
+        riskId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.NO_PATHS_SELECTED,
       }),
     ]));
     expect(unknownPath.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SELECTION);
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SELECTION);
     expect(unknownPath.removalBatch.missingPaths)
       .toEqual(['client/src/components/policies/UnknownCompatibilityPath.vue']);
   });
@@ -290,11 +295,11 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemoval', () => {
     });
 
     expect(removal.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SCOPE);
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SCOPE);
     expect(removal.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.REMOVAL_SCOPE_TOO_BROAD,
+          POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.REMOVAL_SCOPE_TOO_BROAD,
         selectedCount: 3,
         maxBatchSize: 2,
       }),
@@ -308,16 +313,16 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemoval', () => {
     });
 
     expect(removal.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_APPROVAL);
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_APPROVAL);
     expect(removal.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MISSING_REVIEW_REASON,
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MISSING_REVIEWER,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MISSING_REVIEW_REASON,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MISSING_REVIEWER,
     ]));
   });
 
   test('rejects mutated removal output with side effects or stale risk count', () => {
     const removal = readyRemoval();
-    const validation = validatePolicyBuilderPhase8ControlledCompatibilityPathRemoval({
+    const validation = validatePolicyControlledCompatibilityPathRemoval({
       ...removal,
       riskCount: 99,
       sideEffects: {
@@ -329,8 +334,8 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemoval', () => {
 
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.RISK_COUNT_MISMATCH,
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SIDE_EFFECT_PERFORMED,
     ]));
   });
 });

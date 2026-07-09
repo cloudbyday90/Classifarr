@@ -99,7 +99,7 @@ Use this stack for Phase 8R controlled removal batch generation:
 3. Build the Phase 8R.16 execution gate through
    `policyCompatibilityDeletionExecutionGate.mjs`.
 4. Build the Phase 8R.17 removal batch through
-   `policyBuilderPhase8ControlledCompatibilityPathRemoval.mjs`.
+   `policyControlledCompatibilityPathRemoval.mjs`.
 5. Refuse ready output unless both gate and batch validate.
 6. Write the nested removal-batch JSON for Phase 8R.18 apply tooling.
 7. Optionally write the wrapper artifact for audit trails.

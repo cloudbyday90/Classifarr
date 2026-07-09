@@ -2,9 +2,9 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
-  buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval,
-} from './policyBuilderPhase8ControlledCompatibilityPathRemoval.mjs';
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
+  buildPolicyControlledCompatibilityPathRemoval,
+} from './policyControlledCompatibilityPathRemoval.mjs';
 
 const PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_VERSION =
   'phase8r.controlled_compatibility_path_removal_apply.v1';
@@ -51,12 +51,12 @@ function buildRisk(riskId, message, metadata = {}) {
 }
 
 function evaluateRemovalReview(removalReview) {
-  const review = removalReview || buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval();
+  const review = removalReview || buildPolicyControlledCompatibilityPathRemoval();
   const risks = [];
 
   if (
     review.statusId !==
-    PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.READY_FOR_REMOVAL_REVIEW ||
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.READY_FOR_REMOVAL_REVIEW ||
     review.readyForRemovalReview !== true
   ) {
     risks.push(buildRisk(

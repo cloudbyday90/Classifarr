@@ -17,8 +17,8 @@ import {
   buildPolicyCompatibilityDeletionExecutionGate,
 } from '../../services/policyCompatibilityDeletionExecutionGate.mjs';
 import {
-  buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval,
-} from '../../services/policyBuilderPhase8ControlledCompatibilityPathRemoval.mjs';
+  buildPolicyControlledCompatibilityPathRemoval,
+} from '../../services/policyControlledCompatibilityPathRemoval.mjs';
 import {
   PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS,
   PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
@@ -168,7 +168,7 @@ function readyGate(executionPlan, overrides = {}) {
 
 function readyRemovalReview(overrides = {}) {
   const executionPlan = readyExecutionPlan();
-  return buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
+  return buildPolicyControlledCompatibilityPathRemoval({
     executionPlan,
     executionGate: readyGate(executionPlan),
     selectedPaths: [

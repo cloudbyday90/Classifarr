@@ -3,8 +3,8 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
-} from '../../services/policyBuilderPhase8ControlledCompatibilityPathRemoval.mjs';
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
+} from '../../services/policyControlledCompatibilityPathRemoval.mjs';
 import {
   PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS,
   PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_STATUS_IDS,
@@ -83,7 +83,7 @@ describe('policyBuilderPhase8ControlledRemovalBatchArtifact', () => {
     expect(artifact.validation.ok).toBe(true);
     expect(artifact.executionGate.allowControlledDeletion).toBe(true);
     expect(artifact.removalBatch.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
         .READY_FOR_REMOVAL_REVIEW);
     expect(artifact.removalBatch.removalBatch).toEqual(expect.objectContaining({
       selectedCount: 1,

@@ -7,10 +7,10 @@ import {
   buildPolicyCompatibilityDeletionExecutionGate,
 } from './policyCompatibilityDeletionExecutionGate.mjs';
 
-const PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_VERSION =
-  'phase8r.controlled_compatibility_path_removal.v1';
+const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_VERSION =
+  'policy.controlled_compatibility_path_removal.v1';
 
-const PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS = Object.freeze({
+const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS = Object.freeze({
   READY_FOR_REMOVAL_REVIEW: 'ready_for_removal_review',
   BLOCKED_BY_EXECUTION_PLAN: 'blocked_by_execution_plan',
   BLOCKED_BY_EXECUTION_GATE: 'blocked_by_execution_gate',
@@ -19,7 +19,7 @@ const PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS = Object.freeze({
   BLOCKED_BY_APPROVAL: 'blocked_by_approval',
 });
 
-const PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS = Object.freeze({
+const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS = Object.freeze({
   EXECUTION_PLAN_NOT_READY: 'execution_plan_not_ready',
   EXECUTION_PLAN_VALIDATION_FAILED: 'execution_plan_validation_failed',
   EXECUTION_GATE_NOT_READY: 'execution_gate_not_ready',
@@ -65,15 +65,15 @@ function evaluateExecutionPlan(executionPlan) {
     plan.readyForExecutionGate !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_NOT_READY,
-      'Controlled compatibility path removal requires a ready Phase 8R.15 execution plan.',
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_NOT_READY,
+      'Controlled compatibility path removal requires a ready compatibility deletion execution plan.',
       { statusId: plan.statusId || null }
     ));
   }
 
   if (plan.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_VALIDATION_FAILED,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_VALIDATION_FAILED,
       'Controlled compatibility path removal requires a valid execution plan.',
       { issueCount: plan.validation?.issueCount ?? null }
     ));
@@ -95,15 +95,15 @@ function evaluateExecutionGate(executionGate) {
     gate.allowControlledDeletion !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_NOT_READY,
-      'Controlled compatibility path removal requires a ready Phase 8R.16 execution gate.',
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_NOT_READY,
+      'Controlled compatibility path removal requires a ready compatibility deletion execution gate.',
       { statusId: gate.statusId || null }
     ));
   }
 
   if (gate.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_VALIDATION_FAILED,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_VALIDATION_FAILED,
       'Controlled compatibility path removal requires a valid execution gate.',
       { issueCount: gate.validation?.issueCount ?? null }
     ));
@@ -143,14 +143,14 @@ function evaluateSelection({
 
   if (selectedPaths.length === 0) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.NO_PATHS_SELECTED,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.NO_PATHS_SELECTED,
       'Controlled compatibility path removal requires at least one selected manifest path.'
     ));
   }
 
   missingPaths.forEach(path => {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_PATH_NOT_IN_MANIFEST,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_PATH_NOT_IN_MANIFEST,
       'Controlled compatibility path removal can only target paths from the approved manifest.',
       { path }
     ));
@@ -159,7 +159,7 @@ function evaluateSelection({
   selectedEntries.forEach(entry => {
     if (entry.ready !== true) {
       risks.push(buildRisk(
-        PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_ENTRY_NOT_READY,
+        POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_ENTRY_NOT_READY,
         'Selected compatibility path removal entries must include replacement evidence.',
         {
           path: entry.path,
@@ -171,7 +171,7 @@ function evaluateSelection({
 
   if (selectedPaths.length > maxBatchSize) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.REMOVAL_SCOPE_TOO_BROAD,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.REMOVAL_SCOPE_TOO_BROAD,
       'Controlled compatibility path removal requires a narrow, reviewable batch.',
       {
         selectedCount: selectedPaths.length,
@@ -191,14 +191,14 @@ function evaluateReviewMetadata({
 
   if (!String(removalReason || '').trim()) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MISSING_REVIEW_REASON,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MISSING_REVIEW_REASON,
       'Controlled compatibility path removal requires a review reason.'
     ));
   }
 
   if (!String(reviewedBy || '').trim()) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MISSING_REVIEWER,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MISSING_REVIEWER,
       'Controlled compatibility path removal requires a reviewing actor.'
     ));
   }
@@ -208,44 +208,44 @@ function evaluateReviewMetadata({
 
 function determineStatusId(risks = []) {
   if (risks.some(risk => [
-    PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_NOT_READY,
-    PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_VALIDATION_FAILED,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_NOT_READY,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_VALIDATION_FAILED,
   ].includes(risk.riskId))) {
-    return PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+    return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
       .BLOCKED_BY_EXECUTION_PLAN;
   }
 
   if (risks.some(risk => [
-    PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_NOT_READY,
-    PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_VALIDATION_FAILED,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_NOT_READY,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_VALIDATION_FAILED,
   ].includes(risk.riskId))) {
-    return PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+    return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
       .BLOCKED_BY_EXECUTION_GATE;
   }
 
   if (risks.some(risk => [
-    PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.NO_PATHS_SELECTED,
-    PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_PATH_NOT_IN_MANIFEST,
-    PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_ENTRY_NOT_READY,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.NO_PATHS_SELECTED,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_PATH_NOT_IN_MANIFEST,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_ENTRY_NOT_READY,
   ].includes(risk.riskId))) {
-    return PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SELECTION;
+    return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SELECTION;
   }
 
   if (risks.some(risk =>
     risk.riskId ===
-    PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.REMOVAL_SCOPE_TOO_BROAD
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.REMOVAL_SCOPE_TOO_BROAD
   )) {
-    return PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SCOPE;
+    return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SCOPE;
   }
 
   if (risks.some(risk => [
-    PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MISSING_REVIEW_REASON,
-    PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MISSING_REVIEWER,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MISSING_REVIEW_REASON,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MISSING_REVIEWER,
   ].includes(risk.riskId))) {
-    return PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_APPROVAL;
+    return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_APPROVAL;
   }
 
-  return PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.READY_FOR_REMOVAL_REVIEW;
+  return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.READY_FOR_REMOVAL_REVIEW;
 }
 
 function buildRemovalBatchEntries(entries = []) {
@@ -258,7 +258,7 @@ function buildRemovalBatchEntries(entries = []) {
   }));
 }
 
-function buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
+function buildPolicyControlledCompatibilityPathRemoval({
   executionPlan = null,
   executionGate = null,
   selectedPaths = [],
@@ -290,7 +290,7 @@ function buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
     }),
   ];
   const removal = {
-    version: PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_VERSION,
+    version: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_VERSION,
     statusId: determineStatusId(risks),
     readyForRemovalReview: risks.length === 0,
     executionPlan: {
@@ -331,8 +331,8 @@ function buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
       manifestWritten: false,
       gitCommandsRun: false,
     },
-    nextPhase: {
-      phaseId: '8r_18',
+    nextStep: {
+      stepId: 'controlled_compatibility_path_removal_apply',
       label: 'Controlled Compatibility Path Removal Apply',
       reason:
         'The selected removal batch can be reviewed separately before any file, route, test, or storage removal is applied.',
@@ -341,24 +341,24 @@ function buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
 
   return {
     ...removal,
-    validation: validatePolicyBuilderPhase8ControlledCompatibilityPathRemoval(removal),
+    validation: validatePolicyControlledCompatibilityPathRemoval(removal),
   };
 }
 
-function validatePolicyBuilderPhase8ControlledCompatibilityPathRemoval(removal = {}) {
+function validatePolicyControlledCompatibilityPathRemoval(removal = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS)
+  if (!Object.values(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS)
     .includes(removal.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.UNKNOWN_STATUS,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.UNKNOWN_STATUS,
       'Controlled compatibility path removal status must be known.'
     ));
   }
 
   if (removal.riskCount !== asArray(removal.risks).length) {
     issues.push(buildRisk(
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.RISK_COUNT_MISMATCH,
       'Controlled compatibility path removal risk count must match risk list length.'
     ));
   }
@@ -366,7 +366,7 @@ function validatePolicyBuilderPhase8ControlledCompatibilityPathRemoval(removal =
   Object.entries(removal.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
-        PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SIDE_EFFECT_PERFORMED,
         `Controlled compatibility path removal cannot perform side effect "${key}".`
       ));
     }
@@ -380,9 +380,9 @@ function validatePolicyBuilderPhase8ControlledCompatibilityPathRemoval(removal =
 }
 
 export {
-  PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS,
-  PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
-  PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_VERSION,
-  buildPolicyBuilderPhase8ControlledCompatibilityPathRemoval,
-  validatePolicyBuilderPhase8ControlledCompatibilityPathRemoval,
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS,
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_VERSION,
+  buildPolicyControlledCompatibilityPathRemoval,
+  validatePolicyControlledCompatibilityPathRemoval,
 };
