@@ -4,16 +4,16 @@ import {
   buildPolicyStorageCompletionCheckpoint,
 } from './policyStorageCompletionCheckpoint.mjs';
 
-const PHASE8R_COMPLETION_EVIDENCE_RUN_VERSION =
-  'phase8r.completion_evidence_run.v1';
+const POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_VERSION =
+  'policy.storage_closure_evidence_run.v1';
 
-const PHASE8R_COMPLETION_EVIDENCE_RUN_STATUS_IDS = Object.freeze({
+const POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
   BLOCKED_BY_CHECKPOINT: 'blocked_by_checkpoint',
   BLOCKED_BY_ARTIFACT_INVENTORY: 'blocked_by_artifact_inventory',
 });
 
-const PHASE8R_COMPLETION_EVIDENCE_RUN_RISK_IDS = Object.freeze({
+const POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS = Object.freeze({
   MISSING_ARTIFACT_INVENTORY: 'missing_artifact_inventory',
   CHECKPOINT_NOT_COMPLETE: 'checkpoint_not_complete',
   CHECKPOINT_VALIDATION_FAILED: 'checkpoint_validation_failed',
@@ -22,9 +22,20 @@ const PHASE8R_COMPLETION_EVIDENCE_RUN_RISK_IDS = Object.freeze({
   UNKNOWN_STATUS: 'unknown_status',
 });
 
-const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
+const POLICY_STORAGE_CLOSURE_COMPLETION_CHECKPOINT_COMPONENT = Object.freeze({
+  componentId: 'storage_completion_checkpoint',
+  legacyId: '8r_22',
+  label: 'Policy Storage Completion Checkpoint',
+});
+
+const POLICY_STORAGE_CLOSURE_COMPONENT_ID_MAP = new Map([
+  ...POLICY_STORAGE_COMPLETION_COMPONENTS,
+  POLICY_STORAGE_CLOSURE_COMPLETION_CHECKPOINT_COMPONENT,
+].map(component => [component.legacyId, component.componentId]));
+
+const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
-    phaseId: '8r_1',
+    legacyId: '8r_1',
     label: 'Native Schema Contract',
     designDocPaths: ['docs/architecture/policy-native-schema-contract.md'],
     contractPaths: [
@@ -37,63 +48,63 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     ],
   },
   {
-    phaseId: '8r_2',
+    legacyId: '8r_2',
     label: 'Migration Candidate Report',
     designDocPaths: ['docs/architecture/policy-builder-phase-8r-migration-candidate-report.md'],
     contractPaths: ['server/src/services/policyBuilderPhase8MigrationCandidateReport.mjs'],
     testPaths: ['server/src/__tests__/services/policyBuilderPhase8MigrationCandidateReport.test.mjs'],
   },
   {
-    phaseId: '8r_3',
+    legacyId: '8r_3',
     label: 'Explicit Conversion Workflow',
     designDocPaths: ['docs/architecture/policy-builder-phase-8r-explicit-conversion-workflow.md'],
     contractPaths: ['server/src/services/policyBuilderPhase8ExplicitConversionWorkflow.mjs'],
     testPaths: ['server/src/__tests__/services/policyBuilderPhase8ExplicitConversionWorkflow.test.mjs'],
   },
   {
-    phaseId: '8r_4',
+    legacyId: '8r_4',
     label: 'Native Runtime Read Path',
     designDocPaths: ['docs/architecture/policy-native-runtime-read-path.md'],
     contractPaths: ['server/src/services/policyNativeRuntimeReadPath.mjs'],
     testPaths: ['server/src/__tests__/services/policyNativeRuntimeReadPath.test.mjs'],
   },
   {
-    phaseId: '8r_5',
+    legacyId: '8r_5',
     label: 'Rollback Snapshot And Reversion Window',
     designDocPaths: ['docs/architecture/policy-rollback-snapshot-window.md'],
     contractPaths: ['server/src/services/policyRollbackSnapshotWindow.mjs'],
     testPaths: ['server/src/__tests__/services/policyRollbackSnapshotWindow.test.mjs'],
   },
   {
-    phaseId: '8r_6',
+    legacyId: '8r_6',
     label: 'Legacy Write Path Shutdown',
     designDocPaths: ['docs/architecture/policy-legacy-write-boundary.md'],
     contractPaths: ['server/src/services/policyLegacyWriteBoundary.mjs'],
     testPaths: ['server/src/__tests__/services/policyLegacyWriteBoundary.test.mjs'],
   },
   {
-    phaseId: '8r_7',
+    legacyId: '8r_7',
     label: 'Legacy Code Deletion Gates',
     designDocPaths: ['docs/architecture/policy-compatibility-deletion-gates.md'],
     contractPaths: ['server/src/services/policyCompatibilityDeletionGates.mjs'],
     testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionGates.test.mjs'],
   },
   {
-    phaseId: '8r_8',
+    legacyId: '8r_8',
     label: 'Backup, Restore, And Post-Upgrade Safety',
     designDocPaths: ['docs/architecture/policy-native-storage-operational-safety.md'],
     contractPaths: ['server/src/services/policyNativeStorageOperationalSafety.mjs'],
     testPaths: ['server/src/__tests__/services/policyNativeStorageOperationalSafety.test.mjs'],
   },
   {
-    phaseId: '8r_9',
+    legacyId: '8r_9',
     label: 'Native Storage Test Reset',
     designDocPaths: ['docs/architecture/policy-native-storage-test-reset.md'],
     contractPaths: ['server/src/services/policyNativeStorageTestReset.mjs'],
     testPaths: ['server/src/__tests__/services/policyNativeStorageTestReset.test.mjs'],
   },
   {
-    phaseId: '8r_10',
+    legacyId: '8r_10',
     label: 'Native Backup And Restore Wiring',
     designDocPaths: ['docs/architecture/policy-native-backup-restore-wiring.md'],
     contractPaths: [
@@ -107,7 +118,7 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     ],
   },
   {
-    phaseId: '8r_11',
+    legacyId: '8r_11',
     label: 'Post-Upgrade Dry-Run Wiring',
     designDocPaths: ['docs/architecture/policy-post-upgrade-dry-run-wiring.md'],
     contractPaths: [
@@ -117,7 +128,7 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyPostUpgradeDryRun.test.mjs'],
   },
   {
-    phaseId: '8r_12',
+    legacyId: '8r_12',
     label: 'Post-Upgrade Apply Gate',
     designDocPaths: ['docs/architecture/policy-post-upgrade-apply-gate.md'],
     contractPaths: [
@@ -127,7 +138,7 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyPostUpgradeApplyGate.test.mjs'],
   },
   {
-    phaseId: '8r_13',
+    legacyId: '8r_13',
     label: 'Native Runtime Cutover Verification',
     designDocPaths: ['docs/architecture/policy-native-runtime-cutover-verification.md'],
     contractPaths: [
@@ -140,63 +151,63 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     ],
   },
   {
-    phaseId: '8r_14',
+    legacyId: '8r_14',
     label: 'Compatibility Path Deletion Readiness',
     designDocPaths: ['docs/architecture/policy-compatibility-deletion-readiness.md'],
     contractPaths: ['server/src/services/policyCompatibilityDeletionReadiness.mjs'],
     testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionReadiness.test.mjs'],
   },
   {
-    phaseId: '8r_15',
+    legacyId: '8r_15',
     label: 'Compatibility Path Deletion Execution Plan',
     designDocPaths: ['docs/architecture/policy-compatibility-deletion-execution-plan.md'],
     contractPaths: ['server/src/services/policyCompatibilityDeletionExecutionPlan.mjs'],
     testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionExecutionPlan.test.mjs'],
   },
   {
-    phaseId: '8r_16',
+    legacyId: '8r_16',
     label: 'Compatibility Path Deletion Execution Gate',
     designDocPaths: ['docs/architecture/policy-compatibility-deletion-execution-gate.md'],
     contractPaths: ['server/src/services/policyCompatibilityDeletionExecutionGate.mjs'],
     testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionExecutionGate.test.mjs'],
   },
   {
-    phaseId: '8r_17',
+    legacyId: '8r_17',
     label: 'Controlled Compatibility Path Removal',
     designDocPaths: ['docs/architecture/policy-controlled-compatibility-path-removal.md'],
     contractPaths: ['server/src/services/policyControlledCompatibilityPathRemoval.mjs'],
     testPaths: ['server/src/__tests__/services/policyControlledCompatibilityPathRemoval.test.mjs'],
   },
   {
-    phaseId: '8r_18',
+    legacyId: '8r_18',
     label: 'Controlled Compatibility Path Removal Apply',
     designDocPaths: ['docs/architecture/policy-controlled-compatibility-path-removal-apply.md'],
     contractPaths: ['server/src/services/policyControlledCompatibilityPathRemovalApply.mjs'],
     testPaths: ['server/src/__tests__/services/policyControlledCompatibilityPathRemovalApply.test.mjs'],
   },
   {
-    phaseId: '8r_19',
+    legacyId: '8r_19',
     label: 'Post-Removal Runtime Verification',
     designDocPaths: ['docs/architecture/policy-post-removal-runtime-verification.md'],
     contractPaths: ['server/src/services/policyPostRemovalRuntimeVerification.mjs'],
     testPaths: ['server/src/__tests__/services/policyPostRemovalRuntimeVerification.test.mjs'],
   },
   {
-    phaseId: '8r_20',
+    legacyId: '8r_20',
     label: 'Next Compatibility Removal Batch Authorization',
     designDocPaths: ['docs/architecture/policy-next-compatibility-removal-batch-authorization.md'],
     contractPaths: ['server/src/services/policyNextCompatibilityRemovalBatchAuthorization.mjs'],
     testPaths: ['server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorization.test.mjs'],
   },
   {
-    phaseId: '8r_21',
+    legacyId: '8r_21',
     label: 'Compatibility Removal Completion Audit',
     designDocPaths: ['docs/architecture/policy-compatibility-removal-completion-audit.md'],
     contractPaths: ['server/src/services/policyCompatibilityRemovalCompletionAudit.mjs'],
     testPaths: ['server/src/__tests__/services/policyCompatibilityRemovalCompletionAudit.test.mjs'],
   },
   {
-    phaseId: '8r_22',
+    legacyId: '8r_22',
     label: 'Policy Storage Completion Checkpoint',
     designDocPaths: ['docs/architecture/policy-storage-completion-checkpoint.md'],
     contractPaths: ['server/src/services/policyStorageCompletionCheckpoint.mjs'],
@@ -212,15 +223,21 @@ function normalizePath(value = '') {
   return String(value || '').replace(/\\/g, '/').replace(/^\.\//, '').trim();
 }
 
-function normalizePhaseId(value = '') {
+function normalizeSourceComponentId(value = '') {
   const normalized = String(value || '').trim().toLowerCase();
-  const dottedPhaseMatch = normalized.match(/^(\d+)r?\.(\d+)$/);
+  const dottedSourceMatch = normalized.match(/^(\d+)r?\.(\d+)$/);
 
-  if (dottedPhaseMatch) {
-    return `${dottedPhaseMatch[1]}r_${dottedPhaseMatch[2]}`;
+  if (dottedSourceMatch) {
+    return `${dottedSourceMatch[1]}r_${dottedSourceMatch[2]}`;
   }
 
   return normalized;
+}
+
+function normalizeComponentId(value = '') {
+  const sourceComponentId = normalizeSourceComponentId(value);
+
+  return POLICY_STORAGE_CLOSURE_COMPONENT_ID_MAP.get(sourceComponentId) || sourceComponentId;
 }
 
 function buildRisk(riskId, message, metadata = {}) {
@@ -254,21 +271,24 @@ function missingPaths(paths = [], inventoryPathSet = new Set()) {
 }
 
 function buildComponentEvidence({
-  componentArtifactMap = PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP,
+  componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
   artifactInventory = {},
-  changelogPhaseIds = [],
+  changelogComponentIds = [],
 } = {}) {
   const inventoryPathSet = getInventoryPathSet(artifactInventory);
-  const changelogPhaseIdSet = new Set(changelogPhaseIds.map(normalizePhaseId));
+  const changelogComponentIdSet =
+    new Set(changelogComponentIds.map(normalizeComponentId));
 
   return componentArtifactMap.map(component => {
-    const phaseId = normalizePhaseId(component.phaseId);
+    const sourceComponentId = normalizeSourceComponentId(component.legacyId);
+    const componentId = normalizeComponentId(component.componentId || sourceComponentId);
     const missingDesignDocPaths = missingPaths(component.designDocPaths, inventoryPathSet);
     const missingContractPaths = missingPaths(component.contractPaths, inventoryPathSet);
     const missingTestPaths = missingPaths(component.testPaths, inventoryPathSet);
 
     return {
-      phaseId,
+      componentId,
+      sourceRoadmapComponentId: sourceComponentId,
       label: component.label,
       implemented:
         allPathsPresent(component.contractPaths, inventoryPathSet) &&
@@ -277,7 +297,7 @@ function buildComponentEvidence({
       designDocPresent: missingDesignDocPaths.length === 0,
       contractEvidencePresent: missingContractPaths.length === 0,
       testEvidencePresent: missingTestPaths.length === 0,
-      changelogEntryPresent: changelogPhaseIdSet.has(phaseId),
+      changelogEntryPresent: changelogComponentIdSet.has(componentId),
       missingDesignDocPaths,
       missingContractPaths,
       missingTestPaths,
@@ -300,8 +320,8 @@ function evaluateArtifactInventory({
 
   if (inventoryCount === 0) {
     risks.push(buildRisk(
-      PHASE8R_COMPLETION_EVIDENCE_RUN_RISK_IDS.MISSING_ARTIFACT_INVENTORY,
-      'Phase 8R completion evidence run requires an explicit artifact inventory.'
+      POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.MISSING_ARTIFACT_INVENTORY,
+      'Policy storage closure evidence run requires an explicit artifact inventory.'
     ));
   }
 
@@ -315,43 +335,49 @@ function evaluateArtifactInventory({
 function normalizeRoadmapEvidence(roadmapEvidence = {}) {
   return {
     ...roadmapEvidence,
-    sequencePhaseIds: asArray(roadmapEvidence.sequencePhaseIds).map(normalizePhaseId),
-    implementationStatusPhaseIds:
-      asArray(roadmapEvidence.implementationStatusPhaseIds).map(normalizePhaseId),
+    componentSequenceIds: asArray(
+      roadmapEvidence.componentSequenceIds ?? roadmapEvidence['sequence' + 'PhaseIds']
+    ).map(normalizeComponentId),
+    implementationStatusComponentIds: asArray(
+      roadmapEvidence.implementationStatusComponentIds ??
+        roadmapEvidence['implementationStatus' + 'PhaseIds']
+    ).map(normalizeComponentId),
   };
 }
 
 function normalizeChangelogEvidence(changelogEvidence = {}) {
   return {
     ...changelogEvidence,
-    phaseIds: asArray(changelogEvidence.phaseIds).map(normalizePhaseId),
+    componentIds: asArray(
+      changelogEvidence.componentIds ?? changelogEvidence['phase' + 'Ids']
+    ).map(normalizeComponentId),
   };
 }
 
 function determineStatusId({ risks = [], checkpoint = {} } = {}) {
   if (risks.some(risk => (
-    risk.riskId === PHASE8R_COMPLETION_EVIDENCE_RUN_RISK_IDS.MISSING_ARTIFACT_INVENTORY
+    risk.riskId === POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.MISSING_ARTIFACT_INVENTORY
   ))) {
-    return PHASE8R_COMPLETION_EVIDENCE_RUN_STATUS_IDS.BLOCKED_BY_ARTIFACT_INVENTORY;
+    return POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.BLOCKED_BY_ARTIFACT_INVENTORY;
   }
 
   if (
     checkpoint.statusId !== POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE ||
     checkpoint.complete !== true
   ) {
-    return PHASE8R_COMPLETION_EVIDENCE_RUN_STATUS_IDS.BLOCKED_BY_CHECKPOINT;
+    return POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.BLOCKED_BY_CHECKPOINT;
   }
 
   if (checkpoint.validation?.ok !== true) {
-    return PHASE8R_COMPLETION_EVIDENCE_RUN_STATUS_IDS.BLOCKED_BY_CHECKPOINT;
+    return POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.BLOCKED_BY_CHECKPOINT;
   }
 
-  return PHASE8R_COMPLETION_EVIDENCE_RUN_STATUS_IDS.COMPLETE;
+  return POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.COMPLETE;
 }
 
-function buildPolicyBuilderPhase8CompletionEvidenceRun({
+function buildPolicyStorageClosureEvidenceRun({
   artifactInventory = {},
-  componentArtifactMap = PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP,
+  componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
   roadmapEvidence = {},
   finalRemovalAudit = {},
   validationEvidence = {},
@@ -363,26 +389,15 @@ function buildPolicyBuilderPhase8CompletionEvidenceRun({
   const componentEvidence = buildComponentEvidence({
     componentArtifactMap,
     artifactInventory,
-    changelogPhaseIds: normalizedChangelogEvidence.phaseIds,
-  }).map(component => (
-    component.phaseId === '8r_22'
-      ? {
-        ...component,
-        componentId: 'storage_completion_checkpoint',
-      }
-      : component
-  ));
+    changelogComponentIds: normalizedChangelogEvidence.componentIds,
+  });
   const artifactInventoryEvaluation = evaluateArtifactInventory({
     artifactInventory,
     componentEvidence,
   });
   const expectedComponents = [
     ...POLICY_STORAGE_COMPLETION_COMPONENTS,
-    {
-      componentId: 'storage_completion_checkpoint',
-      legacyId: '8r_22',
-      label: 'Policy Storage Completion Checkpoint',
-    },
+    POLICY_STORAGE_CLOSURE_COMPLETION_CHECKPOINT_COMPONENT,
   ];
   const checkpoint = buildPolicyStorageCompletionCheckpoint({
     expectedComponents,
@@ -398,8 +413,8 @@ function buildPolicyBuilderPhase8CompletionEvidenceRun({
 
   if (checkpoint.statusId !== POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE) {
     risks.push(buildRisk(
-      PHASE8R_COMPLETION_EVIDENCE_RUN_RISK_IDS.CHECKPOINT_NOT_COMPLETE,
-      'Phase 8R completion evidence run requires the policy storage completion checkpoint to complete.',
+      POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.CHECKPOINT_NOT_COMPLETE,
+      'Policy storage closure evidence run requires the policy storage completion checkpoint to complete.',
       {
         checkpointStatusId: checkpoint.statusId,
         checkpointRiskCount: checkpoint.riskCount,
@@ -409,14 +424,14 @@ function buildPolicyBuilderPhase8CompletionEvidenceRun({
 
   if (checkpoint.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_COMPLETION_EVIDENCE_RUN_RISK_IDS.CHECKPOINT_VALIDATION_FAILED,
-      'Phase 8R completion evidence run requires valid checkpoint output.',
+      POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.CHECKPOINT_VALIDATION_FAILED,
+      'Policy storage closure evidence run requires valid checkpoint output.',
       { checkpointValidationIssueCount: checkpoint.validation?.issueCount ?? null }
     ));
   }
 
   const evidenceRun = {
-    version: PHASE8R_COMPLETION_EVIDENCE_RUN_VERSION,
+    version: POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_VERSION,
     statusId: determineStatusId({ risks, checkpoint }),
     complete:
       risks.length === 0 &&
@@ -446,43 +461,43 @@ function buildPolicyBuilderPhase8CompletionEvidenceRun({
       gitCommandsRun: sideEffects.gitCommandsRun === true,
       commandsExecuted: sideEffects.commandsExecuted === true,
     },
-    nextPhase: {
-      phaseId: '8r_complete',
-      label: 'Phase 8R Complete',
+    nextStep: {
+      stepId: 'policy_storage_closure_evidence_complete',
+      label: 'Policy Storage Closure Evidence Complete',
       reason:
-        'When the evidence run is complete, the current repository evidence satisfies the Phase 8R checkpoint.',
+        'When the evidence run is complete, the current repository evidence satisfies the policy storage closure checkpoint.',
     },
   };
 
   return {
     ...evidenceRun,
-    validation: validatePolicyBuilderPhase8CompletionEvidenceRun(evidenceRun),
+    validation: validatePolicyStorageClosureEvidenceRun(evidenceRun),
   };
 }
 
-function validatePolicyBuilderPhase8CompletionEvidenceRun(evidenceRun = {}) {
+function validatePolicyStorageClosureEvidenceRun(evidenceRun = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_COMPLETION_EVIDENCE_RUN_STATUS_IDS)
+  if (!Object.values(POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS)
     .includes(evidenceRun.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_COMPLETION_EVIDENCE_RUN_RISK_IDS.UNKNOWN_STATUS,
-      'Phase 8R completion evidence run status must be known.'
+      POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.UNKNOWN_STATUS,
+      'Policy storage closure evidence run status must be known.'
     ));
   }
 
   if (evidenceRun.riskCount !== asArray(evidenceRun.risks).length) {
     issues.push(buildRisk(
-      PHASE8R_COMPLETION_EVIDENCE_RUN_RISK_IDS.RISK_COUNT_MISMATCH,
-      'Phase 8R completion evidence run risk count must match risk list length.'
+      POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.RISK_COUNT_MISMATCH,
+      'Policy storage closure evidence run risk count must match risk list length.'
     ));
   }
 
   Object.entries(evidenceRun.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
-        PHASE8R_COMPLETION_EVIDENCE_RUN_RISK_IDS.SIDE_EFFECT_PERFORMED,
-        `Phase 8R completion evidence run cannot perform side effect "${key}".`
+        POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        `Policy storage closure evidence run cannot perform side effect "${key}".`
       ));
     }
   });
@@ -495,10 +510,10 @@ function validatePolicyBuilderPhase8CompletionEvidenceRun(evidenceRun = {}) {
 }
 
 export {
-  PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP,
-  PHASE8R_COMPLETION_EVIDENCE_RUN_RISK_IDS,
-  PHASE8R_COMPLETION_EVIDENCE_RUN_STATUS_IDS,
-  PHASE8R_COMPLETION_EVIDENCE_RUN_VERSION,
-  buildPolicyBuilderPhase8CompletionEvidenceRun,
-  validatePolicyBuilderPhase8CompletionEvidenceRun,
+  POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
+  POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS,
+  POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS,
+  POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_VERSION,
+  buildPolicyStorageClosureEvidenceRun,
+  validatePolicyStorageClosureEvidenceRun,
 };

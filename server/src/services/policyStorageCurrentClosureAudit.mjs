@@ -1,9 +1,9 @@
 import {
-  PHASE8R_COMPLETION_EVIDENCE_RUN_STATUS_IDS,
-} from './policyBuilderPhase8CompletionEvidenceRun.mjs';
+  POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS,
+} from './policyStorageClosureEvidenceRun.mjs';
 import {
-  buildPolicyBuilderPhase8CurrentEvidenceRun,
-} from './policyBuilderPhase8CurrentEvidenceCollector.mjs';
+  buildPolicyStorageClosureCurrentEvidenceRun,
+} from './policyStorageClosureCurrentEvidenceCollector.mjs';
 import {
   POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
   buildPolicyStorageCompletionCheckpointArtifact,
@@ -159,7 +159,7 @@ function buildAuditRisks({
 
   if (
     currentEvidenceRun.statusId !==
-      PHASE8R_COMPLETION_EVIDENCE_RUN_STATUS_IDS.COMPLETE ||
+      POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.COMPLETE ||
     currentEvidenceRun.complete !== true
   ) {
     risks.push(buildRisk(
@@ -237,7 +237,7 @@ function determineStatusId({
 
   if (
     currentEvidenceRun.statusId !==
-      PHASE8R_COMPLETION_EVIDENCE_RUN_STATUS_IDS.COMPLETE ||
+      POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.COMPLETE ||
     currentEvidenceRun.complete !== true
   ) {
     return POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
@@ -275,7 +275,7 @@ function buildPolicyStorageCurrentClosureAudit({
   readTextFile,
 } = {}) {
   const finalRemovalAudit = asObject(completionAuditArtifact).audit || {};
-  const currentEvidence = buildPolicyBuilderPhase8CurrentEvidenceRun({
+  const currentEvidence = buildPolicyStorageClosureCurrentEvidenceRun({
     cwd,
     finalRemovalAudit,
     validationEvidence,

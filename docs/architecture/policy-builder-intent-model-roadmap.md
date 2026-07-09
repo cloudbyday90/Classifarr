@@ -4848,7 +4848,8 @@ Implementation status:
   [Policy Native Backup And Restore Wiring](policy-native-backup-restore-wiring.md).
 - The architecture cutover renamed the standing record from
   `policy-builder-phase-8r-native-backup-restore-wiring.md` to
-  `policy-native-backup-restore-wiring.md`, updated the Phase 8R evidence map,
+  `policy-native-backup-restore-wiring.md`, updated the policy storage closure
+  evidence map,
   and confirmed the live production service names are already durable
   backup/restore domain names:
   [Policy Native Backup And Restore Wiring Module Cutover](policy-native-backup-restore-wiring-module-cutover.md).
@@ -5478,12 +5479,12 @@ Tasks:
 Acceptance criteria:
 
 - Evidence-run completion is blocked when the artifact inventory is empty.
-- Evidence-run completion is blocked when any mapped Phase 8R artifact is
+- Evidence-run completion is blocked when any mapped storage closure artifact is
   missing.
 - Evidence-run completion is blocked unless the composed policy storage checkpoint
   completes and validates.
 - Windows-style and POSIX-style paths produce the same artifact matching result.
-- Phase 8R.10 native backup/restore wiring is represented by the live
+- Native backup/restore wiring is represented by the live
   backup/restore modules and lifecycle tests.
 - The evidence run does not scan files, run commands, mutate storage, write
   docs/changelog, delete code, or run Git itself.
@@ -5493,24 +5494,27 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.23 completion evidence run is documented in
-  [Policy Builder Phase 8R Completion Evidence Run](policy-builder-phase-8r-completion-evidence-run.md).
+- Policy storage closure evidence run is documented in
+  [Policy Storage Closure Evidence Run](policy-storage-closure-evidence-run.md).
+- The evidence-run module cutover is documented in
+  [Policy Storage Closure Evidence Run Module Cutover](policy-storage-closure-evidence-run-module-cutover.md).
 - The evidence-run contract lives in
-  `server/src/services/policyBuilderPhase8CompletionEvidenceRun.mjs`.
+  `server/src/services/policyStorageClosureEvidenceRun.mjs`.
 - The current-state evidence collector lives in
-  `server/src/services/policyBuilderPhase8CurrentEvidenceCollector.mjs`.
-- The root runner lives in `scripts/run-policy-builder-phase-8r-evidence.mjs`
-  and is exposed as `npm run policy:phase8r:evidence`.
+  `server/src/services/policyStorageClosureCurrentEvidenceCollector.mjs`.
+- The root runner lives in `scripts/run-policy-storage-closure-evidence.mjs`
+  and is exposed as `npm run policy:storage-closure-evidence`.
 - The focused evidence-run test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8CompletionEvidenceRun.test.mjs`.
+  `server/src/__tests__/services/policyStorageClosureEvidenceRun.test.mjs`.
 - The focused current-state collector test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8CurrentEvidenceCollector.test.mjs`.
+  `server/src/__tests__/services/policyStorageClosureCurrentEvidenceCollector.test.mjs`.
 - Current implementation consumes explicit artifact inventory, converts mapped
-  artifact coverage into checkpoint component evidence, composes the Phase 8R.22
+  artifact coverage into checkpoint component evidence, composes the storage
   completion checkpoint, blocks incomplete evidence, and emits
-  `8r_complete` only when supplied evidence satisfies the checkpoint.
-- Current checkout execution reports all mapped Phase 8R artifacts present, then
-  correctly blocks closure until machine-readable Phase 8R.21 final removal
+  `nextStep.stepId = policy_storage_closure_evidence_complete` only when
+  supplied evidence satisfies the checkpoint.
+- Current checkout execution reports all mapped storage closure artifacts
+  present, then correctly blocks closure until machine-readable final removal
   audit evidence and validation evidence are supplied.
 
 ### 8R.24 Policy Storage Closure Validation Evidence
@@ -5591,7 +5595,7 @@ Acceptance criteria:
 - Existing manifest paths are reported as remaining inventory.
 - Removed manifest paths are covered by bounded removal verification evidence.
 - Final scan references block completion.
-- The generated JSON can be passed to `npm run policy:phase8r:evidence`.
+- The generated JSON can be passed to `npm run policy:storage-closure-evidence`.
 - The exporter does not delete files, archive files, mutate storage, run Git, or
   fabricate completion when current evidence says inventory remains.
 
@@ -6953,15 +6957,15 @@ Implementation status:
   `policy.native_storage_test_reset.v1`, replaced phase-local constants,
   builder exports, diagnostic deletion fields, and handoff fields with durable
   names and `nextStep.stepId = native_backup_restore_wiring`, and updated the
-  Phase 8R evidence map:
+  policy storage closure evidence map:
   [Policy Native Storage Test Reset Module Cutover](policy-native-storage-test-reset-module-cutover.md).
 - After the native-storage-test-reset module cutover, the repository inventory
   validates with 8,823 total phase-coded references, 3,417 production
   references, and 3,439 rename candidates.
 - The native backup/restore wiring architecture cutover renamed the standing
   recovery record to `policy-native-backup-restore-wiring.md`, updated the
-  Phase 8R evidence map and native storage safety references, and intentionally
-  kept `backupService.mjs`, `backupRestore.mjs`, and
+  policy storage closure evidence map and native storage safety references, and
+  intentionally kept `backupService.mjs`, `backupRestore.mjs`, and
   `backupRestoreTables.mjs` because those production names already describe
   product behavior:
   [Policy Native Backup And Restore Wiring Module Cutover](policy-native-backup-restore-wiring-module-cutover.md).

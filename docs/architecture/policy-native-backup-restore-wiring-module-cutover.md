@@ -90,7 +90,8 @@ Cons:
 
 - Renamed `policy-builder-phase-8r-native-backup-restore-wiring.md` to
   `policy-native-backup-restore-wiring.md`.
-- Updated the Phase 8R evidence map to point at the durable architecture path.
+- Updated the policy storage closure evidence map to point at the durable
+  architecture path.
 - Updated roadmap and upstream storage safety references to use the durable
   architecture path.
 - Preserved the existing backup/export and restore service names because they
@@ -111,7 +112,7 @@ Cons:
 
 ```powershell
 cd server
-node ../scripts/run-jest.mjs --testPathPatterns="backupService.evidence|backupRestoreTables.nativePolicyIntent|backup-lifecycle|policyBuilderPhase8CompletionEvidenceRun|policyNativeStorageTestReset" --no-coverage --runInBand
+node ../scripts/run-jest.mjs --testPathPatterns="backupService.evidence|backupRestoreTables.nativePolicyIntent|backup-lifecycle|policyStorageClosureEvidenceRun|policyNativeStorageTestReset" --no-coverage --runInBand
 cd ..
 npm run lint:docs
 node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid

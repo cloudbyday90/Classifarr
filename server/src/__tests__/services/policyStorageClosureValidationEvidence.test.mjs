@@ -34,7 +34,7 @@ describe('policyStorageClosureValidationEvidence', () => {
     expect(evidence.focused).toEqual(expect.objectContaining({
       passed: true,
       exitCode: 0,
-      command: expect.stringContaining('policyBuilderPhase8CurrentEvidenceCollector'),
+      command: expect.stringContaining('policyStorageClosureCurrentEvidenceCollector'),
     }));
     expect(evidence.focused.command)
       .toContain('policyBuilderPhase8FinalRemovalAuditEvidence');
@@ -44,6 +44,8 @@ describe('policyStorageClosureValidationEvidence', () => {
       .toContain('policyBuilderPhase8ControlledRemovalBatchArtifact');
     expect(evidence.lint.command).toBe('npm run lint');
     expect(evidence.markdown.command).toContain('markdownlint-cli2');
+    expect(evidence.markdown.command)
+      .toContain('policy-storage-closure-evidence-run-module-cutover.md');
     expect(evidence.markdown.command)
       .toContain('policy-builder-phase-8r-final-removal-audit-exporter.md');
     expect(evidence.markdown.command)

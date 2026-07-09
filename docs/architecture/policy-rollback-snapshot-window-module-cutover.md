@@ -86,7 +86,7 @@ Cons:
 - Architecture records:
   `docs/architecture/policy-rollback-snapshot-window.md` and this document
 - Evidence map:
-  `server/src/services/policyBuilderPhase8CompletionEvidenceRun.mjs`
+  `server/src/services/policyStorageClosureEvidenceRun.mjs`
 - Native-storage reset inventory:
   `server/src/services/policyNativeStorageTestReset.mjs`
 - Shared conversion actor vocabulary:

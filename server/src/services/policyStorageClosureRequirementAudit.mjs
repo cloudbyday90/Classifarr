@@ -2,15 +2,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
-  PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP as POLICY_STORAGE_BASE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
-} from './policyBuilderPhase8CompletionEvidenceRun.mjs';
+  POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP as POLICY_STORAGE_BASE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
+} from './policyStorageClosureEvidenceRun.mjs';
 import {
   POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS,
 } from './policyStorageCurrentClosureAudit.mjs';
 import {
   collectArtifactInventory,
   normalizeRepositoryPath,
-} from './policyBuilderPhase8CurrentEvidenceCollector.mjs';
+} from './policyStorageClosureCurrentEvidenceCollector.mjs';
 
 const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_VERSION =
   'policy.storage_closure_requirement_audit.v1';
@@ -61,7 +61,7 @@ function toClosureComponentMap(componentArtifactMap = []) {
   return asArray(componentArtifactMap).map(component => ({
     componentId:
       normalizeClosureComponentId(
-        component.componentId || component[LEGACY_COMPONENT_ID_KEY]
+        component.componentId || component.legacyId || component[LEGACY_COMPONENT_ID_KEY]
       ),
     label: component.label,
     designDocPaths: asArray(component.designDocPaths),
@@ -74,16 +74,16 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   ...toClosureComponentMap(POLICY_STORAGE_BASE_CLOSURE_REQUIREMENT_ARTIFACT_MAP),
   {
     componentId: '8r_23',
-    label: 'Completion Evidence Run',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-completion-evidence-run.md'],
+    label: 'Policy Storage Closure Evidence Run',
+    designDocPaths: ['docs/architecture/policy-storage-closure-evidence-run.md'],
     contractPaths: [
-      'server/src/services/policyBuilderPhase8CompletionEvidenceRun.mjs',
-      'server/src/services/policyBuilderPhase8CurrentEvidenceCollector.mjs',
-      'scripts/run-policy-builder-phase-8r-evidence.mjs',
+      'server/src/services/policyStorageClosureEvidenceRun.mjs',
+      'server/src/services/policyStorageClosureCurrentEvidenceCollector.mjs',
+      'scripts/run-policy-storage-closure-evidence.mjs',
     ],
     testPaths: [
-      'server/src/__tests__/services/policyBuilderPhase8CompletionEvidenceRun.test.mjs',
-      'server/src/__tests__/services/policyBuilderPhase8CurrentEvidenceCollector.test.mjs',
+      'server/src/__tests__/services/policyStorageClosureEvidenceRun.test.mjs',
+      'server/src/__tests__/services/policyStorageClosureCurrentEvidenceCollector.test.mjs',
     ],
   },
   {

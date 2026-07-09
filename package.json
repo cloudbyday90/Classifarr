@@ -25,7 +25,7 @@
     "test:client": "cd client && npm test",
     "test:local:ai-policy-sweep": "node scripts/local-ai-policy-sweep.mjs",
     "test:local:ai-policy-sweep:cleanup": "node scripts/cleanup-local-ai-policy-sweep.mjs --all-reports",
-    "policy:phase8r:evidence": "node scripts/run-policy-builder-phase-8r-evidence.mjs",
+    "policy:storage-closure-evidence": "node scripts/run-policy-storage-closure-evidence.mjs",
     "policy:phase8r:execution-plan": "node scripts/generate-policy-builder-phase-8r-execution-plan.mjs",
     "policy:phase8r:removal-batch": "node scripts/generate-policy-builder-phase-8r-removal-batch.mjs",
     "policy:controlled-removal-apply": "node scripts/generate-policy-controlled-removal-apply.mjs",

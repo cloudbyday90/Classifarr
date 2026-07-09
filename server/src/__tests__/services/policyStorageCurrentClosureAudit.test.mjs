@@ -1,6 +1,6 @@
 import {
-  PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP,
-} from '../../services/policyBuilderPhase8CompletionEvidenceRun.mjs';
+  POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
+} from '../../services/policyStorageClosureEvidenceRun.mjs';
 import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
 } from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
@@ -12,16 +12,16 @@ import {
 } from '../../services/policyStorageCurrentClosureAudit.mjs';
 
 function completeRoadmapContent() {
-  const componentSections = PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP
+  const componentSections = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
     .map(component => {
-      const number = component.phaseId.replace('8r_', '');
+      const number = component.legacyId.replace('8r_', '');
 
       return `### 8R.${number} ${component.label}`;
     })
     .join('\n');
-  const sequenceItems = PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP
+  const sequenceItems = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
     .map((component, index) => {
-      const number = component.phaseId.replace('8r_', '');
+      const number = component.legacyId.replace('8r_', '');
 
       return `${index + 1}. **8R.${number} ${component.label}**`;
     })
@@ -31,7 +31,7 @@ function completeRoadmapContent() {
 }
 
 function completeChangelogContent() {
-  return PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP
+  return POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
     .map(component => `- **Policy Builder Phase 8R ${component.label}**`)
     .join('\n');
 }

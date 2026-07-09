@@ -14,8 +14,8 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  buildPolicyBuilderPhase8CurrentEvidenceRun,
-} from '../server/src/services/policyBuilderPhase8CurrentEvidenceCollector.mjs';
+  buildPolicyStorageClosureCurrentEvidenceRun,
+} from '../server/src/services/policyStorageClosureCurrentEvidenceCollector.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -60,11 +60,11 @@ function parseArgs(argv = []) {
 
 function usage() {
   return [
-    'Usage: node scripts/run-policy-builder-phase-8r-evidence.mjs [options]',
+    'Usage: node scripts/run-policy-storage-closure-evidence.mjs [options]',
     '',
     'Options:',
     '  --cwd <path>                    Repository root. Defaults to process cwd.',
-    '  --final-removal-audit <json>    JSON file containing Phase 8R.21 audit evidence.',
+    '  --final-removal-audit <json>    JSON file containing compatibility-removal completion audit evidence.',
     '  --validation-evidence <json>    JSON file containing focused/lint/markdown/full validation evidence.',
     '  --require-complete              Exit non-zero unless the evidence run completes.',
     '  --help                          Print this help message.',
@@ -119,7 +119,7 @@ function main() {
     process.exit(2);
   }
 
-  const result = buildPolicyBuilderPhase8CurrentEvidenceRun({
+  const result = buildPolicyStorageClosureCurrentEvidenceRun({
     cwd: path.resolve(process.cwd(), options.cwd),
     finalRemovalAudit,
     validationEvidence,

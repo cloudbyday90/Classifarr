@@ -96,8 +96,8 @@ Cons:
   `nextStep.stepId = native_backup_restore_wiring`.
 - Replaced diagnostic deletion markers with
   `deleteAfterNativeStorageGates`.
-- Updated the Phase 8R evidence map to point at the durable service, test, and
-  architecture paths.
+- Updated the policy storage closure evidence map to point at the durable
+  service, test, and architecture paths.
 
 ## Security Outcome
 

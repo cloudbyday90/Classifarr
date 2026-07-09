@@ -2,14 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
-  PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP,
-  buildPolicyBuilderPhase8CompletionEvidenceRun,
-} from './policyBuilderPhase8CompletionEvidenceRun.mjs';
+  POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
+  buildPolicyStorageClosureEvidenceRun,
+} from './policyStorageClosureEvidenceRun.mjs';
 
-const PHASE8R_CURRENT_EVIDENCE_COLLECTOR_VERSION =
-  'phase8r.current_evidence_collector.v1';
+const POLICY_STORAGE_CLOSURE_CURRENT_EVIDENCE_COLLECTOR_VERSION =
+  'policy.storage_closure_current_evidence_collector.v1';
 
-const DEFAULT_PHASE8R_ROADMAP_PATH =
+const DEFAULT_POLICY_STORAGE_CLOSURE_ROADMAP_PATH =
   'docs/architecture/policy-builder-intent-model-roadmap.md';
 const DEFAULT_CHANGELOG_PATH = 'CHANGELOG.md';
 
@@ -67,7 +67,7 @@ function categorizeArtifactPath(repositoryPath = '') {
   return ARTIFACT_INVENTORY_BUCKETS.OTHER;
 }
 
-function getMappedArtifactPaths(componentArtifactMap = PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP) {
+function getMappedArtifactPaths(componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP) {
   return asArray(componentArtifactMap)
     .flatMap(component => [
       ...asArray(component.designDocPaths),
@@ -80,7 +80,7 @@ function getMappedArtifactPaths(componentArtifactMap = PHASE8R_COMPLETION_EVIDEN
 
 function collectArtifactInventory({
   cwd = process.cwd(),
-  componentArtifactMap = PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP,
+  componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
   fileExists = defaultFileExists,
 } = {}) {
   const artifactInventory = {
@@ -124,11 +124,11 @@ function collectRegexMatches(content = '', pattern) {
 
 function extractRoadmapEvidence(roadmapContent = '') {
   return {
-    sequencePhaseIds: collectRegexMatches(
+    componentSequenceIds: collectRegexMatches(
       roadmapContent,
       /^\d+\.\s+\*\*(8R\.\d+)\b/gm
     ),
-    implementationStatusPhaseIds: collectRegexMatches(
+    implementationStatusComponentIds: collectRegexMatches(
       roadmapContent,
       /^###\s+(8R\.\d+)\b/gm
     ),
@@ -141,16 +141,16 @@ function normalizeSearchText(value = '') {
 
 function extractChangelogEvidence({
   changelogContent = '',
-  componentArtifactMap = PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP,
+  componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
 } = {}) {
   const normalizedChangelog = normalizeSearchText(changelogContent);
-  const phaseIds = asArray(componentArtifactMap)
+  const componentIds = asArray(componentArtifactMap)
     .filter(component => normalizedChangelog.includes(normalizeSearchText(component.label)))
-    .map(component => component.phaseId);
+    .map(component => component.componentId || component.legacyId);
 
   return {
-    updated: phaseIds.length > 0,
-    phaseIds,
+    updated: componentIds.length > 0,
+    componentIds,
   };
 }
 
@@ -166,10 +166,10 @@ function readOptionalTextFile({
   }
 }
 
-function buildPolicyBuilderPhase8CurrentEvidenceRun({
+function buildPolicyStorageClosureCurrentEvidenceRun({
   cwd = process.cwd(),
-  componentArtifactMap = PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP,
-  roadmapPath = DEFAULT_PHASE8R_ROADMAP_PATH,
+  componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
+  roadmapPath = DEFAULT_POLICY_STORAGE_CLOSURE_ROADMAP_PATH,
   changelogPath = DEFAULT_CHANGELOG_PATH,
   finalRemovalAudit = {},
   validationEvidence = {},
@@ -197,7 +197,7 @@ function buildPolicyBuilderPhase8CurrentEvidenceRun({
     changelogContent,
     componentArtifactMap,
   });
-  const evidenceRun = buildPolicyBuilderPhase8CompletionEvidenceRun({
+  const evidenceRun = buildPolicyStorageClosureEvidenceRun({
     artifactInventory: artifactInventoryResult.artifactInventory,
     componentArtifactMap,
     roadmapEvidence,
@@ -208,7 +208,7 @@ function buildPolicyBuilderPhase8CurrentEvidenceRun({
   });
 
   return {
-    version: PHASE8R_CURRENT_EVIDENCE_COLLECTOR_VERSION,
+    version: POLICY_STORAGE_CLOSURE_CURRENT_EVIDENCE_COLLECTOR_VERSION,
     roadmapPath,
     changelogPath,
     artifactInventory: artifactInventoryResult,
@@ -221,9 +221,9 @@ function buildPolicyBuilderPhase8CurrentEvidenceRun({
 export {
   ARTIFACT_INVENTORY_BUCKETS,
   DEFAULT_CHANGELOG_PATH,
-  DEFAULT_PHASE8R_ROADMAP_PATH,
-  PHASE8R_CURRENT_EVIDENCE_COLLECTOR_VERSION,
-  buildPolicyBuilderPhase8CurrentEvidenceRun,
+  DEFAULT_POLICY_STORAGE_CLOSURE_ROADMAP_PATH,
+  POLICY_STORAGE_CLOSURE_CURRENT_EVIDENCE_COLLECTOR_VERSION,
+  buildPolicyStorageClosureCurrentEvidenceRun,
   categorizeArtifactPath,
   collectArtifactInventory,
   extractChangelogEvidence,

@@ -76,8 +76,8 @@ Cons:
 - Live policy routes still need a later integration pass before this boundary
   actively enforces production writes.
 - Native write persistence remains a separate storage component.
-- Existing Phase 8R evidence tooling still uses historical phase inventory
-  labels until its own cutover component is reached.
+- Policy storage closure evidence tooling now references this durable boundary
+  through the storage closure evidence run.
 
 ## Final Recommendation Stack
 
@@ -88,7 +88,7 @@ Cons:
 - Durable design record:
   `docs/architecture/policy-legacy-write-boundary.md`
 - Evidence-map references:
-  `server/src/services/policyBuilderPhase8CompletionEvidenceRun.mjs`
+  `server/src/services/policyStorageClosureEvidenceRun.mjs`
 - Storage reset inventory:
   `server/src/services/policyNativeStorageTestReset.mjs`
 

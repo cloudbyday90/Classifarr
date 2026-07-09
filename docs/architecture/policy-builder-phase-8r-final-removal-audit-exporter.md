@@ -12,7 +12,7 @@ audit evidence. The final-removal audit exporter creates that JSON from:
 
 The exporter does not delete files, archive files, mutate storage, run Git, or
 claim completion while approved manifest paths still exist. It produces the
-audit JSON consumed by `npm run policy:phase8r:evidence`.
+audit JSON consumed by `npm run policy:storage-closure-evidence`.
 
 ## Official-Source Research
 
@@ -24,7 +24,7 @@ audit JSON consumed by `npm run policy:phase8r:evidence`.
   a concrete manifest.
 - SLSA artifact verification guidance emphasizes that provenance only helps
   when inspected. The exporter inspects the manifest paths and emits the result
-  for the Phase 8R evidence runner.
+  for the policy storage closure evidence run.
 - Node.js file-system APIs are available through ESM and support synchronous
   operations. The exporter uses bounded synchronous reads because it is a
   short-lived local/CI verification tool, not request-path runtime code.
@@ -138,7 +138,7 @@ npm run --silent policy:phase8r:final-removal-audit -- \
 Then pass the generated audit into the closure evidence run:
 
 ```bash
-npm run --silent policy:phase8r:evidence -- \
+npm run --silent policy:storage-closure-evidence -- \
   --final-removal-audit .tmp/phase8r/final-removal-audit.json \
   --validation-evidence .tmp/policy-storage/validation-evidence.json
 ```
@@ -146,6 +146,7 @@ npm run --silent policy:phase8r:evidence -- \
 ## Next Step
 
 Generate or preserve the real Phase 8R.15 execution-plan JSON, run the
-final-removal-audit exporter, and then rerun the Phase 8R evidence checkpoint.
+final-removal-audit exporter, and then rerun the policy storage closure evidence
+checkpoint.
 If the exporter reports remaining inventory, continue the controlled removal
 loop rather than closing Phase 8R.

@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Storage Closure Evidence Run Module Cutover** — renamed the storage
+  closure evidence-run service, current-state collector, focused tests,
+  design docs, CLI script, and npm runner to durable policy-storage closure
+  evidence names, replaced phase-coded payload versions, exported constants,
+  builders, public `phaseId` evidence, and `nextPhase` output with
+  component-oriented `componentId`, `sourceRoadmapComponentId`, and semantic
+  `nextStep` output, updated current-closure, closure-requirement, validation,
+  roadmap, and handoff references, and preserved artifact inventory collection,
+  roadmap/changelog extraction, checkpoint composition, validation/final-audit
+  gating, side-effect rejection, and read-only current-state collection.
 - **Policy Storage Closure Validation Evidence Module Cutover** — renamed the
   validation evidence service, focused tests, docs, CLI script, and npm runner
   to durable policy-storage closure validation names, replaced phase-coded
@@ -991,14 +1001,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   from an explicit execution-plan manifest, current checkout path state, source
   reference scan, and validation JSON; reports remaining inventory instead of
   claiming closure when approved manifest paths still exist.
-- **Policy Builder Phase 8R Completion Evidence Run** — added a
-  side-effect-free evidence-run service that consumes explicit Phase 8R artifact
-  inventory, normalizes Windows/POSIX paths, maps 8R.1 through 8R.22 docs,
-  contracts, and focused tests into checkpoint evidence, composes the Phase
-  8R.22 completion checkpoint, and blocks closure when inventory, artifact,
+- **Policy Storage Closure Evidence Run** — added a side-effect-free
+  evidence-run service that consumes explicit storage-closure artifact
+  inventory, normalizes Windows/POSIX paths, maps storage closure docs,
+  contracts, and focused tests into checkpoint evidence, composes the policy
+  storage completion checkpoint, and blocks closure when inventory, artifact,
   roadmap, final-removal-audit, validation, or changelog proof is incomplete;
-  added a current-state collector plus `npm run policy:phase8r:evidence` to
-  gather mapped artifact, roadmap, and changelog evidence from the checkout
+  added a current-state collector plus `npm run policy:storage-closure-evidence`
+  to gather mapped artifact, roadmap, and changelog evidence from the checkout
   while requiring caller-supplied final-removal-audit and validation JSON before
   completion can pass.
 - **Policy Storage Closure Validation Evidence** — added a fixed

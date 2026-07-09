@@ -74,8 +74,8 @@ Cons:
 - Downstream controlled-removal modules still carry their own phase-coded names
   until their scoped cutover components are completed.
 - Actual file deletion remains intentionally out of scope for this component.
-- Historical Phase 8R evidence inventory still uses phase labels until its
-  evidence-run cutover is reached.
+- Policy storage closure evidence inventory now references this durable module
+  through the storage closure evidence run.
 
 ## Final Recommendation Stack
 
@@ -90,7 +90,7 @@ Cons:
   and
   `server/src/services/policyCompatibilityDeletionExecutionPlan.mjs`
 - Evidence-map and reset references:
-  `server/src/services/policyBuilderPhase8CompletionEvidenceRun.mjs`
+  `server/src/services/policyStorageClosureEvidenceRun.mjs`
   and `server/src/services/policyNativeStorageTestReset.mjs`
 
 ## Implementation Outcome
