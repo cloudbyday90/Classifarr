@@ -14,8 +14,8 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  buildPolicyBuilderPhase8PostRemovalRuntimeVerificationArtifact,
-} from '../server/src/services/policyBuilderPhase8PostRemovalRuntimeVerificationArtifact.mjs';
+  buildPolicyPostRemovalRuntimeVerificationArtifact,
+} from '../server/src/services/policyPostRemovalRuntimeVerificationArtifact.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -72,11 +72,11 @@ function parseArgs(argv = []) {
 
 function usage() {
   return [
-    'Usage: node scripts/generate-policy-builder-phase-8r-post-removal-verification.mjs [options]',
+    'Usage: node scripts/generate-policy-post-removal-verification.mjs [options]',
     '',
     'Options:',
-    '  --apply-result <json>     Required Phase 8R.18 apply-result JSON.',
-    '  --input <json>            Required Phase 8R.19 verification input JSON.',
+    '  --apply-result <json>     Required controlled-removal apply-result JSON.',
+    '  --input <json>            Required post-removal verification input JSON.',
     '  --output <json>           Write nested verification JSON to this path.',
     '  --artifact-output <json>  Write wrapper artifact JSON to this path.',
     '  --allow-blocked           Allow writing blocked verification output.',
@@ -145,7 +145,7 @@ async function main() {
     process.exit(2);
   }
 
-  const artifact = await buildPolicyBuilderPhase8PostRemovalRuntimeVerificationArtifact({
+  const artifact = await buildPolicyPostRemovalRuntimeVerificationArtifact({
     applyEvidence,
     input,
     generatedAt: options.generatedAt,
@@ -153,7 +153,7 @@ async function main() {
 
   if (artifact.verified !== true && options.allowBlocked !== true) {
     console.error(
-      'Phase 8R post-removal runtime verification artifact is blocked; pass --allow-blocked to write diagnostic output.'
+      'Post-removal runtime verification artifact is blocked; pass --allow-blocked to write diagnostic output.'
     );
     console.error(JSON.stringify({
       statusId: artifact.statusId,

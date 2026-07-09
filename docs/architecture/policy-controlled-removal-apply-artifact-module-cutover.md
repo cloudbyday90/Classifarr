@@ -111,4 +111,5 @@ Implemented:
 
 ## Next Step
 
-Proceed to **Post-Removal Runtime Verification Artifact module naming cutover**.
+Proceed to **Next Compatibility Removal Batch Authorization module naming
+cutover**.

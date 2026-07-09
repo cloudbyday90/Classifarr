@@ -1,15 +1,15 @@
-# Policy Builder Phase 8R Post-Removal Runtime Verification
+# Policy Post-Removal Runtime Verification
 
 ## Intent
 
-Phase 8R.19 verifies that a Phase 8R.18 compatibility removal apply did not
-leave broken runtime paths, lingering imports, or insufficient validation
-evidence. It is a side-effect-free verifier: it does not run Git commands,
-execute tests, mutate storage, or remove additional files.
+Post-removal runtime verification proves that a controlled-removal apply did
+not leave broken runtime paths, lingering imports, or insufficient validation
+evidence. It is side-effect-free: it does not run Git commands, execute tests,
+mutate storage, or remove additional files.
 
 The component consumes bounded evidence:
 
-- Phase 8R.18 apply evidence,
+- controlled-removal apply evidence,
 - import/reference scan evidence,
 - focused runtime/import check evidence,
 - focused and full validation evidence.
@@ -20,18 +20,18 @@ passes.
 ## Official-Source Research
 
 - Git `grep` documents searching tracked files, the index, or tree objects for
-  patterns. Phase 8R.19 consumes import/reference scan evidence that can be
+  patterns. This verifier consumes import/reference scan evidence that can be
   produced by source-search tools such as `git grep` or `rg`, but it does not
   run those commands itself.
 - NIST SP 800-128 frames configuration management as maintaining system
-  integrity through controlled change and monitoring. Phase 8R.19 applies that
-  by requiring post-change runtime and validation evidence before another
-  removal batch can proceed.
+  integrity through controlled change and monitoring. This verifier applies
+  that guidance by requiring post-change runtime and validation evidence before
+  another removal batch can proceed.
 - NIST SSDF recommends secure software development practices throughout the
-  SDLC. Phase 8R.19 keeps deletion verification explicit and testable after
+  SDLC. This verifier keeps deletion verification explicit and testable after
   code paths are removed.
 - OWASP API9:2023 Improper Inventory Management highlights risk from stale or
-  deprecated surfaces. Phase 8R.19 ensures removed compatibility paths are not
+  deprecated surfaces. This verifier ensures removed compatibility paths are not
   still referenced after the inventory says they were removed.
 
 Sources:
@@ -95,30 +95,28 @@ Cons:
 
 ## Final Recommendation Stack
 
-Use this stack for Phase 8R.19:
+Use this stack for post-removal runtime verification:
 
-1. Consume Phase 8R.18 apply evidence and require `statusId=applied`.
+1. Consume controlled-removal apply evidence and require `statusId=applied`.
 2. Verify every applied path appears in completed import scan evidence.
 3. Block if any removed path still has references.
 4. Require focused runtime/import checks to pass.
 5. Require focused and full validation evidence to pass.
 6. Reject storage or Git-command side effects inside the verifier.
+7. Emit semantic `nextStep` evidence for next-batch authorization.
 
 ## Implementation Outcome
 
 Implemented:
 
-- Added `policyBuilderPhase8PostRemovalRuntimeVerification.mjs`.
-- Added status IDs for:
-  - verified,
-  - blocked by apply evidence,
-  - blocked by import references,
-  - blocked by runtime checks,
-  - blocked by validation.
-- Added risk IDs for incomplete apply evidence, failed apply validation, apply
-  result count mismatch, missing import scans, removed paths still referenced,
-  missing or failed runtime checks, missing or failed focused/full validation,
-  unexpected side effects, stale risk counts, and unknown statuses.
+- Renamed the verifier to `policyPostRemovalRuntimeVerification.mjs`.
+- Updated the contract version to `policy.post_removal_runtime_verification.v1`.
+- Renamed exports to:
+  - `POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS`,
+  - `POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS`,
+  - `buildPolicyPostRemovalRuntimeVerification`,
+  - `validatePolicyPostRemovalRuntimeVerification`.
+- Replaced runtime `nextPhase.phaseId` with semantic `nextStep.stepId`.
 - Added focused tests for verified output, apply blocker, import/reference
   blocker, runtime blocker, validation blocker, side-effect blocker, and mutated
   output validation.
@@ -133,7 +131,7 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Phase 8R.20 Next Compatibility Removal Batch Authorization**.
-That task should consume a verified Phase 8R.19 result, calculate remaining
-manifest paths, and authorize only the next narrow batch without re-opening
-already removed compatibility paths.
+Proceed with **Next Compatibility Removal Batch Authorization module naming
+cutover**. That task should consume verified runtime evidence, calculate
+remaining manifest paths, and authorize only the next narrow batch without
+re-opening already removed compatibility paths.

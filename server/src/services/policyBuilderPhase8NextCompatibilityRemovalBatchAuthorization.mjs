@@ -3,8 +3,8 @@ import {
   buildPolicyCompatibilityDeletionExecutionPlan,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
-} from './policyBuilderPhase8PostRemovalRuntimeVerification.mjs';
+  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
+} from './policyPostRemovalRuntimeVerification.mjs';
 
 const PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_VERSION =
   'phase8r.next_compatibility_removal_batch_authorization.v1';
@@ -78,7 +78,7 @@ function evaluatePostRemovalVerification(postRemovalVerification = {}) {
 
   if (
     postRemovalVerification.statusId !==
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED ||
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED ||
     postRemovalVerification.verified !== true
   ) {
     risks.push(buildRisk(

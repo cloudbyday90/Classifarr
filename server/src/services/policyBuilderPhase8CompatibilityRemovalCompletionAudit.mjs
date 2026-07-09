@@ -6,8 +6,8 @@ import {
   PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
 } from './policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.mjs';
 import {
-  PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
-} from './policyBuilderPhase8PostRemovalRuntimeVerification.mjs';
+  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
+} from './policyPostRemovalRuntimeVerification.mjs';
 
 const PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_VERSION =
   'phase8r.compatibility_removal_completion_audit.v1';
@@ -163,7 +163,7 @@ function evaluateRemovalVerifications(removalVerifications = []) {
 
   verifications.forEach((verification, index) => {
     if (
-      verification.statusId !== PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED ||
+      verification.statusId !== POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED ||
       verification.verified !== true ||
       verification.validation?.ok !== true
     ) {
@@ -182,7 +182,7 @@ function evaluateRemovalVerifications(removalVerifications = []) {
   return {
     verificationCount: verifications.length,
     verifiedCount: verifications.filter(verification => (
-      verification.statusId === PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED &&
+      verification.statusId === POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED &&
       verification.verified === true &&
       verification.validation?.ok === true
     )).length,

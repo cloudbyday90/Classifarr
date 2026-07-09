@@ -2,11 +2,11 @@ import {
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
 } from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
 import {
-  PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS,
-  PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
-  buildPolicyBuilderPhase8PostRemovalRuntimeVerification,
-  validatePolicyBuilderPhase8PostRemovalRuntimeVerification,
-} from '../../services/policyBuilderPhase8PostRemovalRuntimeVerification.mjs';
+  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS,
+  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
+  buildPolicyPostRemovalRuntimeVerification,
+  validatePolicyPostRemovalRuntimeVerification,
+} from '../../services/policyPostRemovalRuntimeVerification.mjs';
 
 function applyEvidence(overrides = {}) {
   return {
@@ -65,7 +65,7 @@ function runtimeChecks(overrides = []) {
 function validationEvidence(overrides = {}) {
   return {
     focused: {
-      command: 'node ./scripts/run-jest.mjs --testPathPatterns="phase8r" --no-coverage',
+      command: 'node ./scripts/run-jest.mjs --testPathPatterns="policy" --no-coverage',
       passed: true,
     },
     full: {
@@ -77,7 +77,7 @@ function validationEvidence(overrides = {}) {
 }
 
 async function verified(overrides = {}) {
-  return buildPolicyBuilderPhase8PostRemovalRuntimeVerification({
+  return buildPolicyPostRemovalRuntimeVerification({
     applyEvidence: applyEvidence(),
     importScan: importScan(),
     runtimeChecks: runtimeChecks(),
@@ -86,12 +86,12 @@ async function verified(overrides = {}) {
   });
 }
 
-describe('policyBuilderPhase8PostRemovalRuntimeVerification', () => {
+describe('policyPostRemovalRuntimeVerification', () => {
   test('verifies post-removal runtime readiness when apply, import, runtime, and validation evidence pass', async () => {
     const verification = await verified();
 
     expect(verification.statusId)
-      .toBe(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED);
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED);
     expect(verification.verified).toBe(true);
     expect(verification.validation.ok).toBe(true);
     expect(verification.applyEvidence).toEqual(expect.objectContaining({
@@ -109,13 +109,14 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerification', () => {
       checkCount: 2,
       passedCount: 2,
     }));
-    expect(verification.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '8r_20',
+    expect(verification.nextStep).toEqual(expect.objectContaining({
+      stepId: 'next_compatibility_removal_batch_authorization',
       label: 'Next Compatibility Removal Batch Authorization',
     }));
+    expect(verification.nextPhase).toBeUndefined();
   });
 
-  test('blocks when Phase 8R.18 apply evidence is incomplete or invalid', async () => {
+  test('blocks when controlled-removal apply evidence is incomplete or invalid', async () => {
     const verification = await verified({
       applyEvidence: applyEvidence({
         statusId: 'blocked_by_adapter',
@@ -129,11 +130,11 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerification', () => {
     });
 
     expect(verification.statusId)
-      .toBe(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
         .BLOCKED_BY_APPLY_EVIDENCE);
     expect(verification.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_NOT_COMPLETE,
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_VALIDATION_FAILED,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_NOT_COMPLETE,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_VALIDATION_FAILED,
     ]));
   });
 
@@ -154,18 +155,18 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerification', () => {
     });
 
     expect(missingScan.statusId)
-      .toBe(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
         .BLOCKED_BY_IMPORT_REFERENCES);
     expect(missingScan.risks.map(risk => risk.riskId)).toContain(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.IMPORT_SCAN_MISSING
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.IMPORT_SCAN_MISSING
     );
     expect(referencedPath.statusId)
-      .toBe(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
         .BLOCKED_BY_IMPORT_REFERENCES);
     expect(referencedPath.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.REMOVED_PATH_STILL_REFERENCED,
+          POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.REMOVED_PATH_STILL_REFERENCED,
         path: 'server/src/services/policyIntentImpactPreview.mjs',
         referencedBy: 'server/src/routes/policiesRoutePolicyWrite.mjs',
       }),
@@ -185,17 +186,17 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerification', () => {
     });
 
     expect(missingChecks.statusId)
-      .toBe(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
         .BLOCKED_BY_RUNTIME_CHECKS);
     expect(missingChecks.risks.map(risk => risk.riskId)).toContain(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_CHECK_MISSING
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_CHECK_MISSING
     );
     expect(failedCheck.statusId)
-      .toBe(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
         .BLOCKED_BY_RUNTIME_CHECKS);
     expect(failedCheck.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_CHECK_FAILED,
+        riskId: POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_CHECK_FAILED,
         checkId: 'policy-write-runtime',
       }),
     ]));
@@ -221,16 +222,16 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerification', () => {
     });
 
     expect(missingValidation.statusId)
-      .toBe(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.BLOCKED_BY_VALIDATION);
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.BLOCKED_BY_VALIDATION);
     expect(missingValidation.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FOCUSED_VALIDATION_MISSING,
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FULL_VALIDATION_MISSING,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FOCUSED_VALIDATION_MISSING,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FULL_VALIDATION_MISSING,
     ]));
     expect(failedValidation.statusId)
-      .toBe(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.BLOCKED_BY_VALIDATION);
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.BLOCKED_BY_VALIDATION);
     expect(failedValidation.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FOCUSED_VALIDATION_FAILED,
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FULL_VALIDATION_FAILED,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FOCUSED_VALIDATION_FAILED,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FULL_VALIDATION_FAILED,
     ]));
   });
 
@@ -243,16 +244,16 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerification', () => {
     });
 
     expect(verification.statusId)
-      .toBe(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.BLOCKED_BY_VALIDATION);
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.BLOCKED_BY_VALIDATION);
     expect(verification.validation.ok).toBe(false);
     expect(verification.risks.map(risk => risk.riskId)).toContain(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.UNEXPECTED_SIDE_EFFECT
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.UNEXPECTED_SIDE_EFFECT
     );
   });
 
   test('rejects mutated verification output with stale risk count or side effects', () => {
-    const validation = validatePolicyBuilderPhase8PostRemovalRuntimeVerification({
-      statusId: PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED,
+    const validation = validatePolicyPostRemovalRuntimeVerification({
+      statusId: POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED,
       riskCount: 99,
       risks: [],
       sideEffects: {
@@ -263,9 +264,9 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerification', () => {
 
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RISK_COUNT_MISMATCH,
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.UNEXPECTED_SIDE_EFFECT,
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.UNEXPECTED_SIDE_EFFECT,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.SIDE_EFFECT_PERFORMED,
     ]));
   });
 });

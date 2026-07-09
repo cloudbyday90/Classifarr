@@ -5217,13 +5217,14 @@ Implementation status:
 
 ### 8R.19 Post-Removal Runtime Verification
 
-Intent: consume Phase 8R.18 apply evidence and prove the removed compatibility
-paths are no longer imported, runtime checks still pass, and focused plus full
-validation evidence exists before another removal batch can proceed.
+Intent: consume controlled-removal apply evidence and prove the removed
+compatibility paths are no longer imported, runtime checks still pass, and
+focused plus full validation evidence exists before another removal batch can
+proceed.
 
 Tasks:
 
-- Consume completed Phase 8R.18 apply evidence.
+- Consume completed controlled-removal apply evidence.
 - Require apply evidence to be valid and complete.
 - Require import/reference scan evidence for every applied removal path.
 - Block if any removed path is still referenced.
@@ -5234,7 +5235,7 @@ Tasks:
 
 Acceptance criteria:
 
-- Verification is blocked unless Phase 8R.18 apply evidence is applied and
+- Verification is blocked unless controlled-removal apply evidence is applied and
   valid.
 - Missing import scan evidence blocks verification.
 - Any lingering reference to a removed path blocks verification.
@@ -5245,16 +5246,18 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.19 post-removal runtime verification is documented in
-  [Policy Builder Phase 8R Post-Removal Runtime Verification](policy-builder-phase-8r-post-removal-runtime-verification.md).
+- Post-removal runtime verification is documented in
+  [Policy Post-Removal Runtime Verification](policy-post-removal-runtime-verification.md).
+- The durable module naming cutover is documented in
+  [Policy Post-Removal Runtime Verification Module Cutover](policy-post-removal-runtime-verification-module-cutover.md).
 - The verifier contract lives in
-  `server/src/services/policyBuilderPhase8PostRemovalRuntimeVerification.mjs`.
+  `server/src/services/policyPostRemovalRuntimeVerification.mjs`.
 - The focused verifier test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8PostRemovalRuntimeVerification.test.mjs`.
+  `server/src/__tests__/services/policyPostRemovalRuntimeVerification.test.mjs`.
 - Current implementation consumes apply, import scan, runtime check, and
   focused/full validation evidence; blocks lingering references or failed
-  checks; rejects storage/Git side effects; and advances to next-batch
-  authorization.
+  checks; rejects storage/Git side effects; and emits semantic `nextStep`
+  evidence for next-batch authorization.
 
 ### 8R.20 Next Compatibility Removal Batch Authorization
 
@@ -5740,22 +5743,22 @@ Implementation status:
 
 ### 8R.29 Post-Removal Runtime Verification Artifact Exporter
 
-Intent: generate the machine-readable Phase 8R.19 post-removal runtime
-verification artifact from Phase 8R.18 apply evidence, import/reference scan
-evidence, focused runtime/import checks, and focused/full validation evidence.
+Intent: generate a machine-readable post-removal runtime verification artifact
+from controlled-removal apply evidence, import/reference scan evidence, focused
+runtime/import checks, and focused/full validation evidence.
 
 Tasks:
 
-- Require Phase 8R.18 apply-result JSON.
+- Require controlled-removal apply-result JSON.
 - Require completed import/reference scan evidence that covers every applied
   removal path.
 - Block verification if any removed path is still referenced.
 - Require focused runtime/import check evidence.
 - Require focused and full validation evidence.
-- Reuse the existing Phase 8R.19 post-removal runtime verification contract.
+- Reuse the post-removal runtime verification contract.
 - Avoid deleting files, mutating storage, running Git, or generating scan
   evidence implicitly.
-- Write the nested verification JSON for Phase 8R.20 next-batch authorization.
+- Write the nested verification JSON for next-batch authorization.
 
 Acceptance criteria:
 
@@ -5765,22 +5768,24 @@ Acceptance criteria:
 - Missing or failed runtime checks block verification.
 - Missing or failed focused/full validation evidence blocks verification.
 - Storage and Git side effects prevent verified artifact status.
-- The generated verification JSON can be passed to Phase 8R.20 authorization.
+- The generated verification JSON can be passed to next-batch authorization.
 
 Implementation status:
 
-- Phase 8R.29 post-removal runtime verification artifact export is documented in
-  [Policy Builder Phase 8R Post-Removal Runtime Verification Artifact Exporter](policy-builder-phase-8r-post-removal-runtime-verification-artifact-exporter.md).
+- Post-removal runtime verification artifact export is documented in
+  [Policy Post-Removal Runtime Verification Artifact Exporter](policy-post-removal-runtime-verification-artifact-exporter.md).
+- The durable module naming cutover is documented in
+  [Policy Post-Removal Runtime Verification Module Cutover](policy-post-removal-runtime-verification-module-cutover.md).
 - The post-removal verification artifact contract lives in
-  `server/src/services/policyBuilderPhase8PostRemovalRuntimeVerificationArtifact.mjs`.
+  `server/src/services/policyPostRemovalRuntimeVerificationArtifact.mjs`.
 - The exporter script lives in
-  `scripts/generate-policy-builder-phase-8r-post-removal-verification.mjs`.
+  `scripts/generate-policy-post-removal-verification.mjs`.
 - The root runner is exposed as
-  `npm run policy:phase8r:post-removal-verification`.
+  `npm run policy:post-removal-verification`.
 - The focused post-removal verification artifact test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8PostRemovalRuntimeVerificationArtifact.test.mjs`.
+  `server/src/__tests__/services/policyPostRemovalRuntimeVerificationArtifact.test.mjs`.
 - Current implementation consumes explicit scan/check/validation evidence and
-  emits verified Phase 8R.19 evidence for Phase 8R.20 next-batch authorization.
+  emits semantic `nextStep` evidence for next-batch authorization.
 
 ### 8R.30 Next Compatibility Removal Batch Authorization Artifact Exporter
 
@@ -6163,9 +6168,9 @@ Implement Phase 8R in this order:
     repo-relative filesystem adapter, then hands off to post-removal runtime
     verification through semantic `nextStep` evidence.
 29. **8R.29 Post-Removal Runtime Verification Artifact Exporter**
-    Generates a machine-readable Phase 8R.19 verification artifact from apply,
-    reference-scan, runtime-check, and validation evidence before the next
-    compatibility-removal batch can be authorized.
+    Generates a machine-readable post-removal verification artifact from
+    controlled-removal apply, reference-scan, runtime-check, and validation
+    evidence before the next compatibility-removal batch can be authorized.
 30. **8R.30 Next Compatibility Removal Batch Authorization Artifact Exporter**
     Generates a machine-readable Phase 8R.20 authorization artifact from
     verified post-removal evidence, the approved execution manifest, requested

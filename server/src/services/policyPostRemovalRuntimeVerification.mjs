@@ -3,10 +3,10 @@ import {
   applyPolicyControlledCompatibilityPathRemoval,
 } from './policyControlledCompatibilityPathRemovalApply.mjs';
 
-const PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_VERSION =
-  'phase8r.post_removal_runtime_verification.v1';
+const POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_VERSION =
+  'policy.post_removal_runtime_verification.v1';
 
-const PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS = Object.freeze({
+const POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS = Object.freeze({
   VERIFIED: 'verified',
   BLOCKED_BY_APPLY_EVIDENCE: 'blocked_by_apply_evidence',
   BLOCKED_BY_IMPORT_REFERENCES: 'blocked_by_import_references',
@@ -14,7 +14,7 @@ const PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS = Object.freeze({
   BLOCKED_BY_VALIDATION: 'blocked_by_validation',
 });
 
-const PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS = Object.freeze({
+const POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS = Object.freeze({
   APPLY_NOT_COMPLETE: 'apply_not_complete',
   APPLY_VALIDATION_FAILED: 'apply_validation_failed',
   APPLY_RESULT_COUNT_MISMATCH: 'apply_result_count_mismatch',
@@ -62,16 +62,16 @@ function evaluateApplyEvidence(applyEvidence) {
     evidence.applied !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_NOT_COMPLETE,
-      'Post-removal runtime verification requires completed Phase 8R.18 apply evidence.',
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_NOT_COMPLETE,
+      'Post-removal runtime verification requires completed controlled-removal apply evidence.',
       { statusId: evidence.statusId || null }
     ));
   }
 
   if (evidence.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_VALIDATION_FAILED,
-      'Post-removal runtime verification requires valid Phase 8R.18 apply evidence.',
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_VALIDATION_FAILED,
+      'Post-removal runtime verification requires valid controlled-removal apply evidence.',
       { issueCount: evidence.validation?.issueCount ?? null }
     ));
   }
@@ -80,7 +80,7 @@ function evaluateApplyEvidence(applyEvidence) {
   const requestedCount = Number(evidence.applyBatch?.requestedCount ?? results.length);
   if (requestedCount !== results.length) {
     risks.push(buildRisk(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_RESULT_COUNT_MISMATCH,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_RESULT_COUNT_MISMATCH,
       'Post-removal runtime verification requires apply result count to match requested count.',
       {
         requestedCount,
@@ -109,7 +109,7 @@ function evaluateImportEvidence({
 
   if (importScan.completed !== true || scanPaths.length === 0) {
     risks.push(buildRisk(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.IMPORT_SCAN_MISSING,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.IMPORT_SCAN_MISSING,
       'Post-removal verification requires completed import/reference scan evidence.'
     ));
   }
@@ -117,7 +117,7 @@ function evaluateImportEvidence({
   appliedPaths.forEach(path => {
     if (!scanPaths.includes(path)) {
       risks.push(buildRisk(
-        PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.IMPORT_SCAN_MISSING,
+        POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.IMPORT_SCAN_MISSING,
         'Post-removal import scan must include every applied removal path.',
         { path }
       ));
@@ -127,7 +127,7 @@ function evaluateImportEvidence({
       .filter(reference => reference.path === path)
       .forEach(reference => {
         risks.push(buildRisk(
-          PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.REMOVED_PATH_STILL_REFERENCED,
+          POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.REMOVED_PATH_STILL_REFERENCED,
           'Removed compatibility path is still referenced after apply.',
           reference
         ));
@@ -147,7 +147,7 @@ function evaluateRuntimeChecks(runtimeChecks = []) {
 
   if (checks.length === 0) {
     risks.push(buildRisk(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_CHECK_MISSING,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_CHECK_MISSING,
       'Post-removal verification requires at least one focused runtime/import check.'
     ));
   }
@@ -155,7 +155,7 @@ function evaluateRuntimeChecks(runtimeChecks = []) {
   checks.forEach(check => {
     if (check?.passed !== true) {
       risks.push(buildRisk(
-        PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_CHECK_FAILED,
+        POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_CHECK_FAILED,
         'Post-removal runtime/import check failed.',
         {
           checkId: check?.checkId || null,
@@ -177,12 +177,12 @@ function evaluateValidationEvidence(validationEvidence = {}) {
 
   if (!validationEvidence.focused) {
     risks.push(buildRisk(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FOCUSED_VALIDATION_MISSING,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FOCUSED_VALIDATION_MISSING,
       'Post-removal verification requires focused validation evidence.'
     ));
   } else if (validationEvidence.focused.passed !== true) {
     risks.push(buildRisk(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FOCUSED_VALIDATION_FAILED,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FOCUSED_VALIDATION_FAILED,
       'Post-removal focused validation failed.',
       {
         command: validationEvidence.focused.command || null,
@@ -193,12 +193,12 @@ function evaluateValidationEvidence(validationEvidence = {}) {
 
   if (!validationEvidence.full) {
     risks.push(buildRisk(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FULL_VALIDATION_MISSING,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FULL_VALIDATION_MISSING,
       'Post-removal verification requires full validation evidence.'
     ));
   } else if (validationEvidence.full.passed !== true) {
     risks.push(buildRisk(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FULL_VALIDATION_FAILED,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.FULL_VALIDATION_FAILED,
       'Post-removal full validation failed.',
       {
         command: validationEvidence.full.command || null,
@@ -215,7 +215,7 @@ function evaluateSideEffects(sideEffects = {}) {
 
   if (sideEffects.storageChanged === true) {
     risks.push(buildRisk(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.UNEXPECTED_SIDE_EFFECT,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.UNEXPECTED_SIDE_EFFECT,
       'Post-removal verification does not allow storage mutation evidence.',
       { sideEffect: 'storageChanged' }
     ));
@@ -223,7 +223,7 @@ function evaluateSideEffects(sideEffects = {}) {
 
   if (sideEffects.gitCommandsRun === true) {
     risks.push(buildRisk(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.UNEXPECTED_SIDE_EFFECT,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.UNEXPECTED_SIDE_EFFECT,
       'Post-removal verification does not run Git commands inside the verifier.',
       { sideEffect: 'gitCommandsRun' }
     ));
@@ -234,40 +234,40 @@ function evaluateSideEffects(sideEffects = {}) {
 
 function determineStatusId(risks = []) {
   if (risks.some(risk => [
-    PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_NOT_COMPLETE,
-    PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_VALIDATION_FAILED,
-    PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_RESULT_COUNT_MISMATCH,
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_NOT_COMPLETE,
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_VALIDATION_FAILED,
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_RESULT_COUNT_MISMATCH,
   ].includes(risk.riskId))) {
-    return PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.BLOCKED_BY_APPLY_EVIDENCE;
+    return POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.BLOCKED_BY_APPLY_EVIDENCE;
   }
 
   if (risks.some(risk => [
-    PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.IMPORT_SCAN_MISSING,
-    PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.REMOVED_PATH_STILL_REFERENCED,
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.IMPORT_SCAN_MISSING,
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.REMOVED_PATH_STILL_REFERENCED,
   ].includes(risk.riskId))) {
-    return PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
+    return POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
       .BLOCKED_BY_IMPORT_REFERENCES;
   }
 
   if (risks.some(risk => [
-    PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_CHECK_MISSING,
-    PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_CHECK_FAILED,
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_CHECK_MISSING,
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_CHECK_FAILED,
   ].includes(risk.riskId))) {
-    return PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.BLOCKED_BY_RUNTIME_CHECKS;
+    return POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.BLOCKED_BY_RUNTIME_CHECKS;
   }
 
   if (risks.length > 0) {
-    return PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.BLOCKED_BY_VALIDATION;
+    return POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.BLOCKED_BY_VALIDATION;
   }
 
-  return PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED;
+  return POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED;
 }
 
 async function buildDefaultApplyEvidence() {
   return applyPolicyControlledCompatibilityPathRemoval();
 }
 
-async function buildPolicyBuilderPhase8PostRemovalRuntimeVerification({
+async function buildPolicyPostRemovalRuntimeVerification({
   applyEvidence = null,
   importScan = {},
   runtimeChecks = [],
@@ -289,7 +289,7 @@ async function buildPolicyBuilderPhase8PostRemovalRuntimeVerification({
     ...evaluateSideEffects(sideEffects),
   ];
   const verification = {
-    version: PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_VERSION,
+    version: POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_VERSION,
     statusId: determineStatusId(risks),
     verified: risks.length === 0,
     applyEvidence: {
@@ -318,8 +318,8 @@ async function buildPolicyBuilderPhase8PostRemovalRuntimeVerification({
       storageChanged: sideEffects.storageChanged === true,
       gitCommandsRun: sideEffects.gitCommandsRun === true,
     },
-    nextPhase: {
-      phaseId: '8r_20',
+    nextStep: {
+      stepId: 'next_compatibility_removal_batch_authorization',
       label: 'Next Compatibility Removal Batch Authorization',
       reason:
         'After post-removal runtime verification passes, the next batch can be authorized from the remaining approved manifest paths.',
@@ -328,24 +328,24 @@ async function buildPolicyBuilderPhase8PostRemovalRuntimeVerification({
 
   return {
     ...verification,
-    validation: validatePolicyBuilderPhase8PostRemovalRuntimeVerification(verification),
+    validation: validatePolicyPostRemovalRuntimeVerification(verification),
   };
 }
 
-function validatePolicyBuilderPhase8PostRemovalRuntimeVerification(verification = {}) {
+function validatePolicyPostRemovalRuntimeVerification(verification = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS)
+  if (!Object.values(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS)
     .includes(verification.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.UNKNOWN_STATUS,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.UNKNOWN_STATUS,
       'Post-removal runtime verification status must be known.'
     ));
   }
 
   if (verification.riskCount !== asArray(verification.risks).length) {
     issues.push(buildRisk(
-      PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RISK_COUNT_MISMATCH,
       'Post-removal runtime verification risk count must match risk list length.'
     ));
   }
@@ -355,7 +355,7 @@ function validatePolicyBuilderPhase8PostRemovalRuntimeVerification(verification 
   Object.entries(verification.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
-        PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.SIDE_EFFECT_PERFORMED,
         `Post-removal runtime verification cannot perform side effect "${key}".`
       ));
     }
@@ -369,9 +369,9 @@ function validatePolicyBuilderPhase8PostRemovalRuntimeVerification(verification 
 }
 
 export {
-  PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS,
-  PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
-  PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_VERSION,
-  buildPolicyBuilderPhase8PostRemovalRuntimeVerification,
-  validatePolicyBuilderPhase8PostRemovalRuntimeVerification,
+  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS,
+  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
+  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_VERSION,
+  buildPolicyPostRemovalRuntimeVerification,
+  validatePolicyPostRemovalRuntimeVerification,
 };

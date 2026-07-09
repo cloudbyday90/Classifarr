@@ -5,8 +5,8 @@ import {
   PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
 } from '../../services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.mjs';
 import {
-  PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
-} from '../../services/policyBuilderPhase8PostRemovalRuntimeVerification.mjs';
+  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
+} from '../../services/policyPostRemovalRuntimeVerification.mjs';
 import {
   PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS,
   PHASE8R_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS,
@@ -78,7 +78,7 @@ function completionAuthorization(overrides = {}) {
 
 function removalVerification(paths = MANIFEST_PATHS, overrides = {}) {
   return {
-    statusId: PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED,
+    statusId: POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED,
     verified: true,
     validation: {
       ok: true,

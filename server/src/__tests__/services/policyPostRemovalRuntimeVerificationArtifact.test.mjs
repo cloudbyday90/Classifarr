@@ -2,11 +2,11 @@ import {
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
 } from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
 import {
-  PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS,
-  PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS,
-  buildPolicyBuilderPhase8PostRemovalRuntimeVerificationArtifact,
-  validatePolicyBuilderPhase8PostRemovalRuntimeVerificationArtifact,
-} from '../../services/policyBuilderPhase8PostRemovalRuntimeVerificationArtifact.mjs';
+  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS,
+  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS,
+  buildPolicyPostRemovalRuntimeVerificationArtifact,
+  validatePolicyPostRemovalRuntimeVerificationArtifact,
+} from '../../services/policyPostRemovalRuntimeVerificationArtifact.mjs';
 
 function applyEvidence(overrides = {}) {
   return {
@@ -58,7 +58,7 @@ function verificationInput(overrides = {}) {
     ],
     validationEvidence: {
       focused: {
-        command: 'node ./scripts/run-jest.mjs --testPathPatterns="phase8r" --no-coverage',
+        command: 'node ./scripts/run-jest.mjs --testPathPatterns="policy" --no-coverage',
         passed: true,
       },
       full: {
@@ -70,16 +70,16 @@ function verificationInput(overrides = {}) {
   };
 }
 
-describe('policyBuilderPhase8PostRemovalRuntimeVerificationArtifact', () => {
-  test('wraps verified Phase 8R.19 runtime evidence for the next batch gate', async () => {
-    const artifact = await buildPolicyBuilderPhase8PostRemovalRuntimeVerificationArtifact({
+describe('policyPostRemovalRuntimeVerificationArtifact', () => {
+  test('wraps verified runtime evidence for the next batch gate', async () => {
+    const artifact = await buildPolicyPostRemovalRuntimeVerificationArtifact({
       applyEvidence: applyEvidence(),
       input: verificationInput(),
       generatedAt: '2026-06-25T09:00:00.000Z',
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.VERIFIED);
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.VERIFIED);
     expect(artifact.verified).toBe(true);
     expect(artifact.validation.ok).toBe(true);
     expect(artifact.verification.verified).toBe(true);
@@ -90,14 +90,15 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerificationArtifact', () => {
       runtimeCheckCount: 2,
       runtimePassedCount: 2,
     });
-    expect(artifact.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '8r_20',
+    expect(artifact.nextStep).toEqual(expect.objectContaining({
+      stepId: 'next_compatibility_removal_batch_authorization',
       label: 'Next Compatibility Removal Batch Authorization',
     }));
+    expect(artifact.nextPhase).toBeUndefined();
   });
 
   test('blocks when removed paths are still referenced', async () => {
-    const artifact = await buildPolicyBuilderPhase8PostRemovalRuntimeVerificationArtifact({
+    const artifact = await buildPolicyPostRemovalRuntimeVerificationArtifact({
       applyEvidence: applyEvidence(),
       input: verificationInput({
         importScan: {
@@ -115,13 +116,13 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerificationArtifact', () => {
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.BLOCKED);
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.BLOCKED);
     expect(artifact.verified).toBe(false);
     expect(artifact.validation.ok).toBe(true);
     expect(artifact.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS
+          POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS
             .VERIFICATION_NOT_VERIFIED,
       }),
     ]));
@@ -129,7 +130,7 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerificationArtifact', () => {
   });
 
   test('blocks when runtime checks fail', async () => {
-    const artifact = await buildPolicyBuilderPhase8PostRemovalRuntimeVerificationArtifact({
+    const artifact = await buildPolicyPostRemovalRuntimeVerificationArtifact({
       applyEvidence: applyEvidence(),
       input: verificationInput({
         runtimeChecks: [{
@@ -141,12 +142,12 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerificationArtifact', () => {
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.BLOCKED);
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.BLOCKED);
     expect(artifact.verification.statusId).toBe('blocked_by_runtime_checks');
   });
 
   test('rejects storage and git side effects', async () => {
-    const artifact = await buildPolicyBuilderPhase8PostRemovalRuntimeVerificationArtifact({
+    const artifact = await buildPolicyPostRemovalRuntimeVerificationArtifact({
       applyEvidence: applyEvidence(),
       input: verificationInput(),
       sideEffects: {
@@ -156,18 +157,18 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerificationArtifact', () => {
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.BLOCKED);
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.BLOCKED);
     expect(artifact.validation.ok).toBe(false);
     expect(artifact.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS
+          POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS
             .SIDE_EFFECT_REPORTED,
         sideEffect: 'storageChanged',
       }),
       expect.objectContaining({
         riskId:
-          PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS
+          POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS
             .SIDE_EFFECT_REPORTED,
         sideEffect: 'gitCommandsRun',
       }),
@@ -175,7 +176,7 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerificationArtifact', () => {
   });
 
   test('validates status and risk-count invariants', () => {
-    const validation = validatePolicyBuilderPhase8PostRemovalRuntimeVerificationArtifact({
+    const validation = validatePolicyPostRemovalRuntimeVerificationArtifact({
       statusId: 'unexpected',
       riskCount: 1,
       risks: [],
@@ -186,12 +187,12 @@ describe('policyBuilderPhase8PostRemovalRuntimeVerificationArtifact', () => {
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS
+          POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS
             .UNKNOWN_STATUS,
       }),
       expect.objectContaining({
         riskId:
-          PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS
+          POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS
             .RISK_COUNT_MISMATCH,
       }),
     ]));

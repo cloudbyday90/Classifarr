@@ -11,8 +11,8 @@ import {
   PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
 } from '../../services/policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.mjs';
 import {
-  PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
-} from '../../services/policyBuilderPhase8PostRemovalRuntimeVerification.mjs';
+  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
+} from '../../services/policyPostRemovalRuntimeVerification.mjs';
 
 const MANIFEST_PATHS = Object.freeze([
   'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
@@ -78,7 +78,7 @@ function completionAuthorization(overrides = {}) {
 
 function removalVerification(paths = MANIFEST_PATHS, overrides = {}) {
   return {
-    statusId: PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED,
+    statusId: POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED,
     verified: true,
     validation: {
       ok: true,
@@ -270,7 +270,7 @@ describe('policyBuilderPhase8CompatibilityRemovalCompletionAudit', () => {
     const invalid = completeAudit({
       removalVerifications: [removalVerification(MANIFEST_PATHS, {
         statusId:
-          PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
+          POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
             .BLOCKED_BY_RUNTIME_CHECKS,
         verified: false,
       })],

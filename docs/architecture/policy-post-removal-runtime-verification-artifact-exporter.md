@@ -1,11 +1,11 @@
-# Policy Builder Phase 8R Post-Removal Runtime Verification Artifact Exporter
+# Policy Post-Removal Runtime Verification Artifact Exporter
 
 ## Intent
 
-Phase 8R.29 generates a machine-readable Phase 8R.19 post-removal runtime
-verification artifact from:
+The post-removal runtime verification artifact exporter generates a
+machine-readable verification artifact from:
 
-- a Phase 8R.18 apply-result JSON,
+- controlled-removal apply-result JSON,
 - import/reference scan evidence,
 - focused runtime/import check evidence,
 - focused and full validation evidence.
@@ -25,8 +25,9 @@ only the next bounded compatibility-removal batch.
 - OWASP API9:2023 Improper Inventory Management warns that stale unmanaged
   surfaces expand attack surface. This component keeps removal progress tied to
   inventory and verified absence of references.
-- Node.js file-system APIs provide ESM-compatible JSON reads/writes for local
-  tooling. The exporter uses bounded file I/O for evidence artifacts only.
+- Node.js file-system APIs support ES Module import syntax for bounded local
+  file I/O. The exporter uses file reads/writes only for explicit evidence
+  artifacts.
 
 Sources:
 
@@ -43,8 +44,8 @@ Sources:
 
 ### Consume Apply Evidence, Do Not Infer It
 
-The exporter should require Phase 8R.18 apply-result JSON so it can verify the
-exact paths that were removed and the apply result count.
+The exporter should require controlled-removal apply-result JSON so it can
+verify the exact paths that were removed and the apply result count.
 
 Pros:
 
@@ -79,7 +80,7 @@ the next batch is not authorized from narrow checks alone.
 Pros:
 
 - protects local runtime behavior and broader regressions,
-- gives Phase 8R.20 authorization a single verified artifact to consume,
+- gives next-batch authorization a single verified artifact to consume,
 - keeps validation evidence auditable.
 
 Cons:
@@ -88,46 +89,53 @@ Cons:
 
 ## Final Recommendation Stack
 
-Use this stack for Phase 8R post-removal runtime verification:
+Use this stack for post-removal runtime verification artifact export:
 
-1. Require Phase 8R.18 apply-result JSON.
+1. Require controlled-removal apply-result JSON.
 2. Require completed import/reference scan evidence for every applied path.
 3. Block if any removed path is still referenced.
 4. Require focused runtime/import check evidence.
 5. Require focused and full validation evidence.
 6. Reject storage mutation and Git-command side effects.
-7. Write nested Phase 8R.19 verification JSON for Phase 8R.20 authorization.
+7. Write nested verification JSON for next-batch authorization.
 8. Optionally write a wrapper artifact for audit trails.
 
 ## Implementation Outcome
 
 Implemented:
 
-- Added `policyBuilderPhase8PostRemovalRuntimeVerificationArtifact.mjs`.
-- Added `generate-policy-builder-phase-8r-post-removal-verification.mjs`.
-- Added root npm script `policy:phase8r:post-removal-verification`.
+- Renamed the artifact service to
+  `policyPostRemovalRuntimeVerificationArtifact.mjs`.
+- Renamed the generator to `generate-policy-post-removal-verification.mjs`.
+- Renamed the root npm script to `policy:post-removal-verification`.
+- Updated the contract version to
+  `policy.post_removal_runtime_verification_artifact.v1`.
+- Renamed exports to:
+  - `POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS`,
+  - `POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS`,
+  - `buildPolicyPostRemovalRuntimeVerificationArtifact`,
+  - `validatePolicyPostRemovalRuntimeVerificationArtifact`.
+- Replaced runtime `nextPhase.phaseId` with semantic `nextStep.stepId`.
 - Added focused tests for:
   - verified post-removal runtime artifact generation,
   - blocked removed-path reference evidence,
   - blocked runtime check evidence,
   - forbidden side-effect rejection,
   - artifact validation invariants.
-- Added the post-removal verification artifact suite and this design doc to the
-  fixed Phase 8R validation evidence command set.
 
 Example:
 
 ```bash
-npm run --silent policy:phase8r:post-removal-verification -- \
-  --apply-result .tmp/phase8r/removal-apply.json \
-  --input .tmp/phase8r/post-removal-verification-input.json \
-  --output .tmp/phase8r/post-removal-verification.json \
-  --artifact-output .tmp/phase8r/post-removal-verification-artifact.json
+npm run --silent policy:post-removal-verification -- \
+  --apply-result .tmp/policy-removal/removal-apply.json \
+  --input .tmp/policy-removal/post-removal-verification-input.json \
+  --output .tmp/policy-removal/post-removal-verification.json \
+  --artifact-output .tmp/policy-removal/post-removal-verification-artifact.json
 ```
 
 ## Next Step
 
-Use the generated Phase 8R.19 verification JSON as the input for Phase 8R.20
-next compatibility removal batch authorization. That authorizer should compare
-verified removed paths against the approved manifest and permit only the next
-small batch.
+Use the generated verification JSON as the input for
+**Next Compatibility Removal Batch Authorization module naming cutover**. That
+authorizer should compare verified removed paths against the approved manifest
+and permit only the next small batch.

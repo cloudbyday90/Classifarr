@@ -902,11 +902,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   verified Phase 8R.19 evidence, the approved execution manifest, requested
   remaining paths, and operator authorization metadata before continuing the
   compatibility-removal loop.
-- **Policy Builder Phase 8R Post-Removal Runtime Verification Artifact
-  Exporter** — added a machine-readable verification artifact contract and
-  `npm run policy:phase8r:post-removal-verification` to consume Phase 8R.18
+- **Policy Post-Removal Runtime Verification** — cut over the runtime verifier
+  and artifact exporter to durable service, test, script, and npm runner names;
+  `npm run policy:post-removal-verification` now consumes controlled-removal
   apply-result JSON plus explicit import/reference scan, runtime check, and
-  validation evidence before authorizing the next compatibility-removal batch.
+  validation evidence before emitting semantic `nextStep` evidence for the next
+  compatibility-removal batch.
 - **Policy Controlled Removal Apply Artifact Exporter** — cut over the
   controlled-removal apply artifact to durable service, test, script, and npm
   runner names; `npm run policy:controlled-removal-apply` now consumes a ready
@@ -965,7 +966,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   compatibility paths, blocks unknown or already removed path selections,
   bounds the next batch size, requires operator authorization context, and
   advances to a completion audit when no approved manifest paths remain.
-- **Policy Builder Phase 8R Post-Removal Runtime Verification** — added a
+- **Policy Post-Removal Runtime Verification** — added a
   side-effect-free verifier that consumes controlled-removal apply evidence,
   import/reference scan evidence, focused runtime checks, and focused/full
   validation results; blocks additional compatibility removal batches when

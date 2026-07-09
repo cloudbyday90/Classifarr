@@ -177,9 +177,9 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_19',
     label: 'Post-Removal Runtime Verification',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-post-removal-runtime-verification.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8PostRemovalRuntimeVerification.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8PostRemovalRuntimeVerification.test.mjs'],
+    designDocPaths: ['docs/architecture/policy-post-removal-runtime-verification.md'],
+    contractPaths: ['server/src/services/policyPostRemovalRuntimeVerification.mjs'],
+    testPaths: ['server/src/__tests__/services/policyPostRemovalRuntimeVerification.test.mjs'],
   },
   {
     phaseId: '8r_20',

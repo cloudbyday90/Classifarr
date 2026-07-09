@@ -114,12 +114,12 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_29',
     label: 'Post-Removal Runtime Verification Artifact Exporter',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-post-removal-runtime-verification-artifact-exporter.md'],
+    designDocPaths: ['docs/architecture/policy-post-removal-runtime-verification-artifact-exporter.md'],
     contractPaths: [
-      'server/src/services/policyBuilderPhase8PostRemovalRuntimeVerificationArtifact.mjs',
-      'scripts/generate-policy-builder-phase-8r-post-removal-verification.mjs',
+      'server/src/services/policyPostRemovalRuntimeVerificationArtifact.mjs',
+      'scripts/generate-policy-post-removal-verification.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8PostRemovalRuntimeVerificationArtifact.test.mjs'],
+    testPaths: ['server/src/__tests__/services/policyPostRemovalRuntimeVerificationArtifact.test.mjs'],
   },
   {
     phaseId: '8r_30',

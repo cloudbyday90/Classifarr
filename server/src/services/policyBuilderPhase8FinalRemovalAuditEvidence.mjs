@@ -6,8 +6,8 @@ import {
   PHASE8R_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
 } from './policyBuilderPhase8NextCompatibilityRemovalBatchAuthorization.mjs';
 import {
-  PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
-} from './policyBuilderPhase8PostRemovalRuntimeVerification.mjs';
+  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
+} from './policyPostRemovalRuntimeVerification.mjs';
 
 const PHASE8R_FINAL_REMOVAL_AUDIT_EVIDENCE_VERSION =
   'phase8r.final_removal_audit_evidence.v1';
@@ -83,7 +83,7 @@ function buildRemovalVerifications(pathState = {}) {
   }
 
   return [{
-    statusId: PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED,
+    statusId: POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED,
     verified: true,
     validation: {
       ok: true,
