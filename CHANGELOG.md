@@ -971,12 +971,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   validation results; blocks additional compatibility removal batches when
   removed paths remain referenced, runtime checks fail, validation evidence is
   missing, or storage/Git side effects are reported.
-- **Policy Builder Phase 8R Controlled Compatibility Path Removal Apply** —
-  added an adapter-driven apply boundary that consumes a ready removal review
-  batch, requires explicit execute confirmation with a confirming actor, applies
-  entries only through an injected adapter, verifies result path/action parity,
-  captures adapter failures as bounded risks, and rejects archive, storage, or
-  Git-command side effects inside the service.
+- **Policy Controlled Compatibility Path Removal Apply** — cut over the
+  adapter-driven apply boundary to durable production naming, replaced runtime
+  phase handoff with a semantic post-removal verification `nextStep`, and kept
+  explicit execute confirmation, injected-adapter execution, result parity,
+  bounded adapter failures, and archive/storage/Git side-effect safeguards.
 - **Policy Controlled Compatibility Path Removal** — cut over the
   side-effect-free removal-batch contract to durable production naming, replaced
   runtime phase handoff with a semantic controlled-apply `nextStep`, and kept

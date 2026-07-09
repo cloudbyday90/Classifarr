@@ -5174,13 +5174,13 @@ Implementation status:
 
 ### 8R.18 Controlled Compatibility Path Removal Apply
 
-Intent: apply one reviewed Phase 8R.17 compatibility path removal batch through
+Intent: apply one reviewed controlled compatibility path removal batch through
 an explicit adapter boundary and record structured apply evidence for
 post-removal verification.
 
 Tasks:
 
-- Consume a ready Phase 8R.17 removal review batch.
+- Consume a ready controlled compatibility path removal review batch.
 - Require `executeApply=true`.
 - Require explicit operator confirmation with confirming actor.
 - Require an injected apply adapter with `applyEntry(entry)`.
@@ -5191,7 +5191,7 @@ Tasks:
 
 Acceptance criteria:
 
-- Apply is blocked unless Phase 8R.17 removal batch is ready and valid.
+- Apply is blocked unless the controlled removal batch is ready and valid.
 - Apply is blocked without explicit execute flag and named confirmation actor.
 - Apply is blocked without an adapter.
 - Adapter failures are captured as bounded risks.
@@ -5202,16 +5202,18 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.18 controlled compatibility path removal apply is documented in
-  [Policy Builder Phase 8R Controlled Compatibility Path Removal Apply](policy-builder-phase-8r-controlled-compatibility-path-removal-apply.md).
+- Controlled compatibility path removal apply is documented in
+  [Policy Controlled Compatibility Path Removal Apply](policy-controlled-compatibility-path-removal-apply.md).
+- The module naming cutover is documented in
+  [Policy Controlled Compatibility Path Removal Apply Module Cutover](policy-controlled-compatibility-path-removal-apply-module-cutover.md).
 - The apply contract lives in
-  `server/src/services/policyBuilderPhase8ControlledCompatibilityPathRemovalApply.mjs`.
+  `server/src/services/policyControlledCompatibilityPathRemovalApply.mjs`.
 - The focused apply test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8ControlledCompatibilityPathRemovalApply.test.mjs`.
+  `server/src/__tests__/services/policyControlledCompatibilityPathRemovalApply.test.mjs`.
 - Current implementation applies reviewed batches through an injected adapter,
   requires explicit confirmation, verifies result parity, rejects archive,
-  storage, and Git-command side effects, and advances to post-removal runtime
-  verification.
+  storage, and Git-command side effects, and emits a semantic `nextStep.stepId`
+  for post-removal runtime verification.
 
 ### 8R.19 Post-Removal Runtime Verification
 
@@ -6112,9 +6114,10 @@ Implement Phase 8R in this order:
     consuming a ready compatibility deletion execution gate output, selected
     approved manifest paths, and review metadata.
 18. **8R.18 Controlled Compatibility Path Removal Apply**
-    Applies one reviewed Phase 8R.17 removal batch through an explicit adapter,
-    verifies result parity, and emits evidence for import/runtime validation
-    before additional compatibility paths are removed.
+    Applies one reviewed controlled removal batch through an explicit adapter,
+    verifies result parity, and emits evidence plus a semantic next-step handoff
+    for import/runtime validation before additional compatibility paths are
+    removed.
 19. **8R.19 Post-Removal Runtime Verification**
     Consumes Phase 8R.18 apply evidence, verifies removed paths are no longer
     imported or required, runs focused runtime/import checks, and blocks

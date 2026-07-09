@@ -1,6 +1,6 @@
 import {
-  PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
-} from '../../services/policyBuilderPhase8ControlledCompatibilityPathRemovalApply.mjs';
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
+} from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
 import {
   PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS,
   PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS,
@@ -10,7 +10,7 @@ import {
 
 function applyEvidence(overrides = {}) {
   return {
-    statusId: PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
+    statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
     applied: true,
     validation: {
       ok: true,

@@ -20,11 +20,11 @@ import {
   buildPolicyControlledCompatibilityPathRemoval,
 } from '../../services/policyControlledCompatibilityPathRemoval.mjs';
 import {
-  PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS,
-  PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
-  applyPolicyBuilderPhase8ControlledCompatibilityPathRemoval,
-  validatePolicyBuilderPhase8ControlledCompatibilityPathRemovalApply,
-} from '../../services/policyBuilderPhase8ControlledCompatibilityPathRemovalApply.mjs';
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS,
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
+  applyPolicyControlledCompatibilityPathRemoval,
+  validatePolicyControlledCompatibilityPathRemovalApply,
+} from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
@@ -129,8 +129,8 @@ function replacementEvidence() {
   return Object.fromEntries(
     Object.values(POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS)
       .map(categoryId => [categoryId, {
-        replacement: `Phase 8R native replacement for ${categoryId}`,
-        tests: ['server phase8r focused coverage'],
+        replacement: `Native policy replacement for ${categoryId}`,
+        tests: ['server focused coverage'],
       }])
   );
 }
@@ -143,7 +143,7 @@ function readyExecutionPlan(overrides = {}) {
     rollbackStance: 'Rollback snapshots retained until post-window support stance is approved.',
     supportStance: 'Converted native policies use bounded support diagnostics.',
     manifestApproved: true,
-    approvedBy: 'phase8r-maintainer',
+    approvedBy: 'policy-maintainer',
     ...overrides,
   });
 }
@@ -156,7 +156,7 @@ function readyGate(executionPlan, overrides = {}) {
     backupRestoreFresh: true,
     operatorApproval: {
       approved: true,
-      approvedBy: 'phase8r-maintainer',
+      approvedBy: 'policy-maintainer',
     },
     rollbackStanceFinal: true,
     supportStanceFinal: true,
@@ -176,7 +176,7 @@ function readyRemovalReview(overrides = {}) {
       'server/src/services/policyIntentImpactPreview.mjs',
     ],
     removalReason: 'First narrow removal review batch after native runtime parity.',
-    reviewedBy: 'phase8r-maintainer',
+    reviewedBy: 'policy-maintainer',
     ...overrides,
   });
 }
@@ -184,7 +184,7 @@ function readyRemovalReview(overrides = {}) {
 function operatorConfirmation(overrides = {}) {
   return {
     confirmed: true,
-    confirmedBy: 'phase8r-maintainer',
+    confirmedBy: 'policy-maintainer',
     ...overrides,
   };
 }
@@ -212,9 +212,9 @@ function applyAdapter(overrides = {}) {
   };
 }
 
-describe('policyBuilderPhase8ControlledCompatibilityPathRemovalApply', () => {
+describe('policyControlledCompatibilityPathRemovalApply', () => {
   test('applies a ready reviewed removal batch through the injected adapter', async () => {
-    const applyResult = await applyPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
+    const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
       removalReview: readyRemovalReview(),
       executeApply: true,
       operatorConfirmation: operatorConfirmation(),
@@ -222,7 +222,7 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemovalApply', () => {
     });
 
     expect(applyResult.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED);
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED);
     expect(applyResult.applied).toBe(true);
     expect(applyResult.validation.ok).toBe(true);
     expect(applyResult.removalReview).toEqual(expect.objectContaining({
@@ -251,10 +251,15 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemovalApply', () => {
       storageChanged: false,
       gitCommandsRun: false,
     }));
+    expect(applyResult.nextStep).toEqual(expect.objectContaining({
+      stepId: 'post_removal_runtime_verification',
+      label: 'Post-Removal Runtime Verification',
+    }));
+    expect(applyResult.nextPhase).toBeUndefined();
   });
 
   test('blocks when the removal review batch is not ready', async () => {
-    const applyResult = await applyPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
+    const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
       removalReview: readyRemovalReview({ selectedPaths: [] }),
       executeApply: true,
       operatorConfirmation: operatorConfirmation(),
@@ -262,19 +267,19 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemovalApply', () => {
     });
 
     expect(applyResult.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
         .BLOCKED_BY_REMOVAL_BATCH);
     expect(applyResult.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.REMOVAL_BATCH_NOT_READY,
+          POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.REMOVAL_BATCH_NOT_READY,
       }),
     ]));
     expect(applyResult.applyBatch.appliedCount).toBe(0);
   });
 
   test('blocks without explicit execute flag and operator confirmation', async () => {
-    const applyResult = await applyPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
+    const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
       removalReview: readyRemovalReview(),
       executeApply: false,
       operatorConfirmation: operatorConfirmation({
@@ -285,19 +290,19 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemovalApply', () => {
     });
 
     expect(applyResult.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
         .BLOCKED_BY_CONFIRMATION);
     expect(applyResult.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.APPLY_NOT_ENABLED,
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.APPLY_NOT_ENABLED,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
         .OPERATOR_CONFIRMATION_MISSING,
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
         .OPERATOR_CONFIRMATION_ACTOR_MISSING,
     ]));
   });
 
   test('blocks without an apply adapter', async () => {
-    const applyResult = await applyPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
+    const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
       removalReview: readyRemovalReview(),
       executeApply: true,
       operatorConfirmation: operatorConfirmation(),
@@ -305,18 +310,18 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemovalApply', () => {
     });
 
     expect(applyResult.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
         .BLOCKED_BY_ADAPTER);
     expect(applyResult.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+        riskId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
           .APPLY_ADAPTER_MISSING,
       }),
     ]));
   });
 
   test('blocks when apply results do not match selected batch entries', async () => {
-    const applyResult = await applyPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
+    const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
       removalReview: readyRemovalReview(),
       executeApply: true,
       operatorConfirmation: operatorConfirmation(),
@@ -333,19 +338,19 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemovalApply', () => {
     });
 
     expect(applyResult.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
         .BLOCKED_BY_APPLY_RESULT);
     expect(applyResult.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.APPLY_RESULT_NOT_APPLIED,
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.APPLY_RESULT_NOT_APPLIED,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
         .APPLY_RESULT_PATH_MISMATCH,
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
         .APPLY_RESULT_ACTION_MISMATCH,
     ]));
   });
 
   test('blocks adapter failures with bounded error details', async () => {
-    const applyResult = await applyPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
+    const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
       removalReview: readyRemovalReview(),
       executeApply: true,
       operatorConfirmation: operatorConfirmation(),
@@ -357,18 +362,18 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemovalApply', () => {
     });
 
     expect(applyResult.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
         .BLOCKED_BY_ADAPTER);
     expect(applyResult.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.APPLY_ADAPTER_FAILED,
+          POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.APPLY_ADAPTER_FAILED,
       }),
     ]));
   });
 
   test('rejects archive, storage, or git side effects from apply results', async () => {
-    const applyResult = await applyPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
+    const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
       removalReview: readyRemovalReview(),
       executeApply: true,
       operatorConfirmation: operatorConfirmation(),
@@ -390,17 +395,17 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemovalApply', () => {
     });
 
     expect(applyResult.statusId)
-      .toBe(PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
         .BLOCKED_BY_APPLY_RESULT);
     expect(applyResult.validation.ok).toBe(false);
     expect(applyResult.risks.map(risk => risk.riskId)).toContain(
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.UNEXPECTED_SIDE_EFFECT
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.UNEXPECTED_SIDE_EFFECT
     );
   });
 
   test('rejects mutated apply output with stale risk count or unexpected side effects', () => {
-    const validation = validatePolicyBuilderPhase8ControlledCompatibilityPathRemovalApply({
-      statusId: PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
+    const validation = validatePolicyControlledCompatibilityPathRemovalApply({
+      statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
       riskCount: 99,
       risks: [],
       sideEffects: {
@@ -415,8 +420,8 @@ describe('policyBuilderPhase8ControlledCompatibilityPathRemovalApply', () => {
 
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.RISK_COUNT_MISMATCH,
-      PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.UNEXPECTED_SIDE_EFFECT,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.UNEXPECTED_SIDE_EFFECT,
     ]));
   });
 });

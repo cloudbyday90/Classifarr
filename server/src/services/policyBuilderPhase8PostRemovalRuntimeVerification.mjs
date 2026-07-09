@@ -1,7 +1,7 @@
 import {
-  PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
-  applyPolicyBuilderPhase8ControlledCompatibilityPathRemoval,
-} from './policyBuilderPhase8ControlledCompatibilityPathRemovalApply.mjs';
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
+  applyPolicyControlledCompatibilityPathRemoval,
+} from './policyControlledCompatibilityPathRemovalApply.mjs';
 
 const PHASE8R_POST_REMOVAL_RUNTIME_VERIFICATION_VERSION =
   'phase8r.post_removal_runtime_verification.v1';
@@ -58,7 +58,7 @@ function evaluateApplyEvidence(applyEvidence) {
   const risks = [];
 
   if (
-    evidence.statusId !== PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED ||
+    evidence.statusId !== POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED ||
     evidence.applied !== true
   ) {
     risks.push(buildRisk(
@@ -264,7 +264,7 @@ function determineStatusId(risks = []) {
 }
 
 async function buildDefaultApplyEvidence() {
-  return applyPolicyBuilderPhase8ControlledCompatibilityPathRemoval();
+  return applyPolicyControlledCompatibilityPathRemoval();
 }
 
 async function buildPolicyBuilderPhase8PostRemovalRuntimeVerification({

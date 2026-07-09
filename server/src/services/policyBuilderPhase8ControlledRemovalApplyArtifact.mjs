@@ -1,7 +1,7 @@
 import {
-  PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
-  applyPolicyBuilderPhase8ControlledCompatibilityPathRemoval,
-} from './policyBuilderPhase8ControlledCompatibilityPathRemovalApply.mjs';
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
+  applyPolicyControlledCompatibilityPathRemoval,
+} from './policyControlledCompatibilityPathRemovalApply.mjs';
 
 const PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_VERSION =
   'phase8r.controlled_removal_apply_artifact.v1';
@@ -71,7 +71,7 @@ function buildApplyArtifactRisks({
 
   if (
     applyResult.statusId !==
-    PHASE8R_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED ||
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED ||
     applyResult.applied !== true
   ) {
     risks.push(buildRisk(
@@ -135,7 +135,7 @@ async function buildPolicyBuilderPhase8ControlledRemovalApplyArtifact({
 } = {}) {
   const evidence = asObject(input);
   const operatorConfirmation = asObject(evidence.operatorConfirmation);
-  const applyResult = await applyPolicyBuilderPhase8ControlledCompatibilityPathRemoval({
+  const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
     removalReview: removalBatch,
     executeApply: evidence.executeApply,
     operatorConfirmation,

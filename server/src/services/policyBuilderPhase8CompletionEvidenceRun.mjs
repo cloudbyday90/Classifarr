@@ -170,9 +170,9 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_18',
     label: 'Controlled Compatibility Path Removal Apply',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-controlled-compatibility-path-removal-apply.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8ControlledCompatibilityPathRemovalApply.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8ControlledCompatibilityPathRemovalApply.test.mjs'],
+    designDocPaths: ['docs/architecture/policy-controlled-compatibility-path-removal-apply.md'],
+    contractPaths: ['server/src/services/policyControlledCompatibilityPathRemovalApply.mjs'],
+    testPaths: ['server/src/__tests__/services/policyControlledCompatibilityPathRemovalApply.test.mjs'],
   },
   {
     phaseId: '8r_19',

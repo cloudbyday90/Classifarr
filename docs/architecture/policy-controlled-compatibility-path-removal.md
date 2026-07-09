@@ -139,7 +139,7 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Controlled Compatibility Path Removal Apply module naming
-cutover**. That task should consume the ready controlled removal batch through
-the durable contract, then remove the remaining apply-specific phase-coded
-service/test/doc names without changing deletion behavior.
+Proceed with **Controlled Removal Apply Artifact module naming cutover**. The
+apply boundary now consumes the durable removal batch contract; the next task
+should make the artifact wrapper consume durable apply evidence without carrying
+phase-coded production names.

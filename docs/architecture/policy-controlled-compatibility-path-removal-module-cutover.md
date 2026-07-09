@@ -112,5 +112,4 @@ Implemented:
 
 ## Next Step
 
-Proceed to **Controlled Compatibility Path Removal Apply module naming
-cutover**.
+Proceed to **Controlled Removal Apply Artifact module naming cutover**.
