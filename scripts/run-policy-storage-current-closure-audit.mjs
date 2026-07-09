@@ -14,8 +14,8 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  buildPolicyBuilderPhase8CurrentRepositoryClosureAudit,
-} from '../server/src/services/policyBuilderPhase8CurrentRepositoryClosureAudit.mjs';
+  buildPolicyStorageCurrentClosureAudit,
+} from '../server/src/services/policyStorageCurrentClosureAudit.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -89,14 +89,14 @@ function parseArgs(argv = []) {
 
 function usage() {
   return [
-    'Usage: node scripts/run-policy-builder-phase-8r-current-closure-audit.mjs [options]',
+    'Usage: node scripts/run-policy-storage-current-closure-audit.mjs [options]',
     '',
     'Options:',
     '  --cwd <path>                         Repository root. Defaults to process cwd.',
     '  --completion-audit-artifact <json>   Required compatibility-removal completion-audit artifact JSON.',
-    '  --validation-evidence <json>         Required Phase 8R validation evidence JSON.',
-    '  --output <json>                      Write full current closure audit JSON.',
-    '  --checkpoint-artifact-output <json>  Write generated Phase 8R.32 checkpoint artifact JSON.',
+    '  --validation-evidence <json>         Required policy storage validation evidence JSON.',
+    '  --output <json>                      Write full policy storage current closure audit JSON.',
+    '  --checkpoint-artifact-output <json>  Write generated policy storage completion-checkpoint artifact JSON.',
     '  --final-readout-output <json>        Write generated policy storage final closure readout JSON.',
     '  --allow-blocked                      Allow writing blocked audit output.',
     '  --require-complete                   Exit non-zero unless the audit is complete.',
@@ -169,7 +169,7 @@ function main() {
     process.exit(2);
   }
 
-  const audit = buildPolicyBuilderPhase8CurrentRepositoryClosureAudit({
+  const audit = buildPolicyStorageCurrentClosureAudit({
     cwd: path.resolve(process.cwd(), options.cwd),
     completionAuditArtifact,
     validationEvidence,
@@ -178,7 +178,7 @@ function main() {
 
   if (audit.statusId !== 'complete' && options.allowBlocked !== true) {
     console.error(
-      'Phase 8R current repository closure audit is blocked; pass --allow-blocked to write diagnostic output.'
+      'Policy storage current closure audit is blocked; pass --allow-blocked to write diagnostic output.'
     );
     console.error(JSON.stringify({
       statusId: audit.statusId,
@@ -195,7 +195,7 @@ function main() {
     writeJsonFile(options.checkpointArtifactOutputPath, audit.checkpointArtifact);
     writeJsonFile(options.finalReadoutOutputPath, audit.finalReadout);
   } catch (err) {
-    console.error(`Could not write Phase 8R current closure audit JSON: ${err.message}`);
+    console.error(`Could not write policy storage current closure audit JSON: ${err.message}`);
     process.exit(2);
   }
 

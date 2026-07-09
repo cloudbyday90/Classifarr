@@ -5,11 +5,11 @@ import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
 } from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 import {
-  PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS,
-  PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS,
-  buildPolicyBuilderPhase8CurrentRepositoryClosureAudit,
-  validatePolicyBuilderPhase8CurrentRepositoryClosureAudit,
-} from '../../services/policyBuilderPhase8CurrentRepositoryClosureAudit.mjs';
+  POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS,
+  POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS,
+  buildPolicyStorageCurrentClosureAudit,
+  validatePolicyStorageCurrentClosureAudit,
+} from '../../services/policyStorageCurrentClosureAudit.mjs';
 
 function completeRoadmapContent() {
   const componentSections = PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP
@@ -89,7 +89,7 @@ function readTextFile(filePath) {
 }
 
 function completeAudit(overrides = {}) {
-  return buildPolicyBuilderPhase8CurrentRepositoryClosureAudit({
+  return buildPolicyStorageCurrentClosureAudit({
     cwd: '/repo',
     completionAuditArtifact: completionAuditArtifact(),
     validationEvidence: validationEvidence(),
@@ -100,12 +100,12 @@ function completeAudit(overrides = {}) {
   });
 }
 
-describe('policyBuilderPhase8CurrentRepositoryClosureAudit', () => {
+describe('policyStorageCurrentClosureAudit', () => {
   test('completes when current repository evidence, completion audit, and validation pass', () => {
     const audit = completeAudit();
 
     expect(audit.statusId)
-      .toBe(PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS.COMPLETE);
+      .toBe(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS.COMPLETE);
     expect(audit.complete).toBe(true);
     expect(audit.validation.ok).toBe(true);
     expect(audit.summary).toEqual(expect.objectContaining({
@@ -117,6 +117,11 @@ describe('policyBuilderPhase8CurrentRepositoryClosureAudit', () => {
     }));
     expect(audit.sideEffects.filesRead).toBe(true);
     expect(audit.sideEffects.filesWritten).toBe(false);
+    expect(audit.nextPhase).toBeUndefined();
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'policy_storage_current_closure_complete',
+      label: 'Policy Storage Current Closure Complete',
+    }));
   });
 
   test('blocks on current evidence when a mapped repository artifact is missing', () => {
@@ -128,13 +133,13 @@ describe('policyBuilderPhase8CurrentRepositoryClosureAudit', () => {
     });
 
     expect(audit.statusId)
-      .toBe(PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS
+      .toBe(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
         .BLOCKED_BY_CURRENT_EVIDENCE);
     expect(audit.summary.missingCurrentArtifactCount).toBe(1);
     expect(audit.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+          POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
             .CURRENT_EVIDENCE_RUN_NOT_COMPLETE,
       }),
     ]));
@@ -146,12 +151,12 @@ describe('policyBuilderPhase8CurrentRepositoryClosureAudit', () => {
     });
 
     expect(audit.statusId)
-      .toBe(PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS
+      .toBe(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
         .BLOCKED_BY_CURRENT_EVIDENCE);
     expect(audit.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .VALIDATION_EVIDENCE_MISSING,
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .CURRENT_EVIDENCE_RUN_NOT_COMPLETE,
     ]));
   });
@@ -176,12 +181,12 @@ describe('policyBuilderPhase8CurrentRepositoryClosureAudit', () => {
     });
 
     expect(audit.statusId)
-      .toBe(PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS
+      .toBe(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
         .BLOCKED_BY_CURRENT_EVIDENCE);
     expect(audit.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_NOT_COMPLETE,
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .CURRENT_EVIDENCE_RUN_NOT_COMPLETE,
     ]));
   });
@@ -198,19 +203,19 @@ describe('policyBuilderPhase8CurrentRepositoryClosureAudit', () => {
     });
 
     expect(audit.statusId)
-      .toBe(PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS
+      .toBe(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
         .BLOCKED_BY_SIDE_EFFECTS);
     expect(audit.validation.ok).toBe(false);
     expect(audit.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+          POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
             .SIDE_EFFECT_REPORTED,
         sideEffect: 'filesWritten',
       }),
       expect.objectContaining({
         riskId:
-          PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+          POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
             .SIDE_EFFECT_REPORTED,
         sideEffect: 'manifestWritten',
       }),
@@ -218,7 +223,7 @@ describe('policyBuilderPhase8CurrentRepositoryClosureAudit', () => {
   });
 
   test('validates status and risk-count invariants', () => {
-    const validation = validatePolicyBuilderPhase8CurrentRepositoryClosureAudit({
+    const validation = validatePolicyStorageCurrentClosureAudit({
       statusId: 'unexpected',
       complete: false,
       riskCount: 1,
@@ -232,11 +237,11 @@ describe('policyBuilderPhase8CurrentRepositoryClosureAudit', () => {
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS.UNKNOWN_STATUS,
+          POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS.UNKNOWN_STATUS,
       }),
       expect.objectContaining({
         riskId:
-          PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+          POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
             .RISK_COUNT_MISMATCH,
       }),
     ]));

@@ -7,7 +7,7 @@ be treated as complete. It verifies the full current Phase 8R sequence from
 8R.1 through 8R.34, not only the original 8R.1 through 8R.22 completion
 checkpoint.
 
-The audit consumes the Phase 8R.34 current repository closure audit, then
+The audit consumes the policy storage current closure audit, then
 independently checks the current checkout for each required component's
 design/outcome document, service/script/route/migration/wiring evidence, focused
 test evidence, roadmap component section, work-sequence entry, and changelog
@@ -50,7 +50,7 @@ Cons:
   gains additional components.
 - Blocks completion on documentation or changelog drift even when code tests
   pass.
-- Requires the Phase 8R.34 closure audit artifact to exist before the final
+- Requires the policy storage current closure audit artifact to exist before the final
   audit can pass.
 
 ## Final Recommendation Stack
@@ -69,7 +69,7 @@ Cons:
 
 The implementation adds a final audit that:
 
-- requires a complete and valid Phase 8R.34 current repository closure audit,
+- requires a complete and valid policy storage current closure audit,
 - inventories mapped current checkout artifacts for 8R.1 through 8R.34,
 - verifies every mapped component has design, contract/script/wiring, and test
   evidence,
@@ -81,6 +81,6 @@ The implementation adds a final audit that:
 
 ## Next Step
 
-Run the final audit against a generated Phase 8R.34 current closure artifact. If
-it passes against current repository evidence and validation evidence, Phase 8R
-can move to the final goal completion audit.
+Run the final audit against a generated policy storage current closure artifact.
+If it passes against current repository evidence and validation evidence, Phase
+8R can move to the final goal completion audit.

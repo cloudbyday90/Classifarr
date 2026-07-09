@@ -34,7 +34,7 @@
     "policy:compatibility-removal-completion-audit": "node scripts/generate-policy-compatibility-removal-completion-audit.mjs",
     "policy:storage-completion-checkpoint": "node scripts/generate-policy-storage-completion-checkpoint.mjs",
     "policy:storage-final-closure-readout": "node scripts/generate-policy-storage-final-closure-readout.mjs",
-    "policy:phase8r:current-closure-audit": "node scripts/run-policy-builder-phase-8r-current-closure-audit.mjs",
+    "policy:storage-current-closure-audit": "node scripts/run-policy-storage-current-closure-audit.mjs",
     "policy:phase8r:final-requirement-audit": "node scripts/run-policy-builder-phase-8r-final-requirement-audit.mjs",
     "policy:phase8r:validation-evidence": "node scripts/generate-policy-builder-phase-8r-validation-evidence.mjs",
     "policy:phase8r:final-removal-audit": "node scripts/generate-policy-builder-phase-8r-final-removal-audit.mjs",

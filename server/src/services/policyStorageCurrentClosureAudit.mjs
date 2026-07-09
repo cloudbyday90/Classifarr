@@ -13,10 +13,10 @@ import {
   buildPolicyStorageFinalClosureReadout,
 } from './policyStorageFinalClosureReadout.mjs';
 
-const PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_VERSION =
-  'phase8r.current_repository_closure_audit.v1';
+const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION =
+  'policy.storage_current_closure_audit.v1';
 
-const PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS = Object.freeze({
+const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
   BLOCKED_BY_CURRENT_EVIDENCE: 'blocked_by_current_evidence',
   BLOCKED_BY_CHECKPOINT_ARTIFACT: 'blocked_by_checkpoint_artifact',
@@ -24,7 +24,7 @@ const PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS = Object.freeze({
   BLOCKED_BY_SIDE_EFFECTS: 'blocked_by_side_effects',
 });
 
-const PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS = Object.freeze({
   COMPLETION_AUDIT_ARTIFACT_MISSING: 'completion_audit_artifact_missing',
   COMPLETION_AUDIT_ARTIFACT_NOT_COMPLETE:
     'completion_audit_artifact_not_complete',
@@ -113,9 +113,9 @@ function buildAuditRisks({
 
   if (Object.keys(normalizedCompletionArtifact).length === 0) {
     risks.push(buildRisk(
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_MISSING,
-      'Current repository closure audit requires compatibility-removal completion-audit artifact evidence.'
+      'Policy storage current closure audit requires compatibility-removal completion-audit artifact evidence.'
     ));
   }
 
@@ -124,9 +124,9 @@ function buildAuditRisks({
     normalizedCompletionArtifact.complete !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_NOT_COMPLETE,
-      'Current repository closure audit requires a complete compatibility-removal completion-audit artifact.',
+      'Policy storage current closure audit requires a complete compatibility-removal completion-audit artifact.',
       {
         completionAuditArtifactStatusId:
           normalizedCompletionArtifact.statusId || null,
@@ -139,9 +139,9 @@ function buildAuditRisks({
     normalizedCompletionArtifact.validation?.ok !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_VALIDATION_FAILED,
-      'Current repository closure audit requires valid compatibility-removal completion-audit artifact evidence.',
+      'Policy storage current closure audit requires valid compatibility-removal completion-audit artifact evidence.',
       {
         completionAuditArtifactValidationIssueCount:
           normalizedCompletionArtifact.validation?.issueCount ?? null,
@@ -151,9 +151,9 @@ function buildAuditRisks({
 
   if (!hasValidationEvidence(validationEvidence)) {
     risks.push(buildRisk(
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .VALIDATION_EVIDENCE_MISSING,
-      'Current repository closure audit requires focused, lint, markdown, and full validation evidence to pass.'
+      'Policy storage current closure audit requires focused, lint, markdown, and full validation evidence to pass.'
     ));
   }
 
@@ -163,9 +163,9 @@ function buildAuditRisks({
     currentEvidenceRun.complete !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .CURRENT_EVIDENCE_RUN_NOT_COMPLETE,
-      'Current repository evidence run must complete before Phase 8R can close.',
+      'Current repository evidence run must complete before policy storage closure can pass.',
       {
         evidenceRunStatusId: currentEvidenceRun.statusId || null,
         evidenceRunRiskCount: currentEvidenceRun.riskCount ?? null,
@@ -179,9 +179,9 @@ function buildAuditRisks({
     checkpointArtifact.complete !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .CHECKPOINT_ARTIFACT_NOT_COMPLETE,
-      'Current repository closure audit requires a complete policy storage completion-checkpoint artifact.',
+      'Policy storage current closure audit requires a complete policy storage completion-checkpoint artifact.',
       {
         checkpointArtifactStatusId: checkpointArtifact.statusId || null,
         checkpointArtifactRiskCount: checkpointArtifact.riskCount ?? null,
@@ -194,9 +194,9 @@ function buildAuditRisks({
     finalReadout.complete !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .FINAL_READOUT_NOT_COMPLETE,
-      'Current repository closure audit requires a complete policy storage final closure readout.',
+      'Policy storage current closure audit requires a complete policy storage final closure readout.',
       {
         finalReadoutStatusId: finalReadout.statusId || null,
         finalReadoutRiskCount: finalReadout.riskCount ?? null,
@@ -207,8 +207,8 @@ function buildAuditRisks({
   Object.entries(sideEffects || {}).forEach(([key, value]) => {
     if (key !== 'filesRead' && value === true) {
       risks.push(buildRisk(
-        PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS.SIDE_EFFECT_REPORTED,
-        `Current repository closure audit cannot report side effect "${key}".`,
+        POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS.SIDE_EFFECT_REPORTED,
+        `Policy storage current closure audit cannot report side effect "${key}".`,
         { sideEffect: key }
       ));
     }
@@ -225,13 +225,13 @@ function determineStatusId({
   sideEffects = {},
 } = {}) {
   if (risks.length === 0) {
-    return PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS.COMPLETE;
+    return POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS.COMPLETE;
   }
 
   if (Object.entries(sideEffects || {}).some(([key, value]) => (
     key !== 'filesRead' && value === true
   ))) {
-    return PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS
+    return POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
       .BLOCKED_BY_SIDE_EFFECTS;
   }
 
@@ -240,7 +240,7 @@ function determineStatusId({
       PHASE8R_COMPLETION_EVIDENCE_RUN_STATUS_IDS.COMPLETE ||
     currentEvidenceRun.complete !== true
   ) {
-    return PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS
+    return POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
       .BLOCKED_BY_CURRENT_EVIDENCE;
   }
 
@@ -249,7 +249,7 @@ function determineStatusId({
       POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE ||
     checkpointArtifact.complete !== true
   ) {
-    return PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS
+    return POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
       .BLOCKED_BY_CHECKPOINT_ARTIFACT;
   }
 
@@ -257,15 +257,15 @@ function determineStatusId({
     finalReadout.statusId !== POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE ||
     finalReadout.complete !== true
   ) {
-    return PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS
+    return POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
       .BLOCKED_BY_FINAL_READOUT;
   }
 
-  return PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS
+  return POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
     .BLOCKED_BY_CHECKPOINT_ARTIFACT;
 }
 
-function buildPolicyBuilderPhase8CurrentRepositoryClosureAudit({
+function buildPolicyStorageCurrentClosureAudit({
   cwd = process.cwd(),
   completionAuditArtifact = {},
   validationEvidence = {},
@@ -322,12 +322,12 @@ function buildPolicyBuilderPhase8CurrentRepositoryClosureAudit({
     sideEffects: combinedSideEffects,
   });
   const audit = {
-    version: PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_VERSION,
+    version: POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION,
     generatedAt: normalizeGeneratedAt(generatedAt),
     statusId,
     complete:
       statusId ===
-        PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS.COMPLETE,
+        POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS.COMPLETE,
     currentEvidence: {
       roadmapPath: currentEvidence.roadmapPath,
       changelogPath: currentEvidence.changelogPath,
@@ -365,57 +365,57 @@ function buildPolicyBuilderPhase8CurrentRepositoryClosureAudit({
       allowCommandExecutionInsideService: false,
       allowManifestWrite: false,
     },
-    nextPhase: {
-      phaseId: '8r_complete',
-      label: 'Phase 8R Completion Decision',
+    nextStep: {
+      stepId: 'policy_storage_current_closure_complete',
+      label: 'Policy Storage Current Closure Complete',
       reason:
-        'A complete current-repository closure audit proves the current checkout satisfies the Phase 8R closure chain.',
+        'A complete policy storage current closure audit proves the current checkout satisfies the policy storage closure chain.',
     },
   };
 
   return {
     ...audit,
     validation:
-      validatePolicyBuilderPhase8CurrentRepositoryClosureAudit(audit),
+      validatePolicyStorageCurrentClosureAudit(audit),
   };
 }
 
-function validatePolicyBuilderPhase8CurrentRepositoryClosureAudit(audit = {}) {
+function validatePolicyStorageCurrentClosureAudit(audit = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS)
+  if (!Object.values(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS)
     .includes(audit.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS.UNKNOWN_STATUS,
-      'Current repository closure audit status must be known.'
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS.UNKNOWN_STATUS,
+      'Policy storage current closure audit status must be known.'
     ));
   }
 
   if (audit.riskCount !== asArray(audit.risks).length) {
     issues.push(buildRisk(
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS.RISK_COUNT_MISMATCH,
-      'Current repository closure audit risk count must match risk list length.'
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS.RISK_COUNT_MISMATCH,
+      'Policy storage current closure audit risk count must match risk list length.'
     ));
   }
 
   if (
     audit.statusId ===
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS.COMPLETE &&
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS.COMPLETE &&
     audit.complete !== true
   ) {
     issues.push(buildRisk(
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .COMPLETE_FLAG_MISMATCH,
-      'Current repository closure audit complete flag must match complete status.'
+      'Policy storage current closure audit complete flag must match complete status.'
     ));
   }
 
   Object.entries(audit.sideEffects || {}).forEach(([key, value]) => {
     if (key !== 'filesRead' && value === true) {
       issues.push(buildRisk(
-        PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS
+        POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
           .SIDE_EFFECT_REPORTED,
-        `Current repository closure audit cannot report side effect "${key}".`,
+        `Policy storage current closure audit cannot report side effect "${key}".`,
         { sideEffect: key }
       ));
     }
@@ -429,9 +429,9 @@ function validatePolicyBuilderPhase8CurrentRepositoryClosureAudit(audit = {}) {
 }
 
 export {
-  PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_RISK_IDS,
-  PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS,
-  PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_VERSION,
-  buildPolicyBuilderPhase8CurrentRepositoryClosureAudit,
-  validatePolicyBuilderPhase8CurrentRepositoryClosureAudit,
+  POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS,
+  POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS,
+  POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION,
+  buildPolicyStorageCurrentClosureAudit,
+  validatePolicyStorageCurrentClosureAudit,
 };

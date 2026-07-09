@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Storage Current Closure Audit Module Cutover** — renamed the current
+  closure audit service, focused tests, docs, CLI script, and npm runner to
+  durable policy-storage names, replaced phase-coded constants/builders/versioning
+  and `nextPhase.phaseId` with semantic `nextStep.stepId`, updated
+  final-requirement, validation-evidence, roadmap, and handoff references, and
+  preserved current-evidence composition, completion-audit gating, validation
+  gating, checkpoint/final-readout composition, side-effect rejection, and final
+  requirement audit handoff behavior.
 - **Policy Storage Final Closure Readout Module Cutover** — renamed the final
   closure readout service, focused tests, docs, CLI script, and npm runner to
   durable policy-storage names, replaced phase-coded constants/builders/versioning
@@ -906,9 +914,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   `npm run policy:phase8r:final-requirement-audit` to verify the full 8R.1
   through 8R.34 sequence against current closure, artifact, roadmap, changelog,
   and focused-test evidence before Phase 8R can be marked complete.
-- **Policy Builder Phase 8R Current Repository Closure Audit** — added a
-  current-checkout closure audit contract and
-  `npm run policy:phase8r:current-closure-audit` to compose current artifact,
+- **Policy Storage Current Closure Audit** — added a policy-storage
+  current-closure audit contract and
+  `npm run policy:storage-current-closure-audit` to compose current artifact,
   roadmap, changelog, compatibility-removal completion-audit, validation,
   checkpoint, and final-readout evidence into one completion decision.
 - **Policy Storage Final Closure Readout** — added a

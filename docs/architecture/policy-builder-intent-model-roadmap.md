@@ -5969,7 +5969,8 @@ Acceptance criteria:
   status.
 - Nested checkpoint failures preserve their blocker category.
 - Any side effect prevents complete readout status.
-- Generated readout JSON can be used by the current repository closure audit.
+- Generated readout JSON can be used by the policy storage current closure
+  audit.
 
 Implementation status:
 
@@ -5989,7 +5990,7 @@ Implementation status:
   collecting evidence, running commands, mutating storage, or running Git; it
   emits semantic `nextStep` evidence for policy storage closure completion.
 
-### 8R.34 Current Repository Closure Audit
+### 8R.34 Policy Storage Current Closure Audit
 
 Intent: audit the current checkout against the storage closure chain by
 combining current repository evidence, compatibility-removal completion-audit evidence,
@@ -5998,12 +5999,12 @@ policy storage final closure readout.
 
 Tasks:
 
-- Read current mapped Phase 8R artifact inventory from the checkout.
+- Read current mapped closure artifact inventory from the checkout.
 - Read current roadmap sequence and implementation-status evidence.
 - Read current changelog coverage evidence.
 - Require a complete and valid compatibility-removal completion-audit artifact.
 - Require focused, lint, markdown, and full validation evidence.
-- Compose the existing Phase 8R.23 current evidence run.
+- Compose the existing current evidence run.
 - Compose the Phase 8R.32 checkpoint artifact from current evidence.
 - Compose the policy storage final closure readout.
 - Reject file writes, manifest writes, storage mutation, command execution, and
@@ -6022,16 +6023,18 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.34 current repository closure audit is documented in
-  [Policy Builder Phase 8R Current Repository Closure Audit](policy-builder-phase-8r-current-repository-closure-audit.md).
-- The current repository closure audit contract lives in
-  `server/src/services/policyBuilderPhase8CurrentRepositoryClosureAudit.mjs`.
+- Policy storage current closure audit is documented in
+  [Policy Storage Current Closure Audit](policy-storage-current-closure-audit.md).
+- The durable module naming cutover is documented in
+  [Policy Storage Current Closure Audit Module Cutover](policy-storage-current-closure-audit-module-cutover.md).
+- The policy storage current closure audit contract lives in
+  `server/src/services/policyStorageCurrentClosureAudit.mjs`.
 - The exporter script lives in
-  `scripts/run-policy-builder-phase-8r-current-closure-audit.mjs`.
+  `scripts/run-policy-storage-current-closure-audit.mjs`.
 - The root runner is exposed as
-  `npm run policy:phase8r:current-closure-audit`.
-- The focused current repository closure audit test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8CurrentRepositoryClosureAudit.test.mjs`.
+  `npm run policy:storage-current-closure-audit`.
+- The focused policy storage current closure audit test suite lives in
+  `server/src/__tests__/services/policyStorageCurrentClosureAudit.test.mjs`.
 - Current implementation reads mapped repository evidence and emits complete or
   blocked closure audits without writing files, mutating storage, running
   commands, or running Git.
@@ -6043,7 +6046,7 @@ before Phase 8R is treated as complete.
 
 Tasks:
 
-- Require a complete and valid Phase 8R.34 current repository closure audit.
+- Require a complete and valid policy storage current closure audit.
 - Inventory mapped current checkout artifacts for every Phase 8R component from
   8R.1 through 8R.34.
 - Require design/outcome document evidence for every component.
@@ -6057,7 +6060,8 @@ Tasks:
 
 Acceptance criteria:
 
-- Completion is blocked without complete Phase 8R.34 current closure evidence.
+- Completion is blocked without complete policy storage current closure
+  evidence.
 - Completion is blocked when any 8R.1 through 8R.34 mapped artifact is missing.
 - Completion is blocked when the roadmap component map or work sequence omits
   any Phase 8R component.
@@ -6205,7 +6209,7 @@ Implement Phase 8R in this order:
     Generates the final operator-facing policy storage closure decision from
     the storage completion-checkpoint artifact, preserving exact blocker
     categories.
-34. **8R.34 Current Repository Closure Audit**
+34. **8R.34 Policy Storage Current Closure Audit**
     Audits the current checkout by composing current artifact, roadmap,
     changelog, completion-audit, validation, checkpoint, and final-readout
     evidence into one completion decision.

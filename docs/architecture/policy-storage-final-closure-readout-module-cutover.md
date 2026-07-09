@@ -14,7 +14,7 @@ This cutover covers:
 - `npm run policy:storage-final-closure-readout`
 - `nextStep.stepId = policy_storage_closure_complete`
 
-The broader current repository closure audit remains a separate component. This
+The broader policy storage current closure audit remains a separate component. This
 document only covers the final readout module, runner, tests, and downstream
 references needed for that readout.
 
@@ -115,13 +115,13 @@ Implemented:
   `policy.storage_final_closure_readout.v1`.
 - Replaced production `nextPhase.phaseId` completion output with
   `nextStep.stepId = policy_storage_closure_complete`.
-- Updated current repository closure audit imports and messages to consume the
+- Updated policy storage current closure audit imports and messages to consume the
   durable readout names.
 - Updated the roadmap, validation evidence command set, and changelog to point
   at the durable readout surface.
 
 ## Next Step
 
-Proceed with **Current Repository Closure Audit module naming cutover** so the
+Proceed with **Policy Storage Current Closure Audit module naming cutover** so the
 next consumer of the storage final closure readout no longer uses temporary
 roadmap-phase production names.

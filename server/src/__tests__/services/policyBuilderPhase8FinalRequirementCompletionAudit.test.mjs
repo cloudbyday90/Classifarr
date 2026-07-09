@@ -1,6 +1,6 @@
 import {
-  PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS,
-} from '../../services/policyBuilderPhase8CurrentRepositoryClosureAudit.mjs';
+  POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS,
+} from '../../services/policyStorageCurrentClosureAudit.mjs';
 import {
   PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP,
   PHASE8R_FINAL_REQUIREMENT_COMPLETION_AUDIT_RISK_IDS,
@@ -39,9 +39,9 @@ function completeChangelogContent({
 
 function currentClosureAudit(overrides = {}) {
   return {
-    version: 'phase8r.current_repository_closure_audit.v1',
+    version: 'policy.storage_current_closure_audit.v1',
     statusId:
-      PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS.COMPLETE,
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS.COMPLETE,
     complete: true,
     validation: {
       ok: true,
@@ -98,11 +98,11 @@ describe('policyBuilderPhase8FinalRequirementCompletionAudit', () => {
     }));
   });
 
-  test('blocks when the Phase 8R.34 current closure audit is incomplete', () => {
+  test('blocks when the policy storage current closure audit is incomplete', () => {
     const audit = completeAudit({
       currentClosureAudit: currentClosureAudit({
         statusId:
-          PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS
+          POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
             .BLOCKED_BY_CURRENT_EVIDENCE,
         complete: false,
       }),
@@ -122,7 +122,7 @@ describe('policyBuilderPhase8FinalRequirementCompletionAudit', () => {
 
   test('blocks when a later closure component artifact is missing', () => {
     const missingPath =
-      'server/src/services/policyBuilderPhase8CurrentRepositoryClosureAudit.mjs';
+      'server/src/services/policyStorageCurrentClosureAudit.mjs';
     const audit = completeAudit({
       fileExists: absolutePath => (
         !absolutePath.replace(/\\/g, '/').endsWith(missingPath)
@@ -150,7 +150,7 @@ describe('policyBuilderPhase8FinalRequirementCompletionAudit', () => {
 
   test('blocks when the roadmap omits a late Phase 8R work-sequence item', () => {
     const roadmapContent = completeRoadmapContent()
-      .replace('34. **8R.34 Current Repository Closure Audit**', '');
+      .replace('34. **8R.34 Policy Storage Current Closure Audit**', '');
     const audit = completeAudit({
       readTextFile: readTextFileFactory({ roadmapContent }),
     });

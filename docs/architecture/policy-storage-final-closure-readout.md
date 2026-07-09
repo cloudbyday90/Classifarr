@@ -138,8 +138,8 @@ npm run --silent policy:storage-final-closure-readout -- \
 
 ## Next Step
 
-Use the final closure readout to perform the current repository closure audit
+Use the final closure readout to perform the policy storage current closure audit
 against current storage evidence. If the readout is complete and all storage
-requirements are proven by current artifacts, the current repository closure
+requirements are proven by current artifacts, the policy storage current closure
 audit can proceed. If not, continue with the exact blocker category reported by
 the readout.

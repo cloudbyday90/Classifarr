@@ -161,6 +161,6 @@ Not implemented in this component:
 ## Next Step
 
 Run the policy storage completion checkpoint through the artifact exporter. If
-the artifact proves complete, proceed to **Current Repository Closure Audit
+the artifact proves complete, proceed to **Policy Storage Current Closure Audit
 module naming cutover**; if not, continue with the exact blocker category the
 checkpoint reports.

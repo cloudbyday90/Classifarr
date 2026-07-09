@@ -75,7 +75,7 @@ function usage() {
     '',
     'Options:',
     '  --cwd <path>                    Repository root. Defaults to process cwd.',
-    '  --current-closure-audit <json>  Required Phase 8R.34 current closure audit JSON.',
+    '  --current-closure-audit <json>  Required policy storage current closure audit JSON.',
     '  --output <json>                 Write full final requirement audit JSON.',
     '  --allow-blocked                 Allow writing blocked audit output.',
     '  --require-complete              Exit non-zero unless the audit is complete.',
