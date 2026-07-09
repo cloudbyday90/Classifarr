@@ -120,7 +120,7 @@ describe('policyBuilderPhase8CurrentRepositoryClosureAudit', () => {
   });
 
   test('blocks on current evidence when a mapped repository artifact is missing', () => {
-    const missingPath = 'server/src/services/policyBuilderPhase8CompletionCheckpoint.mjs';
+    const missingPath = 'server/src/services/policyStorageCompletionCheckpoint.mjs';
     const audit = completeAudit({
       fileExists: absolutePath => (
         !absolutePath.replace(/\\/g, '/').endsWith(missingPath)

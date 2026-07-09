@@ -5391,7 +5391,7 @@ Current removal slice:
 - The focused replay service test now targets
   `server/src/__tests__/policyBuilderPhase8ReplayMigrationVerifier.test.mjs`.
 
-### 8R.22 Phase 8R Completion Checkpoint
+### 8R.22 Policy Storage Completion Checkpoint
 
 Intent: consume current-state evidence for the full Phase 8R sequence and prove
 whether the phase can close, without relying on narrative confidence or the
@@ -5416,30 +5416,34 @@ Tasks:
 
 Acceptance criteria:
 
-- Checkpoint completion is blocked when any expected component lacks
+- Storage checkpoint completion is blocked when any expected component lacks
   implementation, design-doc, contract, or test evidence.
-- Checkpoint completion is blocked when the roadmap sequence or implementation
+- Storage checkpoint completion is blocked when the roadmap sequence or implementation
   status omits an expected phase ID.
-- Checkpoint completion is blocked unless Phase 8R.21 removal audit evidence is
-  complete and valid.
-- Checkpoint completion is blocked when focused, lint, markdown, or full
+- Storage checkpoint completion is blocked unless compatibility-removal
+  completion audit evidence is complete and valid.
+- Storage checkpoint completion is blocked when focused, lint, markdown, or full
   validation evidence is missing or failed.
-- Checkpoint completion is blocked when changelog coverage is missing for any
+- Storage checkpoint completion is blocked when changelog coverage is missing for any
   expected phase.
 - The checkpoint does not scan files, run commands, mutate storage, write
   docs/changelog, or run Git itself.
 
 Implementation status:
 
-- Phase 8R.22 completion checkpoint is documented in
-  [Policy Builder Phase 8R Completion Checkpoint](policy-builder-phase-8r-completion-checkpoint.md).
+- Policy storage completion checkpoint is documented in
+  [Policy Storage Completion Checkpoint](policy-storage-completion-checkpoint.md).
+- The durable module naming cutover is documented in
+  [Policy Storage Completion Checkpoint Module Cutover](policy-storage-completion-checkpoint-module-cutover.md).
 - The checkpoint contract lives in
-  `server/src/services/policyBuilderPhase8CompletionCheckpoint.mjs`.
+  `server/src/services/policyStorageCompletionCheckpoint.mjs`.
 - The focused checkpoint test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8CompletionCheckpoint.test.mjs`.
-- Current implementation consumes component evidence, roadmap evidence, final
-  removal audit evidence, validation evidence, and changelog evidence; blocks
-  incomplete coverage; and emits `8r_complete` only when all evidence passes.
+  `server/src/__tests__/services/policyStorageCompletionCheckpoint.test.mjs`.
+- Current implementation consumes component evidence, roadmap evidence,
+  compatibility-removal completion-audit evidence, validation evidence, and
+  changelog evidence; blocks incomplete coverage; and emits semantic
+  `nextStep` evidence for policy storage final closure readout only when all
+  evidence passes.
 
 ### 8R.23 Completion Evidence Run
 
@@ -5463,7 +5467,7 @@ Tasks:
 - Treat existing production integration files as valid contract evidence when a
   component was implemented through live wiring rather than a new wrapper
   service.
-- Compose the Phase 8R.22 completion checkpoint instead of duplicating closure
+- Compose the policy storage completion checkpoint instead of duplicating closure
   rules.
 - Block completion when artifact inventory is empty, mapped artifacts are
   missing, checkpoint evidence is incomplete, validation evidence fails, or any
@@ -5476,7 +5480,7 @@ Acceptance criteria:
 - Evidence-run completion is blocked when the artifact inventory is empty.
 - Evidence-run completion is blocked when any mapped Phase 8R artifact is
   missing.
-- Evidence-run completion is blocked unless the composed Phase 8R.22 checkpoint
+- Evidence-run completion is blocked unless the composed policy storage checkpoint
   completes and validates.
 - Windows-style and POSIX-style paths produce the same artifact matching result.
 - Phase 8R.10 native backup/restore wiring is represented by the live
@@ -5891,19 +5895,19 @@ Implementation status:
 
 ### 8R.32 Completion Checkpoint Artifact Exporter
 
-Intent: generate the machine-readable Phase 8R.22 completion checkpoint artifact
-from explicit component evidence, roadmap evidence, Phase 8R.31
-completion-audit artifact evidence, validation evidence, and changelog
-evidence.
+Intent: generate the machine-readable policy storage completion checkpoint
+artifact from explicit component evidence, roadmap evidence,
+compatibility-removal completion-audit artifact evidence, validation evidence,
+and changelog evidence.
 
 Tasks:
 
-- Require component evidence for the Phase 8R implementation set.
+- Require component evidence for the storage migration implementation set.
 - Require roadmap sequence and implementation-status evidence.
 - Require a complete and valid compatibility-removal completion-audit artifact.
 - Require focused, lint, markdown, and full validation evidence.
-- Require changelog evidence covering Phase 8R components.
-- Reuse the existing Phase 8R.22 completion checkpoint contract.
+- Require changelog evidence covering storage migration components.
+- Reuse the policy storage completion checkpoint contract.
 - Avoid collecting evidence, writing manifests, mutating storage, running
   commands, running Git, or changing files inside the service.
 - Write nested checkpoint JSON for release/operator completion proof.
@@ -5912,39 +5916,43 @@ Acceptance criteria:
 
 - The exporter refuses missing component, roadmap, completion-audit, validation,
   or changelog JSON.
-- A complete Phase 8R.31 artifact plus complete checkpoint evidence yields a
-  complete artifact.
-- Missing or incomplete Phase 8R.31 evidence blocks completion.
+- A complete compatibility-removal completion-audit artifact plus complete
+  checkpoint evidence yields a complete artifact.
+- Missing or incomplete compatibility-removal completion-audit evidence blocks
+  completion.
 - Missing roadmap, component, validation, or changelog evidence blocks
   completion through the nested checkpoint.
 - Any side effect prevents complete artifact status.
-- Generated checkpoint JSON can feed the final Phase 8R closure readout.
+- Generated checkpoint JSON can feed the final policy storage closure readout.
 
 Implementation status:
 
-- Phase 8R.32 completion checkpoint artifact export is documented in
-  [Policy Builder Phase 8R Completion Checkpoint Artifact Exporter](policy-builder-phase-8r-completion-checkpoint-artifact-exporter.md).
+- Policy storage completion checkpoint artifact export is documented in
+  [Policy Storage Completion Checkpoint Artifact Exporter](policy-storage-completion-checkpoint-artifact-exporter.md).
+- The durable module naming cutover is documented in
+  [Policy Storage Completion Checkpoint Module Cutover](policy-storage-completion-checkpoint-module-cutover.md).
 - The completion-checkpoint artifact contract lives in
-  `server/src/services/policyBuilderPhase8CompletionCheckpointArtifact.mjs`.
+  `server/src/services/policyStorageCompletionCheckpointArtifact.mjs`.
 - The exporter script lives in
-  `scripts/generate-policy-builder-phase-8r-completion-checkpoint.mjs`.
+  `scripts/generate-policy-storage-completion-checkpoint.mjs`.
 - The root runner is exposed as
-  `npm run policy:phase8r:completion-checkpoint`.
+  `npm run policy:storage-completion-checkpoint`.
 - The focused completion-checkpoint artifact test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8CompletionCheckpointArtifact.test.mjs`.
-- Current implementation emits complete or blocked checkpoint artifacts without
-  collecting evidence, running commands, mutating storage, or running Git.
+  `server/src/__tests__/services/policyStorageCompletionCheckpointArtifact.test.mjs`.
+- Current implementation emits complete or blocked checkpoint artifacts with
+  semantic `nextStep` evidence and without collecting evidence, running
+  commands, mutating storage, or running Git.
 
 ### 8R.33 Final Closure Readout
 
 Intent: generate the final operator-facing Phase 8R closure decision from the
-Phase 8R.32 completion-checkpoint artifact.
+policy storage completion-checkpoint artifact.
 
 Tasks:
 
-- Require a Phase 8R.32 completion-checkpoint artifact.
+- Require a policy storage completion-checkpoint artifact.
 - Require the artifact to be complete and valid before closure can pass.
-- Require the nested Phase 8R.22 checkpoint to be complete and valid.
+- Require the nested policy storage checkpoint to be complete and valid.
 - Map blocked checkpoint states to component, roadmap, removal-audit,
   validation, or changelog blocker categories.
 - Map invalid or missing wrapper artifacts to artifact-validation blockers.
@@ -6069,7 +6077,7 @@ Implementation status:
   `server/src/__tests__/services/policyBuilderPhase8FinalRequirementCompletionAudit.test.mjs`.
 - Current implementation verifies the complete 8R.1 through 8R.34 evidence
   range so later artifact/exporter closure components cannot be skipped by the
-  older Phase 8R.22 checkpoint range.
+  older policy storage checkpoint range.
 - Final closure inventory sync is documented in
   [Policy Builder Phase 8R Closure Inventory Sync](policy-builder-phase-8r-closure-inventory-sync.md).
 - Current validation hardening classifies
@@ -6145,12 +6153,12 @@ Implement Phase 8R in this order:
     Consumes verified removal loop evidence, proves whether all approved
     compatibility manifest paths are gone, and reports any bounded remaining
     inventory before Phase 8R exits compatibility-removal mode.
-22. **8R.22 Phase 8R Completion Checkpoint**
+22. **8R.22 Policy Storage Completion Checkpoint**
     Audits the complete Phase 8R roadmap, service contracts, tests, docs,
     changelog coverage, and validation evidence before Phase 8R is considered
     fully implemented.
 23. **8R.23 Completion Evidence Run**
-    Runs the Phase 8R.22 checkpoint against current-state evidence and resolves
+    Runs the policy storage checkpoint against current-state evidence and resolves
     any missing component, roadmap, validation, or changelog proof before the
     Phase 8R objective is marked complete.
 24. **8R.24 Validation Evidence Generator**

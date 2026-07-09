@@ -1,17 +1,17 @@
 import {
-  PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS,
-  buildPolicyBuilderPhase8CompletionCheckpoint,
-} from './policyBuilderPhase8CompletionCheckpoint.mjs';
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
+  buildPolicyStorageCompletionCheckpoint,
+} from './policyStorageCompletionCheckpoint.mjs';
 
-const PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_VERSION =
-  'phase8r.completion_checkpoint_artifact.v1';
+const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_VERSION =
+  'policy.storage_completion_checkpoint_artifact.v1';
 
-const PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS = Object.freeze({
+const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
   BLOCKED: 'blocked',
 });
 
-const PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS = Object.freeze({
+const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS = Object.freeze({
   COMPLETION_AUDIT_ARTIFACT_NOT_COMPLETE:
     'completion_audit_artifact_not_complete',
   COMPLETION_AUDIT_ARTIFACT_VALIDATION_FAILED:
@@ -87,8 +87,8 @@ function buildArtifactRisks({
 
   if (!completionAudit.auditPresent) {
     risks.push(buildRisk(
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.COMPLETION_AUDIT_MISSING,
-      'Phase 8R completion checkpoint artifact requires compatibility-removal completion-audit artifact evidence.'
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.COMPLETION_AUDIT_MISSING,
+      'Policy storage completion checkpoint artifact requires compatibility-removal completion-audit artifact evidence.'
     ));
   }
 
@@ -97,9 +97,9 @@ function buildArtifactRisks({
     completionAudit.artifactComplete !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_NOT_COMPLETE,
-      'Phase 8R completion checkpoint artifact requires a complete compatibility-removal completion-audit artifact.',
+      'Policy storage completion checkpoint artifact requires a complete compatibility-removal completion-audit artifact.',
       {
         artifactStatusId: completionAudit.artifactStatusId,
         artifactComplete: completionAudit.artifactComplete,
@@ -112,9 +112,9 @@ function buildArtifactRisks({
     completionAudit.artifactValidationOk !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_VALIDATION_FAILED,
-      'Phase 8R completion checkpoint artifact requires valid compatibility-removal completion-audit artifact evidence.',
+      'Policy storage completion checkpoint artifact requires valid compatibility-removal completion-audit artifact evidence.',
       {
         artifactValidationIssueCount:
           completionAudit.artifact.validation?.issueCount ?? null,
@@ -122,10 +122,10 @@ function buildArtifactRisks({
     ));
   }
 
-  if (checkpoint.statusId !== PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE) {
+  if (checkpoint.statusId !== POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE) {
     risks.push(buildRisk(
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.CHECKPOINT_BLOCKED,
-      'Phase 8R completion checkpoint artifact requires a complete Phase 8R.22 checkpoint.',
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.CHECKPOINT_BLOCKED,
+      'Policy storage completion checkpoint artifact requires a complete storage checkpoint.',
       {
         checkpointStatusId: checkpoint.statusId || null,
         checkpointRiskCount: checkpoint.riskCount ?? null,
@@ -135,9 +135,9 @@ function buildArtifactRisks({
 
   if (checkpoint.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
         .CHECKPOINT_VALIDATION_FAILED,
-      'Phase 8R completion checkpoint artifact requires valid Phase 8R.22 checkpoint output.',
+      'Policy storage completion checkpoint artifact requires valid storage checkpoint output.',
       {
         checkpointValidationIssueCount:
           checkpoint.validation?.issueCount ?? null,
@@ -148,9 +148,9 @@ function buildArtifactRisks({
   Object.entries(sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       risks.push(buildRisk(
-        PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
+        POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
           .SIDE_EFFECT_REPORTED,
-        `Phase 8R completion checkpoint artifact cannot report side effect "${key}".`,
+        `Policy storage completion checkpoint artifact cannot report side effect "${key}".`,
         { sideEffect: key }
       ));
     }
@@ -161,13 +161,13 @@ function buildArtifactRisks({
 
 function determineArtifactStatusId(risks = []) {
   if (risks.length > 0) {
-    return PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.BLOCKED;
+    return POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.BLOCKED;
   }
 
-  return PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE;
+  return POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE;
 }
 
-function buildPolicyBuilderPhase8CompletionCheckpointArtifact({
+function buildPolicyStorageCompletionCheckpointArtifact({
   componentEvidence = [],
   roadmapEvidence = {},
   completionAuditArtifact = {},
@@ -178,7 +178,7 @@ function buildPolicyBuilderPhase8CompletionCheckpointArtifact({
 } = {}) {
   const completionAudit =
     normalizeCompletionAuditArtifact(completionAuditArtifact);
-  const checkpoint = buildPolicyBuilderPhase8CompletionCheckpoint({
+  const checkpoint = buildPolicyStorageCompletionCheckpoint({
     componentEvidence: asArray(componentEvidence),
     roadmapEvidence: asObject(roadmapEvidence),
     finalRemovalAudit: completionAudit.audit,
@@ -193,12 +193,12 @@ function buildPolicyBuilderPhase8CompletionCheckpointArtifact({
     sideEffects: combinedSideEffects,
   });
   const artifact = {
-    version: PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_VERSION,
+    version: POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_VERSION,
     generatedAt: normalizeGeneratedAt(generatedAt),
     statusId: determineArtifactStatusId(risks),
     complete:
       risks.length === 0 &&
-      checkpoint.statusId === PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE &&
+      checkpoint.statusId === POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE &&
       checkpoint.complete === true,
     checkpoint,
     checkpointSummary: {
@@ -239,56 +239,56 @@ function buildPolicyBuilderPhase8CompletionCheckpointArtifact({
       allowCommandExecutionInsideService: false,
       allowManifestWrite: false,
     },
-    nextPhase: {
-      phaseId: '8r_complete',
-      label: 'Phase 8R Complete',
+    nextStep: {
+      stepId: 'policy_storage_final_closure_readout',
+      label: 'Policy Storage Final Closure Readout',
       reason:
-        'Complete checkpoint artifact evidence proves the Phase 8R roadmap, implementation artifacts, validation, changelog, and removal-loop closure evidence are aligned.',
+        'Complete checkpoint artifact evidence proves storage migration roadmap, implementation artifacts, validation, changelog, and removal-loop closure evidence are aligned.',
     },
   };
 
   return {
     ...artifact,
     validation:
-      validatePolicyBuilderPhase8CompletionCheckpointArtifact(artifact),
+      validatePolicyStorageCompletionCheckpointArtifact(artifact),
   };
 }
 
-function validatePolicyBuilderPhase8CompletionCheckpointArtifact(artifact = {}) {
+function validatePolicyStorageCompletionCheckpointArtifact(artifact = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS)
+  if (!Object.values(POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS)
     .includes(artifact.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
-      'Phase 8R completion checkpoint artifact status must be known.'
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
+      'Policy storage completion checkpoint artifact status must be known.'
     ));
   }
 
   if (artifact.riskCount !== asArray(artifact.risks).length) {
     issues.push(buildRisk(
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
-      'Phase 8R completion checkpoint artifact risk count must match risk list length.'
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
+      'Policy storage completion checkpoint artifact risk count must match risk list length.'
     ));
   }
 
   if (
     artifact.statusId ===
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE &&
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE &&
     artifact.complete !== true
   ) {
     issues.push(buildRisk(
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.COMPLETE_FLAG_MISMATCH,
-      'Phase 8R completion checkpoint artifact complete flag must match complete status.'
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.COMPLETE_FLAG_MISMATCH,
+      'Policy storage completion checkpoint artifact complete flag must match complete status.'
     ));
   }
 
   Object.entries(artifact.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
-        PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
+        POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
           .SIDE_EFFECT_REPORTED,
-        `Phase 8R completion checkpoint artifact cannot report side effect "${key}".`,
+        `Policy storage completion checkpoint artifact cannot report side effect "${key}".`,
         { sideEffect: key }
       ));
     }
@@ -302,9 +302,9 @@ function validatePolicyBuilderPhase8CompletionCheckpointArtifact(artifact = {}) 
 }
 
 export {
-  PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS,
-  PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
-  PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_VERSION,
-  buildPolicyBuilderPhase8CompletionCheckpointArtifact,
-  validatePolicyBuilderPhase8CompletionCheckpointArtifact,
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS,
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_VERSION,
+  buildPolicyStorageCompletionCheckpointArtifact,
+  validatePolicyStorageCompletionCheckpointArtifact,
 };

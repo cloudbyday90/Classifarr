@@ -3,7 +3,8 @@
 ## Intent
 
 Phase 8R.23 is the operational evidence run that consumes explicit repository
-evidence and runs the Phase 8R.22 completion checkpoint against that evidence.
+evidence and runs the policy storage completion checkpoint against that
+evidence.
 It exists because the checkpoint should stay deterministic and side-effect-free:
 it should evaluate supplied proof, not discover files, execute commands, or
 claim completion from narrative confidence.
@@ -19,7 +20,7 @@ This component normalizes current-state evidence for:
 - focused, lint, markdown, and full validation results.
 
 The evidence run blocks completion when the supplied artifact inventory is
-empty, when any mapped artifact is missing, or when the Phase 8R.22 checkpoint
+empty, when any mapped artifact is missing, or when the policy storage checkpoint
 does not complete.
 
 ## Official-Source Research
@@ -148,9 +149,9 @@ Use this stack for Phase 8R.23:
 2. Normalize path separators so Windows and POSIX callers produce the same
    evidence.
 3. Map Phase 8R.1 through Phase 8R.22 to expected artifacts.
-4. Convert mapped artifact presence into component evidence for the Phase 8R.22
+4. Convert mapped artifact presence into component evidence for the policy storage
    checkpoint.
-5. Compose the Phase 8R.22 checkpoint with roadmap, final-removal audit,
+5. Compose the policy storage checkpoint with roadmap, final-removal audit,
    validation, and changelog evidence.
 6. Block completion when artifact inventory is empty, artifact coverage is
    missing, the checkpoint is incomplete, checkpoint validation fails, or any
@@ -176,7 +177,7 @@ Implemented:
 - Added changelog evidence extraction from component labels.
 - Added Windows path normalization for supplied artifact inventories.
 - Added artifact inventory status and risk reporting.
-- Composed the Phase 8R.22 completion checkpoint instead of duplicating closure
+- Composed the policy storage completion checkpoint instead of duplicating closure
   rules.
 - Added focused tests for:
   - complete evidence,

@@ -1,9 +1,9 @@
 import {
-  PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
-} from './policyBuilderPhase8CompletionCheckpointArtifact.mjs';
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
+} from './policyStorageCompletionCheckpointArtifact.mjs';
 import {
-  PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS,
-} from './policyBuilderPhase8CompletionCheckpoint.mjs';
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
+} from './policyStorageCompletionCheckpoint.mjs';
 
 const PHASE8R_FINAL_CLOSURE_READOUT_VERSION =
   'phase8r.final_closure_readout.v1';
@@ -113,7 +113,7 @@ function buildReadoutRisks({
     normalized.artifactPresent &&
     (
       normalized.artifactStatusId !==
-        PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE ||
+        POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE ||
       normalized.artifactComplete !== true
     )
   ) {
@@ -146,7 +146,7 @@ function buildReadoutRisks({
   if (!normalized.checkpointPresent) {
     risks.push(buildRisk(
       PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS.CHECKPOINT_MISSING,
-      'Phase 8R final closure readout requires nested Phase 8R.22 checkpoint evidence.'
+      'Phase 8R final closure readout requires nested policy storage checkpoint evidence.'
     ));
   }
 
@@ -154,14 +154,14 @@ function buildReadoutRisks({
     normalized.checkpointPresent &&
     (
       normalized.checkpointStatusId !==
-        PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE ||
+        POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE ||
       normalized.checkpointComplete !== true ||
       normalized.checkpointValidationOk !== true
     )
   ) {
     risks.push(buildRisk(
       PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS.CHECKPOINT_NOT_COMPLETE,
-      'Phase 8R final closure readout requires the nested Phase 8R.22 checkpoint to be complete and valid.',
+      'Phase 8R final closure readout requires the nested policy storage checkpoint to be complete and valid.',
       {
         checkpointStatusId: normalized.checkpointStatusId,
         checkpointComplete: normalized.checkpointComplete,
@@ -194,26 +194,26 @@ function determineBlockedStatusId({ checkpointArtifact = {}, sideEffects = {} } 
     !normalized.artifactPresent ||
     normalized.artifactValidationOk !== true ||
     normalized.artifactStatusId !==
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE
   ) {
     return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS
       .BLOCKED_BY_ARTIFACT_VALIDATION;
   }
 
   switch (normalized.checkpointStatusId) {
-    case PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS
+    case POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS
       .BLOCKED_BY_COMPONENT_COVERAGE:
       return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS
         .BLOCKED_BY_COMPONENT_EVIDENCE;
-    case PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_ROADMAP_EVIDENCE:
+    case POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_ROADMAP_EVIDENCE:
       return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS
         .BLOCKED_BY_ROADMAP_EVIDENCE;
-    case PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_FINAL_REMOVAL_AUDIT:
+    case POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_FINAL_REMOVAL_AUDIT:
       return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS
         .BLOCKED_BY_REMOVAL_AUDIT;
-    case PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_VALIDATION:
+    case POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_VALIDATION:
       return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_VALIDATION;
-    case PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_CHANGELOG:
+    case POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_CHANGELOG:
       return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_CHANGELOG;
     default:
       return PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS

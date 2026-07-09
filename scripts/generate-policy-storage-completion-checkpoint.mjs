@@ -14,8 +14,8 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  buildPolicyBuilderPhase8CompletionCheckpointArtifact,
-} from '../server/src/services/policyBuilderPhase8CompletionCheckpointArtifact.mjs';
+  buildPolicyStorageCompletionCheckpointArtifact,
+} from '../server/src/services/policyStorageCompletionCheckpointArtifact.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -95,14 +95,14 @@ function parseArgs(argv = []) {
 
 function usage() {
   return [
-    'Usage: node scripts/generate-policy-builder-phase-8r-completion-checkpoint.mjs [options]',
+    'Usage: node scripts/generate-policy-storage-completion-checkpoint.mjs [options]',
     '',
     'Options:',
-    '  --component-evidence <json>        Required Phase 8R component evidence array JSON.',
-    '  --roadmap-evidence <json>          Required Phase 8R roadmap evidence JSON.',
+    '  --component-evidence <json>        Required storage component evidence array JSON.',
+    '  --roadmap-evidence <json>          Required storage roadmap evidence JSON.',
     '  --completion-audit-artifact <json> Required compatibility-removal completion-audit artifact JSON.',
-    '  --validation-evidence <json>       Required Phase 8R validation evidence JSON.',
-    '  --changelog-evidence <json>        Required Phase 8R changelog evidence JSON.',
+    '  --validation-evidence <json>       Required storage validation evidence JSON.',
+    '  --changelog-evidence <json>        Required storage changelog evidence JSON.',
     '  --output <json>                    Write nested checkpoint JSON to this path.',
     '  --artifact-output <json>           Write wrapper artifact JSON to this path.',
     '  --allow-blocked                    Allow writing blocked checkpoint output.',
@@ -194,7 +194,7 @@ function main() {
     process.exit(2);
   }
 
-  const artifact = buildPolicyBuilderPhase8CompletionCheckpointArtifact({
+  const artifact = buildPolicyStorageCompletionCheckpointArtifact({
     componentEvidence,
     roadmapEvidence,
     completionAuditArtifact,
@@ -205,7 +205,7 @@ function main() {
 
   if (artifact.statusId === 'blocked' && options.allowBlocked !== true) {
     console.error(
-      'Phase 8R completion checkpoint artifact is blocked; pass --allow-blocked to write diagnostic output.'
+      'Policy storage completion checkpoint artifact is blocked; pass --allow-blocked to write diagnostic output.'
     );
     console.error(JSON.stringify({
       statusId: artifact.statusId,
@@ -222,7 +222,7 @@ function main() {
     writeJsonFile(options.outputPath, artifact.checkpoint);
     writeJsonFile(options.artifactOutputPath, artifact);
   } catch (err) {
-    console.error(`Could not write Phase 8R completion checkpoint JSON: ${err.message}`);
+    console.error(`Could not write policy storage completion checkpoint JSON: ${err.message}`);
     process.exit(2);
   }
 

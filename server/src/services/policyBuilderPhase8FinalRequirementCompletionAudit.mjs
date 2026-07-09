@@ -144,12 +144,12 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_32',
     label: 'Completion Checkpoint Artifact Exporter',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-completion-checkpoint-artifact-exporter.md'],
+    designDocPaths: ['docs/architecture/policy-storage-completion-checkpoint-artifact-exporter.md'],
     contractPaths: [
-      'server/src/services/policyBuilderPhase8CompletionCheckpointArtifact.mjs',
-      'scripts/generate-policy-builder-phase-8r-completion-checkpoint.mjs',
+      'server/src/services/policyStorageCompletionCheckpointArtifact.mjs',
+      'scripts/generate-policy-storage-completion-checkpoint.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8CompletionCheckpointArtifact.test.mjs'],
+    testPaths: ['server/src/__tests__/services/policyStorageCompletionCheckpointArtifact.test.mjs'],
   },
   {
     phaseId: '8r_33',

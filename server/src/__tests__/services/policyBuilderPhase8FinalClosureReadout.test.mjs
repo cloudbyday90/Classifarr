@@ -1,9 +1,9 @@
 import {
-  PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
-} from '../../services/policyBuilderPhase8CompletionCheckpointArtifact.mjs';
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
+} from '../../services/policyStorageCompletionCheckpointArtifact.mjs';
 import {
-  PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS,
-} from '../../services/policyBuilderPhase8CompletionCheckpoint.mjs';
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
+} from '../../services/policyStorageCompletionCheckpoint.mjs';
 import {
   PHASE8R_FINAL_CLOSURE_READOUT_RISK_IDS,
   PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS,
@@ -13,7 +13,7 @@ import {
 
 function checkpoint(overrides = {}) {
   return {
-    statusId: PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE,
+    statusId: POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE,
     complete: true,
     validation: {
       ok: true,
@@ -32,7 +32,7 @@ function checkpoint(overrides = {}) {
 
 function checkpointArtifact(overrides = {}) {
   return {
-    statusId: PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE,
+    statusId: POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE,
     complete: true,
     validation: {
       ok: true,
@@ -73,7 +73,7 @@ describe('policyBuilderPhase8FinalClosureReadout', () => {
       nextAction: 'Phase 8R can be treated as complete.',
     }));
     expect(output.checkpointArtifactSummary).toEqual(expect.objectContaining({
-      statusId: PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE,
+      statusId: POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE,
       complete: true,
       validationOk: true,
       riskCount: 0,
@@ -102,11 +102,11 @@ describe('policyBuilderPhase8FinalClosureReadout', () => {
   test('maps component checkpoint failures to component evidence status', () => {
     const output = readout({
       checkpointArtifact: checkpointArtifact({
-        statusId: PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE,
+        statusId: POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE,
         complete: true,
         checkpoint: checkpoint({
           statusId:
-            PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS
+            POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS
               .BLOCKED_BY_COMPONENT_COVERAGE,
           complete: false,
           riskCount: 1,
@@ -127,20 +127,20 @@ describe('policyBuilderPhase8FinalClosureReadout', () => {
   test('maps roadmap, removal, validation, and changelog checkpoint failures', () => {
     const cases = [
       [
-        PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_ROADMAP_EVIDENCE,
+        POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_ROADMAP_EVIDENCE,
         PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_ROADMAP_EVIDENCE,
       ],
       [
-        PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS
+        POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS
           .BLOCKED_BY_FINAL_REMOVAL_AUDIT,
         PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_REMOVAL_AUDIT,
       ],
       [
-        PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_VALIDATION,
+        POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_VALIDATION,
         PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_VALIDATION,
       ],
       [
-        PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_CHANGELOG,
+        POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_CHANGELOG,
         PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_CHANGELOG,
       ],
     ];

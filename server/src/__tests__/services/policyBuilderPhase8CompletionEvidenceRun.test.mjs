@@ -187,7 +187,7 @@ describe('policyBuilderPhase8CompletionEvidenceRun', () => {
       artifactInventory: {
         ...inventory,
         servicePaths: inventory.servicePaths.filter(path => (
-          path !== 'server/src/services/policyBuilderPhase8CompletionCheckpoint.mjs'
+          path !== 'server/src/services/policyStorageCompletionCheckpoint.mjs'
         )),
       },
     });
@@ -198,11 +198,11 @@ describe('policyBuilderPhase8CompletionEvidenceRun', () => {
     expect(evidenceRun.checkpoint.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: 'component_not_implemented',
-        phaseId: '8r_22',
+        componentId: 'storage_completion_checkpoint',
       }),
       expect.objectContaining({
         riskId: 'component_missing_contract_evidence',
-        phaseId: '8r_22',
+        componentId: 'storage_completion_checkpoint',
       }),
     ]));
     expect(evidenceRun.risks.map(risk => risk.riskId)).toContain(
@@ -230,7 +230,7 @@ describe('policyBuilderPhase8CompletionEvidenceRun', () => {
     expect(roadmapBlocked.checkpoint.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: 'roadmap_sequence_incomplete',
-        missingPhaseIds: ['8r_22'],
+        missingComponentIds: ['storage_completion_checkpoint'],
       }),
     ]));
     expect(removalAuditBlocked.statusId)
@@ -270,7 +270,7 @@ describe('policyBuilderPhase8CompletionEvidenceRun', () => {
     expect(changelogBlocked.checkpoint.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: 'changelog_entry_missing',
-        missingPhaseIds: ['8r_21'],
+        missingComponentIds: ['compatibility_removal_completion_audit'],
       }),
     ]));
   });

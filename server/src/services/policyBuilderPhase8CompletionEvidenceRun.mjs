@@ -1,8 +1,8 @@
 import {
-  PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS,
-  PHASE8R_EXPECTED_COMPONENTS,
-  buildPolicyBuilderPhase8CompletionCheckpoint,
-} from './policyBuilderPhase8CompletionCheckpoint.mjs';
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
+  POLICY_STORAGE_COMPLETION_COMPONENTS,
+  buildPolicyStorageCompletionCheckpoint,
+} from './policyStorageCompletionCheckpoint.mjs';
 
 const PHASE8R_COMPLETION_EVIDENCE_RUN_VERSION =
   'phase8r.completion_evidence_run.v1';
@@ -197,10 +197,10 @@ const PHASE8R_COMPLETION_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   },
   {
     phaseId: '8r_22',
-    label: 'Phase 8R Completion Checkpoint',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-completion-checkpoint.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8CompletionCheckpoint.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8CompletionCheckpoint.test.mjs'],
+    label: 'Policy Storage Completion Checkpoint',
+    designDocPaths: ['docs/architecture/policy-storage-completion-checkpoint.md'],
+    contractPaths: ['server/src/services/policyStorageCompletionCheckpoint.mjs'],
+    testPaths: ['server/src/__tests__/services/policyStorageCompletionCheckpoint.test.mjs'],
   },
 ]);
 
@@ -336,7 +336,7 @@ function determineStatusId({ risks = [], checkpoint = {} } = {}) {
   }
 
   if (
-    checkpoint.statusId !== PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE ||
+    checkpoint.statusId !== POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE ||
     checkpoint.complete !== true
   ) {
     return PHASE8R_COMPLETION_EVIDENCE_RUN_STATUS_IDS.BLOCKED_BY_CHECKPOINT;
@@ -364,19 +364,27 @@ function buildPolicyBuilderPhase8CompletionEvidenceRun({
     componentArtifactMap,
     artifactInventory,
     changelogPhaseIds: normalizedChangelogEvidence.phaseIds,
-  });
+  }).map(component => (
+    component.phaseId === '8r_22'
+      ? {
+        ...component,
+        componentId: 'storage_completion_checkpoint',
+      }
+      : component
+  ));
   const artifactInventoryEvaluation = evaluateArtifactInventory({
     artifactInventory,
     componentEvidence,
   });
   const expectedComponents = [
-    ...PHASE8R_EXPECTED_COMPONENTS,
+    ...POLICY_STORAGE_COMPLETION_COMPONENTS,
     {
-      phaseId: '8r_22',
-      label: 'Phase 8R Completion Checkpoint',
+      componentId: 'storage_completion_checkpoint',
+      legacyId: '8r_22',
+      label: 'Policy Storage Completion Checkpoint',
     },
   ];
-  const checkpoint = buildPolicyBuilderPhase8CompletionCheckpoint({
+  const checkpoint = buildPolicyStorageCompletionCheckpoint({
     expectedComponents,
     componentEvidence,
     roadmapEvidence: normalizedRoadmapEvidence,
@@ -388,10 +396,10 @@ function buildPolicyBuilderPhase8CompletionEvidenceRun({
     ...artifactInventoryEvaluation.risks,
   ];
 
-  if (checkpoint.statusId !== PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE) {
+  if (checkpoint.statusId !== POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE) {
     risks.push(buildRisk(
       PHASE8R_COMPLETION_EVIDENCE_RUN_RISK_IDS.CHECKPOINT_NOT_COMPLETE,
-      'Phase 8R completion evidence run requires the Phase 8R.22 checkpoint to complete.',
+      'Phase 8R completion evidence run requires the policy storage completion checkpoint to complete.',
       {
         checkpointStatusId: checkpoint.statusId,
         checkpointRiskCount: checkpoint.riskCount,
@@ -412,7 +420,7 @@ function buildPolicyBuilderPhase8CompletionEvidenceRun({
     statusId: determineStatusId({ risks, checkpoint }),
     complete:
       risks.length === 0 &&
-      checkpoint.statusId === PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE &&
+      checkpoint.statusId === POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE &&
       checkpoint.complete === true,
     artifactInventory: {
       inventoryCount: artifactInventoryEvaluation.inventoryCount,

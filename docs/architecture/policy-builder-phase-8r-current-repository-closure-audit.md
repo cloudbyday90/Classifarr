@@ -15,7 +15,7 @@ It consumes:
 It then builds:
 
 - the existing Phase 8R.23 current evidence run,
-- a Phase 8R.32 completion-checkpoint artifact,
+- a policy storage completion-checkpoint artifact,
 - a Phase 8R.33 final closure readout,
 - a single current-repository closure audit JSON.
 

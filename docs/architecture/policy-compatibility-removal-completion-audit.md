@@ -164,9 +164,10 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Completion Checkpoint module naming cutover**. That task should
-remove the remaining phase-coded checkpoint service, artifact, script, and test
-names from production code.
+Proceed with **Policy Storage Final Closure Readout module naming cutover**.
+That task should consume semantic storage-completion checkpoint evidence and
+remove the remaining phase-coded final closure readout names from production
+code.
 The payload now emits `version =
 policy.compatibility_removal_completion_audit.v1` and
 `nextStep.stepId = policy_storage_completion_checkpoint`; production output

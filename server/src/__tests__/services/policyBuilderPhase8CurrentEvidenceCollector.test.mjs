@@ -99,7 +99,7 @@ describe('policyBuilderPhase8CurrentEvidenceCollector', () => {
   });
 
   test('collects only present mapped artifacts and reports missing paths', () => {
-    const missingPath = 'server/src/services/policyBuilderPhase8CompletionCheckpoint.mjs';
+    const missingPath = 'server/src/services/policyStorageCompletionCheckpoint.mjs';
     const result = collectArtifactInventory({
       cwd: '/repo',
       fileExists: absolutePath => !absolutePath.replace(/\\/g, '/').endsWith(missingPath),

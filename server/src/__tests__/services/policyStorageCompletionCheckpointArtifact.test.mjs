@@ -1,36 +1,37 @@
 import {
-  PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS,
-  PHASE8R_EXPECTED_COMPONENTS,
-} from '../../services/policyBuilderPhase8CompletionCheckpoint.mjs';
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
+  POLICY_STORAGE_COMPLETION_COMPONENTS,
+} from '../../services/policyStorageCompletionCheckpoint.mjs';
 import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
 } from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 import {
-  PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS,
-  PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
-  buildPolicyBuilderPhase8CompletionCheckpointArtifact,
-  validatePolicyBuilderPhase8CompletionCheckpointArtifact,
-} from '../../services/policyBuilderPhase8CompletionCheckpointArtifact.mjs';
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS,
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
+  buildPolicyStorageCompletionCheckpointArtifact,
+  validatePolicyStorageCompletionCheckpointArtifact,
+} from '../../services/policyStorageCompletionCheckpointArtifact.mjs';
 
-const PHASE_IDS = PHASE8R_EXPECTED_COMPONENTS.map(component => component.phaseId);
+const COMPONENT_IDS =
+  POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => component.componentId);
 
 function componentEvidence(overrides = {}) {
-  return PHASE8R_EXPECTED_COMPONENTS.map(component => ({
-    phaseId: component.phaseId,
+  return POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => ({
+    componentId: component.componentId,
     label: component.label,
     implemented: true,
     designDocPresent: true,
     contractEvidencePresent: true,
     testEvidencePresent: true,
     changelogEntryPresent: true,
-    ...overrides[component.phaseId],
+    ...overrides[component.componentId],
   }));
 }
 
 function roadmapEvidence(overrides = {}) {
   return {
-    sequencePhaseIds: PHASE_IDS,
-    implementationStatusPhaseIds: PHASE_IDS,
+    componentSequenceIds: COMPONENT_IDS,
+    implementationStatusComponentIds: COMPONENT_IDS,
     ...overrides,
   };
 }
@@ -84,13 +85,13 @@ function validationEvidence(overrides = {}) {
 function changelogEvidence(overrides = {}) {
   return {
     updated: true,
-    phaseIds: PHASE_IDS,
+    componentIds: COMPONENT_IDS,
     ...overrides,
   };
 }
 
 function completeArtifact(overrides = {}) {
-  return buildPolicyBuilderPhase8CompletionCheckpointArtifact({
+  return buildPolicyStorageCompletionCheckpointArtifact({
     componentEvidence: componentEvidence(),
     roadmapEvidence: roadmapEvidence(),
     completionAuditArtifact: completionAuditArtifact(),
@@ -101,19 +102,19 @@ function completeArtifact(overrides = {}) {
   });
 }
 
-describe('policyBuilderPhase8CompletionCheckpointArtifact', () => {
-  test('wraps a complete Phase 8R.22 completion checkpoint artifact', () => {
+describe('policyStorageCompletionCheckpointArtifact', () => {
+  test('wraps a complete policy storage completion checkpoint artifact', () => {
     const artifact = completeArtifact();
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE);
     expect(artifact.complete).toBe(true);
     expect(artifact.validation.ok).toBe(true);
     expect(artifact.checkpoint.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE);
     expect(artifact.checkpointSummary).toEqual(expect.objectContaining({
-      componentExpectedCount: PHASE8R_EXPECTED_COMPONENTS.length,
-      componentImplementedCount: PHASE8R_EXPECTED_COMPONENTS.length,
+      componentExpectedCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
+      componentImplementedCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
       checkpointRiskCount: 0,
       finalRemovalAuditStatusId:
         POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
@@ -125,6 +126,11 @@ describe('policyBuilderPhase8CompletionCheckpointArtifact', () => {
       validationOk: true,
       riskCount: 0,
     }));
+    expect(artifact.nextPhase).toBeUndefined();
+    expect(artifact.nextStep).toEqual(expect.objectContaining({
+      stepId: 'policy_storage_final_closure_readout',
+      label: 'Policy Storage Final Closure Readout',
+    }));
   });
 
   test('blocks when the compatibility-removal completion-audit artifact is missing', () => {
@@ -133,11 +139,11 @@ describe('policyBuilderPhase8CompletionCheckpointArtifact', () => {
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.BLOCKED);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.BLOCKED);
     expect(artifact.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
+          POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
             .COMPLETION_AUDIT_MISSING,
       }),
     ]));
@@ -163,29 +169,31 @@ describe('policyBuilderPhase8CompletionCheckpointArtifact', () => {
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.BLOCKED);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.BLOCKED);
     expect(artifact.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_NOT_COMPLETE,
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.CHECKPOINT_BLOCKED,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.CHECKPOINT_BLOCKED,
     ]));
   });
 
   test('blocks when checkpoint evidence is incomplete', () => {
     const artifact = completeArtifact({
       roadmapEvidence: roadmapEvidence({
-        sequencePhaseIds: PHASE_IDS.filter(phaseId => phaseId !== '8r_20'),
+        componentSequenceIds: COMPONENT_IDS.filter(componentId => (
+          componentId !== 'next_compatibility_removal_batch_authorization'
+        )),
       }),
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.BLOCKED);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.BLOCKED);
     expect(artifact.checkpoint.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_ROADMAP_EVIDENCE);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_ROADMAP_EVIDENCE);
     expect(artifact.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.CHECKPOINT_BLOCKED,
+          POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.CHECKPOINT_BLOCKED,
       }),
     ]));
   });
@@ -202,24 +210,24 @@ describe('policyBuilderPhase8CompletionCheckpointArtifact', () => {
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.BLOCKED);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.BLOCKED);
     expect(artifact.validation.ok).toBe(false);
     expect(artifact.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+          POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
         sideEffect: 'filesWritten',
       }),
       expect.objectContaining({
         riskId:
-          PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+          POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
         sideEffect: 'manifestWritten',
       }),
     ]));
   });
 
   test('validates status and risk-count invariants', () => {
-    const validation = validatePolicyBuilderPhase8CompletionCheckpointArtifact({
+    const validation = validatePolicyStorageCompletionCheckpointArtifact({
       statusId: 'unexpected',
       complete: false,
       riskCount: 1,
@@ -231,11 +239,11 @@ describe('policyBuilderPhase8CompletionCheckpointArtifact', () => {
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
+          POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
       }),
       expect.objectContaining({
         riskId:
-          PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
+          POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
       }),
     ]));
   });

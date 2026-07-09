@@ -32,7 +32,7 @@
     "policy:post-removal-verification": "node scripts/generate-policy-post-removal-verification.mjs",
     "policy:next-batch-authorization": "node scripts/generate-policy-next-batch-authorization.mjs",
     "policy:compatibility-removal-completion-audit": "node scripts/generate-policy-compatibility-removal-completion-audit.mjs",
-    "policy:phase8r:completion-checkpoint": "node scripts/generate-policy-builder-phase-8r-completion-checkpoint.mjs",
+    "policy:storage-completion-checkpoint": "node scripts/generate-policy-storage-completion-checkpoint.mjs",
     "policy:phase8r:final-closure-readout": "node scripts/generate-policy-builder-phase-8r-final-closure-readout.mjs",
     "policy:phase8r:current-closure-audit": "node scripts/run-policy-builder-phase-8r-current-closure-audit.mjs",
     "policy:phase8r:final-requirement-audit": "node scripts/run-policy-builder-phase-8r-final-requirement-audit.mjs",

@@ -5,9 +5,9 @@ import {
   buildPolicyBuilderPhase8CurrentEvidenceRun,
 } from './policyBuilderPhase8CurrentEvidenceCollector.mjs';
 import {
-  PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
-  buildPolicyBuilderPhase8CompletionCheckpointArtifact,
-} from './policyBuilderPhase8CompletionCheckpointArtifact.mjs';
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
+  buildPolicyStorageCompletionCheckpointArtifact,
+} from './policyStorageCompletionCheckpointArtifact.mjs';
 import {
   PHASE8R_FINAL_CLOSURE_READOUT_STATUS_IDS,
   buildPolicyBuilderPhase8FinalClosureReadout,
@@ -175,7 +175,7 @@ function buildAuditRisks({
 
   if (
     checkpointArtifact.statusId !==
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE ||
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE ||
     checkpointArtifact.complete !== true
   ) {
     risks.push(buildRisk(
@@ -246,7 +246,7 @@ function determineStatusId({
 
   if (
     checkpointArtifact.statusId !==
-      PHASE8R_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE ||
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE ||
     checkpointArtifact.complete !== true
   ) {
     return PHASE8R_CURRENT_REPOSITORY_CLOSURE_AUDIT_STATUS_IDS
@@ -283,7 +283,7 @@ function buildPolicyBuilderPhase8CurrentRepositoryClosureAudit({
     fileExists,
     readTextFile,
   });
-  const checkpointArtifact = buildPolicyBuilderPhase8CompletionCheckpointArtifact({
+  const checkpointArtifact = buildPolicyStorageCompletionCheckpointArtifact({
     componentEvidence: currentEvidence.evidenceRun.componentEvidence,
     roadmapEvidence: currentEvidence.roadmapEvidence,
     completionAuditArtifact,

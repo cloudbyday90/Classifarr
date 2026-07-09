@@ -1,33 +1,36 @@
 import {
-  PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS,
-  PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS,
-  PHASE8R_EXPECTED_COMPONENTS,
-  buildPolicyBuilderPhase8CompletionCheckpoint,
-  validatePolicyBuilderPhase8CompletionCheckpoint,
-} from '../../services/policyBuilderPhase8CompletionCheckpoint.mjs';
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS,
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
+  POLICY_STORAGE_COMPLETION_COMPONENTS,
+  buildPolicyStorageCompletionCheckpoint,
+  validatePolicyStorageCompletionCheckpoint,
+} from '../../services/policyStorageCompletionCheckpoint.mjs';
 import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
 } from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 
-const PHASE_IDS = PHASE8R_EXPECTED_COMPONENTS.map(component => component.phaseId);
+const COMPONENT_IDS =
+  POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => component.componentId);
+const LEGACY_IDS =
+  POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => component.legacyId);
 
 function componentEvidence(overrides = {}) {
-  return PHASE8R_EXPECTED_COMPONENTS.map(component => ({
-    phaseId: component.phaseId,
+  return POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => ({
+    componentId: component.componentId,
     label: component.label,
     implemented: true,
     designDocPresent: true,
     contractEvidencePresent: true,
     testEvidencePresent: true,
     changelogEntryPresent: true,
-    ...overrides[component.phaseId],
+    ...overrides[component.componentId],
   }));
 }
 
 function roadmapEvidence(overrides = {}) {
   return {
-    sequencePhaseIds: PHASE_IDS,
-    implementationStatusPhaseIds: PHASE_IDS,
+    componentSequenceIds: COMPONENT_IDS,
+    implementationStatusComponentIds: COMPONENT_IDS,
     ...overrides,
   };
 }
@@ -70,13 +73,13 @@ function validationEvidence(overrides = {}) {
 function changelogEvidence(overrides = {}) {
   return {
     updated: true,
-    phaseIds: PHASE_IDS,
+    componentIds: COMPONENT_IDS,
     ...overrides,
   };
 }
 
 function completeCheckpoint(overrides = {}) {
-  return buildPolicyBuilderPhase8CompletionCheckpoint({
+  return buildPolicyStorageCompletionCheckpoint({
     componentEvidence: componentEvidence(),
     roadmapEvidence: roadmapEvidence(),
     finalRemovalAudit: finalRemovalAudit(),
@@ -86,25 +89,25 @@ function completeCheckpoint(overrides = {}) {
   });
 }
 
-describe('policyBuilderPhase8CompletionCheckpoint', () => {
+describe('policyStorageCompletionCheckpoint', () => {
   test('completes when component, roadmap, removal, validation, and changelog evidence pass', () => {
     const checkpoint = completeCheckpoint();
 
-    expect(checkpoint.statusId).toBe(PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE);
+    expect(checkpoint.statusId).toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE);
     expect(checkpoint.complete).toBe(true);
     expect(checkpoint.validation.ok).toBe(true);
     expect(checkpoint.componentCoverage).toEqual(expect.objectContaining({
-      expectedCount: PHASE8R_EXPECTED_COMPONENTS.length,
-      implementedCount: PHASE8R_EXPECTED_COMPONENTS.length,
-      documentedCount: PHASE8R_EXPECTED_COMPONENTS.length,
-      contractEvidenceCount: PHASE8R_EXPECTED_COMPONENTS.length,
-      testEvidenceCount: PHASE8R_EXPECTED_COMPONENTS.length,
+      expectedCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
+      implementedCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
+      documentedCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
+      contractEvidenceCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
+      testEvidenceCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
     }));
     expect(checkpoint.roadmapEvidence).toEqual(expect.objectContaining({
-      sequenceCount: PHASE8R_EXPECTED_COMPONENTS.length,
-      implementationStatusCount: PHASE8R_EXPECTED_COMPONENTS.length,
-      missingSequencePhaseIds: [],
-      missingImplementationStatusPhaseIds: [],
+      sequenceCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
+      implementationStatusCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
+      missingSequenceComponentIds: [],
+      missingImplementationStatusComponentIds: [],
     }));
     expect(checkpoint.finalRemovalAudit).toEqual(expect.objectContaining({
       complete: true,
@@ -112,7 +115,7 @@ describe('policyBuilderPhase8CompletionCheckpoint', () => {
     }));
     expect(checkpoint.changelogEvidence).toEqual(expect.objectContaining({
       updated: true,
-      missingPhaseIds: [],
+      missingComponentIds: [],
     }));
     expect(checkpoint.sideEffects).toEqual({
       filesWritten: false,
@@ -120,19 +123,21 @@ describe('policyBuilderPhase8CompletionCheckpoint', () => {
       gitCommandsRun: false,
       commandsExecuted: false,
     });
-    expect(checkpoint.nextPhase).toEqual(expect.objectContaining({
-      phaseId: '8r_complete',
-      label: 'Phase 8R Complete',
+    expect(checkpoint.nextPhase).toBeUndefined();
+    expect(checkpoint.nextStep).toEqual(expect.objectContaining({
+      stepId: 'policy_storage_final_closure_readout',
+      label: 'Policy Storage Final Closure Readout',
     }));
   });
 
   test('blocks when component implementation evidence is missing or incomplete', () => {
     const missing = completeCheckpoint({
-      componentEvidence: componentEvidence().filter(component => component.phaseId !== '8r_21'),
+      componentEvidence: componentEvidence()
+        .filter(component => component.componentId !== 'compatibility_removal_completion_audit'),
     });
     const incomplete = completeCheckpoint({
       componentEvidence: componentEvidence({
-        '8r_10': {
+        native_backup_restore_wiring: {
           implemented: false,
           designDocPresent: false,
           contractEvidencePresent: false,
@@ -142,62 +147,68 @@ describe('policyBuilderPhase8CompletionCheckpoint', () => {
     });
 
     expect(missing.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_COMPONENT_COVERAGE);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_COMPONENT_COVERAGE);
     expect(missing.risks.map(risk => risk.riskId)).toContain(
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.MISSING_COMPONENT_EVIDENCE
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.MISSING_COMPONENT_EVIDENCE
     );
     expect(incomplete.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_COMPONENT_COVERAGE);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_COMPONENT_COVERAGE);
     expect(incomplete.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_NOT_IMPLEMENTED,
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_MISSING_DESIGN_DOC,
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_MISSING_CONTRACT_EVIDENCE,
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_MISSING_TEST_EVIDENCE,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_NOT_IMPLEMENTED,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_MISSING_DESIGN_DOC,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_MISSING_CONTRACT_EVIDENCE,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_MISSING_TEST_EVIDENCE,
     ]));
   });
 
   test('blocks when roadmap sequence or implementation status evidence is incomplete', () => {
     const checkpoint = completeCheckpoint({
       roadmapEvidence: roadmapEvidence({
-        sequencePhaseIds: PHASE_IDS.filter(phaseId => phaseId !== '8r_20'),
-        implementationStatusPhaseIds: PHASE_IDS.filter(phaseId => phaseId !== '8r_19'),
+        componentSequenceIds:
+          COMPONENT_IDS.filter(componentId => (
+            componentId !== 'next_compatibility_removal_batch_authorization'
+          )),
+        implementationStatusComponentIds:
+          COMPONENT_IDS.filter(componentId => (
+            componentId !== 'post_removal_runtime_verification'
+          )),
       }),
     });
 
     expect(checkpoint.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_ROADMAP_EVIDENCE);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_ROADMAP_EVIDENCE);
     expect(checkpoint.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.ROADMAP_SEQUENCE_INCOMPLETE,
-        missingPhaseIds: ['8r_20'],
+        riskId: POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.ROADMAP_SEQUENCE_INCOMPLETE,
+        missingComponentIds: ['next_compatibility_removal_batch_authorization'],
       }),
       expect.objectContaining({
         riskId:
-          PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS
+          POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS
             .ROADMAP_IMPLEMENTATION_STATUS_INCOMPLETE,
-        missingPhaseIds: ['8r_19'],
+        missingComponentIds: ['post_removal_runtime_verification'],
       }),
     ]));
   });
 
   test('accepts human-readable dotted Phase 8R roadmap identifiers', () => {
-    const dottedPhaseIds = PHASE_IDS.map(phaseId => (
-      phaseId.replace(/^8r_(\d+)$/, '8R.$1')
+    const dottedLegacyIds = LEGACY_IDS.map(legacyId => (
+      legacyId.replace(/^8r_(\d+)$/, '8R.$1')
     ));
     const checkpoint = completeCheckpoint({
       roadmapEvidence: roadmapEvidence({
-        sequencePhaseIds: dottedPhaseIds,
-        implementationStatusPhaseIds: dottedPhaseIds,
+        sequencePhaseIds: dottedLegacyIds,
+        implementationStatusPhaseIds: dottedLegacyIds,
       }),
     });
 
-    expect(checkpoint.statusId).toBe(PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE);
-    expect(checkpoint.roadmapEvidence.missingSequencePhaseIds).toEqual([]);
-    expect(checkpoint.roadmapEvidence.missingImplementationStatusPhaseIds)
+    expect(checkpoint.statusId).toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE);
+    expect(checkpoint.roadmapEvidence.missingSequenceComponentIds).toEqual([]);
+    expect(checkpoint.roadmapEvidence.missingImplementationStatusComponentIds)
       .toEqual([]);
   });
 
-  test('blocks when final Phase 8R.21 removal audit is not complete or invalid', () => {
+  test('blocks when compatibility-removal completion audit is not complete or invalid', () => {
     const checkpoint = completeCheckpoint({
       finalRemovalAudit: finalRemovalAudit({
         statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
@@ -212,10 +223,10 @@ describe('policyBuilderPhase8CompletionCheckpoint', () => {
     });
 
     expect(checkpoint.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_FINAL_REMOVAL_AUDIT);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_FINAL_REMOVAL_AUDIT);
     expect(checkpoint.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.FINAL_REMOVAL_AUDIT_NOT_COMPLETE,
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.FINAL_REMOVAL_AUDIT_VALIDATION_FAILED,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FINAL_REMOVAL_AUDIT_NOT_COMPLETE,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FINAL_REMOVAL_AUDIT_VALIDATION_FAILED,
     ]));
   });
 
@@ -249,20 +260,20 @@ describe('policyBuilderPhase8CompletionCheckpoint', () => {
     });
 
     expect(missing.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_VALIDATION);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_VALIDATION);
     expect(missing.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.FOCUSED_VALIDATION_MISSING,
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.LINT_VALIDATION_MISSING,
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.MARKDOWN_VALIDATION_MISSING,
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.FULL_VALIDATION_MISSING,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FOCUSED_VALIDATION_MISSING,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.LINT_VALIDATION_MISSING,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.MARKDOWN_VALIDATION_MISSING,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FULL_VALIDATION_MISSING,
     ]));
     expect(failed.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_VALIDATION);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_VALIDATION);
     expect(failed.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.FOCUSED_VALIDATION_FAILED,
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.LINT_VALIDATION_FAILED,
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.MARKDOWN_VALIDATION_FAILED,
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.FULL_VALIDATION_FAILED,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FOCUSED_VALIDATION_FAILED,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.LINT_VALIDATION_FAILED,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.MARKDOWN_VALIDATION_FAILED,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FULL_VALIDATION_FAILED,
     ]));
   });
 
@@ -270,23 +281,25 @@ describe('policyBuilderPhase8CompletionCheckpoint', () => {
     const checkpoint = completeCheckpoint({
       changelogEvidence: changelogEvidence({
         updated: true,
-        phaseIds: PHASE_IDS.filter(phaseId => phaseId !== '8r_18'),
+        componentIds: COMPONENT_IDS.filter(componentId => (
+          componentId !== 'controlled_compatibility_path_removal_apply'
+        )),
       }),
     });
 
     expect(checkpoint.statusId)
-      .toBe(PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_CHANGELOG);
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_CHANGELOG);
     expect(checkpoint.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.CHANGELOG_ENTRY_MISSING,
-        missingPhaseIds: ['8r_18'],
+        riskId: POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.CHANGELOG_ENTRY_MISSING,
+        missingComponentIds: ['controlled_compatibility_path_removal_apply'],
       }),
     ]));
   });
 
   test('rejects mutated checkpoint output with stale risk counts or side effects', () => {
-    const validation = validatePolicyBuilderPhase8CompletionCheckpoint({
-      statusId: PHASE8R_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE,
+    const validation = validatePolicyStorageCompletionCheckpoint({
+      statusId: POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE,
       riskCount: 99,
       risks: [],
       sideEffects: {
@@ -299,8 +312,8 @@ describe('policyBuilderPhase8CompletionCheckpoint', () => {
 
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.RISK_COUNT_MISMATCH,
-      PHASE8R_COMPLETION_CHECKPOINT_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.SIDE_EFFECT_PERFORMED,
     ]));
   });
 });

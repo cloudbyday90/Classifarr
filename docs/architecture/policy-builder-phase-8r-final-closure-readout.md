@@ -3,7 +3,7 @@
 ## Intent
 
 Phase 8R.33 generates the final operator-facing Phase 8R closure decision from
-the Phase 8R.32 completion-checkpoint artifact.
+the policy storage completion-checkpoint artifact.
 
 The readout answers one question: can Phase 8R be treated as complete right
 now? If not, it reports the blocking category:
@@ -97,9 +97,9 @@ Cons:
 
 Use this stack for Phase 8R.33:
 
-1. Require a Phase 8R.32 completion-checkpoint artifact.
+1. Require a policy storage completion-checkpoint artifact.
 2. Require the artifact to be complete and valid.
-3. Require the nested Phase 8R.22 checkpoint to be complete and valid.
+3. Require the nested policy storage checkpoint to be complete and valid.
 4. Map blocked checkpoint states to component, roadmap, removal-audit,
    validation, or changelog blockers.
 5. Reject file writes, storage mutation, Git commands, command execution, and

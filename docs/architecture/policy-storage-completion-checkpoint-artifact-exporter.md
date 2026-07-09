@@ -1,14 +1,14 @@
-# Policy Builder Phase 8R Completion Checkpoint Artifact Exporter
+# Policy Storage Completion Checkpoint Artifact Exporter
 
 ## Intent
 
-Phase 8R.32 generates a machine-readable wrapper artifact for the existing
-Phase 8R.22 completion checkpoint.
+The policy storage completion checkpoint artifact exporter generates a
+machine-readable wrapper artifact for the policy storage completion checkpoint.
 
 The artifact consumes explicit evidence:
 
-- Phase 8R component evidence,
-- Phase 8R roadmap evidence,
+- storage component evidence,
+- storage roadmap evidence,
 - compatibility-removal completion-audit artifact evidence,
 - focused, lint, markdown, and full validation evidence,
 - changelog evidence.
@@ -20,38 +20,38 @@ a stable JSON contract.
 
 ## Official-Source Research
 
-- NIST SP 800-218 SSDF recommends secure development practices across the SDLC.
+- NIST SSDF recommends secure software development practices across the SDLC.
   The completion checkpoint artifact preserves validation and implementation
   evidence as an explicit closure artifact instead of relying on narrative
   status.
-- NIST SP 800-128 frames security-focused configuration management as controlled
-  change with integrity monitoring. The artifact requires current roadmap,
-  component, validation, changelog, and removal-loop closure evidence before
-  Phase 8R is marked complete.
-- OWASP API9:2023 Improper Inventory Management treats unmanaged or stale
-  surfaces as attack-surface risk. The artifact keeps compatibility-removal
-  inventory visible through the compatibility-removal completion-audit artifact.
-- Git `status --porcelain` is documented as script-stable output. This supports
-  the broader pattern of feeding machine-readable evidence into audit tooling,
-  while this service itself remains side-effect-free and does not call Git.
+- NIST SP 800-128 frames security-focused configuration management as
+  controlled change with integrity monitoring. The artifact requires current
+  roadmap, component, validation, changelog, and removal-loop closure evidence
+  before storage migration is marked complete.
+- OWASP Logging guidance emphasizes event attributes that support
+  accountability. The artifact preserves status, risk, and side-effect
+  attributes for downstream closure readouts.
+- Git `mv` documents file movement as a repository operation. This cutover
+  keeps the artifact exporter, script, tests, and docs traceable through
+  explicit tracked moves.
 
 Sources:
 
-- NIST SP 800-218 Secure Software Development Framework:
-  <https://csrc.nist.gov/pubs/sp/800/218/final>
+- NIST Secure Software Development Framework:
+  <https://csrc.nist.gov/projects/ssdf>
 - NIST SP 800-128:
   <https://csrc.nist.gov/pubs/sp/800/128/upd1/final>
-- OWASP API9:2023 Improper Inventory Management:
-  <https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/>
-- Git `status` documentation:
-  <https://git-scm.com/docs/git-status>
+- OWASP Logging Cheat Sheet:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html>
+- Git `mv` documentation:
+  <https://git-scm.com/docs/git-mv>
 
 ## Recommendations
 
 ### Wrap The Existing Checkpoint Contract
 
-The exporter should call `buildPolicyBuilderPhase8CompletionCheckpoint` rather
-than duplicate Phase 8R.22 scoring logic.
+The exporter should call `buildPolicyStorageCompletionCheckpoint` rather than
+duplicate checkpoint scoring logic.
 
 Pros:
 
@@ -64,14 +64,14 @@ Cons:
 - the artifact can only be as complete as the explicit checkpoint inputs it
   receives.
 
-### Require The 8R.31 Completion-Audit Artifact
+### Require Completion-Audit Artifact Evidence
 
-The exporter should consume the Phase 8R.31 wrapper artifact and pass its nested
-audit into the Phase 8R.22 checkpoint.
+The exporter should consume the compatibility-removal completion-audit wrapper
+artifact and pass its nested audit into the storage checkpoint.
 
 Pros:
 
-- prevents Phase 8R closure without compatibility-removal proof,
+- prevents storage completion without compatibility-removal proof,
 - keeps remaining-inventory states out of final completion,
 - preserves the exact removal-loop artifact that justified closure.
 
@@ -99,25 +99,33 @@ Cons:
 
 ## Final Recommendation Stack
 
-Use this stack for Phase 8R.32:
+Use this stack for the policy storage completion checkpoint artifact:
 
-1. Require explicit component evidence.
-2. Require explicit roadmap evidence.
+1. Require explicit storage component evidence.
+2. Require explicit storage roadmap evidence.
 3. Require a complete and valid compatibility-removal completion-audit artifact.
 4. Require focused, lint, markdown, and full validation evidence.
 5. Require changelog evidence.
-6. Reuse the existing Phase 8R.22 completion checkpoint contract.
+6. Reuse the policy storage completion checkpoint contract.
 7. Emit the nested checkpoint JSON and wrapper artifact JSON.
 8. Reject file writes, storage mutation, Git commands, command execution, and
    manifest writes inside the service contract.
+9. Emit semantic `nextStep` evidence for the policy storage final closure
+   readout.
 
 ## Implementation Outcome
 
 Implemented:
 
-- Added `policyBuilderPhase8CompletionCheckpointArtifact.mjs`.
-- Added `generate-policy-builder-phase-8r-completion-checkpoint.mjs`.
-- Added root npm script `policy:phase8r:completion-checkpoint`.
+- Renamed the artifact service to
+  `policyStorageCompletionCheckpointArtifact.mjs`.
+- Renamed the CLI exporter to
+  `scripts/generate-policy-storage-completion-checkpoint.mjs`.
+- Renamed the root npm script to `policy:storage-completion-checkpoint`.
+- Renamed exported constants, builders, validators, and payload versioning to
+  durable policy storage names.
+- Replaced production `nextPhase.phaseId` output with semantic
+  `nextStep.stepId = policy_storage_final_closure_readout`.
 - Added focused tests for:
   - complete checkpoint artifact generation,
   - missing completion-audit artifact evidence,
@@ -125,13 +133,13 @@ Implemented:
   - incomplete checkpoint evidence,
   - forbidden side-effect rejection,
   - artifact validation invariants.
-- Added the checkpoint artifact suite and this design doc to the fixed Phase 8R
+- Added the checkpoint artifact suite and this design doc to the fixed
   validation evidence command set.
 
 Example:
 
 ```bash
-npm run --silent policy:phase8r:completion-checkpoint -- \
+npm run --silent policy:storage-completion-checkpoint -- \
   --component-evidence .tmp/phase8r/component-evidence.json \
   --roadmap-evidence .tmp/phase8r/roadmap-evidence.json \
   --completion-audit-artifact .tmp/phase8r/completion-audit-artifact.json \
@@ -143,7 +151,7 @@ npm run --silent policy:phase8r:completion-checkpoint -- \
 
 ## Next Step
 
-Use the generated Phase 8R.32 artifact as the input for a final Phase 8R
-closure readout. That readout should decide whether Phase 8R can be marked
-complete or whether the remaining failure is component evidence, roadmap
-evidence, completion-audit evidence, validation, or changelog coverage.
+Use the generated policy storage completion checkpoint artifact as input for
+the final closure readout. That readout should decide whether storage migration
+can be marked complete or whether the remaining failure is component evidence,
+roadmap evidence, completion-audit evidence, validation, or changelog coverage.

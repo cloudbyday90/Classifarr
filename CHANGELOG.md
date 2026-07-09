@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Storage Completion Checkpoint Module Cutover** — renamed the
+  storage completion checkpoint service, artifact exporter, focused tests,
+  docs, CLI script, and npm runner to durable policy-domain names, replaced
+  phase-coded constants/builders/versioning and `nextPhase.phaseId` with
+  semantic `nextStep.stepId`, updated downstream evidence, final-closure,
+  validation, and roadmap references, and preserved component coverage,
+  roadmap coverage, compatibility-removal completion-audit gating, validation,
+  changelog, side-effect rejection, and final-closure handoff behavior.
 - **Policy Compatibility Removal Completion Audit Module Cutover** — renamed
   the completion audit service, artifact exporter, focused tests, docs, CLI
   script, and npm runner to durable policy-domain names, replaced phase-coded
@@ -900,9 +908,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   `npm run policy:phase8r:final-closure-readout` to classify Phase 8R closure
   as complete or blocked by component, roadmap, removal-audit, validation,
   changelog, artifact-validation, or side-effect evidence.
-- **Policy Builder Phase 8R Completion Checkpoint Artifact Exporter** — added
+- **Policy Storage Completion Checkpoint Artifact Exporter** — added
   a machine-readable checkpoint artifact contract and
-  `npm run policy:phase8r:completion-checkpoint` to consume component,
+  `npm run policy:storage-completion-checkpoint` to consume component,
   roadmap, compatibility-removal completion-audit, validation, and changelog
   evidence before Phase 8R is claimed complete.
 - **Policy Compatibility Removal Completion Audit Artifact Exporter** — added a
@@ -962,7 +970,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   `npm run policy:phase8r:validation-evidence` to generate checkpoint-compatible
   focused, lint, markdown, and full server validation JSON for the Phase 8R
   closure evidence run.
-- **Policy Builder Phase 8R Completion Checkpoint** — added a
+- **Policy Storage Completion Checkpoint** — added a
   side-effect-free phase completion checkpoint that consumes component,
   roadmap, final-removal-audit, validation, and changelog evidence for the full
   Phase 8R sequence; blocks closure when any expected phase lacks
