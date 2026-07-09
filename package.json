@@ -28,7 +28,7 @@
     "policy:phase8r:evidence": "node scripts/run-policy-builder-phase-8r-evidence.mjs",
     "policy:phase8r:execution-plan": "node scripts/generate-policy-builder-phase-8r-execution-plan.mjs",
     "policy:phase8r:removal-batch": "node scripts/generate-policy-builder-phase-8r-removal-batch.mjs",
-    "policy:phase8r:removal-apply": "node scripts/generate-policy-builder-phase-8r-removal-apply.mjs",
+    "policy:controlled-removal-apply": "node scripts/generate-policy-controlled-removal-apply.mjs",
     "policy:phase8r:post-removal-verification": "node scripts/generate-policy-builder-phase-8r-post-removal-verification.mjs",
     "policy:phase8r:next-batch-authorization": "node scripts/generate-policy-builder-phase-8r-next-batch-authorization.mjs",
     "policy:phase8r:completion-audit": "node scripts/generate-policy-builder-phase-8r-completion-audit.mjs",

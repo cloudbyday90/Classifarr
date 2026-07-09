@@ -113,4 +113,5 @@ Implemented:
 
 ## Next Step
 
-Proceed to **Controlled Removal Apply Artifact module naming cutover**.
+Proceed to **Post-Removal Runtime Verification Artifact module naming
+cutover**.

@@ -907,12 +907,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   `npm run policy:phase8r:post-removal-verification` to consume Phase 8R.18
   apply-result JSON plus explicit import/reference scan, runtime check, and
   validation evidence before authorizing the next compatibility-removal batch.
-- **Policy Builder Phase 8R Controlled Removal Apply Artifact Exporter** —
-  added a machine-readable apply artifact contract and
-  `npm run policy:phase8r:removal-apply` to consume a ready Phase 8R.17
-  removal-batch JSON plus explicit operator confirmation, apply supported
-  repo-relative file deletion only when `--apply-files` is passed, and emit
-  Phase 8R.18 apply evidence for post-removal runtime verification.
+- **Policy Controlled Removal Apply Artifact Exporter** — cut over the
+  controlled-removal apply artifact to durable service, test, script, and npm
+  runner names; `npm run policy:controlled-removal-apply` now consumes a ready
+  reviewed removal-batch JSON plus explicit operator confirmation, applies
+  supported repo-relative file deletion only when `--apply-files` is passed,
+  and emits semantic `nextStep` evidence for post-removal runtime verification.
 - **Policy Builder Phase 8R Controlled Removal Batch Artifact Exporter** —
   added a machine-readable removal-batch artifact contract and
   `npm run policy:phase8r:removal-batch` to generate Phase 8R.17

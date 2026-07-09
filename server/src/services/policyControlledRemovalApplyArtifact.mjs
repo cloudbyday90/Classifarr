@@ -3,15 +3,15 @@ import {
   applyPolicyControlledCompatibilityPathRemoval,
 } from './policyControlledCompatibilityPathRemovalApply.mjs';
 
-const PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_VERSION =
-  'phase8r.controlled_removal_apply_artifact.v1';
+const POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_VERSION =
+  'policy.controlled_removal_apply_artifact.v1';
 
-const PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS = Object.freeze({
+const POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS = Object.freeze({
   APPLIED: 'applied',
   BLOCKED: 'blocked',
 });
 
-const PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS = Object.freeze({
+const POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS = Object.freeze({
   APPLY_RESULT_BLOCKED: 'apply_result_blocked',
   APPLY_RESULT_VALIDATION_FAILED: 'apply_result_validation_failed',
   SIDE_EFFECT_REPORTED: 'side_effect_reported',
@@ -75,8 +75,8 @@ function buildApplyArtifactRisks({
     applyResult.applied !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.APPLY_RESULT_BLOCKED,
-      'Controlled removal apply artifact requires an applied Phase 8R.18 result.',
+      POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.APPLY_RESULT_BLOCKED,
+      'Controlled removal apply artifact requires applied controlled removal evidence.',
       {
         statusId: applyResult.statusId || null,
         applyRiskCount: applyResult.riskCount ?? null,
@@ -86,16 +86,16 @@ function buildApplyArtifactRisks({
 
   if (applyResult.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS
+      POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS
         .APPLY_RESULT_VALIDATION_FAILED,
-      'Controlled removal apply artifact requires valid Phase 8R.18 apply evidence.',
+      'Controlled removal apply artifact requires valid controlled removal apply evidence.',
       { issueCount: applyResult.validation?.issueCount ?? null }
     ));
   }
 
   if (sideEffects.filesArchived === true) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+      POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
       'Controlled removal apply artifact must not archive compatibility paths.',
       { sideEffect: 'filesArchived' }
     ));
@@ -103,7 +103,7 @@ function buildApplyArtifactRisks({
 
   if (sideEffects.storageChanged === true) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+      POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
       'Controlled removal apply artifact must not mutate storage.',
       { sideEffect: 'storageChanged' }
     ));
@@ -111,7 +111,7 @@ function buildApplyArtifactRisks({
 
   if (sideEffects.gitCommandsRun === true) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+      POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
       'Controlled removal apply artifact must not run Git commands.',
       { sideEffect: 'gitCommandsRun' }
     ));
@@ -122,11 +122,11 @@ function buildApplyArtifactRisks({
 
 function determineArtifactStatusId(risks = []) {
   return risks.length === 0
-    ? PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS.APPLIED
-    : PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS.BLOCKED;
+    ? POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS.APPLIED
+    : POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS.BLOCKED;
 }
 
-async function buildPolicyBuilderPhase8ControlledRemovalApplyArtifact({
+async function buildPolicyControlledRemovalApplyArtifact({
   removalBatch = {},
   input = {},
   applyAdapter = null,
@@ -147,7 +147,7 @@ async function buildPolicyBuilderPhase8ControlledRemovalApplyArtifact({
     sideEffects: combinedSideEffects,
   });
   const artifact = {
-    version: PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_VERSION,
+    version: POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_VERSION,
     generatedAt: normalizeGeneratedAt(generatedAt),
     statusId: determineArtifactStatusId(risks),
     applied: risks.length === 0,
@@ -171,8 +171,8 @@ async function buildPolicyBuilderPhase8ControlledRemovalApplyArtifact({
       allowStorageMutation: false,
       allowGitCommandsInsideArtifact: false,
     },
-    nextPhase: {
-      phaseId: '8r_19',
+    nextStep: {
+      stepId: 'post_removal_runtime_verification',
       label: 'Post-Removal Runtime Verification',
       reason:
         'Applied compatibility path removal must be followed by runtime, import, and test verification before additional batches are considered.',
@@ -181,42 +181,42 @@ async function buildPolicyBuilderPhase8ControlledRemovalApplyArtifact({
 
   return {
     ...artifact,
-    validation: validatePolicyBuilderPhase8ControlledRemovalApplyArtifact(artifact),
+    validation: validatePolicyControlledRemovalApplyArtifact(artifact),
   };
 }
 
-function validatePolicyBuilderPhase8ControlledRemovalApplyArtifact(artifact = {}) {
+function validatePolicyControlledRemovalApplyArtifact(artifact = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS)
+  if (!Object.values(POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS)
     .includes(artifact.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
+      POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
       'Controlled removal apply artifact status must be known.'
     ));
   }
 
   if (artifact.riskCount !== asArray(artifact.risks).length) {
     issues.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
       'Controlled removal apply artifact risk count must match risk list length.'
     ));
   }
 
   if (
     artifact.statusId ===
-      PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS.APPLIED &&
+      POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS.APPLIED &&
     artifact.applied !== true
   ) {
     issues.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.APPLIED_FLAG_MISMATCH,
+      POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.APPLIED_FLAG_MISMATCH,
       'Controlled removal apply artifact applied flag must match applied status.'
     ));
   }
 
   if (artifact.sideEffects?.filesArchived === true) {
     issues.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+      POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
       'Controlled removal apply artifact must not archive compatibility paths.',
       { sideEffect: 'filesArchived' }
     ));
@@ -224,7 +224,7 @@ function validatePolicyBuilderPhase8ControlledRemovalApplyArtifact(artifact = {}
 
   if (artifact.sideEffects?.storageChanged === true) {
     issues.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+      POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
       'Controlled removal apply artifact must not mutate storage.',
       { sideEffect: 'storageChanged' }
     ));
@@ -232,7 +232,7 @@ function validatePolicyBuilderPhase8ControlledRemovalApplyArtifact(artifact = {}
 
   if (artifact.sideEffects?.gitCommandsRun === true) {
     issues.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+      POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
       'Controlled removal apply artifact must not run Git commands.',
       { sideEffect: 'gitCommandsRun' }
     ));
@@ -246,9 +246,9 @@ function validatePolicyBuilderPhase8ControlledRemovalApplyArtifact(artifact = {}
 }
 
 export {
-  PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS,
-  PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS,
-  PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_VERSION,
-  buildPolicyBuilderPhase8ControlledRemovalApplyArtifact,
-  validatePolicyBuilderPhase8ControlledRemovalApplyArtifact,
+  POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS,
+  POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS,
+  POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_VERSION,
+  buildPolicyControlledRemovalApplyArtifact,
+  validatePolicyControlledRemovalApplyArtifact,
 };

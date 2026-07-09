@@ -14,11 +14,11 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS,
-} from '../server/src/services/policyBuilderPhase8CompatibilityPathDeletionExecutionPlan.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
+} from '../server/src/services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  buildPolicyBuilderPhase8ControlledRemovalApplyArtifact,
-} from '../server/src/services/policyBuilderPhase8ControlledRemovalApplyArtifact.mjs';
+  buildPolicyControlledRemovalApplyArtifact,
+} from '../server/src/services/policyControlledRemovalApplyArtifact.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -80,11 +80,11 @@ function parseArgs(argv = []) {
 
 function usage() {
   return [
-    'Usage: node scripts/generate-policy-builder-phase-8r-removal-apply.mjs [options]',
+    'Usage: node scripts/generate-policy-controlled-removal-apply.mjs [options]',
     '',
     'Options:',
-    '  --removal-batch <json>    Required Phase 8R.17 removal-batch JSON.',
-    '  --input <json>            Required Phase 8R.18 apply input JSON.',
+    '  --removal-batch <json>    Required controlled removal-batch JSON.',
+    '  --input <json>            Required controlled apply input JSON.',
     '  --output <json>           Write nested apply-result JSON to this path.',
     '  --artifact-output <json>  Write wrapper artifact JSON to this path.',
     '  --apply-files             Apply supported delete/remove-test actions to files.',
@@ -160,8 +160,8 @@ function createFileApplyAdapter({ applyFiles = false } = {}) {
       const { normalizedPath, resolvedPath } = resolveRepoRelativePath(entry.path);
       const actionId = entry.actionId;
       const supportedAction = [
-        PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
-        PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.REMOVE_TEST,
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_TEST,
       ].includes(actionId);
 
       if (!supportedAction) {
@@ -236,7 +236,7 @@ function createFileApplyAdapter({ applyFiles = false } = {}) {
           filesArchived: false,
           routesRemoved: false,
           testsRemoved:
-            actionId === PHASE8R_COMPATIBILITY_PATH_DELETION_EXECUTION_ACTION_IDS.REMOVE_TEST,
+            actionId === POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_TEST,
           storageChanged: false,
           gitCommandsRun: false,
         },
@@ -277,7 +277,7 @@ async function main() {
     process.exit(2);
   }
 
-  const artifact = await buildPolicyBuilderPhase8ControlledRemovalApplyArtifact({
+  const artifact = await buildPolicyControlledRemovalApplyArtifact({
     removalBatch,
     input,
     applyAdapter: createFileApplyAdapter({
@@ -288,7 +288,7 @@ async function main() {
 
   if (artifact.applied !== true && options.allowBlocked !== true) {
     console.error(
-      'Phase 8R controlled removal apply artifact is blocked; pass --allow-blocked to write diagnostic output.'
+      'Controlled removal apply artifact is blocked; pass --allow-blocked to write diagnostic output.'
     );
     console.error(JSON.stringify({
       statusId: artifact.statusId,

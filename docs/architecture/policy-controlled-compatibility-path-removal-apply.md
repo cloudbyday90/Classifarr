@@ -131,6 +131,7 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Controlled Removal Apply Artifact module naming cutover**. That
-task should consume durable apply evidence and remove phase-coded names from the
-artifact wrapper without changing adapter execution behavior.
+Proceed with **Post-Removal Runtime Verification Artifact module naming
+cutover**. That task should consume durable controlled-removal apply evidence
+and remove phase-coded names from the runtime verification wrapper without
+changing verification behavior.

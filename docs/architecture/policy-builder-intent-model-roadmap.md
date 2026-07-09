@@ -5691,22 +5691,22 @@ Implementation status:
 
 ### 8R.28 Controlled Removal Apply Artifact Exporter
 
-Intent: generate the machine-readable Phase 8R.18 controlled-removal apply
-artifact from a ready Phase 8R.17 removal-batch JSON, explicit apply input
-evidence, operator confirmation, and a bounded apply adapter.
+Intent: generate a machine-readable controlled-removal apply artifact from a
+ready reviewed removal batch, explicit apply input evidence, operator
+confirmation, and a bounded apply adapter.
 
 Tasks:
 
-- Require a ready Phase 8R.17 removal-batch JSON artifact.
+- Require a ready reviewed removal-batch JSON artifact.
 - Require explicit apply input with `executeApply: true`,
   `operatorConfirmation.confirmed: true`, and a confirming actor.
-- Reuse the existing Phase 8R.18 controlled-removal apply contract.
+- Reuse the controlled-removal apply contract.
 - Keep service-level file mutation adapter-bound.
 - Provide a CLI adapter that only deletes repo-relative files when
   `--apply-files` is present.
 - Refuse path traversal, absolute paths, archive behavior, storage mutation,
   and Git-command side effects.
-- Write the nested apply-result JSON for Phase 8R.19 runtime verification.
+- Write the nested apply-result JSON for post-removal runtime verification.
 
 Acceptance criteria:
 
@@ -5718,22 +5718,25 @@ Acceptance criteria:
   `--apply-files` is passed.
 - Archive, storage, and Git-command side effects prevent applied artifact
   status.
-- The generated apply-result JSON can be passed to Phase 8R.19 verification.
+- The generated apply-result JSON can be passed to post-removal runtime
+  verification.
 
 Implementation status:
 
-- Phase 8R.28 controlled removal apply artifact export is documented in
-  [Policy Builder Phase 8R Controlled Removal Apply Artifact Exporter](policy-builder-phase-8r-controlled-removal-apply-artifact-exporter.md).
+- Controlled removal apply artifact export is documented in
+  [Policy Controlled Removal Apply Artifact Exporter](policy-controlled-removal-apply-artifact-exporter.md).
+- The durable module naming cutover is documented in
+  [Policy Controlled Removal Apply Artifact Module Cutover](policy-controlled-removal-apply-artifact-module-cutover.md).
 - The controlled-removal apply artifact contract lives in
-  `server/src/services/policyBuilderPhase8ControlledRemovalApplyArtifact.mjs`.
+  `server/src/services/policyControlledRemovalApplyArtifact.mjs`.
 - The exporter script lives in
-  `scripts/generate-policy-builder-phase-8r-removal-apply.mjs`.
-- The root runner is exposed as `npm run policy:phase8r:removal-apply`.
+  `scripts/generate-policy-controlled-removal-apply.mjs`.
+- The root runner is exposed as `npm run policy:controlled-removal-apply`.
 - The focused controlled-removal apply artifact test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8ControlledRemovalApplyArtifact.test.mjs`.
+  `server/src/__tests__/services/policyControlledRemovalApplyArtifact.test.mjs`.
 - Current implementation applies only supported file-backed deletion actions
-  through an explicit CLI flag and emits apply evidence for Phase 8R.19
-  runtime validation.
+  through an explicit CLI flag and emits semantic `nextStep` apply evidence
+  for post-removal runtime validation.
 
 ### 8R.29 Post-Removal Runtime Verification Artifact Exporter
 
@@ -6155,9 +6158,10 @@ Implement Phase 8R in this order:
     ready execution plan, explicit execution-gate evidence, selected approved
     manifest paths, review reason, and reviewer metadata.
 28. **8R.28 Controlled Removal Apply Artifact Exporter**
-    Generates a machine-readable Phase 8R.18 controlled-removal apply artifact
-    from a ready reviewed batch, explicit execute confirmation, and a bounded
-    repo-relative filesystem adapter.
+    Generates a machine-readable controlled-removal apply artifact from a
+    ready reviewed batch, explicit execute confirmation, and a bounded
+    repo-relative filesystem adapter, then hands off to post-removal runtime
+    verification through semantic `nextStep` evidence.
 29. **8R.29 Post-Removal Runtime Verification Artifact Exporter**
     Generates a machine-readable Phase 8R.19 verification artifact from apply,
     reference-scan, runtime-check, and validation evidence before the next

@@ -104,12 +104,12 @@ const PHASE8R_FINAL_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   {
     phaseId: '8r_28',
     label: 'Controlled Removal Apply Artifact Exporter',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-controlled-removal-apply-artifact-exporter.md'],
+    designDocPaths: ['docs/architecture/policy-controlled-removal-apply-artifact-exporter.md'],
     contractPaths: [
-      'server/src/services/policyBuilderPhase8ControlledRemovalApplyArtifact.mjs',
-      'scripts/generate-policy-builder-phase-8r-removal-apply.mjs',
+      'server/src/services/policyControlledRemovalApplyArtifact.mjs',
+      'scripts/generate-policy-controlled-removal-apply.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8ControlledRemovalApplyArtifact.test.mjs'],
+    testPaths: ['server/src/__tests__/services/policyControlledRemovalApplyArtifact.test.mjs'],
   },
   {
     phaseId: '8r_29',

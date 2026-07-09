@@ -20,11 +20,11 @@ import {
   buildPolicyControlledCompatibilityPathRemoval,
 } from '../../services/policyControlledCompatibilityPathRemoval.mjs';
 import {
-  PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS,
-  PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS,
-  buildPolicyBuilderPhase8ControlledRemovalApplyArtifact,
-  validatePolicyBuilderPhase8ControlledRemovalApplyArtifact,
-} from '../../services/policyBuilderPhase8ControlledRemovalApplyArtifact.mjs';
+  POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS,
+  POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS,
+  buildPolicyControlledRemovalApplyArtifact,
+  validatePolicyControlledRemovalApplyArtifact,
+} from '../../services/policyControlledRemovalApplyArtifact.mjs';
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
@@ -129,8 +129,8 @@ function replacementEvidence() {
   return Object.fromEntries(
     Object.values(POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS)
       .map(categoryId => [categoryId, {
-        replacement: `Phase 8R native replacement for ${categoryId}`,
-        tests: ['server phase8r focused coverage'],
+        replacement: `Native policy replacement for ${categoryId}`,
+        tests: ['server focused coverage'],
       }])
   );
 }
@@ -143,7 +143,7 @@ function readyExecutionPlan(overrides = {}) {
     rollbackStance: 'Rollback snapshots retained until post-window support stance is approved.',
     supportStance: 'Converted native policies use bounded support diagnostics.',
     manifestApproved: true,
-    approvedBy: 'phase8r-maintainer',
+    approvedBy: 'policy-maintainer',
     ...overrides,
   });
 }
@@ -156,7 +156,7 @@ function readyGate(executionPlan, overrides = {}) {
     backupRestoreFresh: true,
     operatorApproval: {
       approved: true,
-      approvedBy: 'phase8r-maintainer',
+      approvedBy: 'policy-maintainer',
     },
     rollbackStanceFinal: true,
     supportStanceFinal: true,
@@ -175,7 +175,7 @@ function readyRemovalBatch(overrides = {}) {
       'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
     ],
     removalReason: 'First narrow removal review batch after native runtime parity.',
-    reviewedBy: 'phase8r-maintainer',
+    reviewedBy: 'policy-maintainer',
     ...overrides,
   });
 }
@@ -185,7 +185,7 @@ function applyInput(overrides = {}) {
     executeApply: true,
     operatorConfirmation: {
       confirmed: true,
-      confirmedBy: 'phase8r-maintainer',
+      confirmedBy: 'policy-maintainer',
     },
     ...overrides,
   };
@@ -214,9 +214,9 @@ function applyAdapter(overrides = {}) {
   };
 }
 
-describe('policyBuilderPhase8ControlledRemovalApplyArtifact', () => {
-  test('wraps an applied Phase 8R removal batch with bounded side effects', async () => {
-    const artifact = await buildPolicyBuilderPhase8ControlledRemovalApplyArtifact({
+describe('policyControlledRemovalApplyArtifact', () => {
+  test('wraps an applied controlled removal batch with bounded side effects', async () => {
+    const artifact = await buildPolicyControlledRemovalApplyArtifact({
       removalBatch: readyRemovalBatch(),
       input: applyInput(),
       applyAdapter: applyAdapter(),
@@ -224,7 +224,7 @@ describe('policyBuilderPhase8ControlledRemovalApplyArtifact', () => {
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS.APPLIED);
+      .toBe(POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS.APPLIED);
     expect(artifact.applied).toBe(true);
     expect(artifact.validation.ok).toBe(true);
     expect(artifact.applyResult.applied).toBe(true);
@@ -239,30 +239,35 @@ describe('policyBuilderPhase8ControlledRemovalApplyArtifact', () => {
       storageChanged: false,
       gitCommandsRun: false,
     }));
+    expect(artifact.nextStep).toEqual(expect.objectContaining({
+      stepId: 'post_removal_runtime_verification',
+      label: 'Post-Removal Runtime Verification',
+    }));
+    expect(artifact.nextPhase).toBeUndefined();
   });
 
   test('blocks when explicit apply confirmation is missing', async () => {
-    const artifact = await buildPolicyBuilderPhase8ControlledRemovalApplyArtifact({
+    const artifact = await buildPolicyControlledRemovalApplyArtifact({
       removalBatch: readyRemovalBatch(),
       input: applyInput({ executeApply: false }),
       applyAdapter: applyAdapter(),
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS.BLOCKED);
+      .toBe(POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS.BLOCKED);
     expect(artifact.applied).toBe(false);
     expect(artifact.validation.ok).toBe(true);
     expect(artifact.applyResult.statusId).toBe('blocked_by_confirmation');
     expect(artifact.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.APPLY_RESULT_BLOCKED,
+          POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.APPLY_RESULT_BLOCKED,
       }),
     ]));
   });
 
   test('rejects forbidden side effects even when the apply result is otherwise applied', async () => {
-    const artifact = await buildPolicyBuilderPhase8ControlledRemovalApplyArtifact({
+    const artifact = await buildPolicyControlledRemovalApplyArtifact({
       removalBatch: readyRemovalBatch(),
       input: applyInput(),
       applyAdapter: applyAdapter(),
@@ -272,19 +277,19 @@ describe('policyBuilderPhase8ControlledRemovalApplyArtifact', () => {
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS.BLOCKED);
+      .toBe(POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS.BLOCKED);
     expect(artifact.validation.ok).toBe(false);
     expect(artifact.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+          POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
         sideEffect: 'storageChanged',
       }),
     ]));
   });
 
   test('validates status and risk-count invariants', () => {
-    const validation = validatePolicyBuilderPhase8ControlledRemovalApplyArtifact({
+    const validation = validatePolicyControlledRemovalApplyArtifact({
       statusId: 'unexpected',
       riskCount: 1,
       risks: [],
@@ -294,11 +299,11 @@ describe('policyBuilderPhase8ControlledRemovalApplyArtifact', () => {
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
+        riskId: POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
       }),
       expect.objectContaining({
         riskId:
-          PHASE8R_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
+          POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
       }),
     ]));
   });

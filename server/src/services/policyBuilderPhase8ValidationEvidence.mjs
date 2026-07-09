@@ -28,7 +28,7 @@ const PHASE8R_VALIDATION_COMMANDS = Object.freeze([
     command: 'node',
     args: [
       './scripts/run-jest.mjs',
-      '--testPathPatterns=policyBuilderPhase8CurrentEvidenceCollector|policyBuilderPhase8CompletionEvidenceRun|policyBuilderPhase8CompletionCheckpoint|policyBuilderPhase8CompletionCheckpointArtifact|policyBuilderPhase8CurrentRepositoryClosureAudit|policyBuilderPhase8FinalRequirementCompletionAudit|policyBuilderPhase8CompatibilityRemovalCompletionAudit|policyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact|policyBuilderPhase8ValidationEvidence|policyBuilderPhase8ExecutionPlanArtifact|policyBuilderPhase8ControlledRemovalBatchArtifact|policyBuilderPhase8ControlledRemovalApplyArtifact|policyBuilderPhase8PostRemovalRuntimeVerificationArtifact|policyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact|policyBuilderPhase8FinalRemovalAuditEvidence|policyBuilderPhase8FinalClosureReadout|policyBuilderPhase8ImpactMigrationVerifier|policyBuilderPhase8ReplayMigrationVerifier',
+      '--testPathPatterns=policyBuilderPhase8CurrentEvidenceCollector|policyBuilderPhase8CompletionEvidenceRun|policyBuilderPhase8CompletionCheckpoint|policyBuilderPhase8CompletionCheckpointArtifact|policyBuilderPhase8CurrentRepositoryClosureAudit|policyBuilderPhase8FinalRequirementCompletionAudit|policyBuilderPhase8CompatibilityRemovalCompletionAudit|policyBuilderPhase8CompatibilityRemovalCompletionAuditArtifact|policyBuilderPhase8ValidationEvidence|policyBuilderPhase8ExecutionPlanArtifact|policyBuilderPhase8ControlledRemovalBatchArtifact|policyControlledRemovalApplyArtifact|policyBuilderPhase8PostRemovalRuntimeVerificationArtifact|policyBuilderPhase8NextCompatibilityRemovalBatchAuthorizationArtifact|policyBuilderPhase8FinalRemovalAuditEvidence|policyBuilderPhase8FinalClosureReadout|policyBuilderPhase8ImpactMigrationVerifier|policyBuilderPhase8ReplayMigrationVerifier',
       '--no-coverage',
       '--runInBand',
     ],
@@ -52,7 +52,8 @@ const PHASE8R_VALIDATION_COMMANDS = Object.freeze([
       'docs/architecture/policy-builder-phase-8r-completion-evidence-run.md',
       'docs/architecture/policy-builder-phase-8r-execution-plan-artifact-exporter.md',
       'docs/architecture/policy-builder-phase-8r-controlled-removal-batch-artifact-exporter.md',
-      'docs/architecture/policy-builder-phase-8r-controlled-removal-apply-artifact-exporter.md',
+      'docs/architecture/policy-controlled-removal-apply-artifact-exporter.md',
+      'docs/architecture/policy-controlled-removal-apply-artifact-module-cutover.md',
       'docs/architecture/policy-builder-phase-8r-post-removal-runtime-verification-artifact-exporter.md',
       'docs/architecture/policy-builder-phase-8r-next-compatibility-removal-batch-authorization-artifact-exporter.md',
       'docs/architecture/policy-builder-phase-8r-compatibility-removal-completion-audit-artifact-exporter.md',
