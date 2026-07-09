@@ -14,8 +14,8 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  buildPolicyBuilderPhase8ControlledRemovalBatchArtifact,
-} from '../server/src/services/policyBuilderPhase8ControlledRemovalBatchArtifact.mjs';
+  buildPolicyControlledCompatibilityRemovalBatchArtifact,
+} from '../server/src/services/policyControlledCompatibilityRemovalBatchArtifact.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -72,11 +72,11 @@ function parseArgs(argv = []) {
 
 function usage() {
   return [
-    'Usage: node scripts/generate-policy-builder-phase-8r-removal-batch.mjs [options]',
+    'Usage: node scripts/generate-policy-controlled-compatibility-removal-batch-artifact.mjs [options]',
     '',
     'Options:',
-    '  --execution-plan <json>    Required Phase 8R.15 execution-plan JSON.',
-    '  --input <json>             Required Phase 8R.16/8R.17 input evidence JSON.',
+    '  --execution-plan <json>    Required compatibility deletion execution-plan JSON.',
+    '  --input <json>             Required controlled compatibility removal input evidence JSON.',
     '  --output <json>            Write nested removal-batch JSON to this path.',
     '  --artifact-output <json>   Write wrapper artifact JSON to this path.',
     '  --allow-blocked            Allow writing blocked removal-batch output.',
@@ -145,7 +145,7 @@ function main() {
     process.exit(2);
   }
 
-  const artifact = buildPolicyBuilderPhase8ControlledRemovalBatchArtifact({
+  const artifact = buildPolicyControlledCompatibilityRemovalBatchArtifact({
     executionPlan,
     input,
     generatedAt: options.generatedAt,
@@ -153,7 +153,7 @@ function main() {
 
   if (artifact.ready !== true && options.allowBlocked !== true) {
     console.error(
-      'Phase 8R controlled removal batch artifact is blocked; pass --allow-blocked to write diagnostic output.'
+      'Controlled compatibility removal batch artifact is blocked; pass --allow-blocked to write diagnostic output.'
     );
     console.error(JSON.stringify({
       statusId: artifact.statusId,

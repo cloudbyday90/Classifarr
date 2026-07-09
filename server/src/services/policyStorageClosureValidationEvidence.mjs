@@ -28,7 +28,7 @@ const POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS = Object.freeze([
     command: 'node',
     args: [
       './scripts/run-jest.mjs',
-      '--testPathPatterns=policyStorageClosureCurrentEvidenceCollector|policyStorageClosureEvidenceRun|policyStorageCompletionCheckpoint|policyStorageCompletionCheckpointArtifact|policyStorageCurrentClosureAudit|policyStorageClosureRequirementAudit|policyCompatibilityRemovalCompletionAudit|policyCompatibilityRemovalCompletionAuditArtifact|policyStorageClosureValidationEvidence|policyCompatibilityDeletionExecutionPlanArtifact|policyBuilderPhase8ControlledRemovalBatchArtifact|policyControlledRemovalApplyArtifact|policyPostRemovalRuntimeVerificationArtifact|policyNextCompatibilityRemovalBatchAuthorizationArtifact|policyStorageClosureFinalRemovalAudit|policyStorageFinalClosureReadout|policyBuilderPhase8ImpactMigrationVerifier|policyBuilderPhase8ReplayMigrationVerifier',
+      '--testPathPatterns=policyStorageClosureCurrentEvidenceCollector|policyStorageClosureEvidenceRun|policyStorageCompletionCheckpoint|policyStorageCompletionCheckpointArtifact|policyStorageCurrentClosureAudit|policyStorageClosureRequirementAudit|policyCompatibilityRemovalCompletionAudit|policyCompatibilityRemovalCompletionAuditArtifact|policyStorageClosureValidationEvidence|policyCompatibilityDeletionExecutionPlanArtifact|policyControlledCompatibilityRemovalBatchArtifact|policyControlledRemovalApplyArtifact|policyPostRemovalRuntimeVerificationArtifact|policyNextCompatibilityRemovalBatchAuthorizationArtifact|policyStorageClosureFinalRemovalAudit|policyStorageFinalClosureReadout|policyBuilderPhase8ImpactMigrationVerifier|policyBuilderPhase8ReplayMigrationVerifier',
       '--no-coverage',
       '--runInBand',
     ],
@@ -53,7 +53,8 @@ const POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS = Object.freeze([
       'docs/architecture/policy-storage-closure-evidence-run-module-cutover.md',
       'docs/architecture/policy-compatibility-deletion-execution-plan-artifact.md',
       'docs/architecture/policy-compatibility-deletion-execution-plan-artifact-module-cutover.md',
-      'docs/architecture/policy-builder-phase-8r-controlled-removal-batch-artifact-exporter.md',
+      'docs/architecture/policy-controlled-compatibility-removal-batch-artifact.md',
+      'docs/architecture/policy-controlled-compatibility-removal-batch-artifact-module-cutover.md',
       'docs/architecture/policy-controlled-removal-apply-artifact-exporter.md',
       'docs/architecture/policy-controlled-removal-apply-artifact-module-cutover.md',
       'docs/architecture/policy-post-removal-runtime-verification.md',

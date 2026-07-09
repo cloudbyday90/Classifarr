@@ -112,4 +112,5 @@ Implemented:
 
 ## Next Step
 
-Proceed with **Controlled Removal Batch Artifact module naming cutover**.
+Proceed with a stale phase-coded verifier audit for the policy builder impact
+and replay migration verifier services.

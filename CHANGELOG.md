@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Controlled Compatibility Removal Batch Artifact Module Cutover** —
+  renamed the controlled removal batch service, focused tests, docs, CLI script,
+  payload version, builder/validator exports, and npm runner to durable
+  controlled-compatibility-removal names, updated closure requirement audit,
+  validation evidence, roadmap, and handoff references, and preserved
+  execution-plan gating, execution-gate gating, manifest-bound selected paths,
+  blocked-batch diagnostics, side-effect rejection, optional wrapper output,
+  and read-only JSON generation.
 - **Policy Compatibility Deletion Execution Plan Artifact Module Cutover** —
   renamed the execution-plan artifact service, focused tests, docs, CLI script,
   payload version, builder/validator exports, and npm runner to durable
@@ -997,12 +1005,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   reviewed removal-batch JSON plus explicit operator confirmation, applies
   supported repo-relative file deletion only when `--apply-files` is passed,
   and emits semantic `nextStep` evidence for post-removal runtime verification.
-- **Policy Builder Phase 8R Controlled Removal Batch Artifact Exporter** —
+- **Policy Controlled Compatibility Removal Batch Artifact** —
   added a machine-readable removal-batch artifact contract and
-  `npm run policy:phase8r:removal-batch` to generate Phase 8R.17
-  controlled-removal batch JSON from a ready execution plan, explicit
-  execution-gate evidence, selected approved manifest paths, review reason, and
-  reviewer metadata without applying compatibility removals.
+  `npm run policy:controlled-compatibility-removal-batch` to generate
+  controlled compatibility removal batch JSON from a ready execution plan,
+  explicit execution-gate evidence, selected approved manifest paths, review
+  reason, and reviewer metadata without applying compatibility removals.
 - **Policy Compatibility Deletion Execution Plan Artifact** — added a
   machine-readable execution-plan artifact contract and
   `npm run policy:compatibility-deletion-execution-plan-artifact` to generate

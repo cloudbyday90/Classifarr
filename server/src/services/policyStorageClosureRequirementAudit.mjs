@@ -120,13 +120,15 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   },
   {
     componentId: '8r_27',
-    label: 'Controlled Removal Batch Artifact Exporter',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-controlled-removal-batch-artifact-exporter.md'],
-    contractPaths: [
-      'server/src/services/policyBuilderPhase8ControlledRemovalBatchArtifact.mjs',
-      'scripts/generate-policy-builder-phase-8r-removal-batch.mjs',
+    label: 'Policy Controlled Compatibility Removal Batch Artifact',
+    designDocPaths: [
+      'docs/architecture/policy-controlled-compatibility-removal-batch-artifact.md',
     ],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8ControlledRemovalBatchArtifact.test.mjs'],
+    contractPaths: [
+      'server/src/services/policyControlledCompatibilityRemovalBatchArtifact.mjs',
+      'scripts/generate-policy-controlled-compatibility-removal-batch-artifact.mjs',
+    ],
+    testPaths: ['server/src/__tests__/services/policyControlledCompatibilityRemovalBatchArtifact.test.mjs'],
   },
   {
     componentId: '8r_28',

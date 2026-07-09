@@ -5669,24 +5669,25 @@ Implementation status:
   the policy storage closure final-removal audit while keeping deletion
   readiness caller-owned and explicit.
 
-### 8R.27 Controlled Removal Batch Artifact Exporter
+### 8R.27 Policy Controlled Compatibility Removal Batch Artifact
 
-Intent: generate the machine-readable Phase 8R.17 controlled-removal batch JSON
-from a ready compatibility deletion execution plan, explicit Phase 8R.16 gate
+Intent: generate the machine-readable controlled compatibility removal batch
+JSON from a ready compatibility deletion execution plan, explicit gate
 evidence, selected manifest paths, review reason, and reviewer metadata.
 
 Tasks:
 
 - Require a ready compatibility deletion execution-plan JSON artifact.
-- Require explicit Phase 8R.16 gate input evidence for clean worktree,
+- Require explicit gate input evidence for clean worktree,
   backup/restore freshness, operator approval, final rollback/support stance,
   and manifest freshness.
 - Require selected paths to come from the approved execution-plan manifest.
 - Require a narrow selected path batch with review reason and reviewer.
-- Build the Phase 8R.16 execution gate through the existing gate contract.
-- Build the Phase 8R.17 removal batch through the existing controlled-removal
+- Build the compatibility deletion execution gate through the existing gate
   contract.
-- Write the nested removal-batch JSON for Phase 8R.18 apply tooling.
+- Build the reviewed removal batch through the existing controlled-removal
+  contract.
+- Write the nested removal-batch JSON for controlled apply tooling.
 - Avoid deleting files, archiving files, removing routes/tests, mutating
   storage, writing manifests, or running Git.
 
@@ -5696,24 +5697,27 @@ Acceptance criteria:
 - Blocked gate evidence prevents ready removal-batch output.
 - Selected paths outside the approved manifest prevent ready output.
 - Ready output is bounded to the reviewed selected paths.
-- The generated removal-batch JSON can be passed to later Phase 8R.18 apply
+- The generated removal-batch JSON can be passed to later controlled apply
   tooling.
 - The exporter performs no deletion, archive, route, test, storage, manifest,
   or Git side effects.
 
 Implementation status:
 
-- Phase 8R.27 controlled removal batch artifact export is documented in
-  [Policy Builder Phase 8R Controlled Removal Batch Artifact Exporter](policy-builder-phase-8r-controlled-removal-batch-artifact-exporter.md).
+- Policy controlled compatibility removal batch artifact export is documented in
+  [Policy Controlled Compatibility Removal Batch Artifact](policy-controlled-compatibility-removal-batch-artifact.md).
+- The module naming cutover is documented in
+  [Policy Controlled Compatibility Removal Batch Artifact Module Cutover](policy-controlled-compatibility-removal-batch-artifact-module-cutover.md).
 - The controlled-removal batch artifact contract lives in
-  `server/src/services/policyBuilderPhase8ControlledRemovalBatchArtifact.mjs`.
+  `server/src/services/policyControlledCompatibilityRemovalBatchArtifact.mjs`.
 - The exporter script lives in
-  `scripts/generate-policy-builder-phase-8r-removal-batch.mjs`.
-- The root runner is exposed as `npm run policy:phase8r:removal-batch`.
+  `scripts/generate-policy-controlled-compatibility-removal-batch-artifact.mjs`.
+- The root runner is exposed as
+  `npm run policy:controlled-compatibility-removal-batch`.
 - The focused controlled-removal batch artifact test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8ControlledRemovalBatchArtifact.test.mjs`.
-- Current implementation generates the Phase 8R.17 removal-batch JSON input for
-  a later Phase 8R.18 apply artifact while keeping destructive removal out of
+  `server/src/__tests__/services/policyControlledCompatibilityRemovalBatchArtifact.test.mjs`.
+- Current implementation generates the reviewed removal-batch JSON input for
+  a later controlled apply artifact while keeping destructive removal out of
   this component.
 
 ### 8R.28 Controlled Removal Apply Artifact Exporter
@@ -6170,12 +6174,12 @@ Implement Phase 8R in this order:
     for import/runtime validation before additional compatibility paths are
     removed.
 19. **8R.19 Post-Removal Runtime Verification**
-    Consumes Phase 8R.18 apply evidence, verifies removed paths are no longer
+    Consumes controlled removal apply evidence, verifies removed paths are no longer
     imported or required, runs focused runtime/import checks, and blocks
     additional batches until validation passes.
 20. **8R.20 Next Compatibility Removal Batch Authorization**
-    Consumes verified Phase 8R.19 evidence, calculates remaining approved
-    manifest paths, prevents already-removed paths from re-entering a batch, and
+    Consumes verified post-removal runtime evidence, calculates remaining
+    approved manifest paths, prevents already-removed paths from re-entering a batch, and
     authorizes only the next narrow removal batch.
 21. **8R.21 Compatibility Removal Completion Audit**
     Consumes verified removal loop evidence, proves whether all approved
@@ -6201,8 +6205,8 @@ Implement Phase 8R in this order:
     Generates the machine-readable compatibility deletion execution-plan JSON
     from explicit readiness, manifest, replacement, approval, rollback, and
     support evidence for downstream final-removal-audit tooling.
-27. **8R.27 Controlled Removal Batch Artifact Exporter**
-    Generates a machine-readable Phase 8R.17 controlled-removal batch from a
+27. **8R.27 Policy Controlled Compatibility Removal Batch Artifact**
+    Generates a machine-readable controlled compatibility removal batch from a
     ready execution plan, explicit execution-gate evidence, selected approved
     manifest paths, review reason, and reviewer metadata.
 28. **8R.28 Controlled Removal Apply Artifact Exporter**

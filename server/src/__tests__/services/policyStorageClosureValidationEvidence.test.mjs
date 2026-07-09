@@ -41,7 +41,7 @@ describe('policyStorageClosureValidationEvidence', () => {
     expect(evidence.focused.command)
       .toContain('policyCompatibilityDeletionExecutionPlanArtifact');
     expect(evidence.focused.command)
-      .toContain('policyBuilderPhase8ControlledRemovalBatchArtifact');
+      .toContain('policyControlledCompatibilityRemovalBatchArtifact');
     expect(evidence.lint.command).toBe('npm run lint');
     expect(evidence.markdown.command).toContain('markdownlint-cli2');
     expect(evidence.markdown.command)
@@ -55,7 +55,9 @@ describe('policyStorageClosureValidationEvidence', () => {
     expect(evidence.markdown.command)
       .toContain('policy-compatibility-deletion-execution-plan-artifact-module-cutover.md');
     expect(evidence.markdown.command)
-      .toContain('policy-builder-phase-8r-controlled-removal-batch-artifact-exporter.md');
+      .toContain('policy-controlled-compatibility-removal-batch-artifact.md');
+    expect(evidence.markdown.command)
+      .toContain('policy-controlled-compatibility-removal-batch-artifact-module-cutover.md');
     expect(evidence.markdown.command)
       .toContain('policy-storage-closure-validation-evidence-module-cutover.md');
     expect(evidence.full.command).toBe('npm --prefix server test');

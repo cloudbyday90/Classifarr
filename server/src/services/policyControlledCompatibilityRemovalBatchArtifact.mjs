@@ -10,15 +10,15 @@ import {
   buildPolicyControlledCompatibilityPathRemoval,
 } from './policyControlledCompatibilityPathRemoval.mjs';
 
-const PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_VERSION =
-  'phase8r.controlled_removal_batch_artifact.v1';
+const POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_VERSION =
+  'policy.controlled_compatibility_removal_batch_artifact.v1';
 
-const PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_STATUS_IDS = Object.freeze({
+const POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS = Object.freeze({
   READY: 'ready',
   BLOCKED: 'blocked',
 });
 
-const PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS = Object.freeze({
+const POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS = Object.freeze({
   EXECUTION_PLAN_NOT_READY: 'execution_plan_not_ready',
   EXECUTION_PLAN_VALIDATION_FAILED: 'execution_plan_validation_failed',
   EXECUTION_GATE_NOT_READY: 'execution_gate_not_ready',
@@ -93,17 +93,17 @@ function buildArtifactRisks({
     executionPlan.readyForExecutionGate !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS.EXECUTION_PLAN_NOT_READY,
-      'Controlled removal batch artifact requires a ready Phase 8R.15 execution plan.',
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.EXECUTION_PLAN_NOT_READY,
+      'Controlled compatibility removal batch artifact requires a ready compatibility deletion execution plan.',
       { statusId: executionPlan.statusId || null }
     ));
   }
 
   if (executionPlan.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS
         .EXECUTION_PLAN_VALIDATION_FAILED,
-      'Controlled removal batch artifact requires valid Phase 8R.15 execution-plan evidence.',
+      'Controlled compatibility removal batch artifact requires valid compatibility deletion execution-plan evidence.',
       { issueCount: executionPlan.validation?.issueCount ?? null }
     ));
   }
@@ -115,17 +115,17 @@ function buildArtifactRisks({
     executionGate.allowControlledDeletion !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS.EXECUTION_GATE_NOT_READY,
-      'Controlled removal batch artifact requires a ready Phase 8R.16 execution gate.',
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.EXECUTION_GATE_NOT_READY,
+      'Controlled compatibility removal batch artifact requires a ready compatibility deletion execution gate.',
       { statusId: executionGate.statusId || null }
     ));
   }
 
   if (executionGate.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS
         .EXECUTION_GATE_VALIDATION_FAILED,
-      'Controlled removal batch artifact requires valid Phase 8R.16 execution-gate evidence.',
+      'Controlled compatibility removal batch artifact requires valid compatibility deletion execution-gate evidence.',
       { issueCount: executionGate.validation?.issueCount ?? null }
     ));
   }
@@ -136,17 +136,17 @@ function buildArtifactRisks({
     removalBatch.readyForRemovalReview !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS.REMOVAL_BATCH_NOT_READY,
-      'Controlled removal batch artifact requires a ready Phase 8R.17 removal batch.',
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.REMOVAL_BATCH_NOT_READY,
+      'Controlled compatibility removal batch artifact requires a ready reviewed removal batch.',
       { statusId: removalBatch.statusId || null }
     ));
   }
 
   if (removalBatch.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS
         .REMOVAL_BATCH_VALIDATION_FAILED,
-      'Controlled removal batch artifact requires valid Phase 8R.17 removal-batch evidence.',
+      'Controlled compatibility removal batch artifact requires valid reviewed removal-batch evidence.',
       { issueCount: removalBatch.validation?.issueCount ?? null }
     ));
   }
@@ -154,7 +154,7 @@ function buildArtifactRisks({
   Object.entries(sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       risks.push(buildRisk(
-        PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+        POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
         `Controlled removal batch artifact cannot report side effect "${key}".`
       ));
     }
@@ -165,11 +165,11 @@ function buildArtifactRisks({
 
 function determineArtifactStatusId(risks = []) {
   return risks.length === 0
-    ? PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_STATUS_IDS.READY
-    : PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_STATUS_IDS.BLOCKED;
+    ? POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS.READY
+    : POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS.BLOCKED;
 }
 
-function buildPolicyBuilderPhase8ControlledRemovalBatchArtifact({
+function buildPolicyControlledCompatibilityRemovalBatchArtifact({
   executionPlan = {},
   input = {},
   generatedAt = null,
@@ -188,7 +188,7 @@ function buildPolicyBuilderPhase8ControlledRemovalBatchArtifact({
     sideEffects,
   });
   const artifact = {
-    version: PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_VERSION,
+    version: POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_VERSION,
     generatedAt: normalizeGeneratedAt(generatedAt),
     statusId: determineArtifactStatusId(risks),
     ready: risks.length === 0,
@@ -209,24 +209,24 @@ function buildPolicyBuilderPhase8ControlledRemovalBatchArtifact({
 
   return {
     ...artifact,
-    validation: validatePolicyBuilderPhase8ControlledRemovalBatchArtifact(artifact),
+    validation: validatePolicyControlledCompatibilityRemovalBatchArtifact(artifact),
   };
 }
 
-function validatePolicyBuilderPhase8ControlledRemovalBatchArtifact(artifact = {}) {
+function validatePolicyControlledCompatibilityRemovalBatchArtifact(artifact = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_STATUS_IDS)
+  if (!Object.values(POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS)
     .includes(artifact.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
       'Controlled removal batch artifact status must be known.'
     ));
   }
 
   if (artifact.riskCount !== (artifact.risks || []).length) {
     issues.push(buildRisk(
-      PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
       'Controlled removal batch artifact risk count must match risk list length.'
     ));
   }
@@ -234,7 +234,7 @@ function validatePolicyBuilderPhase8ControlledRemovalBatchArtifact(artifact = {}
   Object.entries(artifact.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
-        PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+        POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
         `Controlled removal batch artifact cannot report side effect "${key}".`
       ));
     }
@@ -248,9 +248,9 @@ function validatePolicyBuilderPhase8ControlledRemovalBatchArtifact(artifact = {}
 }
 
 export {
-  PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS,
-  PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_STATUS_IDS,
-  PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_VERSION,
-  buildPolicyBuilderPhase8ControlledRemovalBatchArtifact,
-  validatePolicyBuilderPhase8ControlledRemovalBatchArtifact,
+  POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS,
+  POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS,
+  POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_VERSION,
+  buildPolicyControlledCompatibilityRemovalBatchArtifact,
+  validatePolicyControlledCompatibilityRemovalBatchArtifact,
 };

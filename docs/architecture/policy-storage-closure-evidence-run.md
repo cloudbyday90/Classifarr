@@ -154,6 +154,5 @@ node scripts/run-policy-storage-closure-evidence.mjs \
 
 ## Next Step
 
-Proceed with **Controlled Removal Batch Artifact module naming cutover** so the
-batch artifact produced from the execution plan stops exposing phase-coded
-service, script, and runner names.
+Proceed with a stale phase-coded verifier audit for the policy builder impact
+and replay migration verifier services.

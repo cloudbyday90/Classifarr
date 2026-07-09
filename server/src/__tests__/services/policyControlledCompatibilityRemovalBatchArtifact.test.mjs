@@ -6,11 +6,11 @@ import {
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
 } from '../../services/policyControlledCompatibilityPathRemoval.mjs';
 import {
-  PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS,
-  PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_STATUS_IDS,
-  buildPolicyBuilderPhase8ControlledRemovalBatchArtifact,
-  validatePolicyBuilderPhase8ControlledRemovalBatchArtifact,
-} from '../../services/policyBuilderPhase8ControlledRemovalBatchArtifact.mjs';
+  POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS,
+  POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS,
+  buildPolicyControlledCompatibilityRemovalBatchArtifact,
+  validatePolicyControlledCompatibilityRemovalBatchArtifact,
+} from '../../services/policyControlledCompatibilityRemovalBatchArtifact.mjs';
 
 const MANIFEST_PATH =
   'client/src/components/policies/PolicyStarterTemplateMechanics.vue';
@@ -27,7 +27,7 @@ function executionPlan(overrides = {}) {
     },
     manifest: {
       approved: true,
-      approvedBy: 'phase8r-maintainer',
+      approvedBy: 'storage-closure-maintainer',
       entryCount: 1,
       entries: [{
         categoryId: 'client_bridge_ui',
@@ -54,7 +54,7 @@ function readyInput(overrides = {}) {
     backupRestoreFresh: true,
     operatorApproval: {
       approved: true,
-      approvedBy: 'phase8r-maintainer',
+      approvedBy: 'storage-closure-maintainer',
     },
     rollbackStanceFinal: true,
     supportStanceFinal: true,
@@ -64,21 +64,21 @@ function readyInput(overrides = {}) {
     maxBatchSize: 1,
     removalReason:
       'First controlled batch removes one bridge-only UI file from the approved manifest.',
-    reviewedBy: 'phase8r-maintainer',
+    reviewedBy: 'storage-closure-maintainer',
     ...overrides,
   };
 }
 
-describe('policyBuilderPhase8ControlledRemovalBatchArtifact', () => {
+describe('policyControlledCompatibilityRemovalBatchArtifact', () => {
   test('builds a ready controlled removal batch artifact', () => {
-    const artifact = buildPolicyBuilderPhase8ControlledRemovalBatchArtifact({
+    const artifact = buildPolicyControlledCompatibilityRemovalBatchArtifact({
       executionPlan: executionPlan(),
       input: readyInput(),
       generatedAt: '2026-07-01T00:00:00.000Z',
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_STATUS_IDS.READY);
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS.READY);
     expect(artifact.ready).toBe(true);
     expect(artifact.validation.ok).toBe(true);
     expect(artifact.executionGate.allowControlledDeletion).toBe(true);
@@ -89,7 +89,7 @@ describe('policyBuilderPhase8ControlledRemovalBatchArtifact', () => {
       selectedCount: 1,
       requestedPathCount: 1,
       maxBatchSize: 1,
-      reviewedBy: 'phase8r-maintainer',
+      reviewedBy: 'storage-closure-maintainer',
     }));
     expect(artifact.removalBatch.removalBatch.entries[0]).toEqual(expect.objectContaining({
       path: MANIFEST_PATH,
@@ -98,7 +98,7 @@ describe('policyBuilderPhase8ControlledRemovalBatchArtifact', () => {
   });
 
   test('blocks when execution gate evidence is not ready', () => {
-    const artifact = buildPolicyBuilderPhase8ControlledRemovalBatchArtifact({
+    const artifact = buildPolicyControlledCompatibilityRemovalBatchArtifact({
       executionPlan: executionPlan(),
       input: readyInput({
         operatorApproval: {
@@ -109,18 +109,18 @@ describe('policyBuilderPhase8ControlledRemovalBatchArtifact', () => {
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_STATUS_IDS.BLOCKED);
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS.BLOCKED);
     expect(artifact.ready).toBe(false);
     expect(artifact.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS
+        riskId: POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS
           .EXECUTION_GATE_NOT_READY,
       }),
     ]));
   });
 
   test('blocks when selected path is outside the approved manifest', () => {
-    const artifact = buildPolicyBuilderPhase8ControlledRemovalBatchArtifact({
+    const artifact = buildPolicyControlledCompatibilityRemovalBatchArtifact({
       executionPlan: executionPlan(),
       input: readyInput({
         selectedPaths: ['server/src/services/notInManifest.mjs'],
@@ -128,18 +128,18 @@ describe('policyBuilderPhase8ControlledRemovalBatchArtifact', () => {
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_STATUS_IDS.BLOCKED);
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS.BLOCKED);
     expect(artifact.removalBatch.readyForRemovalReview).toBe(false);
     expect(artifact.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS
+        riskId: POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS
           .REMOVAL_BATCH_NOT_READY,
       }),
     ]));
   });
 
   test('rejects artifact side-effect claims', () => {
-    const artifact = buildPolicyBuilderPhase8ControlledRemovalBatchArtifact({
+    const artifact = buildPolicyControlledCompatibilityRemovalBatchArtifact({
       executionPlan: executionPlan(),
       input: readyInput(),
       sideEffects: {
@@ -150,19 +150,19 @@ describe('policyBuilderPhase8ControlledRemovalBatchArtifact', () => {
     });
 
     expect(artifact.statusId)
-      .toBe(PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_STATUS_IDS.BLOCKED);
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS.BLOCKED);
     expect(artifact.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
     ]));
     expect(artifact.validation.ok).toBe(false);
   });
 
   test('validates artifact invariants', () => {
-    const artifact = buildPolicyBuilderPhase8ControlledRemovalBatchArtifact({
+    const artifact = buildPolicyControlledCompatibilityRemovalBatchArtifact({
       executionPlan: executionPlan(),
       input: readyInput(),
     });
-    const validation = validatePolicyBuilderPhase8ControlledRemovalBatchArtifact({
+    const validation = validatePolicyControlledCompatibilityRemovalBatchArtifact({
       ...artifact,
       statusId: 'unknown',
       riskCount: 99,
@@ -170,8 +170,8 @@ describe('policyBuilderPhase8ControlledRemovalBatchArtifact', () => {
 
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
-      PHASE8R_CONTROLLED_REMOVAL_BATCH_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
     ]));
   });
 });
