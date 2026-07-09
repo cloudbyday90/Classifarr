@@ -106,9 +106,9 @@ Implemented:
 - validation-evidence markdown coverage for this cutover record
 
 The cutover keeps the final audit as a storage-closure evidence artifact and
-leaves execution-plan artifact naming as the next remaining phase-coded input
-surface.
+leaves controlled removal batch artifact naming as the next remaining
+phase-coded artifact surface.
 
 ## Next Step
 
-Proceed with the execution-plan artifact exporter module naming cutover.
+Proceed with the controlled removal batch artifact module naming cutover.

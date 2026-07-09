@@ -14,8 +14,8 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  buildPolicyBuilderPhase8ExecutionPlanArtifact,
-} from '../server/src/services/policyBuilderPhase8ExecutionPlanArtifact.mjs';
+  buildPolicyCompatibilityDeletionExecutionPlanArtifact,
+} from '../server/src/services/policyCompatibilityDeletionExecutionPlanArtifact.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -66,10 +66,10 @@ function parseArgs(argv = []) {
 
 function usage() {
   return [
-    'Usage: node scripts/generate-policy-builder-phase-8r-execution-plan.mjs [options]',
+    'Usage: node scripts/generate-policy-compatibility-deletion-execution-plan-artifact.mjs [options]',
     '',
     'Options:',
-    '  --input <json>             Required explicit Phase 8R.15 input evidence JSON.',
+    '  --input <json>             Required explicit compatibility deletion input evidence JSON.',
     '  --output <json>            Write nested execution-plan JSON to this path.',
     '  --artifact-output <json>   Write wrapper artifact JSON to this path.',
     '  --allow-blocked            Allow writing blocked execution-plan output.',
@@ -134,14 +134,14 @@ function main() {
     process.exit(2);
   }
 
-  const artifact = buildPolicyBuilderPhase8ExecutionPlanArtifact({
+  const artifact = buildPolicyCompatibilityDeletionExecutionPlanArtifact({
     input,
     generatedAt: options.generatedAt,
   });
 
   if (artifact.ready !== true && options.allowBlocked !== true) {
     console.error(
-      'Phase 8R execution-plan artifact is blocked; pass --allow-blocked to write diagnostic output.'
+      'Compatibility deletion execution-plan artifact is blocked; pass --allow-blocked to write diagnostic output.'
     );
     console.error(JSON.stringify({
       statusId: artifact.statusId,

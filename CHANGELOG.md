@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Compatibility Deletion Execution Plan Artifact Module Cutover** —
+  renamed the execution-plan artifact service, focused tests, docs, CLI script,
+  payload version, builder/validator exports, and npm runner to durable
+  compatibility-deletion names, updated closure requirement audit, validation
+  evidence, roadmap, and handoff references, and preserved explicit input
+  evidence, nested execution-plan generation, blocked-plan diagnostics,
+  side-effect rejection, optional wrapper output, and read-only JSON generation.
 - **Policy Storage Closure Final Removal Audit Module Cutover** — renamed the
   final-removal audit service, focused tests, docs, CLI script, payload
   version, builder export, and npm runner to durable policy-storage closure
@@ -996,12 +1003,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   controlled-removal batch JSON from a ready execution plan, explicit
   execution-gate evidence, selected approved manifest paths, review reason, and
   reviewer metadata without applying compatibility removals.
-- **Policy Builder Phase 8R Execution Plan Artifact Exporter** — added a
+- **Policy Compatibility Deletion Execution Plan Artifact** — added a
   machine-readable execution-plan artifact contract and
-  `npm run policy:phase8r:execution-plan` to generate Phase 8R.15
-  execution-plan JSON from explicit readiness, deletion-gate, replacement,
-  rollback, support, approval, and actor evidence without fabricating readiness
-  or applying compatibility removals.
+  `npm run policy:compatibility-deletion-execution-plan-artifact` to generate
+  compatibility deletion execution-plan JSON from explicit readiness,
+  deletion-gate, replacement, rollback, support, approval, and actor evidence
+  without fabricating readiness or applying compatibility removals.
 - **Policy Storage Closure Final Removal Audit** — added a
   machine-readable final-removal-audit evidence contract and
   `npm run policy:storage-closure-final-removal-audit` to compose the

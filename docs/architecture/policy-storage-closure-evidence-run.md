@@ -154,6 +154,6 @@ node scripts/run-policy-storage-closure-evidence.mjs \
 
 ## Next Step
 
-Proceed with **Execution Plan Artifact Exporter module naming cutover** so the
-execution-plan input used by the final removal audit stops exposing phase-coded
+Proceed with **Controlled Removal Batch Artifact module naming cutover** so the
+batch artifact produced from the execution plan stops exposing phase-coded
 service, script, and runner names.

@@ -3,15 +3,15 @@ import {
   buildPolicyCompatibilityDeletionExecutionPlan,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
 
-const PHASE8R_EXECUTION_PLAN_ARTIFACT_VERSION =
-  'phase8r.execution_plan_artifact.v1';
+const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION =
+  'policy.compatibility_deletion_execution_plan_artifact.v1';
 
-const PHASE8R_EXECUTION_PLAN_ARTIFACT_STATUS_IDS = Object.freeze({
+const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS = Object.freeze({
   READY: 'ready',
   BLOCKED: 'blocked',
 });
 
-const PHASE8R_EXECUTION_PLAN_ARTIFACT_RISK_IDS = Object.freeze({
+const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS = Object.freeze({
   INPUT_NOT_OBJECT: 'input_not_object',
   EXECUTION_PLAN_NOT_READY: 'execution_plan_not_ready',
   EXECUTION_PLAN_VALIDATION_FAILED: 'execution_plan_validation_failed',
@@ -59,8 +59,8 @@ function buildArtifactRisks({
 
   if (input !== null && typeof input !== 'object') {
     risks.push(buildRisk(
-      PHASE8R_EXECUTION_PLAN_ARTIFACT_RISK_IDS.INPUT_NOT_OBJECT,
-      'Phase 8R execution-plan artifact input must be a JSON object.'
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.INPUT_NOT_OBJECT,
+      'Compatibility deletion execution-plan artifact input must be a JSON object.'
     ));
   }
 
@@ -70,16 +70,16 @@ function buildArtifactRisks({
     executionPlan.readyForExecutionGate !== true
   ) {
     risks.push(buildRisk(
-      PHASE8R_EXECUTION_PLAN_ARTIFACT_RISK_IDS.EXECUTION_PLAN_NOT_READY,
-      'Phase 8R execution-plan artifact requires a ready Phase 8R.15 execution plan.',
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.EXECUTION_PLAN_NOT_READY,
+      'Compatibility deletion execution-plan artifact requires a ready deletion execution plan.',
       { statusId: executionPlan.statusId || null }
     ));
   }
 
   if (executionPlan.validation?.ok !== true) {
     risks.push(buildRisk(
-      PHASE8R_EXECUTION_PLAN_ARTIFACT_RISK_IDS.EXECUTION_PLAN_VALIDATION_FAILED,
-      'Phase 8R execution-plan artifact requires valid Phase 8R.15 execution-plan evidence.',
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.EXECUTION_PLAN_VALIDATION_FAILED,
+      'Compatibility deletion execution-plan artifact requires valid deletion execution-plan evidence.',
       { issueCount: executionPlan.validation?.issueCount ?? null }
     ));
   }
@@ -87,8 +87,8 @@ function buildArtifactRisks({
   Object.entries(sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       risks.push(buildRisk(
-        PHASE8R_EXECUTION_PLAN_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
-        `Phase 8R execution-plan artifact cannot report side effect "${key}".`
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+        `Compatibility deletion execution-plan artifact cannot report side effect "${key}".`
       ));
     }
   });
@@ -98,11 +98,11 @@ function buildArtifactRisks({
 
 function determineArtifactStatusId(risks = []) {
   return risks.length === 0
-    ? PHASE8R_EXECUTION_PLAN_ARTIFACT_STATUS_IDS.READY
-    : PHASE8R_EXECUTION_PLAN_ARTIFACT_STATUS_IDS.BLOCKED;
+    ? POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS.READY
+    : POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS.BLOCKED;
 }
 
-function buildPolicyBuilderPhase8ExecutionPlanArtifact({
+function buildPolicyCompatibilityDeletionExecutionPlanArtifact({
   input = {},
   generatedAt = null,
   sideEffects = {},
@@ -114,7 +114,7 @@ function buildPolicyBuilderPhase8ExecutionPlanArtifact({
     sideEffects,
   });
   const artifact = {
-    version: PHASE8R_EXECUTION_PLAN_ARTIFACT_VERSION,
+    version: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION,
     generatedAt: normalizeGeneratedAt(generatedAt),
     statusId: determineArtifactStatusId(risks),
     ready: risks.length === 0,
@@ -131,33 +131,33 @@ function buildPolicyBuilderPhase8ExecutionPlanArtifact({
 
   return {
     ...artifact,
-    validation: validatePolicyBuilderPhase8ExecutionPlanArtifact(artifact),
+    validation: validatePolicyCompatibilityDeletionExecutionPlanArtifact(artifact),
   };
 }
 
-function validatePolicyBuilderPhase8ExecutionPlanArtifact(artifact = {}) {
+function validatePolicyCompatibilityDeletionExecutionPlanArtifact(artifact = {}) {
   const issues = [];
 
-  if (!Object.values(PHASE8R_EXECUTION_PLAN_ARTIFACT_STATUS_IDS)
+  if (!Object.values(POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS)
     .includes(artifact.statusId)) {
     issues.push(buildRisk(
-      PHASE8R_EXECUTION_PLAN_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
-      'Phase 8R execution-plan artifact status must be known.'
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
+      'Compatibility deletion execution-plan artifact status must be known.'
     ));
   }
 
   if (artifact.riskCount !== (artifact.risks || []).length) {
     issues.push(buildRisk(
-      PHASE8R_EXECUTION_PLAN_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
-      'Phase 8R execution-plan artifact risk count must match risk list length.'
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
+      'Compatibility deletion execution-plan artifact risk count must match risk list length.'
     ));
   }
 
   Object.entries(artifact.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
-        PHASE8R_EXECUTION_PLAN_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
-        `Phase 8R execution-plan artifact cannot report side effect "${key}".`
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
+        `Compatibility deletion execution-plan artifact cannot report side effect "${key}".`
       ));
     }
   });
@@ -170,9 +170,9 @@ function validatePolicyBuilderPhase8ExecutionPlanArtifact(artifact = {}) {
 }
 
 export {
-  PHASE8R_EXECUTION_PLAN_ARTIFACT_RISK_IDS,
-  PHASE8R_EXECUTION_PLAN_ARTIFACT_STATUS_IDS,
-  PHASE8R_EXECUTION_PLAN_ARTIFACT_VERSION,
-  buildPolicyBuilderPhase8ExecutionPlanArtifact,
-  validatePolicyBuilderPhase8ExecutionPlanArtifact,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION,
+  buildPolicyCompatibilityDeletionExecutionPlanArtifact,
+  validatePolicyCompatibilityDeletionExecutionPlanArtifact,
 };

@@ -5617,18 +5617,18 @@ Implementation status:
   the policy storage closure evidence run; completion remains dependent on the
   real execution-plan artifact and current checkout removal state.
 
-### 8R.26 Execution Plan Artifact Exporter
+### 8R.26 Policy Compatibility Deletion Execution Plan Artifact
 
-Intent: generate the machine-readable Phase 8R.15 execution-plan JSON that the
-policy storage closure final-removal audit requires, without fabricating
-deletion readiness or performing compatibility path removal.
+Intent: generate the machine-readable compatibility deletion execution-plan JSON
+that the policy storage closure final-removal audit requires, without
+fabricating deletion readiness or performing compatibility path removal.
 
 Tasks:
 
 - Require explicit input evidence for readiness, deletion gates, replacement
   evidence, rollback stance, support stance, manifest approval, and approving
   actor.
-- Build the nested Phase 8R.15 execution plan through the existing
+- Build the nested compatibility deletion execution plan through the existing
   execution-plan contract.
 - Wrap the generated plan with bounded artifact metadata, risks, validation,
   and no-side-effect evidence.
@@ -5643,7 +5643,8 @@ Acceptance criteria:
 
 - The exporter refuses to run without explicit input evidence.
 - Missing approval or blocked readiness prevents ready output.
-- Ready input writes a valid Phase 8R.15 execution-plan JSON artifact.
+- Ready input writes a valid compatibility deletion execution-plan JSON
+  artifact.
 - Blocked diagnostic output requires explicit `--allow-blocked`.
 - The generated execution-plan JSON can be passed to
   `npm run policy:storage-closure-final-removal-audit`.
@@ -5652,15 +5653,18 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.26 execution-plan artifact export is documented in
-  [Policy Builder Phase 8R Execution Plan Artifact Exporter](policy-builder-phase-8r-execution-plan-artifact-exporter.md).
+- Policy compatibility deletion execution-plan artifact export is documented in
+  [Policy Compatibility Deletion Execution Plan Artifact](policy-compatibility-deletion-execution-plan-artifact.md).
+- The module naming cutover is documented in
+  [Policy Compatibility Deletion Execution Plan Artifact Module Cutover](policy-compatibility-deletion-execution-plan-artifact-module-cutover.md).
 - The execution-plan artifact contract lives in
-  `server/src/services/policyBuilderPhase8ExecutionPlanArtifact.mjs`.
+  `server/src/services/policyCompatibilityDeletionExecutionPlanArtifact.mjs`.
 - The exporter script lives in
-  `scripts/generate-policy-builder-phase-8r-execution-plan.mjs`.
-- The root runner is exposed as `npm run policy:phase8r:execution-plan`.
+  `scripts/generate-policy-compatibility-deletion-execution-plan-artifact.mjs`.
+- The root runner is exposed as
+  `npm run policy:compatibility-deletion-execution-plan-artifact`.
 - The focused execution-plan artifact test suite lives in
-  `server/src/__tests__/services/policyBuilderPhase8ExecutionPlanArtifact.test.mjs`.
+  `server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifact.test.mjs`.
 - Current implementation generates the execution-plan JSON input required by
   the policy storage closure final-removal audit while keeping deletion
   readiness caller-owned and explicit.
@@ -5668,12 +5672,12 @@ Implementation status:
 ### 8R.27 Controlled Removal Batch Artifact Exporter
 
 Intent: generate the machine-readable Phase 8R.17 controlled-removal batch JSON
-from a ready Phase 8R.15 execution plan, explicit Phase 8R.16 gate evidence,
-selected manifest paths, review reason, and reviewer metadata.
+from a ready compatibility deletion execution plan, explicit Phase 8R.16 gate
+evidence, selected manifest paths, review reason, and reviewer metadata.
 
 Tasks:
 
-- Require a ready Phase 8R.15 execution-plan JSON artifact.
+- Require a ready compatibility deletion execution-plan JSON artifact.
 - Require explicit Phase 8R.16 gate input evidence for clean worktree,
   backup/restore freshness, operator approval, final rollback/support stance,
   and manifest freshness.
@@ -6193,10 +6197,10 @@ Implement Phase 8R in this order:
     Generates machine-readable final-removal-audit evidence from an explicit
     execution-plan manifest, current path state, source reference scan, and
     validation JSON.
-26. **8R.26 Execution Plan Artifact Exporter**
-    Generates the machine-readable Phase 8R.15 execution-plan JSON from
-    explicit readiness, manifest, replacement, approval, rollback, and support
-    evidence for downstream final-removal-audit tooling.
+26. **8R.26 Policy Compatibility Deletion Execution Plan Artifact**
+    Generates the machine-readable compatibility deletion execution-plan JSON
+    from explicit readiness, manifest, replacement, approval, rollback, and
+    support evidence for downstream final-removal-audit tooling.
 27. **8R.27 Controlled Removal Batch Artifact Exporter**
     Generates a machine-readable Phase 8R.17 controlled-removal batch from a
     ready execution plan, explicit execution-gate evidence, selected approved

@@ -173,6 +173,6 @@ npm run --silent policy:storage-closure-evidence -- \
 
 ## Next Step
 
-Proceed with the execution-plan artifact exporter module naming cutover so the
-input artifact for this final removal audit is also exposed through durable
-policy-domain naming.
+Proceed with the controlled removal batch artifact module naming cutover so the
+batch artifact produced from this execution plan is also exposed through
+durable policy-domain naming.

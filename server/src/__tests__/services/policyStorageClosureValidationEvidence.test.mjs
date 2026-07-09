@@ -39,7 +39,7 @@ describe('policyStorageClosureValidationEvidence', () => {
     expect(evidence.focused.command)
       .toContain('policyStorageClosureFinalRemovalAudit');
     expect(evidence.focused.command)
-      .toContain('policyBuilderPhase8ExecutionPlanArtifact');
+      .toContain('policyCompatibilityDeletionExecutionPlanArtifact');
     expect(evidence.focused.command)
       .toContain('policyBuilderPhase8ControlledRemovalBatchArtifact');
     expect(evidence.lint.command).toBe('npm run lint');
@@ -51,7 +51,9 @@ describe('policyStorageClosureValidationEvidence', () => {
     expect(evidence.markdown.command)
       .toContain('policy-storage-closure-final-removal-audit-module-cutover.md');
     expect(evidence.markdown.command)
-      .toContain('policy-builder-phase-8r-execution-plan-artifact-exporter.md');
+      .toContain('policy-compatibility-deletion-execution-plan-artifact.md');
+    expect(evidence.markdown.command)
+      .toContain('policy-compatibility-deletion-execution-plan-artifact-module-cutover.md');
     expect(evidence.markdown.command)
       .toContain('policy-builder-phase-8r-controlled-removal-batch-artifact-exporter.md');
     expect(evidence.markdown.command)

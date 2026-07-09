@@ -112,4 +112,4 @@ Implemented:
 
 ## Next Step
 
-Proceed with **Execution Plan Artifact Exporter module naming cutover**.
+Proceed with **Controlled Removal Batch Artifact module naming cutover**.

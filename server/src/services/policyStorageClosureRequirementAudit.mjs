@@ -108,13 +108,15 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   },
   {
     componentId: '8r_26',
-    label: 'Execution Plan Artifact Exporter',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-execution-plan-artifact-exporter.md'],
-    contractPaths: [
-      'server/src/services/policyBuilderPhase8ExecutionPlanArtifact.mjs',
-      'scripts/generate-policy-builder-phase-8r-execution-plan.mjs',
+    label: 'Policy Compatibility Deletion Execution Plan Artifact',
+    designDocPaths: [
+      'docs/architecture/policy-compatibility-deletion-execution-plan-artifact.md',
     ],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8ExecutionPlanArtifact.test.mjs'],
+    contractPaths: [
+      'server/src/services/policyCompatibilityDeletionExecutionPlanArtifact.mjs',
+      'scripts/generate-policy-compatibility-deletion-execution-plan-artifact.mjs',
+    ],
+    testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifact.test.mjs'],
   },
   {
     componentId: '8r_27',

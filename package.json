@@ -26,7 +26,7 @@
     "test:local:ai-policy-sweep": "node scripts/local-ai-policy-sweep.mjs",
     "test:local:ai-policy-sweep:cleanup": "node scripts/cleanup-local-ai-policy-sweep.mjs --all-reports",
     "policy:storage-closure-evidence": "node scripts/run-policy-storage-closure-evidence.mjs",
-    "policy:phase8r:execution-plan": "node scripts/generate-policy-builder-phase-8r-execution-plan.mjs",
+    "policy:compatibility-deletion-execution-plan-artifact": "node scripts/generate-policy-compatibility-deletion-execution-plan-artifact.mjs",
     "policy:phase8r:removal-batch": "node scripts/generate-policy-builder-phase-8r-removal-batch.mjs",
     "policy:controlled-removal-apply": "node scripts/generate-policy-controlled-removal-apply.mjs",
     "policy:post-removal-verification": "node scripts/generate-policy-post-removal-verification.mjs",
