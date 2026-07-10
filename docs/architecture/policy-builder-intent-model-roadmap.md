@@ -1596,8 +1596,8 @@ Acceptance criteria:
 
 Implementation record:
 
-- Phase 1R.3 draft state boundary is documented in
-  [Policy Builder Phase 1R Draft State Boundary](policy-builder-phase-1r-draft-state-boundary.md).
+- Draft state boundary is documented in
+  [Policy Builder Draft State Boundary](policy-builder-draft-state-boundary.md).
 - The server-side draft boundary contract lives in
   `server/src/services/policyBuilderDraftStateBoundary.mjs`.
 - The contract now includes a draft-operation audit for form updates,
@@ -1751,8 +1751,8 @@ Implementation record:
   [Policy Builder Boundary Inventory](policy-builder-boundary-inventory.md).
 - Modal orchestration boundary is documented in
   [Policy Builder Modal Orchestration Boundary](policy-builder-modal-orchestration-boundary.md).
-- Phase 1R.3 draft state boundary is documented in
-  [Policy Builder Phase 1R Draft State Boundary](policy-builder-phase-1r-draft-state-boundary.md).
+- Draft state boundary is documented in
+  [Policy Builder Draft State Boundary](policy-builder-draft-state-boundary.md).
 - Phase 1R.4 reference data boundary is documented in
   [Policy Builder Phase 1R Reference Data Boundary](policy-builder-phase-1r-reference-data-boundary.md).
 - Phase 1R.5 legacy compatibility boundary is documented in

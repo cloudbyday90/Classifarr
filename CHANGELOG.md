@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Draft State Boundary Cutover** — renamed the draft-state
+  design record to durable product-domain naming, removed phase-worded runtime
+  notes from draft field and operation metadata, kept save allow-list and
+  draft-operation audits intact, and updated roadmap references.
 - **Policy Builder Modal Orchestration Cutover** — renamed the modal
   orchestration design record to durable product-domain naming, replaced
   `targetPhase` extraction metadata with `targetBoundaryId`, exported modal

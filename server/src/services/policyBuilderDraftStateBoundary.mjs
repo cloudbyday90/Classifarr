@@ -160,7 +160,7 @@ const DRAFT_STATE_FIELD_RECORDS = deepFreeze([
     category: DRAFT_STATE_FIELD_CATEGORIES.COMPATIBILITY_PAYLOAD_METADATA,
     owner: 'policyIntentDraftBridge',
     saveBehavior: 'bridge-only compatibility metadata',
-    notes: 'Legacy runtime metadata until Phase 8R native intent storage replaces the bridge.',
+    notes: 'Legacy runtime metadata until native intent storage replaces the bridge.',
   },
   {
     path: 'policyIntentDraft.presets[].signalMetadataOverrides',
@@ -202,21 +202,21 @@ const DRAFT_STATE_FIELD_RECORDS = deepFreeze([
     category: DRAFT_STATE_FIELD_CATEGORIES.SERVER_PROJECTION_DISPLAY,
     owner: 'usePolicyBuilderReferenceData',
     saveBehavior: 'never serialized as policy intent',
-    notes: 'Observed evidence display projection; future Phase 6R should own evidence/readiness semantics.',
+    notes: 'Observed evidence display projection; engine evidence/readiness contracts should own semantics.',
   },
   {
     path: 'impactPreview',
     category: DRAFT_STATE_FIELD_CATEGORIES.SERVER_PROJECTION_DISPLAY,
     owner: 'usePolicyIntentImpactPreview',
     saveBehavior: 'never serialized as policy intent',
-    notes: 'Read-only diagnostic projection pending Phase 6R cutline.',
+    notes: 'Read-only diagnostic projection pending engine cutline review.',
   },
   {
     path: 'replayPreview',
     category: DRAFT_STATE_FIELD_CATEGORIES.SERVER_PROJECTION_DISPLAY,
     owner: 'usePolicyIntentReplayPreview',
     saveBehavior: 'never serialized as policy intent',
-    notes: 'Read-only diagnostic projection pending Phase 6R cutline.',
+    notes: 'Read-only diagnostic projection pending engine cutline review.',
   },
 ]);
 
@@ -400,7 +400,7 @@ const DRAFT_STATE_OPERATION_RECORDS = deepFreeze([
     persistsUiOnlyState: false,
     persistsServerProjection: false,
     claimsDurableAuthority: false,
-    notes: 'Temporary alias for old custom-signal events; Phase 1R.5 and Phase 2R keep bridge ownership explicit.',
+    notes: 'Temporary alias for old custom-signal events; bridge ownership must stay explicit until native storage replaces it.',
   },
   {
     id: DRAFT_STATE_OPERATION_IDS.BUILD_SAVE_PAYLOAD,
@@ -488,7 +488,7 @@ function validateDraftStateOperation(operation = {}) {
     issues.push({
       riskId: DRAFT_BOUNDARY_AUDIT_RISK_IDS.UNKNOWN_OPERATION,
       operationId: operation.id,
-      message: 'Draft state operation is not part of the Phase 1R.3 boundary contract.',
+      message: 'Draft state operation is not part of the draft-state boundary contract.',
     });
   }
 
