@@ -1760,8 +1760,11 @@ Implementation record:
   [Policy Builder Legacy Compatibility Boundary](policy-builder-legacy-compatibility-boundary.md).
 - Test boundary reset is documented in
   [Policy Builder Test Boundary Reset](policy-builder-test-boundary-reset.md).
-- Phase 1R is complete when the implementation records above and their
-  boundary tests pass together.
+- Client-boundary closure is verified by the durable
+  [Policy Authoring Workflow Completion Audit](policy-authoring-workflow-completion-audit.md),
+  which composes the boundary inventory, modal orchestration, draft state,
+  reference data, legacy compatibility, test-boundary reset, normal workflow,
+  and normal-path exclusion records into one side-effect-free gate.
 
 ## Phase 2R: Intent Draft Bridge As Compatibility Boundary
 

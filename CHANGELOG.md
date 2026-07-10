@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Workflow Completion Audit Cutover** — aligned the
+  client-boundary closure language with the durable policy-authoring workflow
+  completion audit, keeping Phase 1R implementation records as roadmap context
+  while making the side-effect-free product audit the active completion gate.
 - **Policy Builder Test Boundary Reset Cutover** — renamed the test-boundary
   reset design record to durable product-domain naming, removed phase-worded
   active implementation text, preserved modal/draft/reference/legacy/UI-only
