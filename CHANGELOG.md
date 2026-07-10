@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Legacy Compatibility Boundary Cutover** — renamed the
+  legacy-compatibility design record to durable product-domain naming, replaced
+  phase-coded native-storage owner, disposition, deletion marker, summary, and
+  audit messages with native-storage and compatibility-removal terminology,
+  and kept bridge ownership/deletion-readiness audits intact.
 - **Policy Builder Reference Data Boundary Cutover** — renamed the
   reference-data design record to durable product-domain naming, removed
   phase-worded runtime and test strings from the reference-data boundary,

@@ -15,7 +15,7 @@ const LEGACY_COMPATIBILITY_OWNER_IDS = Object.freeze({
   COMBINED_SIGNAL_PRESENTATION: 'combined_signal_presentation',
   PRODUCT_COMPONENT_CONSUMER: 'product_component_consumer',
   SERVER_VALIDATION: 'server_validation',
-  PHASE_8R_NATIVE_STORAGE: 'phase_8r_native_storage',
+  NATIVE_INTENT_STORAGE: 'native_intent_storage',
 });
 
 const LEGACY_COMPATIBILITY_ACTION_IDS = Object.freeze({
@@ -86,7 +86,7 @@ const LEGACY_COMPATIBILITY_ARTIFACTS = deepFreeze([
       LEGACY_COMPATIBILITY_OWNER_IDS.SERVER_VALIDATION,
     ],
     productLanguage: 'starter templates',
-    phase8RDisposition: 'replace with native template links or native intent references',
+    nativeStorageDisposition: 'replace with native template links or native intent references',
   },
   {
     id: LEGACY_COMPATIBILITY_ARTIFACT_IDS.STARTER_TEMPLATE_WEIGHTS,
@@ -99,7 +99,7 @@ const LEGACY_COMPATIBILITY_ARTIFACTS = deepFreeze([
       LEGACY_COMPATIBILITY_OWNER_IDS.SERVER_VALIDATION,
     ],
     productLanguage: 'template influence',
-    phase8RDisposition: 'replace with native influence settings or remove when templates become seed-only',
+    nativeStorageDisposition: 'replace with native influence settings or remove when templates become seed-only',
   },
   {
     id: LEGACY_COMPATIBILITY_ARTIFACT_IDS.CUSTOM_SIGNALS,
@@ -113,7 +113,7 @@ const LEGACY_COMPATIBILITY_ARTIFACTS = deepFreeze([
       LEGACY_COMPATIBILITY_OWNER_IDS.SERVER_VALIDATION,
     ],
     productLanguage: 'declared intent signals',
-    phase8RDisposition: 'delete after native intent storage is read/write authoritative',
+    nativeStorageDisposition: 'delete after native intent storage is read/write authoritative',
   },
   {
     id: LEGACY_COMPATIBILITY_ARTIFACT_IDS.REMOVED_MARKERS,
@@ -127,7 +127,7 @@ const LEGACY_COMPATIBILITY_ARTIFACTS = deepFreeze([
       LEGACY_COMPATIBILITY_OWNER_IDS.PRODUCT_COMPONENT_CONSUMER,
     ],
     productLanguage: 'ignored template signal',
-    phase8RDisposition: 'replace with native ignored-template-signal state or delete if no longer needed',
+    nativeStorageDisposition: 'replace with native ignored-template-signal state or delete if no longer needed',
   },
   {
     id: LEGACY_COMPATIBILITY_ARTIFACT_IDS.STRICT_ADVISORY_METADATA,
@@ -141,7 +141,7 @@ const LEGACY_COMPATIBILITY_ARTIFACTS = deepFreeze([
       LEGACY_COMPATIBILITY_OWNER_IDS.SERVER_VALIDATION,
     ],
     productLanguage: 'hard limit or helpful hint behavior',
-    phase8RDisposition: 'replace with native constraint semantics',
+    nativeStorageDisposition: 'replace with native constraint semantics',
   },
   {
     id: LEGACY_COMPATIBILITY_ARTIFACT_IDS.COMPATIBILITY_FALLBACK_PROJECTION,
@@ -151,10 +151,10 @@ const LEGACY_COMPATIBILITY_ARTIFACTS = deepFreeze([
       LEGACY_COMPATIBILITY_OWNER_IDS.DRAFT_BRIDGE,
       LEGACY_COMPATIBILITY_OWNER_IDS.DRAFT_STATE_COMPOSABLE,
       LEGACY_COMPATIBILITY_OWNER_IDS.SERVER_VALIDATION,
-      LEGACY_COMPATIBILITY_OWNER_IDS.PHASE_8R_NATIVE_STORAGE,
+      LEGACY_COMPATIBILITY_OWNER_IDS.NATIVE_INTENT_STORAGE,
     ],
     productLanguage: 'compatibility bridge projection',
-    phase8RDisposition: 'delete after conversion, rollback, and native read/write parity are complete',
+    nativeStorageDisposition: 'delete after conversion, rollback, and native read/write parity are complete',
   },
 ]);
 
@@ -178,7 +178,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     ],
     productFacing: false,
     canMutateRawLegacyPayload: true,
-    deleteAfterPhase8R: true,
+    deleteAfterNativeStorage: true,
     replacementTarget: 'native intent storage mapper',
   },
   {
@@ -199,7 +199,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     ],
     productFacing: false,
     canMutateRawLegacyPayload: false,
-    deleteAfterPhase8R: false,
+    deleteAfterNativeStorage: false,
     replacementTarget: 'native intent draft command composable',
   },
   {
@@ -219,7 +219,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     ],
     productFacing: false,
     canMutateRawLegacyPayload: false,
-    deleteAfterPhase8R: false,
+    deleteAfterNativeStorage: false,
     replacementTarget: 'policy form state backed by native intent storage',
   },
   {
@@ -238,7 +238,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     ],
     productFacing: false,
     canMutateRawLegacyPayload: false,
-    deleteAfterPhase8R: false,
+    deleteAfterNativeStorage: false,
     replacementTarget: 'native template presentation helper',
   },
   {
@@ -257,7 +257,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     ],
     productFacing: false,
     canMutateRawLegacyPayload: false,
-    deleteAfterPhase8R: false,
+    deleteAfterNativeStorage: false,
     replacementTarget: 'native intent summary projection',
   },
   {
@@ -278,7 +278,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     ],
     productFacing: true,
     canMutateRawLegacyPayload: false,
-    deleteAfterPhase8R: false,
+    deleteAfterNativeStorage: false,
     replacementTarget: 'template seed and intent command components',
   },
   {
@@ -297,7 +297,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     ],
     productFacing: true,
     canMutateRawLegacyPayload: false,
-    deleteAfterPhase8R: false,
+    deleteAfterNativeStorage: false,
     replacementTarget: 'native template detail component',
   },
   {
@@ -316,7 +316,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     ],
     productFacing: false,
     canMutateRawLegacyPayload: false,
-    deleteAfterPhase8R: false,
+    deleteAfterNativeStorage: false,
     replacementTarget: 'native intent request validator with conversion support',
   },
 ]);
@@ -407,8 +407,8 @@ function summarizeLegacyCompatibilityBoundary() {
     deletionGateCount: LEGACY_COMPATIBILITY_DELETION_GATES.length,
     rawMutationOwnerIds,
     productFacingRecordIds,
-    deleteAfterPhase8RRecordIds: LEGACY_COMPATIBILITY_MODULE_RECORDS
-      .filter(record => record.deleteAfterPhase8R)
+    deleteAfterNativeStorageRecordIds: LEGACY_COMPATIBILITY_MODULE_RECORDS
+      .filter(record => record.deleteAfterNativeStorage)
       .map(record => record.id),
   };
 }
@@ -511,7 +511,7 @@ function buildLegacyCompatibilityBoundaryAudit({
       issues.push({
         riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.MISSING_DELETION_GATE,
         gateId,
-        message: 'Phase 8R deletion gate is missing from the compatibility boundary.',
+        message: 'Compatibility-removal deletion gate is missing from the compatibility boundary.',
       });
     }
   });
@@ -521,7 +521,7 @@ function buildLegacyCompatibilityBoundaryAudit({
       issues.push({
         riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.DELETION_GATE_NOT_REQUIRED,
         gateId: gate.id,
-        message: 'Every Phase 8R compatibility deletion gate must be required.',
+        message: 'Every compatibility-removal deletion gate must be required.',
       });
     }
   });

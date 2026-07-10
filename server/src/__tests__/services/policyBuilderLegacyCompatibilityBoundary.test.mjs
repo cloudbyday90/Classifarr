@@ -20,7 +20,7 @@ import {
 } from '../../services/policyBuilderLegacyCompatibilityBoundary.mjs';
 
 describe('policyBuilderLegacyCompatibilityBoundary', () => {
-  test('defines the Phase 1R.5 legacy compatibility artifacts', () => {
+  test('defines the legacy compatibility artifacts', () => {
     expect(listLegacyCompatibilityArtifacts().map(artifact => artifact.id)).toEqual([
       LEGACY_COMPATIBILITY_ARTIFACT_IDS.PRESET_ATTACHMENTS,
       LEGACY_COMPATIBILITY_ARTIFACT_IDS.STARTER_TEMPLATE_WEIGHTS,
@@ -34,7 +34,7 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
       .toEqual(expect.objectContaining({
         label: 'Custom signals',
         productLanguage: 'declared intent signals',
-        phase8RDisposition: 'delete after native intent storage is read/write authoritative',
+        nativeStorageDisposition: 'delete after native intent storage is read/write authoritative',
       }));
   });
 
@@ -50,7 +50,7 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
         'starter_template_mechanics',
         'starter_template_details',
       ],
-      deleteAfterPhase8RRecordIds: ['policy_intent_draft_bridge'],
+      deleteAfterNativeStorageRecordIds: ['policy_intent_draft_bridge'],
     });
   });
 
@@ -115,7 +115,7 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
     ]));
   });
 
-  test('audits deletion gates for required Phase 8R coverage', () => {
+  test('audits deletion gates for required compatibility-removal coverage', () => {
     const audit = buildLegacyCompatibilityBoundaryAudit({
       deletionGates: [
         {
@@ -252,7 +252,7 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
     });
   });
 
-  test('requires Phase 8R deletion gates before bridge removal', () => {
+  test('requires compatibility-removal deletion gates before bridge removal', () => {
     expect(listLegacyCompatibilityDeletionGates().map(gate => gate.id)).toEqual([
       LEGACY_COMPATIBILITY_DELETION_GATE_IDS.NATIVE_INTENT_SCHEMA,
       LEGACY_COMPATIBILITY_DELETION_GATE_IDS.LOSSLESS_CONVERSION,
@@ -268,7 +268,7 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
     });
   });
 
-  test('evaluates Phase 8R deletion readiness from completed gates', () => {
+  test('evaluates compatibility-removal readiness from completed gates', () => {
     const allGateIds = listLegacyCompatibilityDeletionGates().map(gate => gate.id);
 
     expect(evaluateLegacyCompatibilityDeletionReadiness([

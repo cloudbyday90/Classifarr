@@ -1661,8 +1661,8 @@ Tasks:
 - Move product-facing components away from legacy terminology.
 - Keep legacy mutation inside bridge/serializer functions.
 - Mark old helper modules as bridge code, not engine code.
-- Define when bridge modules should be deleted or replaced after Phase 8R native
-  intent storage.
+- Define when bridge modules should be deleted or replaced after native intent
+  storage is authoritative.
 
 Acceptance criteria:
 
@@ -1675,12 +1675,12 @@ Acceptance criteria:
 
 Implementation record:
 
-- Phase 1R.5 legacy compatibility boundary is documented in
-  [Policy Builder Phase 1R Legacy Compatibility Boundary](policy-builder-phase-1r-legacy-compatibility-boundary.md).
+- Legacy compatibility boundary is documented in
+  [Policy Builder Legacy Compatibility Boundary](policy-builder-legacy-compatibility-boundary.md).
 - The server-side legacy compatibility boundary contract lives in
   `server/src/services/policyBuilderLegacyCompatibilityBoundary.mjs`.
-- The contract now includes a compatibility ownership audit and Phase 8R
-  deletion-readiness evaluator.
+- The contract now includes a compatibility ownership audit and
+  compatibility-removal deletion-readiness evaluator.
 
 ### 1R.6 Test Boundary Reset
 
@@ -1701,7 +1701,8 @@ Tasks:
   - reference options and observed evidence are distinct,
   - legacy payload mutation stays in bridge code,
   - legacy compatibility ownership audits remain clean,
-  - legacy deletion remains blocked until all Phase 8R gates are complete,
+  - legacy deletion remains blocked until all compatibility-removal gates are
+    complete,
   - UI-only state is not serialized.
 - Avoid adding snapshot-style tests that freeze transitional layout.
 
@@ -1755,8 +1756,8 @@ Implementation record:
   [Policy Builder Draft State Boundary](policy-builder-draft-state-boundary.md).
 - Reference data boundary is documented in
   [Policy Builder Reference Data Boundary](policy-builder-reference-data-boundary.md).
-- Phase 1R.5 legacy compatibility boundary is documented in
-  [Policy Builder Phase 1R Legacy Compatibility Boundary](policy-builder-phase-1r-legacy-compatibility-boundary.md).
+- Legacy compatibility boundary is documented in
+  [Policy Builder Legacy Compatibility Boundary](policy-builder-legacy-compatibility-boundary.md).
 - Phase 1R.6 test boundary reset is documented in
   [Policy Builder Phase 1R Test Boundary Reset](policy-builder-phase-1r-test-boundary-reset.md).
 - Phase 1R is complete when the implementation records above and their
