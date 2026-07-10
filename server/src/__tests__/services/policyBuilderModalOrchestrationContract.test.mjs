@@ -10,6 +10,7 @@ import {
   MODAL_ORCHESTRATION_DECISION_IDS,
   MODAL_PROHIBITED_RESPONSIBILITY_IDS,
   MODAL_PUBLIC_EVENT_IDS,
+  MODAL_TARGET_BOUNDARY_IDS,
   MODAL_TOUCHPOINT_IDS,
   buildPolicyBuilderModalPublicEventAudit,
   buildPolicyBuilderModalOrchestrationAudit,
@@ -110,7 +111,7 @@ describe('policyBuilderModalOrchestrationContract', () => {
     expect(getModalExtractionTarget(MODAL_EXTRACTION_TARGET_IDS.DIAGNOSTIC_PREVIEW_SURFACES))
       .toEqual(expect.objectContaining({
         targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
-        targetPhase: 'engine_cutline',
+        targetBoundaryId: MODAL_TARGET_BOUNDARY_IDS.ENGINE_CUTLINE,
         relatedRiskIds: [
           POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
           POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
@@ -122,13 +123,13 @@ describe('policyBuilderModalOrchestrationContract', () => {
     expect(getModalExtractionTarget(MODAL_EXTRACTION_TARGET_IDS.SUMMARY_VIEW_PROJECTION))
       .toEqual(expect.objectContaining({
         targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_COMPOSABLE,
-        targetPhase: 'modal_orchestration',
+        targetBoundaryId: MODAL_TARGET_BOUNDARY_IDS.MODAL_ORCHESTRATION,
       }));
 
     expect(getModalExtractionTarget(MODAL_EXTRACTION_TARGET_IDS.SAVE_FAILURE_NOTIFICATION))
       .toEqual(expect.objectContaining({
         targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_PRESENTATION_COMPONENT,
-        targetPhase: 'modal_orchestration',
+        targetBoundaryId: MODAL_TARGET_BOUNDARY_IDS.MODAL_ORCHESTRATION,
       }));
   });
 

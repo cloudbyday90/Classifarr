@@ -1542,7 +1542,7 @@ Tasks:
 Acceptance criteria:
 
 - The modal reads as orchestration, not policy logic.
-- New Phase 6R engine results can be passed in as data without embedding engine
+- New engine results can be passed in as data without embedding engine
   calculations in the modal.
 - Tests assert visible behavior and command routing, not internal scoring.
 - Current modal touchpoints are explicitly mapped to allowed responsibilities or
@@ -1553,8 +1553,8 @@ Acceptance criteria:
 
 Implementation record:
 
-- Phase 1R.2 UI orchestration boundary is documented in
-  [Policy Builder Phase 1R UI Orchestration Boundary](policy-builder-phase-1r-ui-orchestration-boundary.md).
+- Modal orchestration boundary is documented in
+  [Policy Builder Modal Orchestration Boundary](policy-builder-modal-orchestration-boundary.md).
 - The server-side modal orchestration contract lives in
   `server/src/services/policyBuilderModalOrchestrationContract.mjs`.
 - The contract now includes a modal touchpoint audit for current save,
@@ -1563,6 +1563,8 @@ Implementation record:
 - The contract now includes a public event audit for `update:modelValue`,
   `save`, and `close`, and the Vue modal declares runtime emit validators for
   those events.
+- Save-failure presentation now uses the app toast pattern instead of a blocking
+  browser alert.
 
 ### 1R.3 Draft State Boundary
 
@@ -1747,8 +1749,8 @@ Implementation record:
   [Policy Builder Phase 1 Implementation](policy-builder-phase-1-implementation.md).
 - Phase 1R.1 boundary inventory is documented in
   [Policy Builder Boundary Inventory](policy-builder-boundary-inventory.md).
-- Phase 1R.2 UI orchestration boundary is documented in
-  [Policy Builder Phase 1R UI Orchestration Boundary](policy-builder-phase-1r-ui-orchestration-boundary.md).
+- Modal orchestration boundary is documented in
+  [Policy Builder Modal Orchestration Boundary](policy-builder-modal-orchestration-boundary.md).
 - Phase 1R.3 draft state boundary is documented in
   [Policy Builder Phase 1R Draft State Boundary](policy-builder-phase-1r-draft-state-boundary.md).
 - Phase 1R.4 reference data boundary is documented in

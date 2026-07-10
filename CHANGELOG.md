@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Modal Orchestration Cutover** — renamed the modal
+  orchestration design record to durable product-domain naming, replaced
+  `targetPhase` extraction metadata with `targetBoundaryId`, exported modal
+  boundary ids, and moved policy-builder save-failure presentation from a
+  blocking browser alert to the app toast path.
 - **Policy Builder Boundary Inventory Module Cutover** — renamed the
   policy-builder boundary inventory service, tests, imports, and design record
   to durable boundary-inventory names, replaced phase-coded public fields and

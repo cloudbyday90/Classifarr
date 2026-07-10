@@ -152,6 +152,7 @@ import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRouting
 import { buildPolicyBuilderSetupCardViewModels } from '@/utils/policyBuilderSetupCards'
 import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
 import { buildPolicyIntentSummary } from '@/utils/policyIntentSummary'
+import { useToast } from '@/stores/toast'
 
 const props = defineProps({
   modelValue: {
@@ -177,6 +178,8 @@ const emit = defineEmits({
   save: payload => Boolean(payload) && typeof payload === 'object' && !Array.isArray(payload),
   close: () => true,
 })
+
+const toast = useToast()
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -387,7 +390,7 @@ const save = async () => {
     await emit('save', policyData)
   } catch (error) {
     console.error('Failed to save policy:', error)
-    alert('Failed to save policy: ' + error.message)
+    toast.error(error?.message || 'Failed to save policy', 'Failed to save policy')
   }
 }
 </script>

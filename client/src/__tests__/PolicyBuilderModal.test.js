@@ -22,6 +22,13 @@ import PolicyBuilderModal from '../components/policies/PolicyBuilderModal.vue';
 import api from '../api';
 import { getDataRequest } from '../api/core';
 
+const mockToast = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+  warning: vi.fn(),
+  info: vi.fn(),
+}));
+
 vi.mock('../api', () => ({
   default: {
     get: vi.fn(),
@@ -41,6 +48,10 @@ vi.mock('../api/core', () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn(), patch: vi.fn() },
   getSettingsRequest: vi.fn(),
   updateSettingsRequest: vi.fn()
+}));
+
+vi.mock('@/stores/toast', () => ({
+  useToast: () => mockToast,
 }));
 
 describe('PolicyBuilderModal.vue', () => {
@@ -93,6 +104,10 @@ describe('PolicyBuilderModal.vue', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockToast.success.mockClear();
+    mockToast.error.mockClear();
+    mockToast.warning.mockClear();
+    mockToast.info.mockClear();
     api.getLibraries.mockImplementation((...args) => api.get('/libraries', ...args).then((response) => response.data));
     api.getGeneralSettings.mockImplementation((...args) => api.get('/settings', ...args).then((response) => response.data));
     api.getPresetSuggestions.mockImplementation((libraryId) => api.get(`/policies/presets/suggest/${libraryId}`).then((response) => response.data));
@@ -313,6 +328,39 @@ describe('PolicyBuilderModal.vue', () => {
       'save',
       'update:modelValue',
     ]);
+  });
+
+  it('does not use blocking browser alerts for save presentation', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [
+            { id: 1, name: 'Sci-Fi', icon: '🚀', weight: 1.0 }
+          ]
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+    await wrapper.vm.save();
+
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(wrapper.emitted('save')).toBeTruthy();
+
+    alertSpy.mockRestore();
   });
 
   it('keeps migration verifier panels out of the normal policy workflow', async () => {

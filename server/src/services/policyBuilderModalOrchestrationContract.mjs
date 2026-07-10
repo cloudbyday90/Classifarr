@@ -61,6 +61,13 @@ const MODAL_EVENT_PAYLOAD_AUTHORITY_IDS = Object.freeze({
   NO_PAYLOAD: 'no_payload',
 });
 
+const MODAL_TARGET_BOUNDARY_IDS = Object.freeze({
+  ENGINE_CUTLINE: 'engine_cutline',
+  OPERATOR_SURFACE_ENGINE_CUTLINE: 'operator_surface_engine_cutline',
+  MODAL_ORCHESTRATION: 'modal_orchestration',
+  LEGACY_BRIDGE: 'legacy_bridge',
+});
+
 const MODAL_ORCHESTRATION_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_TOUCHPOINT: 'unknown_touchpoint',
   PROHIBITED_RESPONSIBILITY: 'prohibited_responsibility',
@@ -156,7 +163,7 @@ const MODAL_EXTRACTION_TARGETS = deepFreeze([
     id: MODAL_EXTRACTION_TARGET_IDS.DIAGNOSTIC_PREVIEW_SURFACES,
     currentOwner: 'PolicyBuilderModal.vue composes impact and replay preview cards in the normal modal flow.',
     targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
-    targetPhase: 'engine_cutline',
+    targetBoundaryId: MODAL_TARGET_BOUNDARY_IDS.ENGINE_CUTLINE,
     reason: 'Impact and replay previews are diagnostics; engine cutline review must classify them as engine primitives, migration verifiers, or deletion candidates.',
     relatedRiskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
@@ -167,7 +174,7 @@ const MODAL_EXTRACTION_TARGETS = deepFreeze([
     id: MODAL_EXTRACTION_TARGET_IDS.ADVANCED_SCORING_CONTROLS,
     currentOwner: 'PolicyBuilderModal.vue composes advanced scoring and weight controls.',
     targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
-    targetPhase: 'operator_surface_engine_cutline',
+    targetBoundaryId: MODAL_TARGET_BOUNDARY_IDS.OPERATOR_SURFACE_ENGINE_CUTLINE,
     reason: 'Advanced scoring controls conflict with destination-first policy setup unless later phases reframe or remove them.',
     relatedRiskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
@@ -178,7 +185,7 @@ const MODAL_EXTRACTION_TARGETS = deepFreeze([
     id: MODAL_EXTRACTION_TARGET_IDS.SUMMARY_VIEW_PROJECTION,
     currentOwner: 'PolicyBuilderModal.vue builds intent summary view data from the current draft.',
     targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_COMPOSABLE,
-    targetPhase: 'modal_orchestration',
+    targetBoundaryId: MODAL_TARGET_BOUNDARY_IDS.MODAL_ORCHESTRATION,
     reason: 'Summary projection should be treated as display state and moved behind a focused orchestration/view-model boundary when the modal is narrowed.',
     relatedRiskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
@@ -188,7 +195,7 @@ const MODAL_EXTRACTION_TARGETS = deepFreeze([
     id: MODAL_EXTRACTION_TARGET_IDS.LEGACY_COMMAND_ADAPTERS,
     currentOwner: 'PolicyBuilderModal.vue adapts starter-template custom-signal events into draft commands.',
     targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_COMPOSABLE,
-    targetPhase: 'legacy_bridge',
+    targetBoundaryId: MODAL_TARGET_BOUNDARY_IDS.LEGACY_BRIDGE,
     reason: 'The modal can route commands temporarily, but legacy terminology and payload adaptation should be contained by bridge ownership.',
     relatedRiskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.LEGACY_PAYLOAD_TOUCHPOINT,
@@ -197,10 +204,10 @@ const MODAL_EXTRACTION_TARGETS = deepFreeze([
   },
   {
     id: MODAL_EXTRACTION_TARGET_IDS.SAVE_FAILURE_NOTIFICATION,
-    currentOwner: 'PolicyBuilderModal.vue uses a browser alert after save failure.',
+    currentOwner: 'PolicyBuilderModal.vue delegates save-failure presentation to the app toast pattern.',
     targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_PRESENTATION_COMPONENT,
-    targetPhase: 'modal_orchestration',
-    reason: 'Save failure is allowed presentation, but it should use the app notification pattern instead of direct browser alerting.',
+    targetBoundaryId: MODAL_TARGET_BOUNDARY_IDS.MODAL_ORCHESTRATION,
+    reason: 'Save failure is allowed presentation, but blocking browser dialogs are not part of the modal orchestration contract.',
     relatedRiskIds: [],
   },
 ]);
@@ -260,7 +267,7 @@ const MODAL_TOUCHPOINTS = deepFreeze([
   },
   {
     id: MODAL_TOUCHPOINT_IDS.SAVE_FAILURE_BROWSER_ALERT,
-    description: 'Modal currently uses a browser alert after save failure.',
+    description: 'Modal delegates save-failure presentation to the app toast pattern.',
     responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.LOADING_ERROR_PRESENTATION,
     extractionTargetId: MODAL_EXTRACTION_TARGET_IDS.SAVE_FAILURE_NOTIFICATION,
     decisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_PRESENTATION_COMPONENT,
@@ -485,6 +492,7 @@ export {
   MODAL_ORCHESTRATION_DECISION_IDS,
   MODAL_PROHIBITED_RESPONSIBILITY_IDS,
   MODAL_PUBLIC_EVENT_IDS,
+  MODAL_TARGET_BOUNDARY_IDS,
   MODAL_TOUCHPOINT_IDS,
   buildPolicyBuilderModalPublicEventAudit,
   buildPolicyBuilderModalOrchestrationAudit,
