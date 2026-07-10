@@ -70,9 +70,9 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     legacyId: '8r_4',
     label: 'Native Runtime Read Path',
-    designDocPaths: ['docs/architecture/policy-native-runtime-read-path.md'],
-    contractPaths: ['server/src/services/policyNativeRuntimeReadPath.mjs'],
-    testPaths: ['server/src/__tests__/services/policyNativeRuntimeReadPath.test.mjs'],
+    designDocPaths: ['docs/architecture/policy-intent-runtime-read-path.md'],
+    contractPaths: ['server/src/services/policyIntentRuntimeReadPath.mjs'],
+    testPaths: ['server/src/__tests__/services/policyIntentRuntimeReadPath.test.mjs'],
   },
   {
     legacyId: '8r_5',

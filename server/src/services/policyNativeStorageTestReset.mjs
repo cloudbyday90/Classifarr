@@ -115,7 +115,7 @@ const CURRENT_NATIVE_STORAGE_TEST_RECORDS = Object.freeze([
     finalNativeStorageContract: true,
   },
   {
-    path: 'server/src/__tests__/services/policyNativeRuntimeReadPath.test.mjs',
+    path: 'server/src/__tests__/services/policyIntentRuntimeReadPath.test.mjs',
     coverageIds: [POLICY_NATIVE_STORAGE_TEST_COVERAGE_IDS.NATIVE_RUNTIME_READ_PATH_TESTS],
     finalNativeStorageContract: true,
   },

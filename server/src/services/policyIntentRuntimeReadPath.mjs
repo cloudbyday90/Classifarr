@@ -7,7 +7,7 @@ import {
   validatePolicyIntentContract,
 } from './policyIntentSchema.mjs';
 
-const POLICY_NATIVE_RUNTIME_READ_PATH_VERSION = 'policy.native_runtime_read_path.v1';
+const POLICY_INTENT_RUNTIME_READ_PATH_VERSION = 'policy.intent_runtime_read_path.v1';
 
 const POLICY_RUNTIME_READ_SOURCE_IDS = Object.freeze({
   NATIVE_INTENT: 'native_intent',
@@ -216,7 +216,7 @@ function buildCompatibilityReadModel(policy = {}) {
   const statusId = POLICY_RUNTIME_READ_STATUS_IDS.COMPATIBILITY_BRIDGE_FALLBACK;
 
   return {
-    version: POLICY_NATIVE_RUNTIME_READ_PATH_VERSION,
+    version: POLICY_INTENT_RUNTIME_READ_PATH_VERSION,
     sourceId,
     statusId,
     configuration_view: configurationView,
@@ -260,7 +260,7 @@ function buildNativeReadModel(policy = {}, nativeIntent = {}) {
   const intentVersion = getNativeIntentVersion(nativeIntent);
 
   return {
-    version: POLICY_NATIVE_RUNTIME_READ_PATH_VERSION,
+    version: POLICY_INTENT_RUNTIME_READ_PATH_VERSION,
     sourceId,
     statusId,
     configuration_view: policy.configuration_view ||
@@ -313,7 +313,7 @@ function buildNativeReadModel(policy = {}, nativeIntent = {}) {
   };
 }
 
-function buildPolicyNativeRuntimeReadPath({ policy = {} } = {}) {
+function buildPolicyIntentRuntimeReadPath({ policy = {} } = {}) {
   const nativeIntent = findNativeIntentRecord(policy);
   const readModel = nativeIntent && isNativeIntentActive(nativeIntent)
     ? buildNativeReadModel(policy, nativeIntent)
@@ -321,7 +321,7 @@ function buildPolicyNativeRuntimeReadPath({ policy = {} } = {}) {
 
   return {
     ...readModel,
-    validation: validatePolicyNativeRuntimeReadPath(readModel),
+    validation: validatePolicyIntentRuntimeReadPath(readModel),
     nextStep: {
       stepId: 'rollback_snapshot_and_reversion_window',
       label: 'Rollback Snapshot And Reversion Window',
@@ -334,7 +334,7 @@ function findMissingContractKeys(contract = {}) {
   return REQUIRED_CONTRACT_KEYS.filter(key => !Object.prototype.hasOwnProperty.call(contract, key));
 }
 
-function validatePolicyNativeRuntimeReadPath(readModel = {}) {
+function validatePolicyIntentRuntimeReadPath(readModel = {}) {
   const issues = [];
   const contract = asObject(readModel.policy_intent_contract);
 
@@ -402,7 +402,7 @@ function validatePolicyNativeRuntimeReadPath(readModel = {}) {
     if (key !== 'nativeRowsRead' && key !== 'compatibilityProjectionBuilt' && value === true) {
       issues.push({
         riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
-        message: `Policy native runtime read path cannot perform side effect "${key}".`,
+        message: `Policy intent runtime read path cannot perform side effect "${key}".`,
       });
     }
   });
@@ -421,10 +421,10 @@ function validatePolicyNativeRuntimeReadPath(readModel = {}) {
   };
 }
 
-function buildPolicyNativeRuntimeReadPathAudit(
-  readModel = buildPolicyNativeRuntimeReadPath()
+function buildPolicyIntentRuntimeReadPathAudit(
+  readModel = buildPolicyIntentRuntimeReadPath()
 ) {
-  const validation = validatePolicyNativeRuntimeReadPath(readModel);
+  const validation = validatePolicyIntentRuntimeReadPath(readModel);
 
   return {
     ok: validation.ok,
@@ -441,12 +441,12 @@ function buildPolicyNativeRuntimeReadPathAudit(
 }
 
 export {
-  POLICY_NATIVE_RUNTIME_READ_PATH_VERSION,
+  POLICY_INTENT_RUNTIME_READ_PATH_VERSION,
   POLICY_RUNTIME_READ_AUDIT_RISK_IDS,
   POLICY_RUNTIME_READ_REASON_IDS,
   POLICY_RUNTIME_READ_SOURCE_IDS,
   POLICY_RUNTIME_READ_STATUS_IDS,
-  buildPolicyNativeRuntimeReadPath,
-  buildPolicyNativeRuntimeReadPathAudit,
-  validatePolicyNativeRuntimeReadPath,
+  buildPolicyIntentRuntimeReadPath,
+  buildPolicyIntentRuntimeReadPathAudit,
+  validatePolicyIntentRuntimeReadPath,
 };

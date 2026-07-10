@@ -5,14 +5,14 @@ import {
   POLICY_INTENT_SOURCES,
 } from '../../services/policyIntentSchema.mjs';
 import {
-  POLICY_NATIVE_RUNTIME_READ_PATH_VERSION,
+  POLICY_INTENT_RUNTIME_READ_PATH_VERSION,
   POLICY_RUNTIME_READ_AUDIT_RISK_IDS,
   POLICY_RUNTIME_READ_SOURCE_IDS,
   POLICY_RUNTIME_READ_STATUS_IDS,
-  buildPolicyNativeRuntimeReadPath,
-  buildPolicyNativeRuntimeReadPathAudit,
-  validatePolicyNativeRuntimeReadPath,
-} from '../../services/policyNativeRuntimeReadPath.mjs';
+  buildPolicyIntentRuntimeReadPath,
+  buildPolicyIntentRuntimeReadPathAudit,
+  validatePolicyIntentRuntimeReadPath,
+} from '../../services/policyIntentRuntimeReadPath.mjs';
 
 function policy(overrides = {}) {
   return {
@@ -86,14 +86,14 @@ function nativeContract(overrides = {}) {
   };
 }
 
-describe('policyNativeRuntimeReadPath', () => {
+describe('policyIntentRuntimeReadPath', () => {
   test('uses compatibility bridge for unconverted policies and emits source trace', () => {
-    const readPath = buildPolicyNativeRuntimeReadPath({
+    const readPath = buildPolicyIntentRuntimeReadPath({
       policy: policy(),
     });
 
     expect(readPath.validation.ok).toBe(true);
-    expect(readPath.version).toBe(POLICY_NATIVE_RUNTIME_READ_PATH_VERSION);
+    expect(readPath.version).toBe(POLICY_INTENT_RUNTIME_READ_PATH_VERSION);
     expect(readPath.sourceId).toBe(POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE);
     expect(readPath.statusId)
       .toBe(POLICY_RUNTIME_READ_STATUS_IDS.COMPATIBILITY_BRIDGE_FALLBACK);
@@ -109,7 +109,7 @@ describe('policyNativeRuntimeReadPath', () => {
   });
 
   test('uses active native intent over legacy custom signals for converted policies', () => {
-    const readPath = buildPolicyNativeRuntimeReadPath({
+    const readPath = buildPolicyIntentRuntimeReadPath({
       policy: policy({
         native_intent: {
           active: true,
@@ -146,7 +146,7 @@ describe('policyNativeRuntimeReadPath', () => {
   });
 
   test('keeps invalid native intent on native source instead of falling back to compatibility', () => {
-    const readPath = buildPolicyNativeRuntimeReadPath({
+    const readPath = buildPolicyIntentRuntimeReadPath({
       policy: policy({
         native_intent_contract: nativeContract({
           purpose: [
@@ -178,10 +178,10 @@ describe('policyNativeRuntimeReadPath', () => {
   });
 
   test('preserves required policy intent contract shape for native and compatibility reads', () => {
-    const compatibility = buildPolicyNativeRuntimeReadPath({
+    const compatibility = buildPolicyIntentRuntimeReadPath({
       policy: policy(),
     });
-    const native = buildPolicyNativeRuntimeReadPath({
+    const native = buildPolicyIntentRuntimeReadPath({
       policy: policy({
         native_intent: {
           active: true,
@@ -195,7 +195,7 @@ describe('policyNativeRuntimeReadPath', () => {
   });
 
   test('validation rejects source trace mismatch and native custom signal dependency', () => {
-    const readPath = buildPolicyNativeRuntimeReadPath({
+    const readPath = buildPolicyIntentRuntimeReadPath({
       policy: policy({
         native_intent: {
           active: true,
@@ -219,7 +219,7 @@ describe('policyNativeRuntimeReadPath', () => {
         policyStorageMutated: true,
       },
     };
-    const riskIds = validatePolicyNativeRuntimeReadPath(weakened)
+    const riskIds = validatePolicyIntentRuntimeReadPath(weakened)
       .issues
       .map(issue => issue.riskId);
 
@@ -231,7 +231,7 @@ describe('policyNativeRuntimeReadPath', () => {
   });
 
   test('audits cleanly and points to rollback snapshot work next', () => {
-    const readPath = buildPolicyNativeRuntimeReadPath({
+    const readPath = buildPolicyIntentRuntimeReadPath({
       policy: policy({
         native_intent: {
           active: true,
@@ -239,7 +239,7 @@ describe('policyNativeRuntimeReadPath', () => {
         },
       }),
     });
-    const audit = buildPolicyNativeRuntimeReadPathAudit(readPath);
+    const audit = buildPolicyIntentRuntimeReadPathAudit(readPath);
 
     expect(audit).toEqual(expect.objectContaining({
       ok: true,

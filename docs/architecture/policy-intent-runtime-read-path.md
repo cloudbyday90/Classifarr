@@ -1,6 +1,6 @@
-# Policy Native Runtime Read Path
+# Policy Intent Runtime Read Path
 
-Status: implemented as the durable native policy runtime read-path contract.
+Status: implemented as the durable policy intent runtime read-path contract.
 
 ## Problem
 
@@ -81,14 +81,14 @@ Cons:
 ## Final Recommendation Stack
 
 - Server read-path service:
-  `server/src/services/policyNativeRuntimeReadPath.mjs`
+  `server/src/services/policyIntentRuntimeReadPath.mjs`
 - Existing mapper integration:
   `server/src/services/policyIntentMapper.mjs`
 - Test coverage:
-  `server/src/__tests__/services/policyNativeRuntimeReadPath.test.mjs`
+  `server/src/__tests__/services/policyIntentRuntimeReadPath.test.mjs`
   plus mapper/schema contract tests
 - Documentation:
-  `docs/architecture/policy-native-runtime-read-path.md`
+  `docs/architecture/policy-intent-runtime-read-path.md`
 
 ## Implemented Contract
 

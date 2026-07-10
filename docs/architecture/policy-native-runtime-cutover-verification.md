@@ -102,7 +102,7 @@ Use this stack for native runtime cutover verification:
 1. `policyNativePolicyReadService.mjs` attaches active native
    intent rows to detailed policy read models.
 2. `policyIntentMapper.mjs` continues to produce the public projection shape.
-3. `policyNativeRuntimeReadPath.mjs` selects native intent for
+3. `policyIntentRuntimeReadPath.mjs` selects native intent for
    converted policies and compatibility fallback for unconverted policies.
 4. `policyNativeRuntimeCutoverVerification.mjs` audits cutover
    readiness and keeps deletion blocked until the next readiness gate.

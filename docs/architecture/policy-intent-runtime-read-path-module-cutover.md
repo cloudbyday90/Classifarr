@@ -1,4 +1,4 @@
-# Policy Native Runtime Read Path Module Cutover
+# Policy Intent Runtime Read Path Module Cutover
 
 Status: implemented.
 
@@ -32,13 +32,13 @@ and documentation now use stable policy-domain terminology.
 ## Recommendations
 
 1. **Rename the module and focused test to durable policy-domain names.**
-   Use `policyNativeRuntimeReadPath.mjs` and
-   `policyNativeRuntimeReadPath.test.mjs` so future maintainers see the runtime
+   Use `policyIntentRuntimeReadPath.mjs` and
+   `policyIntentRuntimeReadPath.test.mjs` so future maintainers see the runtime
    responsibility directly.
 
 2. **Rename exported constants and helpers without changing values.**
    Keep source/status/reason/risk vocabularies stable, but expose them as
-   `POLICY_RUNTIME_READ_*` and `buildPolicyNativeRuntimeReadPath`.
+   `POLICY_RUNTIME_READ_*` and `buildPolicyIntentRuntimeReadPath`.
 
 3. **Move trace attributes to stable policy names.**
    Replace implementation-phase trace keys with `classifarr.policy.read.*` so
@@ -75,15 +75,15 @@ Cons:
 ## Final Recommendation Stack
 
 - Runtime read-path service:
-  `server/src/services/policyNativeRuntimeReadPath.mjs`
+  `server/src/services/policyIntentRuntimeReadPath.mjs`
 - Runtime read-path tests:
-  `server/src/__tests__/services/policyNativeRuntimeReadPath.test.mjs`
+  `server/src/__tests__/services/policyIntentRuntimeReadPath.test.mjs`
 - Mapper integration:
   `server/src/services/policyIntentMapper.mjs`
 - Cutover verifier integration:
   `server/src/services/policyNativeRuntimeCutoverVerification.mjs`
 - Architecture records:
-  `docs/architecture/policy-native-runtime-read-path.md` and this document
+  `docs/architecture/policy-intent-runtime-read-path.md` and this document
 
 ## Implementation Outcome
 

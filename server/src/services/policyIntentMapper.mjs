@@ -9,11 +9,11 @@
  */
 
 import {
-  buildPolicyNativeRuntimeReadPath,
-} from './policyNativeRuntimeReadPath.mjs';
+  buildPolicyIntentRuntimeReadPath,
+} from './policyIntentRuntimeReadPath.mjs';
 
 export function buildPolicyIntentProjection(policy = {}) {
-  const readPath = buildPolicyNativeRuntimeReadPath({ policy });
+  const readPath = buildPolicyIntentRuntimeReadPath({ policy });
 
   return {
     configuration_view: readPath.configuration_view,

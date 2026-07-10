@@ -4545,8 +4545,8 @@ Acceptance criteria:
 
 Implementation status:
 
-- Policy native runtime read path is documented in
-  [Policy Native Runtime Read Path](policy-native-runtime-read-path.md).
+- Policy intent runtime read path is documented in
+  [Policy Intent Runtime Read Path](policy-intent-runtime-read-path.md).
 - Current implementation adds a focused server read-path service that prefers an
   attached active native intent contract for converted policies and falls back
   to the compatibility bridge for unconverted policies.
@@ -4563,7 +4563,7 @@ Implementation status:
   record, payload version, exported constants/helpers, trace attributes, and
   runtime handoff to durable policy-domain names while preserving source
   selection and compatibility fallback behavior:
-  [Policy Native Runtime Read Path Module Cutover](policy-native-runtime-read-path-module-cutover.md).
+  [Policy Intent Runtime Read Path Module Cutover](policy-intent-runtime-read-path-module-cutover.md).
 
 ### 8R.5 Rollback Snapshot And Reversion Window
 
