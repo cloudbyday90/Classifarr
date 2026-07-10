@@ -3,9 +3,9 @@ import {
   POLICY_INTENT_INFERENCE_STATES,
 } from './policyIntentContract.mjs';
 
-const PHASE8R_MIGRATION_CANDIDATE_REPORT_VERSION = 'phase8r.migration_candidate_report.v1';
+const POLICY_INTENT_MIGRATION_CANDIDATE_REPORT_VERSION = 'policy.intent_migration_candidate_report.v1';
 
-const PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS = Object.freeze({
+const POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS = Object.freeze({
   READY_TO_CONVERT: 'ready_to_convert',
   NEEDS_OPERATOR_REVIEW: 'needs_operator_review',
   PARTIAL_LEGACY_INFERENCE: 'partial_legacy_inference',
@@ -15,7 +15,7 @@ const PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS = Object.freeze({
   BLOCKED_BY_SERVER_CONTRACT_VALIDATION: 'blocked_by_server_contract_validation',
 });
 
-const PHASE8R_MIGRATION_CANDIDATE_REASON_IDS = Object.freeze({
+const POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS = Object.freeze({
   INTENT_CONTRACT_VALID: 'intent_contract_valid',
   SERVER_CONTRACT_VALIDATION_FAILED: 'server_contract_validation_failed',
   UNSUPPORTED_SIGNAL_TYPE: 'unsupported_signal_type',
@@ -28,7 +28,7 @@ const PHASE8R_MIGRATION_CANDIDATE_REASON_IDS = Object.freeze({
   RAW_LEGACY_JSON_SUPPRESSED: 'raw_legacy_json_suppressed',
 });
 
-const PHASE8R_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS = Object.freeze({
+const POLICY_INTENT_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS = Object.freeze({
   POLICY_PRESETS: 'policy_presets',
   POLICY_OVERRIDES: 'policy_overrides',
   CUSTOM_SIGNALS: 'custom_signals',
@@ -36,7 +36,7 @@ const PHASE8R_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS = Object.freeze({
   COMPATIBILITY_BRIDGE_READ: 'compatibility_bridge_read',
 });
 
-const PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS = Object.freeze({
   MISSING_POLICY_REPORT: 'missing_policy_report',
   UNKNOWN_STATUS: 'unknown_status',
   MISSING_POLICY_ID: 'missing_policy_id',
@@ -52,7 +52,7 @@ const PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS = Object.freeze({
   MISSING_DELETION_IMPACT: 'missing_deletion_impact',
 });
 
-const STATUS_IDS = Object.freeze(Object.values(PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS));
+const STATUS_IDS = Object.freeze(Object.values(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS));
 const MAX_POLICIES_DEFAULT = 100;
 const MAX_REASONS_DEFAULT = 12;
 const MAX_UNSUPPORTED_SIGNALS_DEFAULT = 10;
@@ -181,13 +181,13 @@ function buildDeletionImpactEstimate(contract = {}) {
 
   return [
     {
-      impactId: PHASE8R_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS.POLICY_PRESETS,
+      impactId: POLICY_INTENT_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS.POLICY_PRESETS,
       eligibleAfterConversion: templateCount > 0,
       affectedCount: templateCount,
       summary: 'Preset attachments can become template application provenance after conversion.',
     },
     {
-      impactId: PHASE8R_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS.POLICY_OVERRIDES,
+      impactId: POLICY_INTENT_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS.POLICY_OVERRIDES,
       eligibleAfterConversion: hasRules,
       affectedCount: [
         ...asArray(contract.hard_limits),
@@ -197,7 +197,7 @@ function buildDeletionImpactEstimate(contract = {}) {
       summary: 'Overrides can become native intent rules after conversion.',
     },
     {
-      impactId: PHASE8R_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS.CUSTOM_SIGNALS,
+      impactId: POLICY_INTENT_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS.CUSTOM_SIGNALS,
       eligibleAfterConversion: unsupportedCount === 0,
       affectedCount: unsupportedCount,
       summary: unsupportedCount === 0
@@ -205,13 +205,13 @@ function buildDeletionImpactEstimate(contract = {}) {
         : 'Unsupported custom signal shape must be reviewed before deletion.',
     },
     {
-      impactId: PHASE8R_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS.IMPACT_REPLAY_PREVIEW_DIAGNOSTICS,
+      impactId: POLICY_INTENT_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS.IMPACT_REPLAY_PREVIEW_DIAGNOSTICS,
       eligibleAfterConversion: false,
       affectedCount: 0,
-      summary: 'Impact/replay preview diagnostic deletion remains gated by later Phase 8R test reset.',
+      summary: 'Impact/replay preview diagnostic deletion remains gated by the native storage test reset.',
     },
     {
-      impactId: PHASE8R_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS.COMPATIBILITY_BRIDGE_READ,
+      impactId: POLICY_INTENT_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS.COMPATIBILITY_BRIDGE_READ,
       eligibleAfterConversion: false,
       affectedCount: 1,
       summary: 'Compatibility bridge read deletion waits for native runtime read and rollback-window completion.',
@@ -228,30 +228,30 @@ function chooseStatus({
   if (asArray(contract.unsupported_signals).some(signal =>
     signal.reason_code === 'unsupported_signal_type'
   )) {
-    return PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE;
+    return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE;
   }
 
   if (contract.validation?.valid !== true) {
-    return PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION;
+    return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION;
   }
 
   if (!routingTarget.configured) {
-    return PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET;
+    return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET;
   }
 
   if (profileFreshness.stale) {
-    return PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.STALE_PROFILE_DEPENDENCY;
+    return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.STALE_PROFILE_DEPENDENCY;
   }
 
   if (contract.inference_state === POLICY_INTENT_INFERENCE_STATES.PARTIAL) {
-    return PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.PARTIAL_LEGACY_INFERENCE;
+    return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.PARTIAL_LEGACY_INFERENCE;
   }
 
   if (asArray(contract.validation?.warnings).length > 0 || reasons.some(reason => reason.severity === 'warning')) {
-    return PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.NEEDS_OPERATOR_REVIEW;
+    return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.NEEDS_OPERATOR_REVIEW;
   }
 
-  return PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT;
+  return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT;
 }
 
 function buildPolicyCandidate(policy = {}, options = {}) {
@@ -270,12 +270,12 @@ function buildPolicyCandidate(policy = {}, options = {}) {
 
   if (contract.validation?.valid === true) {
     reasons.push(buildReason(
-      PHASE8R_MIGRATION_CANDIDATE_REASON_IDS.INTENT_CONTRACT_VALID,
+      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.INTENT_CONTRACT_VALID,
       'Server intent contract validation passed.'
     ));
   } else {
     reasons.push(buildReason(
-      PHASE8R_MIGRATION_CANDIDATE_REASON_IDS.SERVER_CONTRACT_VALIDATION_FAILED,
+      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.SERVER_CONTRACT_VALIDATION_FAILED,
       'Server intent contract validation failed.',
       'blocker',
       { errorCount: contract.validation?.error_count ?? 0 }
@@ -286,8 +286,8 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     const unsupportedType = signal.reasonCode === 'unsupported_signal_type';
     reasons.push(buildReason(
       unsupportedType
-        ? PHASE8R_MIGRATION_CANDIDATE_REASON_IDS.UNSUPPORTED_SIGNAL_TYPE
-        : PHASE8R_MIGRATION_CANDIDATE_REASON_IDS.UNSUPPORTED_SIGNAL_KEYS,
+        ? POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.UNSUPPORTED_SIGNAL_TYPE
+        : POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.UNSUPPORTED_SIGNAL_KEYS,
       unsupportedType
         ? 'Legacy policy contains a signal type that native intent cannot represent automatically.'
         : 'Legacy policy contains signal keys that require operator review before conversion.',
@@ -301,7 +301,7 @@ function buildPolicyCandidate(policy = {}, options = {}) {
 
   if (contract.inference_state === POLICY_INTENT_INFERENCE_STATES.PARTIAL) {
     reasons.push(buildReason(
-      PHASE8R_MIGRATION_CANDIDATE_REASON_IDS.PARTIAL_INFERENCE_REQUIRES_REVIEW,
+      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.PARTIAL_INFERENCE_REQUIRES_REVIEW,
       'Compatibility projection inferred only a partial native intent contract.',
       'warning'
     ));
@@ -309,7 +309,7 @@ function buildPolicyCandidate(policy = {}, options = {}) {
 
   if (!routingTarget.configured) {
     reasons.push(buildReason(
-      PHASE8R_MIGRATION_CANDIDATE_REASON_IDS.MISSING_ROUTING_TARGET,
+      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.MISSING_ROUTING_TARGET,
       'Policy is missing a configured Arr routing target.',
       'blocker'
     ));
@@ -317,7 +317,7 @@ function buildPolicyCandidate(policy = {}, options = {}) {
 
   if (profileFreshness.stale) {
     reasons.push(buildReason(
-      PHASE8R_MIGRATION_CANDIDATE_REASON_IDS.STALE_PROFILE_DEPENDENCY,
+      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.STALE_PROFILE_DEPENDENCY,
       'Policy depends on stale library profile evidence.',
       'blocker',
       { state: profileFreshness.state }
@@ -326,7 +326,7 @@ function buildPolicyCandidate(policy = {}, options = {}) {
 
   if (asArray(contract.validation?.warnings).length > 0) {
     reasons.push(buildReason(
-      PHASE8R_MIGRATION_CANDIDATE_REASON_IDS.OPERATOR_REVIEW_REQUIRED,
+      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.OPERATOR_REVIEW_REQUIRED,
       'Server contract validation emitted warnings that require operator review.',
       'warning',
       { warningCount: contract.validation.warning_count }
@@ -335,14 +335,14 @@ function buildPolicyCandidate(policy = {}, options = {}) {
 
   if (routingTarget.configured && contract.validation?.valid === true && !profileFreshness.stale) {
     reasons.push(buildReason(
-      PHASE8R_MIGRATION_CANDIDATE_REASON_IDS.READY_WITH_ROUTING_TARGET,
+      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.READY_WITH_ROUTING_TARGET,
       'Policy has a valid intent contract and configured routing target.'
     ));
   }
 
   if (!includeRawLegacyJson) {
     reasons.push(buildReason(
-      PHASE8R_MIGRATION_CANDIDATE_REASON_IDS.RAW_LEGACY_JSON_SUPPRESSED,
+      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.RAW_LEGACY_JSON_SUPPRESSED,
       'Raw legacy JSON is suppressed in operator-safe report mode.',
       'info'
     ));
@@ -361,8 +361,8 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     libraryId: policy.library_id ?? null,
     libraryName: policy.library_name ?? null,
     statusId,
-    canConvert: statusId === PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT,
-    requiresOperatorReview: statusId !== PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT,
+    canConvert: statusId === POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT,
+    requiresOperatorReview: statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT,
     intentContract: {
       schemaVersion: contract.schema_version,
       source: contract.source,
@@ -395,13 +395,13 @@ function summarizeCandidates(candidates) {
 
   return {
     totalPolicyCount: candidates.length,
-    convertibleCount: countsByStatus[PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT],
+    convertibleCount: countsByStatus[POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT],
     reviewRequiredCount: candidates.filter(candidate => candidate.requiresOperatorReview).length,
     countsByStatus,
   };
 }
 
-function buildPolicyBuilderPhase8MigrationCandidateReport({
+function buildPolicyIntentMigrationCandidateReport({
   policies = [],
   maxPolicies = MAX_POLICIES_DEFAULT,
   maxReasons = MAX_REASONS_DEFAULT,
@@ -423,7 +423,7 @@ function buildPolicyBuilderPhase8MigrationCandidateReport({
       includeRawLegacyJson,
     }));
   const report = {
-    version: PHASE8R_MIGRATION_CANDIDATE_REPORT_VERSION,
+    version: POLICY_INTENT_MIGRATION_CANDIDATE_REPORT_VERSION,
     mode: 'dry_run',
     bounded: {
       maxPolicies: normalizedMaxPolicies,
@@ -443,8 +443,8 @@ function buildPolicyBuilderPhase8MigrationCandidateReport({
       rollbackSnapshotsWritten: false,
       legacyPathsDeleted: false,
     },
-    nextPhase: {
-      phaseId: '8r_3',
+    nextStep: {
+      stepId: 'explicit_conversion_workflow',
       label: 'Explicit Conversion Workflow',
       reason: 'Candidate readiness is now reportable without writes, so the next step is an explicit conversion action that creates rollback snapshots and migration events.',
     },
@@ -452,31 +452,31 @@ function buildPolicyBuilderPhase8MigrationCandidateReport({
 
   return {
     ...report,
-    validation: validatePolicyBuilderPhase8MigrationCandidateReport(report),
+    validation: validatePolicyIntentMigrationCandidateReport(report),
   };
 }
 
-function validatePolicyBuilderPhase8MigrationCandidateReport(report = {}) {
+function validatePolicyIntentMigrationCandidateReport(report = {}) {
   const issues = [];
   const candidates = asArray(report.candidates);
 
   if (report.mode !== 'dry_run') {
     issues.push({
-      riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.REPORT_MUTATED_STORAGE,
-      message: 'Phase 8R.2 candidate report must remain in dry-run mode.',
+      riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.REPORT_MUTATED_STORAGE,
+      message: 'Intent migration candidate report must remain in dry-run mode.',
     });
   }
 
   if (candidates.length === 0 && report.bounded?.sourcePolicyCount > 0) {
     issues.push({
-      riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_POLICY_REPORT,
+      riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_POLICY_REPORT,
       message: 'Migration candidate report must include a candidate row for each emitted policy.',
     });
   }
 
   if (report.bounded?.emittedPolicyCount > report.bounded?.maxPolicies) {
     issues.push({
-      riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.REPORT_UNBOUNDED,
+      riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.REPORT_UNBOUNDED,
       message: 'Migration candidate report emitted more policies than its max policy bound.',
     });
   }
@@ -484,7 +484,7 @@ function validatePolicyBuilderPhase8MigrationCandidateReport(report = {}) {
   candidates.forEach((candidate, index) => {
     if (!STATUS_IDS.includes(candidate.statusId)) {
       issues.push({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.UNKNOWN_STATUS,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.UNKNOWN_STATUS,
         policyId: candidate.policyId ?? null,
         statusId: candidate.statusId,
         message: 'Migration candidate uses an unknown status.',
@@ -493,7 +493,7 @@ function validatePolicyBuilderPhase8MigrationCandidateReport(report = {}) {
 
     if (candidate.policyId === null || candidate.policyId === undefined) {
       issues.push({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_POLICY_ID,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_POLICY_ID,
         candidateIndex: index,
         message: 'Migration candidate must include the affected policy id.',
       });
@@ -501,7 +501,7 @@ function validatePolicyBuilderPhase8MigrationCandidateReport(report = {}) {
 
     if (!normalizeString(candidate.policyName)) {
       issues.push({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_POLICY_NAME,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_POLICY_NAME,
         policyId: candidate.policyId ?? null,
         message: 'Migration candidate must include the affected policy name.',
       });
@@ -509,7 +509,7 @@ function validatePolicyBuilderPhase8MigrationCandidateReport(report = {}) {
 
     if (asArray(candidate.reasons).length === 0) {
       issues.push({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_REASON,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_REASON,
         policyId: candidate.policyId ?? null,
         message: 'Migration candidate must include explainable bounded reasons.',
       });
@@ -519,10 +519,10 @@ function validatePolicyBuilderPhase8MigrationCandidateReport(report = {}) {
       asArray(candidate.unsupportedSignals).some(signal =>
         signal.reasonCode === 'unsupported_signal_type'
       ) &&
-      candidate.statusId !== PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE
     ) {
       issues.push({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.UNSUPPORTED_POLICY_NOT_EXPLICIT,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.UNSUPPORTED_POLICY_NOT_EXPLICIT,
         policyId: candidate.policyId ?? null,
         message: 'Unsupported legacy signal types must be reported explicitly.',
       });
@@ -530,11 +530,11 @@ function validatePolicyBuilderPhase8MigrationCandidateReport(report = {}) {
 
     if (
       candidate.intentContract?.valid === false &&
-      candidate.statusId !== PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION &&
-      candidate.statusId !== PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION &&
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE
     ) {
       issues.push({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.SERVER_VALIDATION_FAILURE_NOT_BLOCKED,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.SERVER_VALIDATION_FAILURE_NOT_BLOCKED,
         policyId: candidate.policyId ?? null,
         message: 'Server contract validation failures must block conversion.',
       });
@@ -542,12 +542,12 @@ function validatePolicyBuilderPhase8MigrationCandidateReport(report = {}) {
 
     if (
       candidate.routingTarget?.configured === false &&
-      candidate.statusId !== PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET &&
-      candidate.statusId !== PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION &&
-      candidate.statusId !== PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET &&
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION &&
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE
     ) {
       issues.push({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_ROUTING_NOT_EXPLICIT,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_ROUTING_NOT_EXPLICIT,
         policyId: candidate.policyId ?? null,
         message: 'Missing routing target must be explicit unless a higher-priority blocker exists.',
       });
@@ -555,13 +555,13 @@ function validatePolicyBuilderPhase8MigrationCandidateReport(report = {}) {
 
     if (
       candidate.profileFreshness?.stale === true &&
-      candidate.statusId !== PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.STALE_PROFILE_DEPENDENCY &&
-      candidate.statusId !== PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION &&
-      candidate.statusId !== PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE &&
-      candidate.statusId !== PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.STALE_PROFILE_DEPENDENCY &&
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION &&
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE &&
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET
     ) {
       issues.push({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.STALE_PROFILE_NOT_EXPLICIT,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.STALE_PROFILE_NOT_EXPLICIT,
         policyId: candidate.policyId ?? null,
         message: 'Stale profile dependency must be explicit unless a higher-priority blocker exists.',
       });
@@ -569,7 +569,7 @@ function validatePolicyBuilderPhase8MigrationCandidateReport(report = {}) {
 
     if (asArray(candidate.deletionImpact).length === 0) {
       issues.push({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_DELETION_IMPACT,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_DELETION_IMPACT,
         policyId: candidate.policyId ?? null,
         message: 'Migration candidate must include estimated legacy deletion impact.',
       });
@@ -577,7 +577,7 @@ function validatePolicyBuilderPhase8MigrationCandidateReport(report = {}) {
 
     if (candidate.rawLegacyJson && report.rawLegacyJsonIncluded !== true) {
       issues.push({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.RAW_LEGACY_JSON_EXPOSED,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.RAW_LEGACY_JSON_EXPOSED,
         policyId: candidate.policyId ?? null,
         message: 'Raw legacy JSON cannot be exposed in operator-safe report mode.',
       });
@@ -587,7 +587,7 @@ function validatePolicyBuilderPhase8MigrationCandidateReport(report = {}) {
   Object.entries(report.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.REPORT_MUTATED_STORAGE,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.REPORT_MUTATED_STORAGE,
         message: `Migration candidate report cannot perform side effect "${key}".`,
       });
     }
@@ -600,10 +600,10 @@ function validatePolicyBuilderPhase8MigrationCandidateReport(report = {}) {
   };
 }
 
-function buildPolicyBuilderPhase8MigrationCandidateReportAudit(
-  report = buildPolicyBuilderPhase8MigrationCandidateReport()
+function buildPolicyIntentMigrationCandidateReportAudit(
+  report = buildPolicyIntentMigrationCandidateReport()
 ) {
-  const validation = validatePolicyBuilderPhase8MigrationCandidateReport(report);
+  const validation = validatePolicyIntentMigrationCandidateReport(report);
 
   return {
     ok: validation.ok,
@@ -611,8 +611,8 @@ function buildPolicyBuilderPhase8MigrationCandidateReportAudit(
     emittedPolicyCount: report.bounded?.emittedPolicyCount ?? 0,
     summary: report.summary || summarizeCandidates([]),
     validation,
-    nextPhase: report.nextPhase || {
-      phaseId: '8r_3',
+    nextStep: report.nextStep || {
+      stepId: 'explicit_conversion_workflow',
       label: 'Explicit Conversion Workflow',
       reason: 'Dry-run readiness reporting is complete; conversion now needs an explicit audited action.',
     },
@@ -620,12 +620,12 @@ function buildPolicyBuilderPhase8MigrationCandidateReportAudit(
 }
 
 export {
-  PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS,
-  PHASE8R_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS,
-  PHASE8R_MIGRATION_CANDIDATE_REASON_IDS,
-  PHASE8R_MIGRATION_CANDIDATE_REPORT_VERSION,
-  PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS,
-  buildPolicyBuilderPhase8MigrationCandidateReport,
-  buildPolicyBuilderPhase8MigrationCandidateReportAudit,
-  validatePolicyBuilderPhase8MigrationCandidateReport,
+  POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS,
+  POLICY_INTENT_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS,
+  POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS,
+  POLICY_INTENT_MIGRATION_CANDIDATE_REPORT_VERSION,
+  POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS,
+  buildPolicyIntentMigrationCandidateReport,
+  buildPolicyIntentMigrationCandidateReportAudit,
+  validatePolicyIntentMigrationCandidateReport,
 };

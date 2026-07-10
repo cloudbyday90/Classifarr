@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Intent Migration Candidate Report Module Cutover** — renamed the
+  migration candidate report service, focused tests, exports, downstream
+  imports, storage-closure evidence references, roadmap entry, and design docs
+  to durable policy-intent migration names, replaced the local `nextPhase`
+  handoff with `nextStep.stepId = explicit_conversion_workflow`, and preserved
+  dry-run-only classification, bounded operator reasons, deletion-impact
+  estimates, and raw legacy JSON redaction.
 - **Policy Replay Preview Migration Verifier Module Cutover** — renamed the
   replay-preview migration verifier service, focused test, exports, diagnostics
   import, validation evidence, roadmap references, and design docs to durable
@@ -1226,7 +1233,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   key, and legacy behavior retained until commit; and requires passing or
   operator-accepted Phase 7R migration verifier output before
   behavior-sensitive policies can be marked ready.
-- **Policy Builder Phase 8R Migration Candidate Report** — added a server-owned
+- **Policy Intent Migration Candidate Report** — added a server-owned
   dry-run migration readiness report, architecture record, and audit suite that
   classifies each emitted policy as ready to convert, needing operator review,
   partial legacy inference, unsupported legacy shape, missing routing target,

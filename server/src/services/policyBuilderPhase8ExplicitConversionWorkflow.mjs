@@ -5,10 +5,10 @@ import {
   POLICY_CONVERSION_ACTOR_SOURCE_IDS,
 } from './policyConversionActorSources.mjs';
 import {
-  PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS,
-  buildPolicyBuilderPhase8MigrationCandidateReport,
-  validatePolicyBuilderPhase8MigrationCandidateReport,
-} from './policyBuilderPhase8MigrationCandidateReport.mjs';
+  POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS,
+  buildPolicyIntentMigrationCandidateReport,
+  validatePolicyIntentMigrationCandidateReport,
+} from './policyIntentMigrationCandidateReport.mjs';
 import {
   POLICY_NATIVE_SCHEMA_TABLE_IDS,
 } from './policyNativeSchemaContract.mjs';
@@ -222,7 +222,7 @@ function buildConversionStep({
       'Policy already has native intent for the requested version.',
       'info'
     ));
-  } else if (candidate.statusId !== PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT) {
+  } else if (candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT) {
     statusId = PHASE8R_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_CANDIDATE_STATUS;
     reasons.push(buildReason(
       PHASE8R_CONVERSION_REASON_IDS.CANDIDATE_NOT_READY,
@@ -348,7 +348,7 @@ function buildPolicyBuilderPhase8ExplicitConversionWorkflow({
   targetVersion = 1,
   now = null,
 } = {}) {
-  const report = candidateReport || buildPolicyBuilderPhase8MigrationCandidateReport({ policies });
+  const report = candidateReport || buildPolicyIntentMigrationCandidateReport({ policies });
   const selected = new Set(asArray(selectedPolicyIds).map(policyId => String(policyId)));
   const behaviorSensitive = new Set(asArray(behaviorSensitivePolicyIds).map(policyId => String(policyId)));
   const normalizedAction = {
@@ -408,13 +408,13 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
   const issues = [];
   const steps = asArray(workflow.steps);
   const reportValidation = candidateReport
-    ? validatePolicyBuilderPhase8MigrationCandidateReport(candidateReport)
+    ? validatePolicyIntentMigrationCandidateReport(candidateReport)
     : { ok: true, issues: [] };
 
   if (!reportValidation.ok) {
     issues.push({
       riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.INVALID_CANDIDATE_REPORT,
-      message: 'Explicit conversion requires a valid Phase 8R.2 candidate report.',
+      message: 'Explicit conversion requires a valid policy intent migration candidate report.',
       details: reportValidation.issues,
     });
   }
@@ -456,7 +456,7 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
     }
 
     if (step.statusId === PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY) {
-      if (step.candidateStatusId !== PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT) {
+      if (step.candidateStatusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT) {
         issues.push({
           riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_READY_CANDIDATE,
           policyId: step.policyId,

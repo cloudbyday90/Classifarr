@@ -4455,8 +4455,10 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 8R.2 migration candidate report is documented in
-  [Policy Builder Phase 8R Migration Candidate Report](policy-builder-phase-8r-migration-candidate-report.md).
+- The policy intent migration candidate report is documented in
+  [Policy Intent Migration Candidate Report](policy-intent-migration-candidate-report.md)
+  and its module cutover record is captured in
+  [Policy Intent Migration Candidate Report Module Cutover](policy-intent-migration-candidate-report-module-cutover.md).
 - Current implementation adds a server-owned dry-run report that classifies each
   emitted policy as ready to convert, needing operator review, partial legacy
   inference, unsupported legacy shape, missing routing target, stale profile
@@ -4468,6 +4470,9 @@ Implementation status:
   hide unsupported/routing/stale/validation blockers behind generic statuses,
   omit deletion-impact estimates, or expose raw legacy JSON outside explicit
   maintainer mode.
+- Runtime output now uses the durable `policy.intent_migration_candidate_report.v1`
+  contract and `nextStep.stepId = explicit_conversion_workflow`, leaving roadmap
+  phase IDs as planning metadata only.
 
 ### 8R.3 Explicit Conversion Workflow
 

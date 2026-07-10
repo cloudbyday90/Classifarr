@@ -105,7 +105,7 @@ const CURRENT_NATIVE_STORAGE_TEST_RECORDS = Object.freeze([
     finalNativeStorageContract: true,
   },
   {
-    path: 'server/src/__tests__/services/policyBuilderPhase8MigrationCandidateReport.test.mjs',
+    path: 'server/src/__tests__/services/policyIntentMigrationCandidateReport.test.mjs',
     coverageIds: [POLICY_NATIVE_STORAGE_TEST_COVERAGE_IDS.DRY_RUN_CANDIDATE_REPORT_TESTS],
     finalNativeStorageContract: true,
   },

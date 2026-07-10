@@ -1,11 +1,11 @@
 import {
-  PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS,
-  PHASE8R_MIGRATION_CANDIDATE_REASON_IDS,
-  PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS,
-  buildPolicyBuilderPhase8MigrationCandidateReport,
-  buildPolicyBuilderPhase8MigrationCandidateReportAudit,
-  validatePolicyBuilderPhase8MigrationCandidateReport,
-} from '../../services/policyBuilderPhase8MigrationCandidateReport.mjs';
+  POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS,
+  POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS,
+  POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS,
+  buildPolicyIntentMigrationCandidateReport,
+  buildPolicyIntentMigrationCandidateReportAudit,
+  validatePolicyIntentMigrationCandidateReport,
+} from '../../services/policyIntentMigrationCandidateReport.mjs';
 
 function preset(overrides = {}) {
   return {
@@ -53,9 +53,9 @@ function candidateByPolicyId(report, policyId) {
   return report.candidates.find(candidate => candidate.policyId === policyId);
 }
 
-describe('policyBuilderPhase8MigrationCandidateReport', () => {
+describe('policyIntentMigrationCandidateReport', () => {
   test('reports ready-to-convert policies without mutating storage', () => {
-    const report = buildPolicyBuilderPhase8MigrationCandidateReport({
+    const report = buildPolicyIntentMigrationCandidateReport({
       policies: [policy()],
     });
 
@@ -76,23 +76,23 @@ describe('policyBuilderPhase8MigrationCandidateReport', () => {
     expect(report.candidates[0]).toEqual(expect.objectContaining({
       policyId: 14,
       policyName: 'Movies Policy',
-      statusId: PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT,
+      statusId: POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT,
       canConvert: true,
       requiresOperatorReview: false,
       rawLegacyJson: undefined,
     }));
     expect(report.candidates[0].reasons).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: PHASE8R_MIGRATION_CANDIDATE_REASON_IDS.READY_WITH_ROUTING_TARGET,
+        reasonId: POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.READY_WITH_ROUTING_TARGET,
       }),
       expect.objectContaining({
-        reasonId: PHASE8R_MIGRATION_CANDIDATE_REASON_IDS.RAW_LEGACY_JSON_SUPPRESSED,
+        reasonId: POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.RAW_LEGACY_JSON_SUPPRESSED,
       }),
     ]));
   });
 
-  test('classifies every Phase 8R.2 migration status explicitly', () => {
-    const report = buildPolicyBuilderPhase8MigrationCandidateReport({
+  test('classifies every intent migration status explicitly', () => {
+    const report = buildPolicyIntentMigrationCandidateReport({
       policies: [
         policy({ id: 1, name: 'Ready' }),
         policy({
@@ -177,23 +177,23 @@ describe('policyBuilderPhase8MigrationCandidateReport', () => {
 
     expect(report.validation.ok).toBe(true);
     expect(candidateByPolicyId(report, 1).statusId)
-      .toBe(PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT);
+      .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT);
     expect(candidateByPolicyId(report, 2).statusId)
-      .toBe(PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.NEEDS_OPERATOR_REVIEW);
+      .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.NEEDS_OPERATOR_REVIEW);
     expect(candidateByPolicyId(report, 3).statusId)
-      .toBe(PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.PARTIAL_LEGACY_INFERENCE);
+      .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.PARTIAL_LEGACY_INFERENCE);
     expect(candidateByPolicyId(report, 4).statusId)
-      .toBe(PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE);
+      .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE);
     expect(candidateByPolicyId(report, 5).statusId)
-      .toBe(PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET);
+      .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET);
     expect(candidateByPolicyId(report, 6).statusId)
-      .toBe(PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.STALE_PROFILE_DEPENDENCY);
+      .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.STALE_PROFILE_DEPENDENCY);
     expect(candidateByPolicyId(report, 7).statusId)
-      .toBe(PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION);
+      .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION);
   });
 
   test('includes explainable affected policy details and deletion impact estimates', () => {
-    const report = buildPolicyBuilderPhase8MigrationCandidateReport({
+    const report = buildPolicyIntentMigrationCandidateReport({
       policies: [policy()],
     });
     const candidate = report.candidates[0];
@@ -224,12 +224,12 @@ describe('policyBuilderPhase8MigrationCandidateReport', () => {
       policy({ id: 2, name: 'Two', legacyJson: { customSignals: { secret: true } } }),
       policy({ id: 3, name: 'Three', legacyJson: { customSignals: { secret: true } } }),
     ];
-    const operatorReport = buildPolicyBuilderPhase8MigrationCandidateReport({
+    const operatorReport = buildPolicyIntentMigrationCandidateReport({
       policies,
       maxPolicies: 2,
       includeRawLegacyJson: true,
     });
-    const maintainerReport = buildPolicyBuilderPhase8MigrationCandidateReport({
+    const maintainerReport = buildPolicyIntentMigrationCandidateReport({
       policies: [policies[0]],
       maintainerMode: true,
       includeRawLegacyJson: true,
@@ -251,7 +251,7 @@ describe('policyBuilderPhase8MigrationCandidateReport', () => {
   });
 
   test('rejects unsupported, validation, routing, and stale blockers that are not explicit', () => {
-    const report = buildPolicyBuilderPhase8MigrationCandidateReport({
+    const report = buildPolicyIntentMigrationCandidateReport({
       policies: [
         policy({
           id: 4,
@@ -293,30 +293,30 @@ describe('policyBuilderPhase8MigrationCandidateReport', () => {
       ...report,
       candidates: report.candidates.map(candidate => ({
         ...candidate,
-        statusId: PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.NEEDS_OPERATOR_REVIEW,
+        statusId: POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.NEEDS_OPERATOR_REVIEW,
       })),
     };
-    const validation = validatePolicyBuilderPhase8MigrationCandidateReport(weakened);
+    const validation = validatePolicyIntentMigrationCandidateReport(weakened);
 
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.UNSUPPORTED_POLICY_NOT_EXPLICIT,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.UNSUPPORTED_POLICY_NOT_EXPLICIT,
       }),
       expect.objectContaining({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_ROUTING_NOT_EXPLICIT,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_ROUTING_NOT_EXPLICIT,
       }),
       expect.objectContaining({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.STALE_PROFILE_NOT_EXPLICIT,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.STALE_PROFILE_NOT_EXPLICIT,
       }),
       expect.objectContaining({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.SERVER_VALIDATION_FAILURE_NOT_BLOCKED,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.SERVER_VALIDATION_FAILURE_NOT_BLOCKED,
       }),
     ]));
   });
 
   test('rejects reports that mutate storage, omit reasons, omit deletion impact, or leak raw legacy JSON', () => {
-    const report = buildPolicyBuilderPhase8MigrationCandidateReport({
+    const report = buildPolicyIntentMigrationCandidateReport({
       policies: [policy()],
     });
     const mutated = {
@@ -333,39 +333,40 @@ describe('policyBuilderPhase8MigrationCandidateReport', () => {
         rawLegacyJson: { customSignals: { leaked: true } },
       })),
     };
-    const validation = validatePolicyBuilderPhase8MigrationCandidateReport(mutated);
+    const validation = validatePolicyIntentMigrationCandidateReport(mutated);
 
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.REPORT_MUTATED_STORAGE,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.REPORT_MUTATED_STORAGE,
       }),
       expect.objectContaining({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_REASON,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_REASON,
       }),
       expect.objectContaining({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_DELETION_IMPACT,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_DELETION_IMPACT,
       }),
       expect.objectContaining({
-        riskId: PHASE8R_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.RAW_LEGACY_JSON_EXPOSED,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.RAW_LEGACY_JSON_EXPOSED,
       }),
     ]));
   });
 
   test('audits cleanly and points to the explicit conversion workflow', () => {
-    const report = buildPolicyBuilderPhase8MigrationCandidateReport({
+    const report = buildPolicyIntentMigrationCandidateReport({
       policies: [policy()],
     });
-    const audit = buildPolicyBuilderPhase8MigrationCandidateReportAudit(report);
+    const audit = buildPolicyIntentMigrationCandidateReportAudit(report);
 
-    expect(validatePolicyBuilderPhase8MigrationCandidateReport(report).ok).toBe(true);
+    expect(validatePolicyIntentMigrationCandidateReport(report).ok).toBe(true);
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
       emittedPolicyCount: 1,
-      nextPhase: expect.objectContaining({
-        phaseId: '8r_3',
+      nextStep: expect.objectContaining({
+        stepId: 'explicit_conversion_workflow',
       }),
     }));
+    expect(audit.nextPhase).toBeUndefined();
   });
 });

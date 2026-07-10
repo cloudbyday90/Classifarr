@@ -2,8 +2,8 @@ import {
   POLICY_MIGRATION_VERIFIER_STATUS_IDS,
 } from '../../services/policyMigrationVerifierRollback.mjs';
 import {
-  buildPolicyBuilderPhase8MigrationCandidateReport,
-} from '../../services/policyBuilderPhase8MigrationCandidateReport.mjs';
+  buildPolicyIntentMigrationCandidateReport,
+} from '../../services/policyIntentMigrationCandidateReport.mjs';
 import {
   PHASE8R_CONVERSION_ACTOR_SOURCE_IDS,
   PHASE8R_CONVERSION_AUDIT_RISK_IDS,
@@ -60,7 +60,7 @@ function policy(overrides = {}) {
 }
 
 function readyReport(overrides = {}) {
-  return buildPolicyBuilderPhase8MigrationCandidateReport({
+  return buildPolicyIntentMigrationCandidateReport({
     policies: [policy(overrides)],
   });
 }
@@ -161,7 +161,7 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
   });
 
   test('blocks selected policies that are not ready in the candidate report', () => {
-    const candidateReport = buildPolicyBuilderPhase8MigrationCandidateReport({
+    const candidateReport = buildPolicyIntentMigrationCandidateReport({
       policies: [
         policy({
           routingTarget: {},

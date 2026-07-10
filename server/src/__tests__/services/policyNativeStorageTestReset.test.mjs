@@ -29,7 +29,7 @@ describe('policyNativeStorageTestReset', () => {
     expect(plan.testRecords.map(record => record.path)).toEqual(expect.arrayContaining([
       'server/src/__tests__/migrations.test.mjs',
       'server/src/__tests__/services/policyNativeSchemaContract.test.mjs',
-      'server/src/__tests__/services/policyBuilderPhase8MigrationCandidateReport.test.mjs',
+      'server/src/__tests__/services/policyIntentMigrationCandidateReport.test.mjs',
       'server/src/__tests__/services/policyBuilderPhase8ExplicitConversionWorkflow.test.mjs',
       'server/src/__tests__/services/policyNativeRuntimeReadPath.test.mjs',
       'server/src/__tests__/services/policyRollbackSnapshotWindow.test.mjs',

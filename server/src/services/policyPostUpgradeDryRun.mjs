@@ -1,7 +1,7 @@
 import {
-  PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS,
-  buildPolicyBuilderPhase8MigrationCandidateReport,
-} from './policyBuilderPhase8MigrationCandidateReport.mjs';
+  POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS,
+  buildPolicyIntentMigrationCandidateReport,
+} from './policyIntentMigrationCandidateReport.mjs';
 import {
   PHASE8R_CONVERSION_ACTOR_SOURCE_IDS,
   buildPolicyBuilderPhase8ExplicitConversionWorkflow,
@@ -156,7 +156,7 @@ async function loadPolicyPostUpgradePolicies({
 function getReadyPolicyIds(candidateReport = {}) {
   return asArray(candidateReport.candidates)
     .filter(candidate =>
-      candidate.statusId === PHASE8R_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT &&
+      candidate.statusId === POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT &&
       candidate.canConvert === true
     )
     .map(candidate => candidate.policyId)
@@ -216,7 +216,7 @@ function buildPolicyPostUpgradeDryRun({
 } = {}) {
   const normalizedMaxPolicies = normalizePolicyLimit(maxPolicies);
   const generatedAt = normalizeTimestamp(now);
-  const report = candidateReport || buildPolicyBuilderPhase8MigrationCandidateReport({
+  const report = candidateReport || buildPolicyIntentMigrationCandidateReport({
     policies,
     maxPolicies: normalizedMaxPolicies,
   });

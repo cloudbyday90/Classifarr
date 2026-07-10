@@ -50,9 +50,12 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     legacyId: '8r_2',
     label: 'Migration Candidate Report',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-migration-candidate-report.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8MigrationCandidateReport.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8MigrationCandidateReport.test.mjs'],
+    designDocPaths: [
+      'docs/architecture/policy-intent-migration-candidate-report.md',
+      'docs/architecture/policy-intent-migration-candidate-report-module-cutover.md',
+    ],
+    contractPaths: ['server/src/services/policyIntentMigrationCandidateReport.mjs'],
+    testPaths: ['server/src/__tests__/services/policyIntentMigrationCandidateReport.test.mjs'],
   },
   {
     legacyId: '8r_3',
