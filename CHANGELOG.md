@@ -791,14 +791,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Evidence Fingerprint Module Cutover** — renamed the evidence
   projection fingerprint helper and focused test to durable product-domain
   names, moved the fingerprint artifact contract to
-  `policy.evidence.fingerprint.v1`, updated Phase 6R boundary/intent imports,
-  and lowered the production naming regression baseline after inventory
-  validation proved reduced phase-coded production debt.
+  `policy.evidence.fingerprint.v1`, updated policy evidence boundary and policy
+  intent imports, and lowered the production naming regression baseline after
+  inventory validation proved reduced phase-coded production debt.
 - **Policy Evidence Quality Module Cutover** — renamed the evidence-quality
   helper and focused test to durable product-domain names, moved the internal
-  quality contract version to `policy.evidence.quality.v1`, updated Phase 6R
-  engine imports, and lowered the production naming regression baseline after
-  inventory validation proved reduced phase-coded production debt.
+  quality contract version to `policy.evidence.quality.v1`, updated policy
+  evidence and downstream engine imports, refreshed the module cutover evidence,
+  and lowered the production naming regression baseline after inventory
+  validation proved reduced phase-coded production debt.
 - **Policy Production Naming Regression Audit** — added a durable-named
   Phase 9R.4 guardrail that consumes the production naming inventory and blocks
   increases in phase-coded production references, rename candidates, obsolete
@@ -828,11 +829,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   inference so Phase 6R.2 consumes generated evidence quality, blocks missing
   or insufficient evidence-quality handoffs, and carries sanitized quality
   IDs/counts without raw evidence labels.
-- **Policy Builder Phase 6R Evidence Quality** — added a server-generated,
-  label-free evidence quality assessment for Phase 6R.1 projections so
-  downstream intent/readiness engines can distinguish usable, constrained,
-  review-needed, and insufficient evidence without reusing replay/provider UI
-  diagnostics.
+- **Policy Evidence Quality** — added a server-generated, label-free evidence
+  quality assessment for policy evidence projections so downstream
+  intent/readiness engines can distinguish usable, constrained, review-needed,
+  and insufficient evidence without reusing replay/provider UI diagnostics.
 - **Classification Progress Stage Contract Cutover** — added stage-first
   classification progress API/WebSocket fields, centralized legacy phase alias
   mapping, and moved Command Center processing UI copy/readers to stage
