@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented as the Phase 6R.1 completion audit for the policy evidence handoff.
+Implemented as the durable completion audit for the policy evidence handoff.
 
 The audit validates the complete result returned by
 `buildBoundedPolicyEvidenceProjection` before downstream engines treat the
@@ -58,7 +58,7 @@ Pros:
 - Gives downstream intent/readiness engines one audit to verify before
   consuming evidence.
 - Protects against accidental blocked-result handoffs.
-- Keeps Phase 6R.1 evidence hardening server-side and non-UI.
+- Keeps policy evidence hardening server-side and non-UI.
 - Preserves the offline/no-storage-write contract.
 
 Cons:
@@ -96,7 +96,7 @@ Cons:
 
 ## Next Step
 
-Proceed to **Phase 6R.2 Intent Engine consumption hardening**. It should consume
-the audited evidence handoff, trust generated quality/status only after this
+Proceed to **Policy Intent Engine consumption hardening**. It should consume the
+audited evidence handoff, trust generated quality/status only after this
 boundary audit passes, and keep inferred evidence separate from
 operator-declared constraints.
