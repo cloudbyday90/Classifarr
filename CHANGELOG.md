@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Test Boundary Reset Cutover** — renamed the test-boundary
+  reset design record to durable product-domain naming, removed phase-worded
+  active implementation text, preserved modal/draft/reference/legacy/UI-only
+  boundary-rule coverage, and updated roadmap references.
 - **Policy Builder Legacy Compatibility Boundary Cutover** — renamed the
   legacy-compatibility design record to durable product-domain naming, replaced
   phase-coded native-storage owner, disposition, deletion marker, summary, and

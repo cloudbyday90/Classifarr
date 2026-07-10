@@ -1714,8 +1714,8 @@ Acceptance criteria:
 
 Implementation record:
 
-- Phase 1R.6 test boundary reset is documented in
-  [Policy Builder Phase 1R Test Boundary Reset](policy-builder-phase-1r-test-boundary-reset.md).
+- Test boundary reset is documented in
+  [Policy Builder Test Boundary Reset](policy-builder-test-boundary-reset.md).
 - The server-side test boundary reset contract lives in
   `server/src/services/policyBuilderTestBoundaryReset.mjs`.
 
@@ -1758,8 +1758,8 @@ Implementation record:
   [Policy Builder Reference Data Boundary](policy-builder-reference-data-boundary.md).
 - Legacy compatibility boundary is documented in
   [Policy Builder Legacy Compatibility Boundary](policy-builder-legacy-compatibility-boundary.md).
-- Phase 1R.6 test boundary reset is documented in
-  [Policy Builder Phase 1R Test Boundary Reset](policy-builder-phase-1r-test-boundary-reset.md).
+- Test boundary reset is documented in
+  [Policy Builder Test Boundary Reset](policy-builder-test-boundary-reset.md).
 - Phase 1R is complete when the implementation records above and their
   boundary tests pass together.
 
