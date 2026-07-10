@@ -22,6 +22,10 @@ projection before downstream engines can consume the handoff. Evidence quality
 hardening adds a generated, label-free quality assessment so downstream engines
 can distinguish usable, constrained, review-needed, and insufficient evidence
 without reusing replay/provider diagnostics.
+Boundary-audit hardening adds a reusable server-side check over the complete
+handoff result so downstream engines only receive evidence when the input gate,
+projection audit, fingerprint audit, side-effect contract, issue count, and
+intent-inference handoff agree.
 
 ## Problem
 
@@ -113,6 +117,12 @@ supports each piece of evidence?
    next-action IDs instead of recalculating evidence readiness from raw bucket
    labels.
 
+9. **Audit the complete boundary handoff.**
+   The boundary result should be checked as a unit before downstream engines
+   consume it: ready results must have a successful input gate, projection
+   audit, fingerprint audit, and intent-inference handoff; blocked results must
+   have no next step and no live/provider/storage side effects.
+
 ## Pros And Cons
 
 Pros:
@@ -127,6 +137,8 @@ Pros:
 - Makes old replay/impact reducer disposition explicit before future cleanup.
 - Gives downstream engines a label-free quality assessment for usable,
   constrained, review-needed, and insufficient evidence.
+- Gives the intent engine one boundary audit to trust instead of duplicating
+  input-gate, projection, fingerprint, and side-effect checks.
 
 Cons:
 
@@ -135,6 +147,8 @@ Cons:
   classified for rewrite, deletion, or maintainer-only migration use.
 - Runtime classification still uses current paths until runtime integration.
 - Native storage waits until runtime engine contracts prove stable.
+- The boundary audit is defensive validation; it does not replace the lower
+  input-gate, projection, fingerprint, or quality audits.
 
 ## Final Recommendation Stack
 
@@ -142,9 +156,12 @@ Cons:
   `server/src/services/policyEvidenceEngine.mjs`
 - Quality module:
   `server/src/services/policyEvidenceQuality.mjs`
+- Boundary module:
+  `server/src/services/policyEvidenceBoundary.mjs`
 - Test module:
   `server/src/__tests__/services/policyEvidenceEngine.test.mjs`
-  and `server/src/__tests__/services/policyEvidenceQuality.test.mjs`
+  `server/src/__tests__/services/policyEvidenceQuality.test.mjs`,
+  and `server/src/__tests__/services/policyEvidenceBoundary.test.mjs`
 - Documentation:
   `docs/architecture/policy-evidence-engine.md`
 - Roadmap owner:
@@ -163,6 +180,7 @@ The server module exports:
 - an evidence projection summary builder,
 - an evidence quality assessment builder,
 - an evidence projection audit for generated/tampered contract instances,
+- an evidence boundary audit for complete handoff results,
 - a reducer cutline inventory,
 - bucket/source lookup helpers,
 - bucket/source validation helpers,
@@ -173,7 +191,9 @@ Boundary callers should use
 `server/src/services/policyEvidenceBoundary.mjs` when they need a
 complete policy-evidence handoff. That boundary runs the input gate first, maps
 public section names into the projection input shape, builds the projection,
-and runs the projection audit.
+and runs the projection audit. Callers can then use
+`buildPolicyEvidenceBoundaryAudit` to validate the complete handoff before
+passing it to the intent engine.
 
 The projection entry shape is intentionally small:
 
@@ -277,6 +297,11 @@ fails when a projection:
   diagnostic UI copy.
 - Projection quality contains status, next action, reason IDs, booleans, and
   counts only; it does not carry evidence labels.
+- Boundary audits require ready results to have a successful input gate,
+  projection audit, fingerprint audit, and intent-inference handoff; blocked
+  results cannot carry a next step.
+- Boundary audits reject live provider lookup, provider quota reads, and policy
+  storage mutation as evidence-boundary side effects.
 - Replay and impact reducers are blocked from normal flow unless rewritten into
   source-authorized evidence reducers.
 

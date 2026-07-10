@@ -1,8 +1,10 @@
 import {
+  POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS,
   POLICY_EVIDENCE_BOUNDARY_STATUS_IDS,
   POLICY_EVIDENCE_BOUNDARY_VERSION,
   adaptPolicyEvidenceInput,
   buildBoundedPolicyEvidenceProjection,
+  buildPolicyEvidenceBoundaryAudit,
 } from '../../services/policyEvidenceBoundary.mjs';
 import {
   POLICY_EVIDENCE_BUCKET_IDS,
@@ -110,6 +112,15 @@ describe('policyEvidenceBoundary', () => {
           label: 'Radarr accepted root folder',
         }),
       ]));
+    expect(buildPolicyEvidenceBoundaryAudit(result)).toEqual(expect.objectContaining({
+      ok: true,
+      issueCount: 0,
+      statusId: POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.READY,
+      evidenceReady: true,
+      nextStep: expect.objectContaining({
+        stepId: 'intent_inference',
+      }),
+    }));
   });
 
   test('blocks projection when input gate rejects unsafe payloads', () => {
@@ -140,6 +151,13 @@ describe('policyEvidenceBoundary', () => {
       POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.LIVE_PROVIDER_LOOKUP,
     ]));
     expect(JSON.stringify(result)).not.toContain('raw provider payload title');
+    expect(buildPolicyEvidenceBoundaryAudit(result)).toEqual(expect.objectContaining({
+      ok: true,
+      issueCount: 0,
+      statusId: POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_INPUT_GATE,
+      evidenceReady: false,
+      nextStep: null,
+    }));
   });
 
   test('blocks handoff when the projection fingerprint does not match the bounded projection', () => {
@@ -167,6 +185,40 @@ describe('policyEvidenceBoundary', () => {
         riskId:
           POLICY_EVIDENCE_FINGERPRINT_AUDIT_RISK_IDS.FINGERPRINT_MISMATCH,
       }),
+    ]));
+    expect(buildPolicyEvidenceBoundaryAudit(result)).toEqual(expect.objectContaining({
+      ok: true,
+      issueCount: 0,
+      statusId: POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_PROJECTION_FINGERPRINT,
+      evidenceReady: false,
+      nextStep: null,
+    }));
+  });
+
+  test('audits tampered boundary results that claim unsafe side effects or handoffs', () => {
+    const result = buildBoundedPolicyEvidenceProjection({
+      evidenceInput: {
+        metadataEvidence: [{
+          label: 'Provider evidence',
+          liveLookup: true,
+        }],
+      },
+    });
+    const audit = buildPolicyEvidenceBoundaryAudit({
+      ...result,
+      issueCount: 0,
+      nextStep: { stepId: 'intent_inference' },
+      sideEffects: {
+        ...result.sideEffects,
+        liveProviderLookupPerformed: true,
+      },
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.issueIds).toEqual(expect.arrayContaining([
+      POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.ISSUE_COUNT_MISMATCH,
+      POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.BLOCKED_WITH_NEXT_STEP,
+      POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
     ]));
   });
 });

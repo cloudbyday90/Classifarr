@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Boundary Audit** — added a server-owned audit for the
+  complete Phase 6R.1 evidence handoff so ready results require a successful
+  input gate, projection audit, fingerprint audit, issue-count match,
+  side-effect-free execution, and `intent_inference` next step, while blocked
+  results cannot advance to downstream engines.
 - **Policy Intent Conversion Workflow Module Cutover** — renamed the explicit
   conversion workflow service, focused tests, exports, downstream post-upgrade
   consumers, storage-closure evidence references, roadmap entry, and design docs

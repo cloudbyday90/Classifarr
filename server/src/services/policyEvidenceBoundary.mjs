@@ -19,6 +19,22 @@ const POLICY_EVIDENCE_BOUNDARY_STATUS_IDS = Object.freeze({
   BLOCKED_BY_PROJECTION_FINGERPRINT: 'blocked_by_projection_fingerprint',
 });
 
+const POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS = Object.freeze({
+  UNKNOWN_STATUS: 'unknown_status',
+  ISSUE_COUNT_MISMATCH: 'issue_count_mismatch',
+  READY_WITHOUT_INPUT_GATE: 'ready_without_input_gate',
+  READY_WITHOUT_PROJECTION: 'ready_without_projection',
+  READY_WITHOUT_PROJECTION_AUDIT: 'ready_without_projection_audit',
+  READY_WITHOUT_FINGERPRINT_AUDIT: 'ready_without_fingerprint_audit',
+  READY_WITHOUT_NEXT_STEP: 'ready_without_next_step',
+  BLOCKED_WITH_NEXT_STEP: 'blocked_with_next_step',
+  BLOCKED_BY_INPUT_GATE_WITH_PROJECTION: 'blocked_by_input_gate_with_projection',
+  BLOCKED_BY_PROJECTION_WITHOUT_PROJECTION: 'blocked_by_projection_without_projection',
+  PROJECTION_AUDIT_STATUS_MISMATCH: 'projection_audit_status_mismatch',
+  FINGERPRINT_AUDIT_STATUS_MISMATCH: 'fingerprint_audit_status_mismatch',
+  SIDE_EFFECT_PERFORMED: 'side_effect_performed',
+});
+
 function asPlainObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
@@ -116,9 +132,140 @@ function buildBoundedPolicyEvidenceProjection({
   };
 }
 
+function buildPolicyEvidenceBoundaryAudit(boundaryResult = {}) {
+  const issues = [];
+  const statusIds = Object.values(POLICY_EVIDENCE_BOUNDARY_STATUS_IDS);
+  const statusId = boundaryResult.statusId || null;
+  const ok = boundaryResult.ok === true;
+  const issueCount = Array.isArray(boundaryResult.issues)
+    ? boundaryResult.issues.length
+    : 0;
+
+  if (!statusIds.includes(statusId)) {
+    issues.push({
+      riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.UNKNOWN_STATUS,
+      message: 'Policy evidence boundary returned an unknown status.',
+      statusId,
+    });
+  }
+
+  if (boundaryResult.issueCount !== issueCount) {
+    issues.push({
+      riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.ISSUE_COUNT_MISMATCH,
+      message: 'Policy evidence boundary issue count must match returned issues.',
+      expectedIssueCount: issueCount,
+      actualIssueCount: boundaryResult.issueCount,
+    });
+  }
+
+  if (ok && boundaryResult.inputGate?.ok !== true) {
+    issues.push({
+      riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.READY_WITHOUT_INPUT_GATE,
+      message: 'Ready policy evidence requires a successful input gate.',
+    });
+  }
+
+  if (ok && !boundaryResult.projection) {
+    issues.push({
+      riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.READY_WITHOUT_PROJECTION,
+      message: 'Ready policy evidence requires a bounded projection.',
+    });
+  }
+
+  if (ok && boundaryResult.projectionAudit?.ok !== true) {
+    issues.push({
+      riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.READY_WITHOUT_PROJECTION_AUDIT,
+      message: 'Ready policy evidence requires a successful projection audit.',
+    });
+  }
+
+  if (ok && boundaryResult.projectionFingerprintAudit?.ok !== true) {
+    issues.push({
+      riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.READY_WITHOUT_FINGERPRINT_AUDIT,
+      message: 'Ready policy evidence requires a successful projection fingerprint audit.',
+    });
+  }
+
+  if (ok && boundaryResult.nextStep?.stepId !== 'intent_inference') {
+    issues.push({
+      riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.READY_WITHOUT_NEXT_STEP,
+      message: 'Ready policy evidence must hand off to intent inference.',
+      nextStepId: boundaryResult.nextStep?.stepId || null,
+    });
+  }
+
+  if (!ok && boundaryResult.nextStep) {
+    issues.push({
+      riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.BLOCKED_WITH_NEXT_STEP,
+      message: 'Blocked policy evidence must not hand off to the next engine.',
+      nextStepId: boundaryResult.nextStep?.stepId || null,
+    });
+  }
+
+  if (statusId === POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_INPUT_GATE &&
+      boundaryResult.projection) {
+    issues.push({
+      riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.BLOCKED_BY_INPUT_GATE_WITH_PROJECTION,
+      message: 'Input-gate failures must stop before projection construction.',
+    });
+  }
+
+  if (
+    statusId === POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_PROJECTION_AUDIT &&
+    !boundaryResult.projection
+  ) {
+    issues.push({
+      riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.BLOCKED_BY_PROJECTION_WITHOUT_PROJECTION,
+      message: 'Projection-audit failures must include the rejected projection.',
+    });
+  }
+
+  if (
+    statusId === POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_PROJECTION_AUDIT &&
+    boundaryResult.projectionAudit?.ok !== false
+  ) {
+    issues.push({
+      riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.PROJECTION_AUDIT_STATUS_MISMATCH,
+      message: 'Projection-audit blocked status must include a failed projection audit.',
+    });
+  }
+
+  if (
+    statusId === POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_PROJECTION_FINGERPRINT &&
+    boundaryResult.projectionFingerprintAudit?.ok !== false
+  ) {
+    issues.push({
+      riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.FINGERPRINT_AUDIT_STATUS_MISMATCH,
+      message: 'Projection-fingerprint blocked status must include a failed fingerprint audit.',
+    });
+  }
+
+  Object.entries(asPlainObject(boundaryResult.sideEffects)).forEach(([sideEffectId, performed]) => {
+    if (performed === true && sideEffectId !== 'evidenceProjectionBuilt') {
+      issues.push({
+        riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        message: 'Policy evidence boundary must not perform live lookups or storage writes.',
+        sideEffectId,
+      });
+    }
+  });
+
+  return {
+    ok: issues.length === 0,
+    issueCount: issues.length,
+    statusId,
+    evidenceReady: ok,
+    nextStep: boundaryResult.nextStep || null,
+    issueIds: issues.map(issue => issue.riskId),
+    issues,
+  };
+}
+
 export {
+  POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS,
   POLICY_EVIDENCE_BOUNDARY_STATUS_IDS,
   POLICY_EVIDENCE_BOUNDARY_VERSION,
   adaptPolicyEvidenceInput,
   buildBoundedPolicyEvidenceProjection,
+  buildPolicyEvidenceBoundaryAudit,
 };

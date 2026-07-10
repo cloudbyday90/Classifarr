@@ -3256,6 +3256,10 @@ Implementation status:
   status, score, next-action ID, reason IDs, bucket counts, and identity/routing
   booleans so downstream engines can distinguish usable, constrained,
   review-needed, and insufficient evidence without carrying raw evidence labels.
+- The evidence boundary now exposes a complete handoff audit that verifies the
+  input gate, projection audit, fingerprint audit, issue count, side-effect
+  contract, blocked/ready status, and `intent_inference` next-step state before
+  downstream engines consume evidence.
 - Policy evidence quality hardening is documented in
   [Policy Evidence Quality](policy-evidence-quality.md).
 - The policy evidence quality architecture cutover renamed the active quality
@@ -3263,6 +3267,8 @@ Implementation status:
   [Policy Evidence Quality Architecture Cutover](policy-evidence-quality-architecture-cutover.md).
 - The evidence quality helper lives in
   `server/src/services/policyEvidenceQuality.mjs`.
+- Policy evidence boundary audit hardening is documented in
+  [Policy Evidence Boundary Audit](policy-evidence-boundary-audit.md).
 - The evidence projection fingerprint helper now lives in
   `server/src/services/policyEvidenceFingerprint.mjs`; the artifact contract is
   `policy.evidence.fingerprint.v1`.
