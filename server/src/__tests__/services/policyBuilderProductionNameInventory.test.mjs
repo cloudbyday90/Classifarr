@@ -17,9 +17,9 @@ export function buildPolicyBuilderPhase6IntentEngine() {}
 `,
     },
     {
-      path: 'server/src/services/policyBuilderPhase8ExplicitConversionWorkflow.mjs',
+      path: 'server/src/services/policyBuilderPhase8NativeRuntimeReadPath.mjs',
       content: `
-const PHASE8R_EXPLICIT_CONVERSION_WORKFLOW_VERSION = 'phase8r.explicit_conversion_workflow.v1';
+const PHASE8R_NATIVE_RUNTIME_READ_PATH_VERSION = 'phase8r.native_runtime_read_path.v1';
 `,
     },
     {
@@ -82,10 +82,10 @@ describe('policyBuilderProductionNameInventory', () => {
         durableTarget: 'policyIntentInference',
       }),
       expect.objectContaining({
-        repoPath: 'server/src/services/policyBuilderPhase8ExplicitConversionWorkflow.mjs',
+        repoPath: 'server/src/services/policyBuilderPhase8NativeRuntimeReadPath.mjs',
         categoryId: PRODUCTION_NAMING_CATEGORY_IDS.PRODUCTION,
         decisionId: PRODUCTION_NAMING_DECISION_IDS.RENAME_IN_PRODUCTION_CODE,
-        durableTarget: 'policyIntentConversionWorkflow',
+        durableTarget: 'nativePolicyIntentReadPath',
       }),
     ]));
     expect(inventory.renameMap).toEqual(expect.arrayContaining([

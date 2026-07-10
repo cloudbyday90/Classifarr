@@ -60,9 +60,12 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     legacyId: '8r_3',
     label: 'Explicit Conversion Workflow',
-    designDocPaths: ['docs/architecture/policy-builder-phase-8r-explicit-conversion-workflow.md'],
-    contractPaths: ['server/src/services/policyBuilderPhase8ExplicitConversionWorkflow.mjs'],
-    testPaths: ['server/src/__tests__/services/policyBuilderPhase8ExplicitConversionWorkflow.test.mjs'],
+    designDocPaths: [
+      'docs/architecture/policy-intent-conversion-workflow.md',
+      'docs/architecture/policy-intent-conversion-workflow-module-cutover.md',
+    ],
+    contractPaths: ['server/src/services/policyIntentConversionWorkflow.mjs'],
+    testPaths: ['server/src/__tests__/services/policyIntentConversionWorkflow.test.mjs'],
   },
   {
     legacyId: '8r_4',

@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Intent Conversion Workflow Module Cutover** — renamed the explicit
+  conversion workflow service, focused tests, exports, downstream post-upgrade
+  consumers, storage-closure evidence references, roadmap entry, and design docs
+  to durable policy-intent conversion names, replaced the workflow-local
+  `nextPhase` handoff with `nextStep.stepId = native_runtime_read_path`,
+  switched conversion idempotency keys to `policy-intent:convert`, and preserved
+  approved actor-source enforcement, ready-candidate gating, rollback planning,
+  verifier gating, migration-event planning, native-record planning, legacy
+  behavior retention, and side-effect rejection.
 - **Policy Intent Migration Candidate Report Module Cutover** — renamed the
   migration candidate report service, focused tests, exports, downstream
   imports, storage-closure evidence references, roadmap entry, and design docs
@@ -1223,7 +1232,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   payload leakage, live provider lookup markers, UI diagnostic language,
   metadata-owned destination identity, and non-operator hard-limit or avoid
   evidence; and updates the Phase 6R evidence design record and roadmap.
-- **Policy Builder Phase 8R Explicit Conversion Workflow** — added a
+- **Policy Intent Conversion Workflow** — added a
   side-effect-free conversion workflow contract, architecture record, and audit
   suite that plans selected native policy conversions only from approved manual
   operator, post-upgrade apply, test fixture, or maintainer migration actions;

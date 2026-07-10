@@ -13,11 +13,11 @@ import {
   POLICY_NATIVE_SCHEMA_TABLE_IDS,
 } from './policyNativeSchemaContract.mjs';
 
-const PHASE8R_EXPLICIT_CONVERSION_WORKFLOW_VERSION = 'phase8r.explicit_conversion_workflow.v1';
-const PHASE8R_CONVERSION_ROLLBACK_WINDOW_DAYS = 14;
-const PHASE8R_CONVERSION_ACTOR_SOURCE_IDS = POLICY_CONVERSION_ACTOR_SOURCE_IDS;
+const POLICY_INTENT_CONVERSION_WORKFLOW_VERSION = 'policy.intent_conversion_workflow.v1';
+const POLICY_INTENT_CONVERSION_ROLLBACK_WINDOW_DAYS = 14;
+const POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS = POLICY_CONVERSION_ACTOR_SOURCE_IDS;
 
-const PHASE8R_CONVERSION_STEP_STATUS_IDS = Object.freeze({
+const POLICY_INTENT_CONVERSION_STEP_STATUS_IDS = Object.freeze({
   READY_TO_APPLY: 'ready_to_apply',
   BLOCKED_BY_ACTOR_SOURCE: 'blocked_by_actor_source',
   BLOCKED_BY_NOT_SELECTED: 'blocked_by_not_selected',
@@ -28,7 +28,7 @@ const PHASE8R_CONVERSION_STEP_STATUS_IDS = Object.freeze({
   ALREADY_CONVERTED: 'already_converted',
 });
 
-const PHASE8R_CONVERSION_REASON_IDS = Object.freeze({
+const POLICY_INTENT_CONVERSION_REASON_IDS = Object.freeze({
   SELECTED_FOR_CONVERSION: 'selected_for_conversion',
   CANDIDATE_READY: 'candidate_ready',
   CANDIDATE_NOT_READY: 'candidate_not_ready',
@@ -45,7 +45,7 @@ const PHASE8R_CONVERSION_REASON_IDS = Object.freeze({
   LEGACY_BEHAVIOR_RETAINED_UNTIL_COMMIT: 'legacy_behavior_retained_until_commit',
 });
 
-const PHASE8R_CONVERSION_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS = Object.freeze({
   INVALID_CANDIDATE_REPORT: 'invalid_candidate_report',
   UNKNOWN_ACTOR_SOURCE: 'unknown_actor_source',
   ORDINARY_READ_OR_SAVE_CONVERSION: 'ordinary_read_or_save_conversion',
@@ -64,10 +64,10 @@ const PHASE8R_CONVERSION_AUDIT_RISK_IDS = Object.freeze({
 });
 
 const ALLOWED_ACTOR_SOURCE_IDS = Object.freeze([
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY,
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.TEST_FIXTURE,
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.MAINTAINER_MIGRATION_TOOL,
+  POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
+  POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY,
+  POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.TEST_FIXTURE,
+  POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MAINTAINER_MIGRATION_TOOL,
 ]);
 
 function asArray(value) {
@@ -88,7 +88,7 @@ function buildReason(reasonId, message, severity = 'info', metadata = {}) {
 }
 
 function buildIdempotencyKey(policyId, targetVersion = 1) {
-  return `phase8r:convert:${policyId}:v${targetVersion}`;
+  return `policy-intent:convert:${policyId}:v${targetVersion}`;
 }
 
 function buildDefaultRollbackExpiry(options = {}) {
@@ -96,7 +96,7 @@ function buildDefaultRollbackExpiry(options = {}) {
 
   const createdAt = options.now ? new Date(options.now) : new Date();
   const validCreatedAt = Number.isNaN(createdAt.getTime()) ? new Date() : createdAt;
-  validCreatedAt.setUTCDate(validCreatedAt.getUTCDate() + PHASE8R_CONVERSION_ROLLBACK_WINDOW_DAYS);
+  validCreatedAt.setUTCDate(validCreatedAt.getUTCDate() + POLICY_INTENT_CONVERSION_ROLLBACK_WINDOW_DAYS);
   return validCreatedAt.toISOString();
 }
 
@@ -125,8 +125,8 @@ function buildRollbackSnapshotPlan(candidate, options = {}) {
     payloadRedacted: true,
     restorePath: `policy/rollback/policies/${candidate.policyId}/v${targetVersion}`,
     expiresAt: buildDefaultRollbackExpiry(options),
-    retentionWindowDays: PHASE8R_CONVERSION_ROLLBACK_WINDOW_DAYS,
-    reasonId: PHASE8R_CONVERSION_REASON_IDS.ROLLBACK_SNAPSHOT_PLANNED,
+    retentionWindowDays: POLICY_INTENT_CONVERSION_ROLLBACK_WINDOW_DAYS,
+    reasonId: POLICY_INTENT_CONVERSION_REASON_IDS.ROLLBACK_SNAPSHOT_PLANNED,
   };
 }
 
@@ -178,7 +178,7 @@ function buildMigrationEventPlan(candidate, action = {}, options = {}) {
     actorId: action.actorId ?? null,
     sourceVersion: null,
     targetVersion,
-    reasonCode: 'phase8r_explicit_conversion',
+    reasonCode: 'policy_intent_conversion',
   };
 }
 
@@ -199,105 +199,105 @@ function buildConversionStep({
   const rollbackSnapshot = buildRollbackSnapshotPlan(candidate, options);
   const nativeRecords = buildNativeRecordPlan(candidate, options);
   const migrationEvent = buildMigrationEventPlan(candidate, action, options);
-  let statusId = PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY;
+  let statusId = POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY;
 
   if (!actorAllowed) {
-    statusId = PHASE8R_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_ACTOR_SOURCE;
+    statusId = POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_ACTOR_SOURCE;
     reasons.push(buildReason(
-      PHASE8R_CONVERSION_REASON_IDS.ORDINARY_READ_WRITE_BLOCKED,
+      POLICY_INTENT_CONVERSION_REASON_IDS.ORDINARY_READ_WRITE_BLOCKED,
       'Conversion can only run from an explicit operator, post-upgrade, fixture, or maintainer migration action.',
       'blocker'
     ));
   } else if (!selected) {
-    statusId = PHASE8R_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_NOT_SELECTED;
+    statusId = POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_NOT_SELECTED;
     reasons.push(buildReason(
-      PHASE8R_CONVERSION_REASON_IDS.CANDIDATE_NOT_READY,
+      POLICY_INTENT_CONVERSION_REASON_IDS.CANDIDATE_NOT_READY,
       'Policy was not selected for conversion in this explicit action.',
       'blocker'
     ));
   } else if (candidate.alreadyConverted === true) {
-    statusId = PHASE8R_CONVERSION_STEP_STATUS_IDS.ALREADY_CONVERTED;
+    statusId = POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.ALREADY_CONVERTED;
     reasons.push(buildReason(
-      PHASE8R_CONVERSION_REASON_IDS.IDEMPOTENCY_KEY_ASSIGNED,
+      POLICY_INTENT_CONVERSION_REASON_IDS.IDEMPOTENCY_KEY_ASSIGNED,
       'Policy already has native intent for the requested version.',
       'info'
     ));
   } else if (candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT) {
-    statusId = PHASE8R_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_CANDIDATE_STATUS;
+    statusId = POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_CANDIDATE_STATUS;
     reasons.push(buildReason(
-      PHASE8R_CONVERSION_REASON_IDS.CANDIDATE_NOT_READY,
+      POLICY_INTENT_CONVERSION_REASON_IDS.CANDIDATE_NOT_READY,
       'Migration candidate report does not mark this policy ready to convert.',
       'blocker',
       { candidateStatusId: candidate.statusId }
     ));
   } else if (candidate.intentContract?.valid !== true) {
-    statusId = PHASE8R_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_SERVER_VALIDATION;
+    statusId = POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_SERVER_VALIDATION;
     reasons.push(buildReason(
-      PHASE8R_CONVERSION_REASON_IDS.SERVER_VALIDATION_REQUIRED,
-      'Phase 5R/server intent validation must pass before native rows are inserted.',
+      POLICY_INTENT_CONVERSION_REASON_IDS.SERVER_VALIDATION_REQUIRED,
+      'Server intent validation must pass before native rows are inserted.',
       'blocker'
     ));
   } else if (behaviorSensitive && !verifierPassed) {
-    statusId = PHASE8R_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_VERIFIER;
+    statusId = POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_VERIFIER;
     reasons.push(buildReason(
       verifierReport
-        ? PHASE8R_CONVERSION_REASON_IDS.VERIFIER_BLOCKED
-        : PHASE8R_CONVERSION_REASON_IDS.VERIFIER_REQUIRED,
-      'Behavior-sensitive policies require Phase 7R migration verification before conversion.',
+        ? POLICY_INTENT_CONVERSION_REASON_IDS.VERIFIER_BLOCKED
+        : POLICY_INTENT_CONVERSION_REASON_IDS.VERIFIER_REQUIRED,
+      'Behavior-sensitive policies require migration verifier evidence before conversion.',
       'blocker'
     ));
   } else if (rollbackSnapshot.planned !== true) {
-    statusId = PHASE8R_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_ROLLBACK_SNAPSHOT;
+    statusId = POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_ROLLBACK_SNAPSHOT;
     reasons.push(buildReason(
-      PHASE8R_CONVERSION_REASON_IDS.ROLLBACK_SNAPSHOT_REQUIRED,
+      POLICY_INTENT_CONVERSION_REASON_IDS.ROLLBACK_SNAPSHOT_REQUIRED,
       'Rollback snapshot must be planned before conversion.',
       'blocker'
     ));
   }
 
-  if (statusId === PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY) {
+  if (statusId === POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY) {
     reasons.push(
       buildReason(
-        PHASE8R_CONVERSION_REASON_IDS.SELECTED_FOR_CONVERSION,
+        POLICY_INTENT_CONVERSION_REASON_IDS.SELECTED_FOR_CONVERSION,
         'Policy was selected by an explicit conversion action.'
       ),
       buildReason(
-        PHASE8R_CONVERSION_REASON_IDS.CANDIDATE_READY,
+        POLICY_INTENT_CONVERSION_REASON_IDS.CANDIDATE_READY,
         'Migration candidate report marks this policy ready to convert.'
       ),
       buildReason(
-        PHASE8R_CONVERSION_REASON_IDS.SERVER_VALIDATION_REQUIRED,
+        POLICY_INTENT_CONVERSION_REASON_IDS.SERVER_VALIDATION_REQUIRED,
         'Server validation is required before native insert/update.'
       ),
       buildReason(
         behaviorSensitive
-          ? PHASE8R_CONVERSION_REASON_IDS.VERIFIER_PASSED
-          : PHASE8R_CONVERSION_REASON_IDS.VERIFIER_REQUIRED,
+          ? POLICY_INTENT_CONVERSION_REASON_IDS.VERIFIER_PASSED
+          : POLICY_INTENT_CONVERSION_REASON_IDS.VERIFIER_REQUIRED,
         behaviorSensitive
-          ? 'Phase 7R migration verifier passed or was operator-accepted.'
+          ? 'Migration verifier passed or was operator-accepted.'
           : 'Policy is not marked behavior-sensitive for this conversion action.'
       ),
       buildReason(
-        PHASE8R_CONVERSION_REASON_IDS.ROLLBACK_SNAPSHOT_PLANNED,
+        POLICY_INTENT_CONVERSION_REASON_IDS.ROLLBACK_SNAPSHOT_PLANNED,
         'Rollback snapshot is planned before conversion.'
       ),
       buildReason(
-        PHASE8R_CONVERSION_REASON_IDS.MIGRATION_EVENT_PLANNED,
+        POLICY_INTENT_CONVERSION_REASON_IDS.MIGRATION_EVENT_PLANNED,
         'Migration event is planned for the explicit conversion action.'
       ),
       buildReason(
-        PHASE8R_CONVERSION_REASON_IDS.NATIVE_RECORDS_PLANNED,
-        'Native intent records are planned for all required Phase 8R tables.'
+        POLICY_INTENT_CONVERSION_REASON_IDS.NATIVE_RECORDS_PLANNED,
+        'Native intent records are planned for all required policy intent tables.'
       ),
       buildReason(
-        PHASE8R_CONVERSION_REASON_IDS.LEGACY_BEHAVIOR_RETAINED_UNTIL_COMMIT,
+        POLICY_INTENT_CONVERSION_REASON_IDS.LEGACY_BEHAVIOR_RETAINED_UNTIL_COMMIT,
         'Legacy behavior remains active until the conversion transaction commits.'
       )
     );
   }
 
   reasons.push(buildReason(
-    PHASE8R_CONVERSION_REASON_IDS.IDEMPOTENCY_KEY_ASSIGNED,
+    POLICY_INTENT_CONVERSION_REASON_IDS.IDEMPOTENCY_KEY_ASSIGNED,
     'Conversion action has a deterministic idempotency key.'
   ));
 
@@ -306,7 +306,7 @@ function buildConversionStep({
     policyName: candidate.policyName,
     selected,
     statusId,
-    readyToApply: statusId === PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY,
+    readyToApply: statusId === POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY,
     candidateStatusId: candidate.statusId,
     behaviorSensitive,
     verifierStatusId: verifierReport?.statusId || null,
@@ -323,21 +323,21 @@ function summarizeSteps(steps) {
   return {
     totalStepCount: steps.length,
     readyToApplyCount: steps.filter(step =>
-      step.statusId === PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY
+      step.statusId === POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY
     ).length,
     blockedCount: steps.filter(step =>
       ![
-        PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY,
-        PHASE8R_CONVERSION_STEP_STATUS_IDS.ALREADY_CONVERTED,
+        POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY,
+        POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.ALREADY_CONVERTED,
       ].includes(step.statusId)
     ).length,
     alreadyConvertedCount: steps.filter(step =>
-      step.statusId === PHASE8R_CONVERSION_STEP_STATUS_IDS.ALREADY_CONVERTED
+      step.statusId === POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.ALREADY_CONVERTED
     ).length,
   };
 }
 
-function buildPolicyBuilderPhase8ExplicitConversionWorkflow({
+function buildPolicyIntentConversionWorkflow({
   policies = [],
   candidateReport = null,
   selectedPolicyIds = [],
@@ -355,7 +355,7 @@ function buildPolicyBuilderPhase8ExplicitConversionWorkflow({
     actorSourceId: normalizeString(action.actorSourceId || action.source || action.actor_source_id),
     actorId: action.actorId ?? action.actor_id ?? null,
     requestedAt: action.requestedAt || action.requested_at || null,
-    reasonCode: normalizeString(action.reasonCode || action.reason_code) || 'phase8r_explicit_conversion',
+    reasonCode: normalizeString(action.reasonCode || action.reason_code) || 'policy_intent_conversion',
   };
   const steps = asArray(report.candidates).map(candidate => buildConversionStep({
     candidate,
@@ -370,7 +370,7 @@ function buildPolicyBuilderPhase8ExplicitConversionWorkflow({
     },
   }));
   const workflow = {
-    version: PHASE8R_EXPLICIT_CONVERSION_WORKFLOW_VERSION,
+    version: POLICY_INTENT_CONVERSION_WORKFLOW_VERSION,
     mode: 'plan_only',
     action: normalizedAction,
     candidateReportSummary: report.summary || null,
@@ -391,8 +391,8 @@ function buildPolicyBuilderPhase8ExplicitConversionWorkflow({
       rollbackSnapshotsWritten: false,
       legacyPathsDeleted: false,
     },
-    nextPhase: {
-      phaseId: '8r_4',
+    nextStep: {
+      stepId: 'native_runtime_read_path',
       label: 'Native Runtime Read Path',
       reason: 'Conversion actions are now explicit and reversible, so converted policies need a native read path that preserves the same product contract.',
     },
@@ -400,11 +400,11 @@ function buildPolicyBuilderPhase8ExplicitConversionWorkflow({
 
   return {
     ...workflow,
-    validation: validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow, report),
+    validation: validatePolicyIntentConversionWorkflow(workflow, report),
   };
 }
 
-function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, candidateReport = null) {
+function validatePolicyIntentConversionWorkflow(workflow = {}, candidateReport = null) {
   const issues = [];
   const steps = asArray(workflow.steps);
   const reportValidation = candidateReport
@@ -413,7 +413,7 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
 
   if (!reportValidation.ok) {
     issues.push({
-      riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.INVALID_CANDIDATE_REPORT,
+      riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.INVALID_CANDIDATE_REPORT,
       message: 'Explicit conversion requires a valid policy intent migration candidate report.',
       details: reportValidation.issues,
     });
@@ -421,7 +421,7 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
 
   if (!ALLOWED_ACTOR_SOURCE_IDS.includes(workflow.action?.actorSourceId)) {
     issues.push({
-      riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.UNKNOWN_ACTOR_SOURCE,
+      riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.UNKNOWN_ACTOR_SOURCE,
       actorSourceId: workflow.action?.actorSourceId || null,
       message: 'Conversion action source is not approved for explicit conversion.',
     });
@@ -429,19 +429,19 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
 
   if (
     [
-      PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.ORDINARY_POLICY_READ,
-      PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.UNRELATED_POLICY_SAVE,
+      POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.ORDINARY_POLICY_READ,
+      POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.UNRELATED_POLICY_SAVE,
     ].includes(workflow.action?.actorSourceId)
   ) {
     issues.push({
-      riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.ORDINARY_READ_OR_SAVE_CONVERSION,
+      riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.ORDINARY_READ_OR_SAVE_CONVERSION,
       message: 'Conversion cannot run from ordinary policy read or unrelated save flows.',
     });
   }
 
   if (asArray(workflow.selectedPolicyIds).length === 0) {
     issues.push({
-      riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.MISSING_SELECTION,
+      riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.MISSING_SELECTION,
       message: 'Explicit conversion workflow must include selected policy ids.',
     });
   }
@@ -449,26 +449,26 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
   steps.forEach(step => {
     if (asArray(step.reasons).length === 0) {
       issues.push({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.MISSING_REASON,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.MISSING_REASON,
         policyId: step.policyId,
         message: 'Conversion step must include bounded reasons.',
       });
     }
 
-    if (step.statusId === PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY) {
+    if (step.statusId === POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY) {
       if (step.candidateStatusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT) {
         issues.push({
-          riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_READY_CANDIDATE,
+          riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_READY_CANDIDATE,
           policyId: step.policyId,
           message: 'Ready conversion steps require a ready migration candidate.',
         });
       }
 
       if (!step.reasons.some(reason =>
-        reason.reasonId === PHASE8R_CONVERSION_REASON_IDS.SERVER_VALIDATION_REQUIRED
+        reason.reasonId === POLICY_INTENT_CONVERSION_REASON_IDS.SERVER_VALIDATION_REQUIRED
       )) {
         issues.push({
-          riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_SERVER_VALIDATION,
+          riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_SERVER_VALIDATION,
           policyId: step.policyId,
           message: 'Ready conversion steps must require server validation.',
         });
@@ -476,7 +476,7 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
 
       if (step.rollbackSnapshot?.planned !== true) {
         issues.push({
-          riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_ROLLBACK,
+          riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_ROLLBACK,
           policyId: step.policyId,
           message: 'Ready conversion steps must plan rollback snapshot creation.',
         });
@@ -484,7 +484,7 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
 
       if (!normalizeString(step.rollbackSnapshot?.expiresAt)) {
         issues.push({
-          riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_ROLLBACK,
+          riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_ROLLBACK,
           policyId: step.policyId,
           message: 'Ready conversion steps must include a bounded rollback snapshot expiry.',
         });
@@ -492,7 +492,7 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
 
       if (step.migrationEvent?.planned !== true) {
         issues.push({
-          riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_MIGRATION_EVENT,
+          riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_MIGRATION_EVENT,
           policyId: step.policyId,
           message: 'Ready conversion steps must plan a migration event.',
         });
@@ -500,7 +500,7 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
 
       if (asArray(step.nativeRecords).length === 0) {
         issues.push({
-          riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_NATIVE_RECORDS,
+          riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_NATIVE_RECORDS,
           policyId: step.policyId,
           message: 'Ready conversion steps must plan native intent records.',
         });
@@ -510,22 +510,22 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
     if (
       step.behaviorSensitive === true &&
       !step.verifierStatusId &&
-      step.statusId === PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY
+      step.statusId === POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY
     ) {
       issues.push({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.BEHAVIOR_SENSITIVE_WITHOUT_VERIFIER,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.BEHAVIOR_SENSITIVE_WITHOUT_VERIFIER,
         policyId: step.policyId,
-        message: 'Behavior-sensitive conversion cannot be ready without Phase 7R verifier output.',
+        message: 'Behavior-sensitive conversion cannot be ready without migration verifier output.',
       });
     }
 
     if (
       step.behaviorSensitive === true &&
       step.verifierStatusId === POLICY_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK &&
-      step.statusId === PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY
+      step.statusId === POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY
     ) {
       issues.push({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.BEHAVIOR_SENSITIVE_VERIFIER_NOT_PASSED,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.BEHAVIOR_SENSITIVE_VERIFIER_NOT_PASSED,
         policyId: step.policyId,
         message: 'Behavior-sensitive conversion cannot be ready while verifier is blocked.',
       });
@@ -533,7 +533,7 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
 
     if (!normalizeString(step.idempotencyKey)) {
       issues.push({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.MISSING_IDEMPOTENCY_KEY,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.MISSING_IDEMPOTENCY_KEY,
         policyId: step.policyId,
         message: 'Every conversion step needs an idempotency key.',
       });
@@ -541,7 +541,7 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
 
     if (step.legacyBehaviorRetainedUntilCommit !== true) {
       issues.push({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.FAILED_CONVERSION_MUTATES_LEGACY,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.FAILED_CONVERSION_MUTATES_LEGACY,
         policyId: step.policyId,
         message: 'Failed conversion must leave old active policy behavior intact.',
       });
@@ -550,7 +550,7 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
 
   if (workflow.transactionalBoundary?.failedConversionLeavesLegacyActive !== true) {
     issues.push({
-      riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.FAILED_CONVERSION_MUTATES_LEGACY,
+      riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.FAILED_CONVERSION_MUTATES_LEGACY,
       message: 'Workflow transaction boundary must retain legacy behavior on failed conversion.',
     });
   }
@@ -558,8 +558,8 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
   Object.entries(workflow.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
-        message: `Phase 8R.3 explicit conversion workflow cannot perform side effect "${key}".`,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        message: `Policy intent conversion workflow cannot perform side effect "${key}".`,
       });
     }
   });
@@ -571,10 +571,10 @@ function validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow = {}, ca
   };
 }
 
-function buildPolicyBuilderPhase8ExplicitConversionWorkflowAudit(
-  workflow = buildPolicyBuilderPhase8ExplicitConversionWorkflow()
+function buildPolicyIntentConversionWorkflowAudit(
+  workflow = buildPolicyIntentConversionWorkflow()
 ) {
-  const validation = validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow);
+  const validation = validatePolicyIntentConversionWorkflow(workflow);
 
   return {
     ok: validation.ok,
@@ -582,8 +582,8 @@ function buildPolicyBuilderPhase8ExplicitConversionWorkflowAudit(
     readyToApplyCount: workflow.summary?.readyToApplyCount ?? 0,
     blockedCount: workflow.summary?.blockedCount ?? 0,
     validation,
-    nextPhase: workflow.nextPhase || {
-      phaseId: '8r_4',
+    nextStep: workflow.nextStep || {
+      stepId: 'native_runtime_read_path',
       label: 'Native Runtime Read Path',
       reason: 'Explicit conversion planning is defined; native runtime reads can now be introduced for converted policies.',
     },
@@ -591,12 +591,12 @@ function buildPolicyBuilderPhase8ExplicitConversionWorkflowAudit(
 }
 
 export {
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS,
-  PHASE8R_CONVERSION_AUDIT_RISK_IDS,
-  PHASE8R_CONVERSION_REASON_IDS,
-  PHASE8R_CONVERSION_STEP_STATUS_IDS,
-  PHASE8R_EXPLICIT_CONVERSION_WORKFLOW_VERSION,
-  buildPolicyBuilderPhase8ExplicitConversionWorkflow,
-  buildPolicyBuilderPhase8ExplicitConversionWorkflowAudit,
-  validatePolicyBuilderPhase8ExplicitConversionWorkflow,
+  POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS,
+  POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS,
+  POLICY_INTENT_CONVERSION_REASON_IDS,
+  POLICY_INTENT_CONVERSION_STEP_STATUS_IDS,
+  POLICY_INTENT_CONVERSION_WORKFLOW_VERSION,
+  buildPolicyIntentConversionWorkflow,
+  buildPolicyIntentConversionWorkflowAudit,
+  validatePolicyIntentConversionWorkflow,
 };

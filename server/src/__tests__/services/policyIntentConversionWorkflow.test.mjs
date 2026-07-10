@@ -5,14 +5,14 @@ import {
   buildPolicyIntentMigrationCandidateReport,
 } from '../../services/policyIntentMigrationCandidateReport.mjs';
 import {
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS,
-  PHASE8R_CONVERSION_AUDIT_RISK_IDS,
-  PHASE8R_CONVERSION_REASON_IDS,
-  PHASE8R_CONVERSION_STEP_STATUS_IDS,
-  buildPolicyBuilderPhase8ExplicitConversionWorkflow,
-  buildPolicyBuilderPhase8ExplicitConversionWorkflowAudit,
-  validatePolicyBuilderPhase8ExplicitConversionWorkflow,
-} from '../../services/policyBuilderPhase8ExplicitConversionWorkflow.mjs';
+  POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS,
+  POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS,
+  POLICY_INTENT_CONVERSION_REASON_IDS,
+  POLICY_INTENT_CONVERSION_STEP_STATUS_IDS,
+  buildPolicyIntentConversionWorkflow,
+  buildPolicyIntentConversionWorkflowAudit,
+  validatePolicyIntentConversionWorkflow,
+} from '../../services/policyIntentConversionWorkflow.mjs';
 import {
   POLICY_NATIVE_SCHEMA_TABLE_IDS,
 } from '../../services/policyNativeSchemaContract.mjs';
@@ -65,13 +65,13 @@ function readyReport(overrides = {}) {
   });
 }
 
-describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
+describe('policyIntentConversionWorkflow', () => {
   test('plans selected ready policies with rollback, native records, migration event, and idempotency key', () => {
-    const workflow = buildPolicyBuilderPhase8ExplicitConversionWorkflow({
+    const workflow = buildPolicyIntentConversionWorkflow({
       candidateReport: readyReport(),
       selectedPolicyIds: [14],
       action: {
-        actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
         actorId: 3,
       },
       targetVersion: 2,
@@ -83,9 +83,9 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
     expect(workflow.mode).toBe('plan_only');
     expect(step).toEqual(expect.objectContaining({
       policyId: 14,
-      statusId: PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY,
+      statusId: POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY,
       readyToApply: true,
-      idempotencyKey: 'phase8r:convert:14:v2',
+      idempotencyKey: 'policy-intent:convert:14:v2',
       legacyBehaviorRetainedUntilCommit: true,
     }));
     expect(step.rollbackSnapshot).toEqual(expect.objectContaining({
@@ -98,7 +98,7 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
     expect(step.migrationEvent).toEqual(expect.objectContaining({
       planned: true,
       tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_MIGRATION_EVENTS,
-      actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
+      actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
     }));
     expect(step.nativeRecords.map(record => record.tableId)).toEqual(expect.arrayContaining([
       POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS,
@@ -109,16 +109,16 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
     ]));
     expect(step.reasons).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: PHASE8R_CONVERSION_REASON_IDS.SERVER_VALIDATION_REQUIRED,
+        reasonId: POLICY_INTENT_CONVERSION_REASON_IDS.SERVER_VALIDATION_REQUIRED,
       }),
       expect.objectContaining({
-        reasonId: PHASE8R_CONVERSION_REASON_IDS.ROLLBACK_SNAPSHOT_PLANNED,
+        reasonId: POLICY_INTENT_CONVERSION_REASON_IDS.ROLLBACK_SNAPSHOT_PLANNED,
       }),
       expect.objectContaining({
-        reasonId: PHASE8R_CONVERSION_REASON_IDS.MIGRATION_EVENT_PLANNED,
+        reasonId: POLICY_INTENT_CONVERSION_REASON_IDS.MIGRATION_EVENT_PLANNED,
       }),
       expect.objectContaining({
-        reasonId: PHASE8R_CONVERSION_REASON_IDS.LEGACY_BEHAVIOR_RETAINED_UNTIL_COMMIT,
+        reasonId: POLICY_INTENT_CONVERSION_REASON_IDS.LEGACY_BEHAVIOR_RETAINED_UNTIL_COMMIT,
       }),
     ]));
     expect(workflow.sideEffects).toEqual({
@@ -131,31 +131,31 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
   });
 
   test('blocks conversion from ordinary reads or unrelated saves', () => {
-    const readWorkflow = buildPolicyBuilderPhase8ExplicitConversionWorkflow({
+    const readWorkflow = buildPolicyIntentConversionWorkflow({
       candidateReport: readyReport(),
       selectedPolicyIds: [14],
       action: {
-        actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.ORDINARY_POLICY_READ,
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.ORDINARY_POLICY_READ,
       },
     });
-    const saveWorkflow = buildPolicyBuilderPhase8ExplicitConversionWorkflow({
+    const saveWorkflow = buildPolicyIntentConversionWorkflow({
       candidateReport: readyReport(),
       selectedPolicyIds: [14],
       action: {
-        actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.UNRELATED_POLICY_SAVE,
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.UNRELATED_POLICY_SAVE,
       },
     });
 
     expect(readWorkflow.steps[0].statusId)
-      .toBe(PHASE8R_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_ACTOR_SOURCE);
+      .toBe(POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_ACTOR_SOURCE);
     expect(readWorkflow.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.ORDINARY_READ_OR_SAVE_CONVERSION,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.ORDINARY_READ_OR_SAVE_CONVERSION,
       }),
     ]));
     expect(saveWorkflow.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.ORDINARY_READ_OR_SAVE_CONVERSION,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.ORDINARY_READ_OR_SAVE_CONVERSION,
       }),
     ]));
   });
@@ -168,32 +168,32 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
         }),
       ],
     });
-    const workflow = buildPolicyBuilderPhase8ExplicitConversionWorkflow({
+    const workflow = buildPolicyIntentConversionWorkflow({
       candidateReport,
       selectedPolicyIds: [14],
       action: {
-        actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY,
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY,
       },
     });
 
     expect(workflow.validation.ok).toBe(true);
     expect(workflow.steps[0]).toEqual(expect.objectContaining({
-      statusId: PHASE8R_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_CANDIDATE_STATUS,
+      statusId: POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_CANDIDATE_STATUS,
       readyToApply: false,
       candidateStatusId: 'missing_routing_target',
     }));
   });
 
-  test('requires Phase 7R verifier output for behavior-sensitive policies', () => {
-    const missingVerifier = buildPolicyBuilderPhase8ExplicitConversionWorkflow({
+  test('requires migration verifier output for behavior-sensitive policies', () => {
+    const missingVerifier = buildPolicyIntentConversionWorkflow({
       candidateReport: readyReport(),
       selectedPolicyIds: [14],
       behaviorSensitivePolicyIds: [14],
       action: {
-        actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.MAINTAINER_MIGRATION_TOOL,
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MAINTAINER_MIGRATION_TOOL,
       },
     });
-    const passedVerifier = buildPolicyBuilderPhase8ExplicitConversionWorkflow({
+    const passedVerifier = buildPolicyIntentConversionWorkflow({
       candidateReport: readyReport(),
       selectedPolicyIds: [14],
       behaviorSensitivePolicyIds: [14],
@@ -204,45 +204,45 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
         },
       ],
       action: {
-        actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.MAINTAINER_MIGRATION_TOOL,
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MAINTAINER_MIGRATION_TOOL,
       },
     });
 
     expect(missingVerifier.validation.ok).toBe(true);
     expect(missingVerifier.steps[0].statusId)
-      .toBe(PHASE8R_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_VERIFIER);
+      .toBe(POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_VERIFIER);
     expect(passedVerifier.validation.ok).toBe(true);
     expect(passedVerifier.steps[0].statusId)
-      .toBe(PHASE8R_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY);
+      .toBe(POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY);
     expect(passedVerifier.steps[0].verifierStatusId)
       .toBe(POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES);
   });
 
   test('requires rollback snapshot planning before ready conversion', () => {
-    const workflow = buildPolicyBuilderPhase8ExplicitConversionWorkflow({
+    const workflow = buildPolicyIntentConversionWorkflow({
       candidateReport: readyReport(),
       selectedPolicyIds: [14],
       rollbackSnapshot: {
         planned: false,
       },
       action: {
-        actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.TEST_FIXTURE,
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.TEST_FIXTURE,
       },
     });
 
     expect(workflow.validation.ok).toBe(true);
     expect(workflow.steps[0]).toEqual(expect.objectContaining({
-      statusId: PHASE8R_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_ROLLBACK_SNAPSHOT,
+      statusId: POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_ROLLBACK_SNAPSHOT,
       readyToApply: false,
     }));
   });
 
   test('validation rejects weakened ready steps and conversion side effects', () => {
-    const workflow = buildPolicyBuilderPhase8ExplicitConversionWorkflow({
+    const workflow = buildPolicyIntentConversionWorkflow({
       candidateReport: readyReport(),
       selectedPolicyIds: [14],
       action: {
-        actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
       },
     });
     const weakened = {
@@ -265,56 +265,57 @@ describe('policyBuilderPhase8ExplicitConversionWorkflow', () => {
         idempotencyKey: '',
         legacyBehaviorRetainedUntilCommit: false,
         reasons: step.reasons.filter(reason =>
-          reason.reasonId !== PHASE8R_CONVERSION_REASON_IDS.SERVER_VALIDATION_REQUIRED
+          reason.reasonId !== POLICY_INTENT_CONVERSION_REASON_IDS.SERVER_VALIDATION_REQUIRED
         ),
       })),
     };
-    const validation = validatePolicyBuilderPhase8ExplicitConversionWorkflow(weakened);
+    const validation = validatePolicyIntentConversionWorkflow(weakened);
 
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_SERVER_VALIDATION,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_SERVER_VALIDATION,
       }),
       expect.objectContaining({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_ROLLBACK,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_ROLLBACK,
       }),
       expect.objectContaining({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_MIGRATION_EVENT,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_MIGRATION_EVENT,
       }),
       expect.objectContaining({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_NATIVE_RECORDS,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.READY_STEP_WITHOUT_NATIVE_RECORDS,
       }),
       expect.objectContaining({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.MISSING_IDEMPOTENCY_KEY,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.MISSING_IDEMPOTENCY_KEY,
       }),
       expect.objectContaining({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.FAILED_CONVERSION_MUTATES_LEGACY,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.FAILED_CONVERSION_MUTATES_LEGACY,
       }),
       expect.objectContaining({
-        riskId: PHASE8R_CONVERSION_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
       }),
     ]));
   });
 
   test('audits cleanly and points to native runtime read path', () => {
-    const workflow = buildPolicyBuilderPhase8ExplicitConversionWorkflow({
+    const workflow = buildPolicyIntentConversionWorkflow({
       candidateReport: readyReport(),
       selectedPolicyIds: [14],
       action: {
-        actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
       },
     });
-    const audit = buildPolicyBuilderPhase8ExplicitConversionWorkflowAudit(workflow);
+    const audit = buildPolicyIntentConversionWorkflowAudit(workflow);
 
-    expect(validatePolicyBuilderPhase8ExplicitConversionWorkflow(workflow).ok).toBe(true);
+    expect(validatePolicyIntentConversionWorkflow(workflow).ok).toBe(true);
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
       readyToApplyCount: 1,
-      nextPhase: expect.objectContaining({
-        phaseId: '8r_4',
+      nextStep: expect.objectContaining({
+        stepId: 'native_runtime_read_path',
       }),
     }));
+    expect(audit.nextPhase).toBeUndefined();
   });
 });

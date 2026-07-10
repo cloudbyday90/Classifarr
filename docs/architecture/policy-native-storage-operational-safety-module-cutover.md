@@ -111,7 +111,7 @@ Validation should include:
 
 ```text
 cd server
-node ../scripts/run-jest.mjs --testPathPatterns="policyNativeSchemaContract|policyNativeSqlMigrationCoverage|policyNativeStorageOperationalSafety|policyBuilderPhase8ExplicitConversionWorkflow|policyNativeStorageTestReset|policyBuilderProductionNameInventory" --no-coverage --runInBand
+node ../scripts/run-jest.mjs --testPathPatterns="policyNativeSchemaContract|policyNativeSqlMigrationCoverage|policyNativeStorageOperationalSafety|policyIntentConversionWorkflow|policyNativeStorageTestReset|policyBuilderProductionNameInventory" --no-coverage --runInBand
 npm run lint:docs
 node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid
 ```

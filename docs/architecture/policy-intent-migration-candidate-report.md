@@ -84,7 +84,7 @@ Cons:
 - Focused service test:
   `server/src/__tests__/services/policyIntentMigrationCandidateReport.test.mjs`
 - Dependent conversion workflow:
-  `server/src/services/policyBuilderPhase8ExplicitConversionWorkflow.mjs`
+  `server/src/services/policyIntentConversionWorkflow.mjs`
 - Dependent post-upgrade dry run:
   `server/src/services/policyPostUpgradeDryRun.mjs`
 - Validation evidence:

@@ -85,7 +85,7 @@ Cons:
 - Test:
   `server/src/__tests__/services/policyIntentMigrationCandidateReport.test.mjs`
 - Conversion consumer:
-  `server/src/services/policyBuilderPhase8ExplicitConversionWorkflow.mjs`
+  `server/src/services/policyIntentConversionWorkflow.mjs`
 - Post-upgrade consumer:
   `server/src/services/policyPostUpgradeDryRun.mjs`
 - Storage closure evidence:

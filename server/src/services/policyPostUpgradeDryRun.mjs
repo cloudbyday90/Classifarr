@@ -3,9 +3,9 @@ import {
   buildPolicyIntentMigrationCandidateReport,
 } from './policyIntentMigrationCandidateReport.mjs';
 import {
-  PHASE8R_CONVERSION_ACTOR_SOURCE_IDS,
-  buildPolicyBuilderPhase8ExplicitConversionWorkflow,
-} from './policyBuilderPhase8ExplicitConversionWorkflow.mjs';
+  POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS,
+  buildPolicyIntentConversionWorkflow,
+} from './policyIntentConversionWorkflow.mjs';
 
 const POLICY_POST_UPGRADE_DRY_RUN_VERSION = 'policy.post_upgrade_dry_run.v1';
 const MAX_POST_UPGRADE_DRY_RUN_POLICIES = 100;
@@ -222,12 +222,12 @@ function buildPolicyPostUpgradeDryRun({
   });
   const readyPolicyIds = getReadyPolicyIds(report);
   const conversionWorkflow = readyPolicyIds.length > 0
-    ? buildPolicyBuilderPhase8ExplicitConversionWorkflow({
+    ? buildPolicyIntentConversionWorkflow({
       policies,
       candidateReport: report,
       selectedPolicyIds: readyPolicyIds,
       action: {
-        actorSourceId: PHASE8R_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY,
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY,
         reasonCode: 'policy_post_upgrade_dry_run',
         requestedAt: now,
       },

@@ -1,7 +1,7 @@
 import { buildPolicyIntentContract } from './policyIntentContract.mjs';
 import {
-  PHASE8R_CONVERSION_STEP_STATUS_IDS as POLICY_CONVERSION_STEP_STATUS_IDS,
-} from './policyBuilderPhase8ExplicitConversionWorkflow.mjs';
+  POLICY_INTENT_CONVERSION_STEP_STATUS_IDS as POLICY_CONVERSION_STEP_STATUS_IDS,
+} from './policyIntentConversionWorkflow.mjs';
 import {
   DRY_RUN_CURRENT_WINDOW_MINUTES,
   POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS,

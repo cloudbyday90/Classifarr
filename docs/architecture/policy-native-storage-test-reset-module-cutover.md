@@ -112,7 +112,7 @@ Cons:
 
 ```powershell
 cd server
-node ../scripts/run-jest.mjs --testPathPatterns="policyNativeSchemaContract|policyNativeSqlMigrationCoverage|policyNativeStorageOperationalSafety|policyNativeStorageTestReset|policyBuilderPhase8ExplicitConversionWorkflow|policyBuilderProductionNameInventory" --no-coverage --runInBand
+node ../scripts/run-jest.mjs --testPathPatterns="policyNativeSchemaContract|policyNativeSqlMigrationCoverage|policyNativeStorageOperationalSafety|policyNativeStorageTestReset|policyIntentConversionWorkflow|policyBuilderProductionNameInventory" --no-coverage --runInBand
 cd ..
 npm run lint:docs
 node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid
