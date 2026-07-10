@@ -61,11 +61,11 @@ Cons:
 ## Final Recommendation Stack
 
 - Phase 1R inventory:
-  `server/src/services/policyBuilderPhase1BoundaryInventory.mjs`
+  `server/src/services/policyBuilderBoundaryInventory.mjs`
 - Policy-authoring workflow inventory:
   `server/src/services/policyAuthoringWorkflowInventory.mjs`
 - Focused tests:
-  `server/src/__tests__/services/policyBuilderPhase1BoundaryInventory.test.mjs`
+  `server/src/__tests__/services/policyBuilderBoundaryInventory.test.mjs`
   and
   `server/src/__tests__/services/policyAuthoringWorkflowInventory.test.mjs`
 - Completion evidence:

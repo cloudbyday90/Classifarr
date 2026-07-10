@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Boundary Inventory Module Cutover** — renamed the
+  policy-builder boundary inventory service, tests, imports, and design record
+  to durable boundary-inventory names, replaced phase-coded public fields and
+  decision ids with engine-cutline terminology, and kept modal/test-boundary
+  consumers aligned with the live ownership audit.
 - **Policy Evidence Boundary Audit** — added a server-owned audit for the
   complete Phase 6R.1 evidence handoff so ready results require a successful
   input gate, projection audit, fingerprint audit, issue-count match,

@@ -5,7 +5,7 @@ const POLICY_BUILDER_BOUNDARY_CATEGORIES = Object.freeze({
   LEGACY_COMPATIBILITY_BRIDGE: 'legacy_compatibility_bridge',
   REFERENCE_DATA_ADAPTER: 'reference_data_adapter',
   ENGINE_CANDIDATE: 'engine_candidate',
-  DELETE_REPLACE_AFTER_PHASE_6R: 'delete_replace_after_phase_6r',
+  REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE: 'rewrite_or_delete_after_engine_cutline',
   TEST_BOUNDARY: 'test_boundary',
   UNCLASSIFIED: 'unclassified',
 });
@@ -47,7 +47,7 @@ const POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS = Object.freeze({
   MISSING_RULE_OWNER: 'missing_rule_owner',
   UNKNOWN_RULE_OWNER: 'unknown_rule_owner',
   CLIENT_ENGINE_AUTHORITY_ALLOWED: 'client_engine_authority_allowed',
-  MISSING_PHASE6_DECISION: 'missing_phase6_decision',
+  MISSING_ENGINE_CUTLINE_DECISION: 'missing_engine_cutline_decision',
   INVALID_ENGINE_CANDIDATE_ACTION: 'invalid_engine_candidate_action',
   INVALID_DELETE_REPLACE_ACTION: 'invalid_delete_replace_action',
 });
@@ -87,11 +87,11 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.TEST_CONTRACT,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.RESET_TEST_OWNERSHIP,
     clientEngineAuthorityAllowed: false,
-    phase6DecisionRequired: false,
+    engineCutlineDecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.TEST_RESET_REQUIRED,
     ],
-    notes: 'Tests are not product authority; Phase 1R.6 must classify them as keep, rewrite, future-contract, or delete.',
+    notes: 'Tests are not product authority; test-boundary reset must classify them as keep, rewrite, future-contract, or delete.',
     matches: (filePath) => filePath.includes('/__tests__/'),
   },
   {
@@ -100,12 +100,12 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
     clientEngineAuthorityAllowed: false,
-    phase6DecisionRequired: false,
+    engineCutlineDecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
     ],
-    notes: 'The modal may coordinate child components and save/cancel flow, but Phase 1R.2 must keep evidence, readiness, replay, and legacy mutation out of the modal.',
+    notes: 'The modal may coordinate child components and save/cancel flow, but modal orchestration ownership must keep evidence, readiness, replay, and legacy mutation out of the modal.',
     matches: (filePath) => filePath.endsWith('/PolicyBuilderModal.vue'),
   },
   {
@@ -114,7 +114,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
     clientEngineAuthorityAllowed: false,
-    phase6DecisionRequired: false,
+    engineCutlineDecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
     ],
@@ -127,12 +127,12 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_DRAFT_PROJECTION,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.EXTRACT_DRAFT_BOUNDARY,
     clientEngineAuthorityAllowed: false,
-    phase6DecisionRequired: false,
+    engineCutlineDecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.LEGACY_PAYLOAD_TOUCHPOINT,
     ],
-    notes: 'Draft state is an editable client projection; Phase 1R.3 must keep serialization allow-listed and non-authoritative.',
+    notes: 'Draft state is an editable client projection; draft ownership must keep serialization allow-listed and non-authoritative.',
     matches: (filePath) => hasAnySegment(filePath, [
       '/usePolicyBuilderState.js',
       '/usePolicyIntentDraft.js',
@@ -145,12 +145,12 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_REFERENCE_ADAPTER,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.SPLIT_REFERENCE_AND_EVIDENCE,
     clientEngineAuthorityAllowed: false,
-    phase6DecisionRequired: false,
+    engineCutlineDecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.OBSERVED_EVIDENCE_ADAPTER,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
     ],
-    notes: 'Reference data may fetch static options and observed profile suggestions, but Phase 1R.4 must distinguish options from evidence.',
+    notes: 'Reference data may fetch static options and observed profile suggestions, but reference-data ownership must distinguish options from evidence.',
     matches: (filePath) => hasAnySegment(filePath, [
       '/usePolicyBuilderReferenceData.js',
       '/policyBuilderLibraryGenreOptions.js',
@@ -164,11 +164,11 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_COMPATIBILITY_BRIDGE,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.CONTAIN_LEGACY_BRIDGE,
     clientEngineAuthorityAllowed: false,
-    phase6DecisionRequired: false,
+    engineCutlineDecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.LEGACY_PAYLOAD_TOUCHPOINT,
     ],
-    notes: 'Legacy preset/custom-signal projection must stay isolated until Phase 8R native intent storage replaces it.',
+    notes: 'Legacy preset/custom-signal projection must stay isolated until native intent storage replaces it.',
     matches: (filePath) => hasAnySegment(filePath, [
       '/usePolicyBuilderTemplateSignals.js',
       '/usePolicyBuilderCombinedSignals.js',
@@ -179,16 +179,16 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   },
   {
     id: 'policy_preview_diagnostics',
-    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DELETE_REPLACE_AFTER_PHASE_6R,
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE,
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE,
     clientEngineAuthorityAllowed: false,
-    phase6DecisionRequired: true,
+    engineCutlineDecisionRequired: true,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
     ],
-    notes: 'Impact/replay preview surfaces should become engine tests, migration verifiers, or be deleted after Phase 6R cutlines.',
+    notes: 'Impact/replay preview surfaces should become engine tests, migration verifiers, or be deleted after engine cutline decisions.',
     matches: (filePath) => hasAnySegment(filePath, [
       '/usePolicyIntentImpactPreview.js',
       '/usePolicyIntentReplayPreview.js',
@@ -200,16 +200,16 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   },
   {
     id: 'policy_legacy_summary_surfaces',
-    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DELETE_REPLACE_AFTER_PHASE_6R,
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE,
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE,
     clientEngineAuthorityAllowed: false,
-    phase6DecisionRequired: true,
+    engineCutlineDecisionRequired: true,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.LEGACY_PAYLOAD_TOUCHPOINT,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
     ],
-    notes: 'Legacy combined-signal summaries expose preset-era concepts in the product path and should be replaced by Phase 0R vocabulary surfaces.',
+    notes: 'Legacy combined-signal summaries expose preset-era concepts in the product path and should be replaced by approved product-vocabulary surfaces.',
     matches: (filePath) => hasAnySegment(filePath, [
       '/PolicyCombinedSignalsSummary.vue',
     ]),
@@ -220,12 +220,12 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.SERVER_ENGINE_CANDIDATE,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.MOVE_TO_SERVER_ENGINE,
     clientEngineAuthorityAllowed: false,
-    phase6DecisionRequired: true,
+    engineCutlineDecisionRequired: true,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
     ],
-    notes: 'Client-side projection/readiness helpers may remain display adapters temporarily, but Phase 6R must decide which logic belongs server-side.',
+    notes: 'Client-side projection/readiness helpers may remain display adapters temporarily, but engine cutline review must decide which logic belongs server-side.',
     matches: (filePath) => hasAnySegment(filePath, [
       '/policyIntentSectionProjection.js',
       '/policyIntentSectionVisualState.js',
@@ -246,7 +246,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
     clientEngineAuthorityAllowed: false,
-    phase6DecisionRequired: false,
+    engineCutlineDecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
     ],
@@ -262,7 +262,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_PRESENTATION,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_PRESENTATION,
     clientEngineAuthorityAllowed: false,
-    phase6DecisionRequired: false,
+    engineCutlineDecisionRequired: false,
     riskIds: [],
     notes: 'These components should render props and emit explicit events without owning evidence, learning, or migration decisions.',
     matches: (filePath) => filePath.includes('/components/policies/') &&
@@ -292,16 +292,16 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   },
   {
     id: 'policy_advanced_settings_component',
-    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DELETE_REPLACE_AFTER_PHASE_6R,
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE,
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE,
     clientEngineAuthorityAllowed: false,
-    phase6DecisionRequired: true,
+    engineCutlineDecisionRequired: true,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
     ],
-    notes: 'Advanced scoring/weight controls conflict with the destination-first model and need Phase 3R/6R replacement criteria.',
+    notes: 'Advanced scoring/weight controls conflict with the destination-first model and need operator-surface and engine replacement criteria.',
     matches: (filePath) => filePath.endsWith('/PolicyBuilderAdvancedSettings.vue'),
   },
 ]);
@@ -322,7 +322,7 @@ function classifyPolicyBuilderClientPath(filePath) {
       actionId: null,
       riskIds: [],
       ruleId: null,
-      notes: 'No Phase 1R.1 boundary rule matched this policy-builder path.',
+      notes: 'No policy-builder boundary rule matched this policy-builder path.',
       mixedBoundary: false,
     };
   }
@@ -334,7 +334,7 @@ function classifyPolicyBuilderClientPath(filePath) {
     ownerId: matchedRule.ownerId,
     actionId: matchedRule.actionId,
     clientEngineAuthorityAllowed: matchedRule.clientEngineAuthorityAllowed,
-    phase6DecisionRequired: matchedRule.phase6DecisionRequired,
+    engineCutlineDecisionRequired: matchedRule.engineCutlineDecisionRequired,
     riskIds: matchedRule.riskIds,
     ruleId: matchedRule.id,
     notes: matchedRule.notes,
@@ -349,7 +349,7 @@ function listPolicyBuilderBoundaryRules() {
     ownerId: rule.ownerId,
     actionId: rule.actionId,
     clientEngineAuthorityAllowed: rule.clientEngineAuthorityAllowed,
-    phase6DecisionRequired: rule.phase6DecisionRequired,
+    engineCutlineDecisionRequired: rule.engineCutlineDecisionRequired,
     riskIds: rule.riskIds,
     notes: rule.notes,
   }));
@@ -362,14 +362,14 @@ function validatePolicyBuilderBoundaryRule(rule = {}) {
     issues.push({
       riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_RULE_OWNER,
       ruleId: rule.id || null,
-      message: 'Phase 1R.1 boundary rule must declare an owner.',
+      message: 'Policy-builder boundary rule must declare an owner.',
     });
   } else if (!Object.values(POLICY_BUILDER_BOUNDARY_OWNER_IDS).includes(rule.ownerId)) {
     issues.push({
       riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.UNKNOWN_RULE_OWNER,
       ruleId: rule.id || null,
       ownerId: rule.ownerId,
-      message: 'Phase 1R.1 boundary rule declares an unknown owner.',
+      message: 'Policy-builder boundary rule declares an unknown owner.',
     });
   }
 
@@ -390,16 +390,16 @@ function validatePolicyBuilderBoundaryRule(rule = {}) {
       });
     }
 
-    if (!rule.phase6DecisionRequired) {
+    if (!rule.engineCutlineDecisionRequired) {
       issues.push({
-        riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_PHASE6_DECISION,
+        riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_ENGINE_CUTLINE_DECISION,
         ruleId: rule.id || null,
-        message: 'Engine candidates require a Phase 6R decision before they can remain product-owned.',
+        message: 'Engine candidates require an engine cutline decision before they can remain product-owned.',
       });
     }
   }
 
-  if (rule.category === POLICY_BUILDER_BOUNDARY_CATEGORIES.DELETE_REPLACE_AFTER_PHASE_6R) {
+  if (rule.category === POLICY_BUILDER_BOUNDARY_CATEGORIES.REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE) {
     if (rule.actionId !== POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE) {
       issues.push({
         riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.INVALID_DELETE_REPLACE_ACTION,
@@ -408,11 +408,11 @@ function validatePolicyBuilderBoundaryRule(rule = {}) {
       });
     }
 
-    if (!rule.phase6DecisionRequired) {
+    if (!rule.engineCutlineDecisionRequired) {
       issues.push({
-        riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_PHASE6_DECISION,
+        riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_ENGINE_CUTLINE_DECISION,
         ruleId: rule.id || null,
-        message: 'Delete/replace surfaces require a Phase 6R cutline decision.',
+        message: 'Rewrite/delete surfaces require an engine cutline decision.',
       });
     }
   }
@@ -481,7 +481,7 @@ function buildPolicyBuilderBoundaryInventoryAudit(filePaths = [], options = {}) 
     issues.push({
       riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.UNCLASSIFIED_MODULE,
       path: filePath,
-      message: 'Policy-builder client module has no Phase 1R.1 ownership classification.',
+      message: 'Policy-builder client module has no boundary ownership classification.',
     });
   });
 
@@ -489,7 +489,7 @@ function buildPolicyBuilderBoundaryInventoryAudit(filePaths = [], options = {}) 
     issues.push({
       riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_REQUIRED_RULE_COVERAGE,
       ruleId,
-      message: 'Required Phase 1R.1 boundary rule has no current client-tree coverage.',
+      message: 'Required policy-builder boundary rule has no current client-tree coverage.',
     });
   });
 

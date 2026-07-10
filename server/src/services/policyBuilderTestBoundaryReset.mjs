@@ -24,11 +24,11 @@ import {
 
 const TEST_BOUNDARY_CATEGORY_IDS = Object.freeze({
   KEEP_BEHAVIOR_REGRESSION: 'keep_behavior_regression',
-  REWRITE_PHASE_0R_VOCABULARY: 'rewrite_phase_0r_vocabulary',
+  REWRITE_PRODUCT_VOCABULARY: 'rewrite_product_vocabulary',
   REWRITE_DRAFT_BRIDGE_BOUNDARY: 'rewrite_draft_bridge_boundary',
   REWRITE_FUTURE_EVIDENCE_READINESS: 'rewrite_future_evidence_readiness',
   DELETE_WITH_ABANDONED_DIAGNOSTIC_UI: 'delete_with_abandoned_diagnostic_ui',
-  PHASE_1R_BOUNDARY_CONTRACT: 'phase_1r_boundary_contract',
+  POLICY_BUILDER_BOUNDARY_CONTRACT: 'policy_builder_boundary_contract',
 });
 
 const TEST_BOUNDARY_RULE_IDS = Object.freeze({
@@ -65,16 +65,16 @@ function deepFreeze(value) {
 
 const TEST_BOUNDARY_RECORDS = deepFreeze([
   {
-    path: 'server/src/__tests__/services/policyBuilderPhase1BoundaryInventory.test.mjs',
-    categoryId: TEST_BOUNDARY_CATEGORY_IDS.PHASE_1R_BOUNDARY_CONTRACT,
+    path: 'server/src/__tests__/services/policyBuilderBoundaryInventory.test.mjs',
+    categoryId: TEST_BOUNDARY_CATEGORY_IDS.POLICY_BUILDER_BOUNDARY_CONTRACT,
     actionId: TEST_BOUNDARY_ACTION_IDS.KEEP,
     coveredRuleIds: [],
     freezesLayout: false,
-    notes: 'Keeps current module ownership inventory visible before Phase 2R refactors continue.',
+    notes: 'Keeps current module ownership inventory visible before draft-boundary refactors continue.',
   },
   {
     path: 'server/src/__tests__/services/policyBuilderModalOrchestrationContract.test.mjs',
-    categoryId: TEST_BOUNDARY_CATEGORY_IDS.PHASE_1R_BOUNDARY_CONTRACT,
+    categoryId: TEST_BOUNDARY_CATEGORY_IDS.POLICY_BUILDER_BOUNDARY_CONTRACT,
     actionId: TEST_BOUNDARY_ACTION_IDS.KEEP,
     coveredRuleIds: [
       TEST_BOUNDARY_RULE_IDS.MODAL_DOES_NOT_GENERATE_EVIDENCE,
@@ -85,7 +85,7 @@ const TEST_BOUNDARY_RECORDS = deepFreeze([
   },
   {
     path: 'server/src/__tests__/services/policyBuilderDraftStateBoundary.test.mjs',
-    categoryId: TEST_BOUNDARY_CATEGORY_IDS.PHASE_1R_BOUNDARY_CONTRACT,
+    categoryId: TEST_BOUNDARY_CATEGORY_IDS.POLICY_BUILDER_BOUNDARY_CONTRACT,
     actionId: TEST_BOUNDARY_ACTION_IDS.KEEP,
     coveredRuleIds: [
       TEST_BOUNDARY_RULE_IDS.DRAFT_COMMANDS_ARE_ALLOWLISTED,
@@ -96,7 +96,7 @@ const TEST_BOUNDARY_RECORDS = deepFreeze([
   },
   {
     path: 'server/src/__tests__/services/policyBuilderReferenceDataBoundary.test.mjs',
-    categoryId: TEST_BOUNDARY_CATEGORY_IDS.PHASE_1R_BOUNDARY_CONTRACT,
+    categoryId: TEST_BOUNDARY_CATEGORY_IDS.POLICY_BUILDER_BOUNDARY_CONTRACT,
     actionId: TEST_BOUNDARY_ACTION_IDS.KEEP,
     coveredRuleIds: [
       TEST_BOUNDARY_RULE_IDS.REFERENCE_OPTIONS_DISTINCT_FROM_OBSERVED_EVIDENCE,
@@ -106,7 +106,7 @@ const TEST_BOUNDARY_RECORDS = deepFreeze([
   },
   {
     path: 'server/src/__tests__/services/policyBuilderLegacyCompatibilityBoundary.test.mjs',
-    categoryId: TEST_BOUNDARY_CATEGORY_IDS.PHASE_1R_BOUNDARY_CONTRACT,
+    categoryId: TEST_BOUNDARY_CATEGORY_IDS.POLICY_BUILDER_BOUNDARY_CONTRACT,
     actionId: TEST_BOUNDARY_ACTION_IDS.KEEP,
     coveredRuleIds: [
       TEST_BOUNDARY_RULE_IDS.LEGACY_PAYLOAD_MUTATION_STAYS_IN_BRIDGE,
@@ -126,7 +126,7 @@ const TEST_BOUNDARY_RECORDS = deepFreeze([
   },
   {
     path: 'client/src/__tests__/PolicyIntentEditor.test.js',
-    categoryId: TEST_BOUNDARY_CATEGORY_IDS.REWRITE_PHASE_0R_VOCABULARY,
+    categoryId: TEST_BOUNDARY_CATEGORY_IDS.REWRITE_PRODUCT_VOCABULARY,
     actionId: TEST_BOUNDARY_ACTION_IDS.REWRITE,
     coveredRuleIds: [],
     freezesLayout: false,
@@ -134,7 +134,7 @@ const TEST_BOUNDARY_RECORDS = deepFreeze([
   },
   {
     path: 'client/src/__tests__/PolicyIntentSectionCard.test.js',
-    categoryId: TEST_BOUNDARY_CATEGORY_IDS.REWRITE_PHASE_0R_VOCABULARY,
+    categoryId: TEST_BOUNDARY_CATEGORY_IDS.REWRITE_PRODUCT_VOCABULARY,
     actionId: TEST_BOUNDARY_ACTION_IDS.REWRITE,
     coveredRuleIds: [],
     freezesLayout: false,
@@ -148,7 +148,7 @@ const TEST_BOUNDARY_RECORDS = deepFreeze([
       TEST_BOUNDARY_RULE_IDS.LEGACY_PAYLOAD_MUTATION_STAYS_IN_BRIDGE,
     ],
     freezesLayout: false,
-    notes: 'Keep bridge parity coverage until Phase 8R native intent storage replaces it.',
+    notes: 'Keep bridge parity coverage until native intent storage replaces it.',
   },
   {
     path: 'client/src/__tests__/composables/usePolicyIntentDraft.test.js',
@@ -186,7 +186,7 @@ const TEST_BOUNDARY_RECORDS = deepFreeze([
     actionId: TEST_BOUNDARY_ACTION_IDS.DELETE_AFTER_CUTLINE,
     coveredRuleIds: [],
     freezesLayout: false,
-    notes: 'Keep only while Phase 6R decides whether impact preview becomes engine evidence, migration tooling, or removed diagnostics.',
+    notes: 'Keep only while engine cutline review decides whether impact preview becomes engine evidence, migration tooling, or removed diagnostics.',
   },
   {
     path: 'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
@@ -194,7 +194,7 @@ const TEST_BOUNDARY_RECORDS = deepFreeze([
     actionId: TEST_BOUNDARY_ACTION_IDS.DELETE_AFTER_CUTLINE,
     coveredRuleIds: [],
     freezesLayout: false,
-    notes: 'Keep only while Phase 6R decides whether replay preview remains a maintainer tool.',
+    notes: 'Keep only while engine cutline review decides whether replay preview remains a maintainer tool.',
   },
 ]);
 
@@ -345,7 +345,7 @@ function validateTestBoundaryRule(ruleId) {
   }
 }
 
-function validatePhase1RTestBoundaryReset() {
+function validatePolicyBuilderTestBoundaryReset() {
   const ruleResults = listTestBoundaryRules().map(ruleId => ({
     ruleId,
     ...validateTestBoundaryRule(ruleId),
@@ -371,6 +371,6 @@ export {
   listTestBoundaryRecordsByCategory,
   listTestBoundaryRules,
   summarizeTestBoundaryReset,
-  validatePhase1RTestBoundaryReset,
+  validatePolicyBuilderTestBoundaryReset,
   validateTestBoundaryRule,
 };

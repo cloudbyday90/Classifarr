@@ -1,7 +1,7 @@
 import {
   POLICY_BUILDER_BOUNDARY_CATEGORIES,
   POLICY_BUILDER_BOUNDARY_RISK_IDS,
-} from '../../services/policyBuilderPhase1BoundaryInventory.mjs';
+} from '../../services/policyBuilderBoundaryInventory.mjs';
 import {
   MODAL_ALLOWED_RESPONSIBILITY_IDS,
   MODAL_EVENT_PAYLOAD_AUTHORITY_IDS,
@@ -31,7 +31,7 @@ import {
 } from '../../services/policyBuilderModalOrchestrationContract.mjs';
 
 describe('policyBuilderModalOrchestrationContract', () => {
-  test('defines the allowed modal responsibilities from Phase 1R.2', () => {
+  test('defines the allowed modal orchestration responsibilities', () => {
     expect(listModalAllowedResponsibilities().map(item => item.id)).toEqual([
       MODAL_ALLOWED_RESPONSIBILITY_IDS.OPEN_CLOSE_LIFECYCLE,
       MODAL_ALLOWED_RESPONSIBILITY_IDS.SAVE_CANCEL_ACTIONS,
@@ -109,8 +109,8 @@ describe('policyBuilderModalOrchestrationContract', () => {
 
     expect(getModalExtractionTarget(MODAL_EXTRACTION_TARGET_IDS.DIAGNOSTIC_PREVIEW_SURFACES))
       .toEqual(expect.objectContaining({
-        targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_PHASE_6R,
-        targetPhase: '6R',
+        targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
+        targetPhase: 'engine_cutline',
         relatedRiskIds: [
           POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
           POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
@@ -118,17 +118,17 @@ describe('policyBuilderModalOrchestrationContract', () => {
       }));
   });
 
-  test('marks summary and save failure work as Phase 1R.2 extraction targets', () => {
+  test('marks summary and save failure work as modal orchestration extraction targets', () => {
     expect(getModalExtractionTarget(MODAL_EXTRACTION_TARGET_IDS.SUMMARY_VIEW_PROJECTION))
       .toEqual(expect.objectContaining({
         targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_COMPOSABLE,
-        targetPhase: '1R.2',
+        targetPhase: 'modal_orchestration',
       }));
 
     expect(getModalExtractionTarget(MODAL_EXTRACTION_TARGET_IDS.SAVE_FAILURE_NOTIFICATION))
       .toEqual(expect.objectContaining({
         targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_PRESENTATION_COMPONENT,
-        targetPhase: '1R.2',
+        targetPhase: 'modal_orchestration',
       }));
   });
 
@@ -156,7 +156,7 @@ describe('policyBuilderModalOrchestrationContract', () => {
     expect(getModalTouchpoint(MODAL_TOUCHPOINT_IDS.DIAGNOSTIC_PREVIEW_COMPOSITION))
       .toEqual(expect.objectContaining({
         extractionTargetId: MODAL_EXTRACTION_TARGET_IDS.DIAGNOSTIC_PREVIEW_SURFACES,
-        decisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_PHASE_6R,
+        decisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
       }));
     expect(getModalTouchpoint(MODAL_TOUCHPOINT_IDS.SAVE_FAILURE_BROWSER_ALERT))
       .toEqual(expect.objectContaining({

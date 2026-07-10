@@ -8,20 +8,20 @@ import {
   listTestBoundaryRecordsByCategory,
   listTestBoundaryRules,
   summarizeTestBoundaryReset,
-  validatePhase1RTestBoundaryReset,
+  validatePolicyBuilderTestBoundaryReset,
   validateTestBoundaryRule,
 } from '../../services/policyBuilderTestBoundaryReset.mjs';
 
 const repoRoot = path.resolve(process.cwd(), '..');
 
 describe('policyBuilderTestBoundaryReset', () => {
-  test('categorizes the current Phase 1R policy-builder test surface', () => {
+  test('categorizes the current policy-builder test surface', () => {
     expect(summarizeTestBoundaryReset()).toEqual({
       recordCount: 14,
       countsByCategory: {
-        [TEST_BOUNDARY_CATEGORY_IDS.PHASE_1R_BOUNDARY_CONTRACT]: 5,
+        [TEST_BOUNDARY_CATEGORY_IDS.POLICY_BUILDER_BOUNDARY_CONTRACT]: 5,
         [TEST_BOUNDARY_CATEGORY_IDS.KEEP_BEHAVIOR_REGRESSION]: 1,
-        [TEST_BOUNDARY_CATEGORY_IDS.REWRITE_PHASE_0R_VOCABULARY]: 2,
+        [TEST_BOUNDARY_CATEGORY_IDS.REWRITE_PRODUCT_VOCABULARY]: 2,
         [TEST_BOUNDARY_CATEGORY_IDS.REWRITE_DRAFT_BRIDGE_BOUNDARY]: 3,
         [TEST_BOUNDARY_CATEGORY_IDS.REWRITE_FUTURE_EVIDENCE_READINESS]: 1,
         [TEST_BOUNDARY_CATEGORY_IDS.DELETE_WITH_ABANDONED_DIAGNOSTIC_UI]: 2,
@@ -41,7 +41,7 @@ describe('policyBuilderTestBoundaryReset', () => {
     });
   });
 
-  test('keeps all required Phase 1R boundary rules covered', () => {
+  test('keeps all required policy-builder boundary rules covered', () => {
     expect(listTestBoundaryRules()).toEqual([
       TEST_BOUNDARY_RULE_IDS.MODAL_DOES_NOT_GENERATE_EVIDENCE,
       TEST_BOUNDARY_RULE_IDS.DRAFT_COMMANDS_ARE_ALLOWLISTED,
@@ -53,7 +53,7 @@ describe('policyBuilderTestBoundaryReset', () => {
       TEST_BOUNDARY_RULE_IDS.NO_TRANSITIONAL_LAYOUT_SNAPSHOTS,
     ]);
 
-    expect(validatePhase1RTestBoundaryReset()).toEqual(expect.objectContaining({
+    expect(validatePolicyBuilderTestBoundaryReset()).toEqual(expect.objectContaining({
       valid: true,
       summary: expect.objectContaining({
         uncoveredRuleIds: [],
@@ -81,9 +81,9 @@ describe('policyBuilderTestBoundaryReset', () => {
   });
 
   test('groups records by architectural test category', () => {
-    expect(listTestBoundaryRecordsByCategory(TEST_BOUNDARY_CATEGORY_IDS.PHASE_1R_BOUNDARY_CONTRACT)
+    expect(listTestBoundaryRecordsByCategory(TEST_BOUNDARY_CATEGORY_IDS.POLICY_BUILDER_BOUNDARY_CONTRACT)
       .map(record => record.path)).toEqual([
-      'server/src/__tests__/services/policyBuilderPhase1BoundaryInventory.test.mjs',
+      'server/src/__tests__/services/policyBuilderBoundaryInventory.test.mjs',
       'server/src/__tests__/services/policyBuilderModalOrchestrationContract.test.mjs',
       'server/src/__tests__/services/policyBuilderDraftStateBoundary.test.mjs',
       'server/src/__tests__/services/policyBuilderReferenceDataBoundary.test.mjs',
@@ -114,7 +114,7 @@ describe('policyBuilderTestBoundaryReset', () => {
 
   test('exposes immutable reset records', () => {
     const records = listTestBoundaryRecords();
-    const boundaryRecords = listTestBoundaryRecordsByCategory(TEST_BOUNDARY_CATEGORY_IDS.PHASE_1R_BOUNDARY_CONTRACT);
+    const boundaryRecords = listTestBoundaryRecordsByCategory(TEST_BOUNDARY_CATEGORY_IDS.POLICY_BUILDER_BOUNDARY_CONTRACT);
 
     expect(Object.isFrozen(records)).toBe(true);
     expect(Object.isFrozen(records[0])).toBe(true);

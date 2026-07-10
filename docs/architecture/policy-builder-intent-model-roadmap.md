@@ -1489,7 +1489,7 @@ Tasks:
   - **Legacy compatibility bridge**,
   - **Reference data adapter**,
   - **Engine candidate**,
-  - **Delete/replace after Phase 6R**.
+  - **Rewrite/delete after engine cutline**.
 - Identify any module that currently mixes more than one authority boundary.
 - Record the cutline in the Phase 1 implementation doc.
 
@@ -1502,18 +1502,18 @@ Acceptance criteria:
 - The inventory exposes a freshness audit that fails on unclassified modules or
   required boundary rules with no current client-tree coverage.
 - Boundary rule definitions expose owner IDs and fail when a rule allows client
-  engine authority, omits a Phase 6R cutline, or uses an invalid engine/delete
+  engine authority, omits an engine cutline, or uses an invalid engine/delete
   action.
 
 Implementation record:
 
 - Phase 1R.1 boundary inventory is documented in
-  [Policy Builder Phase 1R Boundary Inventory](policy-builder-phase-1r-boundary-inventory.md).
+  [Policy Builder Boundary Inventory](policy-builder-boundary-inventory.md).
 - The server-side inventory contract lives in
-  `server/src/services/policyBuilderPhase1BoundaryInventory.mjs`.
+  `server/src/services/policyBuilderBoundaryInventory.mjs`.
 - The inventory now includes `PolicyCombined*` policy-builder paths and
-  classifies combined-signal legacy product surfaces as Phase 6R delete/replace
-  candidates.
+  classifies combined-signal legacy product surfaces as engine-cutline
+  rewrite/delete candidates.
 - The inventory now includes a rule-owner and cutline audit so future
   classifications cannot silently make client modules authoritative.
 
@@ -1746,7 +1746,7 @@ Implementation record:
 - Existing implementation details are documented in
   [Policy Builder Phase 1 Implementation](policy-builder-phase-1-implementation.md).
 - Phase 1R.1 boundary inventory is documented in
-  [Policy Builder Phase 1R Boundary Inventory](policy-builder-phase-1r-boundary-inventory.md).
+  [Policy Builder Boundary Inventory](policy-builder-boundary-inventory.md).
 - Phase 1R.2 UI orchestration boundary is documented in
   [Policy Builder Phase 1R UI Orchestration Boundary](policy-builder-phase-1r-ui-orchestration-boundary.md).
 - Phase 1R.3 draft state boundary is documented in

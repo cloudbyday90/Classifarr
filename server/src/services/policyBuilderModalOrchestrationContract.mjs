@@ -2,7 +2,7 @@ import {
   POLICY_BUILDER_BOUNDARY_CATEGORIES,
   POLICY_BUILDER_BOUNDARY_RISK_IDS,
   classifyPolicyBuilderClientPath,
-} from './policyBuilderPhase1BoundaryInventory.mjs';
+} from './policyBuilderBoundaryInventory.mjs';
 
 const MODAL_ALLOWED_RESPONSIBILITY_IDS = Object.freeze({
   OPEN_CLOSE_LIFECYCLE: 'open_close_lifecycle',
@@ -34,7 +34,7 @@ const MODAL_ORCHESTRATION_DECISION_IDS = Object.freeze({
   MOVE_TO_COMPOSABLE: 'move_to_composable',
   MOVE_TO_PRESENTATION_COMPONENT: 'move_to_presentation_component',
   MOVE_TO_SERVER_CONTRACT: 'move_to_server_contract',
-  RECLASSIFY_OR_DELETE_AFTER_PHASE_6R: 'reclassify_or_delete_after_phase_6r',
+  RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE: 'reclassify_or_delete_after_engine_cutline',
 });
 
 const MODAL_TOUCHPOINT_IDS = Object.freeze({
@@ -155,9 +155,9 @@ const MODAL_EXTRACTION_TARGETS = deepFreeze([
   {
     id: MODAL_EXTRACTION_TARGET_IDS.DIAGNOSTIC_PREVIEW_SURFACES,
     currentOwner: 'PolicyBuilderModal.vue composes impact and replay preview cards in the normal modal flow.',
-    targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_PHASE_6R,
-    targetPhase: '6R',
-    reason: 'Impact and replay previews are diagnostics; Phase 6R must classify them as engine primitives, migration verifiers, or deletion candidates.',
+    targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
+    targetPhase: 'engine_cutline',
+    reason: 'Impact and replay previews are diagnostics; engine cutline review must classify them as engine primitives, migration verifiers, or deletion candidates.',
     relatedRiskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
@@ -166,8 +166,8 @@ const MODAL_EXTRACTION_TARGETS = deepFreeze([
   {
     id: MODAL_EXTRACTION_TARGET_IDS.ADVANCED_SCORING_CONTROLS,
     currentOwner: 'PolicyBuilderModal.vue composes advanced scoring and weight controls.',
-    targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_PHASE_6R,
-    targetPhase: '3R/6R',
+    targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
+    targetPhase: 'operator_surface_engine_cutline',
     reason: 'Advanced scoring controls conflict with destination-first policy setup unless later phases reframe or remove them.',
     relatedRiskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
@@ -178,7 +178,7 @@ const MODAL_EXTRACTION_TARGETS = deepFreeze([
     id: MODAL_EXTRACTION_TARGET_IDS.SUMMARY_VIEW_PROJECTION,
     currentOwner: 'PolicyBuilderModal.vue builds intent summary view data from the current draft.',
     targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_COMPOSABLE,
-    targetPhase: '1R.2',
+    targetPhase: 'modal_orchestration',
     reason: 'Summary projection should be treated as display state and moved behind a focused orchestration/view-model boundary when the modal is narrowed.',
     relatedRiskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
@@ -188,7 +188,7 @@ const MODAL_EXTRACTION_TARGETS = deepFreeze([
     id: MODAL_EXTRACTION_TARGET_IDS.LEGACY_COMMAND_ADAPTERS,
     currentOwner: 'PolicyBuilderModal.vue adapts starter-template custom-signal events into draft commands.',
     targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_COMPOSABLE,
-    targetPhase: '1R.5',
+    targetPhase: 'legacy_bridge',
     reason: 'The modal can route commands temporarily, but legacy terminology and payload adaptation should be contained by bridge ownership.',
     relatedRiskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.LEGACY_PAYLOAD_TOUCHPOINT,
@@ -199,7 +199,7 @@ const MODAL_EXTRACTION_TARGETS = deepFreeze([
     id: MODAL_EXTRACTION_TARGET_IDS.SAVE_FAILURE_NOTIFICATION,
     currentOwner: 'PolicyBuilderModal.vue uses a browser alert after save failure.',
     targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_PRESENTATION_COMPONENT,
-    targetPhase: '1R.2',
+    targetPhase: 'modal_orchestration',
     reason: 'Save failure is allowed presentation, but it should use the app notification pattern instead of direct browser alerting.',
     relatedRiskIds: [],
   },
@@ -235,14 +235,14 @@ const MODAL_TOUCHPOINTS = deepFreeze([
     description: 'Modal composes impact and replay preview cards in the current flow.',
     responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.CHILD_COMPONENT_COMPOSITION,
     extractionTargetId: MODAL_EXTRACTION_TARGET_IDS.DIAGNOSTIC_PREVIEW_SURFACES,
-    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_PHASE_6R,
+    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
   },
   {
     id: MODAL_TOUCHPOINT_IDS.ADVANCED_SCORING_COMPOSITION,
     description: 'Modal composes advanced scoring controls.',
     responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.CHILD_COMPONENT_COMPOSITION,
     extractionTargetId: MODAL_EXTRACTION_TARGET_IDS.ADVANCED_SCORING_CONTROLS,
-    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_PHASE_6R,
+    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
   },
   {
     id: MODAL_TOUCHPOINT_IDS.SUMMARY_VIEW_PROJECTION,
@@ -381,7 +381,7 @@ function validateModalPublicEvent(event = {}) {
     issues.push({
       riskId: MODAL_ORCHESTRATION_AUDIT_RISK_IDS.UNKNOWN_PUBLIC_EVENT,
       eventId: event.id || null,
-      message: 'Modal public event is not part of the Phase 1R.2 event contract.',
+      message: 'Modal public event is not part of the modal orchestration event contract.',
     });
   }
 
@@ -443,7 +443,7 @@ function buildPolicyBuilderModalOrchestrationAudit(touchpoints = MODAL_TOUCHPOIN
       issues.push({
         riskId: MODAL_ORCHESTRATION_AUDIT_RISK_IDS.UNKNOWN_TOUCHPOINT,
         touchpointId: touchpoint.id,
-        message: 'Modal touchpoint is not part of the Phase 1R.2 orchestration contract.',
+        message: 'Modal touchpoint is not part of the modal orchestration contract.',
       });
     }
 

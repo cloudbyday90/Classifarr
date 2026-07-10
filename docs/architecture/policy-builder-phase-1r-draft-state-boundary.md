@@ -101,7 +101,7 @@ Official sources reviewed as of June 2026:
 ## Final Stack
 
 - Phase 1R.1 dependency:
-  `server/src/services/policyBuilderPhase1BoundaryInventory.mjs`
+  `server/src/services/policyBuilderBoundaryInventory.mjs`
 - Draft boundary contract:
   `server/src/services/policyBuilderDraftStateBoundary.mjs`
 - Unit coverage:

@@ -15,7 +15,7 @@ import {
   normalizeClientPath,
   summarizePolicyBuilderBoundaryInventory,
   validatePolicyBuilderBoundaryRule,
-} from '../../services/policyBuilderPhase1BoundaryInventory.mjs';
+} from '../../services/policyBuilderBoundaryInventory.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,7 +34,7 @@ function collectClientFiles(directory) {
   });
 }
 
-describe('policyBuilderPhase1BoundaryInventory', () => {
+describe('policyBuilderBoundaryInventory', () => {
   test('classifies every current policy-builder client module path', () => {
     const policyBuilderPaths = collectClientFiles(clientSrcRoot)
       .filter(isPolicyBuilderClientModulePath);
@@ -91,7 +91,7 @@ describe('policyBuilderPhase1BoundaryInventory', () => {
     ]));
   });
 
-  test('classifies preview diagnostics for Phase 6R cutline review', () => {
+  test('classifies preview diagnostics for engine cutline review', () => {
     [
       'client/src/components/policies/PolicyIntentImpactPreviewCard.vue',
       'client/src/composables/usePolicyIntentReplayPreview.js',
@@ -99,10 +99,10 @@ describe('policyBuilderPhase1BoundaryInventory', () => {
     ].forEach((filePath) => {
       const record = classifyPolicyBuilderClientPath(filePath);
 
-      expect(record.category).toBe(POLICY_BUILDER_BOUNDARY_CATEGORIES.DELETE_REPLACE_AFTER_PHASE_6R);
+      expect(record.category).toBe(POLICY_BUILDER_BOUNDARY_CATEGORIES.REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE);
       expect(record.ownerId).toBe(POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE);
       expect(record.actionId).toBe(POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE);
-      expect(record.phase6DecisionRequired).toBe(true);
+      expect(record.engineCutlineDecisionRequired).toBe(true);
       expect(record.riskIds).toEqual(expect.arrayContaining([
         POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
       ]));
@@ -112,10 +112,10 @@ describe('policyBuilderPhase1BoundaryInventory', () => {
   test('classifies legacy combined-signal product surfaces for replacement', () => {
     const record = classifyPolicyBuilderClientPath('client/src/components/policies/PolicyCombinedSignalsSummary.vue');
 
-    expect(record.category).toBe(POLICY_BUILDER_BOUNDARY_CATEGORIES.DELETE_REPLACE_AFTER_PHASE_6R);
+    expect(record.category).toBe(POLICY_BUILDER_BOUNDARY_CATEGORIES.REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE);
     expect(record.ownerId).toBe(POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE);
     expect(record.actionId).toBe(POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE);
-    expect(record.phase6DecisionRequired).toBe(true);
+    expect(record.engineCutlineDecisionRequired).toBe(true);
     expect(record.riskIds).toEqual(expect.arrayContaining([
       POLICY_BUILDER_BOUNDARY_RISK_IDS.LEGACY_PAYLOAD_TOUCHPOINT,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
@@ -134,7 +134,7 @@ describe('policyBuilderPhase1BoundaryInventory', () => {
       expect(record.ownerId).toBe(POLICY_BUILDER_BOUNDARY_OWNER_IDS.SERVER_ENGINE_CANDIDATE);
       expect(record.actionId).toBe(POLICY_BUILDER_BOUNDARY_ACTION_IDS.MOVE_TO_SERVER_ENGINE);
       expect(record.clientEngineAuthorityAllowed).toBe(false);
-      expect(record.phase6DecisionRequired).toBe(true);
+      expect(record.engineCutlineDecisionRequired).toBe(true);
       expect(record.riskIds).toEqual(expect.arrayContaining([
         POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
       ]));
@@ -162,7 +162,7 @@ describe('policyBuilderPhase1BoundaryInventory', () => {
       ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_PRESENTATION,
       actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_PRESENTATION,
       clientEngineAuthorityAllowed: false,
-      phase6DecisionRequired: false,
+      engineCutlineDecisionRequired: false,
       mixedBoundary: false,
     }));
   });
@@ -231,12 +231,12 @@ describe('policyBuilderPhase1BoundaryInventory', () => {
     expect(rules[0]).toEqual(expect.objectContaining({
       ownerId: expect.any(String),
       clientEngineAuthorityAllowed: false,
-      phase6DecisionRequired: expect.any(Boolean),
+      engineCutlineDecisionRequired: expect.any(Boolean),
     }));
     expect(Object.isFrozen(rules[0].riskIds)).toBe(true);
   });
 
-  test('audits boundary rule ownership and Phase 6R cutline metadata', () => {
+  test('audits boundary rule ownership and engine cutline metadata', () => {
     expect(buildPolicyBuilderBoundaryRuleAudit()).toEqual(expect.objectContaining({
       ok: true,
       checkedRuleCount: listPolicyBuilderBoundaryRules().length,
@@ -251,31 +251,31 @@ describe('policyBuilderPhase1BoundaryInventory', () => {
       ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
       actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
       clientEngineAuthorityAllowed: true,
-      phase6DecisionRequired: false,
+      engineCutlineDecisionRequired: false,
     });
 
     expect(result.ok).toBe(false);
     expect(result.issues.map(issue => issue.riskId)).toEqual([
       POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.CLIENT_ENGINE_AUTHORITY_ALLOWED,
       POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.INVALID_ENGINE_CANDIDATE_ACTION,
-      POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_PHASE6_DECISION,
+      POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_ENGINE_CUTLINE_DECISION,
     ]);
   });
 
   test('rejects delete or replace rules without verifier or deletion cutline action', () => {
     const result = validatePolicyBuilderBoundaryRule({
       id: 'unsafe_diagnostic_surface',
-      category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DELETE_REPLACE_AFTER_PHASE_6R,
+      category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE,
       ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE,
       actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_PRESENTATION,
       clientEngineAuthorityAllowed: false,
-      phase6DecisionRequired: false,
+      engineCutlineDecisionRequired: false,
     });
 
     expect(result.ok).toBe(false);
     expect(result.issues.map(issue => issue.riskId)).toEqual([
       POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.INVALID_DELETE_REPLACE_ACTION,
-      POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_PHASE6_DECISION,
+      POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_ENGINE_CUTLINE_DECISION,
     ]);
   });
 });
