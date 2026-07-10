@@ -1637,8 +1637,8 @@ Acceptance criteria:
 
 Implementation record:
 
-- Phase 1R.4 reference data boundary is documented in
-  [Policy Builder Phase 1R Reference Data Boundary](policy-builder-phase-1r-reference-data-boundary.md).
+- Reference data boundary is documented in
+  [Policy Builder Reference Data Boundary](policy-builder-reference-data-boundary.md).
 - The server-side reference-data boundary contract lives in
   `server/src/services/policyBuilderReferenceDataBoundary.mjs`.
 - The contract now includes record and option provenance audits for
@@ -1753,8 +1753,8 @@ Implementation record:
   [Policy Builder Modal Orchestration Boundary](policy-builder-modal-orchestration-boundary.md).
 - Draft state boundary is documented in
   [Policy Builder Draft State Boundary](policy-builder-draft-state-boundary.md).
-- Phase 1R.4 reference data boundary is documented in
-  [Policy Builder Phase 1R Reference Data Boundary](policy-builder-phase-1r-reference-data-boundary.md).
+- Reference data boundary is documented in
+  [Policy Builder Reference Data Boundary](policy-builder-reference-data-boundary.md).
 - Phase 1R.5 legacy compatibility boundary is documented in
   [Policy Builder Phase 1R Legacy Compatibility Boundary](policy-builder-phase-1r-legacy-compatibility-boundary.md).
 - Phase 1R.6 test boundary reset is documented in

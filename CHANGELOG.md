@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Reference Data Boundary Cutover** — renamed the
+  reference-data design record to durable product-domain naming, removed
+  phase-worded runtime and test strings from the reference-data boundary,
+  preserved record and option provenance audits, and updated roadmap references.
 - **Policy Builder Draft State Boundary Cutover** — renamed the draft-state
   design record to durable product-domain naming, removed phase-worded runtime
   notes from draft field and operation metadata, kept save allow-list and

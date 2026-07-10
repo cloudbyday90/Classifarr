@@ -18,7 +18,7 @@ import {
 } from '../../services/policyBuilderReferenceDataBoundary.mjs';
 
 describe('policyBuilderReferenceDataBoundary', () => {
-  test('defines Phase 1R.4 reference data categories', () => {
+  test('defines reference data categories', () => {
     const summary = summarizeReferenceDataBoundary();
 
     expect(summary.countsByCategory).toEqual({
@@ -82,7 +82,7 @@ describe('policyBuilderReferenceDataBoundary', () => {
       category: REFERENCE_DATA_CATEGORY_IDS.ROUTING_MAPPING_STATUS,
       sourceId: REFERENCE_DATA_SOURCE_IDS.FUTURE_ROUTING_STATUS_ENDPOINT,
       authorityId: REFERENCE_DATA_AUTHORITY_IDS.READINESS_CONTEXT,
-      owner: 'future Phase 6R/7R server projection',
+      owner: 'future server-owned readiness projection',
       currentPath: null,
     }));
     expect(summarizeReferenceDataBoundary().futureServerProjectionRecordIds).toEqual([
