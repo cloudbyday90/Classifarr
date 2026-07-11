@@ -3639,6 +3639,12 @@ Implementation status:
   `server/src/services/policyOperatorWorkflow.mjs`.
 - The focused operator-workflow test suite lives in
   `server/src/__tests__/services/policyOperatorWorkflow.test.mjs`.
+- Intent entries now pass through
+  `server/src/services/policyOperatorWorkflowEntryNormalizer.mjs` before normal
+  workflow projection. It retains display-safe primitives only, rejects unknown
+  authority sources and raw-object fields during audit, and prevents provider
+  or diagnostic payloads from entering destination setup. Its design record is
+  [Policy Operator Workflow Entry Normalizer](policy-operator-workflow-entry-normalizer.md).
 - Current implementation defines the normal workflow as five destination-first
   sections: `what_belongs_here`, `what_should_not_go_here`,
   `what_helps_but_should_not_decide_alone`,

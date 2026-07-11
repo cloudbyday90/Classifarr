@@ -574,6 +574,53 @@ describe('policyOperatorWorkflow', () => {
     ]);
   });
 
+  test('removes object-valued entry data before it reaches the normal workflow', () => {
+    const workflow = buildPolicyOperatorWorkflow({
+      intentDraft: {
+        version: 'policy.intent.v1',
+        belongs_here: [{
+          key: 'destination:animation',
+          label: 'Animated Movies',
+          value: {
+            providerPayload: { apiKey: 'must-not-escape' },
+          },
+          authoritySourceId: 'media_server_contents',
+          evidenceCount: 5,
+        }],
+        helpful_matches: [],
+        hard_limits: [],
+        avoid: [],
+        ask_when: [],
+        routing_target: [{ label: 'Radarr Animated Movies' }],
+      },
+      readiness: {
+        version: 'policy.automation_readiness.v1',
+        stateId: 'ready',
+        ready: true,
+        nextAction: { actionId: 'continue_automation' },
+        reasonCodes: ['ready_for_automation'],
+        issues: [],
+      },
+    });
+    const belongsHere = workflow.sections.find(section =>
+      section.sectionId === POLICY_OPERATOR_WORKFLOW_SECTION_IDS.WHAT_BELONGS_HERE
+    );
+
+    expect(belongsHere.entries[0]).toEqual(expect.objectContaining({
+      label: 'Animated Movies',
+      value: null,
+      includesRawPayload: false,
+    }));
+    expect(JSON.stringify(workflow)).not.toContain('must-not-escape');
+
+    belongsHere.entries[0].value = { raw: true };
+    expect(validatePolicyOperatorWorkflow(workflow).issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_OPERATOR_WORKFLOW_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
+      }),
+    ]));
+  });
+
   test('passes the default operator workflow audit', () => {
     const audit = buildPolicyOperatorWorkflowAudit(
       buildPolicyOperatorWorkflow(buildReadyWorkflowInput())

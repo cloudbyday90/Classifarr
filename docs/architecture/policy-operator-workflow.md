@@ -19,6 +19,11 @@ boundary requires matching, usable, sanitized evidence-quality snapshots from
 bounded intent, readiness boundary context, and embedded readiness input context
 before returning the workflow.
 
+Intent entries are projected through
+[Policy Operator Workflow Entry Normalizer](policy-operator-workflow-entry-normalizer.md)
+before they reach a section. The normal workflow receives bounded display fields
+only, never raw evidence or configuration objects.
+
 ## Problem
 
 The prior builder accumulated panels that asked operators to reason about

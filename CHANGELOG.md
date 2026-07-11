@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Operator Workflow Entry Normalizer** — added display-only intent
+  entry projection for destination setup; object-valued evidence, raw provider
+  and diagnostic fields, unknown authority sources, and control whitespace are
+  excluded and audited before an entry reaches the normal workflow.
 - **Policy Automation Readiness Input Normalizer** — added bounded operational
   input handling for readiness; routing, profile freshness, and hard-limit
   state now fail conservatively when malformed, while raw routing configuration

@@ -1,7 +1,4 @@
 import {
-  AUTHORITY_SOURCE_IDS,
-} from './policyAuthorityVocabulary.mjs';
-import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from './policyEvidenceQuality.mjs';
 import {
@@ -12,6 +9,10 @@ import {
   POLICY_AUTOMATION_READINESS_STATE_IDS,
   buildPolicyAutomationReadiness,
 } from './policyAutomationReadinessEngine.mjs';
+import {
+  buildPolicyOperatorWorkflowEntryAudit,
+  normalizePolicyOperatorWorkflowEntries,
+} from './policyOperatorWorkflowEntryNormalizer.mjs';
 import {
   POLICY_SETUP_FIELD_CONTROL_KIND_IDS,
   POLICY_UX_TERM_IDS,
@@ -184,31 +185,6 @@ function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
 
-function normalizeEntry(entry = {}) {
-  const label = normalizeString(entry.label ?? entry.value ?? entry.key);
-  if (!label) return null;
-
-  return {
-    key: normalizeString(entry.key) || label.toLowerCase(),
-    label,
-    value: entry.value ?? null,
-    authoritySourceId: entry.authoritySourceId || null,
-    operatorDeclared: entry.operatorDeclared === true,
-    observed: entry.authoritySourceId === AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
-    reasonCode: normalizeString(entry.reasonCode) || null,
-    evidenceCount: Number.isFinite(Number(entry.evidenceCount))
-      ? Number(entry.evidenceCount)
-      : null,
-    includesRawPayload: false,
-  };
-}
-
-function normalizeEntries(entries) {
-  return asArray(entries)
-    .map(normalizeEntry)
-    .filter(Boolean);
-}
-
 function countSectionEntries(section, intent) {
   return section.intentFieldIds
     .reduce((count, fieldId) => count + asArray(intent?.[fieldId]).length, 0);
@@ -241,7 +217,7 @@ function getSectionStatus(section, intent, readiness) {
 
 function mapSectionEntries(section, intent) {
   return section.intentFieldIds.flatMap(fieldId =>
-    normalizeEntries(intent?.[fieldId]).map(entry => ({
+    normalizePolicyOperatorWorkflowEntries(intent?.[fieldId]).map(entry => ({
       ...entry,
       intentFieldId: fieldId,
     }))
@@ -776,7 +752,7 @@ function validateWorkflowSection(section = {}) {
   }
 
   if (section.exposesRawPayload === true ||
-      asArray(section.entries).some(entry => entry?.includesRawPayload === true)) {
+      asArray(section.entries).some(entry => !buildPolicyOperatorWorkflowEntryAudit(entry).ok)) {
     issues.push({
       riskId: POLICY_OPERATOR_WORKFLOW_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
       message: 'Workflow sections cannot expose raw provider or diagnostic payloads.',
