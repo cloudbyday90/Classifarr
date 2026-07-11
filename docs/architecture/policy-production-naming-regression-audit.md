@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the live repository inventory after the
-file-operation stage contract cutover on July 11, 2026:
+classification resume-stage diagnostic cutover on July 11, 2026:
 
-- production references: `26`
-- rename candidates: `27`
+- production references: `25`
+- rename candidates: `26`
 - obsolete migration tooling references: `0`
 
 The baseline is intentionally a maximum, not a target. Future durable rename

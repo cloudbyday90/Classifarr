@@ -100,7 +100,7 @@ export async function resumeFromStage(taskId) {
         }
         return stage;
     } catch (error) {
-        logger.error('Failed to get resume phase', { taskId, error: error.message });
+        logger.error('Failed to get resume stage', { taskId, error: error.message });
         return null;
     }
 }

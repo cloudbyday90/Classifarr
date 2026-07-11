@@ -11,13 +11,14 @@ import { jest } from '@jest/globals';
 import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const mockQuery = jest.fn();
 const mockDb = { query: mockQuery };
+const loggerModule = createLoggerModuleMock();
 
 jest.unstable_mockModule('../config/database.mjs', () => ({
   ...mockDb,
   default: mockDb,
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
+jest.unstable_mockModule('../utils/logger.mjs', () => loggerModule.module);
 
 await import('../config/database.mjs');
 const { classificationProgressStageService } = await import('../services/classificationProgressStageService.mjs');
@@ -179,6 +180,18 @@ describe('classificationProgressStageService', () => {
             const result = await classificationProgressStageService.getProgress(999);
 
             expect(result).toBeNull();
+        });
+
+        it('logs the durable resume-stage diagnostic when the query fails', async () => {
+            mockQuery.mockRejectedValueOnce(new Error('database offline'));
+
+            const result = await classificationProgressStageService.resumeFromStage(1);
+
+            expect(result).toBeNull();
+            expect(loggerModule.logger.error).toHaveBeenCalledWith(
+                'Failed to get resume stage',
+                { taskId: 1, error: 'database offline' }
+            );
         });
     });
 

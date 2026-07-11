@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Classification Resume Stage Diagnostic** — renamed the failed-resume log
+  message to durable stage terminology without changing task lookup, return,
+  database, API, or WebSocket behavior; reduced the enforced production naming
+  baseline from `26/27` to `25/26` references/candidates.
 - **File Operation Stage Contract** — replaced internal folder-move failure and
   progress-callback `phase` fields with durable `stage` fields while preserving
   preflight, copy, verification, and cleanup behavior; reduced the enforced
