@@ -150,7 +150,7 @@ const POLICY_AUTHORING_COMPATIBILITY_TEST_RECORDS = deepFreeze([
     notes: 'Protects server-side payload rejection for UI-only and server-projection fields.',
   },
   {
-    path: 'server/src/__tests__/services/policyBuilderPhase2LegacyBridgeIsolation.test.mjs',
+    path: 'server/src/__tests__/services/policyAuthoringLegacyBridgeBoundary.test.mjs',
     categoryId: POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.BRIDGE_SERIALIZATION_ALLOWLIST,
     actionId: POLICY_AUTHORING_COMPATIBILITY_ACTION_IDS.KEEP,
     coveredRuleIds: [

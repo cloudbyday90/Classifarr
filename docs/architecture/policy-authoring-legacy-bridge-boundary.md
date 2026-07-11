@@ -1,18 +1,18 @@
-# Policy Builder Phase 2R Legacy Bridge Isolation
+# Policy Authoring Legacy Bridge Boundary
 
-Status: implemented as the second Phase 2R draft/bridge contract.
+Status: implemented compatibility boundary.
 
 ## Scope
 
-Phase 2R.2 keeps legacy compatibility working while preventing legacy storage
+This boundary keeps legacy compatibility working while preventing legacy storage
 shape from owning the product model.
 
 This slice does not change UI behavior, save payloads, database schema,
 classification scoring, native intent storage, or bridge runtime behavior. It
 adds a server-owned ESM bridge isolation contract that inventories
-deserialization, serialization, no-op preservation, migration-only metadata, and
-Phase 8R deletion responsibilities for the current legacy-compatible draft
-bridge.
+deserialization, serialization, no-op preservation, migration-only metadata,
+and native-storage removal responsibilities for the current
+legacy-compatible draft bridge.
 
 ## Research Inputs
 
@@ -44,13 +44,13 @@ Official sources reviewed as of June 2026:
 1. Keep selected-preset deserialization and `customSignals` projection inside
    `policyIntentDraftBridge.js`.
 2. Keep draft-to-legacy serialization allow-listed and bridge-owned.
-3. Preserve unsupported legacy payload blocks on no-op saves until Phase 8R
+3. Preserve unsupported legacy payload blocks on no-op saves until native
    conversion and rollback gates are complete.
 4. Preserve weights, removed markers, strict/advisory metadata, and fallback
    metadata only through bridge or bridge-caller ownership.
 5. Treat product components as command emitters and presentation consumers, not
    raw legacy payload readers/writers.
-6. Require Phase 8R native schema, lossless conversion, rollback snapshots,
+6. Require native schema, lossless conversion, rollback snapshots,
    parity, write shutdown, backup/restore verification, and regression coverage
    before deleting the bridge.
 7. Make bridge isolation executable:
@@ -65,9 +65,9 @@ Official sources reviewed as of June 2026:
 - Makes bridge ownership explicit before more draft command work continues.
 - Protects no-op legacy save behavior independently of UI layout.
 - Keeps unsupported legacy blocks from being dropped during transitional saves.
-- Gives Phase 8R concrete deletion gates instead of letting the bridge become
+- Gives native storage concrete removal gates instead of letting the bridge become
   permanent architecture.
-- Keeps product components aligned with the Phase 2R draft contract.
+- Keeps product components aligned with the policy-authoring draft contract.
 
 ### Cons
 
@@ -76,31 +76,31 @@ Official sources reviewed as of June 2026:
 - `usePolicyBuilderState.js` remains a bridge caller for save payload assembly.
 - Product tests still mention `customSignals` where they assert legacy save
   compatibility.
-- Native intent storage still waits for Phase 8R.
+- Native intent storage still waits for its migration and rollback gates.
 - The audit validates bridge ownership and payload-key boundaries, but it does
   not remove legacy bridge runtime behavior.
 
 ## Final Stack
 
-- Bridge isolation contract:
-  `server/src/services/policyBuilderPhase2LegacyBridgeIsolation.mjs`
+- Bridge boundary contract:
+  `server/src/services/policyAuthoringLegacyBridgeBoundary.mjs`
 - Unit coverage:
-  `server/src/__tests__/services/policyBuilderPhase2LegacyBridgeIsolation.test.mjs`
+  `server/src/__tests__/services/policyAuthoringLegacyBridgeBoundary.test.mjs`
 - Current bridge implementation:
   `client/src/utils/policyIntentDraftBridge.js`
 - Current bridge callers:
   - `client/src/composables/usePolicyIntentDraft.js`
   - `client/src/composables/usePolicyBuilderState.js`
-- Compatibility boundary inherited from Phase 1R:
+- Compatibility boundary:
   `server/src/services/policyBuilderLegacyCompatibilityBoundary.mjs`
 - Roadmap:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 - This implementation record:
-  `docs/architecture/policy-builder-phase-2r-legacy-bridge-isolation.md`
+  `docs/architecture/policy-authoring-legacy-bridge-boundary.md`
 
 ## Implemented Outcome
 
-Phase 2R.2 classifies bridge responsibilities:
+The boundary classifies bridge responsibilities:
 
 | Responsibility | Stage | Owner |
 | --- | --- | --- |
@@ -142,36 +142,36 @@ It also documents unsupported legacy keys that must be preserved when present:
 - `provider_hint`
 - `legacy_rule_id`
 
-Phase 2R.2 inherits the Phase 1R rule that product components cannot read or
-write raw legacy payloads directly. Raw legacy mutation remains bridge-only.
+The boundary keeps product components from reading or writing raw legacy payloads
+directly. Raw legacy mutation remains bridge-only.
 
 The hardening pass adds:
 
-- `validatePhase2RBridgeResponsibility(record)` for single responsibility
+- `validatePolicyAuthoringLegacyBridgeResponsibility(record)` for single responsibility
   checks,
-- `validatePhase2RBridgeSerializedKeySets(options)` for serializer allow-list
+- `validatePolicyAuthoringLegacyBridgeSerializedKeySets(options)` for serializer allow-list
   and unsupported preservation key hygiene,
-- `buildPhase2RBridgeIsolationAudit(options)` for whole-contract checks.
+- `buildPolicyAuthoringLegacyBridgeBoundaryAudit(options)` for whole-contract checks.
 
 The audit fails unknown responsibilities, unknown stages or owners, unknown
 artifacts, missing module boundaries, non-allow-listed serializers,
 product-facing bridge records, raw mutation outside the draft bridge,
 unsupported preservation outside bridge ownership, deletion candidates without a
 native replacement, unsafe serialized keys, unsupported-key overlap, and missing
-Phase 8R deletion requirements.
+native-storage removal requirements.
 
-## Phase 2R.2 Checklist Result
+## Boundary Checklist Result
 
-| Phase 0R Checklist Item | Result |
+| Check | Result |
 | --- | --- |
 | Source of truth identified | `policyIntentDraftBridge.js` owns deserialization, serializer writes, no-op preservation, and compatibility fallback metadata. |
 | Authority level identified | Product components are command/presentation consumers; the bridge is compatibility serializer, not durable policy authority. |
 | Learning side effect identified | No learning side effects are added by this task. |
-| Rollback or migration impact identified | Bridge deletion requires all Phase 8R legacy compatibility deletion gates. |
+| Rollback or migration impact identified | Bridge deletion requires all native-storage compatibility removal gates. |
 | Operator-facing language validated | Product surfaces remain shielded from raw legacy storage language; bridge internals keep compatibility names only. |
 
-## Follow-Up
+## Next Component
 
-The next Phase 2R task is **2R.3 Draft Command Boundary**. It should make
-operator edits narrow, typed, product-language commands and validate command
-payloads before they touch draft state.
+The next direct naming cutover is the policy authoring draft contract family.
+It still supplies phase-coded draft field and authority identifiers to the
+active boundary and should be renamed as one contract-preserving component.

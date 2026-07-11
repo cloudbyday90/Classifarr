@@ -1867,17 +1867,17 @@ Acceptance criteria:
 
 - Product components never read or write raw `customSignals` directly.
 - Legacy payload preservation is tested independently of UI layout.
-- Bridge code has explicit deletion/replacement criteria for Phase 8R.
+- Bridge code has explicit deletion and replacement criteria for native storage.
 - The bridge isolation contract has an executable audit that fails unsafe
   responsibility ownership, serializer key drift, unsupported preservation
   overlap, raw mutation outside the bridge, and missing native-storage deletion gates.
 
 Implementation record:
 
-- Phase 2R.2 legacy bridge isolation is documented in
-  [Policy Builder Phase 2R Legacy Bridge Isolation](policy-builder-phase-2r-legacy-bridge-isolation.md).
-- The server-side Phase 2R bridge isolation contract lives in
-  `server/src/services/policyBuilderPhase2LegacyBridgeIsolation.mjs`.
+- The policy authoring legacy bridge boundary is documented in
+  [Policy Authoring Legacy Bridge Boundary](policy-authoring-legacy-bridge-boundary.md).
+- The server-side policy authoring legacy bridge boundary lives in
+  `server/src/services/policyAuthoringLegacyBridgeBoundary.mjs`.
 
 ### 2R.3 Draft Command Boundary
 
@@ -2069,8 +2069,8 @@ Implementation record:
   [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
 - Phase 2R.1 draft contract definition is documented in
   [Policy Builder Phase 2R Draft Contract Definition](policy-builder-phase-2r-draft-contract.md).
-- Phase 2R.2 legacy bridge isolation is documented in
-  [Policy Builder Phase 2R Legacy Bridge Isolation](policy-builder-phase-2r-legacy-bridge-isolation.md).
+- The policy authoring legacy bridge boundary is documented in
+  [Policy Authoring Legacy Bridge Boundary](policy-authoring-legacy-bridge-boundary.md).
 - The policy authoring draft command boundary is documented in
   [Policy Authoring Draft Command Boundary](policy-authoring-draft-command-boundary.md).
 - Policy authoring draft view projection is documented in

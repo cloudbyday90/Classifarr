@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Legacy Bridge Boundary Module Cutover** — renamed the
+  legacy bridge boundary service, focused test, and design record to durable
+  policy-authoring names; replaced phase-coded responsibilities, owners,
+  lifecycle diagnostics, and removal wording with bridge and native-storage
+  terms; updated the active serializer and compatibility regression inventory;
+  and preserved allow-listed key, prototype-pollution, raw-write, and removal
+  gate audit coverage.
 - **Policy Authoring Compatibility Regression Inventory Module Cutover** —
   renamed the draft compatibility regression service, focused test, and design
   record to durable policy-authoring names; replaced phase-coded rule, action,

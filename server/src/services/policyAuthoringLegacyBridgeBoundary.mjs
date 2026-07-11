@@ -7,7 +7,7 @@ import {
   validateLegacyCompatibilityTouchpoint,
 } from './policyBuilderLegacyCompatibilityBoundary.mjs';
 
-const PHASE_2R_BRIDGE_RESPONSIBILITY_IDS = Object.freeze({
+const POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS = Object.freeze({
   DESERIALIZE_SELECTED_PRESETS: 'deserialize_selected_presets',
   PROJECT_CUSTOM_SIGNALS_TO_DRAFT: 'project_custom_signals_to_draft',
   SERIALIZE_DRAFT_TO_CUSTOM_SIGNALS: 'serialize_draft_to_custom_signals',
@@ -20,7 +20,7 @@ const PHASE_2R_BRIDGE_RESPONSIBILITY_IDS = Object.freeze({
   DELETE_AFTER_NATIVE_STORAGE: 'delete_after_native_storage',
 });
 
-const PHASE_2R_BRIDGE_STAGE_IDS = Object.freeze({
+const POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS = Object.freeze({
   DESERIALIZER: 'deserializer',
   SERIALIZER: 'serializer',
   NO_OP_PRESERVATION: 'no_op_preservation',
@@ -28,7 +28,7 @@ const PHASE_2R_BRIDGE_STAGE_IDS = Object.freeze({
   DELETION_GATE: 'deletion_gate',
 });
 
-const PHASE_2R_BRIDGE_OWNER_IDS = Object.freeze({
+const POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS = Object.freeze({
   DRAFT_BRIDGE: 'draft_bridge',
   DRAFT_COMPOSABLE_CALLER: 'draft_composable_caller',
   POLICY_BUILDER_STATE_CALLER: 'policy_builder_state_caller',
@@ -36,7 +36,7 @@ const PHASE_2R_BRIDGE_OWNER_IDS = Object.freeze({
   NATIVE_STORAGE_REPLACEMENT: 'native_storage_replacement',
 });
 
-const PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS = Object.freeze([
+const POLICY_AUTHORING_LEGACY_BRIDGE_ALLOWED_SERIALIZED_KEYS = Object.freeze([
   'require_all',
   'require_any',
   'include',
@@ -56,14 +56,14 @@ const PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS = Object.freeze([
   'removed',
 ]);
 
-const PHASE_2R_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS = Object.freeze([
+const POLICY_AUTHORING_LEGACY_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS = Object.freeze([
   'source_note',
   'custom_score',
   'provider_hint',
   'legacy_rule_id',
 ]);
 
-const PHASE_2R_BRIDGE_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_RESPONSIBILITY: 'unknown_responsibility',
   UNKNOWN_STAGE: 'unknown_stage',
   UNKNOWN_OWNER: 'unknown_owner',
@@ -99,11 +99,11 @@ function deepFreeze(value) {
   return value;
 }
 
-const PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS = deepFreeze([
+const POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_RECORDS = deepFreeze([
   {
-    id: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.DESERIALIZE_SELECTED_PRESETS,
-    stageId: PHASE_2R_BRIDGE_STAGE_IDS.DESERIALIZER,
-    ownerId: PHASE_2R_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
+    id: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS.DESERIALIZE_SELECTED_PRESETS,
+    stageId: POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS.DESERIALIZER,
+    ownerId: POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
     modulePath: 'client/src/utils/policyIntentDraftBridge.js',
     entryPoint: 'buildPolicyIntentDraft',
     artifactIds: [
@@ -119,9 +119,9 @@ const PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS = deepFreeze([
     replacementTarget: 'native intent reader with legacy fallback converter',
   },
   {
-    id: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.PROJECT_CUSTOM_SIGNALS_TO_DRAFT,
-    stageId: PHASE_2R_BRIDGE_STAGE_IDS.DESERIALIZER,
-    ownerId: PHASE_2R_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
+    id: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS.PROJECT_CUSTOM_SIGNALS_TO_DRAFT,
+    stageId: POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS.DESERIALIZER,
+    ownerId: POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
     modulePath: 'client/src/utils/policyIntentDraftBridge.js',
     entryPoint: 'buildPolicyIntentDraft',
     artifactIds: [
@@ -136,9 +136,9 @@ const PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS = deepFreeze([
     replacementTarget: 'native intent projection reader',
   },
   {
-    id: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.SERIALIZE_DRAFT_TO_CUSTOM_SIGNALS,
-    stageId: PHASE_2R_BRIDGE_STAGE_IDS.SERIALIZER,
-    ownerId: PHASE_2R_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
+    id: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS.SERIALIZE_DRAFT_TO_CUSTOM_SIGNALS,
+    stageId: POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS.SERIALIZER,
+    ownerId: POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
     modulePath: 'client/src/utils/policyIntentDraftBridge.js',
     entryPoint: 'applyPolicyIntentDraftToSelectedPresets',
     artifactIds: [
@@ -153,9 +153,9 @@ const PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS = deepFreeze([
     replacementTarget: 'native intent writer with legacy converter removed',
   },
   {
-    id: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_UNSUPPORTED_LEGACY_BLOCKS,
-    stageId: PHASE_2R_BRIDGE_STAGE_IDS.NO_OP_PRESERVATION,
-    ownerId: PHASE_2R_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
+    id: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_UNSUPPORTED_LEGACY_BLOCKS,
+    stageId: POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS.NO_OP_PRESERVATION,
+    ownerId: POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
     modulePath: 'client/src/utils/policyIntentDraftBridge.js',
     entryPoint: 'applyPolicyIntentDraftToSelectedPresets',
     artifactIds: [
@@ -165,12 +165,12 @@ const PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS = deepFreeze([
     preservesUnknownPayload: true,
     productFacing: false,
     deleteAfterNativeStorage: true,
-    replacementTarget: 'Phase 8R rollback snapshot and conversion tests',
+    replacementTarget: 'native storage rollback snapshot and conversion tests',
   },
   {
-    id: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_PRESET_WEIGHTS,
-    stageId: PHASE_2R_BRIDGE_STAGE_IDS.NO_OP_PRESERVATION,
-    ownerId: PHASE_2R_BRIDGE_OWNER_IDS.POLICY_BUILDER_STATE_CALLER,
+    id: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_PRESET_WEIGHTS,
+    stageId: POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS.NO_OP_PRESERVATION,
+    ownerId: POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS.POLICY_BUILDER_STATE_CALLER,
     modulePath: 'client/src/composables/usePolicyBuilderState.js',
     entryPoint: 'buildPolicySavePayload',
     artifactIds: [
@@ -183,9 +183,9 @@ const PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS = deepFreeze([
     replacementTarget: 'native template influence or seed metadata',
   },
   {
-    id: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_REMOVED_MARKERS,
-    stageId: PHASE_2R_BRIDGE_STAGE_IDS.NO_OP_PRESERVATION,
-    ownerId: PHASE_2R_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
+    id: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_REMOVED_MARKERS,
+    stageId: POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS.NO_OP_PRESERVATION,
+    ownerId: POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
     modulePath: 'client/src/utils/policyIntentDraftBridge.js',
     entryPoint: 'signalRemovalOverrides',
     artifactIds: [
@@ -198,9 +198,9 @@ const PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS = deepFreeze([
     replacementTarget: 'native ignored-template-signal state or deletion',
   },
   {
-    id: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_STRICT_ADVISORY_METADATA,
-    stageId: PHASE_2R_BRIDGE_STAGE_IDS.NO_OP_PRESERVATION,
-    ownerId: PHASE_2R_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
+    id: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_STRICT_ADVISORY_METADATA,
+    stageId: POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS.NO_OP_PRESERVATION,
+    ownerId: POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
     modulePath: 'client/src/utils/policyIntentDraftBridge.js',
     entryPoint: 'signalMetadataOverrides',
     artifactIds: [
@@ -213,9 +213,9 @@ const PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS = deepFreeze([
     replacementTarget: 'native constraint semantics',
   },
   {
-    id: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_COMPATIBILITY_FALLBACK,
-    stageId: PHASE_2R_BRIDGE_STAGE_IDS.NO_OP_PRESERVATION,
-    ownerId: PHASE_2R_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
+    id: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_COMPATIBILITY_FALLBACK,
+    stageId: POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS.NO_OP_PRESERVATION,
+    ownerId: POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
     modulePath: 'client/src/utils/policyIntentDraftBridge.js',
     entryPoint: 'legacyCustomSignals',
     artifactIds: [
@@ -225,12 +225,12 @@ const PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS = deepFreeze([
     preservesUnknownPayload: true,
     productFacing: false,
     deleteAfterNativeStorage: true,
-    replacementTarget: 'Phase 8R rollback snapshot',
+    replacementTarget: 'native storage rollback snapshot',
   },
   {
-    id: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.MIGRATION_ONLY_METADATA,
-    stageId: PHASE_2R_BRIDGE_STAGE_IDS.MIGRATION_METADATA,
-    ownerId: PHASE_2R_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
+    id: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS.MIGRATION_ONLY_METADATA,
+    stageId: POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS.MIGRATION_METADATA,
+    ownerId: POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS.DRAFT_BRIDGE,
     modulePath: 'client/src/utils/policyIntentDraftBridge.js',
     entryPoint: 'source and migration_state fields',
     artifactIds: [
@@ -243,9 +243,9 @@ const PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS = deepFreeze([
     replacementTarget: 'native policy intent storage state',
   },
   {
-    id: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.DELETE_AFTER_NATIVE_STORAGE,
-    stageId: PHASE_2R_BRIDGE_STAGE_IDS.DELETION_GATE,
-    ownerId: PHASE_2R_BRIDGE_OWNER_IDS.NATIVE_STORAGE_REPLACEMENT,
+    id: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS.DELETE_AFTER_NATIVE_STORAGE,
+    stageId: POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS.DELETION_GATE,
+    ownerId: POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS.NATIVE_STORAGE_REPLACEMENT,
     modulePath: 'client/src/utils/policyIntentDraftBridge.js',
     entryPoint: 'entire bridge module',
     artifactIds: [
@@ -256,11 +256,11 @@ const PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS = deepFreeze([
     preservesUnknownPayload: false,
     productFacing: false,
     deleteAfterNativeStorage: true,
-    replacementTarget: 'Phase 8R native intent storage mapper',
+    replacementTarget: 'native intent storage mapper',
   },
 ]);
 
-const PHASE_2R_BRIDGE_DELETION_REQUIREMENTS = deepFreeze([
+const POLICY_AUTHORING_LEGACY_BRIDGE_DELETION_REQUIREMENTS = deepFreeze([
   LEGACY_COMPATIBILITY_DELETION_GATE_IDS.NATIVE_INTENT_SCHEMA,
   LEGACY_COMPATIBILITY_DELETION_GATE_IDS.LOSSLESS_CONVERSION,
   LEGACY_COMPATIBILITY_DELETION_GATE_IDS.ROLLBACK_SNAPSHOT,
@@ -270,38 +270,38 @@ const PHASE_2R_BRIDGE_DELETION_REQUIREMENTS = deepFreeze([
   LEGACY_COMPATIBILITY_DELETION_GATE_IDS.REGRESSION_COVERAGE,
 ]);
 
-function listPhase2RBridgeResponsibilities() {
-  return PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS;
+function listPolicyAuthoringLegacyBridgeResponsibilities() {
+  return POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_RECORDS;
 }
 
-function getPhase2RBridgeResponsibility(responsibilityId) {
-  return PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS.find(record => record.id === responsibilityId) || null;
+function getPolicyAuthoringLegacyBridgeResponsibility(responsibilityId) {
+  return POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_RECORDS.find(record => record.id === responsibilityId) || null;
 }
 
-function listPhase2RBridgeResponsibilitiesByStage(stageId) {
-  return PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS.filter(record => record.stageId === stageId);
+function listPolicyAuthoringLegacyBridgeResponsibilitiesByStage(stageId) {
+  return POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_RECORDS.filter(record => record.stageId === stageId);
 }
 
-function listPhase2RBridgeDeletionRequirements() {
-  return PHASE_2R_BRIDGE_DELETION_REQUIREMENTS;
+function listPolicyAuthoringLegacyBridgeDeletionRequirements() {
+  return POLICY_AUTHORING_LEGACY_BRIDGE_DELETION_REQUIREMENTS;
 }
 
-function canPhase2RBridgeSerializeKey(key) {
-  return PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS.includes(key);
+function canPolicyAuthoringLegacyBridgeSerializeKey(key) {
+  return POLICY_AUTHORING_LEGACY_BRIDGE_ALLOWED_SERIALIZED_KEYS.includes(key);
 }
 
-function shouldPhase2RBridgePreserveUnsupportedKey(key) {
-  return PHASE_2R_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS.includes(key);
+function shouldPolicyAuthoringLegacyBridgePreserveUnsupportedKey(key) {
+  return POLICY_AUTHORING_LEGACY_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS.includes(key);
 }
 
-function validatePhase2RBridgeResponsibility(record) {
+function validatePolicyAuthoringLegacyBridgeResponsibility(record) {
   if (!record || typeof record !== 'object') {
     return {
       valid: false,
       responsibilityId: null,
       issues: [
         {
-          riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+          riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
           reason: 'Bridge responsibility record is missing or invalid.',
         },
       ],
@@ -310,23 +310,23 @@ function validatePhase2RBridgeResponsibility(record) {
 
   const issues = [];
 
-  if (!Object.values(PHASE_2R_BRIDGE_RESPONSIBILITY_IDS).includes(record.id)) {
+  if (!Object.values(POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS).includes(record.id)) {
     issues.push({
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
-      reason: 'Bridge responsibility is not in the Phase 2R bridge vocabulary.',
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+      reason: 'Bridge responsibility is not in the declared policy authoring legacy bridge vocabulary.',
     });
   }
 
-  if (!Object.values(PHASE_2R_BRIDGE_STAGE_IDS).includes(record.stageId)) {
+  if (!Object.values(POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS).includes(record.stageId)) {
     issues.push({
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_STAGE,
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_STAGE,
       reason: 'Bridge responsibility has no recognized stage.',
     });
   }
 
-  if (!Object.values(PHASE_2R_BRIDGE_OWNER_IDS).includes(record.ownerId)) {
+  if (!Object.values(POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS).includes(record.ownerId)) {
     issues.push({
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_OWNER,
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_OWNER,
       reason: 'Bridge responsibility has no recognized owner.',
     });
   }
@@ -336,58 +336,58 @@ function validatePhase2RBridgeResponsibility(record) {
 
   if (unknownArtifactIds.length > 0) {
     issues.push({
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_ARTIFACT,
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_ARTIFACT,
       reason: 'Bridge responsibility references an unknown legacy compatibility artifact.',
     });
   }
 
   if (!record.modulePath || !record.entryPoint) {
     issues.push({
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.MISSING_MODULE_BOUNDARY,
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.MISSING_MODULE_BOUNDARY,
       reason: 'Bridge responsibility must declare a module path and entry point.',
     });
   }
 
-  if (record.stageId === PHASE_2R_BRIDGE_STAGE_IDS.SERIALIZER && record.allowListed !== true) {
+  if (record.stageId === POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS.SERIALIZER && record.allowListed !== true) {
     issues.push({
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.SERIALIZER_NOT_ALLOW_LISTED,
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.SERIALIZER_NOT_ALLOW_LISTED,
       reason: 'Bridge serializer responsibilities must be allow-listed.',
     });
   }
 
   if (record.productFacing) {
     issues.push({
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.PRODUCT_FACING_BRIDGE_RECORD,
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.PRODUCT_FACING_BRIDGE_RECORD,
       reason: 'Bridge responsibilities must not be product-facing UI records.',
     });
   }
 
   if (
-    record.stageId === PHASE_2R_BRIDGE_STAGE_IDS.SERIALIZER
-    && record.ownerId !== PHASE_2R_BRIDGE_OWNER_IDS.DRAFT_BRIDGE
+    record.stageId === POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS.SERIALIZER
+    && record.ownerId !== POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS.DRAFT_BRIDGE
   ) {
     issues.push({
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.RAW_MUTATION_OUTSIDE_BRIDGE,
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.RAW_MUTATION_OUTSIDE_BRIDGE,
       reason: 'Raw legacy serialization must stay inside the draft bridge.',
     });
   }
 
   if (
-    record.id === PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_UNSUPPORTED_LEGACY_BLOCKS
-    && (record.ownerId !== PHASE_2R_BRIDGE_OWNER_IDS.DRAFT_BRIDGE || record.preservesUnknownPayload !== true)
+    record.id === POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_UNSUPPORTED_LEGACY_BLOCKS
+    && (record.ownerId !== POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS.DRAFT_BRIDGE || record.preservesUnknownPayload !== true)
   ) {
     issues.push({
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNSUPPORTED_PRESERVATION_NOT_BRIDGE_OWNED,
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.UNSUPPORTED_PRESERVATION_NOT_BRIDGE_OWNED,
       reason: 'Unsupported legacy payload preservation must be bridge-owned and preserve unknown payload data.',
     });
   }
 
   if (
     record.deleteAfterNativeStorage
-    && (!record.replacementTarget || record.ownerId === PHASE_2R_BRIDGE_OWNER_IDS.SERVER_VALIDATION)
+    && (!record.replacementTarget || record.ownerId === POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS.SERVER_VALIDATION)
   ) {
     issues.push({
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.DELETION_GATE_WITHOUT_NATIVE_REPLACEMENT,
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.DELETION_GATE_WITHOUT_NATIVE_REPLACEMENT,
       reason: 'Bridge deletion candidates must declare a native-storage replacement target.',
     });
   }
@@ -399,9 +399,9 @@ function validatePhase2RBridgeResponsibility(record) {
   };
 }
 
-function validatePhase2RBridgeSerializedKeySets({
-  allowedSerializedKeys = PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
-  unsupportedPreservationKeys = PHASE_2R_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS,
+function validatePolicyAuthoringLegacyBridgeSerializedKeySets({
+  allowedSerializedKeys = POLICY_AUTHORING_LEGACY_BRIDGE_ALLOWED_SERIALIZED_KEYS,
+  unsupportedPreservationKeys = POLICY_AUTHORING_LEGACY_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS,
 } = {}) {
   const allowedKeys = Array.isArray(allowedSerializedKeys) ? allowedSerializedKeys : [];
   const unsupportedKeys = Array.isArray(unsupportedPreservationKeys) ? unsupportedPreservationKeys : [];
@@ -412,7 +412,7 @@ function validatePhase2RBridgeSerializedKeySets({
 
   if (unsafeKeys.length > 0) {
     issues.push({
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNSAFE_SERIALIZED_KEY,
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.UNSAFE_SERIALIZED_KEY,
       reason: 'Bridge payload key sets cannot contain prototype-pollution keys or non-string keys.',
       keys: unsafeKeys,
     });
@@ -422,7 +422,7 @@ function validatePhase2RBridgeSerializedKeySets({
 
   if (overlappingKeys.length > 0) {
     issues.push({
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNSUPPORTED_KEY_OVERLAPS_SERIALIZED_KEY,
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.UNSUPPORTED_KEY_OVERLAPS_SERIALIZED_KEY,
       reason: 'Unsupported preservation keys must not overlap with the serializer allow-list.',
       keys: overlappingKeys,
     });
@@ -436,11 +436,11 @@ function validatePhase2RBridgeSerializedKeySets({
   };
 }
 
-function canPhase2RPathMutateLegacyPayload(path) {
+function canPolicyAuthoringPathMutateLegacyPayload(path) {
   return canMutateLegacyPayload(path);
 }
 
-function validatePhase2RBridgeTouchpoint({ path, artifactId, operation } = {}) {
+function validatePolicyAuthoringLegacyBridgeTouchpoint({ path, artifactId, operation } = {}) {
   return validateLegacyCompatibilityTouchpoint({
     path,
     artifactId,
@@ -448,33 +448,33 @@ function validatePhase2RBridgeTouchpoint({ path, artifactId, operation } = {}) {
   });
 }
 
-function validatePhase2RBridgeDeletionReadiness(completedGateIds = []) {
+function validatePolicyAuthoringLegacyBridgeDeletionReadiness(completedGateIds = []) {
   const completed = Array.isArray(completedGateIds) ? completedGateIds : [];
-  const missingGateIds = PHASE_2R_BRIDGE_DELETION_REQUIREMENTS.filter(gateId => !completed.includes(gateId));
+  const missingGateIds = POLICY_AUTHORING_LEGACY_BRIDGE_DELETION_REQUIREMENTS.filter(gateId => !completed.includes(gateId));
 
   return {
     ready: missingGateIds.length === 0,
-    requiredGateIds: PHASE_2R_BRIDGE_DELETION_REQUIREMENTS,
+    requiredGateIds: POLICY_AUTHORING_LEGACY_BRIDGE_DELETION_REQUIREMENTS,
     missingGateIds,
   };
 }
 
-function buildPhase2RBridgeIsolationAudit({
-  responsibilities = PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS,
-  deletionRequirements = PHASE_2R_BRIDGE_DELETION_REQUIREMENTS,
-  allowedSerializedKeys = PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
-  unsupportedPreservationKeys = PHASE_2R_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS,
+function buildPolicyAuthoringLegacyBridgeBoundaryAudit({
+  responsibilities = POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_RECORDS,
+  deletionRequirements = POLICY_AUTHORING_LEGACY_BRIDGE_DELETION_REQUIREMENTS,
+  allowedSerializedKeys = POLICY_AUTHORING_LEGACY_BRIDGE_ALLOWED_SERIALIZED_KEYS,
+  unsupportedPreservationKeys = POLICY_AUTHORING_LEGACY_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS,
 } = {}) {
-  const responsibilityResults = responsibilities.map(validatePhase2RBridgeResponsibility);
+  const responsibilityResults = responsibilities.map(validatePolicyAuthoringLegacyBridgeResponsibility);
   const responsibilityIds = responsibilities.map(record => record?.id).filter(Boolean);
-  const missingResponsibilityIds = Object.values(PHASE_2R_BRIDGE_RESPONSIBILITY_IDS)
+  const missingResponsibilityIds = Object.values(POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS)
     .filter(responsibilityId => !responsibilityIds.includes(responsibilityId));
   const duplicateResponsibilityIds = responsibilityIds
     .filter((responsibilityId, index) => responsibilityIds.indexOf(responsibilityId) !== index)
     .filter((responsibilityId, index, allIds) => allIds.indexOf(responsibilityId) === index);
-  const missingDeletionRequirementIds = PHASE_2R_BRIDGE_DELETION_REQUIREMENTS
+  const missingDeletionRequirementIds = POLICY_AUTHORING_LEGACY_BRIDGE_DELETION_REQUIREMENTS
     .filter(gateId => !deletionRequirements.includes(gateId));
-  const keySetResult = validatePhase2RBridgeSerializedKeySets({
+  const keySetResult = validatePolicyAuthoringLegacyBridgeSerializedKeySets({
     allowedSerializedKeys,
     unsupportedPreservationKeys,
   });
@@ -485,21 +485,21 @@ function buildPhase2RBridgeIsolationAudit({
     }))),
     ...missingResponsibilityIds.map(responsibilityId => ({
       responsibilityId,
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
-      reason: 'Required Phase 2R bridge responsibility is missing.',
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+      reason: 'Required policy authoring legacy bridge responsibility is missing.',
     })),
     ...duplicateResponsibilityIds.map(responsibilityId => ({
       responsibilityId,
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
       reason: 'Bridge responsibility appears more than once.',
     })),
     ...missingDeletionRequirementIds.map(gateId => ({
-      responsibilityId: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.DELETE_AFTER_NATIVE_STORAGE,
-      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.MISSING_DELETION_REQUIREMENT,
-      reason: `Required Phase 8R deletion gate is missing: ${gateId}.`,
+      responsibilityId: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS.DELETE_AFTER_NATIVE_STORAGE,
+      riskId: POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS.MISSING_DELETION_REQUIREMENT,
+      reason: `Required native-storage removal gate is missing: ${gateId}.`,
     })),
     ...keySetResult.issues.map(issue => ({
-      responsibilityId: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.SERIALIZE_DRAFT_TO_CUSTOM_SIGNALS,
+      responsibilityId: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS.SERIALIZE_DRAFT_TO_CUSTOM_SIGNALS,
       ...issue,
     })),
   ];
@@ -507,7 +507,7 @@ function buildPhase2RBridgeIsolationAudit({
   return {
     ok: issues.length === 0,
     checkedResponsibilityCount: responsibilities.length,
-    requiredResponsibilityCount: Object.values(PHASE_2R_BRIDGE_RESPONSIBILITY_IDS).length,
+    requiredResponsibilityCount: Object.values(POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS).length,
     responsibilityResults,
     missingResponsibilityIds,
     duplicateResponsibilityIds,
@@ -517,8 +517,8 @@ function buildPhase2RBridgeIsolationAudit({
   };
 }
 
-function summarizePhase2RBridgeIsolation() {
-  const countsByStage = PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS.reduce((counts, record) => {
+function summarizePolicyAuthoringLegacyBridgeBoundary() {
+  const countsByStage = POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_RECORDS.reduce((counts, record) => {
     counts[record.stageId] = (counts[record.stageId] || 0) + 1;
     return counts;
   }, {});
@@ -527,13 +527,13 @@ function summarizePhase2RBridgeIsolation() {
     bridgeModulePath: 'client/src/utils/policyIntentDraftBridge.js',
     productComponentsMayReadRawCustomSignals: false,
     productComponentsMayWriteRawCustomSignals: false,
-    bridgeCanMutateRawLegacyPayload: canPhase2RPathMutateLegacyPayload('client/src/utils/policyIntentDraftBridge.js'),
-    responsibilityCount: PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS.length,
+    bridgeCanMutateRawLegacyPayload: canPolicyAuthoringPathMutateLegacyPayload('client/src/utils/policyIntentDraftBridge.js'),
+    responsibilityCount: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_RECORDS.length,
     countsByStage,
-    allowedSerializedKeys: PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
-    unsupportedPreservationKeys: PHASE_2R_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS,
-    deletionRequirementIds: PHASE_2R_BRIDGE_DELETION_REQUIREMENTS,
-    deleteAfterNativeStorageResponsibilityIds: PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS
+    allowedSerializedKeys: POLICY_AUTHORING_LEGACY_BRIDGE_ALLOWED_SERIALIZED_KEYS,
+    unsupportedPreservationKeys: POLICY_AUTHORING_LEGACY_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS,
+    deletionRequirementIds: POLICY_AUTHORING_LEGACY_BRIDGE_DELETION_REQUIREMENTS,
+    deleteAfterNativeStorageResponsibilityIds: POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_RECORDS
       .filter(record => record.deleteAfterNativeStorage)
       .map(record => record.id),
   };
@@ -543,23 +543,23 @@ export {
   LEGACY_COMPATIBILITY_ACTION_IDS,
   LEGACY_COMPATIBILITY_ARTIFACT_IDS,
   LEGACY_COMPATIBILITY_RISK_IDS,
-  PHASE_2R_BRIDGE_AUDIT_RISK_IDS,
-  PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
-  PHASE_2R_BRIDGE_OWNER_IDS,
-  PHASE_2R_BRIDGE_RESPONSIBILITY_IDS,
-  PHASE_2R_BRIDGE_STAGE_IDS,
-  PHASE_2R_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS,
-  buildPhase2RBridgeIsolationAudit,
-  canPhase2RBridgeSerializeKey,
-  canPhase2RPathMutateLegacyPayload,
-  getPhase2RBridgeResponsibility,
-  listPhase2RBridgeDeletionRequirements,
-  listPhase2RBridgeResponsibilities,
-  listPhase2RBridgeResponsibilitiesByStage,
-  shouldPhase2RBridgePreserveUnsupportedKey,
-  summarizePhase2RBridgeIsolation,
-  validatePhase2RBridgeDeletionReadiness,
-  validatePhase2RBridgeResponsibility,
-  validatePhase2RBridgeSerializedKeySets,
-  validatePhase2RBridgeTouchpoint,
+  POLICY_AUTHORING_LEGACY_BRIDGE_AUDIT_RISK_IDS,
+  POLICY_AUTHORING_LEGACY_BRIDGE_ALLOWED_SERIALIZED_KEYS,
+  POLICY_AUTHORING_LEGACY_BRIDGE_OWNER_IDS,
+  POLICY_AUTHORING_LEGACY_BRIDGE_RESPONSIBILITY_IDS,
+  POLICY_AUTHORING_LEGACY_BRIDGE_STAGE_IDS,
+  POLICY_AUTHORING_LEGACY_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS,
+  buildPolicyAuthoringLegacyBridgeBoundaryAudit,
+  canPolicyAuthoringLegacyBridgeSerializeKey,
+  canPolicyAuthoringPathMutateLegacyPayload,
+  getPolicyAuthoringLegacyBridgeResponsibility,
+  listPolicyAuthoringLegacyBridgeDeletionRequirements,
+  listPolicyAuthoringLegacyBridgeResponsibilities,
+  listPolicyAuthoringLegacyBridgeResponsibilitiesByStage,
+  shouldPolicyAuthoringLegacyBridgePreserveUnsupportedKey,
+  summarizePolicyAuthoringLegacyBridgeBoundary,
+  validatePolicyAuthoringLegacyBridgeDeletionReadiness,
+  validatePolicyAuthoringLegacyBridgeResponsibility,
+  validatePolicyAuthoringLegacyBridgeSerializedKeySets,
+  validatePolicyAuthoringLegacyBridgeTouchpoint,
 };

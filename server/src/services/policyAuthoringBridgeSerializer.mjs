@@ -1,12 +1,12 @@
 import {
-  PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
-  canPhase2RBridgeSerializeKey,
-} from './policyBuilderPhase2LegacyBridgeIsolation.mjs';
+  POLICY_AUTHORING_LEGACY_BRIDGE_ALLOWED_SERIALIZED_KEYS,
+  canPolicyAuthoringLegacyBridgeSerializeKey,
+} from './policyAuthoringLegacyBridgeBoundary.mjs';
 
-const POLICY_AUTHORING_BRIDGE_ALLOWED_SERIALIZED_KEYS = PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS;
+const POLICY_AUTHORING_BRIDGE_ALLOWED_SERIALIZED_KEYS = POLICY_AUTHORING_LEGACY_BRIDGE_ALLOWED_SERIALIZED_KEYS;
 
 function canPolicyAuthoringBridgeSerializeKey(key) {
-  return canPhase2RBridgeSerializeKey(key);
+  return canPolicyAuthoringLegacyBridgeSerializeKey(key);
 }
 
 export {
