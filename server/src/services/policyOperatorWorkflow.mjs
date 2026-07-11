@@ -740,7 +740,7 @@ function validateWorkflowSection(section = {}) {
   if (asArray(section.termIds).length === 0) {
     issues.push({
       riskId: POLICY_OPERATOR_WORKFLOW_AUDIT_RISK_IDS.MISSING_TERM,
-      message: 'Workflow section must map to Phase 0R user terms.',
+      message: 'Workflow section must map to approved policy-authoring terms.',
     });
   }
 

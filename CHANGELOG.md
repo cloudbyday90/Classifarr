@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Operator Workflow Vocabulary** — replaced a workflow-audit issue's
+  delivery-era user-term wording with durable policy-authoring terminology
+  while preserving its risk ID and validation behavior; reduced the enforced
+  production naming baseline from `23/24` to `22/23` references/candidates.
 - **Native Intent Conversion Vocabulary** — replaced a delivery-era conversion
   phrase in the product-facing legacy-compatibility contract with explicit
   policy-conversion language while preserving validation, backup, and rollback

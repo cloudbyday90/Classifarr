@@ -637,6 +637,20 @@ describe('policyOperatorWorkflow', () => {
     }));
   });
 
+  test('uses durable vocabulary when a workflow section has no approved terms', () => {
+    const workflow = buildPolicyOperatorWorkflow(buildReadyWorkflowInput());
+    workflow.sections[0].termIds = [];
+
+    expect(validatePolicyOperatorWorkflow(workflow).issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_OPERATOR_WORKFLOW_AUDIT_RISK_IDS.MISSING_TERM,
+          message: 'Workflow section must map to approved policy-authoring terms.',
+        }),
+      ])
+    );
+  });
+
   test('rejects workflow copy and decisions that reintroduce diagnostics or direct execution', () => {
     const workflow = buildPolicyOperatorWorkflow(buildReadyWorkflowInput());
     workflow.sections[0].helperText = 'Use replay parity and TMDB coverage to decide this.';
