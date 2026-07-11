@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Library Metadata Evidence Collector** — added parameterized,
+  library-scoped, read-only aggregation of bounded normalized genre facts for
+  the policy evidence envelope; excludes raw provider JSON and unconstrained
+  metadata, sanitizes values, preserves metadata as compatibility-only evidence,
+  and verifies no refresh, provider, quota, storage, or learning side effect.
 - **Policy Library Routing-Outcome Evidence Collector** — added parameterized,
   library-scoped, read-only collection of bounded persisted Arr routing state
   for the policy evidence envelope; normalizes only succeeded, blocked, and

@@ -114,7 +114,7 @@ side-effect record. A blocked result has no next step.
 
 ## Next Step
 
-The final-outcome/manual-correction, resolved pending-item-answer, and Arr
-routing-outcome collectors are now implemented. The next component is a
-separate read-only collector for already persisted metadata evidence; it must
-exclude raw provider payloads and keep metadata from owning identity.
+The final-outcome/manual-correction, resolved pending-item-answer, Arr
+routing-outcome, and normalized metadata collectors are now implemented. The
+next component is a server-owned library evidence loader that composes their
+bounded, audited snapshots into one envelope without live lookups or writes.

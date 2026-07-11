@@ -18,6 +18,11 @@ Persisted Arr routing outcomes are normalized to fixed succeeded, blocked, or
 skipped states before projection. The evidence contract carries neither raw
 route reasons nor Arr request, response, path, or error details.
 
+Persisted normalized metadata is currently limited to aggregated genre facts.
+It is projected only as compatibility evidence; source authority rules prevent
+metadata from establishing identity, hard limits, avoid rules, or direct
+learning.
+
 June 2026 hardening adds a projection summary and legacy reducer cutline
 inventory. The summary gives downstream engines a bounded, deterministic view
 of bucket counts, source authority, blocking evidence, and review evidence. The

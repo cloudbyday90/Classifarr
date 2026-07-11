@@ -3324,6 +3324,12 @@ Implementation status:
   values, excludes raw route errors and Arr payloads, and never retries or
   attempts routing. Its design record is
   [Policy Library Routing-Outcome Evidence Collector](policy-library-routing-outcome-evidence-collector.md).
+- The library metadata evidence collector lives in
+  `server/src/services/policyLibraryMetadataEvidenceCollector.mjs`. It reads
+  bounded aggregated typed genre facts from final classification rows, excludes
+  raw provider JSON and other unconstrained metadata categories, normalizes
+  values before projection, and supplies compatibility evidence only. Its design
+  record is [Policy Library Metadata Evidence Collector](policy-library-metadata-evidence-collector.md).
 
 ### 6R.2 Intent Engine
 
