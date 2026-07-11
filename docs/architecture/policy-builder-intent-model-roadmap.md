@@ -6680,8 +6680,8 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 8 production references plus 9 rename candidates after
-  the policy-authoring workflow behavior cutover.
+  currently reports 7 production references plus 8 rename candidates after
+  the policy-builder engine-cutline vocabulary cutover.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -6806,6 +6806,9 @@ Implementation status:
 - Policy-authoring workflow completion evidence now describes durable product
   behavior rather than the delivery naming rule it enforces. Its design record
   is [Policy Authoring Workflow Behavior Cutover](policy-authoring-workflow-behavior-cutover.md).
+- Policy-builder advanced-scoring extraction guidance now refers directly to
+  the engine cutline rather than a future delivery phase. Its design record is
+  [Policy Builder Engine-Cutline Vocabulary Cutover](policy-builder-engine-cutline-vocabulary-cutover.md).
 - Outcome record:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
 - After the completed classification progress storage cutover, the repository

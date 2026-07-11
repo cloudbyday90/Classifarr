@@ -175,7 +175,7 @@ const MODAL_EXTRACTION_TARGETS = deepFreeze([
     currentOwner: 'PolicyBuilderModal.vue composes advanced scoring and weight controls.',
     targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
     targetBoundaryId: MODAL_TARGET_BOUNDARY_IDS.OPERATOR_SURFACE_ENGINE_CUTLINE,
-    reason: 'Advanced scoring controls conflict with destination-first policy setup unless later phases reframe or remove them.',
+    reason: 'Advanced scoring controls conflict with destination-first policy setup until the engine cutline reclassifies or removes them.',
     relatedRiskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,

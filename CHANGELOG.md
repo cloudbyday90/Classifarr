@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Builder Engine-Cutline Guidance** — replaced the modal
+  orchestration reason's delivery-era wording with explicit engine-cutline
+  guidance while preserving extraction decisions and risk bindings; reduced
+  the enforced production naming baseline from `8/9` to `7/8`
+  references/candidates.
 - **Policy Authoring Workflow Evidence** — replaced delivery-era wording in
   workflow-audit contract evidence with direct product behavior while
   preserving record IDs, artifact checks, and risk behavior; reduced the

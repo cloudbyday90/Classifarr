@@ -119,6 +119,13 @@ describe('policyBuilderModalOrchestrationContract', () => {
       }));
   });
 
+  test('uses engine-cutline language for advanced scoring controls', () => {
+    expect(getModalExtractionTarget(MODAL_EXTRACTION_TARGET_IDS.ADVANCED_SCORING_CONTROLS))
+      .toEqual(expect.objectContaining({
+        reason: 'Advanced scoring controls conflict with destination-first policy setup until the engine cutline reclassifies or removes them.',
+      }));
+  });
+
   test('marks summary and save failure work as modal orchestration extraction targets', () => {
     expect(getModalExtractionTarget(MODAL_EXTRACTION_TARGET_IDS.SUMMARY_VIEW_PROJECTION))
       .toEqual(expect.objectContaining({
