@@ -3,9 +3,9 @@ const POLICY_PRODUCTION_NAMING_REGRESSION_AUDIT_VERSION =
 const TEMPORARY_ADAPTER_WITH_DELETION_GATE = 'temporary_adapter_with_deletion_gate';
 
 const POLICY_PRODUCTION_NAMING_REGRESSION_BASELINE = Object.freeze({
-  label: 'policy-authoring-workflow-vocabulary-ratchet-2026-07-11',
-  maxProductionReferenceCount: 22,
-  maxRenameCandidateCount: 23,
+  label: 'storage-closure-input-contract-ratchet-2026-07-11',
+  maxProductionReferenceCount: 15,
+  maxRenameCandidateCount: 16,
   maxObsoleteToolingCount: 0,
 });
 

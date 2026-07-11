@@ -191,21 +191,23 @@ describe('policyStorageCompletionCheckpoint', () => {
     ]));
   });
 
-  test('accepts human-readable dotted Phase 8R roadmap identifiers', () => {
+  test('blocks legacy roadmap evidence keys instead of treating them as durable fields', () => {
     const dottedLegacyIds = LEGACY_IDS.map(legacyId => (
       legacyId.replace(/^8r_(\d+)$/, '8R.$1')
     ));
     const checkpoint = completeCheckpoint({
-      roadmapEvidence: roadmapEvidence({
+      roadmapEvidence: {
         sequencePhaseIds: dottedLegacyIds,
         implementationStatusPhaseIds: dottedLegacyIds,
-      }),
+      },
     });
 
-    expect(checkpoint.statusId).toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE);
-    expect(checkpoint.roadmapEvidence.missingSequenceComponentIds).toEqual([]);
+    expect(checkpoint.statusId)
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_ROADMAP_EVIDENCE);
+    expect(checkpoint.roadmapEvidence.missingSequenceComponentIds)
+      .toEqual(COMPONENT_IDS);
     expect(checkpoint.roadmapEvidence.missingImplementationStatusComponentIds)
-      .toEqual([]);
+      .toEqual(COMPONENT_IDS);
   });
 
   test('blocks when compatibility-removal completion audit is not complete or invalid', () => {

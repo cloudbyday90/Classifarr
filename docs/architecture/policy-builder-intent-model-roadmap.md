@@ -6680,8 +6680,8 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 22 production references plus 23 rename candidates after
-  the policy-operator workflow vocabulary cutover.
+  currently reports 15 production references plus 16 rename candidates after
+  the storage-closure input contract cutover.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -6790,6 +6790,11 @@ Implementation status:
   terms without referring to the design phase that introduced the vocabulary.
   Its design record is
   [Policy Operator Workflow Vocabulary Cutover](policy-operator-workflow-vocabulary-cutover.md).
+- Storage-closure evidence and completion-checkpoint inputs now require
+  durable component field names. Historic roadmap IDs continue to normalize
+  inside those fields, but undocumented phase-key fallback readers are
+  rejected. Its design record is
+  [Policy Storage Closure Input Contract Cutover](policy-storage-closure-input-contract-cutover.md).
 - Outcome record:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
 - After the completed classification progress storage cutover, the repository

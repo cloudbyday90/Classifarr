@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Storage Closure Input Contract** — removed undocumented phase-key fallback
+  readers from storage-closure evidence and checkpoint inputs; durable
+  component fields are now required while historic IDs remain normalized inside
+  those fields, reducing the enforced production naming baseline from `22/23`
+  to `15/16` references/candidates.
 - **Policy Operator Workflow Vocabulary** — replaced a workflow-audit issue's
   delivery-era user-term wording with durable policy-authoring terminology
   while preserving its risk ID and validation behavior; reduced the enforced

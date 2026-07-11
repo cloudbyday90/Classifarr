@@ -169,6 +169,35 @@ describe('policyStorageClosureEvidenceRun', () => {
     ))).toBe(true);
   });
 
+  test('blocks legacy evidence keys instead of treating them as durable component fields', () => {
+    const evidenceRun = completeRun({
+      roadmapEvidence: {
+        sequencePhaseIds: SOURCE_COMPONENT_IDS,
+        implementationStatusPhaseIds: SOURCE_COMPONENT_IDS,
+      },
+      changelogEvidence: {
+        updated: true,
+        phaseIds: SOURCE_COMPONENT_IDS,
+      },
+    });
+
+    expect(evidenceRun.statusId)
+      .toBe(POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.BLOCKED_BY_CHECKPOINT);
+    expect(evidenceRun.checkpoint.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: 'roadmap_sequence_incomplete',
+        missingComponentIds: expect.any(Array),
+      }),
+      expect.objectContaining({
+        riskId: 'changelog_entry_missing',
+        missingComponentIds: expect.any(Array),
+      }),
+    ]));
+    expect(evidenceRun.checkpoint.risks.every(risk => (
+      risk.missingComponentIds?.length === SOURCE_COMPONENT_IDS.length
+    ))).toBe(true);
+  });
+
   test('blocks when artifact inventory is missing', () => {
     const evidenceRun = completeRun({
       artifactInventory: {},

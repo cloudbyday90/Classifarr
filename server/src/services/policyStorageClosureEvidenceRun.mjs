@@ -341,22 +341,17 @@ function evaluateArtifactInventory({
 function normalizeRoadmapEvidence(roadmapEvidence = {}) {
   return {
     ...roadmapEvidence,
-    componentSequenceIds: asArray(
-      roadmapEvidence.componentSequenceIds ?? roadmapEvidence['sequence' + 'PhaseIds']
-    ).map(normalizeComponentId),
-    implementationStatusComponentIds: asArray(
-      roadmapEvidence.implementationStatusComponentIds ??
-        roadmapEvidence['implementationStatus' + 'PhaseIds']
-    ).map(normalizeComponentId),
+    componentSequenceIds: asArray(roadmapEvidence.componentSequenceIds)
+      .map(normalizeComponentId),
+    implementationStatusComponentIds: asArray(roadmapEvidence.implementationStatusComponentIds)
+      .map(normalizeComponentId),
   };
 }
 
 function normalizeChangelogEvidence(changelogEvidence = {}) {
   return {
     ...changelogEvidence,
-    componentIds: asArray(
-      changelogEvidence.componentIds ?? changelogEvidence['phase' + 'Ids']
-    ).map(normalizeComponentId),
+    componentIds: asArray(changelogEvidence.componentIds).map(normalizeComponentId),
   };
 }
 

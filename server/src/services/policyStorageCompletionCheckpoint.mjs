@@ -183,7 +183,7 @@ function buildComponentIdMap(expectedComponents = POLICY_STORAGE_COMPLETION_COMP
 
 function getEvidenceComponentId(component = {}, componentIdMap = LEGACY_STORAGE_COMPONENT_ID_MAP) {
   return normalizeComponentId(
-    component.componentId ?? component['phase' + 'Id'],
+    component.componentId,
     componentIdMap
   );
 }
@@ -301,14 +301,10 @@ function evaluateRoadmapEvidence({
 } = {}) {
   const risks = [];
   const componentIdMap = buildComponentIdMap(expectedComponents);
-  const sequenceComponentIds = asArray(
-    roadmapEvidence.componentSequenceIds ??
-      roadmapEvidence['sequence' + 'PhaseIds']
-  ).map(componentId => normalizeComponentId(componentId, componentIdMap));
-  const implementationStatusComponentIds = asArray(
-    roadmapEvidence.implementationStatusComponentIds ??
-      roadmapEvidence['implementationStatus' + 'PhaseIds']
-  ).map(componentId => normalizeComponentId(componentId, componentIdMap));
+  const sequenceComponentIds = asArray(roadmapEvidence.componentSequenceIds)
+    .map(componentId => normalizeComponentId(componentId, componentIdMap));
+  const implementationStatusComponentIds = asArray(roadmapEvidence.implementationStatusComponentIds)
+    .map(componentId => normalizeComponentId(componentId, componentIdMap));
   const expectedComponentIds =
     expectedComponents.map(component => normalizeComponentId(component.componentId, componentIdMap));
   const missingSequenceComponentIds =

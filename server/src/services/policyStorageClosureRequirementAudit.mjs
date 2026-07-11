@@ -43,7 +43,6 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_STATUS: 'unknown_status',
 });
 
-const LEGACY_COMPONENT_ID_KEY = ['phase', 'Id'].join('');
 const SOURCE_ROADMAP_COMPONENT_PREFIX = ['8', 'R'].join('');
 const ROADMAP_SEQUENCE_COMPONENT_PATTERN = /^\d+\.\s+\*\*(\d+r?\.\d+)\b/gim;
 const ROADMAP_IMPLEMENTATION_COMPONENT_PATTERN = /^###\s+(\d+r?\.\d+)\b/gim;
@@ -63,7 +62,7 @@ function toClosureComponentMap(componentArtifactMap = []) {
   return asArray(componentArtifactMap).map(component => ({
     componentId:
       normalizeClosureComponentId(
-        component.componentId || component.legacyId || component[LEGACY_COMPONENT_ID_KEY]
+        component.componentId || component.legacyId
       ),
     label: component.label,
     designDocPaths: asArray(component.designDocPaths),
