@@ -83,6 +83,7 @@ Supporting verification:
 
 ## Next Component
 
-Cut over the policy authority vocabulary service and focused test. It supplies
-the authority levels and sources used by the draft contract and remains the
-next direct producer of phase-coded authority terminology.
+Cut over phase-coded terminology within `policyUserMentalModel.mjs`. It feeds
+the draft contract's operator vocabulary and still exposes phase-labelled
+concept metadata and audit messages despite already having a durable module
+name.
