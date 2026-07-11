@@ -113,7 +113,9 @@ reason contract, or claims provider, quota, or storage side effects.
 
 ## Next Step
 
-Connect a runtime-safe profile loader to this pure adapter only after defining
-the lifecycle and freshness contract for a persisted library profile. The loader
-must remain server-owned, use cached profile data, and preserve the evidence
-boundary as the only downstream handoff.
+The server-owned cached-profile loader is now implemented in
+`policyLibraryProfileEvidenceLoader.mjs`. The next component is a read-only
+runtime evidence-envelope assembler that combines this bounded profile handoff
+with persisted outcomes, corrections, answers, routing outcomes, and bounded
+metadata evidence before passing one complete envelope to the same evidence
+boundary.

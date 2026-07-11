@@ -3292,6 +3292,12 @@ Implementation status:
   evidence, deliberately emits no identity evidence, and feeds the existing
   evidence boundary without live provider calls or storage writes. Its design
   record is [Policy Library Profile Evidence](policy-library-profile-evidence.md).
+- The cached-profile evidence loader lives in
+  `server/src/services/policyLibraryProfileEvidenceLoader.mjs`. It validates the
+  library ID, loads the existing profile without refreshing it, derives trusted
+  freshness from persisted timestamps, and requires a successful evidence
+  boundary plus boundary audit before returning a handoff. Its design record is
+  [Policy Library Profile Evidence Loader](policy-library-profile-evidence-loader.md).
 
 ### 6R.2 Intent Engine
 

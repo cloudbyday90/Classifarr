@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Library Profile Evidence Loader** — added the server-owned cached
+  profile handoff for evidence generation; validates library IDs, re-derives
+  freshness from persisted timestamps, treats stale or unknown profiles as
+  review-required, sanitizes load failures, and requires an audited
+  side-effect-free evidence-boundary result before later engine consumption.
 - **Policy Library Profile Evidence** — added a pure server-owned adapter from
   persisted media-server profile distributions to bounded policy evidence;
   preserves distributions as compatibility support only, keeps observed

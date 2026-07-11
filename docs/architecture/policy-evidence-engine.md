@@ -200,6 +200,11 @@ Persisted media-server profile distributions should first be adapted by
 bounded compatibility and review-only outlier candidates without allowing broad
 distribution values to establish destination identity.
 
+`server/src/services/policyLibraryProfileEvidenceLoader.mjs` is the only
+cached-profile handoff for this flow. It derives freshness from persisted
+timestamps, marks missing or stale timestamps as review-required, and audits
+the resulting evidence boundary before later engines consume it.
+
 The projection entry shape is intentionally small:
 
 ```text
