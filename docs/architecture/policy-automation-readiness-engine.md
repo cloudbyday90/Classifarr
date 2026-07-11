@@ -137,7 +137,7 @@ Cons:
 - Documentation:
   `docs/architecture/policy-automation-readiness-engine.md`
 - Quality-gate hardening:
-  Pending durable architecture cutover.
+  `docs/architecture/policy-automation-readiness-quality-gate.md`
 - Roadmap owner:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
@@ -234,6 +234,7 @@ projectionFingerprintMatch
 
 ## Next Step
 
-Continue with **Policy Automation Readiness Quality Gate Architecture Cutover**.
-That component should rename the active quality-gate design record and remove
-remaining checkpoint language from the readiness hardening documentation.
+Continue with **Policy Operator Workflow Architecture Cutover**. That component
+should preserve consumption of the quality-gated readiness state while moving the
+operator workflow design record and runtime wording to durable product-domain
+language.

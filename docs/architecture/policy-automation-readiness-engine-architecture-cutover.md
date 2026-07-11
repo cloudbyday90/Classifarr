@@ -94,4 +94,4 @@ Cons:
 
 ## Next Step
 
-Continue with **Policy Automation Readiness Quality Gate Architecture Cutover**.
+Continue with **Policy Operator Workflow Architecture Cutover**.
