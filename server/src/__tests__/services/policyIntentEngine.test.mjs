@@ -96,6 +96,21 @@ describe('policyIntentEngine', () => {
     expect(intent.confidence.level).toBe(POLICY_INTENT_CONFIDENCE_LEVEL_IDS.HIGH);
   });
 
+  test('does not expose object-valued evidence through direct intent drafting', () => {
+    const intent = buildPolicyIntentDraft({
+      libraryProfile: {
+        identityCandidates: [{
+          key: 'studio:pixar',
+          label: 'Pixar',
+          value: { providerPayload: { apiKey: 'must-not-project' } },
+        }],
+      },
+    });
+
+    expect(intent.belongs_here[0].value).toBeNull();
+    expect(JSON.stringify(intent)).not.toContain('must-not-project');
+  });
+
   test('builds bounded intent only from a successful evidence boundary result', () => {
     const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {

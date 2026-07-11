@@ -15,6 +15,10 @@ import {
 import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from './policyEvidenceQuality.mjs';
+import {
+  buildPolicyIntentEntryAudit,
+  normalizePolicyIntentEntry,
+} from './policyIntentEntryNormalizer.mjs';
 
 const POLICY_INTENT_BOUNDARY_STATUS_IDS = Object.freeze({
   READY: 'ready',
@@ -80,6 +84,7 @@ const POLICY_INTENT_AUDIT_RISK_IDS = Object.freeze({
   EVIDENCE_FINGERPRINT_MISMATCH: 'evidence_fingerprint_mismatch',
   INSUFFICIENT_EVIDENCE_QUALITY: 'insufficient_evidence_quality',
   MISSING_EVIDENCE_QUALITY: 'missing_evidence_quality',
+  INTENT_ENTRY_FIELD_CONTRACT: 'intent_entry_field_contract',
 });
 
 const BROAD_GENRE_LABELS = Object.freeze([
@@ -223,14 +228,17 @@ function buildIntentEntry(entry = {}, {
   inferred = true,
   operatorDeclared = false,
 } = {}) {
-  const label = normalizeString(entry.label ?? entry.value ?? entry.key);
-  if (!label) return null;
+  const normalizedEntry = normalizePolicyIntentEntry({
+    key: entry.key,
+    label: entry.label,
+    value: entry.value,
+    reasonCode: reasonCode || entry.reasonCode || 'policy_evidence',
+  });
+  if (!normalizedEntry) return null;
 
   return {
     fieldId,
-    key: normalizeString(entry.key) || label.toLowerCase(),
-    label,
-    value: entry.value ?? null,
+    ...normalizedEntry,
     evidenceBucketId: entry.bucketId,
     evidenceSourceId: entry.sourceId,
     authoritySourceId: entry.authoritySourceId,
@@ -677,6 +685,15 @@ function listPolicyIntentFields() {
 function validateIntentEntry(entry = {}, fieldId) {
   const issues = [];
   const label = normalizeString(entry.label);
+  const entryFieldAudit = buildPolicyIntentEntryAudit(entry);
+
+  if (!entryFieldAudit.ok) {
+    issues.push({
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.INTENT_ENTRY_FIELD_CONTRACT,
+      fieldId,
+      entryRiskIds: entryFieldAudit.issues.map(issue => issue.riskId),
+    });
+  }
 
   if (!label) {
     issues.push({

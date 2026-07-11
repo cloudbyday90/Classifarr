@@ -3416,6 +3416,11 @@ Implementation status:
   `server/src/services/policyIntentEngine.mjs`.
 - The focused intent-engine test suite lives in
   `server/src/__tests__/services/policyIntentEngine.test.mjs`.
+- Intent-entry projection is normalized by
+  `server/src/services/policyIntentEntryNormalizer.mjs`, which excludes
+  object-valued evidence and lets the intent audit reject tampered primitive
+  fields. Its design record is
+  [Policy Intent Entry Normalizer](policy-intent-entry-normalizer.md).
 - Current implementation consumes Phase 6R.1 evidence projection and produces
   proposed destination intent for `belongs_here`, `helpful_matches`,
   `hard_limits`, `avoid`, `ask_when`, `routing_target`, confidence,

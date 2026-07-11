@@ -17,6 +17,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Intent Entry Normalizer** — added a server-owned primitive-field
+  contract for direct and bounded intent drafting; object-valued evidence,
+  control characters, invalid identifiers, and tampered reason codes are now
+  excluded or audited before later policy engine stages consume intent.
 - **Policy Evidence Input Cardinality Guard** — added a fixed server-owned
   collection bound before evidence scanning and projection; oversized arrays
   now return a count-only blocked state without retaining excess values or
