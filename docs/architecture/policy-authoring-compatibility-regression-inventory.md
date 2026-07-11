@@ -1,15 +1,15 @@
-# Policy Builder Phase 2R Draft Parity And Regression Tests
+# Policy Authoring Compatibility Regression Inventory
 
-Status: implemented as the sixth Phase 2R draft/bridge contract.
+Status: implemented compatibility regression contract.
 
 ## Scope
 
-Phase 2R.6 closes the draft bridge phase by protecting compatibility without
-locking Classifarr into the transitional policy-builder UI. The draft remains an
-editing projection. Server validation remains authoritative. Native intent
-storage remains disabled until Phase 8R migration gates pass.
+The compatibility regression inventory protects the draft bridge without locking
+Classifarr into a transitional policy-builder UI. The draft remains an editing
+projection, server validation remains authoritative, and native intent storage
+remains disabled until its migration, rollback, and parity gates pass.
 
-This document covers the implemented Phase 2R.6 regression contract only. It
+This document covers the implemented compatibility regression contract only. It
 does not define runtime learning, replay execution, evidence generation, policy
 storage migration, or provider readiness.
 
@@ -39,7 +39,7 @@ The relevant guidance is consistent:
 
 ## Recommendation Stack
 
-1. Keep Phase 2R tests centered on contract behavior:
+1. Keep compatibility tests centered on contract behavior:
    - no-op legacy save parity,
    - typed command emission,
    - read-only projection protection,
@@ -51,8 +51,9 @@ The relevant guidance is consistent:
    each Phase 2R rule.
 3. Harden the client save payload builder so it serializes only known policy form
    fields before adding presets and the explicit `policyIntentDraft`.
-4. Mark old diagnostic or advanced legacy UI tests as Phase 6R/8R rewrite or
-   deletion candidates rather than treating them as permanent product contracts.
+4. Mark old diagnostic or advanced legacy UI tests as policy-engine rewrite or
+   native-storage removal candidates rather than treating them as permanent
+   product contracts.
 5. Keep server validation authoritative even when the client prevents obvious
    UI-only leakage.
 
@@ -64,7 +65,7 @@ Pros:
 
 - Protects behavior that matters across refactors.
 - Avoids freezing the old builder layout.
-- Makes future Phase 3R and Phase 6R UI simplification safer.
+- Makes future UI simplification safer.
 
 Cons:
 
@@ -91,7 +92,7 @@ Cons:
 Pros:
 
 - Makes temporary diagnostic tests visible instead of silently permanent.
-- Gives Phase 6R and Phase 8R a concrete cleanup list.
+- Gives policy-engine and native-storage cutovers a concrete cleanup list.
 
 Cons:
 
@@ -106,20 +107,20 @@ Use a layered regression stack:
 - Server contract tests verify the architecture boundary and suite coverage.
 - Server request validation remains the authority for persisted payload shape.
 
-This keeps Phase 2R complete without adding another operator-facing surface or
-promoting the client draft into durable authority.
+This keeps the compatibility boundary complete without adding another
+operator-facing surface or promoting the client draft into durable authority.
 
 ## Implementation
 
-The Phase 2R.6 implementation now provides:
+The compatibility regression inventory provides:
 
-- `server/src/services/policyBuilderPhase2DraftParityRegression.mjs`
-  - lists required Phase 2R parity rules,
+- `server/src/services/policyAuthoringCompatibilityRegressionInventory.mjs`
+  - lists required policy-authoring compatibility rules,
   - maps current tests to those rules,
-  - identifies Phase 6R/8R rewrite/delete candidates,
+  - identifies policy-engine rewrite and native-storage removal candidates,
   - validates that required regression coverage exists,
   - verifies the client draft is not considered durable authority.
-- `server/src/__tests__/services/policyBuilderPhase2DraftParityRegression.test.mjs`
+- `server/src/__tests__/services/policyAuthoringCompatibilityRegressionInventory.test.mjs`
   - pins the audit inventory,
   - verifies every listed test file exists,
   - blocks snapshot-style legacy layout freezes,
@@ -131,7 +132,7 @@ The Phase 2R.6 implementation now provides:
   - now proves UI-only transient fields, read-only projections, and raw legacy
     payload placeholders do not serialize from the client save helper.
 
-## Phase 2R.6 Checklist Result
+## Compatibility Checklist Result
 
 | Check | Result |
 | --- | --- |
@@ -144,8 +145,8 @@ The Phase 2R.6 implementation now provides:
 | UI-only transient fields do not serialize | Yes; client payload and server payload-boundary tests are listed. |
 | Old diagnostic UI is not frozen | Yes; diagnostic tests are marked as rewrite/delete candidates and snapshot freezes are rejected. |
 
-## Next Step
+## Next Component
 
-Phase 2R is complete. Continue with **Phase 3R.1 Workflow Inventory And
-Cutline** so the policy-builder UI can be rebuilt around the simpler operator
-flow without carrying forward transitional diagnostic surfaces.
+Cut over the legacy bridge isolation service and focused test. The inventory
+still tracks that bridge test by its phase-coded filename, so renaming the
+bridge boundary is the next direct reduction in durable-code naming debt.

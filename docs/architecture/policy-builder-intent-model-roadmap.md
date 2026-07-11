@@ -2018,8 +2018,8 @@ Tasks:
   - draft view hides raw legacy storage,
   - provenance is preserved across projection and serialization,
   - UI-only transient fields do not serialize.
-- Mark tests tied only to old diagnostic or advanced legacy UI as rewrite/delete
-  candidates for Phase 6R and Phase 8R.
+- Mark tests tied only to old diagnostic or advanced legacy UI as policy-engine
+  rewrite or native-storage removal candidates.
 
 Acceptance criteria:
 
@@ -2029,15 +2029,15 @@ Acceptance criteria:
 
 Implementation status:
 
-- Phase 2R.6 draft parity and regression tests are documented in
-  [Policy Builder Phase 2R Draft Parity And Regression Tests](policy-builder-phase-2r-draft-parity-regression-tests.md).
-- The server-side Phase 2R parity audit contract lives in
-  `server/src/services/policyBuilderPhase2DraftParityRegression.mjs`.
+- The compatibility regression inventory is documented in
+  [Policy Authoring Compatibility Regression Inventory](policy-authoring-compatibility-regression-inventory.md).
+- The server-side compatibility regression inventory lives in
+  `server/src/services/policyAuthoringCompatibilityRegressionInventory.mjs`.
 - The client save payload builder now uses an explicit policy form field
   allow-list so UI-only state, read-only projections, and raw legacy placeholders
   cannot serialize before server validation.
-- Phase 6R and Phase 8R rewrite/delete candidates are tracked explicitly rather
-  than treated as permanent policy-builder contracts.
+- Policy-engine rewrite and native-storage removal candidates are tracked
+  explicitly rather than treated as permanent policy-builder contracts.
 
 ## Phase 2R Work Sequence
 
@@ -2077,8 +2077,8 @@ Implementation record:
   [Policy Authoring Draft View Projection](policy-authoring-draft-view-projection.md).
 - Policy authoring server authority preparation is documented in
   [Policy Authoring Server Authority Preparation](policy-authoring-server-authority-preparation.md).
-- Phase 2R.6 draft parity and regression tests are documented in
-  [Policy Builder Phase 2R Draft Parity And Regression Tests](policy-builder-phase-2r-draft-parity-regression-tests.md).
+- The compatibility regression inventory is documented in
+  [Policy Authoring Compatibility Regression Inventory](policy-authoring-compatibility-regression-inventory.md).
 - Phase 2R is complete. Future updates should treat the draft bridge as a
   compatibility boundary for Phase 3R, Phase 5R, Phase 6R, and Phase 8R until
   native intent storage replaces it.

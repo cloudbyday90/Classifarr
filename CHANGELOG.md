@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Compatibility Regression Inventory Module Cutover** —
+  renamed the draft compatibility regression service, focused test, and design
+  record to durable policy-authoring names; replaced phase-coded rule, action,
+  category, completion, and diagnostic terminology with compatibility,
+  policy-engine, and native-storage boundary terms; and preserved immutable
+  records, fail-closed rule coverage, test-file existence, and layout-freeze
+  audit coverage.
 - **Policy Authoring Server Authority Preparation Module Cutover** — renamed the
   server authority preparation service, focused test, and design record to
   durable policy-authoring names, replaced phase-coded owner, insertion-point,
