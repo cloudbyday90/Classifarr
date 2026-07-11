@@ -68,7 +68,7 @@ Cons:
 ## Final Recommendation Stack
 
 - Inventory source:
-  `server/src/services/policyBuilderProductionNameInventory.mjs`
+  `scripts/lib/policyProductionNamingInventory.mjs`
 - Regression audit:
   `server/src/services/policyProductionNamingRegressionAudit.mjs`
 - Focused tests:
@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the live repository inventory after the
-runtime metrics input-boundary cutover on July 11, 2026:
+naming-inventory tooling extraction on July 11, 2026:
 
-- production references: `181`
-- rename candidates: `182`
+- production references: `146`
+- rename candidates: `147`
 - obsolete migration tooling references: `0`
 
 The baseline is intentionally a maximum, not a target. Future durable rename
@@ -92,6 +92,8 @@ batches should reduce these values and then lower the baseline.
 ## Security Outcome
 
 - Naming regression checks are side-effect-free.
+- The audit consumes a generated inventory and does not scan source files from
+  the application service tree.
 - Production references must remain classified by the inventory service.
 - New temporary adapters require explicit deletion gates.
 - Existing phase-coded debt can only shrink or stay flat unless a maintainer

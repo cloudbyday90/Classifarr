@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Naming Inventory Tooling Extraction** — moved historic roadmap-token
+  scanning out of the server service tree into maintenance tooling; the server
+  regression audit now requires generated inventory input and the production
+  naming baseline ratcheted from `181/182` to `146/147`.
 - **Policy Roadmap Naming Cutover** — made durable product naming an immediate
   cross-cutting completion gate, with separate decisions for delivery-only
   terms, runtime stages, compatibility fields, and historical verification

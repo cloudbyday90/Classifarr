@@ -1,7 +1,7 @@
 import {
   PRODUCTION_NAMING_CATEGORY_IDS,
   PRODUCTION_NAMING_DECISION_IDS,
-} from '../../services/policyBuilderProductionNameInventory.mjs';
+} from '../../../../scripts/lib/policyProductionNamingInventory.mjs';
 import {
   POLICY_PRODUCTION_NAMING_REGRESSION_BASELINE,
   POLICY_PRODUCTION_NAMING_REGRESSION_RISK_IDS,
@@ -148,7 +148,7 @@ describe('policyProductionNamingRegressionAudit', () => {
     ]));
   });
 
-  test('can build the underlying inventory from provided files', () => {
+  test('requires a generated inventory instead of scanning source files from application code', () => {
     const audit = buildPolicyProductionNamingRegressionAudit({
       files: [
         {
@@ -156,16 +156,13 @@ describe('policyProductionNamingRegressionAudit', () => {
           content: 'export const phaseName = "Phase 6R";',
         },
       ],
-      baseline: {
-        maxProductionReferenceCount: 2,
-        maxRenameCandidateCount: 2,
-        maxObsoleteToolingCount: 0,
-      },
-      generatedAt: '2026-07-03T12:00:00.000Z',
     });
 
-    expect(audit.ok).toBe(true);
-    expect(audit.summary.productionReferenceCount).toBe(1);
-    expect(audit.summary.renameCandidateCount).toBe(1);
+    expect(audit.ok).toBe(false);
+    expect(audit.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_PRODUCTION_NAMING_REGRESSION_RISK_IDS.MISSING_INVENTORY,
+      }),
+    ]));
   });
 });

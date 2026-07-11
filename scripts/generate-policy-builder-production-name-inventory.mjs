@@ -3,8 +3,8 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
-  buildPolicyBuilderProductionNameInventory,
-} from '../server/src/services/policyBuilderProductionNameInventory.mjs';
+  buildPolicyProductionNamingInventory,
+} from './lib/policyProductionNamingInventory.mjs';
 
 const DEFAULT_EXCLUDED_DIRECTORIES = Object.freeze([
   '.git',
@@ -136,7 +136,7 @@ function main() {
   const options = parseArgs(process.argv.slice(2));
   const rootDir = path.resolve(options.rootDir);
   const files = loadInventoryFiles(rootDir);
-  const inventory = buildPolicyBuilderProductionNameInventory({
+  const inventory = buildPolicyProductionNamingInventory({
     files,
     generatedAt: new Date().toISOString(),
   });

@@ -5,6 +5,7 @@ const PRODUCTION_NAMING_DECISION_IDS = Object.freeze({
   RENAME_IN_PRODUCTION_CODE: 'rename_in_production_code',
   KEEP_DOCS_HISTORY: 'keep_docs_history',
   KEEP_TEST_MIGRATION_EVIDENCE: 'keep_test_migration_evidence',
+  KEEP_MAINTENANCE_HISTORIC_SCANNER: 'keep_maintenance_historic_scanner',
   TEMPORARY_ADAPTER_WITH_DELETION_GATE: 'temporary_adapter_with_deletion_gate',
   DELETE_WITH_OBSOLETE_MIGRATION_TOOLING: 'delete_with_obsolete_migration_tooling',
 });
@@ -241,6 +242,13 @@ function determineDecision({ categoryId, repoPath, excerpt }) {
 
   if (
     categoryId === PRODUCTION_NAMING_CATEGORY_IDS.SCRIPT_OR_COMMAND &&
+    repoPath === 'scripts/lib/policyProductionNamingInventory.mjs'
+  ) {
+    return PRODUCTION_NAMING_DECISION_IDS.KEEP_MAINTENANCE_HISTORIC_SCANNER;
+  }
+
+  if (
+    categoryId === PRODUCTION_NAMING_CATEGORY_IDS.SCRIPT_OR_COMMAND &&
     (repoPath.includes('generate-policy-builder-phase-8r') || excerpt.includes('policy:phase8r'))
   ) {
     return PRODUCTION_NAMING_DECISION_IDS.DELETE_WITH_OBSOLETE_MIGRATION_TOOLING;
@@ -322,7 +330,8 @@ function summarizeReferences(references) {
       reference.decisionId === PRODUCTION_NAMING_DECISION_IDS.KEEP_DOCS_HISTORY
     ).length,
     testOrMigrationEvidenceCount: references.filter(reference =>
-      reference.decisionId === PRODUCTION_NAMING_DECISION_IDS.KEEP_TEST_MIGRATION_EVIDENCE
+      reference.decisionId === PRODUCTION_NAMING_DECISION_IDS.KEEP_TEST_MIGRATION_EVIDENCE ||
+      reference.decisionId === PRODUCTION_NAMING_DECISION_IDS.KEEP_MAINTENANCE_HISTORIC_SCANNER
     ).length,
     obsoleteToolingCount: references.filter(reference =>
       reference.decisionId === PRODUCTION_NAMING_DECISION_IDS.DELETE_WITH_OBSOLETE_MIGRATION_TOOLING
@@ -402,7 +411,7 @@ function validatePolicyBuilderProductionNameInventory(inventory = {}) {
   };
 }
 
-function buildPolicyBuilderProductionNameInventory(options = {}) {
+function buildPolicyProductionNamingInventory(options = {}) {
   const files = asArray(options.files);
   const references = extractInventoryReferences(files);
   const renameMap = buildRenameMap(references);
@@ -439,7 +448,7 @@ export {
   PRODUCTION_NAMING_CATEGORY_IDS,
   PRODUCTION_NAMING_DECISION_IDS,
   PRODUCTION_NAMING_RISK_IDS,
-  buildPolicyBuilderProductionNameInventory,
+  buildPolicyProductionNamingInventory,
   extractInventoryReferences,
   validatePolicyBuilderProductionNameInventory,
 };

@@ -33,7 +33,7 @@ evidence, deleted with obsolete tooling, or temporarily adapter-gated.
 ## Recommendations
 
 1. **Inventory before renaming.**
-   Keep the inventory side-effect-free. The service may read files, but it must
+   Keep the inventory side-effect-free. The maintenance tool may read files, but it must
    not move files, mutate storage, run Git, or rewrite package commands.
 
 2. **Classify every reference.**
@@ -77,12 +77,12 @@ Cons:
 
 ## Final Recommendation Stack
 
-- Inventory service:
-  `server/src/services/policyBuilderProductionNameInventory.mjs`
+- Inventory maintenance module:
+  `scripts/lib/policyProductionNamingInventory.mjs`
 - Repository scan adapter:
   `scripts/generate-policy-builder-production-name-inventory.mjs`
 - Focused tests:
-  `server/src/__tests__/services/policyBuilderProductionNameInventory.test.mjs`
+  `server/src/__tests__/services/policyProductionNamingInventory.test.mjs`
 - Design record:
   `docs/architecture/policy-builder-production-naming-cutover.md`
 - Roadmap owner:
@@ -91,15 +91,15 @@ Cons:
 ## Current Repository Outcome
 
 The current repository inventory validates with no unclassified references.
-After the runtime metrics input-boundary cutover,
+After the naming-inventory tooling extraction,
 `node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid`
 reported:
 
-- total temporary naming references: 2,391,
-- production references: 181,
-- rename candidates: 182,
-- docs/history references: 1,938,
-- test or migration evidence references: 271,
+- total temporary naming references: 2,397,
+- production references: 146,
+- rename candidates: 147,
+- docs/history references: 1,943,
+- test or migration evidence references: 307,
 - obsolete migration tooling references: 0.
 
 The counts must fall or remain unchanged as the durable naming cutover replaces
@@ -109,6 +109,8 @@ to prevent the debt from growing.
 ## Security Outcome
 
 - The inventory is side-effect-free except for repository file reads.
+- Historic-token detection runs from maintenance tooling, not from normal
+  application imports.
 - It distinguishes production code from docs/history/tests before any rename.
 - It rejects unclassified references, production references kept without an
   adapter gate, missing durable rename targets, and disallowed side effects.

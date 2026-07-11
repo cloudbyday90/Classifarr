@@ -2,10 +2,10 @@ import {
   PRODUCTION_NAMING_CATEGORY_IDS,
   PRODUCTION_NAMING_DECISION_IDS,
   PRODUCTION_NAMING_RISK_IDS,
-  buildPolicyBuilderProductionNameInventory,
+  buildPolicyProductionNamingInventory,
   extractInventoryReferences,
   validatePolicyBuilderProductionNameInventory,
-} from '../../services/policyBuilderProductionNameInventory.mjs';
+} from '../../../../scripts/lib/policyProductionNamingInventory.mjs';
 
 function sampleFiles() {
   return [
@@ -45,9 +45,9 @@ const PHASE8R_NATIVE_RUNTIME_READ_PATH_VERSION = 'phase8r.native_runtime_read_pa
   ];
 }
 
-describe('policyBuilderProductionNameInventory', () => {
+describe('policyProductionNamingInventory', () => {
   test('classifies phase-coded production references before any durable rename work begins', () => {
-    const inventory = buildPolicyBuilderProductionNameInventory({
+    const inventory = buildPolicyProductionNamingInventory({
       files: sampleFiles(),
       generatedAt: '2026-07-03T10:00:00.000Z',
     });
@@ -70,7 +70,7 @@ describe('policyBuilderProductionNameInventory', () => {
   });
 
   test('maps production phase-coded services to durable product-domain targets', () => {
-    const inventory = buildPolicyBuilderProductionNameInventory({
+    const inventory = buildPolicyProductionNamingInventory({
       files: sampleFiles(),
       generatedAt: '2026-07-03T10:00:00.000Z',
     });
@@ -104,7 +104,7 @@ describe('policyBuilderProductionNameInventory', () => {
   });
 
   test('keeps docs and tests as history or migration evidence while scripts/package commands are deletion candidates', () => {
-    const inventory = buildPolicyBuilderProductionNameInventory({
+    const inventory = buildPolicyProductionNamingInventory({
       files: sampleFiles(),
       generatedAt: '2026-07-03T10:00:00.000Z',
     });
@@ -131,6 +131,26 @@ describe('policyBuilderProductionNameInventory', () => {
         decisionId: PRODUCTION_NAMING_DECISION_IDS.DELETE_WITH_OBSOLETE_MIGRATION_TOOLING,
       }),
     ]));
+  });
+
+  test('keeps the historic-token scanner in maintenance tooling without treating it as production debt', () => {
+    const inventory = buildPolicyProductionNamingInventory({
+      files: [
+        {
+          path: 'scripts/lib/policyProductionNamingInventory.mjs',
+          content: "const tokens = ['Phase', '6R'];",
+        },
+      ],
+    });
+
+    expect(inventory.validation.ok).toBe(true);
+    expect(inventory.references).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        categoryId: PRODUCTION_NAMING_CATEGORY_IDS.SCRIPT_OR_COMMAND,
+        decisionId: PRODUCTION_NAMING_DECISION_IDS.KEEP_MAINTENANCE_HISTORIC_SCANNER,
+      }),
+    ]));
+    expect(inventory.summary.productionReferenceCount).toBe(0);
   });
 
   test('extracts only lines that contain phase-coded tokens', () => {

@@ -62,7 +62,7 @@ Cons:
 - Naming-deconstruction design:
   `docs/architecture/policy-builder-production-naming-cutover.md`
 - Inventory and regression audit:
-  `server/src/services/policyBuilderProductionNameInventory.mjs` and
+  `scripts/lib/policyProductionNamingInventory.mjs` and
   `server/src/services/policyProductionNamingRegressionAudit.mjs`
 
 ## Outcome

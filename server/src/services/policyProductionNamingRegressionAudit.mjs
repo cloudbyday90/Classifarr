@@ -1,15 +1,11 @@
-import {
-  PRODUCTION_NAMING_DECISION_IDS,
-  buildPolicyBuilderProductionNameInventory,
-} from './policyBuilderProductionNameInventory.mjs';
-
 const POLICY_PRODUCTION_NAMING_REGRESSION_AUDIT_VERSION =
   'policy.production_naming_regression_audit.v1';
+const TEMPORARY_ADAPTER_WITH_DELETION_GATE = 'temporary_adapter_with_deletion_gate';
 
 const POLICY_PRODUCTION_NAMING_REGRESSION_BASELINE = Object.freeze({
-  label: 'runtime-metrics-input-boundary-ratchet-2026-07-11',
-  maxProductionReferenceCount: 181,
-  maxRenameCandidateCount: 182,
+  label: 'naming-inventory-tooling-extraction-ratchet-2026-07-11',
+  maxProductionReferenceCount: 146,
+  maxRenameCandidateCount: 147,
   maxObsoleteToolingCount: 0,
 });
 
@@ -48,23 +44,8 @@ function getSummaryCount(summary, key) {
   return asCount(asObject(summary)[key]);
 }
 
-function getInventoryFromOptions(options = {}) {
-  if (options.inventory) {
-    return options.inventory;
-  }
-
-  if (Array.isArray(options.files)) {
-    return buildPolicyBuilderProductionNameInventory({
-      files: options.files,
-      generatedAt: options.generatedAt,
-    });
-  }
-
-  return null;
-}
-
 function buildPolicyProductionNamingRegressionAudit(options = {}) {
-  const inventory = getInventoryFromOptions(options);
+  const inventory = options.inventory || null;
   const baseline = {
     ...POLICY_PRODUCTION_NAMING_REGRESSION_BASELINE,
     ...asObject(options.baseline),
@@ -74,7 +55,7 @@ function buildPolicyProductionNamingRegressionAudit(options = {}) {
   if (!inventory) {
     risks.push(buildRisk(
       POLICY_PRODUCTION_NAMING_REGRESSION_RISK_IDS.MISSING_INVENTORY,
-      'Production naming regression audit requires an inventory or files to scan.'
+      'Production naming regression audit requires a generated inventory.'
     ));
   }
 
@@ -129,8 +110,7 @@ function buildPolicyProductionNamingRegressionAudit(options = {}) {
 
   asArray(inventory?.references)
     .filter(reference =>
-      reference.decisionId ===
-        PRODUCTION_NAMING_DECISION_IDS.TEMPORARY_ADAPTER_WITH_DELETION_GATE &&
+      reference.decisionId === TEMPORARY_ADAPTER_WITH_DELETION_GATE &&
       !reference.adapterDeletionGate
     )
     .forEach(reference => {
