@@ -21,6 +21,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Metrics Input Boundary** — separated raw runtime telemetry
+  normalization from metrics aggregation, retaining only allowlisted outcome,
+  reason, and fingerprint fields while recording sensitive-input suppression.
 - **Policy Migration Verifier Proposal Boundary** — separated raw rebuild-input
   composition from validated-proposal migration verification, preventing
   version-shaped or invalid proposals from reaching comparison or rollback

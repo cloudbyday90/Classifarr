@@ -14,17 +14,40 @@ import {
   POLICY_MIGRATION_VERIFIER_STATUS_IDS,
 } from '../../services/policyMigrationVerifierRollback.mjs';
 import {
+  buildPolicyRuntimeMetricsInputFromRuntimeInput,
+} from '../../services/policyRuntimeMetricsInput.mjs';
+import {
   POLICY_RUNTIME_METRIC_AUDIT_RISK_IDS,
   POLICY_RUNTIME_METRIC_COMPONENT_IDS,
   POLICY_RUNTIME_METRIC_COUNTER_IDS,
   POLICY_RUNTIME_METRIC_REASON_IDS,
   POLICY_REBUILD_EVENT_STATUS_IDS,
-  buildPolicyRuntimeMetricsTrace,
+  buildPolicyRuntimeMetricsTraceFromMetricsInput,
+  buildPolicyRuntimeMetricsTraceFromRuntimeInput as buildPolicyRuntimeMetricsTrace,
   buildPolicyRuntimeMetricsTraceAudit,
   validatePolicyRuntimeMetricsTrace,
 } from '../../services/policyRuntimeMetricsTrace.mjs';
 
 describe('policyRuntimeMetricsTrace', () => {
+  test('requires validated metrics input for the decision-only metrics reducer', () => {
+    const rawInput = {
+      automationDecisions: [
+        { stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY },
+      ],
+    };
+    const metricsInput = buildPolicyRuntimeMetricsInputFromRuntimeInput(rawInput);
+
+    expect(() => buildPolicyRuntimeMetricsTraceFromMetricsInput(rawInput))
+      .toThrow('raw input key "automationDecisions"');
+    expect(() => buildPolicyRuntimeMetricsTrace({ metricsInput }))
+      .toThrow('received normalized metrics input');
+
+    const metrics = buildPolicyRuntimeMetricsTraceFromMetricsInput({ metricsInput });
+
+    expect(metrics.counters[POLICY_RUNTIME_METRIC_COUNTER_IDS.AUTO_ROUTED]).toBe(1);
+    expect(validatePolicyRuntimeMetricsTrace(metrics).ok).toBe(true);
+  });
+
   test('counts Phase 7R automation, question, learning, rebuild, and migration outcomes', () => {
     const metrics = buildPolicyRuntimeMetricsTrace({
       automationDecisions: [

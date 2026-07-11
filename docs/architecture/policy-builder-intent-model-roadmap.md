@@ -4401,6 +4401,10 @@ Implementation status:
   [Policy Runtime Metrics And Decision Trace Architecture Cutover](policy-runtime-metrics-trace-architecture-cutover.md).
 - The server-owned metrics/trace projection lives in
   `server/src/services/policyRuntimeMetricsTrace.mjs`.
+- Metrics aggregation now accepts only a valid normalized metrics-input
+  contract. The runtime adapter suppresses sensitive raw fields before the
+  reducer can aggregate counters or traces; its design record is [Policy
+  Runtime Metrics Input Boundary](policy-runtime-metrics-input-boundary.md).
 - The focused metrics/trace test suite lives in
   `server/src/__tests__/services/policyRuntimeMetricsTrace.test.mjs`.
 - Current implementation counts policy runtime automation, question, learning,
@@ -6630,7 +6634,7 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 182 production references plus 183 rename candidates.
+  currently reports 181 production references plus 182 rename candidates.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -7313,7 +7317,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 11,
   2026 baseline for production references, rename candidates, and obsolete
   migration tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `182` production references, `183` rename
+- The current baseline is `181` production references, `182` rename
   candidates, and `0` obsolete migration tooling references. Future durable
   rename batches must lower this baseline after inventory validation proves the
   debt decreased.

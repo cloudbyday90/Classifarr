@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the live repository inventory after the
-request-time learning input-boundary cutover on July 11, 2026:
+runtime metrics input-boundary cutover on July 11, 2026:
 
-- production references: `182`
-- rename candidates: `183`
+- production references: `181`
+- rename candidates: `182`
 - obsolete migration tooling references: `0`
 
 The baseline is intentionally a maximum, not a target. Future durable rename

@@ -15,6 +15,11 @@ import {
 import {
   POLICY_MIGRATION_VERIFIER_STATUS_IDS,
 } from './policyMigrationVerifierRollback.mjs';
+import {
+  POLICY_RUNTIME_METRICS_INPUT_VERSION,
+  buildPolicyRuntimeMetricsInputFromRuntimeInput,
+  validatePolicyRuntimeMetricsInput,
+} from './policyRuntimeMetricsInput.mjs';
 
 const POLICY_RUNTIME_METRIC_COUNTER_IDS = Object.freeze({
   AUTO_ROUTED: 'auto_routed',
@@ -101,6 +106,10 @@ const DIAGNOSTIC_KEYS = Object.freeze([
   'tmdbCoverage',
   'rawScoring',
 ]);
+const METRICS_REDUCER_INPUT_KEYS = new Set([
+  'metricsInput',
+  'maxTraceRecords',
+]);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -163,6 +172,9 @@ function hasOwnKeyDeep(value, keys) {
 }
 
 function sensitiveReasonForEvent(event = {}) {
+  if (event.sensitiveInputDetected === true) {
+    return POLICY_RUNTIME_METRIC_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED;
+  }
   if (hasOwnKeyDeep(event, ['prompt', 'systemPrompt', 'userPrompt'])) {
     return POLICY_RUNTIME_METRIC_AUDIT_RISK_IDS.PROMPT_EXPOSED;
   }
@@ -475,29 +487,56 @@ function buildOperatorSummary(counters) {
   return summaries;
 }
 
-function buildPolicyRuntimeMetricsTrace(input = {}) {
+function requireValidMetricsInput(input = {}) {
+  const reducerInput = asObject(input);
+  const unexpectedInputKey = Object.keys(reducerInput).find(key =>
+    !METRICS_REDUCER_INPUT_KEYS.has(key)
+  );
+
+  if (unexpectedInputKey) {
+    throw new TypeError(
+      `Runtime metrics require normalized metrics input; raw input key "${unexpectedInputKey}" must use buildPolicyRuntimeMetricsTraceFromRuntimeInput.`
+    );
+  }
+
+  const metricsInput = asObject(reducerInput.metricsInput);
+  if (metricsInput.version !== POLICY_RUNTIME_METRICS_INPUT_VERSION) {
+    throw new TypeError('Runtime metrics require a policy.runtime_metrics_input.v1 contract.');
+  }
+
+  const validation = validatePolicyRuntimeMetricsInput(metricsInput);
+  if (!validation.ok) {
+    throw new TypeError('Runtime metrics require valid normalized metrics input.');
+  }
+
+  return metricsInput;
+}
+
+function buildPolicyRuntimeMetricsTraceFromMetricsInput(input = {}) {
+  const reducerInput = asObject(input);
+  const metricsInput = requireValidMetricsInput(reducerInput);
   const counters = createEmptyCounters();
   const traces = [];
-  const maxTraceRecords = Number.isFinite(Number(input.maxTraceRecords))
-    ? Math.max(1, Math.trunc(Number(input.maxTraceRecords)))
+  const maxTraceRecords = Number.isFinite(Number(reducerInput.maxTraceRecords))
+    ? Math.max(1, Math.trunc(Number(reducerInput.maxTraceRecords)))
     : MAX_TRACE_RECORDS_DEFAULT;
 
-  asArray(input.automationDecisions).forEach(decision =>
+  asArray(metricsInput.automationDecisions).forEach(decision =>
     processAutomationDecision(counters, traces, decision)
   );
-  asArray(input.questionReductions).forEach(plan =>
+  asArray(metricsInput.questionReductions).forEach(plan =>
     processQuestionReduction(counters, traces, plan)
   );
-  asArray(input.requestLearningDecisions).forEach(decision =>
+  asArray(metricsInput.requestLearningDecisions).forEach(decision =>
     processRequestLearning(counters, traces, decision)
   );
-  asArray(input.rebuildProposals).forEach(proposal =>
+  asArray(metricsInput.rebuildProposals).forEach(proposal =>
     processRebuildProposal(counters, traces, proposal)
   );
-  asArray(input.migrationVerifierReports).forEach(report =>
+  asArray(metricsInput.migrationVerifierReports).forEach(report =>
     processMigrationVerifier(counters, traces, report)
   );
-  asArray(input.rebuildEvents).forEach(event =>
+  asArray(metricsInput.rebuildEvents).forEach(event =>
     processRebuildEvent(counters, traces, event)
   );
 
@@ -525,6 +564,23 @@ function buildPolicyRuntimeMetricsTrace(input = {}) {
   };
 }
 
+function buildPolicyRuntimeMetricsTraceFromRuntimeInput(input = {}) {
+  const runtimeInput = asObject(input);
+
+  if (Object.hasOwn(runtimeInput, 'metricsInput')) {
+    throw new TypeError(
+      'Runtime metrics received normalized metrics input; use buildPolicyRuntimeMetricsTraceFromMetricsInput.'
+    );
+  }
+
+  const metricsInput = buildPolicyRuntimeMetricsInputFromRuntimeInput(runtimeInput);
+
+  return buildPolicyRuntimeMetricsTraceFromMetricsInput({
+    metricsInput,
+    maxTraceRecords: runtimeInput.maxTraceRecords,
+  });
+}
+
 function validatePolicyRuntimeMetricsTrace(metrics = {}) {
   const issues = [];
   const counters = asObject(metrics.counters);
@@ -533,7 +589,7 @@ function validatePolicyRuntimeMetricsTrace(metrics = {}) {
     if (!COUNTER_IDS.includes(counterId)) {
       issues.push({
         riskId: POLICY_RUNTIME_METRIC_AUDIT_RISK_IDS.UNKNOWN_COUNTER,
-        message: `Unknown Phase 7R metric counter "${counterId}".`,
+        message: `Unknown runtime metric counter "${counterId}".`,
       });
     }
     if (!Number.isInteger(value)) {
@@ -683,7 +739,7 @@ function validatePolicyRuntimeMetricsTrace(metrics = {}) {
 }
 
 function buildPolicyRuntimeMetricsTraceAudit(
-  metrics = buildPolicyRuntimeMetricsTrace()
+  metrics = buildPolicyRuntimeMetricsTraceFromRuntimeInput()
 ) {
   const validation = validatePolicyRuntimeMetricsTrace(metrics);
 
@@ -707,7 +763,8 @@ export {
   POLICY_RUNTIME_METRIC_COUNTER_IDS,
   POLICY_RUNTIME_METRIC_REASON_IDS,
   POLICY_REBUILD_EVENT_STATUS_IDS,
-  buildPolicyRuntimeMetricsTrace,
+  buildPolicyRuntimeMetricsTraceFromMetricsInput,
+  buildPolicyRuntimeMetricsTraceFromRuntimeInput,
   buildPolicyRuntimeMetricsTraceAudit,
   validatePolicyRuntimeMetricsTrace,
 };

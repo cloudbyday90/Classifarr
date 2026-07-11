@@ -13,6 +13,11 @@ evidence. It does not persist telemetry, export to an observability backend,
 expose raw provider payloads, or surface diagnostic internals as normal policy
 UI.
 
+Metrics construction now separates raw runtime adaptation from the
+decision-only aggregation reducer. The reducer accepts a valid normalized
+metrics-input contract; raw source records are reduced to allowlisted state,
+reason, and fingerprint fields before aggregation.
+
 ## Problem
 
 Classifarr now has deterministic contracts for runtime evidence, automation,
@@ -134,11 +139,17 @@ Cons:
 8. Surface only action-oriented operator summaries.
 9. Leave persistence, retention, and OpenTelemetry export to a later integration
    slice.
+10. Require normalized metrics input before aggregating counters or traces;
+    preserve sensitive input only as a suppression marker.
 
 ## Implemented Files
 
 - Runtime metrics and trace contract:
   `server/src/services/policyRuntimeMetricsTrace.mjs`
+- Runtime metrics-input normalizer:
+  `server/src/services/policyRuntimeMetricsInput.mjs`
+- Metrics input-boundary outcome:
+  `docs/architecture/policy-runtime-metrics-input-boundary.md`
 - Focused tests:
   `server/src/__tests__/services/policyRuntimeMetricsTrace.test.mjs`
 - Automation decision dependency:
@@ -164,7 +175,8 @@ The service exports:
 - `POLICY_RUNTIME_METRIC_COUNTER_IDS`
 - `POLICY_RUNTIME_METRIC_REASON_IDS`
 - `POLICY_REBUILD_EVENT_STATUS_IDS`
-- `buildPolicyRuntimeMetricsTrace`
+- `buildPolicyRuntimeMetricsTraceFromMetricsInput`
+- `buildPolicyRuntimeMetricsTraceFromRuntimeInput`
 - `buildPolicyRuntimeMetricsTraceAudit`
 - `validatePolicyRuntimeMetricsTrace`
 
