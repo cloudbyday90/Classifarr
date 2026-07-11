@@ -3,9 +3,9 @@ const POLICY_PRODUCTION_NAMING_REGRESSION_AUDIT_VERSION =
 const TEMPORARY_ADAPTER_WITH_DELETION_GATE = 'temporary_adapter_with_deletion_gate';
 
 const POLICY_PRODUCTION_NAMING_REGRESSION_BASELINE = Object.freeze({
-  label: 'modal-engine-cutline-vocabulary-ratchet-2026-07-11',
-  maxProductionReferenceCount: 7,
-  maxRenameCandidateCount: 8,
+  label: 'evidence-administration-vocabulary-ratchet-2026-07-11',
+  maxProductionReferenceCount: 3,
+  maxRenameCandidateCount: 4,
   maxObsoleteToolingCount: 0,
 });
 

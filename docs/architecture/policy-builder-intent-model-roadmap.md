@@ -6680,8 +6680,8 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 7 production references plus 8 rename candidates after
-  the policy-builder engine-cutline vocabulary cutover.
+  currently reports 3 production references plus 4 rename candidates after
+  the Evidence administration vocabulary cutover.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -6809,6 +6809,10 @@ Implementation status:
 - Policy-builder advanced-scoring extraction guidance now refers directly to
   the engine cutline rather than a future delivery phase. Its design record is
   [Policy Builder Engine-Cutline Vocabulary Cutover](policy-builder-engine-cutline-vocabulary-cutover.md).
+- Evidence administration composables and view comments now describe their
+  durable operator role rather than the delivery layer that introduced them.
+  Its design record is
+  [Evidence Administration Vocabulary Cutover](evidence-administration-vocabulary-cutover.md).
 - Outcome record:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
 - After the completed classification progress storage cutover, the repository

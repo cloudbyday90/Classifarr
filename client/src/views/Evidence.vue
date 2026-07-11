@@ -5,8 +5,7 @@
   This program is free software: licensed under GPL-3.0
   See LICENSE file for details.
 
-  Evidence.vue — Phase 6 Layer 4 (Operator/Admin)
-  Admin screen for the classification_evidence table.
+  Evidence administration screen for the classification_evidence table.
 
   Layout:
     1. Summary row (total, by-scope, by-provenance, by-status)

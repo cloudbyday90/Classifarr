@@ -2,7 +2,7 @@
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
- * Phase 6 — Evidence admin: decay, promote, purge actions.
+ * Evidence administration: decay, promote, and purge actions.
  * Each action returns { ok: boolean, message: string }.
  */
 

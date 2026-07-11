@@ -2,7 +2,7 @@
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
- * Phase 6 — Evidence admin: data fetching.
+ * Evidence administration: data fetching.
  * SWR for the summary (rarely changes). Manual fetch for the paginated list
  * because filters + page are dynamic.
  */

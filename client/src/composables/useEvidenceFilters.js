@@ -2,7 +2,7 @@
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
- * Phase 6 — Evidence admin: reactive filter state.
+ * Evidence administration: reactive filter state.
  */
 
 import { reactive, computed } from 'vue'

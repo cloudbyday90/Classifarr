@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the live repository inventory after the
-policy-builder engine-cutline vocabulary cutover on July 11, 2026:
+Evidence administration vocabulary cutover on July 11, 2026:
 
-- production references: `7`
-- rename candidates: `8`
+- production references: `3`
+- rename candidates: `4`
 - obsolete migration tooling references: `0`
 
 The baseline is intentionally a maximum, not a target. Future durable rename

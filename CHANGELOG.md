@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Evidence Administration Vocabulary** — replaced delivery-era client
+  comments with durable operator terminology without changing Evidence view or
+  composable APIs; reduced the enforced production naming baseline from `7/8`
+  to `3/4` references/candidates.
 - **Policy Builder Engine-Cutline Guidance** — replaced the modal
   orchestration reason's delivery-era wording with explicit engine-cutline
   guidance while preserving extraction decisions and risk bindings; reduced
