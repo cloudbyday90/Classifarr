@@ -161,7 +161,7 @@ const PHASE_2R_PARITY_TEST_RECORDS = deepFreeze([
     notes: 'Protects legacy bridge ownership and serialized-key allow-lists.',
   },
   {
-    path: 'server/src/__tests__/services/policyBuilderPhase2DraftCommandBoundary.test.mjs',
+    path: 'server/src/__tests__/services/policyAuthoringDraftCommandBoundary.test.mjs',
     categoryId: PHASE_2R_PARITY_TEST_CATEGORY_IDS.DRAFT_COMMAND_BOUNDARY,
     actionId: PHASE_2R_PARITY_ACTION_IDS.KEEP,
     coveredRuleIds: [

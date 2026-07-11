@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Draft Command Boundary Module Cutover** — renamed the
+  draft command boundary service, focused tests, and design record to durable
+  policy-authoring names, added small bridge serializer and draft field
+  adapters, replaced phase-coded command diagnostics with product command target
+  terminology, and kept command payload validation/audit coverage intact.
 - **Policy Runtime Completion Audit Cutover Sync** — removed stale phase
   resumption wording from the runtime completion audit cutover records and
   pointed the next cleanup at native intent storage plus the draft command

@@ -1895,7 +1895,7 @@ Tasks:
 - Ensure commands use product terms rather than legacy storage terms.
 - Validate command payloads before they touch draft state.
 - Prevent commands from mutating read-only evidence/readiness projections.
-- Identify current commands that should be renamed or split for Phase 6R.
+- Identify compatibility adapter commands that require product command targets.
 
 Acceptance criteria:
 
@@ -1906,15 +1906,15 @@ Acceptance criteria:
 - The command boundary has an executable audit that fails unsafe command
   categories, payload authority drift, implemented future commands,
   operator-facing bridge adapters, read-only projection mutation, raw legacy
-  terminology, and missing Phase 6R rename or split targets.
+  terminology, and missing product command targets.
 
 Implementation record:
 
-- Phase 2R.3 draft command boundary is documented in
-  [Policy Builder Phase 2R Draft Command Boundary](policy-builder-phase-2r-draft-command-boundary.md).
+- The policy authoring draft command boundary is documented in
+  [Policy Authoring Draft Command Boundary](policy-authoring-draft-command-boundary.md).
 - The server-side draft command boundary contract lives in
-  `server/src/services/policyBuilderPhase2DraftCommandBoundary.mjs`.
-- Current bridge-adapter commands that need Phase 6R rename or split work are:
+  `server/src/services/policyAuthoringDraftCommandBoundary.mjs`.
+- Current bridge-adapter commands with product command targets are:
   `set_signal_config`, `set_signal_metadata`, and `set_signal_removal`.
 
 ### 2R.4 Draft View Projection
@@ -2070,8 +2070,8 @@ Implementation record:
   [Policy Builder Phase 2R Draft Contract Definition](policy-builder-phase-2r-draft-contract.md).
 - Phase 2R.2 legacy bridge isolation is documented in
   [Policy Builder Phase 2R Legacy Bridge Isolation](policy-builder-phase-2r-legacy-bridge-isolation.md).
-- Phase 2R.3 draft command boundary is documented in
-  [Policy Builder Phase 2R Draft Command Boundary](policy-builder-phase-2r-draft-command-boundary.md).
+- The policy authoring draft command boundary is documented in
+  [Policy Authoring Draft Command Boundary](policy-authoring-draft-command-boundary.md).
 - Phase 2R.4 draft view projection is documented in
   [Policy Builder Phase 2R Draft View Projection](policy-builder-phase-2r-draft-view-projection.md).
 - Phase 2R.5 server authority preparation is documented in

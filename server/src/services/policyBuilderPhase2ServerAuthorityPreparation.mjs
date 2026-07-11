@@ -5,8 +5,8 @@ import {
   POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
 } from './policyIntentSchema.mjs';
 import {
-  PHASE_2R_DRAFT_COMMAND_IDS,
-} from './policyBuilderPhase2DraftCommandBoundary.mjs';
+  POLICY_AUTHORING_DRAFT_COMMAND_IDS,
+} from './policyAuthoringDraftCommandBoundary.mjs';
 import {
   PHASE_2R_DRAFT_FIELD_IDS,
 } from './policyBuilderPhase2DraftContract.mjs';
@@ -477,8 +477,8 @@ function buildPhase2RServerAuthorityPreflight(payload = {}) {
       PHASE_2R_DRAFT_FIELD_IDS.AVOID,
     ],
     future_command_ids: [
-      PHASE_2R_DRAFT_COMMAND_IDS.SET_ROUTING_TARGET,
-      PHASE_2R_DRAFT_COMMAND_IDS.ACKNOWLEDGE_WARNING,
+      POLICY_AUTHORING_DRAFT_COMMAND_IDS.SET_ROUTING_TARGET,
+      POLICY_AUTHORING_DRAFT_COMMAND_IDS.ACKNOWLEDGE_WARNING,
     ],
   };
 }

@@ -137,7 +137,7 @@ Adjacent tests:
 - `server/src/__tests__/services/policyIntentSchema.test.mjs`
 - `server/src/__tests__/services/policyIntentContract.test.mjs`
 - `server/src/__tests__/services/policyBuilderPhase2DraftViewProjection.test.mjs`
-- `server/src/__tests__/services/policyBuilderPhase2DraftCommandBoundary.test.mjs`
+- `server/src/__tests__/services/policyAuthoringDraftCommandBoundary.test.mjs`
 
 The tests assert:
 

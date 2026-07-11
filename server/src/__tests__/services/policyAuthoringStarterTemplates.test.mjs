@@ -1,6 +1,6 @@
 import {
-  PHASE_2R_DRAFT_COMMAND_IDS as POLICY_DRAFT_COMMAND_IDS,
-} from '../../services/policyBuilderPhase2DraftCommandBoundary.mjs';
+  POLICY_AUTHORING_DRAFT_COMMAND_IDS as POLICY_DRAFT_COMMAND_IDS,
+} from '../../services/policyAuthoringDraftCommandBoundary.mjs';
 import {
   POLICY_AUTHORING_COMPONENT_IDS,
   POLICY_AUTHORING_INTERACTION_RULE_IDS,

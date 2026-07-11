@@ -1,17 +1,17 @@
-# Policy Builder Phase 2R Draft Command Boundary
+# Policy Authoring Draft Command Boundary
 
 Date: 2026-06-30
+Updated: 2026-07-10
 
 ## Purpose
 
-Phase 2R.3 defines draft editing as a command boundary. The policy builder may
-offer simple controls, multi-select boxes, and future library-derived helpers,
-but every mutation must pass through narrow commands that express product
-intent rather than legacy storage shape.
+Policy authoring draft edits must move through a narrow command boundary. The
+UI can offer simple controls, multi-select boxes, and library-derived helpers,
+but every mutation must be expressed as product intent instead of legacy storage
+shape.
 
-This document covers the implemented Phase 2R.3 contract only. It does not
-change current save behavior, execute routing, generate evidence, or move
-policy authority out of server validation.
+This document defines the durable draft command contract. It does not execute
+routing, generate evidence, or make client draft state durable authority.
 
 ## Official Research Inputs
 
@@ -47,21 +47,20 @@ policy authority out of server validation.
 
 3. Treat bridge commands as compatibility adapters.
    `set_signal_metadata` and `set_signal_removal` are necessary today, but
-   they are not clean product commands. They are marked for Phase 6R rename or
-   split work.
+   they remain behind product-facing command targets.
 
-4. Reserve future commands without implementing side effects.
-   `set_routing_target` and `acknowledge_warning` are reserved names so future
-   UI work can use stable product terms, but they remain blocked until a later
-   phase defines server authority and persistence.
+4. Reserve unsupported commands without implementing side effects.
+   `set_routing_target` and `acknowledge_warning` are stable product terms, but
+   they remain blocked until server authority and persistence are defined.
 
 5. Support batched values without exposing bridge internals.
    Multi-select controls can send one command containing an array of values.
-   The legacy bridge remains responsible for serialization.
+   The bridge remains responsible for compatibility serialization.
+
 6. Make command inventory drift executable.
    The boundary should fail if commands gain unsafe categories, payload
-   authority, future implementations, read-only projection mutation, or raw
-   legacy terminology.
+   authority, unsupported implementations, read-only projection mutation, or
+   raw legacy terminology.
 
 ## Pros And Cons
 
@@ -69,24 +68,28 @@ Pros:
 
 - Gives the UI a simple command vocabulary while preventing arbitrary payload
   mutation.
-- Supports future multi-select UX without rewriting the legacy bridge.
+- Supports multi-select UX without requiring legacy bridge changes.
 - Keeps evidence/readiness projections read-only.
-- Makes Phase 6R rename/split work explicit before the engine refactor.
+- Makes compatibility adapter targets explicit before persistence changes.
 - Converts security guidance into executable tests.
 
 Cons:
 
-- Adds another server-side contract before the client fully consumes it.
-- Current client functions still use some legacy-influenced names until Phase
-  6R.
-- Future commands are visible in the contract but intentionally not executable.
-- The audit validates command inventory semantics; runtime command execution
-  still remains in the existing client draft state and bridge modules.
+- Adds a server-side contract while some client paths still use legacy bridge
+  modules.
+- Reserved commands are visible in the contract but intentionally not
+  executable.
+- Runtime command execution still remains in the existing draft state and
+  bridge modules until those families are cut over.
 
 ## Final Recommendation Stack
 
 - Server-owned command inventory:
-  `server/src/services/policyBuilderPhase2DraftCommandBoundary.mjs`
+  `server/src/services/policyAuthoringDraftCommandBoundary.mjs`
+- Compatibility serializer adapter:
+  `server/src/services/policyAuthoringBridgeSerializer.mjs`
+- Draft field contract adapter:
+  `server/src/services/policyAuthoringDraftFieldContract.mjs`
 - Current implemented commands:
   - `sync_from_selected_presets`
   - `build_selected_presets_from_draft`
@@ -97,7 +100,7 @@ Cons:
   - `clear_signal_config`
   - `set_signal_metadata`
   - `set_signal_removal`
-- Future reserved commands:
+- Reserved commands:
   - `set_routing_target`
   - `acknowledge_warning`
 - Validation stance:
@@ -110,37 +113,36 @@ Cons:
 
 ## Implemented Outcome
 
-The Phase 2R.3 boundary now provides:
+The boundary now provides:
 
 - a command inventory grouped by operator edit, bridge system,
-  compatibility-adapter, and future operator-edit categories,
+  compatibility-adapter, and reserved operator-edit categories,
 - validation for command payload shape,
-- multi-value support for future multi-select controls,
+- multi-value support for multi-select controls,
 - a compatibility serializer field allow-list,
 - read-only evidence/readiness projection protection,
-- explicit Phase 6R rename/split candidates:
+- product command targets for compatibility adapters:
   - `set_signal_config` -> `configure_signal`,
   - `set_signal_metadata` -> `configure_constraint_behavior`,
-  - `set_signal_removal` -> `ignore_template_signal`.
+  - `set_signal_removal` -> `ignore_template_signal`,
 - an executable command-boundary audit:
-  - `validatePhase2RDraftCommandRecord(record)` checks a single inventory
+  - `validatePolicyAuthoringDraftCommandRecord(record)` checks a single inventory
     record,
-  - `buildPhase2RDraftCommandBoundaryAudit(options)` checks the whole
+  - `buildPolicyAuthoringDraftCommandBoundaryAudit(options)` checks the whole
     command inventory,
   - the audit fails unknown commands, unknown categories, unknown payload
-    authority, implemented commands outside the draft-state allow-list, future
-    commands that accidentally become implemented, operator edits that stop
-    using product-intent payloads, bridge or compatibility adapter commands
-    that become operator-facing, batch support outside product intent,
-    read-only projection mutation, raw legacy terms in operator-facing command
-    labels, and compatibility adapter commands with no Phase 6R rename or
-    split target.
+    authority, implemented commands outside the draft-state allow-list,
+    reserved commands that accidentally become implemented, operator edits that
+    stop using product-intent payloads, bridge or compatibility adapter commands
+    that become operator-facing, batch support outside product intent, read-only
+    projection mutation, raw legacy terms in operator-facing command labels, and
+    compatibility adapter commands with no product command target.
 
 ## Verification
 
 Focused tests:
 
-- `server/src/__tests__/services/policyBuilderPhase2DraftCommandBoundary.test.mjs`
+- `server/src/__tests__/services/policyAuthoringDraftCommandBoundary.test.mjs`
 
 These tests assert that:
 
@@ -149,13 +151,14 @@ These tests assert that:
 - raw legacy compatibility payloads are rejected,
 - arbitrary compatibility fields are rejected,
 - read-only evidence/readiness projections cannot be mutated,
-- future routing commands remain declarative and blocked,
+- reserved routing commands remain declarative and blocked,
 - batched multi-select-style values are accepted by typed signal commands,
-- Phase 6R rename/split candidates are visible.
+- compatibility adapter product targets are visible,
 - command inventory drift fails before later UI or bridge work depends on it.
 
-## Next Phase
+## Next Component
 
-Continue with Phase 2R.4 Draft View Projection. That task should define the
-read model consumed by product components so UI cards stop needing knowledge of
-bridge payload shape, legacy naming, or save serialization details.
+Continue with the policy authoring draft view projection cutover. That task
+should define the read model consumed by product components so UI cards stop
+needing knowledge of bridge payload shape, legacy naming, or save serialization
+details.

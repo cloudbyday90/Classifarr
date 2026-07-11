@@ -29,8 +29,8 @@ import {
   validatePhase2RServerInsertionPoint,
 } from '../../services/policyBuilderPhase2ServerAuthorityPreparation.mjs';
 import {
-  PHASE_2R_DRAFT_COMMAND_IDS,
-} from '../../services/policyBuilderPhase2DraftCommandBoundary.mjs';
+  POLICY_AUTHORING_DRAFT_COMMAND_IDS as PHASE_2R_DRAFT_COMMAND_IDS,
+} from '../../services/policyAuthoringDraftCommandBoundary.mjs';
 import {
   PHASE_2R_DRAFT_FIELD_IDS,
 } from '../../services/policyBuilderPhase2DraftContract.mjs';

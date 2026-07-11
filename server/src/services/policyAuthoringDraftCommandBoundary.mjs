@@ -3,27 +3,27 @@ import {
   isDraftCommandAllowed,
 } from './policyBuilderDraftStateBoundary.mjs';
 import {
-  PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
-  canPhase2RBridgeSerializeKey,
-} from './policyBuilderPhase2LegacyBridgeIsolation.mjs';
+  POLICY_AUTHORING_BRIDGE_ALLOWED_SERIALIZED_KEYS,
+  canPolicyAuthoringBridgeSerializeKey,
+} from './policyAuthoringBridgeSerializer.mjs';
 import {
-  PHASE_2R_DRAFT_FIELD_IDS,
-} from './policyBuilderPhase2DraftContract.mjs';
+  POLICY_AUTHORING_DRAFT_FIELD_IDS,
+} from './policyAuthoringDraftFieldContract.mjs';
 
-const PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS = Object.freeze({
+const POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS = Object.freeze({
   OPERATOR_EDIT: 'operator_edit',
   BRIDGE_SYSTEM: 'bridge_system',
   LEGACY_COMPATIBILITY_ADAPTER: 'legacy_compatibility_adapter',
   FUTURE_OPERATOR_EDIT: 'future_operator_edit',
 });
 
-const PHASE_2R_DRAFT_COMMAND_IDS = Object.freeze({
+const POLICY_AUTHORING_DRAFT_COMMAND_IDS = Object.freeze({
   ...DRAFT_COMMAND_IDS,
   SET_ROUTING_TARGET: 'set_routing_target',
   ACKNOWLEDGE_WARNING: 'acknowledge_warning',
 });
 
-const PHASE_2R_DRAFT_COMMAND_RISK_IDS = Object.freeze({
+const POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS = Object.freeze({
   UNKNOWN_COMMAND: 'unknown_command',
   INVALID_PAYLOAD: 'invalid_payload',
   LEGACY_STORAGE_TERM_LEAK: 'legacy_storage_term_leak',
@@ -33,7 +33,7 @@ const PHASE_2R_DRAFT_COMMAND_RISK_IDS = Object.freeze({
   NOT_IMPLEMENTED: 'not_implemented',
 });
 
-const PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS = Object.freeze({
+const POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_COMMAND: 'unknown_command',
   UNKNOWN_CATEGORY: 'unknown_category',
   UNKNOWN_PAYLOAD_AUTHORITY: 'unknown_payload_authority',
@@ -46,25 +46,25 @@ const PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS = Object.freeze({
   COMPATIBILITY_SERIALIZATION_WITHOUT_ALLOWLIST: 'compatibility_serialization_without_allowlist',
   READ_ONLY_PROJECTION_MUTATION_ALLOWED: 'read_only_projection_mutation_allowed',
   RAW_LEGACY_TERM_IN_OPERATOR_COMMAND: 'raw_legacy_term_in_operator_command',
-  MISSING_PHASE_6_RENAME_TARGET: 'missing_phase_6_rename_target',
+  MISSING_PRODUCT_COMMAND_TARGET: 'missing_product_command_target',
 });
 
-const PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS = Object.freeze({
+const POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS = Object.freeze({
   PRODUCT_INTENT: 'product_intent',
   BRIDGE_COMPATIBILITY: 'bridge_compatibility',
   READ_ONLY_PROJECTION: 'read_only_projection',
   UI_ONLY: 'ui_only',
 });
 
-const PHASE_2R_DRAFT_COMMAND_RENAME_TARGET_IDS = Object.freeze({
+const POLICY_AUTHORING_DRAFT_COMMAND_PRODUCT_TARGET_IDS = Object.freeze({
   CONFIGURE_SIGNAL: 'configure_signal',
   CONFIGURE_CONSTRAINT_BEHAVIOR: 'configure_constraint_behavior',
   IGNORE_TEMPLATE_SIGNAL: 'ignore_template_signal',
 });
 
 const READ_ONLY_DRAFT_FIELD_IDS = Object.freeze([
-  PHASE_2R_DRAFT_FIELD_IDS.EVIDENCE_PROJECTION,
-  PHASE_2R_DRAFT_FIELD_IDS.READINESS_PROJECTION,
+  POLICY_AUTHORING_DRAFT_FIELD_IDS.EVIDENCE_PROJECTION,
+  POLICY_AUTHORING_DRAFT_FIELD_IDS.READINESS_PROJECTION,
 ]);
 
 const READ_ONLY_PAYLOAD_KEYS = Object.freeze([
@@ -169,14 +169,14 @@ function collectRawLegacyPayloadKeys(payload) {
 
 function collectUnknownCompatibilityConfigKeys(config) {
   const value = asObject(config);
-  return Object.keys(value).filter(key => !canPhase2RBridgeSerializeKey(key));
+  return Object.keys(value).filter(key => !canPolicyAuthoringBridgeSerializeKey(key));
 }
 
 function validateCommonPayload(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     return {
       valid: false,
-      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
       reason: 'Draft command payload must be an object.',
       invalidKeys: [],
     };
@@ -186,7 +186,7 @@ function validateCommonPayload(payload) {
   if (readOnlyKeys.length > 0) {
     return {
       valid: false,
-      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.READ_ONLY_PROJECTION_MUTATION,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS.READ_ONLY_PROJECTION_MUTATION,
       reason: 'Draft commands cannot mutate read-only evidence or readiness projections.',
       invalidKeys: readOnlyKeys,
     };
@@ -196,7 +196,7 @@ function validateCommonPayload(payload) {
   if (legacyKeys.length > 0) {
     return {
       valid: false,
-      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.LEGACY_STORAGE_TERM_LEAK,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS.LEGACY_STORAGE_TERM_LEAK,
       reason: 'Draft commands must not expose raw legacy compatibility payload fields.',
       invalidKeys: legacyKeys,
     };
@@ -206,7 +206,7 @@ function validateCommonPayload(payload) {
   if (routingKeys.length > 0) {
     return {
       valid: false,
-      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.ROUTING_SIDE_EFFECT,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS.ROUTING_SIDE_EFFECT,
       reason: 'Draft commands may declare routing intent but cannot execute routing side effects.',
       invalidKeys: routingKeys,
     };
@@ -215,179 +215,179 @@ function validateCommonPayload(payload) {
   return {
     valid: true,
     riskId: null,
-    reason: 'Payload passed common Phase 2R draft command checks.',
+    reason: 'Payload passed common policy authoring draft command checks.',
     invalidKeys: [],
   };
 }
 
-const PHASE_2R_DRAFT_COMMAND_RECORDS = deepFreeze([
+const POLICY_AUTHORING_DRAFT_COMMAND_RECORDS = deepFreeze([
   {
-    id: PHASE_2R_DRAFT_COMMAND_IDS.SYNC_FROM_SELECTED_PRESETS,
+    id: POLICY_AUTHORING_DRAFT_COMMAND_IDS.SYNC_FROM_SELECTED_PRESETS,
     productLabel: 'Sync Draft From Selected Templates',
-    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.BRIDGE_SYSTEM,
-    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
+    categoryId: POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.BRIDGE_SYSTEM,
+    payloadAuthorityId: POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
     currentImplementation: 'syncFromSelectedPresets',
     implemented: true,
     operatorFacing: false,
     allowBatchValues: false,
     allowCompatibilitySerialization: false,
     mayMutateReadOnlyProjection: false,
-    phase6RenameOrSplitTargetId: null,
+    productCommandTargetId: null,
   },
   {
-    id: PHASE_2R_DRAFT_COMMAND_IDS.BUILD_SELECTED_PRESETS_FROM_DRAFT,
+    id: POLICY_AUTHORING_DRAFT_COMMAND_IDS.BUILD_SELECTED_PRESETS_FROM_DRAFT,
     productLabel: 'Build Legacy-Compatible Template Output',
-    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.BRIDGE_SYSTEM,
-    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
+    categoryId: POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.BRIDGE_SYSTEM,
+    payloadAuthorityId: POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
     currentImplementation: 'buildSelectedPresetsFromDraft',
     implemented: true,
     operatorFacing: false,
     allowBatchValues: false,
     allowCompatibilitySerialization: true,
     mayMutateReadOnlyProjection: false,
-    phase6RenameOrSplitTargetId: null,
+    productCommandTargetId: null,
   },
   {
-    id: PHASE_2R_DRAFT_COMMAND_IDS.APPLY_DRAFT_TO_SELECTED_PRESETS,
+    id: POLICY_AUTHORING_DRAFT_COMMAND_IDS.APPLY_DRAFT_TO_SELECTED_PRESETS,
     productLabel: 'Apply Draft To Legacy-Compatible Template Output',
-    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.BRIDGE_SYSTEM,
-    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
+    categoryId: POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.BRIDGE_SYSTEM,
+    payloadAuthorityId: POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
     currentImplementation: 'applyDraftToSelectedPresets',
     implemented: true,
     operatorFacing: false,
     allowBatchValues: false,
     allowCompatibilitySerialization: true,
     mayMutateReadOnlyProjection: false,
-    phase6RenameOrSplitTargetId: null,
+    productCommandTargetId: null,
   },
   {
-    id: PHASE_2R_DRAFT_COMMAND_IDS.ADD_SIGNAL,
+    id: POLICY_AUTHORING_DRAFT_COMMAND_IDS.ADD_SIGNAL,
     productLabel: 'Add Intent Signal',
-    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT,
-    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
+    categoryId: POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT,
+    payloadAuthorityId: POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
     currentImplementation: 'addSignal',
     implemented: true,
     operatorFacing: true,
     allowBatchValues: true,
     allowCompatibilitySerialization: true,
     mayMutateReadOnlyProjection: false,
-    phase6RenameOrSplitTargetId: null,
+    productCommandTargetId: null,
   },
   {
-    id: PHASE_2R_DRAFT_COMMAND_IDS.REMOVE_SIGNAL_VALUE,
+    id: POLICY_AUTHORING_DRAFT_COMMAND_IDS.REMOVE_SIGNAL_VALUE,
     productLabel: 'Remove Intent Signal Value',
-    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT,
-    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
+    categoryId: POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT,
+    payloadAuthorityId: POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
     currentImplementation: 'removeSignalValue',
     implemented: true,
     operatorFacing: true,
     allowBatchValues: true,
     allowCompatibilitySerialization: true,
     mayMutateReadOnlyProjection: false,
-    phase6RenameOrSplitTargetId: null,
+    productCommandTargetId: null,
   },
   {
-    id: PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_CONFIG,
+    id: POLICY_AUTHORING_DRAFT_COMMAND_IDS.SET_SIGNAL_CONFIG,
     productLabel: 'Configure Intent Signal',
-    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT,
-    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
+    categoryId: POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT,
+    payloadAuthorityId: POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
     currentImplementation: 'setSignalConfig',
     implemented: true,
     operatorFacing: true,
     allowBatchValues: true,
     allowCompatibilitySerialization: true,
     mayMutateReadOnlyProjection: false,
-    phase6RenameOrSplitTargetId: PHASE_2R_DRAFT_COMMAND_RENAME_TARGET_IDS.CONFIGURE_SIGNAL,
+    productCommandTargetId: POLICY_AUTHORING_DRAFT_COMMAND_PRODUCT_TARGET_IDS.CONFIGURE_SIGNAL,
   },
   {
-    id: PHASE_2R_DRAFT_COMMAND_IDS.CLEAR_SIGNAL_CONFIG,
+    id: POLICY_AUTHORING_DRAFT_COMMAND_IDS.CLEAR_SIGNAL_CONFIG,
     productLabel: 'Clear Intent Signal Configuration',
-    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT,
-    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
+    categoryId: POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT,
+    payloadAuthorityId: POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
     currentImplementation: 'clearSignalConfig',
     implemented: true,
     operatorFacing: true,
     allowBatchValues: false,
     allowCompatibilitySerialization: true,
     mayMutateReadOnlyProjection: false,
-    phase6RenameOrSplitTargetId: null,
+    productCommandTargetId: null,
   },
   {
-    id: PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_METADATA,
+    id: POLICY_AUTHORING_DRAFT_COMMAND_IDS.SET_SIGNAL_METADATA,
     productLabel: 'Configure Constraint Behavior',
-    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.LEGACY_COMPATIBILITY_ADAPTER,
-    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
+    categoryId: POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.LEGACY_COMPATIBILITY_ADAPTER,
+    payloadAuthorityId: POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
     currentImplementation: 'setSignalMetadata',
     implemented: true,
     operatorFacing: false,
     allowBatchValues: false,
     allowCompatibilitySerialization: true,
     mayMutateReadOnlyProjection: false,
-    phase6RenameOrSplitTargetId: PHASE_2R_DRAFT_COMMAND_RENAME_TARGET_IDS.CONFIGURE_CONSTRAINT_BEHAVIOR,
+    productCommandTargetId: POLICY_AUTHORING_DRAFT_COMMAND_PRODUCT_TARGET_IDS.CONFIGURE_CONSTRAINT_BEHAVIOR,
   },
   {
-    id: PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_REMOVAL,
+    id: POLICY_AUTHORING_DRAFT_COMMAND_IDS.SET_SIGNAL_REMOVAL,
     productLabel: 'Ignore Template Signal',
-    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.LEGACY_COMPATIBILITY_ADAPTER,
-    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
+    categoryId: POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.LEGACY_COMPATIBILITY_ADAPTER,
+    payloadAuthorityId: POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
     currentImplementation: 'setSignalRemoval',
     implemented: true,
     operatorFacing: false,
     allowBatchValues: false,
     allowCompatibilitySerialization: true,
     mayMutateReadOnlyProjection: false,
-    phase6RenameOrSplitTargetId: PHASE_2R_DRAFT_COMMAND_RENAME_TARGET_IDS.IGNORE_TEMPLATE_SIGNAL,
+    productCommandTargetId: POLICY_AUTHORING_DRAFT_COMMAND_PRODUCT_TARGET_IDS.IGNORE_TEMPLATE_SIGNAL,
   },
   {
-    id: PHASE_2R_DRAFT_COMMAND_IDS.SET_ROUTING_TARGET,
+    id: POLICY_AUTHORING_DRAFT_COMMAND_IDS.SET_ROUTING_TARGET,
     productLabel: 'Set Routing Target Intent',
-    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.FUTURE_OPERATOR_EDIT,
-    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
+    categoryId: POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.FUTURE_OPERATOR_EDIT,
+    payloadAuthorityId: POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
     currentImplementation: null,
     implemented: false,
     operatorFacing: true,
     allowBatchValues: false,
     allowCompatibilitySerialization: false,
     mayMutateReadOnlyProjection: false,
-    phase6RenameOrSplitTargetId: null,
+    productCommandTargetId: null,
   },
   {
-    id: PHASE_2R_DRAFT_COMMAND_IDS.ACKNOWLEDGE_WARNING,
+    id: POLICY_AUTHORING_DRAFT_COMMAND_IDS.ACKNOWLEDGE_WARNING,
     productLabel: 'Acknowledge Draft Warning',
-    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.FUTURE_OPERATOR_EDIT,
-    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
+    categoryId: POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.FUTURE_OPERATOR_EDIT,
+    payloadAuthorityId: POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
     currentImplementation: null,
     implemented: false,
     operatorFacing: true,
     allowBatchValues: false,
     allowCompatibilitySerialization: false,
     mayMutateReadOnlyProjection: false,
-    phase6RenameOrSplitTargetId: null,
+    productCommandTargetId: null,
   },
 ]);
 
-function listPhase2RDraftCommandRecords() {
-  return PHASE_2R_DRAFT_COMMAND_RECORDS;
+function listPolicyAuthoringDraftCommandRecords() {
+  return POLICY_AUTHORING_DRAFT_COMMAND_RECORDS;
 }
 
-function getPhase2RDraftCommandRecord(commandId) {
-  return PHASE_2R_DRAFT_COMMAND_RECORDS.find(record => record.id === commandId) || null;
+function getPolicyAuthoringDraftCommandRecord(commandId) {
+  return POLICY_AUTHORING_DRAFT_COMMAND_RECORDS.find(record => record.id === commandId) || null;
 }
 
-function listPhase2RDraftCommandsByCategory(categoryId) {
-  return PHASE_2R_DRAFT_COMMAND_RECORDS.filter(record => record.categoryId === categoryId);
+function listPolicyAuthoringDraftCommandsByCategory(categoryId) {
+  return POLICY_AUTHORING_DRAFT_COMMAND_RECORDS.filter(record => record.categoryId === categoryId);
 }
 
-function listPhase2RCommandsNeedingRenameOrSplit() {
-  return PHASE_2R_DRAFT_COMMAND_RECORDS.filter(record => Boolean(record.phase6RenameOrSplitTargetId));
+function listPolicyAuthoringDraftCommandsNeedingProductTarget() {
+  return POLICY_AUTHORING_DRAFT_COMMAND_RECORDS.filter(record => Boolean(record.productCommandTargetId));
 }
 
-function isPhase2RDraftCommandImplemented(commandId) {
-  return getPhase2RDraftCommandRecord(commandId)?.implemented === true;
+function isPolicyAuthoringDraftCommandImplemented(commandId) {
+  return getPolicyAuthoringDraftCommandRecord(commandId)?.implemented === true;
 }
 
-function isPhase2RDraftCommandAllowed(commandId) {
-  const record = getPhase2RDraftCommandRecord(commandId);
+function isPolicyAuthoringDraftCommandAllowed(commandId) {
+  const record = getPolicyAuthoringDraftCommandRecord(commandId);
   if (!record) {
     return false;
   }
@@ -396,16 +396,16 @@ function isPhase2RDraftCommandAllowed(commandId) {
     return isDraftCommandAllowed(commandId);
   }
 
-  return record.categoryId === PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.FUTURE_OPERATOR_EDIT;
+  return record.categoryId === POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.FUTURE_OPERATOR_EDIT;
 }
 
-function canPhase2RDraftCommandWriteCompatibilityField(commandId, key) {
-  const record = getPhase2RDraftCommandRecord(commandId);
-  return Boolean(record?.allowCompatibilitySerialization) && canPhase2RBridgeSerializeKey(key);
+function canPolicyAuthoringDraftCommandWriteCompatibilityField(commandId, key) {
+  const record = getPolicyAuthoringDraftCommandRecord(commandId);
+  return Boolean(record?.allowCompatibilitySerialization) && canPolicyAuthoringBridgeSerializeKey(key);
 }
 
-function canPhase2RDraftCommandMutateReadOnlyProjection(commandId) {
-  return getPhase2RDraftCommandRecord(commandId)?.mayMutateReadOnlyProjection === true;
+function canPolicyAuthoringDraftCommandMutateReadOnlyProjection(commandId) {
+  return getPolicyAuthoringDraftCommandRecord(commandId)?.mayMutateReadOnlyProjection === true;
 }
 
 function hasRawLegacyOperatorCommandTerm(record) {
@@ -422,14 +422,14 @@ function hasRawLegacyOperatorCommandTerm(record) {
   return RAW_LEGACY_COMMAND_TERM_PATTERNS.some(pattern => pattern.test(text));
 }
 
-function validatePhase2RDraftCommandRecord(record) {
+function validatePolicyAuthoringDraftCommandRecord(record) {
   if (!record || typeof record !== 'object') {
     return {
       valid: false,
       commandId: null,
       issues: [
         {
-          riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
+          riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
           reason: 'Draft command record is missing or invalid.',
         },
       ],
@@ -438,115 +438,115 @@ function validatePhase2RDraftCommandRecord(record) {
 
   const issues = [];
 
-  if (!Object.values(PHASE_2R_DRAFT_COMMAND_IDS).includes(record.id)) {
+  if (!Object.values(POLICY_AUTHORING_DRAFT_COMMAND_IDS).includes(record.id)) {
     issues.push({
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
-      reason: 'Draft command is not in the Phase 2R command vocabulary.',
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
+      reason: 'Draft command is not in the policy authoring command vocabulary.',
     });
   }
 
-  if (!Object.values(PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS).includes(record.categoryId)) {
+  if (!Object.values(POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS).includes(record.categoryId)) {
     issues.push({
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_CATEGORY,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_CATEGORY,
       reason: 'Draft command has no recognized category.',
     });
   }
 
-  if (!Object.values(PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS).includes(record.payloadAuthorityId)) {
+  if (!Object.values(POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS).includes(record.payloadAuthorityId)) {
     issues.push({
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_PAYLOAD_AUTHORITY,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_PAYLOAD_AUTHORITY,
       reason: 'Draft command has no recognized payload authority.',
     });
   }
 
   if (record.implemented && !isDraftCommandAllowed(record.id)) {
     issues.push({
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.IMPLEMENTED_COMMAND_NOT_ALLOWLISTED,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.IMPLEMENTED_COMMAND_NOT_ALLOWLISTED,
       reason: 'Implemented draft commands must be allow-listed by the draft state boundary.',
     });
   }
 
   if (
-    record.categoryId === PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.FUTURE_OPERATOR_EDIT
+    record.categoryId === POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.FUTURE_OPERATOR_EDIT
     && (record.implemented || record.currentImplementation)
   ) {
     issues.push({
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.FUTURE_COMMAND_HAS_IMPLEMENTATION,
-      reason: 'Future operator commands must remain reserved until a later phase implements authority and persistence.',
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.FUTURE_COMMAND_HAS_IMPLEMENTATION,
+      reason: 'Reserved operator commands must remain unimplemented until server authority and persistence are defined.',
     });
   }
 
   if (
-    record.categoryId === PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT
-    && record.payloadAuthorityId !== PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT
+    record.categoryId === POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT
+    && record.payloadAuthorityId !== POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT
   ) {
     issues.push({
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.OPERATOR_COMMAND_NOT_PRODUCT_INTENT,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.OPERATOR_COMMAND_NOT_PRODUCT_INTENT,
       reason: 'Operator edit commands must carry product-intent payloads.',
     });
   }
 
   if (
-    record.categoryId === PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.BRIDGE_SYSTEM
+    record.categoryId === POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.BRIDGE_SYSTEM
     && record.operatorFacing
   ) {
     issues.push({
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.BRIDGE_COMMAND_OPERATOR_FACING,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.BRIDGE_COMMAND_OPERATOR_FACING,
       reason: 'Bridge system commands cannot be operator-facing controls.',
     });
   }
 
   if (
-    record.categoryId === PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.LEGACY_COMPATIBILITY_ADAPTER
+    record.categoryId === POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.LEGACY_COMPATIBILITY_ADAPTER
     && record.operatorFacing
   ) {
     issues.push({
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.COMPATIBILITY_ADAPTER_OPERATOR_FACING,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.COMPATIBILITY_ADAPTER_OPERATOR_FACING,
       reason: 'Legacy compatibility adapter commands must stay behind product-facing command wrappers.',
     });
   }
 
   if (
     record.allowBatchValues
-    && record.payloadAuthorityId !== PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT
+    && record.payloadAuthorityId !== POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT
   ) {
     issues.push({
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.BATCH_VALUES_WITHOUT_PRODUCT_INTENT,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.BATCH_VALUES_WITHOUT_PRODUCT_INTENT,
       reason: 'Batched values are only supported for product-intent commands.',
     });
   }
 
   if (
     record.allowCompatibilitySerialization
-    && PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS.length === 0
+    && POLICY_AUTHORING_BRIDGE_ALLOWED_SERIALIZED_KEYS.length === 0
   ) {
     issues.push({
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.COMPATIBILITY_SERIALIZATION_WITHOUT_ALLOWLIST,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.COMPATIBILITY_SERIALIZATION_WITHOUT_ALLOWLIST,
       reason: 'Compatibility serialization commands require a bridge serializer allow-list.',
     });
   }
 
   if (record.mayMutateReadOnlyProjection) {
     issues.push({
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.READ_ONLY_PROJECTION_MUTATION_ALLOWED,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.READ_ONLY_PROJECTION_MUTATION_ALLOWED,
       reason: 'Draft commands cannot mutate server read-only evidence or readiness projections.',
     });
   }
 
   if (hasRawLegacyOperatorCommandTerm(record)) {
     issues.push({
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.RAW_LEGACY_TERM_IN_OPERATOR_COMMAND,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.RAW_LEGACY_TERM_IN_OPERATOR_COMMAND,
       reason: 'Operator-facing command labels and identifiers must not expose raw legacy storage terminology.',
     });
   }
 
   if (
-    record.categoryId === PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.LEGACY_COMPATIBILITY_ADAPTER
-    && !record.phase6RenameOrSplitTargetId
+    record.categoryId === POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.LEGACY_COMPATIBILITY_ADAPTER
+    && !record.productCommandTargetId
   ) {
     issues.push({
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.MISSING_PHASE_6_RENAME_TARGET,
-      reason: 'Legacy compatibility adapter commands need a Phase 6R rename or split target.',
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.MISSING_PRODUCT_COMMAND_TARGET,
+      reason: 'Legacy compatibility adapter commands need a product command target.',
     });
   }
 
@@ -586,12 +586,12 @@ function validateSignalIdentityPayload(payload) {
   return ['presetId', 'signalType'].filter(key => !isNonEmptyString(value[key]));
 }
 
-function validatePhase2RDraftCommand({ commandId, payload } = {}) {
-  const record = getPhase2RDraftCommandRecord(commandId);
+function validatePolicyAuthoringDraftCommand({ commandId, payload } = {}) {
+  const record = getPolicyAuthoringDraftCommandRecord(commandId);
   if (!record) {
     return {
       valid: false,
-      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.UNKNOWN_COMMAND,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS.UNKNOWN_COMMAND,
       reason: 'Unknown draft command.',
       invalidKeys: [],
       missingFields: [],
@@ -610,18 +610,18 @@ function validatePhase2RDraftCommand({ commandId, payload } = {}) {
   if (!record.implemented) {
     return {
       valid: false,
-      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.NOT_IMPLEMENTED,
-      reason: 'Draft command is reserved for a future Phase 2R or Phase 6R implementation.',
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS.NOT_IMPLEMENTED,
+      reason: 'Draft command is reserved until server authority and persistence are defined.',
       commandId,
       invalidKeys: [],
       missingFields: [],
     };
   }
 
-  if (!isPhase2RDraftCommandAllowed(commandId)) {
+  if (!isPolicyAuthoringDraftCommandAllowed(commandId)) {
     return {
       valid: false,
-      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.UNKNOWN_COMMAND,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS.UNKNOWN_COMMAND,
       reason: 'Draft command is not allow-listed by the current draft state boundary.',
       commandId,
       invalidKeys: [],
@@ -629,14 +629,14 @@ function validatePhase2RDraftCommand({ commandId, payload } = {}) {
     };
   }
 
-  if (commandId === PHASE_2R_DRAFT_COMMAND_IDS.ADD_SIGNAL ||
-    commandId === PHASE_2R_DRAFT_COMMAND_IDS.REMOVE_SIGNAL_VALUE ||
-    commandId === PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_REMOVAL) {
+  if (commandId === POLICY_AUTHORING_DRAFT_COMMAND_IDS.ADD_SIGNAL ||
+    commandId === POLICY_AUTHORING_DRAFT_COMMAND_IDS.REMOVE_SIGNAL_VALUE ||
+    commandId === POLICY_AUTHORING_DRAFT_COMMAND_IDS.SET_SIGNAL_REMOVAL) {
     const missingFields = validateValueCommandPayload(payload);
     if (missingFields.length > 0) {
       return {
         valid: false,
-        riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
+        riskId: POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
         reason: 'Draft signal value command payload is incomplete.',
         commandId,
         invalidKeys: [],
@@ -645,12 +645,12 @@ function validatePhase2RDraftCommand({ commandId, payload } = {}) {
     }
   }
 
-  if (commandId === PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_CONFIG) {
+  if (commandId === POLICY_AUTHORING_DRAFT_COMMAND_IDS.SET_SIGNAL_CONFIG) {
     const missingFields = validateConfigCommandPayload(payload);
     if (missingFields.length > 0) {
       return {
         valid: false,
-        riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
+        riskId: POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
         reason: 'Draft signal configuration command payload is incomplete.',
         commandId,
         invalidKeys: [],
@@ -662,7 +662,7 @@ function validatePhase2RDraftCommand({ commandId, payload } = {}) {
     if (invalidConfigKeys.length > 0) {
       return {
         valid: false,
-        riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.ARBITRARY_COMPATIBILITY_FIELD,
+        riskId: POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS.ARBITRARY_COMPATIBILITY_FIELD,
         reason: 'Draft signal configuration contains fields outside the bridge serializer allow-list.',
         commandId,
         invalidKeys: invalidConfigKeys,
@@ -671,7 +671,7 @@ function validatePhase2RDraftCommand({ commandId, payload } = {}) {
     }
   }
 
-  if (commandId === PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_METADATA) {
+  if (commandId === POLICY_AUTHORING_DRAFT_COMMAND_IDS.SET_SIGNAL_METADATA) {
     const value = asObject(payload);
     const missingFields = validateSignalIdentityPayload(payload);
     if (!value.metadata || typeof value.metadata !== 'object' || Array.isArray(value.metadata)) {
@@ -680,7 +680,7 @@ function validatePhase2RDraftCommand({ commandId, payload } = {}) {
     if (missingFields.length > 0) {
       return {
         valid: false,
-        riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
+        riskId: POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
         reason: 'Draft signal metadata command payload is incomplete.',
         commandId,
         invalidKeys: [],
@@ -689,12 +689,12 @@ function validatePhase2RDraftCommand({ commandId, payload } = {}) {
     }
   }
 
-  if (commandId === PHASE_2R_DRAFT_COMMAND_IDS.CLEAR_SIGNAL_CONFIG) {
+  if (commandId === POLICY_AUTHORING_DRAFT_COMMAND_IDS.CLEAR_SIGNAL_CONFIG) {
     const missingFields = validateSignalIdentityPayload(payload);
     if (missingFields.length > 0) {
       return {
         valid: false,
-        riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
+        riskId: POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
         reason: 'Draft clear command payload is incomplete.',
         commandId,
         invalidKeys: [],
@@ -706,40 +706,40 @@ function validatePhase2RDraftCommand({ commandId, payload } = {}) {
   return {
     valid: true,
     riskId: null,
-    reason: 'Draft command is allow-listed and payload passed Phase 2R command boundary checks.',
+    reason: 'Draft command is allow-listed and payload passed policy authoring command boundary checks.',
     commandId,
     invalidKeys: [],
     missingFields: [],
   };
 }
 
-function summarizePhase2RDraftCommandBoundary() {
-  const countsByCategory = PHASE_2R_DRAFT_COMMAND_RECORDS.reduce((counts, record) => {
+function summarizePolicyAuthoringDraftCommandBoundary() {
+  const countsByCategory = POLICY_AUTHORING_DRAFT_COMMAND_RECORDS.reduce((counts, record) => {
     counts[record.categoryId] = (counts[record.categoryId] || 0) + 1;
     return counts;
   }, {});
 
   return {
-    commandCount: PHASE_2R_DRAFT_COMMAND_RECORDS.length,
+    commandCount: POLICY_AUTHORING_DRAFT_COMMAND_RECORDS.length,
     countsByCategory,
-    implementedCommandIds: PHASE_2R_DRAFT_COMMAND_RECORDS
+    implementedCommandIds: POLICY_AUTHORING_DRAFT_COMMAND_RECORDS
       .filter(record => record.implemented)
       .map(record => record.id),
-    futureCommandIds: PHASE_2R_DRAFT_COMMAND_RECORDS
+    futureCommandIds: POLICY_AUTHORING_DRAFT_COMMAND_RECORDS
       .filter(record => !record.implemented)
       .map(record => record.id),
-    operatorEditCommandIds: listPhase2RDraftCommandsByCategory(PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT)
+    operatorEditCommandIds: listPolicyAuthoringDraftCommandsByCategory(POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT)
       .map(record => record.id),
-    phase6RenameOrSplitCommandIds: listPhase2RCommandsNeedingRenameOrSplit().map(record => record.id),
+    productCommandTargetCommandIds: listPolicyAuthoringDraftCommandsNeedingProductTarget().map(record => record.id),
     readOnlyProjectionMutationAllowed: false,
-    allowedCompatibilityConfigKeys: PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
+    allowedCompatibilityConfigKeys: POLICY_AUTHORING_BRIDGE_ALLOWED_SERIALIZED_KEYS,
   };
 }
 
-function buildPhase2RDraftCommandBoundaryAudit({ commandRecords = PHASE_2R_DRAFT_COMMAND_RECORDS } = {}) {
-  const commandResults = commandRecords.map(validatePhase2RDraftCommandRecord);
+function buildPolicyAuthoringDraftCommandBoundaryAudit({ commandRecords = POLICY_AUTHORING_DRAFT_COMMAND_RECORDS } = {}) {
+  const commandResults = commandRecords.map(validatePolicyAuthoringDraftCommandRecord);
   const commandIds = commandRecords.map(record => record?.id).filter(Boolean);
-  const missingCommandIds = Object.values(PHASE_2R_DRAFT_COMMAND_IDS)
+  const missingCommandIds = Object.values(POLICY_AUTHORING_DRAFT_COMMAND_IDS)
     .filter(commandId => !commandIds.includes(commandId));
   const duplicateCommandIds = commandIds
     .filter((commandId, index) => commandIds.indexOf(commandId) !== index)
@@ -751,12 +751,12 @@ function buildPhase2RDraftCommandBoundaryAudit({ commandRecords = PHASE_2R_DRAFT
     }))),
     ...missingCommandIds.map(commandId => ({
       commandId,
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
-      reason: 'Required Phase 2R draft command is missing.',
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
+      reason: 'Required policy authoring draft command is missing.',
     })),
     ...duplicateCommandIds.map(commandId => ({
       commandId,
-      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
+      riskId: POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
       reason: 'Draft command appears more than once.',
     })),
   ];
@@ -764,7 +764,7 @@ function buildPhase2RDraftCommandBoundaryAudit({ commandRecords = PHASE_2R_DRAFT
   return {
     ok: issues.length === 0,
     checkedCommandCount: commandRecords.length,
-    requiredCommandCount: Object.values(PHASE_2R_DRAFT_COMMAND_IDS).length,
+    requiredCommandCount: Object.values(POLICY_AUTHORING_DRAFT_COMMAND_IDS).length,
     commandResults,
     missingCommandIds,
     duplicateCommandIds,
@@ -773,22 +773,22 @@ function buildPhase2RDraftCommandBoundaryAudit({ commandRecords = PHASE_2R_DRAFT
 }
 
 export {
-  PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS,
-  PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS,
-  PHASE_2R_DRAFT_COMMAND_IDS,
-  PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS,
-  PHASE_2R_DRAFT_COMMAND_RENAME_TARGET_IDS,
-  PHASE_2R_DRAFT_COMMAND_RISK_IDS,
-  buildPhase2RDraftCommandBoundaryAudit,
-  canPhase2RDraftCommandMutateReadOnlyProjection,
-  canPhase2RDraftCommandWriteCompatibilityField,
-  getPhase2RDraftCommandRecord,
-  isPhase2RDraftCommandAllowed,
-  isPhase2RDraftCommandImplemented,
-  listPhase2RCommandsNeedingRenameOrSplit,
-  listPhase2RDraftCommandRecords,
-  listPhase2RDraftCommandsByCategory,
-  summarizePhase2RDraftCommandBoundary,
-  validatePhase2RDraftCommand,
-  validatePhase2RDraftCommandRecord,
+  POLICY_AUTHORING_DRAFT_COMMAND_AUDIT_RISK_IDS,
+  POLICY_AUTHORING_DRAFT_COMMAND_CATEGORY_IDS,
+  POLICY_AUTHORING_DRAFT_COMMAND_IDS,
+  POLICY_AUTHORING_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS,
+  POLICY_AUTHORING_DRAFT_COMMAND_PRODUCT_TARGET_IDS,
+  POLICY_AUTHORING_DRAFT_COMMAND_RISK_IDS,
+  buildPolicyAuthoringDraftCommandBoundaryAudit,
+  canPolicyAuthoringDraftCommandMutateReadOnlyProjection,
+  canPolicyAuthoringDraftCommandWriteCompatibilityField,
+  getPolicyAuthoringDraftCommandRecord,
+  isPolicyAuthoringDraftCommandAllowed,
+  isPolicyAuthoringDraftCommandImplemented,
+  listPolicyAuthoringDraftCommandsNeedingProductTarget,
+  listPolicyAuthoringDraftCommandRecords,
+  listPolicyAuthoringDraftCommandsByCategory,
+  summarizePolicyAuthoringDraftCommandBoundary,
+  validatePolicyAuthoringDraftCommand,
+  validatePolicyAuthoringDraftCommandRecord,
 };

@@ -1,7 +1,7 @@
 import {
-  PHASE_2R_DRAFT_COMMAND_IDS,
-  isPhase2RDraftCommandAllowed,
-} from './policyBuilderPhase2DraftCommandBoundary.mjs';
+  POLICY_AUTHORING_DRAFT_COMMAND_IDS,
+  isPolicyAuthoringDraftCommandAllowed,
+} from './policyAuthoringDraftCommandBoundary.mjs';
 import {
   PHASE_2R_DRAFT_AUTHORITY_IDS,
   PHASE_2R_DRAFT_FIELD_IDS,
@@ -113,8 +113,8 @@ const PHASE_2R_DRAFT_VIEW_FIELD_RECORDS = deepFreeze([
     mayMutateDraft: false,
     maySerializeSavePayload: false,
     allowedCommandIds: [
-      PHASE_2R_DRAFT_COMMAND_IDS.REMOVE_SIGNAL_VALUE,
-      PHASE_2R_DRAFT_COMMAND_IDS.CLEAR_SIGNAL_CONFIG,
+      POLICY_AUTHORING_DRAFT_COMMAND_IDS.REMOVE_SIGNAL_VALUE,
+      POLICY_AUTHORING_DRAFT_COMMAND_IDS.CLEAR_SIGNAL_CONFIG,
     ],
   },
   {
@@ -127,8 +127,8 @@ const PHASE_2R_DRAFT_VIEW_FIELD_RECORDS = deepFreeze([
     mayMutateDraft: false,
     maySerializeSavePayload: false,
     allowedCommandIds: [
-      PHASE_2R_DRAFT_COMMAND_IDS.ADD_SIGNAL,
-      PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_CONFIG,
+      POLICY_AUTHORING_DRAFT_COMMAND_IDS.ADD_SIGNAL,
+      POLICY_AUTHORING_DRAFT_COMMAND_IDS.SET_SIGNAL_CONFIG,
     ],
   },
   {
@@ -168,7 +168,7 @@ const PHASE_2R_DRAFT_VIEW_FIELD_RECORDS = deepFreeze([
     mayMutateDraft: false,
     maySerializeSavePayload: false,
     allowedCommandIds: [
-      PHASE_2R_DRAFT_COMMAND_IDS.ACKNOWLEDGE_WARNING,
+      POLICY_AUTHORING_DRAFT_COMMAND_IDS.ACKNOWLEDGE_WARNING,
     ],
   },
   {
@@ -375,7 +375,7 @@ function validatePhase2RDraftViewFieldRecord(record) {
   }
 
   const unknownCommandIds = (Array.isArray(record.allowedCommandIds) ? record.allowedCommandIds : [])
-    .filter(commandId => !isPhase2RDraftCommandAllowed(commandId));
+    .filter(commandId => !isPolicyAuthoringDraftCommandAllowed(commandId));
 
   if (unknownCommandIds.length > 0) {
     issues.push({

@@ -18,8 +18,8 @@ import {
   validatePhase2RDraftViewProvenanceRecord,
 } from '../../services/policyBuilderPhase2DraftViewProjection.mjs';
 import {
-  PHASE_2R_DRAFT_COMMAND_IDS,
-} from '../../services/policyBuilderPhase2DraftCommandBoundary.mjs';
+  POLICY_AUTHORING_DRAFT_COMMAND_IDS as PHASE_2R_DRAFT_COMMAND_IDS,
+} from '../../services/policyAuthoringDraftCommandBoundary.mjs';
 import {
   PHASE_2R_DRAFT_AUTHORITY_IDS,
   PHASE_2R_DRAFT_FIELD_IDS,
