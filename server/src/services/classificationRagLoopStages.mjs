@@ -30,7 +30,7 @@ const {
     summarizePassDiagnostics,
 } = ragLoopHelpers;
 
-export async function runEnrichmentPhase(ctx) {
+export async function runEnrichmentStage(ctx) {
     const { workingMetadata, config, addEvent, classifyStageError, remainingBudget, canRetryStage, retrievalRetryBaseDelayMs, mergeMetadataForRecheck, enrichWithTMDB, trigger, metadataCompleteness } = ctx;
 
     let resultMetadata = { ...workingMetadata };
@@ -93,7 +93,7 @@ export async function runEnrichmentPhase(ctx) {
     return { workingMetadata: resultMetadata, enrichmentAttempts, hadError: true };
 }
 
-export async function runPass2RetrievalPhase(ctx) {
+export async function runPass2RetrievalStage(ctx) {
     const { expandedMetadata, config, addEvent, classifyStageError, remainingBudget, canRetryStage, retrievalRetryBaseDelayMs, strategySelection, topN, ragContext } = ctx;
 
     let pass2Matches = [];
@@ -196,7 +196,7 @@ export async function runPass2RetrievalPhase(ctx) {
     return { pass2Matches, pass2Enabled, pass2EvidenceMatches, pass2Conflict, pass2Diagnostics, pass2RagContext, pass2Candidates, hadError };
 }
 
-export async function runPolicyRecheckPhase(ctx) {
+export async function runPolicyRecheckStage(ctx) {
     const { expandedMetadata, config, addEvent, classifyStageError, remainingBudget, canRetryStage, retrievalRetryBaseDelayMs, trigger, pass2EvidenceMatches, policyResult, baselineResult, libraries, pass2RagContext, buildPolicyRecheckCandidate } = ctx;
 
     let policyAfter = policyResult;
@@ -279,7 +279,7 @@ export async function runPolicyRecheckPhase(ctx) {
     return { policyAfter, policyGate, pass2Candidate, hadError };
 }
 
-export async function runAiRerunPhase(ctx) {
+export async function runAiRerunStage(ctx) {
     const { config, addEvent, classifyStageError, trigger, aiCallsUsed, pass1Diagnostics, pass2Diagnostics, policyAfter, expandedMetadata, libraries, signalContext, pass2RagContext, baselineResult, buildAiRerunCandidate, buildAiRerunFailureEvent, aiClassify, existingCandidate } = ctx;
 
     if (existingCandidate) {

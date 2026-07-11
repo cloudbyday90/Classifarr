@@ -55,11 +55,11 @@ import {
   getCurrentImageTag as resolveCurrentImageTag,
 } from './classificationRagLoopServiceShared.mjs';
 import {
-  runEnrichmentPhase,
-  runPass2RetrievalPhase,
-  runPolicyRecheckPhase,
-  runAiRerunPhase,
-} from './classificationRagLoopPhases.mjs';
+  runEnrichmentStage,
+  runPass2RetrievalStage,
+  runPolicyRecheckStage,
+  runAiRerunStage,
+} from './classificationRagLoopStages.mjs';
 
 const {
   RAG_LOOP_FALLBACK_ACTIONS,
@@ -346,7 +346,7 @@ class ClassificationRagLoopService {
 
     const enrichmentEventStart = events.length;
     spanCollector.startStage('enrichment', { enabled: config.policy_recheck_metadata_enrichment_enabled === true });
-    const enrichResult = await runEnrichmentPhase({
+    const enrichResult = await runEnrichmentStage({
       ...sharedCtx,
       workingMetadata: { ...metadata },
       mergeMetadataForRecheck: (orig, enriched) => this.mergeMetadataForRecheck(orig, enriched),
@@ -362,7 +362,7 @@ class ClassificationRagLoopService {
 
     const pass2EventStart = events.length;
     spanCollector.startStage('retrieval_pass2', { strategy: strategySelection.strategy });
-    const pass2Result = await runPass2RetrievalPhase({
+    const pass2Result = await runPass2RetrievalStage({
       ...sharedCtx,
       expandedMetadata,
       pass1Candidates,
@@ -380,7 +380,7 @@ class ClassificationRagLoopService {
 
     const policyEventStart = events.length;
     spanCollector.startStage('policy_recheck', { trigger: trigger.trigger || null });
-    const policyResult2 = await runPolicyRecheckPhase({
+    const policyResult2 = await runPolicyRecheckStage({
       ...sharedCtx,
       pass2Diagnostics,
       expandedMetadata,
@@ -405,7 +405,7 @@ class ClassificationRagLoopService {
 
     const aiEventStart = events.length;
     spanCollector.startStage('ai_rerun', { trigger: trigger.trigger || null });
-    const aiResult = await runAiRerunPhase({
+    const aiResult = await runAiRerunStage({
       ...sharedCtx,
       pass2Diagnostics,
       expandedMetadata,

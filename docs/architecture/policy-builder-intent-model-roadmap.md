@@ -6680,7 +6680,8 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 46 production references plus 47 rename candidates.
+  currently reports 32 production references plus 33 rename candidates after
+  the classification RAG-loop stage naming cutover.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -6763,6 +6764,12 @@ Implementation status:
 - The completed stage-storage cutover renamed persisted task queue progress,
   JSON history entries, API response fields, WebSocket payloads, and Command
   Center readers to durable stage terminology without retaining aliases.
+- The RAG lifecycle helper now uses `classificationRagLoopStages` and
+  stage-named exports for enrichment, second-pass retrieval, policy recheck,
+  and AI rerun. It is an internal ESM boundary, so the cutover retained no
+  temporary export aliases and preserved all execution, retry, and telemetry
+  behavior. Its design record is
+  [Classification RAG Loop Stage Naming Cutover](classification-rag-loop-stage-naming-cutover.md).
 - Outcome record:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
 - After the completed classification progress storage cutover, the repository

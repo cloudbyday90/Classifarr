@@ -174,6 +174,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 
 const db = mockDb;
 const { validateAndNormalizeRagLoopConfig } = mockRagLoopConfig;
+const ragLoopStages = await import('../services/classificationRagLoopStages.mjs');
 const { classificationRagLoopService } = await import('../services/classificationRagLoopService.mjs');
 
 beforeEach(() => {
@@ -185,6 +186,21 @@ beforeEach(() => {
   ragErrorHandler.mapSecondPassError.mockReset();
   ragErrorHandler.mapSecondPassError.mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true });
   classificationRagLoopService.ragErrorHandler = ragErrorHandler;
+});
+
+describe('RAG loop stage helper contract', () => {
+  test('exports durable stage-named lifecycle helpers', () => {
+    expect(ragLoopStages).toEqual(expect.objectContaining({
+      runEnrichmentStage: expect.any(Function),
+      runPass2RetrievalStage: expect.any(Function),
+      runPolicyRecheckStage: expect.any(Function),
+      runAiRerunStage: expect.any(Function),
+    }));
+    expect(ragLoopStages).not.toHaveProperty('runEnrichmentPhase');
+    expect(ragLoopStages).not.toHaveProperty('runPass2RetrievalPhase');
+    expect(ragLoopStages).not.toHaveProperty('runPolicyRecheckPhase');
+    expect(ragLoopStages).not.toHaveProperty('runAiRerunPhase');
+  });
 });
 
 // ---------------------------------------------------------------------------

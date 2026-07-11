@@ -79,11 +79,24 @@ describe('policyRuntimeDecisionInventory', () => {
       'server/src/routes/classificationRouteSecondPass.mjs',
       'server/src/services/classificationMetadataService.mjs',
       'server/src/services/classificationMetadataEnrichmentService.mjs',
+      'server/src/services/classificationRagLoopStages.mjs',
       'server/src/services/discordPendingNotification.mjs',
     ]));
     expect(inventory.artifacts.map(artifact => artifact.path)).toEqual(
       expect.arrayContaining(requiredPaths)
     );
+  });
+
+  test('keeps the RAG lifecycle helper on durable stage terminology', () => {
+    const artifacts = listPolicyRuntimeArtifacts();
+
+    expect(artifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: 'server/src/services/classificationRagLoopStages.mjs',
+        stageId: POLICY_RUNTIME_STAGE_IDS.RAG_DECISION,
+      }),
+    ]));
+    expect(artifacts.some(artifact => artifact.path.includes('classificationRagLoopPhases'))).toBe(false);
   });
 
   test('requires policy runtime and rebuild contract surfaces to be inventoried', () => {

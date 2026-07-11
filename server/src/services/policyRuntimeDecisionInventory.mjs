@@ -101,6 +101,7 @@ const REQUIRED_RUNTIME_SURFACE_PATHS = Object.freeze([
   'server/src/services/classificationPersistenceService.mjs',
   'server/src/services/classificationMetadataService.mjs',
   'server/src/services/classificationMetadataEnrichmentService.mjs',
+  'server/src/services/classificationRagLoopStages.mjs',
   'server/src/services/discordPendingNotification.mjs',
 ]);
 
@@ -332,7 +333,7 @@ const RUNTIME_ARTIFACTS = Object.freeze([
     normalRuntimeAuthorityAllowed: false,
   },
   {
-    path: 'server/src/services/classificationRagLoopPhases.mjs',
+    path: 'server/src/services/classificationRagLoopStages.mjs',
     owner: 'classification-rag',
     stageId: POLICY_RUNTIME_STAGE_IDS.RAG_DECISION,
     decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,

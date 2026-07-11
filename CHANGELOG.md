@@ -11,11 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Classification RAG Loop Stages** — renamed the internal RAG enrichment,
+  retrieval, policy-recheck, and AI-rerun lifecycle module and exports from
+  temporary phase wording to durable stage terminology, preserving execution
+  order, event stage IDs, and retry behavior; reduced the enforced production
+  naming baseline from `46/47` to `32/33` references/candidates.
 - **Classification Progress Stage Storage** — renamed task queue progress
   storage, indexes, JSON history entries, progress APIs, WebSocket events, and
   Command Center readers from temporary phase terminology to durable stage
-  terminology without retaining aliases; reduced the enforced production
-  naming baseline to `46/47` references/candidates.
+  terminology without retaining aliases.
 - **Policy Migration Verifier Route Boundary** — moved read-only impact and
   replay verification out of normal policy writes into a dedicated migration
   verifier API namespace; deterministic verifier behavior and client calls
