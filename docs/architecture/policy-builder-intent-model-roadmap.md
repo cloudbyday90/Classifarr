@@ -1261,8 +1261,8 @@ Acceptance criteria:
 
 Implementation record:
 
-- Phase 0R.2 user mental model is documented in
-  [Policy Builder Phase 0R User Mental Model](policy-builder-phase-0r-user-mental-model.md).
+- The policy authoring user mental model is documented in
+  [Policy Authoring User Mental Model](policy-authoring-user-mental-model.md).
 - The server-side user mental model contract lives in
   `server/src/services/policyUserMentalModel.mjs`.
 - The contract now exposes setup-copy validation helpers so later UI phases can
@@ -1423,8 +1423,8 @@ Implementation record:
   [Policy Builder Phase 0 Implementation](policy-builder-phase-0-implementation.md).
 - Phase 0R.1 authority vocabulary is documented in
   [Policy Builder Phase 0R Authority Vocabulary](policy-builder-phase-0r-authority-vocabulary.md).
-- Phase 0R.2 user mental model is documented in
-  [Policy Builder Phase 0R User Mental Model](policy-builder-phase-0r-user-mental-model.md).
+- The policy authoring user mental model is documented in
+  [Policy Authoring User Mental Model](policy-authoring-user-mental-model.md).
 - Phase 0R.3 legacy compatibility vocabulary is documented in
   [Policy Builder Phase 0R Legacy Compatibility Vocabulary](policy-builder-phase-0r-legacy-compatibility-vocabulary.md).
 - Phase 0R.4 question and learning vocabulary is documented in

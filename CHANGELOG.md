@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring User Mental Model Phase-Language Cutover** — replaced
+  phase-coded policy-engine metadata and setup-audit diagnostics with durable
+  policy-authoring terminology; renamed the active mental-model design record;
+  updated roadmap and setup-checklist links; and preserved authority, clear
+  labels, interaction-pattern, no-direct-persistence, and broad-genre guardrails.
 - **Policy Authoring Draft Contract Module Cutover** — renamed the draft
   authority contract, focused test, and design record to durable
   policy-authoring names; replaced phase-coded field, authority, mapping, risk,

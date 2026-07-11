@@ -126,7 +126,7 @@ const PHASE_0R_IMPLEMENTATION_RECORDS = deepFreeze([
   {
     phaseId: PHASE_0R_IMPLEMENTATION_PHASE_IDS.USER_MENTAL_MODEL,
     title: 'User Mental Model',
-    docPath: 'docs/architecture/policy-builder-phase-0r-user-mental-model.md',
+    docPath: 'docs/architecture/policy-authoring-user-mental-model.md',
     servicePath: 'server/src/services/policyUserMentalModel.mjs',
     testPath: 'server/src/__tests__/services/policyUserMentalModel.test.mjs',
     protects: [

@@ -70,7 +70,7 @@ const POLICY_UX_TERM_AUDIT_RISK_IDS = Object.freeze({
   MISSING_PLAIN_QUESTION: 'missing_plain_question',
   MISSING_HELPER: 'missing_helper',
   UNKNOWN_SELECTION_PATTERN: 'unknown_selection_pattern',
-  MISSING_PHASE6_CONCEPT: 'missing_phase6_concept',
+  MISSING_POLICY_ENGINE_CONCEPT: 'missing_policy_engine_concept',
   MISSING_DECLARED_INTENT_SOURCE: 'missing_declared_intent_source',
   MISSING_OBSERVED_EVIDENCE_SOURCE: 'missing_observed_evidence_source',
   HARD_LIMITS_ALLOW_OBSERVED_EVIDENCE: 'hard_limits_allow_observed_evidence',
@@ -294,7 +294,7 @@ const POLICY_UX_TERMS = deepFreeze([
     mustMentionObservedEvidence: true,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Broad genres can suggest fit, but they do not define a destination unless the operator accepts them as intent.',
-    phase6Concept: 'identity_evidence',
+    policyEngineConcept: 'identity_evidence',
   },
   {
     id: POLICY_UX_TERM_IDS.HELPFUL_MATCHES,
@@ -310,7 +310,7 @@ const POLICY_UX_TERMS = deepFreeze([
     mustMentionObservedEvidence: false,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Broad genres usually belong here unless they are accepted as destination identity.',
-    phase6Concept: 'compatibility_evidence',
+    policyEngineConcept: 'compatibility_evidence',
   },
   {
     id: POLICY_UX_TERM_IDS.HARD_LIMITS,
@@ -324,7 +324,7 @@ const POLICY_UX_TERMS = deepFreeze([
     mustMentionObservedEvidence: false,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Do not infer hard limits from missing examples.',
-    phase6Concept: 'constraint_evidence',
+    policyEngineConcept: 'constraint_evidence',
   },
   {
     id: POLICY_UX_TERM_IDS.AVOID,
@@ -338,7 +338,7 @@ const POLICY_UX_TERMS = deepFreeze([
     mustMentionObservedEvidence: false,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Avoid broad genres only when the operator explicitly marks them as poor fit.',
-    phase6Concept: 'negative_evidence',
+    policyEngineConcept: 'negative_evidence',
   },
   {
     id: POLICY_UX_TERM_IDS.ASK_WHEN_UNSURE,
@@ -352,7 +352,7 @@ const POLICY_UX_TERMS = deepFreeze([
     mustMentionObservedEvidence: false,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Ask about destination fit, not which broad genre is more important.',
-    phase6Concept: 'review_trigger',
+    policyEngineConcept: 'review_trigger',
   },
   {
     id: POLICY_UX_TERM_IDS.ROUTING_TARGET,
@@ -366,7 +366,7 @@ const POLICY_UX_TERMS = deepFreeze([
     mustMentionObservedEvidence: false,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Genres do not prove routing readiness.',
-    phase6Concept: 'routing_evidence',
+    policyEngineConcept: 'routing_evidence',
   },
   {
     id: POLICY_UX_TERM_IDS.READINESS,
@@ -382,7 +382,7 @@ const POLICY_UX_TERMS = deepFreeze([
     mustMentionObservedEvidence: true,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Broad genre overlap can reduce readiness when identity evidence is weak.',
-    phase6Concept: 'automation_readiness',
+    policyEngineConcept: 'automation_readiness',
   },
 ]);
 
@@ -958,10 +958,10 @@ function validatePolicyUxTermContract(term = {}) {
     });
   }
 
-  if (!String(term.phase6Concept || '').trim()) {
+  if (!String(term.policyEngineConcept || '').trim()) {
     issues.push({
-      riskId: POLICY_UX_TERM_AUDIT_RISK_IDS.MISSING_PHASE6_CONCEPT,
-      message: 'Policy UX term must map to a future Phase 6R engine concept.',
+      riskId: POLICY_UX_TERM_AUDIT_RISK_IDS.MISSING_POLICY_ENGINE_CONCEPT,
+      message: 'Policy UX term must map to a policy engine concept.',
     });
   }
 
@@ -1082,7 +1082,7 @@ function validatePolicySetupStepContract(step = {}) {
     issues.push({
       riskId: POLICY_SETUP_STEP_AUDIT_RISK_IDS.UNKNOWN_STEP,
       stepId: step.id || null,
-      message: 'Setup step must be part of the Phase 0R user mental model.',
+      message: 'Setup step must be part of the policy-authoring setup model.',
     });
   }
 
@@ -1231,7 +1231,7 @@ function validatePolicySetupCardContract(card = {}) {
     issues.push({
       riskId: POLICY_SETUP_CARD_AUDIT_RISK_IDS.UNKNOWN_STEP,
       stepId: card.stepId || null,
-      message: 'Setup card must map to one approved Phase 0R setup step.',
+      message: 'Setup card must map to one approved policy-authoring setup step.',
     });
   }
 
@@ -1362,7 +1362,7 @@ function validatePolicySetupSurfaceContract(surface = {}) {
     issues.push({
       riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.UNKNOWN_STEP,
       stepId: candidate.stepId || null,
-      message: 'Setup surface must map to one approved Phase 0R setup step.',
+      message: 'Setup surface must map to one approved policy-authoring setup step.',
     });
   }
 
@@ -1512,7 +1512,7 @@ function validatePolicySetupJourneyStageContract(stage = {}) {
     issues.push({
       riskId: POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.UNKNOWN_STEP,
       stepId: stage.stepId || null,
-      message: 'Setup journey stage must map to one approved Phase 0R setup step.',
+      message: 'Setup journey stage must map to one approved policy-authoring setup step.',
     });
   }
 
@@ -1520,7 +1520,7 @@ function validatePolicySetupJourneyStageContract(stage = {}) {
     issues.push({
       riskId: POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.INVALID_ORDER,
       stepId: stage.stepId || null,
-      message: 'Setup journey stage order must match the approved Phase 0R setup step order.',
+      message: 'Setup journey stage order must match the approved policy-authoring setup step order.',
     });
   }
 
@@ -1641,7 +1641,7 @@ function validatePolicySetupFieldGroupContract(group = {}) {
     issues.push({
       riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.UNKNOWN_FIELD_GROUP,
       groupId: group.groupId || null,
-      message: 'Setup field group must be part of the Phase 0R user mental model.',
+      message: 'Setup field group must be part of the policy-authoring setup model.',
     });
   }
 
@@ -1940,7 +1940,7 @@ function validatePolicySetupCopy(candidate = {}) {
     issues.push({
       ruleId: POLICY_SETUP_COPY_RULE_IDS.KNOWN_UX_TERM,
       riskId: POLICY_SETUP_COPY_RISK_IDS.UNKNOWN_UX_TERM,
-      message: 'Setup copy must map to an approved Phase 0R policy UX term.',
+      message: 'Setup copy must map to an approved policy-authoring UX term.',
     });
   }
 

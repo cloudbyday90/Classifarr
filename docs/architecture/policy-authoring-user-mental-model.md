@@ -1,18 +1,18 @@
-# Policy Builder Phase 0R User Mental Model
+# Policy Authoring User Mental Model
 
-Status: implemented as the second Phase 0R source-of-truth contract and
-hardened as an auditable setup-copy contract.
+Status: implemented policy-authoring source-of-truth contract with an auditable
+setup-copy boundary.
 
 ## Scope
 
-Phase 0R.2 translates the authority vocabulary from Phase 0R.1 into the default
-operator-facing setup model.
+The policy authoring user mental model translates the policy authority
+vocabulary into the default operator-facing setup model.
 
 This slice does not change UI rendering, classification scoring, routing,
 database schema, saved policy payloads, or runtime learning. It creates a
 server-owned ESM contract for the setup questions, approved policy labels,
-helper-copy authority rules, and validation helpers that later UI and engine
-phases should consume.
+helper-copy authority rules, and validation helpers that later UI and
+policy-engine work should consume.
 
 ## Research Inputs
 
@@ -78,7 +78,7 @@ Official sources reviewed as of June 2026:
    provider gates, replay parity, TMDB coverage, raw presets, or `customSignals`
    during normal setup.
 6. Treat setup copy as testable product behavior:
-   - labels must match the approved Phase 0R term,
+   - labels must match the approved policy authoring term,
    - helper text must explain the operator decision,
    - observed-evidence terms must say when library contents are suggestions,
    - declared-intent terms must say when operator intent is required,
@@ -115,7 +115,7 @@ Official sources reviewed as of June 2026:
     - every stage has one primary action,
     - every stage defines what complete means,
     - every stage states the system boundary and the failure mode it prevents.
-    This keeps Phase 3R from reintroducing dense expert panels while still
+    This keeps later UI work from reintroducing dense expert panels while still
     leaving room for the UI to render cards, sections, or a wizard.
 12. Treat setup field groups as the bridge between the mental model and future
     controls:
@@ -141,40 +141,40 @@ Official sources reviewed as of June 2026:
 
 - Gives future UI work a stable product language before components are rebuilt.
 - Keeps the setup model simple enough for normal operators.
-- Connects every label back to Phase 0R.1 authority boundaries.
+- Connects every label back to policy authority vocabulary boundaries.
 - Prevents broad genre evidence from being presented as destination identity.
 - Gives tests a direct way to detect internal diagnostic language in normal
   setup copy.
-- Lets later UI phases audit product copy before adding or changing controls.
-- Captures the intended interaction pattern before Phase 3R turns labels into
+- Lets later UI work audit product copy before adding or changing controls.
+- Captures the intended interaction pattern before later UI work turns labels into
   concrete controls.
 
 ### Cons
 
 - The server contract is not wired into existing Vue components yet.
 - Some existing UI labels still come from older client-side utilities until
-  Phase 3R rebuilds the component system.
-- The contract does not define final runtime question schemas; Phase 0R.4 and
-  Phase 5R own that work.
-- The model intentionally keeps helper text conservative until Phase 6R defines
+  later UI work rebuilds the component system.
+- The contract does not define final runtime question schemas; runtime
+  clarification and decision work own that work.
+- The model intentionally keeps helper text conservative until policy engine defines
   evidence/readiness semantics.
 - The copy audit is phrase-based, so it is intentionally conservative and should
   be treated as a guardrail rather than a natural-language classifier.
 - Interaction patterns are product contracts, not final component
-  implementations; Phase 3R still owns the concrete UI components.
-- Setup steps are product-order contracts, not navigation requirements; Phase 3R
+  implementations; later UI work still owns the concrete UI components.
+- Setup steps are product-order contracts, not navigation requirements; later UI work
   can render them as a wizard, cards, or progressive sections as long as the
   mental model and authority order are preserved.
 - Setup cards intentionally duplicate a little visible copy from the step model
-  so UI phases can consume a simple display contract without exposing the full
+  so later UI work can consume a simple display contract without exposing the full
   authority or validation internals.
-- Setup surfaces add another small contract layer, but they keep Phase 3R from
+- Setup surfaces add another small contract layer, but they keep later UI work from
   turning status summaries, suggestions, and edits into one ambiguous control.
 - Setup journey stages add one more product contract, but they prevent later UI
   work from combining all decisions into one modal section or letting helper
   panels persist policy directly.
 - Setup field groups add one more small contract, but they make the intended
-  control behavior explicit before Phase 3R builds or removes UI controls.
+  control behavior explicit before later UI work builds or removes UI controls.
 - Setup answer shapes add one more contract, but they stop future question UI
   from treating an answer as persistence, learning, or routing execution.
 
@@ -189,11 +189,11 @@ Official sources reviewed as of June 2026:
 - Roadmap:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 - This implementation record:
-  `docs/architecture/policy-builder-phase-0r-user-mental-model.md`
+  `docs/architecture/policy-authoring-user-mental-model.md`
 
 ## Implemented Outcome
 
-Phase 0R.2 now defines the normal setup model:
+The policy authoring user mental model defines the normal setup model:
 
 | Question | Purpose |
 | --- | --- |
@@ -216,12 +216,13 @@ It also defines approved policy UX terms and how each maps to authority sources:
 
 ## Hardening Outcome
 
-Phase 0R.2 now includes an executable setup-copy audit. The contract validates:
+The policy authoring user mental model includes an executable setup-copy audit.
+The contract validates:
 
 | Check | Purpose |
 | --- | --- |
 | Known UX term | Blocks copy from introducing old preset-first or diagnostic-first terms. |
-| Visible label | Keeps UI labels aligned to the approved Phase 0R vocabulary. |
+| Visible label | Keeps UI labels aligned to the approved policy authoring vocabulary. |
 | Helper text | Requires a plain explanation before the operator has to decide. |
 | Observed evidence context | Makes media-server contents read as suggestions, not hidden rules. |
 | Declared intent context | Makes durable operator authority explicit. |
@@ -285,14 +286,15 @@ The approved setup-step sequence is:
 
 The setup-step audit fails when a step references unknown terms, unsupported
 interaction patterns, missing observed/declarative authority sources, broad
-genre authority wording, or internal diagnostic language. This keeps Phase 3R
+genre authority wording, or internal diagnostic language. This keeps later UI work
 focused on a simple setup path instead of exposing all transitional diagnostics
 as product controls.
 
 ## Setup Card Contract
 
-Phase 0R.2 now exposes a default setup-card contract for future UI phases. The
-card contract is intentionally smaller than the full authority model:
+The policy authoring user mental model exposes a default setup-card contract
+for later UI work. The card contract is intentionally smaller than the full
+authority model:
 
 | Card Question | Primary Action | Empty-State Meaning |
 | --- | --- | --- |
@@ -308,7 +310,7 @@ Each card must include:
 - one primary action label,
 - one empty-state message,
 - one completion signal,
-- approved Phase 0R terms only.
+- approved policy authoring terms only.
 
 The card audit rejects:
 
@@ -318,14 +320,14 @@ The card audit rejects:
 - internal diagnostic language,
 - broad genre authority language.
 
-This gives Phase 3R a simple component target: render setup cards from the
+This gives later UI work a simple component target: render setup cards from the
 contract, then add controls behind each card without making replay, provider, or
 scoring diagnostics part of the normal setup experience.
 
 ## Setup Surface Contract
 
-Phase 0R.2 now also exposes a setup-surface contract. The surface contract
-answers a narrower question than the setup-card contract:
+The policy authoring user mental model also exposes a setup-surface contract.
+The surface contract answers a narrower question than the setup-card contract:
 
 ```text
 What is this section allowed to do?
@@ -359,13 +361,14 @@ The setup-surface audit rejects:
 - broad genre authority language.
 
 Future UI work should use this contract before introducing or changing setup
-copy. Future server work should keep runtime question schemas separate; Phase
-0R.2 owns the normal setup language, not final learning authority.
+copy. Future server work should keep runtime question schemas separate; this
+contract owns the normal setup language, not final learning authority.
 
 ## Setup Journey Contract
 
-Phase 0R.2 now exposes a first-run setup journey contract. This is deliberately
-not a UI implementation. It is the product path later components must preserve.
+The policy authoring user mental model exposes a first-run setup journey
+contract. This is deliberately not a UI implementation. It is the product path
+later components must preserve.
 
 | Stage | Operator Goal | Primary Action | Completion Signal |
 | --- | --- | --- | --- |
@@ -384,7 +387,7 @@ Each journey stage includes a system boundary:
 The journey audit rejects:
 
 - unknown setup steps,
-- order drift from the approved Phase 0R sequence,
+- order drift from the approved policy authoring sequence,
 - missing operator goals, primary actions, completion signals, system
   boundaries, or failure modes,
 - more than one primary action in a stage,
@@ -392,13 +395,14 @@ The journey audit rejects:
 - internal diagnostic language,
 - broad genre authority language.
 
-This contract is the Phase 0R.2 guardrail for the next UI work: simplify the
+This contract is the policy authoring user mental model guardrail for the next UI work: simplify the
 journey before adding controls.
 
 ## Setup Field Group Contract
 
-Phase 0R.2 now exposes setup field groups for future UI controls. This contract
-answers a smaller question than the card and journey contracts:
+The policy authoring user mental model exposes setup field groups for future UI
+controls. This contract answers a smaller question than the card and journey
+contracts:
 
 ```text
 What kind of control is this allowed to be?
@@ -425,7 +429,7 @@ The setup-field-group audit rejects:
 
 - unknown field groups,
 - unknown setup steps or UX terms,
-- labels that drift from approved Phase 0R terms,
+- labels that drift from approved policy authoring terms,
 - missing instructions,
 - unsupported control kinds,
 - direct policy persistence,
@@ -439,8 +443,8 @@ The setup-field-group audit rejects:
 
 ## Setup Answer Shape Contract
 
-Phase 0R.2 now exposes setup answer shapes for the four default setup
-questions. This contract answers the question:
+The policy authoring user mental model exposes setup answer shapes for the four
+default setup questions. This contract answers the question:
 
 ```text
 What is the operator answer allowed to mean?
@@ -474,8 +478,8 @@ The setup-answer-shape audit rejects:
 - internal diagnostic language,
 - broad genre authority language.
 
-## Follow-Up
+## Next Component
 
-The next Phase 0R task is **0R.3 Legacy Compatibility Vocabulary**. That task
-should define how legacy presets, starter templates, bridge payloads, and
-rollback snapshots are described without making the old model permanent.
+Cut over the phase-coded policy setup checklist service. It now points at this
+durable design record but still names its runtime inventory after the historical
+setup phase.

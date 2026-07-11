@@ -135,7 +135,7 @@ describe('policyUserMentalModel', () => {
     expect(listInternalPolicyLanguageFlags()).toContain('internal diagnostic');
   });
 
-  test('validates approved setup copy against Phase 0R authority context', () => {
+  test('validates approved setup copy against policy-authoring authority context', () => {
     expect(validatePolicySetupCopy({
       termId: POLICY_UX_TERM_IDS.BELONGS_HERE,
       label: 'Belongs Here',
@@ -580,7 +580,7 @@ describe('policyUserMentalModel', () => {
       ]));
   });
 
-  test('audits the complete Phase 0R.2 mental model contract', () => {
+  test('audits the complete policy-authoring mental model contract', () => {
     expect(buildPolicyUserMentalModelAudit()).toEqual(expect.objectContaining({
       ok: true,
       checkedTermCount: listPolicyUxTerms().length,
