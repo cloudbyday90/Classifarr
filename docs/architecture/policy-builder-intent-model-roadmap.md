@@ -6675,7 +6675,7 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 146 production references plus 147 rename candidates.
+  currently reports 143 production references plus 144 rename candidates.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -6691,6 +6691,10 @@ Implementation status:
   `server/src`, leaving the server regression audit to consume generated
   inventory only. Its design record is
   [Policy Production Naming Tooling Extraction](policy-production-naming-tooling-extraction.md).
+- The runtime observability vocabulary cutover removed delivery labels from the
+  current metrics operator summary and trace validation diagnostics while
+  preserving the stable metrics contract and bounded output. Its design record
+  is [Policy Runtime Observability Vocabulary Cutover](policy-runtime-observability-vocabulary-cutover.md).
 
 ### 9R.2 Durable Domain Module Cutover
 

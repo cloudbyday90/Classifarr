@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Runtime Observability Vocabulary** — replaced temporary delivery
+  labels in current runtime-metrics summaries and validation diagnostics with
+  durable runtime terminology while retaining bounded counters and trace output;
+  the production naming baseline is now `143/144`.
 - **Policy Naming Inventory Tooling Extraction** — moved historic roadmap-token
   scanning out of the server service tree into maintenance tooling; the server
   regression audit now requires generated inventory input and the production

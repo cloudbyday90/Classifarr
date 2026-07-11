@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the live repository inventory after the
-naming-inventory tooling extraction on July 11, 2026:
+runtime-observability vocabulary cutover on July 11, 2026:
 
-- production references: `146`
-- rename candidates: `147`
+- production references: `143`
+- rename candidates: `144`
 - obsolete migration tooling references: `0`
 
 The baseline is intentionally a maximum, not a target. Future durable rename

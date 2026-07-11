@@ -479,7 +479,7 @@ function buildOperatorSummary(counters) {
   if (summaries.length === 0) {
     summaries.push({
       actionId: 'no_action_required',
-      label: 'No operator action is required from the current Phase 7R metrics.',
+      label: 'No operator action is required from the current runtime metrics.',
       counterId: null,
     });
   }
@@ -632,14 +632,14 @@ function validatePolicyRuntimeMetricsTrace(metrics = {}) {
     if (!COMPONENT_IDS.includes(trace.componentId)) {
       issues.push({
         riskId: POLICY_RUNTIME_METRIC_AUDIT_RISK_IDS.UNKNOWN_COMPONENT,
-        message: `Unknown Phase 7R trace component "${trace.componentId}".`,
+        message: `Unknown runtime metrics trace component "${trace.componentId}".`,
       });
     }
 
     if (asArray(trace.reasons).length === 0) {
       issues.push({
         riskId: POLICY_RUNTIME_METRIC_AUDIT_RISK_IDS.MISSING_TRACE_REASON,
-        message: 'Each Phase 7R trace must include bounded reason codes.',
+        message: 'Each runtime metrics trace must include bounded reason codes.',
       });
     }
 

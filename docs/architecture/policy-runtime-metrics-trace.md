@@ -18,6 +18,9 @@ decision-only aggregation reducer. The reducer accepts a valid normalized
 metrics-input contract; raw source records are reduced to allowlisted state,
 reason, and fingerprint fields before aggregation.
 
+Current operator summaries and validation diagnostics use durable runtime
+metrics vocabulary. They do not expose delivery-phase labels.
+
 ## Problem
 
 Classifarr now has deterministic contracts for runtime evidence, automation,
@@ -141,6 +144,8 @@ Cons:
    slice.
 10. Require normalized metrics input before aggregating counters or traces;
     preserve sensitive input only as a suppression marker.
+11. Keep operator summaries and validation diagnostics tied to the durable
+    runtime-metrics domain, not temporary delivery terminology.
 
 ## Implemented Files
 
@@ -212,6 +217,7 @@ The focused test suite verifies:
 - raw payloads, prompts, embeddings, provider payloads, and diagnostic internals
   are suppressed,
 - operator summaries are action-oriented,
+- operator summaries and validation diagnostics avoid delivery-phase labels,
 - unknown/negative/non-integer counters fail validation,
 - sensitive trace exposure fails validation,
 - trace summary mismatches fail validation,

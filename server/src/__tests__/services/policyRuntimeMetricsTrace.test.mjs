@@ -48,7 +48,7 @@ describe('policyRuntimeMetricsTrace', () => {
     expect(validatePolicyRuntimeMetricsTrace(metrics).ok).toBe(true);
   });
 
-  test('counts Phase 7R automation, question, learning, rebuild, and migration outcomes', () => {
+  test('counts runtime automation, question, learning, rebuild, and migration outcomes', () => {
     const metrics = buildPolicyRuntimeMetricsTrace({
       automationDecisions: [
         { stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY },
@@ -299,11 +299,30 @@ describe('policyRuntimeMetricsTrace', () => {
     expect(metrics.operatorSummaries).toEqual([
       {
         actionId: 'no_action_required',
-        label: 'No operator action is required from the current Phase 7R metrics.',
+        label: 'No operator action is required from the current runtime metrics.',
         counterId: null,
       },
     ]);
     expect(validatePolicyRuntimeMetricsTrace(metrics).ok).toBe(true);
+  });
+
+  test('uses durable runtime vocabulary in metrics validation diagnostics', () => {
+    const metrics = buildPolicyRuntimeMetricsTrace({
+      automationDecisions: [
+        { stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY },
+      ],
+    });
+    metrics.traces[0].componentId = 'unknown_component';
+    metrics.traces[0].reasons = [];
+
+    const messages = validatePolicyRuntimeMetricsTrace(metrics).issues
+      .map(issue => issue.message);
+
+    expect(messages).toEqual(expect.arrayContaining([
+      'Unknown runtime metrics trace component "unknown_component".',
+      'Each runtime metrics trace must include bounded reason codes.',
+    ]));
+    expect(messages.join(' ')).not.toContain('Phase');
   });
 
   test('rejects unknown, negative, or non-integer counters', () => {
