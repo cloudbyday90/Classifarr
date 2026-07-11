@@ -360,6 +360,26 @@ describe('policyEvidenceEngine', () => {
       ]));
   });
 
+  test('rejects tampered evidence entries that bypass the bounded entry contract', () => {
+    const projection = buildPolicyEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animation'],
+      },
+    });
+    projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY][0] = {
+      ...projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY][0],
+      label: 'Animation\nprovider diagnostic',
+      reasonCode: 'not a canonical reason',
+    };
+
+    expect(buildPolicyEvidenceProjectionAudit(projection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_FIELD_CONTRACT,
+        }),
+      ]));
+  });
+
   test('rejects individual projection entries with unknown source or authority', () => {
     const result = validatePolicyEvidenceProjectionEntry({
       label: 'Mystery signal',

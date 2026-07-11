@@ -10,6 +10,10 @@ import {
   buildPolicyEvidenceQualityAssessment,
   validatePolicyEvidenceQualityAssessment,
 } from './policyEvidenceQuality.mjs';
+import {
+  buildPolicyEvidenceEntryAudit,
+  normalizePolicyEvidenceEntry,
+} from './policyEvidenceEntryNormalizer.mjs';
 
 const POLICY_EVIDENCE_BUCKET_IDS = Object.freeze({
   IDENTITY: 'identity_evidence',
@@ -55,6 +59,48 @@ const POLICY_EVIDENCE_REDUCER_CUTLINE_IDS = Object.freeze({
   KEEP_OUT_OF_NORMAL_FLOW: 'keep_out_of_normal_flow',
 });
 
+const POLICY_EVIDENCE_SOURCE_REASON_CODE_IDS = Object.freeze({
+  [POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE]: Object.freeze([
+    'observed_library_profile',
+    'observed_distribution',
+    'observed_absence_requires_review',
+    'missing_profile_distributions',
+  ]),
+  [POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT]: Object.freeze([
+    'operator_declared_belongs_here',
+    'operator_declared_helpful_match',
+    'operator_declared_hard_limit',
+    'operator_declared_avoid',
+    'operator_declared_routing_target',
+  ]),
+  [POLICY_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES]: Object.freeze([
+    'final_outcome_observed',
+    'persisted_final_outcome',
+  ]),
+  [POLICY_EVIDENCE_SOURCE_IDS.MANUAL_CORRECTIONS]: Object.freeze([
+    'manual_correction_observed',
+    'persisted_manual_correction',
+  ]),
+  [POLICY_EVIDENCE_SOURCE_IDS.PENDING_ITEM_ANSWERS]: Object.freeze([
+    'pending_answer_requires_learning_guard',
+    'persisted_pending_answer_requires_learning_guard',
+  ]),
+  [POLICY_EVIDENCE_SOURCE_IDS.ARR_ROUTING_OUTCOMES]: Object.freeze([
+    'arr_routing_outcome',
+    'persisted_routing_succeeded',
+    'persisted_routing_blocked',
+    'persisted_routing_skipped',
+  ]),
+  [POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT]: Object.freeze([
+    'metadata_enrichment',
+    'persisted_metadata_genre_compatibility',
+  ]),
+  [POLICY_EVIDENCE_SOURCE_IDS.PROFILE_FRESHNESS]: Object.freeze([
+    'stale_profile',
+    'current_profile',
+  ]),
+});
+
 const POLICY_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_BUCKET: 'unknown_bucket',
   UNKNOWN_SOURCE: 'unknown_source',
@@ -84,6 +130,7 @@ const POLICY_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   PROJECTION_ENTRY_AUTHORITY_NOT_ALLOWED: 'projection_entry_authority_not_allowed',
   PROJECTION_ENTRY_RAW_PAYLOAD: 'projection_entry_raw_payload',
   PROJECTION_ENTRY_LIVE_LOOKUP: 'projection_entry_live_lookup',
+  PROJECTION_ENTRY_FIELD_CONTRACT: 'projection_entry_field_contract',
   PROJECTION_EXPOSES_RAW_PAYLOAD: 'projection_exposes_raw_payload',
   PROJECTION_EXPOSES_UI_LANGUAGE: 'projection_exposes_ui_language',
   PROJECTION_USED_LIVE_PROVIDER: 'projection_used_live_provider',
@@ -466,29 +513,6 @@ function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function normalizeNullableString(value) {
-  const normalized = normalizeString(value);
-  return normalized || null;
-}
-
-function normalizeNumber(value) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
-}
-
-function normalizeEvidenceScore(value) {
-  const numeric = normalizeNumber(value);
-  if (numeric === null) return null;
-  if (numeric > 1) return Math.max(0, Math.min(1, numeric / 100));
-  return Math.max(0, Math.min(1, numeric));
-}
-
-function normalizeCount(value) {
-  const numeric = normalizeNumber(value);
-  if (numeric === null) return null;
-  return Math.max(0, Math.trunc(numeric));
-}
-
 function isNonEmptyObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -507,6 +531,7 @@ function createEvidenceEntry({
   count = null,
   confidence = null,
   reasonCode = null,
+  inputReasonCode = null,
   observedAt = null,
   stale = null,
 }) {
@@ -517,29 +542,32 @@ function createEvidenceEntry({
     return null;
   }
 
-  const normalizedLabel = normalizeNullableString(label ?? key ?? value);
-  if (!normalizedLabel) {
-    return null;
-  }
-
   const fallbackAuthoritySourceId = source.authoritySourceIds[0] || null;
   const normalizedAuthoritySourceId = authoritySourceId || fallbackAuthoritySourceId;
   if (!normalizedAuthoritySourceId || !bucket.authoritySourceIds.includes(normalizedAuthoritySourceId)) {
     return null;
   }
 
+  const normalizedEntry = normalizePolicyEvidenceEntry({
+    key,
+    label,
+    value,
+    count,
+    confidence,
+    reasonCode: inputReasonCode,
+    observedAt,
+    stale,
+  }, {
+    defaultReasonCode: reasonCode,
+    allowedReasonCodes: POLICY_EVIDENCE_SOURCE_REASON_CODE_IDS[sourceId],
+  });
+  if (!normalizedEntry) return null;
+
   return {
     bucketId,
     sourceId,
     authoritySourceId: normalizedAuthoritySourceId,
-    key: normalizeNullableString(key) || normalizedLabel.toLowerCase(),
-    label: normalizedLabel,
-    value: normalizeNullableString(value),
-    count: normalizeCount(count),
-    confidence: normalizeEvidenceScore(confidence),
-    reasonCode: normalizeNullableString(reasonCode),
-    observedAt: normalizeNullableString(observedAt),
-    stale: typeof stale === 'boolean' ? stale : null,
+    ...normalizedEntry,
     includesRawPayload: false,
     liveLookupPerformed: false,
   };
@@ -583,7 +611,8 @@ function mapSignalEntries(values, {
       value: value.value,
       count: value.count ?? value.occurrences,
       confidence: value.confidence ?? value.score,
-      reasonCode: value.reasonCode ?? reasonCode,
+      reasonCode,
+      inputReasonCode: value.reasonCode,
       observedAt: value.observedAt ?? value.updatedAt,
       stale: value.stale,
     });
@@ -1080,6 +1109,7 @@ function validatePolicyEvidenceProjectionEntry(entry = {}, bucketId) {
   const issues = [];
   const bucket = getPolicyEvidenceBucket(bucketId);
   const source = getPolicyEvidenceSource(entry.sourceId);
+  const entryFieldAudit = buildPolicyEvidenceEntryAudit(entry);
 
   if (!normalizeString(entry.label)) {
     pushProjectionIssue(
@@ -1087,6 +1117,19 @@ function validatePolicyEvidenceProjectionEntry(entry = {}, bucketId) {
       POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_MISSING_LABEL,
       'Evidence projection entries must expose a bounded label.',
       { bucketId, sourceId: entry.sourceId || null }
+    );
+  }
+
+  if (!entryFieldAudit.ok) {
+    pushProjectionIssue(
+      issues,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_FIELD_CONTRACT,
+      'Evidence projection entries must satisfy the bounded field contract.',
+      {
+        bucketId,
+        sourceId: entry.sourceId || null,
+        entryRiskIds: entryFieldAudit.issues.map(issue => issue.riskId),
+      }
     );
   }
 

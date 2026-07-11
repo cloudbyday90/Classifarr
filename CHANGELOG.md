@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Entry Normalizer** — added a server-owned bounded field
+  contract for every evidence projection entry; canonical Unicode text,
+  timestamps, identifiers, source-owned reason codes, and audit enforcement
+  now prevent control-character, object-valued, unbounded, or tampered entry
+  fields from reaching downstream policy contracts.
 - **Policy Operator Workflow Entry Normalizer** — added display-only intent
   entry projection for destination setup; object-valued evidence, raw provider
   and diagnostic fields, unknown authority sources, and control whitespace are

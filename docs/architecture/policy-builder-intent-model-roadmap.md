@@ -3204,6 +3204,12 @@ Implementation status:
   `server/src/services/policyEvidenceEngine.mjs`.
 - The focused evidence-engine test suite lives in
   `server/src/__tests__/services/policyEvidenceEngine.test.mjs`.
+- The evidence-entry normalizer lives in
+  `server/src/services/policyEvidenceEntryNormalizer.mjs`. It bounds and
+  canonicalizes projected primitive fields, preserves source-owned reason
+  codes, and lets the projection audit reject tampered entry fields without
+  exposing them. Its design record is
+  [Policy Evidence Entry Normalizer](policy-evidence-entry-normalizer.md).
 - Current implementation defines stable evidence buckets, source-authority
   rules, prohibited payload classes, deterministic offline projection, and an
   audit that blocks live provider lookups, raw provider payloads, UI chip

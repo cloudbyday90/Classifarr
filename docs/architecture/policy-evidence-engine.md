@@ -51,6 +51,12 @@ handoff result so downstream engines only receive evidence when the input gate,
 projection audit, fingerprint audit, side-effect contract, issue count, and
 intent-inference handoff agree.
 
+Evidence-entry hardening now canonicalizes and bounds every projected key,
+label, value, reason code, and timestamp. Source adapters own allow-listed
+reason codes, so incoming snapshot records cannot redefine evidence meaning.
+The projection audit detects later field-contract tampering without returning
+unsafe text.
+
 ## Problem
 
 The previous policy-builder direction exposed too many implementation diagnostics in
@@ -147,6 +153,11 @@ supports each piece of evidence?
    audit, fingerprint audit, and intent-inference handoff; blocked results must
    have no next step and no live/provider/storage side effects.
 
+10. **Normalize evidence entries at the source boundary.**
+    Canonicalize Unicode text, remove control characters, bound output fields,
+    normalize timestamps, and retain source-owned reason codes before evidence
+    is projected or audited.
+
 ## Pros And Cons
 
 Pros:
@@ -163,6 +174,8 @@ Pros:
   constrained, review-needed, and insufficient evidence.
 - Gives the intent engine one boundary audit to trust instead of duplicating
   input-gate, projection, fingerprint, and side-effect checks.
+- Prevents unbounded or control-character evidence fields from leaking into
+  audit, trace, or workflow projections.
 
 Cons:
 
@@ -173,6 +186,8 @@ Cons:
 - Native storage waits until runtime engine contracts prove stable.
 - The boundary audit is defensive validation; it does not replace the lower
   input-gate, projection, fingerprint, or quality audits.
+- Entry normalization bounds individual fields; collection cardinality remains
+  a distinct input-boundary concern.
 
 ## Final Recommendation Stack
 
@@ -182,6 +197,8 @@ Cons:
   `server/src/services/policyEvidenceQuality.mjs`
 - Boundary module:
   `server/src/services/policyEvidenceBoundary.mjs`
+- Entry normalizer:
+  `server/src/services/policyEvidenceEntryNormalizer.mjs`
 - Test module:
   `server/src/__tests__/services/policyEvidenceEngine.test.mjs`
   `server/src/__tests__/services/policyEvidenceQuality.test.mjs`,
@@ -237,6 +254,12 @@ reuse the item-level runtime evidence projection or issue cross-table queries.
 source-specific read boundary for final classification outcomes and manual
 corrections. It exposes no titles, metadata, correction actors, or learned
 state, and the envelope receives only its bounded evidence records.
+
+`server/src/services/policyEvidenceEntryNormalizer.mjs` is the primitive-field
+boundary used while building every evidence entry. It preserves valid Unicode
+labels, removes control characters, bounds text, canonicalizes keys and
+timestamps, and keeps source-owned reason codes out of caller control. Its
+design record is [Policy Evidence Entry Normalizer](policy-evidence-entry-normalizer.md).
 
 The projection entry shape is intentionally small:
 
