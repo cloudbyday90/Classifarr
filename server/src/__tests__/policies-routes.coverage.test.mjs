@@ -682,7 +682,7 @@ describe('Policies routes coverage', () => {
       });
 
       const res = await request(app)
-        .post('/api/policies/intent/impact-preview')
+        .post('/api/policies/migration-verifier/impact-preview')
         .send({
           library_id: 4,
           name: 'Family Policy',
@@ -725,7 +725,7 @@ describe('Policies routes coverage', () => {
 
     test('rejects invalid native intent impact previews before preset lookup', async () => {
       const res = await request(app)
-        .post('/api/policies/intent/impact-preview')
+        .post('/api/policies/migration-verifier/impact-preview')
         .send({
           library_id: 4,
           name: 'Invalid Preview',
@@ -828,7 +828,7 @@ describe('Policies routes coverage', () => {
         .mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
-        .post('/api/policies/intent/replay-preview')
+        .post('/api/policies/migration-verifier/replay-preview')
         .send({
           library_id: 4,
           library_media_type: 'movie',
@@ -1013,7 +1013,7 @@ describe('Policies routes coverage', () => {
 
     test('rejects invalid representative replay previews before preset lookup', async () => {
       const res = await request(app)
-        .post('/api/policies/intent/replay-preview')
+        .post('/api/policies/migration-verifier/replay-preview')
         .send({
           library_id: 4,
           name: 'Invalid Replay Preview',

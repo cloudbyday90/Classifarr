@@ -81,7 +81,7 @@ Cons:
 - Test:
   `server/src/__tests__/policyReplayPreviewMigrationVerifier.test.mjs`
 - Route integration:
-  `server/src/routes/policiesRoutePolicyWrite.mjs`
+  `server/src/routes/policiesRouteMigrationVerifier.mjs`
 - Dependent diagnostics:
   `server/src/services/policyIntentReplaySampleDiagnostics.mjs`
 - Validation evidence:

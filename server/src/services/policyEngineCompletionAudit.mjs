@@ -148,7 +148,7 @@ const REQUIRED_LEGACY_CUTLINE_ARTIFACT_PATHS = Object.freeze([
   'client/src/composables/usePolicyIntentReplayPreview.js',
   'client/src/utils/policyIntentImpactPreview.js',
   'client/src/utils/policyIntentReplayPreview.js',
-  'server/src/routes/policiesRoutePolicyWrite.mjs',
+  'server/src/routes/policiesRouteMigrationVerifier.mjs',
   'server/src/services/policyIntentImpactPreview.mjs',
   'server/src/services/policyIntentReplayEngineComparison.mjs',
   'server/src/services/policyIntentReplayEnrichmentAdapterContract.mjs',

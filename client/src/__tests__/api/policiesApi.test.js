@@ -78,14 +78,14 @@ describe('policiesApi', () => {
     const data = { name: 'Preview', policyIntentDraft: { schema_version: 1 } }
     mockPost.mockResolvedValueOnce({ data: { comparison: { parity: 'matching' } } })
     await previewPolicyIntentImpact(data)
-    expect(mockPost).toHaveBeenCalledWith('/policies/intent/impact-preview', data)
+    expect(mockPost).toHaveBeenCalledWith('/policies/migration-verifier/impact-preview', data)
   })
 
   it('previewPolicyIntentReplay calls POST with policy draft data', async () => {
     const data = { name: 'Replay Preview', policyIntentDraft: { schema_version: 1 }, replay_limit: 5 }
     mockPost.mockResolvedValueOnce({ data: { sample: { returned_count: 0 } } })
     await previewPolicyIntentReplay(data)
-    expect(mockPost).toHaveBeenCalledWith('/policies/intent/replay-preview', data)
+    expect(mockPost).toHaveBeenCalledWith('/policies/migration-verifier/replay-preview', data)
   })
 
   it('deletePolicy calls DELETE with id', async () => {

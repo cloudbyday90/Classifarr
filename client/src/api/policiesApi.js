@@ -35,11 +35,11 @@ export function updatePolicy(id, data) {
 }
 
 export function previewPolicyIntentImpact(data) {
-  return apiClient.post('/policies/intent/impact-preview', data)
+  return apiClient.post('/policies/migration-verifier/impact-preview', data)
 }
 
 export function previewPolicyIntentReplay(data) {
-  return apiClient.post('/policies/intent/replay-preview', data)
+  return apiClient.post('/policies/migration-verifier/replay-preview', data)
 }
 
 export function deletePolicy(id) {

@@ -102,7 +102,7 @@ describe('policyMigrationDeletionPath', () => {
       'client/src/components/policies/PolicyIntentReplayPreviewCard.vue',
       'client/src/composables/usePolicyIntentImpactPreview.js',
       'client/src/composables/usePolicyIntentReplayPreview.js',
-      'server/src/routes/policiesRoutePolicyWrite.mjs',
+      'server/src/routes/policiesRouteMigrationVerifier.mjs',
       'server/src/services/policyIntentImpactPreview.mjs',
       'server/src/services/policyIntentReplayPreview.mjs',
       'server/src/services/policyIntentReplayProviderReadiness.mjs',

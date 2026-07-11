@@ -9,9 +9,9 @@ replaced the removed `server/src/services/policyIntentReplayPreview.mjs`
 compatibility path, but the canonical production module is now
 `server/src/services/policyReplayPreviewMigrationVerifier.mjs`.
 
-The `/api/policies/intent/replay-preview` endpoint remains available for the
-current migration-verifier UI path. Its implementation stays read-only and does
-not depend on the removed compatibility service.
+The `/api/policies/migration-verifier/replay-preview` endpoint is isolated from
+normal policy writes. Its implementation stays read-only and does not depend on
+the removed compatibility service.
 
 ## Problem
 
@@ -84,7 +84,9 @@ Cons:
 - Focused service test:
   `server/src/__tests__/policyReplayPreviewMigrationVerifier.test.mjs`
 - Route integration:
-  `server/src/routes/policiesRoutePolicyWrite.mjs`
+  `server/src/routes/policiesRouteMigrationVerifier.mjs`
+- Verifier composition:
+  `server/src/services/policyMigrationVerifierPreviewExecution.mjs`
 - Dependent diagnostics:
   `server/src/services/policyIntentReplaySampleDiagnostics.mjs`
 - Validation evidence:
@@ -96,8 +98,8 @@ Implemented:
 
 - Removed `policyIntentReplayPreview.mjs`.
 - Added `policyReplayPreviewMigrationVerifier.mjs`.
-- Updated policy write routes to call the durable verifier for replay-preview
-  composition.
+- Moved replay verification out of normal policy writes into the dedicated
+  migration-verifier route.
 - Updated replay sample diagnostics to import the durable bounded limit
   normalizer.
 - Replaced the focused replay service test with

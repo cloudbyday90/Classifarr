@@ -2,27 +2,6 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { withPolicyIntentProjection } from '../services/policyIntentMapper.mjs';
-import { buildPolicyImpactPreviewMigrationVerifier } from '../services/policyImpactPreviewMigrationVerifier.mjs';
-import {
-  buildPolicyReplayPreviewMigrationVerifier,
-  buildPolicyReplayPreviewMigrationSampleQuery,
-  normalizePolicyReplayPreviewMigrationLimit,
-} from '../services/policyReplayPreviewMigrationVerifier.mjs';
-import { createPolicyIntentReplayExecutionContext } from '../services/policyIntentReplayExecutionContext.mjs';
-import { buildPolicyIntentReplayScoring } from '../services/policyIntentReplayScoring.mjs';
-import {
-  buildPolicyIntentReplaySampleDiagnostics,
-  buildPolicyIntentReplaySampleDiagnosticsQuery,
-} from '../services/policyIntentReplaySampleDiagnostics.mjs';
-import { buildPolicyIntentReplayEvidenceCompleteness } from '../services/policyIntentReplayEvidenceCompleteness.mjs';
-import { buildPolicyIntentReplayEnrichmentEligibility } from '../services/policyIntentReplayEnrichmentEligibility.mjs';
-import { buildPolicyIntentReplayProviderReadiness } from '../services/policyIntentReplayProviderReadiness.mjs';
-import { buildPolicyIntentReplayEnrichmentAdapterContract } from '../services/policyIntentReplayEnrichmentAdapterContract.mjs';
-import { buildPolicyIntentReplayTmdbMetadataAdapterPreview } from '../services/policyIntentReplayTmdbMetadataAdapter.mjs';
-import { buildPolicyIntentReplayTmdbMetadataExecutionSwitch } from '../services/policyIntentReplayTmdbMetadataExecutionSwitch.mjs';
-import { createPolicyIntentReplayTmdbMetadataFetcher } from '../services/policyIntentReplayTmdbProviderClient.mjs';
-import { buildPolicyIntentReplayTmdbMetadataCoverageComparison } from '../services/policyIntentReplayTmdbMetadataCoverageComparison.mjs';
-import { tmdbService as defaultTmdbService } from '../services/tmdb.mjs';
 import {
   buildPolicyIntentWritePreflight,
   summarizePolicyIntentRequestValidationError,
@@ -39,7 +18,7 @@ import {
   annotatePresetAttachment,
 } from './policiesRouteHelpers.mjs';
 
-export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, describePresetRuntimeSemantics, DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD, DEFAULT_POLICY_PROMPT_THRESHOLD, validatePolicyDecisionThresholds, validatePolicyThresholdField, logger, tmdbService = defaultTmdbService }) {
+export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, describePresetRuntimeSemantics, DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD, DEFAULT_POLICY_PROMPT_THRESHOLD, validatePolicyDecisionThresholds, validatePolicyThresholdField, logger }) {
   function annotate(preset) {
     return annotatePresetAttachment(preset, normalizeSignalConfig, describePresetRuntimeSemantics);
   }
@@ -68,159 +47,6 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
       policy_intent_write_preflight: preflight,
     };
   }
-
-  async function buildPreviewPolicyFromPayload(payload = {}) {
-    const normalizedPresets = normalizePresetAttachmentInputs(payload.presets);
-    const invalidPreset = normalizedPresets.find((preset) => {
-      const presetId = Number(preset.preset_id);
-      return !Number.isInteger(presetId) || presetId <= 0;
-    });
-    if (invalidPreset) {
-      throw new ValidationError('All preview presets must include a valid preset_id');
-    }
-
-    const presetIds = Array.from(new Set(
-      normalizedPresets
-        .map((preset) => Number(preset.preset_id))
-    ));
-
-    const presetRows = presetIds.length > 0
-      ? await db.query(`
-        SELECT *
-        FROM content_presets
-        WHERE id = ANY($1::int[])
-      `, [presetIds])
-      : { rows: [] };
-
-    const presetsById = new Map((presetRows.rows || []).map((preset) => [Number(preset.id), preset]));
-    const missingPreset = normalizedPresets.find((preset) => !presetsById.has(Number(preset.preset_id)));
-    if (missingPreset) {
-      throw new ValidationError(`Preset ${missingPreset.preset_id} was not found for impact preview`);
-    }
-
-    return {
-      id: payload.id ?? null,
-      library_id: payload.library_id ?? null,
-      library_name: payload.library_name ?? null,
-      library_media_type: payload.library_media_type ?? null,
-      presets: normalizedPresets.map((preset) => annotate({
-        ...presetsById.get(Number(preset.preset_id)),
-        weight: preset.weight,
-        custom_signals: preset.customSignals,
-      })),
-    };
-  }
-
-  router.post('/intent/impact-preview', asyncHandler(async (req, res) => {
-    try {
-      buildRouteIntentWritePreflight(req.body);
-      const previewPolicy = await buildPreviewPolicyFromPayload(req.body);
-      const preview = buildPolicyImpactPreviewMigrationVerifier({
-        policy: previewPolicy,
-        payload: req.body,
-      });
-
-      return sendData(res, preview);
-    } catch (error) {
-      const issueSummary = summarizePolicyIntentRequestValidationError(error);
-      if (issueSummary) {
-        throw new ValidationError(`Invalid policy intent draft: ${issueSummary}`, {
-          code: 'POLICY_INTENT_REQUEST_INVALID',
-        });
-      }
-      throw error;
-    }
-  }));
-
-  router.post('/intent/replay-preview', asyncHandler(async (req, res) => {
-    try {
-      buildRouteIntentWritePreflight(req.body);
-      const previewPolicy = await buildPreviewPolicyFromPayload(req.body);
-      const impactPreview = buildPolicyImpactPreviewMigrationVerifier({
-        policy: previewPolicy,
-        payload: req.body,
-      });
-      const replayLimit = normalizePolicyReplayPreviewMigrationLimit(req.body?.replay_limit);
-      const sampleQuery = buildPolicyReplayPreviewMigrationSampleQuery({
-        libraryId: previewPolicy.library_id,
-        mediaType: previewPolicy.library_media_type,
-        limit: replayLimit,
-      });
-      const diagnosticsQuery = buildPolicyIntentReplaySampleDiagnosticsQuery({
-        libraryId: previewPolicy.library_id,
-        mediaType: previewPolicy.library_media_type,
-      });
-      const sampleRows = await db.query(sampleQuery.text, sampleQuery.values);
-      const diagnosticsRows = await db.query(diagnosticsQuery.text, diagnosticsQuery.values);
-      const executionContext = createPolicyIntentReplayExecutionContext();
-      const scoring = buildPolicyIntentReplayScoring({
-        payload: req.body,
-        samples: sampleRows.rows || [],
-        executionContext,
-      });
-      const sampleDiagnostics = buildPolicyIntentReplaySampleDiagnostics({
-        row: diagnosticsRows.rows?.[0],
-        requestedLimit: replayLimit,
-        returnedCount: sampleRows.rows?.length || 0,
-        mediaType: previewPolicy.library_media_type,
-      });
-      const evidenceCompleteness = buildPolicyIntentReplayEvidenceCompleteness({
-        samples: sampleRows.rows || [],
-      });
-      const enrichmentEligibility = buildPolicyIntentReplayEnrichmentEligibility({
-        samples: sampleRows.rows || [],
-      });
-      const providerReadiness = await buildPolicyIntentReplayProviderReadiness({
-        db,
-        enrichmentEligibility,
-      });
-      const tmdbMetadataExecutionSwitch = buildPolicyIntentReplayTmdbMetadataExecutionSwitch({
-        requestBody: req.body,
-        providerReadiness,
-      });
-      const enrichmentAdapterContract = buildPolicyIntentReplayEnrichmentAdapterContract({
-        enrichmentEligibility,
-        providerReadiness,
-        context: tmdbMetadataExecutionSwitch.adapterContext,
-      });
-      const tmdbMetadataAdapterPreview = await buildPolicyIntentReplayTmdbMetadataAdapterPreview({
-        samples: sampleRows.rows || [],
-        adapterContract: enrichmentAdapterContract,
-        context: tmdbMetadataExecutionSwitch.adapterContext,
-        executionSwitch: tmdbMetadataExecutionSwitch,
-        fetchMovieDetails: tmdbMetadataExecutionSwitch.enabled
-          ? createPolicyIntentReplayTmdbMetadataFetcher({ tmdbService })
-          : null,
-      });
-      const tmdbMetadataCoverageComparison = buildPolicyIntentReplayTmdbMetadataCoverageComparison({
-        evidenceCompleteness,
-        tmdbMetadataAdapterPreview,
-      });
-      const preview = buildPolicyReplayPreviewMigrationVerifier({
-        impactPreview,
-        samples: sampleRows.rows || [],
-        scoring,
-        sampleDiagnostics,
-        evidenceCompleteness,
-        enrichmentEligibility,
-        providerReadiness,
-        enrichmentAdapterContract,
-        tmdbMetadataAdapterPreview,
-        tmdbMetadataCoverageComparison,
-        requestedLimit: replayLimit,
-      });
-
-      return sendData(res, preview);
-    } catch (error) {
-      const issueSummary = summarizePolicyIntentRequestValidationError(error);
-      if (issueSummary) {
-        throw new ValidationError(`Invalid policy intent draft: ${issueSummary}`, {
-          code: 'POLICY_INTENT_REQUEST_INVALID',
-        });
-      }
-      throw error;
-    }
-  }));
 
   router.post('/', asyncHandler(async (req, res) => {
     const {

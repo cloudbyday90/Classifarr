@@ -5615,9 +5615,9 @@ Current removal slice:
   `server/src/services/policyIntentReplayPreview.mjs` has been removed from
   product/runtime code and replaced by
   `server/src/services/policyReplayPreviewMigrationVerifier.mjs`.
-- The policy write route still exposes the current replay-preview endpoint for
-  the existing UI, but server composition now runs through the durable migration
-  verifier.
+- Migration verifier endpoints now live outside normal policy writes at
+  `/api/policies/migration-verifier/*`; the policy write route no longer owns
+  impact or replay diagnostic execution.
 - The focused replay service test now targets
   `server/src/__tests__/policyReplayPreviewMigrationVerifier.test.mjs`.
 

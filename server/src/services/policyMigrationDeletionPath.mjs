@@ -198,7 +198,7 @@ const DEFAULT_MIGRATION_ARTIFACTS = Object.freeze([
     rollbackPlan: DEFAULT_ROLLBACK_PLAN,
   },
   {
-    path: 'server/src/routes/policiesRoutePolicyWrite.mjs',
+    path: 'server/src/routes/policiesRouteMigrationVerifier.mjs',
     owner: 'policy-builder-api',
     decisionId: POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER,
     verifierKindId: POLICY_MIGRATION_VERIFIER_KIND_IDS.REPRESENTATIVE_REPLAY,

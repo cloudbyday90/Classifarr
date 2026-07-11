@@ -81,7 +81,7 @@ Cons:
 - Test:
   `server/src/__tests__/services/policyImpactPreviewMigrationVerifier.test.mjs`
 - Route integration:
-  `server/src/routes/policiesRoutePolicyWrite.mjs`
+  `server/src/routes/policiesRouteMigrationVerifier.mjs`
 - Validation evidence:
   `server/src/services/policyStorageClosureValidationEvidence.mjs`
 - Design evidence:

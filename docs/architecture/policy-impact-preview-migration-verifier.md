@@ -9,9 +9,9 @@ removed `server/src/services/policyIntentImpactPreview.mjs` compatibility path,
 but the canonical production module is now
 `server/src/services/policyImpactPreviewMigrationVerifier.mjs`.
 
-The `/api/policies/intent/impact-preview` endpoint remains available for the
-current migration-verifier UI path, but its implementation no longer depends on
-the old `policyIntentImpactPreview.mjs` service path.
+The `/api/policies/migration-verifier/impact-preview` endpoint is isolated from
+normal policy writes and its implementation no longer depends on the old
+`policyIntentImpactPreview.mjs` service path.
 
 ## Problem
 
@@ -86,7 +86,9 @@ Cons:
 - Removed service:
   `server/src/services/policyIntentImpactPreview.mjs`
 - Route integration:
-  `server/src/routes/policiesRoutePolicyWrite.mjs`
+  `server/src/routes/policiesRouteMigrationVerifier.mjs`
+- Verifier composition:
+  `server/src/services/policyMigrationVerifierPreviewExecution.mjs`
 - Focused service test:
   `server/src/__tests__/services/policyImpactPreviewMigrationVerifier.test.mjs`
 - Route coverage:
@@ -100,8 +102,8 @@ Implemented:
 
 - Removed `policyIntentImpactPreview.mjs`.
 - Added `policyImpactPreviewMigrationVerifier.mjs`.
-- Updated policy write routes to call the durable verifier for both the
-  impact-preview endpoint and replay-preview composition.
+- Moved the verifier endpoint out of normal policy writes into the dedicated
+  migration-verifier route.
 - Replaced the focused service test with
   `policyImpactPreviewMigrationVerifier.test.mjs`.
 - Updated route coverage to expect `non_persistent_migration_verifier`.

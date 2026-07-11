@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Migration Verifier Route Boundary** — moved read-only impact and
+  replay verification out of normal policy writes into a dedicated migration
+  verifier API namespace; deterministic verifier behavior and client calls
+  remain intact while policy creation and update routes no longer own
+  diagnostic execution.
 - **Policy Migration Native Intent Criterion** — removed the unused
   phase-named deletion-readiness input alias; migration verification now accepts
   only the durable native-intent storage criterion and remains side-effect-free.
