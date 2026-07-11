@@ -9,6 +9,11 @@ projection helper. It does not wire runtime classification, learning, routing,
 native intent storage, or UI changes. Those remain later bounded runtime and
 storage work.
 
+Resolved pending-item answer evidence is deliberately projected as insufficient
+evidence. It proves that an operator resolved a destination question without
+making the answer text, responder identity, or the resolution itself an
+automatic learning instruction.
+
 June 2026 hardening adds a projection summary and legacy reducer cutline
 inventory. The summary gives downstream engines a bounded, deterministic view
 of bucket counts, source authority, blocking evidence, and review evidence. The

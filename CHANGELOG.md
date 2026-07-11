@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Library Pending-Answer Evidence Collector** — added parameterized,
+  library-scoped, read-only collection of bounded resolved pending-item state
+  for the policy evidence envelope; recognizes the shared resolution outcome
+  path plus a narrow legacy Discord marker fallback, excludes answer content,
+  identities, metadata, and database error text, and keeps every record
+  review-only until the learning guard evaluates it.
 - **Policy Library Outcome Evidence Collector** — added parameterized,
   library-scoped, read-only collection of bounded final outcomes and manual
   corrections for the policy evidence envelope; excludes titles, metadata,

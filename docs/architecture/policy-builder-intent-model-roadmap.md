@@ -3310,6 +3310,13 @@ Implementation status:
   manual corrections, returns bounded evidence fields only, and leaves learning
   decisions to later guarded components. Its design record is
   [Policy Library Outcome Evidence Collector](policy-library-outcome-evidence-collector.md).
+- The library pending-answer evidence collector lives in
+  `server/src/services/policyLibraryPendingAnswerEvidenceCollector.mjs`. It
+  reads only bounded proof that a policy question was resolved, supports the
+  shared outcome transition with a narrow legacy Discord marker fallback,
+  excludes answer content and responder identity, and projects every record as
+  review-only evidence until the learning guard evaluates it. Its design record
+  is [Policy Library Pending-Answer Evidence Collector](policy-library-pending-answer-evidence-collector.md).
 
 ### 6R.2 Intent Engine
 

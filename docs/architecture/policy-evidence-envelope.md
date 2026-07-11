@@ -114,7 +114,7 @@ side-effect record. A blocked result has no next step.
 
 ## Next Step
 
-The final-outcome and manual-correction collector is now implemented in
-`policyLibraryOutcomeEvidenceCollector.mjs`. The next component is a separate
-read-only collector for resolved pending-item answers; it must keep answer
-evidence review-only until the learning guard evaluates it.
+The final-outcome/manual-correction and resolved pending-item-answer collectors
+are now implemented. The next component is a separate read-only collector for
+Arr routing outcomes; it must keep raw request/response payloads out of the
+evidence contract.
