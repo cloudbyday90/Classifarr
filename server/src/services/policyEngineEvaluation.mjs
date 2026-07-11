@@ -196,7 +196,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
         if (policy.trust_patterns) {
             if (relatedEvidence.length > 0) {
                 scores.pattern = await scoreRelatedEvidence(policy.library_id, relatedEvidence);
-                logger.debug('Pattern scored via related evidence (Phase 4)', {
+                logger.debug('Pattern scored via related evidence', {
                     library_id: policy.library_id,
                     evidenceCount: relatedEvidence.length,
                     patternScore: scores.pattern,

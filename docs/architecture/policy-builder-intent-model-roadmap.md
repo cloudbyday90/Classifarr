@@ -6680,8 +6680,8 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 25 production references plus 26 rename candidates after
-  the classification resume-stage diagnostic cutover.
+  currently reports 24 production references plus 25 rename candidates after
+  the policy-engine evidence diagnostic cutover.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -6778,6 +6778,10 @@ Implementation status:
   matching the persisted field and returned value without changing resume
   behavior. Its design record is
   [Classification Resume Stage Diagnostic Cutover](classification-resume-stage-diagnostic-cutover.md).
+- The policy-engine related-evidence scoring diagnostic now identifies the
+  evidence operation without a delivery label, preserving its score and bounded
+  debug context. Its design record is
+  [Policy Engine Evidence Diagnostic Cutover](policy-engine-evidence-diagnostic-cutover.md).
 - Outcome record:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
 - After the completed classification progress storage cutover, the repository

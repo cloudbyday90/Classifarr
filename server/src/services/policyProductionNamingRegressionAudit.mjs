@@ -3,9 +3,9 @@ const POLICY_PRODUCTION_NAMING_REGRESSION_AUDIT_VERSION =
 const TEMPORARY_ADAPTER_WITH_DELETION_GATE = 'temporary_adapter_with_deletion_gate';
 
 const POLICY_PRODUCTION_NAMING_REGRESSION_BASELINE = Object.freeze({
-  label: 'classification-resume-stage-ratchet-2026-07-11',
-  maxProductionReferenceCount: 25,
-  maxRenameCandidateCount: 26,
+  label: 'policy-engine-evidence-diagnostic-ratchet-2026-07-11',
+  maxProductionReferenceCount: 24,
+  maxRenameCandidateCount: 25,
   maxObsoleteToolingCount: 0,
 });
 

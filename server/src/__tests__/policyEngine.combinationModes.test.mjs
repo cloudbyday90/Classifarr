@@ -182,4 +182,44 @@ describe('PolicyEngine combination modes', () => {
             expect.objectContaining({ type: 'history', score: 0, weight: 0.10, activeWeight: 0 })
         ]);
     });
+
+    test('logs related-evidence pattern scoring with durable terminology', async () => {
+        jest.spyOn(policyEngine, 'scoreProfileWithDiagnostics').mockResolvedValue({
+            score: 0,
+            diagnostics: null,
+        });
+
+        const policy = {
+            id: 14,
+            name: 'Related Evidence Policy',
+            library_id: 5,
+            library_name: 'Movies',
+            trust_patterns: true,
+            trust_rag: false,
+            trust_history: false,
+            presets: [],
+            preset_weight: 0,
+            profile_weight: 0,
+            pattern_weight: 1,
+            rag_weight: 0,
+            history_weight: 0,
+        };
+
+        const result = await policyEngine.evaluatePolicy(
+            policy,
+            { media_type: 'movie' },
+            undefined,
+            [{ libraryId: 5, confidence: 80 }]
+        );
+
+        expect(result.scores.pattern).toBe(80);
+        expect(mockLogger.debug).toHaveBeenCalledWith(
+            'Pattern scored via related evidence',
+            {
+                library_id: 5,
+                evidenceCount: 1,
+                patternScore: 80,
+            }
+        );
+    });
 });

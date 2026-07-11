@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Evidence Scoring Diagnostic** — replaced the policy-engine's
+  delivery-era related-evidence debug label with durable evidence terminology
+  while preserving the score calculation and bounded diagnostic context;
+  reduced the enforced production naming baseline from `25/26` to `24/25`
+  references/candidates.
 - **Classification Resume Stage Diagnostic** — renamed the failed-resume log
   message to durable stage terminology without changing task lookup, return,
   database, API, or WebSocket behavior; reduced the enforced production naming
