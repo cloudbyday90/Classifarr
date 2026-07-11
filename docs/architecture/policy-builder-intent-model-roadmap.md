@@ -3437,6 +3437,16 @@ Implementation status:
   hard-limit confirmation, then returns a persistence-free command envelope.
   Its design record is
   [Policy Declared Intent Command](policy-declared-intent-command.md).
+- The server-owned proposal registry lives in
+  `server/src/services/policyIntentProposalRegistry.mjs`. It snapshots only
+  verified ready proposals, returns short-lived opaque actor-scoped references,
+  resolves a trusted command snapshot without exposing stored evidence, and
+  provides fingerprint-bound one-time consumption for a future native storage
+  transaction. Its design record is
+  [Policy Intent Proposal Registry](policy-intent-proposal-registry.md).
+- Native policy persistence remains blocked until it can atomically consume the
+  registered reference and write the native intent version. The registry is an
+  ephemeral review capability, not a substitute policy database.
 - Legacy preset/custom-signal behavior remains a compatibility bridge only;
   future Phase 6R/8R work must decide how bridge output maps into native intent
   storage after learning and readiness gates are stable.

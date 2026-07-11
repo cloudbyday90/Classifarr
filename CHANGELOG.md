@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Intent Proposal Registry** — added a bounded server-owned,
+  persistence-free capability store for verified intent proposals; opaque
+  actor-scoped references now expire server-side, snapshot proposal state,
+  enforce exact fingerprint matching and one-time consumption, and never expose
+  stored evidence or perform provider, storage, learning, or routing work.
 - **Policy Library Intent Proposal Service** — added the server-owned, read-only
   handoff from verified library evidence to a proposed intent; declared
   operator identity and constraints now pass through the shared evidence input

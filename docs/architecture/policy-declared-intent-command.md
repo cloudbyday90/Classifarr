@@ -121,9 +121,11 @@ trusted actor ID and role, operator-declared intent, confirmations, and
 operator-declared authority source. They are proposals for later storage, not
 storage operations.
 
-## Next Step
+## Follow-On
 
-Build the server-owned proposal registry abstraction. It should create
-short-lived, actor-scoped proposal references from verified library intent
-proposals, enforce expiry and one-time or version-bound consumption before the
-native policy persistence adapter is introduced.
+The server-owned proposal registry is implemented in
+[Policy Intent Proposal Registry](policy-intent-proposal-registry.md). It
+creates short-lived actor-scoped references from verified proposals, resolves
+them only for their owner, and exposes a fingerprint-bound one-time consumption
+primitive. Native policy persistence remains blocked until it can atomically
+consume that reference and write a native intent version.
