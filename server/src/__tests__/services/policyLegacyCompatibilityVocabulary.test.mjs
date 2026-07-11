@@ -92,7 +92,15 @@ describe('policyLegacyCompatibilityVocabulary', () => {
   });
 
   test('marks native intent storage as the only permanent final model', () => {
+    const nativeIntentStorage = getLegacyCompatibilityTerm(
+      LEGACY_COMPATIBILITY_TERM_IDS.NATIVE_INTENT_STORAGE
+    );
+
     expect(isPermanentLegacyCompatibilityModel(LEGACY_COMPATIBILITY_TERM_IDS.NATIVE_INTENT_STORAGE)).toBe(true);
+    expect(nativeIntentStorage.allowedProductUse).toContain(
+      'Describe policies after explicit policy conversion.'
+    );
+    expect(nativeIntentStorage.allowedProductUse.join(' ')).not.toContain('Phase 8R');
 
     [
       LEGACY_COMPATIBILITY_TERM_IDS.STARTER_TEMPLATE,

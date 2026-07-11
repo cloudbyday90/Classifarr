@@ -6680,8 +6680,8 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 24 production references plus 25 rename candidates after
-  the policy-engine evidence diagnostic cutover.
+  currently reports 23 production references plus 24 rename candidates after
+  the native-intent conversion vocabulary cutover.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -6782,6 +6782,10 @@ Implementation status:
   evidence operation without a delivery label, preserving its score and bounded
   debug context. Its design record is
   [Policy Engine Evidence Diagnostic Cutover](policy-engine-evidence-diagnostic-cutover.md).
+- The native-intent storage vocabulary now describes explicit policy conversion
+  instead of the delivery phase that introduced it, retaining validation,
+  backup, and rollback prerequisites. Its design record is
+  [Native Intent Conversion Vocabulary Cutover](native-intent-conversion-vocabulary-cutover.md).
 - Outcome record:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
 - After the completed classification progress storage cutover, the repository

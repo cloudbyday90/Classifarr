@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Native Intent Conversion Vocabulary** — replaced a delivery-era conversion
+  phrase in the product-facing legacy-compatibility contract with explicit
+  policy-conversion language while preserving validation, backup, and rollback
+  requirements; reduced the enforced production naming baseline from `24/25`
+  to `23/24` references/candidates.
 - **Policy Evidence Scoring Diagnostic** — replaced the policy-engine's
   delivery-era related-evidence debug label with durable evidence terminology
   while preserving the score calculation and bounded diagnostic context;

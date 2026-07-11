@@ -152,7 +152,7 @@ const LEGACY_COMPATIBILITY_TERMS = deepFreeze([
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     meaning: 'The future durable policy model after explicit conversion, validation, backup, and rollback proof.',
     allowedProductUse: [
-      'Describe converted policies after Phase 8R conversion.',
+      'Describe policies after explicit policy conversion.',
       'Serve as the runtime read path after conversion gates pass.',
     ],
     prohibitedProductUse: [

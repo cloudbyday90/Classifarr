@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the live repository inventory after the
-policy-engine evidence diagnostic cutover on July 11, 2026:
+native-intent conversion vocabulary cutover on July 11, 2026:
 
-- production references: `24`
-- rename candidates: `25`
+- production references: `23`
+- rename candidates: `24`
 - obsolete migration tooling references: `0`
 
 The baseline is intentionally a maximum, not a target. Future durable rename
