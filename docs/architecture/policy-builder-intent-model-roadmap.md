@@ -3317,6 +3317,13 @@ Implementation status:
   excludes answer content and responder identity, and projects every record as
   review-only evidence until the learning guard evaluates it. Its design record
   is [Policy Library Pending-Answer Evidence Collector](policy-library-pending-answer-evidence-collector.md).
+- The library routing-outcome evidence collector lives in
+  `server/src/services/policyLibraryRoutingOutcomeEvidenceCollector.mjs`. It
+  normalizes persisted classification routing state into bounded succeeded,
+  blocked, or skipped evidence, accepts only fixed application-owned reason
+  values, excludes raw route errors and Arr payloads, and never retries or
+  attempts routing. Its design record is
+  [Policy Library Routing-Outcome Evidence Collector](policy-library-routing-outcome-evidence-collector.md).
 
 ### 6R.2 Intent Engine
 

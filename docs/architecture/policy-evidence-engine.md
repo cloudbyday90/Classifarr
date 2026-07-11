@@ -14,6 +14,10 @@ evidence. It proves that an operator resolved a destination question without
 making the answer text, responder identity, or the resolution itself an
 automatic learning instruction.
 
+Persisted Arr routing outcomes are normalized to fixed succeeded, blocked, or
+skipped states before projection. The evidence contract carries neither raw
+route reasons nor Arr request, response, path, or error details.
+
 June 2026 hardening adds a projection summary and legacy reducer cutline
 inventory. The summary gives downstream engines a bounded, deterministic view
 of bucket counts, source authority, blocking evidence, and review evidence. The

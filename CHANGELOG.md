@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Library Routing-Outcome Evidence Collector** — added parameterized,
+  library-scoped, read-only collection of bounded persisted Arr routing state
+  for the policy evidence envelope; normalizes only succeeded, blocked, and
+  skipped outcomes, excludes raw route errors and Arr request/response data,
+  and verifies no route attempt, provider, quota, or storage side effect occurs.
 - **Policy Library Pending-Answer Evidence Collector** — added parameterized,
   library-scoped, read-only collection of bounded resolved pending-item state
   for the policy evidence envelope; recognizes the shared resolution outcome

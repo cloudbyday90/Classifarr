@@ -114,7 +114,7 @@ side-effect record. A blocked result has no next step.
 
 ## Next Step
 
-The final-outcome/manual-correction and resolved pending-item-answer collectors
-are now implemented. The next component is a separate read-only collector for
-Arr routing outcomes; it must keep raw request/response payloads out of the
-evidence contract.
+The final-outcome/manual-correction, resolved pending-item-answer, and Arr
+routing-outcome collectors are now implemented. The next component is a
+separate read-only collector for already persisted metadata evidence; it must
+exclude raw provider payloads and keep metadata from owning identity.
