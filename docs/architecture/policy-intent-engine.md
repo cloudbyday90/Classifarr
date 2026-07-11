@@ -140,7 +140,7 @@ Cons:
 - Documentation:
   `docs/architecture/policy-intent-engine.md`
 - Quality-gate outcome:
-  downstream policy intent quality-gate architecture record pending cutover.
+  `docs/architecture/policy-intent-quality-gate.md`
 - Roadmap owner:
   Policy Intent Engine in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
