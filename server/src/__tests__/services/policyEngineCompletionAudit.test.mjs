@@ -67,7 +67,7 @@ describe('policyEngineCompletionAudit', () => {
       ]);
   });
 
-  test('requires legacy replay, impact, provider, TMDB, and old policy-builder docs to have cutline decisions', () => {
+  test('requires legacy replay, impact, provider, and TMDB artifacts to have cutline decisions', () => {
     const requiredPaths = listPolicyEngineRequiredLegacyCutlineArtifacts();
     const classifiedPaths = listPolicyMigrationDeletionArtifacts()
       .map(artifact => artifact.path);
@@ -77,7 +77,6 @@ describe('policyEngineCompletionAudit', () => {
       'client/src/components/policies/PolicyIntentReplayPreviewCard.vue',
       'server/src/services/policyIntentReplayTmdbMetadataExecutionSwitch.mjs',
       'server/src/services/policyIntentReplayTmdbProviderClient.mjs',
-      'docs/architecture/policy-builder-phase-6-implementation.md',
     ]));
     expect(classifiedPaths).toEqual(expect.arrayContaining(requiredPaths));
   });

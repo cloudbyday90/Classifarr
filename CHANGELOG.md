@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Migration Quality Gate Cutline Cleanup** — removed the obsolete
+  phase-coded implementation document from the active migration/deletion and
+  completion-audit cutline, deleted the stale checkpoint document, and pointed
+  the deletion-path records at the durable policy migration quality gate.
 - **Policy Authoring Workflow Completion Audit Cutover** — aligned the
   client-boundary closure language with the durable policy-authoring workflow
   completion audit, keeping Phase 1R implementation records as roadmap context
@@ -805,14 +809,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   increases in phase-coded production references, rename candidates, obsolete
   migration tooling, or temporary adapters without deletion gates while durable
   module cutovers continue.
-- **Policy Builder Phase 6R Completion Quality Chain** — hardened the Phase 6R
-  completion audit so the bounded evidence → intent → learning → readiness →
-  workflow → migration handoff rejects missing, insufficient, or mismatched
-  evidence-quality snapshots before Phase 7R runtime work can consume it.
-- **Policy Builder Phase 6R Migration Quality Gate** — hardened the bounded
-  migration/deletion wrapper so Phase 6R.6 requires matching, usable workflow
-  quality snapshots from the bounded workflow result and embedded workflow
-  context before returning migration/deletion planning.
+- **Policy Engine Completion Quality Chain** — hardened the completion audit so
+  the bounded evidence → intent → learning → readiness → workflow → migration
+  handoff rejects missing, insufficient, or mismatched evidence-quality
+  snapshots before runtime inventory work can consume it.
+- **Policy Migration Quality Gate** — hardened the bounded migration/deletion
+  wrapper so migration planning requires matching, usable workflow quality
+  snapshots from the bounded workflow result and embedded workflow context.
 - **Policy Operator Workflow Quality Gate** — hardened the bounded operator
   workflow so the policy operator workflow projection requires matching, usable
   evidence-quality snapshots from bounded intent, readiness boundary context,

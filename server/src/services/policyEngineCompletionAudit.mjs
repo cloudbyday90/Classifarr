@@ -165,7 +165,6 @@ const REQUIRED_LEGACY_CUTLINE_ARTIFACT_PATHS = Object.freeze([
   'server/src/services/policyIntentReplayTmdbMetadataCoverageComparison.mjs',
   'server/src/services/policyIntentReplayTmdbMetadataExecutionSwitch.mjs',
   'server/src/services/policyIntentReplayTmdbProviderClient.mjs',
-  'docs/architecture/policy-builder-phase-6-implementation.md',
 ]);
 
 function defaultPathExists(relativePath) {

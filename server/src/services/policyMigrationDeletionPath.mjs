@@ -550,16 +550,6 @@ const DEFAULT_MIGRATION_ARTIFACTS = Object.freeze([
     removalGateIds: DEFAULT_REMOVAL_GATES,
     rollbackPlan: DEFAULT_ROLLBACK_PLAN,
   },
-  {
-    path: 'docs/architecture/policy-builder-phase-6-implementation.md',
-    owner: 'policy-builder-docs',
-    decisionId: POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
-    verifierKindId: POLICY_MIGRATION_VERIFIER_KIND_IDS.ENRICHMENT_COVERAGE,
-    replacement: 'Policy architecture records and native storage migration plan',
-    normalWorkflowAllowed: false,
-    removalGateIds: DEFAULT_REMOVAL_GATES,
-    rollbackPlan: DEFAULT_ROLLBACK_PLAN,
-  },
 ]);
 
 function asArray(value) {

@@ -139,7 +139,7 @@ Cons:
 - Documentation:
   `docs/architecture/policy-migration-deletion-path.md`
 - Quality gate documentation:
-  Pending durable architecture cutover.
+  `docs/architecture/policy-migration-quality-gate.md`
 - Roadmap owner:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
@@ -166,8 +166,8 @@ Default decisions:
   machinery when their deterministic reducers remain useful for parity.
 - Mark old client impact/replay panels, preview composables, preview utilities,
   old diagnostic tests, provider-readiness replay helpers, TMDB adapter
-  execution helpers, and the pre-durable implementation document for deletion
-  after migration gates pass.
+  execution helpers, and legacy replay execution adapters for deletion after
+  migration gates pass.
 - Treat `database/schema/current.sql` as a native-storage blocker.
 
 Default gates:
@@ -229,6 +229,6 @@ projectionFingerprintMatch
 
 ## Next Step
 
-Continue with **Policy Migration Quality Gate Architecture Cutover**. That
-component should rename the active migration quality-gate design record and
-preserve the bounded workflow quality checks that protect migration planning.
+Continue with **Policy Engine Completion Audit Architecture Cutover** so the
+completion gate records the durable handoff chain across evidence, intent,
+learning, readiness, workflow, and migration boundaries.
