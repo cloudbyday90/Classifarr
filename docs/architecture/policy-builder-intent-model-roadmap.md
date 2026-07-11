@@ -6562,8 +6562,10 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 7,602 production references plus 7,624 rename candidates
-  across production code and script/package command surfaces.
+  currently reports 244 production references plus 245 rename candidates.
+  The inventory contract now emits the durable
+  `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
+  phase-shaped next action.
 
 ### 9R.2 Durable Domain Module Cutover
 
@@ -7227,13 +7229,13 @@ Implementation status:
 - The focused regression test suite lives in
   `server/src/__tests__/services/policyProductionNamingRegressionAudit.test.mjs`.
 - Current implementation consumes the production naming inventory, requires a
-  valid classification result, blocks increases above the approved July 3, 2026
-  baseline for production references, rename candidates, and obsolete migration
-  tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `3741` production references, `3763` rename
-  candidates, and `93` obsolete migration tooling references. Future durable
-  rename batches should lower this baseline after inventory validation proves
-  the debt decreased.
+  valid classification result, blocks increases above the approved July 11,
+  2026 baseline for production references, rename candidates, and obsolete
+  migration tooling, and rejects temporary adapters without deletion gates.
+- The current baseline is `244` production references, `245` rename
+  candidates, and `0` obsolete migration tooling references. Future durable
+  rename batches must lower this baseline after inventory validation proves the
+  debt decreased.
 
 ### 9R.5 Final Product-Language Audit
 

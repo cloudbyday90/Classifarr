@@ -91,20 +91,20 @@ Cons:
 ## Current Repository Outcome
 
 The current repository inventory validates with no unclassified references.
-After the policy operator workflow module cutover,
+After the durable inventory-contract cutover,
 `node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid`
 reported:
 
-- total phase-coded references: 14,446,
-- production references: 6,480,
-- rename candidates: 6,502,
-- docs/history references: 3,485,
-- test or migration evidence references: 4,366,
-- obsolete migration tooling references: 93.
+- total temporary naming references: 2,538,
+- production references: 244,
+- rename candidates: 245,
+- docs/history references: 1,957,
+- test or migration evidence references: 333,
+- obsolete migration tooling references: 0.
 
-The counts are expected to fall as the durable naming cutover replaces
-production names, removes obsolete migration tooling, and enforces the scanner
-boundary after each completed functional component.
+The counts must fall or remain unchanged as the durable naming cutover replaces
+production names. The scanner is run after each completed functional component
+to prevent the debt from growing.
 
 ## Security Outcome
 

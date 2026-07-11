@@ -58,7 +58,8 @@ describe('policyBuilderProductionNameInventory', () => {
     expect(inventory.summary.keepHistoryCount).toBeGreaterThan(0);
     expect(inventory.summary.testOrMigrationEvidenceCount).toBeGreaterThan(0);
     expect(inventory.summary.obsoleteToolingCount).toBeGreaterThan(0);
-    expect(inventory.nextPhase.phaseId).toBe('9r_2');
+    expect(inventory.nextStep.stepId).toBe('durable_domain_module_cutover');
+    expect(inventory.nextPhase).toBeUndefined();
     expect(inventory.sideEffects).toEqual({
       filesRead: false,
       filesWritten: false,

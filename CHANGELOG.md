@@ -9,6 +9,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ## [Unreleased]
 
+### Changed
+
+- **Policy Production Naming Guard** — renamed the inventory handoff from
+  roadmap-shaped `nextPhase.phaseId` to durable `nextStep.stepId` and ratcheted
+  the naming regression baseline to the verified current repository inventory.
+
 ### Added
 
 - **Policy Evidence Entry Normalizer** — added a server-owned bounded field

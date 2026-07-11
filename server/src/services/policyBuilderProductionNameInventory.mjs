@@ -420,11 +420,11 @@ function buildPolicyBuilderProductionNameInventory(options = {}) {
       gitCommandsRun: false,
       commandsExecuted: false,
     },
-    nextPhase: {
-      phaseId: '9r_2',
+    nextStep: {
+      stepId: 'durable_domain_module_cutover',
       label: 'Durable Domain Module Cutover',
       reason:
-        'Phase-coded production references are inventoried and classified; mechanical durable-name moves can now be planned.',
+        'Temporary production names are inventoried and classified; mechanical durable-name moves can now be planned.',
     },
   };
 

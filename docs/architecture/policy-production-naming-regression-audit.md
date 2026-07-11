@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented as the Phase 9R.4 regression gate for production naming debt.
+Implemented as the durable regression gate for production naming debt.
 
 The service uses durable product-domain naming:
 `server/src/services/policyProductionNamingRegressionAudit.mjs`.
@@ -79,12 +79,12 @@ Cons:
 
 ## Implemented Baseline
 
-The regression baseline reflects the current repository inventory after the
-policy authoring constraints cutover on July 3, 2026:
+The regression baseline reflects the live repository inventory after the
+durable inventory-contract cutover on July 11, 2026:
 
-- production references: `4137`
-- rename candidates: `4159`
-- obsolete migration tooling references: `93`
+- production references: `244`
+- rename candidates: `245`
+- obsolete migration tooling references: `0`
 
 The baseline is intentionally a maximum, not a target. Future durable rename
 batches should reduce these values and then lower the baseline.
