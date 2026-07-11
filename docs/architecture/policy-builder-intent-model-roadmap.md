@@ -1970,11 +1970,12 @@ Intent: prepare the draft bridge to defer authority to server-owned contracts.
 Tasks:
 
 - Identify where client draft validation should remain client-side UX guardrail
-  versus where Phase 5R server validation must be authoritative.
+  versus where server-side intent validation must be authoritative.
 - Ensure save payloads can include explicit draft intent without trusting client
   inference.
 - Align draft warnings with server-side intent contract names where possible.
-- Prepare for server-provided profile-to-intent suggestions from Phase 6R.
+- Prepare for server-provided profile-to-intent suggestions from the policy
+  engine projection provider.
 - Document how the draft bridge will behave when native intent storage exists:
   - create from native intent,
   - edit native intent projection,
@@ -1986,8 +1987,8 @@ Acceptance criteria:
 - The client draft bridge is clearly subordinate to server validation.
 - Native intent storage can replace legacy serialization without rewriting the
   product components.
-- server policy intent contract and Phase 6R engine contracts have a clear insertion
-  point.
+- server policy intent contract and policy-engine projection contracts have a
+  clear insertion point.
 - The server authority contract has an executable audit that fails client
   authority confusion, server authority loss, raw draft echo, missing insertion
   points, warning reason-code drift, missing native-storage replacement steps,
@@ -1995,13 +1996,13 @@ Acceptance criteria:
 
 Implementation record:
 
-- Phase 2R.5 server authority preparation is documented in
-  [Policy Builder Phase 2R Server Authority Preparation](policy-builder-phase-2r-server-authority-preparation.md).
-- The server-side Phase 2R authority preparation contract lives in
-  `server/src/services/policyBuilderPhase2ServerAuthorityPreparation.mjs`.
+- Policy authoring server authority preparation is documented in
+  [Policy Authoring Server Authority Preparation](policy-authoring-server-authority-preparation.md).
+- The server-side policy authoring authority preparation contract lives in
+  `server/src/services/policyAuthoringServerAuthorityPreparation.mjs`.
 - The current write path accepts explicit `policyIntentDraft` input only through
   server request validation and sanitized preflight diagnostics; native intent
-  persistence remains disabled until Phase 8R storage gates pass.
+  persistence remains disabled until migration, rollback, and parity gates pass.
 
 ### 2R.6 Draft Parity And Regression Tests
 
@@ -2074,8 +2075,8 @@ Implementation record:
   [Policy Authoring Draft Command Boundary](policy-authoring-draft-command-boundary.md).
 - Policy authoring draft view projection is documented in
   [Policy Authoring Draft View Projection](policy-authoring-draft-view-projection.md).
-- Phase 2R.5 server authority preparation is documented in
-  [Policy Builder Phase 2R Server Authority Preparation](policy-builder-phase-2r-server-authority-preparation.md).
+- Policy authoring server authority preparation is documented in
+  [Policy Authoring Server Authority Preparation](policy-authoring-server-authority-preparation.md).
 - Phase 2R.6 draft parity and regression tests are documented in
   [Policy Builder Phase 2R Draft Parity And Regression Tests](policy-builder-phase-2r-draft-parity-regression-tests.md).
 - Phase 2R is complete. Future updates should treat the draft bridge as a

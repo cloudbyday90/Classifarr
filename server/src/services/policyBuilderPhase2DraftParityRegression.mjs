@@ -185,7 +185,7 @@ const PHASE_2R_PARITY_TEST_RECORDS = deepFreeze([
     notes: 'Protects server-side projection fields and raw legacy storage exposure checks.',
   },
   {
-    path: 'server/src/__tests__/services/policyBuilderPhase2ServerAuthorityPreparation.test.mjs',
+    path: 'server/src/__tests__/services/policyAuthoringServerAuthorityPreparation.test.mjs',
     categoryId: PHASE_2R_PARITY_TEST_CATEGORY_IDS.SERVER_AUTHORITY_PRELIGHT,
     actionId: PHASE_2R_PARITY_ACTION_IDS.KEEP,
     coveredRuleIds: [

@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Server Authority Preparation Module Cutover** — renamed the
+  server authority preparation service, focused test, and design record to
+  durable policy-authoring names, replaced phase-coded owner, insertion-point,
+  preflight, and native-storage audit fields with product boundary terminology,
+  and preserved sanitized preflight plus authority drift audit coverage.
 - **Policy Authoring Draft View Projection Module Cutover** — renamed the draft
   view projection service, focused test, and design record to durable
   policy-authoring names, expanded the draft field adapter to include authority
