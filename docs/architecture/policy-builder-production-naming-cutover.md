@@ -2,10 +2,10 @@
 
 ## Status
 
-Active as a mandatory cross-cutting cutover while the re-imagined policy engine,
-runtime automation, native storage, and legacy-removal paths are built. A
-functional component reaches a focused tested contract first; its related
-mechanical naming work then completes before the next component in that domain
+Active as an immediate deconstruction prerequisite while the re-imagined policy
+engine, runtime automation, native storage, and legacy-removal paths are built.
+A functional component reaches a focused tested contract first; its related
+mechanical naming work completes before the next component in that domain
 begins.
 
 This record exists because phase-coded production names are useful while
@@ -95,6 +95,11 @@ native policy storage
    its first commit. Existing phase-coded production code is removed in small,
    behavior-preserving batches after its focused component contract passes.
 
+8. **Use compatibility only for compatibility.**
+   An isolated module with no persisted/public contract and no active caller is
+   renamed outright. An alias is permitted only where a documented migration
+   requires it; retaining a roadmap name for convenience is not a valid reason.
+
 ## Pros And Cons
 
 Pros:
@@ -179,6 +184,10 @@ history reason is documented.
   `server/src/__tests__/services/policyBuilderProductionNameInventory.test.mjs`.
 - The implementation outcome is documented in
   [Policy Builder Production Name Inventory](policy-builder-production-name-inventory.md).
+- The first isolated deconstruction batch renamed the policy-authoring
+  readiness checklist, its focused test, exports, component records, and
+  current architecture paths without a compatibility alias:
+  [Policy Authoring Readiness Checklist Naming Cutover](policy-authoring-readiness-checklist-naming-cutover.md).
 - The first Phase 9R.2 module cutover renamed classification progress
   production modules from phase terminology to stage terminology:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).

@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the live repository inventory after the
-durable inventory-contract cutover on July 11, 2026:
+policy-authoring readiness naming cutover on July 11, 2026:
 
-- production references: `244`
-- rename candidates: `245`
+- production references: `184`
+- rename candidates: `185`
 - obsolete migration tooling references: `0`
 
 The baseline is intentionally a maximum, not a target. Future durable rename

@@ -1,4 +1,4 @@
-# Policy Builder Phase 0R Authority Vocabulary
+# Policy Authority Vocabulary
 
 Status: implemented as the first Phase 0R source-of-truth contract.
 
@@ -85,7 +85,7 @@ Official sources reviewed as of June 2026:
 - Roadmap:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 - This implementation record:
-  `docs/architecture/policy-builder-phase-0r-authority-vocabulary.md`
+  `docs/architecture/policy-authority-vocabulary.md`
 
 ## Implemented Outcome
 

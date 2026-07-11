@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Authoring Naming Deconstruction** — replaced the phase-coded setup
+  checklist module, exports, component records, focused test, and current
+  architecture paths with durable policy-authoring readiness names; no runtime,
+  API, or storage compatibility alias was needed.
 - **Policy Production Naming Guard** — renamed the inventory handoff from
   roadmap-shaped `nextPhase.phaseId` to durable `nextStep.stepId` and ratcheted
   the naming regression baseline to the verified current repository inventory.

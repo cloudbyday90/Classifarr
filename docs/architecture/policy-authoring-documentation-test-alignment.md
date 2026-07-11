@@ -1,4 +1,4 @@
-# Policy Builder Phase 0R Documentation And Test Alignment
+# Policy Authoring Documentation And Test Alignment
 
 Status: implemented as the fifth Phase 0R source-of-truth contract.
 
@@ -84,9 +84,9 @@ Official sources reviewed as of June 2026:
 ## Final Stack
 
 - Checklist contract:
-  `server/src/services/policyPhase0RChecklist.mjs`
+  `server/src/services/policyAuthoringReadinessChecklist.mjs`
 - Unit coverage:
-  `server/src/__tests__/services/policyPhase0RChecklist.test.mjs`
+  `server/src/__tests__/services/policyAuthoringReadinessChecklist.test.mjs`
 - Prior Phase 0R dependencies:
   - `server/src/services/policyAuthorityVocabulary.mjs`
   - `server/src/services/policyUserMentalModel.mjs`
@@ -95,7 +95,7 @@ Official sources reviewed as of June 2026:
 - Roadmap:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 - This implementation record:
-  `docs/architecture/policy-builder-phase-0r-documentation-test-alignment.md`
+  `docs/architecture/policy-authoring-documentation-test-alignment.md`
 
 ## Implemented Outcome
 
@@ -120,7 +120,7 @@ It also defines terminology alignment categories:
 Future work can validate checklist completion with:
 
 ```js
-validatePhase0RChecklistResponse({
+validatePolicyAuthoringChecklistResponse({
   source_of_truth_identified: true,
   authority_level_identified: true,
   learning_side_effect_identified: true,

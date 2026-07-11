@@ -68,6 +68,7 @@ Supporting verification:
 
 ## Next Component
 
-Cut over `policyPhase0RChecklist.mjs` and its focused test to a durable
-policy-authoring setup-checklist name. It is the remaining active phase-coded
-service now directly associated with this model.
+The policy-authoring readiness checklist has completed its durable-name
+cutover. The next production-name component should be selected from the
+inventory based on isolated ownership and the absence of a persisted or public
+compatibility requirement.

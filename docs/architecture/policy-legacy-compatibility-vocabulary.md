@@ -1,4 +1,4 @@
-# Policy Builder Phase 0R Legacy Compatibility Vocabulary
+# Policy Legacy Compatibility Vocabulary
 
 Status: implemented as the third Phase 0R source-of-truth contract.
 
@@ -87,7 +87,7 @@ Official sources reviewed as of June 2026:
 - Roadmap:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 - This implementation record:
-  `docs/architecture/policy-builder-phase-0r-legacy-compatibility-vocabulary.md`
+  `docs/architecture/policy-legacy-compatibility-vocabulary.md`
 
 ## Implemented Outcome
 

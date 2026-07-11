@@ -91,15 +91,15 @@ Cons:
 ## Current Repository Outcome
 
 The current repository inventory validates with no unclassified references.
-After the durable inventory-contract cutover,
+After the policy-authoring readiness naming cutover,
 `node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid`
 reported:
 
-- total temporary naming references: 2,538,
-- production references: 244,
-- rename candidates: 245,
-- docs/history references: 1,957,
-- test or migration evidence references: 333,
+- total temporary naming references: 2,394,
+- production references: 184,
+- rename candidates: 185,
+- docs/history references: 1,938,
+- test or migration evidence references: 271,
 - obsolete migration tooling references: 0.
 
 The counts must fall or remain unchanged as the durable naming cutover replaces
@@ -118,7 +118,7 @@ to prevent the debt from growing.
 ## Next Step
 
 Use the [Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md)
-as the guardrail after every completed functional component. Start with a
-narrow mechanical rename batch for the highest-value production domain,
-preserving behavior and adding focused import/contract regression tests before
-the next functional component begins.
+as the guardrail after every completed functional component. Select the next
+isolated production contract from the inventory, preserve behavior, and add
+focused import/contract regression tests before the next functional component
+begins.

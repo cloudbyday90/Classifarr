@@ -1,4 +1,4 @@
-# Policy Builder Phase 0R Question And Learning Vocabulary
+# Policy Question And Learning Vocabulary
 
 Status: implemented as the fourth Phase 0R source-of-truth contract.
 
@@ -99,7 +99,7 @@ Official sources reviewed as of June 2026:
 - Roadmap:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 - This implementation record:
-  `docs/architecture/policy-builder-phase-0r-question-learning-vocabulary.md`
+  `docs/architecture/policy-question-learning-vocabulary.md`
 
 ## Implemented Outcome
 

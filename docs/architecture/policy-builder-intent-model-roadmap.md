@@ -1200,7 +1200,7 @@ Acceptance criteria:
 Implementation record:
 
 - Phase 0R.1 authority vocabulary is documented in
-  [Policy Builder Phase 0R Authority Vocabulary](policy-builder-phase-0r-authority-vocabulary.md).
+  [Policy Authority Vocabulary](policy-authority-vocabulary.md).
 - The server-side vocabulary contract lives in
   `server/src/services/policyAuthorityVocabulary.mjs`.
 
@@ -1321,7 +1321,7 @@ Acceptance criteria:
 Implementation record:
 
 - Phase 0R.3 legacy compatibility vocabulary is documented in
-  [Policy Builder Phase 0R Legacy Compatibility Vocabulary](policy-builder-phase-0r-legacy-compatibility-vocabulary.md).
+  [Policy Legacy Compatibility Vocabulary](policy-legacy-compatibility-vocabulary.md).
 - The server-side legacy compatibility vocabulary contract lives in
   `server/src/services/policyLegacyCompatibilityVocabulary.mjs`.
 
@@ -1361,7 +1361,7 @@ Acceptance criteria:
 Implementation record:
 
 - Phase 0R.4 question and learning vocabulary is documented in
-  [Policy Builder Phase 0R Question And Learning Vocabulary](policy-builder-phase-0r-question-learning-vocabulary.md).
+  [Policy Question And Learning Vocabulary](policy-question-learning-vocabulary.md).
 - The server-side question and learning vocabulary contract lives in
   `server/src/services/policyQuestionLearningVocabulary.mjs`.
 
@@ -1391,9 +1391,9 @@ Acceptance criteria:
 Implementation record:
 
 - Phase 0R.5 documentation and test alignment is documented in
-  [Policy Builder Phase 0R Documentation And Test Alignment](policy-builder-phase-0r-documentation-test-alignment.md).
+  [Policy Authoring Documentation And Test Alignment](policy-authoring-documentation-test-alignment.md).
 - The server-side checklist contract lives in
-  `server/src/services/policyPhase0RChecklist.mjs`.
+  `server/src/services/policyAuthoringReadinessChecklist.mjs`.
 
 ## Phase 0R Work Sequence
 
@@ -1422,15 +1422,15 @@ Implementation record:
 - Existing implementation details are documented in
   [Policy Builder Phase 0 Implementation](policy-builder-phase-0-implementation.md).
 - Phase 0R.1 authority vocabulary is documented in
-  [Policy Builder Phase 0R Authority Vocabulary](policy-builder-phase-0r-authority-vocabulary.md).
+  [Policy Authority Vocabulary](policy-authority-vocabulary.md).
 - The policy authoring user mental model is documented in
   [Policy Authoring User Mental Model](policy-authoring-user-mental-model.md).
 - Phase 0R.3 legacy compatibility vocabulary is documented in
-  [Policy Builder Phase 0R Legacy Compatibility Vocabulary](policy-builder-phase-0r-legacy-compatibility-vocabulary.md).
+  [Policy Legacy Compatibility Vocabulary](policy-legacy-compatibility-vocabulary.md).
 - Phase 0R.4 question and learning vocabulary is documented in
-  [Policy Builder Phase 0R Question And Learning Vocabulary](policy-builder-phase-0r-question-learning-vocabulary.md).
+  [Policy Question And Learning Vocabulary](policy-question-learning-vocabulary.md).
 - Phase 0R.5 documentation and test alignment is documented in
-  [Policy Builder Phase 0R Documentation And Test Alignment](policy-builder-phase-0r-documentation-test-alignment.md).
+  [Policy Authoring Documentation And Test Alignment](policy-authoring-documentation-test-alignment.md).
 - Phase 0R now produces a vocabulary, authority, compatibility, question,
   learning, documentation, and test-alignment contract. Phase 1R should start
   with a builder state and engine boundary inventory rather than new UI
@@ -6439,7 +6439,7 @@ Implementation record:
   decisions, migration reports, rollback retention, native read/write behavior,
   and legacy deletion gates.
 
-## Phase 9R: Durable Product Naming Cutover
+## Phase 9R: Production Naming Deconstruction
 
 Intent: remove roadmap-phase language from production code as each rebuilt
 component reaches its tested contract. Phase names are useful in roadmap and
@@ -6447,9 +6447,9 @@ history documents, but must not become permanent product architecture.
 
 ### Activation Rule
 
-Phase 9R is a mandatory cross-cutting workstream, not end-of-project cleanup.
-It starts now and runs alongside the evidence, intent, runtime, storage, and
-legacy-removal work:
+Phase 9R is a mandatory cross-cutting workstream and an immediate prerequisite,
+not end-of-project cleanup. It starts now and runs alongside the evidence,
+intent, runtime, storage, and legacy-removal work:
 
 1. A new production component must use a durable product-domain name from its
    first commit.
@@ -6461,6 +6461,11 @@ legacy-removal work:
    merely preserve roadmap terminology are not allowed.
 4. Phase labels remain allowed only in roadmap documents, changelog history,
    migration evidence, and tests that prove a bounded old-to-new transition.
+
+No policy-engine component is complete while its production source, exports,
+current diagnostics, telemetry, or internal contract names still describe a
+roadmap phase. A persisted or public compatibility field is the only exception,
+and it must have a migration owner and explicit deletion gate.
 
 This sequencing keeps the refactor complete without mixing behavioral changes
 and large rename batches in the same implementation task.
@@ -6516,7 +6521,7 @@ telemetry and payloads use durable product-domain names
 tests enforce the boundary
 ```
 
-### 9R.0 Durable Naming Design Record
+### 9R.0 Immediate Deconstruction Gate And Naming Design
 
 Intent: define the durable product vocabulary before any code moves.
 
@@ -6539,12 +6544,19 @@ Tasks:
 - Define the allow-list categories for phase-coded references that may remain:
   docs, changelog history, migration evidence, legacy compatibility tests, and
   bounded temporary adapters.
+- Require the production-name inventory and a focused rename decision before a
+  functional policy-engine component can advance to its next task.
+- Prefer isolated, non-persisted modules for early deconstruction batches;
+  defer persisted/public naming changes to their dedicated compatibility task.
 
 Acceptance criteria:
 
 - The design record exists before production files are renamed.
 - Durable names are product-domain names, not roadmap task names.
 - Every later rename can point to the design record and map.
+- A completed policy-engine component cannot start its successor while its own
+  production names still carry roadmap language without a documented migration
+  exception.
 
 ### 9R.1 Production Name Inventory
 
@@ -6598,7 +6610,7 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 244 production references plus 245 rename candidates.
+  currently reports 184 production references plus 185 rename candidates.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -6606,6 +6618,14 @@ Implementation status:
 ### 9R.2 Durable Domain Module Cutover
 
 Intent: move server/client production modules to durable domain names.
+
+Current deconstruction task:
+
+- The policy-authoring readiness checklist is the first completed isolated
+  deconstruction batch. It had no persisted/public contract or runtime caller,
+  so it received durable module, export, component-record, test, and
+  documentation names with no compatibility alias:
+  [Policy Authoring Readiness Checklist Naming Cutover](policy-authoring-readiness-checklist-naming-cutover.md).
 
 Tasks:
 
@@ -6633,6 +6653,11 @@ Acceptance criteria:
 
 Implementation status:
 
+- The policy-authoring readiness checklist now uses durable module, export,
+  component-record, test, and architecture-record names; the inventory fell to
+  184 production references and 185 rename candidates without a compatibility
+  alias:
+  [Policy Authoring Readiness Checklist Naming Cutover](policy-authoring-readiness-checklist-naming-cutover.md).
 - The first narrow module cutover is complete for classification progress
   tracking. `classificationPhaseService`, `classificationPhaseUtils`, and
   `classificationPhaseProgress` were renamed to
@@ -7268,7 +7293,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 11,
   2026 baseline for production references, rename candidates, and obsolete
   migration tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `244` production references, `245` rename
+- The current baseline is `184` production references, `185` rename
   candidates, and `0` obsolete migration tooling references. Future durable
   rename batches must lower this baseline after inventory validation proves the
   debt decreased.
