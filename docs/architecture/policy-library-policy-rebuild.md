@@ -37,6 +37,10 @@ no longer consume an outcome merely because it has a sanitized fingerprint. The
 outcome must also pass the request-time learning contract, including bounded
 question-reduction validation proof and matching trace attributes.
 
+The proposal's validation diagnostics use durable bounded-intent and policy
+automation-readiness terminology. Roadmap phase labels are not part of the
+runtime rebuild contract.
+
 ## Official Guidance Reviewed
 
 - [NIST AI Risk Management Framework 1.0](https://www.nist.gov/itl/ai-risk-management-framework)

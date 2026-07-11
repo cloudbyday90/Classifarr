@@ -3356,6 +3356,10 @@ Implementation status:
   product-domain name rather than the previous Phase 6 label. The behavior is
   unchanged and no compatibility alias remains. Its outcome record is
   [Policy Engine Completion Audit Naming Cutover](policy-engine-completion-audit-naming-cutover.md).
+- The library rebuild contract now uses bounded-intent and policy-readiness
+  validation language instead of Phase 6 diagnostics. Its product behavior and
+  conservative acceptance, rollback, and side-effect gates are unchanged. The
+  outcome record is [Policy Library Rebuild Naming Cutover](policy-library-rebuild-naming-cutover.md).
 
 ### 6R.2 Intent Engine
 

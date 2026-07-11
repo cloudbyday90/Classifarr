@@ -729,14 +729,14 @@ function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
   if (proposal.intentDraft?.version !== 'policy.intent.v1') {
     issues.push({
       riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_INTENT_DRAFT,
-      message: 'Library policy rebuild proposal must include a Phase 6R intent draft.',
+      message: 'Library policy rebuild proposal must include a bounded policy intent draft.',
     });
   } else {
     const intentValidation = validatePolicyIntentDraft(proposal.intentDraft);
     if (!intentValidation.ok) {
       issues.push({
         riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INVALID_INTENT_DRAFT,
-        message: 'Library policy rebuild proposal must include a valid Phase 6R intent draft.',
+        message: 'Library policy rebuild proposal must include a valid bounded policy intent draft.',
         details: intentValidation.issues,
       });
     }
@@ -746,7 +746,7 @@ function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
   if (!readinessValidation.ok) {
     issues.push({
       riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INVALID_READINESS,
-      message: 'Library policy rebuild proposal must include valid Phase 6R readiness.',
+      message: 'Library policy rebuild proposal must include valid policy automation readiness.',
       details: readinessValidation.issues,
     });
   }

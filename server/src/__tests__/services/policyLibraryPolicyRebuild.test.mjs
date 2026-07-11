@@ -466,6 +466,21 @@ describe('policyLibraryPolicyRebuild', () => {
       ]));
   });
 
+  test('uses product-domain validation language for missing intent and readiness', () => {
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput());
+    proposal.intentDraft = null;
+    proposal.readiness = {};
+
+    const validation = validatePolicyLibraryPolicyRebuildProposal(proposal);
+    const messages = validation.issues.map(issue => issue.message);
+
+    expect(messages).toEqual(expect.arrayContaining([
+      'Library policy rebuild proposal must include a bounded policy intent draft.',
+      'Library policy rebuild proposal must include valid policy automation readiness.',
+    ]));
+    expect(messages.join(' ')).not.toContain('Phase');
+  });
+
   test('passes component audit and points to migration verifier rollback work', () => {
     const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput());
     const audit = buildPolicyLibraryPolicyRebuildAudit(proposal);

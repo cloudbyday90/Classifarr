@@ -21,6 +21,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   phase-coded default completion-chain builder with a durable policy-engine
   name, preserving the bounded evidence-to-migration completion audit without
   a compatibility alias.
+- **Policy Library Rebuild Naming Cutover** — replaced phase-coded rebuild
+  validation diagnostics with bounded-intent and policy-automation-readiness
+  terms while preserving the existing conservative rebuild gates.
 - **Policy Evidence Handoff Verifier** — added the server-owned completion
   audit for the complete library evidence workflow; requires static engine,
   loader, source, envelope, boundary, fingerprint, and quality validation;
