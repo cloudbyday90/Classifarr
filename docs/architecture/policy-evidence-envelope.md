@@ -114,7 +114,7 @@ side-effect record. A blocked result has no next step.
 
 ## Next Step
 
-Implement the first source-specific collector for persisted classification final
-outcomes and manual corrections. It should read a bounded, library-scoped result
-set, expose only the evidence fields required by the envelope, and retain the
-same no-write/no-provider-call contract.
+The final-outcome and manual-correction collector is now implemented in
+`policyLibraryOutcomeEvidenceCollector.mjs`. The next component is a separate
+read-only collector for resolved pending-item answers; it must keep answer
+evidence review-only until the learning guard evaluates it.

@@ -3304,6 +3304,12 @@ Implementation status:
   existing evidence boundary once without adding database, refresh, provider, or
   storage side effects. Its design record is
   [Policy Evidence Envelope](policy-evidence-envelope.md).
+- The library outcome evidence collector lives in
+  `server/src/services/policyLibraryOutcomeEvidenceCollector.mjs`. It uses
+  parameterized, library-scoped reads for final classification outcomes and
+  manual corrections, returns bounded evidence fields only, and leaves learning
+  decisions to later guarded components. Its design record is
+  [Policy Library Outcome Evidence Collector](policy-library-outcome-evidence-collector.md).
 
 ### 6R.2 Intent Engine
 

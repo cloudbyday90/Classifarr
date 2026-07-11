@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Library Outcome Evidence Collector** — added parameterized,
+  library-scoped, read-only collection of bounded final outcomes and manual
+  corrections for the policy evidence envelope; excludes titles, metadata,
+  correction actors, learned state, and database error text while preserving
+  source timestamps, explicit truncation, and side-effect audit coverage.
 - **Policy Evidence Envelope** — added a read-only library-destination evidence
   aggregator that requires the audited cached-profile handoff, bounds final
   outcomes, corrections, pending answers, routing outcomes, and metadata

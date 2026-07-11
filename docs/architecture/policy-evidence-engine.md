@@ -209,6 +209,11 @@ the resulting evidence boundary before later engines consume it.
 bounded source snapshots and invokes the evidence boundary once. It does not
 reuse the item-level runtime evidence projection or issue cross-table queries.
 
+`server/src/services/policyLibraryOutcomeEvidenceCollector.mjs` is the
+source-specific read boundary for final classification outcomes and manual
+corrections. It exposes no titles, metadata, correction actors, or learned
+state, and the envelope receives only its bounded evidence records.
+
 The projection entry shape is intentionally small:
 
 ```text
