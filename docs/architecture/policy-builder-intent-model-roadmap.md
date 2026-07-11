@@ -3565,6 +3565,12 @@ Implementation status:
   `server/src/services/policyAutomationReadinessEngine.mjs`.
 - The focused readiness-engine test suite lives in
   `server/src/__tests__/services/policyAutomationReadinessEngine.test.mjs`.
+- Operational routing, profile-freshness, and hard-limit inputs now pass
+  through `server/src/services/policyAutomationReadinessInputNormalizer.mjs`
+  before readiness is evaluated. It accepts only bounded state, fails
+  conservatively for malformed booleans, and excludes raw routing configuration
+  from readiness output. Its design record is
+  [Policy Automation Readiness Input Normalizer](policy-automation-readiness-input-normalizer.md).
 - Current implementation consumes bounded evidence, intent, learning, routing,
   and profile freshness inputs into one state: `ready`,
   `needs_more_examples`, `needs_operator_review`, `needs_routing`,

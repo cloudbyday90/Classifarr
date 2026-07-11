@@ -16,6 +16,11 @@ TMDB coverage, or expose raw scoring panels. The compatibility reducer remains
 available for focused tests and internal composition, but runtime and rebuild
 callers should use the bounded readiness entry point.
 
+Operational routing, freshness, and hard-limit input is normalized by
+[Policy Automation Readiness Input Normalizer](policy-automation-readiness-input-normalizer.md)
+before the engine evaluates readiness. The readiness result retains only the
+small operational summary needed for a next action.
+
 ## Problem
 
 The previous policy-builder direction exposed internal diagnostics as if they
@@ -96,6 +101,11 @@ contracts.
    Readiness should keep stable IDs and sanitized boundary context so future
    telemetry can explain automation blocks without raw labels, provider
    responses, or replay data.
+
+8. **Normalize operational inputs before readiness.**
+   Routing configuration, profile freshness, and hard-limit state must use the
+   shared input normalizer. Invalid state is conservative, and raw connection
+   configuration is never retained in readiness output.
 
 ## Pros And Cons
 

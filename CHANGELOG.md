@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Automation Readiness Input Normalizer** — added bounded operational
+  input handling for readiness; routing, profile freshness, and hard-limit
+  state now fail conservatively when malformed, while raw routing configuration
+  and control characters are excluded from readiness output.
 - **Policy Final Outcome Normalizer** — added one bounded server-owned outcome
   contract for learning and request-time decisions; allowlisted outcome and
   route transitions now strip untrusted payload fields, validate routed versus

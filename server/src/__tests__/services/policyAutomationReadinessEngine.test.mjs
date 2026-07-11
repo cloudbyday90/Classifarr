@@ -705,6 +705,31 @@ describe('policyAutomationReadinessEngine', () => {
     }));
   });
 
+  test('treats malformed operational input as conservative readiness without exposing configuration', () => {
+    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
+      routing: {
+        configured: 'true',
+        routeReady: true,
+        targetName: 'Radarr\r\nAnimated Movies',
+        apiKey: 'must-not-escape',
+        url: 'http://radarr.internal',
+      },
+      profileFreshness: { stale: 'false' },
+      hardLimitConflict: 'false',
+    }));
+
+    expect(readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE);
+    expect(readiness.inputs.readinessInput).toEqual(expect.objectContaining({
+      routingStateInvalid: true,
+      profileStale: true,
+      profileFreshnessInvalid: true,
+      hardLimitConflict: true,
+      hardLimitConflictInvalid: true,
+    }));
+    expect(JSON.stringify(readiness)).not.toContain('must-not-escape');
+    expect(JSON.stringify(readiness)).not.toContain('radarr.internal');
+  });
+
   test('ignores legacy diagnostic inputs instead of making them readiness gates', () => {
     const readiness = buildPolicyAutomationReadiness(buildReadyInput({
       providerReadiness: { state: 'limited' },

@@ -14,6 +14,10 @@ import {
   POLICY_LEARNING_DECISION_IDS,
   POLICY_LEARNING_TIER_IDS,
 } from './policyLearningGuard.mjs';
+import {
+  buildPolicyAutomationReadinessInputSummary,
+  normalizePolicyAutomationReadinessInputs,
+} from './policyAutomationReadinessInputNormalizer.mjs';
 
 const POLICY_AUTOMATION_READINESS_STATE_IDS = Object.freeze({
   READY: 'ready',
@@ -199,6 +203,7 @@ function buildInputsSummary({
   intent,
   learningDecision,
   ignoredDiagnostics,
+  readinessInputs,
   boundaryContext = null,
 }) {
   return {
@@ -211,12 +216,13 @@ function buildInputsSummary({
     diagnosticDependencies: [],
     learningWritesPerformed: learningDecision?.learning?.writesPerformed === true,
     ignoredDiagnostics,
+    readinessInput: buildPolicyAutomationReadinessInputSummary(readinessInputs),
     boundaryContext,
   };
 }
 
-function hasStaleProfile(input = {}, evidenceProjection = {}, intent = {}, learningDecision = {}) {
-  const profileFreshness = asObject(input.profileFreshness);
+function hasStaleProfile(readinessInputs = {}, evidenceProjection = {}, intent = {}, learningDecision = {}) {
+  const profileFreshness = asObject(readinessInputs.profileFreshness);
   const staleEvidence = asArray(evidenceProjection?.buckets?.[POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT])
     .some(entry => entry?.reasonCode === 'stale_profile' || entry?.stale === true);
 
@@ -228,10 +234,10 @@ function hasStaleProfile(input = {}, evidenceProjection = {}, intent = {}, learn
     learningDecision?.profileRefresh?.queue === true;
 }
 
-function hasHardLimitBlock(input = {}, intent = {}, learningDecision = {}) {
+function hasHardLimitBlock(readinessInputs = {}, intent = {}, learningDecision = {}) {
   const learning = asObject(learningDecision.learning);
 
-  return input.hardLimitConflict === true ||
+  return readinessInputs.hardLimitConflict === true ||
     intent?.confidence?.level === POLICY_INTENT_CONFIDENCE_LEVEL_IDS.BLOCKED ||
     learning.decisionId === POLICY_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED ||
     (
@@ -240,11 +246,11 @@ function hasHardLimitBlock(input = {}, intent = {}, learningDecision = {}) {
     );
 }
 
-function hasRoutingReady(input = {}, intent = {}) {
-  const routing = asObject(input.routing);
+function hasRoutingReady(readinessInputs = {}, intent = {}) {
+  const routing = asObject(readinessInputs.routing);
   const hasIntentRoutingTarget = asArray(intent.routing_target).length > 0;
 
-  if (routing.configured === false || routing.routeReady === false) {
+  if (routing.invalidState === true || routing.configured === false || routing.routeReady === false) {
     return false;
   }
 
@@ -256,7 +262,7 @@ function hasRoutingReady(input = {}, intent = {}) {
 }
 
 function collectReadinessIssues({
-  input,
+  readinessInputs,
   evidenceProjection,
   intent,
   learningDecision,
@@ -264,7 +270,7 @@ function collectReadinessIssues({
   const issues = [];
   const learning = asObject(learningDecision.learning);
 
-  if (hasStaleProfile(input, evidenceProjection, intent, learningDecision)) {
+  if (hasStaleProfile(readinessInputs, evidenceProjection, intent, learningDecision)) {
     issues.push(buildIssue({
       stateId: POLICY_AUTOMATION_READINESS_STATE_IDS.STALE_PROFILE,
       reasonCode: learningDecision?.profileRefresh?.queue === true
@@ -276,7 +282,7 @@ function collectReadinessIssues({
     }));
   }
 
-  if (hasHardLimitBlock(input, intent, learningDecision)) {
+  if (hasHardLimitBlock(readinessInputs, intent, learningDecision)) {
     issues.push(buildIssue({
       stateId: POLICY_AUTOMATION_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
       reasonCode: learning.decisionId === POLICY_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED
@@ -314,8 +320,8 @@ function collectReadinessIssues({
     }));
   }
 
-  if (!hasRoutingReady(input, intent)) {
-    const routing = asObject(input.routing);
+  if (!hasRoutingReady(readinessInputs, intent)) {
+    const routing = asObject(readinessInputs.routing);
     issues.push(buildIssue({
       stateId: POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING,
       reasonCode: routing.configured === false || routing.routeReady === false
@@ -344,6 +350,11 @@ function chooseReadinessState(issues) {
 }
 
 function buildPolicyAutomationReadiness(input = {}) {
+  const readinessInputs = normalizePolicyAutomationReadinessInputs({
+    routing: input.routing,
+    profileFreshness: input.profileFreshness,
+    hardLimitConflict: input.hardLimitConflict,
+  });
   const evidenceProjection = input.evidenceProjection?.version === 'policy.evidence.v1'
     ? input.evidenceProjection
     : buildPolicyEvidenceProjection(input);
@@ -354,7 +365,7 @@ function buildPolicyAutomationReadiness(input = {}) {
   const learningDecision = asObject(input.learningDecision);
   const ignoredDiagnostics = collectIgnoredDiagnostics(input);
   const issues = collectReadinessIssues({
-    input,
+    readinessInputs,
     evidenceProjection,
     intent,
     learningDecision,
@@ -382,6 +393,7 @@ function buildPolicyAutomationReadiness(input = {}) {
       intent,
       learningDecision,
       ignoredDiagnostics,
+      readinessInputs,
     }),
   };
 }
