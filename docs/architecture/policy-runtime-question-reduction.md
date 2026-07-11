@@ -10,6 +10,10 @@ ask for routing configuration, refresh the profile, block automation, gather
 evidence, or clean up a stale pending question. It does not persist questions,
 write learning, route media, call providers, or mutate policy.
 
+Clarification construction now separates raw runtime composition from the
+decision-only reducer. The reducer accepts a valid automation decision and
+question-specific inputs; raw runtime data must use the explicit adapter.
+
 ## Problem
 
 Runtime questions had drifted toward explaining internal uncertainty:
@@ -127,6 +131,10 @@ Cons:
 11. Require the carried automation decision validation result and bounded trace
     `decision_valid` attribute to agree before question plans can pass
     validation.
+12. Keep automation-decision composition outside clarification reduction. Use
+    `buildPolicyRuntimeQuestionReductionFromRuntimeInput` for raw runtime
+    input and `buildPolicyRuntimeQuestionReductionFromAutomationDecision` for
+    an existing valid decision.
 
 ## Implemented Files
 
@@ -136,6 +144,8 @@ Cons:
   `server/src/__tests__/services/policyRuntimeQuestionReduction.test.mjs`
 - Automation decision dependency:
   `server/src/services/policyAutomationDecisionContract.mjs`
+- Clarification decision-boundary outcome:
+  `docs/architecture/policy-runtime-clarification-decision-boundary.md`
 - Question vocabulary dependency:
   `server/src/services/policyQuestionLearningVocabulary.mjs`
 - Roadmap owner:
@@ -149,7 +159,8 @@ The service exports:
 - `POLICY_RUNTIME_QUESTION_DISPOSITION_IDS`
 - `POLICY_RUNTIME_QUESTION_REASON_IDS`
 - `POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS`
-- `buildPolicyRuntimeQuestionReduction`
+- `buildPolicyRuntimeQuestionReductionFromAutomationDecision`
+- `buildPolicyRuntimeQuestionReductionFromRuntimeInput`
 - `buildPolicyRuntimeQuestionReductionAudit`
 - `validatePolicyRuntimeQuestionReduction`
 
@@ -195,6 +206,8 @@ The service exports:
 - The reducer carries the automation decision validation result and mirrors that
   result in bounded trace attributes so stale or forged decision handoffs cannot
   create questions.
+- The decision-only reducer rejects raw decision inputs and requires a valid
+  `policy.automation_decision.v1` contract before it plans a clarification.
 
 ## Test Coverage
 
@@ -210,6 +223,8 @@ The focused test suite verifies:
 - question plans carry the automation decision validation result,
 - planned questions and traces must match the plan fingerprint,
 - traces must mirror the carried decision-valid state,
+- raw runtime input must use the explicit adapter, while the decision-only
+  reducer rejects raw decision inputs and invalid decisions,
 - invalid plans with rejected frames, learning enabled, auto-route questions, or
   side effects fail validation,
 - the component audit points to the request-time learning step.
@@ -219,7 +234,7 @@ The focused test suite verifies:
 The runtime question reducer gives runtime question creation a hard gate:
 
 ```text
-automation decision state
+valid automation decision
   -> question reduction disposition
   -> persisted question only when necessary
 ```

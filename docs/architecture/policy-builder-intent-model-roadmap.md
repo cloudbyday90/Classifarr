@@ -4113,6 +4113,10 @@ Implementation status:
 - Question-reduction plans also carry the automation decision validation result
   and fail validation when that proof is missing, mismatched with the embedded
   decision, or not mirrored by the bounded question trace.
+- Clarification construction now separates raw runtime-input adaptation from
+  the decision-only reducer. The reducer requires a valid automation decision
+  and rejects raw decision fields; its design record is [Policy Runtime
+  Clarification Decision Boundary](policy-runtime-clarification-decision-boundary.md).
 
 ### 7R.5 Request-Time Learning And Destination Selection
 
@@ -6610,7 +6614,7 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 184 production references plus 185 rename candidates.
+  currently reports 183 production references plus 184 rename candidates.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -7293,7 +7297,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 11,
   2026 baseline for production references, rename candidates, and obsolete
   migration tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `184` production references, `185` rename
+- The current baseline is `183` production references, `184` rename
   candidates, and `0` obsolete migration tooling references. Future durable
   rename batches must lower this baseline after inventory validation proves the
   debt decreased.

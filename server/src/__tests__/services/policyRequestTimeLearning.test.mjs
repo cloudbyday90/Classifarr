@@ -9,7 +9,7 @@ import {
   POLICY_LEARNING_TIER_IDS,
 } from '../../services/policyLearningGuard.mjs';
 import {
-  buildPolicyRuntimeQuestionReduction,
+  buildPolicyRuntimeQuestionReductionFromRuntimeInput,
 } from '../../services/policyRuntimeQuestionReduction.mjs';
 import {
   POLICY_REQUEST_EVENT_TYPE_IDS,
@@ -33,7 +33,7 @@ function destination(overrides = {}) {
 }
 
 function questionReductionPlan(overrides = {}) {
-  return buildPolicyRuntimeQuestionReduction({
+  return buildPolicyRuntimeQuestionReductionFromRuntimeInput({
     libraryProfile: {
       identityCandidates: [
         { label: 'Animation', count: 2, confidence: 0.8 },

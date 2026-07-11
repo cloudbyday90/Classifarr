@@ -12,7 +12,8 @@ import {
   POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS,
   POLICY_RUNTIME_QUESTION_DISPOSITION_IDS,
   POLICY_RUNTIME_QUESTION_REASON_IDS,
-  buildPolicyRuntimeQuestionReduction,
+  buildPolicyRuntimeQuestionReductionFromAutomationDecision,
+  buildPolicyRuntimeQuestionReductionFromRuntimeInput,
   buildPolicyRuntimeQuestionReductionAudit,
   validatePolicyRuntimeQuestionReduction,
 } from '../../services/policyRuntimeQuestionReduction.mjs';
@@ -47,9 +48,15 @@ function buildStrongDecision(overrides = {}) {
   });
 }
 
+function buildQuestionReductionPlanForTest(input = {}) {
+  return input.automationDecision?.version === 'policy.automation_decision.v1'
+    ? buildPolicyRuntimeQuestionReductionFromAutomationDecision(input)
+    : buildPolicyRuntimeQuestionReductionFromRuntimeInput(input);
+}
+
 describe('policyRuntimeQuestionReduction', () => {
   test('suppresses operator questions for auto-route-ready decisions', () => {
-    const plan = buildPolicyRuntimeQuestionReduction({
+    const plan = buildQuestionReductionPlanForTest({
       automationDecision: buildStrongDecision(),
     });
 
@@ -79,6 +86,36 @@ describe('policyRuntimeQuestionReduction', () => {
     expect(validatePolicyRuntimeQuestionReduction(plan).ok).toBe(true);
   });
 
+  test('requires an explicit adapter for raw runtime inputs', () => {
+    expect(() => buildPolicyRuntimeQuestionReductionFromAutomationDecision({
+      libraryProfile: {
+        identityCandidates: [{ label: 'Animated Movies', count: 12 }],
+      },
+    })).toThrow('raw decision input key "libraryProfile"');
+
+    expect(() => buildPolicyRuntimeQuestionReductionFromRuntimeInput({
+      automationDecision: buildStrongDecision(),
+    })).toThrow('received an automation decision');
+
+    expect(() => buildPolicyRuntimeQuestionReductionFromAutomationDecision({
+      automationDecision: {
+        version: 'policy.automation_decision.v1',
+      },
+    })).toThrow('requires a valid automation decision');
+
+    const plan = buildPolicyRuntimeQuestionReductionFromRuntimeInput({
+      libraryProfile: {
+        identityCandidates: [{ label: 'Animated Movies', count: 12 }],
+      },
+      routing: {
+        mapped: true,
+      },
+    });
+
+    expect(plan.decision.version).toBe('policy.automation_decision.v1');
+    expect(plan.dispositionId).toBe(POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.SUPPRESS_QUESTION);
+  });
+
   test('turns classified_not_routed into routing action instead of a persisted question', () => {
     const decision = buildPolicyAutomationDecisionFromEvidenceProjection({
       evidenceProjection: buildPolicyRuntimeEvidenceProjection({
@@ -99,7 +136,7 @@ describe('policyRuntimeQuestionReduction', () => {
         targetName: 'Radarr Animated Movies',
       },
     });
-    const plan = buildPolicyRuntimeQuestionReduction({ automationDecision: decision });
+    const plan = buildQuestionReductionPlanForTest({ automationDecision: decision });
 
     expect(decision.stateId).toBe(POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED);
     expect(plan.dispositionId).toBe(POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING);
@@ -113,7 +150,7 @@ describe('policyRuntimeQuestionReduction', () => {
   });
 
   test('creates bounded Phase 5R questions for hard-limit and missing-evidence states', () => {
-    const hardLimitPlan = buildPolicyRuntimeQuestionReduction({
+    const hardLimitPlan = buildQuestionReductionPlanForTest({
       evidenceProjection: buildPolicyRuntimeEvidenceProjection({
         libraryProfile: {
           identityCandidates: [
@@ -125,7 +162,7 @@ describe('policyRuntimeQuestionReduction', () => {
         hardLimitSatisfied: false,
       },
     });
-    const missingEvidencePlan = buildPolicyRuntimeQuestionReduction({
+    const missingEvidencePlan = buildQuestionReductionPlanForTest({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.6 },
@@ -163,7 +200,7 @@ describe('policyRuntimeQuestionReduction', () => {
   });
 
   test('uses outlier review for avoid and high-risk runtime review states', () => {
-    const plan = buildPolicyRuntimeQuestionReduction({
+    const plan = buildQuestionReductionPlanForTest({
       automationDecision: buildStrongDecision({
         policyEvaluation: {
           avoidRulesSatisfied: false,
@@ -179,7 +216,7 @@ describe('policyRuntimeQuestionReduction', () => {
   });
 
   test('rewrites rejected broad-genre priority frames before persistence', () => {
-    const plan = buildPolicyRuntimeQuestionReduction({
+    const plan = buildQuestionReductionPlanForTest({
       requestedQuestionFrameId: REJECTED_QUESTION_FRAME_IDS.BROAD_GENRE_PRIORITY,
       libraryProfile: {
         identityCandidates: [
@@ -203,7 +240,7 @@ describe('policyRuntimeQuestionReduction', () => {
   });
 
   test('routes stale or legacy pending questions through cleanup before answer or learning', () => {
-    const plan = buildPolicyRuntimeQuestionReduction({
+    const plan = buildQuestionReductionPlanForTest({
       automationDecision: buildStrongDecision({
         policyEvaluation: {
           avoidRulesSatisfied: false,
@@ -288,7 +325,7 @@ describe('policyRuntimeQuestionReduction', () => {
   });
 
   test('rejects question plans with mismatched evidence fingerprints', () => {
-    const plan = buildPolicyRuntimeQuestionReduction({
+    const plan = buildQuestionReductionPlanForTest({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.6 },
@@ -326,7 +363,7 @@ describe('policyRuntimeQuestionReduction', () => {
   });
 
   test('rejects question plans without carried automation decision validation proof', () => {
-    const plan = buildPolicyRuntimeQuestionReduction({
+    const plan = buildQuestionReductionPlanForTest({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.6 },
@@ -348,7 +385,7 @@ describe('policyRuntimeQuestionReduction', () => {
   });
 
   test('rejects question plans when decision validation or trace proof drifts', () => {
-    const plan = buildPolicyRuntimeQuestionReduction({
+    const plan = buildQuestionReductionPlanForTest({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.6 },
@@ -405,7 +442,7 @@ describe('policyRuntimeQuestionReduction', () => {
   });
 
   test('rejects created questions or traces without evidence fingerprint proof', () => {
-    const plan = buildPolicyRuntimeQuestionReduction({
+    const plan = buildQuestionReductionPlanForTest({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.6 },
@@ -442,7 +479,7 @@ describe('policyRuntimeQuestionReduction', () => {
   });
 
   test('passes the default runtime question reduction audit', () => {
-    const plan = buildPolicyRuntimeQuestionReduction({
+    const plan = buildQuestionReductionPlanForTest({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.6 },

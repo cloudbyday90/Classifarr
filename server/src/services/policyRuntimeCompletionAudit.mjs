@@ -26,7 +26,7 @@ import {
   buildPolicyRuntimeMetricsTraceAudit,
 } from './policyRuntimeMetricsTrace.mjs';
 import {
-  buildPolicyRuntimeQuestionReduction,
+  buildPolicyRuntimeQuestionReductionFromRuntimeInput,
   buildPolicyRuntimeQuestionReductionAudit,
 } from './policyRuntimeQuestionReduction.mjs';
 import {
@@ -165,7 +165,7 @@ function buildIssue(riskId, message, details = {}) {
 }
 
 function buildPassingRequestTimeLearningAudit() {
-  const questionReductionPlan = buildPolicyRuntimeQuestionReduction({
+  const questionReductionPlan = buildPolicyRuntimeQuestionReductionFromRuntimeInput({
     libraryProfile: {
       identityCandidates: [
         { label: 'Animation', count: 2, confidence: 0.8 },

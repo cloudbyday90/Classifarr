@@ -21,6 +21,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Clarification Decision Boundary** — split raw runtime
+  adaptation from decision-only question reduction; clarification planning now
+  requires a valid automation decision and rejects raw evidence, routing,
+  classification, policy-evaluation, and side-effect fields.
 - **Policy Automation Decision Input Boundary** — split raw runtime input
   adaptation from projection-only automation decisions; the decision reducer
   now rejects raw evidence fields while preserving explicit routing,

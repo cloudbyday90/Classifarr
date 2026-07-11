@@ -64,6 +64,24 @@ const DECISION_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE =
   'classifarr.runtime.question.decision_evidence_projection_fingerprint';
 const DECISION_VALID_TRACE_ATTRIBUTE =
   'classifarr.runtime.question.decision_valid';
+const AUTOMATION_DECISION_INPUT_KEYS = new Set([
+  'libraryProfile',
+  'operatorIntent',
+  'classificationFinalOutcomes',
+  'manualCorrections',
+  'pendingItemAnswers',
+  'ragNeighbors',
+  'ragEvidence',
+  'metadataSignals',
+  'metadataEvidence',
+  'routingOutcomes',
+  'profileFreshness',
+  'evidenceProjection',
+  'routing',
+  'classification',
+  'policyEvaluation',
+  'sideEffects',
+]);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -181,7 +199,7 @@ function buildLearningMetadata({
     defaultOutcomeId: ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM,
     reason: staleQuestionCleanupRequired
       ? POLICY_RUNTIME_QUESTION_REASON_IDS.STALE_OR_LEGACY_QUESTION_REQUIRES_CLEANUP
-      : 'phase7r_questions_resolve_current_item_only',
+      : 'runtime_questions_resolve_current_item_only',
     frameLearningEligibleByDefault: frame?.learningEligibleByDefault === true,
   };
 }
@@ -364,13 +382,51 @@ function getBaseDisposition(decision = {}) {
   }
 }
 
-function buildPolicyRuntimeQuestionReduction(input = {}) {
-  const decision = input.automationDecision?.version === 'policy.automation_decision.v1'
-    ? input.automationDecision
-    : buildPolicyAutomationDecisionFromRuntimeInput(input);
+function requireValidAutomationDecision(input = {}) {
+  const questionInput = asObject(input);
+  const rawDecisionInputKey = Object.keys(questionInput).find(key =>
+    AUTOMATION_DECISION_INPUT_KEYS.has(key)
+  );
+
+  if (rawDecisionInputKey) {
+    throw new TypeError(
+      `Runtime clarification reduction requires an automation decision; raw decision input key "${rawDecisionInputKey}" must use buildPolicyRuntimeQuestionReductionFromRuntimeInput.`
+    );
+  }
+
+  const decision = asObject(questionInput.automationDecision);
+  if (decision.version !== 'policy.automation_decision.v1') {
+    throw new TypeError(
+      'Runtime clarification reduction requires a policy.automation_decision.v1 automation decision.'
+    );
+  }
+
+  const validation = validatePolicyAutomationDecision(decision);
+  if (!validation.ok) {
+    throw new TypeError(
+      'Runtime clarification reduction requires a valid automation decision.'
+    );
+  }
+
+  return decision;
+}
+
+function buildQuestionReductionInput(input = {}) {
+  return Object.entries(asObject(input)).reduce((questionInput, [key, value]) => {
+    if (!AUTOMATION_DECISION_INPUT_KEYS.has(key) && key !== 'automationDecision') {
+      questionInput[key] = value;
+    }
+
+    return questionInput;
+  }, {});
+}
+
+function buildPolicyRuntimeQuestionReductionFromAutomationDecision(input = {}) {
+  const questionInput = asObject(input);
+  const decision = requireValidAutomationDecision(questionInput);
   const decisionValidation = validatePolicyAutomationDecision(decision);
   const decisionEvidenceFingerprint = sanitizeDecisionEvidenceFingerprint(decision);
-  const frameOverride = normalizeFrameOverride(input);
+  const frameOverride = normalizeFrameOverride(questionInput);
   const reasons = [];
 
   if (frameOverride.reasonId) {
@@ -381,7 +437,7 @@ function buildPolicyRuntimeQuestionReduction(input = {}) {
     }));
   }
 
-  if (hasStaleOrLegacyQuestion(input)) {
+  if (hasStaleOrLegacyQuestion(questionInput)) {
     const frameId = QUESTION_FRAME_IDS.STALE_PROFILE;
     const dispositionId = POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.STALE_QUESTION_CLEANUP;
     reasons.push(buildReason(POLICY_RUNTIME_QUESTION_REASON_IDS.STALE_OR_LEGACY_QUESTION_REQUIRES_CLEANUP, {
@@ -407,7 +463,7 @@ function buildPolicyRuntimeQuestionReduction(input = {}) {
       rejectedFrame: frameOverride.accepted === false ? frameOverride : null,
       staleQuestionCleanup: {
         required: true,
-        existingQuestionId: input.existingQuestion?.id ?? null,
+        existingQuestionId: questionInput.existingQuestion?.id ?? null,
       },
       learning: buildLearningMetadata({
         frameId,
@@ -462,7 +518,7 @@ function buildPolicyRuntimeQuestionReduction(input = {}) {
     rejectedFrame: frameOverride.accepted === false ? frameOverride : null,
     staleQuestionCleanup: {
       required: false,
-      existingQuestionId: input.existingQuestion?.id ?? null,
+      existingQuestionId: questionInput.existingQuestion?.id ?? null,
     },
     learning: buildLearningMetadata({ frameId: frameId || QUESTION_FRAME_IDS.DESTINATION_FIT }),
     trace: buildTrace(
@@ -473,6 +529,23 @@ function buildPolicyRuntimeQuestionReduction(input = {}) {
       decisionEvidenceFingerprint
     ),
   };
+}
+
+function buildPolicyRuntimeQuestionReductionFromRuntimeInput(input = {}) {
+  const runtimeInput = asObject(input);
+
+  if (Object.hasOwn(runtimeInput, 'automationDecision')) {
+    throw new TypeError(
+      'Runtime clarification reduction received an automation decision; use buildPolicyRuntimeQuestionReductionFromAutomationDecision.'
+    );
+  }
+
+  const automationDecision = buildPolicyAutomationDecisionFromRuntimeInput(runtimeInput);
+
+  return buildPolicyRuntimeQuestionReductionFromAutomationDecision({
+    ...buildQuestionReductionInput(runtimeInput),
+    automationDecision,
+  });
 }
 
 function getNextActionLabel(actionId) {
@@ -677,7 +750,7 @@ function validatePolicyRuntimeQuestionReduction(plan = {}) {
 }
 
 function buildPolicyRuntimeQuestionReductionAudit(
-  plan = buildPolicyRuntimeQuestionReduction()
+  plan = buildPolicyRuntimeQuestionReductionFromRuntimeInput()
 ) {
   const validation = validatePolicyRuntimeQuestionReduction(plan);
 
@@ -699,7 +772,8 @@ export {
   POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS,
   POLICY_RUNTIME_QUESTION_DISPOSITION_IDS,
   POLICY_RUNTIME_QUESTION_REASON_IDS,
-  buildPolicyRuntimeQuestionReduction,
+  buildPolicyRuntimeQuestionReductionFromAutomationDecision,
+  buildPolicyRuntimeQuestionReductionFromRuntimeInput,
   buildPolicyRuntimeQuestionReductionAudit,
   validatePolicyRuntimeQuestionReduction,
 };
