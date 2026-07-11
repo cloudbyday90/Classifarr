@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Draft Contract Module Cutover** — renamed the draft
+  authority contract, focused test, and design record to durable
+  policy-authoring names; replaced phase-coded field, authority, mapping, risk,
+  audit, and helper exports; updated the active draft-field adapter; and
+  preserved immutable field records plus fail-closed persistence, authority,
+  read-only projection, raw-legacy-term, and prohibited-responsibility audits.
 - **Policy Authoring Legacy Bridge Boundary Module Cutover** — renamed the
   legacy bridge boundary service, focused test, and design record to durable
   policy-authoring names; replaced phase-coded responsibilities, owners,

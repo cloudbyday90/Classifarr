@@ -1,11 +1,11 @@
-# Policy Builder Phase 2R Draft Contract Definition
+# Policy Authoring Draft Contract
 
-Status: implemented as the first Phase 2R draft/bridge contract.
+Status: implemented authority contract.
 
 ## Scope
 
-Phase 2R.1 defines what an intent draft is allowed to represent before further
-draft bridge refactors continue.
+This contract defines what an intent draft is allowed to represent before it
+reaches validation, compatibility serialization, or native storage.
 
 This slice does not change UI behavior, save payloads, database schema,
 classification scoring, routing, learning, provider calls, or native intent
@@ -59,7 +59,7 @@ Official sources reviewed as of June 2026:
    provider-readiness decisions, routing side effects, and migration acceptance.
 5. Keep the draft readable without understanding `customSignals`; bridge
    terminology belongs in compatibility metadata only.
-6. Add an executable contract audit before Phase 2R proceeds:
+6. Keep an executable contract audit:
    every field must have a known authority, native mapping, persistence flags,
    and product-facing fields must not leak raw legacy terminology.
 
@@ -67,17 +67,17 @@ Official sources reviewed as of June 2026:
 
 ### Pros
 
-- Gives Phase 2R a concrete product-language draft model.
+- Gives policy authoring a concrete product-language draft model.
 - Prevents compatibility metadata from becoming native intent accidentally.
 - Gives policy authoring components stable field names that do not expose raw legacy
   storage.
-- Gives Phase 5R and Phase 8R clear native intent candidate fields.
+- Gives native policy storage clear intent candidate fields.
 - Keeps server validation and future engine contracts authoritative.
 
 ### Cons
 
-- Current client draft code still uses legacy bucket names until later Phase 2R
-  tasks adapt the bridge.
+- Current client draft code still uses legacy bucket names until the bridge is
+  replaced by native storage.
 - Native intent storage is not implemented here.
 - Assumptions and warnings remain compatibility-only until future server
   contracts decide whether any of them become durable.
@@ -89,25 +89,25 @@ Official sources reviewed as of June 2026:
 ## Final Stack
 
 - Draft contract:
-  `server/src/services/policyBuilderPhase2DraftContract.mjs`
+  `server/src/services/policyAuthoringDraftContract.mjs`
 - Unit coverage:
-  `server/src/__tests__/services/policyBuilderPhase2DraftContract.test.mjs`
+  `server/src/__tests__/services/policyAuthoringDraftContract.test.mjs`
 - Existing draft and bridge implementation:
   - `client/src/utils/policyIntentDraftBridge.js`
   - `client/src/composables/usePolicyIntentDraft.js`
   - `client/src/composables/usePolicyBuilderState.js`
   - `server/src/services/policyIntentRequestValidator.mjs`
-- Phase 0R vocabulary inputs:
+- Policy-authoring vocabulary inputs:
   - `server/src/services/policyAuthorityVocabulary.mjs`
   - `server/src/services/policyUserMentalModel.mjs`
 - Roadmap:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 - This implementation record:
-  `docs/architecture/policy-builder-phase-2r-draft-contract.md`
+  `docs/architecture/policy-authoring-draft-contract.md`
 
 ## Implemented Outcome
 
-Phase 2R.1 classifies draft fields:
+The contract classifies draft fields:
 
 | Field | Authority | Native Mapping |
 | --- | --- | --- |
@@ -136,25 +136,25 @@ The draft contract explicitly states:
 
 The executable hardening pass adds:
 
-- `validatePhase2RDraftFieldContract(record)` for single-field checks,
-- `buildPhase2RDraftContractAudit(options)` for whole-contract checks,
+- `validatePolicyAuthoringDraftFieldContract(record)` for single-field checks,
+- `buildPolicyAuthoringDraftContractAudit(options)` for whole-contract checks,
 - risk detection for unknown fields, missing authority or native mapping,
   native persistence outside declared intent, compatibility-only native writes,
   UI/read-only projection serialization, observed evidence inside declared
   intent, and raw legacy terms in product-facing draft fields.
 
-## Phase 2R.1 Checklist Result
+## Contract Checklist Result
 
-| Phase 0R Checklist Item | Result |
+| Check | Result |
 | --- | --- |
 | Source of truth identified | Operator-declared intent, inferred compatibility projection, UI-only state, server read-only projection, and legacy bridge metadata are separate draft authorities. |
 | Authority level identified | Every draft field has an authority classification and native mapping. |
 | Learning side effect identified | Draft state is explicitly prohibited from making learning decisions. |
-| Rollback or migration impact identified | Compatibility-only fields and bridge metadata remain transitional until Phase 8R native storage conversion. |
-| Operator-facing language validated | Draft fields use Phase 0R product terms instead of `customSignals` or raw preset terminology, and the audit fails product-facing fields that leak raw legacy terms. |
+| Rollback or migration impact identified | Compatibility-only fields and bridge metadata remain transitional until native storage conversion passes its safety gates. |
+| Operator-facing language validated | Draft fields use the shared policy-authoring vocabulary instead of `customSignals` or raw preset terminology, and the audit fails product-facing fields that leak raw legacy terms. |
 
-## Follow-Up
+## Next Component
 
-The next Phase 2R task is **2R.2 Legacy Bridge Isolation**. It should inventory
-deserializer, serializer, no-op preservation, migration-only metadata, and
-deletion responsibilities inside bridge ownership.
+Cut over the policy-authoring vocabulary service and focused test. The draft
+contract depends on it for durable authority semantics, but that supporting
+family still contains phase-coded identifiers.

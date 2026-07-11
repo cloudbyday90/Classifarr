@@ -1839,10 +1839,10 @@ Acceptance criteria:
 
 Implementation record:
 
-- Phase 2R.1 draft contract definition is documented in
-  [Policy Builder Phase 2R Draft Contract Definition](policy-builder-phase-2r-draft-contract.md).
-- The server-side Phase 2R draft contract lives in
-  `server/src/services/policyBuilderPhase2DraftContract.mjs`.
+- The policy authoring draft contract is documented in
+  [Policy Authoring Draft Contract](policy-authoring-draft-contract.md).
+- The server-side policy authoring draft contract lives in
+  `server/src/services/policyAuthoringDraftContract.mjs`.
 
 ### 2R.2 Legacy Bridge Isolation
 
@@ -2067,8 +2067,8 @@ Implementation record:
 
 - Existing implementation details are documented in
   [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
-- Phase 2R.1 draft contract definition is documented in
-  [Policy Builder Phase 2R Draft Contract Definition](policy-builder-phase-2r-draft-contract.md).
+- The policy authoring draft contract is documented in
+  [Policy Authoring Draft Contract](policy-authoring-draft-contract.md).
 - The policy authoring legacy bridge boundary is documented in
   [Policy Authoring Legacy Bridge Boundary](policy-authoring-legacy-bridge-boundary.md).
 - The policy authoring draft command boundary is documented in
