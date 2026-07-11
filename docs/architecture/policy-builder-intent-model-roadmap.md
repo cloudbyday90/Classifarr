@@ -4544,7 +4544,11 @@ Implementation record:
 - Current completion audit verifies all nine runtime/rebuild
   components have docs, services, focused tests, passing component audits, and
   the expected semantic `nextStep` handoff sequence before allowing the native
-  intent storage boundary to begin.
+  intent storage boundary to begin. It also requires the runtime/rebuild test
+  reset to report complete focused ownership for every required runtime
+  contract; a generic passing reset status cannot bypass that proof. Its design
+  record is
+  [Policy Runtime Completion Audit Contract Coverage](policy-runtime-completion-audit-contract-coverage.md).
 
 ## Phase 8R: Native Intent Storage And Legacy Removal
 
@@ -6477,17 +6481,18 @@ Implementation record:
   decisions, migration reports, rollback retention, native read/write behavior,
   and legacy deletion gates.
 
-## Phase 9R: Production Naming Deconstruction
+## Phase 9R: Durable Product Naming Cutover
 
-Intent: remove roadmap-phase language from production code as each rebuilt
-component reaches its tested contract. Phase names are useful in roadmap and
-history documents, but must not become permanent product architecture.
+Intent: remove temporary delivery language from production code as each rebuilt
+component reaches its tested contract. Roadmap phase labels are useful in
+planning and historical evidence, but must not become permanent product
+architecture, current diagnostics, telemetry, or contract vocabulary.
 
 ### Activation Rule
 
 Phase 9R is a mandatory cross-cutting workstream and an immediate prerequisite,
-not end-of-project cleanup. It starts now and runs alongside the evidence,
-intent, runtime, storage, and legacy-removal work:
+not end-of-project cleanup. It starts now and runs alongside evidence, intent,
+runtime, storage, and legacy-removal work:
 
 1. A new production component must use a durable product-domain name from its
    first commit.
@@ -6497,20 +6502,23 @@ intent, runtime, storage, and legacy-removal work:
 3. A cutover may retain a compatibility alias only for a persisted/public
    contract migration with a documented deletion gate. Runtime aliases that
    merely preserve roadmap terminology are not allowed.
-4. Phase labels remain allowed only in roadmap documents, changelog history,
-   migration evidence, and tests that prove a bounded old-to-new transition.
+4. Temporary delivery labels remain allowed only in roadmap documents,
+   changelog history, immutable migration evidence, and tests that prove a
+   bounded old-to-new transition.
 
 No policy-engine component is complete while its production source, exports,
 current diagnostics, telemetry, or internal contract names still describe a
-roadmap phase. A persisted or public compatibility field is the only exception,
-and it must have a migration owner and explicit deletion gate.
+temporary roadmap phase. A persisted or public compatibility field is the only
+exception, and it must have a migration owner, durable replacement, and explicit
+deletion gate.
 
 This sequencing keeps the refactor complete without mixing behavioral changes
 and large rename batches in the same implementation task.
 
-This phase exists because production services named after `Phase6R`, `Phase7R`,
-or `Phase8R` will be misleading once the work is complete. Future roadmap work
-will have different phase labels, and product code should describe durable
+This phase exists because production services, errors, schema flags, trace
+labels, and helper names that refer to `Phase6R`, `Phase7R`, `Phase8R`, or any
+other delivery label will be misleading once the work is complete. Future work
+will have different planning labels, and product code should describe durable
 domain concepts instead:
 
 ```text
@@ -6559,7 +6567,7 @@ telemetry and payloads use durable product-domain names
 tests enforce the boundary
 ```
 
-### 9R.0 Immediate Deconstruction Gate And Naming Design
+### 9R.0 Immediate Durable Naming Gate And Naming Design
 
 Intent: define the durable product vocabulary before any code moves.
 
@@ -6586,6 +6594,20 @@ Tasks:
   functional policy-engine component can advance to its next task.
 - Prefer isolated, non-persisted modules for early deconstruction batches;
   defer persisted/public naming changes to their dedicated compatibility task.
+- Classify every current production reference into one of four bounded groups:
+  - **pure delivery terminology**: remove or rename immediately after its
+    focused component test passes;
+  - **runtime lifecycle wording**: rename to a domain term such as `stage` only
+    when it describes a durable execution lifecycle;
+  - **persisted/public compatibility**: introduce a durable replacement,
+    support an explicit reader window, then remove the legacy field under a
+    migration gate;
+  - **historical verification material**: keep only outside the production
+    module tree, with no normal runtime import.
+- Move roadmap-term scanning and historical-reference parsing out of production
+  services into maintenance tooling before the final naming gate. The scanner
+  may retain the historic search vocabulary because it is not product runtime
+  code.
 
 Acceptance criteria:
 
@@ -6595,8 +6617,12 @@ Acceptance criteria:
 - A completed policy-engine component cannot start its successor while its own
   production names still carry roadmap language without a documented migration
   exception.
+- A semantic execution `stage` is not a roadmap phase. Where existing code uses
+  `phase` for durable progress or retrieval lifecycle state, rename it to
+  `stage` in a dedicated compatibility cutover rather than treating it as an
+  allowed exception.
 
-### 9R.1 Production Name Inventory
+### 9R.1 Production Naming Inventory And Ownership Map
 
 Intent: identify every phase-coded production artifact before any rename.
 
@@ -6652,6 +6678,14 @@ Implementation status:
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
+- The July 11, 2026 baseline supersedes earlier historical count snapshots in
+  this roadmap. Those earlier counts document individual cutovers; only the
+  current generated inventory and regression audit define present debt.
+- The current remaining production classes include delivery-only UI comments,
+  internal contract/version wording, diagnostics and trace labels, temporary
+  native-storage closure identifiers, and execution lifecycle names that need a
+  `stage` cutover. Each class requires its own focused rename or migration task;
+  do not apply a repository-wide search-and-replace.
 
 ### 9R.2 Durable Domain Module Cutover
 
@@ -6679,6 +6713,9 @@ Tasks:
   out of scope for this task.
 - Complete one cohesive domain batch at a time immediately after its functional
   component is stable; do not defer the batch to a final project-wide rename.
+- Treat the production naming inventory and regression audit as maintenance
+  tooling, not an application service. Its historic-token matching belongs in
+  scripts or test-only support once its callers are migrated.
 
 Acceptance criteria:
 
@@ -7276,6 +7313,10 @@ Tasks:
   without exposing phase labels as current product concepts.
 - Provide compatibility readers for persisted phase-coded payload fields only
   when a storage migration cannot safely rewrite historical records in place.
+- Replace temporary completion identifiers such as `8r_*` with semantic
+  component IDs before they become stored or cross-module contract keys. Keep
+  legacy IDs only in a migration map that is read during a bounded conversion
+  window.
 
 Acceptance criteria:
 
@@ -7356,6 +7397,32 @@ Acceptance criteria:
   product.
 - Current runtime diagnostics and settings do not expose completed phase labels.
 - Historical docs remain searchable for migration evidence.
+
+### 9R.6 Completion Gate For Delivery-Term Removal
+
+Intent: prove that the production module tree no longer teaches the current
+roadmap.
+
+Tasks:
+
+- Scan `server/src` and `client/src` for delivery-phase words, codes, and
+  roadmap-shaped contract/version identifiers.
+- Verify every remaining match is either a domain `stage` term awaiting its
+  dedicated cutover or a persisted/public compatibility field with a removal
+  gate; neither may be introduced by new code.
+- Verify source, exports, current diagnostics, telemetry, and normal API
+  payloads use durable product-domain names.
+- Verify roadmap-token scanners and historical parsers run from maintenance
+  tooling, not normal application imports.
+
+Acceptance criteria:
+
+- No active production module uses a roadmap phase label as a source name,
+  export, diagnostic, telemetry label, contract version, or internal key.
+- Remaining compatibility readers are bounded by an owner, target release or
+  migration condition, and deletion test.
+- The naming regression baseline reaches zero for delivery-only production
+  references; semantically durable execution lifecycle terms use `stage`.
 
 ## Testing Strategy
 
@@ -7446,8 +7513,9 @@ Builder lane:
    decisions.
 5. Do not continue replay/provider/TMDB UI work unless the artifact inventory
    classifies it as an engine primitive or migration verifier.
-6. After Phase 8R legacy removal is proven, execute Phase 9R so production code
-   names describe product domains rather than completed roadmap phases.
+6. Execute Phase 9R alongside every completed component so production code
+   names describe product domains rather than completed roadmap phases; do not
+   defer naming debt until after Phase 8R legacy removal.
 
 Runtime lane:
 

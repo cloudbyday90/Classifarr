@@ -250,6 +250,8 @@ describe('policyRuntimeRebuildTestReset', () => {
       ok: true,
       issueCount: 0,
       artifactCount: reset.artifacts.length,
+      requiredContractCount: 9,
+      coveredRequiredContractCount: 9,
       nextStep: expect.objectContaining({
         stepId: 'completion_audit',
       }),

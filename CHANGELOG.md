@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Roadmap Naming Cutover** — made durable product naming an immediate
+  cross-cutting completion gate, with separate decisions for delivery-only
+  terms, runtime stages, compatibility fields, and historical verification
+  material rather than deferring phase-name debt to end-of-project cleanup.
 - **Policy Authoring Naming Deconstruction** — replaced the phase-coded setup
   checklist module, exports, component records, focused test, and current
   architecture paths with durable policy-authoring readiness names; no runtime,
@@ -21,6 +25,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Completion Audit Contract Coverage** — completion now
+  requires complete focused test ownership for every required runtime contract;
+  a generic passing reset audit cannot bypass incomplete contract coverage.
 - **Policy Runtime/Rebuild Test Contract Coverage** — hardened the policy-engine
   test-reset audit so every required runtime boundary maps to a focused ESM test
   that imports its declared service, including guarded outcomes and runtime

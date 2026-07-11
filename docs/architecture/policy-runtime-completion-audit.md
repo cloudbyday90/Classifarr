@@ -17,6 +17,8 @@ The completion audit must prove:
 - every runtime component has a design record, service, and focused test file,
 - every component's own audit or validation passes,
 - each component points to the expected next runtime handoff,
+- the runtime/rebuild test reset proves complete focused ownership for every
+  required runtime contract,
 - request-time learning is checked with a valid bounded question-proof sample,
 - the final handoff moves to native intent storage and legacy removal.
 
@@ -47,7 +49,9 @@ The completion audit must prove:
 3. Verify docs, services, and focused tests exist for every runtime component.
 4. Reject next-step drift so the runtime/rebuild sequence cannot silently skip
    a gate.
-5. Keep the audit side-effect-free and focused on current repository evidence.
+5. Require the test-reset audit to report complete contract-to-test coverage;
+   a generic passing status alone is not enough.
+6. Keep the audit side-effect-free and focused on current repository evidence.
 
 ## Pros And Cons
 
@@ -60,6 +64,8 @@ Pros:
   contract versions.
 - Prevents a failed request-time learning default from hiding behind a generic
   completion check by using a valid bounded question-proof sample.
+- Prevents a stale or unrelated test artifact from satisfying a runtime
+  completion gate without owning its declared service contract.
 
 Cons:
 
@@ -86,6 +92,7 @@ Cons:
   - component records include doc, service, test, label, and evidence,
   - artifacts exist in the current checkout,
   - component audits pass,
+  - every required runtime contract has focused reset-test ownership,
   - component handoffs match the expected `nextStep.stepId` sequence.
 
 ## Outcome

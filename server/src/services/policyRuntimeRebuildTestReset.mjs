@@ -742,6 +742,7 @@ function buildPolicyRuntimeRebuildTestResetAudit(
   reset = buildPolicyRuntimeRebuildTestReset()
 ) {
   const validation = validatePolicyRuntimeRebuildTestReset(reset);
+  const contractCoveragePlan = asArray(reset.contractCoveragePlan);
 
   return {
     ok: validation.ok,
@@ -749,6 +750,9 @@ function buildPolicyRuntimeRebuildTestResetAudit(
     artifactCount: asArray(reset.artifacts).length,
     requiredCoverageCount: REQUIRED_COVERAGE_IDS.length,
     requiredContractCount: REQUIRED_CONTRACT_IDS.length,
+    coveredRequiredContractCount: contractCoveragePlan.filter(contract =>
+      contract.required === true && contract.covered === true
+    ).length,
     validation,
     nextStep: reset.nextStep || {
       stepId: 'completion_audit',

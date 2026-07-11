@@ -61,6 +61,7 @@ const POLICY_RUNTIME_COMPLETION_RISK_IDS = Object.freeze({
   ARTIFACT_PATH_NOT_FOUND: 'artifact_path_not_found',
   COMPONENT_AUDIT_FAILED: 'component_audit_failed',
   COMPONENT_AUDIT_MISSING: 'component_audit_missing',
+  TEST_RESET_CONTRACT_COVERAGE_INCOMPLETE: 'test_reset_contract_coverage_incomplete',
   NEXT_STEP_MISMATCH: 'next_step_mismatch',
 });
 
@@ -146,6 +147,7 @@ const POLICY_RUNTIME_COMPLETION_COMPONENT_RECORDS = Object.freeze([
     servicePath: 'server/src/services/policyRuntimeRebuildTestReset.mjs',
     testPath: 'server/src/__tests__/services/policyRuntimeRebuildTestReset.test.mjs',
     expectedNextStepId: 'completion_audit',
+    requiresCompleteTestContractCoverage: true,
     evidence: 'Runtime/rebuild tests are classified around server contracts, stale paths fail validation, and old preview UI is not frozen as migration behavior.',
   },
 ]);
@@ -286,6 +288,16 @@ function listPolicyRuntimeCompletionComponents() {
   return POLICY_RUNTIME_COMPLETION_COMPONENT_RECORDS.map(record => ({ ...record }));
 }
 
+function hasCompleteTestContractCoverage(componentAudit) {
+  const requiredContractCount = Number(componentAudit?.requiredContractCount);
+  const coveredRequiredContractCount = Number(componentAudit?.coveredRequiredContractCount);
+
+  return Number.isInteger(requiredContractCount) &&
+    requiredContractCount > 0 &&
+    Number.isInteger(coveredRequiredContractCount) &&
+    coveredRequiredContractCount === requiredContractCount;
+}
+
 function buildPolicyRuntimeCompletionAudit({
   components = listPolicyRuntimeCompletionComponents(),
   componentAudits = buildDefaultComponentAudits(),
@@ -298,6 +310,8 @@ function buildPolicyRuntimeCompletionAudit({
     const componentAudit = componentAudits[record.id];
     const auditOk = componentAudit?.ok === true && Number(componentAudit?.issueCount || 0) === 0;
     const nextStepId = componentAudit?.nextStep?.stepId || null;
+    const testContractCoverageOk = record.requiresCompleteTestContractCoverage !== true ||
+      hasCompleteTestContractCoverage(componentAudit);
 
     if (!componentAudit) {
       issues.push(buildIssue(
@@ -312,6 +326,18 @@ function buildPolicyRuntimeCompletionAudit({
         {
           componentId: record.id,
           issueCount: componentAudit.issueCount || 0,
+        }
+      ));
+    }
+
+    if (!testContractCoverageOk) {
+      issues.push(buildIssue(
+        POLICY_RUNTIME_COMPLETION_RISK_IDS.TEST_RESET_CONTRACT_COVERAGE_INCOMPLETE,
+        'Runtime completion requires every reset contract to have focused test coverage.',
+        {
+          componentId: record.id,
+          requiredContractCount: componentAudit?.requiredContractCount ?? null,
+          coveredRequiredContractCount: componentAudit?.coveredRequiredContractCount ?? null,
         }
       ));
     }
@@ -335,6 +361,7 @@ function buildPolicyRuntimeCompletionAudit({
       label: record.label,
       recordOk: recordValidation.ok,
       auditOk,
+      testContractCoverageOk,
       issueCount: componentAudit?.issueCount ?? null,
       expectedNextStepId: record.expectedNextStepId || null,
       actualNextStepId: nextStepId,

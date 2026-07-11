@@ -30,7 +30,7 @@ describe('policyRuntimeCompletionAudit', () => {
     expect(audit.checkedComponentCount).toBe(9);
     expect(audit.requiredComponentCount).toBe(9);
     expect(audit.componentChecks.every(check =>
-      check.recordOk === true && check.auditOk === true
+      check.recordOk === true && check.auditOk === true && check.testContractCoverageOk === true
     )).toBe(true);
     expect(audit.componentChecks.map(check => check.actualNextStepId))
       .toEqual([
@@ -101,6 +101,34 @@ describe('policyRuntimeCompletionAudit', () => {
       expect.objectContaining({
         riskId: POLICY_RUNTIME_COMPLETION_RISK_IDS.COMPONENT_AUDIT_FAILED,
         componentId: POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_EVIDENCE_PROJECTION,
+      }),
+    ]));
+  });
+
+  test('rejects a passing reset audit with incomplete contract ownership', () => {
+    const components = listPolicyRuntimeCompletionComponents()
+      .filter(component =>
+        component.id === POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_REBUILD_TEST_RESET
+      );
+    const componentAudits = {
+      [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_REBUILD_TEST_RESET]: {
+        ok: true,
+        issueCount: 0,
+        requiredContractCount: 9,
+        coveredRequiredContractCount: 8,
+        nextStep: {
+          stepId: 'completion_audit',
+        },
+      },
+    };
+    const audit = buildPolicyRuntimeCompletionAudit({ components, componentAudits });
+
+    expect(audit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_RUNTIME_COMPLETION_RISK_IDS.TEST_RESET_CONTRACT_COVERAGE_INCOMPLETE,
+        componentId: POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_REBUILD_TEST_RESET,
+        requiredContractCount: 9,
+        coveredRequiredContractCount: 8,
       }),
     ]));
   });

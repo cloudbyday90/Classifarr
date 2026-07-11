@@ -8,8 +8,8 @@ A functional component reaches a focused tested contract first; its related
 mechanical naming work completes before the next component in that domain
 begins.
 
-This record exists because phase-coded production names are useful while
-building the replacement system, but they should not become permanent product
+This record exists because temporary delivery terminology can be useful while
+building the replacement system, but it must not become permanent product
 architecture.
 
 ## Problem
@@ -60,11 +60,11 @@ native policy storage
 
 ## Recommendations
 
-1. **Treat phase-coded production names as temporary scaffolding.**
-   Phase labels can remain in roadmap docs, changelog history, migration
-   evidence, and compatibility tests. They should not be the final names of
-   runtime services, payload contracts, trace attributes, or operator-facing
-   product concepts.
+1. **Treat delivery terminology as temporary scaffolding.**
+   Phase labels can remain in roadmap docs, changelog history, immutable
+   migration evidence, and compatibility tests. They should not be the final
+   names of runtime services, payload contracts, trace attributes, current
+   diagnostics, internal keys, or operator-facing product concepts.
 
 2. **Inventory before renaming.**
    Build a checked-in rename map before moving files. Classify references as
@@ -99,6 +99,16 @@ native policy storage
    An isolated module with no persisted/public contract and no active caller is
    renamed outright. An alias is permitted only where a documented migration
    requires it; retaining a roadmap name for convenience is not a valid reason.
+
+9. **Separate durable stages from roadmap phases.**
+   Where a production value represents a real execution lifecycle, use a
+   product-domain term such as `stage`. Do not retain `phase` merely because
+   the first implementation was planned in numbered phases.
+
+10. **Keep historical detection out of application runtime.**
+    Scanners and parsers that need historic roadmap tokens belong in maintenance
+    scripts or test-only support. They are not product services and should not
+    remain normal application imports.
 
 ## Pros And Cons
 
@@ -139,6 +149,12 @@ Cons:
   - telemetry and current diagnostics use product-domain attributes,
   - phase-coded references remain only in docs/history/tests/migration evidence
     or explicitly bounded adapters.
+- Required final gate:
+  - delivery-only production references reach zero,
+  - durable execution lifecycle values use `stage`,
+  - compatibility fields have a migration owner and deletion test,
+  - roadmap-token scanners run from maintenance tooling rather than application
+    runtime.
 - Required validation:
   - focused server/client regression tests,
   - scanner for phase-coded production references,
@@ -184,6 +200,9 @@ history reason is documented.
   `server/src/__tests__/services/policyBuilderProductionNameInventory.test.mjs`.
 - The implementation outcome is documented in
   [Policy Builder Production Name Inventory](policy-builder-production-name-inventory.md).
+- The current July 11, 2026 inventory and regression-audit baseline supersedes
+  earlier historical count snapshots in this record. Historical values explain
+  prior cutovers but are not evidence of current naming debt.
 - The first isolated deconstruction batch renamed the policy-authoring
   readiness checklist, its focused test, exports, component records, and
   current architecture paths without a compatibility alias:
