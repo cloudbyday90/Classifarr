@@ -34,7 +34,7 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     docPath: 'docs/architecture/policy-authoring-workflow-inventory.md',
     servicePath: 'server/src/services/policyAuthoringWorkflowInventory.mjs',
     testPath: 'server/src/__tests__/services/policyAuthoringWorkflowInventory.test.mjs',
-    evidence: 'Classifies current policy-builder surfaces as keep, rewrite, replace, delete, bridge-only, or verifier-only without phase-specific module names.',
+    evidence: 'Classifies current policy-builder surfaces as keep, rewrite, replace, delete, bridge-only, or verifier-only with durable product ownership.',
   },
   {
     id: 'policy_authoring_destination_flow',
@@ -42,7 +42,7 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     docPath: 'docs/architecture/policy-authoring-destination-flow.md',
     servicePath: 'server/src/services/policyAuthoringDestinationFlow.mjs',
     testPath: 'server/src/__tests__/services/policyAuthoringDestinationFlow.test.mjs',
-    evidence: 'Defines the normal operator sequence from library context through save or defer without phase-specific module names.',
+    evidence: 'Defines the destination-first operator sequence from library context through save or defer.',
   },
   {
     id: 'policy_authoring_component_system',

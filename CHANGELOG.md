@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Authoring Workflow Evidence** — replaced delivery-era wording in
+  workflow-audit contract evidence with direct product behavior while
+  preserving record IDs, artifact checks, and risk behavior; reduced the
+  enforced production naming baseline from `10/11` to `8/9`
+  references/candidates.
 - **WebSocket Progress Stage Contract** — requires a non-empty `stage` before
   broadcasting classification progress and rejects retired phase-only payloads;
   reduced the enforced production naming baseline from `11/12` to `10/11`

@@ -59,6 +59,20 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
     ]);
   });
 
+  test('describes server contracts with durable product behavior', () => {
+    const evidence = listPolicyAuthoringServerContracts()
+      .filter(record => [
+        'policy_authoring_workflow_inventory',
+        'policy_authoring_destination_flow',
+      ].includes(record.id))
+      .map(record => record.evidence);
+
+    expect(evidence).toEqual([
+      'Classifies current policy-builder surfaces as keep, rewrite, replace, delete, bridge-only, or verifier-only with durable product ownership.',
+      'Defines the destination-first operator sequence from library context through save or defer.',
+    ]);
+  });
+
   test('fails active records with temporary roadmap artifact paths', () => {
     const result = validatePolicyAuthoringCompletionRecord({
       id: 'legacy_phase_doc',
