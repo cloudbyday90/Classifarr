@@ -160,6 +160,34 @@ describe('policyEvidenceBoundary', () => {
     }));
   });
 
+  test('blocks oversized evidence collections before projection construction', () => {
+    const result = buildBoundedPolicyEvidenceProjection({
+      evidenceInput: {
+        metadataEvidence: Array.from({ length: 101 }, (_, index) => ({
+          label: `Metadata ${index + 1}`,
+        })),
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_INPUT_CARDINALITY,
+      projection: null,
+      nextStep: null,
+      sideEffects: expect.objectContaining({
+        evidenceProjectionBuilt: false,
+      }),
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.COLLECTION_LIMIT_EXCEEDED,
+        itemCount: 101,
+        maximumItemCount: 100,
+      }),
+    ]));
+    expect(buildPolicyEvidenceBoundaryAudit(result).ok).toBe(true);
+  });
+
   test('blocks handoff when the projection fingerprint does not match the bounded projection', () => {
     const result = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {

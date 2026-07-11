@@ -28,6 +28,9 @@ for the evidence engine.
 - OpenTelemetry Semantic Conventions promote stable names for operations and
   data. The gate keeps section and source IDs stable for future trace mapping
   without adopting full telemetry in this component.
+- OWASP Denial of Service guidance recommends preventing input-controlled
+  resource allocation. Every evidence input array is therefore bounded before
+  recursive inspection can consume an unbounded collection.
 
 Sources:
 
@@ -41,6 +44,8 @@ Sources:
   <https://csrc.nist.gov/projects/ssdf>
 - OpenTelemetry Semantic Conventions:
   <https://opentelemetry.io/docs/concepts/semantic-conventions/>
+- OWASP Denial of Service Cheat Sheet:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Denial_of_Service_Cheat_Sheet.html>
 
 ## Recommendations
 
@@ -106,6 +111,22 @@ Cons:
 
 - the input gate must be updated when new durable evidence sources are added.
 
+### Fail Closed On Oversized Collections
+
+The gate accepts at most 100 entries per evidence input array. Oversized
+collections report their section, path, actual count, and maximum count, while
+the scan inspects only the bounded prefix for independent safety markers.
+
+Pros:
+
+- prevents input cardinality from controlling server resource consumption,
+- preserves an actionable result rather than silently dropping evidence,
+- keeps rejected values out of diagnostics.
+
+Cons:
+
+- upstream collectors must aggregate or page large histories before handoff.
+
 ## Final Recommendation Stack
 
 Use this stack for policy evidence input hardening:
@@ -124,6 +145,8 @@ Implemented:
 - Added `policyEvidenceInputGate.mjs`.
 - Added a stable policy evidence input section vocabulary.
 - Added a bounded recursive scan for unsafe keys.
+- Added a fixed per-collection cardinality limit and a count-only rejection
+  result for oversized arrays.
 - Gate issues include risk ID, section ID, and path only; raw values are not
   copied into diagnostics.
 - Added a section contract audit that verifies evidence source and authority
@@ -141,7 +164,7 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with the **Policy Evidence Boundary** architecture cutover. The next
-component should expose one durable evidence-boundary record that runs the
-input gate, projection builder, fingerprint audit, provenance summary, and
-quality check before downstream intent engines consume evidence.
+Use the evidence boundary only after the input gate passes. Oversized evidence
+collections return `blocked_by_input_cardinality` before projection, quality,
+or fingerprint work begins. See
+[Policy Evidence Input Cardinality](policy-evidence-input-cardinality.md).

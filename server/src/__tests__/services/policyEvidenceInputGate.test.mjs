@@ -131,6 +131,32 @@ describe('policyEvidenceInputGate', () => {
     ]));
   });
 
+  test('blocks oversized evidence collections after scanning only their bounded prefix', () => {
+    const gate = buildPolicyEvidenceInputGate({
+      evidenceInput: {
+        metadataEvidence: Array.from({ length: 3 }, (_, index) => ({
+          label: `Metadata ${index + 1}`,
+        })),
+      },
+      maximumCollectionItems: 2,
+    });
+
+    expect(gate).toEqual(expect.objectContaining({
+      ok: false,
+      maximumCollectionItems: 2,
+      collectionLimitCount: 1,
+    }));
+    expect(gate.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.COLLECTION_LIMIT_EXCEEDED,
+        sectionId: POLICY_EVIDENCE_INPUT_SECTION_IDS.METADATA_EVIDENCE,
+        path: POLICY_EVIDENCE_INPUT_SECTION_IDS.METADATA_EVIDENCE,
+        itemCount: 3,
+        maximumItemCount: 2,
+      }),
+    ]));
+  });
+
   test('passes the default input-gate audit', () => {
     const audit = buildPolicyEvidenceInputGateAudit();
 

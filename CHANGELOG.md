@@ -17,6 +17,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Input Cardinality Guard** — added a fixed server-owned
+  collection bound before evidence scanning and projection; oversized arrays
+  now return a count-only blocked state without retaining excess values or
+  performing provider, storage, learning, or routing work.
 - **Policy Evidence Entry Normalizer** — added a server-owned bounded field
   contract for every evidence projection entry; canonical Unicode text,
   timestamps, identifiers, source-owned reason codes, and audit enforcement

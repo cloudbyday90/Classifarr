@@ -1,5 +1,6 @@
 import {
   buildPolicyEvidenceInputGate,
+  POLICY_EVIDENCE_INPUT_GATE_RISK_IDS,
 } from './policyEvidenceInputGate.mjs';
 import {
   buildPolicyEvidenceProjection,
@@ -15,6 +16,7 @@ const POLICY_EVIDENCE_BOUNDARY_VERSION = 'policy.evidence.boundary.v1';
 const POLICY_EVIDENCE_BOUNDARY_STATUS_IDS = Object.freeze({
   READY: 'ready',
   BLOCKED_BY_INPUT_GATE: 'blocked_by_input_gate',
+  BLOCKED_BY_INPUT_CARDINALITY: 'blocked_by_input_cardinality',
   BLOCKED_BY_PROJECTION_AUDIT: 'blocked_by_projection_audit',
   BLOCKED_BY_PROJECTION_FINGERPRINT: 'blocked_by_projection_fingerprint',
 });
@@ -61,10 +63,16 @@ function buildBoundedPolicyEvidenceProjection({
   const inputGate = buildPolicyEvidenceInputGate({ evidenceInput });
 
   if (!inputGate.ok) {
+    const blockedByInputCardinality = inputGate.issues.some(issue =>
+      issue.riskId === POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.COLLECTION_LIMIT_EXCEEDED
+    );
+
     return {
       version: POLICY_EVIDENCE_BOUNDARY_VERSION,
       ok: false,
-      statusId: POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_INPUT_GATE,
+      statusId: blockedByInputCardinality
+        ? POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_INPUT_CARDINALITY
+        : POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_INPUT_GATE,
       inputGate,
       projection: null,
       projectionAudit: null,
@@ -202,7 +210,10 @@ function buildPolicyEvidenceBoundaryAudit(boundaryResult = {}) {
     });
   }
 
-  if (statusId === POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_INPUT_GATE &&
+  if ([
+    POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_INPUT_GATE,
+    POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_INPUT_CARDINALITY,
+  ].includes(statusId) &&
       boundaryResult.projection) {
     issues.push({
       riskId: POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS.BLOCKED_BY_INPUT_GATE_WITH_PROJECTION,

@@ -3210,6 +3210,12 @@ Implementation status:
   codes, and lets the projection audit reject tampered entry fields without
   exposing them. Its design record is
   [Policy Evidence Entry Normalizer](policy-evidence-entry-normalizer.md).
+- The evidence input cardinality guard lives in
+  `server/src/services/policyEvidenceInputCardinality.mjs`. It bounds input
+  collection inspection, blocks oversized envelopes before projection, and
+  returns a count-only `blocked_by_input_cardinality` boundary state rather
+  than silently dropping evidence. Its design record is
+  [Policy Evidence Input Cardinality](policy-evidence-input-cardinality.md).
 - Current implementation defines stable evidence buckets, source-authority
   rules, prohibited payload classes, deterministic offline projection, and an
   audit that blocks live provider lookups, raw provider payloads, UI chip

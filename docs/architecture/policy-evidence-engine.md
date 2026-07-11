@@ -261,6 +261,11 @@ labels, removes control characters, bounds text, canonicalizes keys and
 timestamps, and keeps source-owned reason codes out of caller control. Its
 design record is [Policy Evidence Entry Normalizer](policy-evidence-entry-normalizer.md).
 
+`server/src/services/policyEvidenceInputCardinality.mjs` bounds every input
+array before recursive input-gate scanning. Oversized input fails closed with a
+count-only status before projection work begins; it is not silently truncated.
+Its design record is [Policy Evidence Input Cardinality](policy-evidence-input-cardinality.md).
+
 The projection entry shape is intentionally small:
 
 ```text

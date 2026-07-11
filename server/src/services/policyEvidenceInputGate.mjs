@@ -6,6 +6,11 @@ import {
   POLICY_EVIDENCE_SOURCE_IDS,
   getPolicyEvidenceSource,
 } from './policyEvidenceEngine.mjs';
+import {
+  MAX_POLICY_EVIDENCE_INPUT_COLLECTION_ITEMS,
+  buildPolicyEvidenceBoundedCollection,
+  normalizeMaximumCollectionItems,
+} from './policyEvidenceInputCardinality.mjs';
 
 const POLICY_EVIDENCE_INPUT_GATE_VERSION = 'policy.evidence.input_gate.v1';
 
@@ -31,6 +36,7 @@ const POLICY_EVIDENCE_INPUT_GATE_RISK_IDS = Object.freeze({
   TRANSIENT_PROVIDER_STATE: 'transient_provider_state',
   UI_DIAGNOSTIC_LANGUAGE: 'ui_diagnostic_language',
   REPLAY_OR_IMPACT_PAYLOAD: 'replay_or_impact_payload',
+  COLLECTION_LIMIT_EXCEEDED: 'collection_limit_exceeded',
   SCAN_DEPTH_LIMIT: 'scan_depth_limit',
 });
 
@@ -172,16 +178,30 @@ function pushIssue(issues, issue) {
   issues.push(issue);
 }
 
-function buildInputGateIssue({ riskId, message, sectionId = null, path = [] }) {
+function buildInputGateIssue({
+  riskId,
+  message,
+  sectionId = null,
+  path = [],
+  details = {},
+}) {
   return {
     riskId,
     message,
     sectionId,
     path: path.join('.'),
+    ...details,
   };
 }
 
-function scanEvidenceInputNode({ value, sectionId, path, depth, issues }) {
+function scanEvidenceInputNode({
+  value,
+  sectionId,
+  path,
+  depth,
+  issues,
+  maximumCollectionItems,
+}) {
   if (issues.length >= MAX_ISSUES) return;
 
   if (!value || typeof value !== 'object') return;
@@ -197,13 +217,31 @@ function scanEvidenceInputNode({ value, sectionId, path, depth, issues }) {
   }
 
   if (Array.isArray(value)) {
-    value.forEach((item, index) => {
+    const collection = buildPolicyEvidenceBoundedCollection(value, {
+      maximumCollectionItems,
+    });
+
+    if (collection.exceedsLimit) {
+      pushIssue(issues, buildInputGateIssue({
+        riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.COLLECTION_LIMIT_EXCEEDED,
+        message: 'Evidence input collection exceeds the bounded item limit.',
+        sectionId,
+        path,
+        details: {
+          itemCount: collection.itemCount,
+          maximumItemCount: collection.maximumItems,
+        },
+      }));
+    }
+
+    collection.items.forEach((item, index) => {
       scanEvidenceInputNode({
         value: item,
         sectionId,
         path: [...path, String(index)],
         depth: depth + 1,
         issues,
+        maximumCollectionItems,
       });
     });
     return;
@@ -228,14 +266,19 @@ function scanEvidenceInputNode({ value, sectionId, path, depth, issues }) {
       path: childPath,
       depth: depth + 1,
       issues,
+      maximumCollectionItems,
     });
   });
 }
 
-function buildPolicyEvidenceInputGate({ evidenceInput = {} } = {}) {
+function buildPolicyEvidenceInputGate({
+  evidenceInput = {},
+  maximumCollectionItems = MAX_POLICY_EVIDENCE_INPUT_COLLECTION_ITEMS,
+} = {}) {
   const input = asPlainObject(evidenceInput);
   const issues = [];
   const presentSections = [];
+  const boundedMaximumCollectionItems = normalizeMaximumCollectionItems(maximumCollectionItems);
 
   Object.entries(input).forEach(([sectionId, value]) => {
     if (!KNOWN_SECTION_IDS.has(sectionId)) {
@@ -255,14 +298,21 @@ function buildPolicyEvidenceInputGate({ evidenceInput = {} } = {}) {
       path: [sectionId],
       depth: 0,
       issues,
+      maximumCollectionItems: boundedMaximumCollectionItems,
     });
   });
+
+  const collectionLimitCount = issues.filter(issue =>
+    issue.riskId === POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.COLLECTION_LIMIT_EXCEEDED
+  ).length;
 
   return {
     version: POLICY_EVIDENCE_INPUT_GATE_VERSION,
     ok: issues.length === 0,
     issueCount: issues.length,
     presentSections,
+    maximumCollectionItems: boundedMaximumCollectionItems,
+    collectionLimitCount,
     maxIssueCount: MAX_ISSUES,
     sideEffects: {
       liveProviderLookupPerformed: false,
