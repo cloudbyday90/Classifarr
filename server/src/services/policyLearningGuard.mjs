@@ -11,6 +11,10 @@ import {
 import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from './policyEvidenceQuality.mjs';
+import {
+  buildPolicyFinalOutcome,
+  buildPolicyFinalOutcomeAudit,
+} from './policyFinalOutcomeNormalizer.mjs';
 
 const POLICY_LEARNING_TIER_IDS = Object.freeze({
   NONE: 'none',
@@ -63,6 +67,7 @@ const POLICY_LEARNING_REASON_IDS = Object.freeze({
 
 const POLICY_LEARNING_GUARD_AUDIT_RISK_IDS = Object.freeze({
   MISSING_FINAL_OUTCOME: 'missing_final_outcome',
+  INVALID_FINAL_OUTCOME: 'invalid_final_outcome',
   MISSING_LEARNING_DECISION: 'missing_learning_decision',
   UNKNOWN_DECISION: 'unknown_decision',
   UNKNOWN_TIER: 'unknown_tier',
@@ -423,7 +428,7 @@ function collectBlockingReasonCodes({
   return [...new Set(blockingReasonCodes)];
 }
 
-function buildFinalOutcome({
+function buildPolicyLearningFinalOutcome({
   sourceId,
   answerOutcome,
   answer,
@@ -431,18 +436,16 @@ function buildFinalOutcome({
 }) {
   const outcome = asObject(finalOutcome);
 
-  return {
-    recorded: answerOutcome?.finalOutcome !== false || outcome.recorded === true,
+  return buildPolicyFinalOutcome({
     sourceId,
-    answerOutcomeId: answerOutcome?.id || null,
-    itemId: outcome.itemId ?? null,
-    destinationLibraryId: outcome.destinationLibraryId ?? answer.destinationLibraryId ?? null,
-    destinationLibraryName: normalizeString(
-      outcome.destinationLibraryName ?? answer.destinationLibraryName ?? answer.label
-    ),
-    status: normalizeString(outcome.status) || 'resolved',
-    reasonCodes: [POLICY_LEARNING_REASON_IDS.FINAL_OUTCOME_RECORDED],
-  };
+    answerOutcomeId: answerOutcome?.id,
+    recorded: answerOutcome?.finalOutcome !== false || outcome.recorded === true,
+    itemId: outcome.itemId,
+    destinationLibraryId: outcome.destinationLibraryId ?? answer.destinationLibraryId,
+    destinationLibraryName: outcome.destinationLibraryName ?? answer.destinationLibraryName ?? answer.label,
+    status: outcome.status,
+    route: outcome.route,
+  });
 }
 
 function buildPolicyLearningDecision(input = {}) {
@@ -456,7 +459,7 @@ function buildPolicyLearningDecision(input = {}) {
   const reasonCodes = [];
 
   if (!answerOutcome) {
-    const finalOutcome = buildFinalOutcome({
+    const finalOutcome = buildPolicyLearningFinalOutcome({
       sourceId,
       answerOutcome: null,
       answer,
@@ -485,7 +488,7 @@ function buildPolicyLearningDecision(input = {}) {
     };
   }
 
-  const finalOutcome = buildFinalOutcome({
+  const finalOutcome = buildPolicyLearningFinalOutcome({
     sourceId,
     answerOutcome,
     answer,
@@ -668,6 +671,13 @@ function validatePolicyLearningDecision(decision = {}) {
     issues.push({
       riskId: POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.MISSING_FINAL_OUTCOME,
       message: 'Learning guard decision must include a separate final outcome record.',
+    });
+  }
+
+  if (!buildPolicyFinalOutcomeAudit(finalOutcome).ok) {
+    issues.push({
+      riskId: POLICY_LEARNING_GUARD_AUDIT_RISK_IDS.INVALID_FINAL_OUTCOME,
+      message: 'Learning guard requires a valid final-outcome record.',
     });
   }
 

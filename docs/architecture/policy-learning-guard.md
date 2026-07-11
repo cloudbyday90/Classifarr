@@ -29,6 +29,12 @@ learning = what Classifarr is allowed to generalize
 
 The policy learning guard makes that boundary executable.
 
+Final-outcome shaping is centralized in
+[Policy Final Outcome Normalizer](policy-final-outcome-normalizer.md). The
+guard audits that bounded record before it evaluates learning eligibility, so a
+routed or missing-mapping outcome cannot lose its route semantics while moving
+through the learning boundary.
+
 ## Official Guidance Reviewed
 
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
@@ -174,6 +180,7 @@ hasStaleProfileEvidence
 ```
 
 `finalOutcome` is always separate from `learning`.
+It uses the shared `policy.final_outcome.v1` contract.
 
 `learning` contains:
 

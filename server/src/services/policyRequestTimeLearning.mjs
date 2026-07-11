@@ -11,6 +11,11 @@ import {
 import {
   validatePolicyRuntimeQuestionReduction,
 } from './policyRuntimeQuestionReduction.mjs';
+import {
+  POLICY_FINAL_OUTCOME_STATUS_IDS,
+  buildPolicyFinalOutcome,
+  buildPolicyFinalOutcomeAudit,
+} from './policyFinalOutcomeNormalizer.mjs';
 
 const POLICY_REQUEST_EVENT_TYPE_IDS = Object.freeze({
   USER_REQUESTED_DESTINATION: 'user_requested_destination',
@@ -44,6 +49,7 @@ const POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_SOURCE: 'unknown_source',
   MISSING_DESTINATION_CHOICE: 'missing_destination_choice',
   MISSING_FINAL_OUTCOME: 'missing_final_outcome',
+  INVALID_FINAL_OUTCOME: 'invalid_final_outcome',
   SELECTION_CONFLATED_WITH_FINAL_OUTCOME: 'selection_conflated_with_final_outcome',
   ROUTE_FAILURE_WRITES_LEARNING: 'route_failure_writes_learning',
   ROUTE_OUTCOME_WRITES_LEARNING: 'route_outcome_writes_learning',
@@ -261,7 +267,7 @@ function buildAnswerFromDestination(destination = {}, input = {}) {
   };
 }
 
-function buildFinalOutcome({
+function buildPolicyRequestFinalOutcome({
   eventTypeId,
   sourceId,
   item,
@@ -271,19 +277,18 @@ function buildFinalOutcome({
   const routeFailed = eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING;
   const routeSucceeded = eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED;
 
-  return {
-    recorded: true,
+  return buildPolicyFinalOutcome({
     sourceId,
     itemId: item.itemId,
     destinationLibraryId: finalDestination.libraryId,
     destinationLibraryName: finalDestination.libraryName,
     status: routeFailed
-      ? 'route_failed_missing_mapping'
+      ? POLICY_FINAL_OUTCOME_STATUS_IDS.ROUTE_FAILED_MISSING_MAPPING
       : routeSucceeded
-        ? 'routed'
-        : 'resolved',
+        ? POLICY_FINAL_OUTCOME_STATUS_IDS.ROUTED
+        : POLICY_FINAL_OUTCOME_STATUS_IDS.RESOLVED,
     route: routeResult,
-  };
+  });
 }
 
 function buildSelection({
@@ -414,7 +419,7 @@ function buildPolicyRequestTimeLearningDecision(input = {}) {
       ? operatorDestination
       : requestedDestination;
   const routeResult = normalizeRouteResult(input.routeResult, eventTypeId);
-  const finalOutcome = buildFinalOutcome({
+  const finalOutcome = buildPolicyRequestFinalOutcome({
     eventTypeId,
     sourceId,
     item,
@@ -540,6 +545,13 @@ function validatePolicyRequestTimeLearningDecision(decision = {}) {
     issues.push({
       riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.MISSING_FINAL_OUTCOME,
       message: 'Request-time learning decision must record a final outcome separately.',
+    });
+  }
+
+  if (!buildPolicyFinalOutcomeAudit(decision.finalOutcome).ok) {
+    issues.push({
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.INVALID_FINAL_OUTCOME,
+      message: 'Request-time learning decision must include a valid final outcome.',
     });
   }
 

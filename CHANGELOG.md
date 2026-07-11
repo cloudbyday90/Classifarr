@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Final Outcome Normalizer** — added one bounded server-owned outcome
+  contract for learning and request-time decisions; allowlisted outcome and
+  route transitions now strip untrusted payload fields, validate routed versus
+  missing-mapping state, and remain separate from learning eligibility and
+  policy writes.
 - **Policy Intent Proposal Registry** — added a bounded server-owned,
   persistence-free capability store for verified intent proposals; opaque
   actor-scoped references now expire server-side, snapshot proposal state,

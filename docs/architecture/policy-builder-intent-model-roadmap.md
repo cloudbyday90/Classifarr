@@ -3494,6 +3494,11 @@ Implementation status:
   `server/src/services/policyLearningGuard.mjs`.
 - The focused learning-guard test suite lives in
   `server/src/__tests__/services/policyLearningGuard.test.mjs`.
+- Final-outcome shaping and route-transition validation now live in
+  `server/src/services/policyFinalOutcomeNormalizer.mjs`; both the learning
+  guard and request-time learning use its bounded `policy.final_outcome.v1`
+  contract before they evaluate learning eligibility. Its design record is
+  [Policy Final Outcome Normalizer](policy-final-outcome-normalizer.md).
 - Current implementation evaluates manual classification changes, operator
   confirmations, Discord pending answers, request destination choices, and Arr
   routing outcomes into separate final-outcome and learning decisions.
@@ -4103,6 +4108,10 @@ Implementation status:
   `server/src/services/policyRequestTimeLearning.mjs`.
 - The focused request-time learning test suite lives in
   `server/src/__tests__/services/policyRequestTimeLearning.test.mjs`.
+- Request-time learning now uses the shared final-outcome normalizer, so routed
+  and missing-mapping outcomes retain their validated route state when they pass
+  through the learning guard; neither event can claim direct learning or a
+  policy write.
 - Current implementation normalizes four runtime event types:
   `user_requested_destination`, `operator_manual_destination_change`,
   `route_succeeded`, and `route_failed_missing_mapping`.
