@@ -123,4 +123,4 @@ Cons:
 
 Native intent storage readiness should receive the next architecture cutover so
 storage migration planning and implementation records use durable product
-terminology before the Phase 6R implementation work resumes.
+terminology before native intent storage work continues.

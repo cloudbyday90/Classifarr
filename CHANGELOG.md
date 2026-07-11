@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Completion Audit Cutover Sync** — removed stale phase
+  resumption wording from the runtime completion audit cutover records and
+  pointed the next cleanup at native intent storage plus the draft command
+  boundary family identified by the production naming inventory.
 - **Policy Migration Quality Gate Cutline Cleanup** — removed the obsolete
   phase-coded implementation document from the active migration/deletion and
   completion-audit cutline, deleted the stale checkpoint document, and pointed

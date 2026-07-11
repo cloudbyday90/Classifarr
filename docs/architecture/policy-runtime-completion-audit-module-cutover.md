@@ -119,5 +119,6 @@ npm --prefix server run test:unit -- --no-coverage --runInBand
 ## Next Step
 
 Continue with native intent storage readiness and the remaining production
-naming cutovers identified by the inventory, starting with the highest-count
-phase-coded service family still in active production code.
+naming cutovers identified by the inventory, starting with the draft command
+boundary family because it still carries temporary sequencing terms in active
+service names and diagnostics.
