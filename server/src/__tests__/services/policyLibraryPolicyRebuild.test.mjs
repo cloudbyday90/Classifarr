@@ -18,12 +18,16 @@ import {
   buildPolicyRequestTimeEvent,
 } from '../../services/policyRequestTimeEvent.mjs';
 import {
+  buildPolicyGuardedOutcomeProjectionFromRequestTimeDecisions,
+} from '../../services/policyGuardedOutcomeProjection.mjs';
+import {
   POLICY_REBUILD_AUDIT_RISK_IDS,
   POLICY_REBUILD_PROPOSAL_STATUS_IDS,
   POLICY_REBUILD_REASON_IDS,
   POLICY_REBUILD_WARNING_IDS,
   buildPolicyLibraryPolicyRebuildAudit,
-  buildPolicyLibraryPolicyRebuildProposal,
+  buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection,
+  buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput as buildPolicyLibraryPolicyRebuildProposal,
   validatePolicyLibraryPolicyRebuildProposal,
 } from '../../services/policyLibraryPolicyRebuild.mjs';
 
@@ -133,6 +137,34 @@ function baseInput(overrides = {}) {
 }
 
 describe('policyLibraryPolicyRebuild', () => {
+  test('requires a guarded-outcome projection for the decision-only rebuild reducer', () => {
+    const rawInput = baseInput();
+    const { guardedOutcomes, ...rebuildInput } = rawInput;
+    const guardedOutcomeProjection = buildPolicyGuardedOutcomeProjectionFromRequestTimeDecisions({
+      requestTimeDecisions: guardedOutcomes,
+    });
+
+    expect(() => buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(rawInput))
+      .toThrow('raw input key "guardedOutcomes"');
+    expect(() => buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection({
+      ...rebuildInput,
+      guardedOutcomeProjection,
+      learningDecision: {},
+    })).toThrow('raw input key "learningDecision"');
+    expect(() => buildPolicyLibraryPolicyRebuildProposal({
+      ...rebuildInput,
+      guardedOutcomeProjection,
+    })).toThrow('received a guarded-outcome projection');
+
+    const proposal = buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection({
+      ...rebuildInput,
+      guardedOutcomeProjection,
+    });
+
+    expect(proposal.guardedOutcomeProjection).toBe(guardedOutcomeProjection);
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).ok).toBe(true);
+  });
+
   test('builds a side-effect-free proposal from profile, guarded outcomes, constraints, and routing', () => {
     const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput());
 

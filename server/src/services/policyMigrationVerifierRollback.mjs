@@ -7,7 +7,7 @@ import {
 } from './policyMigrationDeletionPath.mjs';
 import {
   POLICY_REBUILD_PROPOSAL_STATUS_IDS,
-  buildPolicyLibraryPolicyRebuildProposal,
+  buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput,
   validatePolicyLibraryPolicyRebuildProposal,
 } from './policyLibraryPolicyRebuild.mjs';
 
@@ -470,7 +470,7 @@ function buildTrace({ statusId, differences, boundedDifferences, sampleSetFinger
 function buildPolicyMigrationVerifierReport(input = {}) {
   const proposal = input.proposal?.version === 'policy.library_policy_rebuild.v1'
     ? input.proposal
-    : buildPolicyLibraryPolicyRebuildProposal(input.proposalInput || {});
+    : buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput(input.proposalInput || {});
   const migrationPlan = input.migrationPlan?.version === 'policy.migration_deletion_path.v1'
     ? input.migrationPlan
     : buildPolicyMigrationDeletionPlan();

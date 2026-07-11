@@ -21,6 +21,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Library Rebuild Input Boundary** — added a validated guarded-outcome
+  projection between request-time learning and rebuild proposals, preventing
+  raw outcome and learning payloads from affecting rebuild evidence or
+  readiness.
 - **Policy Request-Time Learning Input Boundary** — separated raw request-event
   normalization from validated-plan learning reduction; learning decisions now
   require a valid clarification plan and normalized event, with upstream

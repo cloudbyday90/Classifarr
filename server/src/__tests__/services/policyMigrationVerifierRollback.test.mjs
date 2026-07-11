@@ -1,5 +1,5 @@
 import {
-  buildPolicyLibraryPolicyRebuildProposal,
+  buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput as buildPolicyLibraryPolicyRebuildProposal,
 } from '../../services/policyLibraryPolicyRebuild.mjs';
 import {
   POLICY_MIGRATION_DELETION_CRITERION_IDS,

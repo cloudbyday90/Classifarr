@@ -42,6 +42,11 @@ no longer consume an outcome merely because it has a sanitized fingerprint. The
 outcome must also pass the request-time learning contract, including bounded
 question-reduction validation proof and matching trace attributes.
 
+Rebuild input now separates raw request-time composition from the decision-only
+proposal reducer. The reducer consumes a valid guarded-outcome projection; raw
+guarded outcomes and separately supplied learning decisions cannot influence
+rebuild evidence or readiness.
+
 The proposal's validation diagnostics use durable bounded-intent and policy
 automation-readiness terminology. Roadmap phase labels are not part of the
 runtime rebuild contract.
@@ -163,11 +168,17 @@ Cons:
 12. Require the bounded evidence boundary before creating a projection. Return
     a side-effect-free blocked proposal instead of falling back to direct
     projection when that boundary rejects input.
+13. Project only validated request-time decisions before rebuild, and derive
+    readiness state from that projection rather than a raw learning payload.
 
 ## Implemented Files
 
 - Library-derived rebuild proposal contract:
   `server/src/services/policyLibraryPolicyRebuild.mjs`
+- Guarded-outcome projection:
+  `server/src/services/policyGuardedOutcomeProjection.mjs`
+- Rebuild input-boundary outcome:
+  `docs/architecture/policy-library-rebuild-input-boundary.md`
 - Focused tests:
   `server/src/__tests__/services/policyLibraryPolicyRebuild.test.mjs`
 - Evidence dependency:
@@ -188,7 +199,8 @@ The service exports:
 - `POLICY_REBUILD_PROPOSAL_STATUS_IDS`
 - `POLICY_REBUILD_REASON_IDS`
 - `POLICY_REBUILD_WARNING_IDS`
-- `buildPolicyLibraryPolicyRebuildProposal`
+- `buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection`
+- `buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput`
 - `buildPolicyLibraryPolicyRebuildAudit`
 - `validatePolicyLibraryPolicyRebuildProposal`
 

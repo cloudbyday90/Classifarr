@@ -19,8 +19,10 @@ import {
   POLICY_LEARNING_DECISION_IDS,
 } from './policyLearningGuard.mjs';
 import {
-  validatePolicyRequestTimeLearningDecision,
-} from './policyRequestTimeLearning.mjs';
+  POLICY_GUARDED_OUTCOME_PROJECTION_VERSION,
+  buildPolicyGuardedOutcomeProjectionFromRequestTimeDecisions,
+  validatePolicyGuardedOutcomeProjection,
+} from './policyGuardedOutcomeProjection.mjs';
 
 const POLICY_REBUILD_PROPOSAL_STATUS_IDS = Object.freeze({
   READY_FOR_REVIEW: 'ready_for_review',
@@ -84,12 +86,18 @@ const POLICY_REBUILD_AUDIT_RISK_IDS = Object.freeze({
   INVALID_EVIDENCE_BOUNDARY: 'invalid_evidence_boundary',
   BLOCKED_EVIDENCE_BOUNDARY_NOT_FAILED: 'blocked_evidence_boundary_not_failed',
   BLOCKED_EVIDENCE_BOUNDARY_WITH_DERIVED_CONTRACT: 'blocked_evidence_boundary_with_derived_contract',
+  MISSING_GUARDED_OUTCOME_PROJECTION: 'missing_guarded_outcome_projection',
+  INVALID_GUARDED_OUTCOME_PROJECTION: 'invalid_guarded_outcome_projection',
 });
 
 const MAX_TRACE_REASONS = 16;
 const MAX_REBUILD_FINGERPRINTS = 20;
 const MAX_EVIDENCE_BOUNDARY_RISK_IDS = 16;
 const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
+const RAW_REBUILD_INPUT_KEYS = new Set([
+  'guardedOutcomes',
+  'learningDecision',
+]);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -134,23 +142,6 @@ function normalizeEvidenceFingerprint(value = {}) {
         .sort((left, right) => String(left.bucketId).localeCompare(String(right.bucketId))),
     },
   };
-}
-
-function getGuardedOutcomeEvidenceFingerprint(outcome = {}) {
-  return normalizeEvidenceFingerprint(
-    outcome.upstreamEvidenceFingerprint ||
-    outcome.learningGuardContext?.upstreamEvidenceFingerprint ||
-    outcome.questionReductionPlan?.decisionEvidenceFingerprint ||
-    outcome.question?.decisionEvidenceFingerprint ||
-    outcome.decisionEvidenceFingerprint ||
-    outcome.automationDecision?.evidence?.projectionFingerprint ||
-    outcome.learningDecision?.upstreamEvidenceFingerprint ||
-    outcome.learningDecision?.learningGuardContext?.upstreamEvidenceFingerprint
-  );
-}
-
-function validateGuardedOutcomeRequestProof(outcome = {}) {
-  return validatePolicyRequestTimeLearningDecision(outcome);
 }
 
 function normalizeSignal(value) {
@@ -205,65 +196,49 @@ function normalizeObservedAbsences(input = {}) {
 }
 
 function mapGuardedOutcomeSignal(outcome = {}, reasonCode) {
-  const learning = asObject(outcome.learning ?? outcome.learningDecision?.learning);
-  const candidate = asObject(
-    outcome.candidate ??
-    learning.candidate ??
-    outcome.learningDecision?.candidate
-  );
+  const learning = asObject(outcome.learning);
+  const candidate = asObject(learning.candidate);
   const finalOutcome = asObject(outcome.finalOutcome);
   const label = normalizeString(
     candidate.label ??
-    candidate.value ??
-    outcome.label ??
-    finalOutcome.destinationLibraryName ??
-    outcome.destinationLibraryName
+    finalOutcome.destinationLibraryName
   );
 
   if (!label) return null;
 
   return {
-    key: normalizeString(candidate.key ?? outcome.key ?? label) || label,
+    key: normalizeString(candidate.key ?? label) || label,
     label,
-    count: candidate.evidenceCount ?? outcome.evidenceCount ?? 1,
-    confidence: outcome.confidence ?? null,
+    count: candidate.evidenceCount ?? 1,
+    confidence: null,
     reasonCode,
-    learningDecisionId: learning.decisionId ?? null,
+    learningDecisionId: normalizeString(learning.decisionId) || null,
     canWriteLearning: learning.canWriteLearning === true,
   };
 }
 
-function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
+function collectGuardedOutcomeEvidence(guardedOutcomeProjection = {}) {
   const compatibilityCandidates = [];
   const outliers = [];
   const outcomeSummaries = [];
+  const projection = asObject(guardedOutcomeProjection);
+  const projectionSummary = asObject(projection.summary);
 
-  asArray(guardedOutcomes).forEach((outcome, index) => {
-    const learning = asObject(outcome.learning ?? outcome.learningDecision?.learning);
+  asArray(projection.outcomes).forEach((outcome, index) => {
+    const learning = asObject(outcome.learning);
     const finalOutcome = asObject(outcome.finalOutcome);
-    const evidenceFingerprint = getGuardedOutcomeEvidenceFingerprint(outcome);
+    const evidenceFingerprint = normalizeEvidenceFingerprint(outcome.evidenceFingerprint);
     const hasFingerprint = SHA256_FINGERPRINT_PATTERN.test(evidenceFingerprint?.fingerprint || '') &&
       evidenceFingerprint?.algorithm === 'sha256';
-    const requestValidation = validateGuardedOutcomeRequestProof(outcome);
-    const questionProofFingerprint = normalizeString(
-      outcome.questionReductionProof?.evidenceFingerprint?.fingerprint
-    ).toLowerCase();
-    const requestTraceFingerprint = normalizeString(
-      outcome.trace?.attributes?.['classifarr.runtime.request_learning.upstream_evidence_fingerprint']
-    ).toLowerCase();
+    const requestProofFingerprint = normalizeString(outcome.requestProofFingerprint).toLowerCase();
     const summary = {
       outcomeIndex: index,
       accepted: false,
       fingerprint: hasFingerprint ? evidenceFingerprint.fingerprint : null,
       algorithm: hasFingerprint ? evidenceFingerprint.algorithm : null,
-      requestProofValid: requestValidation.ok === true,
-      requestProofIssueCount: requestValidation.issueCount,
-      requestProofFingerprint: requestValidation.ok === true && questionProofFingerprint
-        ? questionProofFingerprint
-        : null,
-      requestTraceFingerprint: requestValidation.ok === true && requestTraceFingerprint
-        ? requestTraceFingerprint
-        : null,
+      requestProofValid: requestProofFingerprint === evidenceFingerprint?.fingerprint,
+      requestProofIssueCount: requestProofFingerprint === evidenceFingerprint?.fingerprint ? 0 : 1,
+      requestProofFingerprint,
       learningDecisionId: learning.decisionId ?? null,
       finalOutcomeRecorded: finalOutcome.recorded === true,
       finalOutcomeStatus: normalizeString(finalOutcome.status) || null,
@@ -277,15 +252,7 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
       return;
     }
 
-    if (!outcome.questionReductionProof?.validation) {
-      outcomeSummaries.push({
-        ...summary,
-        rejectionReasonId: POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF,
-      });
-      return;
-    }
-
-    if (!requestValidation.ok) {
+    if (requestProofFingerprint !== evidenceFingerprint.fingerprint) {
       outcomeSummaries.push({
         ...summary,
         rejectionReasonId: POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
@@ -293,16 +260,7 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
       return;
     }
 
-    if (questionProofFingerprint !== evidenceFingerprint.fingerprint ||
-        requestTraceFingerprint !== evidenceFingerprint.fingerprint) {
-      outcomeSummaries.push({
-        ...summary,
-        rejectionReasonId: POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF,
-      });
-      return;
-    }
-
-    if (learning.decisionId === POLICY_LEARNING_DECISION_IDS.BLOCKED ||
+    if (learning.decisionId === 'blocked' ||
         finalOutcome.status === 'route_failed_missing_mapping') {
       const outlier = mapGuardedOutcomeSignal(outcome, 'guarded_outcome_requires_review');
       if (outlier) {
@@ -330,29 +288,17 @@ function collectGuardedOutcomeEvidence(guardedOutcomes = []) {
     .filter(outcome => outcome.accepted && outcome.fingerprint)
     .map(outcome => outcome.fingerprint);
   const uniqueFingerprints = Array.from(new Set(acceptedFingerprints)).sort();
-  const missingFingerprintCount = outcomeSummaries
-    .filter(outcome => outcome.rejectionReasonId === POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_FINGERPRINT)
-    .length;
-  const missingRequestProofCount = outcomeSummaries
-    .filter(outcome => outcome.rejectionReasonId === POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF)
-    .length;
-  const invalidRequestProofCount = outcomeSummaries
-    .filter(outcome => outcome.rejectionReasonId === POLICY_REBUILD_WARNING_IDS.GUARDED_OUTCOME_INVALID_REQUEST_PROOF)
-    .length;
-  const requestProofCount = outcomeSummaries
-    .filter(outcome => outcome.requestProofValid)
-    .length;
-
   return {
     compatibilityCandidates,
     outliers,
     summary: {
-      count: outcomeSummaries.length,
+      count: projectionSummary.decisionCount ?? outcomeSummaries.length,
       acceptedCount: outcomeSummaries.filter(outcome => outcome.accepted).length,
-      missingFingerprintCount,
-      requestProofCount,
-      missingRequestProofCount,
-      invalidRequestProofCount,
+      rejectedCount: projectionSummary.rejectedCount ?? 0,
+      missingFingerprintCount: projectionSummary.missingFingerprintCount ?? 0,
+      requestProofCount: projectionSummary.requestProofCount ?? 0,
+      missingRequestProofCount: projectionSummary.missingRequestProofCount ?? 0,
+      invalidRequestProofCount: projectionSummary.invalidRequestProofCount ?? 0,
       fingerprintCount: uniqueFingerprints.length,
       fingerprints: uniqueFingerprints.slice(0, MAX_REBUILD_FINGERPRINTS),
       fingerprintListTruncated: uniqueFingerprints.length > MAX_REBUILD_FINGERPRINTS,
@@ -390,10 +336,10 @@ function normalizeProfileFreshness(input = {}) {
   };
 }
 
-function buildEvidenceInput(input = {}) {
+function buildEvidenceInput(input = {}, guardedOutcomeProjection = {}) {
   const libraryProfile = asObject(input.libraryProfile);
   const existingConstraints = normalizeExistingConstraints(input);
-  const guardedOutcomeEvidence = collectGuardedOutcomeEvidence(input.guardedOutcomes);
+  const guardedOutcomeEvidence = collectGuardedOutcomeEvidence(guardedOutcomeProjection);
   const observedAbsences = normalizeObservedAbsences(input);
   const routing = normalizeRoutingConfiguration(input);
   const profileFreshness = normalizeProfileFreshness(input);
@@ -443,7 +389,7 @@ function buildEvidenceInput(input = {}) {
     profileFreshness,
     observedAbsences,
     existingConstraints,
-    guardedOutcomeCount: asArray(input.guardedOutcomes).length,
+    guardedOutcomeCount: guardedOutcomeEvidence.summary.count,
     guardedOutcomeEvidenceSummary: guardedOutcomeEvidence.summary,
   };
 }
@@ -691,10 +637,56 @@ function buildTrace({
   };
 }
 
+function requireValidGuardedOutcomeProjection(input = {}) {
+  const rebuildInput = asObject(input);
+  const rawInputKey = [...RAW_REBUILD_INPUT_KEYS].find(key => Object.hasOwn(rebuildInput, key));
+
+  if (rawInputKey) {
+    throw new TypeError(
+      `Library policy rebuild requires a guarded-outcome projection; raw input key "${rawInputKey}" must use buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput.`
+    );
+  }
+
+  const projection = asObject(rebuildInput.guardedOutcomeProjection);
+  if (projection.version !== POLICY_GUARDED_OUTCOME_PROJECTION_VERSION) {
+    throw new TypeError(
+      'Library policy rebuild requires a policy.guarded_outcome_projection.v1 projection.'
+    );
+  }
+
+  const validation = validatePolicyGuardedOutcomeProjection(projection);
+  if (!validation.ok) {
+    throw new TypeError('Library policy rebuild requires a valid guarded-outcome projection.');
+  }
+
+  return projection;
+}
+
+function buildDerivedReadinessLearningDecision(guardedOutcomeProjection = {}) {
+  const summary = asObject(guardedOutcomeProjection.summary);
+  const decisionId = summary.hasPolicyEditRequirement === true
+    ? POLICY_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED
+    : summary.hasBlockedLearning === true
+      ? POLICY_LEARNING_DECISION_IDS.BLOCKED
+      : null;
+
+  return {
+    version: 'policy.rebuild_readiness_learning.v1',
+    learning: {
+      decisionId,
+      writesPerformed: false,
+    },
+    profileRefresh: {
+      queue: false,
+    },
+  };
+}
+
 function buildBlockedPolicyLibraryPolicyRebuildProposal({
   input = {},
   evidenceInput = {},
   evidenceBoundary,
+  guardedOutcomeProjection,
 } = {}) {
   const evidenceSourceSummary = collectEvidenceSourceSummary({
     evidenceInput,
@@ -714,6 +706,7 @@ function buildBlockedPolicyLibraryPolicyRebuildProposal({
       libraryName: normalizeString(input.library?.libraryName ?? input.library?.name ?? input.libraryName),
       mediaType: normalizeString(input.library?.mediaType ?? input.mediaType),
     },
+    guardedOutcomeProjection,
     evidenceBoundary,
     evidenceProjection: null,
     intentDraft: null,
@@ -762,8 +755,9 @@ function buildBlockedPolicyLibraryPolicyRebuildProposal({
   };
 }
 
-function buildPolicyLibraryPolicyRebuildProposal(input = {}) {
-  const evidenceInput = buildEvidenceInput(input);
+function buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(input = {}) {
+  const guardedOutcomeProjection = requireValidGuardedOutcomeProjection(input);
+  const evidenceInput = buildEvidenceInput(input, guardedOutcomeProjection);
   const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
     evidenceInput: buildRebuildEvidenceEnvelope(evidenceInput),
   });
@@ -774,6 +768,7 @@ function buildPolicyLibraryPolicyRebuildProposal(input = {}) {
       input,
       evidenceInput,
       evidenceBoundary,
+      guardedOutcomeProjection,
     });
   }
 
@@ -784,7 +779,7 @@ function buildPolicyLibraryPolicyRebuildProposal(input = {}) {
     intentDraft,
     routing: evidenceInput.routing,
     profileFreshness: evidenceInput.profileFreshness,
-    learningDecision: input.learningDecision || {},
+    learningDecision: buildDerivedReadinessLearningDecision(guardedOutcomeProjection),
   });
   const evidenceSourceSummary = collectEvidenceSourceSummary({
     evidenceInput,
@@ -809,6 +804,7 @@ function buildPolicyLibraryPolicyRebuildProposal(input = {}) {
       libraryName: normalizeString(input.library?.libraryName ?? input.library?.name ?? input.libraryName),
       mediaType: normalizeString(input.library?.mediaType ?? input.mediaType),
     },
+    guardedOutcomeProjection,
     evidenceBoundary,
     evidenceProjection,
     intentDraft,
@@ -854,9 +850,30 @@ function buildPolicyLibraryPolicyRebuildProposal(input = {}) {
   };
 }
 
+function buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput(input = {}) {
+  const runtimeInput = asObject(input);
+
+  if (Object.hasOwn(runtimeInput, 'guardedOutcomeProjection')) {
+    throw new TypeError(
+      'Library policy rebuild received a guarded-outcome projection; use buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection.'
+    );
+  }
+
+  const { guardedOutcomes, learningDecision: _learningDecision, ...rebuildInput } = runtimeInput;
+  const guardedOutcomeProjection = buildPolicyGuardedOutcomeProjectionFromRequestTimeDecisions({
+    requestTimeDecisions: guardedOutcomes,
+  });
+
+  return buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection({
+    ...rebuildInput,
+    guardedOutcomeProjection,
+  });
+}
+
 function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
   const issues = [];
   const evidenceBoundary = asObject(proposal.evidenceBoundary);
+  const guardedOutcomeProjection = asObject(proposal.guardedOutcomeProjection);
   const blockedByEvidenceBoundary =
     proposal.statusId === POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY;
 
@@ -865,6 +882,23 @@ function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
       riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_PROPOSAL_VERSION,
       message: 'Library policy rebuild proposal must use the policy library rebuild version.',
     });
+  }
+
+  if (guardedOutcomeProjection.version !== POLICY_GUARDED_OUTCOME_PROJECTION_VERSION) {
+    issues.push({
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_GUARDED_OUTCOME_PROJECTION,
+      message: 'Library policy rebuild proposal must retain a guarded-outcome projection.',
+    });
+  } else {
+    const guardedOutcomeProjectionValidation =
+      validatePolicyGuardedOutcomeProjection(guardedOutcomeProjection);
+    if (!guardedOutcomeProjectionValidation.ok) {
+      issues.push({
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INVALID_GUARDED_OUTCOME_PROJECTION,
+        message: 'Library policy rebuild proposal must retain a valid guarded-outcome projection.',
+        details: guardedOutcomeProjectionValidation.issues,
+      });
+    }
   }
 
   if (!evidenceBoundary.version || !evidenceBoundary.statusId) {
@@ -1068,7 +1102,7 @@ function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
 }
 
 function buildPolicyLibraryPolicyRebuildAudit(
-  proposal = buildPolicyLibraryPolicyRebuildProposal()
+  proposal = buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput()
 ) {
   const validation = validatePolicyLibraryPolicyRebuildProposal(proposal);
 
@@ -1091,6 +1125,7 @@ export {
   POLICY_REBUILD_REASON_IDS,
   POLICY_REBUILD_WARNING_IDS,
   buildPolicyLibraryPolicyRebuildAudit,
-  buildPolicyLibraryPolicyRebuildProposal,
+  buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection,
+  buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput,
   validatePolicyLibraryPolicyRebuildProposal,
 };

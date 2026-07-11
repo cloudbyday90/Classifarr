@@ -4235,6 +4235,8 @@ Acceptance criteria:
   upstream evidence fingerprints.
 - Rebuild proposals only consume guarded outcomes that carry valid request-time
   learning proof and matching question-reduction evidence fingerprints.
+- The decision-only rebuild reducer accepts only a validated guarded-outcome
+  projection and rejects raw guarded outcomes and raw learning decisions.
 - Missing guarded-outcome fingerprints and trace/source summary mismatches fail
   validation before migration comparison.
 - Missing or invalid guarded-outcome request proof and trace/source summary
@@ -4273,6 +4275,10 @@ Implementation status:
 - Guarded outcomes without valid request-time learning proof are not converted
   into compatibility or outlier proposal evidence and fail validation as an
   incomplete handoff.
+- Rebuild now projects only validated request-time decisions into bounded
+  guarded-outcome evidence. The decision-only reducer rejects raw outcomes and
+  raw learning decisions; its design record is [Policy Library Rebuild Input
+  Boundary](policy-library-rebuild-input-boundary.md).
 - Observed absence is warning-only review context and cannot become avoid or
   exclusion evidence.
 - Explicit hard limits and avoid rules are preserved as operator-declared
