@@ -139,7 +139,7 @@ Cons:
 - Documentation:
   `docs/architecture/policy-learning-guard.md`
 - Quality-gate outcome:
-  downstream policy learning quality-gate architecture record pending cutover.
+  `docs/architecture/policy-learning-quality-gate.md`
 - Roadmap owner:
   Policy Learning Guard in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
@@ -238,8 +238,9 @@ blocked_by_learning_audit
 
 ## Next Step
 
-Proceed to **Policy Learning Quality Gate** architecture cutover. That component should
-consume only quality-gated bounded learning results while combining evidence,
-intent, routing, profile freshness, and learning state into a small readiness
-answer such as `ready`, `needs_more_examples`, `needs_operator_review`,
-`needs_routing`, `blocked_by_hard_limit`, or `stale_profile`.
+Proceed to **Policy Automation Readiness** architecture cutover. That component
+should consume only quality-gated bounded learning results while combining
+evidence, intent, routing, profile freshness, and learning state into a small
+readiness answer such as `ready`, `needs_more_examples`,
+`needs_operator_review`, `needs_routing`, `blocked_by_hard_limit`, or
+`stale_profile`.
