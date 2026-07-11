@@ -205,6 +205,10 @@ cached-profile handoff for this flow. It derives freshness from persisted
 timestamps, marks missing or stale timestamps as review-required, and audits
 the resulting evidence boundary before later engines consume it.
 
+`server/src/services/policyEvidenceEnvelope.mjs` combines that handoff with
+bounded source snapshots and invokes the evidence boundary once. It does not
+reuse the item-level runtime evidence projection or issue cross-table queries.
+
 The projection entry shape is intentionally small:
 
 ```text

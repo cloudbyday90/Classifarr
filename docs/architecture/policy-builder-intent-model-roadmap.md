@@ -3298,6 +3298,12 @@ Implementation status:
   freshness from persisted timestamps, and requires a successful evidence
   boundary plus boundary audit before returning a handoff. Its design record is
   [Policy Library Profile Evidence Loader](policy-library-profile-evidence-loader.md).
+- The policy evidence envelope lives in
+  `server/src/services/policyEvidenceEnvelope.mjs`. It requires the cached
+  profile handoff, combines bounded persisted-source snapshots, and invokes the
+  existing evidence boundary once without adding database, refresh, provider, or
+  storage side effects. Its design record is
+  [Policy Evidence Envelope](policy-evidence-envelope.md).
 
 ### 6R.2 Intent Engine
 

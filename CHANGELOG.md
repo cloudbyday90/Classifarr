@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Envelope** — added a read-only library-destination evidence
+  aggregator that requires the audited cached-profile handoff, bounds final
+  outcomes, corrections, pending answers, routing outcomes, and metadata
+  evidence, runs one existing evidence boundary, and blocks unsafe payloads or
+  incomplete profile state without exposing raw source values.
 - **Policy Library Profile Evidence Loader** — added the server-owned cached
   profile handoff for evidence generation; validates library IDs, re-derives
   freshness from persisted timestamps, treats stale or unknown profiles as
