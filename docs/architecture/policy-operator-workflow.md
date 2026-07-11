@@ -156,7 +156,7 @@ Cons:
 - Documentation:
   `docs/architecture/policy-operator-workflow.md`
 - Quality gate documentation:
-  Pending durable architecture cutover.
+  `docs/architecture/policy-operator-workflow-quality-gate.md`
 - Roadmap owner:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
@@ -255,6 +255,6 @@ qualityMatch
 
 ## Next Step
 
-Continue with **Policy Operator Workflow Quality Gate Architecture Cutover**.
-That component should rename the active workflow quality-gate design record and
-preserve the bounded quality checks that protect the normal operator workflow.
+Continue with **Policy Migration Deletion Path Architecture Cutover**. That
+component should consume only quality-gated bounded workflow results before
+classifying old diagnostic surfaces as verifier machinery or deletion targets.

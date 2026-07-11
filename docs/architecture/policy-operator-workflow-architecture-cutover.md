@@ -110,4 +110,4 @@ Cons:
 
 ## Next Step
 
-Continue with **Policy Operator Workflow Quality Gate Architecture Cutover**.
+Continue with **Policy Migration Deletion Path Architecture Cutover**.

@@ -813,10 +813,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   migration/deletion wrapper so Phase 6R.6 requires matching, usable workflow
   quality snapshots from the bounded workflow result and embedded workflow
   context before returning migration/deletion planning.
-- **Policy Builder Phase 6R Workflow Quality Gate** — hardened the bounded
-  operator workflow so Phase 6R.5 requires matching, usable evidence-quality
-  snapshots from bounded intent, readiness boundary context, and embedded
-  readiness input context before returning a product workflow projection.
+- **Policy Operator Workflow Quality Gate** — hardened the bounded operator
+  workflow so the policy operator workflow projection requires matching, usable
+  evidence-quality snapshots from bounded intent, readiness boundary context,
+  and embedded readiness input context before returning a product workflow
+  projection.
 - **Policy Automation Readiness Quality Gate** — hardened bounded readiness so
   the policy automation readiness engine requires matching, usable
   evidence-quality snapshots across bounded evidence, intent, and learning
