@@ -735,7 +735,7 @@ describe('PolicyEngine -> AI flow', () => {
       'task-456',
       'ai_analysis',
       expect.objectContaining({
-        skippedPhases: ['signal_combine']
+        skippedStages: ['signal_combine']
       })
     );
   });

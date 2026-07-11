@@ -37,17 +37,15 @@ function formatDurationMs(value) {
 }
 
 function taskStages(task) {
-  return Array.isArray(task?.stages)
-    ? task.stages
-    : (Array.isArray(task?.phases) ? task.phases : [])
+  return Array.isArray(task?.stages) ? task.stages : []
 }
 
 function taskCurrentStage(task) {
-  return task?.currentStage || task?.currentPhase || null
+  return task?.currentStage || null
 }
 
 function taskStageIndex(task) {
-  return Number(task?.stageIndex || task?.phaseIndex || 0)
+  return Number(task?.stageIndex || 0)
 }
 
 function stageRows(task) {

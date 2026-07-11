@@ -35,8 +35,8 @@ describe('Classification Progress Routes', () => {
   describe('GET /classification/progress', () => {
     it('should return active classifications', async () => {
       getActiveClassifications.mockResolvedValueOnce([
-        { taskId: 1, title: 'Movie 1', currentStage: 'analyzing', currentPhase: 'analyzing', progress: 50 },
-        { taskId: 2, title: 'Movie 2', currentStage: 'classifying', currentPhase: 'classifying', progress: 80 },
+        { taskId: 1, title: 'Movie 1', currentStage: 'analyzing', currentStage: 'analyzing', progress: 50 },
+        { taskId: 2, title: 'Movie 2', currentStage: 'classifying', currentStage: 'classifying', progress: 80 },
       ]);
 
       const res = await request(app).get('/classification/progress');
@@ -72,13 +72,13 @@ describe('Classification Progress Routes', () => {
         taskId: 123,
         title: 'Test Movie',
         currentStage: 'analyzing',
-        currentPhase: 'analyzing',
+        currentStage: 'analyzing',
         progress: 75,
         stages: [
           { name: 'metadata', status: 'complete', progress: 100 },
           { name: 'analyzing', status: 'in_progress', progress: 75 },
         ],
-        phases: [
+        stages: [
           { name: 'metadata', status: 'complete', progress: 100 },
           { name: 'analyzing', status: 'in_progress', progress: 75 },
         ],
@@ -89,7 +89,7 @@ describe('Classification Progress Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.taskId).toBe(123);
       expect(res.body.currentStage).toBe('analyzing');
-      expect(res.body.currentPhase).toBe('analyzing');
+      expect(res.body.currentStage).toBe('analyzing');
       expect(res.body.stages).toHaveLength(2);
       expect(res.body.progress).toBe(75);
     });

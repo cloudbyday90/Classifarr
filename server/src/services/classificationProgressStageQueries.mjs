@@ -14,8 +14,8 @@ const logger = createLogger('classificationProgressStageService');
 function buildProgressEntry(task, options = {}) {
     const payload = parsePayload(task.payload);
     const displayInfo = extractDisplayInfo(payload);
-    const stageIndex = task.phase_index || 0;
-    const stageStartedAt = task.phase_started_at;
+    const stageIndex = task.stage_index || 0;
+    const stageStartedAt = task.stage_started_at;
     const stageDuration = stageStartedAt
         ? Date.now() - new Date(stageStartedAt).getTime()
         : 0;
@@ -27,7 +27,7 @@ function buildProgressEntry(task, options = {}) {
         year: displayInfo.year,
         mediaType: displayInfo.mediaType,
         ...buildStageProgressFields({
-            currentStage: task.current_phase,
+            currentStage: task.current_stage,
             stageIndex,
             totalStages: STAGES.length,
             stageStartedAt,
@@ -42,7 +42,7 @@ function buildProgressEntry(task, options = {}) {
 export async function getProgress(taskId) {
     try {
         const result = await db.query(
-            `SELECT id, payload, current_phase, phase_index, phase_started_at, phase_history, status
+            `SELECT id, payload, current_stage, stage_index, stage_started_at, stage_history, status
          FROM task_queue WHERE id = $1`,
             [taskId]
         );
@@ -63,10 +63,10 @@ export async function getProgress(taskId) {
 export async function getActiveClassifications() {
     try {
         const result = await db.query(
-            `SELECT id, payload, current_phase, phase_index, phase_started_at, phase_history, created_at
+            `SELECT id, payload, current_stage, stage_index, stage_started_at, stage_history, created_at
          FROM task_queue 
          WHERE status = 'processing' 
-           AND current_phase IS NOT NULL
+           AND current_stage IS NOT NULL
            AND (payload::jsonb->>'source_library_id') IS NULL
            AND (payload::jsonb->>'method') IS DISTINCT FROM 'source_library'
          ORDER BY created_at DESC
@@ -75,7 +75,7 @@ export async function getActiveClassifications() {
 
         return result.rows.map(task => ({
             ...buildProgressEntry(task, {
-                stageMetadata: STAGE_METADATA[task.current_phase] || null,
+                stageMetadata: STAGE_METADATA[task.current_stage] || null,
             }),
             createdAt: task.created_at,
         }));
@@ -88,13 +88,13 @@ export async function getActiveClassifications() {
 export async function resumeFromStage(taskId) {
     try {
         const task = await db.query(
-            'SELECT current_phase, phase_index FROM task_queue WHERE id = $1',
+            'SELECT current_stage, stage_index FROM task_queue WHERE id = $1',
             [taskId]
         );
 
         if (task.rows.length === 0) return null;
 
-        const stage = task.rows[0].current_phase;
+        const stage = task.rows[0].current_stage;
         if (stage) {
             logger.info('Resuming task from stage', { taskId, stage });
         }
@@ -103,8 +103,4 @@ export async function resumeFromStage(taskId) {
         logger.error('Failed to get resume phase', { taskId, error: error.message });
         return null;
     }
-}
-
-export async function resumeFromPhase(taskId) {
-    return resumeFromStage(taskId);
 }

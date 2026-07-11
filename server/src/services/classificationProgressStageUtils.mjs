@@ -20,12 +20,9 @@ export const STAGE_METADATA = {
     notification: { icon: '📤', label: 'Notification', description: 'Sending to *arr / notifications' }
 };
 
-export const PHASES = STAGES;
-export const PHASE_METADATA = STAGE_METADATA;
-
 export { parsePayload } from '../utils/queueHelpers.mjs';
 
-export function parsePhaseHistory(rawHistory) {
+export function parseStageHistory(rawHistory) {
     let history = rawHistory || [];
 
     if (typeof history === 'string') {
@@ -90,12 +87,12 @@ export function extractDisplayInfo(payload = {}) {
 }
 
 export function buildStageList(task) {
-    let history = parsePhaseHistory(task.phase_history);
+    let history = parseStageHistory(task.stage_history);
 
-    const currentStageIndex = STAGES.indexOf(task.current_phase);
+    const currentStageIndex = STAGES.indexOf(task.current_stage);
 
     return STAGES.map((stage, index) => {
-        const historyEntry = history.find(h => h.phase === stage);
+        const historyEntry = history.find(entry => entry.stage === stage);
 
         if (historyEntry) {
             const status = historyEntry.status === 'skipped' ? 'skipped' : 'complete';
@@ -109,7 +106,7 @@ export function buildStageList(task) {
             return {
                 name: stage,
                 status: 'in_progress',
-                started_at: task.phase_started_at,
+                started_at: task.stage_started_at,
                 ...STAGE_METADATA[stage]
             };
         } else {
@@ -122,10 +119,6 @@ export function buildStageList(task) {
     });
 }
 
-export function buildPhaseList(task) {
-    return buildStageList(task);
-}
-
 export function resolveSkippedStages(input = {}) {
     const requested = Array.isArray(input.requested) ? input.requested : [];
     if (requested.length === 0) {
@@ -133,19 +126,19 @@ export function resolveSkippedStages(input = {}) {
     }
 
     const history = Array.isArray(input.history) ? input.history : [];
-    const currentPhase = input.currentPhase || null;
-    const targetPhase = input.targetPhase || null;
-    const currentStageIndex = STAGES.indexOf(currentPhase);
-    const targetStageIndex = STAGES.indexOf(targetPhase);
-    const historicalPhases = new Set(history.map((entry) => entry.phase));
+    const currentStage = input.currentStage || null;
+    const targetStage = input.targetStage || null;
+    const currentStageIndex = STAGES.indexOf(currentStage);
+    const targetStageIndex = STAGES.indexOf(targetStage);
+    const historicalStages = new Set(history.map(entry => entry.stage));
     const boundedForwardTransition = currentStageIndex >= 0
         && targetStageIndex >= 0
         && targetStageIndex > currentStageIndex;
 
     return [...new Set(requested)]
         .filter((stage) => isValidStage(stage))
-        .filter((stage) => stage !== currentPhase && stage !== targetPhase)
-        .filter((stage) => !historicalPhases.has(stage))
+        .filter(stage => stage !== currentStage && stage !== targetStage)
+        .filter(stage => !historicalStages.has(stage))
         .filter((stage) => {
             if (!boundedForwardTransition) {
                 return true;
@@ -156,16 +149,8 @@ export function resolveSkippedStages(input = {}) {
         .sort((a, b) => STAGES.indexOf(a) - STAGES.indexOf(b));
 }
 
-export function resolveSkippedPhases(input = {}) {
-    return resolveSkippedStages(input);
-}
-
-export function isValidStage(phase) {
-    return STAGES.includes(phase);
-}
-
-export function isValidPhase(phase) {
-    return isValidStage(phase);
+export function isValidStage(stage) {
+    return STAGES.includes(stage);
 }
 
 export function getStageMetadata() {
@@ -176,14 +161,6 @@ export function getStageMetadata() {
     }));
 }
 
-export function getPhaseMetadata() {
-    return getStageMetadata();
-}
-
 export function getStageCount() {
     return STAGES.length;
-}
-
-export function getPhaseCount() {
-    return getStageCount();
 }

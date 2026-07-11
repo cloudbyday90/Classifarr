@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Classification Progress Stage Storage** — renamed task queue progress
+  storage, indexes, JSON history entries, progress APIs, WebSocket events, and
+  Command Center readers from temporary phase terminology to durable stage
+  terminology without retaining aliases; reduced the enforced production
+  naming baseline to `46/47` references/candidates.
 - **Policy Migration Verifier Route Boundary** — moved read-only impact and
   replay verification out of normal policy writes into a dedicated migration
   verifier API namespace; deterministic verifier behavior and client calls

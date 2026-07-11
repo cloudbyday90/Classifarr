@@ -13,11 +13,11 @@ initial progress-tracking implementation, but they are not durable product
 language. Operators experience classification progress as ordered stages, while
 `phase` is now reserved for roadmap/history language.
 
-This cutover intentionally renames the production module surface first and does
-not rewrite persisted task queue fields or public response fields in the same
-change. The persisted/API fields still use `current_phase`, `phaseIndex`, and
-`phases` until Phase 9R.3 can migrate contracts and telemetry with explicit
-compatibility rules.
+This initial module-surface cutover was completed before the durable storage
+cutover. The later [Classification Progress Stage Storage
+Cutover](classification-progress-stage-storage-cutover.md) renamed persisted
+task queue fields, JSON history entries, API responses, and progress events to
+stage terminology without retaining compatibility aliases.
 
 ## Official Guidance Reviewed
 
@@ -31,12 +31,11 @@ compatibility rules.
   behavior.
 - [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
   favor stable semantic names. `stage` is the durable runtime concept for
-  progress tracking; persisted `phase` terminology is deferred to the contract
-  cutover.
+  progress tracking, including the completed persisted-storage cutover.
 - [W3C Cool URIs Don't Change](https://www.w3.org/Provider/Style/URI)
-  reinforces preserving externally visible identifiers carefully. Public and
-  persisted fields were not renamed in this batch because they require a
-  compatibility plan.
+  reinforces preserving externally visible identifiers carefully. The later
+  storage cutover used a deliberate atomic migration rather than a permanent
+  compatibility alias.
 
 ## Recommendations
 
@@ -46,12 +45,8 @@ compatibility rules.
    `classificationProgressStageQueries`.
 2. Use `STAGES` and `STAGE_METADATA` internally so new production code does not
    depend on phase-coded constants.
-3. Keep bounded compatibility aliases such as `updatePhase` and `PHASES` only
-   for existing callers and tests until the contract cutover decides whether
-   they can be deleted.
-4. Preserve persisted/API field names in this batch to avoid a mixed behavior
-   and storage migration.
-5. Track the remaining public-contract rename under Phase 9R.3.
+3. Keep the initial module change narrow, then make the later storage/API
+   rename as one atomic cutover rather than adding permanent aliases.
 
 ## Pros And Cons
 
@@ -59,14 +54,14 @@ Pros:
 
 - Reduces production phase-coded module debt without altering behavior.
 - Makes new classification progress code read as product language.
-- Keeps storage and API compatibility stable.
+- Kept the initial module rename independently testable.
 - Creates a small, testable first Phase 9R.2 batch before larger policy-builder
   service renames.
 
 Cons:
 
-- Public payloads still contain phase-shaped fields until Phase 9R.3.
-- Compatibility aliases temporarily keep a small amount of old terminology.
+- The initial split deferred the complete storage and API change until it could
+  be delivered atomically.
 - The inventory still reports historical docs and many remaining production
   rename candidates outside this narrow batch.
 
@@ -81,10 +76,9 @@ Cons:
   - classification route/path/import regression suites
 - Scanner:
   - `node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid`
-- Deferred contract work:
-  - Phase 9R.3 must decide how to migrate `current_phase`, `phase_index`,
-    `phase_history`, `currentPhase`, `phaseIndex`, `totalPhases`, and `phases`
-    without breaking persisted task progress or clients.
+- Completed follow-up:
+  - The stage-storage cutover renamed persisted task progress and public
+    progress contracts without retaining aliases.
 
 ## Outcome
 

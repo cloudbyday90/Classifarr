@@ -203,7 +203,7 @@ function stageLabelText(value) {
 }
 
 function taskCurrentStage(task) {
-  return task?.currentStage || task?.currentPhase || null
+  return task?.currentStage || null
 }
 
 function activeTaskPercent(task) {

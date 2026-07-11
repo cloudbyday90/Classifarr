@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the live repository inventory after the
-native-intent migration criterion cutover on July 11, 2026:
+classification progress stage-storage cutover on July 11, 2026:
 
-- production references: `141`
-- rename candidates: `142`
+- production references: `46`
+- rename candidates: `47`
 - obsolete migration tooling references: `0`
 
 The baseline is intentionally a maximum, not a target. Future durable rename

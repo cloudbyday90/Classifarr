@@ -128,8 +128,8 @@ export class ClassificationPolicyPathService {
 
 		if (taskId && !metadata.source_library_id) {
 			await this.classificationProgressStageService.updateStage(taskId, 'ai_analysis', {
-				skippedPhases: ['signal_combine'],
-				skippedPhaseMetadata: { signal_combine: { reason: 'policy_signal_path' } },
+				skippedStages: ['signal_combine'],
+				skippedStageMetadata: { signal_combine: { reason: 'policy_signal_path' } },
 			});
 		}
 

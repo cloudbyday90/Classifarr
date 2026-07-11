@@ -87,9 +87,9 @@ describe('useProcessingDetails composable', () => {
     expect(rowsFresh[1].status).toBe('pending')
   })
 
-  it('keeps compatibility with legacy phase-shaped task progress', () => {
+  it('renders stage-only task progress', () => {
     const activeProcessingTasks = ref([
-      { taskId: 11, phaseIndex: 2, phases: [], currentPhase: 'metadata_fetch' },
+      { taskId: 11, stageIndex: 2, stages: [], currentStage: 'metadata_fetch' },
     ])
     const isMobileViewport = ref(false)
 

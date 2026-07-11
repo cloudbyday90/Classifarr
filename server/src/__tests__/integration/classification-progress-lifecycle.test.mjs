@@ -58,13 +58,13 @@ describe('Classification Progress Integration Tests', () => {
         const data = { ...defaults, ...overrides };
 
         const result = await db.query(`
-            INSERT INTO task_queue (task_type, status, payload, priority, current_phase, phase_index, phase_started_at)
+            INSERT INTO task_queue (task_type, status, payload, priority, current_stage, stage_index, stage_started_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
         `, [data.task_type, data.status, data.payload, data.priority,
-            data.current_phase || null,
-            data.phase_index || null,
-            data.phase_started_at || null]);
+            data.current_stage || null,
+            data.stage_index || null,
+            data.stage_started_at || null]);
         return result.rows[0];
     }
 
@@ -81,9 +81,9 @@ describe('Classification Progress Integration Tests', () => {
         it('returns active classifications with progress', async () => {
             await seedTask({
                 status: 'processing',
-                current_phase: 'classification',
-                phase_index: 3,
-                phase_started_at: new Date().toISOString(),
+                current_stage: 'classification',
+                stage_index: 3,
+                stage_started_at: new Date().toISOString(),
             });
 
             const res = await request(app)
@@ -95,7 +95,7 @@ describe('Classification Progress Integration Tests', () => {
             if (res.body.length > 0) {
                 expect(res.body[0]).toHaveProperty('taskId');
                 expect(res.body[0]).toHaveProperty('currentStage');
-                expect(res.body[0]).toHaveProperty('currentPhase');
+                expect(res.body[0]).toHaveProperty('currentStage');
                 expect(res.body[0]).toHaveProperty('stages');
                 expect(res.body[0]).toHaveProperty('progress');
             }
@@ -106,9 +106,9 @@ describe('Classification Progress Integration Tests', () => {
         it('returns progress for a specific task', async () => {
             const task = await seedTask({
                 status: 'processing',
-                current_phase: 'classification',
-                phase_index: 3,
-                phase_started_at: new Date().toISOString(),
+                current_stage: 'classification',
+                stage_index: 3,
+                stage_started_at: new Date().toISOString(),
             });
 
             const res = await request(app)
@@ -118,9 +118,9 @@ describe('Classification Progress Integration Tests', () => {
             expect(res.status).toBe(200);
             expect(res.body.taskId).toBe(task.id);
             expect(res.body.currentStage).toBe('classification');
-            expect(res.body.currentPhase).toBe('classification');
+            expect(res.body.currentStage).toBe('classification');
             expect(res.body.stageIndex).toBe(3);
-            expect(res.body.phaseIndex).toBe(3);
+            expect(res.body.stageIndex).toBe(3);
             expect(res.body.status).toBe('processing');
         });
 

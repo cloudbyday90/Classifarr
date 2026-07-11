@@ -38,9 +38,9 @@ describe('classificationProgressStageService', () => {
         it('should update stage and emit progress event for a task with legacy aliases', async () => {
             mockQuery.mockResolvedValueOnce({
                 rows: [{
-                    current_phase: 'queued',
-                    phase_started_at: new Date().toISOString(),
-                    phase_history: [],
+                    current_stage: 'queued',
+                    stage_started_at: new Date().toISOString(),
+                    stage_history: [],
                     payload: JSON.stringify({ title: 'Test Movie' })
                 }]
             });
@@ -54,8 +54,8 @@ describe('classificationProgressStageService', () => {
                 stage: 'metadata_fetch',
                 stageIndex: 2,
                 totalStages: 8,
-                phase: 'metadata_fetch',
-                phaseIndex: 2
+                stage: 'metadata_fetch',
+                stageIndex: 2
             });
             expect(classificationProgressStageService.webSocketService.emitTaskProgress).toHaveBeenCalledWith(
                 1,
@@ -64,9 +64,9 @@ describe('classificationProgressStageService', () => {
                     stage: 'metadata_fetch',
                     stageIndex: 2,
                     totalStages: 8,
-                    phase: 'metadata_fetch',
-                    phaseIndex: 2,
-                    totalPhases: 8
+                    stage: 'metadata_fetch',
+                    stageIndex: 2,
+                    totalStages: 8
                 })
             );
         });
@@ -84,36 +84,34 @@ describe('classificationProgressStageService', () => {
             expect(result).toBeNull();
         });
 
-        it('should persist skipped stages when transition metadata includes skippedPhases', async () => {
+        it('should persist skipped stages when transition metadata includes skippedStages', async () => {
             mockQuery.mockResolvedValueOnce({
                 rows: [{
-                    current_phase: 'rag_analysis',
-                    phase_started_at: new Date().toISOString(),
-                    phase_history: [],
-                    payload: JSON.stringify({ title: 'Skipped Phase Test' })
+                    current_stage: 'rag_analysis',
+                    stage_started_at: new Date().toISOString(),
+                    stage_history: [],
+                    payload: JSON.stringify({ title: 'Skipped Stage Test' })
                 }]
             });
             mockQuery.mockResolvedValueOnce({ rows: [] });
 
             const result = await classificationProgressStageService.updateStage(1, 'ai_analysis', {
-                skippedPhases: ['signal_combine'],
-                skippedPhaseMetadata: {
+                skippedStages: ['signal_combine'],
+                skippedStageMetadata: {
                     signal_combine: { reason: 'policy_signal_path' }
                 }
             });
 
-            const skippedEntry = result.history.find(entry => entry.phase === 'signal_combine');
+            const skippedEntry = result.history.find(entry => entry.stage === 'signal_combine');
 
             expect(result).toMatchObject({
                 taskId: 1,
                 stage: 'ai_analysis',
                 stageIndex: 6,
                 totalStages: 8,
-                phase: 'ai_analysis',
-                phaseIndex: 6
             });
             expect(skippedEntry).toMatchObject({
-                phase: 'signal_combine',
+                stage: 'signal_combine',
                 status: 'skipped',
                 duration_ms: 0,
                 metadata: { reason: 'policy_signal_path' }
@@ -123,9 +121,9 @@ describe('classificationProgressStageService', () => {
         it('should resolve display title from nested media payload when top-level title is missing', async () => {
             mockQuery.mockResolvedValueOnce({
                 rows: [{
-                    current_phase: 'queued',
-                    phase_started_at: new Date().toISOString(),
-                    phase_history: [],
+                    current_stage: 'queued',
+                    stage_started_at: new Date().toISOString(),
+                    stage_history: [],
                     payload: JSON.stringify({
                         media: { title: 'Nested Media Title', year: 2026, media_type: 'movie' }
                     })
@@ -149,10 +147,10 @@ describe('classificationProgressStageService', () => {
             const mockTask = {
                 id: 1,
                 payload: JSON.stringify({ title: 'Test Movie', year: 2024, media_type: 'movie' }),
-                current_phase: 'rag_analysis',
-                phase_index: 4,
-                phase_started_at: new Date().toISOString(),
-                phase_history: [],
+                current_stage: 'rag_analysis',
+                stage_index: 4,
+                stage_started_at: new Date().toISOString(),
+                stage_history: [],
                 status: 'processing'
             };
             mockQuery.mockResolvedValueOnce({ rows: [mockTask] });
@@ -165,9 +163,9 @@ describe('classificationProgressStageService', () => {
                 currentStage: 'rag_analysis',
                 stageIndex: 4,
                 totalStages: 8,
-                currentPhase: 'rag_analysis',
-                phaseIndex: 4,
-                totalPhases: 8
+                currentStage: 'rag_analysis',
+                stageIndex: 4,
+                totalStages: 8
             });
             expect(mockQuery).toHaveBeenCalledWith(
                 expect.stringContaining('SELECT'),
@@ -187,8 +185,8 @@ describe('classificationProgressStageService', () => {
     describe('getActiveClassifications', () => {
         it('should return all active classifications', async () => {
             const mockTasks = [
-                { id: 1, payload: { title: 'Test Movie 1' }, current_phase: 'metadata_fetch', phase_index: 2, phase_started_at: new Date().toISOString(), phase_history: [], created_at: new Date() },
-                { id: 2, payload: { title: 'Test Movie 2' }, current_phase: 'rag_analysis', phase_index: 4, phase_started_at: new Date().toISOString(), phase_history: [], created_at: new Date() }
+                { id: 1, payload: { title: 'Test Movie 1' }, current_stage: 'metadata_fetch', stage_index: 2, stage_started_at: new Date().toISOString(), stage_history: [], created_at: new Date() },
+                { id: 2, payload: { title: 'Test Movie 2' }, current_stage: 'rag_analysis', stage_index: 4, stage_started_at: new Date().toISOString(), stage_history: [], created_at: new Date() }
             ];
             mockQuery.mockResolvedValueOnce({ rows: mockTasks });
 
@@ -199,13 +197,13 @@ describe('classificationProgressStageService', () => {
                 taskId: 1,
                 title: 'Test Movie 1',
                 currentStage: 'metadata_fetch',
-                currentPhase: 'metadata_fetch'
+                currentStage: 'metadata_fetch'
             });
             expect(result[1]).toMatchObject({
                 taskId: 2,
                 title: 'Test Movie 2',
                 currentStage: 'rag_analysis',
-                currentPhase: 'rag_analysis'
+                currentStage: 'rag_analysis'
             });
         });
 
@@ -224,10 +222,10 @@ describe('classificationProgressStageService', () => {
                     payload: JSON.stringify({
                         media: { title: 'From Media Payload', year: '2025', media_type: 'tv' }
                     }),
-                    current_phase: 'ai_analysis',
-                    phase_index: 6,
-                    phase_started_at: new Date().toISOString(),
-                    phase_history: [],
+                    current_stage: 'ai_analysis',
+                    stage_index: 6,
+                    stage_started_at: new Date().toISOString(),
+                    stage_history: [],
                     created_at: new Date()
                 }
             ];
@@ -243,7 +241,7 @@ describe('classificationProgressStageService', () => {
                 mediaType: 'tv',
                 currentStage: 'ai_analysis',
                 stageMetadata: expect.objectContaining({ label: 'AI Analysis' }),
-                phaseMetadata: expect.objectContaining({ label: 'AI Analysis' })
+                stageMetadata: expect.objectContaining({ label: 'AI Analysis' })
             });
         });
     });
@@ -251,7 +249,7 @@ describe('classificationProgressStageService', () => {
     describe('completeTracking', () => {
         it('should complete stage tracking and clear current progress stage', async () => {
             mockQuery.mockResolvedValueOnce({
-                rows: [{ current_phase: 'notification', phase_started_at: new Date().toISOString(), phase_history: [] }]
+                rows: [{ current_stage: 'notification', stage_started_at: new Date().toISOString(), stage_history: [] }]
             });
             mockQuery.mockResolvedValueOnce({ rows: [] });
 
@@ -269,9 +267,9 @@ describe('classificationProgressStageService', () => {
                     stage: 'completed',
                     stageIndex: 8,
                     totalStages: 8,
-                    phase: 'completed',
-                    phaseIndex: 8,
-                    totalPhases: 8,
+                    stage: 'completed',
+                    stageIndex: 8,
+                    totalStages: 8,
                     progress: 100,
                     completed: true
                 })
@@ -290,7 +288,7 @@ describe('classificationProgressStageService', () => {
     describe('resumeFromStage', () => {
         it('should return the stage to resume from', async () => {
             mockQuery.mockResolvedValueOnce({
-                rows: [{ current_phase: 'rag_analysis', phase_index: 4 }]
+                rows: [{ current_stage: 'rag_analysis', stage_index: 4 }]
             });
 
             const result = await classificationProgressStageService.resumeFromStage(1);
@@ -336,12 +334,12 @@ describe('classificationProgressStageService', () => {
     describe('buildStageList', () => {
         it('should build stage list with correct statuses', () => {
             const mockTask = {
-                current_phase: 'rag_analysis',
-                phase_started_at: new Date().toISOString(),
-                phase_history: [
-                    { phase: 'queued', completed_at: new Date().toISOString() },
-                    { phase: 'metadata_fetch', completed_at: new Date().toISOString() },
-                    { phase: 'policy_eval', completed_at: new Date().toISOString() }
+                current_stage: 'rag_analysis',
+                stage_started_at: new Date().toISOString(),
+                stage_history: [
+                    { stage: 'queued', completed_at: new Date().toISOString() },
+                    { stage: 'metadata_fetch', completed_at: new Date().toISOString() },
+                    { stage: 'policy_eval', completed_at: new Date().toISOString() }
                 ]
             };
 
@@ -360,15 +358,15 @@ describe('classificationProgressStageService', () => {
 
         it('should preserve skipped stage state from history', () => {
             const mockTask = {
-                current_phase: 'decision',
-                phase_started_at: new Date().toISOString(),
-                phase_history: [
-                    { phase: 'queued', completed_at: new Date().toISOString() },
-                    { phase: 'metadata_fetch', completed_at: new Date().toISOString() },
-                    { phase: 'policy_eval', completed_at: new Date().toISOString() },
-                    { phase: 'rag_analysis', completed_at: new Date().toISOString() },
-                    { phase: 'signal_combine', status: 'skipped', completed_at: new Date().toISOString() },
-                    { phase: 'ai_analysis', completed_at: new Date().toISOString() }
+                current_stage: 'decision',
+                stage_started_at: new Date().toISOString(),
+                stage_history: [
+                    { stage: 'queued', completed_at: new Date().toISOString() },
+                    { stage: 'metadata_fetch', completed_at: new Date().toISOString() },
+                    { stage: 'policy_eval', completed_at: new Date().toISOString() },
+                    { stage: 'rag_analysis', completed_at: new Date().toISOString() },
+                    { stage: 'signal_combine', status: 'skipped', completed_at: new Date().toISOString() },
+                    { stage: 'ai_analysis', completed_at: new Date().toISOString() }
                 ]
             };
 

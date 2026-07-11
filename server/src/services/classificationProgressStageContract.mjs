@@ -21,13 +21,6 @@ export function buildStageProgressFields({
         stageDuration,
         stages,
         stageMetadata,
-        currentPhase: currentStage,
-        phaseIndex: safeStageIndex,
-        totalPhases: safeTotalStages,
-        phaseStartedAt: stageStartedAt,
-        phaseDuration: stageDuration,
-        phases: stages,
-        phaseMetadata: stageMetadata,
     };
 }
 
@@ -47,8 +40,5 @@ export function buildStageProgressEvent({
         stageIndex: safeStageIndex,
         totalStages: safeTotalStages,
         progress,
-        phase: stage,
-        phaseIndex: safeStageIndex,
-        totalPhases: safeTotalStages,
     };
 }

@@ -108,15 +108,15 @@ const emit = defineEmits(['close'])
 const closeButtonRef = ref(null)
 
 function taskCurrentStage(task) {
-  return task?.currentStage || task?.currentPhase || null
+  return task?.currentStage || null
 }
 
 function taskStageIndex(task) {
-  return task?.stageIndex || task?.phaseIndex || 1
+  return task?.stageIndex || 1
 }
 
 function taskTotalStages(task) {
-  return task?.totalStages || task?.totalPhases || 8
+  return task?.totalStages || 8
 }
 
 function handleSheetKeydown(event) {

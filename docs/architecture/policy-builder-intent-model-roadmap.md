@@ -6680,7 +6680,7 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 141 production references plus 142 rename candidates.
+  currently reports 46 production references plus 47 rename candidates.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -6758,15 +6758,14 @@ Implementation status:
   `classificationProgressStageService`,
   `classificationProgressStageUtils`, and
   `classificationProgressStageQueries`.
-- Internal progress definitions now use `STAGES` and `STAGE_METADATA`, while
-  bounded compatibility aliases remain for existing phase-shaped callers.
-- Persisted task queue and public progress response fields such as
-  `current_phase`, `phase_index`, `phase_history`, `currentPhase`,
-  `phaseIndex`, `totalPhases`, and `phases` were not changed in this batch.
-  They are owned by Phase 9R.3 contract and telemetry naming cutover.
+- Internal progress definitions use `STAGES` and `STAGE_METADATA` without
+  phase-shaped compatibility aliases.
+- The completed stage-storage cutover renamed persisted task queue progress,
+  JSON history entries, API response fields, WebSocket payloads, and Command
+  Center readers to durable stage terminology without retaining aliases.
 - Outcome record:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
-- After the follow-up classification progress contract cutover, the repository
+- After the completed classification progress storage cutover, the repository
   inventory validates with 15,892 total phase-coded references, 7,467
   production references, and 7,489 rename candidates.
 - The policy evidence quality helper has now been cut over to durable
@@ -7347,15 +7346,13 @@ Acceptance criteria:
 
 Implementation status:
 
-- The first contract cutover is complete for classification progress API and
-  WebSocket payloads. Responses/events now carry stage-first fields while
-  retaining legacy phase aliases for compatibility.
-- The server-owned alias mapper lives in
+- The classification progress contract and storage cutovers are complete.
+  API responses, WebSocket payloads, task queue progress storage, and Command
+  Center processing UI use only durable stage terminology.
+- The server-owned progress-contract builder lives in
   `server/src/services/classificationProgressStageContract.mjs`.
-- Command Center processing UI now reads stage fields first and uses
-  operator-facing stage copy.
-- Persisted task queue columns remain unchanged and are explicitly deferred to
-  a later storage compatibility decision.
+- Command Center processing UI uses stage terminology and operator-facing
+  stage copy.
 - Outcome record:
   [Classification Progress Stage Contract Cutover](classification-progress-stage-contract-cutover.md).
 

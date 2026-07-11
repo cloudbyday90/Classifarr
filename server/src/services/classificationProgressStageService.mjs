@@ -4,7 +4,7 @@ import {
     STAGES,
     STAGE_METADATA,
     parsePayload as _parsePayload,
-    parsePhaseHistory,
+    parseStageHistory,
     extractDisplayInfo as _extractDisplayInfo,
     buildStageList as _buildStageList,
     resolveSkippedStages as _resolveSkippedStages,
@@ -37,7 +37,7 @@ export class ClassificationProgressStageService {
 
         try {
             const task = await db.query(
-                'SELECT current_phase, phase_started_at, phase_history, payload FROM task_queue WHERE id = $1',
+                'SELECT current_stage, stage_started_at, stage_history, payload FROM task_queue WHERE id = $1',
                 [taskId]
             );
 
@@ -47,43 +47,43 @@ export class ClassificationProgressStageService {
             }
 
             const currentTask = task.rows[0];
-            const history = parsePhaseHistory(currentTask.phase_history);
+            const history = parseStageHistory(currentTask.stage_history);
 
-            const skippedPhases = this.resolveSkippedStages({
-                currentPhase: currentTask.current_phase,
-                targetPhase: stage,
-                requested: metadata.skippedPhases,
+            const skippedStages = this.resolveSkippedStages({
+                currentStage: currentTask.current_stage,
+                targetStage: stage,
+                requested: metadata.skippedStages,
                 history
             });
 
-            if (currentTask.current_phase && currentTask.phase_started_at) {
-                const prevDuration = Date.now() - new Date(currentTask.phase_started_at).getTime();
+            if (currentTask.current_stage && currentTask.stage_started_at) {
+                const prevDuration = Date.now() - new Date(currentTask.stage_started_at).getTime();
                 history.push({
-                    phase: currentTask.current_phase,
-                    started_at: currentTask.phase_started_at,
+                    stage: currentTask.current_stage,
+                    started_at: currentTask.stage_started_at,
                     completed_at: now,
                     duration_ms: prevDuration,
-                    metadata: metadata.prevPhaseMetadata || {}
+                    metadata: metadata.previousStageMetadata || {}
                 });
             }
 
-            for (const skippedPhase of skippedPhases) {
+            for (const skippedStage of skippedStages) {
                 history.push({
-                    phase: skippedPhase,
+                    stage: skippedStage,
                     status: 'skipped',
                     started_at: now,
                     completed_at: now,
                     duration_ms: 0,
-                    metadata: metadata.skippedPhaseMetadata?.[skippedPhase] || metadata.skipMetadata || {}
+                    metadata: metadata.skippedStageMetadata?.[skippedStage] || metadata.skipMetadata || {}
                 });
             }
 
             await db.query(
-                `UPDATE task_queue 
-         SET current_phase = $1, 
-             phase_index = $2, 
-             phase_started_at = $3,
-             phase_history = $4
+                `UPDATE task_queue
+         SET current_stage = $1,
+             stage_index = $2,
+             stage_started_at = $3,
+             stage_history = $4
          WHERE id = $5`,
                 [stage, stageIndex, now, JSON.stringify(history), taskId]
             );
@@ -105,19 +105,12 @@ export class ClassificationProgressStageService {
                 stage,
                 stageIndex,
                 totalStages: STAGES.length,
-                phase: stage,
-                phaseIndex: stageIndex,
-                totalPhases: STAGES.length,
                 history
             };
         } catch (error) {
             logger.error('Failed to update classification progress stage', { taskId, stage, error: error.message });
             throw error;
         }
-    }
-
-    async updatePhase(taskId, phase, metadata = {}) {
-        return this.updateStage(taskId, phase, metadata);
     }
 
     async getProgress(taskId) {
@@ -132,29 +125,25 @@ export class ClassificationProgressStageService {
         return _resumeFromStage(taskId);
     }
 
-    async resumeFromPhase(taskId) {
-        return this.resumeFromStage(taskId);
-    }
-
     async completeTracking(taskId, finalResult = {}) {
         try {
             const now = new Date().toISOString();
 
             const task = await db.query(
-                'SELECT current_phase, phase_started_at, phase_history FROM task_queue WHERE id = $1',
+                'SELECT current_stage, stage_started_at, stage_history FROM task_queue WHERE id = $1',
                 [taskId]
             );
 
             if (task.rows.length === 0) return;
 
             const currentTask = task.rows[0];
-            const history = parsePhaseHistory(currentTask.phase_history);
+            const history = parseStageHistory(currentTask.stage_history);
 
-            if (currentTask.current_phase && currentTask.phase_started_at) {
-                const prevDuration = Date.now() - new Date(currentTask.phase_started_at).getTime();
+            if (currentTask.current_stage && currentTask.stage_started_at) {
+                const prevDuration = Date.now() - new Date(currentTask.stage_started_at).getTime();
                 history.push({
-                    phase: currentTask.current_phase,
-                    started_at: currentTask.phase_started_at,
+                    stage: currentTask.current_stage,
+                    started_at: currentTask.stage_started_at,
                     completed_at: now,
                     duration_ms: prevDuration,
                     metadata: finalResult
@@ -162,11 +151,11 @@ export class ClassificationProgressStageService {
             }
 
             await db.query(
-                `UPDATE task_queue 
-         SET current_phase = NULL, 
-             phase_index = NULL, 
-             phase_started_at = NULL,
-             phase_history = $1
+                `UPDATE task_queue
+         SET current_stage = NULL,
+             stage_index = NULL,
+             stage_started_at = NULL,
+             stage_history = $1
          WHERE id = $2`,
                 [JSON.stringify(history), taskId]
             );
@@ -220,16 +209,8 @@ export class ClassificationProgressStageService {
         return _buildStageList(task);
     }
 
-    buildPhaseList(task) {
-        return this.buildStageList(task);
-    }
-
     resolveSkippedStages(input) {
         return _resolveSkippedStages(input);
-    }
-
-    resolveSkippedPhases(input) {
-        return this.resolveSkippedStages(input);
     }
 
     parsePayload(rawPayload) {
@@ -244,25 +225,14 @@ export class ClassificationProgressStageService {
         return _getStageMetadata();
     }
 
-    getPhaseMetadata() {
-        return this.getStageMetadata();
-    }
-
-    isValidStage(phase) {
-        return _isValidStage(phase);
-    }
-
-    isValidPhase(phase) {
-        return this.isValidStage(phase);
+    isValidStage(stage) {
+        return _isValidStage(stage);
     }
 
     getStageCount() {
         return _getStageCount();
     }
 
-    getPhaseCount() {
-        return this.getStageCount();
-    }
 }
 
 export const classificationProgressStageService = new ClassificationProgressStageService();

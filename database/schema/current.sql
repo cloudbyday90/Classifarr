@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-01T19:48:45.825Z
--- Latest Migration: 20260701_160000_add_policy_intent_native_storage.sql
+-- Generated: 2026-07-11T19:13:23.250Z
+-- Latest Migration: 20260711_090100_correct_classification_progress_stage_comments.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4830,10 +4830,10 @@ CREATE TABLE public.task_queue (
     started_at timestamp without time zone,
     completed_at timestamp without time zone,
     next_retry_at timestamp without time zone DEFAULT now(),
-    current_phase character varying(50) DEFAULT NULL::character varying,
-    phase_index integer,
-    phase_started_at timestamp without time zone,
-    phase_history jsonb DEFAULT '[]'::jsonb,
+    current_stage character varying(50) DEFAULT NULL::character varying,
+    stage_index integer,
+    stage_started_at timestamp without time zone,
+    stage_history jsonb DEFAULT '[]'::jsonb,
     visible_at timestamp with time zone,
     CONSTRAINT task_queue_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text])))
 )
@@ -4841,31 +4841,31 @@ WITH (fillfactor='75', autovacuum_vacuum_scale_factor='0.01', autovacuum_vacuum_
 
 
 --
--- Name: COLUMN task_queue.current_phase; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN task_queue.current_stage; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.task_queue.current_phase IS 'Current classification phase (queued, metadata_fetch, policy_eval, rag_analysis, signal_combine, decision, notification)';
-
-
---
--- Name: COLUMN task_queue.phase_index; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.task_queue.phase_index IS 'Current phase index (1-7)';
+COMMENT ON COLUMN public.task_queue.current_stage IS 'Current classification stage (queued, metadata_fetch, policy_eval, rag_analysis, signal_combine, ai_analysis, decision, notification)';
 
 
 --
--- Name: COLUMN task_queue.phase_started_at; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN task_queue.stage_index; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.task_queue.phase_started_at IS 'When the current phase started';
+COMMENT ON COLUMN public.task_queue.stage_index IS 'Current classification stage index (1-8)';
 
 
 --
--- Name: COLUMN task_queue.phase_history; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN task_queue.stage_started_at; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.task_queue.phase_history IS 'JSON array of completed phases with timestamps and durations';
+COMMENT ON COLUMN public.task_queue.stage_started_at IS 'When the current phase started';
+
+
+--
+-- Name: COLUMN task_queue.stage_history; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.task_queue.stage_history IS 'JSON array of completed phases with timestamps and durations';
 
 
 --
@@ -8530,10 +8530,10 @@ CREATE UNIQUE INDEX idx_task_queue_active_item_dedup ON public.task_queue USING 
 
 
 --
--- Name: idx_task_queue_active_phase; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_task_queue_active_stage; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_task_queue_active_phase ON public.task_queue USING btree (current_phase) WHERE (((status)::text = 'processing'::text) AND (current_phase IS NOT NULL));
+CREATE INDEX idx_task_queue_active_stage ON public.task_queue USING btree (current_stage) WHERE (((status)::text = 'processing'::text) AND (current_stage IS NOT NULL));
 
 
 --
@@ -11644,6 +11644,8 @@ FROM unnest(ARRAY[
     '20260625_061500_add_web_search_provider_guardrail_events.sql',
     '20260625_063000_add_discord_pending_item_notifications.sql',
     '20260625_064500_add_discord_pending_mention_targets.sql',
-    '20260701_160000_add_policy_intent_native_storage.sql'
+    '20260701_160000_add_policy_intent_native_storage.sql',
+    '20260711_090000_rename_classification_progress_stages.sql',
+    '20260711_090100_correct_classification_progress_stage_comments.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
