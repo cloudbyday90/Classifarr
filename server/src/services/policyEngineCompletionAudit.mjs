@@ -324,7 +324,7 @@ function buildComponentAuditMap() {
   };
 }
 
-function buildDefaultPhase6BoundedCompletionChain() {
+function buildDefaultPolicyEngineCompletionChain() {
   const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
     evidenceInput: {
       operatorIntent: {
@@ -614,7 +614,7 @@ function containsRawCompletionEvidence(value) {
 }
 
 function buildPolicyEngineBoundedChainCompletionAudit({
-  chain = buildDefaultPhase6BoundedCompletionChain(),
+  chain = buildDefaultPolicyEngineCompletionChain(),
 } = {}) {
   const steps = [
     {

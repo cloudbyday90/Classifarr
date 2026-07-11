@@ -3351,6 +3351,11 @@ Implementation status:
   it does not persist policy state, learn, refresh, call providers, read quota,
   or route media. Its design record is
   [Policy Library Intent Proposal Service](policy-library-intent-proposal-service.md).
+- The first mandatory durable-name cutover in the policy-engine domain is
+  complete: the completion audit's private default chain builder now uses a
+  product-domain name rather than the previous Phase 6 label. The behavior is
+  unchanged and no compatibility alias remains. Its outcome record is
+  [Policy Engine Completion Audit Naming Cutover](policy-engine-completion-audit-naming-cutover.md).
 
 ### 6R.2 Intent Engine
 

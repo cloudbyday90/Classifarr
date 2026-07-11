@@ -17,6 +17,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   gate and fingerprint, while insufficient identity evidence blocks a proposal
   instead of inventing policy meaning; returned provenance is sanitized and no
   provider, quota, storage, learning, refresh, or routing side effect occurs.
+- **Policy Engine Completion Audit Naming Cutover** — replaced the remaining
+  phase-coded default completion-chain builder with a durable policy-engine
+  name, preserving the bounded evidence-to-migration completion audit without
+  a compatibility alias.
 - **Policy Evidence Handoff Verifier** — added the server-owned completion
   audit for the complete library evidence workflow; requires static engine,
   loader, source, envelope, boundary, fingerprint, and quality validation;
