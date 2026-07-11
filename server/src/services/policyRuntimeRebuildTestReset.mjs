@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,6 +24,18 @@ const POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS = Object.freeze({
   CLASSIFICATION_REGRESSION_REMAINS: 'classification_regression_remains',
 });
 
+const POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS = Object.freeze({
+  RUNTIME_EVIDENCE_PROJECTION: 'runtime_evidence_projection',
+  AUTOMATION_DECISION: 'automation_decision',
+  RUNTIME_QUESTION_REDUCTION: 'runtime_question_reduction',
+  REQUEST_TIME_LEARNING: 'request_time_learning',
+  GUARDED_OUTCOME_PROJECTION: 'guarded_outcome_projection',
+  LIBRARY_POLICY_REBUILD: 'library_policy_rebuild',
+  MIGRATION_VERIFIER: 'migration_verifier',
+  RUNTIME_METRICS_INPUT: 'runtime_metrics_input',
+  RUNTIME_METRICS_TRACE: 'runtime_metrics_trace',
+});
+
 const POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_DECISION: 'unknown_decision',
   UNKNOWN_COVERAGE: 'unknown_coverage',
@@ -40,6 +52,9 @@ const POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS = Object.freeze({
   MISSING_TRACE_REASON: 'missing_trace_reason',
   ARTIFACT_PATH_OUTSIDE_REPO: 'artifact_path_outside_repo',
   ARTIFACT_FILE_MISSING: 'artifact_file_missing',
+  UNKNOWN_CONTRACT: 'unknown_contract',
+  REQUIRED_CONTRACT_UNMAPPED: 'required_contract_unmapped',
+  ARTIFACT_CONTRACT_MARKER_MISSING: 'artifact_contract_marker_missing',
 });
 
 const RESET_CONTRACT_VERSION = 'policy.runtime_rebuild_test_reset.v1';
@@ -56,6 +71,38 @@ const REQUIRED_COVERAGE_IDS = Object.freeze([
 
 const DECISION_IDS = Object.freeze(Object.values(POLICY_RUNTIME_TEST_RESET_DECISION_IDS));
 const COVERAGE_IDS = Object.freeze(Object.values(POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS));
+const CONTRACT_IDS = Object.freeze(Object.values(POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS));
+const REQUIRED_CONTRACT_IDS = Object.freeze([
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_EVIDENCE_PROJECTION,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.AUTOMATION_DECISION,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_QUESTION_REDUCTION,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.REQUEST_TIME_LEARNING,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.GUARDED_OUTCOME_PROJECTION,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_POLICY_REBUILD,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.MIGRATION_VERIFIER,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_INPUT,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_TRACE,
+]);
+const CONTRACT_IMPORT_MARKERS = Object.freeze({
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_EVIDENCE_PROJECTION]:
+    '../../services/policyRuntimeEvidenceProjection.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.AUTOMATION_DECISION]:
+    '../../services/policyAutomationDecisionContract.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_QUESTION_REDUCTION]:
+    '../../services/policyRuntimeQuestionReduction.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.REQUEST_TIME_LEARNING]:
+    '../../services/policyRequestTimeLearning.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.GUARDED_OUTCOME_PROJECTION]:
+    '../../services/policyGuardedOutcomeProjection.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_POLICY_REBUILD]:
+    '../../services/policyLibraryPolicyRebuild.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.MIGRATION_VERIFIER]:
+    '../../services/policyMigrationVerifierRollback.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_INPUT]:
+    '../../services/policyRuntimeMetricsInput.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_TRACE]:
+    '../../services/policyRuntimeMetricsTrace.mjs',
+});
 const SERVER_AUTHORITY_DECISION_IDS = Object.freeze([
   POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_EVIDENCE_PROJECTION,
   POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_AUTOMATION_DECISION,
@@ -77,6 +124,7 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     coverageIds: [
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.CLASSIFICATION_REGRESSION_REMAINS,
     ],
+    contractIds: [],
     replacement: 'Keep as existing classification/routing regression coverage while runtime contracts protect new authority boundaries.',
     protectsAuthority: true,
     distinguishesClassificationFromRouting: true,
@@ -91,6 +139,9 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_EVIDENCE_PROJECTION,
     coverageIds: [
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.BROAD_GENRE_NO_SPECIALIZED_AUTO_ROUTE,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_EVIDENCE_PROJECTION,
     ],
     replacement: 'Use runtime evidence projection to demote broad genre overlap until identity evidence exists.',
     protectsAuthority: true,
@@ -108,6 +159,9 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.BROAD_GENRE_NO_SPECIALIZED_AUTO_ROUTE,
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.MISSING_ROUTING_CLASSIFIED_NOT_ROUTED,
     ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.AUTOMATION_DECISION,
+    ],
     replacement: 'Use automation decision states to separate classification success from routing success.',
     protectsAuthority: true,
     distinguishesClassificationFromRouting: true,
@@ -122,6 +176,9 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_QUESTION_CONTRACT,
     coverageIds: [
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.STALE_QUESTIONS_CANNOT_LEARN,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_QUESTION_REDUCTION,
     ],
     replacement: 'Use runtime question reduction to clean stale or legacy questions and prevent unguarded learning.',
     protectsAuthority: true,
@@ -138,6 +195,9 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     coverageIds: [
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REQUEST_CHOICES_REQUIRE_GUARD,
     ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.REQUEST_TIME_LEARNING,
+    ],
     replacement: 'Use request-time learning decisions and the learning guard before durable evidence writes.',
     protectsAuthority: true,
     distinguishesClassificationFromRouting: true,
@@ -147,11 +207,32 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     traceReasons: ['request_learning_guard_rewrite'],
   }),
   Object.freeze({
+    path: 'server/src/__tests__/services/policyGuardedOutcomeProjection.test.mjs',
+    owner: 'server',
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD,
+    coverageIds: [
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REQUEST_CHOICES_REQUIRE_GUARD,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.GUARDED_OUTCOME_PROJECTION,
+    ],
+    replacement: 'Project only validated request-time decisions into bounded rebuild evidence.',
+    protectsAuthority: true,
+    distinguishesClassificationFromRouting: false,
+    preservesOldPreviewUi: false,
+    deleteAfterMigration: false,
+    normalWorkflowAllowed: true,
+    traceReasons: ['guarded_outcome_projection_rewrite'],
+  }),
+  Object.freeze({
     path: 'server/src/__tests__/services/policyLibraryPolicyRebuild.test.mjs',
     owner: 'server',
     decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER,
     coverageIds: [
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REBUILD_PRESERVES_EXPLICIT_CONSTRAINTS,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_POLICY_REBUILD,
     ],
     replacement: 'Use library-derived rebuild proposals to preserve explicit operator constraints while deriving policy from library evidence.',
     protectsAuthority: true,
@@ -168,6 +249,9 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     coverageIds: [
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
     ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.MIGRATION_VERIFIER,
+    ],
     replacement: 'Use the migration verifier to require operator acceptance and rollback snapshot before replacement.',
     protectsAuthority: true,
     distinguishesClassificationFromRouting: true,
@@ -177,11 +261,32 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     traceReasons: ['migration_verifier_rewrite'],
   }),
   Object.freeze({
+    path: 'server/src/__tests__/services/policyRuntimeMetricsInput.test.mjs',
+    owner: 'server',
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS,
+    coverageIds: [
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.RUNTIME_METRICS_SUPPRESS_DIAGNOSTICS,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_INPUT,
+    ],
+    replacement: 'Normalize runtime telemetry to allowlisted records before metrics aggregation.',
+    protectsAuthority: true,
+    distinguishesClassificationFromRouting: false,
+    preservesOldPreviewUi: false,
+    deleteAfterMigration: false,
+    normalWorkflowAllowed: true,
+    traceReasons: ['runtime_metrics_input_rewrite'],
+  }),
+  Object.freeze({
     path: 'server/src/__tests__/services/policyRuntimeMetricsTrace.test.mjs',
     owner: 'server',
     decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS,
     coverageIds: [
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.RUNTIME_METRICS_SUPPRESS_DIAGNOSTICS,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_TRACE,
     ],
     replacement: 'Use runtime metrics trace to count runtime outcomes without exposing old replay or impact diagnostic internals.',
     protectsAuthority: true,
@@ -198,6 +303,7 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     coverageIds: [
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REBUILD_PRESERVES_EXPLICIT_CONSTRAINTS,
     ],
+    contractIds: [],
     replacement: 'Replace behavior-sensitive impact preview assertions with server rebuild proposal and migration verifier coverage before deleting old UI diagnostics.',
     protectsAuthority: false,
     distinguishesClassificationFromRouting: false,
@@ -213,6 +319,7 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     coverageIds: [
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
     ],
+    contractIds: [],
     replacement: 'Replace replay preview migration confidence with server migration verifier coverage before deleting old UI diagnostics.',
     protectsAuthority: false,
     distinguishesClassificationFromRouting: false,
@@ -269,14 +376,39 @@ function resolveArtifactPath(artifactPath, repoRoot = DEFAULT_REPO_ROOT) {
   };
 }
 
+function sourceImportsContract(sourceContent, importMarker) {
+  if (!sourceContent || !importMarker) {
+    return false;
+  }
+
+  return [
+    `from '${importMarker}'`,
+    `from "${importMarker}"`,
+    `import '${importMarker}'`,
+    `import "${importMarker}"`,
+  ].some(staticImportMarker => sourceContent.includes(staticImportMarker));
+}
+
 function buildArtifactAvailability(artifacts, { repoRoot = DEFAULT_REPO_ROOT } = {}) {
   return artifacts.map(artifact => {
     const availability = resolveArtifactPath(artifact.path, repoRoot);
+    const sourceContent = availability.exists
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- resolvedPath is constrained to repoRoot before this read-only marker check.
+      ? readFileSync(availability.resolvedPath, 'utf8')
+      : '';
 
     return {
       path: artifact.path,
       exists: availability.exists,
       withinRepo: availability.withinRepo,
+      contractMarkers: asArray(artifact.contractIds).map(contractId => {
+        const marker = CONTRACT_IMPORT_MARKERS[contractId];
+
+        return {
+          contractId,
+          present: sourceImportsContract(sourceContent, marker),
+        };
+      }),
     };
   });
 }
@@ -288,6 +420,9 @@ function normalizeArtifact(artifact = {}) {
     decisionId: normalizeString(artifact.decisionId),
     coverageIds: asArray(artifact.coverageIds)
       .map(coverageId => normalizeString(coverageId))
+      .filter(Boolean),
+    contractIds: asArray(artifact.contractIds)
+      .map(contractId => normalizeString(contractId))
       .filter(Boolean),
     replacement: normalizeString(artifact.replacement),
     protectsAuthority: normalizeBoolean(artifact.protectsAuthority),
@@ -328,6 +463,19 @@ function buildCoveragePlan(artifacts) {
   });
 }
 
+function buildContractCoveragePlan(artifacts) {
+  return REQUIRED_CONTRACT_IDS.map(contractId => {
+    const mappedArtifacts = artifacts.filter(artifact => artifact.contractIds.includes(contractId));
+
+    return {
+      contractId,
+      required: true,
+      covered: mappedArtifacts.length > 0,
+      artifactPaths: mappedArtifacts.map(artifact => artifact.path),
+    };
+  });
+}
+
 function listPolicyRuntimeRebuildTestResetArtifacts() {
   return DEFAULT_TEST_RESET_ARTIFACTS.map(artifact => normalizeArtifact(artifact));
 }
@@ -339,17 +487,21 @@ function buildPolicyRuntimeRebuildTestReset({
   const normalizedArtifacts = asArray(artifacts).map(artifact => normalizeArtifact(artifact));
   const artifactAvailability = buildArtifactAvailability(normalizedArtifacts, { repoRoot });
   const coveragePlan = buildCoveragePlan(normalizedArtifacts);
+  const contractCoveragePlan = buildContractCoveragePlan(normalizedArtifacts);
   const reset = {
     version: RESET_CONTRACT_VERSION,
     artifacts: normalizedArtifacts,
     artifactAvailability,
     coveragePlan,
+    contractCoveragePlan,
     summary: {
       artifactCount: normalizedArtifacts.length,
       existingArtifactCount: artifactAvailability.filter(artifact => artifact.exists).length,
       decisionCounts: summarizeDecisions(normalizedArtifacts),
       requiredCoverageCount: REQUIRED_COVERAGE_IDS.length,
       coveredRequiredCoverageCount: coveragePlan.filter(coverage => coverage.covered).length,
+      requiredContractCount: REQUIRED_CONTRACT_IDS.length,
+      coveredRequiredContractCount: contractCoveragePlan.filter(contract => contract.covered).length,
       oldPreviewUiFrozen: normalizedArtifacts.some(artifact => artifact.preservesOldPreviewUi),
     },
     sideEffects: {
@@ -377,8 +529,10 @@ function validatePolicyRuntimeRebuildTestReset(reset = {}) {
     artifactAvailability.map(artifact => [normalizePathKey(artifact.path), artifact])
   );
   const coveragePlan = asArray(reset.coveragePlan);
+  const contractCoveragePlan = asArray(reset.contractCoveragePlan);
   const issues = [];
   const mappedCoverageIds = new Set();
+  const mappedContractIds = new Set();
 
   artifacts.forEach((artifact, index) => {
     const artifactPathKey = normalizePathKey(artifact.path);
@@ -452,6 +606,29 @@ function validatePolicyRuntimeRebuildTestReset(reset = {}) {
         message: 'Every test reset artifact must map to at least one coverage contract.',
       });
     }
+
+    asArray(artifact.contractIds).forEach(contractId => {
+      mappedContractIds.add(contractId);
+      if (!CONTRACT_IDS.includes(contractId)) {
+        issues.push({
+          riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.UNKNOWN_CONTRACT,
+          artifactPath: artifact.path || null,
+          contractId,
+          message: 'Test reset artifact references an unknown runtime contract.',
+        });
+      }
+
+      const marker = asArray(availability?.contractMarkers)
+        .find(candidate => candidate.contractId === contractId);
+      if (CONTRACT_IDS.includes(contractId) && marker?.present !== true) {
+        issues.push({
+          riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.ARTIFACT_CONTRACT_MARKER_MISSING,
+          artifactPath: artifact.path || null,
+          contractId,
+          message: 'Test reset artifact must import the runtime contract it claims to protect.',
+        });
+      }
+    });
 
     if (
       SERVER_AUTHORITY_DECISION_IDS.includes(artifact.decisionId) &&
@@ -527,6 +704,17 @@ function validatePolicyRuntimeRebuildTestReset(reset = {}) {
     }
   });
 
+  REQUIRED_CONTRACT_IDS.forEach(contractId => {
+    const contractRecord = contractCoveragePlan.find(contract => contract.contractId === contractId);
+    if (!contractRecord || contractRecord.covered !== true || !mappedContractIds.has(contractId)) {
+      issues.push({
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.REQUIRED_CONTRACT_UNMAPPED,
+        contractId,
+        message: 'Required runtime contract is not mapped to a focused test artifact.',
+      });
+    }
+  });
+
   if (reset.summary?.oldPreviewUiFrozen === true) {
     issues.push({
       riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.OLD_PREVIEW_UI_FROZEN,
@@ -560,6 +748,7 @@ function buildPolicyRuntimeRebuildTestResetAudit(
     issueCount: validation.issueCount,
     artifactCount: asArray(reset.artifacts).length,
     requiredCoverageCount: REQUIRED_COVERAGE_IDS.length,
+    requiredContractCount: REQUIRED_CONTRACT_IDS.length,
     validation,
     nextStep: reset.nextStep || {
       stepId: 'completion_audit',
@@ -571,6 +760,7 @@ function buildPolicyRuntimeRebuildTestResetAudit(
 
 export {
   POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS,
   POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS,
   POLICY_RUNTIME_TEST_RESET_DECISION_IDS,
   buildPolicyRuntimeRebuildTestReset,

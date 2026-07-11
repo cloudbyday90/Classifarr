@@ -1,5 +1,6 @@
 import {
   POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS,
   POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS,
   POLICY_RUNTIME_TEST_RESET_DECISION_IDS,
   buildPolicyRuntimeRebuildTestReset,
@@ -18,9 +19,9 @@ describe('policyRuntimeRebuildTestReset', () => {
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_EVIDENCE_PROJECTION]: 1,
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_AUTOMATION_DECISION]: 1,
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_QUESTION_CONTRACT]: 1,
-      [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD]: 1,
+      [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD]: 2,
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER]: 2,
-      [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS]: 1,
+      [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS]: 2,
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC]: 2,
     }));
     expect(reset.summary.existingArtifactCount).toBe(reset.summary.artifactCount);
@@ -44,6 +45,8 @@ describe('policyRuntimeRebuildTestReset', () => {
       }),
     ]));
     expect(reset.validation.ok).toBe(true);
+    expect(reset.summary.requiredContractCount).toBe(9);
+    expect(reset.summary.coveredRequiredContractCount).toBe(9);
   });
 
   test('rejects missing or repository-escaping reset artifact paths', () => {
@@ -175,6 +178,30 @@ describe('policyRuntimeRebuildTestReset', () => {
       }),
       expect.objectContaining({
         riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.DELETE_TARGET_STILL_NORMAL_WORKFLOW,
+      }),
+    ]));
+  });
+
+  test('rejects a runtime artifact that does not import its declared contract', () => {
+    const artifacts = listPolicyRuntimeRebuildTestResetArtifacts().map(artifact =>
+      artifact.path === 'server/src/__tests__/services/policyRuntimeMetricsInput.test.mjs'
+        ? {
+          ...artifact,
+          contractIds: [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_TRACE],
+        }
+        : artifact
+    );
+    const reset = buildPolicyRuntimeRebuildTestReset({ artifacts });
+
+    expect(reset.validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.ARTIFACT_CONTRACT_MARKER_MISSING,
+        artifactPath: 'server/src/__tests__/services/policyRuntimeMetricsInput.test.mjs',
+        contractId: POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_TRACE,
+      }),
+      expect.objectContaining({
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.REQUIRED_CONTRACT_UNMAPPED,
+        contractId: POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_INPUT,
       }),
     ]));
   });

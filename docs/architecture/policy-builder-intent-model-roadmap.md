@@ -3372,6 +3372,12 @@ Implementation status:
   validation language instead of Phase 6 diagnostics. Its product behavior and
   conservative acceptance, rollback, and side-effect gates are unchanged. The
   outcome record is [Policy Library Rebuild Naming Cutover](policy-library-rebuild-naming-cutover.md).
+- The runtime/rebuild test reset now verifies contract-to-test ownership in
+  addition to file availability: all required runtime services must map to a
+  focused repository-contained ESM test that statically imports the declared
+  service. Guarded-outcome projection and runtime-metrics input are separate
+  required contracts. Its design record is
+  [Policy Runtime Rebuild Test Contract Coverage](policy-runtime-rebuild-test-contract-coverage.md).
 
 ### 6R.2 Intent Engine
 
@@ -4451,6 +4457,8 @@ Tasks:
   - request-time choices require guarded learning,
   - rebuild proposals preserve explicit constraints,
   - rollback snapshot is required before replacement.
+- Require each declared runtime contract to map to a focused ESM test that
+  statically imports the service it claims to protect.
 
 Acceptance criteria:
 
@@ -4470,6 +4478,12 @@ Implementation status:
 - The reset now verifies that each declared test artifact path is
   repository-relative, resolves inside the repository, and exists on disk, so
   stale replacement paths fail validation instead of remaining documentation.
+- The reset now also verifies contract-to-test ownership: every required
+  runtime service has a focused ESM test artifact that statically imports its
+  declared service. Guarded-outcome projection and runtime-metrics input are
+  distinct required contracts; unknown, missing, or mismatched mappings fail
+  closed. The design record is
+  [Policy Runtime Rebuild Test Contract Coverage](policy-runtime-rebuild-test-contract-coverage.md).
 - Required reset coverage now explicitly includes broad genre no specialized
   auto-route, missing routing as `classified_not_routed`, stale questions unable
   to learn, guarded request-time choices, explicit constraint preservation, and

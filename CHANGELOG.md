@@ -21,6 +21,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime/Rebuild Test Contract Coverage** — hardened the policy-engine
+  test-reset audit so every required runtime boundary maps to a focused ESM test
+  that imports its declared service, including guarded outcomes and runtime
+  telemetry normalization.
 - **Policy Runtime Metrics Input Boundary** — separated raw runtime telemetry
   normalization from metrics aggregation, retaining only allowlisted outcome,
   reason, and fingerprint fields while recording sensitive-input suppression.

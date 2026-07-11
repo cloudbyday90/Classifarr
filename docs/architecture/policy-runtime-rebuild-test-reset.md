@@ -45,8 +45,9 @@ The reset must prove these behaviors:
    routing success.
 5. Require rebuild and verifier tests to protect explicit constraints and
    rollback safety before native intent storage migration begins.
-6. Verify each declared test artifact still resolves inside the repository and
-   exists on disk so the reset cannot pass with stale paths.
+6. Verify each declared test artifact still resolves inside the repository,
+   exists on disk, and statically imports the runtime contract it claims to
+   protect so the reset cannot pass with stale paths or superficial coverage.
 
 ## Pros And Cons
 
@@ -90,12 +91,18 @@ Cons:
   - paths must be repository-relative,
   - paths must resolve inside the repository,
   - declared replacement/retention test files must exist.
+- Contract-ownership validation:
+  - each required runtime contract maps to a focused test artifact,
+  - each mapped artifact must statically import its declared ESM service,
+  - guarded-outcome projection and runtime-metrics input are independently
+    represented rather than being implied by neighboring tests.
 - Next step: runtime contract completion audit before native intent storage.
 
 ## Implemented Files
 
 - `server/src/services/policyRuntimeRebuildTestReset.mjs`
 - `server/src/__tests__/services/policyRuntimeRebuildTestReset.test.mjs`
+- [Policy Runtime Rebuild Test Contract Coverage](policy-runtime-rebuild-test-contract-coverage.md)
 
 ## Outcome
 
@@ -106,4 +113,5 @@ impact/replay diagnostics.
 Validation fails when a runtime rewrite bypasses server authority, when
 classification success is not separated from routing success, when required
 coverage is missing, when a declared test artifact is missing or escapes the
-repository, or when old preview UI is preserved as the migration contract.
+repository, when a declared test does not import the contract it claims to
+protect, or when old preview UI is preserved as the migration contract.
