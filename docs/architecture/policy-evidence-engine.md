@@ -28,6 +28,11 @@ for the cached profile handoff and all bounded persisted source collectors. It
 requires each nested audit before it builds the evidence envelope, preventing
 callers from treating a failed collector as an empty source section.
 
+The policy evidence handoff verifier now checks the complete loader-to-envelope
+chain, including static engine rules, nested audits, projection fingerprint, and
+quality assessment. Its ready result proves handoff integrity, not that a
+destination is ready for automation.
+
 June 2026 hardening adds a projection summary and legacy reducer cutline
 inventory. The summary gives downstream engines a bounded, deterministic view
 of bucket counts, source authority, blocking evidence, and review evidence. The

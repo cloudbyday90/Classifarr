@@ -113,7 +113,7 @@ or envelope returns a blocked status with no next step.
 
 ## Next Step
 
-Complete the Phase 6R.1 evidence-engine checkpoint: audit the collector and
-loader contracts together, record the explicit 6R.1 completion criteria, and
-then move to the intent-engine component only if the single handoff proves
-stable and all source-specific evidence remains bounded and review-safe.
+The policy evidence handoff verifier now audits the collector and loader
+contracts together and records the evidence-engine completion criteria. The next
+component is a focused intent-engine adapter that consumes only a ready verified
+library evidence handoff.

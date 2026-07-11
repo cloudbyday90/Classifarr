@@ -3336,6 +3336,12 @@ Implementation status:
   that handoff passes, requires every nested audit, and builds exactly one
   evidence envelope without live lookups or writes. Its design record is
   [Policy Library Evidence Loader](policy-library-evidence-loader.md).
+- The policy evidence handoff verifier lives in
+  `server/src/services/policyEvidenceHandoffVerifier.mjs`. It verifies the
+  complete profile-to-envelope contract, including the static engine, loader,
+  envelope, boundary, fingerprint, quality, and side-effect audits, and returns
+  a sanitized intent-inference handoff summary. Its design record is
+  [Policy Evidence Handoff Verifier](policy-evidence-handoff-verifier.md).
 
 ### 6R.2 Intent Engine
 

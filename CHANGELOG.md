@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Evidence Handoff Verifier** — added the server-owned completion
+  audit for the complete library evidence workflow; requires static engine,
+  loader, source, envelope, boundary, fingerprint, and quality validation;
+  distinguishes an integrity-valid blocked handoff from an invalid contract; and
+  returns sanitized provenance without evidence record labels or error text.
 - **Policy Library Evidence Loader** — added the server-owned, read-only
   profile-first orchestration boundary for policy evidence; it requires audited
   bounded outcome, pending-answer, routing, and metadata source snapshots before
