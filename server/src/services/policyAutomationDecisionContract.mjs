@@ -139,6 +139,19 @@ const UNSAFE_PROVENANCE_KEYS = new Set([
   'raw',
   'rawlabel',
 ]);
+const RUNTIME_EVIDENCE_INPUT_KEYS = new Set([
+  'libraryProfile',
+  'operatorIntent',
+  'classificationFinalOutcomes',
+  'manualCorrections',
+  'pendingItemAnswers',
+  'ragNeighbors',
+  'ragEvidence',
+  'metadataSignals',
+  'metadataEvidence',
+  'routingOutcomes',
+  'profileFreshness',
+]);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -575,19 +588,47 @@ function validateDecisionEvidenceValidation(decision = {}) {
   return issues;
 }
 
-function buildPolicyAutomationDecision(input = {}) {
-  const evidenceProjection = input.evidenceProjection?.version === 'policy.runtime_evidence_projection.v1'
-    ? input.evidenceProjection
-    : buildPolicyRuntimeEvidenceProjection(input);
+function requireRuntimeEvidenceProjection(input = {}) {
+  const decisionInput = asObject(input);
+  const rawEvidenceKey = Object.keys(decisionInput).find(key =>
+    RUNTIME_EVIDENCE_INPUT_KEYS.has(key)
+  );
+
+  if (rawEvidenceKey) {
+    throw new TypeError(
+      `Automation decision requires a runtime evidence projection; raw evidence key "${rawEvidenceKey}" must use buildPolicyAutomationDecisionFromRuntimeInput.`
+    );
+  }
+
+  if (decisionInput.evidenceProjection?.version !== 'policy.runtime_evidence_projection.v1') {
+    throw new TypeError('Automation decision requires a policy.runtime_evidence_projection.v1 evidence projection.');
+  }
+
+  return decisionInput.evidenceProjection;
+}
+
+function buildDecisionOperationalInput(input = {}) {
+  return Object.entries(asObject(input)).reduce((decisionInput, [key, value]) => {
+    if (!RUNTIME_EVIDENCE_INPUT_KEYS.has(key) && key !== 'evidenceProjection') {
+      decisionInput[key] = value;
+    }
+
+    return decisionInput;
+  }, {});
+}
+
+function buildPolicyAutomationDecisionFromEvidenceProjection(input = {}) {
+  const decisionInput = asObject(input);
+  const evidenceProjection = requireRuntimeEvidenceProjection(decisionInput);
   const evidenceValidation = validatePolicyRuntimeEvidenceProjection(evidenceProjection);
   const buckets = getBuckets(evidenceProjection);
   const projectionFingerprint = sanitizeProjectionFingerprint(evidenceProjection.projectionFingerprint);
   const strongIdentity = buckets.identity.some(isStrongIdentityEntry);
-  const routeMapped = isRoutingMapped(input, buckets);
-  const routingIntent = hasRoutingIntent(input, buckets);
-  const classificationComplete = isClassificationComplete(asObject(input.classification));
+  const routeMapped = isRoutingMapped(decisionInput, buckets);
+  const routingIntent = hasRoutingIntent(decisionInput, buckets);
+  const classificationComplete = isClassificationComplete(asObject(decisionInput.classification));
   const chosen = chooseDecisionState({
-    input,
+    input: decisionInput,
     buckets,
     strongIdentity,
     routeMapped,
@@ -625,7 +666,7 @@ function buildPolicyAutomationDecision(input = {}) {
         insufficient: buckets.insufficient.length,
       },
     },
-    sideEffects: buildSideEffectSummary(input),
+    sideEffects: buildSideEffectSummary(decisionInput),
     trace: buildTrace({
       stateId: chosen.stateId,
       reasons: chosen.reasons,
@@ -642,6 +683,16 @@ function buildPolicyAutomationDecision(input = {}) {
   }
 
   return decision;
+}
+
+function buildPolicyAutomationDecisionFromRuntimeInput(input = {}) {
+  const runtimeInput = asObject(input);
+  const evidenceProjection = buildPolicyRuntimeEvidenceProjection(runtimeInput);
+
+  return buildPolicyAutomationDecisionFromEvidenceProjection({
+    ...buildDecisionOperationalInput(runtimeInput),
+    evidenceProjection,
+  });
 }
 
 function validatePolicyAutomationDecision(decision = {}) {
@@ -748,7 +799,7 @@ function validatePolicyAutomationDecision(decision = {}) {
 }
 
 function buildPolicyAutomationDecisionContractAudit(
-  decision = buildPolicyAutomationDecision()
+  decision = buildPolicyAutomationDecisionFromRuntimeInput()
 ) {
   const validation = validatePolicyAutomationDecision(decision);
 
@@ -771,7 +822,8 @@ export {
   POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS,
   POLICY_AUTOMATION_DECISION_REASON_IDS,
   POLICY_AUTOMATION_DECISION_STATE_IDS,
-  buildPolicyAutomationDecision,
+  buildPolicyAutomationDecisionFromEvidenceProjection,
+  buildPolicyAutomationDecisionFromRuntimeInput,
   buildPolicyAutomationDecisionContractAudit,
   getAutomationDecisionState,
   listPolicyAutomationDecisionStates,

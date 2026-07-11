@@ -17,6 +17,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Automation Decision Input Boundary** — split raw runtime input
+  adaptation from projection-only automation decisions; the decision reducer
+  now rejects raw evidence fields while preserving explicit routing,
+  classification, risk, and policy-evaluation facts.
 - **Policy Runtime Operator Intent Boundary** — routed runtime operator intent
   through the shared evidence gate and fingerprint; rejected intent is omitted
   without blocking independent runtime evidence, and its sanitized boundary

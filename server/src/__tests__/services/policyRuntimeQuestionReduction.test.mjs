@@ -6,7 +6,7 @@ import {
 import {
   POLICY_AUTOMATION_DECISION_ACTION_IDS,
   POLICY_AUTOMATION_DECISION_STATE_IDS,
-  buildPolicyAutomationDecision,
+  buildPolicyAutomationDecisionFromEvidenceProjection,
 } from '../../services/policyAutomationDecisionContract.mjs';
 import {
   POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS,
@@ -21,7 +21,7 @@ import {
 } from '../../services/policyRuntimeEvidenceProjection.mjs';
 
 function buildStrongDecision(overrides = {}) {
-  return buildPolicyAutomationDecision({
+  return buildPolicyAutomationDecisionFromEvidenceProjection({
     evidenceProjection: buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {
         identityCandidates: [
@@ -80,7 +80,7 @@ describe('policyRuntimeQuestionReduction', () => {
   });
 
   test('turns classified_not_routed into routing action instead of a persisted question', () => {
-    const decision = buildPolicyAutomationDecision({
+    const decision = buildPolicyAutomationDecisionFromEvidenceProjection({
       evidenceProjection: buildPolicyRuntimeEvidenceProjection({
         libraryProfile: {
           identityCandidates: [

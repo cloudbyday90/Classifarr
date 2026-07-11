@@ -9,7 +9,7 @@ import {
   POLICY_AUTOMATION_DECISION_ACTION_IDS,
   POLICY_AUTOMATION_DECISION_REASON_IDS,
   POLICY_AUTOMATION_DECISION_STATE_IDS,
-  buildPolicyAutomationDecision,
+  buildPolicyAutomationDecisionFromRuntimeInput,
   validatePolicyAutomationDecision,
 } from './policyAutomationDecisionContract.mjs';
 
@@ -367,7 +367,7 @@ function getBaseDisposition(decision = {}) {
 function buildPolicyRuntimeQuestionReduction(input = {}) {
   const decision = input.automationDecision?.version === 'policy.automation_decision.v1'
     ? input.automationDecision
-    : buildPolicyAutomationDecision(input);
+    : buildPolicyAutomationDecisionFromRuntimeInput(input);
   const decisionValidation = validatePolicyAutomationDecision(decision);
   const decisionEvidenceFingerprint = sanitizeDecisionEvidenceFingerprint(decision);
   const frameOverride = normalizeFrameOverride(input);

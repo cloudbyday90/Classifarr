@@ -4054,6 +4054,10 @@ Implementation status:
 - The decision contract also requires nested runtime evidence validation proof
   and rejects decisions whose bounded trace evidence-valid attribute disagrees
   with the evidence block.
+- Decision construction now separates raw runtime-input adaptation from the
+  projection-only state-machine reducer. Raw evidence cannot be rebuilt by the
+  reducer; its design record is [Policy Automation Decision Input
+  Boundary](policy-automation-decision-input-boundary.md).
 
 ### 7R.4 Runtime Question Reduction
 

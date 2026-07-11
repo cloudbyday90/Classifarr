@@ -8,6 +8,10 @@ This contract turns runtime evidence into a single server-owned automation
 decision. It does not route media, write classifications, create questions,
 write learning records, call providers, or persist native intent.
 
+Decision construction now separates the explicit runtime-input adapter from the
+projection-only reducer. The reducer accepts a verified runtime evidence
+projection and operational decision facts; it rejects raw evidence fields.
+
 ## Problem
 
 The existing runtime path historically allowed several states to blur together:
@@ -122,6 +126,10 @@ Cons:
    result, and require the trace `evidence_valid` attribute to match it.
 9. Keep the contract side-effect-free until a later runtime integration slice
    explicitly wires it to classification and Arr routing.
+10. Keep runtime evidence construction outside the decision reducer. Use
+    `buildPolicyAutomationDecisionFromRuntimeInput` for raw runtime inputs and
+    `buildPolicyAutomationDecisionFromEvidenceProjection` for an existing
+    runtime projection plus operational facts.
 
 ## Implemented Files
 
@@ -131,6 +139,8 @@ Cons:
   `server/src/__tests__/services/policyAutomationDecisionContract.test.mjs`
 - Runtime evidence dependency:
   `server/src/services/policyRuntimeEvidenceProjection.mjs`
+- Decision input-boundary outcome:
+  `docs/architecture/policy-automation-decision-input-boundary.md`
 - Roadmap owner:
   Automation Decision Contract in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
@@ -143,7 +153,8 @@ The service exports:
 - `POLICY_AUTOMATION_DECISION_ACTION_IDS`
 - `POLICY_AUTOMATION_DECISION_REASON_IDS`
 - `POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS`
-- `buildPolicyAutomationDecision`
+- `buildPolicyAutomationDecisionFromEvidenceProjection`
+- `buildPolicyAutomationDecisionFromRuntimeInput`
 - `buildPolicyAutomationDecisionContractAudit`
 - `getAutomationDecisionState`
 - `listPolicyAutomationDecisionStates`
@@ -180,6 +191,7 @@ The service exports:
 ## Security And Data Handling
 
 - The contract does not call providers.
+- Projection-only decision construction rejects raw runtime evidence fields.
 - The contract does not expose raw provider payloads.
 - The contract does not use UI chip labels as authority.
 - The contract does not write classification, routing, question, or learning

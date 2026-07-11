@@ -10,12 +10,19 @@ import {
   POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS,
   POLICY_AUTOMATION_DECISION_REASON_IDS,
   POLICY_AUTOMATION_DECISION_STATE_IDS,
-  buildPolicyAutomationDecision,
+  buildPolicyAutomationDecisionFromEvidenceProjection,
+  buildPolicyAutomationDecisionFromRuntimeInput,
   buildPolicyAutomationDecisionContractAudit,
   getAutomationDecisionState,
   listPolicyAutomationDecisionStates,
   validatePolicyAutomationDecision,
 } from '../../services/policyAutomationDecisionContract.mjs';
+
+function buildDecisionForTest(input = {}) {
+  return input.evidenceProjection?.version === 'policy.runtime_evidence_projection.v1'
+    ? buildPolicyAutomationDecisionFromEvidenceProjection(input)
+    : buildPolicyAutomationDecisionFromRuntimeInput(input);
+}
 
 function buildStrongRuntimeEvidence(overrides = {}) {
   return buildPolicyRuntimeEvidenceProjection({
@@ -59,7 +66,7 @@ describe('policyAutomationDecisionContract', () => {
   });
 
   test('allows auto-route only when identity, routing, freshness, and risk gates pass', () => {
-    const decision = buildPolicyAutomationDecision({
+    const decision = buildDecisionForTest({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
@@ -109,6 +116,26 @@ describe('policyAutomationDecisionContract', () => {
     expect(validatePolicyAutomationDecision(decision).ok).toBe(true);
   });
 
+  test('requires an explicit runtime-input adapter for raw evidence', () => {
+    expect(() => buildPolicyAutomationDecisionFromEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: [{ label: 'Animated Movies', count: 12 }],
+      },
+    })).toThrow('raw evidence key "libraryProfile"');
+
+    const decision = buildPolicyAutomationDecisionFromRuntimeInput({
+      libraryProfile: {
+        identityCandidates: [{ label: 'Animated Movies', count: 12 }],
+      },
+      routing: {
+        mapped: true,
+      },
+    });
+
+    expect(decision.evidence.version).toBe('policy.runtime_evidence_projection.v1');
+    expect(decision.stateId).toBe(POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY);
+  });
+
   test('records completed classification without Arr mapping as classified_not_routed', () => {
     const evidenceProjection = buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {
@@ -120,7 +147,7 @@ describe('policyAutomationDecisionContract', () => {
         routingTargets: ['Radarr Animated Movies'],
       },
     });
-    const decision = buildPolicyAutomationDecision({
+    const decision = buildDecisionForTest({
       evidenceProjection,
       classification: {
         status: 'completed',
@@ -144,7 +171,7 @@ describe('policyAutomationDecisionContract', () => {
   });
 
   test('uses needs_routing_mapping when destination identity is strong but no route target is mapped', () => {
-    const decision = buildPolicyAutomationDecision({
+    const decision = buildDecisionForTest({
       evidenceProjection: buildPolicyRuntimeEvidenceProjection({
         libraryProfile: {
           identityCandidates: [
@@ -164,7 +191,7 @@ describe('policyAutomationDecisionContract', () => {
   });
 
   test('blocks automation when hard-limit evaluation fails', () => {
-    const decision = buildPolicyAutomationDecision({
+    const decision = buildDecisionForTest({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
@@ -184,7 +211,7 @@ describe('policyAutomationDecisionContract', () => {
   });
 
   test('uses stale_profile_retry before route decisions when profile evidence is stale', () => {
-    const decision = buildPolicyAutomationDecision({
+    const decision = buildDecisionForTest({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animated Movies', count: 10, confidence: 0.9, trusted: true },
@@ -209,7 +236,7 @@ describe('policyAutomationDecisionContract', () => {
   });
 
   test('requires operator review for avoid rules and high-risk evidence conflicts', () => {
-    const avoidDecision = buildPolicyAutomationDecision({
+    const avoidDecision = buildDecisionForTest({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
@@ -218,7 +245,7 @@ describe('policyAutomationDecisionContract', () => {
         avoidRulesSatisfied: false,
       },
     });
-    const ragConflictDecision = buildPolicyAutomationDecision({
+    const ragConflictDecision = buildDecisionForTest({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animated Movies', count: 9, confidence: 0.9, trusted: true },
@@ -246,7 +273,7 @@ describe('policyAutomationDecisionContract', () => {
   });
 
   test('uses insufficient_evidence when weak runtime evidence is all that exists', () => {
-    const decision = buildPolicyAutomationDecision({
+    const decision = buildDecisionForTest({
       libraryProfile: {
         identityCandidates: [
           { label: 'Animation', count: 1, confidence: 0.64 },
@@ -312,7 +339,7 @@ describe('policyAutomationDecisionContract', () => {
   });
 
   test('rejects automation decisions with malformed or unsafe evidence fingerprints', () => {
-    const decision = buildPolicyAutomationDecision({
+    const decision = buildDecisionForTest({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
@@ -358,7 +385,7 @@ describe('policyAutomationDecisionContract', () => {
   });
 
   test('rejects automation decisions without runtime evidence validation proof', () => {
-    const decision = buildPolicyAutomationDecision({
+    const decision = buildDecisionForTest({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
@@ -383,7 +410,7 @@ describe('policyAutomationDecisionContract', () => {
   });
 
   test('rejects automation decisions when trace evidence validity drifts', () => {
-    const decision = buildPolicyAutomationDecision({
+    const decision = buildDecisionForTest({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
@@ -411,7 +438,7 @@ describe('policyAutomationDecisionContract', () => {
   });
 
   test('passes the default automation decision contract audit', () => {
-    const decision = buildPolicyAutomationDecision({
+    const decision = buildDecisionForTest({
       evidenceProjection: buildStrongRuntimeEvidence(),
       routing: {
         mapped: true,
