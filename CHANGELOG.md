@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Library Profile Evidence** — added a pure server-owned adapter from
+  persisted media-server profile distributions to bounded policy evidence;
+  preserves distributions as compatibility support only, keeps observed
+  absences review-only, blocks profile-derived identity/exclusion behavior, and
+  verifies no provider, quota, or storage side effects before evidence-boundary
+  handoff.
 - **Policy Authoring User Mental Model Phase-Language Cutover** — replaced
   phase-coded policy-engine metadata and setup-audit diagnostics with durable
   policy-authoring terminology; renamed the active mental-model design record;

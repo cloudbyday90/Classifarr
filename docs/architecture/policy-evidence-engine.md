@@ -195,6 +195,11 @@ and runs the projection audit. Callers can then use
 `buildPolicyEvidenceBoundaryAudit` to validate the complete handoff before
 passing it to the intent engine.
 
+Persisted media-server profile distributions should first be adapted by
+`server/src/services/policyLibraryProfileEvidence.mjs`. That pure adapter emits
+bounded compatibility and review-only outlier candidates without allowing broad
+distribution values to establish destination identity.
+
 The projection entry shape is intentionally small:
 
 ```text

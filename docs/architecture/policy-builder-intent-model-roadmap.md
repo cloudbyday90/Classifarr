@@ -3286,6 +3286,12 @@ Implementation status:
 - Existing replay/impact reducers are not wired into the normal product flow in
   this slice; future Phase 6R migration work must either extract deterministic
   reducers into the evidence engine or delete the abandoned diagnostic surfaces.
+- The media-server profile adapter lives in
+  `server/src/services/policyLibraryProfileEvidence.mjs`. It turns persisted
+  profile distributions into bounded compatibility and review-only outlier
+  evidence, deliberately emits no identity evidence, and feeds the existing
+  evidence boundary without live provider calls or storage writes. Its design
+  record is [Policy Library Profile Evidence](policy-library-profile-evidence.md).
 
 ### 6R.2 Intent Engine
 
