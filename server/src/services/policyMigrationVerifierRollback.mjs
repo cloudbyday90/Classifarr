@@ -406,8 +406,7 @@ function buildDeletionCriteria({ input, differences, migrationPlan, applicationG
   const criteria = [
     {
       criterionId: POLICY_MIGRATION_DELETION_CRITERION_IDS.NATIVE_INTENT_STORAGE_STABLE,
-      met: criteriaInput.nativeIntentStorageStable === true ||
-        criteriaInput.phase8NativeIntentStable === true,
+      met: criteriaInput.nativeIntentStorageStable === true,
       summary: 'Native intent storage has proven stable.',
     },
     {

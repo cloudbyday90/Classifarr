@@ -72,9 +72,9 @@ Cons:
    `policy.migration_verifier_sample_set_fingerprint.v1`.
 6. Replace verifier-local phase handoff with
    `nextStep.stepId = runtime_metrics_trace`.
-7. Rename deletion readiness from Phase 8-specific language to
-   `native_intent_storage_stable` while keeping legacy input compatibility for
-   existing callers that still send `phase8NativeIntentStable`.
+7. Rename deletion readiness to `native_intent_storage_stable` and reject the
+   obsolete phase-named input. Repository audit found no persisted, public, or
+   downstream caller that requires a compatibility reader.
 8. Use the runtime completion audit to verify the semantic `nextStep` handoff sequence.
 9. Update direct runtime consumers, docs, changelog, and naming regression
    baseline after inventory validation proves the count decreased.

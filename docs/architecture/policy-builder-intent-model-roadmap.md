@@ -3378,6 +3378,11 @@ Implementation status:
   service. Guarded-outcome projection and runtime-metrics input are separate
   required contracts. Its design record is
   [Policy Runtime Rebuild Test Contract Coverage](policy-runtime-rebuild-test-contract-coverage.md).
+- Migration deletion readiness now accepts only the durable
+  `nativeIntentStorageStable` input. The retired phase-named alias had no
+  persisted, public, or downstream caller, so it was removed instead of
+  retaining compatibility debt. Its outcome record is
+  [Policy Migration Native Intent Criterion Cutover](policy-migration-native-intent-criterion-cutover.md).
 
 ### 6R.2 Intent Engine
 
@@ -6675,7 +6680,7 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 142 production references plus 143 rename candidates.
+  currently reports 141 production references plus 142 rename candidates.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.

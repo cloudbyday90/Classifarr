@@ -11,6 +11,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Migration Native Intent Criterion** — removed the unused
+  phase-named deletion-readiness input alias; migration verification now accepts
+  only the durable native-intent storage criterion and remains side-effect-free.
 - **Classification AI Parse Diagnostics Contract** — replaced the current
   delivery-era parse diagnostic version with
   `classification.ai_parse_diagnostics.v1`; existing classification history is

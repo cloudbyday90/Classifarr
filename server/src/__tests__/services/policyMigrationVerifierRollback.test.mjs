@@ -449,7 +449,7 @@ describe('policyMigrationVerifierRollback', () => {
       ]));
   });
 
-  test('blocks legacy deletion before Phase 8 stability or verifier pass', () => {
+  test('blocks legacy deletion before native intent storage is stable or verifier passes', () => {
     const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       legacyComparisonSamples: [
@@ -508,6 +508,31 @@ describe('policyMigrationVerifierRollback', () => {
 
     expect(report.deletionReadiness.canDeleteLegacyPaths).toBe(true);
     expect(validatePolicyMigrationVerifierReport(report).ok).toBe(true);
+  });
+
+  test('does not accept the retired phase-named native storage criterion', () => {
+    const report = buildPolicyMigrationVerifierReport({
+      proposal: acceptedProposal(),
+      legacyComparisonSamples: [],
+      rollbackSnapshot: {
+        created: true,
+        restorePath: 'policy_snapshots/snapshot-1.json',
+      },
+      deletionCriteria: {
+        phase8NativeIntentStable: true,
+        rollbackWindowActive: true,
+        deleteChecklistApproved: true,
+        customSignalReplacementDefined: true,
+      },
+    });
+
+    expect(report.deletionReadiness.canDeleteLegacyPaths).toBe(false);
+    expect(report.deletionReadiness.criteria).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        criterionId: POLICY_MIGRATION_DELETION_CRITERION_IDS.NATIVE_INTENT_STORAGE_STABLE,
+        met: false,
+      }),
+    ]));
   });
 
   test('passes component audit and points to runtime metrics and decision trace', () => {
