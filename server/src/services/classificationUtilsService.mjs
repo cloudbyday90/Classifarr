@@ -25,7 +25,7 @@ import {
 export const RAG_LOOP_MIN_TIMEOUT_MS = 1000;
 export const RAG_LOOP_MAX_TIMEOUT_MS = 15000;
 export const RETRY_DELAY_MS = _RETRY_DELAY_MS;
-export const AI_PARSE_CONTRACT_VERSION = 'phase1_v1';
+export const AI_PARSE_DIAGNOSTICS_CONTRACT_VERSION = 'classification.ai_parse_diagnostics.v1';
 
 export function resolveRagLoopTimeout(config = {}) {
   const metadataTimeout = Number(config.policy_recheck_metadata_timeout_ms);
@@ -143,7 +143,7 @@ export function buildParseDiagnostics({
   repairResponseArtifact = null,
 }) {
   const diagnostics = {
-    contract_version: AI_PARSE_CONTRACT_VERSION,
+    contract_version: AI_PARSE_DIAGNOSTICS_CONTRACT_VERSION,
     mode,
     attempt_count: attemptCount,
     failure_reason: failureReason,

@@ -3197,7 +3197,7 @@ describe('Phase 1 AI contract and stream guard', () => {
     expect(result.library).toEqual(libraries[1]);
     expect(result.confidence).toBe(85);
     expect(result.parse_diagnostics).toEqual(expect.objectContaining({
-      contract_version: 'phase1_v1',
+      contract_version: 'classification.ai_parse_diagnostics.v1',
       mode: 'classify',
       attempt_count: 2,
       failure_reason: 'narrative_no_format_match',

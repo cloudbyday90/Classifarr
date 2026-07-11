@@ -41,6 +41,7 @@ const {
 const {
   buildParseDiagnostics,
   buildPendingRetryResult,
+  AI_PARSE_DIAGNOSTICS_CONTRACT_VERSION,
   isAiTransientAvailabilityError,
   resolveRagLoopTimeout,
   resolveAiFailureClassification,
@@ -375,7 +376,7 @@ describe('buildParseDiagnostics', () => {
       attemptCount: 1,
     });
     expect(result).toEqual({
-      contract_version: 'phase1_v1',
+      contract_version: AI_PARSE_DIAGNOSTICS_CONTRACT_VERSION,
       mode: 'classify',
       attempt_count: 1,
       failure_reason: null,
@@ -422,9 +423,9 @@ describe('buildParseDiagnostics', () => {
     expect(result.repair_response_artifact).toEqual(repairResponseArtifact);
   });
 
-  test('contract_version is always phase1_v1', () => {
+  test('contract_version uses the durable AI parse diagnostics contract', () => {
     const result = classificationUtilsService.buildParseDiagnostics({ mode: 'x', attemptCount: 0 });
-    expect(result.contract_version).toBe('phase1_v1');
+    expect(result.contract_version).toBe('classification.ai_parse_diagnostics.v1');
   });
 });
 

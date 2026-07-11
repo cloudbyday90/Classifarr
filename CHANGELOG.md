@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Classification AI Parse Diagnostics Contract** — replaced the current
+  delivery-era parse diagnostic version with
+  `classification.ai_parse_diagnostics.v1`; existing classification history is
+  preserved because no runtime path consumes the historic version field; the
+  production naming baseline is now `142/143`.
 - **Policy Runtime Observability Vocabulary** — replaced temporary delivery
   labels in current runtime-metrics summaries and validation diagnostics with
   durable runtime terminology while retaining bounded counters and trace output;
