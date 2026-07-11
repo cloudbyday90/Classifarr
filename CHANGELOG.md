@@ -24,6 +24,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Library Rebuild Naming Cutover** — replaced phase-coded rebuild
   validation diagnostics with bounded-intent and policy-automation-readiness
   terms while preserving the existing conservative rebuild gates.
+- **Policy Declared Intent Command** — added a server-owned, persistence-free
+  command boundary that requires a resolver-provided ready proposal, exact
+  evidence fingerprint, authenticated administrator, allowlisted intent fields,
+  and explicit hard-limit confirmation before returning an intent command for a
+  later storage gate.
 - **Policy Evidence Handoff Verifier** — added the server-owned completion
   audit for the complete library evidence workflow; requires static engine,
   loader, source, envelope, boundary, fingerprint, and quality validation;

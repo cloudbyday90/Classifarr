@@ -3430,6 +3430,13 @@ Implementation status:
   evidence as review triggers instead of exclusions, keeps hard limits and avoid
   entries tied to operator-declared authority, and produces no learning side
   effects.
+- The declared intent command contract lives in
+  `server/src/services/policyDeclaredIntentCommand.mjs`. It accepts only a
+  resolver-provided server proposal, validates an authenticated administrator,
+  exact proposal fingerprint, allowlisted declared-intent fields, and explicit
+  hard-limit confirmation, then returns a persistence-free command envelope.
+  Its design record is
+  [Policy Declared Intent Command](policy-declared-intent-command.md).
 - Legacy preset/custom-signal behavior remains a compatibility bridge only;
   future Phase 6R/8R work must decide how bridge output maps into native intent
   storage after learning and readiness gates are stable.
