@@ -1,6 +1,5 @@
 import {
   POLICY_EVIDENCE_BUCKET_IDS,
-  buildPolicyEvidenceProjection,
 } from './policyEvidenceEngine.mjs';
 import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
@@ -93,6 +92,16 @@ const IGNORED_DIAGNOSTIC_INPUT_KEYS = Object.freeze([
   'replayPreview',
   'tmdbCoverage',
   'tmdbDiagnosticState',
+]);
+
+const RAW_EVIDENCE_INPUT_KEYS = Object.freeze([
+  'libraryProfile',
+  'operatorIntent',
+  'classificationOutcomes',
+  'manualCorrections',
+  'pendingItemAnswers',
+  'arrRoutingOutcomes',
+  'metadataEvidence',
 ]);
 
 const STATE_CONTRACTS = Object.freeze([
@@ -349,21 +358,61 @@ function chooseReadinessState(issues) {
     POLICY_AUTOMATION_READINESS_STATE_IDS.READY;
 }
 
-function buildPolicyAutomationReadiness(input = {}) {
-  const readinessInputs = normalizePolicyAutomationReadinessInputs({
-    routing: input.routing,
-    profileFreshness: input.profileFreshness,
-    hardLimitConflict: input.hardLimitConflict,
+function buildEmptyReadinessIntent() {
+  return buildPolicyIntentDraftFromEvidenceProjection({
+    version: 'policy.evidence.v1',
+    buckets: {},
+    warnings: [],
   });
-  const evidenceProjection = input.evidenceProjection?.version === 'policy.evidence.v1'
-    ? input.evidenceProjection
-    : buildPolicyEvidenceProjection(input);
-  const intent = input.intentDraft?.version === 'policy.intent.v1' ||
-    input.intent?.version === 'policy.intent.v1'
-    ? input.intentDraft || input.intent
-    : buildPolicyIntentDraftFromEvidenceProjection(evidenceProjection);
-  const learningDecision = asObject(input.learningDecision);
-  const ignoredDiagnostics = collectIgnoredDiagnostics(input);
+}
+
+function requireReadinessContracts(input = {}) {
+  const contractInput = asObject(input);
+  const rawEvidenceKey = RAW_EVIDENCE_INPUT_KEYS.find(key =>
+    Object.hasOwn(contractInput, key)
+  );
+
+  if (rawEvidenceKey) {
+    throw new TypeError(
+      `Readiness requires an evidence projection and intent draft; raw evidence key "${rawEvidenceKey}" must use buildPolicyAutomationReadinessFromBoundedContracts.`
+    );
+  }
+
+  if (
+    Object.hasOwn(contractInput, 'evidenceProjection') &&
+    contractInput.evidenceProjection?.version !== 'policy.evidence.v1'
+  ) {
+    throw new TypeError('Readiness requires a policy.evidence.v1 evidence projection.');
+  }
+
+  if (
+    Object.hasOwn(contractInput, 'intentDraft') &&
+    contractInput.intentDraft?.version !== 'policy.intent.v1'
+  ) {
+    throw new TypeError('Readiness requires a policy.intent.v1 intent draft.');
+  }
+
+  if (
+    Object.hasOwn(contractInput, 'intent') &&
+    contractInput.intent?.version !== 'policy.intent.v1'
+  ) {
+    throw new TypeError('Readiness requires a policy.intent.v1 intent draft.');
+  }
+
+  return contractInput;
+}
+
+function buildPolicyAutomationReadinessFromContracts(input = {}) {
+  const contractInput = requireReadinessContracts(input);
+  const readinessInputs = normalizePolicyAutomationReadinessInputs({
+    routing: contractInput.routing,
+    profileFreshness: contractInput.profileFreshness,
+    hardLimitConflict: contractInput.hardLimitConflict,
+  });
+  const evidenceProjection = contractInput.evidenceProjection || null;
+  const intent = contractInput.intentDraft || contractInput.intent || buildEmptyReadinessIntent();
+  const learningDecision = asObject(contractInput.learningDecision);
+  const ignoredDiagnostics = collectIgnoredDiagnostics(contractInput);
   const issues = collectReadinessIssues({
     readinessInputs,
     evidenceProjection,
@@ -657,7 +706,7 @@ function buildPolicyAutomationReadinessFromBoundedContracts({
     };
   }
 
-  const readiness = buildPolicyAutomationReadiness({
+  const readiness = buildPolicyAutomationReadinessFromContracts({
     evidenceProjection: boundedEvidenceResult.projection,
     intentDraft: boundedIntentResult.intent,
     learningDecision: boundedLearningResult.decision,
@@ -805,7 +854,7 @@ function validatePolicyAutomationReadiness(readiness = {}) {
 }
 
 function buildPolicyAutomationReadinessEngineAudit(
-  readiness = buildPolicyAutomationReadiness()
+  readiness = buildPolicyAutomationReadinessFromContracts()
 ) {
   const validation = validatePolicyAutomationReadiness(readiness);
 
@@ -829,7 +878,7 @@ export {
   POLICY_AUTOMATION_READINESS_INPUT_IDS,
   POLICY_AUTOMATION_READINESS_REASON_IDS,
   POLICY_AUTOMATION_READINESS_STATE_IDS,
-  buildPolicyAutomationReadiness,
+  buildPolicyAutomationReadinessFromContracts,
   buildPolicyAutomationReadinessFromBoundedContracts,
   buildPolicyAutomationReadinessEngineAudit,
   getPolicyAutomationReadinessState,

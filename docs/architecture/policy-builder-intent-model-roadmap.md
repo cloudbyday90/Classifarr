@@ -3598,6 +3598,11 @@ Implementation status:
   and profile freshness inputs into one state: `ready`,
   `needs_more_examples`, `needs_operator_review`, `needs_routing`,
   `blocked_by_hard_limit`, or `stale_profile`.
+- The lower-level readiness reducer now accepts only explicit evidence and
+  intent contracts. Raw evidence keys and invalid versions fail immediately;
+  runtime callers must use the existing bounded-contract wrapper. Its design
+  record is [Policy Automation Readiness Contract
+  Boundary](policy-automation-readiness-contract-boundary.md).
 - Readiness is computed from cached/local state only, returns reason-coded
   issues with next actions, treats profile refresh as stale readiness, and
   ignores replay, impact preview, provider, TMDB, and raw scoring diagnostic

@@ -12,7 +12,7 @@ import {
 } from './policyIntentEngine.mjs';
 import {
   POLICY_AUTOMATION_READINESS_STATE_IDS,
-  buildPolicyAutomationReadiness,
+  buildPolicyAutomationReadinessFromContracts,
   validatePolicyAutomationReadiness,
 } from './policyAutomationReadinessEngine.mjs';
 import {
@@ -779,7 +779,7 @@ function buildPolicyLibraryPolicyRebuildProposal(input = {}) {
 
   const evidenceProjection = boundedEvidenceResult.projection;
   const intentDraft = buildPolicyIntentDraftFromEvidenceProjection(evidenceProjection);
-  const readiness = buildPolicyAutomationReadiness({
+  const readiness = buildPolicyAutomationReadinessFromContracts({
     evidenceProjection,
     intentDraft,
     routing: evidenceInput.routing,

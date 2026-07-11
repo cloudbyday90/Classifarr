@@ -7,7 +7,7 @@ import {
 } from './policyIntentEngine.mjs';
 import {
   POLICY_AUTOMATION_READINESS_STATE_IDS,
-  buildPolicyAutomationReadiness,
+  buildPolicyAutomationReadinessFromContracts,
 } from './policyAutomationReadinessEngine.mjs';
 import {
   buildPolicyOperatorWorkflowEntryAudit,
@@ -307,9 +307,17 @@ function buildPolicyOperatorWorkflow(input = {}) {
     : inferredIntentResult.intent;
   const readiness = input.readiness?.version === 'policy.automation_readiness.v1'
     ? input.readiness
-    : buildPolicyAutomationReadiness({
-      ...input,
-      intentDraft: intent,
+    : buildPolicyAutomationReadinessFromContracts({
+      ...(input.evidenceProjection?.version === 'policy.evidence.v1'
+        ? { evidenceProjection: input.evidenceProjection }
+        : {}),
+      ...(intent?.version === 'policy.intent.v1'
+        ? { intentDraft: intent }
+        : {}),
+      learningDecision: input.learningDecision,
+      routing: input.routing,
+      profileFreshness: input.profileFreshness,
+      hardLimitConflict: input.hardLimitConflict,
     });
   const sections = WORKFLOW_SECTION_CONTRACTS.map(section =>
     buildWorkflowSection(section, intent, readiness)

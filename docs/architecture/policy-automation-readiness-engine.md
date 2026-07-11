@@ -12,9 +12,10 @@ Can automation continue, and if not, what is the next operator action?
 ```
 
 It does not execute routing, call providers, write learning, run replay, check
-TMDB coverage, or expose raw scoring panels. The compatibility reducer remains
-available for focused tests and internal composition, but runtime and rebuild
-callers should use the bounded readiness entry point.
+TMDB coverage, or expose raw scoring panels. The contract-only reducer accepts
+validated evidence and intent contracts for focused internal composition, while
+runtime callers use the bounded readiness entry point. Raw evidence is rejected
+by the lower-level reducer.
 
 Operational routing, freshness, and hard-limit input is normalized by
 [Policy Automation Readiness Input Normalizer](policy-automation-readiness-input-normalizer.md)
@@ -105,7 +106,12 @@ contracts.
 8. **Normalize operational inputs before readiness.**
    Routing configuration, profile freshness, and hard-limit state must use the
    shared input normalizer. Invalid state is conservative, and raw connection
-   configuration is never retained in readiness output.
+    configuration is never retained in readiness output.
+
+9. **Separate bounded orchestration from contract reduction.**
+   `buildPolicyAutomationReadinessFromBoundedContracts` is the only runtime
+   entry point for raw upstream data. `buildPolicyAutomationReadinessFromContracts`
+   rejects raw evidence keys and invalid contract versions.
 
 ## Pros And Cons
 
@@ -142,12 +148,16 @@ Cons:
   `server/src/services/policyAutomationReadinessEngine.mjs`
 - Bounded readiness wrapper:
   `buildPolicyAutomationReadinessFromBoundedContracts`
+- Contract-only readiness reducer:
+  `buildPolicyAutomationReadinessFromContracts`
 - Test module:
   `server/src/__tests__/services/policyAutomationReadinessEngine.test.mjs`
 - Documentation:
   `docs/architecture/policy-automation-readiness-engine.md`
 - Quality-gate hardening:
   `docs/architecture/policy-automation-readiness-quality-gate.md`
+- Contract-boundary outcome:
+  `docs/architecture/policy-automation-readiness-contract-boundary.md`
 - Roadmap owner:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 

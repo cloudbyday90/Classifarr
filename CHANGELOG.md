@@ -17,6 +17,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Automation Readiness Contract Boundary** — removed implicit raw
+  evidence projection from readiness; runtime uses the bounded evidence, intent,
+  and learning handoff, while the reusable reducer accepts only explicit
+  validated contracts and rejects raw evidence keys.
 - **Policy Library Rebuild Evidence Boundary** — moved library-derived rebuild
   proposals onto the shared bounded evidence gate and fingerprint; invalid
   evidence now returns a sanitized blocked proposal with no derived intent or

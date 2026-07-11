@@ -23,7 +23,7 @@ import {
   POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS,
   POLICY_AUTOMATION_READINESS_REASON_IDS,
   POLICY_AUTOMATION_READINESS_STATE_IDS,
-  buildPolicyAutomationReadiness,
+  buildPolicyAutomationReadinessFromContracts,
   buildPolicyAutomationReadinessFromBoundedContracts,
   buildPolicyAutomationReadinessEngineAudit,
   getPolicyAutomationReadinessState,
@@ -32,7 +32,7 @@ import {
 } from '../../services/policyAutomationReadinessEngine.mjs';
 
 function buildReadyInput(overrides = {}) {
-  return {
+  const source = {
     operatorIntent: {
       belongsHere: ['Animated Movies'],
       routingTargets: ['Radarr Animated Movies'],
@@ -43,6 +43,36 @@ function buildReadyInput(overrides = {}) {
       targetName: 'Radarr Animated Movies',
     },
     ...overrides,
+  };
+  const {
+    operatorIntent,
+    libraryProfile,
+    classificationOutcomes,
+    manualCorrections,
+    pendingItemAnswers,
+    arrRoutingOutcomes,
+    metadataEvidence,
+    evidenceProjection: suppliedEvidenceProjection,
+    intentDraft: suppliedIntentDraft,
+    intent: suppliedIntent,
+    ...contractInput
+  } = source;
+  const evidenceProjection = suppliedEvidenceProjection || buildPolicyEvidenceProjection({
+    operatorIntent,
+    libraryProfile,
+    classificationOutcomes,
+    manualCorrections,
+    pendingItemAnswers,
+    arrRoutingOutcomes,
+    metadataEvidence,
+    profileFreshness: contractInput.profileFreshness,
+  });
+
+  return {
+    ...contractInput,
+    evidenceProjection,
+    intentDraft: suppliedIntentDraft || suppliedIntent ||
+      buildPolicyIntentDraftFromEvidenceProjection(evidenceProjection),
   };
 }
 
@@ -105,7 +135,7 @@ describe('policyAutomationReadinessEngine', () => {
   });
 
   test('defaults to needs-more-examples when destination identity is missing', () => {
-    const readiness = buildPolicyAutomationReadiness();
+    const readiness = buildPolicyAutomationReadinessFromContracts();
 
     expect(readiness).toEqual(expect.objectContaining({
       version: 'policy.automation_readiness.v1',
@@ -121,8 +151,22 @@ describe('policyAutomationReadinessEngine', () => {
     }));
   });
 
+  test('requires bounded contracts instead of raw evidence input', () => {
+    expect(() => buildPolicyAutomationReadinessFromContracts({
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+      },
+    })).toThrow('raw evidence key "operatorIntent"');
+
+    expect(() => buildPolicyAutomationReadinessFromContracts({
+      evidenceProjection: {
+        version: 'unsupported.evidence.v1',
+      },
+    })).toThrow('requires a policy.evidence.v1 evidence projection');
+  });
+
   test('returns ready when identity and routing are present with no review blockers', () => {
-    const readiness = buildPolicyAutomationReadiness(buildReadyInput());
+    const readiness = buildPolicyAutomationReadinessFromContracts(buildReadyInput());
 
     expect(readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.READY);
     expect(readiness.ready).toBe(true);
@@ -559,7 +603,7 @@ describe('policyAutomationReadinessEngine', () => {
   });
 
   test('prioritizes stale profile over all other readiness issues', () => {
-    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadinessFromContracts(buildReadyInput({
       profileFreshness: {
         stale: true,
         updatedAt: '2026-06-01T00:00:00.000Z',
@@ -589,7 +633,7 @@ describe('policyAutomationReadinessEngine', () => {
       },
     });
 
-    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadinessFromContracts(buildReadyInput({
       learningDecision,
     }));
 
@@ -611,7 +655,7 @@ describe('policyAutomationReadinessEngine', () => {
       },
     });
 
-    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadinessFromContracts(buildReadyInput({
       learningDecision,
     }));
 
@@ -626,7 +670,7 @@ describe('policyAutomationReadinessEngine', () => {
   });
 
   test('does not block automation merely because a configured hard limit exists', () => {
-    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadinessFromContracts(buildReadyInput({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
         hardLimits: ['No NC-17'],
@@ -656,7 +700,7 @@ describe('policyAutomationReadinessEngine', () => {
       summary: 'Some evidence is insufficient.',
     });
 
-    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadinessFromContracts(buildReadyInput({
       intentDraft: intent,
     }));
 
@@ -668,7 +712,7 @@ describe('policyAutomationReadinessEngine', () => {
   });
 
   test('requires operator review when the learning guard blocks learning', () => {
-    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadinessFromContracts(buildReadyInput({
       learningDecision: {
         version: 'policy.learning_guard.v1',
         learning: {
@@ -691,7 +735,7 @@ describe('policyAutomationReadinessEngine', () => {
   });
 
   test('requires routing after identity is known but no routing target is available', () => {
-    const readiness = buildPolicyAutomationReadiness({
+    const readiness = buildPolicyAutomationReadinessFromContracts(buildReadyInput({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
       },
@@ -699,7 +743,7 @@ describe('policyAutomationReadinessEngine', () => {
         configured: false,
         routeReady: false,
       },
-    });
+    }));
 
     expect(readiness.stateId).toBe(POLICY_AUTOMATION_READINESS_STATE_IDS.NEEDS_ROUTING);
     expect(readiness.nextAction).toEqual(expect.objectContaining({
@@ -709,7 +753,7 @@ describe('policyAutomationReadinessEngine', () => {
   });
 
   test('treats malformed operational input as conservative readiness without exposing configuration', () => {
-    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadinessFromContracts(buildReadyInput({
       routing: {
         configured: 'true',
         routeReady: true,
@@ -734,7 +778,7 @@ describe('policyAutomationReadinessEngine', () => {
   });
 
   test('ignores legacy diagnostic inputs instead of making them readiness gates', () => {
-    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadinessFromContracts(buildReadyInput({
       providerReadiness: { state: 'limited' },
       replayParity: { state: 'different' },
       tmdbCoverage: { state: 'partial' },
@@ -754,7 +798,7 @@ describe('policyAutomationReadinessEngine', () => {
 
   test('passes the default readiness engine audit', () => {
     const audit = buildPolicyAutomationReadinessEngineAudit(
-      buildPolicyAutomationReadiness(buildReadyInput())
+      buildPolicyAutomationReadinessFromContracts(buildReadyInput())
     );
 
     expect(audit.ok).toBe(true);
@@ -805,7 +849,7 @@ describe('policyAutomationReadinessEngine', () => {
   });
 
   test('rejects readiness contracts that depend on live diagnostics or miss actions', () => {
-    const invalidReadiness = buildPolicyAutomationReadiness(buildReadyInput());
+    const invalidReadiness = buildPolicyAutomationReadinessFromContracts(buildReadyInput());
     invalidReadiness.nextAction = null;
     invalidReadiness.ready = false;
     invalidReadiness.inputs.liveProviderLookupPerformed = true;
@@ -833,7 +877,7 @@ describe('policyAutomationReadinessEngine', () => {
   });
 
   test('rejects readiness derived from a learning decision that already wrote', () => {
-    const readiness = buildPolicyAutomationReadiness(buildReadyInput({
+    const readiness = buildPolicyAutomationReadinessFromContracts(buildReadyInput({
       learningDecision: {
         version: 'policy.learning_guard.v1',
         learning: {
