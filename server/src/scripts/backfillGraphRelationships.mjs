@@ -21,7 +21,7 @@
  *
  * Issue 286: Populates the five new graph relationship columns
  * (director_name, primary_studio_name, genre_names, cast_ids, cast_names) on existing
- * classification_history rows that were written before Phase 2 deployed.
+ * classification_history rows written before graph relationship columns existed.
  *
  * TWO PASSES:
  *

@@ -6680,8 +6680,8 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 3 production references plus 4 rename candidates after
-  the Evidence administration vocabulary cutover.
+  currently reports 0 production references plus 1 rename candidate after
+  the classification evidence migration vocabulary cutover.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -6813,6 +6813,10 @@ Implementation status:
   durable operator role rather than the delivery layer that introduced them.
   Its design record is
   [Evidence Administration Vocabulary Cutover](evidence-administration-vocabulary-cutover.md).
+- Classification evidence migration scripts now describe their durable
+  backfill role rather than the delivery phase that introduced them. Its design
+  record is
+  [Classification Evidence Migration Vocabulary Cutover](classification-evidence-migration-vocabulary-cutover.md).
 - Outcome record:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
 - After the completed classification progress storage cutover, the repository

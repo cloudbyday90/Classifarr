@@ -17,7 +17,7 @@
  */
 
 /**
- * Phase 2 classification evidence backfill CLI.
+ * Classification evidence migration backfill CLI.
  *
  * USAGE
  *   node server/src/scripts/backfill_classification_evidence.mjs

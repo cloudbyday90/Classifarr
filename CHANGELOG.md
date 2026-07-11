@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Classification Evidence Migration Vocabulary** — replaced delivery-era
+  backfill script comments with durable migration descriptions while
+  preserving script commands and exports; reduced the enforced production
+  naming baseline from `3/4` to `0/1` references/candidates.
 - **Evidence Administration Vocabulary** — replaced delivery-era client
   comments with durable operator terminology without changing Evidence view or
   composable APIs; reduced the enforced production naming baseline from `7/8`
