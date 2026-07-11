@@ -17,6 +17,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Library Rebuild Evidence Boundary** — moved library-derived rebuild
+  proposals onto the shared bounded evidence gate and fingerprint; invalid
+  evidence now returns a sanitized blocked proposal with no derived intent or
+  readiness contract, and the audit rejects any attempt to attach one.
 - **Policy Intent Input Boundary** — separated raw evidence handling from pure
   intent reduction: raw inputs now use the existing bounded evidence boundary,
   projection-only drafting rejects other shapes, and normal workflow composition

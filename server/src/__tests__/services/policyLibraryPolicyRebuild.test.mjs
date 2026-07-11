@@ -157,6 +157,14 @@ describe('policyLibraryPolicyRebuild', () => {
     }));
     expect(proposal.evidenceSourceSummary.guardedOutcomes.fingerprints[0])
       .toMatch(/^[a-f0-9]{64}$/u);
+    expect(proposal.evidenceBoundary).toEqual(expect.objectContaining({
+      ok: true,
+      statusId: 'ready',
+      projectionFingerprint: expect.objectContaining({
+        algorithm: 'sha256',
+        fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/u),
+      }),
+    }));
     expect(proposal.trace.attributes).toEqual(expect.objectContaining({
       'classifarr.policy.rebuild.guarded_outcome_fingerprint_count': 1,
       'classifarr.policy.rebuild.guarded_outcome_missing_fingerprint_count': 0,
@@ -189,6 +197,68 @@ describe('policyLibraryPolicyRebuild', () => {
       routingWritten: false,
     });
     expect(validatePolicyLibraryPolicyRebuildProposal(proposal).ok).toBe(true);
+  });
+
+  test('blocks rebuild before projection when the bounded evidence envelope rejects input', () => {
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
+      libraryProfile: {
+        identityCandidates: [{
+          key: 'studio:disney',
+          label: 'Disney',
+          value: {
+            providerPayload: { apiKey: 'must-not-escape' },
+          },
+        }],
+      },
+    }));
+
+    expect(proposal).toEqual(expect.objectContaining({
+      statusId: POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
+      evidenceProjection: null,
+      intentDraft: null,
+      readiness: null,
+      evidenceBoundary: expect.objectContaining({
+        ok: false,
+        statusId: 'blocked_by_input_gate',
+        riskIds: ['raw_provider_payload'],
+        projectionFingerprint: null,
+      }),
+      sideEffects: {
+        policyActivated: false,
+        policyReplaced: false,
+        policyDeleted: false,
+        learningWritten: false,
+        routingWritten: false,
+      },
+    }));
+    expect(JSON.stringify(proposal)).not.toContain('must-not-escape');
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).ok).toBe(true);
+    expect(buildPolicyLibraryPolicyRebuildAudit(proposal)).toEqual(expect.objectContaining({
+      ok: true,
+      statusId: POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
+    }));
+  });
+
+  test('rejects derived contracts attached to an evidence-boundary-blocked proposal', () => {
+    const blockedProposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
+      libraryProfile: {
+        identityCandidates: [{
+          label: 'Disney',
+          value: { providerPayload: { title: 'raw' } },
+        }],
+      },
+    }));
+
+    blockedProposal.intentDraft = {
+      version: 'policy.intent.v1',
+    };
+
+    expect(validatePolicyLibraryPolicyRebuildProposal(blockedProposal).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.BLOCKED_EVIDENCE_BOUNDARY_WITH_DERIVED_CONTRACT,
+        }),
+      ]));
   });
 
   test('rejects guarded outcomes without upstream evidence fingerprints and does not consume them', () => {

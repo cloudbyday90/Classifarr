@@ -12,6 +12,11 @@ produces a policy intent draft plus readiness, source summaries, warnings,
 acceptance gates, and rollback gates. It does not activate, replace, delete, or
 persist policy.
 
+Every rebuild proposal now passes its normalized evidence through the shared
+bounded evidence boundary. A rejected boundary returns a sanitized
+`blocked_by_evidence_boundary` proposal with no projection, intent, or
+readiness contract.
+
 ## Problem
 
 The re-imagined policy model starts from the media server as the source of
@@ -155,6 +160,9 @@ Cons:
     from the guarded outcome fingerprint.
 11. Mirror request-proof accepted/missing/invalid counts into bounded rebuild
     trace attributes.
+12. Require the bounded evidence boundary before creating a projection. Return
+    a side-effect-free blocked proposal instead of falling back to direct
+    projection when that boundary rejects input.
 
 ## Implemented Files
 
@@ -163,7 +171,7 @@ Cons:
 - Focused tests:
   `server/src/__tests__/services/policyLibraryPolicyRebuild.test.mjs`
 - Evidence dependency:
-  `server/src/services/policyEvidenceEngine.mjs`
+  `server/src/services/policyEvidenceBoundary.mjs`
 - Intent dependency:
   `server/src/services/policyIntentEngine.mjs`
 - Readiness dependency:
@@ -207,9 +215,17 @@ The service exports:
 `blocked`
 : A hard-limit conflict or policy-edit requirement blocks the proposal.
 
+`blocked_by_evidence_boundary`
+: Rebuild evidence failed server-side validation. The proposal retains only a
+  sanitized boundary context and no derived projection, intent, or readiness.
+
 ## Security And Data Handling
 
 - The proposal builder does not call providers.
+- The proposal builder uses an allow-listed evidence envelope and the shared
+  bounded evidence gate before it creates a projection.
+- A rejected evidence boundary exposes only stable status and risk IDs; it does
+  not expose rejected values, error text, or derived policy contracts.
 - The proposal builder does not expose raw provider payloads.
 - The proposal builder does not activate, replace, delete, or persist policy.
 - The proposal builder does not write learning or routing changes.
@@ -234,6 +250,11 @@ The service exports:
 The focused test suite verifies:
 
 - proposals include belongs-here, helpful-match, hard-limit, and routing fields,
+- valid proposals retain a ready bounded evidence context and SHA-256
+  projection fingerprint,
+- rejected evidence returns a boundary-blocked proposal with no projection,
+  intent, or readiness output,
+- attaching a derived contract to a boundary-blocked proposal fails validation,
 - guarded outcomes with valid upstream evidence fingerprints are consumed as
   proposal evidence,
 - guarded outcomes with valid request-time/question-reduction proof are
@@ -264,7 +285,7 @@ Library-derived policy rebuild gives the rebuild path this shape:
 
 ```text
 library profile + fingerprint-bound guarded outcomes + explicit constraints + routing/freshness
-  -> policy evidence projection
+  -> allow-listed bounded evidence projection
   -> policy intent draft
   -> policy readiness
   -> policy rebuild proposal envelope

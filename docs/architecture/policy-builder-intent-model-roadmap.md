@@ -4232,6 +4232,11 @@ Implementation status:
 - Current implementation consumes observed library profile evidence,
   fingerprint-bound guarded outcomes, explicit constraints, routing
   configuration, observed outliers, observed absences, and profile freshness.
+- Rebuild evidence now flows through the shared bounded evidence boundary using
+  an allow-listed envelope. A rejected boundary produces a sanitized
+  `blocked_by_evidence_boundary` proposal with no projection, intent, or
+  readiness output. Its design record is [Policy Library Rebuild Evidence
+  Boundary](policy-library-rebuild-evidence-boundary.md).
 - Rebuild output reuses policy evidence projection, intent draft, and
   readiness contracts instead of inventing a separate policy schema.
 - Proposals include evidence source summaries, confidence, assumptions,

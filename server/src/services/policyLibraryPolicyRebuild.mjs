@@ -1,7 +1,9 @@
 import {
   POLICY_EVIDENCE_BUCKET_IDS,
-  buildPolicyEvidenceProjection,
 } from './policyEvidenceEngine.mjs';
+import {
+  buildBoundedPolicyEvidenceProjection,
+} from './policyEvidenceBoundary.mjs';
 import {
   POLICY_INTENT_FIELD_IDS,
   POLICY_INTENT_WARNING_IDS,
@@ -26,6 +28,7 @@ const POLICY_REBUILD_PROPOSAL_STATUS_IDS = Object.freeze({
   NEEDS_OPERATOR_CONSTRAINT_REVIEW: 'needs_operator_constraint_review',
   NEEDS_ROUTING_CONFIGURATION: 'needs_routing_configuration',
   STALE_PROFILE: 'stale_profile',
+  BLOCKED_BY_EVIDENCE_BOUNDARY: 'blocked_by_evidence_boundary',
   BLOCKED: 'blocked',
 });
 
@@ -40,6 +43,7 @@ const POLICY_REBUILD_REASON_IDS = Object.freeze({
   ROLLBACK_SNAPSHOT_REQUIRED: 'rollback_snapshot_required',
   OBSERVED_ABSENCE_IS_WARNING_ONLY: 'observed_absence_is_warning_only',
   SIDE_EFFECTS_DISABLED: 'side_effects_disabled',
+  EVIDENCE_BOUNDARY_BLOCKED: 'evidence_boundary_blocked',
 });
 
 const POLICY_REBUILD_WARNING_IDS = Object.freeze({
@@ -51,6 +55,7 @@ const POLICY_REBUILD_WARNING_IDS = Object.freeze({
   GUARDED_OUTCOME_WITHOUT_FINGERPRINT: 'guarded_outcome_without_fingerprint',
   GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF: 'guarded_outcome_without_request_proof',
   GUARDED_OUTCOME_INVALID_REQUEST_PROOF: 'guarded_outcome_invalid_request_proof',
+  EVIDENCE_BOUNDARY_BLOCKED: 'evidence_boundary_blocked',
 });
 
 const POLICY_REBUILD_AUDIT_RISK_IDS = Object.freeze({
@@ -75,10 +80,15 @@ const POLICY_REBUILD_AUDIT_RISK_IDS = Object.freeze({
   GUARDED_OUTCOME_WITHOUT_REQUEST_PROOF: 'guarded_outcome_without_request_proof',
   GUARDED_OUTCOME_INVALID_REQUEST_PROOF: 'guarded_outcome_invalid_request_proof',
   GUARDED_OUTCOME_REQUEST_PROOF_MISMATCH: 'guarded_outcome_request_proof_mismatch',
+  MISSING_EVIDENCE_BOUNDARY: 'missing_evidence_boundary',
+  INVALID_EVIDENCE_BOUNDARY: 'invalid_evidence_boundary',
+  BLOCKED_EVIDENCE_BOUNDARY_NOT_FAILED: 'blocked_evidence_boundary_not_failed',
+  BLOCKED_EVIDENCE_BOUNDARY_WITH_DERIVED_CONTRACT: 'blocked_evidence_boundary_with_derived_contract',
 });
 
 const MAX_TRACE_REASONS = 16;
 const MAX_REBUILD_FINGERPRINTS = 20;
+const MAX_EVIDENCE_BOUNDARY_RISK_IDS = 16;
 const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
 
 function asArray(value) {
@@ -438,6 +448,40 @@ function buildEvidenceInput(input = {}) {
   };
 }
 
+function buildRebuildEvidenceEnvelope(evidenceInput = {}) {
+  return {
+    libraryProfile: evidenceInput.libraryProfile,
+    operatorIntent: evidenceInput.operatorIntent,
+    profileFreshness: evidenceInput.profileFreshness,
+  };
+}
+
+function buildEvidenceBoundaryContext(boundaryResult = {}) {
+  const boundary = asObject(boundaryResult);
+  const fingerprint = asObject(boundary.projectionFingerprint);
+  const riskIds = Array.from(new Set(
+    asArray(boundary.issues)
+      .map(issue => normalizeString(issue?.riskId))
+      .filter(Boolean)
+  )).slice(0, MAX_EVIDENCE_BOUNDARY_RISK_IDS);
+
+  return {
+    version: normalizeString(boundary.version) || null,
+    statusId: normalizeString(boundary.statusId) || null,
+    ok: boundary.ok === true,
+    issueCount: Number.isFinite(Number(boundary.issueCount))
+      ? Number(boundary.issueCount)
+      : 0,
+    riskIds,
+    projectionFingerprint: boundary.ok === true
+      ? {
+          algorithm: normalizeString(fingerprint.algorithm) || null,
+          fingerprint: normalizeString(fingerprint.fingerprint).toLowerCase() || null,
+        }
+      : null,
+  };
+}
+
 function collectEvidenceSourceSummary({
   evidenceInput,
   evidenceProjection,
@@ -466,7 +510,7 @@ function collectEvidenceSourceSummary({
     evidenceBucketCounts: Object.fromEntries(
       Object.values(POLICY_EVIDENCE_BUCKET_IDS).map(bucketId => [
         bucketId,
-        asArray(evidenceProjection.buckets?.[bucketId]).length,
+        asArray(evidenceProjection?.buckets?.[bucketId]).length,
       ])
     ),
   };
@@ -591,7 +635,12 @@ function determineStatus({ intentDraft, readiness, warnings }) {
   return POLICY_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW;
 }
 
-function buildTrace({ statusId, evidenceSourceSummary, warnings }) {
+function buildTrace({
+  statusId,
+  evidenceSourceSummary,
+  warnings,
+  evidenceBoundary,
+}) {
   const reasons = [
     POLICY_REBUILD_REASON_IDS.LIBRARY_PROFILE_CONSUMED,
     POLICY_REBUILD_REASON_IDS.GUARDED_OUTCOMES_CONSUMED,
@@ -633,15 +682,102 @@ function buildTrace({ statusId, evidenceSourceSummary, warnings }) {
         evidenceSourceSummary.guardedOutcomes.invalidRequestProofCount,
       'classifarr.policy.rebuild.routing_configured': evidenceSourceSummary.routing.configured,
       'classifarr.policy.rebuild.warning_count': warnings.length,
+      'classifarr.policy.rebuild.evidence_boundary_status': evidenceBoundary?.statusId || null,
+      'classifarr.policy.rebuild.evidence_boundary_issue_count': evidenceBoundary?.issueCount ?? 0,
+      'classifarr.policy.rebuild.evidence_boundary_ready': evidenceBoundary?.ok === true,
     },
     reasons: boundedReasons,
     truncated: reasons.length > boundedReasons.length,
   };
 }
 
+function buildBlockedPolicyLibraryPolicyRebuildProposal({
+  input = {},
+  evidenceInput = {},
+  evidenceBoundary,
+} = {}) {
+  const evidenceSourceSummary = collectEvidenceSourceSummary({
+    evidenceInput,
+    evidenceProjection: null,
+  });
+  const warnings = [buildWarning(
+    POLICY_REBUILD_WARNING_IDS.EVIDENCE_BOUNDARY_BLOCKED,
+    'The rebuild proposal stopped because its evidence input did not pass validation.',
+    { target: 'evidence_boundary', severity: 'error' }
+  )];
+
+  return {
+    version: 'policy.library_policy_rebuild.v1',
+    statusId: POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
+    library: {
+      libraryId: input.library?.libraryId ?? input.libraryId ?? null,
+      libraryName: normalizeString(input.library?.libraryName ?? input.library?.name ?? input.libraryName),
+      mediaType: normalizeString(input.library?.mediaType ?? input.mediaType),
+    },
+    evidenceBoundary,
+    evidenceProjection: null,
+    intentDraft: null,
+    readiness: null,
+    evidenceSourceSummary,
+    confidence: {
+      level: 'blocked',
+      score: 0,
+      reasonCodes: [POLICY_REBUILD_REASON_IDS.EVIDENCE_BOUNDARY_BLOCKED],
+    },
+    assumptions: [
+      {
+        reasonCode: POLICY_REBUILD_REASON_IDS.OPERATOR_ACCEPTANCE_REQUIRED,
+        summary: 'The rebuild proposal cannot activate until an operator accepts it.',
+      },
+      {
+        reasonCode: POLICY_REBUILD_REASON_IDS.ROLLBACK_SNAPSHOT_REQUIRED,
+        summary: 'A rollback snapshot is required before any accepted replacement can apply.',
+      },
+    ],
+    warnings,
+    acceptanceGate: {
+      requiresExplicitOperatorAcceptance: true,
+      accepted: false,
+      acceptedBy: null,
+      acceptedAt: null,
+    },
+    rollbackGate: {
+      requiresRollbackSnapshot: true,
+      snapshotCreated: false,
+      snapshotId: null,
+    },
+    sideEffects: {
+      policyActivated: false,
+      policyReplaced: false,
+      policyDeleted: false,
+      learningWritten: false,
+      routingWritten: false,
+    },
+    trace: buildTrace({
+      statusId: POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
+      evidenceSourceSummary,
+      warnings,
+      evidenceBoundary,
+    }),
+  };
+}
+
 function buildPolicyLibraryPolicyRebuildProposal(input = {}) {
   const evidenceInput = buildEvidenceInput(input);
-  const evidenceProjection = buildPolicyEvidenceProjection(evidenceInput);
+  const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
+    evidenceInput: buildRebuildEvidenceEnvelope(evidenceInput),
+  });
+  const evidenceBoundary = buildEvidenceBoundaryContext(boundedEvidenceResult);
+
+  if (boundedEvidenceResult.ok !== true || !boundedEvidenceResult.projection) {
+    return buildBlockedPolicyLibraryPolicyRebuildProposal({
+      input,
+      evidenceInput,
+      evidenceBoundary,
+    });
+  }
+
+  const evidenceProjection = boundedEvidenceResult.projection;
   const intentDraft = buildPolicyIntentDraftFromEvidenceProjection(evidenceProjection);
   const readiness = buildPolicyAutomationReadiness({
     evidenceProjection,
@@ -673,6 +809,7 @@ function buildPolicyLibraryPolicyRebuildProposal(input = {}) {
       libraryName: normalizeString(input.library?.libraryName ?? input.library?.name ?? input.libraryName),
       mediaType: normalizeString(input.library?.mediaType ?? input.mediaType),
     },
+    evidenceBoundary,
     evidenceProjection,
     intentDraft,
     readiness,
@@ -712,12 +849,16 @@ function buildPolicyLibraryPolicyRebuildProposal(input = {}) {
       statusId,
       evidenceSourceSummary,
       warnings,
+      evidenceBoundary,
     }),
   };
 }
 
 function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
   const issues = [];
+  const evidenceBoundary = asObject(proposal.evidenceBoundary);
+  const blockedByEvidenceBoundary =
+    proposal.statusId === POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY;
 
   if (proposal.version !== 'policy.library_policy_rebuild.v1') {
     issues.push({
@@ -726,12 +867,44 @@ function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
     });
   }
 
-  if (proposal.intentDraft?.version !== 'policy.intent.v1') {
+  if (!evidenceBoundary.version || !evidenceBoundary.statusId) {
+    issues.push({
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_EVIDENCE_BOUNDARY,
+      message: 'Library policy rebuild proposal must retain a sanitized evidence-boundary context.',
+    });
+  }
+
+  if (blockedByEvidenceBoundary) {
+    if (evidenceBoundary.ok !== false) {
+      issues.push({
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.BLOCKED_EVIDENCE_BOUNDARY_NOT_FAILED,
+        message: 'An evidence-boundary-blocked rebuild proposal must retain a failed boundary context.',
+      });
+    }
+
+    if (proposal.evidenceProjection || proposal.intentDraft || proposal.readiness) {
+      issues.push({
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.BLOCKED_EVIDENCE_BOUNDARY_WITH_DERIVED_CONTRACT,
+        message: 'An evidence-boundary-blocked rebuild proposal cannot retain projection, intent, or readiness output.',
+      });
+    }
+  } else if (
+    evidenceBoundary.ok !== true ||
+    !SHA256_FINGERPRINT_PATTERN.test(evidenceBoundary.projectionFingerprint?.fingerprint || '') ||
+    evidenceBoundary.projectionFingerprint?.algorithm !== 'sha256'
+  ) {
+    issues.push({
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INVALID_EVIDENCE_BOUNDARY,
+      message: 'A non-blocked rebuild proposal requires a ready evidence boundary with a valid projection fingerprint.',
+    });
+  }
+
+  if (!blockedByEvidenceBoundary && proposal.intentDraft?.version !== 'policy.intent.v1') {
     issues.push({
       riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_INTENT_DRAFT,
       message: 'Library policy rebuild proposal must include a bounded policy intent draft.',
     });
-  } else {
+  } else if (!blockedByEvidenceBoundary) {
     const intentValidation = validatePolicyIntentDraft(proposal.intentDraft);
     if (!intentValidation.ok) {
       issues.push({
@@ -742,7 +915,9 @@ function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
     }
   }
 
-  const readinessValidation = validatePolicyAutomationReadiness(proposal.readiness);
+  const readinessValidation = blockedByEvidenceBoundary
+    ? { ok: true }
+    : validatePolicyAutomationReadiness(proposal.readiness);
   if (!readinessValidation.ok) {
     issues.push({
       riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INVALID_READINESS,
