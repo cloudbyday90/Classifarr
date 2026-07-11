@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Library Evidence Loader** — added the server-owned, read-only
+  profile-first orchestration boundary for policy evidence; it requires audited
+  bounded outcome, pending-answer, routing, and metadata source snapshots before
+  building one evidence envelope, blocks failed dependencies without error-text
+  leakage, and verifies no live lookup, quota, storage, learning, refresh, or
+  route-attempt side effect.
 - **Policy Library Metadata Evidence Collector** — added parameterized,
   library-scoped, read-only aggregation of bounded normalized genre facts for
   the policy evidence envelope; excludes raw provider JSON and unconstrained

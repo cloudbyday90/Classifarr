@@ -3330,6 +3330,12 @@ Implementation status:
   raw provider JSON and other unconstrained metadata categories, normalizes
   values before projection, and supplies compatibility evidence only. Its design
   record is [Policy Library Metadata Evidence Collector](policy-library-metadata-evidence-collector.md).
+- The library evidence loader lives in
+  `server/src/services/policyLibraryEvidenceLoader.mjs`. It validates the
+  cached profile handoff first, runs all bounded source collectors only after
+  that handoff passes, requires every nested audit, and builds exactly one
+  evidence envelope without live lookups or writes. Its design record is
+  [Policy Library Evidence Loader](policy-library-evidence-loader.md).
 
 ### 6R.2 Intent Engine
 

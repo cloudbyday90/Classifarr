@@ -114,7 +114,8 @@ side-effect record. A blocked result has no next step.
 
 ## Next Step
 
-The final-outcome/manual-correction, resolved pending-item-answer, Arr
-routing-outcome, and normalized metadata collectors are now implemented. The
-next component is a server-owned library evidence loader that composes their
-bounded, audited snapshots into one envelope without live lookups or writes.
+The server-owned `policyLibraryEvidenceLoader.mjs` now composes the
+final-outcome/manual-correction, resolved pending-item-answer, Arr
+routing-outcome, and normalized metadata collectors after profile validation.
+The next component is the evidence-engine checkpoint that verifies the complete
+profile-to-envelope handoff before the intent engine consumes it.

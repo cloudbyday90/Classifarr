@@ -23,6 +23,11 @@ It is projected only as compatibility evidence; source authority rules prevent
 metadata from establishing identity, hard limits, avoid rules, or direct
 learning.
 
+The library evidence loader now provides the only server-owned composition path
+for the cached profile handoff and all bounded persisted source collectors. It
+requires each nested audit before it builds the evidence envelope, preventing
+callers from treating a failed collector as an empty source section.
+
 June 2026 hardening adds a projection summary and legacy reducer cutline
 inventory. The summary gives downstream engines a bounded, deterministic view
 of bucket counts, source authority, blocking evidence, and review evidence. The
