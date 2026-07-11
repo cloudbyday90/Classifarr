@@ -7,7 +7,8 @@ import {
   POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS,
   POLICY_MIGRATION_VERIFIER_STATUS_IDS,
   buildPolicyMigrationVerifierAudit,
-  buildPolicyMigrationVerifierReport,
+  buildPolicyMigrationVerifierReportFromRebuildProposal as buildPolicyMigrationVerifierReport,
+  buildPolicyMigrationVerifierReportFromRuntimeInput,
   validatePolicyMigrationVerifierReport,
 } from '../../services/policyMigrationVerifierRollback.mjs';
 
@@ -57,6 +58,36 @@ function acceptedProposal() {
 }
 
 describe('policyMigrationVerifierRollback', () => {
+  test('requires a valid rebuild proposal for the decision-only verifier reducer', () => {
+    const proposal = acceptedProposal();
+
+    expect(() => buildPolicyMigrationVerifierReport({
+      proposal,
+      proposalInput: proposalInput(),
+    })).toThrow('raw input key "proposalInput"');
+    expect(() => buildPolicyMigrationVerifierReport({
+      proposal: {
+        version: 'policy.library_policy_rebuild.v1',
+      },
+    })).toThrow('requires a valid rebuild proposal');
+    expect(() => buildPolicyMigrationVerifierReportFromRuntimeInput({
+      proposal,
+    })).toThrow('received a rebuild proposal');
+
+    const report = buildPolicyMigrationVerifierReport({
+      proposal,
+      legacyComparisonSamples: [],
+    });
+    const runtimeReport = buildPolicyMigrationVerifierReportFromRuntimeInput({
+      proposalInput: proposalInput(),
+      legacyComparisonSamples: [],
+    });
+
+    expect(report.proposal).toBe(proposal);
+    expect(validatePolicyMigrationVerifierReport(report).ok).toBe(true);
+    expect(validatePolicyMigrationVerifierReport(runtimeReport).ok).toBe(true);
+  });
+
   test('builds a no-difference report with explicit rollback and deletion gates', () => {
     const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),

@@ -81,6 +81,16 @@ const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
 const MIGRATION_RELEVANT_DIFFERENCE_TYPES = Object.freeze(
   Object.values(POLICY_MIGRATION_DIFFERENCE_TYPE_IDS)
 );
+const MIGRATION_VERIFIER_REDUCER_INPUT_KEYS = new Set([
+  'proposal',
+  'migrationPlan',
+  'maxDifferences',
+  'confidenceDeltaThreshold',
+  'legacyComparisonSamples',
+  'operatorAccepted',
+  'rollbackSnapshot',
+  'deletionCriteria',
+]);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -467,20 +477,44 @@ function buildTrace({ statusId, differences, boundedDifferences, sampleSetFinger
   };
 }
 
-function buildPolicyMigrationVerifierReport(input = {}) {
-  const proposal = input.proposal?.version === 'policy.library_policy_rebuild.v1'
-    ? input.proposal
-    : buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput(input.proposalInput || {});
-  const migrationPlan = input.migrationPlan?.version === 'policy.migration_deletion_path.v1'
-    ? input.migrationPlan
+function requireValidRebuildProposal(input = {}) {
+  const verifierInput = asObject(input);
+  const unexpectedInputKey = Object.keys(verifierInput).find(key =>
+    !MIGRATION_VERIFIER_REDUCER_INPUT_KEYS.has(key)
+  );
+
+  if (unexpectedInputKey) {
+    throw new TypeError(
+      `Migration verifier requires a validated rebuild proposal; raw input key "${unexpectedInputKey}" must use buildPolicyMigrationVerifierReportFromRuntimeInput.`
+    );
+  }
+
+  const proposal = asObject(verifierInput.proposal);
+  if (proposal.version !== 'policy.library_policy_rebuild.v1') {
+    throw new TypeError('Migration verifier requires a policy.library_policy_rebuild.v1 proposal.');
+  }
+
+  const validation = validatePolicyLibraryPolicyRebuildProposal(proposal);
+  if (!validation.ok) {
+    throw new TypeError('Migration verifier requires a valid rebuild proposal.');
+  }
+
+  return proposal;
+}
+
+function buildPolicyMigrationVerifierReportFromRebuildProposal(input = {}) {
+  const verifierInput = asObject(input);
+  const proposal = requireValidRebuildProposal(verifierInput);
+  const migrationPlan = verifierInput.migrationPlan?.version === 'policy.migration_deletion_path.v1'
+    ? verifierInput.migrationPlan
     : buildPolicyMigrationDeletionPlan();
-  const maxDifferences = Number.isFinite(Number(input.maxDifferences))
-    ? Math.max(1, Math.trunc(Number(input.maxDifferences)))
+  const maxDifferences = Number.isFinite(Number(verifierInput.maxDifferences))
+    ? Math.max(1, Math.trunc(Number(verifierInput.maxDifferences)))
     : MAX_DIFFERENCES_DEFAULT;
-  const confidenceDeltaThreshold = Number.isFinite(Number(input.confidenceDeltaThreshold))
-    ? Math.max(0, Math.min(1, Number(input.confidenceDeltaThreshold)))
+  const confidenceDeltaThreshold = Number.isFinite(Number(verifierInput.confidenceDeltaThreshold))
+    ? Math.max(0, Math.min(1, Number(verifierInput.confidenceDeltaThreshold)))
     : CONFIDENCE_DELTA_THRESHOLD_DEFAULT;
-  const samples = asArray(input.legacyComparisonSamples)
+  const samples = asArray(verifierInput.legacyComparisonSamples)
     .map(sample => normalizeSample(sample, proposal));
   const sampleSetFingerprint = buildSampleSetFingerprint({
     samples,
@@ -494,12 +528,12 @@ function buildPolicyMigrationVerifierReport(input = {}) {
   const boundedDifferences = differences.slice(0, maxDifferences);
   const statusId = determineStatus(differences);
   const applicationGate = buildApplicationGate({
-    input,
+    input: verifierInput,
     proposal,
     statusId,
   });
   const deletionReadiness = buildDeletionCriteria({
-    input,
+    input: verifierInput,
     differences,
     migrationPlan,
     applicationGate,
@@ -542,6 +576,24 @@ function buildPolicyMigrationVerifierReport(input = {}) {
       sampleSetFingerprint,
     }),
   };
+}
+
+function buildPolicyMigrationVerifierReportFromRuntimeInput(input = {}) {
+  const runtimeInput = asObject(input);
+
+  if (Object.hasOwn(runtimeInput, 'proposal')) {
+    throw new TypeError(
+      'Migration verifier received a rebuild proposal; use buildPolicyMigrationVerifierReportFromRebuildProposal.'
+    );
+  }
+
+  const { proposalInput, ...verifierInput } = runtimeInput;
+  const proposal = buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput(proposalInput || {});
+
+  return buildPolicyMigrationVerifierReportFromRebuildProposal({
+    ...verifierInput,
+    proposal,
+  });
 }
 
 function validatePolicyMigrationVerifierReport(report = {}) {
@@ -766,7 +818,7 @@ function validatePolicyMigrationVerifierReport(report = {}) {
 }
 
 function buildPolicyMigrationVerifierAudit(
-  report = buildPolicyMigrationVerifierReport()
+  report = buildPolicyMigrationVerifierReportFromRuntimeInput()
 ) {
   const validation = validatePolicyMigrationVerifierReport(report);
 
@@ -791,6 +843,7 @@ export {
   POLICY_MIGRATION_VERIFIER_REASON_IDS,
   POLICY_MIGRATION_VERIFIER_STATUS_IDS,
   buildPolicyMigrationVerifierAudit,
-  buildPolicyMigrationVerifierReport,
+  buildPolicyMigrationVerifierReportFromRebuildProposal,
+  buildPolicyMigrationVerifierReportFromRuntimeInput,
   validatePolicyMigrationVerifierReport,
 };

@@ -16,6 +16,10 @@ proposal validation is current. Reports recompute proposal validation during
 verification and bind sample-set provenance to guarded-outcome fingerprint and
 request-proof counts from the embedded rebuild proposal.
 
+Verifier construction now separates raw rebuild input from the validated
+proposal reducer. The reducer validates the rebuild proposal before any sample
+comparison, fingerprinting, or rollback-gate derivation.
+
 ## Problem
 
 Classifarr can now generate a reviewable policy proposal from observed library
@@ -153,6 +157,8 @@ Cons:
    - custom-signal replacement defined.
 13. Leave all replacement, deletion, rollback creation, learning, and routing
    writes disabled in this verifier.
+14. Use a raw runtime adapter or a validated rebuild proposal reducer; do not
+    infer authority from a proposal version field alone.
 
 ## Implemented Files
 
@@ -162,6 +168,8 @@ Cons:
   `server/src/__tests__/services/policyMigrationVerifierRollback.test.mjs`
 - Rebuild proposal dependency:
   `server/src/services/policyLibraryPolicyRebuild.mjs`
+- Migration verifier proposal-boundary outcome:
+  `docs/architecture/policy-migration-verifier-proposal-boundary.md`
 - Migration/deletion plan dependency:
   `server/src/services/policyMigrationDeletionPath.mjs`
 - Roadmap owner:
@@ -177,7 +185,8 @@ The service exports:
 - `POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS`
 - `POLICY_MIGRATION_VERIFIER_REASON_IDS`
 - `POLICY_MIGRATION_VERIFIER_STATUS_IDS`
-- `buildPolicyMigrationVerifierReport`
+- `buildPolicyMigrationVerifierReportFromRebuildProposal`
+- `buildPolicyMigrationVerifierReportFromRuntimeInput`
 - `buildPolicyMigrationVerifierAudit`
 - `validatePolicyMigrationVerifierReport`
 
@@ -205,6 +214,8 @@ The service exports:
   fingerprint counts, and guarded-outcome request-proof counts.
 - Report validation recomputes the embedded rebuild proposal validation and
   rejects missing or stale proposal-validation proof.
+- The decision-only verifier reducer rejects raw rebuild input and requires a
+  valid rebuild proposal before comparing samples or deriving rollback gates.
 - Report validation rejects sample-set provenance that no longer matches the
   embedded proposal summary.
 - Trace attributes must carry the same sample-set fingerprint as the report.

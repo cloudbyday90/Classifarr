@@ -21,6 +21,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Migration Verifier Proposal Boundary** — separated raw rebuild-input
+  composition from validated-proposal migration verification, preventing
+  version-shaped or invalid proposals from reaching comparison or rollback
+  gates.
 - **Policy Library Rebuild Input Boundary** — added a validated guarded-outcome
   projection between request-time learning and rebuild proposals, preventing
   raw outcome and learning payloads from affecting rebuild evidence or

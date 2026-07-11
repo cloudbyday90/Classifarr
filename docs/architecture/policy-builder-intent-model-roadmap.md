@@ -4336,6 +4336,11 @@ Implementation status:
   `server/src/__tests__/services/policyMigrationVerifierRollback.test.mjs`.
 - Current implementation consumes a durable library-derived rebuild proposal and sanitized
   representative legacy/proposed comparison samples.
+- Verifier construction now separates raw rebuild input from a validated
+  rebuild-proposal reducer. The reducer rejects raw `proposalInput` values and
+  validates the proposal before comparison or rollback-gate derivation; its
+  design record is [Policy Migration Verifier Proposal
+  Boundary](policy-migration-verifier-proposal-boundary.md).
 - Verifier reports now carry a stable sample-set fingerprint with bounded
   provenance for sample count, raw-payload suppression, verifier options,
   proposal version/status, sanitized proposal evidence digests,
