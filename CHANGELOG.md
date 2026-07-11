@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **File Operation Stage Contract** — replaced internal folder-move failure and
+  progress-callback `phase` fields with durable `stage` fields while preserving
+  preflight, copy, verification, and cleanup behavior; reduced the enforced
+  production naming baseline from `32/33` to `26/27` references/candidates.
 - **Classification RAG Loop Stages** — renamed the internal RAG enrichment,
   retrieval, policy-recheck, and AI-rerun lifecycle module and exports from
   temporary phase wording to durable stage terminology, preserving execution

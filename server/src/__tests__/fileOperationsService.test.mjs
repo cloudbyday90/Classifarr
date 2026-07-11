@@ -317,31 +317,34 @@ describe('moveFolder', () => {
     expect(result.fileCount).toBe(3);
   });
 
-  test('fails at preflight when dryRunTest fails', async () => {
+  test('reports the preflight stage when dryRunTest fails', async () => {
     jest.spyOn(svc, 'dryRunTest').mockResolvedValueOnce({
       success: true, wouldSucceed: false, issues: ['Source does not exist']
     });
     const result = await svc.moveFolder('/src', '/dest');
     expect(result.success).toBe(false);
-    expect(result.phase).toBe('preflight');
+    expect(result.stage).toBe('preflight');
+    expect(result).not.toHaveProperty('phase');
     expect(result.issues).toContain('Source does not exist');
   });
 
-  test('fails at copy phase when copyFolderWithPermissions fails', async () => {
+  test('reports the copy stage when copyFolderWithPermissions fails', async () => {
     jest.spyOn(svc, 'dryRunTest').mockResolvedValueOnce({ success: true, wouldSucceed: true, issues: [], checks: {} });
     jest.spyOn(svc, 'copyFolderWithPermissions').mockResolvedValueOnce({ success: false, errors: ['copy error'] });
     const result = await svc.moveFolder('/src', '/dest');
     expect(result.success).toBe(false);
-    expect(result.phase).toBe('copy');
+    expect(result.stage).toBe('copy');
+    expect(result).not.toHaveProperty('phase');
   });
 
-  test('fails at verify phase when verification fails', async () => {
+  test('reports the verify stage when verification fails', async () => {
     jest.spyOn(svc, 'dryRunTest').mockResolvedValueOnce({ success: true, wouldSucceed: true, issues: [], checks: {} });
     jest.spyOn(svc, 'copyFolderWithPermissions').mockResolvedValueOnce({ success: true, totalFiles: 2, totalSize: 1024 });
     jest.spyOn(svc, 'verifyFolderCopy').mockResolvedValueOnce({ success: false });
     const result = await svc.moveFolder('/src', '/dest');
     expect(result.success).toBe(false);
-    expect(result.phase).toBe('verify');
+    expect(result.stage).toBe('verify');
+    expect(result).not.toHaveProperty('phase');
   });
 
   test('returns success=true on complete move', async () => {
@@ -353,6 +356,21 @@ describe('moveFolder', () => {
     expect(result.success).toBe(true);
     expect(result.fileCount).toBe(5);
     expect(result.totalSize).toBe(5000);
+  });
+
+  test('emits durable stages through the progress callback', async () => {
+    const onProgress = jest.fn();
+    jest.spyOn(svc, 'dryRunTest').mockResolvedValueOnce({ success: true, wouldSucceed: true, issues: [], checks: {} });
+    jest.spyOn(svc, 'copyFolderWithPermissions').mockResolvedValueOnce({ success: true, totalFiles: 5, totalSize: 5000 });
+    jest.spyOn(svc, 'verifyFolderCopy').mockResolvedValueOnce({ success: true });
+    jest.spyOn(svc, 'safeDeleteFolder').mockResolvedValueOnce({ success: true });
+
+    await svc.moveFolder('/src', '/dest', { onProgress });
+
+    expect(onProgress).toHaveBeenCalledWith({ stage: 'copy', message: 'Copying files...' });
+    expect(onProgress).toHaveBeenCalledWith({ stage: 'verify', message: 'Verifying checksums...' });
+    expect(onProgress).toHaveBeenCalledWith({ stage: 'cleanup', message: 'Removing source...' });
+    onProgress.mock.calls.forEach(([update]) => expect(update).not.toHaveProperty('phase'));
   });
 
   test('returns success=true with warning when source delete fails', async () => {

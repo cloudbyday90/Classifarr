@@ -3,9 +3,9 @@ const POLICY_PRODUCTION_NAMING_REGRESSION_AUDIT_VERSION =
 const TEMPORARY_ADAPTER_WITH_DELETION_GATE = 'temporary_adapter_with_deletion_gate';
 
 const POLICY_PRODUCTION_NAMING_REGRESSION_BASELINE = Object.freeze({
-  label: 'classification-rag-loop-stage-ratchet-2026-07-11',
-  maxProductionReferenceCount: 32,
-  maxRenameCandidateCount: 33,
+  label: 'file-operation-stage-ratchet-2026-07-11',
+  maxProductionReferenceCount: 26,
+  maxRenameCandidateCount: 27,
   maxObsoleteToolingCount: 0,
 });
 

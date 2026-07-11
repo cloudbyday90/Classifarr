@@ -6680,8 +6680,8 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 32 production references plus 33 rename candidates after
-  the classification RAG-loop stage naming cutover.
+  currently reports 26 production references plus 27 rename candidates after
+  the file-operation stage contract cutover.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -6770,6 +6770,10 @@ Implementation status:
   temporary export aliases and preserved all execution, retry, and telemetry
   behavior. Its design record is
   [Classification RAG Loop Stage Naming Cutover](classification-rag-loop-stage-naming-cutover.md).
+- The internal file-operation progress contract now uses `stage` in move
+  failure objects and progress callbacks. Its callers remain server-internal,
+  so no temporary response alias is retained. Its design record is
+  [File Operation Stage Contract Cutover](file-operation-stage-contract-cutover.md).
 - Outcome record:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
 - After the completed classification progress storage cutover, the repository

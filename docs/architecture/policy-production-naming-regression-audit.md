@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the live repository inventory after the
-classification RAG-loop stage naming cutover on July 11, 2026:
+file-operation stage contract cutover on July 11, 2026:
 
-- production references: `32`
-- rename candidates: `33`
+- production references: `26`
+- rename candidates: `27`
 - obsolete migration tooling references: `0`
 
 The baseline is intentionally a maximum, not a target. Future durable rename

@@ -235,7 +235,7 @@ export class FileOperationsService {
         if (!dryRunResult.success || !dryRunResult.wouldSucceed) {
             return {
                 success: false,
-                phase: 'preflight',
+                stage: 'preflight',
                 error: 'Preflight check failed',
                 issues: dryRunResult.issues || [],
                 dryRunResult
@@ -253,7 +253,7 @@ export class FileOperationsService {
             };
         }
 
-        if (onProgress) onProgress({ phase: 'copy', message: 'Copying files...' });
+        if (onProgress) onProgress({ stage: 'copy', message: 'Copying files...' });
 
         const copyResult = await this.copyFolderWithPermissions(src, dest, {
             preserveTimestamps: true,
@@ -268,14 +268,14 @@ export class FileOperationsService {
             }
             return {
                 success: false,
-                phase: 'copy',
+                stage: 'copy',
                 error: 'Copy failed',
                 copyResult
             };
         }
 
         if (!skipVerification) {
-            if (onProgress) onProgress({ phase: 'verify', message: 'Verifying checksums...' });
+            if (onProgress) onProgress({ stage: 'verify', message: 'Verifying checksums...' });
 
             const verifyResult = await this.verifyFolderCopy(src, dest);
 
@@ -287,14 +287,14 @@ export class FileOperationsService {
                 }
                 return {
                     success: false,
-                    phase: 'verify',
+                    stage: 'verify',
                     error: 'Verification failed - checksums do not match',
                     verifyResult
                 };
             }
         }
 
-        if (onProgress) onProgress({ phase: 'cleanup', message: 'Removing source...' });
+        if (onProgress) onProgress({ stage: 'cleanup', message: 'Removing source...' });
 
         const deleteResult = await this.safeDeleteFolder(src, {
             requireVerification: !skipVerification,
