@@ -6680,8 +6680,8 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 11 production references plus 12 rename candidates after
-  the storage-closure component catalog cutover.
+  currently reports 10 production references plus 11 rename candidates after
+  the WebSocket progress stage contract cutover.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -6799,6 +6799,10 @@ Implementation status:
   durable component identifiers. Roadmap labels are collected generically and
   historic delivery values cannot satisfy current evidence. Its design record
   is [Policy Storage Closure Component Catalog Cutover](policy-storage-closure-component-catalog-cutover.md).
+- WebSocket classification progress now rejects payloads without a durable
+  stage, after an audit confirmed its sole producer emits stage events. Its
+  design record is
+  [WebSocket Progress Stage Contract Cutover](websocket-progress-stage-contract-cutover.md).
 - Outcome record:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
 - After the completed classification progress storage cutover, the repository

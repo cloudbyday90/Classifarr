@@ -86,14 +86,14 @@ describe('WebSocketService', () => {
       expect(mockIo.to).not.toHaveBeenCalled();
     });
 
-    it('should tolerate legacy phase-only progress payloads', () => {
+    it('should reject progress payloads without a durable stage', () => {
       const mockHttpServer = {};
       webSocketService.initialize(mockHttpServer);
 
       webSocketService.emitTaskProgress(123, { phase: 'analyzing', progress: 50 });
 
-      expect(mockIo.to).toHaveBeenCalledWith('task:123');
-      expect(mockIo.emit).toHaveBeenCalled();
+      expect(mockIo.to).not.toHaveBeenCalled();
+      expect(mockIo.emit).not.toHaveBeenCalled();
     });
   });
 

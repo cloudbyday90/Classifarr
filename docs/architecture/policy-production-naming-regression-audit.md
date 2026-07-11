@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the live repository inventory after the
-storage-closure component catalog cutover on July 11, 2026:
+WebSocket progress stage contract cutover on July 11, 2026:
 
-- production references: `11`
-- rename candidates: `12`
+- production references: `10`
+- rename candidates: `11`
 - obsolete migration tooling references: `0`
 
 The baseline is intentionally a maximum, not a target. Future durable rename

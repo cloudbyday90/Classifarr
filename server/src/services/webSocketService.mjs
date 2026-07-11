@@ -93,10 +93,16 @@ export class WebSocketService {
             return;
         }
 
+        const stage = typeof data?.stage === 'string' ? data.stage.trim() : '';
+        if (!stage) {
+            this._log.warn('Skipping task progress without a stage', { taskId });
+            return;
+        }
+
         this.io.to(`task:${taskId}`).emit('classification:progress', data);
         this.io.to('activity').emit('classification:progress', data);
 
-        this._log.debug('Emitted task progress', { taskId, stage: data.stage || data.phase });
+        this._log.debug('Emitted task progress', { taskId, stage });
     }
 
     emitClassificationComplete(taskId, result) {

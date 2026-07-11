@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **WebSocket Progress Stage Contract** — requires a non-empty `stage` before
+  broadcasting classification progress and rejects retired phase-only payloads;
+  reduced the enforced production naming baseline from `11/12` to `10/11`
+  references/candidates.
 - **Storage Closure Component Catalog** — replaced phase-coded storage-closure
   catalog values and roadmap parsing with durable component IDs and
   label-based collection, including the validation-record rename; reduced the
