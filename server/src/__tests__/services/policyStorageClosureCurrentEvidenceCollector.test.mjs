@@ -24,26 +24,18 @@ const ALL_MAPPED_PATHS = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
 
 function completeRoadmapContent() {
   const componentSections = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
-    .map(component => {
-      const number = component.legacyId.replace('8r_', '');
-
-      return `### 8R.${number} ${component.label}`;
-    })
+    .map(component => `### ${component.label}`)
     .join('\n');
   const sequenceItems = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
-    .map((component, index) => {
-      const number = component.legacyId.replace('8r_', '');
-
-      return `${index + 1}. **8R.${number} ${component.label}**`;
-    })
+    .map((component, index) => `${index + 1}. **${component.label}**`)
     .join('\n');
 
-  return `${componentSections}\n\n## Phase 8R Work Sequence\n\n${sequenceItems}`;
+  return `${componentSections}\n\n## Policy Storage Closure Work Sequence\n\n${sequenceItems}`;
 }
 
 function completeChangelogContent() {
   return POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
-    .map(component => `- **Policy Builder Phase 8R ${component.label}**`)
+    .map(component => `- **Policy storage ${component.label}**`)
     .join('\n');
 }
 
@@ -112,17 +104,34 @@ describe('policyStorageClosureCurrentEvidenceCollector', () => {
   });
 
   test('extracts roadmap sequence and implementation status evidence', () => {
-    const evidence = extractRoadmapEvidence(`
-### 8R.1 Native Schema Contract
-### 8R.2 Migration Candidate Report
+    const evidence = extractRoadmapEvidence({
+      roadmapContent: `
+### Native Schema Contract
+### Migration Candidate Report
 
-1. **8R.1 Native Schema Contract**
-2. **8R.2 Migration Candidate Report**
-`);
+1. **Native Schema Contract**
+2. **Migration Candidate Report**
+`,
+    });
 
     expect(evidence).toEqual({
-      componentSequenceIds: ['8R.1', '8R.2'],
-      implementationStatusComponentIds: ['8R.1', '8R.2'],
+      componentSequenceIds: ['native_schema_contract', 'migration_candidate_report'],
+      implementationStatusComponentIds: ['native_schema_contract', 'migration_candidate_report'],
+    });
+  });
+
+  test('emits durable IDs when historic roadmap labels remain in documentation', () => {
+    const evidence = extractRoadmapEvidence({
+      roadmapContent: `
+### 8R.1 Native Schema Contract
+
+1. **8R.1 Native Schema Contract**
+`,
+    });
+
+    expect(evidence).toEqual({
+      componentSequenceIds: ['native_schema_contract'],
+      implementationStatusComponentIds: ['native_schema_contract'],
     });
   });
 
@@ -133,7 +142,7 @@ describe('policyStorageClosureCurrentEvidenceCollector', () => {
 
     expect(evidence.updated).toBe(true);
     expect(evidence.componentIds).toEqual(
-      POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP.map(component => component.legacyId)
+      POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP.map(component => component.componentId)
     );
   });
 

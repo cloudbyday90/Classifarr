@@ -10,7 +10,7 @@ import {
 } from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 
 const SOURCE_COMPONENT_IDS = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
-  .map(component => component.legacyId);
+  .map(component => component.componentId);
 
 function allMappedPaths(key) {
   return POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
@@ -149,24 +149,30 @@ describe('policyStorageClosureEvidenceRun', () => {
     expect(evidenceRun.artifactInventory.componentsWithMissingArtifactCount).toBe(0);
   });
 
-  test('normalizes human-readable dotted source roadmap IDs in supplied evidence', () => {
-    const dottedSourceIds = SOURCE_COMPONENT_IDS.map(componentId => (
-      componentId.replace(/^8r_(\d+)$/, '8R.$1')
+  test('blocks historical roadmap identifiers instead of normalizing them as component IDs', () => {
+    const historicalRoadmapIds = SOURCE_COMPONENT_IDS.map((_componentId, index) => (
+      `8R.${index + 1}`
     ));
     const evidenceRun = completeRun({
-      roadmapEvidence: roadmapEvidence({
-        componentSequenceIds: dottedSourceIds,
-        implementationStatusComponentIds: dottedSourceIds,
-      }),
+      roadmapEvidence: {
+        componentSequenceIds: historicalRoadmapIds,
+        implementationStatusComponentIds: historicalRoadmapIds,
+      },
       changelogEvidence: changelogEvidence({
-        componentIds: dottedSourceIds,
+        componentIds: historicalRoadmapIds,
       }),
     });
 
-    expect(evidenceRun.statusId).toBe(POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.COMPLETE);
-    expect(evidenceRun.componentEvidence.every(component => (
-      component.changelogEntryPresent
-    ))).toBe(true);
+    expect(evidenceRun.statusId)
+      .toBe(POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.BLOCKED_BY_CHECKPOINT);
+    expect(evidenceRun.checkpoint.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: 'roadmap_sequence_incomplete',
+      }),
+      expect.objectContaining({
+        riskId: 'changelog_entry_missing',
+      }),
+    ]));
   });
 
   test('blocks legacy evidence keys instead of treating them as durable component fields', () => {
@@ -243,7 +249,9 @@ describe('policyStorageClosureEvidenceRun', () => {
     const roadmapBlocked = completeRun({
       roadmapEvidence: roadmapEvidence({
         componentSequenceIds:
-          SOURCE_COMPONENT_IDS.filter(componentId => componentId !== '8r_22'),
+          SOURCE_COMPONENT_IDS.filter(componentId => (
+            componentId !== 'storage_completion_checkpoint'
+          )),
       }),
     });
     const removalAuditBlocked = completeRun({
@@ -285,7 +293,9 @@ describe('policyStorageClosureEvidenceRun', () => {
     const changelogBlocked = completeRun({
       changelogEvidence: changelogEvidence({
         componentIds:
-          SOURCE_COMPONENT_IDS.filter(componentId => componentId !== '8r_21'),
+          SOURCE_COMPONENT_IDS.filter(componentId => (
+            componentId !== 'compatibility_removal_completion_audit'
+          )),
       }),
     });
 

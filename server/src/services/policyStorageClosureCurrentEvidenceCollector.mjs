@@ -116,22 +116,45 @@ function collectArtifactInventory({
   };
 }
 
-function collectRegexMatches(content = '', pattern) {
-  return [...String(content || '').matchAll(pattern)]
-    .map(match => match[1])
-    .filter(Boolean);
+function escapeRegex(value = '') {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function extractRoadmapEvidence(roadmapContent = '') {
+function collectRoadmapComponentIds({
+  roadmapContent = '',
+  componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
+  entryPrefix = '',
+} = {}) {
+  const content = String(roadmapContent || '');
+
+  return asArray(componentArtifactMap)
+    .filter(component => {
+      const label = escapeRegex(component.label);
+      const pattern = new RegExp(
+        `^${entryPrefix}(?:\\d+[a-z]?\\.\\d+\\s+)?${label}\\b`,
+        'im'
+      );
+
+      return pattern.test(content);
+    })
+    .map(component => component.componentId);
+}
+
+function extractRoadmapEvidence({
+  roadmapContent = '',
+  componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
+} = {}) {
   return {
-    componentSequenceIds: collectRegexMatches(
+    componentSequenceIds: collectRoadmapComponentIds({
       roadmapContent,
-      /^\d+\.\s+\*\*(8R\.\d+)\b/gm
-    ),
-    implementationStatusComponentIds: collectRegexMatches(
+      componentArtifactMap,
+      entryPrefix: '\\d+\\.\\s+\\*\\*',
+    }),
+    implementationStatusComponentIds: collectRoadmapComponentIds({
       roadmapContent,
-      /^###\s+(8R\.\d+)\b/gm
-    ),
+      componentArtifactMap,
+      entryPrefix: '###\\s+',
+    }),
   };
 }
 
@@ -146,7 +169,7 @@ function extractChangelogEvidence({
   const normalizedChangelog = normalizeSearchText(changelogContent);
   const componentIds = asArray(componentArtifactMap)
     .filter(component => normalizedChangelog.includes(normalizeSearchText(component.label)))
-    .map(component => component.componentId || component.legacyId);
+    .map(component => component.componentId);
 
   return {
     updated: componentIds.length > 0,
@@ -192,7 +215,10 @@ function buildPolicyStorageClosureCurrentEvidenceRun({
     repositoryPath: changelogPath,
     readTextFile,
   });
-  const roadmapEvidence = extractRoadmapEvidence(roadmapContent);
+  const roadmapEvidence = extractRoadmapEvidence({
+    roadmapContent,
+    componentArtifactMap,
+  });
   const changelogEvidence = extractChangelogEvidence({
     changelogContent,
     componentArtifactMap,
@@ -226,6 +252,8 @@ export {
   buildPolicyStorageClosureCurrentEvidenceRun,
   categorizeArtifactPath,
   collectArtifactInventory,
+  collectRoadmapComponentIds,
+  escapeRegex,
   extractChangelogEvidence,
   extractRoadmapEvidence,
   getMappedArtifactPaths,

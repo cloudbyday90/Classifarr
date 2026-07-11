@@ -9,6 +9,7 @@ import {
 } from './policyStorageCurrentClosureAudit.mjs';
 import {
   collectArtifactInventory,
+  collectRoadmapComponentIds,
   normalizeRepositoryPath,
 } from './policyStorageClosureCurrentEvidenceCollector.mjs';
 
@@ -43,27 +44,13 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_STATUS: 'unknown_status',
 });
 
-const SOURCE_ROADMAP_COMPONENT_PREFIX = ['8', 'R'].join('');
-const ROADMAP_SEQUENCE_COMPONENT_PATTERN = /^\d+\.\s+\*\*(\d+r?\.\d+)\b/gim;
-const ROADMAP_IMPLEMENTATION_COMPONENT_PATTERN = /^###\s+(\d+r?\.\d+)\b/gim;
-
 function normalizeClosureComponentId(value = '') {
-  const normalized = String(value || '').trim().toLowerCase();
-  const dottedComponentMatch = normalized.match(/^(\d+)r?\.(\d+)$/);
-
-  if (dottedComponentMatch) {
-    return `${dottedComponentMatch[1]}r_${dottedComponentMatch[2]}`;
-  }
-
-  return normalized;
+  return String(value || '').trim().toLowerCase();
 }
 
 function toClosureComponentMap(componentArtifactMap = []) {
   return asArray(componentArtifactMap).map(component => ({
-    componentId:
-      normalizeClosureComponentId(
-        component.componentId || component.legacyId
-      ),
+    componentId: normalizeClosureComponentId(component.componentId),
     label: component.label,
     designDocPaths: asArray(component.designDocPaths),
     contractPaths: asArray(component.contractPaths),
@@ -74,7 +61,7 @@ function toClosureComponentMap(componentArtifactMap = []) {
 const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   ...toClosureComponentMap(POLICY_STORAGE_BASE_CLOSURE_REQUIREMENT_ARTIFACT_MAP),
   {
-    componentId: '8r_23',
+    componentId: 'storage_closure_evidence_run',
     label: 'Policy Storage Closure Evidence Run',
     designDocPaths: ['docs/architecture/policy-storage-closure-evidence-run.md'],
     contractPaths: [
@@ -88,7 +75,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     ],
   },
   {
-    componentId: '8r_24',
+    componentId: 'storage_closure_validation_evidence',
     label: 'Storage Closure Validation Evidence',
     designDocPaths: ['docs/architecture/policy-storage-closure-validation-evidence.md'],
     contractPaths: [
@@ -98,7 +85,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyStorageClosureValidationEvidence.test.mjs'],
   },
   {
-    componentId: '8r_25',
+    componentId: 'storage_closure_final_removal_audit',
     label: 'Policy Storage Closure Final Removal Audit',
     designDocPaths: ['docs/architecture/policy-storage-closure-final-removal-audit.md'],
     contractPaths: [
@@ -108,7 +95,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyStorageClosureFinalRemovalAudit.test.mjs'],
   },
   {
-    componentId: '8r_26',
+    componentId: 'compatibility_deletion_execution_plan_artifact',
     label: 'Policy Compatibility Deletion Execution Plan Artifact',
     designDocPaths: [
       'docs/architecture/policy-compatibility-deletion-execution-plan-artifact.md',
@@ -120,7 +107,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifact.test.mjs'],
   },
   {
-    componentId: '8r_27',
+    componentId: 'controlled_compatibility_removal_batch_artifact',
     label: 'Policy Controlled Compatibility Removal Batch Artifact',
     designDocPaths: [
       'docs/architecture/policy-controlled-compatibility-removal-batch-artifact.md',
@@ -132,7 +119,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyControlledCompatibilityRemovalBatchArtifact.test.mjs'],
   },
   {
-    componentId: '8r_28',
+    componentId: 'controlled_removal_apply_artifact_exporter',
     label: 'Controlled Removal Apply Artifact Exporter',
     designDocPaths: ['docs/architecture/policy-controlled-removal-apply-artifact-exporter.md'],
     contractPaths: [
@@ -142,7 +129,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyControlledRemovalApplyArtifact.test.mjs'],
   },
   {
-    componentId: '8r_29',
+    componentId: 'post_removal_runtime_verification_artifact_exporter',
     label: 'Post-Removal Runtime Verification Artifact Exporter',
     designDocPaths: ['docs/architecture/policy-post-removal-runtime-verification-artifact-exporter.md'],
     contractPaths: [
@@ -152,7 +139,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyPostRemovalRuntimeVerificationArtifact.test.mjs'],
   },
   {
-    componentId: '8r_30',
+    componentId: 'next_compatibility_removal_batch_authorization_artifact_exporter',
     label: 'Next Compatibility Removal Batch Authorization Artifact Exporter',
     designDocPaths: ['docs/architecture/policy-next-compatibility-removal-batch-authorization-artifact-exporter.md'],
     contractPaths: [
@@ -162,7 +149,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.test.mjs'],
   },
   {
-    componentId: '8r_31',
+    componentId: 'compatibility_removal_completion_audit_artifact_exporter',
     label: 'Compatibility Removal Completion Audit Artifact Exporter',
     designDocPaths: ['docs/architecture/policy-compatibility-removal-completion-audit-artifact-exporter.md'],
     contractPaths: [
@@ -172,7 +159,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifact.test.mjs'],
   },
   {
-    componentId: '8r_32',
+    componentId: 'storage_completion_checkpoint_artifact_exporter',
     label: 'Completion Checkpoint Artifact Exporter',
     designDocPaths: ['docs/architecture/policy-storage-completion-checkpoint-artifact-exporter.md'],
     contractPaths: [
@@ -182,7 +169,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyStorageCompletionCheckpointArtifact.test.mjs'],
   },
   {
-    componentId: '8r_33',
+    componentId: 'storage_final_closure_readout',
     label: 'Final Closure Readout',
     designDocPaths: ['docs/architecture/policy-storage-final-closure-readout.md'],
     contractPaths: [
@@ -192,7 +179,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyStorageFinalClosureReadout.test.mjs'],
   },
   {
-    componentId: '8r_34',
+    componentId: 'storage_current_closure_audit',
     label: 'Policy Storage Current Closure Audit',
     designDocPaths: ['docs/architecture/policy-storage-current-closure-audit.md'],
     contractPaths: [
@@ -263,27 +250,21 @@ function getMissingPaths(paths = [], inventoryPathSet = new Set()) {
     .filter(repositoryPath => repositoryPath && !inventoryPathSet.has(repositoryPath));
 }
 
-function collectRegexMatches(content = '', pattern) {
-  return [...String(content || '').matchAll(pattern)]
-    .map(match => match[1])
-    .filter(Boolean);
-}
-
-function isSourceRoadmapComponent(componentId = '') {
-  return normalizeClosureComponentId(componentId)
-    .startsWith(`${SOURCE_ROADMAP_COMPONENT_PREFIX.toLowerCase()}_`);
-}
-
-function extractRoadmapComponentEvidence(roadmapContent = '') {
+function extractRoadmapComponentEvidence({
+  roadmapContent = '',
+  componentArtifactMap = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
+} = {}) {
   return {
-    sequenceComponentIds: collectRegexMatches(
+    sequenceComponentIds: collectRoadmapComponentIds({
       roadmapContent,
-      ROADMAP_SEQUENCE_COMPONENT_PATTERN
-    ).map(normalizeClosureComponentId).filter(isSourceRoadmapComponent),
-    implementationStatusComponentIds: collectRegexMatches(
+      componentArtifactMap,
+      entryPrefix: '\\d+\\.\\s+\\*\\*',
+    }).map(normalizeClosureComponentId),
+    implementationStatusComponentIds: collectRoadmapComponentIds({
       roadmapContent,
-      ROADMAP_IMPLEMENTATION_COMPONENT_PATTERN
-    ).map(normalizeClosureComponentId).filter(isSourceRoadmapComponent),
+      componentArtifactMap,
+      entryPrefix: '###\\s+',
+    }).map(normalizeClosureComponentId),
   };
 }
 
@@ -652,7 +633,10 @@ function buildPolicyStorageClosureRequirementAudit({
     repositoryPath: changelogPath,
     readTextFile,
   });
-  const rawRoadmapEvidence = extractRoadmapComponentEvidence(roadmapContent);
+  const rawRoadmapEvidence = extractRoadmapComponentEvidence({
+    roadmapContent,
+    componentArtifactMap,
+  });
   const rawChangelogEvidence = extractChangelogComponentEvidence({
     changelogContent,
     componentArtifactMap,
@@ -697,7 +681,7 @@ function buildPolicyStorageClosureRequirementAudit({
         POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS.COMPLETE,
     evidenceScope: {
       componentCount: asArray(componentArtifactMap).length,
-      sourceRoadmapComponentPrefix: SOURCE_ROADMAP_COMPONENT_PREFIX,
+      componentCatalog: 'policy_storage_closure',
       roadmapPath,
       changelogPath,
       requiresCurrentClosureAudit: true,

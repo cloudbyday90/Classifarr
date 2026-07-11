@@ -11,8 +11,6 @@ import {
 
 const COMPONENT_IDS =
   POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => component.componentId);
-const LEGACY_IDS =
-  POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => component.legacyId);
 
 function componentEvidence(overrides = {}) {
   return POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => ({
@@ -192,13 +190,10 @@ describe('policyStorageCompletionCheckpoint', () => {
   });
 
   test('blocks legacy roadmap evidence keys instead of treating them as durable fields', () => {
-    const dottedLegacyIds = LEGACY_IDS.map(legacyId => (
-      legacyId.replace(/^8r_(\d+)$/, '8R.$1')
-    ));
     const checkpoint = completeCheckpoint({
       roadmapEvidence: {
-        sequencePhaseIds: dottedLegacyIds,
-        implementationStatusPhaseIds: dottedLegacyIds,
+        sequencePhaseIds: COMPONENT_IDS,
+        implementationStatusPhaseIds: COMPONENT_IDS,
       },
     });
 

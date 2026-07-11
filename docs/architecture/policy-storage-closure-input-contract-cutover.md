@@ -25,8 +25,8 @@ The audit identified three internal fallback readers:
 Every current collector and CLI caller emits `componentId`,
 `componentSequenceIds`, `implementationStatusComponentIds`, or `componentIds`.
 The only remaining phase-key writers were tests that exercised the fallback.
-Historic roadmap identifiers such as `8R.1` remain accepted when supplied in a
-durable component field and normalize to the existing component map.
+The subsequent catalog cutover removed historic value normalization as well:
+current inputs must use durable component IDs.
 
 ## Official Guidance Reviewed
 
@@ -53,9 +53,8 @@ durable component field and normalize to the existing component map.
 
 1. Accept only durable component-oriented input keys in storage-closure
    services.
-2. Continue normalizing historical component values only inside those durable
-   keys while audited historic artifacts remain relevant.
-3. Block retired keys through the existing checkpoint risk model instead of
+2. Block retired keys and historic delivery values through the existing
+   checkpoint risk model instead of
    silently translating them.
 4. Keep focused tests for both valid dotted historic values and rejected legacy
    input keys.
@@ -65,7 +64,8 @@ durable component field and normalize to the existing component map.
 - Removed phase-key fallbacks from storage-closure evidence normalization,
   checkpoint roadmap evaluation, checkpoint component-evidence lookup, and
   closure artifact-map normalization.
-- Kept existing historic identifier normalization for durable component fields.
+- The later catalog cutover removed historic identifier normalization from
+  durable component fields.
 - Added focused regression coverage proving that retired keys cannot satisfy
   roadmap or changelog completion evidence.
 - Updated the production naming inventory and regression baseline from `22/23`
@@ -77,8 +77,7 @@ durable component field and normalize to the existing component map.
 - Unknown retired keys cannot silently satisfy a completion checkpoint.
 - The cutover performs no file writes, storage mutations, process execution,
   or network activity.
-- Historic values remain bounded by the existing component-ID map rather than
-  creating new field-level compatibility paths.
+- Historic values cannot satisfy storage-closure evidence.
 
 ## Verification
 

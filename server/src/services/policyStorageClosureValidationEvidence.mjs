@@ -83,7 +83,7 @@ const POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS = Object.freeze([
       'docs/architecture/policy-impact-preview-migration-verifier-module-cutover.md',
       'docs/architecture/policy-replay-preview-migration-verifier.md',
       'docs/architecture/policy-replay-preview-migration-verifier-module-cutover.md',
-      'docs/architecture/policy-builder-phase-8r-closure-inventory-sync.md',
+      'docs/architecture/policy-storage-closure-inventory-sync.md',
     ],
     cwd: '.',
   },

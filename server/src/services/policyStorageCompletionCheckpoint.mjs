@@ -41,151 +41,100 @@ const POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS = Object.freeze({
 const POLICY_STORAGE_COMPLETION_COMPONENTS = Object.freeze([
   {
     componentId: 'native_schema_contract',
-    legacyId: '8r_1',
     label: 'Native Schema Contract',
   },
   {
     componentId: 'migration_candidate_report',
-    legacyId: '8r_2',
     label: 'Migration Candidate Report',
   },
   {
     componentId: 'explicit_conversion_workflow',
-    legacyId: '8r_3',
     label: 'Explicit Conversion Workflow',
   },
   {
     componentId: 'native_runtime_read_path',
-    legacyId: '8r_4',
     label: 'Native Runtime Read Path',
   },
   {
     componentId: 'rollback_snapshot_reversion_window',
-    legacyId: '8r_5',
     label: 'Rollback Snapshot And Reversion Window',
   },
   {
     componentId: 'legacy_write_path_shutdown',
-    legacyId: '8r_6',
     label: 'Legacy Write Path Shutdown',
   },
   {
     componentId: 'legacy_code_deletion_gates',
-    legacyId: '8r_7',
     label: 'Legacy Code Deletion Gates',
   },
   {
     componentId: 'backup_restore_post_upgrade_safety',
-    legacyId: '8r_8',
     label: 'Backup, Restore, And Post-Upgrade Safety',
   },
   {
     componentId: 'native_storage_test_reset',
-    legacyId: '8r_9',
     label: 'Native Storage Test Reset',
   },
   {
     componentId: 'native_backup_restore_wiring',
-    legacyId: '8r_10',
     label: 'Native Backup And Restore Wiring',
   },
   {
     componentId: 'post_upgrade_dry_run_wiring',
-    legacyId: '8r_11',
     label: 'Post-Upgrade Dry-Run Wiring',
   },
   {
     componentId: 'post_upgrade_apply_gate',
-    legacyId: '8r_12',
     label: 'Post-Upgrade Apply Gate',
   },
   {
     componentId: 'native_runtime_cutover_verification',
-    legacyId: '8r_13',
     label: 'Native Runtime Cutover Verification',
   },
   {
     componentId: 'compatibility_path_deletion_readiness',
-    legacyId: '8r_14',
     label: 'Compatibility Path Deletion Readiness',
   },
   {
     componentId: 'compatibility_path_deletion_execution_plan',
-    legacyId: '8r_15',
     label: 'Compatibility Path Deletion Execution Plan',
   },
   {
     componentId: 'compatibility_path_deletion_execution_gate',
-    legacyId: '8r_16',
     label: 'Compatibility Path Deletion Execution Gate',
   },
   {
     componentId: 'controlled_compatibility_path_removal',
-    legacyId: '8r_17',
     label: 'Controlled Compatibility Path Removal',
   },
   {
     componentId: 'controlled_compatibility_path_removal_apply',
-    legacyId: '8r_18',
     label: 'Controlled Compatibility Path Removal Apply',
   },
   {
     componentId: 'post_removal_runtime_verification',
-    legacyId: '8r_19',
     label: 'Post-Removal Runtime Verification',
   },
   {
     componentId: 'next_compatibility_removal_batch_authorization',
-    legacyId: '8r_20',
     label: 'Next Compatibility Removal Batch Authorization',
   },
   {
     componentId: 'compatibility_removal_completion_audit',
-    legacyId: '8r_21',
     label: 'Compatibility Removal Completion Audit',
   },
 ]);
-
-const LEGACY_STORAGE_COMPONENT_ID_MAP = new Map(
-  POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => [
-    component.legacyId,
-    component.componentId,
-  ])
-);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-function normalizeComponentId(value = '', componentIdMap = LEGACY_STORAGE_COMPONENT_ID_MAP) {
-  const normalized = String(value || '').trim().toLowerCase();
-  const dottedLegacyMatch = normalized.match(/^(\d+)r?\.(\d+)$/);
-
-  if (dottedLegacyMatch) {
-    const legacyId = `${dottedLegacyMatch[1]}r_${dottedLegacyMatch[2]}`;
-    return componentIdMap.get(legacyId) || legacyId;
-  }
-
-  return componentIdMap.get(normalized) || normalized;
+function normalizeComponentId(value = '') {
+  return String(value || '').trim().toLowerCase();
 }
 
-function buildComponentIdMap(expectedComponents = POLICY_STORAGE_COMPLETION_COMPONENTS) {
-  return new Map([
-    ...LEGACY_STORAGE_COMPONENT_ID_MAP,
-    ...asArray(expectedComponents)
-      .filter(component => component.legacyId && component.componentId)
-      .map(component => [
-        normalizeComponentId(component.legacyId),
-        normalizeComponentId(component.componentId),
-      ]),
-  ]);
-}
-
-function getEvidenceComponentId(component = {}, componentIdMap = LEGACY_STORAGE_COMPONENT_ID_MAP) {
-  return normalizeComponentId(
-    component.componentId,
-    componentIdMap
-  );
+function getEvidenceComponentId(component = {}) {
+  return normalizeComponentId(component.componentId);
 }
 
 function buildRisk(riskId, message, metadata = {}) {
@@ -196,12 +145,9 @@ function buildRisk(riskId, message, metadata = {}) {
   };
 }
 
-function getComponentEvidenceByComponentId(
-  componentEvidence = [],
-  componentIdMap = LEGACY_STORAGE_COMPONENT_ID_MAP
-) {
+function getComponentEvidenceByComponentId(componentEvidence = []) {
   return new Map(asArray(componentEvidence)
-    .map(component => [getEvidenceComponentId(component, componentIdMap), component]));
+    .map(component => [getEvidenceComponentId(component), component]));
 }
 
 function evaluateComponentCoverage({
@@ -209,11 +155,9 @@ function evaluateComponentCoverage({
   componentEvidence = [],
 } = {}) {
   const risks = [];
-  const componentIdMap = buildComponentIdMap(expectedComponents);
-  const evidenceByComponentId =
-    getComponentEvidenceByComponentId(componentEvidence, componentIdMap);
+  const evidenceByComponentId = getComponentEvidenceByComponentId(componentEvidence);
   const componentSummaries = expectedComponents.map(expected => {
-    const componentId = normalizeComponentId(expected.componentId, componentIdMap);
+    const componentId = normalizeComponentId(expected.componentId);
     const evidence = evidenceByComponentId.get(componentId);
 
     if (!evidence) {
@@ -300,13 +244,12 @@ function evaluateRoadmapEvidence({
   expectedComponents = POLICY_STORAGE_COMPLETION_COMPONENTS,
 } = {}) {
   const risks = [];
-  const componentIdMap = buildComponentIdMap(expectedComponents);
   const sequenceComponentIds = asArray(roadmapEvidence.componentSequenceIds)
-    .map(componentId => normalizeComponentId(componentId, componentIdMap));
+    .map(normalizeComponentId);
   const implementationStatusComponentIds = asArray(roadmapEvidence.implementationStatusComponentIds)
-    .map(componentId => normalizeComponentId(componentId, componentIdMap));
+    .map(normalizeComponentId);
   const expectedComponentIds =
-    expectedComponents.map(component => normalizeComponentId(component.componentId, componentIdMap));
+    expectedComponents.map(component => normalizeComponentId(component.componentId));
   const missingSequenceComponentIds =
     expectedComponentIds.filter(componentId => !sequenceComponentIds.includes(componentId));
   const missingImplementationStatusComponentIds =
@@ -422,13 +365,10 @@ function evaluateValidationEvidence(validationEvidence = {}) {
 function evaluateChangelogEvidence({
   componentCoverage = {},
   changelogEvidence = {},
-  expectedComponents = POLICY_STORAGE_COMPLETION_COMPONENTS,
 } = {}) {
   const risks = [];
-  const componentIdMap = buildComponentIdMap(expectedComponents);
-  const coveredComponentIds = asArray(
-    changelogEvidence.componentIds ?? changelogEvidence['phase' + 'Ids']
-  ).map(componentId => normalizeComponentId(componentId, componentIdMap));
+  const coveredComponentIds = asArray(changelogEvidence.componentIds)
+    .map(normalizeComponentId);
   const missingComponentIds = asArray(componentCoverage.components)
     .filter(component => !coveredComponentIds.includes(component.componentId))
     .map(component => component.componentId);

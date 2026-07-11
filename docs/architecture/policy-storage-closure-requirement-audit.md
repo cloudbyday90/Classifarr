@@ -100,7 +100,7 @@ Cons:
 3. Expose `npm run policy:storage-closure-requirement-audit`.
 4. Emit `policy.storage_closure_requirement_audit.v1`.
 5. Use component-oriented payload fields:
-   `componentId`, `sourceRoadmapComponentPrefix`,
+   `componentId`, `componentCatalog`,
    `missingSequenceComponentIds`, `missingImplementationStatusComponentIds`,
    and `missingComponentIds`.
 6. Require a complete and valid policy storage current closure audit.

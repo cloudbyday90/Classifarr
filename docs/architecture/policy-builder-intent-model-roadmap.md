@@ -6340,7 +6340,7 @@ Implementation status:
   so later artifact/exporter closure components cannot be skipped by the older
   policy storage checkpoint range.
 - Final closure inventory sync is documented in
-  [Policy Builder Phase 8R Closure Inventory Sync](policy-builder-phase-8r-closure-inventory-sync.md).
+  [Policy Storage Closure Inventory Sync](policy-storage-closure-inventory-sync.md).
 - Current validation hardening classifies
   `client/src/components/policies/PolicyStarterTemplateAccelerator.vue` in the
   Phase 1R boundary inventory and Phase 3R workflow inventory so the final
@@ -6680,8 +6680,8 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 15 production references plus 16 rename candidates after
-  the storage-closure input contract cutover.
+  currently reports 11 production references plus 12 rename candidates after
+  the storage-closure component catalog cutover.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -6791,10 +6791,14 @@ Implementation status:
   Its design record is
   [Policy Operator Workflow Vocabulary Cutover](policy-operator-workflow-vocabulary-cutover.md).
 - Storage-closure evidence and completion-checkpoint inputs now require
-  durable component field names. Historic roadmap IDs continue to normalize
-  inside those fields, but undocumented phase-key fallback readers are
+  durable component field names; undocumented phase-key fallback readers are
   rejected. Its design record is
   [Policy Storage Closure Input Contract Cutover](policy-storage-closure-input-contract-cutover.md).
+- Storage-closure artifact maps, checkpoint expectations, current-state
+  collection, requirement-audit coverage, and validation documentation now use
+  durable component identifiers. Roadmap labels are collected generically and
+  historic delivery values cannot satisfy current evidence. Its design record
+  is [Policy Storage Closure Component Catalog Cutover](policy-storage-closure-component-catalog-cutover.md).
 - Outcome record:
   [Classification Progress Stage Naming Cutover](classification-progress-stage-naming-cutover.md).
 - After the completed classification progress storage cutover, the repository

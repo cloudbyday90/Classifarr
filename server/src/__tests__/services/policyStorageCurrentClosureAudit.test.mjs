@@ -13,26 +13,18 @@ import {
 
 function completeRoadmapContent() {
   const componentSections = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
-    .map(component => {
-      const number = component.legacyId.replace('8r_', '');
-
-      return `### 8R.${number} ${component.label}`;
-    })
+    .map(component => `### ${component.label}`)
     .join('\n');
   const sequenceItems = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
-    .map((component, index) => {
-      const number = component.legacyId.replace('8r_', '');
-
-      return `${index + 1}. **8R.${number} ${component.label}**`;
-    })
+    .map((component, index) => `${index + 1}. **${component.label}**`)
     .join('\n');
 
-  return `${componentSections}\n\n## Phase 8R Work Sequence\n\n${sequenceItems}`;
+  return `${componentSections}\n\n## Policy Storage Closure Work Sequence\n\n${sequenceItems}`;
 }
 
 function completeChangelogContent() {
   return POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
-    .map(component => `- **Policy Builder Phase 8R ${component.label}**`)
+    .map(component => `- **Policy storage ${component.label}**`)
     .join('\n');
 }
 

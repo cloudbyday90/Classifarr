@@ -78,20 +78,19 @@ Cons:
 
 ### Emit Component-Oriented Evidence
 
-The artifact map may carry legacy roadmap identifiers for compatibility with
-the existing roadmap, but generated evidence should emit `componentId`,
-`sourceRoadmapComponentId`, and semantic `nextStep` fields.
+The artifact map uses durable component identifiers. Generated evidence emits
+`componentId` and semantic `nextStep` fields; roadmap label matching is an
+internal collection detail and not part of the evidence contract.
 
 Pros:
 
 - removes public `phaseId` and `nextPhase` output,
-- preserves compatibility with existing roadmap source identifiers,
+- keeps the evidence schema independent of roadmap delivery notation,
 - aligns with the storage checkpoint contract.
 
 Cons:
 
-- the artifact map still needs legacy source IDs until the roadmap itself is
-  fully migrated.
+- older ad hoc evidence JSON must be regenerated with durable component IDs.
 
 ### Reject Side Effects
 
@@ -118,10 +117,9 @@ Cons:
 4. Expose `npm run policy:storage-closure-evidence`.
 5. Emit `policy.storage_closure_evidence_run.v1` and
    `policy.storage_closure_current_evidence_collector.v1`.
-6. Emit `componentId`, `sourceRoadmapComponentId`, and semantic `nextStep`
-   output rather than public phase fields.
-7. Preserve compatibility with dotted source roadmap IDs such as `8R.1` while
-   normalizing them to storage checkpoint component IDs internally.
+6. Emit `componentId` and semantic `nextStep` output rather than delivery
+   identifiers.
+7. Require durable component IDs at every evidence input boundary.
 8. Keep validation command execution outside this runner.
 
 ## Implementation Outcome
@@ -135,8 +133,7 @@ Implemented:
 - Renamed the CLI to `run-policy-storage-closure-evidence.mjs`.
 - Added root npm script `policy:storage-closure-evidence`.
 - Replaced public payload versions with storage-closure versions.
-- Replaced public `phaseId` component evidence with `componentId` and
-  `sourceRoadmapComponentId`.
+- Replaced public `phaseId` component evidence with `componentId`.
 - Replaced public `nextPhase` output with semantic `nextStep` output.
 - Preserved Windows/POSIX path normalization.
 - Preserved artifact inventory, roadmap, changelog, final-removal audit,

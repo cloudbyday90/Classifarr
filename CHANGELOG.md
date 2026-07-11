@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Storage Closure Component Catalog** — replaced phase-coded storage-closure
+  catalog values and roadmap parsing with durable component IDs and
+  label-based collection, including the validation-record rename; reduced the
+  enforced production naming baseline from `15/16` to `11/12`
+  references/candidates.
 - **Storage Closure Input Contract** — removed undocumented phase-key fallback
   readers from storage-closure evidence and checkpoint inputs; durable
   component fields are now required while historic IDs remain normalized inside

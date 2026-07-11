@@ -1,4 +1,4 @@
-# Policy Builder Phase 8R Closure Inventory Sync
+# Policy Storage Closure Inventory Sync
 
 ## Status
 
@@ -9,8 +9,8 @@ Implemented.
 After the starter-template mechanics path was removed, full server validation
 found that the replacement component,
 `client/src/components/policies/PolicyStarterTemplateAccelerator.vue`, was not
-classified in the Phase 1R boundary inventory or the Phase 3R workflow
-inventory. That meant the Phase 8R closure chain could not honestly claim that
+classified in the presentation boundary inventory or starter-template workflow
+inventory. That meant the storage-closure evidence chain could not honestly claim that
 every current policy-builder surface had an explicit owner and cutline.
 
 This slice updates the inventories only. It does not change the client
@@ -34,8 +34,8 @@ component, product workflow, storage, routes, or migration behavior.
 
 ## Recommendations
 
-1. Keep the accelerator classified as Phase 1R presentation-only support.
-2. Keep the accelerator classified as a Phase 3R starter-template accelerator,
+1. Keep the accelerator classified as presentation-only support.
+2. Keep the accelerator classified as a starter-template accelerator,
    outside the normal authoring path.
 3. Add focused assertions for the new component path so future renames do not
    silently break completion evidence.
@@ -45,7 +45,7 @@ component, product workflow, storage, routes, or migration behavior.
 
 Pros:
 
-- Restores full server validation coverage after the Phase 8R replacement
+- Restores full server validation coverage after the replacement
   component rename.
 - Keeps starter templates out of the normal destination-first authoring path.
 - Preserves explicit inventory ownership for every current policy-builder
@@ -56,11 +56,11 @@ Cons:
 
 - Adds one more architecture record for a small sync fix.
 - Does not remove the remaining client replay-preview UI; that belongs to the
-  Phase 6R/7R workflow re-imagination, not this evidence sync.
+  separate policy workflow re-imagination, not this evidence sync.
 
 ## Final Recommendation Stack
 
-- Phase 1R inventory:
+- Presentation boundary inventory:
   `server/src/services/policyBuilderBoundaryInventory.mjs`
 - Policy-authoring workflow inventory:
   `server/src/services/policyAuthoringWorkflowInventory.mjs`
@@ -75,9 +75,9 @@ Cons:
 
 Implemented:
 
-- Classified `PolicyStarterTemplateAccelerator.vue` as a Phase 1R
+- Classified `PolicyStarterTemplateAccelerator.vue` as a
   presentation-only support component.
-- Classified `PolicyStarterTemplateAccelerator.vue` as a Phase 3R
+- Classified `PolicyStarterTemplateAccelerator.vue` as a
   starter-template accelerator that is not allowed in the normal authoring path.
 - Added focused tests for both classifications.
 

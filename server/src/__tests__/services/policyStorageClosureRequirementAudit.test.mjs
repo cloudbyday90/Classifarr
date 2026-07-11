@@ -11,29 +11,21 @@ import {
 
 function completeRoadmapContent() {
   const componentSections = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP
-    .map(component => {
-      const number = component.componentId.replace('8r_', '');
-
-      return `### 8R.${number} ${component.label}`;
-    })
+    .map(component => `### ${component.label}`)
     .join('\n');
   const sequenceItems = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP
-    .map((component, index) => {
-      const number = component.componentId.replace('8r_', '');
-
-      return `${index + 1}. **8R.${number} ${component.label}**`;
-    })
+    .map((component, index) => `${index + 1}. **${component.label}**`)
     .join('\n');
 
-  return `${componentSections}\n\n## Phase 8R Work Sequence\n\n${sequenceItems}`;
+  return `${componentSections}\n\n## Policy Storage Closure Work Sequence\n\n${sequenceItems}`;
 }
 
 function completeChangelogContent({
-  excludedPhaseId = null,
+  excludedComponentId = null,
 } = {}) {
   return POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP
-    .filter(component => component.componentId !== excludedPhaseId)
-    .map(component => `- **Policy Builder Phase 8R ${component.label}**`)
+    .filter(component => component.componentId !== excludedComponentId)
+    .map(component => `- **Policy storage ${component.label}**`)
     .join('\n');
 }
 
@@ -77,7 +69,7 @@ function completeAudit(overrides = {}) {
 }
 
 describe('policyStorageClosureRequirementAudit', () => {
-  test('completes when current closure and all 8R.1 through 8R.34 evidence pass', () => {
+  test('completes when current closure and all catalog component evidence pass', () => {
     const audit = completeAudit();
 
     expect(audit.statusId)
@@ -86,7 +78,7 @@ describe('policyStorageClosureRequirementAudit', () => {
     expect(audit.validation.ok).toBe(true);
     expect(audit.evidenceScope).toEqual(expect.objectContaining({
       componentCount: 34,
-      sourceRoadmapComponentPrefix: '8R',
+      componentCatalog: 'policy_storage_closure',
     }));
     expect(audit.summary).toEqual(expect.objectContaining({
       expectedComponentCount: 34,
@@ -137,20 +129,20 @@ describe('policyStorageClosureRequirementAudit', () => {
         riskId:
           POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
             .COMPONENT_ARTIFACT_MISSING,
-        componentId: '8r_34',
+        componentId: 'storage_current_closure_audit',
       }),
       expect.objectContaining({
         riskId:
           POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
             .COMPONENT_CONTRACT_EVIDENCE_MISSING,
-        componentId: '8r_34',
+        componentId: 'storage_current_closure_audit',
       }),
     ]));
   });
 
-  test('blocks when the roadmap omits a late Phase 8R work-sequence item', () => {
+  test('blocks when the roadmap omits a late storage-closure work-sequence item', () => {
     const roadmapContent = completeRoadmapContent()
-      .replace('34. **8R.34 Policy Storage Current Closure Audit**', '');
+      .replace('34. **Policy Storage Current Closure Audit**', '');
     const audit = completeAudit({
       readTextFile: readTextFileFactory({ roadmapContent }),
     });
@@ -159,14 +151,14 @@ describe('policyStorageClosureRequirementAudit', () => {
       .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
         .BLOCKED_BY_ROADMAP_EVIDENCE);
     expect(audit.roadmapEvidence.missingSequenceComponentIds)
-      .toContain('8r_34');
+      .toContain('storage_current_closure_audit');
   });
 
-  test('blocks when changelog coverage omits a late Phase 8R component', () => {
+  test('blocks when changelog coverage omits a late storage-closure component', () => {
     const audit = completeAudit({
       readTextFile: readTextFileFactory({
         changelogContent: completeChangelogContent({
-          excludedPhaseId: '8r_33',
+          excludedComponentId: 'storage_final_closure_readout',
         }),
       }),
     });
@@ -174,7 +166,8 @@ describe('policyStorageClosureRequirementAudit', () => {
     expect(audit.statusId)
       .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
         .BLOCKED_BY_CHANGELOG);
-    expect(audit.changelogEvidence.missingComponentIds).toContain('8r_33');
+    expect(audit.changelogEvidence.missingComponentIds)
+      .toContain('storage_final_closure_readout');
   });
 
   test('blocks on side effects other than repository file reads', () => {

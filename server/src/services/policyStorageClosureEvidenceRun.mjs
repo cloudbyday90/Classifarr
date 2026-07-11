@@ -24,18 +24,12 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS = Object.freeze({
 
 const POLICY_STORAGE_CLOSURE_COMPLETION_CHECKPOINT_COMPONENT = Object.freeze({
   componentId: 'storage_completion_checkpoint',
-  legacyId: '8r_22',
   label: 'Policy Storage Completion Checkpoint',
 });
 
-const POLICY_STORAGE_CLOSURE_COMPONENT_ID_MAP = new Map([
-  ...POLICY_STORAGE_COMPLETION_COMPONENTS,
-  POLICY_STORAGE_CLOSURE_COMPLETION_CHECKPOINT_COMPONENT,
-].map(component => [component.legacyId, component.componentId]));
-
 const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
-    legacyId: '8r_1',
+    componentId: 'native_schema_contract',
     label: 'Native Schema Contract',
     designDocPaths: ['docs/architecture/policy-native-schema-contract.md'],
     contractPaths: [
@@ -48,7 +42,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     ],
   },
   {
-    legacyId: '8r_2',
+    componentId: 'migration_candidate_report',
     label: 'Migration Candidate Report',
     designDocPaths: [
       'docs/architecture/policy-intent-migration-candidate-report.md',
@@ -58,7 +52,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyIntentMigrationCandidateReport.test.mjs'],
   },
   {
-    legacyId: '8r_3',
+    componentId: 'explicit_conversion_workflow',
     label: 'Explicit Conversion Workflow',
     designDocPaths: [
       'docs/architecture/policy-intent-conversion-workflow.md',
@@ -68,49 +62,49 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyIntentConversionWorkflow.test.mjs'],
   },
   {
-    legacyId: '8r_4',
+    componentId: 'native_runtime_read_path',
     label: 'Native Runtime Read Path',
     designDocPaths: ['docs/architecture/policy-intent-runtime-read-path.md'],
     contractPaths: ['server/src/services/policyIntentRuntimeReadPath.mjs'],
     testPaths: ['server/src/__tests__/services/policyIntentRuntimeReadPath.test.mjs'],
   },
   {
-    legacyId: '8r_5',
+    componentId: 'rollback_snapshot_reversion_window',
     label: 'Rollback Snapshot And Reversion Window',
     designDocPaths: ['docs/architecture/policy-rollback-snapshot-window.md'],
     contractPaths: ['server/src/services/policyRollbackSnapshotWindow.mjs'],
     testPaths: ['server/src/__tests__/services/policyRollbackSnapshotWindow.test.mjs'],
   },
   {
-    legacyId: '8r_6',
+    componentId: 'legacy_write_path_shutdown',
     label: 'Legacy Write Path Shutdown',
     designDocPaths: ['docs/architecture/policy-legacy-write-boundary.md'],
     contractPaths: ['server/src/services/policyLegacyWriteBoundary.mjs'],
     testPaths: ['server/src/__tests__/services/policyLegacyWriteBoundary.test.mjs'],
   },
   {
-    legacyId: '8r_7',
+    componentId: 'legacy_code_deletion_gates',
     label: 'Legacy Code Deletion Gates',
     designDocPaths: ['docs/architecture/policy-compatibility-deletion-gates.md'],
     contractPaths: ['server/src/services/policyCompatibilityDeletionGates.mjs'],
     testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionGates.test.mjs'],
   },
   {
-    legacyId: '8r_8',
+    componentId: 'backup_restore_post_upgrade_safety',
     label: 'Backup, Restore, And Post-Upgrade Safety',
     designDocPaths: ['docs/architecture/policy-native-storage-operational-safety.md'],
     contractPaths: ['server/src/services/policyNativeStorageOperationalSafety.mjs'],
     testPaths: ['server/src/__tests__/services/policyNativeStorageOperationalSafety.test.mjs'],
   },
   {
-    legacyId: '8r_9',
+    componentId: 'native_storage_test_reset',
     label: 'Native Storage Test Reset',
     designDocPaths: ['docs/architecture/policy-native-storage-test-reset.md'],
     contractPaths: ['server/src/services/policyNativeStorageTestReset.mjs'],
     testPaths: ['server/src/__tests__/services/policyNativeStorageTestReset.test.mjs'],
   },
   {
-    legacyId: '8r_10',
+    componentId: 'native_backup_restore_wiring',
     label: 'Native Backup And Restore Wiring',
     designDocPaths: ['docs/architecture/policy-native-backup-restore-wiring.md'],
     contractPaths: [
@@ -124,7 +118,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     ],
   },
   {
-    legacyId: '8r_11',
+    componentId: 'post_upgrade_dry_run_wiring',
     label: 'Post-Upgrade Dry-Run Wiring',
     designDocPaths: ['docs/architecture/policy-post-upgrade-dry-run-wiring.md'],
     contractPaths: [
@@ -134,7 +128,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyPostUpgradeDryRun.test.mjs'],
   },
   {
-    legacyId: '8r_12',
+    componentId: 'post_upgrade_apply_gate',
     label: 'Post-Upgrade Apply Gate',
     designDocPaths: ['docs/architecture/policy-post-upgrade-apply-gate.md'],
     contractPaths: [
@@ -144,7 +138,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyPostUpgradeApplyGate.test.mjs'],
   },
   {
-    legacyId: '8r_13',
+    componentId: 'native_runtime_cutover_verification',
     label: 'Native Runtime Cutover Verification',
     designDocPaths: ['docs/architecture/policy-native-runtime-cutover-verification.md'],
     contractPaths: [
@@ -157,63 +151,63 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     ],
   },
   {
-    legacyId: '8r_14',
+    componentId: 'compatibility_path_deletion_readiness',
     label: 'Compatibility Path Deletion Readiness',
     designDocPaths: ['docs/architecture/policy-compatibility-deletion-readiness.md'],
     contractPaths: ['server/src/services/policyCompatibilityDeletionReadiness.mjs'],
     testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionReadiness.test.mjs'],
   },
   {
-    legacyId: '8r_15',
+    componentId: 'compatibility_path_deletion_execution_plan',
     label: 'Compatibility Path Deletion Execution Plan',
     designDocPaths: ['docs/architecture/policy-compatibility-deletion-execution-plan.md'],
     contractPaths: ['server/src/services/policyCompatibilityDeletionExecutionPlan.mjs'],
     testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionExecutionPlan.test.mjs'],
   },
   {
-    legacyId: '8r_16',
+    componentId: 'compatibility_path_deletion_execution_gate',
     label: 'Compatibility Path Deletion Execution Gate',
     designDocPaths: ['docs/architecture/policy-compatibility-deletion-execution-gate.md'],
     contractPaths: ['server/src/services/policyCompatibilityDeletionExecutionGate.mjs'],
     testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionExecutionGate.test.mjs'],
   },
   {
-    legacyId: '8r_17',
+    componentId: 'controlled_compatibility_path_removal',
     label: 'Controlled Compatibility Path Removal',
     designDocPaths: ['docs/architecture/policy-controlled-compatibility-path-removal.md'],
     contractPaths: ['server/src/services/policyControlledCompatibilityPathRemoval.mjs'],
     testPaths: ['server/src/__tests__/services/policyControlledCompatibilityPathRemoval.test.mjs'],
   },
   {
-    legacyId: '8r_18',
+    componentId: 'controlled_compatibility_path_removal_apply',
     label: 'Controlled Compatibility Path Removal Apply',
     designDocPaths: ['docs/architecture/policy-controlled-compatibility-path-removal-apply.md'],
     contractPaths: ['server/src/services/policyControlledCompatibilityPathRemovalApply.mjs'],
     testPaths: ['server/src/__tests__/services/policyControlledCompatibilityPathRemovalApply.test.mjs'],
   },
   {
-    legacyId: '8r_19',
+    componentId: 'post_removal_runtime_verification',
     label: 'Post-Removal Runtime Verification',
     designDocPaths: ['docs/architecture/policy-post-removal-runtime-verification.md'],
     contractPaths: ['server/src/services/policyPostRemovalRuntimeVerification.mjs'],
     testPaths: ['server/src/__tests__/services/policyPostRemovalRuntimeVerification.test.mjs'],
   },
   {
-    legacyId: '8r_20',
+    componentId: 'next_compatibility_removal_batch_authorization',
     label: 'Next Compatibility Removal Batch Authorization',
     designDocPaths: ['docs/architecture/policy-next-compatibility-removal-batch-authorization.md'],
     contractPaths: ['server/src/services/policyNextCompatibilityRemovalBatchAuthorization.mjs'],
     testPaths: ['server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorization.test.mjs'],
   },
   {
-    legacyId: '8r_21',
+    componentId: 'compatibility_removal_completion_audit',
     label: 'Compatibility Removal Completion Audit',
     designDocPaths: ['docs/architecture/policy-compatibility-removal-completion-audit.md'],
     contractPaths: ['server/src/services/policyCompatibilityRemovalCompletionAudit.mjs'],
     testPaths: ['server/src/__tests__/services/policyCompatibilityRemovalCompletionAudit.test.mjs'],
   },
   {
-    legacyId: '8r_22',
+    componentId: 'storage_completion_checkpoint',
     label: 'Policy Storage Completion Checkpoint',
     designDocPaths: ['docs/architecture/policy-storage-completion-checkpoint.md'],
     contractPaths: ['server/src/services/policyStorageCompletionCheckpoint.mjs'],
@@ -229,21 +223,8 @@ function normalizePath(value = '') {
   return String(value || '').replace(/\\/g, '/').replace(/^\.\//, '').trim();
 }
 
-function normalizeSourceComponentId(value = '') {
-  const normalized = String(value || '').trim().toLowerCase();
-  const dottedSourceMatch = normalized.match(/^(\d+)r?\.(\d+)$/);
-
-  if (dottedSourceMatch) {
-    return `${dottedSourceMatch[1]}r_${dottedSourceMatch[2]}`;
-  }
-
-  return normalized;
-}
-
 function normalizeComponentId(value = '') {
-  const sourceComponentId = normalizeSourceComponentId(value);
-
-  return POLICY_STORAGE_CLOSURE_COMPONENT_ID_MAP.get(sourceComponentId) || sourceComponentId;
+  return String(value || '').trim().toLowerCase();
 }
 
 function buildRisk(riskId, message, metadata = {}) {
@@ -286,15 +267,13 @@ function buildComponentEvidence({
     new Set(changelogComponentIds.map(normalizeComponentId));
 
   return componentArtifactMap.map(component => {
-    const sourceComponentId = normalizeSourceComponentId(component.legacyId);
-    const componentId = normalizeComponentId(component.componentId || sourceComponentId);
+    const componentId = normalizeComponentId(component.componentId);
     const missingDesignDocPaths = missingPaths(component.designDocPaths, inventoryPathSet);
     const missingContractPaths = missingPaths(component.contractPaths, inventoryPathSet);
     const missingTestPaths = missingPaths(component.testPaths, inventoryPathSet);
 
     return {
       componentId,
-      sourceRoadmapComponentId: sourceComponentId,
       label: component.label,
       implemented:
         allPathsPresent(component.contractPaths, inventoryPathSet) &&
