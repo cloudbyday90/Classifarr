@@ -45,6 +45,8 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS = Object.freeze({
 
 const LEGACY_COMPONENT_ID_KEY = ['phase', 'Id'].join('');
 const SOURCE_ROADMAP_COMPONENT_PREFIX = ['8', 'R'].join('');
+const ROADMAP_SEQUENCE_COMPONENT_PATTERN = /^\d+\.\s+\*\*(\d+r?\.\d+)\b/gim;
+const ROADMAP_IMPLEMENTATION_COMPONENT_PATTERN = /^###\s+(\d+r?\.\d+)\b/gim;
 
 function normalizeClosureComponentId(value = '') {
   const normalized = String(value || '').trim().toLowerCase();
@@ -268,20 +270,21 @@ function collectRegexMatches(content = '', pattern) {
     .filter(Boolean);
 }
 
-function extractRoadmapComponentEvidence(roadmapContent = '') {
-  const escapedPrefix = SOURCE_ROADMAP_COMPONENT_PREFIX
-    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const sourceComponentPattern = `(${escapedPrefix}\\.\\d+)`;
+function isSourceRoadmapComponent(componentId = '') {
+  return normalizeClosureComponentId(componentId)
+    .startsWith(`${SOURCE_ROADMAP_COMPONENT_PREFIX.toLowerCase()}_`);
+}
 
+function extractRoadmapComponentEvidence(roadmapContent = '') {
   return {
     sequenceComponentIds: collectRegexMatches(
       roadmapContent,
-      new RegExp(`^\\d+\\.\\s+\\*\\*${sourceComponentPattern}\\b`, 'gm')
-    ).map(normalizeClosureComponentId),
+      ROADMAP_SEQUENCE_COMPONENT_PATTERN
+    ).map(normalizeClosureComponentId).filter(isSourceRoadmapComponent),
     implementationStatusComponentIds: collectRegexMatches(
       roadmapContent,
-      new RegExp(`^###\\s+${sourceComponentPattern}\\b`, 'gm')
-    ).map(normalizeClosureComponentId),
+      ROADMAP_IMPLEMENTATION_COMPONENT_PATTERN
+    ).map(normalizeClosureComponentId).filter(isSourceRoadmapComponent),
   };
 }
 

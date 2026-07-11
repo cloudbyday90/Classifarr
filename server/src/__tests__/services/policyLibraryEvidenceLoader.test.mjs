@@ -18,6 +18,9 @@ import {
   createPolicyLibraryRoutingOutcomeEvidenceCollector,
   ROUTING_OUTCOME_STATE_IDS,
 } from '../../services/policyLibraryRoutingOutcomeEvidenceCollector.mjs';
+import {
+  POLICY_EVIDENCE_BUCKET_IDS,
+} from '../../services/policyEvidenceEngine.mjs';
 
 const NOW = Date.parse('2026-07-10T12:00:00.000Z');
 
@@ -83,6 +86,7 @@ describe('policyLibraryEvidenceLoader', () => {
     const { loader, databases } = createReadyLoader();
     const result = await loader.loadLibraryEvidence({
       libraryId: 42,
+      operatorIntent: { belongsHere: ['Animated Movies'] },
       getProfile: async () => getCurrentProfile(),
       now: NOW,
     });
@@ -120,6 +124,9 @@ describe('policyLibraryEvidenceLoader', () => {
       arrRoutingOutcomes: { receivedCount: 1, acceptedCount: 1, truncated: false },
       metadataEvidence: { receivedCount: 1, acceptedCount: 1, truncated: false },
     });
+    expect(result.evidenceEnvelope.evidenceBoundary.projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY]).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'Animated Movies', authoritySourceId: 'operator_declared_intent' }),
+    ]));
     expect(buildPolicyLibraryEvidenceLoaderAudit(result)).toEqual({
       ok: true,
       issueCount: 0,

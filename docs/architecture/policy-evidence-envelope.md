@@ -45,14 +45,18 @@ only projection contract.
 
 ## Recommendations
 
-1. Build exactly one combined evidence boundary result per library-destination
+1. Accept explicit operator intent only through the existing shared evidence
+   input gate. It is declared authority, not an observed source snapshot.
+2. Include validated operator intent in the same bounded projection and
+   fingerprint as observed evidence.
+3. Build exactly one combined evidence boundary result per library-destination
    handoff.
-2. Require the cached-profile loader and its audit before aggregation.
-3. Keep each section bounded to 50 records and expose counts, not raw record
+4. Require the cached-profile loader and its audit before aggregation.
+5. Keep each section bounded to 50 records and expose counts, not raw record
    labels, in the envelope summary.
-4. Let `policyEvidenceInputGate.mjs` reject raw provider payload, live lookup,
+6. Let `policyEvidenceInputGate.mjs` reject raw provider payload, live lookup,
    quota, replay, and UI diagnostic markers before projection.
-5. Keep database reads in small source-specific collector modules; do not turn
+7. Keep database reads in small source-specific collector modules; do not turn
    the envelope into a cross-table query service.
 
 ## Pros And Cons
@@ -95,6 +99,10 @@ pendingItemAnswers
 arrRoutingOutcomes
 metadataEvidence
 ```
+
+It also accepts declared `operatorIntent`, but does not add it to persisted
+source summaries. The shared input gate validates it alongside the profile and
+bounded collector snapshots before projection.
 
 Each section has a stable summary with `receivedCount`, `acceptedCount`, and
 `truncated`. The assembler returns only a sanitized profile-handoff summary,

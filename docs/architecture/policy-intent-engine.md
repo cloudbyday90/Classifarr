@@ -98,6 +98,12 @@ The important boundary is authority:
    insufficient quality returns `blocked_by_evidence_quality` with stable reason
    IDs and a next action instead of producing policy intent.
 
+10. **Use the library intent proposal service for library-derived proposals.**
+    `policyLibraryIntentProposalService.mjs` loads and verifies the complete
+    library evidence handoff before invoking this bounded reducer. New
+    library-derived callers must not construct a generic evidence-boundary
+    result or call the reducer directly.
+
 ## Pros And Cons
 
 Pros:
@@ -141,6 +147,10 @@ Cons:
   `docs/architecture/policy-intent-engine.md`
 - Quality-gate outcome:
   `docs/architecture/policy-intent-quality-gate.md`
+- Library-derived proposal boundary:
+  `server/src/services/policyLibraryIntentProposalService.mjs`
+- Library-derived proposal design:
+  `docs/architecture/policy-library-intent-proposal-service.md`
 - Roadmap owner:
   Policy Intent Engine in
   `docs/architecture/policy-builder-intent-model-roadmap.md`
@@ -247,7 +257,8 @@ blocked_by_intent_audit
 
 ## Next Step
 
-Proceed to **Policy Learning Guard** architecture cutover. That component should
-require quality-gated bounded intent before manual outcomes, Discord answers,
-confirmations, routing outcomes, and request choices can become durable
-learning, exact-item memory, profile evidence, or outcome history only.
+Harden the declared-intent command contract used by the proposal service before
+exposing it as a policy-authoring write path. That work should allowlist intent
+fields and values, bind changes to authenticated operator authority, preserve
+the evidence fingerprint used for the proposal, and keep proposal creation
+separate from native policy persistence and learning.

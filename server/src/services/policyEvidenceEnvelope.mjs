@@ -115,6 +115,7 @@ function buildEnvelopeResult({
 
 function buildPolicyEvidenceEnvelope({
   profileHandoff = null,
+  operatorIntent = {},
   classificationOutcomes = [],
   manualCorrections = [],
   pendingItemAnswers = [],
@@ -148,6 +149,7 @@ function buildPolicyEvidenceEnvelope({
   const evidenceBoundary = buildBoundedPolicyEvidenceProjection({
     evidenceInput: {
       libraryProfile: profileHandoff.profileEvidence?.libraryProfile,
+      operatorIntent,
       profileFreshness: profileHandoff.profileFreshness,
       classificationOutcomes: sectionSnapshots.classificationOutcomes.records,
       manualCorrections: sectionSnapshots.manualCorrections.records,

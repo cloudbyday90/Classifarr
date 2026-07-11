@@ -215,6 +215,7 @@ function createPolicyLibraryEvidenceLoader({
 } = {}) {
   async function loadLibraryEvidence({
     libraryId,
+    operatorIntent = {},
     getProfile,
     now,
     maximumAgeMs,
@@ -294,6 +295,7 @@ function createPolicyLibraryEvidenceLoader({
     const [outcomes, pendingAnswers, routingOutcomes, metadata] = sourceResults.map(source => source.result);
     const evidenceEnvelope = buildEnvelope({
       profileHandoff,
+      operatorIntent,
       classificationOutcomes: outcomes.classificationOutcomes,
       manualCorrections: outcomes.manualCorrections,
       pendingItemAnswers: pendingAnswers.pendingItemAnswers,

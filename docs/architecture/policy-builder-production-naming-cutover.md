@@ -2,8 +2,11 @@
 
 ## Status
 
-Planned as Phase 9R after the re-imagined policy engine, runtime automation,
-native storage, and legacy-removal paths are stable enough to preserve.
+Active as a mandatory cross-cutting cutover while the re-imagined policy engine,
+runtime automation, native storage, and legacy-removal paths are built. A
+functional component reaches a focused tested contract first; its related
+mechanical naming work then completes before the next component in that domain
+begins.
 
 This record exists because phase-coded production names are useful while
 building the replacement system, but they should not become permanent product
@@ -86,6 +89,12 @@ native policy storage
    outside an allow-list. Docs and historical evidence should be allowed; runtime
    modules should not.
 
+7. **Do not defer naming debt.**
+   Every new production module, export, contract version, trace attribute,
+   current diagnostic, and package command uses durable product language from
+   its first commit. Existing phase-coded production code is removed in small,
+   behavior-preserving batches after its focused component contract passes.
+
 ## Pros And Cons
 
 Pros:
@@ -153,10 +162,12 @@ Cons:
 
 ## Completion Rule
 
-Phase 9R is not optional polish. The policy-builder re-imagination is not
-complete until production code, runtime telemetry, current diagnostics, package
-commands, and durable API/storage contracts no longer depend on roadmap phase
-labels, except where an allow-listed migration or history reason is documented.
+This cutover is not optional polish or a final cleanup. The policy-builder
+re-imagination advances only when each completed component has a durable
+production vocabulary. Completion requires production code, runtime telemetry,
+current diagnostics, package commands, and durable API/storage contracts to no
+longer depend on roadmap phase labels, except where an allow-listed migration or
+history reason is documented.
 
 ## Implementation Status
 

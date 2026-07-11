@@ -51,9 +51,11 @@ cached profile handoff and audit
    when the profile handoff is blocked.
 3. Run independent read-only source collectors only after a valid profile.
 4. Require `ok` and a passing audit from every collector before envelope build.
-5. Build one envelope with the existing boundary, then require its audit.
-6. Return only collector summaries and audit risk IDs outside the envelope.
-7. Keep the loader side-effect free apart from bounded persisted reads.
+5. Pass declared operator intent through the shared envelope/input-gate path;
+   do not synthesize it from a profile or collector result.
+6. Build one envelope with the existing boundary, then require its audit.
+7. Return only collector summaries and audit risk IDs outside the envelope.
+8. Keep the loader side-effect free apart from bounded persisted reads.
 
 ## Pros And Cons
 
@@ -78,7 +80,8 @@ Cons:
 1. `policyLibraryProfileEvidenceLoader.mjs` validates cached observed evidence.
 2. Source-specific collectors provide bounded persisted snapshots.
 3. `policyLibraryEvidenceLoader.mjs` enforces profile-first collection and
-   nested audits.
+   nested audits while passing declared intent only to the shared evidence
+   boundary.
 4. `policyEvidenceEnvelope.mjs` builds one combined evidence boundary result.
 5. Intent and readiness engines consume only a ready loader handoff.
 

@@ -1,7 +1,7 @@
 # Policy Builder Production Name Inventory
 
-Status: implemented as the Phase 9R.1 inventory gate before durable module
-renames.
+Status: implemented as the durable naming inventory gate, run after each
+completed functional component and before its related mechanical module rename.
 
 ## Problem
 
@@ -33,7 +33,7 @@ evidence, deleted with obsolete tooling, or temporarily adapter-gated.
 ## Recommendations
 
 1. **Inventory before renaming.**
-   Keep Phase 9R.1 side-effect-free. The service may read files, but it must
+   Keep the inventory side-effect-free. The service may read files, but it must
    not move files, mutate storage, run Git, or rewrite package commands.
 
 2. **Classify every reference.**
@@ -102,9 +102,9 @@ reported:
 - test or migration evidence references: 4,366,
 - obsolete migration tooling references: 93.
 
-The counts are expected to fall as Phase 9R.2 through Phase 9R.5 replace
-production names, remove obsolete migration tooling, and enforce the final
-scanner boundary.
+The counts are expected to fall as the durable naming cutover replaces
+production names, removes obsolete migration tooling, and enforces the scanner
+boundary after each completed functional component.
 
 ## Security Outcome
 
@@ -117,9 +117,8 @@ scanner boundary.
 
 ## Next Step
 
-Use the Phase 9R.4
-[Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md)
-as the guardrail while proceeding with **Phase 9R.2 Durable Domain Module
-Cutover**. Start with a narrow mechanical rename batch for the highest-value
-production domain, preserving behavior and adding focused import/contract
-regression tests.
+Use the [Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md)
+as the guardrail after every completed functional component. Start with a
+narrow mechanical rename batch for the highest-value production domain,
+preserving behavior and adding focused import/contract regression tests before
+the next functional component begins.

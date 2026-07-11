@@ -11,11 +11,18 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Library Intent Proposal Service** — added the server-owned, read-only
+  handoff from verified library evidence to a proposed intent; declared
+  operator identity and constraints now pass through the shared evidence input
+  gate and fingerprint, while insufficient identity evidence blocks a proposal
+  instead of inventing policy meaning; returned provenance is sanitized and no
+  provider, quota, storage, learning, refresh, or routing side effect occurs.
 - **Policy Evidence Handoff Verifier** — added the server-owned completion
   audit for the complete library evidence workflow; requires static engine,
   loader, source, envelope, boundary, fingerprint, and quality validation;
   distinguishes an integrity-valid blocked handoff from an invalid contract; and
   returns sanitized provenance without evidence record labels or error text.
+
 - **Policy Library Evidence Loader** — added the server-owned, read-only
   profile-first orchestration boundary for policy evidence; it requires audited
   bounded outcome, pending-answer, routing, and metadata source snapshots before
@@ -1858,6 +1865,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   calling TMDB, OMDb, web search, AI, Arr, persistence, or queue services and
   without exposing IDs, API keys, provider configuration, metadata, prompts,
   payloads, traces, SQL, or persistence details.
+
+### Fixed
+
+- **Policy Storage Closure Requirement Audit** — replaced dynamic roadmap
+  regular-expression construction with fixed structural parsing and normalized
+  component filtering, preserving closure checks while removing static-analysis
+  warnings.
 
 ### Changed
 

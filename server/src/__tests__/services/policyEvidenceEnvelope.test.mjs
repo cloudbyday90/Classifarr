@@ -8,6 +8,9 @@ import {
 import {
   loadPolicyLibraryProfileEvidence,
 } from '../../services/policyLibraryProfileEvidenceLoader.mjs';
+import {
+  POLICY_EVIDENCE_BUCKET_IDS,
+} from '../../services/policyEvidenceEngine.mjs';
 
 const NOW = Date.parse('2026-07-10T12:00:00.000Z');
 
@@ -30,6 +33,10 @@ describe('policyEvidenceEnvelope', () => {
     const profileHandoff = await buildProfileHandoff();
     const envelope = buildPolicyEvidenceEnvelope({
       profileHandoff,
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+        hardLimits: ['No NC-17'],
+      },
       classificationOutcomes: [{ label: 'Accepted final outcome', count: 2 }],
       manualCorrections: [{ label: 'Corrected destination', count: 1 }],
       pendingItemAnswers: [{ label: 'Needs learning review', count: 1 }],
@@ -54,6 +61,15 @@ describe('policyEvidenceEnvelope', () => {
       metadataEvidence: { receivedCount: 1, acceptedCount: 1, truncated: false },
     });
     expect(JSON.stringify(envelope.sourceSummary)).not.toContain('Accepted final outcome');
+    expect(envelope.evidenceBoundary.projection.quality).toEqual(expect.objectContaining({
+      hasDeclaredIdentityEvidence: true,
+    }));
+    expect(envelope.evidenceBoundary.projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY]).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: 'Animated Movies',
+        authoritySourceId: 'operator_declared_intent',
+      }),
+    ]));
     expect(buildPolicyEvidenceEnvelopeAudit(envelope)).toEqual({
       ok: true,
       issueCount: 0,
@@ -91,6 +107,25 @@ describe('policyEvidenceEnvelope', () => {
       nextStep: null,
     }));
     expect(JSON.stringify(envelope)).not.toContain('raw title must not escape');
+    expect(buildPolicyEvidenceEnvelopeAudit(envelope).ok).toBe(true);
+  });
+
+  test('validates declared operator intent at the shared evidence input gate', async () => {
+    const profileHandoff = await buildProfileHandoff();
+    const envelope = buildPolicyEvidenceEnvelope({
+      profileHandoff,
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+        providerPayload: { title: 'raw intent payload must not escape' },
+      },
+    });
+
+    expect(envelope).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: POLICY_EVIDENCE_ENVELOPE_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
+      nextStep: null,
+    }));
+    expect(JSON.stringify(envelope)).not.toContain('raw intent payload must not escape');
     expect(buildPolicyEvidenceEnvelopeAudit(envelope).ok).toBe(true);
   });
 

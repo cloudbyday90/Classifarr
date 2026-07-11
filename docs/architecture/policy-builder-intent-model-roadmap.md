@@ -3342,6 +3342,15 @@ Implementation status:
   envelope, boundary, fingerprint, quality, and side-effect audits, and returns
   a sanitized intent-inference handoff summary. Its design record is
   [Policy Evidence Handoff Verifier](policy-evidence-handoff-verifier.md).
+- The library intent proposal service lives in
+  `server/src/services/policyLibraryIntentProposalService.mjs`. It accepts
+  declared operator intent only through the shared evidence input gate, loads
+  and verifies the full library evidence handoff once, preserves fingerprint
+  and quality provenance, and calls the bounded intent reducer only after that
+  handoff is ready. It returns a proposed intent or a stable blocked outcome;
+  it does not persist policy state, learn, refresh, call providers, read quota,
+  or route media. Its design record is
+  [Policy Library Intent Proposal Service](policy-library-intent-proposal-service.md).
 
 ### 6R.2 Intent Engine
 
@@ -6341,12 +6350,31 @@ Implementation record:
   decisions, migration reports, rollback retention, native read/write behavior,
   and legacy deletion gates.
 
-## Phase 9R: Production Naming And Contract Stabilization
+## Phase 9R: Durable Product Naming Cutover
 
-Intent: remove roadmap-phase language from production code after the rebuilt
-policy engine, runtime automation, native storage, and legacy removal paths have
-been proven. Phase names are useful while planning and migrating; they should
-not become permanent product architecture.
+Intent: remove roadmap-phase language from production code as each rebuilt
+component reaches its tested contract. Phase names are useful in roadmap and
+history documents, but must not become permanent product architecture.
+
+### Activation Rule
+
+Phase 9R is a mandatory cross-cutting workstream, not end-of-project cleanup.
+It starts now and runs alongside the evidence, intent, runtime, storage, and
+legacy-removal work:
+
+1. A new production component must use a durable product-domain name from its
+   first commit.
+2. After a functional component reaches its focused test contract, complete
+   its mechanically scoped phase-name cutover before starting the next
+   functional component in that domain.
+3. A cutover may retain a compatibility alias only for a persisted/public
+   contract migration with a documented deletion gate. Runtime aliases that
+   merely preserve roadmap terminology are not allowed.
+4. Phase labels remain allowed only in roadmap documents, changelog history,
+   migration evidence, and tests that prove a bounded old-to-new transition.
+
+This sequencing keeps the refactor complete without mixing behavioral changes
+and large rename batches in the same implementation task.
 
 This phase exists because production services named after `Phase6R`, `Phase7R`,
 or `Phase8R` will be misleading once the work is complete. Future roadmap work
@@ -6382,11 +6410,11 @@ Design record:
 
 Non-goals:
 
-- Do not rename production modules while Phase 6R, 7R, or 8R contracts are
-  still moving. Mid-flight renames would obscure behavior changes and make
-  rollback harder.
-- Do not leave adapters permanently. Compatibility exports are allowed only when
-  a release boundary or persisted payload migration requires them.
+- Do not mix a behavioral component change with a broad rename batch. Complete
+  the component's focused contract first, then make the related mechanical
+  naming cutover before the next component begins.
+- Do not leave adapters permanently. Compatibility exports are allowed only for
+  a release boundary or persisted payload migration and require a deletion gate.
 - Do not remove phase labels from docs, changelog history, migration evidence,
   or tests that intentionally prove old-to-new compatibility.
 
@@ -6454,6 +6482,9 @@ Tasks:
 - Build a rename map from phase-coded names to durable product names.
 - Separate inventory into production, test, docs, scripts, migrations, package
   commands, telemetry, payload fields, and generated artifacts.
+- Run the inventory and regression audit after every completed functional
+  component; reject new production references instead of waiting for the final
+  cleanup batch.
 
 Acceptance criteria:
 
@@ -6461,6 +6492,7 @@ Acceptance criteria:
 - Docs may retain phase names; runtime product code cannot without an explicit
   exemption.
 - The rename map is checked in before code moves.
+- The inventory does not increase after a completed component is committed.
 
 Implementation status:
 
@@ -6495,13 +6527,18 @@ Tasks:
 - Keep temporary adapter exports only when needed for one release window, and
   record their deletion gate.
 - Use mechanical file moves plus focused import rewrites; behavior changes are
-  out of scope for this phase.
+  out of scope for this task.
+- Complete one cohesive domain batch at a time immediately after its functional
+  component is stable; do not defer the batch to a final project-wide rename.
 
 Acceptance criteria:
 
 - Runtime imports use durable product module names.
 - Temporary compatibility exports have explicit removal dates/gates.
 - No new production code imports phase-coded modules.
+- No completed component leaves phase-coded source, export, audit, trace, or
+  current diagnostic names behind unless its explicit migration gate requires
+  one.
 
 Implementation status:
 
