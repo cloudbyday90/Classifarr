@@ -5592,9 +5592,10 @@ Current removal slice:
   `client/src/components/policies/PolicyStarterTemplateAccelerator.vue`.
 - The focused component test now targets
   `client/src/__tests__/PolicyStarterTemplateAccelerator.test.js`.
-- The final-removal reference scanner now excludes tests and Phase control-plane
-  manifest/audit services so completion is blocked by product/runtime
-  references rather than deletion-manifest evidence strings.
+- The final-removal reference scanner now excludes tests and named
+  control-plane manifest evidence so completion is blocked by product/runtime
+  references rather than deletion-manifest evidence strings. It does not use a
+  broad service-name prefix exclusion.
 - Impact-preview migration verification is documented in
   [Policy Impact Preview Migration Verifier](policy-impact-preview-migration-verifier.md)
   and
@@ -6680,19 +6681,20 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 0 production references plus 1 rename candidate after
-  the classification evidence migration vocabulary cutover.
+  currently reports 0 production references and 0 rename candidates after
+  storage-closure reference scanner hardening. The storage-closure scanner now
+  excludes only tests and named control-plane evidence, while it scans all
+  other service paths for manifest references.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
 - The July 11, 2026 baseline supersedes earlier historical count snapshots in
   this roadmap. Those earlier counts document individual cutovers; only the
   current generated inventory and regression audit define present debt.
-- The current remaining production classes include delivery-only UI comments,
-  internal contract/version wording, diagnostics and trace labels, temporary
-  native-storage closure identifiers, and execution lifecycle names that need a
-  `stage` cutover. Each class requires its own focused rename or migration task;
-  do not apply a repository-wide search-and-replace.
+- No temporary production names or rename candidates remain. Historical docs,
+  tests, migration evidence, and maintenance scanners retain classified
+  references; each future production change must preserve the zero-debt
+  baseline rather than using a repository-wide search-and-replace.
 - The first tooling-extraction cutover moved historic-token matching out of
   `server/src`, leaving the server regression audit to consume generated
   inventory only. Its design record is
@@ -7442,10 +7444,9 @@ Implementation status:
   valid classification result, blocks increases above the approved July 11,
   2026 baseline for production references, rename candidates, and obsolete
   migration tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `181` production references, `182` rename
-  candidates, and `0` obsolete migration tooling references. Future durable
-  rename batches must lower this baseline after inventory validation proves the
-  debt decreased.
+- The current baseline is `0` production references, `0` rename candidates,
+  and `0` obsolete migration tooling references. Future components must retain
+  this zero-debt result after inventory validation.
 
 ### 9R.5 Final Product-Language Audit
 

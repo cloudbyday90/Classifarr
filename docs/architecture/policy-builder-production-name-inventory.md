@@ -91,15 +91,15 @@ Cons:
 ## Current Repository Outcome
 
 The current repository inventory validates with no unclassified references.
-After the classification evidence migration vocabulary cutover,
+After storage-closure reference scanner hardening,
 `node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid`
 reported:
 
-- total temporary naming references: 2,173,
+- total temporary naming references: 2,170,
 - production references: 0,
-- rename candidates: 1,
-- docs/history references: 1,970,
-- test or migration evidence references: 202,
+- rename candidates: 0,
+- docs/history references: 1,969,
+- test or migration evidence references: 201,
 - obsolete migration tooling references: 0.
 
 The counts must fall or remain unchanged as the durable naming cutover replaces

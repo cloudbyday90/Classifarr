@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Storage Closure Reference Scanner Hardening** — replaced the broad
+  phase-prefixed service exclusion with an explicit control-plane allowlist,
+  extracted the read-only scanner into a modular ESM utility, and reduced the
+  enforced production naming baseline from `0/1` to `0/0`
+  references/candidates.
 - **Classification Evidence Migration Vocabulary** — replaced delivery-era
   backfill script comments with durable migration descriptions while
   preserving script commands and exports; reduced the enforced production

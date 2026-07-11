@@ -38,7 +38,7 @@ function buildInventory(overrides = {}) {
 }
 
 describe('policyProductionNamingRegressionAudit', () => {
-  test('passes when current phase-coded production naming debt stays within baseline', () => {
+  test('passes when temporary production naming debt stays within baseline', () => {
     const audit = buildPolicyProductionNamingRegressionAudit({
       inventory: buildInventory(),
     });

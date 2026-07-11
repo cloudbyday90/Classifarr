@@ -82,9 +82,10 @@ Cons:
 
 The generator should scan product/runtime source locations for exact manifest
 path strings and feed those references into the final import/reference scan.
-Control-plane inventory services, audit services, and tests may intentionally
-retain manifest path strings as evidence; those references should not be treated
-as live product dependencies.
+Named control-plane evidence services and tests may intentionally retain
+manifest path strings as evidence; those references should not be treated as
+live product dependencies. The scanner must not broadly exclude services by a
+temporary implementation-name prefix.
 
 Pros:
 
@@ -128,7 +129,8 @@ Use this stack for final removal audit evidence:
 5. Build post-removal runtime verification evidence for paths that no longer
    exist.
 6. Scan product/runtime source roots for exact manifest path references while
-   excluding tests and compatibility-removal control-plane evidence services.
+   excluding tests and named compatibility-removal control-plane evidence
+   services only.
 7. Compose the existing policy compatibility removal completion audit.
 8. Emit the audit JSON without mutating source, storage, Git, or manifests.
 9. Expose the contract through durable storage-closure service, script, runner,

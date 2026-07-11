@@ -80,10 +80,10 @@ Cons:
 ## Implemented Baseline
 
 The regression baseline reflects the live repository inventory after the
-classification evidence migration vocabulary cutover on July 11, 2026:
+storage-closure reference scanner hardening cutover on July 11, 2026:
 
 - production references: `0`
-- rename candidates: `1`
+- rename candidates: `0`
 - obsolete migration tooling references: `0`
 
 The baseline is intentionally a maximum, not a target. Future durable rename
@@ -101,6 +101,7 @@ batches should reduce these values and then lower the baseline.
 
 ## Next Step
 
-Continue Phase 9R.2 durable-domain module cutover with a narrow mechanical
-rename batch, then lower the regression baseline after the inventory proves the
-rename reduced phase-coded production debt.
+Keep the zero-debt baseline enforced as functional components evolve. Any new
+temporary production name must be replaced before the component is completed;
+historical documentation and test/migration evidence remain separately
+classified.
