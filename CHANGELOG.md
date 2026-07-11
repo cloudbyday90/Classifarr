@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Authoring Draft View Projection Module Cutover** — renamed the draft
+  view projection service, focused test, and design record to durable
+  policy-authoring names, expanded the draft field adapter to include authority
+  ids, replaced phase-coded projection exports and diagnostics, and preserved
+  read-only/raw-legacy/provenance audit coverage.
 - **Policy Authoring Draft Command Boundary Module Cutover** — renamed the
   draft command boundary service, focused tests, and design record to durable
   policy-authoring names, added small bridge serializer and draft field

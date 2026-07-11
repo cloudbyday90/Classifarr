@@ -173,7 +173,7 @@ const PHASE_2R_PARITY_TEST_RECORDS = deepFreeze([
     notes: 'Protects command IDs, payload validation, and read-only projection mutation rejection.',
   },
   {
-    path: 'server/src/__tests__/services/policyBuilderPhase2DraftViewProjection.test.mjs',
+    path: 'server/src/__tests__/services/policyAuthoringDraftViewProjection.test.mjs',
     categoryId: PHASE_2R_PARITY_TEST_CATEGORY_IDS.DRAFT_VIEW_PROJECTION,
     actionId: PHASE_2R_PARITY_ACTION_IDS.KEEP,
     coveredRuleIds: [

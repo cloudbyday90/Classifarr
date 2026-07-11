@@ -1,11 +1,12 @@
-# Policy Builder Phase 2R Draft View Projection
+# Policy Authoring Draft View Projection
 
 Date: 2026-06-30
+Updated: 2026-07-10
 
 ## Purpose
 
-Phase 2R.4 defines the policy-builder draft view as a read model for product
-components. It gives UI cards stable fields for configured intent, options,
+Policy authoring needs a read-only draft view model for product components.
+The view gives UI cards stable fields for configured intent, options,
 provenance, summaries, warnings, readiness placeholders, and observed-evidence
 placeholders without exposing raw bridge storage or assigning policy authority
 to the browser.
@@ -21,6 +22,9 @@ logic, AI prompts, provider calls, learning, or Arr writes.
 - Vue component `v-model` documentation describes explicit component state
   contracts rather than implicit mutation:
   https://vuejs.org/guide/components/v-model.html
+- Vue computed properties documentation states computed getters should be pure
+  and side-effect free:
+  https://vuejs.org/guide/essentials/computed.html
 - Vue composables documentation recommends extracting reusable stateful logic
   behind clear boundaries:
   https://vuejs.org/guide/reusability/composables.html
@@ -49,15 +53,15 @@ logic, AI prompts, provider calls, learning, or Arr writes.
    Chips should display product-facing provenance labels from the projection
    instead of mapping raw source keys inside leaf components.
 
-4. Add placeholders for future server projections.
-   Readiness and observed-evidence slots should exist now as read-only
-   placeholders so later Phase 6R work can insert server data without changing
-   save semantics.
+4. Keep server-projection slots read-only.
+   Readiness and observed-evidence slots can exist as placeholders, but they
+   must not become client-owned draft intent or save payload authority.
 
 5. Keep presentation formatting outside bridge modules.
    The bridge deserializes and serializes compatibility state. Section summaries,
    chip labels, warnings, and option diagnostics belong in view/projection
    utilities.
+
 6. Make projection drift executable.
    The boundary should fail when view fields gain mutation or save authority,
    expose raw legacy terms, point at unknown command hints, or let provenance
@@ -68,19 +72,18 @@ logic, AI prompts, provider calls, learning, or Arr writes.
 Pros:
 
 - Keeps product components oriented around intent rather than bridge payloads.
-- Gives Phase 6R a place to add read-only server readiness and observed
-  evidence.
+- Gives server projections a stable read-only place in the UI model.
 - Reduces raw source-key mapping inside components.
-- Preserves current command behavior while making the transitional compatibility
-  shape explicit.
+- Preserves current command behavior while making the compatibility shape
+  explicit.
 - Adds executable server and client tests for the boundary.
 
 Cons:
 
 - Compatibility value keys still exist temporarily for current remove/configure
   commands.
-- The client view remains transitional until Phase 8R native storage replaces
-  the legacy bridge.
+- The client view remains transitional until native storage replaces the
+  bridge.
 - More contract metadata exists before all UI components fully consume it.
 - The audit validates view-projection ownership and browser-facing safety; it
   does not make the browser the authority for evidence, readiness, or save
@@ -89,7 +92,9 @@ Cons:
 ## Final Recommendation Stack
 
 - Server projection inventory:
-  `server/src/services/policyBuilderPhase2DraftViewProjection.mjs`
+  `server/src/services/policyAuthoringDraftViewProjection.mjs`
+- Draft authority and field adapter:
+  `server/src/services/policyAuthoringDraftFieldContract.mjs`
 - Client read-model projection:
   `client/src/utils/policyIntentDraftView.js`
 - Presentation consumer:
@@ -112,7 +117,7 @@ Cons:
 
 ## Implemented Outcome
 
-The Phase 2R.4 implementation now provides:
+The policy authoring draft view projection now provides:
 
 - a server-owned draft-view projection contract,
 - server validation that draft-view payloads fail if they expose raw legacy
@@ -123,13 +128,13 @@ The Phase 2R.4 implementation now provides:
 - chip rendering that prefers draft-view provenance labels before raw source
   fallback labels,
 - tests proving the projection hides raw legacy storage terms from the
-  browser-facing view.
+  browser-facing view,
 - an executable draft-view projection audit:
-  - `validatePhase2RDraftViewFieldRecord(record)` checks individual view
+  - `validatePolicyAuthoringDraftViewFieldRecord(record)` checks individual view
     fields,
-  - `validatePhase2RDraftViewProvenanceRecord(record)` checks provenance
+  - `validatePolicyAuthoringDraftViewProvenanceRecord(record)` checks provenance
     records,
-  - `buildPhase2RDraftViewProjectionAudit(options)` checks the complete
+  - `buildPolicyAuthoringDraftViewProjectionAudit(options)` checks the complete
     projection contract,
   - the audit fails unknown fields, categories, authorities, source draft
     fields, and command hints; raw legacy storage exposure; view mutation or
@@ -142,7 +147,7 @@ The Phase 2R.4 implementation now provides:
 
 Focused tests:
 
-- `server/src/__tests__/services/policyBuilderPhase2DraftViewProjection.test.mjs`
+- `server/src/__tests__/services/policyAuthoringDraftViewProjection.test.mjs`
 - `client/src/__tests__/utils/policyIntentDraftView.test.js`
 - `client/src/__tests__/PolicyIntentChip.test.js`
 - `client/src/__tests__/utils/policyIntentEditorSections.test.js`
@@ -154,11 +159,12 @@ The tests assert:
 - provenance labels resolve to product-facing labels,
 - readiness and observed evidence are read-only placeholders,
 - chip provenance comes from the view model when available,
-- current section projection behavior remains compatible.
+- current section projection behavior remains compatible,
 - projection inventory drift fails before product components depend on it.
 
-## Next Phase
+## Next Component
 
-Continue with Phase 2R.5 Server Authority Preparation. That task should define
-where client draft validation remains UX-only and where Phase 5R server
-validation becomes authoritative for native intent, warnings, and save payloads.
+Continue with the policy authoring server authority preparation cutover. That
+task should define where client draft validation remains UX-only and where
+server validation becomes authoritative for native intent, warnings, and save
+payloads.

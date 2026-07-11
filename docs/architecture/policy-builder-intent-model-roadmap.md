@@ -1955,10 +1955,10 @@ Acceptance criteria:
 
 Implementation record:
 
-- Phase 2R.4 draft view projection is documented in
-  [Policy Builder Phase 2R Draft View Projection](policy-builder-phase-2r-draft-view-projection.md).
-- The server-side Phase 2R draft view projection contract lives in
-  `server/src/services/policyBuilderPhase2DraftViewProjection.mjs`.
+- Policy authoring draft view projection is documented in
+  [Policy Authoring Draft View Projection](policy-authoring-draft-view-projection.md).
+- The server-side policy authoring draft view projection contract lives in
+  `server/src/services/policyAuthoringDraftViewProjection.mjs`.
 - The client draft-view projection now exposes product-facing provenance,
   provenance counts, and read-only readiness/observed-evidence placeholders in
   `client/src/utils/policyIntentDraftView.js`.
@@ -2072,8 +2072,8 @@ Implementation record:
   [Policy Builder Phase 2R Legacy Bridge Isolation](policy-builder-phase-2r-legacy-bridge-isolation.md).
 - The policy authoring draft command boundary is documented in
   [Policy Authoring Draft Command Boundary](policy-authoring-draft-command-boundary.md).
-- Phase 2R.4 draft view projection is documented in
-  [Policy Builder Phase 2R Draft View Projection](policy-builder-phase-2r-draft-view-projection.md).
+- Policy authoring draft view projection is documented in
+  [Policy Authoring Draft View Projection](policy-authoring-draft-view-projection.md).
 - Phase 2R.5 server authority preparation is documented in
   [Policy Builder Phase 2R Server Authority Preparation](policy-builder-phase-2r-server-authority-preparation.md).
 - Phase 2R.6 draft parity and regression tests are documented in
