@@ -4186,6 +4186,11 @@ Implementation status:
   validation proof, preserve the same sanitized evidence fingerprint from the
   question-reduction handoff, and fail validation when proof or trace validity
   drifts.
+- Request-time learning now separates raw runtime adaptation, normalized event
+  construction, and validated-plan reduction. The reducer derives provenance
+  only from the clarification plan and rejects raw question, automation, event,
+  and fingerprint fields; its design record is [Policy Request-Time Learning
+  Input Boundary](policy-request-time-learning-input-boundary.md).
 
 ### 7R.6 Library-Derived Policy Rebuild
 
@@ -6614,7 +6619,7 @@ Implementation status:
   as rename, keep, delete, or adapter-gated; and validates that production
   rename candidates carry durable product-domain targets.
 - The repository scan adapter validates with no unclassified references and
-  currently reports 183 production references plus 184 rename candidates.
+  currently reports 182 production references plus 183 rename candidates.
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
@@ -7297,7 +7302,7 @@ Implementation status:
   valid classification result, blocks increases above the approved July 11,
   2026 baseline for production references, rename candidates, and obsolete
   migration tooling, and rejects temporary adapters without deletion gates.
-- The current baseline is `183` production references, `184` rename
+- The current baseline is `182` production references, `183` rename
   candidates, and `0` obsolete migration tooling references. Future durable
   rename batches must lower this baseline after inventory validation proves the
   debt decreased.

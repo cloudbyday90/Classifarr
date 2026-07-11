@@ -21,6 +21,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Request-Time Learning Input Boundary** — separated raw request-event
+  normalization from validated-plan learning reduction; learning decisions now
+  require a valid clarification plan and normalized event, with upstream
+  provenance derived only from the clarification contract.
 - **Policy Runtime Clarification Decision Boundary** — split raw runtime
   adaptation from decision-only question reduction; clarification planning now
   requires a valid automation decision and rejects raw evidence, routing,

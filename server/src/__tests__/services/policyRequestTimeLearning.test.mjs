@@ -17,9 +17,13 @@ import {
   POLICY_REQUEST_LEARNING_DISPOSITION_IDS,
   POLICY_REQUEST_LEARNING_REASON_IDS,
   buildPolicyRequestTimeLearningAudit,
-  buildPolicyRequestTimeLearningDecision,
+  buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan,
+  buildPolicyRequestTimeLearningDecisionFromRuntimeInput,
   validatePolicyRequestTimeLearningDecision,
 } from '../../services/policyRequestTimeLearning.mjs';
+import {
+  buildPolicyRequestTimeEvent,
+} from '../../services/policyRequestTimeEvent.mjs';
 
 function destination(overrides = {}) {
   return {
@@ -43,18 +47,19 @@ function questionReductionPlan(overrides = {}) {
   });
 }
 
-function buildRequestTimeLearningDecision(input = {}) {
-  const plan = input.questionReductionPlan || questionReductionPlan();
+function buildRequestTimeLearningDecisionForTest(input = {}) {
+  const { questionReductionPlan: plan = questionReductionPlan(), ...eventInput } = input;
+  const requestEvent = buildPolicyRequestTimeEvent(eventInput);
 
-  return buildPolicyRequestTimeLearningDecision({
+  return buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan({
     questionReductionPlan: plan,
-    ...input,
+    requestEvent,
   });
 }
 
 describe('policyRequestTimeLearning', () => {
   test('records user-requested destination separately from final outcome without durable learning', () => {
-    const decision = buildRequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       item: {
         itemId: 10674,
@@ -112,8 +117,37 @@ describe('policyRequestTimeLearning', () => {
     expect(validatePolicyRequestTimeLearningDecision(decision).ok).toBe(true);
   });
 
+  test('requires explicit normalized event and clarification-plan contracts', () => {
+    expect(() => buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan({
+      questionReductionPlan: questionReductionPlan(),
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+    })).toThrow('raw input key "eventTypeId"');
+
+    expect(() => buildPolicyRequestTimeLearningDecisionFromRuntimeInput({
+      questionReductionPlan: questionReductionPlan(),
+    })).toThrow('received a normalized upstream contract');
+
+    expect(() => buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan({
+      questionReductionPlan: {
+        version: 'policy.runtime_question_reduction.v1',
+      },
+      requestEvent: buildPolicyRequestTimeEvent({
+        eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      }),
+    })).toThrow('requires a valid question-reduction plan');
+
+    const decision = buildPolicyRequestTimeLearningDecisionFromRuntimeInput({
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      requestedDestination: destination(),
+    });
+
+    expect(decision.questionReductionProof.validation.ok).toBe(true);
+    expect(decision.upstreamEvidenceFingerprint.fingerprint)
+      .toBe(decision.questionReductionProof.evidenceFingerprint.fingerprint);
+  });
+
   test('passes operator manual destination changes through the learning guard and marks them reversible', () => {
-    const decision = buildRequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
       actorId: 'admin-1',
       item: {
@@ -160,7 +194,7 @@ describe('policyRequestTimeLearning', () => {
   });
 
   test('records successful Arr routing as final outcome without direct learning', () => {
-    const decision = buildRequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED,
       item: {
         itemId: 10674,
@@ -186,7 +220,7 @@ describe('policyRequestTimeLearning', () => {
   });
 
   test('records failed route mapping as route failure only and not positive destination evidence', () => {
-    const decision = buildRequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING,
       item: {
         itemId: 10674,
@@ -222,15 +256,19 @@ describe('policyRequestTimeLearning', () => {
     expect(validatePolicyRequestTimeLearningDecision(decision).ok).toBe(true);
   });
 
-  test('blocks learning when the upstream question is stale or rejected', () => {
-    const decision = buildRequestTimeLearningDecision({
+  test('blocks learning when the validated clarification plan is stale', () => {
+    const decision = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
       operatorDestination: destination(),
       answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
-      question: {
-        frameId: REJECTED_QUESTION_FRAME_IDS.BROAD_GENRE_PRIORITY,
-        stale: true,
-      },
+      questionReductionPlan: questionReductionPlan({
+        existingQuestion: {
+          id: 42,
+          version: 'legacy.policy_question.v1',
+          stale: true,
+          frameId: REJECTED_QUESTION_FRAME_IDS.BROAD_GENRE_PRIORITY,
+        },
+      }),
       candidate: {
         key: 'genre:animation',
         label: 'Animation',
@@ -244,7 +282,6 @@ describe('policyRequestTimeLearning', () => {
       canWriteLearning: false,
     }));
     expect(decision.learningDecision.learning.blockedReasonCodes).toEqual(expect.arrayContaining([
-      POLICY_LEARNING_REASON_IDS.REJECTED_QUESTION_FRAME_BLOCKED,
       POLICY_LEARNING_REASON_IDS.STALE_QUESTION_BLOCKED,
       POLICY_LEARNING_REASON_IDS.BROAD_ONE_OFF_GENRE_BLOCKED,
     ]));
@@ -253,14 +290,14 @@ describe('policyRequestTimeLearning', () => {
   });
 
   test('rejects route failures or routing outcomes that claim learning writes', () => {
-    const routeFailure = buildRequestTimeLearningDecision({
+    const routeFailure = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING,
       finalDestination: destination(),
     });
     routeFailure.learningDecision.learning.canWriteLearning = true;
     routeFailure.profileRefresh.queue = true;
 
-    const routeSuccess = buildRequestTimeLearningDecision({
+    const routeSuccess = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED,
       finalDestination: destination(),
     });
@@ -284,7 +321,7 @@ describe('policyRequestTimeLearning', () => {
   });
 
   test('rejects direct side effects and non-reversible manual changes', () => {
-    const decision = buildRequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
       operatorDestination: destination(),
     });
@@ -303,15 +340,19 @@ describe('policyRequestTimeLearning', () => {
   });
 
   test('rejects request-time learning with missing or mismatched evidence fingerprints', () => {
-    const missing = buildPolicyRequestTimeLearningDecision({
+    const missing = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
-    const mismatched = buildRequestTimeLearningDecision({
+    const mismatched = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
 
+    missing.upstreamEvidenceFingerprint = null;
+    missing.learningGuardContext.upstreamEvidenceFingerprint = null;
+    missing.trace.attributes['classifarr.runtime.request_learning.upstream_evidence_fingerprint'] =
+      undefined;
     mismatched.learningGuardContext.upstreamEvidenceFingerprint.fingerprint = 'b'.repeat(64);
     mismatched.trace.attributes['classifarr.runtime.request_learning.upstream_evidence_fingerprint'] =
       'c'.repeat(64);
@@ -334,7 +375,7 @@ describe('policyRequestTimeLearning', () => {
   });
 
   test('rejects request-time learning without question-reduction validation proof', () => {
-    const decision = buildRequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
@@ -350,19 +391,19 @@ describe('policyRequestTimeLearning', () => {
   });
 
   test('rejects request-time learning with invalid or drifted question-reduction proof', () => {
-    const invalid = buildRequestTimeLearningDecision({
+    const invalid = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
-    const drifted = buildRequestTimeLearningDecision({
+    const drifted = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
-    const missingProofFingerprint = buildRequestTimeLearningDecision({
+    const missingProofFingerprint = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
-    const traceDrift = buildRequestTimeLearningDecision({
+    const traceDrift = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });
@@ -405,7 +446,7 @@ describe('policyRequestTimeLearning', () => {
   });
 
   test('passes the default request-time learning audit', () => {
-    const decision = buildRequestTimeLearningDecision({
+    const decision = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
     });

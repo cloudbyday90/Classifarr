@@ -9,20 +9,19 @@ import {
   validatePolicyLearningDecision,
 } from './policyLearningGuard.mjs';
 import {
+  buildPolicyRuntimeQuestionReductionFromRuntimeInput,
   validatePolicyRuntimeQuestionReduction,
 } from './policyRuntimeQuestionReduction.mjs';
+import {
+  POLICY_REQUEST_EVENT_TYPE_IDS,
+  buildPolicyRequestTimeEvent,
+  validatePolicyRequestTimeEvent,
+} from './policyRequestTimeEvent.mjs';
 import {
   POLICY_FINAL_OUTCOME_STATUS_IDS,
   buildPolicyFinalOutcome,
   buildPolicyFinalOutcomeAudit,
 } from './policyFinalOutcomeNormalizer.mjs';
-
-const POLICY_REQUEST_EVENT_TYPE_IDS = Object.freeze({
-  USER_REQUESTED_DESTINATION: 'user_requested_destination',
-  OPERATOR_MANUAL_DESTINATION_CHANGE: 'operator_manual_destination_change',
-  ROUTE_SUCCEEDED: 'route_succeeded',
-  ROUTE_FAILED_MISSING_MAPPING: 'route_failed_missing_mapping',
-});
 
 const POLICY_REQUEST_LEARNING_DISPOSITION_IDS = Object.freeze({
   OUTCOME_ONLY: 'outcome_only',
@@ -95,6 +94,10 @@ const REQUEST_LEARNING_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE =
   'classifarr.runtime.request_learning.upstream_evidence_fingerprint';
 const REQUEST_LEARNING_QUESTION_REDUCTION_VALID_TRACE_ATTRIBUTE =
   'classifarr.runtime.request_learning.question_reduction_valid';
+const REQUEST_TIME_LEARNING_DECISION_INPUT_KEYS = new Set([
+  'questionReductionPlan',
+  'requestEvent',
+]);
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -112,49 +115,11 @@ function hasValue(value) {
   return normalizeString(value).length > 0 || value !== null && value !== undefined && value !== '';
 }
 
-function normalizeDestination(value = {}) {
-  const destination = asObject(value);
-
-  return {
-    libraryId: destination.libraryId ?? destination.destinationLibraryId ?? null,
-    libraryName: normalizeString(destination.libraryName ?? destination.destinationLibraryName ?? destination.name),
-    arrType: normalizeString(destination.arrType ?? destination.arr_type),
-    arrConfigId: destination.arrConfigId ?? destination.arr_config_id ?? null,
-    arrRootFolderPath: normalizeString(destination.arrRootFolderPath ?? destination.arr_root_folder_path),
-  };
-}
-
 function destinationHasValue(destination = {}) {
   return hasValue(destination.libraryId) ||
     hasValue(destination.libraryName) ||
     hasValue(destination.arrConfigId) ||
     hasValue(destination.arrRootFolderPath);
-}
-
-function normalizeItem(value = {}) {
-  const item = asObject(value);
-
-  return {
-    itemId: item.itemId ?? item.id ?? item.tmdbId ?? null,
-    title: normalizeString(item.title ?? item.name),
-    year: item.year ?? null,
-    mediaType: normalizeString(item.mediaType ?? item.media_type),
-    tmdbId: item.tmdbId ?? item.tmdb_id ?? null,
-  };
-}
-
-function normalizeRouteResult(value = {}, eventTypeId) {
-  const route = asObject(value);
-  const failedByEvent = eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING;
-  const succeededByEvent = eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED;
-
-  return {
-    attempted: route.attempted === true || failedByEvent || succeededByEvent,
-    succeeded: route.succeeded === true || succeededByEvent,
-    missingMapping: route.missingMapping === true || route.reasonCode === 'missing_mapping' || failedByEvent,
-    routeId: route.routeId ?? null,
-    reasonCode: normalizeString(route.reasonCode) || (failedByEvent ? 'missing_mapping' : null),
-  };
 }
 
 function normalizeEvidenceFingerprint(value = {}) {
@@ -190,14 +155,8 @@ function normalizeEvidenceFingerprint(value = {}) {
   };
 }
 
-function getUpstreamEvidenceFingerprint(input = {}) {
-  return normalizeEvidenceFingerprint(
-    input.questionReductionPlan?.decisionEvidenceFingerprint ||
-    input.question?.decisionEvidenceFingerprint ||
-    input.automationDecision?.evidence?.projectionFingerprint ||
-    input.decisionEvidenceFingerprint ||
-    input.upstreamEvidenceFingerprint
-  );
+function getQuestionReductionEvidenceFingerprint(plan = {}) {
+  return normalizeEvidenceFingerprint(asObject(plan).decisionEvidenceFingerprint);
 }
 
 function buildQuestionReductionProof(input = {}) {
@@ -247,22 +206,23 @@ function defaultAnswerOutcomeForEvent(eventTypeId) {
   }
 }
 
-function normalizeQuestionForLearning(input = {}) {
-  const question = asObject(input.question);
+function buildQuestionForLearning(questionReductionPlan = {}) {
+  const plan = asObject(questionReductionPlan);
 
   return {
-    frameId: question.frameId || QUESTION_FRAME_IDS.DESTINATION_FIT,
-    stale: question.stale === true,
+    frameId: plan.question?.frameId || plan.proposedFrameId || QUESTION_FRAME_IDS.DESTINATION_FIT,
+    stale: plan.staleQuestionCleanup?.required === true,
   };
 }
 
-function buildAnswerFromDestination(destination = {}, input = {}) {
-  const answer = asObject(input.answer);
+function buildAnswerFromDestination(destination = {}, answerInput = {}) {
+  const answer = asObject(answerInput);
 
   return {
-    label: normalizeString(answer.label ?? destination.libraryName),
+    label: normalizeString(answer.label) || normalizeString(destination.libraryName),
     destinationLibraryId: answer.destinationLibraryId ?? destination.libraryId ?? null,
-    destinationLibraryName: normalizeString(answer.destinationLibraryName ?? destination.libraryName),
+    destinationLibraryName:
+      normalizeString(answer.destinationLibraryName) || normalizeString(destination.libraryName),
     ambiguous: answer.ambiguous === true,
   };
 }
@@ -406,19 +366,59 @@ function buildTrace({
   };
 }
 
-function buildPolicyRequestTimeLearningDecision(input = {}) {
-  const eventTypeId = input.eventTypeId || POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION;
+function requireValidQuestionReductionPlan(input = {}) {
+  const decisionInput = asObject(input);
+  const unexpectedInputKey = Object.keys(decisionInput).find(key =>
+    !REQUEST_TIME_LEARNING_DECISION_INPUT_KEYS.has(key)
+  );
+
+  if (unexpectedInputKey) {
+    throw new TypeError(
+      `Request-time learning requires a normalized request event; raw input key "${unexpectedInputKey}" must use buildPolicyRequestTimeLearningDecisionFromRuntimeInput.`
+    );
+  }
+
+  const plan = asObject(decisionInput.questionReductionPlan);
+  if (plan.version !== 'policy.runtime_question_reduction.v1') {
+    throw new TypeError(
+      'Request-time learning requires a policy.runtime_question_reduction.v1 plan.'
+    );
+  }
+
+  const validation = validatePolicyRuntimeQuestionReduction(plan);
+  if (!validation.ok) {
+    throw new TypeError('Request-time learning requires a valid question-reduction plan.');
+  }
+
+  return plan;
+}
+
+function requireValidRequestEvent(input = {}) {
+  const requestEvent = asObject(asObject(input).requestEvent);
+  const validation = validatePolicyRequestTimeEvent(requestEvent);
+
+  if (!validation.ok) {
+    throw new TypeError('Request-time learning requires a valid normalized request event.');
+  }
+
+  return requestEvent;
+}
+
+function buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan(input = {}) {
+  const questionReductionPlan = requireValidQuestionReductionPlan(input);
+  const requestEvent = requireValidRequestEvent(input);
+  const eventTypeId = requestEvent.eventTypeId;
   const sourceId = EVENT_SOURCE_BY_TYPE[eventTypeId] || null;
-  const item = normalizeItem(input.item);
-  const requestedDestination = normalizeDestination(input.requestedDestination || input.destination);
-  const operatorDestination = normalizeDestination(input.operatorDestination || input.destination);
-  const explicitFinalDestination = normalizeDestination(input.finalDestination || input.destination);
+  const item = requestEvent.item;
+  const requestedDestination = requestEvent.requestedDestination;
+  const operatorDestination = requestEvent.operatorDestination;
+  const explicitFinalDestination = requestEvent.finalDestination;
   const finalDestination = destinationHasValue(explicitFinalDestination)
     ? explicitFinalDestination
     : eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE
       ? operatorDestination
       : requestedDestination;
-  const routeResult = normalizeRouteResult(input.routeResult, eventTypeId);
+  const routeResult = requestEvent.routeResult;
   const finalOutcome = buildPolicyRequestFinalOutcome({
     eventTypeId,
     sourceId,
@@ -426,10 +426,10 @@ function buildPolicyRequestTimeLearningDecision(input = {}) {
     finalDestination,
     routeResult,
   });
-  const upstreamEvidenceFingerprint = getUpstreamEvidenceFingerprint(input);
-  const questionReductionProof = buildQuestionReductionProof(input);
+  const upstreamEvidenceFingerprint = getQuestionReductionEvidenceFingerprint(questionReductionPlan);
+  const questionReductionProof = buildQuestionReductionProof({ questionReductionPlan });
   const learningGuardContext = {
-    ...asObject(input.context),
+    ...requestEvent.learningContext,
     upstreamEvidenceFingerprint: upstreamEvidenceFingerprint
       ? {
         algorithm: upstreamEvidenceFingerprint.algorithm,
@@ -437,13 +437,13 @@ function buildPolicyRequestTimeLearningDecision(input = {}) {
       }
       : null,
   };
-  const answerOutcomeId = input.answerOutcomeId || defaultAnswerOutcomeForEvent(eventTypeId);
+  const answerOutcomeId = requestEvent.answerOutcomeId || defaultAnswerOutcomeForEvent(eventTypeId);
   const learningDecision = buildPolicyLearningDecision({
     sourceId,
     answerOutcomeId,
-    question: normalizeQuestionForLearning(input),
-    answer: buildAnswerFromDestination(finalDestination, input),
-    candidate: input.candidate || {},
+    question: buildQuestionForLearning(questionReductionPlan),
+    answer: buildAnswerFromDestination(finalDestination, requestEvent.answer),
+    candidate: requestEvent.candidate,
     context: learningGuardContext,
     finalOutcome,
   });
@@ -476,8 +476,8 @@ function buildPolicyRequestTimeLearningDecision(input = {}) {
     },
     audit: {
       reversible: eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
-      actorId: input.actorId ?? null,
-      sourceEventId: input.sourceEventId ?? null,
+      actorId: requestEvent.actorId,
+      sourceEventId: requestEvent.sourceEventId,
       rollbackHint: eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE
         ? 'manual_destination_change_can_be_reverted_by_final_outcome_history'
         : null,
@@ -496,6 +496,24 @@ function buildPolicyRequestTimeLearningDecision(input = {}) {
       questionReductionProof,
     }),
   };
+}
+
+function buildPolicyRequestTimeLearningDecisionFromRuntimeInput(input = {}) {
+  const runtimeInput = asObject(input);
+
+  if (Object.hasOwn(runtimeInput, 'questionReductionPlan') || Object.hasOwn(runtimeInput, 'requestEvent')) {
+    throw new TypeError(
+      'Request-time learning received a normalized upstream contract; use buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan.'
+    );
+  }
+
+  const questionReductionPlan = buildPolicyRuntimeQuestionReductionFromRuntimeInput(runtimeInput);
+  const requestEvent = buildPolicyRequestTimeEvent(runtimeInput);
+
+  return buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan({
+    questionReductionPlan,
+    requestEvent,
+  });
 }
 
 function validatePolicyRequestTimeLearningDecision(decision = {}) {
@@ -528,7 +546,7 @@ function validatePolicyRequestTimeLearningDecision(decision = {}) {
   if (!sourceIds.includes(decision.sourceId)) {
     issues.push({
       riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.UNKNOWN_SOURCE,
-      message: 'Request-time learning decision must map to a Phase 6R learning source.',
+      message: 'Request-time learning decision must map to a supported policy learning source.',
     });
   }
 
@@ -735,7 +753,7 @@ function validatePolicyRequestTimeLearningDecision(decision = {}) {
 }
 
 function buildPolicyRequestTimeLearningAudit(
-  decision = buildPolicyRequestTimeLearningDecision()
+  decision = buildPolicyRequestTimeLearningDecisionFromRuntimeInput()
 ) {
   const validation = validatePolicyRequestTimeLearningDecision(decision);
 
@@ -758,7 +776,8 @@ export {
   POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS,
   POLICY_REQUEST_LEARNING_DISPOSITION_IDS,
   POLICY_REQUEST_LEARNING_REASON_IDS,
+  buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan,
+  buildPolicyRequestTimeLearningDecisionFromRuntimeInput,
   buildPolicyRequestTimeLearningAudit,
-  buildPolicyRequestTimeLearningDecision,
   validatePolicyRequestTimeLearningDecision,
 };

@@ -36,6 +36,11 @@ runtime question-reduction proof showing that the previous question-reduction
 contract validated successfully, and that the same sanitized evidence
 fingerprint was preserved into the request-time decision and trace.
 
+Request-time construction now separates raw runtime adaptation from the
+validated-plan reducer. The reducer consumes a valid clarification plan and a
+normalized request event; it no longer derives provenance from raw questions,
+automation decisions, or supplied fingerprint values.
+
 ## Official Guidance Reviewed
 
 - [NIST AI Risk Management Framework 1.0](https://www.nist.gov/itl/ai-risk-management-framework)
@@ -157,11 +162,17 @@ Cons:
     attributes.
 13. Reject missing, invalid, mismatched, or trace-drifted question-reduction
     proof before request-time learning can pass validation.
+14. Use a normalized request event and a valid clarification plan as the only
+    decision inputs. Raw runtime input must use the explicit runtime adapter.
 
 ## Implemented Files
 
 - Request-time learning contract:
   `server/src/services/policyRequestTimeLearning.mjs`
+- Request-event normalizer:
+  `server/src/services/policyRequestTimeEvent.mjs`
+- Request-time input-boundary outcome:
+  `docs/architecture/policy-request-time-learning-input-boundary.md`
 - Focused tests:
   `server/src/__tests__/services/policyRequestTimeLearning.test.mjs`
 - Learning guard dependency:
@@ -180,7 +191,8 @@ The service exports:
 - `POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS`
 - `POLICY_REQUEST_LEARNING_DISPOSITION_IDS`
 - `POLICY_REQUEST_LEARNING_REASON_IDS`
-- `buildPolicyRequestTimeLearningDecision`
+- `buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan`
+- `buildPolicyRequestTimeLearningDecisionFromRuntimeInput`
 - `buildPolicyRequestTimeLearningAudit`
 - `validatePolicyRequestTimeLearningDecision`
 
@@ -221,6 +233,9 @@ The service exports:
   learning candidates.
 - The request-time trace must mirror the upstream question-reduction validation
   status and sanitized evidence fingerprint.
+- The validated-plan reducer rejects raw event, question, automation, and
+  fingerprint fields; upstream provenance comes only from the clarification
+  plan.
 
 ## Test Coverage
 
@@ -241,6 +256,9 @@ The focused test suite verifies:
 - missing, invalid, or fingerprint-drifted question-reduction proof fails
   validation,
 - request-time trace attributes must match the carried question-reduction proof,
+- request events are normalized separately and cannot carry upstream contracts,
+- raw runtime input must use the explicit adapter while the reducer requires a
+  valid clarification plan and normalized request event,
 - the component audit points to
   `nextStep.stepId = library_policy_rebuild`.
 

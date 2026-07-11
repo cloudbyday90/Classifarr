@@ -12,8 +12,11 @@ import {
 } from '../../services/policyRuntimeQuestionReduction.mjs';
 import {
   POLICY_REQUEST_EVENT_TYPE_IDS,
-  buildPolicyRequestTimeLearningDecision,
+  buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan,
 } from '../../services/policyRequestTimeLearning.mjs';
+import {
+  buildPolicyRequestTimeEvent,
+} from '../../services/policyRequestTimeEvent.mjs';
 import {
   POLICY_REBUILD_AUDIT_RISK_IDS,
   POLICY_REBUILD_PROPOSAL_STATUS_IDS,
@@ -47,9 +50,8 @@ function questionReductionPlan(overrides = {}) {
 }
 
 function guardedOutcome(overrides = {}) {
-  return buildPolicyRequestTimeLearningDecision({
+  const requestEvent = buildPolicyRequestTimeEvent({
     eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
-    questionReductionPlan: questionReductionPlan(),
     operatorDestination: destination(),
     answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
     candidate: {
@@ -58,6 +60,11 @@ function guardedOutcome(overrides = {}) {
       evidenceCount: 4,
     },
     ...overrides,
+  });
+
+  return buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan({
+    questionReductionPlan: questionReductionPlan(),
+    requestEvent,
   });
 }
 

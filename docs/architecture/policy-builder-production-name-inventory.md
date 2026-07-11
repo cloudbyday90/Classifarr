@@ -91,13 +91,13 @@ Cons:
 ## Current Repository Outcome
 
 The current repository inventory validates with no unclassified references.
-After the runtime clarification decision-boundary cutover,
+After the request-time learning input-boundary cutover,
 `node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid`
 reported:
 
-- total temporary naming references: 2,393,
-- production references: 183,
-- rename candidates: 184,
+- total temporary naming references: 2,392,
+- production references: 182,
+- rename candidates: 183,
 - docs/history references: 1,938,
 - test or migration evidence references: 271,
 - obsolete migration tooling references: 0.

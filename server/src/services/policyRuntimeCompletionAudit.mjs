@@ -14,8 +14,11 @@ import {
 import {
   POLICY_REQUEST_EVENT_TYPE_IDS,
   buildPolicyRequestTimeLearningAudit,
-  buildPolicyRequestTimeLearningDecision,
+  buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan,
 } from './policyRequestTimeLearning.mjs';
+import {
+  buildPolicyRequestTimeEvent,
+} from './policyRequestTimeEvent.mjs';
 import {
   buildPolicyRuntimeDecisionInventory,
 } from './policyRuntimeDecisionInventory.mjs';
@@ -172,8 +175,7 @@ function buildPassingRequestTimeLearningAudit() {
       ],
     },
   });
-  const decision = buildPolicyRequestTimeLearningDecision({
-    questionReductionPlan,
+  const requestEvent = buildPolicyRequestTimeEvent({
     eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
     item: {
       itemId: 10674,
@@ -186,6 +188,10 @@ function buildPassingRequestTimeLearningAudit() {
       arrConfigId: 1,
       arrRootFolderPath: '/media/Plexmedia/Animated Movies',
     },
+  });
+  const decision = buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan({
+    questionReductionPlan,
+    requestEvent,
   });
 
   return buildPolicyRequestTimeLearningAudit(decision);
