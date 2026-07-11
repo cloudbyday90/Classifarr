@@ -11,6 +11,12 @@ const POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES = Object.freeze({
   RUNTIME_SOURCE_IDS: 'classifarr.runtime.evidence.runtime_source_ids',
   AUTHORITY_SOURCE_IDS: 'classifarr.runtime.evidence.authority_source_ids',
   DEMOTION_REASON_IDS: 'classifarr.runtime.evidence.demotion_reason_ids',
+  OPERATOR_INTENT_BOUNDARY_STATUS:
+    'classifarr.runtime.evidence.operator_intent_boundary_status',
+  OPERATOR_INTENT_BOUNDARY_READY:
+    'classifarr.runtime.evidence.operator_intent_boundary_ready',
+  OPERATOR_INTENT_BOUNDARY_RISK_IDS:
+    'classifarr.runtime.evidence.operator_intent_boundary_risk_ids',
 });
 
 function asArray(value) {
@@ -101,6 +107,19 @@ function buildBucketCounts(entries = []) {
     .sort((left, right) => String(left.bucketId).localeCompare(String(right.bucketId)));
 }
 
+function normalizeOperatorIntentBoundary(boundary = null) {
+  const value = boundary && typeof boundary === 'object' && !Array.isArray(boundary)
+    ? boundary
+    : {};
+
+  return {
+    statusId: value.statusId || null,
+    ok: value.ok === true,
+    riskIds: uniqueSorted(value.riskIds),
+    projectionFingerprint: value.projectionFingerprint || null,
+  };
+}
+
 function buildPolicyRuntimeEvidenceFingerprint(projection = {}) {
   const entries = listRuntimeEvidenceEntries(projection);
   const sourceIds = uniqueSorted(entries.map(entry => entry.sourceId));
@@ -114,6 +133,9 @@ function buildPolicyRuntimeEvidenceFingerprint(projection = {}) {
   const warningReasonIds = uniqueSorted(
     asArray(projection.warnings).map(warning => warning?.reasonCode)
   );
+  const operatorIntentBoundary = normalizeOperatorIntentBoundary(
+    projection.operatorIntentBoundary
+  );
   const payload = {
     version: POLICY_RUNTIME_EVIDENCE_FINGERPRINT_VERSION,
     projectionVersion: projection.version || null,
@@ -123,6 +145,7 @@ function buildPolicyRuntimeEvidenceFingerprint(projection = {}) {
     exposesUiChipLanguage: projection.exposesUiChipLanguage === true,
     entries,
     warningReasonIds,
+    operatorIntentBoundary,
   };
   const fingerprint = sha256(stableStringify(payload));
 
@@ -143,6 +166,7 @@ function buildPolicyRuntimeEvidenceFingerprint(projection = {}) {
       generatedFromLiveProvider: projection.generatedFromLiveProvider === true,
       exposesRawProviderPayloads: projection.exposesRawProviderPayloads === true,
       exposesUiChipLanguage: projection.exposesUiChipLanguage === true,
+      operatorIntentBoundary,
     },
     traceAttributes: {
       [POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.FINGERPRINT]: fingerprint,
@@ -157,6 +181,12 @@ function buildPolicyRuntimeEvidenceFingerprint(projection = {}) {
         authoritySourceIds,
       [POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.DEMOTION_REASON_IDS]:
         demotionReasonIds,
+      [POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.OPERATOR_INTENT_BOUNDARY_STATUS]:
+        operatorIntentBoundary.statusId,
+      [POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.OPERATOR_INTENT_BOUNDARY_READY]:
+        operatorIntentBoundary.ok,
+      [POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES.OPERATOR_INTENT_BOUNDARY_RISK_IDS]:
+        operatorIntentBoundary.riskIds,
     },
   };
 }

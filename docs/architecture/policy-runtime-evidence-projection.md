@@ -10,6 +10,11 @@ This slice projects runtime classification inputs into the policy evidence
 bucket vocabulary. It does not change classification behavior, route items,
 write learning, call providers, or persist native intent.
 
+Operator-declared intent is separately passed through the shared bounded
+evidence boundary before it enters the specialized runtime projection. A
+rejected operator-intent payload is omitted with a stable warning while the
+independent runtime evidence sources remain available.
+
 ## Problem
 
 Runtime classification currently receives evidence from multiple places:
@@ -85,6 +90,12 @@ allowed to change.
    The output should explain why automation may later be allowed or blocked,
    but the projection itself should not classify, route, ask, or learn.
 
+8. **Use the shared boundary for operator intent.**
+   Runtime profile and history evidence remain specialized adapters, but
+   operator-declared intent must pass the shared bounded evidence gate. Bind its
+   sanitized boundary status, risk IDs, and generic fingerprint into the runtime
+   evidence fingerprint before automation consumes it.
+
 ## Pros And Cons
 
 Pros:
@@ -117,6 +128,8 @@ Cons:
   `server/src/__tests__/services/policyRuntimeEvidenceProjection.test.mjs`
 - Policy evidence vocabulary:
   `server/src/services/policyEvidenceEngine.mjs`
+- Operator-intent boundary outcome:
+  `docs/architecture/policy-runtime-operator-intent-boundary.md`
 - Documentation:
   `docs/architecture/policy-runtime-evidence-projection.md`
 - Roadmap owner:
@@ -159,6 +172,7 @@ Demotion reasons:
 - `stale_profile`
 - `routing_not_proven`
 - `raw_payload_suppressed`
+- `operator_intent_boundary_blocked`
 
 Each projection now carries `projectionFingerprint` with:
 
@@ -171,6 +185,7 @@ Each projection now carries `projectionFingerprint` with:
 - demotion reason ids,
 - warning reason ids,
 - bucket counts.
+- sanitized operator-intent boundary status, risk IDs, and fingerprint.
 
 The provenance is intentionally bounded and excludes raw evidence labels.
 
@@ -187,6 +202,10 @@ rejects:
 - Projection is deterministic and side-effect-free.
 - No live provider lookup is performed.
 - Raw provider payloads are suppressed.
+- Operator intent uses the shared bounded evidence gate; rejected intent cannot
+  contribute runtime evidence.
+- Runtime fingerprint provenance and trace attributes bind the sanitized
+  operator-intent boundary context.
 - Fingerprint provenance is sanitized and label-free.
 - Fingerprint, provenance, and trace attributes are verified together before
   downstream runtime decisions can trust the projection.

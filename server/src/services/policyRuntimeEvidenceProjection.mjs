@@ -7,11 +7,13 @@ import {
 import {
   POLICY_EVIDENCE_BUCKET_IDS,
   POLICY_EVIDENCE_SOURCE_IDS,
-  buildPolicyEvidenceProjection,
   getPolicyEvidenceBucket,
   getPolicyEvidenceSource,
   listPolicyEvidenceBuckets,
 } from './policyEvidenceEngine.mjs';
+import {
+  buildBoundedPolicyEvidenceProjection,
+} from './policyEvidenceBoundary.mjs';
 import {
   POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES,
   buildPolicyRuntimeEvidenceFingerprint,
@@ -34,6 +36,7 @@ const POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS = Object.freeze({
   STALE_PROFILE: 'stale_profile',
   ROUTING_NOT_PROVEN: 'routing_not_proven',
   RAW_PAYLOAD_SUPPRESSED: 'raw_payload_suppressed',
+  OPERATOR_INTENT_BOUNDARY_BLOCKED: 'operator_intent_boundary_blocked',
 });
 
 const POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
@@ -57,9 +60,13 @@ const POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   PROJECTION_FINGERPRINT_TRACE_MISMATCH:
     'projection_fingerprint_trace_mismatch',
   RAW_PROVENANCE_EXPOSED: 'raw_provenance_exposed',
+  MISSING_OPERATOR_INTENT_BOUNDARY: 'missing_operator_intent_boundary',
+  INVALID_OPERATOR_INTENT_BOUNDARY: 'invalid_operator_intent_boundary',
+  BLOCKED_OPERATOR_INTENT_CONSUMED: 'blocked_operator_intent_consumed',
 });
 
 const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/;
+const MAX_OPERATOR_INTENT_BOUNDARY_RISK_IDS = 16;
 
 const BROAD_GENRE_SET = new Set(BROAD_GENRE_LABELS.map(label => label.toLowerCase()));
 const AUTHORITY_IDS = Object.freeze(Object.values(AUTHORITY_SOURCE_IDS));
@@ -203,6 +210,7 @@ function createEmptyRuntimeProjection() {
       reasons: [],
     },
     warnings: [],
+    operatorIntentBoundary: null,
     projectionFingerprint: null,
   };
 }
@@ -352,8 +360,44 @@ function mapProfileEvidence(projection, libraryProfile = {}) {
   });
 }
 
+function buildOperatorIntentBoundaryContext(boundaryResult = {}) {
+  const boundary = isObject(boundaryResult) ? boundaryResult : {};
+  const fingerprint = isObject(boundary.projectionFingerprint)
+    ? boundary.projectionFingerprint
+    : {};
+  const riskIds = Array.from(new Set(
+    asArray(boundary.issues)
+      .map(issue => normalizeNullableString(issue?.riskId))
+      .filter(Boolean)
+  )).slice(0, MAX_OPERATOR_INTENT_BOUNDARY_RISK_IDS);
+
+  return {
+    statusId: normalizeNullableString(boundary.statusId),
+    ok: boundary.ok === true,
+    riskIds,
+    projectionFingerprint: boundary.ok === true
+      ? normalizeNullableString(fingerprint.fingerprint)?.toLowerCase() || null
+      : null,
+  };
+}
+
 function mapOperatorIntentEvidence(projection, operatorIntent = {}) {
-  const intentProjection = buildPolicyEvidenceProjection({ operatorIntent });
+  const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
+    evidenceInput: { operatorIntent },
+  });
+  projection.operatorIntentBoundary = buildOperatorIntentBoundaryContext(
+    boundedEvidenceResult
+  );
+
+  if (boundedEvidenceResult.ok !== true || !boundedEvidenceResult.projection) {
+    projection.warnings.push({
+      reasonCode: POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.OPERATOR_INTENT_BOUNDARY_BLOCKED,
+      message: 'Runtime operator intent was excluded because its evidence boundary did not pass validation.',
+    });
+    return;
+  }
+
+  const intentProjection = boundedEvidenceResult.projection;
 
   Object.values(intentProjection.buckets).flat().forEach(entry => {
     addEntry(projection, {
@@ -649,6 +693,60 @@ function validateRuntimeEvidenceEntry(entry = {}) {
   };
 }
 
+function addOperatorIntentBoundaryIssues(projection, entries, issues) {
+  const boundary = isObject(projection.operatorIntentBoundary)
+    ? projection.operatorIntentBoundary
+    : null;
+  const operatorIntentEntries = entries.filter(entry =>
+    entry.runtimeSourceId === POLICY_RUNTIME_EVIDENCE_SOURCE_IDS.OPERATOR_INTENT
+  );
+
+  if (!boundary) {
+    issues.push({
+      riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.MISSING_OPERATOR_INTENT_BOUNDARY,
+      message: 'Runtime evidence projection must retain an operator-intent boundary context.',
+    });
+    return;
+  }
+
+  if (!normalizeString(boundary.statusId)) {
+    issues.push({
+      riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.INVALID_OPERATOR_INTENT_BOUNDARY,
+      message: 'Runtime operator-intent boundary context must include a status.',
+    });
+  }
+
+  if (boundary.ok === true) {
+    if (
+      boundary.statusId !== 'ready' ||
+      !SHA256_HEX_PATTERN.test(boundary.projectionFingerprint || '')
+    ) {
+      issues.push({
+        riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.INVALID_OPERATOR_INTENT_BOUNDARY,
+        message: 'A ready runtime operator-intent boundary requires a valid projection fingerprint.',
+      });
+    }
+    return;
+  }
+
+  if (
+    boundary.statusId === 'ready' ||
+    normalizeString(boundary.projectionFingerprint)
+  ) {
+    issues.push({
+      riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.INVALID_OPERATOR_INTENT_BOUNDARY,
+      message: 'A rejected runtime operator-intent boundary cannot claim readiness or retain a projection fingerprint.',
+    });
+  }
+
+  if (operatorIntentEntries.length > 0) {
+    issues.push({
+      riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.BLOCKED_OPERATOR_INTENT_CONSUMED,
+      message: 'A rejected operator-intent boundary cannot contribute runtime evidence entries.',
+    });
+  }
+}
+
 function validatePolicyRuntimeEvidenceProjection(projection = {}) {
   const entries = Object.values(projection.buckets || {}).flat();
   const issues = entries.flatMap(entry => validateRuntimeEvidenceEntry(entry).issues);
@@ -674,6 +772,8 @@ function validatePolicyRuntimeEvidenceProjection(projection = {}) {
       message: 'Runtime evidence projection cannot expose UI chip language.',
     });
   }
+
+  addOperatorIntentBoundaryIssues(projection, entries, issues);
 
   addProjectionFingerprintIssues(projection, issues);
 

@@ -55,6 +55,11 @@ describe('policyRuntimeEvidenceProjection', () => {
     }));
     expect(JSON.stringify(projection.projectionFingerprint)).not.toContain('Animated Movies');
     expect(JSON.stringify(projection.projectionFingerprint)).not.toContain('Radarr route mapped');
+    expect(projection.operatorIntentBoundary).toEqual(expect.objectContaining({
+      ok: true,
+      statusId: 'ready',
+      projectionFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    }));
     expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY])
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
@@ -77,6 +82,86 @@ describe('policyRuntimeEvidenceProjection', () => {
         }),
         expect.objectContaining({
           label: 'Radarr route mapped',
+        }),
+      ]));
+  });
+
+  test('excludes operator intent when its bounded evidence handoff is rejected', () => {
+    const projection = buildPolicyRuntimeEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: [{
+          label: 'Animated Movies',
+          count: 12,
+          trusted: true,
+        }],
+      },
+      operatorIntent: {
+        hardLimits: [{
+          label: 'No NC-17',
+          value: {
+            providerPayload: { apiKey: 'must-not-escape' },
+          },
+        }],
+      },
+    });
+
+    expect(projection.operatorIntentBoundary).toEqual({
+      statusId: 'blocked_by_input_gate',
+      ok: false,
+      riskIds: ['raw_provider_payload'],
+      projectionFingerprint: null,
+    });
+    expect(projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT]).toEqual([]);
+    expect(projection.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        reasonCode: POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.OPERATOR_INTENT_BOUNDARY_BLOCKED,
+      }),
+    ]));
+    expect(JSON.stringify(projection)).not.toContain('must-not-escape');
+    expect(validatePolicyRuntimeEvidenceProjection(projection).ok).toBe(true);
+  });
+
+  test('rejects operator intent evidence added after a blocked boundary', () => {
+    const projection = buildPolicyRuntimeEvidenceProjection({
+      operatorIntent: {
+        hardLimits: [{
+          label: 'No NC-17',
+          value: { providerPayload: { title: 'raw' } },
+        }],
+      },
+    });
+
+    projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT].push({
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT,
+      sourceId: POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      runtimeSourceId: POLICY_RUNTIME_EVIDENCE_SOURCE_IDS.OPERATOR_INTENT,
+      authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      key: 'rating:nc17',
+      label: 'No NC-17',
+      reasonCode: 'runtime_operator_intent',
+    });
+
+    expect(validatePolicyRuntimeEvidenceProjection(projection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.BLOCKED_OPERATOR_INTENT_CONSUMED,
+        }),
+      ]));
+  });
+
+  test('rejects a blocked operator intent boundary that claims readiness', () => {
+    const projection = buildPolicyRuntimeEvidenceProjection({});
+    projection.operatorIntentBoundary = {
+      statusId: 'ready',
+      ok: false,
+      riskIds: [],
+      projectionFingerprint: 'a'.repeat(64),
+    };
+
+    expect(validatePolicyRuntimeEvidenceProjection(projection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.INVALID_OPERATOR_INTENT_BOUNDARY,
         }),
       ]));
   });

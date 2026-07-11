@@ -3980,6 +3980,11 @@ Implementation status:
   carried provenance and trace attributes, and rejects stale, malformed, or
   mismatched fingerprint handoffs before automation can consume runtime
   evidence.
+- Runtime operator intent now uses the shared bounded evidence boundary. A
+  rejected intent is omitted with a stable warning while independent runtime
+  evidence remains available; the sanitized boundary context is bound into the
+  runtime fingerprint and audit. Its design record is [Policy Runtime Operator
+  Intent Boundary](policy-runtime-operator-intent-boundary.md).
 
 ### 7R.3 Automation Decision Contract
 

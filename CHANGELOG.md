@@ -17,6 +17,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Runtime Operator Intent Boundary** — routed runtime operator intent
+  through the shared evidence gate and fingerprint; rejected intent is omitted
+  without blocking independent runtime evidence, and its sanitized boundary
+  status is bound into runtime provenance and audit checks.
 - **Policy Automation Readiness Contract Boundary** — removed implicit raw
   evidence projection from readiness; runtime uses the bounded evidence, intent,
   and learning handoff, while the reusable reducer accepts only explicit
