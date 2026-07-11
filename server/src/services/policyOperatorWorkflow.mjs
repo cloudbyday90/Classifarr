@@ -3,7 +3,7 @@ import {
 } from './policyEvidenceQuality.mjs';
 import {
   POLICY_INTENT_FIELD_IDS,
-  buildPolicyIntentDraft,
+  buildPolicyIntentDraftFromEvidenceInput,
 } from './policyIntentEngine.mjs';
 import {
   POLICY_AUTOMATION_READINESS_STATE_IDS,
@@ -96,6 +96,17 @@ const PROHIBITED_NORMAL_SURFACE_IDS = Object.freeze(
   Object.values(POLICY_OPERATOR_WORKFLOW_PROHIBITED_NORMAL_SURFACE_IDS)
 );
 
+const WORKFLOW_EVIDENCE_INPUT_KEYS = Object.freeze([
+  'libraryProfile',
+  'operatorIntent',
+  'classificationOutcomes',
+  'manualCorrections',
+  'pendingItemAnswers',
+  'arrRoutingOutcomes',
+  'metadataEvidence',
+  'profileFreshness',
+]);
+
 const WORKFLOW_SECTION_CONTRACTS = Object.freeze([
   {
     sectionId: POLICY_OPERATOR_WORKFLOW_SECTION_IDS.WHAT_BELONGS_HERE,
@@ -185,6 +196,18 @@ function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
 
+function buildWorkflowEvidenceInput(input = {}) {
+  const workflowInput = asObject(input);
+
+  return WORKFLOW_EVIDENCE_INPUT_KEYS.reduce((evidenceInput, key) => {
+    if (Object.hasOwn(workflowInput, key)) {
+      evidenceInput[key] = workflowInput[key];
+    }
+
+    return evidenceInput;
+  }, {});
+}
+
 function countSectionEntries(section, intent) {
   return section.intentFieldIds
     .reduce((count, fieldId) => count + asArray(intent?.[fieldId]).length, 0);
@@ -272,10 +295,16 @@ function buildWorkflowSection(section, intent, readiness) {
 }
 
 function buildPolicyOperatorWorkflow(input = {}) {
+  const inferredIntentResult = input.intentDraft?.version === 'policy.intent.v1' ||
+    input.intent?.version === 'policy.intent.v1'
+    ? null
+    : buildPolicyIntentDraftFromEvidenceInput({
+      evidenceInput: buildWorkflowEvidenceInput(input),
+    });
   const intent = input.intentDraft?.version === 'policy.intent.v1' ||
     input.intent?.version === 'policy.intent.v1'
     ? input.intentDraft || input.intent
-    : buildPolicyIntentDraft(input);
+    : inferredIntentResult.intent;
   const readiness = input.readiness?.version === 'policy.automation_readiness.v1'
     ? input.readiness
     : buildPolicyAutomationReadiness({

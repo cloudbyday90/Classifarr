@@ -17,6 +17,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Intent Input Boundary** — separated raw evidence handling from pure
+  intent reduction: raw inputs now use the existing bounded evidence boundary,
+  projection-only drafting rejects other shapes, and normal workflow composition
+  allowlists evidence fields so routing and diagnostics cannot enter intent.
 - **Policy Intent Entry Normalizer** — added a server-owned primitive-field
   contract for direct and bounded intent drafting; object-valued evidence,
   control characters, invalid identifiers, and tampered reason codes are now

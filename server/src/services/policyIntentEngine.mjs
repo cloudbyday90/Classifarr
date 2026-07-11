@@ -6,9 +6,11 @@ import {
 import {
   POLICY_EVIDENCE_BUCKET_IDS,
   POLICY_EVIDENCE_SOURCE_IDS,
-  buildPolicyEvidenceProjection,
   getPolicyEvidenceBucket,
 } from './policyEvidenceEngine.mjs';
+import {
+  buildBoundedPolicyEvidenceProjection,
+} from './policyEvidenceBoundary.mjs';
 import {
   validatePolicyEvidenceFingerprint,
 } from './policyEvidenceFingerprint.mjs';
@@ -188,6 +190,24 @@ function asArray(value) {
 
 function getEvidenceEntries(projection, bucketId) {
   return asArray(projection?.buckets?.[bucketId]);
+}
+
+function requirePolicyEvidenceProjection(projection = {}) {
+  if (projection?.version !== 'policy.evidence.v1') {
+    throw new TypeError(
+      'Intent inference requires a policy.evidence.v1 projection; pass raw evidence through buildPolicyIntentDraftFromEvidenceInput.'
+    );
+  }
+
+  return projection;
+}
+
+function createEmptyPolicyEvidenceProjection() {
+  return {
+    version: 'policy.evidence.v1',
+    buckets: {},
+    warnings: [],
+  };
 }
 
 function isMetadataEvidence(entry = {}) {
@@ -418,12 +438,13 @@ function buildEvidenceQualityIssues(quality = null) {
   return [];
 }
 
-function buildPolicyIntentDraft(input = {}) {
-  const projection = input?.version === 'policy.evidence.v1'
-    ? input
-    : buildPolicyEvidenceProjection(input);
+function buildPolicyIntentDraftFromEvidenceProjection(projection = {}) {
+  const evidenceProjection = requirePolicyEvidenceProjection(projection);
   const intent = createEmptyIntentDraft();
-  const identityEntries = getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.IDENTITY);
+  const identityEntries = getEvidenceEntries(
+    evidenceProjection,
+    POLICY_EVIDENCE_BUCKET_IDS.IDENTITY
+  );
   const hasSpecificSupport = hasSpecificIdentitySupport(identityEntries);
 
   const belongsHere = [];
@@ -476,7 +497,7 @@ function buildPolicyIntentDraft(input = {}) {
     }));
   });
 
-  helpfulMatches.push(...getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY)
+  helpfulMatches.push(...getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY)
     .map(entry => buildIntentEntry(entry, {
       fieldId: POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES,
       reasonCode: isOperatorDeclared(entry)
@@ -488,7 +509,7 @@ function buildPolicyIntentDraft(input = {}) {
 
   intent.belongs_here = uniqueByKey(belongsHere);
   intent.helpful_matches = uniqueByKey(helpfulMatches);
-  intent.hard_limits = uniqueByKey(getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT)
+  intent.hard_limits = uniqueByKey(getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT)
     .filter(isOperatorDeclared)
     .map(entry => buildIntentEntry(entry, {
       fieldId: POLICY_INTENT_FIELD_IDS.HARD_LIMITS,
@@ -496,7 +517,7 @@ function buildPolicyIntentDraft(input = {}) {
       inferred: false,
       operatorDeclared: true,
     })));
-  intent.avoid = uniqueByKey(getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.AVOID)
+  intent.avoid = uniqueByKey(getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.AVOID)
     .filter(isOperatorDeclared)
     .map(entry => buildIntentEntry(entry, {
       fieldId: POLICY_INTENT_FIELD_IDS.AVOID,
@@ -505,12 +526,12 @@ function buildPolicyIntentDraft(input = {}) {
       operatorDeclared: true,
     })));
   intent.ask_when = uniqueByKey([
-    ...getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.OUTLIER)
+    ...getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.OUTLIER)
       .map(entry => buildIntentEntry(entry, {
         fieldId: POLICY_INTENT_FIELD_IDS.ASK_WHEN,
         reasonCode: 'outlier_needs_review',
       })),
-    ...getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT)
+    ...getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT)
       .map(entry => buildIntentEntry(entry, {
         fieldId: POLICY_INTENT_FIELD_IDS.ASK_WHEN,
         reasonCode: entry.reasonCode === 'stale_profile'
@@ -518,7 +539,7 @@ function buildPolicyIntentDraft(input = {}) {
           : 'insufficient_evidence_needs_review',
       })),
   ]);
-  intent.routing_target = uniqueByKey(getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.ROUTING)
+  intent.routing_target = uniqueByKey(getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.ROUTING)
     .map(entry => buildIntentEntry(entry, {
       fieldId: POLICY_INTENT_FIELD_IDS.ROUTING_TARGET,
       reasonCode: isOperatorDeclared(entry)
@@ -536,8 +557,8 @@ function buildPolicyIntentDraft(input = {}) {
     ));
   }
 
-  if (getEvidenceEntries(projection, POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT).length > 0 ||
-      projection.warnings?.length > 0) {
+  if (getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT).length > 0 ||
+      evidenceProjection.warnings?.length > 0) {
     intent.warnings.push(buildWarning(
       POLICY_INTENT_WARNING_IDS.INSUFFICIENT_EVIDENCE,
       'Some evidence is insufficient for confident automation.',
@@ -545,7 +566,7 @@ function buildPolicyIntentDraft(input = {}) {
     ));
   }
 
-  if (projection.quality?.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT) {
+  if (evidenceProjection.quality?.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT) {
     intent.warnings.push(buildWarning(
       POLICY_INTENT_WARNING_IDS.INSUFFICIENT_EVIDENCE,
       'Evidence quality is insufficient; intent inference must wait for more evidence or operator confirmation.',
@@ -592,6 +613,20 @@ function buildPolicyIntentDraft(input = {}) {
   intent.confidence = calculateConfidence(intent);
 
   return intent;
+}
+
+function buildPolicyIntentDraftFromEvidenceInput({
+  evidenceInput = {},
+  evidenceBoundaryBuilder = buildBoundedPolicyEvidenceProjection,
+} = {}) {
+  const boundaryBuilder = typeof evidenceBoundaryBuilder === 'function'
+    ? evidenceBoundaryBuilder
+    : buildBoundedPolicyEvidenceProjection;
+  const boundedEvidenceResult = boundaryBuilder({ evidenceInput });
+
+  return buildPolicyIntentDraftFromBoundedEvidence({
+    boundedEvidenceResult,
+  });
 }
 
 function buildPolicyIntentDraftFromBoundedEvidence({
@@ -653,7 +688,9 @@ function buildPolicyIntentDraftFromBoundedEvidence({
     };
   }
 
-  const intent = buildPolicyIntentDraft(boundedEvidenceResult.projection);
+  const intent = buildPolicyIntentDraftFromEvidenceProjection(
+    boundedEvidenceResult.projection
+  );
   intent.source = 'policy_bounded_evidence_boundary';
   intent.evidenceBoundary = evidenceBoundary;
   const intentAudit = buildPolicyIntentEngineAudit(intent);
@@ -864,7 +901,9 @@ function validatePolicyIntentDraft(intent = {}) {
   };
 }
 
-function buildPolicyIntentEngineAudit(intent = buildPolicyIntentDraft()) {
+function buildPolicyIntentEngineAudit(
+  intent = buildPolicyIntentDraftFromEvidenceProjection(createEmptyPolicyEvidenceProjection())
+) {
   const validation = validatePolicyIntentDraft(intent);
 
   return {
@@ -889,7 +928,8 @@ export {
   POLICY_INTENT_CONFIDENCE_LEVEL_IDS,
   POLICY_INTENT_FIELD_IDS,
   POLICY_INTENT_WARNING_IDS,
-  buildPolicyIntentDraft,
+  buildPolicyIntentDraftFromEvidenceInput,
+  buildPolicyIntentDraftFromEvidenceProjection,
   buildPolicyIntentDraftFromBoundedEvidence,
   buildPolicyIntentEngineAudit,
   getPolicyIntentField,

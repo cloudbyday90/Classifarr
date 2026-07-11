@@ -8,7 +8,7 @@ import {
 import {
   POLICY_INTENT_CONFIDENCE_LEVEL_IDS,
   POLICY_INTENT_WARNING_IDS,
-  buildPolicyIntentDraft,
+  buildPolicyIntentDraftFromEvidenceProjection,
 } from './policyIntentEngine.mjs';
 import {
   POLICY_LEARNING_DECISION_IDS,
@@ -361,7 +361,7 @@ function buildPolicyAutomationReadiness(input = {}) {
   const intent = input.intentDraft?.version === 'policy.intent.v1' ||
     input.intent?.version === 'policy.intent.v1'
     ? input.intentDraft || input.intent
-    : buildPolicyIntentDraft(evidenceProjection);
+    : buildPolicyIntentDraftFromEvidenceProjection(evidenceProjection);
   const learningDecision = asObject(input.learningDecision);
   const ignoredDiagnostics = collectIgnoredDiagnostics(input);
   const issues = collectReadinessIssues({

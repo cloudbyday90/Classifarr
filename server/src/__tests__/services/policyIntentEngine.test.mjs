@@ -14,13 +14,20 @@ import {
   POLICY_INTENT_CONFIDENCE_LEVEL_IDS,
   POLICY_INTENT_FIELD_IDS,
   POLICY_INTENT_WARNING_IDS,
-  buildPolicyIntentDraft,
   buildPolicyIntentDraftFromBoundedEvidence,
+  buildPolicyIntentDraftFromEvidenceInput,
+  buildPolicyIntentDraftFromEvidenceProjection,
   buildPolicyIntentEngineAudit,
   getPolicyIntentField,
   listPolicyIntentFields,
   validatePolicyIntentDraft,
 } from '../../services/policyIntentEngine.mjs';
+
+function buildIntentFromEvidenceInput(evidenceInput = {}) {
+  return buildPolicyIntentDraftFromEvidenceProjection(
+    buildPolicyEvidenceProjection(evidenceInput)
+  );
+}
 
 describe('policyIntentEngine', () => {
   test('defines the destination intent fields in contract order', () => {
@@ -58,7 +65,7 @@ describe('policyIntentEngine', () => {
       routingOutcomes: ['Recent route succeeded'],
     });
 
-    const intent = buildPolicyIntentDraft(projection);
+    const intent = buildPolicyIntentDraftFromEvidenceProjection(projection);
 
     expect(intent.version).toBe('policy.intent.v1');
     expect(intent.belongs_here).toEqual([
@@ -96,8 +103,8 @@ describe('policyIntentEngine', () => {
     expect(intent.confidence.level).toBe(POLICY_INTENT_CONFIDENCE_LEVEL_IDS.HIGH);
   });
 
-  test('does not expose object-valued evidence through direct intent drafting', () => {
-    const intent = buildPolicyIntentDraft({
+  test('does not expose object-valued evidence through projection-only intent drafting', () => {
+    const intent = buildIntentFromEvidenceInput({
       libraryProfile: {
         identityCandidates: [{
           key: 'studio:pixar',
@@ -109,6 +116,54 @@ describe('policyIntentEngine', () => {
 
     expect(intent.belongs_here[0].value).toBeNull();
     expect(JSON.stringify(intent)).not.toContain('must-not-project');
+  });
+
+  test('requires raw evidence to use the bounded intent adapter', () => {
+    expect(() => buildPolicyIntentDraftFromEvidenceProjection({
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+      },
+    })).toThrow('requires a policy.evidence.v1 projection');
+
+    const blocked = buildPolicyIntentDraftFromEvidenceInput({
+      evidenceInput: {
+        metadataEvidence: [{
+          label: 'Unsafe provider evidence',
+          providerPayload: { apiKey: 'must-not-project' },
+        }],
+      },
+    });
+
+    expect(blocked).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: POLICY_INTENT_BOUNDARY_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
+      intent: null,
+      nextStep: null,
+    }));
+    expect(JSON.stringify(blocked)).not.toContain('must-not-project');
+  });
+
+  test('builds raw evidence through the bounded intent adapter', () => {
+    const result = buildPolicyIntentDraftFromEvidenceInput({
+      evidenceInput: {
+        operatorIntent: {
+          belongsHere: ['Animated Movies'],
+        },
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: true,
+      statusId: POLICY_INTENT_BOUNDARY_STATUS_IDS.READY,
+      evidenceBoundary: expect.objectContaining({
+        projectionFingerprint: expect.objectContaining({
+          fingerprint: expect.any(String),
+        }),
+      }),
+      intent: expect.objectContaining({
+        belongs_here: [expect.objectContaining({ label: 'Animated Movies' })],
+      }),
+    }));
   });
 
   test('builds bounded intent only from a successful evidence boundary result', () => {
@@ -309,7 +364,7 @@ describe('policyIntentEngine', () => {
   });
 
   test('demotes broad genre identity to helpful evidence unless specific support exists', () => {
-    const intent = buildPolicyIntentDraft({
+    const intent = buildIntentFromEvidenceInput({
       libraryProfile: {
         identityCandidates: [
           { key: 'genre:animation', label: 'Animation', confidence: 0.96, count: 50 },
@@ -332,7 +387,7 @@ describe('policyIntentEngine', () => {
   });
 
   test('allows broad genre identity when the operator explicitly declares it', () => {
-    const intent = buildPolicyIntentDraft({
+    const intent = buildIntentFromEvidenceInput({
       operatorIntent: {
         belongsHere: [
           { key: 'genre:animation', label: 'Animation' },
@@ -378,7 +433,7 @@ describe('policyIntentEngine', () => {
       },
     };
 
-    const intent = buildPolicyIntentDraft(projection);
+    const intent = buildPolicyIntentDraftFromEvidenceProjection(projection);
 
     expect(intent.belongs_here).toEqual([]);
     expect(intent.helpful_matches).toEqual([
@@ -395,7 +450,7 @@ describe('policyIntentEngine', () => {
   });
 
   test('turns stale or missing evidence into ask_when warnings, not avoid exclusions', () => {
-    const intent = buildPolicyIntentDraft({
+    const intent = buildIntentFromEvidenceInput({
       profileFreshness: {
         stale: true,
         updatedAt: '2026-05-01T12:00:00.000Z',
@@ -420,7 +475,7 @@ describe('policyIntentEngine', () => {
   });
 
   test('does not create durable learning side effects from intent proposals', () => {
-    const intent = buildPolicyIntentDraft({
+    const intent = buildIntentFromEvidenceInput({
       classificationFinalOutcomes: ['Mulan routed to Animated Movies'],
     });
 
@@ -433,7 +488,7 @@ describe('policyIntentEngine', () => {
   });
 
   test('passes the default intent engine audit', () => {
-    const intent = buildPolicyIntentDraft({
+    const intent = buildIntentFromEvidenceInput({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
         hardLimits: ['No NC-17'],
@@ -451,7 +506,7 @@ describe('policyIntentEngine', () => {
   });
 
   test('rejects metadata promoted into belongs_here', () => {
-    const invalidIntent = buildPolicyIntentDraft({
+    const invalidIntent = buildIntentFromEvidenceInput({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
       },
@@ -474,7 +529,7 @@ describe('policyIntentEngine', () => {
   });
 
   test('rejects broad genre identity without support', () => {
-    const invalidIntent = buildPolicyIntentDraft({
+    const invalidIntent = buildIntentFromEvidenceInput({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
       },
@@ -499,7 +554,7 @@ describe('policyIntentEngine', () => {
   });
 
   test('rejects non-operator hard limits and direct learning side effects', () => {
-    const invalidIntent = buildPolicyIntentDraft({
+    const invalidIntent = buildIntentFromEvidenceInput({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
       },

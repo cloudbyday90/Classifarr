@@ -5,7 +5,7 @@ import {
 import {
   POLICY_INTENT_FIELD_IDS,
   POLICY_INTENT_WARNING_IDS,
-  buildPolicyIntentDraft,
+  buildPolicyIntentDraftFromEvidenceProjection,
   validatePolicyIntentDraft,
 } from './policyIntentEngine.mjs';
 import {
@@ -642,7 +642,7 @@ function buildTrace({ statusId, evidenceSourceSummary, warnings }) {
 function buildPolicyLibraryPolicyRebuildProposal(input = {}) {
   const evidenceInput = buildEvidenceInput(input);
   const evidenceProjection = buildPolicyEvidenceProjection(evidenceInput);
-  const intentDraft = buildPolicyIntentDraft(evidenceProjection);
+  const intentDraft = buildPolicyIntentDraftFromEvidenceProjection(evidenceProjection);
   const readiness = buildPolicyAutomationReadiness({
     evidenceProjection,
     intentDraft,

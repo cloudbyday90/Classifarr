@@ -3421,6 +3421,12 @@ Implementation status:
   object-valued evidence and lets the intent audit reject tampered primitive
   fields. Its design record is
   [Policy Intent Entry Normalizer](policy-intent-entry-normalizer.md).
+- Intent inference now separates raw evidence from pure projection reduction:
+  `buildPolicyIntentDraftFromEvidenceInput` invokes the bounded evidence
+  boundary, while `buildPolicyIntentDraftFromEvidenceProjection` rejects every
+  non-`policy.evidence.v1` value. The normal workflow allowlists its evidence
+  envelope so routing and diagnostics do not become evidence. Its design record
+  is [Policy Intent Input Boundary](policy-intent-input-boundary.md).
 - Current implementation consumes Phase 6R.1 evidence projection and produces
   proposed destination intent for `belongs_here`, `helpful_matches`,
   `hard_limits`, `avoid`, `ask_when`, `routing_target`, confidence,

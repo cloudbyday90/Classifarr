@@ -5,9 +5,12 @@ import {
   buildBoundedPolicyEvidenceProjection,
 } from '../../services/policyEvidenceBoundary.mjs';
 import {
+  buildPolicyEvidenceProjection,
+} from '../../services/policyEvidenceEngine.mjs';
+import {
   POLICY_INTENT_WARNING_IDS,
-  buildPolicyIntentDraft,
   buildPolicyIntentDraftFromBoundedEvidence,
+  buildPolicyIntentDraftFromEvidenceProjection,
 } from '../../services/policyIntentEngine.mjs';
 import {
   POLICY_LEARNING_DECISION_IDS,
@@ -635,12 +638,12 @@ describe('policyAutomationReadinessEngine', () => {
   });
 
   test('requires operator review for ask-when evidence and non-info intent warnings', () => {
-    const intent = buildPolicyIntentDraft({
+    const intent = buildPolicyIntentDraftFromEvidenceProjection(buildPolicyEvidenceProjection({
       operatorIntent: {
         belongsHere: ['Animated Movies'],
         routingTargets: ['Radarr Animated Movies'],
       },
-    });
+    }));
     intent.ask_when.push({
       fieldId: 'ask_when',
       key: 'outlier:runtime',

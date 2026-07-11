@@ -14,6 +14,8 @@ intent boundary now validates that the evidence projection fingerprint, trace
 attributes, and sanitized provenance still match the bounded evidence projection
 before producing an intent draft. It also consumes the policy evidence quality
 assessment and blocks intent inference when evidence quality is insufficient.
+Raw evidence has a separate bounded adapter, while the pure reducer accepts
+only an already-built `policy.evidence.v1` projection.
 
 ## Problem
 
@@ -82,23 +84,29 @@ The important boundary is authority:
    Confidence is a simple bounded signal with reason codes. It is not a hidden
    policy score and should not become runtime authorization by itself.
 
-7. **Require bounded evidence for new callers.**
+7. **Require bounded evidence for raw inputs.**
    `buildPolicyIntentDraftFromBoundedEvidence` consumes the
    policy evidence boundary result, rejects failed evidence boundaries, requires the
    projection fingerprint, and attaches a sanitized evidence-boundary snapshot
    to the intent draft.
 
-8. **Validate evidence handoff integrity.**
+8. **Keep raw input and pure reduction separate.**
+   `buildPolicyIntentDraftFromEvidenceInput` is the only raw-evidence adapter
+   and invokes the bounded evidence boundary. The pure
+   `buildPolicyIntentDraftFromEvidenceProjection` reducer rejects every input
+   that is not a `policy.evidence.v1` projection.
+
+9. **Validate evidence handoff integrity.**
    The intent boundary recomputes the policy evidence projection fingerprint audit
    before producing intent. A stale, malformed, or tampered fingerprint blocks
    intent generation.
 
-9. **Consume generated evidence quality before inference.**
+10. **Consume generated evidence quality before inference.**
    Bounded intent generation requires the policy evidence quality object. Missing or
    insufficient quality returns `blocked_by_evidence_quality` with stable reason
    IDs and a next action instead of producing policy intent.
 
-10. **Use the library intent proposal service for library-derived proposals.**
+11. **Use the library intent proposal service for library-derived proposals.**
     `policyLibraryIntentProposalService.mjs` loads and verifies the complete
     library evidence handoff before invoking this bounded reducer. New
     library-derived callers must not construct a generic evidence-boundary
@@ -128,8 +136,8 @@ Cons:
 - It does not yet merge or compare legacy preset intent contracts.
 - It does not persist native intent storage.
 - It does not run runtime classification or Arr routing.
-- The older direct draft reducer remains for unit-level compatibility and must
-  not be used as a runtime boundary.
+- Pure projection reduction still exists for deterministic composition and
+  focused tests, but it rejects raw input and is not a runtime boundary.
 - Conservative quality gating can pause more drafts until identity evidence or
   operator confirmation exists.
 
@@ -147,6 +155,8 @@ Cons:
   `docs/architecture/policy-intent-engine.md`
 - Quality-gate outcome:
   `docs/architecture/policy-intent-quality-gate.md`
+- Input-boundary outcome:
+  `docs/architecture/policy-intent-input-boundary.md`
 - Library-derived proposal boundary:
   `server/src/services/policyLibraryIntentProposalService.mjs`
 - Library-derived proposal design:
