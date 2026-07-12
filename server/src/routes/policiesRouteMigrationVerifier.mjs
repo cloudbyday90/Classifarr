@@ -2,9 +2,8 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError } from '../utils/appError.mjs';
 import {
-  buildPolicyMigrationVerifierImpactPreview,
-  buildPolicyMigrationVerifierReplayPreview,
-} from '../services/policyMigrationVerifierPreviewExecution.mjs';
+  buildPolicyImpactPreviewMigrationVerifier,
+} from '../services/policyImpactPreviewMigrationVerifier.mjs';
 import {
   buildPolicyIntentWritePreflight,
   summarizePolicyIntentRequestValidationError,
@@ -79,23 +78,12 @@ export function registerPolicyMigrationVerifierRoutes(router, {
   router.post('/migration-verifier/impact-preview', asyncHandler(async (req, res) => {
     validatePreviewInput(req.body);
     const previewPolicy = await buildPreviewPolicyFromPayload(req.body);
-    const preview = buildPolicyMigrationVerifierImpactPreview({
-      previewPolicy,
+    const preview = buildPolicyImpactPreviewMigrationVerifier({
+      policy: previewPolicy,
       payload: req.body,
     });
 
     return sendData(res, preview);
   }));
 
-  router.post('/migration-verifier/replay-preview', asyncHandler(async (req, res) => {
-    validatePreviewInput(req.body);
-    const previewPolicy = await buildPreviewPolicyFromPayload(req.body);
-    const preview = await buildPolicyMigrationVerifierReplayPreview({
-      db,
-      payload: req.body,
-      previewPolicy,
-    });
-
-    return sendData(res, preview);
-  }));
 }

@@ -77,7 +77,8 @@ Cons:
   migration-verifier UI is removed or renamed later.
 - Client impact-preview utilities remain for the current optional verifier
   panel.
-- Replay composition is still tracked by the separate replay migration verifier.
+- The impact verifier remains a temporary migration diagnostic until its own
+  retention gate is evaluated.
 
 ## Final Recommendation Stack
 
@@ -87,8 +88,7 @@ Cons:
   `server/src/services/policyIntentImpactPreview.mjs`
 - Route integration:
   `server/src/routes/policiesRouteMigrationVerifier.mjs`
-- Verifier composition:
-  `server/src/services/policyMigrationVerifierPreviewExecution.mjs`
+- Route invokes the canonical impact verifier directly.
 - Focused service test:
   `server/src/__tests__/services/policyImpactPreviewMigrationVerifier.test.mjs`
 - Route coverage:
@@ -120,5 +120,6 @@ Implemented:
 
 ## Next Step
 
-Replay-preview migration verification is tracked in
-[Policy Replay Preview Migration Verifier](policy-replay-preview-migration-verifier.md).
+Replay migration verification was retired because it duplicated the impact
+verifier and bounded evidence contracts. Its outcome is recorded in
+[Policy Replay Migration Verifier Retirement](policy-replay-migration-verifier-retirement.md).

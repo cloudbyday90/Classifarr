@@ -191,7 +191,7 @@ describe('policyControlledCompatibilityPathRemoval', () => {
       statusId: 'ready_for_execution_gate',
       validationOk: true,
       readyForExecutionGate: true,
-      manifestEntryCount: 22,
+      manifestEntryCount: 19,
     }));
     expect(removal.executionGate).toEqual(expect.objectContaining({
       statusId: 'ready_for_controlled_deletion',

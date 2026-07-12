@@ -21,8 +21,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   decision primitives.
 - **Replay Enrichment Retirement** — removed provider readiness, quota/cooldown,
   selected-provider, and optional live TMDB preview behavior from migration
-  verification; the retained verifier now uses bounded, provider-free history
-  and sample-diagnostic reads only.
+  verification; the retained impact verifier has no provider or history-read
+  branch.
+- **Replay Migration Verifier Retirement** — removed the unused replay
+  migration endpoint, composition layer, sample diagnostics, evidence
+  completeness, and history-item adapter; the impact verifier remains the sole
+  temporary migration diagnostic and the retired route now returns `404`.
 - **Storage Closure Reference Scanner Hardening** — replaced the broad
   phase-prefixed service exclusion with an explicit control-plane allowlist,
   extracted the read-only scanner into a modular ESM utility, and reduced the

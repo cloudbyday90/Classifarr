@@ -55,7 +55,6 @@ const POLICY_EVIDENCE_BUCKET_READINESS_IDS = Object.freeze({
 
 const POLICY_EVIDENCE_REDUCER_CUTLINE_IDS = Object.freeze({
   DELETE_DIAGNOSTIC_SURFACE: 'delete_diagnostic_surface',
-  KEEP_OUT_OF_NORMAL_FLOW: 'keep_out_of_normal_flow',
 });
 
 const POLICY_EVIDENCE_SOURCE_REASON_CODE_IDS = Object.freeze({
@@ -457,24 +456,6 @@ const POLICY_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
     exposesUiDiagnostic: true,
     replacementTarget: 'Policy evidence summary and migration-verifier output.',
     reason: 'Impact preview exists to compare legacy policy paths; it should not become destination evidence UI.',
-  },
-  {
-    id: 'replay_preview_service',
-    path: 'server/src/services/policyIntentReplayPreview.mjs',
-    dispositionId: POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
-    normalFlowAllowed: false,
-    exposesUiDiagnostic: true,
-    replacementTarget: 'Policy evidence projection plus migration-only replay verifier.',
-    reason: 'Representative replay is useful verification material, not the normal operator workflow.',
-  },
-  {
-    id: 'replay_sample_diagnostics_service',
-    path: 'server/src/services/policyIntentReplaySampleDiagnostics.mjs',
-    dispositionId: POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.KEEP_OUT_OF_NORMAL_FLOW,
-    normalFlowAllowed: false,
-    exposesUiDiagnostic: true,
-    replacementTarget: 'Maintainer-only migration diagnostics until native storage deletion gates.',
-    reason: 'Sample diagnostics can help migration verification, but they are not policy meaning.',
   },
 ]);
 

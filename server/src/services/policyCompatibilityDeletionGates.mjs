@@ -110,15 +110,12 @@ const DELETION_CATEGORY_DEFINITIONS = Object.freeze([
   },
   {
     categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.OLD_PREVIEW_REPLAY_DIAGNOSTICS,
-    label: 'Old preview/replay diagnostic UI',
+    label: 'Impact-preview diagnostic service',
     paths: [
       'server/src/services/policyIntentImpactPreview.mjs',
-      'server/src/services/policyIntentReplayPreview.mjs',
-      'server/src/services/policyIntentReplayScoring.mjs',
-      'server/src/services/policyIntentReplaySampleDiagnostics.mjs',
     ],
     deletionIntent:
-      'Delete or move replay/impact diagnostics after native migration verifiers exist.',
+      'Delete the remaining impact diagnostic after native migration verification is complete.',
   },
   {
     categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.STALE_COMPATIBILITY_TESTS,

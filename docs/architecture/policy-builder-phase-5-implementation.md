@@ -14,6 +14,10 @@ evidence engine now owns source-authorized destination evidence.
 Provider readiness, quota/cooldown, selected-provider, and optional live TMDB
 preview behavior were then removed from the remaining migration verifier; it
 now performs bounded provider-free verification only.
+The provider-free replay verifier, its local sample diagnostics, completeness
+reducer, and history adapter were then removed as well: they duplicated the
+impact verifier and bounded evidence contracts without contributing an
+independent migration decision.
 
 ## Goal
 
@@ -337,6 +341,11 @@ profile, RAG, AI, provider, history, or Arr routing services.
 
 ## Fourteenth Implemented Component
 
+Historical implementation note: the replay item adapter described below was
+removed during Phase 6R.1 because the replay verifier no longer supplied an
+independent migration decision. The outcome and removal rationale are recorded
+in [Policy Replay Migration Verifier Retirement](policy-replay-migration-verifier-retirement.md).
+
 The fourteenth implemented component adds a replay item adapter:
 
 1. Add `server/src/services/policyIntentReplayItemAdapter.mjs` as the canonical
@@ -414,6 +423,10 @@ become candidates, need review, become blocked, or lack enough evidence?
 
 ## Seventeenth Implemented Component
 
+Historical implementation note: the sample diagnostics described below were
+removed with the replay verifier during Phase 6R.1. They duplicated the
+bounded evidence and impact-verifier contracts.
+
 The seventeenth implemented component adds replay sample selection diagnostics:
 
 1. Add `server/src/services/policyIntentReplaySampleDiagnostics.mjs` as the
@@ -437,6 +450,10 @@ This component is read-only and does not change classification scoring,
 policy storage, AI/provider calls, Arr writes, or persistence behavior.
 
 ## Eighteenth Implemented Component
+
+Historical implementation note: the evidence-completeness reducer described
+below was removed with the replay verifier during Phase 6R.1. Bounded evidence
+quality remains owned by the native evidence contract.
 
 The eighteenth implemented component adds replay evidence completeness:
 
@@ -927,25 +944,10 @@ Focused modal preview UX validation:
 cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImpactPreview.test.js src/__tests__/composables/usePolicyIntentImpactPreview.test.js src/__tests__/PolicyIntentImpactPreviewCard.test.js src/__tests__/PolicyBuilderModal.test.js
 ```
 
-Focused replay-readiness validation:
-
-```bash
-cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayProviderReadiness.test.mjs|policyIntentReplayEnrichmentEligibility.test.mjs|policyIntentReplayEvidenceCompleteness.test.mjs|policyIntentReplaySampleDiagnostics.test.mjs|policyIntentReplayParityDelta.test.mjs|policyIntentReplayEngineComparison.test.mjs|policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
-cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
-```
-
-Focused modal replay preview UX validation:
-
-```bash
-cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentReplayPreview.test.js src/__tests__/composables/usePolicyIntentReplayPreview.test.js src/__tests__/PolicyIntentReplayPreviewCard.test.js src/__tests__/PolicyBuilderModal.test.js src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
-```
-
-Focused provider-readiness validation:
-
-```bash
-cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayProviderReadiness.test.mjs|policyIntentReplayPreview.test.mjs" --no-coverage
-cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentReplayPreview.test.js src/__tests__/PolicyIntentReplayPreviewCard.test.js
-```
+The replay-readiness, replay-preview UX, and provider-readiness validation
+commands in this historical phase are retired with the replay verifier. Current
+coverage is the impact-verifier route test, bounded evidence contract tests,
+and the full client/server suites listed in the retirement document.
 
 ## Completion Audit (2026-06-28)
 
@@ -961,11 +963,10 @@ Phase 5 is complete for the non-persistent server intent bridge:
   preset/custom-signal storage remains authoritative.
 - Impact preview compares legacy-compatible intent and native draft intent
   without persistence.
-- Replay preview selects bounded representative samples and layers dry-run
-  signal fit, policy-engine comparison, parity deltas, sample diagnostics,
-  evidence completeness, enrichment eligibility, and provider readiness without
-  executing AI, provider, Arr, classification, queue, or persistence side
-  effects.
+- Replay preview and its local sample, completeness, provider, and scoring
+  mechanics were removed during Phase 6R.1 because they did not provide an
+  independent migration decision. Bounded evidence and impact verification
+  remain read-only and side-effect free.
 
 What remains is intentionally outside the Phase 5 checkpoint:
 
@@ -982,10 +983,6 @@ runtime replay phases after parity and rollback safety are proven.
 
 ## Next Work
 
-The next high-value follow-up after provider readiness is a replay-specific
-read-only enrichment adapter boundary. Start with one source category, prefer
-TMDB metadata because it has stable IDs and deterministic field mapping, and
-keep it behind explicit replay execution context flags. The adapter should prove
-that enrichment can improve sparse representative samples without persistence,
-classification reruns, AI calls, Arr writes, raw provider payload exposure, or
-silent mutation of cached evidence.
+This historical phase no longer has a replay-enrichment follow-up. The active
+Phase 6R work evaluates the retained impact verifier independently before any
+future native-storage migration.

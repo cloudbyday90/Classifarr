@@ -3222,6 +3222,11 @@ Implementation status:
   audit that blocks live provider lookups, raw provider payloads, UI chip
   language, provider quota/cooldown state, metadata-owned identity, and direct
   learning from final outcomes.
+- The replay migration verifier and its local history/sample reducers were
+  removed because they duplicated the impact verifier and bounded evidence
+  contracts without supplying an independent migration decision. The outcome is
+  recorded in
+  [Policy Replay Migration Verifier Retirement](policy-replay-migration-verifier-retirement.md).
 - The policy evidence engine architecture cutover renamed the active evidence
   engine design record to durable product-domain naming and recorded the
   outcome in
@@ -5624,19 +5629,12 @@ Current removal slice:
   endpoint, but it no longer imports the deleted compatibility service path.
 - The focused service test now targets
   `server/src/__tests__/services/policyImpactPreviewMigrationVerifier.test.mjs`.
-- Replay-preview migration verification is documented in
-  [Policy Replay Preview Migration Verifier](policy-replay-preview-migration-verifier.md)
-  and
-  [Policy Replay Preview Migration Verifier Module Cutover](policy-replay-preview-migration-verifier-module-cutover.md).
-- The approved compatibility path
-  `server/src/services/policyIntentReplayPreview.mjs` has been removed from
-  product/runtime code and replaced by
-  `server/src/services/policyReplayPreviewMigrationVerifier.mjs`.
-- Migration verifier endpoints now live outside normal policy writes at
-  `/api/policies/migration-verifier/*`; the policy write route no longer owns
-  impact or replay diagnostic execution.
-- The focused replay service test now targets
-  `server/src/__tests__/policyReplayPreviewMigrationVerifier.test.mjs`.
+- The replay migration verifier, its route, and all remaining replay sample,
+  completeness, and adapter reducers were removed because they did not provide
+  independent migration proof beyond the impact verifier and bounded evidence
+  contracts. The remaining migration endpoint is impact-only; replay verifier
+  history is recorded in
+  [Policy Replay Migration Verifier Retirement](policy-replay-migration-verifier-retirement.md).
 
 ### 8R.22 Policy Storage Completion Checkpoint
 

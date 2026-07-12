@@ -151,7 +151,7 @@ describe('policyCompatibilityDeletionExecutionPlan', () => {
     expect(plan.manifest).toEqual(expect.objectContaining({
       approved: true,
       approvedBy: 'policy-maintainer',
-      entryCount: 22,
+      entryCount: 19,
     }));
     expect(plan.manifest.entries).toEqual(expect.arrayContaining([
       expect.objectContaining({

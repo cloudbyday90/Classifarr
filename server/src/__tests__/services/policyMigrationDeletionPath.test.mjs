@@ -126,8 +126,11 @@ describe('policyMigrationDeletionPath', () => {
       artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER
     ).map(artifact => artifact.verifierKindId)).toEqual(expect.arrayContaining([
       POLICY_MIGRATION_VERIFIER_KIND_IDS.IMPACT_PARITY,
-      POLICY_MIGRATION_VERIFIER_KIND_IDS.REPRESENTATIVE_REPLAY,
     ]));
+    expect(artifacts.filter(artifact =>
+      artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER
+      && artifact.verifierKindId === POLICY_MIGRATION_VERIFIER_KIND_IDS.REPRESENTATIVE_REPLAY
+    )).toHaveLength(0);
     expect(artifacts.filter(artifact =>
       artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER
       && artifact.verifierKindId === POLICY_MIGRATION_VERIFIER_KIND_IDS.ENRICHMENT_COVERAGE

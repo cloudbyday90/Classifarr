@@ -60,6 +60,8 @@ describe('policyStorageClosureValidationEvidence', () => {
       .toContain('policy-controlled-compatibility-removal-batch-artifact-module-cutover.md');
     expect(evidence.markdown.command)
       .toContain('policy-storage-closure-validation-evidence-module-cutover.md');
+    expect(evidence.markdown.command)
+      .toContain('policy-replay-migration-verifier-retirement.md');
     expect(evidence.full.command).toBe('npm --prefix server test');
   });
 

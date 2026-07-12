@@ -332,8 +332,6 @@ The reducer cutline inventory currently classifies:
 | Reducer | Disposition | Normal Flow |
 | --- | --- | --- |
 | `policyIntentImpactPreview.mjs` | Delete diagnostic surface | No |
-| `policyIntentReplayPreview.mjs` | Delete diagnostic surface | No |
-| `policyIntentReplaySampleDiagnostics.mjs` | Maintainer-only migration material | No |
 
 The projection audit validates the generated instance after construction. It
 fails when a projection:

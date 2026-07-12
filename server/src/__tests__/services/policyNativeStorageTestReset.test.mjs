@@ -138,7 +138,7 @@ describe('policyNativeStorageTestReset', () => {
             POLICY_NATIVE_STORAGE_TEST_LEGACY_SCOPE_IDS.UNCONVERTED_POLICY_COMPATIBILITY,
         },
         {
-          path: 'server/src/__tests__/services/policyIntentReplayPreview.test.mjs',
+          path: 'server/src/__tests__/services/retired-policy-diagnostic.test.mjs',
           abandonedDiagnosticUi: true,
           deleteAfterNativeStorageGates: true,
         },

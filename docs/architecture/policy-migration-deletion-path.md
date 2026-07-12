@@ -170,6 +170,9 @@ Default decisions:
 - Retire replay provider-readiness, quota/cooldown, selected-provider, and live
   TMDB-preview artifacts from migration verification. Dedicated metadata and
   web-search provider contracts own provider behavior outside this verifier.
+- Retire the replay migration endpoint and its provider-free sample,
+  completeness, and adapter reducers when they do not provide independent
+  migration proof beyond the impact verifier and bounded evidence contracts.
 - Mark old client impact/replay panels, preview composables, preview utilities,
   old diagnostic tests, provider-readiness replay helpers, TMDB adapter
   execution helpers, and legacy replay execution adapters for deletion after

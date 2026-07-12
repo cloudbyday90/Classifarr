@@ -2,9 +2,10 @@
 
 ## Status
 
-Implemented on July 11, 2026. Read-only impact and replay verification now
-live under `/api/policies/migration-verifier/*`, outside normal policy write
-routes.
+Implemented on July 11, 2026. Read-only impact verification lives under
+`/api/policies/migration-verifier/impact-preview`, outside normal policy write
+routes. The replay endpoint was retired after its provider, scoring, and local
+diagnostic branches no longer supplied an independent migration decision.
 
 The normal policy write route now owns creation and update behavior only. The
 migration verifier remains a separate, deterministic diagnostic boundary until
@@ -12,10 +13,10 @@ native-storage parity authorizes the planned diagnostic deletion work.
 
 ## Problem
 
-Impact and replay verification were registered beside policy creation and
-update. That mixed a temporary migration safety tool with ordinary destination
-setup, increasing the chance that diagnostic behavior would be treated as part
-of normal authoring or be extended with write behavior.
+Impact verification was registered beside policy creation and update. That
+mixed a temporary migration safety tool with ordinary destination setup,
+increasing the chance that diagnostic behavior would be treated as part of
+normal authoring or be extended with write behavior.
 
 ## Official Guidance Reviewed
 
@@ -37,9 +38,9 @@ policy writes               -> /api/policies
 migration verification only -> /api/policies/migration-verifier/*
 ```
 
-Keep both verifier endpoints read-only. Do not add policy persistence, provider
-write, Arr write, learning, rollback creation, or legacy deletion behavior to
-this route.
+Keep the remaining verifier endpoint read-only. Do not add policy persistence,
+provider write, Arr write, learning, rollback creation, or legacy deletion
+behavior to this route.
 
 ## Pros And Cons
 
@@ -61,9 +62,10 @@ Cons:
 
 1. Register `policiesRouteMigrationVerifier.mjs` from the policy route
    composition root.
-2. Move impact and replay endpoints to the migration-verifier namespace.
-3. Keep verifier composition in
-   `policyMigrationVerifierPreviewExecution.mjs`, separate from HTTP handling.
+2. Keep the impact endpoint in the migration-verifier namespace; the replay
+   endpoint was retired because it had no independent migration decision.
+3. Invoke the canonical impact verifier directly after route-owned validation
+   and preset resolution.
 4. Keep route input validation and preset resolution server-owned.
 5. Keep all verifier side effects disabled.
 6. Track the dedicated route, not the policy write route, as the migration
@@ -73,8 +75,8 @@ Cons:
 
 ## Validation
 
-- Route coverage exercises impact and replay verification through the dedicated
-  namespace.
+- Route coverage exercises the impact verifier and proves the retired replay
+  endpoint is unavailable through the dedicated namespace.
 - API-layer tests verify the client uses the new namespace.
 - Security and client lint verify modular imports and static checks.
 
