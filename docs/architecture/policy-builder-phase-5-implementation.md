@@ -11,6 +11,9 @@ server migration-verifier route remains administrator-protected migration
 infrastructure until its separate retention and deletion gates are satisfied.
 Replay draft-fit scoring and parity output were also retired because the
 evidence engine now owns source-authorized destination evidence.
+Provider readiness, quota/cooldown, selected-provider, and optional live TMDB
+preview behavior were then removed from the remaining migration verifier; it
+now performs bounded provider-free verification only.
 
 ## Goal
 

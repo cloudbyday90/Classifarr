@@ -18,7 +18,6 @@ export function registerPolicyMigrationVerifierRoutes(router, {
   db,
   normalizeSignalConfig,
   describePresetRuntimeSemantics,
-  tmdbService,
 }) {
   function annotate(preset) {
     return annotatePresetAttachment(preset, normalizeSignalConfig, describePresetRuntimeSemantics);
@@ -95,7 +94,6 @@ export function registerPolicyMigrationVerifierRoutes(router, {
       db,
       payload: req.body,
       previewPolicy,
-      tmdbService,
     });
 
     return sendData(res, preview);

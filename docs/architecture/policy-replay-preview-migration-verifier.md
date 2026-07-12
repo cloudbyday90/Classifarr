@@ -12,7 +12,8 @@ compatibility path, but the canonical production module is now
 The `/api/policies/migration-verifier/replay-preview` endpoint is isolated from
 normal policy writes. Its implementation stays read-only and does not depend on
 the removed compatibility service, replay draft-fit scorer, or parity-delta
-reporter.
+reporter. It also does not read provider configuration or quota state, select a
+provider, or make live TMDB requests.
 
 ## Problem
 
@@ -110,6 +111,9 @@ Implemented:
 - Removed replay draft-fit scoring, policy-engine comparison, execution
   context, and parity delta. The remaining verifier reports only bounded
   read-only sample and migration-support state.
+- Removed provider-readiness, quota/cooldown, selected-provider, enrichment
+  adapter, and optional live TMDB-preview behavior. Provider-free sample
+  diagnostics and completeness are retained only for migration support.
 - Added the verifier test and this design document to policy storage closure
   validation evidence.
 

@@ -9,14 +9,6 @@ import {
   buildPolicyIntentReplaySampleDiagnosticsQuery,
 } from './policyIntentReplaySampleDiagnostics.mjs';
 import { buildPolicyIntentReplayEvidenceCompleteness } from './policyIntentReplayEvidenceCompleteness.mjs';
-import { buildPolicyIntentReplayEnrichmentEligibility } from './policyIntentReplayEnrichmentEligibility.mjs';
-import { buildPolicyIntentReplayProviderReadiness } from './policyIntentReplayProviderReadiness.mjs';
-import { buildPolicyIntentReplayEnrichmentAdapterContract } from './policyIntentReplayEnrichmentAdapterContract.mjs';
-import { buildPolicyIntentReplayTmdbMetadataAdapterPreview } from './policyIntentReplayTmdbMetadataAdapter.mjs';
-import { buildPolicyIntentReplayTmdbMetadataExecutionSwitch } from './policyIntentReplayTmdbMetadataExecutionSwitch.mjs';
-import { createPolicyIntentReplayTmdbMetadataFetcher } from './policyIntentReplayTmdbProviderClient.mjs';
-import { buildPolicyIntentReplayTmdbMetadataCoverageComparison } from './policyIntentReplayTmdbMetadataCoverageComparison.mjs';
-import { tmdbService as defaultTmdbService } from './tmdb.mjs';
 
 function buildPolicyMigrationVerifierImpactPreview({ previewPolicy, payload }) {
   return buildPolicyImpactPreviewMigrationVerifier({
@@ -29,7 +21,6 @@ async function buildPolicyMigrationVerifierReplayPreview({
   db,
   payload,
   previewPolicy,
-  tmdbService = defaultTmdbService,
 }) {
   const impactPreview = buildPolicyMigrationVerifierImpactPreview({
     previewPolicy,
@@ -55,44 +46,12 @@ async function buildPolicyMigrationVerifierReplayPreview({
     mediaType: previewPolicy.library_media_type,
   });
   const evidenceCompleteness = buildPolicyIntentReplayEvidenceCompleteness({ samples });
-  const enrichmentEligibility = buildPolicyIntentReplayEnrichmentEligibility({ samples });
-  const providerReadiness = await buildPolicyIntentReplayProviderReadiness({
-    db,
-    enrichmentEligibility,
-  });
-  const tmdbMetadataExecutionSwitch = buildPolicyIntentReplayTmdbMetadataExecutionSwitch({
-    requestBody: payload,
-    providerReadiness,
-  });
-  const enrichmentAdapterContract = buildPolicyIntentReplayEnrichmentAdapterContract({
-    enrichmentEligibility,
-    providerReadiness,
-    context: tmdbMetadataExecutionSwitch.adapterContext,
-  });
-  const tmdbMetadataAdapterPreview = await buildPolicyIntentReplayTmdbMetadataAdapterPreview({
-    samples,
-    adapterContract: enrichmentAdapterContract,
-    context: tmdbMetadataExecutionSwitch.adapterContext,
-    executionSwitch: tmdbMetadataExecutionSwitch,
-    fetchMovieDetails: tmdbMetadataExecutionSwitch.enabled
-      ? createPolicyIntentReplayTmdbMetadataFetcher({ tmdbService })
-      : null,
-  });
-  const tmdbMetadataCoverageComparison = buildPolicyIntentReplayTmdbMetadataCoverageComparison({
-    evidenceCompleteness,
-    tmdbMetadataAdapterPreview,
-  });
 
   return buildPolicyReplayPreviewMigrationVerifier({
     impactPreview,
     samples,
     sampleDiagnostics,
     evidenceCompleteness,
-    enrichmentEligibility,
-    providerReadiness,
-    enrichmentAdapterContract,
-    tmdbMetadataAdapterPreview,
-    tmdbMetadataCoverageComparison,
     requestedLimit: replayLimit,
   });
 }

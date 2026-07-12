@@ -3308,6 +3308,12 @@ Implementation status:
   administrator-protected policy route solely for migration verification; they
   are not reachable from product UI code. This cutover is documented in
   [Policy Migration Diagnostic UI Removal](policy-migration-diagnostic-ui-removal.md).
+- The replay migration verifier no longer reads provider configuration, quota,
+  cooldown, selected-provider state, or performs optional live TMDB previews.
+  Its provider/TMDB enrichment adapters and coverage comparisons were deleted;
+  only bounded provider-free history and sample-diagnostic support remains. This
+  cutover is documented in
+  [Policy Replay Enrichment Retirement](policy-replay-enrichment-retirement.md).
 - The media-server profile adapter lives in
   `server/src/services/policyLibraryProfileEvidence.mjs`. It turns persisted
   profile distributions into bounded compatibility and review-only outlier

@@ -19,6 +19,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   policy-engine comparison, execution context, and parity delta from migration
   verification; bounded evidence and readiness contracts remain the sole policy
   decision primitives.
+- **Replay Enrichment Retirement** — removed provider readiness, quota/cooldown,
+  selected-provider, and optional live TMDB preview behavior from migration
+  verification; the retained verifier now uses bounded, provider-free history
+  and sample-diagnostic reads only.
 - **Storage Closure Reference Scanner Hardening** — replaced the broad
   phase-prefixed service exclusion with an explicit control-plane allowlist,
   extracted the read-only scanner into a modular ESM utility, and reduced the

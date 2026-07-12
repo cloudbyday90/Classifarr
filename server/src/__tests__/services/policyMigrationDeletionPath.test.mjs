@@ -127,8 +127,11 @@ describe('policyMigrationDeletionPath', () => {
     ).map(artifact => artifact.verifierKindId)).toEqual(expect.arrayContaining([
       POLICY_MIGRATION_VERIFIER_KIND_IDS.IMPACT_PARITY,
       POLICY_MIGRATION_VERIFIER_KIND_IDS.REPRESENTATIVE_REPLAY,
-      POLICY_MIGRATION_VERIFIER_KIND_IDS.ENRICHMENT_COVERAGE,
     ]));
+    expect(artifacts.filter(artifact =>
+      artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER
+      && artifact.verifierKindId === POLICY_MIGRATION_VERIFIER_KIND_IDS.ENRICHMENT_COVERAGE
+    )).toHaveLength(0);
   });
 
   test('builds a migration plan with all required gates and native storage blocked', () => {

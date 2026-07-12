@@ -167,6 +167,9 @@ Default decisions:
 - Retire replay draft-fit scoring, policy-engine comparison, execution-context,
   and parity-delta artifacts when they duplicate the bounded evidence and
   readiness contracts instead of providing source-authorized migration proof.
+- Retire replay provider-readiness, quota/cooldown, selected-provider, and live
+  TMDB-preview artifacts from migration verification. Dedicated metadata and
+  web-search provider contracts own provider behavior outside this verifier.
 - Mark old client impact/replay panels, preview composables, preview utilities,
   old diagnostic tests, provider-readiness replay helpers, TMDB adapter
   execution helpers, and legacy replay execution adapters for deletion after
