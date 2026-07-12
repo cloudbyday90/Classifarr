@@ -4018,6 +4018,10 @@ Implementation status:
   evidence remains available; the sanitized boundary context is bound into the
   runtime fingerprint and audit. Its design record is [Policy Runtime Operator
   Intent Boundary](policy-runtime-operator-intent-boundary.md).
+- Runtime evidence adapters now reuse the shared bounded entry normalizer and
+  reject source-authority relabeling during audit, so runtime and core evidence
+  retain the same primitive field and provenance contract. Its design record is
+  [Policy Runtime Evidence Entry Contract](policy-runtime-evidence-entry-contract.md).
 
 ### 7R.3 Automation Decision Contract
 

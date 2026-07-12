@@ -12,6 +12,10 @@ import {
   listPolicyEvidenceBuckets,
 } from './policyEvidenceEngine.mjs';
 import {
+  buildPolicyEvidenceEntryAudit,
+  normalizePolicyEvidenceEntry,
+} from './policyEvidenceEntryNormalizer.mjs';
+import {
   buildBoundedPolicyEvidenceProjection,
 } from './policyEvidenceBoundary.mjs';
 import {
@@ -63,6 +67,8 @@ const POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   MISSING_OPERATOR_INTENT_BOUNDARY: 'missing_operator_intent_boundary',
   INVALID_OPERATOR_INTENT_BOUNDARY: 'invalid_operator_intent_boundary',
   BLOCKED_OPERATOR_INTENT_CONSUMED: 'blocked_operator_intent_consumed',
+  ENTRY_FIELD_CONTRACT: 'entry_field_contract',
+  SOURCE_AUTHORITY_NOT_ALLOWED: 'source_authority_not_allowed',
 });
 
 const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/;
@@ -92,24 +98,6 @@ function normalizeString(value) {
 function normalizeNullableString(value) {
   const normalized = normalizeString(value);
   return normalized || null;
-}
-
-function normalizeNumber(value) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
-}
-
-function normalizeConfidence(value) {
-  const numeric = normalizeNumber(value);
-  if (numeric === null) return null;
-  if (numeric > 1) return Math.max(0, Math.min(1, numeric / 100));
-  return Math.max(0, Math.min(1, numeric));
-}
-
-function normalizeCount(value) {
-  const numeric = normalizeNumber(value);
-  if (numeric === null) return null;
-  return Math.max(0, Math.trunc(numeric));
 }
 
 function stableValue(value) {
@@ -233,31 +221,38 @@ function createRuntimeEvidenceEntry({
 }) {
   const bucket = getPolicyEvidenceBucket(bucketId);
   const evidenceSource = getPolicyEvidenceSource(sourceId);
-  const normalizedLabel = normalizeNullableString(label ?? key ?? value);
 
-  if (!bucket || !evidenceSource || !normalizedLabel) {
+  if (!bucket || !evidenceSource) {
     return null;
   }
 
   if (!bucket.allowedSourceIds.includes(sourceId) ||
-      !bucket.authoritySourceIds.includes(authoritySourceId)) {
+      !bucket.authoritySourceIds.includes(authoritySourceId) ||
+      !evidenceSource.authoritySourceIds.includes(authoritySourceId)) {
     return null;
   }
+
+  const normalizedEntry = normalizePolicyEvidenceEntry({
+    key,
+    label,
+    value,
+    count,
+    confidence,
+    reasonCode,
+    observedAt,
+    stale,
+  }, {
+    defaultReasonCode: reasonCode,
+  });
+  if (!normalizedEntry) return null;
 
   return {
     bucketId,
     sourceId,
     runtimeSourceId,
     authoritySourceId,
-    key: normalizeNullableString(key) || normalizedLabel.toLowerCase(),
-    label: normalizedLabel,
-    value: normalizeNullableString(value),
-    count: normalizeCount(count),
-    confidence: normalizeConfidence(confidence),
-    reasonCode: normalizeNullableString(reasonCode),
+    ...normalizedEntry,
     demotedFromBucketId: normalizeNullableString(demotedFromBucketId),
-    observedAt: normalizeNullableString(observedAt),
-    stale: typeof stale === 'boolean' ? stale : null,
     trusted: typeof trusted === 'boolean' ? trusted : null,
     includesRawPayload: false,
     liveLookupPerformed: false,
@@ -587,6 +582,8 @@ function buildPolicyRuntimeEvidenceProjection(input = {}) {
 
 function validateRuntimeEvidenceEntry(entry = {}) {
   const issues = [];
+  const evidenceSource = getPolicyEvidenceSource(entry.sourceId);
+  const entryFieldAudit = buildPolicyEvidenceEntryAudit(entry);
 
   if (!VALID_POLICY_EVIDENCE_BUCKET_IDS.includes(entry.bucketId)) {
     issues.push({
@@ -602,10 +599,25 @@ function validateRuntimeEvidenceEntry(entry = {}) {
     });
   }
 
+  if (!entryFieldAudit.ok) {
+    issues.push({
+      riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.ENTRY_FIELD_CONTRACT,
+      message: 'Runtime evidence entries must satisfy the shared bounded field contract.',
+      entryRiskIds: entryFieldAudit.issues.map(issue => issue.riskId),
+    });
+  }
+
   if (!AUTHORITY_IDS.includes(entry.authoritySourceId)) {
     issues.push({
       riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.UNKNOWN_AUTHORITY_SOURCE,
       message: 'Runtime evidence entry must use an approved authority source.',
+    });
+  }
+
+  if (evidenceSource && !evidenceSource.authoritySourceIds.includes(entry.authoritySourceId)) {
+    issues.push({
+      riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.SOURCE_AUTHORITY_NOT_ALLOWED,
+      message: 'Runtime evidence authority must be allowed by its policy evidence source.',
     });
   }
 

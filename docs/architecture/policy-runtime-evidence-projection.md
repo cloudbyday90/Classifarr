@@ -96,6 +96,12 @@ allowed to change.
    sanitized boundary status, risk IDs, and generic fingerprint into the runtime
    evidence fingerprint before automation consumes it.
 
+9. **Use the shared bounded-entry contract for runtime entries.**
+   Runtime adapters must normalize keys, labels, values, counts, confidence,
+   timestamps, stale state, and reason codes through the same server-owned
+   normalizer as core policy evidence. The runtime audit must also verify that
+   an entry authority is allowlisted by its evidence source.
+
 ## Pros And Cons
 
 Pros:
@@ -204,6 +210,8 @@ rejects:
 - Raw provider payloads are suppressed.
 - Operator intent uses the shared bounded evidence gate; rejected intent cannot
   contribute runtime evidence.
+- Runtime entries use the shared bounded-entry normalizer, and runtime audits
+  reject authority relabeling or fields that bypass that contract.
 - Runtime fingerprint provenance and trace attributes bind the sanitized
   operator-intent boundary context.
 - Fingerprint provenance is sanitized and label-free.

@@ -288,6 +288,48 @@ describe('policyRuntimeEvidenceProjection', () => {
     ]));
   });
 
+  test('normalizes runtime entry fields through the shared evidence entry contract', () => {
+    const projection = buildPolicyRuntimeEvidenceProjection({
+      metadataSignals: [{
+        label: '  TMDB keyword:\nprincess  ',
+        confidence: 72,
+        observedAt: '2026-06-30T12:00:00-04:00',
+      }],
+    });
+    const entry = projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY][0];
+
+    expect(entry).toEqual(expect.objectContaining({
+      key: 'tmdb_keyword:princess',
+      label: 'TMDB keyword: princess',
+      confidence: 0.72,
+      observedAt: '2026-06-30T16:00:00.000Z',
+    }));
+    expect(validatePolicyRuntimeEvidenceProjection(projection).ok).toBe(true);
+  });
+
+  test('rejects runtime entries with incompatible source authority or unbounded fields', () => {
+    const projection = buildPolicyRuntimeEvidenceProjection({
+      metadataSignals: ['TMDB keyword: princess'],
+    });
+    const entry = projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY][0];
+
+    projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY][0] = {
+      ...entry,
+      authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      label: `TMDB ${'x'.repeat(300)}`,
+    };
+
+    expect(validatePolicyRuntimeEvidenceProjection(projection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.SOURCE_AUTHORITY_NOT_ALLOWED,
+        }),
+        expect.objectContaining({
+          riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.ENTRY_FIELD_CONTRACT,
+        }),
+      ]));
+  });
+
   test('passes the default runtime evidence projection audit', () => {
     const projection = buildPolicyRuntimeEvidenceProjection({
       libraryProfile: {

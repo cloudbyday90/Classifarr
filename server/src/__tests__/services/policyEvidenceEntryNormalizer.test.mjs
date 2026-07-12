@@ -69,6 +69,15 @@ describe('policyEvidenceEntryNormalizer', () => {
     expect(JSON.stringify(entry)).not.toContain('must-not-project');
   });
 
+  test('preserves absent count and confidence as null instead of inventing zero-valued evidence', () => {
+    expect(normalizePolicyEvidenceEntry({
+      label: 'Observed without numeric evidence',
+    })).toEqual(expect.objectContaining({
+      count: null,
+      confidence: null,
+    }));
+  });
+
   test('retains only source-allow-listed incoming reason codes', () => {
     expect(normalizePolicyEvidenceEntry({
       label: 'Persisted outcome',

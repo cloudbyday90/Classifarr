@@ -72,11 +72,15 @@ function normalizeObservedAt(value) {
 }
 
 function normalizeCount(value) {
+  if (value === null || value === undefined || value === '') return null;
+
   const numeric = Number(value);
   return Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : null;
 }
 
 function normalizeConfidence(value) {
+  if (value === null || value === undefined || value === '') return null;
+
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return null;
 
