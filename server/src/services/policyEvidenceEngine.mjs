@@ -14,6 +14,10 @@ import {
   buildPolicyEvidenceEntryAudit,
   normalizePolicyEvidenceEntry,
 } from './policyEvidenceEntryNormalizer.mjs';
+import {
+  buildPolicyEvidenceEntrySemanticKey,
+  findPolicyEvidenceEntryDuplicateIndexes,
+} from './policyEvidenceEntryIdentity.mjs';
 
 const POLICY_EVIDENCE_BUCKET_IDS = Object.freeze({
   IDENTITY: 'identity_evidence',
@@ -123,6 +127,7 @@ const POLICY_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   PROJECTION_ENTRY_UNKNOWN_AUTHORITY_SOURCE: 'projection_entry_unknown_authority_source',
   PROJECTION_ENTRY_AUTHORITY_NOT_ALLOWED: 'projection_entry_authority_not_allowed',
   PROJECTION_ENTRY_SOURCE_AUTHORITY_NOT_ALLOWED: 'projection_entry_source_authority_not_allowed',
+  PROJECTION_DUPLICATE_ENTRY: 'projection_duplicate_entry',
   PROJECTION_ENTRY_RAW_PAYLOAD: 'projection_entry_raw_payload',
   PROJECTION_ENTRY_LIVE_LOOKUP: 'projection_entry_live_lookup',
   PROJECTION_ENTRY_FIELD_CONTRACT: 'projection_entry_field_contract',
@@ -538,9 +543,24 @@ function createEvidenceEntry({
 }
 
 function addEntries(projection, entries) {
+  const entryKeysByBucket = new Map();
+
   entries.forEach(entry => {
     if (!entry) return;
-    projection.buckets[entry.bucketId].push(entry);
+    const bucketEntries = projection.buckets[entry.bucketId];
+    if (!Array.isArray(bucketEntries)) return;
+
+    let entryKeys = entryKeysByBucket.get(entry.bucketId);
+    if (!entryKeys) {
+      entryKeys = new Set(bucketEntries.map(buildPolicyEvidenceEntrySemanticKey).filter(Boolean));
+      entryKeysByBucket.set(entry.bucketId, entryKeys);
+    }
+
+    const entryKey = buildPolicyEvidenceEntrySemanticKey(entry);
+    if (entryKey && entryKeys.has(entryKey)) return;
+
+    bucketEntries.push(entry);
+    if (entryKey) entryKeys.add(entryKey);
   });
 }
 
@@ -1269,6 +1289,15 @@ function buildPolicyEvidenceProjectionAudit(projection = {}) {
         );
         return;
       }
+
+      findPolicyEvidenceEntryDuplicateIndexes(entries).forEach(index => {
+        pushProjectionIssue(
+          issues,
+          POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_DUPLICATE_ENTRY,
+          'Evidence projection buckets must not contain duplicate canonical entries.',
+          { bucketId: bucket.id, index }
+        );
+      });
 
       entries.forEach(entry => {
         const result = validatePolicyEvidenceProjectionEntry(entry, bucket.id);

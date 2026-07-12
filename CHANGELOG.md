@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Evidence Projection Deduplication** — consolidates exact canonical
+  facts before summary, quality, and fingerprint generation, while projection
+  audit rejects duplicate entries and retains distinct source and authority
+  provenance.
 - **Policy Evidence Quality Contribution Trust** — quality now derives
   identity and positive contribution counts from validated bucket entries
   rather than projection summaries or authority labels alone, preventing forged

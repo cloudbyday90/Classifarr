@@ -5,6 +5,9 @@ import {
   POLICY_UX_TERM_IDS,
 } from '../../services/policyUserMentalModel.mjs';
 import {
+  buildPolicyEvidenceFingerprint,
+} from '../../services/policyEvidenceFingerprint.mjs';
+import {
   POLICY_EVIDENCE_AUDIT_RISK_IDS,
   POLICY_EVIDENCE_BUCKET_IDS,
   POLICY_EVIDENCE_BUCKET_READINESS_IDS,
@@ -202,6 +205,37 @@ describe('policyEvidenceEngine', () => {
     ]);
   });
 
+  test('consolidates exact duplicate facts without merging distinct provenance', () => {
+    const duplicateProjection = buildPolicyEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animation', 'Animation'],
+      },
+      metadataEvidence: ['Family', 'Family'],
+    });
+    const uniqueProjection = buildPolicyEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animation'],
+      },
+      metadataEvidence: ['Family'],
+    });
+    const distinctProvenanceProjection = buildPolicyEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animation'],
+      },
+      operatorIntent: {
+        belongsHere: ['Animation'],
+      },
+    });
+
+    expect(duplicateProjection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY]).toHaveLength(1);
+    expect(duplicateProjection.buckets[POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY]).toHaveLength(1);
+    expect(duplicateProjection.summary.totalEntryCount).toBe(2);
+    expect(buildPolicyEvidenceFingerprint(duplicateProjection).fingerprint)
+      .toBe(buildPolicyEvidenceFingerprint(uniqueProjection).fingerprint);
+    expect(distinctProvenanceProjection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY])
+      .toHaveLength(2);
+  });
+
   test('treats stale profiles and missing input as insufficient evidence instead of exclusions', () => {
     const staleProjection = buildPolicyEvidenceProjection({
       profileFreshness: {
@@ -391,6 +425,24 @@ describe('policyEvidenceEngine', () => {
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_SOURCE_AUTHORITY_NOT_ALLOWED,
+        }),
+      ]));
+  });
+
+  test('rejects tampered projections that contain duplicate canonical entries', () => {
+    const projection = buildPolicyEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animation'],
+      },
+    });
+    projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY].push({
+      ...projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY][0],
+    });
+
+    expect(buildPolicyEvidenceProjectionAudit(projection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_DUPLICATE_ENTRY,
         }),
       ]));
   });

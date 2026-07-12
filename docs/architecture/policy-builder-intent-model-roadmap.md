@@ -3210,6 +3210,12 @@ Implementation status:
   codes, and lets the projection audit reject tampered entry fields without
   exposing them. Its design record is
   [Policy Evidence Entry Normalizer](policy-evidence-entry-normalizer.md).
+- The evidence entry identity helper lives in
+  `server/src/services/policyEvidenceEntryIdentity.mjs`. Projection construction
+  consolidates only exact canonical facts before summary, quality, and
+  fingerprint generation; the audit rejects duplicate canonical entries while
+  preserving facts with different source or authority provenance. Its design
+  record is [Policy Evidence Projection Deduplication](policy-evidence-projection-deduplication.md).
 - The evidence input cardinality guard lives in
   `server/src/services/policyEvidenceInputCardinality.mjs`. It bounds input
   collection inspection, blocks oversized envelopes before projection, and

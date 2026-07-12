@@ -158,6 +158,12 @@ supports each piece of evidence?
     normalize timestamps, and retain source-owned reason codes before evidence
     is projected or audited.
 
+11. **Consolidate only exact canonical evidence facts.**
+    Suppress repeated entries only when their complete bounded semantic identity,
+    including bucket, source, authority, value, count, confidence, reason, and
+    timestamp, matches. Preserve distinct provenance and reject duplicate
+    canonical entries during projection audit.
+
 ## Pros And Cons
 
 Pros:
@@ -188,6 +194,8 @@ Cons:
   input-gate, projection, fingerprint, or quality audits.
 - Entry normalization bounds individual fields; collection cardinality remains
   a distinct input-boundary concern.
+- Exact deduplication does not reconcile near-duplicate facts with distinct
+  bounded values, timestamps, source IDs, or authority IDs.
 
 ## Final Recommendation Stack
 
@@ -260,6 +268,12 @@ boundary used while building every evidence entry. It preserves valid Unicode
 labels, removes control characters, bounds text, canonicalizes keys and
 timestamps, and keeps source-owned reason codes out of caller control. Its
 design record is [Policy Evidence Entry Normalizer](policy-evidence-entry-normalizer.md).
+
+`server/src/services/policyEvidenceEntryIdentity.mjs` defines the canonical
+semantic identity shared by construction and projection audit. Exact repeated
+facts are consolidated before summaries, quality, and fingerprints are built;
+facts with distinct source or authority provenance remain separate. Its design
+record is [Policy Evidence Projection Deduplication](policy-evidence-projection-deduplication.md).
 
 `server/src/services/policyEvidenceInputCardinality.mjs` bounds every input
 array before recursive input-gate scanning. Oversized input fails closed with a
@@ -341,6 +355,7 @@ fails when a projection:
 - lets metadata enrichment own destination identity,
 - lets hard-limit or avoid evidence bypass operator-declared intent,
 - contains individual entries that claim raw payloads or live lookup behavior,
+- contains duplicate canonical entries,
 - omits the generated summary,
 - carries a stale summary whose counts do not match the bucket entries,
 - omits generated quality, carries stale quality, or leaks entry labels through
@@ -363,6 +378,9 @@ fails when a projection:
   diagnostic UI copy.
 - Projection quality contains status, next action, reason IDs, booleans, and
   counts only; it does not carry evidence labels.
+- Exact duplicate canonical facts are suppressed before summary, quality, and
+  fingerprint generation, while distinct source and authority provenance stays
+  visible to later engines.
 - Boundary audits require ready results to have a successful input gate,
   projection audit, fingerprint audit, and intent-inference handoff; blocked
   results cannot carry a next step.
