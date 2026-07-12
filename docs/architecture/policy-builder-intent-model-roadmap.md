@@ -3238,6 +3238,10 @@ Implementation status:
   [Policy Evidence Input Gate Architecture Cutover](policy-evidence-input-gate-architecture-cutover.md).
 - The evidence input gate lives in
   `server/src/services/policyEvidenceInputGate.mjs`.
+- The evidence input gate now rejects a known authority when it is not
+  allowlisted for the declared evidence source, preserving source-specific
+  provenance before projection. Its design record is
+  [Policy Evidence Source Authority Admission](policy-evidence-source-authority-admission.md).
 - Policy evidence boundary hardening is documented in
   [Policy Evidence Boundary](policy-evidence-boundary.md).
 - The policy evidence boundary architecture cutover renamed the active boundary

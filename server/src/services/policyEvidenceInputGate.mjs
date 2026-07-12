@@ -31,6 +31,7 @@ const POLICY_EVIDENCE_INPUT_GATE_RISK_IDS = Object.freeze({
   UNKNOWN_SECTION_SOURCE: 'unknown_section_source',
   MISSING_SECTION_AUTHORITY: 'missing_section_authority',
   UNKNOWN_SECTION_AUTHORITY: 'unknown_section_authority',
+  SECTION_AUTHORITY_NOT_ALLOWED_FOR_SOURCE: 'section_authority_not_allowed_for_source',
   RAW_PROVIDER_PAYLOAD: 'raw_provider_payload',
   LIVE_PROVIDER_LOOKUP: 'live_provider_lookup',
   TRANSIENT_PROVIDER_STATE: 'transient_provider_state',
@@ -326,6 +327,7 @@ function buildPolicyEvidenceInputGate({
 
 function validatePolicyEvidenceInputSection(section = {}) {
   const issues = [];
+  const source = getPolicyEvidenceSource(section.sourceId);
 
   if (!section.sourceId) {
     pushIssue(issues, buildInputGateIssue({
@@ -334,7 +336,7 @@ function validatePolicyEvidenceInputSection(section = {}) {
       sectionId: section.id || null,
       path: [section.id || 'unknown', 'sourceId'],
     }));
-  } else if (!getPolicyEvidenceSource(section.sourceId)) {
+  } else if (!source) {
     pushIssue(issues, buildInputGateIssue({
       riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNKNOWN_SECTION_SOURCE,
       message: `Evidence input section references unknown source "${section.sourceId}".`,
@@ -354,6 +356,13 @@ function validatePolicyEvidenceInputSection(section = {}) {
     pushIssue(issues, buildInputGateIssue({
       riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNKNOWN_SECTION_AUTHORITY,
       message: `Evidence input section references unknown authority source "${section.authoritySourceId}".`,
+      sectionId: section.id || null,
+      path: [section.id || 'unknown', 'authoritySourceId'],
+    }));
+  } else if (source && !source.authoritySourceIds.includes(section.authoritySourceId)) {
+    pushIssue(issues, buildInputGateIssue({
+      riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.SECTION_AUTHORITY_NOT_ALLOWED_FOR_SOURCE,
+      message: `Evidence source "${section.sourceId}" cannot use authority source "${section.authoritySourceId}".`,
       sectionId: section.id || null,
       path: [section.id || 'unknown', 'authoritySourceId'],
     }));

@@ -183,4 +183,23 @@ describe('policyEvidenceInputGate', () => {
       POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNKNOWN_SECTION_AUTHORITY,
     ]));
   });
+
+  test('rejects a known authority that is not permitted for the section source', () => {
+    const result = validatePolicyEvidenceInputSection({
+      id: POLICY_EVIDENCE_INPUT_SECTION_IDS.METADATA_EVIDENCE,
+      sourceId: POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      issues: [
+        expect.objectContaining({
+          riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.SECTION_AUTHORITY_NOT_ALLOWED_FOR_SOURCE,
+          sectionId: POLICY_EVIDENCE_INPUT_SECTION_IDS.METADATA_EVIDENCE,
+          path: 'metadataEvidence.authoritySourceId',
+        }),
+      ],
+    }));
+  });
 });

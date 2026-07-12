@@ -27,6 +27,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   migration-verifier authoring component, accessibility surface, readiness
   exemption, and workflow role; readiness now rejects retired diagnostic
   identifiers rather than preserving a hidden alternate authoring path.
+- **Policy Evidence Source Authority Admission** — hardened the evidence input
+  gate so known source and authority IDs must also be an allowed pair, blocking
+  provenance relabeling before bounded evidence projection.
 - **Storage Closure Reference Scanner Hardening** — replaced the broad
   phase-prefixed service exclusion with an explicit control-plane allowlist,
   extracted the read-only scanner into a modular ESM utility, and reduced the

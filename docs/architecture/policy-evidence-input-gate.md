@@ -99,11 +99,14 @@ Cons:
 ### Keep Authority Mapping Server-Owned
 
 Each input section maps to a server-owned policy evidence source and authority
-source.
+source. The mapping is valid only when that authority is explicitly allowlisted
+by the selected evidence source; existence of both IDs alone is insufficient.
 
 Pros:
 
 - keeps provenance explicit,
+- prevents a known authority from being relabeled as a different source's
+  authority,
 - supports later intent/readiness engines without reinterpreting input shape,
 - makes contract drift testable.
 
@@ -150,7 +153,7 @@ Implemented:
 - Gate issues include risk ID, section ID, and path only; raw values are not
   copied into diagnostics.
 - Added a section contract audit that verifies evidence source and authority
-  source mappings.
+  source mappings, including source-to-authority compatibility.
 - Added focused tests for clean inputs, unsafe markers, unknown sections,
   contract drift, and read-only side-effect guarantees.
 
