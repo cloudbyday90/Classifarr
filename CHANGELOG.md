@@ -11,28 +11,60 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
-- **Destination-First Policy Engine** — added server-owned evidence, intent,
-  learning, readiness, operator-workflow, and migration contracts that turn
-  media-server application and guarded outcomes into bounded, reviewable policy
-  decisions.
-- **Runtime Policy Automation Contracts** — added deterministic runtime evidence,
-  automation decision, clarification, request-learning, library-rebuild,
-  migration-verification, and decision-trace contracts with distinct
-  classification and routing outcomes.
-- **Native Policy Intent Storage** — added validated native intent persistence,
-  conversion planning, rollback snapshots, backup/restore support, runtime-read
-  verification, controlled legacy-path removal gates, and outcome-based closure
-  evidence.
-- **Multi-Provider Web Search** — added Tavily, Brave Search, and Serper
-  adapters with secure provider settings, contract validation, quota-aware
-  routing, usage caching, and bounded retention.
-- **Web Search Operations and Calibration** — added sanitized route and health
-  history, purpose-aware quality calibration, preview guardrails, analytics,
-  and operator diagnostics without exposing credentials, queries, or provider
-  payloads.
+- **Policy Authoring Foundation** — added a plain-language authority model,
+  typed intent-draft commands, isolated legacy serialization, server-owned
+  contract validation, and focused regression boundaries for policy editing.
+- **Destination-First Policy Builder** — added a library-centered authoring
+  flow for destination identity, hard limits, helpful signals, review behavior,
+  routing readiness, and save/defer decisions without exposing raw preset JSON.
+- **Library-Informed Authoring** — added multi-select genre controls, observed
+  library-profile suggestions, profile freshness state, refresh-result feedback,
+  signal provenance, option availability guardrails, and `Ask When Unsure`
+  review behavior.
+- **Policy Evidence Engine** — added bounded library-profile, metadata,
+  classification-outcome, pending-answer, and routing-outcome collectors that
+  normalize identity, compatibility, limits, avoidance, freshness, routing, and
+  insufficient-evidence signals without provider payload authority.
+- **Policy Intent, Learning, and Readiness** — added deterministic intent
+  inference, outcome-versus-learning separation, eligibility tiers, quality
+  assessment, automation readiness, and a destination-oriented operator
+  workflow with explicit next actions.
+- **Runtime Classification Contracts** — added runtime evidence projection,
+  automation decisions, clarification reduction, request-time learning,
+  decision traces, and test ownership that distinguish a completed
+  classification from a successfully routed item.
+- **Library Policy Rebuild and Verification** — added read-only rebuild
+  proposals from observed library behavior and guarded outcomes, plus bounded
+  migration verification, sample-set provenance, rollback evidence, and
+  operator acceptance requirements.
+- **Native Policy Intent Storage** — added validated native intent schema,
+  migration candidate reporting, explicit conversion planning, rollback
+  snapshots, runtime read verification, and outcome-based closure evidence.
+- **Native Storage Operations** — added backup/restore wiring, post-upgrade
+  dry-run and transaction-gated apply paths, native SQL coverage, operational
+  safety checks, legacy-write shutdown, and controlled compatibility-removal
+  planning, execution, and verification contracts.
+- **Storage Closure Tooling** — added current-evidence collection, validation
+  evidence, completion checkpoints, final readouts, and requirement audits so
+  storage closure is proven from current artifacts rather than narrative.
+- **Multi-Provider Web Search** — added provider-neutral configuration and
+  contract validation for Tavily, Brave Search, and Serper, including secure
+  settings storage and provider capability checks.
+- **Provider-Routed Enrichment** — migrated legacy Tavily enrichment and retry
+  behavior to the provider router, activated Brave and Serper adapters, and
+  added quota-aware eligibility, cooldown handling, and fallback routing.
+- **Provider Usage and Retention** — added normalized result caching, daily and
+  monthly usage accounting, configurable retention, bounded cleanup, and
+  fresh-install seed reconciliation for provider operational data.
+- **Provider Diagnostics and Health History** — added sanitized route-decision
+  history, selected and skipped-provider reasons, cache and quota counters,
+  health/cooldown events, and a secure settings diagnostics surface.
+- **Purpose-Aware Provider Calibration** — added outcome feedback, per-purpose
+  calibration policies, coverage reporting, side-effect-free previews,
+  threshold controls, guardrails, analytics, and an operator alert digest.
 - **Discord Pending-Decision Notifications** — added duplicate-safe alerts for
-  items awaiting decisions, with optional @here and server-scoped role or user
-  mentions controlled through explicit allowed-mention settings.
+  items awaiting decisions, structured response buttons, optional `@here`, and
+  server-scoped role or user mentions constrained by Discord allowed mentions.
 
 ### Changed
 
@@ -43,10 +75,24 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   plain own-data records, validated source/authority pairs, canonical facts, and
   verified fingerprints; inherited values, accessors, prototype-pollution keys,
   stale handoffs, and substituted decision sources are rejected.
+- **Policy Migration Safety** — migration and compatibility-removal paths now
+  require validated evidence, intent, workflow, readiness, decision-source, and
+  rollback handoffs before they can advance; routine authoring remains separate
+  from migration verification.
+- **Policy Completion Audits** — engine, runtime, storage, and compatibility
+  audits now require documented services, focused test ownership, quality and
+  provenance continuity, and explicit side-effect-free evidence before a
+  completion state can be reported.
 - **Durable Policy Vocabulary** — production modules, contracts, diagnostics,
   telemetry, and progress storage use product-domain names rather than delivery
   terminology; regression tooling enforces a zero-reference production
   baseline.
+- **Classification Progress and Observability** — progress persistence,
+  WebSocket events, queue history, RAG-loop stages, parse diagnostics, and
+  metrics use stable stage-oriented contracts with bounded trace metadata.
+- **Release-Facing Storage Evidence** — storage-closure audits now require the
+  durable Native Policy Intent Storage outcome under `Unreleased`; component
+  docs, source, and focused tests remain the authoritative implementation proof.
 - **Dependency Maintenance** — refreshed audited server and client dependencies,
   development tooling, and workflow actions to current compatible patched
   releases.
