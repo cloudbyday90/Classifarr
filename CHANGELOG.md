@@ -21,7 +21,8 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   classification and routing outcomes.
 - **Native Policy Intent Storage** — added validated native intent persistence,
   conversion planning, rollback snapshots, backup/restore support, runtime-read
-  verification, and controlled legacy-path removal gates.
+  verification, controlled legacy-path removal gates, and outcome-based closure
+  evidence.
 - **Multi-Provider Web Search** — added Tavily, Brave Search, and Serper
   adapters with secure provider settings, contract validation, quota-aware
   routing, usage caching, and bounded retention.
@@ -44,7 +45,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   stale handoffs, and substituted decision sources are rejected.
 - **Durable Policy Vocabulary** — production modules, contracts, diagnostics,
   telemetry, and progress storage use product-domain names rather than delivery
-  phase terminology; regression tooling enforces a zero-reference production
+  terminology; regression tooling enforces a zero-reference production
   baseline.
 - **Dependency Maintenance** — refreshed audited server and client dependencies,
   development tooling, and workflow actions to current compatible patched

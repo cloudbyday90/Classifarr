@@ -12,6 +12,9 @@ import {
   collectRoadmapComponentIds,
   normalizeRepositoryPath,
 } from './policyStorageClosureCurrentEvidenceCollector.mjs';
+import {
+  extractPolicyStorageReleaseNoteCoverage,
+} from './policyStorageReleaseNoteCoverage.mjs';
 
 const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_VERSION =
   'policy.storage_closure_requirement_audit.v1';
@@ -268,25 +271,14 @@ function extractRoadmapComponentEvidence({
   };
 }
 
-function normalizeSearchText(value = '') {
-  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-}
-
 function extractChangelogComponentEvidence({
   changelogContent = '',
   componentArtifactMap = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
 } = {}) {
-  const normalizedChangelog = normalizeSearchText(changelogContent);
-  const componentIds = asArray(componentArtifactMap)
-    .filter(component => normalizedChangelog.includes(
-      normalizeSearchText(component.label)
-    ))
-    .map(component => component.componentId);
-
-  return {
-    updated: componentIds.length > 0,
-    componentIds,
-  };
+  return extractPolicyStorageReleaseNoteCoverage({
+    changelogContent,
+    componentArtifactMap,
+  });
 }
 
 function evaluateComponentEvidence({

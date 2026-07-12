@@ -8,8 +8,10 @@ sequence is treated as complete.
 
 The audit consumes a generated policy storage current closure audit, then checks
 the current checkout for each mapped component's design/outcome document,
-service/script/route/migration/wiring evidence, focused test evidence, roadmap
-component section, work-sequence entry, and changelog coverage.
+service/script/route/migration/wiring evidence, focused test evidence, and
+roadmap component section and work-sequence entry. It separately requires one
+durable Native Policy Intent Storage outcome under `Unreleased`; release notes
+must describe the shipped result rather than repeat every internal component.
 
 The service is read-only. It reads repository files through injected file
 accessors, consumes supplied evidence, and does not run tests, run Git, write
@@ -106,7 +108,8 @@ Cons:
 6. Require a complete and valid policy storage current closure audit.
 7. Require mapped design, contract/wiring, and test evidence for every closure
    component.
-8. Require roadmap and changelog coverage for every closure component.
+8. Require roadmap coverage for every closure component and the durable
+   Unreleased storage outcome note.
 9. Reject file writes, storage mutation, Git commands, command execution, and
    manifest writes inside the service.
 
@@ -115,6 +118,9 @@ Cons:
 Implemented:
 
 - Added `policyStorageClosureRequirementAudit.mjs`.
+- Reused `policyStorageReleaseNoteCoverage.mjs` so one durable Unreleased
+  storage outcome proves release-note coverage without requiring component
+  labels in the changelog.
 - Added `run-policy-storage-closure-requirement-audit.mjs`.
 - Added root npm script `policy:storage-closure-requirement-audit`.
 - Added focused tests for:
@@ -125,8 +131,8 @@ Implemented:
   - missing changelog coverage blocking,
   - forbidden side-effect rejection,
   - validation invariants.
-- Added component-oriented evidence extraction for roadmap and changelog
-  coverage.
+- Added component-oriented evidence extraction for roadmap coverage and
+  outcome-oriented evidence extraction for the Unreleased storage note.
 - Replaced phase-coded payload versioning, constants, builders, validators, and
   operator messages with durable policy-storage names.
 
@@ -141,6 +147,7 @@ npm run --silent policy:storage-closure-requirement-audit -- \
 
 ## Next Step
 
-Proceed with **Storage Closure Validation Evidence module naming cutover** so the
-remaining validation command surface can reference durable storage-closure audit
-names without phase-coded module identity.
+Reconcile the roadmap work sequence with every mapped storage-closure component,
+then run the requirement audit with current closure evidence. If it blocks,
+resolve the reported component, roadmap, or validation evidence rather than
+expanding release notes into an implementation diary.

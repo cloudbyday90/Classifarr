@@ -5,6 +5,9 @@ import {
   POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
   buildPolicyStorageClosureEvidenceRun,
 } from './policyStorageClosureEvidenceRun.mjs';
+import {
+  extractPolicyStorageReleaseNoteCoverage,
+} from './policyStorageReleaseNoteCoverage.mjs';
 
 const POLICY_STORAGE_CLOSURE_CURRENT_EVIDENCE_COLLECTOR_VERSION =
   'policy.storage_closure_current_evidence_collector.v1';
@@ -158,23 +161,14 @@ function extractRoadmapEvidence({
   };
 }
 
-function normalizeSearchText(value = '') {
-  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-}
-
 function extractChangelogEvidence({
   changelogContent = '',
   componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
 } = {}) {
-  const normalizedChangelog = normalizeSearchText(changelogContent);
-  const componentIds = asArray(componentArtifactMap)
-    .filter(component => normalizedChangelog.includes(normalizeSearchText(component.label)))
-    .map(component => component.componentId);
-
-  return {
-    updated: componentIds.length > 0,
-    componentIds,
-  };
+  return extractPolicyStorageReleaseNoteCoverage({
+    changelogContent,
+    componentArtifactMap,
+  });
 }
 
 function readOptionalTextFile({

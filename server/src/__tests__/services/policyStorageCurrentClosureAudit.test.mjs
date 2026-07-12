@@ -23,9 +23,13 @@ function completeRoadmapContent() {
 }
 
 function completeChangelogContent() {
-  return POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
-    .map(component => `- **Policy storage ${component.label}**`)
-    .join('\n');
+  return `
+## [Unreleased]
+
+### Added
+
+- **Native Policy Intent Storage** — added durable policy storage.
+`;
 }
 
 function completionAuditArtifact(overrides = {}) {

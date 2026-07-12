@@ -21,12 +21,15 @@ function completeRoadmapContent() {
 }
 
 function completeChangelogContent({
-  excludedComponentId = null,
+  includeOutcome = true,
 } = {}) {
-  return POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP
-    .filter(component => component.componentId !== excludedComponentId)
-    .map(component => `- **Policy storage ${component.label}**`)
-    .join('\n');
+  return `
+## [Unreleased]
+
+### Added
+
+${includeOutcome ? '- **Native Policy Intent Storage** — added durable policy storage.' : ''}
+`;
 }
 
 function currentClosureAudit(overrides = {}) {
@@ -154,11 +157,11 @@ describe('policyStorageClosureRequirementAudit', () => {
       .toContain('storage_current_closure_audit');
   });
 
-  test('blocks when changelog coverage omits a late storage-closure component', () => {
+  test('blocks when the durable storage outcome is absent from Unreleased', () => {
     const audit = completeAudit({
       readTextFile: readTextFileFactory({
         changelogContent: completeChangelogContent({
-          excludedComponentId: 'storage_final_closure_readout',
+          includeOutcome: false,
         }),
       }),
     });
@@ -167,7 +170,8 @@ describe('policyStorageClosureRequirementAudit', () => {
       .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
         .BLOCKED_BY_CHANGELOG);
     expect(audit.changelogEvidence.missingComponentIds)
-      .toContain('storage_final_closure_readout');
+      .toEqual(POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP
+        .map(component => component.componentId));
   });
 
   test('blocks on side effects other than repository file reads', () => {

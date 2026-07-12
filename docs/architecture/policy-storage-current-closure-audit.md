@@ -106,7 +106,9 @@ Use this stack for the policy storage current closure audit:
 
 1. Read current mapped closure artifact inventory.
 2. Read the current roadmap evidence.
-3. Read the current changelog evidence.
+3. Read the current Unreleased storage outcome note. It confirms the release
+   result, while mapped docs, contracts, and focused tests remain the
+   component-level evidence.
 4. Require a complete and valid compatibility-removal completion-audit artifact.
 5. Require focused, lint, markdown, and full validation evidence to pass.
 6. Build the current evidence run.
@@ -122,6 +124,8 @@ Use this stack for the policy storage current closure audit:
 Implemented:
 
 - Added `policyStorageCurrentClosureAudit.mjs`.
+- Added `policyStorageReleaseNoteCoverage.mjs` so the audit requires the
+  durable Unreleased storage outcome rather than internal component labels.
 - Added `run-policy-storage-current-closure-audit.mjs`.
 - Added root npm script `policy:storage-current-closure-audit`.
 - Added focused tests for:
@@ -148,8 +152,8 @@ npm run --silent policy:storage-current-closure-audit -- \
 
 ## Next Step
 
-Run the policy storage current closure audit with real compatibility-removal
-completion-audit and validation evidence. If it completes, perform the final
-requirement-by-requirement goal completion audit before marking the closure
-sequence complete. If it blocks, continue with the exact blocker category in the
-audit summary.
+Generate current compatibility-removal and validation evidence, then run the
+policy storage current closure audit. If it completes, perform the final
+requirement-by-requirement closure audit. If it blocks, resolve the exact
+component, roadmap, validation, or release-outcome evidence category reported
+by the audit summary.

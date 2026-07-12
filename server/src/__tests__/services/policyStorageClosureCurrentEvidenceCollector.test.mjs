@@ -34,9 +34,13 @@ function completeRoadmapContent() {
 }
 
 function completeChangelogContent() {
-  return POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
-    .map(component => `- **Policy storage ${component.label}**`)
-    .join('\n');
+  return `
+## [Unreleased]
+
+### Added
+
+- **Native Policy Intent Storage** — added durable policy storage.
+`;
 }
 
 function completeFinalRemovalAudit() {
@@ -135,12 +139,13 @@ describe('policyStorageClosureCurrentEvidenceCollector', () => {
     });
   });
 
-  test('extracts changelog coverage by component label', () => {
+  test('extracts changelog coverage from the durable storage outcome', () => {
     const evidence = extractChangelogEvidence({
       changelogContent: completeChangelogContent(),
     });
 
     expect(evidence.updated).toBe(true);
+    expect(evidence.coverageMode).toBe('release_outcome');
     expect(evidence.componentIds).toEqual(
       POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP.map(component => component.componentId)
     );
