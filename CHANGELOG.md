@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Evidence Input Object Safety** — evidence input now requires plain
+  records and own data properties, blocking inherited values, accessors, and
+  prototype-pollution keys before deterministic projection or diagnostics can
+  consume them.
 - **Policy Runtime Completion Engine Gate** — runtime/rebuild completion now
   requires the policy-engine completion audit to pass with zero issues before
   native intent storage readiness can advance.

@@ -96,6 +96,25 @@ Cons:
 - future reducers must emit bounded evidence fields instead of legacy preview
   payloads.
 
+### Require Plain Data Records And Own Properties
+
+The gate accepts ordinary object records, null-prototype records, standard
+arrays with own data entries, and primitive values. It rejects inherited
+values, accessor-backed properties, array gaps, and the `__proto__`,
+`constructor`, and `prototype` keys before projection. The boundary adapter
+reads only the same own data properties that the gate can inspect.
+
+Pros:
+
+- prevents an inspected-versus-consumed input mismatch,
+- avoids executing getter code while validating evidence,
+- blocks prototype-pollution keys without copying their values to diagnostics.
+
+Cons:
+
+- callers must convert class instances and computed properties to ordinary
+  data before the boundary.
+
 ### Keep Authority Mapping Server-Owned
 
 Each input section maps to a server-owned policy evidence source and authority
@@ -148,6 +167,9 @@ Implemented:
 - Added `policyEvidenceInputGate.mjs`.
 - Added a stable policy evidence input section vocabulary.
 - Added a bounded recursive scan for unsafe keys.
+- Added own-data-property and plain-record enforcement so inherited or
+  accessor-backed values cannot bypass scanning and reach projection.
+- Added rejection of prototype-pollution keys without exposing their values.
 - Added a fixed per-collection cardinality limit and a count-only rejection
   result for oversized arrays.
 - Gate issues include risk ID, section ID, and path only; raw values are not
@@ -170,4 +192,5 @@ Not implemented in this component:
 Use the evidence boundary only after the input gate passes. Oversized evidence
 collections return `blocked_by_input_cardinality` before projection, quality,
 or fingerprint work begins. See
-[Policy Evidence Input Cardinality](policy-evidence-input-cardinality.md).
+[Policy Evidence Input Cardinality](policy-evidence-input-cardinality.md) and
+[Policy Evidence Input Object Safety](policy-evidence-input-object-safety.md).

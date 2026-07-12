@@ -8,7 +8,6 @@ import {
 } from './policyEvidenceEngine.mjs';
 import {
   MAX_POLICY_EVIDENCE_INPUT_COLLECTION_ITEMS,
-  buildPolicyEvidenceBoundedCollection,
   normalizeMaximumCollectionItems,
 } from './policyEvidenceInputCardinality.mjs';
 
@@ -39,6 +38,8 @@ const POLICY_EVIDENCE_INPUT_GATE_RISK_IDS = Object.freeze({
   REPLAY_OR_IMPACT_PAYLOAD: 'replay_or_impact_payload',
   COLLECTION_LIMIT_EXCEEDED: 'collection_limit_exceeded',
   SCAN_DEPTH_LIMIT: 'scan_depth_limit',
+  UNSAFE_OBJECT_SHAPE: 'unsafe_object_shape',
+  PROTOTYPE_POLLUTION_KEY: 'prototype_pollution_key',
 });
 
 const MAX_SCAN_DEPTH = 8;
@@ -153,6 +154,15 @@ const PROHIBITED_KEY_RULES = Object.freeze([
     ]),
     message: 'Evidence inputs must not carry replay or impact preview payloads into normal engine flow.',
   },
+  {
+    riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.PROTOTYPE_POLLUTION_KEY,
+    keys: Object.freeze([
+      '__proto__',
+      'constructor',
+      'prototype',
+    ]),
+    message: 'Evidence inputs must not contain prototype-pollution keys.',
+  },
 ]);
 
 const KNOWN_SECTION_IDS = new Set(POLICY_EVIDENCE_INPUT_SECTIONS.map(section => section.id));
@@ -162,8 +172,26 @@ const PROHIBITED_KEYS_BY_NAME = new Map(
   )
 );
 
+function isPlainDataRecord(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function isPlainDataArray(value) {
+  return Array.isArray(value) && Object.getPrototypeOf(value) === Array.prototype;
+}
+
 function asPlainObject(value) {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  return isPlainDataRecord(value) ? value : {};
+}
+
+function getOwnDataEntries(value) {
+  return Object.keys(value).map(key => ({
+    key,
+    descriptor: Object.getOwnPropertyDescriptor(value, key),
+  }));
 }
 
 function listPolicyEvidenceInputSections() {
@@ -218,37 +246,68 @@ function scanEvidenceInputNode({
   }
 
   if (Array.isArray(value)) {
-    const collection = buildPolicyEvidenceBoundedCollection(value, {
-      maximumCollectionItems,
-    });
+    if (!isPlainDataArray(value)) {
+      pushIssue(issues, buildInputGateIssue({
+        riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNSAFE_OBJECT_SHAPE,
+        message: 'Evidence input arrays must use the standard Array prototype with own data entries.',
+        sectionId,
+        path,
+      }));
+      return;
+    }
 
-    if (collection.exceedsLimit) {
+    const itemCount = value.length;
+    if (itemCount > maximumCollectionItems) {
       pushIssue(issues, buildInputGateIssue({
         riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.COLLECTION_LIMIT_EXCEEDED,
         message: 'Evidence input collection exceeds the bounded item limit.',
         sectionId,
         path,
         details: {
-          itemCount: collection.itemCount,
-          maximumItemCount: collection.maximumItems,
+          itemCount,
+          maximumItemCount: maximumCollectionItems,
         },
       }));
     }
 
-    collection.items.forEach((item, index) => {
+    const inspectedItemCount = Math.min(itemCount, maximumCollectionItems);
+    for (let index = 0; index < inspectedItemCount; index += 1) {
+      const itemPath = [...path, String(index)];
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        pushIssue(issues, buildInputGateIssue({
+          riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNSAFE_OBJECT_SHAPE,
+          message: 'Evidence input arrays must contain own data entries without accessors or gaps.',
+          sectionId,
+          path: itemPath,
+        }));
+        continue;
+      }
+
       scanEvidenceInputNode({
-        value: item,
+        value: descriptor.value,
         sectionId,
-        path: [...path, String(index)],
+        path: itemPath,
         depth: depth + 1,
         issues,
         maximumCollectionItems,
       });
-    });
+    }
     return;
   }
 
-  Object.entries(value).forEach(([key, child]) => {
+  if (!isPlainDataRecord(value)) {
+    pushIssue(issues, buildInputGateIssue({
+      riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNSAFE_OBJECT_SHAPE,
+      message: 'Evidence inputs must use plain data objects without inherited or accessor-backed properties.',
+      sectionId,
+      path,
+    }));
+    return;
+  }
+
+  getOwnDataEntries(value).forEach(({ key, descriptor }) => {
     const childPath = [...path, key];
     const rule = PROHIBITED_KEYS_BY_NAME.get(key.toLowerCase());
 
@@ -261,8 +320,18 @@ function scanEvidenceInputNode({
       }));
     }
 
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      pushIssue(issues, buildInputGateIssue({
+        riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNSAFE_OBJECT_SHAPE,
+        message: 'Evidence inputs must use plain data objects without inherited or accessor-backed properties.',
+        sectionId,
+        path: childPath,
+      }));
+      return;
+    }
+
     scanEvidenceInputNode({
-      value: child,
+      value: descriptor.value,
       sectionId,
       path: childPath,
       depth: depth + 1,
@@ -276,12 +345,20 @@ function buildPolicyEvidenceInputGate({
   evidenceInput = {},
   maximumCollectionItems = MAX_POLICY_EVIDENCE_INPUT_COLLECTION_ITEMS,
 } = {}) {
-  const input = asPlainObject(evidenceInput);
   const issues = [];
   const presentSections = [];
   const boundedMaximumCollectionItems = normalizeMaximumCollectionItems(maximumCollectionItems);
 
-  Object.entries(input).forEach(([sectionId, value]) => {
+  if (!isPlainDataRecord(evidenceInput)) {
+    pushIssue(issues, buildInputGateIssue({
+      riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNSAFE_OBJECT_SHAPE,
+      message: 'Policy evidence input must be a plain data record without inherited or accessor-backed properties.',
+    }));
+  }
+
+  const input = asPlainObject(evidenceInput);
+
+  getOwnDataEntries(input).forEach(({ key: sectionId, descriptor }) => {
     if (!KNOWN_SECTION_IDS.has(sectionId)) {
       pushIssue(issues, buildInputGateIssue({
         riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNKNOWN_SECTION,
@@ -292,9 +369,19 @@ function buildPolicyEvidenceInputGate({
       return;
     }
 
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      pushIssue(issues, buildInputGateIssue({
+        riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNSAFE_OBJECT_SHAPE,
+        message: 'Policy evidence input sections must use own data properties.',
+        sectionId,
+        path: [sectionId],
+      }));
+      return;
+    }
+
     presentSections.push(sectionId);
     scanEvidenceInputNode({
-      value,
+      value: descriptor.value,
       sectionId,
       path: [sectionId],
       depth: 0,

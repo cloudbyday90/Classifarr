@@ -38,21 +38,33 @@ const POLICY_EVIDENCE_BOUNDARY_AUDIT_RISK_IDS = Object.freeze({
 });
 
 function asPlainObject(value) {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null ? value : {};
+}
+
+function getOwnDataProperty(value, key) {
+  if (!Object.prototype.hasOwnProperty.call(value, key)) return undefined;
+
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  return descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+    ? descriptor.value
+    : undefined;
 }
 
 function adaptPolicyEvidenceInput(evidenceInput = {}) {
   const input = asPlainObject(evidenceInput);
 
   return {
-    libraryProfile: input.libraryProfile,
-    operatorIntent: input.operatorIntent,
-    classificationFinalOutcomes: input.classificationOutcomes,
-    manualCorrections: input.manualCorrections,
-    pendingItemAnswers: input.pendingItemAnswers,
-    routingOutcomes: input.arrRoutingOutcomes,
-    metadataEvidence: input.metadataEvidence,
-    profileFreshness: input.profileFreshness,
+    libraryProfile: getOwnDataProperty(input, 'libraryProfile'),
+    operatorIntent: getOwnDataProperty(input, 'operatorIntent'),
+    classificationFinalOutcomes: getOwnDataProperty(input, 'classificationOutcomes'),
+    manualCorrections: getOwnDataProperty(input, 'manualCorrections'),
+    pendingItemAnswers: getOwnDataProperty(input, 'pendingItemAnswers'),
+    routingOutcomes: getOwnDataProperty(input, 'arrRoutingOutcomes'),
+    metadataEvidence: getOwnDataProperty(input, 'metadataEvidence'),
+    profileFreshness: getOwnDataProperty(input, 'profileFreshness'),
   };
 }
 

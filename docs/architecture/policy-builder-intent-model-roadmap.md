@@ -3253,6 +3253,11 @@ Implementation status:
   [Policy Evidence Input Gate Architecture Cutover](policy-evidence-input-gate-architecture-cutover.md).
 - The evidence input gate lives in
   `server/src/services/policyEvidenceInputGate.mjs`.
+- The input gate and boundary adapter now accept only own data properties on
+  plain records, reject inherited or accessor-backed values and
+  prototype-pollution keys before projection, and do not copy rejected values
+  into diagnostics. Its design record is
+  [Policy Evidence Input Object Safety](policy-evidence-input-object-safety.md).
 - The evidence input gate now rejects a known authority when it is not
   allowlisted for the declared evidence source, preserving source-specific
   provenance before projection. Its design record is

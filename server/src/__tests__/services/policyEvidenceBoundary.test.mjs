@@ -43,6 +43,41 @@ describe('policyEvidenceBoundary', () => {
     });
   });
 
+  test('does not adapt inherited or accessor-backed evidence sections', () => {
+    const inheritedEnvelope = Object.create({
+      libraryProfile: { identityCandidates: ['Animation'] },
+    });
+    const accessorEnvelope = {};
+    let accessorRead = false;
+
+    Object.defineProperty(accessorEnvelope, 'libraryProfile', {
+      enumerable: true,
+      get() {
+        accessorRead = true;
+        return { identityCandidates: ['Animation'] };
+      },
+    });
+
+    expect(adaptPolicyEvidenceInput(inheritedEnvelope).libraryProfile).toBeUndefined();
+    expect(adaptPolicyEvidenceInput(accessorEnvelope).libraryProfile).toBeUndefined();
+    expect(accessorRead).toBe(false);
+
+    const result = buildBoundedPolicyEvidenceProjection({
+      evidenceInput: inheritedEnvelope,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: POLICY_EVIDENCE_BOUNDARY_STATUS_IDS.BLOCKED_BY_INPUT_GATE,
+      projection: null,
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNSAFE_OBJECT_SHAPE,
+      }),
+    ]));
+  });
+
   test('gates, adapts, projects, and audits evidence without side effects', () => {
     const result = buildBoundedPolicyEvidenceProjection({
       evidenceInput: {

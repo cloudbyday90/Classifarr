@@ -131,6 +131,97 @@ describe('policyEvidenceInputGate', () => {
     ]));
   });
 
+  test('rejects inherited and accessor-backed values without reading them', () => {
+    const inheritedEnvelope = Object.create({
+      metadataEvidence: [{
+        providerPayload: { apiKey: 'must-not-leak' },
+      }],
+    });
+    const accessorEntry = {};
+    const accessorArray = [];
+    let accessorRead = false;
+    let arrayAccessorRead = false;
+
+    Object.defineProperty(accessorEntry, 'providerPayload', {
+      enumerable: true,
+      get() {
+        accessorRead = true;
+        return { apiKey: 'must-not-read' };
+      },
+    });
+    Object.defineProperty(accessorArray, '0', {
+      enumerable: true,
+      get() {
+        arrayAccessorRead = true;
+        return { providerPayload: { apiKey: 'must-not-read' } };
+      },
+    });
+    accessorArray.length = 1;
+
+    const inheritedGate = buildPolicyEvidenceInputGate({
+      evidenceInput: inheritedEnvelope,
+    });
+    const accessorGate = buildPolicyEvidenceInputGate({
+      evidenceInput: {
+        metadataEvidence: [accessorEntry],
+      },
+    });
+    const arrayAccessorGate = buildPolicyEvidenceInputGate({
+      evidenceInput: {
+        metadataEvidence: accessorArray,
+      },
+    });
+
+    expect(inheritedGate.ok).toBe(false);
+    expect(inheritedGate.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNSAFE_OBJECT_SHAPE,
+      }),
+    ]));
+    expect(JSON.stringify(inheritedGate)).not.toContain('must-not-leak');
+
+    expect(accessorGate.ok).toBe(false);
+    expect(accessorGate.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNSAFE_OBJECT_SHAPE,
+        path: 'metadataEvidence.0.providerPayload',
+      }),
+    ]));
+    expect(accessorRead).toBe(false);
+
+    expect(arrayAccessorGate.ok).toBe(false);
+    expect(arrayAccessorGate.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.UNSAFE_OBJECT_SHAPE,
+        path: 'metadataEvidence.0',
+      }),
+    ]));
+    expect(arrayAccessorRead).toBe(false);
+  });
+
+  test('rejects own prototype-pollution keys before projection consumes them', () => {
+    const metadataEntry = {};
+    Object.defineProperty(metadataEntry, '__proto__', {
+      enumerable: true,
+      value: { providerPayload: { apiKey: 'must-not-leak' } },
+    });
+
+    const gate = buildPolicyEvidenceInputGate({
+      evidenceInput: {
+        metadataEvidence: [metadataEntry],
+      },
+    });
+
+    expect(gate.ok).toBe(false);
+    expect(gate.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_EVIDENCE_INPUT_GATE_RISK_IDS.PROTOTYPE_POLLUTION_KEY,
+        path: 'metadataEvidence.0.__proto__',
+      }),
+    ]));
+    expect(JSON.stringify(gate)).not.toContain('must-not-leak');
+  });
+
   test('blocks oversized evidence collections after scanning only their bounded prefix', () => {
     const gate = buildPolicyEvidenceInputGate({
       evidenceInput: {
