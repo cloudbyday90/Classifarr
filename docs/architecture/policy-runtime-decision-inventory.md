@@ -41,10 +41,10 @@ This inventory also calls out two known failure modes:
 - [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
   provides a basis for testing application security controls. Runtime paths
   must identify their authority source before behavior changes.
-- [OpenTelemetry Traces](https://opentelemetry.io/docs/concepts/signals/traces/)
-  describes structured traces with spans and attributes. The inventory keeps
-  bounded stage, risk, and decision identifiers that can feed decision traces
-  without exposing raw payloads.
+- [OpenTelemetry Trace Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/general/trace/)
+  define stable trace attributes for interoperable telemetry. The inventory
+  keeps bounded stage, risk, and decision identifiers that can feed decision
+  traces without exposing raw payloads.
 - [W3C Cool URIs](https://www.w3.org/Provider/Style/URI)
   reinforces stable, implementation-independent identifiers. The runtime
   inventory uses durable policy-domain names instead of roadmap sequencing
@@ -59,7 +59,9 @@ This inventory also calls out two known failure modes:
 2. **Guard critical runtime surface coverage.**
    The inventory should fail when route entrypoints, second-pass diagnostics,
    metadata enrichment, pending notification, classification, routing, or
-   persistence surfaces are missing from the cutline.
+   persistence surfaces are missing from the cutline. The runtime-entry stage
+   itself is mandatory, so a route can never be silently reclassified as only
+   a downstream decision or routing concern.
 
 3. **Guard runtime contract surface coverage.**
    Runtime/rebuild contracts that replace old behavior must also be listed as
@@ -69,7 +71,9 @@ This inventory also calls out two known failure modes:
 4. **Require authority sources.**
    Every runtime artifact must identify whether it is driven by observed media
    server contents, declared operator intent, manual outcome, AI output,
-   metadata evidence, or legacy template compatibility.
+   metadata evidence, or legacy template compatibility. Values outside the
+   server-owned vocabulary must fail validation rather than becoming an
+   implicit authority source.
 
 5. **Separate classification from routing.**
    Missing Arr mapping or failed Arr push must become a distinct runtime state,
@@ -193,8 +197,10 @@ Required policy runtime/rebuild contract surface coverage includes:
 
 - Runtime behavior is not changed before authority and cutline are documented.
 - Critical runtime surfaces cannot fall out of the inventory silently.
+- Runtime route-entry coverage cannot fall out of the inventory silently.
 - Policy runtime/rebuild contracts cannot fall out of the inventory silently.
 - AI/RAG/provider output is not treated as final authority.
+- Unknown authority identifiers are rejected by focused regression coverage.
 - Learning side effects are flagged for policy learning guard wiring.
 - Routing success and classification success are separated as a required
   follow-up contract.

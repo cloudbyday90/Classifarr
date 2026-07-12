@@ -28,6 +28,7 @@ describe('policyRuntimeDecisionInventory', () => {
     }));
     expect(inventory.artifactCount).toBeGreaterThanOrEqual(30);
     expect(inventory.byStage).toEqual(expect.objectContaining({
+      [POLICY_RUNTIME_STAGE_IDS.RUNTIME_ROUTE]: expect.any(Number),
       [POLICY_RUNTIME_STAGE_IDS.CLASSIFICATION_POLICY_PATH]: expect.any(Number),
       [POLICY_RUNTIME_STAGE_IDS.SIGNAL_CALCULATION]: expect.any(Number),
       [POLICY_RUNTIME_STAGE_IDS.AI_ANALYSIS_VERIFICATION]: expect.any(Number),
@@ -193,6 +194,27 @@ describe('policyRuntimeDecisionInventory', () => {
       }),
       expect.objectContaining({
         riskId: POLICY_RUNTIME_RISK_IDS.NORMAL_RUNTIME_DIAGNOSTIC_AUTHORITY,
+      }),
+    ]));
+  });
+
+  test('rejects runtime artifacts that name an authority outside the server-owned vocabulary', () => {
+    const result = validateRuntimeArtifact({
+      path: 'server/src/routes/classification.mjs',
+      owner: 'classification-route-entrypoint',
+      stageId: POLICY_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
+      decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+      authoritySourceId: 'untrusted_external_authority',
+      replacementTarget: 'Authenticated classification route entrypoint',
+      riskIds: [],
+      normalRuntimeAuthorityAllowed: true,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_RUNTIME_RISK_IDS.UNKNOWN_AUTHORITY_SOURCE,
+        authoritySourceId: 'untrusted_external_authority',
       }),
     ]));
   });

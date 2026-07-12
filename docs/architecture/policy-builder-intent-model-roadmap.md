@@ -4012,6 +4012,8 @@ Implementation status:
   diagnostics, metadata enrichment, Discord pending notifications,
   classification orchestration, routing, and persistence paths so new runtime
   behavior cannot bypass the cutline silently.
+- Runtime entrypoints are also a required stage, and authority identifiers
+  outside the server-owned vocabulary fail focused inventory validation.
 - The inventory now also requires Phase 7R runtime/rebuild contract surface
   coverage for evidence projection, evidence fingerprinting, automation
   decisions, question reduction, request-time learning, library rebuild,
