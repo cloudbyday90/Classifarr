@@ -28,6 +28,9 @@ import {
   listPolicyLearningTiers,
   validatePolicyLearningDecision,
 } from '../../services/policyLearningGuard.mjs';
+import {
+  POLICY_DECISION_HANDOFF_SOURCE_IDS,
+} from '../../services/policyDecisionHandoffSource.mjs';
 
 describe('policyLearningGuard', () => {
   test('defines the explicit learning tiers in roadmap order', () => {
@@ -181,6 +184,10 @@ describe('policyLearningGuard', () => {
     expect(result).toEqual(expect.objectContaining({
       ok: true,
       statusId: POLICY_LEARNING_BOUNDARY_STATUS_IDS.READY,
+      decisionSource: expect.objectContaining({
+        sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.REQUEST_TIME_LEARNING,
+        decisionVersion: 'policy.learning_guard.v1',
+      }),
       issueCount: 0,
       nextStep: expect.objectContaining({
         stepId: 'automation_readiness',

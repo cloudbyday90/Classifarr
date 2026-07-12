@@ -14,6 +14,9 @@ import {
   POLICY_LEARNING_TIER_IDS,
 } from './policyLearningGuard.mjs';
 import {
+  validatePolicyDecisionHandoffSource,
+} from './policyDecisionHandoffSource.mjs';
+import {
   buildPolicyAutomationReadinessInputSummary,
   normalizePolicyAutomationReadinessInputs,
 } from './policyAutomationReadinessInputNormalizer.mjs';
@@ -78,6 +81,7 @@ const POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS = Object.freeze({
   BOUNDED_EVIDENCE_AUDIT_NOT_PASSING: 'bounded_evidence_audit_not_passing',
   BOUNDED_INTENT_EVIDENCE_AUDIT_NOT_PASSING: 'bounded_intent_evidence_audit_not_passing',
   BOUNDED_LEARNING_AUDIT_NOT_PASSING: 'bounded_learning_audit_not_passing',
+  UNAPPROVED_BOUNDED_DECISION_SOURCE: 'unapproved_bounded_decision_source',
   MISSING_BOUNDED_QUALITY: 'missing_bounded_quality',
   BOUNDED_QUALITY_INSUFFICIENT: 'bounded_quality_insufficient',
   BOUNDED_QUALITY_MISMATCH: 'bounded_quality_mismatch',
@@ -564,6 +568,7 @@ function buildBoundedReadinessContext({
   boundedEvidenceResult,
   boundedIntentResult,
   boundedLearningResult,
+  decisionSourceAdmission,
 } = {}) {
   const evidenceFingerprint = getProjectionFingerprintFromEvidenceResult(boundedEvidenceResult);
   const intentFingerprint = getProjectionFingerprintFromIntentResult(boundedIntentResult);
@@ -590,6 +595,11 @@ function buildBoundedReadinessContext({
     learningBoundary: {
       statusId: boundedLearningResult.statusId || null,
       learningVersion: boundedLearningResult.decision?.version || null,
+      decisionSource: {
+        sourceId: decisionSourceAdmission?.sourceId || null,
+        decisionVersion: decisionSourceAdmission?.decisionVersion || null,
+        admitted: decisionSourceAdmission?.ok === true,
+      },
       quality: normalizeQualitySnapshot(getQualityFromLearningResult(boundedLearningResult)),
       projectionFingerprint:
         boundedLearningResult.intentBoundary?.evidenceBoundary?.projectionFingerprint || null,
@@ -608,6 +618,12 @@ function buildPolicyAutomationReadinessFromBoundedContracts({
   profileFreshness = {},
 } = {}) {
   const boundaryIssues = [];
+  const decisionSourceAdmission =
+    boundedLearningResult?.ok === true && boundedLearningResult?.decision
+      ? validatePolicyDecisionHandoffSource({
+          boundedDecisionResult: boundedLearningResult,
+        })
+      : null;
 
   if (boundedEvidenceResult?.ok !== true || !boundedEvidenceResult?.projection) {
     boundaryIssues.push({
@@ -663,6 +679,14 @@ function buildPolicyAutomationReadinessFromBoundedContracts({
     });
   }
 
+  if (decisionSourceAdmission?.ok !== true && boundedLearningResult?.ok === true) {
+    boundaryIssues.push({
+      riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.UNAPPROVED_BOUNDED_DECISION_SOURCE,
+      message: 'Readiness requires an approved bounded decision-handoff source.',
+      sourceRiskIds: decisionSourceAdmission.issues.map(issue => issue.riskId),
+    });
+  }
+
   if (
     boundedEvidenceResult?.ok === true &&
     boundedIntentResult?.ok === true &&
@@ -679,6 +703,7 @@ function buildPolicyAutomationReadinessFromBoundedContracts({
     boundedEvidenceResult,
     boundedIntentResult,
     boundedLearningResult,
+    decisionSourceAdmission,
   });
 
   if (!boundaryContext) {
@@ -698,6 +723,7 @@ function buildPolicyAutomationReadinessFromBoundedContracts({
       ok: false,
       statusId: POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
       boundaryContext,
+      decisionSourceAdmission,
       readiness: null,
       readinessAudit: null,
       issueCount: boundaryIssues.length,
@@ -723,6 +749,7 @@ function buildPolicyAutomationReadinessFromBoundedContracts({
       ? POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.READY
       : POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_READINESS_AUDIT,
     boundaryContext,
+    decisionSourceAdmission,
     readiness,
     readinessAudit,
     issueCount: readinessAudit.issueCount,

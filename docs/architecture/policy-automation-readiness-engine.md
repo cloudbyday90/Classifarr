@@ -113,6 +113,11 @@ contracts.
    entry point for raw upstream data. `buildPolicyAutomationReadinessFromContracts`
    rejects raw evidence keys and invalid contract versions.
 
+10. **Allowlist bounded decision sources.**
+    The bounded wrapper accepts only the request-time learning guard and the
+    library-rebuild no-write handoff. It validates exact source and decision
+    versions before readiness evaluation.
+
 ## Pros And Cons
 
 Pros:
@@ -158,6 +163,8 @@ Cons:
   `docs/architecture/policy-automation-readiness-quality-gate.md`
 - Contract-boundary outcome:
   `docs/architecture/policy-automation-readiness-contract-boundary.md`
+- Decision-source admission:
+  `docs/architecture/policy-decision-handoff-source.md`
 - Roadmap owner:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
@@ -233,6 +240,7 @@ intentBoundary.quality
 intentBoundary.projectionFingerprint
 learningBoundary.statusId
 learningBoundary.learningVersion
+learningBoundary.decisionSource
 learningBoundary.quality
 learningBoundary.projectionFingerprint
 projectionFingerprintMatch
@@ -251,6 +259,8 @@ projectionFingerprintMatch
   provenance, mismatched projection fingerprints, failed upstream audits,
   missing bounded quality, insufficient bounded quality, and mismatched bounded
   quality before readiness is returned.
+- The bounded wrapper rejects missing, unknown, noncanonical, or
+  version-mismatched decision sources before it derives a readiness state.
 
 ## Next Step
 

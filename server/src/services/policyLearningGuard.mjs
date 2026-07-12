@@ -15,6 +15,10 @@ import {
   buildPolicyFinalOutcome,
   buildPolicyFinalOutcomeAudit,
 } from './policyFinalOutcomeNormalizer.mjs';
+import {
+  POLICY_DECISION_HANDOFF_SOURCE_IDS,
+  buildPolicyDecisionHandoffSource,
+} from './policyDecisionHandoffSource.mjs';
 
 const POLICY_LEARNING_TIER_IDS = Object.freeze({
   NONE: 'none',
@@ -631,6 +635,9 @@ function buildPolicyLearningDecisionFromBoundedIntent({
     return {
       ok: false,
       statusId: POLICY_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+      decisionSource: buildPolicyDecisionHandoffSource(
+        POLICY_DECISION_HANDOFF_SOURCE_IDS.REQUEST_TIME_LEARNING
+      ),
       intentBoundary,
       decision: null,
       learningAudit: null,
@@ -652,6 +659,9 @@ function buildPolicyLearningDecisionFromBoundedIntent({
     statusId: ok
       ? POLICY_LEARNING_BOUNDARY_STATUS_IDS.READY
       : POLICY_LEARNING_BOUNDARY_STATUS_IDS.BLOCKED_BY_LEARNING_AUDIT,
+    decisionSource: buildPolicyDecisionHandoffSource(
+      POLICY_DECISION_HANDOFF_SOURCE_IDS.REQUEST_TIME_LEARNING
+    ),
     intentBoundary,
     decision,
     learningAudit,

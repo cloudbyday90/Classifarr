@@ -19,6 +19,9 @@ import {
   buildPolicyLearningDecisionFromBoundedIntent,
 } from '../../services/policyLearningGuard.mjs';
 import {
+  POLICY_DECISION_HANDOFF_SOURCE_IDS,
+} from '../../services/policyDecisionHandoffSource.mjs';
+import {
   POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS,
   POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS,
   POLICY_AUTOMATION_READINESS_REASON_IDS,
@@ -233,6 +236,11 @@ describe('policyAutomationReadinessEngine', () => {
         }),
       }),
       learningBoundary: expect.objectContaining({
+        decisionSource: {
+          sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.REQUEST_TIME_LEARNING,
+          decisionVersion: 'policy.learning_guard.v1',
+          admitted: true,
+        },
         quality: expect.objectContaining({
           statusId: boundedLearningResult.intentBoundary.evidenceBoundary.quality.statusId,
         }),
@@ -551,6 +559,53 @@ describe('policyAutomationReadinessEngine', () => {
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.BOUNDED_LEARNING_AUDIT_NOT_PASSING,
+      }),
+    ]));
+  });
+
+  test('blocks bounded readiness when the decision handoff source is missing or invalid', () => {
+    const {
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult,
+    } = buildBoundedReadyInputs();
+
+    const missingSourceResult = buildPolicyAutomationReadinessFromBoundedContracts({
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult: {
+        ...boundedLearningResult,
+        decisionSource: null,
+      },
+    });
+
+    expect(missingSourceResult).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: POLICY_AUTOMATION_READINESS_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      decisionSourceAdmission: expect.objectContaining({ ok: false }),
+    }));
+    expect(missingSourceResult.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.UNAPPROVED_BOUNDED_DECISION_SOURCE,
+      }),
+    ]));
+
+    const invalidSourceResult = buildPolicyAutomationReadinessFromBoundedContracts({
+      boundedEvidenceResult,
+      boundedIntentResult,
+      boundedLearningResult: {
+        ...boundedLearningResult,
+        decisionSource: {
+          ...boundedLearningResult.decisionSource,
+          sourceId: 'unapproved_source',
+        },
+      },
+    });
+
+    expect(invalidSourceResult.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_AUTOMATION_READINESS_AUDIT_RISK_IDS.UNAPPROVED_BOUNDED_DECISION_SOURCE,
+        sourceRiskIds: expect.arrayContaining(['unsupported_source']),
       }),
     ]));
   });

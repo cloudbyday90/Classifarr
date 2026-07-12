@@ -3698,6 +3698,11 @@ Implementation status:
 - The bounded readiness entry point now requires evidence, intent, and learning
   to carry matching, usable evidence-quality snapshots before any automation
   readiness state is returned.
+- The bounded readiness entry point now admits only two server-owned decision
+  sources: request-time learning and the library-rebuild no-write handoff. It
+  rejects missing, unknown, noncanonical, or version-mismatched source
+  descriptors before it derives readiness; its design record is [Policy
+  Decision Handoff Source](policy-decision-handoff-source.md).
 - Policy automation readiness architecture cutover is documented in
   [Policy Automation Readiness Engine Architecture Cutover](policy-automation-readiness-engine-architecture-cutover.md).
 - Policy automation readiness quality-gate hardening is documented in
@@ -6583,6 +6588,9 @@ runtime, storage, and legacy-removal work:
 4. Temporary delivery labels remain allowed only in roadmap documents,
    changelog history, immutable migration evidence, and tests that prove a
    bounded old-to-new transition.
+5. New source, capability, or handoff contracts must use durable
+   product-domain names from their first commit. A roadmap label, `phase` word,
+   or phase-derived alias is not an acceptable production contract identifier.
 
 No policy-engine component is complete while its production source, exports,
 current diagnostics, telemetry, or internal contract names still describe a

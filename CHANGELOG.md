@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Decision Handoff Source Admission** — bounded automation readiness
+  now accepts only the approved request-time learning and library-rebuild
+  no-write decision contracts, rejecting unknown sources, version drift, and
+  performed or implied rebuild side effects before it calculates readiness.
 - **Policy Library Rebuild Readiness Handoff** — library-derived rebuilds now
   use a verified, side-effect-free guarded-outcome handoff before bounded
   readiness evaluation; matching evidence, intent, and readiness provenance is

@@ -56,6 +56,8 @@ database, routing, learning, or policy-storage side effects.
 
 - contract: `policy.library_rebuild_readiness_handoff.v1`;
 - derived decision: `policy.library_rebuild_readiness_summary.v1`;
+- decision source: `policy.decision_handoff_source.v1` with
+  `sourceId = library_rebuild`;
 - source: verified bounded intent plus guarded-outcome projection only;
 - decision semantics: `outcome_only`, `policy_edit_required`, or `blocked`;
 - side effects: explicitly false for learning, routing, and policy storage;
@@ -99,8 +101,8 @@ Cons:
 6. Retain sanitized readiness provenance on a successful rebuild proposal.
 7. On failure, return a failed boundary state with no derived proposal
    contracts.
-8. Follow with an allowlisted bounded-decision source contract at the readiness
-   wrapper.
+8. Require the readiness wrapper to admit only allowlisted bounded-decision
+   source contracts.
 
 ## Security And Data Handling
 
@@ -143,6 +145,6 @@ Focused tests verify:
 
 ## Next Step
 
-Add bounded-decision source admission to the shared readiness wrapper so it
-accepts only the standard learning guard and this rebuild-specific no-write
-handoff.
+Bounded-decision source admission is implemented in
+[Policy Decision Handoff Source](policy-decision-handoff-source.md). Next,
+retain the admitted source summary through the bounded operator-workflow input.

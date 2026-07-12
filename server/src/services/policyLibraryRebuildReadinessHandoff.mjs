@@ -8,6 +8,10 @@ import {
   POLICY_GUARDED_OUTCOME_PROJECTION_VERSION,
   validatePolicyGuardedOutcomeProjection,
 } from './policyGuardedOutcomeProjection.mjs';
+import {
+  POLICY_DECISION_HANDOFF_SOURCE_IDS,
+  buildPolicyDecisionHandoffSource,
+} from './policyDecisionHandoffSource.mjs';
 
 const POLICY_LIBRARY_REBUILD_READINESS_HANDOFF_VERSION =
   'policy.library_rebuild_readiness_handoff.v1';
@@ -339,6 +343,9 @@ function buildPolicyLibraryRebuildReadinessHandoff({
         POLICY_LIBRARY_REBUILD_READINESS_HANDOFF_RISK_IDS.INVALID_GUARDED_OUTCOME_PROJECTION)
         ? POLICY_LIBRARY_REBUILD_READINESS_HANDOFF_STATUS_IDS.INVALID_GUARDED_OUTCOMES
         : POLICY_LIBRARY_REBUILD_READINESS_HANDOFF_STATUS_IDS.BLOCKED_BY_INTENT_BOUNDARY,
+    decisionSource: buildPolicyDecisionHandoffSource(
+      POLICY_DECISION_HANDOFF_SOURCE_IDS.LIBRARY_REBUILD
+    ),
     intentBoundary,
     decision: issues.length === 0 ? decision : null,
     issueCount: issues.length,

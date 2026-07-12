@@ -12,6 +12,9 @@ import {
   buildPolicyIntentDraftFromBoundedEvidence,
 } from '../../services/policyIntentEngine.mjs';
 import {
+  POLICY_DECISION_HANDOFF_SOURCE_IDS,
+} from '../../services/policyDecisionHandoffSource.mjs';
+import {
   buildPolicyLibraryRebuildReadinessHandoff,
   buildPolicyLibraryRebuildReadinessHandoffAudit,
   POLICY_LIBRARY_REBUILD_READINESS_HANDOFF_RISK_IDS,
@@ -58,6 +61,10 @@ describe('policyLibraryRebuildReadinessHandoff', () => {
     expect(handoff).toEqual(expect.objectContaining({
       ok: true,
       statusId: POLICY_LIBRARY_REBUILD_READINESS_HANDOFF_STATUS_IDS.READY,
+      decisionSource: expect.objectContaining({
+        sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.LIBRARY_REBUILD,
+        decisionVersion: POLICY_LIBRARY_REBUILD_READINESS_SUMMARY_VERSION,
+      }),
       intentBoundary: expect.objectContaining({
         statusId: 'ready',
         evidenceBoundary: expect.objectContaining({

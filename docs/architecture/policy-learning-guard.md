@@ -208,6 +208,7 @@ For bounded runtime/rebuild callers, the learning guard returns:
 ```text
 ok
 statusId
+decisionSource
 intentBoundary
 decision
 learningAudit
