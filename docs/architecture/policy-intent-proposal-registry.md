@@ -39,6 +39,11 @@ The registry has three intentionally separate operations:
 3. `consumeProposal` requires the same actor, reference, and exact fingerprint,
    then removes the record so it cannot be resolved or consumed again.
 
+Before resolution or consumption, the registry reruns the existing ready
+proposal audit against the stored snapshot and requires its library ID and
+verified evidence fingerprint to match entry metadata. Invalid snapshots are
+deleted and returned as unavailable without exposing the integrity reason.
+
 `policyIntentProposalRegistry.mjs` owns the in-memory lifecycle only.
 `policyIntentProposalRegistryContract.mjs` owns the immutable status vocabulary,
 input normalization, result shaping, ready-proposal validation, and audit. This
@@ -74,13 +79,15 @@ mutation cannot alter the registered review state.
 1. Keep proposal references opaque, random, short-lived, and actor-scoped.
 2. Validate the existing proposal audit before registration and snapshot it to
    prevent time-of-check/time-of-use mutation.
-3. Use the fingerprint at both command creation and consumption.
-4. Bound total and per-actor entry counts; fail closed instead of evicting an
+3. Revalidate the stored proposal audit, library ID, and verified fingerprint at
+   both resolution and consumption.
+4. Use the fingerprint at both command creation and consumption.
+5. Bound total and per-actor entry counts; fail closed instead of evicting an
    active reviewed proposal.
-5. Return sanitized registration metadata only. Never return raw evidence,
+6. Return sanitized registration metadata only. Never return raw evidence,
    labels, prompts, provider payloads, or the stored proposal from registry
    result envelopes.
-6. Keep registry consumption and the future native policy write in one durable
+7. Keep registry consumption and the future native policy write in one durable
    persistence transaction. A future multi-process deployment must replace the
    in-memory capability record with a transactionally consumed server store.
 
@@ -117,6 +124,8 @@ Cons:
 - Registration requires an authenticated administrator and an audited ready
   proposal with a valid evidence fingerprint.
 - Resolution and consumption enforce actor ownership server-side.
+- Resolution and consumption revalidate stored proposal readiness and verified
+  fingerprint provenance before returning or consuming the snapshot.
 - Missing and foreign references produce the same unavailable result, reducing
   object enumeration disclosure.
 - Expired references cannot resolve; expired entries are removed as they are

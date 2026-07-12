@@ -50,6 +50,17 @@ function isEntryOwnedBy(entry, actor) {
   return entry?.actorId === actor.id;
 }
 
+function isStoredProposalCurrent(entry, buildProposalAudit) {
+  const proposalResult = validateReadyPolicyIntentProposal(
+    entry?.proposal,
+    buildProposalAudit
+  );
+
+  return proposalResult.valid === true &&
+    proposalResult.summary?.libraryId === entry.libraryId &&
+    proposalResult.summary?.proposalFingerprint === entry.proposalFingerprint;
+}
+
 function createPolicyIntentProposalRegistry({
   now = () => Date.now(),
   createReference = buildReference,
@@ -179,6 +190,10 @@ function createPolicyIntentProposalRegistry({
       return null;
     }
     if (!isEntryOwnedBy(entry, actorResult.actor)) return null;
+    if (!isStoredProposalCurrent(entry, buildProposalAudit)) {
+      entries.delete(reference);
+      return null;
+    }
 
     return cloneProposal(entry.proposal);
   }
@@ -226,6 +241,15 @@ function createPolicyIntentProposalRegistry({
         POLICY_INTENT_PROPOSAL_REGISTRY_STATUS_IDS.PROPOSAL_EXPIRED,
         POLICY_INTENT_PROPOSAL_REGISTRY_RISK_IDS.PROPOSAL_EXPIRED,
         'The server-owned policy intent proposal has expired.',
+      );
+    }
+
+    if (!isStoredProposalCurrent(entry, buildProposalAudit)) {
+      entries.delete(reference);
+      return buildRegistryFailure(
+        POLICY_INTENT_PROPOSAL_REGISTRY_STATUS_IDS.PROPOSAL_UNAVAILABLE,
+        POLICY_INTENT_PROPOSAL_REGISTRY_RISK_IDS.PROPOSAL_UNAVAILABLE,
+        'The server-owned policy intent proposal is unavailable.',
       );
     }
 

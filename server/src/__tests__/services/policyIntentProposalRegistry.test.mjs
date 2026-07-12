@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import {
   buildPolicyDeclaredIntentCommandAudit,
   createPolicyDeclaredIntentCommandService,
@@ -179,6 +180,30 @@ describe('policyIntentProposalRegistry', () => {
     }));
     expect(replay.statusId).toBe(POLICY_INTENT_PROPOSAL_REGISTRY_STATUS_IDS.PROPOSAL_UNAVAILABLE);
     expect(registry.resolveProposal(input)).toBeNull();
+  });
+
+  test('revalidates the stored verified proposal before resolving and consuming it', () => {
+    const buildProposalAudit = jest.fn(proposal => ({
+      ok: proposal.handoffAudit?.projectionFingerprint?.fingerprint === PROPOSAL_FINGERPRINT,
+      issueCount: 0,
+      issues: [],
+    }));
+    const registry = createPolicyIntentProposalRegistry({ buildProposalAudit });
+    const registration = registry.registerProposal({ proposal: readyProposal(), actor: actor() });
+
+    expect(buildProposalAudit).toHaveBeenCalledTimes(1);
+    expect(registry.resolveProposal({
+      proposalReference: registration.registration.proposalReference,
+      actor: actor(),
+    })).toEqual(expect.objectContaining({ ok: true }));
+    expect(buildProposalAudit).toHaveBeenCalledTimes(2);
+
+    expect(registry.consumeProposal({
+      proposalReference: registration.registration.proposalReference,
+      proposalFingerprint: PROPOSAL_FINGERPRINT,
+      actor: actor(),
+    })).toEqual(expect.objectContaining({ ok: true }));
+    expect(buildProposalAudit).toHaveBeenCalledTimes(3);
   });
 
   test('fails closed for invalid proposals, unauthorized callers, and bounded capacity', () => {

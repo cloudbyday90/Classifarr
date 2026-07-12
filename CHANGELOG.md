@@ -11,6 +11,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Intent Proposal Registry Snapshot Revalidation** — actor-bound
+  proposal references now revalidate their stored ready proposal, library ID,
+  and verified evidence fingerprint before resolution or one-time consumption.
 - **Policy Library Intent Proposal Fingerprint Provenance** — ready proposals
   now derive their evidence fingerprint from the independently verified handoff
   audit and reject any provenance mismatch before intent inference.

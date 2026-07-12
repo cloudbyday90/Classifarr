@@ -3412,6 +3412,9 @@ Implementation status:
   [Policy Evidence Handoff Projection Revalidation](policy-evidence-handoff-projection-revalidation.md).
   Verified fingerprint provenance propagation is documented in
   [Policy Library Intent Proposal Fingerprint Provenance](policy-library-intent-proposal-fingerprint-provenance.md).
+  The opaque proposal registry revalidates stored proposal fingerprint
+  provenance before resolution or consumption; its design record is
+  [Policy Intent Proposal Registry Snapshot Revalidation](policy-intent-proposal-registry-snapshot-revalidation.md).
 - The library intent proposal service lives in
   `server/src/services/policyLibraryIntentProposalService.mjs`. It accepts
   declared operator intent only through the shared evidence input gate, loads
