@@ -33,6 +33,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   automation decisions, clarification reduction, request-time learning,
   decision traces, and test ownership that distinguish a completed
   classification from a successfully routed item.
+- **Automation Decision Output Integrity** — bind every automation state to its
+  sole permitted action, permissions, canonical reasons, and bounded trace
+  attributes before later execution can act on it.
 - **Runtime Evidence Trace Integrity** — derive projection trace reasons from
   sanitized evidence, use fixed server-owned warning records, and reject
   altered trace attributes before automation can consume a projection.

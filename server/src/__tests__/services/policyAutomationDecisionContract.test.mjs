@@ -437,6 +437,55 @@ describe('policyAutomationDecisionContract', () => {
     ]));
   });
 
+  test('rejects state/action bypasses and forged decision trace details', () => {
+    const decision = buildDecisionForTest({
+      evidenceProjection: buildStrongRuntimeEvidence(),
+      routing: {
+        mapped: true,
+        targetName: 'Radarr Animated Movies',
+      },
+    });
+    const forgedStateDecision = {
+      ...decision,
+      stateId: POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
+      actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
+      automationAllowed: true,
+      routeAllowed: true,
+      classificationAllowed: true,
+    };
+    const forgedTraceDecision = {
+      ...decision,
+      trace: {
+        ...decision.trace,
+        reasons: [{
+          ...decision.trace.reasons[0],
+          summary: 'raw=do-not-leak',
+        }],
+        attributes: {
+          ...decision.trace.attributes,
+          'classifarr.runtime.decision.reason_count': 999,
+          'classifarr.runtime.decision.unbounded_context': 'do-not-leak',
+        },
+      },
+    };
+
+    expect(validatePolicyAutomationDecision(forgedStateDecision).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.STATE_ACTION_MISMATCH,
+        }),
+        expect.objectContaining({
+          riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.STATE_PERMISSION_MISMATCH,
+        }),
+      ]));
+    expect(validatePolicyAutomationDecision(forgedTraceDecision).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.TRACE_CONTRACT_MISMATCH,
+        }),
+      ]));
+  });
+
   test('passes the default automation decision contract audit', () => {
     const decision = buildDecisionForTest({
       evidenceProjection: buildStrongRuntimeEvidence(),

@@ -124,9 +124,12 @@ Cons:
    fingerprints.
 8. Require the decision evidence block to carry the runtime evidence validation
    result, and require the trace `evidence_valid` attribute to match it.
-9. Keep the contract side-effect-free until a later runtime integration slice
+9. Bind each state to one action, fixed permissions, canonical reasons, and a
+   complete bounded trace attribute map. Reject any output that drifts from
+   that tuple before later execution can act.
+10. Keep the contract side-effect-free until a later runtime integration slice
    explicitly wires it to classification and Arr routing.
-10. Keep runtime evidence construction outside the decision reducer. Use
+11. Keep runtime evidence construction outside the decision reducer. Use
     `buildPolicyAutomationDecisionFromRuntimeInput` for raw runtime inputs and
     `buildPolicyAutomationDecisionFromEvidenceProjection` for an existing
     runtime projection plus operational facts.
@@ -135,6 +138,8 @@ Cons:
 
 - Automation decision contract:
   `server/src/services/policyAutomationDecisionContract.mjs`
+- Decision output contract:
+  `server/src/services/policyAutomationDecisionOutputContract.mjs`
 - Focused tests:
   `server/src/__tests__/services/policyAutomationDecisionContract.test.mjs`
 - Runtime evidence dependency:
@@ -206,6 +211,8 @@ The service exports:
   fingerprint.
 - Validation fails if runtime evidence validation proof is missing or the trace
   `evidence_valid` attribute drifts from the decision evidence block.
+- Validation fails if action, permissions, reason records, or trace attributes
+  drift from the selected server-owned decision state.
 
 ## Trace Shape
 
@@ -225,6 +232,11 @@ classifarr.runtime.decision.evidence_projection_fingerprint
 
 Trace reasons are capped to prevent payload-like evidence dumps from becoming
 logs.
+
+The selected decision state also fixes the allowed action, automation
+permission, routing permission, classification permission, and bounded reason
+set. Trace fields are rebuilt from that output tuple and reject added or
+modified fields.
 
 ## Test Coverage
 

@@ -11,40 +11,18 @@ import {
   buildPolicyRuntimeEvidenceProjection,
   validatePolicyRuntimeEvidenceProjection,
 } from './policyRuntimeEvidenceProjection.mjs';
-
-const POLICY_AUTOMATION_DECISION_STATE_IDS = Object.freeze({
-  AUTO_ROUTE_READY: 'auto_route_ready',
-  CLASSIFIED_NOT_ROUTED: 'classified_not_routed',
-  NEEDS_OPERATOR_REVIEW: 'needs_operator_review',
-  BLOCKED_BY_HARD_LIMIT: 'blocked_by_hard_limit',
-  NEEDS_ROUTING_MAPPING: 'needs_routing_mapping',
-  STALE_PROFILE_RETRY: 'stale_profile_retry',
-  INSUFFICIENT_EVIDENCE: 'insufficient_evidence',
-});
-
-const POLICY_AUTOMATION_DECISION_ACTION_IDS = Object.freeze({
-  ROUTE_TO_ARR: 'route_to_arr',
-  RECORD_CLASSIFICATION_ONLY: 'record_classification_only',
-  ASK_OPERATOR: 'ask_operator',
-  BLOCK_AUTOMATION: 'block_automation',
-  CONFIGURE_ROUTING: 'configure_routing',
-  REFRESH_PROFILE: 'refresh_profile',
-  GATHER_EVIDENCE: 'gather_evidence',
-});
-
-const POLICY_AUTOMATION_DECISION_REASON_IDS = Object.freeze({
-  AUTOMATION_ROUTE_READY: 'automation_route_ready',
-  CLASSIFICATION_WITHOUT_ROUTE: 'classification_without_route',
-  HARD_LIMIT_VIOLATION: 'hard_limit_violation',
-  AVOID_RULE_CONFLICT: 'avoid_rule_conflict',
-  OUTLIER_CONFLICT: 'outlier_conflict',
-  STALE_PROFILE: 'stale_profile',
-  MISSING_STRONG_IDENTITY: 'missing_strong_identity',
-  INSUFFICIENT_RUNTIME_EVIDENCE: 'insufficient_runtime_evidence',
-  ROUTING_MAPPING_MISSING: 'routing_mapping_missing',
-  HIGH_RISK_EVIDENCE_CONFLICT: 'high_risk_evidence_conflict',
-  RUNTIME_EVIDENCE_INVALID: 'runtime_evidence_invalid',
-});
+import {
+  POLICY_AUTOMATION_DECISION_ACTION_IDS,
+  POLICY_AUTOMATION_DECISION_MAX_TRACE_REASONS,
+  POLICY_AUTOMATION_DECISION_OUTPUT_RISK_IDS,
+  POLICY_AUTOMATION_DECISION_REASON_IDS,
+  POLICY_AUTOMATION_DECISION_STATE_IDS,
+  buildPolicyAutomationDecisionOutputAudit,
+  buildPolicyAutomationDecisionReason,
+  buildPolicyAutomationDecisionTrace,
+  getAutomationDecisionState,
+  listPolicyAutomationDecisionStates,
+} from './policyAutomationDecisionOutputContract.mjs';
 
 const POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS = Object.freeze({
   MISSING_STATE: 'missing_state',
@@ -66,62 +44,13 @@ const POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS = Object.freeze({
   MALFORMED_EVIDENCE_FINGERPRINT: 'malformed_evidence_fingerprint',
   RAW_EVIDENCE_PROVENANCE_EXPOSED: 'raw_evidence_provenance_exposed',
   TRACE_FINGERPRINT_MISMATCH: 'trace_fingerprint_mismatch',
+  STATE_ACTION_MISMATCH:
+    POLICY_AUTOMATION_DECISION_OUTPUT_RISK_IDS.STATE_ACTION_MISMATCH,
+  STATE_PERMISSION_MISMATCH:
+    POLICY_AUTOMATION_DECISION_OUTPUT_RISK_IDS.STATE_PERMISSION_MISMATCH,
+  TRACE_CONTRACT_MISMATCH:
+    POLICY_AUTOMATION_DECISION_OUTPUT_RISK_IDS.TRACE_CONTRACT_MISMATCH,
 });
-
-const STATE_CONTRACTS = Object.freeze([
-  {
-    id: POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
-    label: 'Auto-route ready',
-    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ROUTE_TO_ARR,
-    automationAllowed: true,
-    routeAllowed: true,
-  },
-  {
-    id: POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED,
-    label: 'Classified, not routed',
-    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.RECORD_CLASSIFICATION_ONLY,
-    automationAllowed: true,
-    routeAllowed: false,
-  },
-  {
-    id: POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_OPERATOR_REVIEW,
-    label: 'Needs operator review',
-    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
-    automationAllowed: false,
-    routeAllowed: false,
-  },
-  {
-    id: POLICY_AUTOMATION_DECISION_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
-    label: 'Blocked by hard limit',
-    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.BLOCK_AUTOMATION,
-    automationAllowed: false,
-    routeAllowed: false,
-  },
-  {
-    id: POLICY_AUTOMATION_DECISION_STATE_IDS.NEEDS_ROUTING_MAPPING,
-    label: 'Needs routing mapping',
-    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING,
-    automationAllowed: false,
-    routeAllowed: false,
-  },
-  {
-    id: POLICY_AUTOMATION_DECISION_STATE_IDS.STALE_PROFILE_RETRY,
-    label: 'Stale profile retry',
-    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.REFRESH_PROFILE,
-    automationAllowed: false,
-    routeAllowed: false,
-  },
-  {
-    id: POLICY_AUTOMATION_DECISION_STATE_IDS.INSUFFICIENT_EVIDENCE,
-    label: 'Insufficient evidence',
-    actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.GATHER_EVIDENCE,
-    automationAllowed: false,
-    routeAllowed: false,
-  },
-]);
-
-const DECISION_STATE_IDS = Object.freeze(Object.values(POLICY_AUTOMATION_DECISION_STATE_IDS));
-const MAX_TRACE_REASONS = 12;
 const STRONG_IDENTITY_CONFIDENCE = 0.75;
 const STRONG_IDENTITY_COUNT = 2;
 const FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
@@ -170,14 +99,6 @@ function normalizeConfidence(value) {
   if (!Number.isFinite(numeric)) return null;
   if (numeric > 1) return Math.max(0, Math.min(1, numeric / 100));
   return Math.max(0, Math.min(1, numeric));
-}
-
-function getAutomationDecisionState(stateId) {
-  return STATE_CONTRACTS.find(state => state.id === stateId) || null;
-}
-
-function listPolicyAutomationDecisionStates() {
-  return STATE_CONTRACTS;
 }
 
 function getBuckets(evidenceProjection = {}) {
@@ -294,23 +215,9 @@ function hasHighRiskEvidenceConflict(input = {}, buckets = {}) {
     asArray(buckets.insufficient).some(entry => highRiskInsufficientReasons.has(entry?.reasonCode));
 }
 
-function buildReason(reasonId, {
-  bucketId = null,
-  sourceId = null,
-  summary,
-  severity = 'info',
-} = {}) {
-  return {
-    reasonId,
-    bucketId,
-    sourceId,
-    summary,
-    severity,
-  };
-}
-
-function pushReason(reasons, reasonId, options = {}) {
-  reasons.push(buildReason(reasonId, options));
+function pushReason(reasons, reasonId) {
+  const reason = buildPolicyAutomationDecisionReason(reasonId);
+  if (reason) reasons.push(reason);
 }
 
 function chooseDecisionState({
@@ -440,22 +347,17 @@ function buildTrace({
   strongIdentity,
   routeMapped,
 }) {
-  const boundedReasons = reasons.slice(0, MAX_TRACE_REASONS);
-
-  return {
-    attributes: {
-      'classifarr.runtime.decision.version': 'policy.automation_decision.v1',
-      'classifarr.runtime.decision.state': stateId,
-      'classifarr.runtime.decision.reason_count': boundedReasons.length,
-      'classifarr.runtime.decision.identity_count': asArray(buckets.identity).length,
-      'classifarr.runtime.decision.routing_count': asArray(buckets.routing).length,
-      'classifarr.runtime.decision.strong_identity': strongIdentity,
-      'classifarr.runtime.decision.route_mapped': routeMapped,
-      'classifarr.runtime.decision.evidence_valid': evidenceValidation.ok,
+  return buildPolicyAutomationDecisionTrace({
+    stateId,
+    reasons,
+    evidenceCounts: {
+      identity: asArray(buckets.identity).length,
+      routing: asArray(buckets.routing).length,
     },
-    reasons: boundedReasons,
-    truncated: reasons.length > boundedReasons.length,
-  };
+    evidenceValidation,
+    strongIdentity,
+    routeMapped,
+  });
 }
 
 function buildSideEffectSummary(input = {}) {
@@ -644,10 +546,7 @@ function buildPolicyAutomationDecisionFromEvidenceProjection(input = {}) {
     actionId: state?.actionId || POLICY_AUTOMATION_DECISION_ACTION_IDS.ASK_OPERATOR,
     automationAllowed: state?.automationAllowed === true,
     routeAllowed: state?.routeAllowed === true,
-    classificationAllowed: [
-      POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY,
-      POLICY_AUTOMATION_DECISION_STATE_IDS.CLASSIFIED_NOT_ROUTED,
-    ].includes(chosen.stateId),
+    classificationAllowed: state?.classificationAllowed === true,
     routeMapped,
     strongIdentity,
     classificationComplete,
@@ -703,7 +602,7 @@ function validatePolicyAutomationDecision(decision = {}) {
       riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.MISSING_STATE,
       message: 'Automation decision must include a state id.',
     });
-  } else if (!DECISION_STATE_IDS.includes(decision.stateId)) {
+  } else if (!getAutomationDecisionState(decision.stateId)) {
     issues.push({
       riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.UNKNOWN_STATE,
       message: 'Automation decision must use a supported policy automation state.',
@@ -724,7 +623,10 @@ function validatePolicyAutomationDecision(decision = {}) {
     });
   }
 
-  if (asArray(decision.trace?.reasons).length > MAX_TRACE_REASONS || decision.trace?.truncated === true) {
+  if (
+    asArray(decision.trace?.reasons).length > POLICY_AUTOMATION_DECISION_MAX_TRACE_REASONS ||
+    decision.trace?.truncated === true
+  ) {
     issues.push({
       riskId: POLICY_AUTOMATION_DECISION_AUDIT_RISK_IDS.TRACE_REASON_OVERFLOW,
       message: 'Automation decision trace must stay bounded.',
@@ -733,6 +635,19 @@ function validatePolicyAutomationDecision(decision = {}) {
 
   issues.push(...validateDecisionEvidenceValidation(decision));
   issues.push(...validateDecisionEvidenceFingerprint(decision));
+
+  const decisionTraceOutputAudit = buildPolicyAutomationDecisionOutputAudit({
+    decision,
+    additionalTraceAttributes: normalizeString(
+      decision.evidence?.projectionFingerprint?.fingerprint
+    )
+      ? {
+        [DECISION_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTE]:
+          normalizeString(decision.evidence.projectionFingerprint.fingerprint),
+      }
+      : {},
+  });
+  issues.push(...decisionTraceOutputAudit.issues);
 
   if (decision.stateId === POLICY_AUTOMATION_DECISION_STATE_IDS.AUTO_ROUTE_READY) {
     if (decision.strongIdentity !== true) {
@@ -806,8 +721,8 @@ function buildPolicyAutomationDecisionContractAudit(
   return {
     ok: validation.ok,
     issueCount: validation.issueCount,
-    checkedStateCount: STATE_CONTRACTS.length,
-    maxTraceReasonCount: MAX_TRACE_REASONS,
+    checkedStateCount: listPolicyAutomationDecisionStates().length,
+    maxTraceReasonCount: POLICY_AUTOMATION_DECISION_MAX_TRACE_REASONS,
     validation,
     nextStep: {
       stepId: 'runtime_question_reduction',

@@ -4169,6 +4169,11 @@ Implementation status:
 - The decision contract also requires nested runtime evidence validation proof
   and rejects decisions whose bounded trace evidence-valid attribute disagrees
   with the evidence block.
+- Automation decision output now uses a server-owned state/action/permission
+  matrix with canonical state-specific reasons and trace attributes. Mutated
+  actions, permissions, reason records, or trace fields fail validation before
+  a later execution component can act. Its design record is [Policy Automation
+  Decision Output Contract](policy-automation-decision-output-contract.md).
 - Decision construction now separates raw runtime-input adaptation from the
   projection-only state-machine reducer. Raw evidence cannot be rebuilt by the
   reducer; its design record is [Policy Automation Decision Input
