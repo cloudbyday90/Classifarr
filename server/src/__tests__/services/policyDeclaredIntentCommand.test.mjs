@@ -18,6 +18,12 @@ function readyProposal(overrides = {}) {
         fingerprint: PROPOSAL_FINGERPRINT,
       },
     },
+    handoffAudit: {
+      ok: true,
+      projectionFingerprint: {
+        fingerprint: PROPOSAL_FINGERPRINT,
+      },
+    },
     intent: {
       version: 'policy.intent.v1',
     },
@@ -56,14 +62,17 @@ describe('policyDeclaredIntentCommand', () => {
     expect(result).toEqual(expect.objectContaining({
       ok: true,
       statusId: POLICY_DECLARED_INTENT_COMMAND_STATUS_IDS.READY,
-      proposal: {
+      proposal: expect.objectContaining({
         libraryId: 42,
         statusId: 'ready',
         fingerprint: PROPOSAL_FINGERPRINT,
-      },
+        verifiedHandoffFingerprint: PROPOSAL_FINGERPRINT,
+        handoffAuditOk: true,
+      }),
       command: expect.objectContaining({
         proposalReference: 'proposal-42',
         proposalFingerprint: PROPOSAL_FINGERPRINT,
+        verifiedHandoffFingerprint: PROPOSAL_FINGERPRINT,
         libraryId: 42,
         actor: { id: 7, role: 'admin' },
         authoritySourceId: 'operator_declared_intent',
@@ -177,6 +186,30 @@ describe('policyDeclaredIntentCommand', () => {
       .toBe(POLICY_DECLARED_INTENT_COMMAND_RISK_IDS.HARD_LIMIT_CONFIRMATION_REQUIRED);
   });
 
+  test('rejects proposal provenance that differs from the verified handoff fingerprint', async () => {
+    const service = createPolicyDeclaredIntentCommandService({
+      resolveProposal: jest.fn().mockResolvedValue(readyProposal({
+        handoffAudit: {
+          ok: true,
+          projectionFingerprint: {
+            fingerprint: 'b'.repeat(64),
+          },
+        },
+      })),
+    });
+
+    const result = await service.submitDeclaredIntentCommand(validInput());
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: POLICY_DECLARED_INTENT_COMMAND_STATUS_IDS.PROPOSAL_NOT_READY,
+      issues: [expect.objectContaining({
+        riskId: POLICY_DECLARED_INTENT_COMMAND_RISK_IDS.VERIFIED_HANDOFF_FINGERPRINT_MISMATCH,
+      })],
+      nextStep: null,
+    }));
+  });
+
   test('sanitizes unavailable proposals and detects unsafe result side effects', async () => {
     const service = createPolicyDeclaredIntentCommandService({
       resolveProposal: jest.fn().mockRejectedValue(new Error('proposal storage details must not escape')),
@@ -199,6 +232,7 @@ describe('policyDeclaredIntentCommand', () => {
     const ready = await readyService.submitDeclaredIntentCommand(validInput());
     ready.sideEffects.policyStorageMutated = true;
     ready.command.proposalFingerprint = 'c'.repeat(64);
+    ready.command.verifiedHandoffFingerprint = 'd'.repeat(64);
 
     expect(buildPolicyDeclaredIntentCommandAudit(ready).issues).toEqual(expect.arrayContaining([
       expect.objectContaining({

@@ -13,6 +13,7 @@ const POLICY_DECLARED_INTENT_COMMAND_STATUS_IDS = Object.freeze({
   PROPOSAL_UNAVAILABLE: 'proposal_unavailable',
   PROPOSAL_NOT_READY: 'proposal_not_ready',
   PROPOSAL_FINGERPRINT_MISMATCH: 'proposal_fingerprint_mismatch',
+  VERIFIED_HANDOFF_FINGERPRINT_MISMATCH: 'verified_handoff_fingerprint_mismatch',
   MISSING_DESTINATION_IDENTITY: 'missing_destination_identity',
   CONFIRMATION_REQUIRED: 'confirmation_required',
   COMMAND_FAILED: 'command_failed',
@@ -78,11 +79,15 @@ function buildProposalSummary(proposal = {}) {
   const source = asPlainObject(proposal);
   const provenance = asPlainObject(source.evidenceProvenance);
   const fingerprint = asPlainObject(provenance.projectionFingerprint);
+  const handoffAudit = asPlainObject(source.handoffAudit);
+  const verifiedFingerprint = asPlainObject(handoffAudit.projectionFingerprint);
 
   return {
     libraryId: Number.isInteger(provenance.libraryId) ? provenance.libraryId : null,
     statusId: normalizeString(source.statusId) || null,
     fingerprint: normalizeString(fingerprint.fingerprint) || null,
+    verifiedHandoffFingerprint: normalizeString(verifiedFingerprint.fingerprint) || null,
+    handoffAuditOk: handoffAudit.ok === true,
   };
 }
 
@@ -221,6 +226,7 @@ function buildCommand({ input, actor, proposal }) {
     version: POLICY_DECLARED_INTENT_COMMAND_VERSION,
     proposalReference: input.proposalReference,
     proposalFingerprint: input.proposalFingerprint,
+    verifiedHandoffFingerprint: proposal.verifiedHandoffFingerprint,
     libraryId: proposal.libraryId,
     actor,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
@@ -285,7 +291,8 @@ function createPolicyDeclaredIntentCommandService({
     const proposalSummary = buildProposalSummary(proposal);
     if (proposal?.ok !== true || proposal?.statusId !== 'ready' ||
         proposal?.intent?.version !== 'policy.intent.v1' ||
-        !Number.isInteger(proposalSummary.libraryId) || !proposalSummary.fingerprint) {
+        !Number.isInteger(proposalSummary.libraryId) || !proposalSummary.fingerprint ||
+        !proposalSummary.handoffAuditOk || !proposalSummary.verifiedHandoffFingerprint) {
       return buildCommandResult({
         statusId: POLICY_DECLARED_INTENT_COMMAND_STATUS_IDS.PROPOSAL_NOT_READY,
         ok: false,
@@ -307,6 +314,19 @@ function createPolicyDeclaredIntentCommandService({
         issue: {
           riskId: POLICY_DECLARED_INTENT_COMMAND_RISK_IDS.PROPOSAL_FINGERPRINT_MISMATCH,
           message: 'Declared intent command no longer matches the server-owned proposal.',
+        },
+      });
+    }
+
+    if (proposalSummary.fingerprint !== proposalSummary.verifiedHandoffFingerprint) {
+      return buildCommandResult({
+        statusId: POLICY_DECLARED_INTENT_COMMAND_STATUS_IDS.PROPOSAL_NOT_READY,
+        ok: false,
+        proposal,
+        proposalResolved: true,
+        issue: {
+          riskId: POLICY_DECLARED_INTENT_COMMAND_RISK_IDS.VERIFIED_HANDOFF_FINGERPRINT_MISMATCH,
+          message: 'Declared intent command requires proposal provenance that matches the verified handoff.',
         },
       });
     }
@@ -372,6 +392,9 @@ function buildPolicyDeclaredIntentCommandAudit(result = {}) {
       command.authoritySourceId !== AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT ||
       !command.proposalFingerprint ||
       command.proposalFingerprint !== proposal.fingerprint ||
+      !command.verifiedHandoffFingerprint ||
+      command.verifiedHandoffFingerprint !== proposal.verifiedHandoffFingerprint ||
+      command.proposalFingerprint !== command.verifiedHandoffFingerprint ||
       !Number.isInteger(command.libraryId) ||
       command.libraryId !== proposal.libraryId ||
       command.actor?.role !== 'admin' ||

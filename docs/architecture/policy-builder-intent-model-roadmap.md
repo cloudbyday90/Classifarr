@@ -3415,6 +3415,9 @@ Implementation status:
   The opaque proposal registry revalidates stored proposal fingerprint
   provenance before resolution or consumption; its design record is
   [Policy Intent Proposal Registry Snapshot Revalidation](policy-intent-proposal-registry-snapshot-revalidation.md).
+  The declared-intent command requires its proposal fingerprint to agree with
+  the verified handoff fingerprint before the future persistence gate; its
+  design record is [Policy Declared Intent Command Fingerprint Provenance](policy-declared-intent-command-fingerprint-provenance.md).
 - The library intent proposal service lives in
   `server/src/services/policyLibraryIntentProposalService.mjs`. It accepts
   declared operator intent only through the shared evidence input gate, loads
