@@ -16,6 +16,10 @@ import {
   buildPolicyMigrationDeletionPlan,
   listPolicyMigrationDeletionArtifacts,
 } from '../../services/policyMigrationDeletionPath.mjs';
+import {
+  POLICY_DECISION_HANDOFF_SOURCE_IDS,
+  POLICY_DECISION_HANDOFF_SOURCE_VERSION,
+} from '../../services/policyDecisionHandoffSource.mjs';
 
 const stableQuality = Object.freeze({
   version: 'policy.evidence.quality.v1',
@@ -52,6 +56,25 @@ const insufficientQuality = Object.freeze({
   hasDeclaredIdentityEvidence: false,
   hasObservedIdentityEvidence: false,
 });
+
+function buildDecisionSourceAdmission() {
+  return {
+    version: `${POLICY_DECISION_HANDOFF_SOURCE_VERSION}.audit`,
+    ok: true,
+    sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.REQUEST_TIME_LEARNING,
+    decisionVersion: 'policy.learning_guard.v1',
+    issueCount: 0,
+    issues: [],
+  };
+}
+
+function buildDecisionSourceSummary() {
+  return {
+    sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.REQUEST_TIME_LEARNING,
+    decisionVersion: 'policy.learning_guard.v1',
+    admitted: true,
+  };
+}
 
 describe('policyEngineCompletionAudit', () => {
   test('lists policy engine components in handoff order', () => {
@@ -121,6 +144,12 @@ describe('policyEngineCompletionAudit', () => {
     expect(audit.qualityStatuses).toEqual([
       POLICY_EVIDENCE_QUALITY_STATUS_IDS.USABLE,
     ]);
+    expect(audit.decisionSource).toEqual({
+      sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.REQUEST_TIME_LEARNING,
+      decisionVersion: 'policy.learning_guard.v1',
+      admitted: true,
+    });
+    expect(audit.decisionSourceAuditCount).toBe(3);
     expect(audit.sharedProjectionFingerprint).toMatch(/^[a-f0-9]{64}$/);
     expect(new Set(audit.steps.map(step => step.projectionFingerprint)).size).toBe(1);
     expect(audit.steps.every(step => step.auditOk === true)).toBe(true);
@@ -388,6 +417,141 @@ describe('policyEngineCompletionAudit', () => {
       }),
       expect.objectContaining({
         riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_RAW_PROVENANCE,
+      }),
+    ]));
+  });
+
+  test('rejects missing, invalid, and mismatched decision-source provenance', () => {
+    const stableFingerprint = 'd'.repeat(64);
+    const projectionFingerprint = { fingerprint: stableFingerprint };
+    const buildChain = () => ({
+      boundedEvidenceResult: {
+        ok: true,
+        statusId: 'ready',
+        projection: { quality: stableQuality },
+        projectionFingerprint,
+        projectionAudit: { ok: true },
+        projectionFingerprintAudit: { ok: true },
+      },
+      boundedIntentResult: {
+        ok: true,
+        statusId: 'ready',
+        evidenceBoundary: { quality: stableQuality, projectionFingerprint },
+        intentAudit: { ok: true },
+        evidenceFingerprintAudit: { ok: true },
+      },
+      boundedLearningResult: {
+        ok: true,
+        statusId: 'ready',
+        intentBoundary: {
+          evidenceBoundary: { quality: stableQuality, projectionFingerprint },
+        },
+        learningAudit: { ok: true },
+      },
+      boundedReadinessResult: {
+        ok: true,
+        statusId: 'ready',
+        decisionSourceAdmission: buildDecisionSourceAdmission(),
+        boundaryContext: {
+          evidenceBoundary: { quality: stableQuality, projectionFingerprint },
+          intentBoundary: { quality: stableQuality },
+          learningBoundary: {
+            quality: stableQuality,
+            decisionSource: buildDecisionSourceSummary(),
+          },
+          projectionFingerprintMatch: true,
+        },
+        readiness: {
+          inputs: {
+            boundaryContext: {
+              learningBoundary: { decisionSource: buildDecisionSourceSummary() },
+            },
+          },
+        },
+        readinessAudit: { ok: true },
+      },
+      boundedWorkflowResult: {
+        ok: true,
+        statusId: 'ready',
+        decisionSourceAdmission: buildDecisionSourceAdmission(),
+        boundaryContext: {
+          intentBoundary: { quality: stableQuality, projectionFingerprint },
+          readinessBoundary: {
+            evidenceQuality: stableQuality,
+            intentQuality: stableQuality,
+            learningQuality: stableQuality,
+            projectionFingerprint,
+            decisionSource: buildDecisionSourceSummary(),
+          },
+          projectionFingerprintMatch: true,
+        },
+        workflow: {
+          boundaryContext: {
+            intentBoundary: { quality: stableQuality },
+            readinessBoundary: {
+              evidenceQuality: stableQuality,
+              intentQuality: stableQuality,
+              learningQuality: stableQuality,
+              decisionSource: buildDecisionSourceSummary(),
+            },
+          },
+        },
+        workflowAudit: { ok: true },
+      },
+      boundedMigrationResult: {
+        ok: true,
+        statusId: 'ready',
+        boundaryContext: {
+          workflowBoundary: {
+            quality: stableQuality,
+            projectionFingerprint,
+            decisionSource: buildDecisionSourceSummary(),
+          },
+          projectionFingerprintMatch: true,
+        },
+        migrationAudit: { ok: true },
+      },
+    });
+
+    const missingSourceChain = buildChain();
+    missingSourceChain.boundedWorkflowResult.decisionSourceAdmission = null;
+    const missingSourceAudit = buildPolicyEngineBoundedChainCompletionAudit({
+      chain: missingSourceChain,
+    });
+
+    expect(missingSourceAudit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_DECISION_SOURCE_MISSING,
+      }),
+    ]));
+
+    const invalidSourceChain = buildChain();
+    invalidSourceChain.boundedMigrationResult.boundaryContext
+      .workflowBoundary.decisionSource.admitted = false;
+    const invalidSourceAudit = buildPolicyEngineBoundedChainCompletionAudit({
+      chain: invalidSourceChain,
+    });
+
+    expect(invalidSourceAudit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_DECISION_SOURCE_INVALID,
+      }),
+    ]));
+
+    const mismatchedSourceChain = buildChain();
+    mismatchedSourceChain.boundedMigrationResult.boundaryContext
+      .workflowBoundary.decisionSource = {
+        sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.LIBRARY_REBUILD,
+        decisionVersion: 'policy.library_rebuild_readiness_summary.v1',
+        admitted: true,
+      };
+    const mismatchedSourceAudit = buildPolicyEngineBoundedChainCompletionAudit({
+      chain: mismatchedSourceChain,
+    });
+
+    expect(mismatchedSourceAudit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_DECISION_SOURCE_MISMATCH,
       }),
     ]));
   });

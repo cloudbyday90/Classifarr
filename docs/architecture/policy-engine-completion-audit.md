@@ -17,6 +17,8 @@ The completion audit must prove:
 - each component points to the expected semantic `nextStep.stepId`,
 - the bounded chain carries one sanitized evidence fingerprint and one usable
   quality snapshot family,
+- readiness, workflow, and migration retain one approved decision-source
+  admission chain,
 - native intent storage remains blocked until migration/deletion evidence is
   explicit.
 
@@ -51,6 +53,8 @@ The completion audit must prove:
    still gate migration and deletion safety.
 5. Keep native storage blocked until the migration/deletion contract proves the
    replacement path.
+6. Require one approved decision source across readiness, workflow, and
+   migration before the completion gate releases runtime inventory work.
 
 ## Pros And Cons
 
@@ -61,6 +65,8 @@ Pros:
 - Keeps completion verification deterministic and side-effect-free.
 - Preserves bounded provenance and quality checks across evidence, intent,
   learning, readiness, workflow, and migration.
+- Prevents a complete-looking chain from dropping or substituting its approved
+  decision source between bounded stages.
 - Makes the runtime handoff explicit through `nextStep.stepId =
   runtime_decision_inventory`.
 
@@ -92,6 +98,8 @@ Cons:
   - component audits pass,
   - handoffs match the expected `nextStep.stepId` sequence,
   - bounded chain quality and provenance remain sanitized and consistent,
+  - bounded decision-source admission remains sanitized and consistent from
+    readiness through migration,
   - native storage remains blocked until migration/deletion readiness exists.
 
 ## Outcome
@@ -101,7 +109,7 @@ Policy-engine completion now has a deterministic gate:
 ```text
 policy-engine component docs/services/tests
   -> component audit composition
-  -> bounded chain provenance and quality verification
+  -> bounded chain provenance, quality, and decision-source verification
   -> nextStep handoff verification
   -> runtime decision inventory readiness
 ```

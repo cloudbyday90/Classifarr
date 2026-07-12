@@ -3891,8 +3891,10 @@ Completion gate:
   evidence, intent, learning, readiness, workflow, or migration wrappers fail,
   have missing or non-passing nested audits, drift away from the shared
   sanitized evidence projection fingerprint, miss/drop/drift evidence-quality
-  snapshots, carry insufficient quality, or carry raw evidence labels in
-  boundary provenance.
+  snapshots, carry insufficient quality, carry raw evidence labels in boundary
+  provenance, or drop/alter the approved decision-source chain from readiness
+  through workflow and migration. The design record is
+  [Policy Engine Completion Decision-Source Chain](policy-engine-completion-decision-source-chain.md).
 - The completion quality-chain hardening is documented in
   [Policy Engine Completion Quality Chain](policy-engine-completion-quality-chain.md).
 - Policy engine completion quality-chain architecture cutover is documented in

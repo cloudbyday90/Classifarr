@@ -126,6 +126,8 @@ The gate rejects:
 
 ## Next Step
 
-Continue with **Runtime Decision Inventory Architecture Cutover** so the next
-runtime-facing inventory boundary uses durable naming and consumes the completed
-policy-engine handoff chain deliberately.
+The companion decision-source chain record is
+[Policy Engine Completion Decision-Source Chain](policy-engine-completion-decision-source-chain.md).
+Next, define the runtime decision inventory entry point so the runtime-facing
+inventory boundary consumes the completed policy-engine handoff chain
+deliberately.

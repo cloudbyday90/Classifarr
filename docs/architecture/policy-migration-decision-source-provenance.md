@@ -141,6 +141,7 @@ Focused tests prove that:
 
 ## Next Component
 
-Connect the policy-engine completion audit to this migration source-provenance
-gate, so the complete evidence-to-migration handoff cannot pass while it drops
-or alters the approved source.
+The completion gate now consumes this source chain; its outcome is documented
+in [Policy Engine Completion Decision-Source Chain](policy-engine-completion-decision-source-chain.md).
+Next, define the runtime decision inventory entry point that consumes the
+verified completion result.

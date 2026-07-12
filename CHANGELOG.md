@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Engine Completion Decision-Source Chain** — the completion gate now
+  verifies that readiness, workflow, and migration carry the same approved
+  decision source, blocking missing, invalid, or substituted provenance before
+  runtime inventory work can advance.
 - **Policy Migration Decision-Source Provenance** — bounded migration planning
   now carries the approved readiness source admission through the operator
   workflow, verifies it against both workflow contexts, and blocks missing or

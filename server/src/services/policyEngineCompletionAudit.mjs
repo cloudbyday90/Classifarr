@@ -12,6 +12,11 @@ import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from './policyEvidenceQuality.mjs';
 import {
+  POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS,
+  validatePolicyDecisionHandoffAdmission,
+  validatePolicyDecisionHandoffSourceSummary,
+} from './policyDecisionHandoffSource.mjs';
+import {
   buildPolicyIntentDraftFromBoundedEvidence,
   buildPolicyIntentEngineAudit,
 } from './policyIntentEngine.mjs';
@@ -70,6 +75,9 @@ const POLICY_ENGINE_COMPLETION_RISK_IDS = Object.freeze({
   BOUNDED_CHAIN_QUALITY_MISSING: 'bounded_chain_quality_missing',
   BOUNDED_CHAIN_QUALITY_INSUFFICIENT: 'bounded_chain_quality_insufficient',
   BOUNDED_CHAIN_QUALITY_MISMATCH: 'bounded_chain_quality_mismatch',
+  BOUNDED_CHAIN_DECISION_SOURCE_MISSING: 'bounded_chain_decision_source_missing',
+  BOUNDED_CHAIN_DECISION_SOURCE_INVALID: 'bounded_chain_decision_source_invalid',
+  BOUNDED_CHAIN_DECISION_SOURCE_MISMATCH: 'bounded_chain_decision_source_mismatch',
 });
 
 const REQUIRED_COMPONENT_IDS = Object.freeze(Object.values(POLICY_ENGINE_COMPLETION_COMPONENT_IDS));
@@ -614,6 +622,78 @@ function containsRawCompletionEvidence(value) {
   ].some(rawValue => serialized.includes(rawValue));
 }
 
+function buildPolicyEngineDecisionSourceChainAudit(chain = {}) {
+  const readinessResult = asObject(chain.boundedReadinessResult);
+  const workflowResult = asObject(chain.boundedWorkflowResult);
+  const migrationResult = asObject(chain.boundedMigrationResult);
+  const readinessAudit = validatePolicyDecisionHandoffAdmission({
+    decisionSourceAdmission: readinessResult.decisionSourceAdmission,
+    readinessBoundaryDecisionSource:
+      readinessResult.boundaryContext?.learningBoundary?.decisionSource,
+    embeddedReadinessDecisionSource:
+      readinessResult.readiness?.inputs?.boundaryContext?.learningBoundary?.decisionSource,
+  });
+  const workflowAudit = validatePolicyDecisionHandoffAdmission({
+    decisionSourceAdmission: workflowResult.decisionSourceAdmission,
+    readinessBoundaryDecisionSource:
+      workflowResult.boundaryContext?.readinessBoundary?.decisionSource,
+    embeddedReadinessDecisionSource:
+      workflowResult.workflow?.boundaryContext?.readinessBoundary?.decisionSource,
+  });
+  const migrationAudit = validatePolicyDecisionHandoffSourceSummary(
+    migrationResult.boundaryContext?.workflowBoundary?.decisionSource
+  );
+  const audits = [readinessAudit, workflowAudit, migrationAudit];
+  const missingRiskIds = new Set([
+    POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS.MISSING_ADMISSION,
+    POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS.MISSING_SOURCE_SUMMARY,
+  ]);
+  const issues = [];
+  const sourceRiskIds = audits.flatMap(audit =>
+    asArray(audit.issues).map(issue => issue.riskId)
+  );
+
+  if (sourceRiskIds.some(riskId => missingRiskIds.has(riskId))) {
+    issues.push(buildIssue(
+      POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_DECISION_SOURCE_MISSING,
+      'Policy engine bounded completion chain requires an admitted decision source at readiness, workflow, and migration.',
+      { sourceRiskIds: [...new Set(sourceRiskIds)] }
+    ));
+  }
+
+  if (audits.some(audit => audit.ok !== true) && issues.length === 0) {
+    issues.push(buildIssue(
+      POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_DECISION_SOURCE_INVALID,
+      'Policy engine bounded completion chain requires valid approved decision-source provenance.',
+      { sourceRiskIds: [...new Set(sourceRiskIds)] }
+    ));
+  }
+
+  const admittedSources = audits
+    .filter(audit => audit.ok === true)
+    .map(audit => `${audit.sourceId}:${audit.decisionVersion}`);
+  if (audits.every(audit => audit.ok === true) && new Set(admittedSources).size !== 1) {
+    issues.push(buildIssue(
+      POLICY_ENGINE_COMPLETION_RISK_IDS.BOUNDED_CHAIN_DECISION_SOURCE_MISMATCH,
+      'Policy engine bounded completion chain must retain one admitted decision source.',
+      { admittedSources }
+    ));
+  }
+
+  const sharedAudit = issues.length === 0 && audits.length > 0
+    ? audits[0]
+    : null;
+
+  return {
+    ok: issues.length === 0,
+    sourceAuditCount: audits.length,
+    sourceId: sharedAudit?.sourceId || null,
+    decisionVersion: sharedAudit?.decisionVersion || null,
+    admitted: sharedAudit?.ok === true,
+    issues,
+  };
+}
+
 function buildPolicyEngineBoundedChainCompletionAudit({
   chain = buildDefaultPolicyEngineCompletionChain(),
 } = {}) {
@@ -649,6 +729,7 @@ function buildPolicyEngineBoundedChainCompletionAudit({
     .filter(Boolean);
   const uniqueFingerprints = new Set(fingerprints);
   const allQualitySnapshots = stepSnapshots.flatMap(step => step.normalizedQualitySnapshots);
+  const decisionSourceAudit = buildPolicyEngineDecisionSourceChainAudit(chain);
   const issues = [];
 
   stepSnapshots
@@ -738,12 +819,20 @@ function buildPolicyEngineBoundedChainCompletionAudit({
     ));
   }
 
+  issues.push(...decisionSourceAudit.issues);
+
   return {
     ok: issues.length === 0,
     issueCount: issues.length,
     checkedStepCount: steps.length,
     fingerprintCount: fingerprints.length,
     qualitySnapshotCount: allQualitySnapshots.length,
+    decisionSource: {
+      sourceId: decisionSourceAudit.sourceId,
+      decisionVersion: decisionSourceAudit.decisionVersion,
+      admitted: decisionSourceAudit.admitted,
+    },
+    decisionSourceAuditCount: decisionSourceAudit.sourceAuditCount,
     qualityStatuses: [...new Set(allQualitySnapshots
       .map(quality => quality.statusId)
       .filter(Boolean))],
@@ -868,6 +957,7 @@ export {
   buildPolicyEngineArtifactInventoryCutlineAudit,
   buildPolicyEngineBoundedChainCompletionAudit,
   buildPolicyEngineCompletionAudit,
+  buildPolicyEngineDecisionSourceChainAudit,
   listPolicyEngineCompletionComponents,
   listPolicyEngineRequiredLegacyCutlineArtifacts,
   validatePolicyEngineCompletionRecord,
