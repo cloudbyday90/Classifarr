@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Library Rebuild Intent Boundary** — library-derived rebuild proposals
+  now require bounded intent inference and matching evidence provenance before
+  deriving intent or readiness; insufficient identity stays actionable without
+  exposing derived contracts.
 - **Policy Library Intent Proposal Intent Provenance** — ready library intent
   proposals now require their bounded intent result and emitted intent to retain
   the verified evidence-handoff fingerprint before review can continue.

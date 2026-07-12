@@ -17,6 +17,12 @@ bounded evidence boundary. A rejected boundary returns a sanitized
 `blocked_by_evidence_boundary` proposal with no projection, intent, or
 readiness contract.
 
+After evidence passes, rebuild invokes the bounded intent entry point rather
+than directly reducing a structurally shaped projection. Its proposal keeps a
+sanitized intent-boundary summary. Insufficient identity becomes the existing
+actionable `needs_more_evidence` state with no derived intent or readiness;
+malformed or mismatched intent provenance returns `blocked_by_intent_boundary`.
+
 ## Problem
 
 The re-imagined policy model starts from the media server as the source of
@@ -170,6 +176,9 @@ Cons:
     projection when that boundary rejects input.
 13. Project only validated request-time decisions before rebuild, and derive
     readiness state from that projection rather than a raw learning payload.
+14. Require a passing bounded intent result before deriving rebuild intent or
+    readiness. The intent, intent-boundary, and evidence-boundary fingerprints
+    must agree for every non-blocked proposal.
 
 ## Implemented Files
 
@@ -185,6 +194,8 @@ Cons:
   `server/src/services/policyEvidenceBoundary.mjs`
 - Intent dependency:
   `server/src/services/policyIntentEngine.mjs`
+- Intent-boundary outcome:
+  `docs/architecture/policy-library-rebuild-intent-boundary.md`
 - Readiness dependency:
   `server/src/services/policyAutomationReadinessEngine.mjs`
 - Roadmap owner:
@@ -229,7 +240,12 @@ The service exports:
 
 `blocked_by_evidence_boundary`
 : Rebuild evidence failed server-side validation. The proposal retains only a
-  sanitized boundary context and no derived projection, intent, or readiness.
+sanitized boundary context and no derived projection, intent, or readiness.
+
+`blocked_by_intent_boundary`
+: Evidence passed, but bounded intent inference failed a provenance or contract
+check. The proposal retains only sanitized evidence and intent-boundary context
+and no derived projection, intent, or readiness.
 
 ## Security And Data Handling
 
@@ -256,6 +272,10 @@ The service exports:
   summary fingerprint count mismatches before the proposal can pass.
 - Validation rejects missing or invalid request-time proof and request-proof
   trace/source summary mismatches before the proposal can pass.
+- Rebuild calls bounded intent inference; direct projection reduction is not a
+  normal rebuild workflow boundary.
+- Non-blocked proposals require matching evidence, intent-boundary, and emitted
+  intent fingerprints. Failed intent inference retains no derived contracts.
 
 ## Test Coverage
 
@@ -264,8 +284,14 @@ The focused test suite verifies:
 - proposals include belongs-here, helpful-match, hard-limit, and routing fields,
 - valid proposals retain a ready bounded evidence context and SHA-256
   projection fingerprint,
+- valid proposals retain a passing bounded intent context with the same
+  evidence fingerprint,
 - rejected evidence returns a boundary-blocked proposal with no projection,
   intent, or readiness output,
+- insufficient identity returns `needs_more_evidence` with a failed sanitized
+  intent boundary and no derived projection, intent, or readiness output,
+- invalid intent-boundary provenance and derived contracts attached to a failed
+  intent boundary fail validation,
 - attaching a derived contract to a boundary-blocked proposal fails validation,
 - guarded outcomes with valid upstream evidence fingerprints are consumed as
   proposal evidence,
@@ -298,7 +324,7 @@ Library-derived policy rebuild gives the rebuild path this shape:
 ```text
 library profile + fingerprint-bound guarded outcomes + explicit constraints + routing/freshness
   -> allow-listed bounded evidence projection
-  -> policy intent draft
+  -> bounded policy intent result
   -> policy readiness
   -> policy rebuild proposal envelope
   -> operator acceptance and rollback required

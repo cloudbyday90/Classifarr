@@ -515,12 +515,65 @@ describe('policyLibraryPolicyRebuild', () => {
     }));
 
     expect(proposal.statusId).toBe(POLICY_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_MORE_EVIDENCE);
+    expect(proposal).toEqual(expect.objectContaining({
+      evidenceProjection: null,
+      intentDraft: null,
+      readiness: null,
+      intentBoundary: expect.objectContaining({
+        ok: false,
+        statusId: 'blocked_by_evidence_quality',
+      }),
+    }));
     expect(proposal.warnings).toEqual(expect.arrayContaining([
       expect.objectContaining({
         reasonId: POLICY_REBUILD_WARNING_IDS.MISSING_IDENTITY_EVIDENCE,
       }),
     ]));
     expect(validatePolicyLibraryPolicyRebuildProposal(proposal).ok).toBe(true);
+  });
+
+  test('rejects derived contracts on a rebuild stopped by the intent boundary', () => {
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
+      libraryProfile: {
+        identityCandidates: [],
+      },
+      existingConstraints: {
+        hardLimits: [],
+        avoid: [],
+      },
+    }));
+    proposal.intentDraft = { version: 'policy.intent.v1' };
+
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.BLOCKED_INTENT_BOUNDARY_WITH_DERIVED_CONTRACT,
+        }),
+      ]));
+  });
+
+  test('rejects a ready rebuild proposal whose intent provenance no longer matches bounded evidence', () => {
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput());
+    proposal.intentBoundary.projectionFingerprint.fingerprint = '0'.repeat(64);
+
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INTENT_BOUNDARY_PROVENANCE_MISMATCH,
+        }),
+      ]));
+  });
+
+  test('rejects a ready rebuild proposal without a bounded intent summary', () => {
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput());
+    proposal.intentBoundary = null;
+
+    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_INTENT_BOUNDARY,
+        }),
+      ]));
   });
 
   test('rejects direct activation, replacement, deletion, learning, or routing writes', () => {

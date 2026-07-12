@@ -4352,6 +4352,11 @@ Implementation status:
   Boundary](policy-library-rebuild-evidence-boundary.md).
 - Rebuild output reuses policy evidence projection, intent draft, and
   readiness contracts instead of inventing a separate policy schema.
+- Rebuild now invokes the bounded intent entry point instead of direct
+  projection reduction. A failed intent boundary retains no derived projection,
+  intent, or readiness; insufficient identity remains the actionable
+  `needs_more_evidence` state. Its design record is
+  [Policy Library Rebuild Intent Boundary](policy-library-rebuild-intent-boundary.md).
 - Proposals include evidence source summaries, confidence, assumptions,
   warnings, an explicit operator acceptance gate, and a rollback snapshot gate.
 - Guarded outcome source summaries now carry bounded accepted/missing
