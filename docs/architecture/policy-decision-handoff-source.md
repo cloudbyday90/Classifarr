@@ -75,7 +75,9 @@ only after the caller supplied a successful bounded decision result. It then:
 4. records only source ID, decision version, and admission status in the
    sanitized readiness boundary context; and
 5. requires the bounded operator-workflow handoff to retain and revalidate that
-   summary before it can render a normal workflow.
+   summary before it can render a normal workflow; and
+6. requires bounded migration planning to compare the preserved workflow
+   admission with both workflow source summaries before migration can continue.
 
 ## Pros And Cons
 
@@ -135,6 +137,8 @@ Cons:
   `server/src/__tests__/services/policyAutomationReadinessEngine.test.mjs`
 - Workflow provenance design record:
   [Policy Operator Workflow Decision-Source Provenance](policy-operator-workflow-decision-source-provenance.md)
+- Migration provenance design record:
+  [Policy Migration Decision-Source Provenance](policy-migration-decision-source-provenance.md)
 
 ## Verification
 
@@ -147,10 +151,13 @@ Focused tests prove that:
 - rebuild profile-refresh and side-effect drift are blocked; and
 - successful bounded readiness retains only admitted source metadata; and
 - bounded operator workflow requires all readiness source summaries to match
-  the admitted source before it returns a normal workflow.
+  the admitted source before it returns a normal workflow; and
+- bounded migration planning requires the preserved workflow admission and both
+  workflow summaries to match before it returns a migration plan.
 
 ## Next Step
 
-Define the runtime workflow entry point that consumes this verified bounded
-workflow rather than reconstructing readiness or diagnostic data in a route or
-client component.
+Connect the policy-engine completion audit to the verified source chain, then
+define the runtime workflow entry point that consumes the bounded workflow
+rather than reconstructing readiness or diagnostic data in a route or client
+component.

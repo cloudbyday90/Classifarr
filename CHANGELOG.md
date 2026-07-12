@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Migration Decision-Source Provenance** — bounded migration planning
+  now carries the approved readiness source admission through the operator
+  workflow, verifies it against both workflow contexts, and blocks missing or
+  altered source provenance before producing a migration/deletion plan.
 - **Policy Operator Workflow Decision-Source Provenance** — bounded operator
   workflow now requires the approved readiness decision-source admission to
   match both sanitized readiness handoff summaries, blocks missing or altered

@@ -20,6 +20,9 @@ import {
   buildPolicyOperatorWorkflowFromBoundedReadiness,
 } from '../../services/policyOperatorWorkflow.mjs';
 import {
+  POLICY_DECISION_HANDOFF_SOURCE_IDS,
+} from '../../services/policyDecisionHandoffSource.mjs';
+import {
   POLICY_MIGRATION_ARTIFACT_DECISION_IDS,
   POLICY_MIGRATION_BOUNDARY_STATUS_IDS,
   POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS,
@@ -185,9 +188,57 @@ describe('policyMigrationDeletionPath', () => {
         statusId: boundedWorkflowResult.boundaryContext.intentBoundary.quality.statusId,
       }),
       qualityMatch: true,
+      decisionSource: expect.objectContaining({
+        sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.REQUEST_TIME_LEARNING,
+        decisionVersion: 'policy.learning_guard.v1',
+        admitted: true,
+      }),
     }));
     expect(result.migrationAudit.ok).toBe(true);
     expect(JSON.stringify(result.boundaryContext)).not.toContain('Animated Movies');
+  });
+
+  test('blocks migration planning when bounded workflow source admission is missing or mismatched', () => {
+    const missingAdmissionResult = buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
+      boundedWorkflowResult: {
+        ...buildBoundedWorkflowResult(),
+        decisionSourceAdmission: null,
+      },
+    });
+
+    expect(missingAdmissionResult).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: POLICY_MIGRATION_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_WORKFLOW,
+      plan: null,
+    }));
+    expect(missingAdmissionResult.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.UNAPPROVED_BOUNDED_DECISION_SOURCE,
+        sourceRiskIds: expect.arrayContaining(['missing_admission']),
+      }),
+    ]));
+
+    const mismatchedSourceWorkflowResult = clonePlain(buildBoundedWorkflowResult());
+    const replacementSource = {
+      sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.LIBRARY_REBUILD,
+      decisionVersion: 'policy.library_rebuild_readiness_summary.v1',
+      admitted: true,
+    };
+    mismatchedSourceWorkflowResult.boundaryContext.readinessBoundary.decisionSource =
+      replacementSource;
+    mismatchedSourceWorkflowResult.workflow.boundaryContext
+      .readinessBoundary.decisionSource = replacementSource;
+
+    const mismatchedSourceResult = buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
+      boundedWorkflowResult: mismatchedSourceWorkflowResult,
+    });
+
+    expect(mismatchedSourceResult.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.UNAPPROVED_BOUNDED_DECISION_SOURCE,
+        sourceRiskIds: expect.arrayContaining(['source_summary_mismatch']),
+      }),
+    ]));
   });
 
   test('blocks bounded migration planning when bounded workflow is missing', () => {
@@ -305,6 +356,23 @@ describe('policyMigrationDeletionPath', () => {
         riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
       }),
     ]));
+  });
+
+  test('rejects a migration plan boundary context with a tampered decision source', () => {
+    const boundedWorkflowResult = buildBoundedWorkflowResult();
+    const result = buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
+      boundedWorkflowResult,
+    });
+
+    result.plan.boundaryContext.workflowBoundary.decisionSource.admitted = false;
+
+    expect(validatePolicyMigrationDeletionPlan(result.plan).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.INVALID_MIGRATION_DECISION_SOURCE,
+          sourceRiskIds: expect.arrayContaining(['source_summary_not_admitted']),
+        }),
+      ]));
   });
 
   test('blocks bounded migration planning when workflow quality is insufficient', () => {

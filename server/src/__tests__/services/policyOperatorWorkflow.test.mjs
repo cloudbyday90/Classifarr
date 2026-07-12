@@ -184,6 +184,11 @@ describe('policyOperatorWorkflow', () => {
     }));
     expect(result.workflow.sections).toHaveLength(5);
     expect(result.workflow.decisionModel.serverOwnsBoundedReadiness).toBe(true);
+    expect(result.decisionSourceAdmission).toEqual(expect.objectContaining({
+      ok: true,
+      sourceId: 'request_time_learning',
+      decisionVersion: 'policy.learning_guard.v1',
+    }));
     expect(result.boundaryContext).toEqual(expect.objectContaining({
       qualityMatch: true,
       intentBoundary: expect.objectContaining({

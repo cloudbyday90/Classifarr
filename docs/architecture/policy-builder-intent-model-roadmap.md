@@ -3844,6 +3844,10 @@ Implementation status:
 - The bounded migration entry point now requires the bounded workflow result and
   embedded workflow context to carry matching, usable evidence-quality
   snapshots before migration/deletion planning can proceed.
+- The bounded migration entry point now requires the workflow's approved
+  readiness source-admission audit to match both workflow source summaries and
+  carries only the verified summary into migration-plan provenance. The design
+  record is [Policy Migration Decision-Source Provenance](policy-migration-decision-source-provenance.md).
 - Policy migration deletion path architecture cutover is documented in
   [Policy Migration Deletion Path Architecture Cutover](policy-migration-deletion-path-architecture-cutover.md).
 - Policy migration quality-gate hardening is documented in

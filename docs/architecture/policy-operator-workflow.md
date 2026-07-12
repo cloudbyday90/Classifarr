@@ -228,6 +228,11 @@ issues[]
 nextStep
 ```
 
+Successful bounded workflow results also retain the passing sanitized
+`decisionSourceAdmission` audit from bounded readiness. Later bounded consumers
+must use it with the workflow source summaries; they must not infer source
+provenance from workflow shape alone.
+
 Supported bounded wrapper status IDs:
 
 ```text

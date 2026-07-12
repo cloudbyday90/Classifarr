@@ -616,10 +616,13 @@ function buildPolicyOperatorWorkflowFromBoundedReadiness({
   boundedReadinessResult,
 } = {}) {
   const boundaryIssues = [];
-  const decisionSourceAdmission =
+  const decisionSourceProvenanceAudit =
     boundedReadinessResult?.ok === true && boundedReadinessResult?.readiness
       ? validateBoundedWorkflowDecisionSource(boundedReadinessResult)
       : null;
+  const decisionSourceAdmission = decisionSourceProvenanceAudit?.ok === true
+    ? boundedReadinessResult.decisionSourceAdmission
+    : null;
 
   if (boundedIntentResult?.ok !== true || !boundedIntentResult?.intent) {
     boundaryIssues.push({
@@ -657,11 +660,11 @@ function buildPolicyOperatorWorkflowFromBoundedReadiness({
     });
   }
 
-  if (decisionSourceAdmission?.ok !== true) {
+  if (decisionSourceProvenanceAudit?.ok !== true) {
     boundaryIssues.push({
       riskId: POLICY_OPERATOR_WORKFLOW_AUDIT_RISK_IDS.UNAPPROVED_BOUNDED_DECISION_SOURCE,
       message: 'Operator workflow requires matching approved decision-source provenance from readiness.',
-      sourceRiskIds: decisionSourceAdmission?.issues.map(issue => issue.riskId) || [],
+      sourceRiskIds: decisionSourceProvenanceAudit?.issues.map(issue => issue.riskId) || [],
     });
   }
 
@@ -680,7 +683,7 @@ function buildPolicyOperatorWorkflowFromBoundedReadiness({
   const boundaryContext = buildBoundedWorkflowContext({
     boundedIntentResult,
     boundedReadinessResult,
-    decisionSourceAdmission,
+    decisionSourceAdmission: decisionSourceProvenanceAudit,
   });
 
   if (!boundaryContext) {
@@ -723,6 +726,7 @@ function buildPolicyOperatorWorkflowFromBoundedReadiness({
       ? POLICY_OPERATOR_WORKFLOW_BOUNDARY_STATUS_IDS.READY
       : POLICY_OPERATOR_WORKFLOW_BOUNDARY_STATUS_IDS.BLOCKED_BY_WORKFLOW_AUDIT,
     boundaryContext,
+    decisionSourceAdmission,
     workflow,
     workflowAudit,
     issueCount: workflowAudit.issueCount,

@@ -1,6 +1,10 @@
 import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from './policyEvidenceQuality.mjs';
+import {
+  validatePolicyDecisionHandoffAdmission,
+  validatePolicyDecisionHandoffSourceSummary,
+} from './policyDecisionHandoffSource.mjs';
 
 const POLICY_MIGRATION_ARTIFACT_DECISION_IDS = Object.freeze({
   KEEP_ENGINE_PRIMITIVE: 'keep_engine_primitive',
@@ -47,6 +51,8 @@ const POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS = Object.freeze({
   MISSING_BOUNDED_QUALITY: 'missing_bounded_quality',
   BOUNDED_QUALITY_INSUFFICIENT: 'bounded_quality_insufficient',
   BOUNDED_QUALITY_MISMATCH: 'bounded_quality_mismatch',
+  UNAPPROVED_BOUNDED_DECISION_SOURCE: 'unapproved_bounded_decision_source',
+  INVALID_MIGRATION_DECISION_SOURCE: 'invalid_migration_decision_source',
 });
 
 const POLICY_MIGRATION_BOUNDARY_STATUS_IDS = Object.freeze({
@@ -811,6 +817,19 @@ function getEmbeddedWorkflowBoundaryContext(boundedWorkflowResult = {}) {
   return asObject(boundedWorkflowResult.workflow?.boundaryContext);
 }
 
+function validateBoundedWorkflowDecisionSource(boundedWorkflowResult = {}) {
+  const workflowBoundary = getWorkflowBoundaryContext(boundedWorkflowResult);
+  const embeddedWorkflowBoundary = getEmbeddedWorkflowBoundaryContext(boundedWorkflowResult);
+
+  return validatePolicyDecisionHandoffAdmission({
+    decisionSourceAdmission: boundedWorkflowResult.decisionSourceAdmission,
+    readinessBoundaryDecisionSource:
+      workflowBoundary.readinessBoundary?.decisionSource,
+    embeddedReadinessDecisionSource:
+      embeddedWorkflowBoundary.readinessBoundary?.decisionSource,
+  });
+}
+
 function getWorkflowBoundaryQualities(boundaryContext = {}) {
   const context = asObject(boundaryContext);
   return [
@@ -875,7 +894,27 @@ function collectBoundedWorkflowQualityIssues(boundedWorkflowResult = {}) {
   return issues;
 }
 
-function buildBoundedMigrationContext(boundedWorkflowResult = {}) {
+function collectMigrationBoundaryContextDecisionSourceIssues(boundaryContext = {}) {
+  const context = asObject(boundaryContext);
+  if (!Object.keys(context).length) return [];
+
+  const sourceAudit = validatePolicyDecisionHandoffSourceSummary(
+    context.workflowBoundary?.decisionSource
+  );
+
+  return sourceAudit.ok
+    ? []
+    : [{
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.INVALID_MIGRATION_DECISION_SOURCE,
+        message: 'Migration planning context must retain an approved decision-source summary.',
+        sourceRiskIds: sourceAudit.issues.map(issue => issue.riskId),
+      }];
+}
+
+function buildBoundedMigrationContext({
+  boundedWorkflowResult,
+  decisionSourceProvenanceAudit,
+} = {}) {
   const intentFingerprint = getWorkflowIntentFingerprint(boundedWorkflowResult);
   const readinessFingerprint = getWorkflowReadinessFingerprint(boundedWorkflowResult);
   const sourceBoundary = getWorkflowBoundaryContext(boundedWorkflowResult);
@@ -891,6 +930,11 @@ function buildBoundedMigrationContext(boundedWorkflowResult = {}) {
       workflowId: boundedWorkflowResult.workflow?.workflowId || null,
       workflowAuditOk: boundedWorkflowAuditPasses(boundedWorkflowResult),
       readinessStateId: boundedWorkflowResult.workflow?.readiness?.stateId || null,
+      decisionSource: {
+        sourceId: decisionSourceProvenanceAudit?.sourceId || null,
+        decisionVersion: decisionSourceProvenanceAudit?.decisionVersion || null,
+        admitted: decisionSourceProvenanceAudit?.ok === true,
+      },
       quality: normalizeQualitySnapshot(sourceBoundary.intentBoundary?.quality),
       qualityMatch: collectBoundedWorkflowQualityIssues(boundedWorkflowResult).length === 0,
       projectionFingerprint:
@@ -911,6 +955,10 @@ function buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
   rollbackPlan = DEFAULT_ROLLBACK_PLAN,
 } = {}) {
   const boundaryIssues = [];
+  const decisionSourceProvenanceAudit =
+    boundedWorkflowResult?.ok === true && boundedWorkflowResult?.workflow
+      ? validateBoundedWorkflowDecisionSource(boundedWorkflowResult)
+      : null;
 
   if (boundedWorkflowResult?.ok !== true || !boundedWorkflowResult?.workflow) {
     boundaryIssues.push({
@@ -930,6 +978,14 @@ function buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
     });
   }
 
+  if (decisionSourceProvenanceAudit?.ok !== true) {
+    boundaryIssues.push({
+      riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.UNAPPROVED_BOUNDED_DECISION_SOURCE,
+      message: 'Migration planning requires matching approved decision-source provenance from the bounded workflow.',
+      sourceRiskIds: decisionSourceProvenanceAudit?.issues.map(issue => issue.riskId) || [],
+    });
+  }
+
   if (
     boundedWorkflowResult?.ok === true &&
     boundedWorkflowResult?.workflow
@@ -937,7 +993,10 @@ function buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
     boundaryIssues.push(...collectBoundedWorkflowQualityIssues(boundedWorkflowResult));
   }
 
-  const boundaryContext = buildBoundedMigrationContext(boundedWorkflowResult);
+  const boundaryContext = buildBoundedMigrationContext({
+    boundedWorkflowResult,
+    decisionSourceProvenanceAudit,
+  });
 
   if (!boundaryContext) {
     boundaryIssues.push({
@@ -1027,6 +1086,8 @@ function validatePolicyMigrationDeletionPlan(plan = {}) {
       message: 'Migration plan must require backup snapshots and a restore path.',
     });
   }
+
+  issues.push(...collectMigrationBoundaryContextDecisionSourceIssues(plan.boundaryContext));
 
   return {
     ok: issues.length === 0,

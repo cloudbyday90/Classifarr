@@ -24,7 +24,9 @@ result before any migration/deletion plan is considered ready. It also requires
 the bounded workflow audit to still be passing, so stale or tampered workflow
 contracts cannot authorize migration/deletion planning. The wrapper requires
 matching, usable, sanitized workflow quality snapshots before returning the
-migration/deletion plan.
+migration/deletion plan. It also requires the workflow's approved readiness
+source-admission result to match both workflow-context source summaries before
+returning the migration/deletion plan.
 
 ## Problem
 
@@ -102,6 +104,11 @@ delete replaced surfaces after gates pass
    workflow quality so artifact deletion decisions cannot run on incomplete
    evidence state.
 
+8. **Require decision-source continuity before migration planning.**
+   The workflow's approved readiness admission must agree with the outer and
+   embedded workflow source summaries. Migration retains only the verified
+   source ID, decision version, and admission state in its boundary context.
+
 ## Pros And Cons
 
 Pros:
@@ -115,6 +122,8 @@ Pros:
   operator workflow and its evidence provenance.
 - Prevents migration/deletion readiness from being detached from the bounded
   workflow quality that allowed the operator workflow to render.
+- Prevents migration planning from accepting a reconstructed workflow result
+  that conceals an unapproved or mismatched upstream decision source.
 
 Cons:
 
@@ -126,6 +135,7 @@ Cons:
 - Existing pure plan builders still exist for compatibility until runtime
   migration paths move onto the bounded wrapper.
 - Quality checks add another fixture invariant for bounded migration tests.
+- Bounded workflow producers must retain the approved source-admission audit.
 
 ## Final Recommendation Stack
 
@@ -139,6 +149,8 @@ Cons:
   `docs/architecture/policy-migration-deletion-path.md`
 - Quality gate documentation:
   `docs/architecture/policy-migration-quality-gate.md`
+- Decision-source provenance documentation:
+  `docs/architecture/policy-migration-decision-source-provenance.md`
 - Roadmap owner:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
@@ -219,6 +231,9 @@ workflowBoundary.workflowVersion
 workflowBoundary.workflowId
 workflowBoundary.workflowAuditOk
 workflowBoundary.readinessStateId
+workflowBoundary.decisionSource.sourceId
+workflowBoundary.decisionSource.decisionVersion
+workflowBoundary.decisionSource.admitted
 workflowBoundary.quality
 workflowBoundary.qualityMatch
 workflowBoundary.projectionFingerprint
@@ -237,9 +252,10 @@ projectionFingerprintMatch
   workflow audits before returning a migration/deletion plan.
 - The bounded wrapper rejects missing, insufficient, or mismatched sanitized
   workflow quality before returning a migration/deletion plan.
+- The bounded wrapper rejects missing, unapproved, incompatible, or mismatched
+  decision-source provenance before returning a migration/deletion plan.
 
 ## Next Step
 
-Continue with **Policy Engine Completion Audit Architecture Cutover** so the
-completion gate records the durable handoff chain across evidence, intent,
-learning, readiness, workflow, and migration boundaries.
+Connect the policy-engine completion audit to this migration provenance gate so
+the durable handoff chain cannot drop or replace an admitted decision source.
