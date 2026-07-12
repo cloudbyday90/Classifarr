@@ -145,6 +145,28 @@ describe('policyLibraryIntentProposalService', () => {
     expect(buildPolicyLibraryIntentProposalAudit(result).ok).toBe(true);
   });
 
+  test('rejects a ready proposal whose carried handoff audit no longer passes', async () => {
+    const service = createPolicyLibraryIntentProposalService({
+      libraryEvidenceLoader: createReadyLibraryEvidenceLoader(),
+    });
+    const result = await service.proposeLibraryIntent({
+      libraryId: 42,
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+      },
+      getProfile: async () => getCurrentProfile(),
+      now: NOW,
+    });
+    result.handoffAudit.ok = false;
+
+    expect(buildPolicyLibraryIntentProposalAudit(result).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_LIBRARY_INTENT_PROPOSAL_RISK_IDS.EVIDENCE_HANDOFF_INVALID,
+        }),
+      ]));
+  });
+
   test('does not let a caller-supplied evidence boundary bypass library loading', async () => {
     const service = createPolicyLibraryIntentProposalService({
       libraryEvidenceLoader: createReadyLibraryEvidenceLoader(),

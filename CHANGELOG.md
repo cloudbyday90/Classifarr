@@ -11,6 +11,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Library Intent Proposal Handoff Audit** — ready library intent
+  proposals now require a successful carried evidence-handoff audit, preventing
+  later-mutated proposal results from bypassing verified evidence provenance.
 - **Policy Evidence Handoff Projection Revalidation** — the complete evidence
   verifier now independently reruns the projection audit from the received
   handoff, preventing a stale recorded boundary audit from authorizing a

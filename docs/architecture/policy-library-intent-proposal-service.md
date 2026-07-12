@@ -13,6 +13,10 @@ declared intent must not bypass provenance, quality, or fingerprint checks. A
 library-derived proposal needs one small, explicit handoff that preserves both
 kinds of authority.
 
+The service loads evidence only through the server-owned loader and complete
+handoff audit. A result that claims readiness must retain the passing handoff
+audit alongside its intent audit and fingerprint provenance.
+
 ## Design
 
 ```text
@@ -63,10 +67,12 @@ operator-facing policy meaning being reviewed.
    quality assessment, and fingerprint instead of treating it as a side channel.
 3. Require complete handoff verification before calling the bounded intent
    reducer.
-4. Preserve only source counts, quality, fingerprint, and trace provenance
+4. Require ready proposal results to retain a passing complete handoff audit;
+   result consumers must not trust a ready status alone.
+5. Preserve only source counts, quality, fingerprint, and trace provenance
    outside the proposed intent; do not return raw collector records.
-5. Block insufficient identity evidence rather than guessing a destination.
-6. Treat the next task as command-contract hardening, not automatic policy
+6. Block insufficient identity evidence rather than guessing a destination.
+7. Treat the next task as command-contract hardening, not automatic policy
    persistence.
 
 ## Pros And Cons
@@ -76,6 +82,8 @@ Pros:
 - Gives library-derived proposals one enforceable server-side entry point.
 - Prevents direct reducer callers from skipping loader, audit, fingerprint, or
   quality checks.
+- Prevents a later-mutated proposal from claiming ready status without the
+  verified handoff that authorized it.
 - Keeps declared intent distinct from observed evidence while correlating both
   with one fingerprint.
 - Fails closed without exposing dependency error text or collector records.
@@ -103,6 +111,8 @@ Cons:
 - No caller can submit a prebuilt evidence projection to the proposal service.
 - Declared intent is subjected to the existing server-side evidence input gate.
 - Handoff audit, fingerprint, quality, and intent audit must pass before ready.
+- A ready result must retain its successful handoff-audit summary; no later
+  consumer can treat the status alone as authorization.
 - Unexpected loader or reducer failures return generic stable errors.
 - The service performs no live media-server/provider lookup, quota read,
   profile refresh, route attempt, storage write, or learning mutation.

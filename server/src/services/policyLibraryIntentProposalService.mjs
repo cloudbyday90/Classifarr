@@ -282,6 +282,13 @@ function buildPolicyLibraryIntentProposalAudit(result = {}) {
     });
   }
 
+  if (ok && proposal.handoffAudit?.ok !== true) {
+    issues.push({
+      riskId: POLICY_LIBRARY_INTENT_PROPOSAL_RISK_IDS.EVIDENCE_HANDOFF_INVALID,
+      message: 'Ready library intent proposal requires a successful evidence handoff audit.',
+    });
+  }
+
   if (ok && !proposal.evidenceProvenance?.projectionFingerprint?.fingerprint) {
     issues.push({
       riskId: POLICY_LIBRARY_INTENT_PROPOSAL_RISK_IDS.EVIDENCE_HANDOFF_INVALID,

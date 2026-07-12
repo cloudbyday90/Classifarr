@@ -3416,6 +3416,8 @@ Implementation status:
   and verifies the full library evidence handoff once, preserves fingerprint
   and quality provenance, and calls the bounded intent reducer only after that
   handoff is ready. It returns a proposed intent or a stable blocked outcome;
+  ready-result handoff-audit hardening is documented in
+  [Policy Library Intent Proposal Handoff Audit](policy-library-intent-proposal-handoff-audit.md).
   it does not persist policy state, learn, refresh, call providers, read quota,
   or route media. Its design record is
   [Policy Library Intent Proposal Service](policy-library-intent-proposal-service.md).

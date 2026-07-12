@@ -31,6 +31,7 @@ function readyProposal(overrides = {}) {
         fingerprint: PROPOSAL_FINGERPRINT,
       },
     },
+    handoffAudit: { ok: true },
     intentAudit: { ok: true },
     intent: {
       version: 'policy.intent.v1',
