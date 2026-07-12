@@ -3292,10 +3292,13 @@ Implementation status:
 - The evidence projection fingerprint helper now lives in
   `server/src/services/policyEvidenceFingerprint.mjs`; the artifact contract is
   `policy.evidence.fingerprint.v1`.
-- Replay and impact reducer artifacts are explicitly classified as delete,
-  rewrite-as-evidence-reducer, or maintainer-only migration material; all are
-  blocked from normal operator flow until rewritten into Phase 6R evidence
-  contracts or deleted.
+- Replay and impact reducer artifacts are explicitly classified as delete or
+  maintainer-only migration material. The replay scorer, policy-engine
+  comparison, execution context, and parity delta were deleted because they
+  evaluated raw drafts against representative history rather than producing
+  source-authorized evidence. All remaining diagnostics are blocked from normal
+  operator flow until they are deleted or have a separately justified migration
+  role.
 - Existing replay/impact reducers are not wired into the normal product flow in
   this slice; future Phase 6R migration work must either extract deterministic
   reducers into the evidence engine or delete the abandoned diagnostic surfaces.

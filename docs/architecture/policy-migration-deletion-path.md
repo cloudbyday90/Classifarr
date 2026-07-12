@@ -161,9 +161,12 @@ The service exports:
 Default decisions:
 
 - Keep policy evidence and intent engines as engine primitives.
-- Treat old server-side impact, replay, parity, enrichment eligibility,
-  evidence completeness, and TMDB coverage artifacts as migration verifier
-  machinery when their deterministic reducers remain useful for parity.
+- Treat old server-side impact, replay, enrichment eligibility, evidence
+  completeness, and TMDB coverage artifacts as migration verifier machinery
+  only while their bounded outputs remain useful for migration verification.
+- Retire replay draft-fit scoring, policy-engine comparison, execution-context,
+  and parity-delta artifacts when they duplicate the bounded evidence and
+  readiness contracts instead of providing source-authorized migration proof.
 - Mark old client impact/replay panels, preview composables, preview utilities,
   old diagnostic tests, provider-readiness replay helpers, TMDB adapter
   execution helpers, and legacy replay execution adapters for deletion after

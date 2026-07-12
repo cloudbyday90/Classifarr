@@ -985,30 +985,8 @@ describe('Policies routes coverage', () => {
         expect(JSON.stringify(res.body)).not.toContain('tmdb-secret');
         expect(JSON.stringify(res.body)).not.toContain('omdb-secret');
         expect(JSON.stringify(res.body)).not.toContain('tavily-secret');
-        expect(res.body).toEqual(expect.objectContaining({
-          dry_run_scoring: expect.objectContaining({
-            mode: 'deterministic_signal_fit',
-            enabled: true,
-            full_classification_run: false,
-            ai_calls_enabled: false,
-            provider_calls_enabled: false,
-            arr_writes_enabled: false,
-            persistence_enabled: false,
-            sample_count: 1,
-            scored_count: 1,
-            strong_fit_count: 1,
-            blocked_count: 0,
-            items: [
-              expect.objectContaining({
-                sample_id: 1,
-                draft_signal_fit: 'strong',
-                recommendation: 'would_remain_candidate',
-              }),
-            ],
-          }),
-        }));
-        expect(res.body.dry_run_scoring.items[0]).not.toHaveProperty('metadata');
-        expect(res.body.dry_run_scoring.items[0]).not.toHaveProperty('tmdb_id');
+        expect(res.body).not.toHaveProperty('dry_run_scoring');
+        expect(res.body).not.toHaveProperty('parity_delta');
       });
 
     test('rejects invalid representative replay previews before preset lookup', async () => {

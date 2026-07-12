@@ -7,7 +7,6 @@
  */
 
 import { ValidationError } from '../utils/appError.mjs';
-import { buildPolicyIntentReplayParityDelta } from './policyIntentReplayParityDelta.mjs';
 
 export const POLICY_REPLAY_PREVIEW_MIGRATION_VERIFIER_SCHEMA_VERSION = 1;
 export const POLICY_REPLAY_PREVIEW_MIGRATION_VERIFIER_DEFAULT_LIMIT = 10;
@@ -142,7 +141,6 @@ export function sanitizePolicyReplayPreviewMigrationSample(row = {}, index = 0) 
 export function buildPolicyReplayPreviewMigrationVerifier({
   impactPreview,
   samples = [],
-  scoring = null,
   sampleDiagnostics = null,
   evidenceCompleteness = null,
   enrichmentEligibility = null,
@@ -157,11 +155,6 @@ export function buildPolicyReplayPreviewMigrationVerifier({
     sanitizePolicyReplayPreviewMigrationSample(sample, index)
   ));
   const comparison = impactPreview?.comparison ?? {};
-  const parityDelta = buildPolicyIntentReplayParityDelta({
-    samples: sanitizedSamples,
-    scoring,
-  });
-
   return {
     schema_version: POLICY_REPLAY_PREVIEW_MIGRATION_VERIFIER_SCHEMA_VERSION,
     mode: 'read_only_replay_migration_verifier',
@@ -313,33 +306,5 @@ export function buildPolicyReplayPreviewMigrationVerifier({
       },
       items: sanitizedSamples,
     },
-    dry_run_scoring: scoring ?? {
-      schema_version: 1,
-      mode: 'deterministic_signal_fit',
-      enabled: false,
-      full_classification_run: false,
-      ai_calls_enabled: false,
-      provider_calls_enabled: false,
-      arr_writes_enabled: false,
-      persistence_enabled: false,
-      sample_count: 0,
-      scored_count: 0,
-      strong_fit_count: 0,
-      review_count: 0,
-      blocked_count: 0,
-      insufficient_count: 0,
-      policy_engine_comparison: {
-        schema_version: 1,
-        mode: 'deterministic_policy_engine_preview',
-        enabled: false,
-        compared_count: 0,
-        strong_count: 0,
-        review_count: 0,
-        blocked_count: 0,
-        insufficient_count: 0,
-      },
-      items: [],
-    },
-    parity_delta: parityDelta,
   };
 }

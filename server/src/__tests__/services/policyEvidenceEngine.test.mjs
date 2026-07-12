@@ -236,19 +236,18 @@ describe('policyEvidenceEngine', () => {
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedBucketCount).toBe(8);
     expect(audit.checkedSourceCount).toBe(8);
-    expect(audit.checkedReducerCutlineCount).toBe(4);
+    expect(audit.checkedReducerCutlineCount).toBe(3);
     expect(audit.nextStep).toEqual(expect.objectContaining({
       stepId: 'intent_inference',
       label: 'Intent Engine',
     }));
   });
 
-  test('tracks replay and impact reducers as rewrite or deletion candidates outside normal flow', () => {
+  test('tracks remaining replay and impact diagnostics outside normal flow', () => {
     const cutlines = listPolicyEvidenceReducerCutlines();
 
     expect(cutlines.map(cutline => cutline.dispositionId)).toEqual(expect.arrayContaining([
       POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
-      POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.REWRITE_AS_EVIDENCE_REDUCER,
       POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.KEEP_OUT_OF_NORMAL_FLOW,
     ]));
     cutlines.forEach(cutline => {

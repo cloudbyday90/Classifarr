@@ -4,8 +4,6 @@ import {
   buildPolicyReplayPreviewMigrationSampleQuery,
   normalizePolicyReplayPreviewMigrationLimit,
 } from './policyReplayPreviewMigrationVerifier.mjs';
-import { createPolicyIntentReplayExecutionContext } from './policyIntentReplayExecutionContext.mjs';
-import { buildPolicyIntentReplayScoring } from './policyIntentReplayScoring.mjs';
 import {
   buildPolicyIntentReplaySampleDiagnostics,
   buildPolicyIntentReplaySampleDiagnosticsQuery,
@@ -50,12 +48,6 @@ async function buildPolicyMigrationVerifierReplayPreview({
   const sampleRows = await db.query(sampleQuery.text, sampleQuery.values);
   const diagnosticsRows = await db.query(diagnosticsQuery.text, diagnosticsQuery.values);
   const samples = sampleRows.rows || [];
-  const executionContext = createPolicyIntentReplayExecutionContext();
-  const scoring = buildPolicyIntentReplayScoring({
-    payload,
-    samples,
-    executionContext,
-  });
   const sampleDiagnostics = buildPolicyIntentReplaySampleDiagnostics({
     row: diagnosticsRows.rows?.[0],
     requestedLimit: replayLimit,
@@ -94,7 +86,6 @@ async function buildPolicyMigrationVerifierReplayPreview({
   return buildPolicyReplayPreviewMigrationVerifier({
     impactPreview,
     samples,
-    scoring,
     sampleDiagnostics,
     evidenceCompleteness,
     enrichmentEligibility,

@@ -11,7 +11,8 @@ compatibility path, but the canonical production module is now
 
 The `/api/policies/migration-verifier/replay-preview` endpoint is isolated from
 normal policy writes. Its implementation stays read-only and does not depend on
-the removed compatibility service.
+the removed compatibility service, replay draft-fit scorer, or parity-delta
+reporter.
 
 ## Problem
 
@@ -50,7 +51,8 @@ exports or aliases.
 
 3. **Preserve bounded replay behavior.**
    Keep representative sample limits capped, input parameterized, and output
-   sanitized.
+   sanitized. Do not recreate raw draft scoring or parity output: those are not
+   source-authorized migration evidence.
 
 4. **Keep execution disabled.**
    The verifier must not trigger classification, provider calls, AI calls,
@@ -105,6 +107,9 @@ Implemented:
 - Replaced the focused replay service test with
   `policyReplayPreviewMigrationVerifier.test.mjs`.
 - Updated route coverage to expect `read_only_replay_migration_verifier`.
+- Removed replay draft-fit scoring, policy-engine comparison, execution
+  context, and parity delta. The remaining verifier reports only bounded
+  read-only sample and migration-support state.
 - Added the verifier test and this design document to policy storage closure
   validation evidence.
 

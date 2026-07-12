@@ -333,7 +333,6 @@ The reducer cutline inventory currently classifies:
 | --- | --- | --- |
 | `policyIntentImpactPreview.mjs` | Delete diagnostic surface | No |
 | `policyIntentReplayPreview.mjs` | Delete diagnostic surface | No |
-| `policyIntentReplayScoring.mjs` | Rewrite as evidence reducer | No |
 | `policyIntentReplaySampleDiagnostics.mjs` | Maintainer-only migration material | No |
 
 The projection audit validates the generated instance after construction. It

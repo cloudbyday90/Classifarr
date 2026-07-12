@@ -54,7 +54,6 @@ const POLICY_EVIDENCE_BUCKET_READINESS_IDS = Object.freeze({
 });
 
 const POLICY_EVIDENCE_REDUCER_CUTLINE_IDS = Object.freeze({
-  REWRITE_AS_EVIDENCE_REDUCER: 'rewrite_as_evidence_reducer',
   DELETE_DIAGNOSTIC_SURFACE: 'delete_diagnostic_surface',
   KEEP_OUT_OF_NORMAL_FLOW: 'keep_out_of_normal_flow',
 });
@@ -144,7 +143,6 @@ const POLICY_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   PROJECTION_QUALITY_EXPOSES_ENTRY_LABELS: 'projection_quality_exposes_entry_labels',
   REDUCER_CUTLINE_MISSING_DISPOSITION: 'reducer_cutline_missing_disposition',
   REDUCER_CUTLINE_USES_NORMAL_FLOW: 'reducer_cutline_uses_normal_flow',
-  REDUCER_CUTLINE_EXPOSES_UI_DIAGNOSTIC: 'reducer_cutline_exposes_ui_diagnostic',
 });
 
 function deepFreeze(value) {
@@ -468,15 +466,6 @@ const POLICY_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
     exposesUiDiagnostic: true,
     replacementTarget: 'Policy evidence projection plus migration-only replay verifier.',
     reason: 'Representative replay is useful verification material, not the normal operator workflow.',
-  },
-  {
-    id: 'replay_scoring_service',
-    path: 'server/src/services/policyIntentReplayScoring.mjs',
-    dispositionId: POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.REWRITE_AS_EVIDENCE_REDUCER,
-    normalFlowAllowed: false,
-    exposesUiDiagnostic: false,
-    replacementTarget: 'Deterministic policy evidence reducers for outlier and compatibility buckets.',
-    reason: 'Scoring math can be reused only after it emits source-authorized evidence entries instead of replay UI scores.',
   },
   {
     id: 'replay_sample_diagnostics_service',
@@ -1333,17 +1322,6 @@ function validatePolicyEvidenceReducerCutline(cutline = {}) {
       riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.REDUCER_CUTLINE_USES_NORMAL_FLOW,
       cutlineId: cutline.id || null,
       message: 'Legacy replay/impact reducers must not remain in the normal operator workflow.',
-    });
-  }
-
-  if (
-    cutline.exposesUiDiagnostic === true &&
-    cutline.dispositionId === POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.REWRITE_AS_EVIDENCE_REDUCER
-  ) {
-    issues.push({
-      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.REDUCER_CUTLINE_EXPOSES_UI_DIAGNOSTIC,
-      cutlineId: cutline.id || null,
-      message: 'Reducers rewritten into evidence must not expose UI diagnostic language.',
     });
   }
 

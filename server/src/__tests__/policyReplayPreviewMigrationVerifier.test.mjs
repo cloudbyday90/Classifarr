@@ -93,35 +93,6 @@ describe('policyReplayPreviewMigrationVerifier', () => {
         },
       },
       samples: [{ title: 'Sample', status: 'pending', created_at: null }],
-      scoring: {
-        schema_version: 1,
-        mode: 'deterministic_signal_fit',
-        enabled: true,
-        full_classification_run: false,
-        ai_calls_enabled: false,
-        provider_calls_enabled: false,
-        arr_writes_enabled: false,
-        persistence_enabled: false,
-        sample_count: 1,
-        scored_count: 1,
-        strong_fit_count: 1,
-        review_count: 0,
-        blocked_count: 0,
-        insufficient_count: 0,
-        items: [{
-          sample_id: 1,
-          draft_signal_fit: 'strong',
-          recommendation: 'would_remain_candidate',
-          evidence_available: true,
-          matched: { identity: ['genres:Family'], compatibility: [], boosters: [] },
-          missing_required: [],
-          exclusion_hits: [],
-          policy_engine: {
-            policy_engine_fit: 'strong',
-            blockers: [],
-          },
-        }],
-      },
       sampleDiagnostics: {
         schema_version: 1,
         mode: 'representative_sample_selection_diagnostics',
@@ -409,20 +380,8 @@ describe('policyReplayPreviewMigrationVerifier', () => {
           ],
         }),
       }),
-      dry_run_scoring: expect.objectContaining({
-        mode: 'deterministic_signal_fit',
-        enabled: true,
-        full_classification_run: false,
-        scored_count: 1,
-        strong_fit_count: 1,
-      }),
-      parity_delta: expect.objectContaining({
-        mode: 'representative_replay_parity_delta',
-        enabled: true,
-        compared_count: 1,
-        would_now_candidate_count: 1,
-        would_remain_count: 0,
-      }),
     }));
+    expect(preview).not.toHaveProperty('dry_run_scoring');
+    expect(preview).not.toHaveProperty('parity_delta');
   });
 });
