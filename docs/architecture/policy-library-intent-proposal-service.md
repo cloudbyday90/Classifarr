@@ -18,6 +18,8 @@ handoff audit. A result that claims readiness must retain the passing handoff
 audit alongside its intent audit and fingerprint provenance.
 That provenance is derived from the handoff audit's independently verified
 fingerprint summary, not copied from a parallel raw handoff field.
+The emitted intent must retain that same bounded-evidence fingerprint; a ready
+intent with a different or missing fingerprint is not a valid proposal.
 
 ## Design
 
@@ -73,10 +75,12 @@ operator-facing policy meaning being reviewed.
    result consumers must not trust a ready status alone.
 5. Derive proposal fingerprint provenance from the verified handoff audit and
    require the summaries to agree before ready.
-6. Preserve only source counts, quality, fingerprint, and trace provenance
+6. Require the bounded intent result and emitted intent to retain the same
+   verified handoff fingerprint before a proposal can become ready.
+7. Preserve only source counts, quality, fingerprint, and trace provenance
    outside the proposed intent; do not return raw collector records.
-7. Block insufficient identity evidence rather than guessing a destination.
-8. Treat the next task as command-contract hardening, not automatic policy
+8. Block insufficient identity evidence rather than guessing a destination.
+9. Treat the next task as command-contract hardening, not automatic policy
    persistence.
 
 ## Pros And Cons
@@ -88,6 +92,8 @@ Pros:
   quality checks.
 - Prevents a later-mutated proposal from claiming ready status without the
   verified handoff that authorized it.
+- Prevents a faulty reducer result from disconnecting the reviewed intent from
+  the evidence provenance that authorized its proposal.
 - Keeps declared intent distinct from observed evidence while correlating both
   with one fingerprint.
 - Fails closed without exposing dependency error text or collector records.
@@ -119,6 +125,8 @@ Cons:
   consumer can treat the status alone as authorization.
 - Its fingerprint provenance must agree with the summary independently verified
   by that handoff audit.
+- The bounded intent result and returned intent must retain that same verified
+  evidence fingerprint.
 - Unexpected loader or reducer failures return generic stable errors.
 - The service performs no live media-server/provider lookup, quota read,
   profile refresh, route attempt, storage write, or learning mutation.
@@ -147,6 +155,9 @@ nextStep
 `intent` is present only for `ready`. A structurally sound handoff with
 insufficient identity returns `blocked_by_evidence_quality`; a malformed or
 tampered handoff returns `blocked_by_evidence_handoff`.
+
+The intent-provenance continuity invariant is specified in
+[Policy Library Intent Proposal Intent Provenance](policy-library-intent-proposal-intent-provenance.md).
 
 ## Next Step
 

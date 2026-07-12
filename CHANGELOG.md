@@ -11,6 +11,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Library Intent Proposal Intent Provenance** — ready library intent
+  proposals now require their bounded intent result and emitted intent to retain
+  the verified evidence-handoff fingerprint before review can continue.
 - **Policy Declared Intent Command Fingerprint Provenance** — declared-intent
   commands now require proposal and verified-handoff fingerprint agreement and
   carry the server-derived verified digest into the future persistence gate.

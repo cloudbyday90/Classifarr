@@ -42,6 +42,11 @@ function readyProposal(overrides = {}) {
     intent: {
       version: 'policy.intent.v1',
       belongsHere: ['Animated Movies'],
+      evidenceBoundary: {
+        projectionFingerprint: {
+          fingerprint: PROPOSAL_FINGERPRINT,
+        },
+      },
     },
     ...overrides,
   };

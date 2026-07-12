@@ -21,6 +21,9 @@ import {
   createPolicyLibraryRoutingOutcomeEvidenceCollector,
   ROUTING_OUTCOME_STATE_IDS,
 } from '../../services/policyLibraryRoutingOutcomeEvidenceCollector.mjs';
+import {
+  buildPolicyIntentDraftFromBoundedEvidence,
+} from '../../services/policyIntentEngine.mjs';
 
 const NOW = Date.parse('2026-07-10T12:00:00.000Z');
 
@@ -122,6 +125,8 @@ describe('policyLibraryIntentProposalService', () => {
     expect(JSON.stringify(result.evidenceProvenance)).not.toContain('Persisted metadata genre: Animation');
     expect(result.evidenceProvenance.projectionFingerprint.fingerprint)
       .toBe(result.handoffAudit.projectionFingerprint.fingerprint);
+    expect(result.intent.evidenceBoundary.projectionFingerprint.fingerprint)
+      .toBe(result.handoffAudit.projectionFingerprint.fingerprint);
     expect(buildPolicyLibraryIntentProposalAudit(result)).toEqual({
       ok: true,
       issueCount: 0,
@@ -192,6 +197,59 @@ describe('policyLibraryIntentProposalService', () => {
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           riskId: POLICY_LIBRARY_INTENT_PROPOSAL_RISK_IDS.EVIDENCE_HANDOFF_FINGERPRINT_MISMATCH,
+        }),
+      ]));
+  });
+
+  test('blocks a ready intent whose carried evidence fingerprint differs from the verified handoff', async () => {
+    const service = createPolicyLibraryIntentProposalService({
+      libraryEvidenceLoader: createReadyLibraryEvidenceLoader(),
+      buildIntent: ({ boundedEvidenceResult }) => {
+        const intentResult = buildPolicyIntentDraftFromBoundedEvidence({ boundedEvidenceResult });
+        intentResult.evidenceBoundary.projectionFingerprint.fingerprint = '0'.repeat(64);
+        intentResult.intent.evidenceBoundary.projectionFingerprint.fingerprint = '0'.repeat(64);
+        return intentResult;
+      },
+    });
+
+    const result = await service.proposeLibraryIntent({
+      libraryId: 42,
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+      },
+      getProfile: async () => getCurrentProfile(),
+      now: NOW,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: POLICY_LIBRARY_INTENT_PROPOSAL_STATUS_IDS.BLOCKED_BY_INTENT_AUDIT,
+      issues: [expect.objectContaining({
+        riskId: POLICY_LIBRARY_INTENT_PROPOSAL_RISK_IDS.INTENT_EVIDENCE_FINGERPRINT_MISMATCH,
+      })],
+      intent: null,
+      nextStep: null,
+    }));
+  });
+
+  test('audits ready proposals whose intent fingerprint no longer matches verified handoff provenance', async () => {
+    const service = createPolicyLibraryIntentProposalService({
+      libraryEvidenceLoader: createReadyLibraryEvidenceLoader(),
+    });
+    const result = await service.proposeLibraryIntent({
+      libraryId: 42,
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+      },
+      getProfile: async () => getCurrentProfile(),
+      now: NOW,
+    });
+    result.intent.evidenceBoundary.projectionFingerprint.fingerprint = '0'.repeat(64);
+
+    expect(buildPolicyLibraryIntentProposalAudit(result).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_LIBRARY_INTENT_PROPOSAL_RISK_IDS.INTENT_EVIDENCE_FINGERPRINT_MISMATCH,
         }),
       ]));
   });
