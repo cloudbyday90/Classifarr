@@ -26,7 +26,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       checkedServerContractCount: 9,
       checkedClientWorkflowComponentCount: 9,
       checkedNormalWorkflowRuleCount: 5,
-      checkedNormalPathExclusionCount: 6,
+      checkedNormalPathExclusionCount: 4,
       nextStep: expect.objectContaining({
         stepId: 'policy_evidence_engine',
       }),
@@ -68,7 +68,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       .map(record => record.evidence);
 
     expect(evidence).toEqual([
-      'Classifies current policy-builder surfaces as keep, rewrite, replace, delete, bridge-only, or verifier-only with durable product ownership.',
+      'Classifies current policy-builder surfaces as keep, rewrite, replace, delete, or bridge-only with durable product ownership.',
       'Defines the destination-first operator sequence from library context through save or defer.',
     ]);
   });
@@ -106,7 +106,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'observed_evidence_requires_acceptance',
       'hard_limits_explicit',
       'one_recommended_next_action',
-      'verifier_panels_not_default',
+      'retired_diagnostics_absent',
     ]);
     rules.forEach(rule => {
       expect(rule.docPath).toMatch(/^docs\/architecture\//);
@@ -115,12 +115,10 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
     });
   });
 
-  test('keeps diagnostics, verifier panels, and bridge internals out of normal authoring', () => {
+  test('keeps diagnostics and bridge internals out of normal authoring', () => {
     const exclusions = listPolicyAuthoringNormalPathExclusions();
 
     expect(exclusions.map(exclusion => exclusion.scopeId)).toEqual([
-      POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.MIGRATION_VERIFIER_ONLY,
-      POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.MIGRATION_VERIFIER_ONLY,
       POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.NORMAL_PATH_FORBIDDEN,
       POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.NORMAL_PATH_FORBIDDEN,
       POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.BRIDGE_ONLY,
@@ -150,7 +148,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       ]);
   });
 
-  test('fails verifier or bridge exclusions that are allowed in normal authoring', () => {
+  test('fails bridge exclusions that are allowed in normal authoring', () => {
     expect(validatePolicyAuthoringCompletionRecord({
       id: 'raw_template_mechanics',
       label: 'Raw template mechanics',

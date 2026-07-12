@@ -13,7 +13,6 @@ const POLICY_AUTHORING_COMPONENT_IDS = Object.freeze({
   REVIEW_TRIGGER_CONTROL: 'review_trigger_control',
   READINESS_NEXT_ACTION_CARD: 'readiness_next_action_card',
   STARTER_TEMPLATE_SUGGESTION: 'starter_template_suggestion',
-  MIGRATION_VERIFIER_PANEL: 'migration_verifier_panel',
 });
 
 const POLICY_AUTHORING_PRIMITIVE_IDS = Object.freeze({
@@ -189,17 +188,6 @@ const POLICY_AUTHORING_TARGET_COMPONENTS = deepFreeze([
     commandBoundaryRequired: true,
     notes: 'Offers template-derived suggestions after destination context without becoming the primary model.',
   },
-  {
-    id: POLICY_AUTHORING_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
-    label: 'MigrationVerifierPanel',
-    flowStepId: null,
-    questionId: null,
-    normalPath: false,
-    defaultMultiSelect: false,
-    acceptsObservedEvidence: false,
-    commandBoundaryRequired: false,
-    notes: 'Maintainer/verifier-only replacement for old preview, replay, migration, and provider diagnostic panels.',
-  },
 ]);
 
 const POLICY_AUTHORING_PRIMITIVE_DECISIONS = deepFreeze([
@@ -283,7 +271,6 @@ const POLICY_AUTHORING_PRIMITIVE_DECISIONS = deepFreeze([
     decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.DELETE_FROM_NORMAL_PATH,
     targetComponentIds: [
       POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
-      POLICY_AUTHORING_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
     ],
     normalPath: false,
   },

@@ -6,11 +6,6 @@ import {
   POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS,
   POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS,
 } from './policyAuthoringDestinationFlow.mjs';
-import {
-  POLICY_AUTHORING_WORKFLOW_DECISION_IDS,
-  POLICY_AUTHORING_WORKFLOW_ROLE_IDS,
-} from './policyAuthoringWorkflowInventory.mjs';
-
 const POLICY_AUTHORING_READINESS_STATE_IDS = Object.freeze({
   READY: 'ready',
   NEEDS_EXAMPLES: 'needs_examples',
@@ -37,20 +32,6 @@ const POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS = Object.freeze({
   MAP_ROUTING_DESTINATION: 'map_routing_destination',
   REVIEW_HARD_LIMITS: 'review_hard_limits',
   REFRESH_OBSERVED_PROFILE: 'refresh_observed_profile',
-});
-
-const POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS = Object.freeze({
-  IMPACT_PREVIEW: 'impact_preview',
-  REPLAY_PREVIEW: 'replay_preview',
-  PROVIDER_READINESS: 'provider_readiness',
-  TMDB_LIVE_PREVIEW: 'tmdb_live_preview',
-  SCORING_DETAILS: 'scoring_details',
-  PARITY_DELTA: 'parity_delta',
-});
-
-const POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS = Object.freeze({
-  NORMAL_READINESS: 'normal_readiness',
-  MIGRATION_VERIFIER_ONLY: 'migration_verifier_only',
 });
 
 const POLICY_AUTHORING_READINESS_RISK_IDS = Object.freeze({
@@ -201,54 +182,8 @@ const POLICY_AUTHORING_READINESS_ISSUE_RECORDS = deepFreeze([
   },
 ]);
 
-const POLICY_AUTHORING_DIAGNOSTIC_SURFACE_RECORDS = deepFreeze([
-  {
-    id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.IMPACT_PREVIEW,
-    label: 'Impact preview',
-    visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-    workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
-    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
-  },
-  {
-    id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.REPLAY_PREVIEW,
-    label: 'Replay preview',
-    visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-    workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
-    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
-  },
-  {
-    id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.PROVIDER_READINESS,
-    label: 'Provider readiness',
-    visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-    workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
-    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
-  },
-  {
-    id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.TMDB_LIVE_PREVIEW,
-    label: 'TMDB live preview',
-    visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-    workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
-    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
-  },
-  {
-    id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.SCORING_DETAILS,
-    label: 'Scoring details',
-    visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-    workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
-    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
-  },
-  {
-    id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.PARITY_DELTA,
-    label: 'Parity delta',
-    visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-    workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
-    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
-  },
-]);
-
 const STATE_BY_ID = new Map(POLICY_AUTHORING_READINESS_STATE_RECORDS.map(record => [record.id, record]));
 const ISSUE_BY_ID = new Map(POLICY_AUTHORING_READINESS_ISSUE_RECORDS.map(record => [record.issueId, record]));
-const DIAGNOSTIC_SURFACE_BY_ID = new Map(POLICY_AUTHORING_DIAGNOSTIC_SURFACE_RECORDS.map(record => [record.id, record]));
 
 function listPolicyAuthoringReadinessStateRecords() {
   return POLICY_AUTHORING_READINESS_STATE_RECORDS;
@@ -256,10 +191,6 @@ function listPolicyAuthoringReadinessStateRecords() {
 
 function listPolicyAuthoringReadinessIssueRecords() {
   return POLICY_AUTHORING_READINESS_ISSUE_RECORDS;
-}
-
-function listPolicyAuthoringDiagnosticSurfaceRecords() {
-  return POLICY_AUTHORING_DIAGNOSTIC_SURFACE_RECORDS;
 }
 
 function getPolicyAuthoringReadinessStateRecord(stateId) {
@@ -404,17 +335,9 @@ function buildPolicyAuthoringReadinessProjection(issues = []) {
 }
 
 function validatePolicyAuthoringDiagnosticSurfaceVisibility(surfaceIds = []) {
-  const surfaces = asArray(surfaceIds)
+  const normalDiagnosticIds = asArray(surfaceIds)
     .map(surfaceId => toCleanString(surfaceId))
-    .filter(Boolean)
-    .map(surfaceId => DIAGNOSTIC_SURFACE_BY_ID.get(surfaceId) || {
-      id: surfaceId,
-      visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.NORMAL_READINESS,
-    });
-
-  const normalDiagnosticIds = surfaces
-    .filter(surface => surface.visibilityId !== POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY)
-    .map(surface => surface.id);
+    .filter(Boolean);
 
   return {
     valid: normalDiagnosticIds.length === 0,
@@ -423,8 +346,8 @@ function validatePolicyAuthoringDiagnosticSurfaceVisibility(surfaceIds = []) {
       : POLICY_AUTHORING_READINESS_RISK_IDS.PROVIDER_OR_REPLAY_DETAIL_EXPOSED,
     normalDiagnosticIds,
     reason: normalDiagnosticIds.length === 0
-      ? 'Diagnostic surfaces are verifier-only and excluded from normal readiness.'
-      : 'Normal readiness cannot expose replay, provider, TMDB, scoring, or parity details.',
+      ? 'Normal readiness exposes no diagnostic surfaces.'
+      : 'Normal readiness cannot expose retired diagnostic details.',
   };
 }
 
@@ -432,9 +355,7 @@ function summarizePolicyAuthoringReadiness() {
   return {
     readinessStateCount: POLICY_AUTHORING_READINESS_STATE_RECORDS.length,
     readinessIssueCount: POLICY_AUTHORING_READINESS_ISSUE_RECORDS.length,
-    diagnosticSurfaceCount: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_RECORDS.length,
     visibleStateIds: Object.values(POLICY_AUTHORING_READINESS_STATE_IDS),
-    diagnosticSurfaceVisibilityIds: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_RECORDS.map(surface => surface.visibilityId),
     everyIssueHasOneNextAction: POLICY_AUTHORING_READINESS_ISSUE_RECORDS
       .every(issue => Boolean(issue.nextActionId) && !Array.isArray(issue.nextActionId)),
     normalReadinessExposesInternalDiagnostics: false,
@@ -442,16 +363,13 @@ function summarizePolicyAuthoringReadiness() {
 }
 
 export {
-  POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS,
   POLICY_AUTHORING_READINESS_ISSUE_IDS,
   POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS,
   POLICY_AUTHORING_READINESS_RISK_IDS,
   POLICY_AUTHORING_READINESS_STATE_IDS,
-  POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS,
   buildPolicyAuthoringReadinessProjection,
   getPolicyAuthoringReadinessIssueRecord,
   getPolicyAuthoringReadinessStateRecord,
-  listPolicyAuthoringDiagnosticSurfaceRecords,
   listPolicyAuthoringReadinessIssueRecords,
   listPolicyAuthoringReadinessStateRecords,
   normalizePolicyAuthoringReadinessIssue,

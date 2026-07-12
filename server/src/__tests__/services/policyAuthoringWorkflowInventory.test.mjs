@@ -111,11 +111,11 @@ describe('policyAuthoringWorkflowInventory', () => {
     });
   });
 
-  test('keeps migration notices out of the normal authoring path', () => {
+  test('keeps migration notices as compatibility bridge support', () => {
     expect(classifyPolicyAuthoringWorkflowSurface('client/src/components/policies/PolicyPresetMigrationNotice.vue'))
       .toEqual(expect.objectContaining({
         decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
-        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
         normalAuthoringAllowed: false,
         migrationSupportOnly: true,
       }));

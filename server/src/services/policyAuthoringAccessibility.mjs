@@ -17,7 +17,6 @@ const POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS = Object.freeze({
   REVIEW_TRIGGERS: 'review_triggers',
   READINESS_NEXT_ACTION: 'readiness_next_action',
   STARTER_TEMPLATE_SUGGESTION: 'starter_template_suggestion',
-  MIGRATION_VERIFIER: 'migration_verifier',
 });
 
 const POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS = Object.freeze({
@@ -231,23 +230,6 @@ const POLICY_AUTHORING_ACCESSIBILITY_SURFACES = deepFreeze([
     maxPrimaryActions: 1,
     warningConceptIds: [],
     internalDiagnosticsAllowed: false,
-  },
-  {
-    id: POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.MIGRATION_VERIFIER,
-    componentId: POLICY_AUTHORING_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
-    label: 'Migration verifier',
-    helperText: 'Keep migration diagnostics outside the normal authoring workflow.',
-    normalPath: false,
-    keyboardOperable: true,
-    visibleFocusRequired: true,
-    disabledReasonRequired: false,
-    multiSelectStateRequired: false,
-    chipRemoveNameRequired: false,
-    destructiveConfirmationRequired: false,
-    singleNextActionRequired: false,
-    maxPrimaryActions: 2,
-    warningConceptIds: [],
-    internalDiagnosticsAllowed: true,
   },
 ]);
 

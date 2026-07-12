@@ -7,10 +7,10 @@ Status: implemented as a durable policy-authoring contract.
 Policy authoring readiness is the small, operator-facing projection that answers
 one question: "What do I do next?"
 
-This contract defines visible readiness states, issue-to-action mapping,
-destination workflow links, and verifier-only treatment for old preview, replay,
-provider, TMDB, scoring, and parity surfaces. It intentionally does not expose
-raw diagnostics in the normal authoring workflow.
+This contract defines visible readiness states, issue-to-action mapping, and
+destination workflow links. Retired preview, provider, metadata, scoring, and
+parity diagnostics are rejected rather than modeled as an alternate readiness
+surface.
 
 ## Current Best-Practice Inputs
 
@@ -51,9 +51,8 @@ The applied guidance:
    component or setting.
 4. Select the highest-priority issue when multiple issues exist, but preserve
    the full issue list for secondary display.
-5. Keep impact preview, replay preview, provider readiness, TMDB live preview,
-   scoring details, and parity delta as migration verifier candidates only.
-6. Reject unknown diagnostic surfaces from normal readiness.
+5. Reject all diagnostic identifiers from readiness, including identifiers from
+   retired preview, provider, metadata, scoring, and parity panels.
 
 ## Pros And Cons
 
@@ -71,19 +70,19 @@ Cons:
 - Advanced operators lose immediate access to some diagnostic detail in the
   normal authoring path.
 
-### Verifier-Only Diagnostics
+### Diagnostic Retirement
 
 Pros:
 
-- Preserves support value during migration without making diagnostics the
-  product model.
-- Reduces accidental exposure of provider or scoring internals.
-- Keeps diagnostics outside the normal authoring mental model.
+- Removes a second authoring mental model and its stale access-control surface.
+- Rejects retired diagnostic identifiers deterministically instead of allowing
+  an undocumented alternate path.
+- Keeps provider and scoring internals out of author-facing readiness results.
 
 Cons:
 
-- Requires a separate maintainer/verifier entry point if those panels still need
-  to exist during migration.
+- Historical diagnostics must be investigated through bounded evidence,
+  readiness, and rollback contracts rather than a policy-builder panel.
 
 ## Final Recommendation
 
@@ -96,8 +95,8 @@ readiness issue
   -> one resolving destination step/component
 ```
 
-Everything else, including replay, provider, TMDB, scoring, parity, and impact
-details, should stay out of the normal policy-authoring workflow.
+Everything else, including retired replay, provider, metadata, scoring, parity,
+and impact details, is invalid authoring input.
 
 ## Implementation
 
@@ -108,15 +107,13 @@ The implementation provides:
   - defines six readiness issues mapped to one next action each,
   - links issues to destination flow steps and resolving components,
   - builds a prioritized readiness projection,
-  - classifies old diagnostic surfaces as migration verifier only,
-  - rejects unknown diagnostic surfaces in normal readiness.
+  - rejects diagnostic identifiers from normal readiness.
 - `server/src/__tests__/services/policyAuthoringReadiness.test.mjs`
   - pins visible readiness states,
   - proves each issue has exactly one next action and one destination link,
   - checks highest-priority issue selection,
   - checks ready-state save action,
-  - checks verifier-only diagnostic classification,
-  - rejects unknown normal diagnostic surfaces.
+  - rejects retired diagnostic identifiers from normal readiness.
 
 ## Checklist Result
 
@@ -125,9 +122,9 @@ The implementation provides:
 | Visible readiness states defined | Yes; six state IDs are pinned. |
 | One next action per readiness issue | Yes; every issue maps to one action. |
 | Links to resolving section or setting | Yes; each issue links to a destination flow step and component. |
-| Raw diagnostics removed from normal workflow | Yes; replay, provider, TMDB, scoring, parity, and impact surfaces are verifier-only. |
+| Raw diagnostics removed from normal workflow | Yes; replay, provider, metadata, scoring, parity, and impact identifiers are rejected. |
 | Readiness answers what to do next | Yes; projection returns the highest-priority next action. |
-| Diagnostic panel tests redirected | Yes; server tests now protect readiness semantics and verifier-only diagnostics. |
+| Diagnostic panel tests redirected | Yes; server tests now protect readiness semantics and diagnostic rejection. |
 
 ## Next Step
 

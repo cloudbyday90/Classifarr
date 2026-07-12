@@ -13,7 +13,6 @@ const POLICY_AUTHORING_WORKFLOW_ROLE_IDS = Object.freeze({
   READINESS_NEXT_ACTION: 'readiness_next_action',
   STARTER_TEMPLATE_ACCELERATOR: 'starter_template_accelerator',
   ADVANCED_SUPPORT_ONLY: 'advanced_support_only',
-  MAINTAINER_VERIFIER_ONLY: 'maintainer_verifier_only',
   COMPATIBILITY_BRIDGE: 'compatibility_bridge',
   FUTURE_SERVER_ENGINE_INPUT: 'future_server_engine_input',
   TEST_BOUNDARY: 'test_boundary',
@@ -209,7 +208,7 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
   {
     id: 'migration_notice_surfaces',
     decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
-    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
     normalAuthoringAllowed: false,
     migrationSupportOnly: true,
     riskIds: [

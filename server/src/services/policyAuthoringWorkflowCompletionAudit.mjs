@@ -20,7 +20,6 @@ const POLICY_AUTHORING_COMPLETION_RISK_IDS = Object.freeze({
 
 const POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS = Object.freeze({
   NORMAL_PATH_FORBIDDEN: 'normal_path_forbidden',
-  MIGRATION_VERIFIER_ONLY: 'migration_verifier_only',
   BRIDGE_ONLY: 'bridge_only',
   DELETE_AFTER_NATIVE_STORAGE: 'delete_after_native_storage',
 });
@@ -34,7 +33,7 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     docPath: 'docs/architecture/policy-authoring-workflow-inventory.md',
     servicePath: 'server/src/services/policyAuthoringWorkflowInventory.mjs',
     testPath: 'server/src/__tests__/services/policyAuthoringWorkflowInventory.test.mjs',
-    evidence: 'Classifies current policy-builder surfaces as keep, rewrite, replace, delete, bridge-only, or verifier-only with durable product ownership.',
+    evidence: 'Classifies current policy-builder surfaces as keep, rewrite, replace, delete, or bridge-only with durable product ownership.',
   },
   {
     id: 'policy_authoring_destination_flow',
@@ -108,7 +107,7 @@ const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
     label: 'Policy authoring setup cards',
     docPath: 'docs/architecture/policy-authoring-setup-cards.md',
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
-    evidence: 'Renders four setup cards after library context and keeps verifier panels out of default workflow.',
+    evidence: 'Renders four setup cards after library context without restoring retired diagnostic panels.',
   },
   {
     id: 'policy_authoring_destination_sections',
@@ -198,27 +197,15 @@ const POLICY_AUTHORING_NORMAL_WORKFLOW_RULES = Object.freeze([
     evidence: 'Setup cards expose one current step with supporting status and completion context.',
   },
   {
-    id: 'verifier_panels_not_default',
-    label: 'Retired verifier panels are absent from policy authoring',
+    id: 'retired_diagnostics_absent',
+    label: 'Retired diagnostic panels are absent from policy authoring',
     docPath: 'docs/architecture/policy-authoring-presentation-tests.md',
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
-    evidence: 'Impact and replay verifier panels are removed, including the former visibility prop.',
+    evidence: 'Impact and replay diagnostic panels are removed, including the former visibility prop.',
   },
 ]);
 
 const POLICY_AUTHORING_NORMAL_PATH_EXCLUSIONS = Object.freeze([
-  {
-    id: 'impact_preview_panel',
-    label: 'Intent impact preview panel',
-    scopeId: POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.MIGRATION_VERIFIER_ONLY,
-    evidence: 'Read-only verifier surface; not part of default policy authoring.',
-  },
-  {
-    id: 'representative_replay_panel',
-    label: 'Representative replay preview panel',
-    scopeId: POLICY_AUTHORING_COMPLETION_EXCLUSION_SCOPE_IDS.MIGRATION_VERIFIER_ONLY,
-    evidence: 'Read-only verifier surface with no execution; not part of default policy authoring.',
-  },
   {
     id: 'provider_readiness_details',
     label: 'Provider readiness details',

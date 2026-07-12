@@ -69,11 +69,10 @@ Official sources reviewed as of June 2026:
 3. Use stable coverage owners instead of roadmap owners:
    - `policy_authoring`,
    - `draft_bridge`,
-   - `runtime_verifier`,
+   - `runtime_migration_safety`,
    - `native_storage_cleanup`.
-4. Keep replay, impact, provider, TMDB, scoring, parity, and raw-preset
-   surfaces as verifier or removal candidates, not normal policy-authoring
-   behavior.
+4. Keep replay, impact, provider, metadata, scoring, parity, and raw-preset
+   surfaces removed from authoring, not as normal policy-authoring behavior.
 
 ## Pros And Cons
 
@@ -83,7 +82,7 @@ Official sources reviewed as of June 2026:
 - Gives future Vue test updates a concrete classification map.
 - Keeps draft bridge coverage separate from policy-authoring presentation
   coverage.
-- Makes old diagnostic panel tests explicit removal or verifier candidates.
+- Makes old diagnostic panel tests explicit removal candidates.
 - Aligns test intent with the policy authoring accessibility contract.
 
 ### Cons
@@ -115,7 +114,7 @@ The implementation provides:
   - defines required policy-authoring presentation behaviors,
   - keeps draft bridge coverage owned by the draft bridge contract,
   - marks old impact, replay, and template-mechanics diagnostics for removal or
-    verifier-only handling,
+    compatibility-bridge-only handling,
   - audits missing behavior coverage, unknown owners, and internal diagnostic
     wording in normal product tests.
 - `server/src/__tests__/services/policyAuthoringPresentationTests.test.mjs`
@@ -134,7 +133,7 @@ The implementation provides:
 | Simplified workflow protected | Yes; required behavior records map to destination-first flow, evidence options, readiness, and accessibility. |
 | Product vocabulary preserved | Yes; normal presentation tests fail when internal diagnostic language appears. |
 | Draft/bridge duplication avoided | Yes; draft bridge tests are explicitly draft-bridge-owned. |
-| Diagnostic panels removed from normal path | Yes; impact and replay preview tests are remove/verifier candidates, not normal-path assertions. |
+| Diagnostic panels removed from normal path | Yes; impact and replay preview tests are removal candidates, not normal-path assertions. |
 
 ## Next Step
 

@@ -115,7 +115,7 @@ const POLICY_AUTHORING_TEMPLATE_ROLE_RECORDS = deepFreeze([
     normalAuthoringAllowed: false,
     requiresDestinationContext: false,
     canBeRequiredToSave: false,
-    componentId: POLICY_AUTHORING_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
+    componentId: null,
   },
   {
     roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.DELETE_AFTER_NATIVE_STORAGE,
@@ -123,7 +123,7 @@ const POLICY_AUTHORING_TEMPLATE_ROLE_RECORDS = deepFreeze([
     normalAuthoringAllowed: false,
     requiresDestinationContext: false,
     canBeRequiredToSave: false,
-    componentId: POLICY_AUTHORING_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
+    componentId: null,
   },
 ]);
 
@@ -150,10 +150,10 @@ const POLICY_AUTHORING_TEMPLATE_MECHANIC_RECORDS = deepFreeze([
     mechanicId: POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_MECHANICS,
     roleId: POLICY_AUTHORING_TEMPLATE_ROLE_IDS.BRIDGE_ONLY_MECHANIC,
     workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
-    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
+    workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,
     normalAuthoringAllowed: false,
     deleteAfterNativeStorage: true,
-    notes: 'Raw mechanics are bridge/verifier-only and should leave normal authoring.',
+    notes: 'Raw mechanics are compatibility bridge state and should leave normal authoring.',
   },
   {
     mechanicId: POLICY_AUTHORING_TEMPLATE_MECHANIC_IDS.TEMPLATE_WEIGHT,

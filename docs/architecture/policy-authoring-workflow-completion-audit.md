@@ -4,7 +4,7 @@
 
 The policy authoring workflow completion audit verifies that the normal policy
 builder path is destination-first, evidence-backed, accessible, and separated
-from migration verifiers or compatibility bridge internals. The audit is a
+from retired diagnostics and compatibility bridge internals. The audit is a
 server-owned completion gate for the authoring surface before policy evidence
 and runtime automation consume operator intent.
 

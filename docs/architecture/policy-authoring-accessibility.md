@@ -53,8 +53,8 @@ Official sources reviewed as of June 2026:
    value.
 6. Disabled choices must explain why they are unavailable.
 7. Hard-limit and blocking controls must require explicit confirmation.
-8. Migration verifier diagnostics can exist outside the normal workflow, but
-   they must not leak into destination setup.
+8. Retired diagnostics must not be restored as alternate authoring surfaces or
+   leak into destination setup.
 
 ## Pros And Cons
 
@@ -86,7 +86,7 @@ Accessible name + helper text + keyboard/focus requirements
   -> one primary action in the normal path
   -> selected/disabled/removal state where relevant
   -> readiness exposes one next action
-  -> diagnostics stay in migration verifier surfaces only
+  -> retired diagnostics are absent from authoring
 ```
 
 ## Implementation

@@ -37,7 +37,6 @@ describe('policyAuthoringComponentSystem', () => {
       'ReviewTriggerControl',
       'ReadinessNextActionCard',
       'StarterTemplateSuggestion',
-      'MigrationVerifierPanel',
     ]);
 
     expect(getPolicyAuthoringTargetComponent(POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_CONTEXT_CARD))
@@ -75,7 +74,6 @@ describe('policyAuthoringComponentSystem', () => {
         normalPath: false,
         targetComponentIds: [
           POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
-          POLICY_AUTHORING_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
         ],
       }));
   });
@@ -162,9 +160,9 @@ describe('policyAuthoringComponentSystem', () => {
       }));
   });
 
-  test('summarizes the component system without putting verifier panels in the normal path', () => {
+  test('summarizes the component system without retired diagnostic panels', () => {
     expect(summarizePolicyAuthoringComponentSystem()).toEqual({
-      targetComponentCount: 10,
+      targetComponentCount: 9,
       primitiveDecisionCount: 9,
       optionSourceCount: 7,
       interactionRuleCount: 6,
@@ -181,7 +179,6 @@ describe('policyAuthoringComponentSystem', () => {
       ],
       supportOnlyComponentIds: [
         POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,
-        POLICY_AUTHORING_COMPONENT_IDS.MIGRATION_VERIFIER_PANEL,
       ],
       multiSelectDefaultComponentIds: [
         POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,

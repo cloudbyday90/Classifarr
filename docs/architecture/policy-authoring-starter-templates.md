@@ -91,8 +91,8 @@ Pros:
 
 Cons:
 
-- Maintainer/verifier tooling may still need temporary access until migration is
-  complete.
+- Compatibility bridge mechanics remain temporary implementation support until
+  native storage replacement is complete; they are not authoring surfaces.
 
 ## Final Recommendation
 

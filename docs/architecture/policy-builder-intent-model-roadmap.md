@@ -2231,8 +2231,7 @@ Tasks:
   - `AvoidControl`,
   - `ReviewTriggerControl`,
   - `ReadinessNextActionCard`,
-  - `StarterTemplateSuggestion`,
-  - `MigrationVerifierPanel` for maintainer/verifier-only flows.
+  - `StarterTemplateSuggestion`.
 - Prefer multi-select and chip-based editing for simple belongs-here,
   helpful-match, avoid, and review-trigger values.
 - Clearly separate values that already exist in the library from values that
@@ -2273,8 +2272,8 @@ Implementation status:
   `server/src/services/policyAuthoringComponentSystem.mjs`.
 - The target component vocabulary now includes destination context, observed
   profile, signal picker, chip list, hard-limit, avoid, review-trigger,
-  readiness next-action, starter-template suggestion, and migration verifier
-  components.
+  readiness next-action, and starter-template suggestion components. Retired
+  diagnostic panels are not represented as authoring components.
 - Option source semantics, typed-command interaction rules, explicit observed
   evidence acceptance, disabled-state explanations, and component-level
   accessibility requirements are pinned before Vue screen rebuild work starts.
@@ -3297,22 +3296,16 @@ Implementation status:
 - The evidence projection fingerprint helper now lives in
   `server/src/services/policyEvidenceFingerprint.mjs`; the artifact contract is
   `policy.evidence.fingerprint.v1`.
-- Replay and impact reducer artifacts are explicitly classified as delete or
-  maintainer-only migration material. The replay scorer, policy-engine
-  comparison, execution context, and parity delta were deleted because they
-  evaluated raw drafts against representative history rather than producing
-  source-authorized evidence. All remaining diagnostics are blocked from normal
-  operator flow until they are deleted or have a separately justified migration
-  role.
-- Existing replay/impact reducers are not wired into the normal product flow in
-  this slice; future Phase 6R migration work must either extract deterministic
-  reducers into the evidence engine or delete the abandoned diagnostic surfaces.
+- Replay and impact reducer artifacts are deleted because they evaluated raw
+  drafts against representative history rather than producing source-authorized
+  evidence. Remaining diagnostics are rejected from authoring rather than
+  represented as maintainer-only workflow branches.
 - The browser-facing impact/replay preview cards, composables, response
-  normalizers, tests, policy API methods, and modal visibility override are now
-  deleted. The server migration-verifier endpoints remain behind the
-  administrator-protected policy route solely for migration verification; they
-  are not reachable from product UI code. This cutover is documented in
-  [Policy Migration Diagnostic UI Removal](policy-migration-diagnostic-ui-removal.md).
+  normalizers, tests, policy API methods, modal visibility override, and final
+  server migration-verifier endpoints are deleted. The policy authoring model
+  no longer retains an alternate diagnostic surface. This cutover is documented
+  in [Policy Migration Diagnostic UI Removal](policy-migration-diagnostic-ui-removal.md)
+  and [Policy Authoring Verifier Surface Retirement](policy-authoring-verifier-surface-retirement.md).
 - The replay migration verifier no longer reads provider configuration, quota,
   cooldown, selected-provider state, or performs optional live TMDB previews.
   Its provider/TMDB enrichment adapters and coverage comparisons were deleted;
@@ -3699,6 +3692,10 @@ Implementation status:
   `server/src/services/policyOperatorWorkflow.mjs`.
 - The focused operator-workflow test suite lives in
   `server/src/__tests__/services/policyOperatorWorkflow.test.mjs`.
+- Retired diagnostic panels no longer have a component, accessibility, readiness,
+  or workflow exemption. Readiness rejects their identifiers instead of routing
+  them to an alternate authoring branch; the outcome is documented in
+  [Policy Authoring Verifier Surface Retirement](policy-authoring-verifier-surface-retirement.md).
 - Intent entries now pass through
   `server/src/services/policyOperatorWorkflowEntryNormalizer.mjs` before normal
   workflow projection. It retains display-safe primitives only, rejects unknown
@@ -3767,9 +3764,9 @@ Implementation status:
 - Current implementation classifies policy-builder artifacts as
   `keep_engine_primitive`, `migration_verifier`, `delete_after_migration`, or
   `native_storage_blocker`.
-- Old impact preview, replay preview, provider readiness, TMDB coverage, raw
-  scoring, and policy-write diagnostics are verifier-only or delete-after-
-  migration targets, never normal operator workflow.
+- Old impact preview, replay preview, provider readiness, metadata coverage,
+  raw scoring, and policy-write diagnostics are delete-after-migration targets,
+  never normal operator workflow.
 - Migration deletion requires stable policy engine contracts, representative
   comparison, rollback snapshot, rollback window, deletion checklist, and
   native storage blocked until storage migration readiness is proven.

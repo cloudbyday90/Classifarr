@@ -40,9 +40,9 @@ Applied guidance:
    `DestinationContextCard`, `ObservedProfileSummary`, `IntentSignalPicker`,
    `IntentSignalChipList`, `HardLimitControl`, `AvoidControl`,
    `ReviewTriggerControl`, and `ReadinessNextActionCard`.
-2. Keep support-only surfaces explicit:
-   `StarterTemplateSuggestion` can accelerate intent after destination context;
-   `MigrationVerifierPanel` stays outside the normal operator path.
+2. Keep the optional accelerator explicit: `StarterTemplateSuggestion` can
+   accelerate intent after destination context. Retired diagnostic panels are
+   not alternate authoring surfaces.
 3. Use grouped multi-select and chip editing for simple belongs-here,
    helpful-match, avoid, and review-trigger values.
 4. Split option sources into visible groups: observed in library, suggested from

@@ -310,7 +310,7 @@ describe('PolicyBuilderModal.vue', () => {
     alertSpy.mockRestore();
   });
 
-  it('does not render retired migration verifier panels when passed their former visibility prop', async () => {
+  it('does not render retired diagnostic panels when passed their former visibility prop', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });

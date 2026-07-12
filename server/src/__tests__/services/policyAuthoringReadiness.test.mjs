@@ -7,20 +7,13 @@ import {
   POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS,
 } from '../../services/policyAuthoringDestinationFlow.mjs';
 import {
-  POLICY_AUTHORING_WORKFLOW_DECISION_IDS,
-  POLICY_AUTHORING_WORKFLOW_ROLE_IDS,
-} from '../../services/policyAuthoringWorkflowInventory.mjs';
-import {
-  POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS,
   POLICY_AUTHORING_READINESS_ISSUE_IDS,
   POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS,
   POLICY_AUTHORING_READINESS_RISK_IDS,
   POLICY_AUTHORING_READINESS_STATE_IDS,
-  POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS,
   buildPolicyAuthoringReadinessProjection,
   getPolicyAuthoringReadinessIssueRecord,
   getPolicyAuthoringReadinessStateRecord,
-  listPolicyAuthoringDiagnosticSurfaceRecords,
   listPolicyAuthoringReadinessIssueRecords,
   listPolicyAuthoringReadinessStateRecords,
   normalizePolicyAuthoringReadinessIssue,
@@ -134,7 +127,7 @@ describe('policyAuthoringReadiness', () => {
     expect(validatePolicyAuthoringReadinessIssue({
       issueId: POLICY_AUTHORING_READINESS_ISSUE_IDS.STRUCTURAL_REVIEW_NEEDED,
       internalDiagnosticSurfaceIds: [
-        POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.REPLAY_PREVIEW,
+        'replay_preview',
       ],
     })).toEqual(expect.objectContaining({
       valid: false,
@@ -142,57 +135,27 @@ describe('policyAuthoringReadiness', () => {
     }));
   });
 
-  test('marks old replay, provider, TMDB, scoring, and parity surfaces verifier-only', () => {
-    expect(listPolicyAuthoringDiagnosticSurfaceRecords()).toEqual([
-      expect.objectContaining({
-        id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.IMPACT_PREVIEW,
-        visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-        workflowDecisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
-        workflowRoleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
-      }),
-      expect.objectContaining({
-        id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.REPLAY_PREVIEW,
-        visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-      }),
-      expect.objectContaining({
-        id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.PROVIDER_READINESS,
-        visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-      }),
-      expect.objectContaining({
-        id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.TMDB_LIVE_PREVIEW,
-        visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-      }),
-      expect.objectContaining({
-        id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.SCORING_DETAILS,
-        visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-      }),
-      expect.objectContaining({
-        id: POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.PARITY_DELTA,
-        visibilityId: POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-      }),
-    ]);
-
+  test('rejects every diagnostic identifier instead of preserving a hidden alternate surface', () => {
     expect(validatePolicyAuthoringDiagnosticSurfaceVisibility([
-      POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.IMPACT_PREVIEW,
-      POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.REPLAY_PREVIEW,
-      POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.PROVIDER_READINESS,
-      POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.TMDB_LIVE_PREVIEW,
-      POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.SCORING_DETAILS,
-      POLICY_AUTHORING_DIAGNOSTIC_SURFACE_IDS.PARITY_DELTA,
+      'impact_preview',
+      'replay_preview',
+      'raw_provider_payload',
     ])).toEqual({
+      valid: false,
+      riskId: POLICY_AUTHORING_READINESS_RISK_IDS.PROVIDER_OR_REPLAY_DETAIL_EXPOSED,
+      normalDiagnosticIds: [
+        'impact_preview',
+        'replay_preview',
+        'raw_provider_payload',
+      ],
+      reason: 'Normal readiness cannot expose retired diagnostic details.',
+    });
+
+    expect(validatePolicyAuthoringDiagnosticSurfaceVisibility([])).toEqual({
       valid: true,
       riskId: null,
       normalDiagnosticIds: [],
-      reason: 'Diagnostic surfaces are verifier-only and excluded from normal readiness.',
-    });
-  });
-
-  test('fails visibility validation for unknown normal diagnostic surfaces', () => {
-    expect(validatePolicyAuthoringDiagnosticSurfaceVisibility(['raw_provider_payload'])).toEqual({
-      valid: false,
-      riskId: POLICY_AUTHORING_READINESS_RISK_IDS.PROVIDER_OR_REPLAY_DETAIL_EXPOSED,
-      normalDiagnosticIds: ['raw_provider_payload'],
-      reason: 'Normal readiness cannot expose replay, provider, TMDB, scoring, or parity details.',
+      reason: 'Normal readiness exposes no diagnostic surfaces.',
     });
   });
 
@@ -200,7 +163,6 @@ describe('policyAuthoringReadiness', () => {
     expect(summarizePolicyAuthoringReadiness()).toEqual({
       readinessStateCount: 6,
       readinessIssueCount: 6,
-      diagnosticSurfaceCount: 6,
       visibleStateIds: [
         POLICY_AUTHORING_READINESS_STATE_IDS.READY,
         POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_EXAMPLES,
@@ -208,14 +170,6 @@ describe('policyAuthoringReadiness', () => {
         POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_ROUTING,
         POLICY_AUTHORING_READINESS_STATE_IDS.BLOCKED_BY_HARD_LIMIT,
         POLICY_AUTHORING_READINESS_STATE_IDS.STALE_PROFILE,
-      ],
-      diagnosticSurfaceVisibilityIds: [
-        POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-        POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-        POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-        POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-        POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
-        POLICY_AUTHORING_READINESS_SURFACE_VISIBILITY_IDS.MIGRATION_VERIFIER_ONLY,
       ],
       everyIssueHasOneNextAction: true,
       normalReadinessExposesInternalDiagnostics: false,
