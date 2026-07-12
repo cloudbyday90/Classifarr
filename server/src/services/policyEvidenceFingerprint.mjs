@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { sortPolicyEvidenceEntries } from './policyEvidenceEntryIdentity.mjs';
 
 const POLICY_EVIDENCE_FINGERPRINT_VERSION =
   'policy.evidence.fingerprint.v1';
@@ -68,6 +69,19 @@ function buildBucketCounts(summary = {}) {
     .sort((left, right) => String(left.bucketId).localeCompare(String(right.bucketId)));
 }
 
+function buildCanonicalProjectionBuckets(buckets = {}) {
+  if (!buckets || typeof buckets !== 'object' || Array.isArray(buckets)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(buckets).map(([bucketId, entries]) => [
+      bucketId,
+      sortPolicyEvidenceEntries(entries),
+    ])
+  );
+}
+
 function buildPolicyEvidenceFingerprint(projection = {}) {
   const summary = projection?.summary && typeof projection.summary === 'object'
     ? projection.summary
@@ -81,7 +95,7 @@ function buildPolicyEvidenceFingerprint(projection = {}) {
     generatedFromLiveProvider: projection.generatedFromLiveProvider === true,
     exposesRawProviderPayloads: projection.exposesRawProviderPayloads === true,
     exposesUiChipLanguage: projection.exposesUiChipLanguage === true,
-    buckets: projection.buckets || {},
+    buckets: buildCanonicalProjectionBuckets(projection.buckets),
     warnings: asArray(projection.warnings),
     summary,
   };

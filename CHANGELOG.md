@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Evidence Projection Canonical Ordering** — distinct valid evidence
+  entries now use a server-owned semantic order before summary and quality
+  generation; reordered handoffs are audited and equivalent input order yields
+  one projection fingerprint.
 - **Policy Evidence Projection Container Ownership** — projection audit now
   rejects evidence entries whose declared bucket differs from their containing
   bucket, preventing ambiguous bucket-local summary, quality, and fingerprint

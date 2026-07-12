@@ -169,6 +169,11 @@ supports each piece of evidence?
     that contains it. Reject mismatches before source, authority, summary,
     quality, fingerprint, or later engine logic consumes the projection.
 
+13. **Use canonical semantic entry order.**
+    Sort distinct valid entries by their complete canonical identity before
+    summary and quality generation. Audit reordered received projections and
+    canonicalize bucket arrays again when deriving fingerprints.
+
 ## Pros And Cons
 
 Pros:
@@ -203,6 +208,8 @@ Cons:
   bounded values, timestamps, source IDs, or authority IDs.
 - Bucket ownership validation rejects inconsistent projections; it does not
   attempt to infer the intended location or mutate a received projection.
+- Canonical order is a deterministic contract, not a user-facing relevance or
+  recommendation ranking.
 
 ## Final Recommendation Stack
 
@@ -287,6 +294,12 @@ closed when `entry.bucketId` differs from the enclosing bucket ID, keeping
 summary, quality, and fingerprint consumers from accepting an ambiguous
 location. Its design record is [Policy Evidence Projection Container Ownership](policy-evidence-projection-container-ownership.md).
 
+`server/src/services/policyEvidenceEntryIdentity.mjs` also owns canonical entry
+ordering. Projection construction sorts each bucket by the complete semantic
+identity before summary and quality computation; audit rejects reordered
+received projections; fingerprinting canonicalizes bucket arrays independently.
+Its design record is [Policy Evidence Projection Canonical Ordering](policy-evidence-projection-canonical-ordering.md).
+
 `server/src/services/policyEvidenceInputCardinality.mjs` bounds every input
 array before recursive input-gate scanning. Oversized input fails closed with a
 count-only status before projection work begins; it is not silently truncated.
@@ -369,6 +382,7 @@ fails when a projection:
 - contains individual entries that claim raw payloads or live lookup behavior,
 - contains duplicate canonical entries,
 - contains an entry whose declared bucket does not match its bucket container,
+- contains valid entries in noncanonical semantic order,
 - omits the generated summary,
 - carries a stale summary whose counts do not match the bucket entries,
 - omits generated quality, carries stale quality, or leaks entry labels through
@@ -397,6 +411,8 @@ fails when a projection:
 - Each accepted entry has one validated bucket location; bucket-local summary,
   quality, and fingerprint computations do not trust a caller-provided label
   that differs from its container.
+- Distinct valid entries use canonical semantic order, so equivalent input order
+  produces one projection correlation fingerprint without merging provenance.
 - Boundary audits require ready results to have a successful input gate,
   projection audit, fingerprint audit, and intent-inference handoff; blocked
   results cannot carry a next step.

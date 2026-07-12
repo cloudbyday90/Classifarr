@@ -236,6 +236,24 @@ describe('policyEvidenceEngine', () => {
       .toHaveLength(2);
   });
 
+  test('uses canonical entry order for equivalent evidence inputs', () => {
+    const firstProjection = buildPolicyEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animation', 'Family'],
+      },
+    });
+    const secondProjection = buildPolicyEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Family', 'Animation'],
+      },
+    });
+
+    expect(firstProjection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY])
+      .toEqual(secondProjection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY]);
+    expect(buildPolicyEvidenceFingerprint(firstProjection).fingerprint)
+      .toBe(buildPolicyEvidenceFingerprint(secondProjection).fingerprint);
+  });
+
   test('treats stale profiles and missing input as insufficient evidence instead of exclusions', () => {
     const staleProjection = buildPolicyEvidenceProjection({
       profileFreshness: {
@@ -462,6 +480,22 @@ describe('policyEvidenceEngine', () => {
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_BUCKET_MISMATCH,
+        }),
+      ]));
+  });
+
+  test('rejects a projection with valid entries in noncanonical order', () => {
+    const projection = buildPolicyEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animation', 'Family'],
+      },
+    });
+    projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY].reverse();
+
+    expect(buildPolicyEvidenceProjectionAudit(projection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_ORDER,
         }),
       ]));
   });

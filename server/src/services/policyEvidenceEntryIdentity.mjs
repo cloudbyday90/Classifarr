@@ -39,8 +39,46 @@ function findPolicyEvidenceEntryDuplicateIndexes(entries = []) {
   return duplicates;
 }
 
+function comparePolicyEvidenceEntries(left, right) {
+  const leftKey = buildPolicyEvidenceEntrySemanticKey(left);
+  const rightKey = buildPolicyEvidenceEntrySemanticKey(right);
+
+  if (leftKey === rightKey) return 0;
+  if (!leftKey) return 1;
+  if (!rightKey) return -1;
+
+  return leftKey < rightKey ? -1 : 1;
+}
+
+function sortPolicyEvidenceEntries(entries = []) {
+  return (Array.isArray(entries) ? entries : [])
+    .slice()
+    .sort(comparePolicyEvidenceEntries);
+}
+
+function findPolicyEvidenceEntryOutOfOrderIndexes(entries = []) {
+  const outOfOrderIndexes = [];
+  let previousKey = null;
+
+  (Array.isArray(entries) ? entries : []).forEach((entry, index) => {
+    const key = buildPolicyEvidenceEntrySemanticKey(entry);
+    if (!key) return;
+
+    if (previousKey && previousKey > key) {
+      outOfOrderIndexes.push(index);
+    }
+
+    previousKey = key;
+  });
+
+  return outOfOrderIndexes;
+}
+
 export {
   POLICY_EVIDENCE_ENTRY_IDENTITY_FIELD_IDS,
   buildPolicyEvidenceEntrySemanticKey,
+  comparePolicyEvidenceEntries,
   findPolicyEvidenceEntryDuplicateIndexes,
+  findPolicyEvidenceEntryOutOfOrderIndexes,
+  sortPolicyEvidenceEntries,
 };

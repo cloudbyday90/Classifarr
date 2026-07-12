@@ -3220,6 +3220,11 @@ Implementation status:
   match the bucket array that contains it, preventing ambiguous bucket-local
   summary, quality, and fingerprint processing. Its design record is
   [Policy Evidence Projection Container Ownership](policy-evidence-projection-container-ownership.md).
+- Evidence construction now uses canonical semantic ordering for distinct valid
+  entries before summary and quality generation. The projection audit rejects
+  reordered handoffs, while fingerprinting independently canonicalizes bucket
+  arrays so equivalent input order has one correlation artifact. Its design
+  record is [Policy Evidence Projection Canonical Ordering](policy-evidence-projection-canonical-ordering.md).
 - The evidence input cardinality guard lives in
   `server/src/services/policyEvidenceInputCardinality.mjs`. It bounds input
   collection inspection, blocks oversized envelopes before projection, and

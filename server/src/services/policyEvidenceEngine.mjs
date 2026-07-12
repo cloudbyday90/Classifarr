@@ -17,6 +17,8 @@ import {
 import {
   buildPolicyEvidenceEntrySemanticKey,
   findPolicyEvidenceEntryDuplicateIndexes,
+  findPolicyEvidenceEntryOutOfOrderIndexes,
+  sortPolicyEvidenceEntries,
 } from './policyEvidenceEntryIdentity.mjs';
 
 const POLICY_EVIDENCE_BUCKET_IDS = Object.freeze({
@@ -129,6 +131,7 @@ const POLICY_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   PROJECTION_ENTRY_SOURCE_AUTHORITY_NOT_ALLOWED: 'projection_entry_source_authority_not_allowed',
   PROJECTION_ENTRY_BUCKET_MISMATCH: 'projection_entry_bucket_mismatch',
   PROJECTION_DUPLICATE_ENTRY: 'projection_duplicate_entry',
+  PROJECTION_ENTRY_ORDER: 'projection_entry_order',
   PROJECTION_ENTRY_RAW_PAYLOAD: 'projection_entry_raw_payload',
   PROJECTION_ENTRY_LIVE_LOOKUP: 'projection_entry_live_lookup',
   PROJECTION_ENTRY_FIELD_CONTRACT: 'projection_entry_field_contract',
@@ -565,6 +568,14 @@ function addEntries(projection, entries) {
   });
 }
 
+function sortPolicyEvidenceProjectionBuckets(projection) {
+  POLICY_EVIDENCE_BUCKETS.forEach(bucket => {
+    projection.buckets[bucket.id] = sortPolicyEvidenceEntries(
+      projection.buckets[bucket.id]
+    );
+  });
+}
+
 function mapSignalEntries(values, {
   bucketId,
   sourceId,
@@ -787,6 +798,8 @@ function buildPolicyEvidenceProjection(input = {}) {
       message: 'No policy evidence inputs were provided.',
     });
   }
+
+  sortPolicyEvidenceProjectionBuckets(projection);
 
   projection.summary = summarizePolicyEvidenceProjection(projection);
   projection.quality = buildPolicyEvidenceQualityAssessment(projection, {
@@ -1309,6 +1322,15 @@ function buildPolicyEvidenceProjectionAudit(projection = {}) {
           issues,
           POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_DUPLICATE_ENTRY,
           'Evidence projection buckets must not contain duplicate canonical entries.',
+          { bucketId: bucket.id, index }
+        );
+      });
+
+      findPolicyEvidenceEntryOutOfOrderIndexes(entries).forEach(index => {
+        pushProjectionIssue(
+          issues,
+          POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_ORDER,
+          'Evidence projection entries must use canonical semantic order.',
           { bucketId: bucket.id, index }
         );
       });

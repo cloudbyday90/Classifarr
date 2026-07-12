@@ -1,6 +1,8 @@
 import {
   buildPolicyEvidenceEntrySemanticKey,
   findPolicyEvidenceEntryDuplicateIndexes,
+  findPolicyEvidenceEntryOutOfOrderIndexes,
+  sortPolicyEvidenceEntries,
 } from '../../services/policyEvidenceEntryIdentity.mjs';
 
 function buildEntry(overrides = {}) {
@@ -40,5 +42,18 @@ describe('policyEvidenceEntryIdentity', () => {
       buildEntry({ observedAt: '2026-07-12T12:00:00.000Z' }),
       buildEntry({ reasonCode: 'manual_correction_observed' }),
     ])).toEqual([]);
+  });
+
+  test('sorts semantic identities without collapsing distinct provenance', () => {
+    const operatorEntry = buildEntry({
+      sourceId: 'operator_declared_intent',
+      authoritySourceId: 'operator_declared_intent',
+    });
+    const profileEntry = buildEntry();
+
+    expect(sortPolicyEvidenceEntries([profileEntry, operatorEntry]))
+      .toEqual([profileEntry, operatorEntry]);
+    expect(findPolicyEvidenceEntryOutOfOrderIndexes([operatorEntry, profileEntry]))
+      .toEqual([1]);
   });
 });

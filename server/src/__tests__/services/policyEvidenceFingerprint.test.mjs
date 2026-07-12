@@ -99,6 +99,43 @@ describe('policyEvidenceFingerprint', () => {
     expect(JSON.stringify(left)).not.toContain('Animation');
   });
 
+  test('keeps fingerprints stable when equivalent bucket entries arrive out of order', () => {
+    const projection = {
+      ...buildProjection(),
+      buckets: {
+        identity_evidence: [
+          {
+            bucketId: 'identity_evidence',
+            sourceId: 'operator_declared_intent',
+            authoritySourceId: 'operator_declared_intent',
+            label: 'Family',
+          },
+          ...buildProjection().buckets.identity_evidence,
+        ],
+      },
+      summary: {
+        ...buildProjection().summary,
+        totalEntryCount: 2,
+        sourceIds: ['media_server_library_profile', 'operator_declared_intent'],
+        authoritySourceIds: ['media_server_contents', 'operator_declared_intent'],
+        bucketSummaries: [{
+          bucketId: 'identity_evidence',
+          entryCount: 2,
+          readinessId: 'supporting',
+        }],
+      },
+    };
+    const reorderedProjection = {
+      ...projection,
+      buckets: {
+        identity_evidence: [...projection.buckets.identity_evidence].reverse(),
+      },
+    };
+
+    expect(buildPolicyEvidenceFingerprint(projection).fingerprint)
+      .toBe(buildPolicyEvidenceFingerprint(reorderedProjection).fingerprint);
+  });
+
   test('validates projection fingerprints against projection, trace, and provenance', () => {
     const projection = buildProjection();
     const projectionFingerprint =
