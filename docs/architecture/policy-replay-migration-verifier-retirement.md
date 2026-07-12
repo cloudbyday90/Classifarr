@@ -13,8 +13,8 @@ and new behavior beyond the separate impact verifier, produce source-authorized
 policy evidence, make a state transition, or have a normal product caller.
 
 Keeping that endpoint would leave an exposed administrative diagnostic with no
-independent migration purpose. The impact verifier remains the sole temporary
-migration route until its own retention gate is evaluated.
+independent migration purpose. The impact verifier was evaluated and retired
+separately once its own retention gate found no independent decision.
 
 ## Official Guidance Reviewed
 
@@ -36,30 +36,28 @@ migration route until its own retention gate is evaluated.
 
 1. **Retain the provider-free replay endpoint.**
    Its reads were bounded and safe, but its output was diagnostic-only and
-   duplicated evidence-quality and impact-verifier information.
+   duplicated evidence-quality and bounded engine information.
 2. **Rewrite its counters into a new migration contract.**
    That adds another contract without a distinct decision, rollback, or storage
    requirement.
 3. **Delete the endpoint and remaining replay reducer chain.**
-   Keep migration comparison in the impact verifier and policy meaning in the
-   evidence/readiness contracts.
+   Keep policy meaning in bounded evidence, intent, readiness, and rollback
+   contracts.
 
 ## Final Recommendation Stack
 
 1. Delete `/api/policies/migration-verifier/replay-preview`.
 2. Delete replay verifier composition, sample diagnostics, completeness, and
    item-adapter modules with focused tests.
-3. Retain the impact migration verifier only while its independent migration
-   retention and rollback gate remains active.
-4. Keep historical deletion records in the migration-deletion inventory, not
+3. Keep historical deletion records in the migration-deletion inventory, not
    active endpoint or engine contracts.
 
 ## Implementation Outcome
 
-- Removed the replay migration route from `policiesRouteMigrationVerifier.mjs`.
+- Removed the replay migration route before the final migration-route file was
+  retired with the impact verifier.
 - Removed the replay verifier composition and all remaining replay-specific ESM
   reducers and tests.
-- Simplified the migration route to invoke the impact verifier directly.
 - Updated storage-closure validation and native-storage test inventories to
   remove the retired replay verifier test.
 - Reclassified the legacy replay verifier entries as `delete_after_migration`.
@@ -69,8 +67,6 @@ migration route until its own retention gate is evaluated.
 - The replay migration endpoint now returns `404` and performs no database work.
 - No replay-specific history metadata, sample counter, or diagnostic output is
   available through the API.
-- The impact verifier remains administrator-protected and is the only retained
-  migration diagnostic path.
 - No policy, routing, provider, AI, or storage side effects were introduced.
 
 ## Verification
@@ -84,7 +80,7 @@ migration route until its own retention gate is evaluated.
 
 ## Next Step
 
-Evaluate the remaining impact migration verifier. Retain it only if it provides
-an explicit, bounded old-to-new comparison required by a future native-storage
-migration; otherwise remove the final migration diagnostic route and depend on
-the durable evidence, intent, readiness, and rollback contracts.
+The next policy-engine component is the runtime decision inventory: map current
+classification, routing, question, and learning entry points to the bounded
+evidence, intent, readiness, and rollback contracts before adding runtime
+automation.

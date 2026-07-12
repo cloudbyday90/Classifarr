@@ -29,7 +29,6 @@ describe('policyCompatibilityDeletionGates', () => {
       POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.LEGACY_SERIALIZER_DESERIALIZER,
       POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CUSTOM_SIGNAL_MUTATION_HELPERS,
       POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.PRESET_AS_POLICY_RUNTIME,
-      POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.OLD_PREVIEW_REPLAY_DIAGNOSTICS,
       POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.STALE_COMPATIBILITY_TESTS,
     ]);
     expect(plan.coverageRequirements.map(requirement => requirement.coverageId)).toEqual(
@@ -164,7 +163,7 @@ describe('policyCompatibilityDeletionGates', () => {
       ok: true,
       issueCount: 0,
       readyToDelete: true,
-      categoryCount: 6,
+      categoryCount: 5,
       coverageRequirementCount: 6,
       missingCoverageIds: [],
       nextStep: expect.objectContaining({

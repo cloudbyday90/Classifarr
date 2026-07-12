@@ -9,7 +9,6 @@ import {
   POLICY_EVIDENCE_BUCKET_IDS,
   POLICY_EVIDENCE_BUCKET_READINESS_IDS,
   POLICY_EVIDENCE_PROHIBITED_PAYLOAD_IDS,
-  POLICY_EVIDENCE_REDUCER_CUTLINE_IDS,
   POLICY_EVIDENCE_SOURCE_IDS,
   buildPolicyEvidenceEngineAudit,
   buildPolicyEvidenceProjection,
@@ -17,7 +16,6 @@ import {
   getPolicyEvidenceBucket,
   getPolicyEvidenceSource,
   listPolicyEvidenceBuckets,
-  listPolicyEvidenceReducerCutlines,
   listPolicyEvidenceSources,
   summarizePolicyEvidenceProjection,
   validatePolicyEvidenceBucket,
@@ -236,24 +234,10 @@ describe('policyEvidenceEngine', () => {
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedBucketCount).toBe(8);
     expect(audit.checkedSourceCount).toBe(8);
-    expect(audit.checkedReducerCutlineCount).toBe(1);
     expect(audit.nextStep).toEqual(expect.objectContaining({
       stepId: 'intent_inference',
       label: 'Intent Engine',
     }));
-  });
-
-  test('tracks remaining diagnostic surfaces outside normal flow', () => {
-    const cutlines = listPolicyEvidenceReducerCutlines();
-
-    expect(cutlines.map(cutline => cutline.dispositionId)).toEqual(expect.arrayContaining([
-      POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
-    ]));
-    cutlines.forEach(cutline => {
-      expect(cutline.normalFlowAllowed).toBe(false);
-      expect(cutline.replacementTarget).toEqual(expect.any(String));
-      expect(cutline.reason).toEqual(expect.any(String));
-    });
   });
 
   test('audits generated evidence projections as safe contract instances', () => {

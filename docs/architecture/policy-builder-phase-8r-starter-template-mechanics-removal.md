@@ -119,8 +119,7 @@ Implemented:
 
 ## Follow-Up
 
-The next controlled Phase 8R compatibility-removal slice was
-`server/src/services/policyIntentImpactPreview.mjs`, now tracked separately in
-[Policy Impact Preview Migration Verifier](policy-impact-preview-migration-verifier.md).
-Replay verifier removal is recorded in
+Impact and replay verifier retirement is recorded in
+[Policy Impact Migration Verifier Retirement](policy-impact-migration-verifier-retirement.md)
+and
 [Policy Replay Migration Verifier Retirement](policy-replay-migration-verifier-retirement.md).

@@ -327,11 +327,9 @@ The quality assessment exposes counts and stable IDs, not evidence labels or
 provider/replay payloads. The projection audit fails if quality is missing,
 stale, or leaks entry labels.
 
-The reducer cutline inventory currently classifies:
-
-| Reducer | Disposition | Normal Flow |
-| --- | --- | --- |
-| `policyIntentImpactPreview.mjs` | Delete diagnostic surface | No |
+No diagnostic reducer inventory remains. Replay and impact migration reducers
+were retired after bounded evidence, intent, readiness, and rollback contracts
+became their explicit replacements.
 
 The projection audit validates the generated instance after construction. It
 fails when a projection:

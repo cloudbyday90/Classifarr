@@ -5,12 +5,11 @@
 Implemented as the durable policy migration/deletion cutline contract.
 
 This contract classifies old policy-builder impact, replay, provider readiness,
-TMDB coverage, scoring, write-route, and schema artifacts as one of four
+TMDB coverage, scoring, write-route, and schema artifacts as one of three
 decisions:
 
 ```text
 keep engine primitive
-migration verifier
 delete after migration
 native storage blocker
 ```
@@ -71,8 +70,8 @@ delete replaced surfaces after gates pass
 ## Recommendations
 
 1. **Classify every replaced artifact.**
-   Each policy-builder artifact must declare whether it is kept, verifier-only,
-   deleted after migration, or blocking native storage work.
+   Each policy-builder artifact must declare whether it is kept, deleted after
+   migration, or blocking native storage work.
 
 2. **Keep migration diagnostics out of the normal workflow.**
    Impact preview, replay preview, replay parity, provider readiness, TMDB
@@ -161,9 +160,9 @@ The service exports:
 Default decisions:
 
 - Keep policy evidence and intent engines as engine primitives.
-- Treat old server-side impact, replay, enrichment eligibility, evidence
-  completeness, and TMDB coverage artifacts as migration verifier machinery
-  only while their bounded outputs remain useful for migration verification.
+- Retire old server-side impact, replay, enrichment eligibility, evidence
+  completeness, and TMDB coverage artifacts when they duplicate bounded engine
+  contracts without an independent migration decision.
 - Retire replay draft-fit scoring, policy-engine comparison, execution-context,
   and parity-delta artifacts when they duplicate the bounded evidence and
   readiness contracts instead of providing source-authorized migration proof.
@@ -172,7 +171,10 @@ Default decisions:
   web-search provider contracts own provider behavior outside this verifier.
 - Retire the replay migration endpoint and its provider-free sample,
   completeness, and adapter reducers when they do not provide independent
-  migration proof beyond the impact verifier and bounded evidence contracts.
+  migration proof beyond bounded evidence, intent, readiness, and rollback
+  contracts.
+- Retire the impact migration endpoint and service when its legacy comparison
+  duplicates bounded evidence, intent, readiness, and rollback contracts.
 - Mark old client impact/replay panels, preview composables, preview utilities,
   old diagnostic tests, provider-readiness replay helpers, TMDB adapter
   execution helpers, and legacy replay execution adapters for deletion after

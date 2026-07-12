@@ -5617,23 +5617,12 @@ Current removal slice:
   control-plane manifest evidence so completion is blocked by product/runtime
   references rather than deletion-manifest evidence strings. It does not use a
   broad service-name prefix exclusion.
-- Impact-preview migration verification is documented in
-  [Policy Impact Preview Migration Verifier](policy-impact-preview-migration-verifier.md)
+- The impact and replay migration verifiers, their routes, and their remaining
+  local reducers were removed because they did not provide independent migration
+  proof beyond bounded evidence, intent, readiness, and rollback contracts.
+  Their history and retirement evidence are recorded in
+  [Policy Impact Migration Verifier Retirement](policy-impact-migration-verifier-retirement.md)
   and
-  [Policy Impact Preview Migration Verifier Module Cutover](policy-impact-preview-migration-verifier-module-cutover.md).
-- The approved compatibility path
-  `server/src/services/policyIntentImpactPreview.mjs` has been removed from
-  product code and replaced by
-  `server/src/services/policyImpactPreviewMigrationVerifier.mjs`.
-- The policy write route still exposes the current non-persistent verifier
-  endpoint, but it no longer imports the deleted compatibility service path.
-- The focused service test now targets
-  `server/src/__tests__/services/policyImpactPreviewMigrationVerifier.test.mjs`.
-- The replay migration verifier, its route, and all remaining replay sample,
-  completeness, and adapter reducers were removed because they did not provide
-  independent migration proof beyond the impact verifier and bounded evidence
-  contracts. The remaining migration endpoint is impact-only; replay verifier
-  history is recorded in
   [Policy Replay Migration Verifier Retirement](policy-replay-migration-verifier-retirement.md).
 
 ### 8R.22 Policy Storage Completion Checkpoint

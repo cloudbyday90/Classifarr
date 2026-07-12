@@ -4,7 +4,6 @@ import {
 
 const POLICY_MIGRATION_ARTIFACT_DECISION_IDS = Object.freeze({
   KEEP_ENGINE_PRIMITIVE: 'keep_engine_primitive',
-  MIGRATION_VERIFIER: 'migration_verifier',
   DELETE_AFTER_MIGRATION: 'delete_after_migration',
   NATIVE_STORAGE_BLOCKER: 'native_storage_blocker',
 });
@@ -200,9 +199,9 @@ const DEFAULT_MIGRATION_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/routes/policiesRouteMigrationVerifier.mjs',
     owner: 'policy-builder-api',
-    decisionId: POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER,
+    decisionId: POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
     verifierKindId: POLICY_MIGRATION_VERIFIER_KIND_IDS.IMPACT_PARITY,
-    replacement: 'Dedicated policy impact migration verifier route outside normal policy writes',
+    replacement: 'Bounded policy evidence, intent, readiness, and rollback contracts',
     normalWorkflowAllowed: false,
     removalGateIds: DEFAULT_REMOVAL_GATES,
     rollbackPlan: DEFAULT_ROLLBACK_PLAN,
@@ -210,9 +209,19 @@ const DEFAULT_MIGRATION_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/policyIntentImpactPreview.mjs',
     owner: 'policy-builder-server',
-    decisionId: POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER,
+    decisionId: POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
     verifierKindId: POLICY_MIGRATION_VERIFIER_KIND_IDS.IMPACT_PARITY,
-    replacement: 'Policy migration comparison service with sanitized output',
+    replacement: 'Bounded policy evidence, intent, readiness, and rollback contracts',
+    normalWorkflowAllowed: false,
+    removalGateIds: DEFAULT_REMOVAL_GATES,
+    rollbackPlan: DEFAULT_ROLLBACK_PLAN,
+  },
+  {
+    path: 'server/src/services/policyImpactPreviewMigrationVerifier.mjs',
+    owner: 'policy-builder-server',
+    decisionId: POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
+    verifierKindId: POLICY_MIGRATION_VERIFIER_KIND_IDS.IMPACT_PARITY,
+    replacement: 'Bounded policy evidence, intent, readiness, and rollback contracts',
     normalWorkflowAllowed: false,
     removalGateIds: DEFAULT_REMOVAL_GATES,
     rollbackPlan: DEFAULT_ROLLBACK_PLAN,
@@ -702,26 +711,6 @@ function validateMigrationArtifact(candidate = {}) {
   }
 
   if (
-    artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER &&
-    artifact.verifierKindId === POLICY_MIGRATION_VERIFIER_KIND_IDS.NONE
-  ) {
-    issues.push({
-      riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.UNKNOWN_VERIFIER_KIND,
-      message: 'Migration verifier artifacts must declare the verifier kind.',
-    });
-  }
-
-  if (
-    artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER &&
-    artifact.rollbackPlan.retentionWindowDays <= 0
-  ) {
-    issues.push({
-      riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.VERIFIER_WITHOUT_RETENTION,
-      message: 'Migration verifier artifacts must define retention.',
-    });
-  }
-
-  if (
     artifact.normalWorkflowAllowed === true &&
     artifact.decisionId !== POLICY_MIGRATION_ARTIFACT_DECISION_IDS.KEEP_ENGINE_PRIMITIVE
   ) {
@@ -1051,9 +1040,6 @@ function buildPolicyMigrationDeletionAudit(
   plan = buildPolicyMigrationDeletionPlan()
 ) {
   const validation = validatePolicyMigrationDeletionPlan(plan);
-  const verifierCount = asArray(plan.artifacts).filter(artifact =>
-    artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER
-  ).length;
   const deleteCount = asArray(plan.artifacts).filter(artifact =>
     artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION
   ).length;
@@ -1062,7 +1048,6 @@ function buildPolicyMigrationDeletionAudit(
     ok: validation.ok,
     issueCount: validation.issueCount,
     checkedArtifactCount: validation.artifactCount,
-    verifierCount,
     deleteCount,
     validation,
     nextStep: {

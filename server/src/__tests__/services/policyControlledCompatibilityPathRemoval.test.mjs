@@ -170,7 +170,7 @@ function readyRemoval(overrides = {}) {
     executionGate: readyGate(executionPlan),
     selectedPaths: [
       'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
-      'server/src/services/policyIntentImpactPreview.mjs',
+      'server/src/services/policyIntentMapper.mjs',
     ],
     removalReason: 'First narrow removal review batch after native runtime parity.',
     reviewedBy: 'policy-maintainer',
@@ -191,7 +191,7 @@ describe('policyControlledCompatibilityPathRemoval', () => {
       statusId: 'ready_for_execution_gate',
       validationOk: true,
       readyForExecutionGate: true,
-      manifestEntryCount: 19,
+      manifestEntryCount: 18,
     }));
     expect(removal.executionGate).toEqual(expect.objectContaining({
       statusId: 'ready_for_controlled_deletion',
@@ -209,7 +209,7 @@ describe('policyControlledCompatibilityPathRemoval', () => {
         path: 'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
       }),
       expect.objectContaining({
-        path: 'server/src/services/policyIntentImpactPreview.mjs',
+        path: 'server/src/services/policyIntentMapper.mjs',
       }),
     ]));
     expect(removal.executionPolicy).toEqual(expect.objectContaining({

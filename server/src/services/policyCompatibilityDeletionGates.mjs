@@ -10,7 +10,6 @@ const POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS = Object.freeze({
   LEGACY_SERIALIZER_DESERIALIZER: 'legacy_serializer_deserializer',
   CUSTOM_SIGNAL_MUTATION_HELPERS: 'custom_signal_mutation_helpers',
   PRESET_AS_POLICY_RUNTIME: 'preset_as_policy_runtime',
-  OLD_PREVIEW_REPLAY_DIAGNOSTICS: 'old_preview_replay_diagnostics',
   STALE_COMPATIBILITY_TESTS: 'stale_compatibility_tests',
 });
 
@@ -107,15 +106,6 @@ const DELETION_CATEGORY_DEFINITIONS = Object.freeze([
     ],
     deletionIntent:
       'Delete behavior that treats preset attachments as the durable policy model.',
-  },
-  {
-    categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.OLD_PREVIEW_REPLAY_DIAGNOSTICS,
-    label: 'Impact-preview diagnostic service',
-    paths: [
-      'server/src/services/policyIntentImpactPreview.mjs',
-    ],
-    deletionIntent:
-      'Delete the remaining impact diagnostic after native migration verification is complete.',
   },
   {
     categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.STALE_COMPATIBILITY_TESTS,

@@ -173,7 +173,7 @@ function readyRemovalReview(overrides = {}) {
     executionGate: readyGate(executionPlan),
     selectedPaths: [
       'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
-      'server/src/services/policyIntentImpactPreview.mjs',
+      'server/src/services/policyIntentMapper.mjs',
     ],
     removalReason: 'First narrow removal review batch after native runtime parity.',
     reviewedBy: 'policy-maintainer',
@@ -241,7 +241,7 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
         applied: true,
       }),
       expect.objectContaining({
-        path: 'server/src/services/policyIntentImpactPreview.mjs',
+        path: 'server/src/services/policyIntentMapper.mjs',
         applied: true,
       }),
     ]));

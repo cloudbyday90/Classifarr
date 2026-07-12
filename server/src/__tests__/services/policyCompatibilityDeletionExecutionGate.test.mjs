@@ -173,7 +173,7 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
       statusId: 'ready_for_execution_gate',
       validationOk: true,
       readyForExecutionGate: true,
-      manifestEntryCount: 19,
+      manifestEntryCount: 18,
     }));
     expect(gate.finalChecks).toEqual(expect.objectContaining({
       worktreeClean: true,

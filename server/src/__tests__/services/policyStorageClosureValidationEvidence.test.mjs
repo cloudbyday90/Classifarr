@@ -62,6 +62,8 @@ describe('policyStorageClosureValidationEvidence', () => {
       .toContain('policy-storage-closure-validation-evidence-module-cutover.md');
     expect(evidence.markdown.command)
       .toContain('policy-replay-migration-verifier-retirement.md');
+    expect(evidence.markdown.command)
+      .toContain('policy-impact-migration-verifier-retirement.md');
     expect(evidence.full.command).toBe('npm --prefix server test');
   });
 

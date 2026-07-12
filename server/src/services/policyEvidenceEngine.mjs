@@ -53,10 +53,6 @@ const POLICY_EVIDENCE_BUCKET_READINESS_IDS = Object.freeze({
   BLOCKING: 'blocking',
 });
 
-const POLICY_EVIDENCE_REDUCER_CUTLINE_IDS = Object.freeze({
-  DELETE_DIAGNOSTIC_SURFACE: 'delete_diagnostic_surface',
-});
-
 const POLICY_EVIDENCE_SOURCE_REASON_CODE_IDS = Object.freeze({
   [POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE]: Object.freeze([
     'observed_library_profile',
@@ -140,8 +136,6 @@ const POLICY_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   PROJECTION_MISSING_QUALITY: 'projection_missing_quality',
   PROJECTION_QUALITY_MISMATCH: 'projection_quality_mismatch',
   PROJECTION_QUALITY_EXPOSES_ENTRY_LABELS: 'projection_quality_exposes_entry_labels',
-  REDUCER_CUTLINE_MISSING_DISPOSITION: 'reducer_cutline_missing_disposition',
-  REDUCER_CUTLINE_USES_NORMAL_FLOW: 'reducer_cutline_uses_normal_flow',
 });
 
 function deepFreeze(value) {
@@ -447,28 +441,12 @@ const POLICY_EVIDENCE_SOURCES = deepFreeze([
   },
 ]);
 
-const POLICY_EVIDENCE_REDUCER_CUTLINES = deepFreeze([
-  {
-    id: 'impact_preview_service',
-    path: 'server/src/services/policyIntentImpactPreview.mjs',
-    dispositionId: POLICY_EVIDENCE_REDUCER_CUTLINE_IDS.DELETE_DIAGNOSTIC_SURFACE,
-    normalFlowAllowed: false,
-    exposesUiDiagnostic: true,
-    replacementTarget: 'Policy evidence summary and migration-verifier output.',
-    reason: 'Impact preview exists to compare legacy policy paths; it should not become destination evidence UI.',
-  },
-]);
-
 function listPolicyEvidenceBuckets() {
   return POLICY_EVIDENCE_BUCKETS;
 }
 
 function listPolicyEvidenceSources() {
   return POLICY_EVIDENCE_SOURCES;
-}
-
-function listPolicyEvidenceReducerCutlines() {
-  return POLICY_EVIDENCE_REDUCER_CUTLINES;
 }
 
 function getPolicyEvidenceBucket(bucketId) {
@@ -1287,36 +1265,9 @@ function buildPolicyEvidenceProjectionAudit(projection = {}) {
   };
 }
 
-function validatePolicyEvidenceReducerCutline(cutline = {}) {
-  const issues = [];
-
-  if (!Object.values(POLICY_EVIDENCE_REDUCER_CUTLINE_IDS).includes(cutline.dispositionId)) {
-    issues.push({
-      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.REDUCER_CUTLINE_MISSING_DISPOSITION,
-      cutlineId: cutline.id || null,
-      message: 'Legacy replay/impact reducers must have an explicit evidence reducer disposition.',
-    });
-  }
-
-  if (cutline.normalFlowAllowed === true) {
-    issues.push({
-      riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.REDUCER_CUTLINE_USES_NORMAL_FLOW,
-      cutlineId: cutline.id || null,
-      message: 'Legacy replay/impact reducers must not remain in the normal operator workflow.',
-    });
-  }
-
-  return {
-    ok: issues.length === 0,
-    cutlineId: cutline.id || null,
-    issues,
-  };
-}
-
 function buildPolicyEvidenceEngineAudit({
   buckets = POLICY_EVIDENCE_BUCKETS,
   sources = POLICY_EVIDENCE_SOURCES,
-  reducerCutlines = POLICY_EVIDENCE_REDUCER_CUTLINES,
 } = {}) {
   const bucketResults = buckets.map(bucket =>
     validatePolicyEvidenceBucket(bucket, sources)
@@ -1324,10 +1275,7 @@ function buildPolicyEvidenceEngineAudit({
   const sourceResults = sources.map(source =>
     validatePolicyEvidenceSource(source, buckets)
   );
-  const reducerCutlineResults = reducerCutlines.map(cutline =>
-    validatePolicyEvidenceReducerCutline(cutline)
-  );
-  const issueCount = [...bucketResults, ...sourceResults, ...reducerCutlineResults]
+  const issueCount = [...bucketResults, ...sourceResults]
     .reduce((count, result) => count + result.issues.length, 0);
 
   return {
@@ -1335,10 +1283,8 @@ function buildPolicyEvidenceEngineAudit({
     issueCount,
     checkedBucketCount: bucketResults.length,
     checkedSourceCount: sourceResults.length,
-    checkedReducerCutlineCount: reducerCutlineResults.length,
     bucketResults,
     sourceResults,
-    reducerCutlineResults,
     nextStep: {
       stepId: 'intent_inference',
       label: 'Intent Engine',
@@ -1352,7 +1298,6 @@ export {
   POLICY_EVIDENCE_BUCKET_IDS,
   POLICY_EVIDENCE_BUCKET_READINESS_IDS,
   POLICY_EVIDENCE_PROHIBITED_PAYLOAD_IDS,
-  POLICY_EVIDENCE_REDUCER_CUTLINE_IDS,
   POLICY_EVIDENCE_SOURCE_IDS,
   buildPolicyEvidenceEngineAudit,
   buildPolicyEvidenceProjection,
@@ -1361,7 +1306,6 @@ export {
   getPolicyEvidenceBucket,
   getPolicyEvidenceSource,
   listPolicyEvidenceBuckets,
-  listPolicyEvidenceReducerCutlines,
   listPolicyEvidenceSources,
   summarizePolicyEvidenceProjection,
   validatePolicyEvidenceQualityAssessment,

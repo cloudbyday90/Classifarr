@@ -104,6 +104,7 @@ describe('policyMigrationDeletionPath', () => {
       'client/src/composables/usePolicyIntentReplayPreview.js',
       'server/src/routes/policiesRouteMigrationVerifier.mjs',
       'server/src/services/policyIntentImpactPreview.mjs',
+      'server/src/services/policyImpactPreviewMigrationVerifier.mjs',
       'server/src/services/policyIntentReplayPreview.mjs',
       'server/src/services/policyIntentReplayProviderReadiness.mjs',
       'server/src/services/policyIntentReplayTmdbMetadataCoverageComparison.mjs',
@@ -117,24 +118,14 @@ describe('policyMigrationDeletionPath', () => {
 
     expect(decisions).toEqual(new Set([
       POLICY_MIGRATION_ARTIFACT_DECISION_IDS.KEEP_ENGINE_PRIMITIVE,
-      POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER,
       POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
       POLICY_MIGRATION_ARTIFACT_DECISION_IDS.NATIVE_STORAGE_BLOCKER,
     ]));
 
     expect(artifacts.filter(artifact =>
-      artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER
-    ).map(artifact => artifact.verifierKindId)).toEqual(expect.arrayContaining([
-      POLICY_MIGRATION_VERIFIER_KIND_IDS.IMPACT_PARITY,
-    ]));
-    expect(artifacts.filter(artifact =>
-      artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER
-      && artifact.verifierKindId === POLICY_MIGRATION_VERIFIER_KIND_IDS.REPRESENTATIVE_REPLAY
-    )).toHaveLength(0);
-    expect(artifacts.filter(artifact =>
-      artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER
-      && artifact.verifierKindId === POLICY_MIGRATION_VERIFIER_KIND_IDS.ENRICHMENT_COVERAGE
-    )).toHaveLength(0);
+      artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION
+      && artifact.verifierKindId === POLICY_MIGRATION_VERIFIER_KIND_IDS.IMPACT_PARITY
+    )).not.toHaveLength(0);
   });
 
   test('builds a migration plan with all required gates and native storage blocked', () => {
@@ -381,7 +372,6 @@ describe('policyMigrationDeletionPath', () => {
   test('keeps old diagnostic artifacts out of the normal workflow', () => {
     const diagnosticArtifacts = listPolicyMigrationDeletionArtifacts()
       .filter(artifact => [
-        POLICY_MIGRATION_ARTIFACT_DECISION_IDS.MIGRATION_VERIFIER,
         POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
       ].includes(artifact.decisionId));
 
@@ -405,7 +395,6 @@ describe('policyMigrationDeletionPath', () => {
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedArtifactCount).toBeGreaterThanOrEqual(10);
-    expect(audit.verifierCount).toBeGreaterThan(0);
     expect(audit.deleteCount).toBeGreaterThan(0);
     expect(audit.nextStep).toEqual(expect.objectContaining({
       stepId: 'runtime_decision_inventory',
