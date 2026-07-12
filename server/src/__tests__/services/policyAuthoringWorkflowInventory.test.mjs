@@ -121,26 +121,9 @@ describe('policyAuthoringWorkflowInventory', () => {
       }));
   });
 
-  test('removes preview and replay diagnostics from the normal workflow', () => {
-    [
-      'client/src/components/policies/PolicyIntentImpactPreviewCard.vue',
-      'client/src/components/policies/PolicyIntentReplayPreviewCard.vue',
-      'client/src/composables/usePolicyIntentReplayPreview.js',
-      'client/src/utils/policyIntentImpactPreview.js',
-    ].forEach((filePath) => {
-      const record = classifyPolicyAuthoringWorkflowSurface(filePath);
-
-      expect(record).toEqual(expect.objectContaining({
-        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
-        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
-        normalAuthoringAllowed: false,
-        migrationSupportOnly: true,
-      }));
-      expect(record.riskIds).toEqual(expect.arrayContaining([
-        POLICY_AUTHORING_WORKFLOW_RISK_IDS.DIAGNOSTIC_PRODUCT_PATH,
-        POLICY_AUTHORING_WORKFLOW_RISK_IDS.PROVIDER_READINESS_IN_NORMAL_UX,
-      ]));
-    });
+  test('does not retain removed preview and replay diagnostic workflow rules', () => {
+    expect(listPolicyAuthoringWorkflowRules().map(rule => rule.id))
+      .not.toContain('preview_replay_diagnostics');
   });
 
   test('replaces raw advanced scoring and combined-signal UI mechanics', () => {

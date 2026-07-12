@@ -205,26 +205,6 @@ const POLICY_AUTHORING_COMPATIBILITY_TEST_RECORDS = deepFreeze([
     freezesLegacyUi: false,
     notes: 'Protects authoritative request-shape validation before persistence.',
   },
-  {
-    path: 'client/src/__tests__/PolicyIntentImpactPreviewCard.test.js',
-    categoryId: POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.DIAGNOSTIC_SURFACE_TRANSITION_CANDIDATE,
-    actionId: POLICY_AUTHORING_COMPATIBILITY_ACTION_IDS.REWRITE_FOR_POLICY_ENGINE,
-    coveredRuleIds: [
-      POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.OLD_DIAGNOSTIC_UI_IS_NOT_FROZEN,
-    ],
-    freezesLegacyUi: false,
-    notes: 'Keep only until the policy engine decides whether impact preview becomes engine evidence, migration tooling, or deleted diagnostics.',
-  },
-  {
-    path: 'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
-    categoryId: POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.DIAGNOSTIC_SURFACE_TRANSITION_CANDIDATE,
-    actionId: POLICY_AUTHORING_COMPATIBILITY_ACTION_IDS.REMOVE_AFTER_NATIVE_STORAGE_CUTOVER,
-    coveredRuleIds: [
-      POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.OLD_DIAGNOSTIC_UI_IS_NOT_FROZEN,
-    ],
-    freezesLegacyUi: false,
-    notes: 'Keep only until the policy engine and native-storage cutover decide whether replay preview remains a maintainer tool.',
-  },
 ]);
 
 function listPolicyAuthoringCompatibilityTestRecords() {

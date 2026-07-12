@@ -2370,8 +2370,8 @@ Tasks:
 - Link readiness issues to the relevant destination section or setting.
 - Remove raw replay, parity, provider, TMDB, and scoring explanations from the
   normal workflow.
-- Keep old preview/replay panels only as migration verifier candidates pending
-  Phase 6R cutline decisions.
+- Remove browser preview/replay panels after their server migration-verifier
+  retention decision is recorded; they are not a normal authoring workflow.
 
 Acceptance criteria:
 
@@ -2392,9 +2392,10 @@ Implementation status:
   step/component.
 - The readiness projection selects the highest-priority issue while preserving
   the full issue list for secondary display.
-- Impact preview, replay preview, provider readiness, TMDB live preview,
-  scoring details, and parity delta are classified as migration verifier-only
-  surfaces outside the normal authoring workflow.
+- Impact/replay browser panels and their client API facade are removed.
+  Provider readiness, TMDB live preview, scoring details, and parity delta
+  remain server-side migration-verifier or deletion material outside the normal
+  authoring workflow.
 
 ### 3R.7 Starter Template Role Reset
 
@@ -3298,6 +3299,12 @@ Implementation status:
 - Existing replay/impact reducers are not wired into the normal product flow in
   this slice; future Phase 6R migration work must either extract deterministic
   reducers into the evidence engine or delete the abandoned diagnostic surfaces.
+- The browser-facing impact/replay preview cards, composables, response
+  normalizers, tests, policy API methods, and modal visibility override are now
+  deleted. The server migration-verifier endpoints remain behind the
+  administrator-protected policy route solely for migration verification; they
+  are not reachable from product UI code. This cutover is documented in
+  [Policy Migration Diagnostic UI Removal](policy-migration-diagnostic-ui-removal.md).
 - The media-server profile adapter lives in
   `server/src/services/policyLibraryProfileEvidence.mjs`. It turns persisted
   profile distributions into bounded compatibility and review-only outlier

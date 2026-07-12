@@ -26,8 +26,6 @@ describe('policyAuthoringPresentationTests', () => {
       'client/src/__tests__/PolicyIntentChip.test.js',
       'client/src/__tests__/PolicyIntentCertificationControl.test.js',
       'client/src/__tests__/PolicyIntentReadinessSummary.test.js',
-      'client/src/__tests__/PolicyIntentImpactPreviewCard.test.js',
-      'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
       'client/src/__tests__/PolicyIntentEditorParity.test.js',
       'client/src/__tests__/composables/usePolicyIntentDraft.test.js',
     ]);
@@ -58,22 +56,19 @@ describe('policyAuthoringPresentationTests', () => {
     const ownerIds = Object.values(POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS);
 
     expect(listPolicyAuthoringPresentationTestRecords().map(record => record.coverageOwnerId))
-      .toEqual(expect.arrayContaining(ownerIds));
+      .not.toContain(POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER);
     listPolicyAuthoringPresentationTestRecords().forEach(record => {
       expect(ownerIds).toContain(record.coverageOwnerId);
       expect(record.coverageOwnerId).not.toMatch(/^\d+R$/);
     });
   });
 
-  test('marks replay and impact preview presentation tests as abandoned normal-path diagnostics', () => {
+  test('does not retain removed replay and impact preview presentation tests', () => {
     [
       'client/src/__tests__/PolicyIntentImpactPreviewCard.test.js',
       'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
     ].forEach(filePath => {
-      expect(getPolicyAuthoringPresentationTestRecord(filePath)).toEqual(expect.objectContaining({
-        categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE,
-        normalPath: false,
-      }));
+      expect(getPolicyAuthoringPresentationTestRecord(filePath)).toBeNull();
     });
   });
 
@@ -115,9 +110,11 @@ describe('policyAuthoringPresentationTests', () => {
       .toContain(POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.MISSING_PROTECTED_BEHAVIOR);
   });
 
-  test('fails normal-path diagnostic tests and duplicated draft bridge ownership', () => {
+  test('fails reintroduced normal-path diagnostics and duplicated draft bridge ownership', () => {
     const diagnosticResult = validatePolicyAuthoringPresentationTestRecord({
-      ...getPolicyAuthoringPresentationTestRecord('client/src/__tests__/PolicyIntentImpactPreviewCard.test.js'),
+      ...getPolicyAuthoringPresentationTestRecord('client/src/__tests__/PolicyBuilderModal.test.js'),
+      categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE,
+      coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
       normalPath: true,
     });
 
@@ -155,7 +152,7 @@ describe('policyAuthoringPresentationTests', () => {
       normalPathRecordCount: 9,
       draftBridgeOwnedRecordCount: 2,
       countsByCategory: expect.objectContaining({
-        [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE]: 3,
+        [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE]: 1,
         [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE]: 2,
       }),
     }));

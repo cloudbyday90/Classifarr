@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  POLICY_AUTHORING_COMPATIBILITY_ACTION_IDS,
   POLICY_AUTHORING_COMPATIBILITY_RISK_IDS,
   POLICY_AUTHORING_COMPATIBILITY_RULE_IDS,
   POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS,
@@ -33,7 +32,7 @@ describe('policyAuthoringCompatibilityRegressionInventory', () => {
 
   test('summarizes compatibility coverage without making the client draft authoritative', () => {
     expect(summarizePolicyAuthoringCompatibilityRegressionCoverage()).toEqual({
-      recordCount: 15,
+      recordCount: 13,
       requiredRuleCount: 8,
       countsByCategory: {
         [POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.LEGACY_NO_OP_COMPATIBILITY]: 1,
@@ -43,7 +42,6 @@ describe('policyAuthoringCompatibilityRegressionInventory', () => {
         [POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.PROVENANCE_COMPATIBILITY]: 1,
         [POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.BRIDGE_SERIALIZATION_ALLOWLIST]: 1,
         [POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.SERVER_AUTHORITY_PREFLIGHT]: 2,
-        [POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.DIAGNOSTIC_SURFACE_TRANSITION_CANDIDATE]: 2,
       },
       coveredRuleIds: [
         POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.BRIDGE_SERIALIZATION_IS_ALLOWLISTED,
@@ -51,13 +49,12 @@ describe('policyAuthoringCompatibilityRegressionInventory', () => {
         POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.COMMANDS_CANNOT_MUTATE_READ_ONLY_PROJECTIONS,
         POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.DRAFT_VIEW_HIDES_RAW_LEGACY_STORAGE,
         POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.NO_OP_LEGACY_SAVE_PRESERVES_PAYLOADS,
-        POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.OLD_DIAGNOSTIC_UI_IS_NOT_FROZEN,
         POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.PRODUCT_COMPONENTS_EMIT_TYPED_COMMANDS,
         POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.PROVENANCE_PRESERVED_ACROSS_PROJECTION_AND_SERIALIZATION,
         POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.UI_ONLY_TRANSIENT_FIELDS_DO_NOT_SERIALIZE,
       ],
       uncoveredRequiredRuleIds: [],
-      transitionCandidateCount: 2,
+      transitionCandidateCount: 0,
       legacyLayoutFreezeRecordPaths: [],
       clientDraftAuthoritative: false,
       nativeIntentStorageEnabled: false,
@@ -99,23 +96,11 @@ describe('policyAuthoringCompatibilityRegressionInventory', () => {
     }));
   });
 
-  test('groups diagnostic transition candidates for the engine and native-storage cutovers', () => {
-    expect(listPolicyAuthoringCompatibilityTransitionCandidates()).toEqual([
-      expect.objectContaining({
-        path: 'client/src/__tests__/PolicyIntentImpactPreviewCard.test.js',
-        actionId: POLICY_AUTHORING_COMPATIBILITY_ACTION_IDS.REWRITE_FOR_POLICY_ENGINE,
-      }),
-      expect.objectContaining({
-        path: 'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
-        actionId: POLICY_AUTHORING_COMPATIBILITY_ACTION_IDS.REMOVE_AFTER_NATIVE_STORAGE_CUTOVER,
-      }),
-    ]);
-
-    expect(listPolicyAuthoringCompatibilityTestRecordsByCategory(POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.DIAGNOSTIC_SURFACE_TRANSITION_CANDIDATE)
-      .map(record => record.path)).toEqual([
-      'client/src/__tests__/PolicyIntentImpactPreviewCard.test.js',
-      'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
-    ]);
+  test('has no remaining browser diagnostic transition candidates', () => {
+    expect(listPolicyAuthoringCompatibilityTransitionCandidates()).toEqual([]);
+    expect(listPolicyAuthoringCompatibilityTestRecordsByCategory(
+      POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.DIAGNOSTIC_SURFACE_TRANSITION_CANDIDATE
+    )).toEqual([]);
   });
 
   test('lists test files that exist in the repository and avoids snapshot layout freezes', () => {

@@ -91,22 +91,9 @@ describe('policyBuilderBoundaryInventory', () => {
     ]));
   });
 
-  test('classifies preview diagnostics for engine cutline review', () => {
-    [
-      'client/src/components/policies/PolicyIntentImpactPreviewCard.vue',
-      'client/src/composables/usePolicyIntentReplayPreview.js',
-      'client/src/utils/policyIntentReplayPreview.js',
-    ].forEach((filePath) => {
-      const record = classifyPolicyBuilderClientPath(filePath);
-
-      expect(record.category).toBe(POLICY_BUILDER_BOUNDARY_CATEGORIES.REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE);
-      expect(record.ownerId).toBe(POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE);
-      expect(record.actionId).toBe(POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE);
-      expect(record.engineCutlineDecisionRequired).toBe(true);
-      expect(record.riskIds).toEqual(expect.arrayContaining([
-        POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
-      ]));
-    });
+  test('does not retain deleted preview diagnostics in current boundary rules', () => {
+    expect(listPolicyBuilderBoundaryRules().map(rule => rule.id))
+      .not.toContain('policy_preview_diagnostics');
   });
 
   test('classifies legacy combined-signal product surfaces for replacement', () => {

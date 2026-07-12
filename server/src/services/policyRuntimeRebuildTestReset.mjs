@@ -296,38 +296,6 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     normalWorkflowAllowed: true,
     traceReasons: ['runtime_metrics_rewrite'],
   }),
-  Object.freeze({
-    path: 'client/src/__tests__/PolicyIntentImpactPreviewCard.test.js',
-    owner: 'client',
-    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC,
-    coverageIds: [
-      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REBUILD_PRESERVES_EXPLICIT_CONSTRAINTS,
-    ],
-    contractIds: [],
-    replacement: 'Replace behavior-sensitive impact preview assertions with server rebuild proposal and migration verifier coverage before deleting old UI diagnostics.',
-    protectsAuthority: false,
-    distinguishesClassificationFromRouting: false,
-    preservesOldPreviewUi: false,
-    deleteAfterMigration: true,
-    normalWorkflowAllowed: false,
-    traceReasons: ['old_impact_preview_delete_after_migration'],
-  }),
-  Object.freeze({
-    path: 'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
-    owner: 'client',
-    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC,
-    coverageIds: [
-      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
-    ],
-    contractIds: [],
-    replacement: 'Replace replay preview migration confidence with server migration verifier coverage before deleting old UI diagnostics.',
-    protectsAuthority: false,
-    distinguishesClassificationFromRouting: false,
-    preservesOldPreviewUi: false,
-    deleteAfterMigration: true,
-    normalWorkflowAllowed: false,
-    traceReasons: ['old_replay_preview_delete_after_migration'],
-  }),
 ]);
 
 function asArray(value) {

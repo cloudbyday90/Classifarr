@@ -215,26 +215,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     rationale: 'Readiness tests should assert one next action instead of diagnostic detail.',
   },
   {
-    filePath: 'client/src/__tests__/PolicyIntentImpactPreviewCard.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE,
-    normalPath: false,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
-    requiredBehaviorIds: [
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.INTERNAL_DIAGNOSTIC_PANELS_ABSENT,
-    ],
-    rationale: 'Impact preview is verifier-only and should not remain in normal presentation tests.',
-  },
-  {
-    filePath: 'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE,
-    normalPath: false,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
-    requiredBehaviorIds: [
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.INTERNAL_DIAGNOSTIC_PANELS_ABSENT,
-    ],
-    rationale: 'Replay preview is verifier-only and should not remain in normal presentation tests.',
-  },
-  {
     filePath: 'client/src/__tests__/PolicyIntentEditorParity.test.js',
     categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE,
     normalPath: false,

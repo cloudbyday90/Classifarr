@@ -17,14 +17,13 @@ const repoRoot = path.resolve(process.cwd(), '..');
 describe('policyBuilderTestBoundaryReset', () => {
   test('categorizes the current policy-builder test surface', () => {
     expect(summarizeTestBoundaryReset()).toEqual({
-      recordCount: 14,
+      recordCount: 12,
       countsByCategory: {
         [TEST_BOUNDARY_CATEGORY_IDS.POLICY_BUILDER_BOUNDARY_CONTRACT]: 5,
         [TEST_BOUNDARY_CATEGORY_IDS.KEEP_BEHAVIOR_REGRESSION]: 1,
         [TEST_BOUNDARY_CATEGORY_IDS.REWRITE_PRODUCT_VOCABULARY]: 2,
         [TEST_BOUNDARY_CATEGORY_IDS.REWRITE_DRAFT_BRIDGE_BOUNDARY]: 3,
         [TEST_BOUNDARY_CATEGORY_IDS.REWRITE_FUTURE_EVIDENCE_READINESS]: 1,
-        [TEST_BOUNDARY_CATEGORY_IDS.DELETE_WITH_ABANDONED_DIAGNOSTIC_UI]: 2,
       },
       coveredRuleIds: [
         TEST_BOUNDARY_RULE_IDS.DRAFT_COMMANDS_ARE_ALLOWLISTED,
@@ -90,11 +89,8 @@ describe('policyBuilderTestBoundaryReset', () => {
       'server/src/__tests__/services/policyBuilderLegacyCompatibilityBoundary.test.mjs',
     ]);
 
-    expect(listTestBoundaryRecordsByCategory(TEST_BOUNDARY_CATEGORY_IDS.DELETE_WITH_ABANDONED_DIAGNOSTIC_UI)
-      .map(record => record.path)).toEqual([
-      'client/src/__tests__/PolicyIntentImpactPreviewCard.test.js',
-      'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
-    ]);
+    expect(listTestBoundaryRecordsByCategory(TEST_BOUNDARY_CATEGORY_IDS.DELETE_WITH_ABANDONED_DIAGNOSTIC_UI))
+      .toEqual([]);
   });
 
   test('lists current test files that exist in the repository', () => {

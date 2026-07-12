@@ -41,31 +41,6 @@
 
       <PolicyIntentSummaryCard :summary="intentSummary" />
 
-      <PolicyIntentImpactPreviewCard
-        v-if="showMigrationVerifierPanels"
-        :preview="impactPreview"
-        :notice="impactPreviewNotice"
-        :changed-buckets="impactPreviewChangedBuckets"
-        :loading="impactPreviewLoading"
-        :disabled="!isValid"
-        :stale="impactPreviewStale"
-        :error="impactPreviewError"
-        @preview="runImpactPreview"
-      />
-
-      <PolicyIntentReplayPreviewCard
-        v-if="showMigrationVerifierPanels"
-        v-model:tmdb-live-preview-opt-in="tmdbLivePreviewOptIn"
-        :preview="replayPreview"
-        :notice="replayPreviewNotice"
-        :samples="replayPreviewSamples"
-        :loading="replayPreviewLoading"
-        :disabled="!isValid"
-        :stale="replayPreviewStale"
-        :error="replayPreviewError"
-        @preview="runReplayPreview"
-      />
-
       <div id="policy-builder-intent-editor">
         <PolicyIntentEditor
           :selected-presets="selectedPresets"
@@ -138,13 +113,9 @@ import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibr
 import PolicyBuilderRoutingReadinessCard from '@/components/policies/PolicyBuilderRoutingReadinessCard.vue'
 import PolicyBuilderSetupCards from '@/components/policies/PolicyBuilderSetupCards.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
-import PolicyIntentImpactPreviewCard from '@/components/policies/PolicyIntentImpactPreviewCard.vue'
-import PolicyIntentReplayPreviewCard from '@/components/policies/PolicyIntentReplayPreviewCard.vue'
 import PolicyStarterTemplateAccelerator from '@/components/policies/PolicyStarterTemplateAccelerator.vue'
 import api from '@/api'
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
-import { usePolicyIntentImpactPreview } from '@/composables/usePolicyIntentImpactPreview'
-import { usePolicyIntentReplayPreview } from '@/composables/usePolicyIntentReplayPreview'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
@@ -166,10 +137,6 @@ const props = defineProps({
   libraryId: {
     type: Number,
     default: null,
-  },
-  showMigrationVerifierPanels: {
-    type: Boolean,
-    default: false,
   },
 })
 
@@ -283,38 +250,6 @@ const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({
   hasExistingPresets: hasExistingPresets.value,
   routingReadiness: routingReadiness.value,
 }))
-
-const impactPreviewPayload = computed(() => buildSavePayload())
-const tmdbLivePreviewOptIn = ref(false)
-
-const {
-  preview: impactPreview,
-  notice: impactPreviewNotice,
-  changedBuckets: impactPreviewChangedBuckets,
-  loading: impactPreviewLoading,
-  error: impactPreviewError,
-  isStale: impactPreviewStale,
-  runPreview: runImpactPreview,
-} = usePolicyIntentImpactPreview({
-  previewPolicyIntentImpact: api.previewPolicyIntentImpact,
-  buildPayload: buildSavePayload,
-  payloadSource: impactPreviewPayload,
-})
-
-const {
-  preview: replayPreview,
-  notice: replayPreviewNotice,
-  samples: replayPreviewSamples,
-  loading: replayPreviewLoading,
-  error: replayPreviewError,
-  isStale: replayPreviewStale,
-  runPreview: runReplayPreview,
-} = usePolicyIntentReplayPreview({
-  previewPolicyIntentReplay: api.previewPolicyIntentReplay,
-  buildPayload: buildSavePayload,
-  payloadSource: impactPreviewPayload,
-  tmdbLivePreviewOptIn,
-})
 
 // Filtered available presets (not yet selected)
 const filteredAvailablePresets = computed(() => {

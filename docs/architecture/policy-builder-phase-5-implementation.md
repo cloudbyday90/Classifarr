@@ -5,6 +5,11 @@ bridge
 Scope: server-side policy intent contract, read-only compatibility projection,
 write preflight, impact preview, and representative replay preview
 
+Supersession: Phase 6R removed the browser-facing impact/replay preview API,
+state, cards, and visibility override from the normal policy workflow. The
+server migration-verifier route remains administrator-protected migration
+infrastructure until its separate retention and deletion gates are satisfied.
+
 ## Goal
 
 Phase 5 makes policy intent a server-owned contract instead of only a client UI

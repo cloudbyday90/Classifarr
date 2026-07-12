@@ -10,7 +10,7 @@ import {
 } from '../../services/policyRuntimeRebuildTestReset.mjs';
 
 describe('policyRuntimeRebuildTestReset', () => {
-  test('categorizes existing runtime, rebuild, and old diagnostic preview tests', () => {
+  test('categorizes current runtime and rebuild tests without retired browser diagnostics', () => {
     const reset = buildPolicyRuntimeRebuildTestReset();
 
     expect(reset.version).toBe('policy.runtime_rebuild_test_reset.v1');
@@ -22,7 +22,6 @@ describe('policyRuntimeRebuildTestReset', () => {
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD]: 2,
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER]: 2,
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS]: 2,
-      [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC]: 2,
     }));
     expect(reset.summary.existingArtifactCount).toBe(reset.summary.artifactCount);
     expect(reset.artifactAvailability.every(artifact =>
@@ -32,16 +31,6 @@ describe('policyRuntimeRebuildTestReset', () => {
       expect.objectContaining({
         path: 'server/src/__tests__/services/policyAutomationDecisionContract.test.mjs',
         decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_AUTOMATION_DECISION,
-      }),
-      expect.objectContaining({
-        path: 'client/src/__tests__/PolicyIntentImpactPreviewCard.test.js',
-        decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC,
-        normalWorkflowAllowed: false,
-      }),
-      expect.objectContaining({
-        path: 'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
-        decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC,
-        normalWorkflowAllowed: false,
       }),
     ]));
     expect(reset.validation.ok).toBe(true);
@@ -158,12 +147,13 @@ describe('policyRuntimeRebuildTestReset', () => {
     ]));
   });
 
-  test('rejects old preview UI as frozen migration behavior or active workflow', () => {
+  test('rejects a synthetic retired diagnostic test when it is reintroduced into the workflow', () => {
     const artifacts = listPolicyRuntimeRebuildTestResetArtifacts();
     const frozen = artifacts.map(artifact =>
-      artifact.path === 'client/src/__tests__/PolicyIntentImpactPreviewCard.test.js'
+      artifact.path === 'server/src/__tests__/services/policyRuntimeMetricsTrace.test.mjs'
         ? {
           ...artifact,
+          decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.DELETE_ABANDONED_DIAGNOSTIC,
           preservesOldPreviewUi: true,
           normalWorkflowAllowed: true,
         }

@@ -38,8 +38,6 @@ vi.mock('../api', () => ({
     getPresetSuggestions: vi.fn(),
     getLibraryProfile: vi.fn(),
     refreshLibraryProfile: vi.fn(),
-    previewPolicyIntentImpact: vi.fn(),
-    previewPolicyIntentReplay: vi.fn(),
   }
 }));
 
@@ -113,57 +111,6 @@ describe('PolicyBuilderModal.vue', () => {
     api.getPresetSuggestions.mockImplementation((libraryId) => api.get(`/policies/presets/suggest/${libraryId}`).then((response) => response.data));
     api.getLibraryProfile.mockImplementation((libraryId) => api.get(`/libraries/${libraryId}/profile`).then((response) => response.data));
     api.refreshLibraryProfile.mockImplementation((libraryId) => api.get(`/libraries/${libraryId}/profile/refresh`).then((response) => response.data));
-    api.previewPolicyIntentImpact.mockResolvedValue({
-      data: {
-        validation: { valid: true, errors: [] },
-        legacy: {
-          preset_count: 1,
-          counts: { identity_signals: 0 },
-          warning_count: 0,
-          warning_reason_codes: [],
-        },
-        native_draft: {
-          present: true,
-          draft_schema_version: 1,
-          source: 'legacy_policy_builder',
-          migration_state: 'legacy_compatible',
-          preset_count: 1,
-          counts: { identity_signals: 0 },
-        },
-        comparison: {
-          parity: 'matching',
-          impact_level: 'none',
-          changed_buckets: [],
-          bucket_deltas: [],
-          reason_codes: [],
-        },
-      },
-    });
-    api.previewPolicyIntentReplay.mockResolvedValue({
-      data: {
-        schema_version: 1,
-        mode: 'read_only_replay_preview',
-        persistence_enabled: false,
-        execution: {
-          classification_run: false,
-          ai_calls_enabled: false,
-          provider_calls_enabled: false,
-          arr_writes_enabled: false,
-        },
-        validation: { valid: true, errors: [] },
-        impact_summary: {
-          parity: 'matching',
-          impact_level: 'none',
-          changed_bucket_count: 0,
-        },
-        sample: {
-          requested_limit: 5,
-          returned_count: 1,
-          readiness: 'ready',
-          items: [{ sample_id: 1, title: 'Mulan', current_outcome: 'final_success' }],
-        },
-      },
-    });
     getDataRequest.mockImplementation((url, config) => api.get(url, config).then((response) => response.data));
     window.localStorage.clear();
     document.body.innerHTML = '';
@@ -363,7 +310,7 @@ describe('PolicyBuilderModal.vue', () => {
     alertSpy.mockRestore();
   });
 
-  it('keeps migration verifier panels out of the normal policy workflow', async () => {
+  it('does not render retired migration verifier panels when passed their former visibility prop', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
@@ -374,6 +321,7 @@ describe('PolicyBuilderModal.vue', () => {
     mount(PolicyBuilderModal, {
       props: {
         modelValue: true,
+        showMigrationVerifierPanels: true,
         libraryId: 1,
         policy: {
           library_id: 1,
@@ -409,177 +357,6 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).not.toContain('Representative Replay Preview');
     expect(document.body.textContent).not.toContain('Preview Impact');
     expect(document.body.textContent).not.toContain('Preview Replay');
-    expect(api.previewPolicyIntentImpact).not.toHaveBeenCalled();
-    expect(api.previewPolicyIntentReplay).not.toHaveBeenCalled();
-  });
-
-  it('previews migration verifier impact using the current save payload only when explicitly enabled', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
-      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
-      if (url === '/settings') return Promise.resolve({ data: {} });
-      return Promise.resolve({ data: { suggestions: [] } });
-    });
-
-    mount(PolicyBuilderModal, {
-      props: {
-        modelValue: true,
-        showMigrationVerifierPanels: true,
-        libraryId: 1,
-        policy: {
-          library_id: 1,
-          name: 'Sci-Fi Movies Policy',
-          presets: [
-            { id: 1, name: 'Sci-Fi', icon: '🚀', weight: 1.0 }
-          ]
-        }
-      },
-      attachTo: document.body
-    });
-
-    await flushPromises();
-
-    const previewButton = Array.from(document.body.querySelectorAll('button'))
-      .find(button => button.textContent.includes('Preview Impact'));
-    expect(previewButton).toBeTruthy();
-
-    previewButton.click();
-    await flushPromises();
-
-    expect(api.previewPolicyIntentImpact).toHaveBeenCalledTimes(1);
-    expect(api.previewPolicyIntentImpact.mock.calls[0][0]).toMatchObject({
-      library_id: 1,
-      name: 'Sci-Fi Movies Policy',
-      presets: [{ preset_id: 1, weight: 1 }],
-      policyIntentDraft: {
-        schema_version: 1,
-        source: 'legacy_policy_builder',
-      },
-    });
-    expect(document.body.textContent).toContain('Intent preview matches saved policy behavior');
-  });
-
-  it('previews migration verifier replay samples using the current save payload only when explicitly enabled', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
-      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
-      if (url === '/settings') return Promise.resolve({ data: {} });
-      return Promise.resolve({ data: { suggestions: [] } });
-    });
-
-    mount(PolicyBuilderModal, {
-      props: {
-        modelValue: true,
-        showMigrationVerifierPanels: true,
-        libraryId: 1,
-        policy: {
-          library_id: 1,
-          name: 'Sci-Fi Movies Policy',
-          presets: [
-            { id: 1, name: 'Sci-Fi', icon: '🚀', weight: 1.0 }
-          ]
-        }
-      },
-      attachTo: document.body
-    });
-
-    await flushPromises();
-
-    const previewButton = Array.from(document.body.querySelectorAll('button'))
-      .find(button => button.textContent.includes('Preview Replay'));
-    expect(previewButton).toBeTruthy();
-
-    previewButton.click();
-    await flushPromises();
-
-    expect(api.previewPolicyIntentReplay).toHaveBeenCalledTimes(1);
-    expect(api.previewPolicyIntentReplay.mock.calls[0][0]).toMatchObject({
-      library_id: 1,
-      name: 'Sci-Fi Movies Policy',
-      replay_limit: 5,
-      presets: [{ preset_id: 1, weight: 1 }],
-      policyIntentDraft: {
-        schema_version: 1,
-        source: 'legacy_policy_builder',
-      },
-    });
-    expect(document.body.textContent).toContain('Replay samples are ready');
-    expect(document.body.textContent).toContain('Mulan');
-    expect(document.body.textContent).toContain('No execution');
-  });
-
-  it('marks an existing impact preview stale after draft edits', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
-      if (url === '/policies/presets/all') {
-        return Promise.resolve({
-          data: [{
-            id: 1,
-            name: 'Sci-Fi',
-            icon: '🚀',
-            category: 'genres',
-            description: 'Science fiction content',
-            usage_count: 4,
-            source: 'builtin',
-            signals: {
-              genres: { require_any: ['Science Fiction', 'Family'] },
-            },
-          }],
-        });
-      }
-      if (url === '/settings') return Promise.resolve({ data: {} });
-      return Promise.resolve({ data: { suggestions: [] } });
-    });
-
-    mount(PolicyBuilderModal, {
-      props: {
-        modelValue: true,
-        showMigrationVerifierPanels: true,
-        libraryId: 1,
-        policy: {
-          library_id: 1,
-          name: 'Sci-Fi Movies Policy',
-          presets: [
-            {
-              id: 1,
-              name: 'Sci-Fi',
-              icon: '🚀',
-              weight: 1.0,
-              signals: {
-                genres: { require_any: ['Science Fiction'] },
-              },
-            }
-          ]
-        }
-      },
-      attachTo: document.body
-    });
-
-    await flushPromises();
-
-    const previewButton = Array.from(document.body.querySelectorAll('button'))
-      .find(button => button.textContent.includes('Preview Impact'));
-    expect(previewButton).toBeTruthy();
-    previewButton.click();
-    await flushPromises();
-
-    expect(document.body.textContent).toContain('Intent preview matches saved policy behavior');
-    expect(document.body.textContent).not.toContain('Preview is out of date');
-
-    const familyCheckbox = document.body.querySelector('input[type="checkbox"][value="Family"]');
-    expect(familyCheckbox).toBeTruthy();
-    familyCheckbox.checked = true;
-    familyCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-    await flushPromises();
-
-    const addButton = Array.from(document.body.querySelectorAll('button'))
-      .find(button => button.textContent.includes('Add belongs-here genre'));
-    expect(addButton).toBeTruthy();
-    addButton.click();
-    await flushPromises();
-
-    expect(document.body.textContent).toContain('Preview is out of date');
-    expect(document.body.textContent).toContain('Refresh the preview before treating these results as current');
   });
 
   it('uses preset usage map for suggested cards without usage_count payload', async () => {

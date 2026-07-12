@@ -163,8 +163,8 @@ const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
     id: 'policy_authoring_presentation_test_reset',
     label: 'Policy authoring presentation test reset',
     docPath: 'docs/architecture/policy-authoring-presentation-test-reset.md',
-    testPath: 'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
-    evidence: 'Resets impact and replay preview tests around read-only verifier behavior, no execution, and opt-in gates.',
+    testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
+    evidence: 'Proves retired impact and replay browser panels cannot be restored through the former modal visibility prop.',
   },
 ]);
 
@@ -199,10 +199,10 @@ const POLICY_AUTHORING_NORMAL_WORKFLOW_RULES = Object.freeze([
   },
   {
     id: 'verifier_panels_not_default',
-    label: 'Verifier panels are not default policy-authoring path',
+    label: 'Retired verifier panels are absent from policy authoring',
     docPath: 'docs/architecture/policy-authoring-presentation-tests.md',
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
-    evidence: 'Impact and replay verifier panels are absent unless the explicit verifier prop is enabled.',
+    evidence: 'Impact and replay verifier panels are removed, including the former visibility prop.',
   },
 ]);
 

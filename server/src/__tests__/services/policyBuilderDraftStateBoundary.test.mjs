@@ -112,10 +112,7 @@ describe('policyBuilderDraftStateBoundary', () => {
       category: DRAFT_STATE_FIELD_CATEGORIES.SERVER_PROJECTION_DISPLAY,
       saveBehavior: 'never serialized as policy intent',
     }));
-    expect(getDraftStateFieldRecord('impactPreview')).toEqual(expect.objectContaining({
-      category: DRAFT_STATE_FIELD_CATEGORIES.SERVER_PROJECTION_DISPLAY,
-      saveBehavior: 'never serialized as policy intent',
-    }));
+    expect(getDraftStateFieldRecord('impactPreview')).toBeNull();
   });
 
   test('keeps policy save fields explicitly allow-listed', () => {

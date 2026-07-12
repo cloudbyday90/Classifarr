@@ -180,22 +180,6 @@ const TEST_BOUNDARY_RECORDS = deepFreeze([
     freezesLayout: false,
     notes: 'Split option/reference coverage from future evidence and readiness semantics.',
   },
-  {
-    path: 'client/src/__tests__/PolicyIntentImpactPreviewCard.test.js',
-    categoryId: TEST_BOUNDARY_CATEGORY_IDS.DELETE_WITH_ABANDONED_DIAGNOSTIC_UI,
-    actionId: TEST_BOUNDARY_ACTION_IDS.DELETE_AFTER_CUTLINE,
-    coveredRuleIds: [],
-    freezesLayout: false,
-    notes: 'Keep only while engine cutline review decides whether impact preview becomes engine evidence, migration tooling, or removed diagnostics.',
-  },
-  {
-    path: 'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
-    categoryId: TEST_BOUNDARY_CATEGORY_IDS.DELETE_WITH_ABANDONED_DIAGNOSTIC_UI,
-    actionId: TEST_BOUNDARY_ACTION_IDS.DELETE_AFTER_CUTLINE,
-    coveredRuleIds: [],
-    freezesLayout: false,
-    notes: 'Keep only while engine cutline review decides whether replay preview remains a maintainer tool.',
-  },
 ]);
 
 function listTestBoundaryRecords() {

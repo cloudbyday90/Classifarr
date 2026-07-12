@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Migration Diagnostic UI Removal** — removed the retired impact and
+  replay browser panels, client API facade, state utilities, and visibility
+  override from policy setup; administrator-protected server migration
+  verification remains isolated from the normal authoring flow.
 - **Storage Closure Reference Scanner Hardening** — replaced the broad
   phase-prefixed service exclusion with an explicit control-plane allowlist,
   extracted the read-only scanner into a modular ESM utility, and reduced the

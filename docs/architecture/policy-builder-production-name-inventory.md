@@ -95,10 +95,10 @@ After storage-closure reference scanner hardening,
 `node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid`
 reported:
 
-- total temporary naming references: 2,170,
+- total temporary naming references: 2,172,
 - production references: 0,
 - rename candidates: 0,
-- docs/history references: 1,969,
+- docs/history references: 1,971,
 - test or migration evidence references: 201,
 - obsolete migration tooling references: 0.
 

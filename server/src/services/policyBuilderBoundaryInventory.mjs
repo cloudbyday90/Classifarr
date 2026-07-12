@@ -178,27 +178,6 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ]),
   },
   {
-    id: 'policy_preview_diagnostics',
-    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE,
-    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE,
-    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE,
-    clientEngineAuthorityAllowed: false,
-    engineCutlineDecisionRequired: true,
-    riskIds: [
-      POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
-      POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
-    ],
-    notes: 'Impact/replay preview surfaces should become engine tests, migration verifiers, or be deleted after engine cutline decisions.',
-    matches: (filePath) => hasAnySegment(filePath, [
-      '/usePolicyIntentImpactPreview.js',
-      '/usePolicyIntentReplayPreview.js',
-      '/policyIntentImpactPreview.js',
-      '/policyIntentReplayPreview.js',
-      '/PolicyIntentImpactPreviewCard.vue',
-      '/PolicyIntentReplayPreviewCard.vue',
-    ]),
-  },
-  {
     id: 'policy_legacy_summary_surfaces',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE,
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE,

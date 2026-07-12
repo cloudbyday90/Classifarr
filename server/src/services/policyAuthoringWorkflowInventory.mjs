@@ -221,27 +221,6 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     ]),
   },
   {
-    id: 'preview_replay_diagnostics',
-    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.DELETE,
-    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.MAINTAINER_VERIFIER_ONLY,
-    normalAuthoringAllowed: false,
-    migrationSupportOnly: true,
-    riskIds: [
-      POLICY_AUTHORING_WORKFLOW_RISK_IDS.DIAGNOSTIC_PRODUCT_PATH,
-      POLICY_AUTHORING_WORKFLOW_RISK_IDS.PROVIDER_READINESS_IN_NORMAL_UX,
-      POLICY_AUTHORING_WORKFLOW_RISK_IDS.CLIENT_ENGINE_DECISION,
-    ],
-    notes: 'Preview/replay/provider diagnostics must become maintainer verifiers or be removed from the normal workflow.',
-    matches: filePath => hasAnySegment(filePath, [
-      '/PolicyIntentImpactPreviewCard.vue',
-      '/PolicyIntentReplayPreviewCard.vue',
-      '/usePolicyIntentImpactPreview.js',
-      '/usePolicyIntentReplayPreview.js',
-      '/policyIntentImpactPreview.js',
-      '/policyIntentReplayPreview.js',
-    ]),
-  },
-  {
     id: 'draft_and_bridge_utilities',
     decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,

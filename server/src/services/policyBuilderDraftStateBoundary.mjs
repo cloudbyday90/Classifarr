@@ -204,20 +204,6 @@ const DRAFT_STATE_FIELD_RECORDS = deepFreeze([
     saveBehavior: 'never serialized as policy intent',
     notes: 'Observed evidence display projection; engine evidence/readiness contracts should own semantics.',
   },
-  {
-    path: 'impactPreview',
-    category: DRAFT_STATE_FIELD_CATEGORIES.SERVER_PROJECTION_DISPLAY,
-    owner: 'usePolicyIntentImpactPreview',
-    saveBehavior: 'never serialized as policy intent',
-    notes: 'Read-only diagnostic projection pending engine cutline review.',
-  },
-  {
-    path: 'replayPreview',
-    category: DRAFT_STATE_FIELD_CATEGORIES.SERVER_PROJECTION_DISPLAY,
-    owner: 'usePolicyIntentReplayPreview',
-    saveBehavior: 'never serialized as policy intent',
-    notes: 'Read-only diagnostic projection pending engine cutline review.',
-  },
 ]);
 
 const DRAFT_COMMAND_RECORDS = deepFreeze([
