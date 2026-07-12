@@ -9,6 +9,8 @@ The verifier runs the server-owned library evidence loader and checks the loader
 audit, static evidence-engine audit, envelope audit, boundary audit, projection
 fingerprint, and generated quality assessment as one contract. It returns a
 sanitized handoff summary with no collector record arrays or evidence labels.
+It independently reruns the projection audit against the received projection;
+the recorded boundary audit alone is not treated as proof of current integrity.
 
 ## Problem
 
@@ -24,7 +26,7 @@ The verifier defines the complete contract:
 library evidence loader
   -> loader audit
   -> source and envelope audits
-  -> boundary, fingerprint, and quality validation
+  -> boundary, projection, fingerprint, and quality validation
   -> sanitized intent-engine handoff summary
 ```
 
@@ -50,7 +52,7 @@ library evidence loader
 1. Verify the completed library evidence handoff as a unit, not only its
    component tests.
 2. Require the loader and static evidence-engine audit before intent inference.
-3. Revalidate the envelope boundary, fingerprint, and quality assessment from
+3. Revalidate the envelope boundary, projection, fingerprint, and quality assessment from
    the returned projection.
 4. Return summaries, status IDs, counts, audit risk IDs, quality, and
    fingerprint provenance only; do not copy evidence entries or labels.
@@ -64,7 +66,8 @@ library evidence loader
 Pros:
 
 - Proves the full server-side workflow and nested audit chain.
-- Detects fingerprint, quality, audit, and side-effect drift before intent use.
+- Detects projection, fingerprint, quality, audit, and side-effect drift before
+  intent use.
 - Separates contract validity from later policy/automation eligibility.
 - Gives maintainers a sanitized completion signal without exposing evidence
   records.
@@ -81,8 +84,8 @@ Cons:
 
 1. Source collectors read bounded persisted evidence.
 2. `policyLibraryEvidenceLoader.mjs` composes the profile-first envelope.
-3. `policyEvidenceHandoffVerifier.mjs` verifies the complete audit,
-   fingerprint, quality, and side-effect contract.
+3. `policyEvidenceHandoffVerifier.mjs` independently verifies the complete
+   projection, audit, fingerprint, quality, and side-effect contract.
 4. The intent engine consumes only a ready verified handoff.
 5. The readiness engine later decides whether automation can proceed.
 
@@ -108,6 +111,8 @@ failure with stable risk IDs.
   handoff.
 - Nested loader, envelope, boundary, fingerprint, and quality audits are
   required for a ready result.
+- Projection structure is independently re-audited from the received handoff;
+  a carried boundary audit cannot authorize a later-mutated projection.
 - Static evidence-engine policy rules are verified on every check.
 - Collector records and evidence labels are not copied into verifier output.
 - Unexpected loader errors are sanitized.
@@ -121,7 +126,8 @@ The evidence engine is ready to hand off to the intent component when:
 1. The profile-first loader returns a ready result.
 2. Every source collector summary and audit passes.
 3. The envelope and evidence boundary pass.
-4. The fingerprint and quality assessment match the bounded projection.
+4. The projection audit, fingerprint, and quality assessment match the bounded
+   projection.
 5. The static evidence-engine audit passes.
 6. The verifier returns `ready` with `intent_inference` as its next step.
 

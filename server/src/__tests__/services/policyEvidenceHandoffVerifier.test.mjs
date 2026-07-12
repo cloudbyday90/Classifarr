@@ -160,6 +160,34 @@ describe('policyEvidenceHandoffVerifier', () => {
     ]));
   });
 
+  test('revalidates the received projection instead of trusting its recorded boundary audit', async () => {
+    const loader = createReadyLibraryEvidenceLoader();
+    const handoff = await loader.loadLibraryEvidence({
+      libraryId: 42,
+      getProfile: async () => getCurrentProfile(),
+      now: NOW,
+    });
+
+    const audit = buildPolicyEvidenceHandoffAudit(handoff, {
+      buildProjectionAudit: () => ({
+        ok: false,
+        issueCount: 1,
+        issues: [{ riskId: 'projection_structure_failed' }],
+      }),
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_EVIDENCE_HANDOFF_VERIFIER_RISK_IDS.PROJECTION_AUDIT_FAILED,
+      }),
+    ]));
+    expect(audit.projectionAudit).toEqual(expect.objectContaining({
+      ok: false,
+      riskIds: ['projection_structure_failed'],
+    }));
+  });
+
   test('sanitizes thrown loader failures', async () => {
     const verifier = createPolicyEvidenceHandoffVerifier({
       libraryEvidenceLoader: {

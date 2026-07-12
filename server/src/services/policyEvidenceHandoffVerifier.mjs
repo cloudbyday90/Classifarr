@@ -4,6 +4,7 @@ import {
 } from './policyEvidenceBoundary.mjs';
 import {
   buildPolicyEvidenceEngineAudit,
+  buildPolicyEvidenceProjectionAudit,
   POLICY_EVIDENCE_BUCKET_IDS,
   isPolicyEvidenceQualityContribution,
 } from './policyEvidenceEngine.mjs';
@@ -36,6 +37,7 @@ const POLICY_EVIDENCE_HANDOFF_VERIFIER_RISK_IDS = Object.freeze({
   ENGINE_AUDIT_FAILED: 'engine_audit_failed',
   ENVELOPE_AUDIT_FAILED: 'envelope_audit_failed',
   BOUNDARY_AUDIT_FAILED: 'boundary_audit_failed',
+  PROJECTION_AUDIT_FAILED: 'projection_audit_failed',
   FINGERPRINT_AUDIT_FAILED: 'fingerprint_audit_failed',
   QUALITY_AUDIT_FAILED: 'quality_audit_failed',
   BLOCKED_WITH_NEXT_STEP: 'blocked_with_next_step',
@@ -89,6 +91,7 @@ function buildPolicyEvidenceHandoffAudit(handoff = {}, {
   buildEngineAudit = buildPolicyEvidenceEngineAudit,
   buildEnvelopeAudit = buildPolicyEvidenceEnvelopeAudit,
   buildBoundaryAudit = buildPolicyEvidenceBoundaryAudit,
+  buildProjectionAudit = buildPolicyEvidenceProjectionAudit,
   validateFingerprint = validatePolicyEvidenceFingerprint,
   validateQuality = validatePolicyEvidenceQualityAssessment,
 } = {}) {
@@ -101,6 +104,7 @@ function buildPolicyEvidenceHandoffAudit(handoff = {}, {
   const engineAudit = buildEngineAudit();
   const envelopeAudit = buildEnvelopeAudit(envelope);
   const boundaryAudit = buildBoundaryAudit(boundary);
+  const projectionAudit = buildProjectionAudit(projection);
   const fingerprintAudit = validateFingerprint({
     projection,
     projectionFingerprint: boundary.projectionFingerprint,
@@ -137,6 +141,13 @@ function buildPolicyEvidenceHandoffAudit(handoff = {}, {
     issues.push({
       riskId: POLICY_EVIDENCE_HANDOFF_VERIFIER_RISK_IDS.BOUNDARY_AUDIT_FAILED,
       message: 'Ready library evidence requires a successful boundary audit.',
+    });
+  }
+
+  if (handoffReady && !projectionAudit.ok) {
+    issues.push({
+      riskId: POLICY_EVIDENCE_HANDOFF_VERIFIER_RISK_IDS.PROJECTION_AUDIT_FAILED,
+      message: 'Ready library evidence requires an independently valid projection audit.',
     });
   }
 
@@ -185,6 +196,7 @@ function buildPolicyEvidenceHandoffAudit(handoff = {}, {
     engineAudit: buildAuditSummary(engineAudit),
     envelopeAudit: buildAuditSummary(envelopeAudit),
     boundaryAudit: buildAuditSummary(boundaryAudit),
+    projectionAudit: buildAuditSummary(projectionAudit),
     fingerprintAudit: buildAuditSummary(fingerprintAudit),
     qualityAudit: buildAuditSummary(qualityAudit),
   };

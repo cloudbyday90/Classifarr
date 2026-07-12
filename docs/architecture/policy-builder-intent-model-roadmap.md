@@ -3405,9 +3405,11 @@ Implementation status:
 - The policy evidence handoff verifier lives in
   `server/src/services/policyEvidenceHandoffVerifier.mjs`. It verifies the
   complete profile-to-envelope contract, including the static engine, loader,
-  envelope, boundary, fingerprint, quality, and side-effect audits, and returns
-  a sanitized intent-inference handoff summary. Its design record is
-  [Policy Evidence Handoff Verifier](policy-evidence-handoff-verifier.md).
+  envelope, boundary, independently recomputed projection, fingerprint, quality,
+  and side-effect audits, and returns a sanitized intent-inference handoff
+  summary. Its design record is [Policy Evidence Handoff Verifier](policy-evidence-handoff-verifier.md).
+  The projection revalidation hardening is recorded in
+  [Policy Evidence Handoff Projection Revalidation](policy-evidence-handoff-projection-revalidation.md).
 - The library intent proposal service lives in
   `server/src/services/policyLibraryIntentProposalService.mjs`. It accepts
   declared operator intent only through the shared evidence input gate, loads

@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Evidence Handoff Projection Revalidation** — the complete evidence
+  verifier now independently reruns the projection audit from the received
+  handoff, preventing a stale recorded boundary audit from authorizing a
+  structurally unsafe projection.
 - **Policy Evidence Projection Canonical Ordering** — distinct valid evidence
   entries now use a server-owned semantic order before summary and quality
   generation; reordered handoffs are audited and equivalent input order yields
