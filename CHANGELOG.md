@@ -11,6 +11,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Runtime Completion Engine Gate** — runtime/rebuild completion now
+  requires the policy-engine completion audit to pass with zero issues before
+  native intent storage readiness can advance.
 - **Policy Engine Completion Decision-Source Chain** — the completion gate now
   verifies that readiness, workflow, and migration carry the same approved
   decision source, blocking missing, invalid, or substituted provenance before

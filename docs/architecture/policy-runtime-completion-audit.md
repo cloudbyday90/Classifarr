@@ -20,6 +20,7 @@ The completion audit must prove:
 - the runtime/rebuild test reset proves complete focused ownership for every
   required runtime contract,
 - request-time learning is checked with a valid bounded question-proof sample,
+- policy-engine completion passes before runtime/rebuild completion can advance,
 - the final handoff moves to native intent storage and legacy removal.
 
 ## Official Guidance Reviewed
@@ -51,7 +52,9 @@ The completion audit must prove:
    a gate.
 5. Require the test-reset audit to report complete contract-to-test coverage;
    a generic passing status alone is not enough.
-6. Keep the audit side-effect-free and focused on current repository evidence.
+6. Require policy-engine completion before runtime completion can advance to
+   native intent storage readiness.
+7. Keep the audit side-effect-free and focused on current repository evidence.
 
 ## Pros And Cons
 
@@ -66,6 +69,8 @@ Pros:
   completion check by using a valid bounded question-proof sample.
 - Prevents a stale or unrelated test artifact from satisfying a runtime
   completion gate without owning its declared service contract.
+- Prevents a runtime-only pass from advancing while the prerequisite policy
+  engine chain is failing.
 
 Cons:
 
@@ -93,6 +98,7 @@ Cons:
   - artifacts exist in the current checkout,
   - component audits pass,
   - every required runtime contract has focused reset-test ownership,
+  - policy-engine completion is passing with zero issues,
   - component handoffs match the expected `nextStep.stepId` sequence.
 
 ## Outcome
@@ -101,6 +107,7 @@ Runtime completion now has a deterministic completion gate:
 
 ```text
 runtime component docs/services/tests
+  -> policy-engine completion prerequisite
   -> component audit composition
   -> nextStep handoff verification
   -> native intent storage readiness

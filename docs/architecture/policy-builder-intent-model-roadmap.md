@@ -4660,6 +4660,10 @@ Implementation record:
   contract; a generic passing reset status cannot bypass that proof. Its design
   record is
   [Policy Runtime Completion Audit Contract Coverage](policy-runtime-completion-audit-contract-coverage.md).
+- Runtime completion now also requires the policy-engine completion gate to
+  pass with zero issues before native intent storage can begin. It retains only
+  a sanitized dependency summary; the design record is
+  [Policy Runtime Completion Engine Gate](policy-runtime-completion-engine-gate.md).
 
 ## Phase 8R: Native Intent Storage And Legacy Removal
 

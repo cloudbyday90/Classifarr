@@ -6,6 +6,9 @@ import {
   buildPolicyAutomationDecisionContractAudit,
 } from './policyAutomationDecisionContract.mjs';
 import {
+  buildPolicyEngineCompletionAudit,
+} from './policyEngineCompletionAudit.mjs';
+import {
   buildPolicyLibraryPolicyRebuildAudit,
 } from './policyLibraryPolicyRebuild.mjs';
 import {
@@ -61,6 +64,7 @@ const POLICY_RUNTIME_COMPLETION_RISK_IDS = Object.freeze({
   ARTIFACT_PATH_NOT_FOUND: 'artifact_path_not_found',
   COMPONENT_AUDIT_FAILED: 'component_audit_failed',
   COMPONENT_AUDIT_MISSING: 'component_audit_missing',
+  POLICY_ENGINE_COMPLETION_NOT_PASSING: 'policy_engine_completion_not_passing',
   TEST_RESET_CONTRACT_COVERAGE_INCOMPLETE: 'test_reset_contract_coverage_incomplete',
   NEXT_STEP_MISMATCH: 'next_step_mismatch',
 });
@@ -298,13 +302,40 @@ function hasCompleteTestContractCoverage(componentAudit) {
     coveredRequiredContractCount === requiredContractCount;
 }
 
+function buildPolicyEngineCompletionSummary(audit = {}) {
+  return {
+    ok: audit?.ok === true && Number(audit?.issueCount) === 0,
+    issueCount: Number.isInteger(Number(audit?.issueCount))
+      ? Number(audit.issueCount)
+      : null,
+    checkedComponentCount: Number.isInteger(Number(audit?.checkedComponentCount))
+      ? Number(audit.checkedComponentCount)
+      : null,
+  };
+}
+
 function buildPolicyRuntimeCompletionAudit({
   components = listPolicyRuntimeCompletionComponents(),
   componentAudits = buildDefaultComponentAudits(),
+  policyEngineCompletionAudit = buildPolicyEngineCompletionAudit(),
   pathExists = defaultPathExists,
 } = {}) {
   const records = asArray(components).map(record => ({ ...record }));
   const issues = [];
+  const policyEngineCompletion = buildPolicyEngineCompletionSummary(
+    policyEngineCompletionAudit
+  );
+
+  if (!policyEngineCompletion.ok) {
+    issues.push(buildIssue(
+      POLICY_RUNTIME_COMPLETION_RISK_IDS.POLICY_ENGINE_COMPLETION_NOT_PASSING,
+      'Runtime completion requires a passing policy-engine completion audit before native storage can begin.',
+      {
+        policyEngineIssueCount: policyEngineCompletion.issueCount,
+      }
+    ));
+  }
+
   const componentChecks = records.map(record => {
     const recordValidation = validateCompletionRecord(record, { pathExists });
     const componentAudit = componentAudits[record.id];
@@ -384,6 +415,7 @@ function buildPolicyRuntimeCompletionAudit({
     issueCount: issues.length,
     checkedComponentCount: componentChecks.length,
     requiredComponentCount: REQUIRED_COMPONENT_IDS.length,
+    policyEngineCompletion,
     componentChecks,
     issues,
     nextStep: {

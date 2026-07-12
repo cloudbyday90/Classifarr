@@ -130,6 +130,8 @@ Focused tests prove that:
 
 ## Next Component
 
-Define the runtime decision inventory entry point that consumes this verified
-completion result. It should enumerate decision paths and their authority
-owners without reconstructing policy-engine contracts in routes or client code.
+The runtime completion gate now consumes the verified engine completion result;
+the inter-contract design is documented in
+[Policy Runtime Completion Engine Gate](policy-runtime-completion-engine-gate.md).
+Next, begin native intent storage with a schema and repository boundary that
+consumes both passing completion gates.

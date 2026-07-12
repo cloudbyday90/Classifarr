@@ -29,6 +29,10 @@ describe('policyRuntimeCompletionAudit', () => {
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedComponentCount).toBe(9);
     expect(audit.requiredComponentCount).toBe(9);
+    expect(audit.policyEngineCompletion).toEqual(expect.objectContaining({
+      ok: true,
+      issueCount: 0,
+    }));
     expect(audit.componentChecks.every(check =>
       check.recordOk === true && check.auditOk === true && check.testContractCoverageOk === true
     )).toBe(true);
@@ -62,6 +66,29 @@ describe('policyRuntimeCompletionAudit', () => {
       expect.objectContaining({
         riskId: POLICY_RUNTIME_COMPLETION_RISK_IDS.MISSING_COMPONENT,
         componentId: POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE,
+      }),
+    ]));
+  });
+
+  test('rejects runtime completion when the policy-engine completion gate is not passing', () => {
+    const audit = buildPolicyRuntimeCompletionAudit({
+      policyEngineCompletionAudit: {
+        ok: false,
+        issueCount: 1,
+        checkedComponentCount: 7,
+      },
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.policyEngineCompletion).toEqual({
+      ok: false,
+      issueCount: 1,
+      checkedComponentCount: 7,
+    });
+    expect(audit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_RUNTIME_COMPLETION_RISK_IDS.POLICY_ENGINE_COMPLETION_NOT_PASSING,
+        policyEngineIssueCount: 1,
       }),
     ]));
   });
