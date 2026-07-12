@@ -441,6 +441,44 @@ describe('policyRuntimeQuestionReduction', () => {
     ]));
   });
 
+  test('rejects plans whose disposition, question output, or trace drifts from the decision', () => {
+    const plan = buildQuestionReductionPlanForTest({
+      automationDecision: buildStrongDecision(),
+    });
+    const validation = validatePolicyRuntimeQuestionReduction({
+      ...plan,
+      dispositionId: POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING,
+      createQuestion: false,
+      nextAction: {
+        actionId: POLICY_AUTOMATION_DECISION_ACTION_IDS.CONFIGURE_ROUTING,
+        label: 'Configure routing',
+        target: QUESTION_FRAME_IDS.ROUTING_GAP,
+      },
+      proposedFrameId: QUESTION_FRAME_IDS.ROUTING_GAP,
+      trace: {
+        ...plan.trace,
+        reasons: [{
+          ...plan.trace.reasons[0],
+          summary: 'raw=do-not-leak',
+        }],
+        attributes: {
+          ...plan.trace.attributes,
+          'classifarr.runtime.question.disposition':
+            POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.CONFIGURE_ROUTING,
+          'classifarr.runtime.question.reason_count': 999,
+          'classifarr.runtime.question.unbounded_context': 'do-not-leak',
+        },
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.OUTPUT_CONTRACT_MISMATCH,
+      }),
+    ]));
+  });
+
   test('rejects created questions or traces without evidence fingerprint proof', () => {
     const plan = buildQuestionReductionPlanForTest({
       libraryProfile: {

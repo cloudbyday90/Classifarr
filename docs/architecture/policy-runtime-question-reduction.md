@@ -135,6 +135,10 @@ Cons:
     `buildPolicyRuntimeQuestionReductionFromRuntimeInput` for raw runtime
     input and `buildPolicyRuntimeQuestionReductionFromAutomationDecision` for
     an existing valid decision.
+13. Rebuild the planned disposition, action, question, learning metadata, and
+    trace from the embedded decision before accepting a plan. A changed plan
+    cannot turn an automatic route into a routing configuration or question
+    workflow.
 
 ## Implemented Files
 
@@ -206,6 +210,9 @@ The service exports:
 - The reducer carries the automation decision validation result and mirrors that
   result in bounded trace attributes so stale or forged decision handoffs cannot
   create questions.
+- The reducer recomputes its full output tuple from the embedded automation
+  decision and rejects altered dispositions, actions, question shapes, learning
+  metadata, reason records, counts, or additional trace attributes.
 - The decision-only reducer rejects raw decision inputs and requires a valid
   `policy.automation_decision.v1` contract before it plans a clarification.
 

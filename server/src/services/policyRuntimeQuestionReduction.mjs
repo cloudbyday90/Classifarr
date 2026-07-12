@@ -56,6 +56,7 @@ const POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS = Object.freeze({
   MISSING_TRACE_EVIDENCE_FINGERPRINT: 'missing_trace_evidence_fingerprint',
   QUESTION_FINGERPRINT_MISMATCH: 'question_fingerprint_mismatch',
   TRACE_FINGERPRINT_MISMATCH: 'trace_fingerprint_mismatch',
+  OUTPUT_CONTRACT_MISMATCH: 'output_contract_mismatch',
 });
 
 const QUESTION_CONTRACT_VERSION = 'policy.runtime_question_reduction.v1';
@@ -93,6 +94,22 @@ function asObject(value) {
 
 function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function stableValue(value) {
+  if (Array.isArray(value)) return value.map(item => stableValue(item));
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.keys(value)
+    .sort()
+    .reduce((result, key) => {
+      result[key] = stableValue(value[key]);
+      return result;
+    }, {});
+}
+
+function stableJson(value) {
+  return JSON.stringify(stableValue(value));
 }
 
 function normalizeFrameOverride(input = {}) {
@@ -565,6 +582,141 @@ function getNextActionLabel(actionId) {
   }
 }
 
+function buildQuestionReductionOutputAudit(plan = {}) {
+  const decision = asObject(plan.decision);
+  const decisionValidation = validatePolicyAutomationDecision(decision);
+  const decisionEvidenceFingerprint = sanitizeDecisionEvidenceFingerprint(decision);
+  const frameOverride = plan.rejectedFrame
+    ? normalizeFrameOverride({ requestedQuestionFrameId: plan.rejectedFrame.requestedFrameId })
+    : normalizeFrameOverride();
+  const staleQuestionCleanupRequired = plan.staleQuestionCleanup?.required === true;
+  const existingQuestionId = plan.staleQuestionCleanup?.existingQuestionId ?? null;
+  const reasons = [];
+  let expected;
+
+  if (frameOverride.reasonId) {
+    reasons.push(buildReason(frameOverride.reasonId, {
+      frameId: frameOverride.replacementFrameId,
+      severity: 'warning',
+      summary: frameOverride.rejectionReason || 'Question frame was rewritten before persistence.',
+    }));
+  }
+
+  if (staleQuestionCleanupRequired) {
+    const frameId = QUESTION_FRAME_IDS.STALE_PROFILE;
+    const dispositionId = POLICY_RUNTIME_QUESTION_DISPOSITION_IDS.STALE_QUESTION_CLEANUP;
+    reasons.push(buildReason(
+      POLICY_RUNTIME_QUESTION_REASON_IDS.STALE_OR_LEGACY_QUESTION_REQUIRES_CLEANUP,
+      {
+        frameId,
+        severity: 'warning',
+        summary: 'Existing stale or legacy pending question must be cleaned before answering or learning.',
+      }
+    ));
+
+    expected = {
+      version: QUESTION_CONTRACT_VERSION,
+      dispositionId,
+      createQuestion: false,
+      nextAction: {
+        actionId: 'cleanup_stale_question',
+        label: 'Clean up stale question',
+        target: 'pending_question_cleanup',
+      },
+      decisionValidation,
+      decisionEvidenceFingerprint,
+      question: null,
+      proposedFrameId: frameId,
+      rejectedFrame: frameOverride.accepted === false ? frameOverride : null,
+      staleQuestionCleanup: {
+        required: true,
+        existingQuestionId,
+      },
+      learning: buildLearningMetadata({
+        frameId,
+        staleQuestionCleanupRequired: true,
+      }),
+      trace: buildTrace(
+        dispositionId,
+        reasons,
+        decision,
+        decisionValidation,
+        decisionEvidenceFingerprint
+      ),
+    };
+  } else {
+    const baseDisposition = getBaseDisposition(decision);
+    const frameId = baseDisposition.createQuestion
+      ? chooseFrameForDecision(decision, frameOverride)
+      : baseDisposition.frameId;
+
+    reasons.push(buildReason(baseDisposition.reasonId, {
+      frameId,
+      summary: baseDisposition.createQuestion
+        ? 'Runtime decision requires a bounded operator question.'
+        : 'Runtime decision does not require a persisted operator question.',
+      severity: baseDisposition.createQuestion ? 'warning' : 'info',
+    }));
+
+    expected = {
+      version: QUESTION_CONTRACT_VERSION,
+      dispositionId: baseDisposition.dispositionId,
+      createQuestion: baseDisposition.createQuestion,
+      nextAction: {
+        actionId: baseDisposition.nextActionId,
+        label: getNextActionLabel(baseDisposition.nextActionId),
+        target: frameId,
+      },
+      decisionValidation,
+      decisionEvidenceFingerprint,
+      question: baseDisposition.createQuestion
+        ? buildQuestion({
+          frameId,
+          decision,
+          reasonId: baseDisposition.reasonId,
+          decisionEvidenceFingerprint,
+        })
+        : null,
+      proposedFrameId: frameId,
+      rejectedFrame: frameOverride.accepted === false ? frameOverride : null,
+      staleQuestionCleanup: {
+        required: false,
+        existingQuestionId,
+      },
+      learning: buildLearningMetadata({
+        frameId: frameId || QUESTION_FRAME_IDS.DESTINATION_FIT,
+      }),
+      trace: buildTrace(
+        baseDisposition.dispositionId,
+        reasons,
+        decision,
+        decisionValidation,
+        decisionEvidenceFingerprint
+      ),
+    };
+  }
+
+  const actual = {
+    version: plan.version,
+    dispositionId: plan.dispositionId,
+    createQuestion: plan.createQuestion,
+    nextAction: plan.nextAction,
+    decisionValidation: plan.decisionValidation,
+    decisionEvidenceFingerprint: plan.decisionEvidenceFingerprint,
+    question: plan.question,
+    proposedFrameId: plan.proposedFrameId,
+    rejectedFrame: plan.rejectedFrame,
+    staleQuestionCleanup: plan.staleQuestionCleanup,
+    learning: plan.learning,
+    trace: plan.trace,
+  };
+
+  return {
+    ok: stableJson(actual) === stableJson(expected),
+    expected,
+  };
+}
+
 function validatePolicyRuntimeQuestionReduction(plan = {}) {
   const issues = [];
   const dispositionIds = Object.values(POLICY_RUNTIME_QUESTION_DISPOSITION_IDS);
@@ -582,11 +734,19 @@ function validatePolicyRuntimeQuestionReduction(plan = {}) {
   );
   const traceDecisionValid =
     plan.trace?.attributes?.[DECISION_VALID_TRACE_ATTRIBUTE];
+  const outputAudit = buildQuestionReductionOutputAudit(plan);
 
   if (!dispositionIds.includes(plan.dispositionId)) {
     issues.push({
       riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.UNKNOWN_DISPOSITION,
       message: 'Runtime question reduction must use a supported disposition.',
+    });
+  }
+
+  if (!outputAudit.ok) {
+    issues.push({
+      riskId: POLICY_RUNTIME_QUESTION_AUDIT_RISK_IDS.OUTPUT_CONTRACT_MISMATCH,
+      message: 'Runtime question reduction output must match the embedded automation decision contract.',
     });
   }
 

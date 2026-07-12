@@ -33,6 +33,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   automation decisions, clarification reduction, request-time learning,
   decision traces, and test ownership that distinguish a completed
   classification from a successfully routed item.
+- **Runtime Question Output Integrity** — recompute question-reduction plans
+  from their validated automation decision and reject relabeled dispositions,
+  actions, questions, learning metadata, and trace fields.
 - **Automation Decision Output Integrity** — bind every automation state to its
   sole permitted action, permissions, canonical reasons, and bounded trace
   attributes before later execution can act on it.

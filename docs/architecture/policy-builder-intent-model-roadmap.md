@@ -4237,6 +4237,10 @@ Implementation status:
   the decision-only reducer. The reducer requires a valid automation decision
   and rejects raw decision fields; its design record is [Policy Runtime
   Clarification Decision Boundary](policy-runtime-clarification-decision-boundary.md).
+- Question-reduction validation now recomputes the allowed disposition, action,
+  planned question, learning metadata, and bounded trace from the embedded
+  automation decision. Altered plan or trace fields fail before a later
+  persistence component can act.
 
 ### 7R.5 Request-Time Learning And Destination Selection
 
