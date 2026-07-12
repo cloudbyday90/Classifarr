@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Operator Workflow Decision-Source Provenance** — bounded operator
+  workflow now requires the approved readiness decision-source admission to
+  match both sanitized readiness handoff summaries, blocks missing or altered
+  provenance, and retains only verified source metadata for later audit.
 - **Policy Decision Handoff Source Admission** — bounded automation readiness
   now accepts only the approved request-time learning and library-rebuild
   no-write decision contracts, rejecting unknown sources, version drift, and

@@ -3782,6 +3782,11 @@ Implementation status:
   boundary context, and embedded readiness input context to carry matching,
   usable evidence-quality snapshots before any operator workflow projection is
   returned.
+- The bounded workflow entry point now requires the approved readiness
+  decision-source admission to match sanitized source summaries in both
+  readiness contexts, and retains only the verified source summary in its
+  workflow boundary. The design record is
+  [Policy Operator Workflow Decision-Source Provenance](policy-operator-workflow-decision-source-provenance.md).
 - Policy operator workflow architecture cutover is documented in
   [Policy Operator Workflow Architecture Cutover](policy-operator-workflow-architecture-cutover.md).
 - Policy operator workflow quality-gate hardening is documented in

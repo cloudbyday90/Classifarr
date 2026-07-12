@@ -193,6 +193,11 @@ describe('policyOperatorWorkflow', () => {
         }),
       }),
       readinessBoundary: expect.objectContaining({
+        decisionSource: expect.objectContaining({
+          sourceId: 'request_time_learning',
+          decisionVersion: 'policy.learning_guard.v1',
+          admitted: true,
+        }),
         evidenceQuality: expect.objectContaining({
           statusId: boundedReadinessResult.boundaryContext.evidenceBoundary.quality.statusId,
         }),
@@ -205,6 +210,52 @@ describe('policyOperatorWorkflow', () => {
       }),
     }));
     expect(JSON.stringify(result.boundaryContext)).not.toContain('Animated Movies');
+  });
+
+  test('requires source-admission provenance to match across readiness handoffs', () => {
+    const {
+      boundedIntentResult,
+      boundedReadinessResult,
+    } = buildBoundedWorkflowInputs();
+    const missingSourceReadinessResult = clonePlain(boundedReadinessResult);
+    missingSourceReadinessResult.boundaryContext.learningBoundary.decisionSource = null;
+
+    const missingSourceResult = buildPolicyOperatorWorkflowFromBoundedReadiness({
+      boundedIntentResult,
+      boundedReadinessResult: missingSourceReadinessResult,
+    });
+
+    expect(missingSourceResult).toEqual(expect.objectContaining({
+      ok: false,
+      statusId: POLICY_OPERATOR_WORKFLOW_BOUNDARY_STATUS_IDS.BLOCKED_BY_BOUNDED_INPUT,
+      workflow: null,
+    }));
+    expect(missingSourceResult.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_OPERATOR_WORKFLOW_AUDIT_RISK_IDS.UNAPPROVED_BOUNDED_DECISION_SOURCE,
+        sourceRiskIds: expect.arrayContaining(['missing_source_summary']),
+      }),
+    ]));
+
+    const mismatchedSourceReadinessResult = clonePlain(boundedReadinessResult);
+    mismatchedSourceReadinessResult.readiness.inputs.boundaryContext
+      .learningBoundary.decisionSource = {
+        sourceId: 'library_rebuild',
+        decisionVersion: 'policy.library_rebuild_readiness_summary.v1',
+        admitted: true,
+      };
+
+    const mismatchedSourceResult = buildPolicyOperatorWorkflowFromBoundedReadiness({
+      boundedIntentResult,
+      boundedReadinessResult: mismatchedSourceReadinessResult,
+    });
+
+    expect(mismatchedSourceResult.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_OPERATOR_WORKFLOW_AUDIT_RISK_IDS.UNAPPROVED_BOUNDED_DECISION_SOURCE,
+        sourceRiskIds: expect.arrayContaining(['source_summary_mismatch']),
+      }),
+    ]));
   });
 
   test('blocks bounded workflow when bounded readiness failed', () => {
@@ -474,6 +525,27 @@ describe('policyOperatorWorkflow', () => {
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           riskId: POLICY_OPERATOR_WORKFLOW_AUDIT_RISK_IDS.MISSING_BOUNDED_QUALITY,
+        }),
+      ]));
+  });
+
+  test('rejects a workflow boundary context with a tampered decision-source summary', () => {
+    const {
+      boundedIntentResult,
+      boundedReadinessResult,
+    } = buildBoundedWorkflowInputs();
+    const result = buildPolicyOperatorWorkflowFromBoundedReadiness({
+      boundedIntentResult,
+      boundedReadinessResult,
+    });
+
+    result.workflow.boundaryContext.readinessBoundary.decisionSource.admitted = false;
+
+    expect(validatePolicyOperatorWorkflow(result.workflow).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_OPERATOR_WORKFLOW_AUDIT_RISK_IDS.INVALID_WORKFLOW_DECISION_SOURCE,
+          sourceRiskIds: expect.arrayContaining(['source_summary_not_admitted']),
         }),
       ]));
   });

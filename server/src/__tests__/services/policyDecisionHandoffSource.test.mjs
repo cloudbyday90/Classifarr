@@ -5,7 +5,9 @@ import {
   buildPolicyDecisionHandoffSource,
   getPolicyDecisionHandoffSource,
   listPolicyDecisionHandoffSources,
+  validatePolicyDecisionHandoffAdmission,
   validatePolicyDecisionHandoffSource,
+  validatePolicyDecisionHandoffSourceSummary,
 } from '../../services/policyDecisionHandoffSource.mjs';
 
 function buildRequestLearningResult(overrides = {}) {
@@ -177,6 +179,59 @@ describe('policyDecisionHandoffSource', () => {
       }),
       expect.objectContaining({
         riskId: POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS.REBUILD_SIDE_EFFECT_STATE_INVALID,
+      }),
+    ]));
+  });
+
+  test('admits matching sanitized source summaries and rejects missing or mismatched provenance', () => {
+    const admission = validatePolicyDecisionHandoffSource({
+      boundedDecisionResult: buildRequestLearningResult(),
+    });
+    const summary = {
+      sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.REQUEST_TIME_LEARNING,
+      decisionVersion: 'policy.learning_guard.v1',
+      admitted: true,
+    };
+
+    expect(validatePolicyDecisionHandoffSourceSummary(summary)).toEqual(expect.objectContaining({
+      ok: true,
+      sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.REQUEST_TIME_LEARNING,
+    }));
+    expect(validatePolicyDecisionHandoffAdmission({
+      decisionSourceAdmission: admission,
+      readinessBoundaryDecisionSource: summary,
+      embeddedReadinessDecisionSource: summary,
+    })).toEqual(expect.objectContaining({
+      ok: true,
+      sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.REQUEST_TIME_LEARNING,
+    }));
+
+    const mismatchedAdmission = validatePolicyDecisionHandoffAdmission({
+      decisionSourceAdmission: admission,
+      readinessBoundaryDecisionSource: summary,
+      embeddedReadinessDecisionSource: {
+        sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.LIBRARY_REBUILD,
+        decisionVersion: 'policy.library_rebuild_readiness_summary.v1',
+        admitted: true,
+      },
+    });
+
+    expect(mismatchedAdmission).toEqual(expect.objectContaining({
+      ok: false,
+      sourceId: null,
+    }));
+    expect(mismatchedAdmission.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS.SOURCE_SUMMARY_MISMATCH,
+      }),
+    ]));
+    expect(validatePolicyDecisionHandoffSourceSummary({
+      sourceId: POLICY_DECISION_HANDOFF_SOURCE_IDS.REQUEST_TIME_LEARNING,
+      decisionVersion: 'policy.learning_guard.v1',
+      admitted: false,
+    }).issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS.SOURCE_SUMMARY_NOT_ADMITTED,
       }),
     ]));
   });

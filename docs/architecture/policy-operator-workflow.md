@@ -17,7 +17,9 @@ intent, evidence-fingerprint, and readiness audits to still be passing so stale
 or tampered bounded contracts cannot render as an operator workflow. The
 boundary requires matching, usable, sanitized evidence-quality snapshots from
 bounded intent, readiness boundary context, and embedded readiness input context
-before returning the workflow.
+before returning the workflow. It also requires the approved decision-source
+admission from bounded readiness to match the sanitized source summaries in
+both readiness contexts before returning the workflow.
 
 Intent entries are projected through
 [Policy Operator Workflow Entry Normalizer](policy-operator-workflow-entry-normalizer.md)
@@ -118,6 +120,12 @@ Can this route?
    plain-language and durable so UI and telemetry can reuse the same server
    contract without roadmap-specific labels.
 
+9. **Retain verified decision-source provenance.**
+   The bounded workflow wrapper should require matching, approved source
+   summaries from the readiness admission result, readiness boundary context,
+   and embedded readiness input context. It carries only the verified source
+   ID, decision version, and admission state into workflow context.
+
 ## Pros And Cons
 
 Pros:
@@ -132,6 +140,8 @@ Pros:
   from different evidence projections.
 - Prevents the UI workflow from rendering when the underlying evidence quality
   is missing, insufficient, or drifted across bounded contracts.
+- Prevents a reconstructed readiness handoff from concealing an unapproved or
+  mismatched upstream decision source.
 
 Cons:
 
@@ -143,6 +153,7 @@ Cons:
 - Existing pure projection callers still exist for compatibility until runtime
   paths move onto the bounded wrapper.
 - Quality checks add another fixture invariant for bounded workflow tests.
+- Bounded readiness fixtures must retain their admitted source summaries.
 
 ## Final Recommendation Stack
 
@@ -162,6 +173,8 @@ Cons:
   `docs/architecture/policy-operator-workflow.md`
 - Quality gate documentation:
   `docs/architecture/policy-operator-workflow-quality-gate.md`
+- Decision-source provenance documentation:
+  `docs/architecture/policy-operator-workflow-decision-source-provenance.md`
 - Roadmap owner:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
@@ -233,6 +246,9 @@ intentBoundary.projectionFingerprint
 readinessBoundary.statusId
 readinessBoundary.readinessStateId
 readinessBoundary.readinessAuditOk
+readinessBoundary.decisionSource.sourceId
+readinessBoundary.decisionSource.decisionVersion
+readinessBoundary.decisionSource.admitted
 readinessBoundary.evidenceQuality
 readinessBoundary.intentQuality
 readinessBoundary.learningQuality
@@ -257,6 +273,8 @@ qualityMatch
   workflow is returned.
 - The bounded wrapper rejects missing, insufficient, or mismatched sanitized
   evidence-quality snapshots before the workflow is returned.
+- The bounded wrapper rejects a missing, unapproved, incompatible, or
+  mismatched decision-source admission before the workflow is returned.
 
 ## Next Step
 

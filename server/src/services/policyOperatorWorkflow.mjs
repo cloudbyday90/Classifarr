@@ -10,6 +10,10 @@ import {
   buildPolicyAutomationReadinessFromContracts,
 } from './policyAutomationReadinessEngine.mjs';
 import {
+  validatePolicyDecisionHandoffAdmission,
+  validatePolicyDecisionHandoffSourceSummary,
+} from './policyDecisionHandoffSource.mjs';
+import {
   buildPolicyOperatorWorkflowEntryAudit,
   normalizePolicyOperatorWorkflowEntries,
 } from './policyOperatorWorkflowEntryNormalizer.mjs';
@@ -88,6 +92,8 @@ const POLICY_OPERATOR_WORKFLOW_AUDIT_RISK_IDS = Object.freeze({
   MISSING_BOUNDED_QUALITY: 'missing_bounded_quality',
   BOUNDED_QUALITY_INSUFFICIENT: 'bounded_quality_insufficient',
   BOUNDED_QUALITY_MISMATCH: 'bounded_quality_mismatch',
+  UNAPPROVED_BOUNDED_DECISION_SOURCE: 'unapproved_bounded_decision_source',
+  INVALID_WORKFLOW_DECISION_SOURCE: 'invalid_workflow_decision_source',
 });
 
 const REQUIRED_SECTION_IDS = Object.freeze(Object.values(POLICY_OPERATOR_WORKFLOW_SECTION_IDS));
@@ -410,6 +416,19 @@ function getReadinessInputBoundaryContext(boundedReadinessResult = {}) {
   return asObject(boundedReadinessResult.readiness?.inputs?.boundaryContext);
 }
 
+function validateBoundedWorkflowDecisionSource(boundedReadinessResult = {}) {
+  const readinessBoundaryContext = getReadinessBoundaryContext(boundedReadinessResult);
+  const readinessInputBoundaryContext = getReadinessInputBoundaryContext(boundedReadinessResult);
+
+  return validatePolicyDecisionHandoffAdmission({
+    decisionSourceAdmission: boundedReadinessResult.decisionSourceAdmission,
+    readinessBoundaryDecisionSource:
+      readinessBoundaryContext.learningBoundary?.decisionSource,
+    embeddedReadinessDecisionSource:
+      readinessInputBoundaryContext.learningBoundary?.decisionSource,
+  });
+}
+
 function getWorkflowQualitySnapshots({
   boundedIntentResult,
   boundedReadinessResult,
@@ -521,9 +540,27 @@ function collectWorkflowBoundaryContextQualityIssues(boundaryContext = {}) {
     : [];
 }
 
+function collectWorkflowBoundaryContextDecisionSourceIssues(boundaryContext = {}) {
+  const context = asObject(boundaryContext);
+  if (!Object.keys(context).length) return [];
+
+  const sourceAudit = validatePolicyDecisionHandoffSourceSummary(
+    context.readinessBoundary?.decisionSource
+  );
+
+  return sourceAudit.ok
+    ? []
+    : [{
+        riskId: POLICY_OPERATOR_WORKFLOW_AUDIT_RISK_IDS.INVALID_WORKFLOW_DECISION_SOURCE,
+        message: 'Bounded workflow context must retain an approved decision-source summary.',
+        sourceRiskIds: sourceAudit.issues.map(issue => issue.riskId),
+      }];
+}
+
 function buildBoundedWorkflowContext({
   boundedIntentResult,
   boundedReadinessResult,
+  decisionSourceAdmission,
 } = {}) {
   const intentFingerprint = getProjectionFingerprintFromIntentResult(boundedIntentResult);
   const readinessFingerprint = getProjectionFingerprintFromReadinessResult(boundedReadinessResult);
@@ -546,6 +583,11 @@ function buildBoundedWorkflowContext({
       statusId: boundedReadinessResult.statusId || null,
       readinessStateId: boundedReadinessResult.readiness?.stateId || null,
       readinessAuditOk: boundedReadinessAuditPasses(boundedReadinessResult),
+      decisionSource: {
+        sourceId: decisionSourceAdmission?.sourceId || null,
+        decisionVersion: decisionSourceAdmission?.decisionVersion || null,
+        admitted: decisionSourceAdmission?.ok === true,
+      },
       evidenceQuality:
         normalizeQualitySnapshot(readinessBoundaryContext.evidenceBoundary?.quality),
       intentQuality:
@@ -574,6 +616,10 @@ function buildPolicyOperatorWorkflowFromBoundedReadiness({
   boundedReadinessResult,
 } = {}) {
   const boundaryIssues = [];
+  const decisionSourceAdmission =
+    boundedReadinessResult?.ok === true && boundedReadinessResult?.readiness
+      ? validateBoundedWorkflowDecisionSource(boundedReadinessResult)
+      : null;
 
   if (boundedIntentResult?.ok !== true || !boundedIntentResult?.intent) {
     boundaryIssues.push({
@@ -611,6 +657,14 @@ function buildPolicyOperatorWorkflowFromBoundedReadiness({
     });
   }
 
+  if (decisionSourceAdmission?.ok !== true) {
+    boundaryIssues.push({
+      riskId: POLICY_OPERATOR_WORKFLOW_AUDIT_RISK_IDS.UNAPPROVED_BOUNDED_DECISION_SOURCE,
+      message: 'Operator workflow requires matching approved decision-source provenance from readiness.',
+      sourceRiskIds: decisionSourceAdmission?.issues.map(issue => issue.riskId) || [],
+    });
+  }
+
   if (
     boundedIntentResult?.ok === true &&
     boundedReadinessResult?.ok === true &&
@@ -626,6 +680,7 @@ function buildPolicyOperatorWorkflowFromBoundedReadiness({
   const boundaryContext = buildBoundedWorkflowContext({
     boundedIntentResult,
     boundedReadinessResult,
+    decisionSourceAdmission,
   });
 
   if (!boundaryContext) {
@@ -862,6 +917,7 @@ function validatePolicyOperatorWorkflow(workflow = {}) {
   }
 
   issues.push(...collectWorkflowBoundaryContextQualityIssues(workflow.boundaryContext));
+  issues.push(...collectWorkflowBoundaryContextDecisionSourceIssues(workflow.boundaryContext));
 
   return {
     ok: issues.length === 0,

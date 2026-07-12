@@ -73,7 +73,9 @@ only after the caller supplied a successful bounded decision result. It then:
 3. requires library rebuilds to keep profile refresh and all side effects
    explicitly disabled; and
 4. records only source ID, decision version, and admission status in the
-   sanitized readiness boundary context.
+   sanitized readiness boundary context; and
+5. requires the bounded operator-workflow handoff to retain and revalidate that
+   summary before it can render a normal workflow.
 
 ## Pros And Cons
 
@@ -114,8 +116,8 @@ Cons:
   refresh profiles, or write learning.
 - The request-time learning result and rebuild handoff still need their existing
   audits to pass.
-- Readiness returns a bounded block with stable risk IDs when source admission
-  fails.
+- Readiness and bounded operator workflow return stable risk IDs when source
+  admission or source-summary continuity fails.
 
 ## Implemented Files
 
@@ -131,6 +133,8 @@ Cons:
   `server/src/__tests__/services/policyDecisionHandoffSource.test.mjs`
 - Readiness integration tests:
   `server/src/__tests__/services/policyAutomationReadinessEngine.test.mjs`
+- Workflow provenance design record:
+  [Policy Operator Workflow Decision-Source Provenance](policy-operator-workflow-decision-source-provenance.md)
 
 ## Verification
 
@@ -141,10 +145,12 @@ Focused tests prove that:
 - descriptor and decision-version drift are blocked;
 - performed learning writes are blocked;
 - rebuild profile-refresh and side-effect drift are blocked; and
-- successful bounded readiness retains only admitted source metadata.
+- successful bounded readiness retains only admitted source metadata; and
+- bounded operator workflow requires all readiness source summaries to match
+  the admitted source before it returns a normal workflow.
 
 ## Next Step
 
-Require the policy operator workflow's bounded input to retain the admitted
-decision-source summary, so it cannot accept a reconstructed readiness object
-whose upstream handoff source is missing or unapproved.
+Define the runtime workflow entry point that consumes this verified bounded
+workflow rather than reconstructing readiness or diagnostic data in a route or
+client component.

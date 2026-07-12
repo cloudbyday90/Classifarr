@@ -10,6 +10,11 @@ const POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS = Object.freeze({
   INVALID_SOURCE_VERSION: 'invalid_source_version',
   UNSUPPORTED_SOURCE: 'unsupported_source',
   DECISION_VERSION_MISMATCH: 'decision_version_mismatch',
+  MISSING_ADMISSION: 'missing_admission',
+  ADMISSION_NOT_APPROVED: 'admission_not_approved',
+  MISSING_SOURCE_SUMMARY: 'missing_source_summary',
+  SOURCE_SUMMARY_NOT_ADMITTED: 'source_summary_not_admitted',
+  SOURCE_SUMMARY_MISMATCH: 'source_summary_mismatch',
   DECISION_WRITE_PERFORMED: 'decision_write_performed',
   REBUILD_PROFILE_REFRESH_QUEUED: 'rebuild_profile_refresh_queued',
   REBUILD_SIDE_EFFECT_STATE_INVALID: 'rebuild_side_effect_state_invalid',
@@ -34,6 +39,10 @@ const SOURCE_CONTRACTS = Object.freeze([
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
 }
 
 function normalizeString(value) {
@@ -66,6 +75,115 @@ function buildPolicyDecisionHandoffSource(sourceId) {
 
 function buildIssue(riskId, message) {
   return { riskId, message };
+}
+
+function validatePolicyDecisionHandoffSourceSummary(
+  decisionSourceSummary = {}
+) {
+  const summary = asObject(decisionSourceSummary);
+  const sourceContract = getPolicyDecisionHandoffSource(summary.sourceId);
+  const issues = [];
+
+  if (!summary.sourceId) {
+    issues.push(buildIssue(
+      POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS.MISSING_SOURCE_SUMMARY,
+      'Bounded workflow provenance requires a decision-source summary.'
+    ));
+  } else if (!sourceContract || summary.sourceId !== sourceContract.sourceId) {
+    issues.push(buildIssue(
+      POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS.UNSUPPORTED_SOURCE,
+      'Decision-source summaries must use an approved canonical source ID.'
+    ));
+  }
+
+  if (summary.admitted !== true) {
+    issues.push(buildIssue(
+      POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS.SOURCE_SUMMARY_NOT_ADMITTED,
+      'Decision-source summaries must retain an approved admission result.'
+    ));
+  }
+
+  if (
+    sourceContract &&
+    summary.decisionVersion !== sourceContract.decisionVersion
+  ) {
+    issues.push(buildIssue(
+      POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS.DECISION_VERSION_MISMATCH,
+      'Decision-source summaries must retain the expected decision contract version.'
+    ));
+  }
+
+  return {
+    version: `${POLICY_DECISION_HANDOFF_SOURCE_VERSION}.summary_audit`,
+    ok: issues.length === 0,
+    sourceId: sourceContract?.sourceId || null,
+    decisionVersion: sourceContract?.decisionVersion || null,
+    issueCount: issues.length,
+    issues,
+  };
+}
+
+function validatePolicyDecisionHandoffAdmission({
+  decisionSourceAdmission,
+  readinessBoundaryDecisionSource,
+  embeddedReadinessDecisionSource,
+} = {}) {
+  const admission = asObject(decisionSourceAdmission);
+  const sourceContract = getPolicyDecisionHandoffSource(admission.sourceId);
+  const readinessBoundaryAudit = validatePolicyDecisionHandoffSourceSummary(
+    readinessBoundaryDecisionSource
+  );
+  const embeddedReadinessAudit = validatePolicyDecisionHandoffSourceSummary(
+    embeddedReadinessDecisionSource
+  );
+  const issues = [];
+
+  if (!Object.keys(admission).length) {
+    issues.push(buildIssue(
+      POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS.MISSING_ADMISSION,
+      'Bounded workflow provenance requires the readiness source-admission result.'
+    ));
+  } else if (
+    admission.version !== `${POLICY_DECISION_HANDOFF_SOURCE_VERSION}.audit` ||
+    admission.ok !== true ||
+    admission.issueCount !== 0 ||
+    asArray(admission.issues).length !== 0 ||
+    !sourceContract ||
+    admission.sourceId !== sourceContract.sourceId ||
+    admission.decisionVersion !== sourceContract.decisionVersion
+  ) {
+    issues.push(buildIssue(
+      POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS.ADMISSION_NOT_APPROVED,
+      'Bounded workflow provenance requires a passing approved readiness source admission.'
+    ));
+  }
+
+  [readinessBoundaryAudit, embeddedReadinessAudit]
+    .forEach(audit => issues.push(...audit.issues));
+
+  const sourceAudits = [readinessBoundaryAudit, embeddedReadinessAudit];
+  if (
+    sourceContract &&
+    sourceAudits.every(audit => audit.ok) &&
+    sourceAudits.some(audit =>
+      audit.sourceId !== sourceContract.sourceId ||
+      audit.decisionVersion !== sourceContract.decisionVersion
+    )
+  ) {
+    issues.push(buildIssue(
+      POLICY_DECISION_HANDOFF_SOURCE_RISK_IDS.SOURCE_SUMMARY_MISMATCH,
+      'Bounded workflow provenance requires matching readiness source summaries.'
+    ));
+  }
+
+  return {
+    version: `${POLICY_DECISION_HANDOFF_SOURCE_VERSION}.admission_audit`,
+    ok: issues.length === 0,
+    sourceId: issues.length === 0 ? sourceContract?.sourceId || null : null,
+    decisionVersion: issues.length === 0 ? sourceContract?.decisionVersion || null : null,
+    issueCount: issues.length,
+    issues,
+  };
 }
 
 function validatePolicyDecisionHandoffSource({
@@ -154,5 +272,7 @@ export {
   buildPolicyDecisionHandoffSource,
   getPolicyDecisionHandoffSource,
   listPolicyDecisionHandoffSources,
+  validatePolicyDecisionHandoffAdmission,
   validatePolicyDecisionHandoffSource,
+  validatePolicyDecisionHandoffSourceSummary,
 };
