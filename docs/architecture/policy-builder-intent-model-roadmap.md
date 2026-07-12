@@ -4096,6 +4096,10 @@ Implementation status:
   reject source-authority relabeling during audit, so runtime and core evidence
   retain the same primitive field and provenance contract. Its design record is
   [Policy Runtime Evidence Entry Contract](policy-runtime-evidence-entry-contract.md).
+- Runtime evidence now derives bounded trace reasons from sanitized entries and
+  validates fixed warning records plus the complete trace-attribute map against
+  the projection fingerprint. Its design record is [Policy Runtime Evidence
+  Trace Contract](policy-runtime-evidence-trace-contract.md).
 
 ### 7R.3 Automation Decision Contract
 

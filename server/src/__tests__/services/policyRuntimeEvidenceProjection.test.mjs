@@ -568,4 +568,43 @@ describe('policyRuntimeEvidenceProjection', () => {
         }),
       ]));
   });
+
+  test('rejects forged warning content, trace reasons, and trace summary attributes', () => {
+    const projection = buildPolicyRuntimeEvidenceProjection({
+      metadataSignals: [{
+        label: 'TMDB keyword: princess',
+        providerPayload: { secret: 'do-not-leak' },
+      }],
+    });
+    const forgedProjection = {
+      ...projection,
+      warnings: [{
+        ...projection.warnings[0],
+        message: 'raw=do-not-leak',
+      }],
+      trace: {
+        ...projection.trace,
+        reasons: [],
+        attributes: {
+          ...projection.trace.attributes,
+          'classifarr.runtime.evidence.entry_count': 999,
+          'classifarr.runtime.evidence.unbounded_context': 'do-not-leak',
+        },
+      },
+    };
+
+    expect(validatePolicyRuntimeEvidenceProjection(forgedProjection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.WARNING_CONTRACT_MISMATCH,
+        }),
+        expect.objectContaining({
+          riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS.TRACE_REASON_MISMATCH,
+        }),
+        expect.objectContaining({
+          riskId: POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS
+            .PROJECTION_FINGERPRINT_TRACE_MISMATCH,
+        }),
+      ]));
+  });
 });

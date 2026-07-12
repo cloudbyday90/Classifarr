@@ -102,6 +102,12 @@ allowed to change.
    normalizer as core policy evidence. The runtime audit must also verify that
    an entry authority is allowlisted by its evidence source.
 
+10. **Derive traces and warnings from server-owned contracts.**
+    Trace reasons must be rebuilt from sanitized evidence entries, warnings
+    must use fixed server-owned records, and the full trace-attribute map must
+    match the recomputed projection fingerprint. Diagnostics cannot become a
+    raw-data or explanation-forgery path.
+
 ## Pros And Cons
 
 Pros:
@@ -130,6 +136,8 @@ Cons:
   `server/src/services/policyRuntimeEvidenceProjection.mjs`
 - Runtime evidence fingerprint:
   `server/src/services/policyRuntimeEvidenceFingerprint.mjs`
+- Runtime evidence trace contract:
+  `server/src/services/policyRuntimeEvidenceTraceContract.mjs`
 - Test module:
   `server/src/__tests__/services/policyRuntimeEvidenceProjection.test.mjs`
 - Policy evidence vocabulary:
@@ -214,6 +222,8 @@ rejects:
   reject authority relabeling or fields that bypass that contract.
 - Runtime fingerprint provenance and trace attributes bind the sanitized
   operator-intent boundary context.
+- Warnings use a bounded server-owned contract, and trace reasons are derived
+  from sanitized entries instead of caller-supplied text.
 - Fingerprint provenance is sanitized and label-free.
 - Fingerprint, provenance, and trace attributes are verified together before
   downstream runtime decisions can trust the projection.

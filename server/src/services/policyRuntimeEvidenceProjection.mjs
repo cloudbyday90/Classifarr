@@ -22,6 +22,12 @@ import {
   POLICY_RUNTIME_EVIDENCE_FINGERPRINT_TRACE_ATTRIBUTES,
   buildPolicyRuntimeEvidenceFingerprint,
 } from './policyRuntimeEvidenceFingerprint.mjs';
+import {
+  POLICY_RUNTIME_EVIDENCE_TRACE_RISK_IDS,
+  buildPolicyRuntimeEvidenceTrace,
+  buildPolicyRuntimeEvidenceTraceAudit,
+  createPolicyRuntimeEvidenceWarning,
+} from './policyRuntimeEvidenceTraceContract.mjs';
 
 const POLICY_RUNTIME_EVIDENCE_SOURCE_IDS = Object.freeze({
   LIBRARY_PROFILE: 'library_profile',
@@ -69,6 +75,9 @@ const POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   BLOCKED_OPERATOR_INTENT_CONSUMED: 'blocked_operator_intent_consumed',
   ENTRY_FIELD_CONTRACT: 'entry_field_contract',
   SOURCE_AUTHORITY_NOT_ALLOWED: 'source_authority_not_allowed',
+  TRACE_REASON_MISMATCH: POLICY_RUNTIME_EVIDENCE_TRACE_RISK_IDS.TRACE_REASON_MISMATCH,
+  WARNING_CONTRACT_MISMATCH:
+    POLICY_RUNTIME_EVIDENCE_TRACE_RISK_IDS.WARNING_CONTRACT_MISMATCH,
 });
 
 const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/;
@@ -125,6 +134,16 @@ function addProjectionFingerprintIssues(projection, issues) {
   const actualFingerprint = projection.projectionFingerprint;
   const expectedFingerprint =
     buildPolicyRuntimeEvidenceFingerprint(projection);
+  const entries = Object.values(projection.buckets || {}).flat();
+  const expectedRuntimeTrace = buildPolicyRuntimeEvidenceTrace({
+    version: projection.version,
+    entries,
+    warnings: projection.warnings,
+  });
+  const expectedTraceAttributes = {
+    ...expectedRuntimeTrace.attributes,
+    ...expectedFingerprint.traceAttributes,
+  };
   const actualTraceAttributes = projection.trace?.attributes || {};
   const projectionTraceAttributes = actualFingerprint?.traceAttributes || {};
   const traceFingerprintKey =
@@ -166,6 +185,7 @@ function addProjectionFingerprintIssues(projection, issues) {
   if (
     stableJson(projectionTraceAttributes) !==
     stableJson(expectedFingerprint.traceAttributes) ||
+    stableJson(actualTraceAttributes) !== stableJson(expectedTraceAttributes) ||
     actualTraceAttributes[traceFingerprintKey] !== actualFingerprint.fingerprint ||
     projectionTraceAttributes[traceFingerprintKey] !== actualFingerprint.fingerprint
   ) {
@@ -263,13 +283,11 @@ function createRuntimeEvidenceEntry({
 function addEntry(projection, entry) {
   if (!entry) return;
   projection.buckets[entry.bucketId].push(entry);
-  projection.trace.reasons.push({
-    bucketId: entry.bucketId,
-    sourceId: entry.sourceId,
-    runtimeSourceId: entry.runtimeSourceId,
-    reasonCode: entry.reasonCode,
-    demotedFromBucketId: entry.demotedFromBucketId,
-  });
+}
+
+function addRuntimeEvidenceWarning(projection, reasonCode) {
+  const warning = createPolicyRuntimeEvidenceWarning(reasonCode);
+  if (warning) projection.warnings.push(warning);
 }
 
 function mapSignal(value) {
@@ -385,10 +403,10 @@ function mapOperatorIntentEvidence(projection, operatorIntent = {}) {
   );
 
   if (boundedEvidenceResult.ok !== true || !boundedEvidenceResult.projection) {
-    projection.warnings.push({
-      reasonCode: POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.OPERATOR_INTENT_BOUNDARY_BLOCKED,
-      message: 'Runtime operator intent was excluded because its evidence boundary did not pass validation.',
-    });
+    addRuntimeEvidenceWarning(
+      projection,
+      POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.OPERATOR_INTENT_BOUNDARY_BLOCKED
+    );
     return;
   }
 
@@ -494,10 +512,10 @@ function mapMetadataEvidence(projection, metadataSignals = []) {
     }));
 
     if (signal.rawPayloadPresent) {
-      projection.warnings.push({
-        reasonCode: POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.RAW_PAYLOAD_SUPPRESSED,
-        message: 'Runtime metadata evidence suppressed a raw provider payload.',
-      });
+      addRuntimeEvidenceWarning(
+        projection,
+        POLICY_RUNTIME_EVIDENCE_DEMOTION_REASON_IDS.RAW_PAYLOAD_SUPPRESSED
+      );
     }
   });
 }
@@ -559,17 +577,14 @@ function buildPolicyRuntimeEvidenceProjection(input = {}) {
   mapProfileFreshnessEvidence(projection, input.profileFreshness || null);
 
   if (Object.values(projection.buckets).every(entries => entries.length === 0)) {
-    projection.warnings.push({
-      bucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT,
-      reasonCode: 'no_runtime_evidence_inputs',
-      message: 'No runtime evidence inputs were provided.',
-    });
+    addRuntimeEvidenceWarning(projection, 'no_runtime_evidence_inputs');
   }
 
-  projection.trace.attributes['classifarr.runtime.evidence.entry_count'] =
-    Object.values(projection.buckets).flat().length;
-  projection.trace.attributes['classifarr.runtime.evidence.warning_count'] =
-    projection.warnings.length;
+  projection.trace = buildPolicyRuntimeEvidenceTrace({
+    version: projection.version,
+    entries: Object.values(projection.buckets).flat(),
+    warnings: projection.warnings,
+  });
   projection.projectionFingerprint =
     buildPolicyRuntimeEvidenceFingerprint(projection);
   Object.assign(
@@ -763,6 +778,11 @@ function validatePolicyRuntimeEvidenceProjection(projection = {}) {
   const entries = Object.values(projection.buckets || {}).flat();
   const issues = entries.flatMap(entry => validateRuntimeEvidenceEntry(entry).issues);
   const projectionFingerprint = projection.projectionFingerprint;
+  const traceAudit = buildPolicyRuntimeEvidenceTraceAudit({
+    trace: projection.trace,
+    entries,
+    warnings: projection.warnings,
+  });
 
   if (projection.generatedFromLiveProvider === true) {
     issues.push({
@@ -786,6 +806,8 @@ function validatePolicyRuntimeEvidenceProjection(projection = {}) {
   }
 
   addOperatorIntentBoundaryIssues(projection, entries, issues);
+
+  issues.push(...traceAudit.issues);
 
   addProjectionFingerprintIssues(projection, issues);
 
