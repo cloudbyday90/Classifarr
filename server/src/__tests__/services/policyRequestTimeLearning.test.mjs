@@ -445,6 +445,26 @@ describe('policyRequestTimeLearning', () => {
       ]));
   });
 
+  test('rejects altered request-time trace reasons, counts, and attributes', () => {
+    const decision = buildRequestTimeLearningDecisionForTest({
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED,
+      finalDestination: destination(),
+      routeResult: { routeId: 'radarr:10674', succeeded: true },
+    });
+
+    decision.trace.reasons[0].summary = 'raw=do-not-leak';
+    decision.trace.attributes['classifarr.runtime.request_learning.reason_count'] = 999;
+    decision.trace.attributes['classifarr.runtime.request_learning.unbounded_context'] =
+      'do-not-leak';
+
+    expect(validatePolicyRequestTimeLearningDecision(decision).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_CONTRACT_MISMATCH,
+        }),
+      ]));
+  });
+
   test('passes the default request-time learning audit', () => {
     const decision = buildRequestTimeLearningDecisionForTest({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,

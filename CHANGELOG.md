@@ -33,6 +33,8 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   automation decisions, clarification reduction, request-time learning,
   decision traces, and test ownership that distinguish a completed
   classification from a successfully routed item.
+- **Request-Time Trace Integrity** — reject altered learning-event trace reasons,
+  counts, and attributes before downstream persistence can trust the outcome.
 - **Runtime Question Output Integrity** — recompute question-reduction plans
   from their validated automation decision and reject relabeled dispositions,
   actions, questions, learning metadata, and trace fields.

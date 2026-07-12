@@ -4310,6 +4310,8 @@ Implementation status:
   validation proof, preserve the same sanitized evidence fingerprint from the
   question-reduction handoff, and fail validation when proof or trace validity
   drifts.
+- Request-time validation now recomputes bounded trace output from the
+  normalized event, route result, learning guard, and question-reduction proof.
 - Request-time learning now separates raw runtime adaptation, normalized event
   construction, and validated-plan reduction. The reducer derives provenance
   only from the clarification plan and rejects raw question, automation, event,

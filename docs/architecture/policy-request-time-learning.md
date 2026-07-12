@@ -256,6 +256,8 @@ The focused test suite verifies:
 - missing, invalid, or fingerprint-drifted question-reduction proof fails
   validation,
 - request-time trace attributes must match the carried question-reduction proof,
+- request-time traces are recomputed from normalized event, route, guard, and
+  question-reduction fields so altered reasons, counts, or attributes fail,
 - request events are normalized separately and cannot carry upstream contracts,
 - raw runtime input must use the explicit adapter while the reducer requires a
   valid clarification plan and normalized request event,

@@ -65,6 +65,7 @@ const POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS = Object.freeze({
   INVALID_QUESTION_REDUCTION: 'invalid_question_reduction',
   QUESTION_REDUCTION_FINGERPRINT_MISMATCH: 'question_reduction_fingerprint_mismatch',
   TRACE_QUESTION_REDUCTION_VALID_MISMATCH: 'trace_question_reduction_valid_mismatch',
+  TRACE_CONTRACT_MISMATCH: 'trace_contract_mismatch',
 });
 
 const EVENT_SOURCE_BY_TYPE = Object.freeze({
@@ -109,6 +110,20 @@ function asArray(value) {
 
 function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function stableValue(value) {
+  if (Array.isArray(value)) return value.map(item => stableValue(item));
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.keys(value).sort().reduce((result, key) => {
+    result[key] = stableValue(value[key]);
+    return result;
+  }, {});
+}
+
+function stableJson(value) {
+  return JSON.stringify(stableValue(value));
 }
 
 function hasValue(value) {
@@ -535,6 +550,21 @@ function validatePolicyRequestTimeLearningDecision(decision = {}) {
   );
   const traceQuestionReductionValid =
     decision.trace?.attributes?.[REQUEST_LEARNING_QUESTION_REDUCTION_VALID_TRACE_ATTRIBUTE];
+  const expectedTrace = buildTrace({
+    eventTypeId: decision.eventTypeId,
+    dispositionId: decision.dispositionId,
+    learningDecision: decision.learningDecision,
+    routeResult: decision.selection?.routeResult || {},
+    upstreamEvidenceFingerprint: decision.upstreamEvidenceFingerprint,
+    questionReductionProof: decision.questionReductionProof,
+  });
+
+  if (stableJson(decision.trace) !== stableJson(expectedTrace)) {
+    issues.push({
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.TRACE_CONTRACT_MISMATCH,
+      message: 'Request-time learning trace must match the normalized event and learning-guard outcome.',
+    });
+  }
 
   if (!eventTypeIds.includes(decision.eventTypeId)) {
     issues.push({
