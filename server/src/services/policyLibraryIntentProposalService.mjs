@@ -22,6 +22,7 @@ const POLICY_LIBRARY_INTENT_PROPOSAL_STATUS_IDS = Object.freeze({
 const POLICY_LIBRARY_INTENT_PROPOSAL_RISK_IDS = Object.freeze({
   EVIDENCE_HANDOFF_NOT_READY: 'evidence_handoff_not_ready',
   EVIDENCE_HANDOFF_INVALID: 'evidence_handoff_invalid',
+  EVIDENCE_HANDOFF_FINGERPRINT_MISMATCH: 'evidence_handoff_fingerprint_mismatch',
   EVIDENCE_QUALITY_INSUFFICIENT: 'evidence_quality_insufficient',
   INTENT_AUDIT_FAILED: 'intent_audit_failed',
   PROPOSAL_FAILED: 'intent_proposal_failed',
@@ -44,12 +45,32 @@ function buildAuditSummary(audit = null) {
   };
 }
 
-function buildEvidenceProvenance(handoff = {}) {
+function buildProjectionFingerprintSummary(fingerprint = null) {
+  const result = asPlainObject(fingerprint);
+
+  return {
+    version: result.version ?? null,
+    algorithm: result.algorithm ?? null,
+    fingerprint: result.fingerprint ?? null,
+    provenance: asPlainObject(result.provenance),
+    traceAttributes: asPlainObject(result.traceAttributes),
+  };
+}
+
+function buildHandoffAuditSummary(audit = null) {
+  return {
+    ...buildAuditSummary(audit),
+    projectionFingerprint: buildProjectionFingerprintSummary(
+      asPlainObject(audit).projectionFingerprint
+    ),
+  };
+}
+
+function buildEvidenceProvenance(handoff = {}, handoffAudit = null) {
   const loader = asPlainObject(handoff);
   const envelope = asPlainObject(loader.evidenceEnvelope);
   const boundary = asPlainObject(envelope.evidenceBoundary);
   const projection = asPlainObject(boundary.projection);
-  const fingerprint = asPlainObject(boundary.projectionFingerprint);
 
   return {
     libraryId: loader.libraryId ?? null,
@@ -59,14 +80,20 @@ function buildEvidenceProvenance(handoff = {}) {
     profileStatusId: loader.profileHandoff?.statusId ?? null,
     sourceSummary: asPlainObject(loader.sourceSummary),
     evidenceQuality: asPlainObject(projection.quality),
-    projectionFingerprint: {
-      version: fingerprint.version ?? null,
-      algorithm: fingerprint.algorithm ?? null,
-      fingerprint: fingerprint.fingerprint ?? null,
-      provenance: asPlainObject(fingerprint.provenance),
-      traceAttributes: asPlainObject(fingerprint.traceAttributes),
-    },
+    projectionFingerprint: buildProjectionFingerprintSummary(
+      asPlainObject(handoffAudit).projectionFingerprint
+    ),
   };
+}
+
+function hasMatchingHandoffFingerprint(handoff = {}, handoffAudit = null) {
+  const boundary = asPlainObject(asPlainObject(handoff).evidenceEnvelope)
+    .evidenceBoundary;
+  const boundaryFingerprint = asPlainObject(boundary).projectionFingerprint;
+  const auditedFingerprint = asPlainObject(handoffAudit).projectionFingerprint;
+
+  return typeof boundaryFingerprint?.fingerprint === 'string' &&
+    boundaryFingerprint.fingerprint === auditedFingerprint.fingerprint;
 }
 
 function buildSideEffects({ handoff = null, intentDraftBuilt = false } = {}) {
@@ -99,8 +126,8 @@ function buildProposalResult({
     statusId,
     issueCount: issues.length,
     issues,
-    evidenceProvenance: buildEvidenceProvenance(handoff),
-    handoffAudit: buildAuditSummary(handoffAudit),
+    evidenceProvenance: buildEvidenceProvenance(handoff, handoffAudit),
+    handoffAudit: buildHandoffAuditSummary(handoffAudit),
     intentAudit: buildAuditSummary(intentResult?.intentAudit),
     intent: ok ? intentResult?.intent ?? null : null,
     sideEffects: buildSideEffects({
@@ -203,6 +230,19 @@ function createPolicyLibraryIntentProposalService({
       });
     }
 
+    if (!hasMatchingHandoffFingerprint(handoff, handoffAudit)) {
+      return buildProposalResult({
+        statusId: POLICY_LIBRARY_INTENT_PROPOSAL_STATUS_IDS.BLOCKED_BY_EVIDENCE_HANDOFF,
+        ok: false,
+        handoff,
+        handoffAudit,
+        issue: {
+          riskId: POLICY_LIBRARY_INTENT_PROPOSAL_RISK_IDS.EVIDENCE_HANDOFF_FINGERPRINT_MISMATCH,
+          message: 'Library evidence fingerprint did not satisfy the verified handoff contract.',
+        },
+      });
+    }
+
     let intentResult;
     try {
       intentResult = buildIntent({
@@ -293,6 +333,17 @@ function buildPolicyLibraryIntentProposalAudit(result = {}) {
     issues.push({
       riskId: POLICY_LIBRARY_INTENT_PROPOSAL_RISK_IDS.EVIDENCE_HANDOFF_INVALID,
       message: 'Ready library intent proposal requires evidence fingerprint provenance.',
+    });
+  }
+
+  if (
+    ok &&
+    proposal.evidenceProvenance?.projectionFingerprint?.fingerprint !==
+      proposal.handoffAudit?.projectionFingerprint?.fingerprint
+  ) {
+    issues.push({
+      riskId: POLICY_LIBRARY_INTENT_PROPOSAL_RISK_IDS.EVIDENCE_HANDOFF_FINGERPRINT_MISMATCH,
+      message: 'Ready library intent proposal fingerprint must match verified handoff provenance.',
     });
   }
 

@@ -11,6 +11,9 @@ fingerprint, and generated quality assessment as one contract. It returns a
 sanitized handoff summary with no collector record arrays or evidence labels.
 It independently reruns the projection audit against the received projection;
 the recorded boundary audit alone is not treated as proof of current integrity.
+Its audit result also carries the sanitized fingerprint summary it independently
+validated, so later bounded consumers can use verified provenance rather than a
+parallel raw handoff field.
 
 ## Problem
 
@@ -54,9 +57,11 @@ library evidence loader
 2. Require the loader and static evidence-engine audit before intent inference.
 3. Revalidate the envelope boundary, projection, fingerprint, and quality assessment from
    the returned projection.
-4. Return summaries, status IDs, counts, audit risk IDs, quality, and
+4. Derive downstream fingerprint provenance from the audit's verified
+   fingerprint summary, not a parallel caller-controlled value.
+5. Return summaries, status IDs, counts, audit risk IDs, quality, and
    fingerprint provenance only; do not copy evidence entries or labels.
-5. Treat a valid but blocked handoff as structurally sound and operationally
+6. Treat a valid but blocked handoff as structurally sound and operationally
    blocked, not as a corrupted contract.
 6. Do not require an identity or an automation-ready quality state here. Intent
    and readiness components own those later decisions.
@@ -114,6 +119,8 @@ failure with stable risk IDs.
 - Projection structure is independently re-audited from the received handoff;
   a carried boundary audit cannot authorize a later-mutated projection.
 - Static evidence-engine policy rules are verified on every check.
+- The sanitized fingerprint summary exposed to later consumers is the same
+  correlation artifact independently validated by the handoff audit.
 - Collector records and evidence labels are not copied into verifier output.
 - Unexpected loader errors are sanitized.
 - Claimed live lookup, provider quota, or storage-write side effects fail the

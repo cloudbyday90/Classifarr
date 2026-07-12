@@ -3410,6 +3410,8 @@ Implementation status:
   summary. Its design record is [Policy Evidence Handoff Verifier](policy-evidence-handoff-verifier.md).
   The projection revalidation hardening is recorded in
   [Policy Evidence Handoff Projection Revalidation](policy-evidence-handoff-projection-revalidation.md).
+  Verified fingerprint provenance propagation is documented in
+  [Policy Library Intent Proposal Fingerprint Provenance](policy-library-intent-proposal-fingerprint-provenance.md).
 - The library intent proposal service lives in
   `server/src/services/policyLibraryIntentProposalService.mjs`. It accepts
   declared operator intent only through the shared evidence input gate, loads

@@ -86,7 +86,12 @@ describe('policyLibraryIntentProposalService', () => {
     expect(result).toEqual(expect.objectContaining({
       ok: true,
       statusId: POLICY_LIBRARY_INTENT_PROPOSAL_STATUS_IDS.READY,
-      handoffAudit: expect.objectContaining({ ok: true }),
+      handoffAudit: expect.objectContaining({
+        ok: true,
+        projectionFingerprint: expect.objectContaining({
+          fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+        }),
+      }),
       intentAudit: expect.objectContaining({ ok: true }),
       evidenceProvenance: expect.objectContaining({
         libraryId: 42,
@@ -115,6 +120,8 @@ describe('policyLibraryIntentProposalService', () => {
       nextStep: expect.objectContaining({ stepId: 'learning_eligibility' }),
     }));
     expect(JSON.stringify(result.evidenceProvenance)).not.toContain('Persisted metadata genre: Animation');
+    expect(result.evidenceProvenance.projectionFingerprint.fingerprint)
+      .toBe(result.handoffAudit.projectionFingerprint.fingerprint);
     expect(buildPolicyLibraryIntentProposalAudit(result)).toEqual({
       ok: true,
       issueCount: 0,
@@ -163,6 +170,28 @@ describe('policyLibraryIntentProposalService', () => {
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           riskId: POLICY_LIBRARY_INTENT_PROPOSAL_RISK_IDS.EVIDENCE_HANDOFF_INVALID,
+        }),
+      ]));
+  });
+
+  test('rejects a ready proposal whose fingerprint differs from verified handoff provenance', async () => {
+    const service = createPolicyLibraryIntentProposalService({
+      libraryEvidenceLoader: createReadyLibraryEvidenceLoader(),
+    });
+    const result = await service.proposeLibraryIntent({
+      libraryId: 42,
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+      },
+      getProfile: async () => getCurrentProfile(),
+      now: NOW,
+    });
+    result.evidenceProvenance.projectionFingerprint.fingerprint = '0'.repeat(64);
+
+    expect(buildPolicyLibraryIntentProposalAudit(result).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_LIBRARY_INTENT_PROPOSAL_RISK_IDS.EVIDENCE_HANDOFF_FINGERPRINT_MISMATCH,
         }),
       ]));
   });

@@ -11,6 +11,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Library Intent Proposal Fingerprint Provenance** — ready proposals
+  now derive their evidence fingerprint from the independently verified handoff
+  audit and reject any provenance mismatch before intent inference.
 - **Policy Library Intent Proposal Handoff Audit** — ready library intent
   proposals now require a successful carried evidence-handoff audit, preventing
   later-mutated proposal results from bypassing verified evidence provenance.

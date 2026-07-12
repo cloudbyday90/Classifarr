@@ -61,11 +61,22 @@ function buildAuditSummary(audit = null) {
   };
 }
 
+function buildProjectionFingerprintSummary(fingerprint = null) {
+  const result = asPlainObject(fingerprint);
+
+  return {
+    version: result.version ?? null,
+    algorithm: result.algorithm ?? null,
+    fingerprint: result.fingerprint ?? null,
+    provenance: asPlainObject(result.provenance),
+    traceAttributes: asPlainObject(result.traceAttributes),
+  };
+}
+
 function buildHandoffSummary(handoff = {}) {
   const loader = asPlainObject(handoff);
   const envelope = asPlainObject(loader.evidenceEnvelope);
   const boundary = asPlainObject(envelope.evidenceBoundary);
-  const fingerprint = asPlainObject(boundary.projectionFingerprint);
   const projection = asPlainObject(boundary.projection);
 
   return {
@@ -76,12 +87,7 @@ function buildHandoffSummary(handoff = {}) {
     profileStatusId: loader.profileHandoff?.statusId ?? null,
     sourceSummary: asPlainObject(loader.sourceSummary),
     evidenceQuality: asPlainObject(projection.quality),
-    fingerprint: {
-      version: fingerprint.version ?? null,
-      algorithm: fingerprint.algorithm ?? null,
-      provenance: asPlainObject(fingerprint.provenance),
-      traceAttributes: asPlainObject(fingerprint.traceAttributes),
-    },
+    fingerprint: buildProjectionFingerprintSummary(boundary.projectionFingerprint),
     nextStep: loader.nextStep ?? null,
   };
 }
@@ -198,6 +204,9 @@ function buildPolicyEvidenceHandoffAudit(handoff = {}, {
     boundaryAudit: buildAuditSummary(boundaryAudit),
     projectionAudit: buildAuditSummary(projectionAudit),
     fingerprintAudit: buildAuditSummary(fingerprintAudit),
+    projectionFingerprint: buildProjectionFingerprintSummary(
+      boundary.projectionFingerprint
+    ),
     qualityAudit: buildAuditSummary(qualityAudit),
   };
 }

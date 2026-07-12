@@ -16,6 +16,8 @@ kinds of authority.
 The service loads evidence only through the server-owned loader and complete
 handoff audit. A result that claims readiness must retain the passing handoff
 audit alongside its intent audit and fingerprint provenance.
+That provenance is derived from the handoff audit's independently verified
+fingerprint summary, not copied from a parallel raw handoff field.
 
 ## Design
 
@@ -69,10 +71,12 @@ operator-facing policy meaning being reviewed.
    reducer.
 4. Require ready proposal results to retain a passing complete handoff audit;
    result consumers must not trust a ready status alone.
-5. Preserve only source counts, quality, fingerprint, and trace provenance
+5. Derive proposal fingerprint provenance from the verified handoff audit and
+   require the summaries to agree before ready.
+6. Preserve only source counts, quality, fingerprint, and trace provenance
    outside the proposed intent; do not return raw collector records.
-6. Block insufficient identity evidence rather than guessing a destination.
-7. Treat the next task as command-contract hardening, not automatic policy
+7. Block insufficient identity evidence rather than guessing a destination.
+8. Treat the next task as command-contract hardening, not automatic policy
    persistence.
 
 ## Pros And Cons
@@ -113,6 +117,8 @@ Cons:
 - Handoff audit, fingerprint, quality, and intent audit must pass before ready.
 - A ready result must retain its successful handoff-audit summary; no later
   consumer can treat the status alone as authorization.
+- Its fingerprint provenance must agree with the summary independently verified
+  by that handoff audit.
 - Unexpected loader or reducer failures return generic stable errors.
 - The service performs no live media-server/provider lookup, quota read,
   profile refresh, route attempt, storage write, or learning mutation.

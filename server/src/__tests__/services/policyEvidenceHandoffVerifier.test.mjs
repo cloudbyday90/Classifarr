@@ -81,6 +81,9 @@ describe('policyEvidenceHandoffVerifier', () => {
       audit: expect.objectContaining({
         ok: true,
         readyForIntent: true,
+        projectionFingerprint: expect.objectContaining({
+          fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+        }),
       }),
       handoff: expect.objectContaining({
         libraryId: 42,
