@@ -204,12 +204,38 @@ describe('policyLibraryPolicyRebuild', () => {
         fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/u),
       }),
     }));
+    expect(proposal.readinessBoundary).toEqual(expect.objectContaining({
+      ok: true,
+      statusId: 'ready',
+      readinessAuditOk: true,
+      projectionFingerprintMatch: true,
+      evidenceBoundary: expect.objectContaining({
+        statusId: 'ready',
+        projectionFingerprint: expect.objectContaining({ algorithm: 'sha256' }),
+      }),
+      intentBoundary: expect.objectContaining({
+        statusId: 'ready',
+        projectionFingerprint: expect.objectContaining({ algorithm: 'sha256' }),
+      }),
+      learningBoundary: expect.objectContaining({
+        statusId: 'ready',
+        projectionFingerprint: expect.objectContaining({ algorithm: 'sha256' }),
+      }),
+    }));
+    expect(proposal.readinessBoundary.evidenceBoundary.projectionFingerprint.fingerprint)
+      .toBe(proposal.evidenceBoundary.projectionFingerprint.fingerprint);
+    expect(proposal.readinessBoundary.intentBoundary.projectionFingerprint.fingerprint)
+      .toBe(proposal.evidenceBoundary.projectionFingerprint.fingerprint);
+    expect(proposal.readinessBoundary.learningBoundary.projectionFingerprint.fingerprint)
+      .toBe(proposal.evidenceBoundary.projectionFingerprint.fingerprint);
     expect(proposal.trace.attributes).toEqual(expect.objectContaining({
       'classifarr.policy.rebuild.guarded_outcome_fingerprint_count': 1,
       'classifarr.policy.rebuild.guarded_outcome_missing_fingerprint_count': 0,
       'classifarr.policy.rebuild.guarded_outcome_request_proof_count': 1,
       'classifarr.policy.rebuild.guarded_outcome_missing_request_proof_count': 0,
       'classifarr.policy.rebuild.guarded_outcome_invalid_request_proof_count': 0,
+      'classifarr.policy.rebuild.readiness_boundary_status': 'ready',
+      'classifarr.policy.rebuild.readiness_boundary_ready': true,
     }));
     expect(JSON.stringify(proposal.evidenceSourceSummary.guardedOutcomes.fingerprints))
       .not.toContain('Animated Movies');
@@ -572,6 +598,29 @@ describe('policyLibraryPolicyRebuild', () => {
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_INTENT_BOUNDARY,
+        }),
+      ]));
+  });
+
+  test('rejects missing or tampered bounded readiness provenance', () => {
+    const missingBoundaryProposal = buildPolicyLibraryPolicyRebuildProposal(baseInput());
+    missingBoundaryProposal.readinessBoundary = null;
+
+    expect(validatePolicyLibraryPolicyRebuildProposal(missingBoundaryProposal).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_READINESS_BOUNDARY,
+        }),
+      ]));
+
+    const tamperedBoundaryProposal = buildPolicyLibraryPolicyRebuildProposal(baseInput());
+    tamperedBoundaryProposal.readinessBoundary.learningBoundary.projectionFingerprint.fingerprint =
+      '0'.repeat(64);
+
+    expect(validatePolicyLibraryPolicyRebuildProposal(tamperedBoundaryProposal).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_REBUILD_AUDIT_RISK_IDS.READINESS_BOUNDARY_PROVENANCE_MISMATCH,
         }),
       ]));
   });

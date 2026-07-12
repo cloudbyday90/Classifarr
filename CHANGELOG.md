@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Library Rebuild Readiness Handoff** — library-derived rebuilds now
+  use a verified, side-effect-free guarded-outcome handoff before bounded
+  readiness evaluation; matching evidence, intent, and readiness provenance is
+  required before reviewable proposal contracts are returned.
 - **Policy Library Rebuild Intent Boundary** — library-derived rebuild proposals
   now require bounded intent inference and matching evidence provenance before
   deriving intent or readiness; insufficient identity stays actionable without

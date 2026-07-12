@@ -23,6 +23,13 @@ sanitized intent-boundary summary. Insufficient identity becomes the existing
 actionable `needs_more_evidence` state with no derived intent or readiness;
 malformed or mismatched intent provenance returns `blocked_by_intent_boundary`.
 
+After intent passes, rebuild derives a dedicated no-write readiness handoff
+from the validated guarded-outcome projection and passes it to the shared
+bounded readiness wrapper. The evidence, intent, and readiness-handoff
+fingerprints must match. A failed handoff or readiness audit returns a
+sanitized `blocked_by_readiness_boundary` proposal with no projection, intent,
+or readiness contract.
+
 ## Problem
 
 The re-imagined policy model starts from the media server as the source of
@@ -79,6 +86,10 @@ runtime rebuild contract.
   and precise unambiguous terms. The contract uses
   `policy.library_policy_rebuild.v1` and product-domain step names instead of
   roadmap phase identifiers.
+- [OWASP Business Logic Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Business_Logic_Security_Cheat_Sheet.html)
+  recommends server-owned state transitions and rejecting attempts to skip
+  workflow steps. Rebuild uses a verified no-write handoff before the existing
+  readiness authority evaluates a proposal.
 
 Additional hardening guidance:
 
@@ -146,7 +157,7 @@ Cons:
    - routing configuration,
    - outlier signals,
    - profile freshness.
-2. Reuse policy evidence, intent, and readiness contracts for proposal
+2. Reuse bounded policy evidence, intent, and readiness contracts for proposal
    generation.
 3. Produce a proposal envelope with:
    - proposed intent draft,
@@ -179,6 +190,9 @@ Cons:
 14. Require a passing bounded intent result before deriving rebuild intent or
     readiness. The intent, intent-boundary, and evidence-boundary fingerprints
     must agree for every non-blocked proposal.
+15. Derive a verified no-write readiness handoff from validated guarded
+    outcomes, then require evidence, intent, and readiness-boundary provenance
+    to agree before returning a reviewable proposal.
 
 ## Implemented Files
 
@@ -196,6 +210,10 @@ Cons:
   `server/src/services/policyIntentEngine.mjs`
 - Intent-boundary outcome:
   `docs/architecture/policy-library-rebuild-intent-boundary.md`
+- Readiness-handoff outcome:
+  `docs/architecture/policy-library-rebuild-readiness-handoff.md`
+- Readiness-handoff dependency:
+  `server/src/services/policyLibraryRebuildReadinessHandoff.mjs`
 - Readiness dependency:
   `server/src/services/policyAutomationReadinessEngine.mjs`
 - Roadmap owner:
@@ -247,6 +265,11 @@ sanitized boundary context and no derived projection, intent, or readiness.
 check. The proposal retains only sanitized evidence and intent-boundary context
 and no derived projection, intent, or readiness.
 
+`blocked_by_readiness_boundary`
+: Evidence and intent passed, but the verified no-write readiness handoff or
+bounded readiness evaluation failed. The proposal retains only sanitized
+boundary context and no derived projection, intent, or readiness.
+
 ## Security And Data Handling
 
 - The proposal builder does not call providers.
@@ -276,6 +299,11 @@ and no derived projection, intent, or readiness.
   normal rebuild workflow boundary.
 - Non-blocked proposals require matching evidence, intent-boundary, and emitted
   intent fingerprints. Failed intent inference retains no derived contracts.
+- Rebuild derives no request-time event. It uses a dedicated no-write handoff
+  from validated guarded outcomes before calling the shared bounded readiness
+  wrapper.
+- Non-blocked proposals require matching evidence, intent, and readiness
+  provenance. A failed readiness boundary retains no derived contracts.
 
 ## Test Coverage
 
@@ -286,12 +314,16 @@ The focused test suite verifies:
   projection fingerprint,
 - valid proposals retain a passing bounded intent context with the same
   evidence fingerprint,
+- valid proposals retain a passing bounded readiness context whose evidence,
+  intent, and handoff fingerprints agree,
 - rejected evidence returns a boundary-blocked proposal with no projection,
   intent, or readiness output,
 - insufficient identity returns `needs_more_evidence` with a failed sanitized
   intent boundary and no derived projection, intent, or readiness output,
 - invalid intent-boundary provenance and derived contracts attached to a failed
   intent boundary fail validation,
+- missing or tampered readiness-boundary provenance and derived contracts
+  attached to a failed readiness boundary fail validation,
 - attaching a derived contract to a boundary-blocked proposal fails validation,
 - guarded outcomes with valid upstream evidence fingerprints are consumed as
   proposal evidence,
@@ -325,7 +357,8 @@ Library-derived policy rebuild gives the rebuild path this shape:
 library profile + fingerprint-bound guarded outcomes + explicit constraints + routing/freshness
   -> allow-listed bounded evidence projection
   -> bounded policy intent result
-  -> policy readiness
+  -> verified no-write readiness handoff
+  -> bounded policy readiness
   -> policy rebuild proposal envelope
   -> operator acceptance and rollback required
   -> no direct side effects
@@ -336,7 +369,6 @@ automatic replacement.
 
 ## Next Step
 
-Migration Verifier And Rollback Path should compare this proposal against
-legacy behavior, show only migration-relevant differences, require a rollback
-snapshot before replacement, and define the deletion criteria for old
-preset/custom-signal runtime paths.
+Add bounded-decision source admission to the shared readiness wrapper so it
+accepts only approved decision contracts, then continue migration verification
+and rollback work against the resulting proposal.

@@ -40,7 +40,8 @@ Library rebuild now follows this sequence:
 allow-listed evidence input
   -> bounded evidence result
   -> bounded intent result
-  -> readiness composition
+  -> verified no-write readiness handoff
+  -> bounded readiness composition
   -> review-only rebuild proposal
 ```
 
@@ -83,9 +84,8 @@ Cons:
 
 - Rebuild proposals with incomplete identity no longer retain an intermediate
   draft for debugging or display.
-- Readiness remains a separate bounded-adoption component because rebuild
-  derives its current learning summary from guarded outcomes, not one
-  request-time learning result.
+- Rebuild adds a small no-write adapter so the shared readiness wrapper can
+  distinguish its derived guarded-outcome summary from a request-time event.
 
 ## Final Recommendation Stack
 
@@ -93,8 +93,9 @@ Cons:
 2. Verify bounded evidence before intent inference.
 3. Use the bounded intent result as the only normal rebuild intent source.
 4. Preserve only sanitized evidence and intent-boundary metadata on failure.
-5. Derive readiness only after verified intent succeeds.
-6. Require operator acceptance and rollback before any future replacement.
+5. Derive the no-write readiness handoff only after verified intent succeeds.
+6. Let the shared bounded readiness wrapper make the final readiness decision.
+7. Require operator acceptance and rollback before any future replacement.
 
 ## Security Outcome
 
@@ -113,6 +114,7 @@ Cons:
 
 ## Next Step
 
-Adopt a verified readiness handoff for rebuild only after defining how its
-guarded-outcome learning summary maps to the existing bounded learning contract.
-Do not fabricate a request-time learning result merely to satisfy the wrapper.
+The verified handoff is implemented in
+[Policy Library Rebuild Readiness Handoff](policy-library-rebuild-readiness-handoff.md).
+Next, allowlist the bounded-decision contracts that the shared readiness wrapper
+may consume.

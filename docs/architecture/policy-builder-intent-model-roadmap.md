@@ -4329,6 +4329,9 @@ Acceptance criteria:
   validation before migration comparison.
 - Missing or invalid guarded-outcome request proof and trace/source summary
   mismatches fail validation before migration comparison.
+- Rebuild readiness uses a verified no-write handoff rather than fabricating a
+  request-time learning event, and its evidence, intent, and readiness
+  fingerprints must agree before a proposal can be reviewed.
 - Rebuild does not automatically delete or replace existing policies.
 - Explicit operator constraints are preserved unless the operator changes them.
 
@@ -4357,6 +4360,11 @@ Implementation status:
   intent, or readiness; insufficient identity remains the actionable
   `needs_more_evidence` state. Its design record is
   [Policy Library Rebuild Intent Boundary](policy-library-rebuild-intent-boundary.md).
+- Rebuild now derives a verified, side-effect-free readiness handoff from the
+  guarded-outcome projection before invoking the shared bounded readiness
+  wrapper. Handoff or readiness-boundary failures return no derived proposal
+  contracts; its design record is [Policy Library Rebuild Readiness
+  Handoff](policy-library-rebuild-readiness-handoff.md).
 - Proposals include evidence source summaries, confidence, assumptions,
   warnings, an explicit operator acceptance gate, and a rollback snapshot gate.
 - Guarded outcome source summaries now carry bounded accepted/missing

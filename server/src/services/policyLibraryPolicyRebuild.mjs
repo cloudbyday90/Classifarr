@@ -12,17 +12,20 @@ import {
 } from './policyIntentEngine.mjs';
 import {
   POLICY_AUTOMATION_READINESS_STATE_IDS,
-  buildPolicyAutomationReadinessFromContracts,
+  buildPolicyAutomationReadinessFromBoundedContracts,
   validatePolicyAutomationReadiness,
 } from './policyAutomationReadinessEngine.mjs';
-import {
-  POLICY_LEARNING_DECISION_IDS,
-} from './policyLearningGuard.mjs';
 import {
   POLICY_GUARDED_OUTCOME_PROJECTION_VERSION,
   buildPolicyGuardedOutcomeProjectionFromRequestTimeDecisions,
   validatePolicyGuardedOutcomeProjection,
 } from './policyGuardedOutcomeProjection.mjs';
+import {
+  POLICY_LEARNING_DECISION_IDS,
+} from './policyLearningGuard.mjs';
+import {
+  buildPolicyLibraryRebuildReadinessHandoff,
+} from './policyLibraryRebuildReadinessHandoff.mjs';
 
 const POLICY_REBUILD_PROPOSAL_STATUS_IDS = Object.freeze({
   READY_FOR_REVIEW: 'ready_for_review',
@@ -32,6 +35,7 @@ const POLICY_REBUILD_PROPOSAL_STATUS_IDS = Object.freeze({
   STALE_PROFILE: 'stale_profile',
   BLOCKED_BY_EVIDENCE_BOUNDARY: 'blocked_by_evidence_boundary',
   BLOCKED_BY_INTENT_BOUNDARY: 'blocked_by_intent_boundary',
+  BLOCKED_BY_READINESS_BOUNDARY: 'blocked_by_readiness_boundary',
   BLOCKED: 'blocked',
 });
 
@@ -48,6 +52,7 @@ const POLICY_REBUILD_REASON_IDS = Object.freeze({
   SIDE_EFFECTS_DISABLED: 'side_effects_disabled',
   EVIDENCE_BOUNDARY_BLOCKED: 'evidence_boundary_blocked',
   INTENT_BOUNDARY_BLOCKED: 'intent_boundary_blocked',
+  READINESS_BOUNDARY_BLOCKED: 'readiness_boundary_blocked',
 });
 
 const POLICY_REBUILD_WARNING_IDS = Object.freeze({
@@ -61,6 +66,7 @@ const POLICY_REBUILD_WARNING_IDS = Object.freeze({
   GUARDED_OUTCOME_INVALID_REQUEST_PROOF: 'guarded_outcome_invalid_request_proof',
   EVIDENCE_BOUNDARY_BLOCKED: 'evidence_boundary_blocked',
   INTENT_BOUNDARY_BLOCKED: 'intent_boundary_blocked',
+  READINESS_BOUNDARY_BLOCKED: 'readiness_boundary_blocked',
 });
 
 const POLICY_REBUILD_AUDIT_RISK_IDS = Object.freeze({
@@ -94,6 +100,11 @@ const POLICY_REBUILD_AUDIT_RISK_IDS = Object.freeze({
   INTENT_BOUNDARY_PROVENANCE_MISMATCH: 'intent_boundary_provenance_mismatch',
   BLOCKED_INTENT_BOUNDARY_NOT_FAILED: 'blocked_intent_boundary_not_failed',
   BLOCKED_INTENT_BOUNDARY_WITH_DERIVED_CONTRACT: 'blocked_intent_boundary_with_derived_contract',
+  MISSING_READINESS_BOUNDARY: 'missing_readiness_boundary',
+  INVALID_READINESS_BOUNDARY: 'invalid_readiness_boundary',
+  READINESS_BOUNDARY_PROVENANCE_MISMATCH: 'readiness_boundary_provenance_mismatch',
+  BLOCKED_READINESS_BOUNDARY_NOT_FAILED: 'blocked_readiness_boundary_not_failed',
+  BLOCKED_READINESS_BOUNDARY_WITH_DERIVED_CONTRACT: 'blocked_readiness_boundary_with_derived_contract',
   MISSING_GUARDED_OUTCOME_PROJECTION: 'missing_guarded_outcome_projection',
   INVALID_GUARDED_OUTCOME_PROJECTION: 'invalid_guarded_outcome_projection',
 });
@@ -463,6 +474,92 @@ function buildIntentBoundaryContext(intentResult = {}) {
   };
 }
 
+function buildReadinessBoundaryMember(boundary = {}) {
+  const source = asObject(boundary);
+  const fingerprint = asObject(source.projectionFingerprint);
+
+  return {
+    statusId: normalizeString(source.statusId) || null,
+    projectionFingerprint: {
+      algorithm: normalizeString(fingerprint.algorithm) || null,
+      fingerprint: normalizeString(fingerprint.fingerprint).toLowerCase() || null,
+    },
+  };
+}
+
+function buildReadinessBoundaryContext(readinessResult = {}) {
+  const source = asObject(readinessResult);
+  const boundaryContext = asObject(source.boundaryContext);
+  const riskIds = Array.from(new Set(
+    asArray(source.issues)
+      .map(issue => normalizeString(issue?.riskId))
+      .filter(Boolean)
+  )).slice(0, MAX_EVIDENCE_BOUNDARY_RISK_IDS);
+
+  return {
+    statusId: normalizeString(source.statusId) || null,
+    ok: source.ok === true,
+    issueCount: Number.isFinite(Number(source.issueCount))
+      ? Number(source.issueCount)
+      : 0,
+    riskIds,
+    projectionFingerprintMatch: boundaryContext.projectionFingerprintMatch === true,
+    evidenceBoundary: buildReadinessBoundaryMember(boundaryContext.evidenceBoundary),
+    intentBoundary: buildReadinessBoundaryMember(boundaryContext.intentBoundary),
+    learningBoundary: buildReadinessBoundaryMember(boundaryContext.learningBoundary),
+    readinessAuditOk: source.readinessAudit?.ok === true,
+  };
+}
+
+function getBoundaryBlockMetadata({
+  statusId,
+  intentBoundary = null,
+  readinessBoundary = null,
+} = {}) {
+  if (statusId === POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY) {
+    return {
+      reasonId: POLICY_REBUILD_REASON_IDS.EVIDENCE_BOUNDARY_BLOCKED,
+      warningId: POLICY_REBUILD_WARNING_IDS.EVIDENCE_BOUNDARY_BLOCKED,
+      summary: 'The rebuild proposal stopped because its evidence input did not pass validation.',
+      target: 'evidence_boundary',
+    };
+  }
+
+  if (readinessBoundary) {
+    return {
+      reasonId: POLICY_REBUILD_REASON_IDS.READINESS_BOUNDARY_BLOCKED,
+      warningId: POLICY_REBUILD_WARNING_IDS.READINESS_BOUNDARY_BLOCKED,
+      summary: 'The rebuild proposal stopped because its verified readiness handoff did not pass validation.',
+      target: 'readiness_boundary',
+    };
+  }
+
+  if (statusId === POLICY_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_MORE_EVIDENCE) {
+    return {
+      reasonId: POLICY_REBUILD_REASON_IDS.INTENT_BOUNDARY_BLOCKED,
+      warningId: POLICY_REBUILD_WARNING_IDS.MISSING_IDENTITY_EVIDENCE,
+      summary: 'Add or declare destination identity evidence before rebuilding this policy.',
+      target: 'belongs_here',
+    };
+  }
+
+  if (intentBoundary) {
+    return {
+      reasonId: POLICY_REBUILD_REASON_IDS.INTENT_BOUNDARY_BLOCKED,
+      warningId: POLICY_REBUILD_WARNING_IDS.INTENT_BOUNDARY_BLOCKED,
+      summary: 'The rebuild proposal stopped because verified intent inference did not pass validation.',
+      target: 'intent_boundary',
+    };
+  }
+
+  return {
+    reasonId: POLICY_REBUILD_REASON_IDS.EVIDENCE_BOUNDARY_BLOCKED,
+    warningId: POLICY_REBUILD_WARNING_IDS.EVIDENCE_BOUNDARY_BLOCKED,
+    summary: 'The rebuild proposal stopped because its policy boundary did not pass validation.',
+    target: 'evidence_boundary',
+  };
+}
+
 function collectEvidenceSourceSummary({
   evidenceInput,
   evidenceProjection,
@@ -622,6 +719,7 @@ function buildTrace({
   warnings,
   evidenceBoundary,
   intentBoundary = null,
+  readinessBoundary = null,
 }) {
   const reasons = [
     POLICY_REBUILD_REASON_IDS.LIBRARY_PROFILE_CONSUMED,
@@ -670,6 +768,9 @@ function buildTrace({
       'classifarr.policy.rebuild.intent_boundary_status': intentBoundary?.statusId || null,
       'classifarr.policy.rebuild.intent_boundary_issue_count': intentBoundary?.issueCount ?? 0,
       'classifarr.policy.rebuild.intent_boundary_ready': intentBoundary?.ok === true,
+      'classifarr.policy.rebuild.readiness_boundary_status': readinessBoundary?.statusId || null,
+      'classifarr.policy.rebuild.readiness_boundary_issue_count': readinessBoundary?.issueCount ?? 0,
+      'classifarr.policy.rebuild.readiness_boundary_ready': readinessBoundary?.ok === true,
     },
     reasons: boundedReasons,
     truncated: reasons.length > boundedReasons.length,
@@ -701,31 +802,12 @@ function requireValidGuardedOutcomeProjection(input = {}) {
   return projection;
 }
 
-function buildDerivedReadinessLearningDecision(guardedOutcomeProjection = {}) {
-  const summary = asObject(guardedOutcomeProjection.summary);
-  const decisionId = summary.hasPolicyEditRequirement === true
-    ? POLICY_LEARNING_DECISION_IDS.POLICY_EDIT_REQUIRED
-    : summary.hasBlockedLearning === true
-      ? POLICY_LEARNING_DECISION_IDS.BLOCKED
-      : null;
-
-  return {
-    version: 'policy.rebuild_readiness_learning.v1',
-    learning: {
-      decisionId,
-      writesPerformed: false,
-    },
-    profileRefresh: {
-      queue: false,
-    },
-  };
-}
-
 function buildBlockedPolicyLibraryPolicyRebuildProposal({
   input = {},
   evidenceInput = {},
   evidenceBoundary,
   intentBoundary = null,
+  readinessBoundary = null,
   guardedOutcomeProjection,
   statusId = POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
 } = {}) {
@@ -733,24 +815,16 @@ function buildBlockedPolicyLibraryPolicyRebuildProposal({
     evidenceInput,
     evidenceProjection: null,
   });
-  const blockedByIntentBoundary = intentBoundary !== null;
-  const needsMoreEvidence =
-    statusId === POLICY_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_MORE_EVIDENCE;
+  const boundaryMetadata = getBoundaryBlockMetadata({
+    statusId,
+    intentBoundary,
+    readinessBoundary,
+  });
   const warnings = [buildWarning(
-    blockedByIntentBoundary
-      ? needsMoreEvidence
-        ? POLICY_REBUILD_WARNING_IDS.MISSING_IDENTITY_EVIDENCE
-        : POLICY_REBUILD_WARNING_IDS.INTENT_BOUNDARY_BLOCKED
-      : POLICY_REBUILD_WARNING_IDS.EVIDENCE_BOUNDARY_BLOCKED,
-    blockedByIntentBoundary
-      ? needsMoreEvidence
-        ? 'Add or declare destination identity evidence before rebuilding this policy.'
-        : 'The rebuild proposal stopped because verified intent inference did not pass validation.'
-      : 'The rebuild proposal stopped because its evidence input did not pass validation.',
+    boundaryMetadata.warningId,
+    boundaryMetadata.summary,
     {
-      target: blockedByIntentBoundary
-        ? needsMoreEvidence ? 'belongs_here' : 'intent_boundary'
-        : 'evidence_boundary',
+      target: boundaryMetadata.target,
       severity: 'error',
     }
   )];
@@ -766,6 +840,7 @@ function buildBlockedPolicyLibraryPolicyRebuildProposal({
     guardedOutcomeProjection,
     evidenceBoundary,
     intentBoundary,
+    readinessBoundary,
     evidenceProjection: null,
     intentDraft: null,
     readiness: null,
@@ -773,11 +848,7 @@ function buildBlockedPolicyLibraryPolicyRebuildProposal({
     confidence: {
       level: 'blocked',
       score: 0,
-      reasonCodes: [
-        blockedByIntentBoundary
-          ? POLICY_REBUILD_REASON_IDS.INTENT_BOUNDARY_BLOCKED
-          : POLICY_REBUILD_REASON_IDS.EVIDENCE_BOUNDARY_BLOCKED,
-      ],
+      reasonCodes: [boundaryMetadata.reasonId],
     },
     assumptions: [
       {
@@ -814,6 +885,7 @@ function buildBlockedPolicyLibraryPolicyRebuildProposal({
       warnings,
       evidenceBoundary,
       intentBoundary,
+      readinessBoundary,
     }),
   };
 }
@@ -857,13 +929,53 @@ function buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(inp
 
   const evidenceProjection = boundedEvidenceResult.projection;
   const intentDraft = boundedIntentResult.intent;
-  const readiness = buildPolicyAutomationReadinessFromContracts({
-    evidenceProjection,
-    intentDraft,
+  const boundedLearningResult = buildPolicyLibraryRebuildReadinessHandoff({
+    boundedIntentResult,
+    guardedOutcomeProjection,
+  });
+
+  if (boundedLearningResult.ok !== true || !boundedLearningResult.decision) {
+    return buildBlockedPolicyLibraryPolicyRebuildProposal({
+      input,
+      evidenceInput,
+      evidenceBoundary,
+      intentBoundary,
+      readinessBoundary: {
+        statusId: boundedLearningResult.statusId || null,
+        ok: false,
+        issueCount: boundedLearningResult.issueCount || 0,
+        riskIds: asArray(boundedLearningResult.issues)
+          .map(issue => normalizeString(issue?.riskId))
+          .filter(Boolean)
+          .slice(0, MAX_EVIDENCE_BOUNDARY_RISK_IDS),
+      },
+      guardedOutcomeProjection,
+      statusId: POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_READINESS_BOUNDARY,
+    });
+  }
+
+  const boundedReadinessResult = buildPolicyAutomationReadinessFromBoundedContracts({
+    boundedEvidenceResult,
+    boundedIntentResult,
+    boundedLearningResult,
     routing: evidenceInput.routing,
     profileFreshness: evidenceInput.profileFreshness,
-    learningDecision: buildDerivedReadinessLearningDecision(guardedOutcomeProjection),
   });
+  const readinessBoundary = buildReadinessBoundaryContext(boundedReadinessResult);
+
+  if (boundedReadinessResult.ok !== true || !boundedReadinessResult.readiness) {
+    return buildBlockedPolicyLibraryPolicyRebuildProposal({
+      input,
+      evidenceInput,
+      evidenceBoundary,
+      intentBoundary,
+      readinessBoundary,
+      guardedOutcomeProjection,
+      statusId: POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_READINESS_BOUNDARY,
+    });
+  }
+
+  const readiness = boundedReadinessResult.readiness;
   const evidenceSourceSummary = collectEvidenceSourceSummary({
     evidenceInput,
     evidenceProjection,
@@ -890,6 +1002,7 @@ function buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(inp
     guardedOutcomeProjection,
     evidenceBoundary,
     intentBoundary,
+    readinessBoundary,
     evidenceProjection,
     intentDraft,
     readiness,
@@ -931,6 +1044,7 @@ function buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(inp
       warnings,
       evidenceBoundary,
       intentBoundary,
+      readinessBoundary,
     }),
   };
 }
@@ -959,6 +1073,7 @@ function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
   const issues = [];
   const evidenceBoundary = asObject(proposal.evidenceBoundary);
   const intentBoundary = asObject(proposal.intentBoundary);
+  const readinessBoundary = asObject(proposal.readinessBoundary);
   const guardedOutcomeProjection = asObject(proposal.guardedOutcomeProjection);
   const blockedByEvidenceBoundary =
     proposal.statusId === POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY;
@@ -968,7 +1083,10 @@ function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
       proposal.statusId === POLICY_REBUILD_PROPOSAL_STATUS_IDS.NEEDS_MORE_EVIDENCE &&
       intentBoundary.ok === false
     );
-  const blockedByBoundary = blockedByEvidenceBoundary || blockedByIntentBoundary;
+  const blockedByReadinessBoundary =
+    proposal.statusId === POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_READINESS_BOUNDARY;
+  const blockedByBoundary =
+    blockedByEvidenceBoundary || blockedByIntentBoundary || blockedByReadinessBoundary;
 
   if (proposal.version !== 'policy.library_policy_rebuild.v1') {
     issues.push({
@@ -1021,6 +1139,12 @@ function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
         message: 'An evidence-boundary-blocked rebuild proposal cannot retain an intent-boundary output.',
       });
     }
+    if (Object.keys(readinessBoundary).length > 0) {
+      issues.push({
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.BLOCKED_EVIDENCE_BOUNDARY_WITH_DERIVED_CONTRACT,
+        message: 'An evidence-boundary-blocked rebuild proposal cannot retain a readiness-boundary output.',
+      });
+    }
   } else if (blockedByIntentBoundary) {
     if (
       evidenceBoundary.ok !== true ||
@@ -1051,6 +1175,71 @@ function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
       issues.push({
         riskId: POLICY_REBUILD_AUDIT_RISK_IDS.BLOCKED_INTENT_BOUNDARY_WITH_DERIVED_CONTRACT,
         message: 'An intent-boundary-blocked rebuild proposal cannot retain projection, intent, or readiness output.',
+      });
+    }
+    if (Object.keys(readinessBoundary).length > 0) {
+      issues.push({
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.BLOCKED_INTENT_BOUNDARY_WITH_DERIVED_CONTRACT,
+        message: 'An intent-boundary-blocked rebuild proposal cannot retain a readiness-boundary output.',
+      });
+    }
+  } else if (blockedByReadinessBoundary) {
+    const evidenceFingerprint = evidenceBoundary.projectionFingerprint?.fingerprint;
+    const intentFingerprint = intentBoundary.projectionFingerprint?.fingerprint;
+    const readinessEvidenceFingerprint = readinessBoundary.evidenceBoundary?.projectionFingerprint?.fingerprint;
+    const readinessIntentFingerprint = readinessBoundary.intentBoundary?.projectionFingerprint?.fingerprint;
+    const readinessLearningFingerprint = readinessBoundary.learningBoundary?.projectionFingerprint?.fingerprint;
+
+    if (
+      evidenceBoundary.ok !== true ||
+      !SHA256_FINGERPRINT_PATTERN.test(evidenceFingerprint || '') ||
+      evidenceBoundary.projectionFingerprint?.algorithm !== 'sha256'
+    ) {
+      issues.push({
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INVALID_EVIDENCE_BOUNDARY,
+        message: 'A readiness-boundary-blocked rebuild proposal requires a valid evidence boundary.',
+      });
+    }
+    if (
+      intentBoundary.ok !== true ||
+      intentBoundary.statusId !== 'ready' ||
+      intentBoundary.intentAuditOk !== true ||
+      intentBoundary.evidenceFingerprintAuditOk !== true ||
+      intentFingerprint !== evidenceFingerprint
+    ) {
+      issues.push({
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INVALID_INTENT_BOUNDARY,
+        message: 'A readiness-boundary-blocked rebuild proposal requires a verified intent boundary.',
+      });
+    }
+    if (
+      !readinessBoundary.statusId ||
+      readinessBoundary.ok !== false ||
+      !Number.isFinite(Number(readinessBoundary.issueCount)) ||
+      !Array.isArray(readinessBoundary.riskIds)
+    ) {
+      issues.push({
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.BLOCKED_READINESS_BOUNDARY_NOT_FAILED,
+        message: 'A readiness-boundary-blocked rebuild proposal must retain a sanitized failed readiness boundary.',
+      });
+    }
+    if (proposal.evidenceProjection || proposal.intentDraft || proposal.readiness) {
+      issues.push({
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.BLOCKED_READINESS_BOUNDARY_WITH_DERIVED_CONTRACT,
+        message: 'A readiness-boundary-blocked rebuild proposal cannot retain projection, intent, or readiness output.',
+      });
+    }
+    if (
+      readinessBoundary.projectionFingerprintMatch === true &&
+      (
+        evidenceFingerprint !== readinessEvidenceFingerprint ||
+        evidenceFingerprint !== readinessIntentFingerprint ||
+        evidenceFingerprint !== readinessLearningFingerprint
+      )
+    ) {
+      issues.push({
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.READINESS_BOUNDARY_PROVENANCE_MISMATCH,
+        message: 'Readiness-boundary provenance must agree when the handoff reports a match.',
       });
     }
   } else if (
@@ -1098,6 +1287,46 @@ function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
       issues.push({
         riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INTENT_BOUNDARY_PROVENANCE_MISMATCH,
         message: 'A ready rebuild proposal intent must retain the verified evidence fingerprint.',
+      });
+    }
+
+    const readinessEvidenceFingerprint = readinessBoundary.evidenceBoundary?.projectionFingerprint?.fingerprint;
+    const readinessIntentFingerprint = readinessBoundary.intentBoundary?.projectionFingerprint?.fingerprint;
+    const readinessLearningFingerprint = readinessBoundary.learningBoundary?.projectionFingerprint?.fingerprint;
+    const hasReadinessBoundary = Object.keys(readinessBoundary).length > 0;
+    const hasVerifiedReadinessBoundary =
+      readinessBoundary.ok === true &&
+      readinessBoundary.statusId === 'ready' &&
+      readinessBoundary.readinessAuditOk === true &&
+      readinessBoundary.projectionFingerprintMatch === true &&
+      readinessBoundary.evidenceBoundary?.statusId === 'ready' &&
+      readinessBoundary.intentBoundary?.statusId === 'ready' &&
+      readinessBoundary.learningBoundary?.statusId === 'ready' &&
+      readinessBoundary.evidenceBoundary?.projectionFingerprint?.algorithm === 'sha256' &&
+      readinessBoundary.intentBoundary?.projectionFingerprint?.algorithm === 'sha256' &&
+      readinessBoundary.learningBoundary?.projectionFingerprint?.algorithm === 'sha256';
+
+    if (!hasReadinessBoundary) {
+      issues.push({
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_READINESS_BOUNDARY,
+        message: 'A ready rebuild proposal requires a bounded readiness-boundary summary.',
+      });
+    } else if (!hasVerifiedReadinessBoundary) {
+      issues.push({
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INVALID_READINESS_BOUNDARY,
+        message: 'A ready rebuild proposal requires a passing bounded readiness boundary.',
+      });
+    }
+
+    if (
+      !evidenceFingerprint ||
+      evidenceFingerprint !== readinessEvidenceFingerprint ||
+      evidenceFingerprint !== readinessIntentFingerprint ||
+      evidenceFingerprint !== readinessLearningFingerprint
+    ) {
+      issues.push({
+        riskId: POLICY_REBUILD_AUDIT_RISK_IDS.READINESS_BOUNDARY_PROVENANCE_MISMATCH,
+        message: 'A ready rebuild proposal readiness must retain the verified evidence fingerprint.',
       });
     }
   }
