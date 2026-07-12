@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Evidence Envelope Provenance** — derives collector section source
+  and authority identifiers from the shared evidence input contract, exposes a
+  sanitized provenance map, and fails the envelope audit when that mapping is
+  missing, relabeled, or tampered with.
 - **Policy Evidence Authority Tuple Validation** — requires every evidence and
   intent entry to use an allowlisted bucket, source, and authority combination;
   operator-declared state now requires both operator identifiers, preventing

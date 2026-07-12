@@ -56,7 +56,10 @@ only projection contract.
    labels, in the envelope summary.
 6. Let `policyEvidenceInputGate.mjs` reject raw provider payload, live lookup,
    quota, replay, and UI diagnostic markers before projection.
-7. Keep database reads in small source-specific collector modules; do not turn
+7. Derive every collector section's source and authority provenance from the
+   shared input-gate contract, then audit the sanitized provenance map before a
+   downstream engine consumes the envelope.
+8. Keep database reads in small source-specific collector modules; do not turn
    the envelope into a cross-table query service.
 
 ## Pros And Cons
@@ -109,6 +112,12 @@ Each section has a stable summary with `receivedCount`, `acceptedCount`, and
 source counts, evidence-boundary result, boundary audit, stable status, and
 side-effect record. A blocked result has no next step.
 
+The assembler also returns `sourceProvenance`. Each persisted section maps to
+the source and authority identifiers from the shared input-gate contract. The
+envelope audit rejects missing or relabeled provenance before later engines can
+rely on the handoff. The detailed outcome is recorded in
+[Policy Evidence Envelope Provenance](policy-evidence-envelope-provenance.md).
+
 ## Security Outcome
 
 - A missing or invalid cached-profile handoff blocks aggregation.
@@ -118,7 +127,8 @@ side-effect record. A blocked result has no next step.
   projection path.
 - The envelope has no direct database, network, quota, refresh, or storage
   mutation capability.
-- The audit detects tampered section summaries and claimed unsafe side effects.
+- The audit detects tampered section summaries, provenance, and claimed unsafe
+  side effects.
 
 ## Next Step
 

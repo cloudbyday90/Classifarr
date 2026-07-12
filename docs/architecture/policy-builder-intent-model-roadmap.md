@@ -3339,6 +3339,11 @@ Implementation status:
   existing evidence boundary once without adding database, refresh, provider, or
   storage side effects. Its design record is
   [Policy Evidence Envelope](policy-evidence-envelope.md).
+- The envelope now derives each collector section's source and authority from
+  the shared evidence input contract, exposes only sanitized provenance IDs,
+  and audits provenance drift before downstream engines consume the handoff.
+  Its design record is
+  [Policy Evidence Envelope Provenance](policy-evidence-envelope-provenance.md).
 - The library outcome evidence collector lives in
   `server/src/services/policyLibraryOutcomeEvidenceCollector.mjs`. It uses
   parameterized, library-scoped reads for final classification outcomes and

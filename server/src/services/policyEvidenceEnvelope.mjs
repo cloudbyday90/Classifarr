@@ -5,6 +5,10 @@ import {
 import {
   buildPolicyLibraryProfileEvidenceLoaderAudit,
 } from './policyLibraryProfileEvidenceLoader.mjs';
+import {
+  POLICY_EVIDENCE_INPUT_SECTION_IDS,
+  getPolicyEvidenceInputSection,
+} from './policyEvidenceInputGate.mjs';
 
 const POLICY_EVIDENCE_ENVELOPE_VERSION = 'policy.evidence.envelope.v1';
 const MAX_EVIDENCE_RECORDS_PER_SECTION = 50;
@@ -16,11 +20,11 @@ const POLICY_EVIDENCE_ENVELOPE_STATUS_IDS = Object.freeze({
 });
 
 const POLICY_EVIDENCE_ENVELOPE_SECTION_IDS = Object.freeze({
-  CLASSIFICATION_OUTCOMES: 'classificationOutcomes',
-  MANUAL_CORRECTIONS: 'manualCorrections',
-  PENDING_ITEM_ANSWERS: 'pendingItemAnswers',
-  ARR_ROUTING_OUTCOMES: 'arrRoutingOutcomes',
-  METADATA_EVIDENCE: 'metadataEvidence',
+  CLASSIFICATION_OUTCOMES: POLICY_EVIDENCE_INPUT_SECTION_IDS.CLASSIFICATION_OUTCOMES,
+  MANUAL_CORRECTIONS: POLICY_EVIDENCE_INPUT_SECTION_IDS.MANUAL_CORRECTIONS,
+  PENDING_ITEM_ANSWERS: POLICY_EVIDENCE_INPUT_SECTION_IDS.PENDING_ITEM_ANSWERS,
+  ARR_ROUTING_OUTCOMES: POLICY_EVIDENCE_INPUT_SECTION_IDS.ARR_ROUTING_OUTCOMES,
+  METADATA_EVIDENCE: POLICY_EVIDENCE_INPUT_SECTION_IDS.METADATA_EVIDENCE,
 });
 
 const POLICY_EVIDENCE_ENVELOPE_AUDIT_RISK_IDS = Object.freeze({
@@ -31,6 +35,7 @@ const POLICY_EVIDENCE_ENVELOPE_AUDIT_RISK_IDS = Object.freeze({
   BLOCKED_WITH_NEXT_STEP: 'blocked_with_next_step',
   UNSAFE_SIDE_EFFECT: 'unsafe_side_effect',
   SUMMARY_COUNT_MISMATCH: 'summary_count_mismatch',
+  SOURCE_PROVENANCE_MISMATCH: 'source_provenance_mismatch',
 });
 
 const EVIDENCE_SECTION_IDS = Object.freeze(Object.values(POLICY_EVIDENCE_ENVELOPE_SECTION_IDS));
@@ -62,6 +67,17 @@ function buildEvidenceSourceSummary(sectionSnapshots = {}) {
       receivedCount: Number(snapshot.receivedCount) || 0,
       acceptedCount: Number(snapshot.acceptedCount) || 0,
       truncated: snapshot.truncated === true,
+    }];
+  }));
+}
+
+function buildEvidenceSourceProvenance() {
+  return Object.fromEntries(EVIDENCE_SECTION_IDS.map(sectionId => {
+    const section = getPolicyEvidenceInputSection(sectionId);
+
+    return [sectionId, {
+      sourceId: section?.sourceId ?? null,
+      authoritySourceId: section?.authoritySourceId ?? null,
     }];
   }));
 }
@@ -102,6 +118,7 @@ function buildEnvelopeResult({
       : null,
     profileAudit,
     sourceSummary,
+    sourceProvenance: buildEvidenceSourceProvenance(),
     evidenceBoundary,
     evidenceBoundaryAudit,
     sideEffects: buildSideEffects({
@@ -190,6 +207,8 @@ function buildPolicyEvidenceEnvelope({
 function buildPolicyEvidenceEnvelopeAudit(result = {}) {
   const issues = [];
   const sourceSummary = asPlainObject(result.sourceSummary);
+  const sourceProvenance = asPlainObject(result.sourceProvenance);
+  const expectedSourceProvenance = buildEvidenceSourceProvenance();
   const ready = result.ok === true;
 
   if (ready && result.profileHandoff?.libraryId === null) {
@@ -240,6 +259,17 @@ function buildPolicyEvidenceEnvelopeAudit(result = {}) {
         sectionId,
       });
     }
+
+    const provenance = asPlainObject(sourceProvenance[sectionId]);
+    const expectedProvenance = expectedSourceProvenance[sectionId];
+    if (provenance.sourceId !== expectedProvenance.sourceId ||
+        provenance.authoritySourceId !== expectedProvenance.authoritySourceId) {
+      issues.push({
+        riskId: POLICY_EVIDENCE_ENVELOPE_AUDIT_RISK_IDS.SOURCE_PROVENANCE_MISMATCH,
+        message: 'Evidence envelope section provenance must match the shared input-section contract.',
+        sectionId,
+      });
+    }
   });
 
   Object.entries(asPlainObject(result.sideEffects)).forEach(([sideEffectId, performed]) => {
@@ -267,4 +297,5 @@ export {
   POLICY_EVIDENCE_ENVELOPE_VERSION,
   buildPolicyEvidenceEnvelope,
   buildPolicyEvidenceEnvelopeAudit,
+  buildEvidenceSourceProvenance,
 };

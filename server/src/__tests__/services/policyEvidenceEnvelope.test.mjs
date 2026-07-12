@@ -10,7 +10,11 @@ import {
 } from '../../services/policyLibraryProfileEvidenceLoader.mjs';
 import {
   POLICY_EVIDENCE_BUCKET_IDS,
+  POLICY_EVIDENCE_SOURCE_IDS,
 } from '../../services/policyEvidenceEngine.mjs';
+import {
+  AUTHORITY_SOURCE_IDS,
+} from '../../services/policyAuthorityVocabulary.mjs';
 
 const NOW = Date.parse('2026-07-10T12:00:00.000Z');
 
@@ -60,6 +64,16 @@ describe('policyEvidenceEnvelope', () => {
       arrRoutingOutcomes: { receivedCount: 1, acceptedCount: 1, truncated: false },
       metadataEvidence: { receivedCount: 1, acceptedCount: 1, truncated: false },
     });
+    expect(envelope.sourceProvenance).toEqual(expect.objectContaining({
+      classificationOutcomes: {
+        sourceId: POLICY_EVIDENCE_SOURCE_IDS.CLASSIFICATION_FINAL_OUTCOMES,
+        authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
+      },
+      metadataEvidence: {
+        sourceId: POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+        authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
+      },
+    }));
     expect(JSON.stringify(envelope.sourceSummary)).not.toContain('Accepted final outcome');
     expect(envelope.evidenceBoundary.projection.quality).toEqual(expect.objectContaining({
       hasDeclaredIdentityEvidence: true,
@@ -129,7 +143,7 @@ describe('policyEvidenceEnvelope', () => {
     expect(buildPolicyEvidenceEnvelopeAudit(envelope).ok).toBe(true);
   });
 
-  test('bounds each source section and audits tampered summary or side-effect data', async () => {
+  test('bounds each source section and audits tampered summary, provenance, or side-effect data', async () => {
     const profileHandoff = await buildProfileHandoff();
     const envelope = buildPolicyEvidenceEnvelope({
       profileHandoff,
@@ -145,6 +159,8 @@ describe('policyEvidenceEnvelope', () => {
     });
 
     envelope.sourceSummary.classificationOutcomes.acceptedCount = 999;
+    envelope.sourceProvenance.metadataEvidence.authoritySourceId =
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT;
     envelope.sideEffects.liveProviderLookupPerformed = true;
 
     const audit = buildPolicyEvidenceEnvelopeAudit(envelope);
@@ -152,6 +168,7 @@ describe('policyEvidenceEnvelope', () => {
     expect(audit.ok).toBe(false);
     expect(audit.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_EVIDENCE_ENVELOPE_AUDIT_RISK_IDS.SUMMARY_COUNT_MISMATCH,
+      POLICY_EVIDENCE_ENVELOPE_AUDIT_RISK_IDS.SOURCE_PROVENANCE_MISMATCH,
       POLICY_EVIDENCE_ENVELOPE_AUDIT_RISK_IDS.UNSAFE_SIDE_EFFECT,
     ]));
   });
