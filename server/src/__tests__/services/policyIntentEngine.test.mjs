@@ -3,6 +3,7 @@ import {
 } from '../../services/policyAuthorityVocabulary.mjs';
 import {
   POLICY_EVIDENCE_BUCKET_IDS,
+  POLICY_EVIDENCE_SOURCE_IDS,
   buildPolicyEvidenceProjection,
 } from '../../services/policyEvidenceEngine.mjs';
 import {
@@ -524,6 +525,34 @@ describe('policyIntentEngine', () => {
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           riskId: POLICY_INTENT_AUDIT_RISK_IDS.METADATA_PROMOTED_TO_IDENTITY,
+        }),
+    ]));
+  });
+
+  test('does not promote relabeled media evidence to operator-declared intent', () => {
+    const projection = buildPolicyEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animated Movies'],
+      },
+    });
+    projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY][0] = {
+      ...projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY][0],
+      authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    };
+
+    const intent = buildPolicyIntentDraftFromEvidenceProjection(projection);
+
+    expect(intent.belongs_here).toEqual([
+      expect.objectContaining({
+        evidenceSourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+        authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+        operatorDeclared: false,
+      }),
+    ]);
+    expect(validatePolicyIntentDraft(intent).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_INTENT_AUDIT_RISK_IDS.ENTRY_SOURCE_AUTHORITY_NOT_ALLOWED,
         }),
       ]));
   });

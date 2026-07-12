@@ -7,6 +7,7 @@ import {
   POLICY_EVIDENCE_BUCKET_IDS,
   POLICY_EVIDENCE_SOURCE_IDS,
   getPolicyEvidenceBucket,
+  getPolicyEvidenceSource,
 } from './policyEvidenceEngine.mjs';
 import {
   buildBoundedPolicyEvidenceProjection,
@@ -72,8 +73,12 @@ const POLICY_INTENT_AUDIT_RISK_IDS = Object.freeze({
   MISSING_ENTRY_LABEL: 'missing_entry_label',
   MISSING_ENTRY_EVIDENCE_BUCKET: 'missing_entry_evidence_bucket',
   UNKNOWN_ENTRY_EVIDENCE_BUCKET: 'unknown_entry_evidence_bucket',
+  MISSING_ENTRY_EVIDENCE_SOURCE: 'missing_entry_evidence_source',
+  UNKNOWN_ENTRY_EVIDENCE_SOURCE: 'unknown_entry_evidence_source',
+  ENTRY_SOURCE_NOT_ALLOWED_FOR_BUCKET: 'entry_source_not_allowed_for_bucket',
   MISSING_ENTRY_AUTHORITY_SOURCE: 'missing_entry_authority_source',
   UNKNOWN_ENTRY_AUTHORITY_SOURCE: 'unknown_entry_authority_source',
+  ENTRY_SOURCE_AUTHORITY_NOT_ALLOWED: 'entry_source_authority_not_allowed',
   HARD_LIMIT_WITHOUT_DURABLE_AUTHORITY: 'hard_limit_without_durable_authority',
   AVOID_WITHOUT_DURABLE_AUTHORITY: 'avoid_without_durable_authority',
   METADATA_PROMOTED_TO_IDENTITY: 'metadata_promoted_to_identity',
@@ -216,7 +221,7 @@ function isMetadataEvidence(entry = {}) {
 }
 
 function isOperatorDeclared(entry = {}) {
-  return entry.sourceId === POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT ||
+  return entry.sourceId === POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT &&
     entry.authoritySourceId === AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT;
 }
 
@@ -723,6 +728,8 @@ function validateIntentEntry(entry = {}, fieldId) {
   const issues = [];
   const label = normalizeString(entry.label);
   const entryFieldAudit = buildPolicyIntentEntryAudit(entry);
+  const evidenceBucket = getPolicyEvidenceBucket(entry.evidenceBucketId);
+  const evidenceSource = getPolicyEvidenceSource(entry.evidenceSourceId);
 
   if (!entryFieldAudit.ok) {
     issues.push({
@@ -744,10 +751,27 @@ function validateIntentEntry(entry = {}, fieldId) {
       riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_ENTRY_EVIDENCE_BUCKET,
       message: `${fieldId} entry must reference its evidence bucket.`,
     });
-  } else if (!getPolicyEvidenceBucket(entry.evidenceBucketId)) {
+  } else if (!evidenceBucket) {
     issues.push({
       riskId: POLICY_INTENT_AUDIT_RISK_IDS.UNKNOWN_ENTRY_EVIDENCE_BUCKET,
       message: `${fieldId} entry references an unknown evidence bucket.`,
+    });
+  }
+
+  if (!normalizeString(entry.evidenceSourceId)) {
+    issues.push({
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.MISSING_ENTRY_EVIDENCE_SOURCE,
+      message: `${fieldId} entry must reference its evidence source.`,
+    });
+  } else if (!evidenceSource) {
+    issues.push({
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.UNKNOWN_ENTRY_EVIDENCE_SOURCE,
+      message: `${fieldId} entry references an unknown evidence source.`,
+    });
+  } else if (evidenceBucket && !evidenceBucket.allowedSourceIds.includes(entry.evidenceSourceId)) {
+    issues.push({
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.ENTRY_SOURCE_NOT_ALLOWED_FOR_BUCKET,
+      message: `${fieldId} entry source is not allowed for its evidence bucket.`,
     });
   }
 
@@ -760,6 +784,11 @@ function validateIntentEntry(entry = {}, fieldId) {
     issues.push({
       riskId: POLICY_INTENT_AUDIT_RISK_IDS.UNKNOWN_ENTRY_AUTHORITY_SOURCE,
       message: `${fieldId} entry references an unknown authority source.`,
+    });
+  } else if (evidenceSource && !evidenceSource.authoritySourceIds.includes(entry.authoritySourceId)) {
+    issues.push({
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.ENTRY_SOURCE_AUTHORITY_NOT_ALLOWED,
+      message: `${fieldId} entry authority is not allowed by its evidence source.`,
     });
   }
 

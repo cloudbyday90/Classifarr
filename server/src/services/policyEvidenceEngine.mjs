@@ -122,6 +122,7 @@ const POLICY_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   PROJECTION_ENTRY_SOURCE_NOT_ALLOWED: 'projection_entry_source_not_allowed',
   PROJECTION_ENTRY_UNKNOWN_AUTHORITY_SOURCE: 'projection_entry_unknown_authority_source',
   PROJECTION_ENTRY_AUTHORITY_NOT_ALLOWED: 'projection_entry_authority_not_allowed',
+  PROJECTION_ENTRY_SOURCE_AUTHORITY_NOT_ALLOWED: 'projection_entry_source_authority_not_allowed',
   PROJECTION_ENTRY_RAW_PAYLOAD: 'projection_entry_raw_payload',
   PROJECTION_ENTRY_LIVE_LOOKUP: 'projection_entry_live_lookup',
   PROJECTION_ENTRY_FIELD_CONTRACT: 'projection_entry_field_contract',
@@ -492,7 +493,9 @@ function createEvidenceEntry({
 
   const fallbackAuthoritySourceId = source.authoritySourceIds[0] || null;
   const normalizedAuthoritySourceId = authoritySourceId || fallbackAuthoritySourceId;
-  if (!normalizedAuthoritySourceId || !bucket.authoritySourceIds.includes(normalizedAuthoritySourceId)) {
+  if (!normalizedAuthoritySourceId ||
+      !bucket.authoritySourceIds.includes(normalizedAuthoritySourceId) ||
+      !source.authoritySourceIds.includes(normalizedAuthoritySourceId)) {
     return null;
   }
 
@@ -1110,6 +1113,15 @@ function validatePolicyEvidenceProjectionEntry(entry = {}, bucketId) {
       POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_AUTHORITY_NOT_ALLOWED,
       `Authority source "${entry.authoritySourceId}" is not allowed to populate bucket "${bucketId}".`,
       { bucketId, authoritySourceId: entry.authoritySourceId }
+    );
+  }
+
+  if (source && !source.authoritySourceIds.includes(entry.authoritySourceId)) {
+    pushProjectionIssue(
+      issues,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_SOURCE_AUTHORITY_NOT_ALLOWED,
+      `Authority source "${entry.authoritySourceId}" is not allowed by evidence source "${entry.sourceId}".`,
+      { bucketId, sourceId: entry.sourceId, authoritySourceId: entry.authoritySourceId }
     );
   }
 

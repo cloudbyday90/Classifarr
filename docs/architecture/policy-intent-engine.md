@@ -80,33 +80,39 @@ The important boundary is authority:
 5. **Keep constraints operator-owned.**
    `hard_limits` and `avoid` entries must come from operator-declared intent.
 
-6. **Make confidence explainable.**
+6. **Validate complete evidence provenance.**
+   Every intent entry must retain a valid evidence bucket, evidence source, and
+   authority-source tuple. Operator-declared state requires both the
+   operator-declared source and authority; a relabeled observed source is not
+   declared intent.
+
+7. **Make confidence explainable.**
    Confidence is a simple bounded signal with reason codes. It is not a hidden
    policy score and should not become runtime authorization by itself.
 
-7. **Require bounded evidence for raw inputs.**
+8. **Require bounded evidence for raw inputs.**
    `buildPolicyIntentDraftFromBoundedEvidence` consumes the
    policy evidence boundary result, rejects failed evidence boundaries, requires the
    projection fingerprint, and attaches a sanitized evidence-boundary snapshot
    to the intent draft.
 
-8. **Keep raw input and pure reduction separate.**
+9. **Keep raw input and pure reduction separate.**
    `buildPolicyIntentDraftFromEvidenceInput` is the only raw-evidence adapter
    and invokes the bounded evidence boundary. The pure
    `buildPolicyIntentDraftFromEvidenceProjection` reducer rejects every input
    that is not a `policy.evidence.v1` projection.
 
-9. **Validate evidence handoff integrity.**
+10. **Validate evidence handoff integrity.**
    The intent boundary recomputes the policy evidence projection fingerprint audit
    before producing intent. A stale, malformed, or tampered fingerprint blocks
    intent generation.
 
-10. **Consume generated evidence quality before inference.**
+11. **Consume generated evidence quality before inference.**
    Bounded intent generation requires the policy evidence quality object. Missing or
    insufficient quality returns `blocked_by_evidence_quality` with stable reason
    IDs and a next action instead of producing policy intent.
 
-11. **Use the library intent proposal service for library-derived proposals.**
+12. **Use the library intent proposal service for library-derived proposals.**
     `policyLibraryIntentProposalService.mjs` loads and verifies the complete
     library evidence handoff before invoking this bounded reducer. New
     library-derived callers must not construct a generic evidence-boundary
@@ -253,6 +259,9 @@ blocked_by_intent_audit
 - Broad genre identity requires operator declaration or specific support.
 - Observed absence creates review warnings only.
 - Hard limits and avoid rules require durable operator-declared authority.
+- Evidence provenance is valid only when its bucket, source, and authority
+  source are an allowlisted tuple; observed sources cannot be relabeled as
+  operator-declared intent.
 - Legacy templates remain draft seeds and compatibility bridge inputs only.
 - New callers can require a successful evidence boundary and projection
   fingerprint before intent inference.

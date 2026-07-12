@@ -376,6 +376,25 @@ describe('policyEvidenceEngine', () => {
     ]));
   });
 
+  test('rejects a projection entry whose authority is not allowed by its source', () => {
+    const projection = buildPolicyEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animated Movies'],
+      },
+    });
+    projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY][0] = {
+      ...projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY][0],
+      authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    };
+
+    expect(buildPolicyEvidenceProjectionAudit(projection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_SOURCE_AUTHORITY_NOT_ALLOWED,
+        }),
+      ]));
+  });
+
   test('rejects metadata evidence as destination identity authority', () => {
     const metadataSource = {
       ...getPolicyEvidenceSource(POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT),

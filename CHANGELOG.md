@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Evidence Authority Tuple Validation** — requires every evidence and
+  intent entry to use an allowlisted bucket, source, and authority combination;
+  operator-declared state now requires both operator identifiers, preventing
+  relabeled observed evidence from becoming durable policy intent.
 - **Policy Migration Diagnostic Removal** — removed the retired impact and
   replay browser panels, client API facade, state utilities, visibility
   override, and final server migration-verifier endpoint; bounded evidence,

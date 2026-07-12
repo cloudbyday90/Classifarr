@@ -3242,6 +3242,11 @@ Implementation status:
   allowlisted for the declared evidence source, preserving source-specific
   provenance before projection. Its design record is
   [Policy Evidence Source Authority Admission](policy-evidence-source-authority-admission.md).
+- Evidence projection and intent reduction now revalidate the complete
+  bucket-source-authority tuple. An entry is operator-declared only when both
+  its evidence source and authority source are operator-declared, preventing
+  observed evidence from being relabeled as durable operator intent. Its design
+  record is [Policy Evidence Authority Tuple Validation](policy-evidence-authority-tuple-validation.md).
 - Policy evidence boundary hardening is documented in
   [Policy Evidence Boundary](policy-evidence-boundary.md).
 - The policy evidence boundary architecture cutover renamed the active boundary
