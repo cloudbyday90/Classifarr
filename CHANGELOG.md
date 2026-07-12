@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Evidence Projection Container Ownership** — projection audit now
+  rejects evidence entries whose declared bucket differs from their containing
+  bucket, preventing ambiguous bucket-local summary, quality, and fingerprint
+  processing.
 - **Policy Evidence Projection Deduplication** — consolidates exact canonical
   facts before summary, quality, and fingerprint generation, while projection
   audit rejects duplicate entries and retains distinct source and authority

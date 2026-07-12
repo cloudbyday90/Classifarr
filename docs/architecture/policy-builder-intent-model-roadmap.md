@@ -3216,6 +3216,10 @@ Implementation status:
   fingerprint generation; the audit rejects duplicate canonical entries while
   preserving facts with different source or authority provenance. Its design
   record is [Policy Evidence Projection Deduplication](policy-evidence-projection-deduplication.md).
+- The evidence projection audit now requires each entry's declared bucket to
+  match the bucket array that contains it, preventing ambiguous bucket-local
+  summary, quality, and fingerprint processing. Its design record is
+  [Policy Evidence Projection Container Ownership](policy-evidence-projection-container-ownership.md).
 - The evidence input cardinality guard lives in
   `server/src/services/policyEvidenceInputCardinality.mjs`. It bounds input
   collection inspection, blocks oversized envelopes before projection, and

@@ -447,6 +447,25 @@ describe('policyEvidenceEngine', () => {
       ]));
   });
 
+  test('rejects an entry placed in a bucket other than the one it declares', () => {
+    const projection = buildPolicyEvidenceProjection({
+      libraryProfile: {
+        identityCandidates: ['Animation'],
+      },
+    });
+    projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY][0] = {
+      ...projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY][0],
+      bucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
+    };
+
+    expect(buildPolicyEvidenceProjectionAudit(projection).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_BUCKET_MISMATCH,
+        }),
+      ]));
+  });
+
   test('rejects metadata evidence as destination identity authority', () => {
     const metadataSource = {
       ...getPolicyEvidenceSource(POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT),

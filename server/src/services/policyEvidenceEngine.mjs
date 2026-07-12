@@ -127,6 +127,7 @@ const POLICY_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
   PROJECTION_ENTRY_UNKNOWN_AUTHORITY_SOURCE: 'projection_entry_unknown_authority_source',
   PROJECTION_ENTRY_AUTHORITY_NOT_ALLOWED: 'projection_entry_authority_not_allowed',
   PROJECTION_ENTRY_SOURCE_AUTHORITY_NOT_ALLOWED: 'projection_entry_source_authority_not_allowed',
+  PROJECTION_ENTRY_BUCKET_MISMATCH: 'projection_entry_bucket_mismatch',
   PROJECTION_DUPLICATE_ENTRY: 'projection_duplicate_entry',
   PROJECTION_ENTRY_RAW_PAYLOAD: 'projection_entry_raw_payload',
   PROJECTION_ENTRY_LIVE_LOOKUP: 'projection_entry_live_lookup',
@@ -1096,6 +1097,19 @@ function validatePolicyEvidenceProjectionEntry(entry = {}, bucketId) {
   const bucket = getPolicyEvidenceBucket(bucketId);
   const source = getPolicyEvidenceSource(entry.sourceId);
   const entryFieldAudit = buildPolicyEvidenceEntryAudit(entry);
+
+  if (entry.bucketId !== bucketId) {
+    pushProjectionIssue(
+      issues,
+      POLICY_EVIDENCE_AUDIT_RISK_IDS.PROJECTION_ENTRY_BUCKET_MISMATCH,
+      'Evidence projection entry bucket must match the bucket that contains it.',
+      {
+        bucketId,
+        entryBucketId: entry.bucketId || null,
+        sourceId: entry.sourceId || null,
+      }
+    );
+  }
 
   if (!normalizeString(entry.label)) {
     pushProjectionIssue(

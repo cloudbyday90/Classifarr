@@ -164,6 +164,11 @@ supports each piece of evidence?
     timestamp, matches. Preserve distinct provenance and reject duplicate
     canonical entries during projection audit.
 
+12. **Require bucket-container ownership.**
+    Every evidence entry must declare the same bucket as the projection array
+    that contains it. Reject mismatches before source, authority, summary,
+    quality, fingerprint, or later engine logic consumes the projection.
+
 ## Pros And Cons
 
 Pros:
@@ -196,6 +201,8 @@ Cons:
   a distinct input-boundary concern.
 - Exact deduplication does not reconcile near-duplicate facts with distinct
   bounded values, timestamps, source IDs, or authority IDs.
+- Bucket ownership validation rejects inconsistent projections; it does not
+  attempt to infer the intended location or mutate a received projection.
 
 ## Final Recommendation Stack
 
@@ -274,6 +281,11 @@ semantic identity shared by construction and projection audit. Exact repeated
 facts are consolidated before summaries, quality, and fingerprints are built;
 facts with distinct source or authority provenance remain separate. Its design
 record is [Policy Evidence Projection Deduplication](policy-evidence-projection-deduplication.md).
+
+Each projection entry must declare the bucket that contains it. The audit fails
+closed when `entry.bucketId` differs from the enclosing bucket ID, keeping
+summary, quality, and fingerprint consumers from accepting an ambiguous
+location. Its design record is [Policy Evidence Projection Container Ownership](policy-evidence-projection-container-ownership.md).
 
 `server/src/services/policyEvidenceInputCardinality.mjs` bounds every input
 array before recursive input-gate scanning. Oversized input fails closed with a
@@ -356,6 +368,7 @@ fails when a projection:
 - lets hard-limit or avoid evidence bypass operator-declared intent,
 - contains individual entries that claim raw payloads or live lookup behavior,
 - contains duplicate canonical entries,
+- contains an entry whose declared bucket does not match its bucket container,
 - omits the generated summary,
 - carries a stale summary whose counts do not match the bucket entries,
 - omits generated quality, carries stale quality, or leaks entry labels through
@@ -381,6 +394,9 @@ fails when a projection:
 - Exact duplicate canonical facts are suppressed before summary, quality, and
   fingerprint generation, while distinct source and authority provenance stays
   visible to later engines.
+- Each accepted entry has one validated bucket location; bucket-local summary,
+  quality, and fingerprint computations do not trust a caller-provided label
+  that differs from its container.
 - Boundary audits require ready results to have a successful input gate,
   projection audit, fingerprint audit, and intent-inference handoff; blocked
   results cannot carry a next step.
