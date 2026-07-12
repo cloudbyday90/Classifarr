@@ -5,6 +5,7 @@ import {
 import {
   buildPolicyEvidenceEngineAudit,
   POLICY_EVIDENCE_BUCKET_IDS,
+  isPolicyEvidenceQualityContribution,
 } from './policyEvidenceEngine.mjs';
 import {
   buildPolicyEvidenceEnvelopeAudit,
@@ -107,6 +108,7 @@ function buildPolicyEvidenceHandoffAudit(handoff = {}, {
   const qualityAudit = validateQuality(projection, {
     bucketIds: POLICY_EVIDENCE_BUCKET_IDS,
     authoritySourceIds: AUTHORITY_SOURCE_IDS,
+    isTrustedEntry: isPolicyEvidenceQualityContribution,
   });
   const handoffReady = loaderResult.ok === true;
 

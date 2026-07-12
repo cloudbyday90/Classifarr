@@ -43,11 +43,10 @@ function clampScore(value) {
   return Math.max(0, Math.min(1, Number(value.toFixed(2))));
 }
 
-function getBucketEntryCount(summary, bucketId) {
-  const bucket = Array.isArray(summary.bucketSummaries)
-    ? summary.bucketSummaries.find(item => item.bucketId === bucketId)
-    : null;
-  return Number.isFinite(bucket?.entryCount) ? bucket.entryCount : 0;
+function getTrustedBucketEntries(buckets, bucketId, isTrustedEntry) {
+  const entries = Array.isArray(buckets[bucketId]) ? buckets[bucketId] : [];
+
+  return entries.filter(entry => isTrustedEntry(entry, bucketId));
 }
 
 function hasAuthorityEntry(entries, authoritySourceId) {
@@ -86,29 +85,42 @@ function calculateScore({
 function buildPolicyEvidenceQualityAssessment(projection = {}, {
   bucketIds = {},
   authoritySourceIds = {},
+  isTrustedEntry = () => false,
 } = {}) {
-  const summary = asPlainObject(projection.summary);
   const buckets = asPlainObject(projection.buckets);
-  const identityEntries = Array.isArray(buckets[bucketIds.IDENTITY])
-    ? buckets[bucketIds.IDENTITY]
-    : [];
-  const insufficientEntries = Array.isArray(buckets[bucketIds.INSUFFICIENT])
-    ? buckets[bucketIds.INSUFFICIENT]
-    : [];
+  const identityEntries = getTrustedBucketEntries(buckets, bucketIds.IDENTITY, isTrustedEntry);
+  const insufficientEntries = getTrustedBucketEntries(
+    buckets,
+    bucketIds.INSUFFICIENT,
+    isTrustedEntry
+  );
+  const compatibilityEntries = getTrustedBucketEntries(
+    buckets,
+    bucketIds.COMPATIBILITY,
+    isTrustedEntry
+  );
+  const hardLimitEntries = getTrustedBucketEntries(
+    buckets,
+    bucketIds.HARD_LIMIT,
+    isTrustedEntry
+  );
+  const avoidEntries = getTrustedBucketEntries(buckets, bucketIds.AVOID, isTrustedEntry);
+  const outlierEntries = getTrustedBucketEntries(buckets, bucketIds.OUTLIER, isTrustedEntry);
+  const routingEntries = getTrustedBucketEntries(buckets, bucketIds.ROUTING, isTrustedEntry);
+  const freshnessEntries = getTrustedBucketEntries(buckets, bucketIds.FRESHNESS, isTrustedEntry);
 
   const counts = {
-    identity: getBucketEntryCount(summary, bucketIds.IDENTITY),
-    compatibility: getBucketEntryCount(summary, bucketIds.COMPATIBILITY),
-    hardLimit: getBucketEntryCount(summary, bucketIds.HARD_LIMIT),
-    avoid: getBucketEntryCount(summary, bucketIds.AVOID),
-    outlier: getBucketEntryCount(summary, bucketIds.OUTLIER),
-    routing: getBucketEntryCount(summary, bucketIds.ROUTING),
-    freshness: getBucketEntryCount(summary, bucketIds.FRESHNESS),
-    insufficient: getBucketEntryCount(summary, bucketIds.INSUFFICIENT),
+    identity: identityEntries.length,
+    compatibility: compatibilityEntries.length,
+    hardLimit: hardLimitEntries.length,
+    avoid: avoidEntries.length,
+    outlier: outlierEntries.length,
+    routing: routingEntries.length,
+    freshness: freshnessEntries.length,
+    insufficient: insufficientEntries.length,
   };
 
-  const hasEvidence = Number(summary.totalEntryCount || 0) > 0;
-  const hasIdentityEvidence = counts.identity > 0;
+  const hasEvidence = Object.values(counts).some(count => count > 0);
   const hasObservedIdentityEvidence = hasAuthorityEntry(
     identityEntries,
     authoritySourceIds.MEDIA_SERVER_CONTENTS
@@ -117,6 +129,7 @@ function buildPolicyEvidenceQualityAssessment(projection = {}, {
     identityEntries,
     authoritySourceIds.OPERATOR_DECLARED_INTENT
   );
+  const hasIdentityEvidence = hasObservedIdentityEvidence || hasDeclaredIdentityEvidence;
   const hasProjectionWarnings = Array.isArray(projection.warnings) &&
     projection.warnings.length > 0;
   const hasReviewEvidence = counts.outlier > 0 ||

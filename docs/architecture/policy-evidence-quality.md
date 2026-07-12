@@ -58,6 +58,11 @@ operator workflow.
    If quality counts, status, or label-safety drift from the projection, the
    projection audit must fail.
 
+6. Derive positive quality only from trusted entries.
+   Quality must count actual bucket entries that satisfy the evidence engine's
+   bucket-source-authority contract. Projection summaries are correlation data,
+   not a source of identity or readiness authority.
+
 ## Pros And Cons
 
 Pros:
@@ -128,8 +133,10 @@ Next-action IDs:
 - `proceed_to_intent`
 
 The projection audit now validates that generated quality matches the projection
-summary and bucket entries. It fails when quality is missing, stale, or carries
-raw evidence labels.
+bucket entries. It fails when quality is missing, stale, or carries raw evidence
+labels. Positive quality contributions are derived from trusted bucket entries,
+not summary counts or authority labels alone. The detailed outcome is recorded
+in [Policy Evidence Quality Contribution Trust](policy-evidence-quality-contribution-trust.md).
 
 ## Security Outcome
 
@@ -137,6 +144,8 @@ raw evidence labels.
 - Quality does not perform provider calls.
 - Quality does not expose raw provider payloads, evidence labels, UI chip text,
   prompts, titles, or quota state.
+- Forged summary counts and incompatible entry provenance cannot establish
+  destination identity or usable quality.
 - Missing identity and stale profile evidence are handled as bounded review
   states instead of implicit exclusions or learning events.
 

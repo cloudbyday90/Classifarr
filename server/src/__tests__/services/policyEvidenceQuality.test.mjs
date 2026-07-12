@@ -3,7 +3,9 @@ import {
 } from '../../services/policyAuthorityVocabulary.mjs';
 import {
   POLICY_EVIDENCE_BUCKET_IDS,
+  POLICY_EVIDENCE_SOURCE_IDS,
   buildPolicyEvidenceProjection,
+  isPolicyEvidenceQualityContribution,
 } from '../../services/policyEvidenceEngine.mjs';
 import {
   POLICY_EVIDENCE_QUALITY_AUDIT_RISK_IDS,
@@ -17,6 +19,7 @@ import {
 const qualityOptions = {
   bucketIds: POLICY_EVIDENCE_BUCKET_IDS,
   authoritySourceIds: AUTHORITY_SOURCE_IDS,
+  isTrustedEntry: isPolicyEvidenceQualityContribution,
 };
 
 describe('policyEvidenceQuality', () => {
@@ -140,5 +143,55 @@ describe('policyEvidenceQuality', () => {
           POLICY_EVIDENCE_QUALITY_AUDIT_RISK_IDS.QUALITY_EXPOSES_ENTRY_LABELS,
       }),
     ]));
+  });
+
+  test('does not let summary tampering or incompatible identity provenance inflate quality', () => {
+    const projection = buildPolicyEvidenceProjection({
+      metadataEvidence: ['Family'],
+    });
+    projection.summary = {
+      ...projection.summary,
+      totalEntryCount: 999,
+      bucketSummaries: projection.summary.bucketSummaries.map(bucket =>
+        bucket.bucketId === POLICY_EVIDENCE_BUCKET_IDS.IDENTITY
+          ? { ...bucket, entryCount: 999 }
+          : bucket
+      ),
+    };
+
+    const summaryTamperedQuality = buildPolicyEvidenceQualityAssessment(
+      projection,
+      qualityOptions
+    );
+
+    expect(summaryTamperedQuality).toEqual(expect.objectContaining({
+      statusId: POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT,
+      hasIdentityEvidence: false,
+      score: expect.any(Number),
+    }));
+    expect(summaryTamperedQuality.score).toBeLessThanOrEqual(0.35);
+
+    projection.buckets[POLICY_EVIDENCE_BUCKET_IDS.IDENTITY].push({
+      key: 'metadata:family',
+      label: 'Family',
+      value: null,
+      count: 1,
+      confidence: null,
+      reasonCode: 'metadata_enrichment',
+      observedAt: null,
+      stale: null,
+      sourceId: POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT,
+      authoritySourceId: AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
+    });
+
+    const incompatibleIdentityQuality = buildPolicyEvidenceQualityAssessment(
+      projection,
+      qualityOptions
+    );
+
+    expect(incompatibleIdentityQuality).toEqual(expect.objectContaining({
+      statusId: POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT,
+      hasIdentityEvidence: false,
+    }));
   });
 });

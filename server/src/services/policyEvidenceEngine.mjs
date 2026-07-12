@@ -458,6 +458,19 @@ function getPolicyEvidenceSource(sourceId) {
   return POLICY_EVIDENCE_SOURCES.find(source => source.id === sourceId) || null;
 }
 
+function isPolicyEvidenceQualityContribution(entry = {}, bucketId) {
+  const bucket = getPolicyEvidenceBucket(bucketId);
+  const source = getPolicyEvidenceSource(entry.sourceId);
+
+  return Boolean(
+    bucket &&
+    source &&
+    bucket.allowedSourceIds.includes(entry.sourceId) &&
+    bucket.authoritySourceIds.includes(entry.authoritySourceId) &&
+    source.authoritySourceIds.includes(entry.authoritySourceId)
+  );
+}
+
 function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -758,6 +771,7 @@ function buildPolicyEvidenceProjection(input = {}) {
   projection.quality = buildPolicyEvidenceQualityAssessment(projection, {
     bucketIds: POLICY_EVIDENCE_BUCKET_IDS,
     authoritySourceIds: AUTHORITY_SOURCE_IDS,
+    isTrustedEntry: isPolicyEvidenceQualityContribution,
   });
 
   return projection;
@@ -1028,6 +1042,7 @@ function validatePolicyEvidenceProjectionQuality(projection = {}) {
   const result = validatePolicyEvidenceQualityAssessment(projection, {
     bucketIds: POLICY_EVIDENCE_BUCKET_IDS,
     authoritySourceIds: AUTHORITY_SOURCE_IDS,
+    isTrustedEntry: isPolicyEvidenceQualityContribution,
   });
 
   return {
@@ -1317,6 +1332,7 @@ export {
   buildPolicyEvidenceQualityAssessment,
   getPolicyEvidenceBucket,
   getPolicyEvidenceSource,
+  isPolicyEvidenceQualityContribution,
   listPolicyEvidenceBuckets,
   listPolicyEvidenceSources,
   summarizePolicyEvidenceProjection,

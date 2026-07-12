@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Evidence Quality Contribution Trust** — quality now derives
+  identity and positive contribution counts from validated bucket entries
+  rather than projection summaries or authority labels alone, preventing forged
+  summaries and incompatible provenance from inflating readiness.
 - **Policy Library Evidence Record Contract** — added shared collector-output
   audits for bounded primitive fields, canonical evidence values, safe numeric
   ranges, and source-owned reason codes; malformed records now fail at the

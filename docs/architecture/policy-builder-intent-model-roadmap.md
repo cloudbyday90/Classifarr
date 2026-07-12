@@ -3300,6 +3300,11 @@ Implementation status:
   [Policy Evidence Quality Architecture Cutover](policy-evidence-quality-architecture-cutover.md).
 - The evidence quality helper lives in
   `server/src/services/policyEvidenceQuality.mjs`.
+- Quality now derives positive contribution counts and destination identity from
+  trusted bucket entries only, using the evidence engine's canonical
+  bucket-source-authority contract rather than summary claims. Its design
+  record is
+  [Policy Evidence Quality Contribution Trust](policy-evidence-quality-contribution-trust.md).
 - Policy evidence boundary audit hardening is documented in
   [Policy Evidence Boundary Audit](policy-evidence-boundary-audit.md).
 - The evidence projection fingerprint helper now lives in
