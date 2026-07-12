@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Library Evidence Record Contract** — added shared collector-output
+  audits for bounded primitive fields, canonical evidence values, safe numeric
+  ranges, and source-owned reason codes; malformed records now fail at the
+  collector boundary before envelope aggregation.
 - **Policy Evidence Envelope Provenance** — derives collector section source
   and authority identifiers from the shared evidence input contract, exposes a
   sanitized provenance map, and fails the envelope audit when that mapping is

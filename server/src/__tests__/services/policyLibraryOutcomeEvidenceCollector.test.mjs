@@ -13,6 +13,9 @@ import {
 import {
   loadPolicyLibraryProfileEvidence,
 } from '../../services/policyLibraryProfileEvidenceLoader.mjs';
+import {
+  POLICY_LIBRARY_EVIDENCE_RECORD_AUDIT_RISK_IDS,
+} from '../../services/policyLibraryEvidenceRecordContract.mjs';
 
 function createCollector(rows = {}) {
   const db = {
@@ -147,6 +150,7 @@ describe('policyLibraryOutcomeEvidenceCollector', () => {
     });
     const result = await collector.collectLibraryOutcomeEvidence({ libraryId: 42 });
     result.summary.finalOutcomeEvidenceCount = 99;
+    result.classificationOutcomes[0].providerPayload = { title: 'must not be admitted' };
     result.sideEffects.liveProviderLookupPerformed = true;
 
     const audit = buildPolicyLibraryOutcomeEvidenceCollectorAudit(result);
@@ -154,6 +158,7 @@ describe('policyLibraryOutcomeEvidenceCollector', () => {
     expect(audit.ok).toBe(false);
     expect(audit.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_LIBRARY_OUTCOME_EVIDENCE_COLLECTOR_RISK_IDS.SUMMARY_COUNT_MISMATCH,
+      POLICY_LIBRARY_EVIDENCE_RECORD_AUDIT_RISK_IDS.UNEXPECTED_FIELD,
       POLICY_LIBRARY_OUTCOME_EVIDENCE_COLLECTOR_RISK_IDS.UNSAFE_SIDE_EFFECT,
     ]));
   });

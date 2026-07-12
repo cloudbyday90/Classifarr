@@ -16,6 +16,9 @@ import {
 import {
   loadPolicyLibraryProfileEvidence,
 } from '../../services/policyLibraryProfileEvidenceLoader.mjs';
+import {
+  POLICY_LIBRARY_EVIDENCE_RECORD_AUDIT_RISK_IDS,
+} from '../../services/policyLibraryEvidenceRecordContract.mjs';
 
 function createCollector(rows = []) {
   const db = {
@@ -132,6 +135,7 @@ describe('policyLibraryRoutingOutcomeEvidenceCollector', () => {
     const result = await collector.collectLibraryRoutingOutcomeEvidence({ libraryId: 42 });
     result.summary.routingOutcomesTruncated = true;
     result.arrRoutingOutcomes[0].value = 'raw_route_reason';
+    result.arrRoutingOutcomes[0].confidence = 1.1;
     result.sideEffects.routeAttemptPerformed = true;
 
     const audit = buildPolicyLibraryRoutingOutcomeEvidenceCollectorAudit(result);
@@ -140,6 +144,7 @@ describe('policyLibraryRoutingOutcomeEvidenceCollector', () => {
     expect(audit.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_LIBRARY_ROUTING_OUTCOME_EVIDENCE_COLLECTOR_RISK_IDS.SUMMARY_COUNT_MISMATCH,
       POLICY_LIBRARY_ROUTING_OUTCOME_EVIDENCE_COLLECTOR_RISK_IDS.UNKNOWN_OUTCOME_STATE,
+      POLICY_LIBRARY_EVIDENCE_RECORD_AUDIT_RISK_IDS.INVALID_CONFIDENCE,
       POLICY_LIBRARY_ROUTING_OUTCOME_EVIDENCE_COLLECTOR_RISK_IDS.UNSAFE_SIDE_EFFECT,
     ]));
   });

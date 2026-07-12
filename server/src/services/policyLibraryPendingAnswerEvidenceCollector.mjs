@@ -1,4 +1,7 @@
 import * as defaultDb from '../config/database.mjs';
+import {
+  buildPolicyLibraryEvidenceRecordCollectionAudit,
+} from './policyLibraryEvidenceRecordContract.mjs';
 
 const POLICY_LIBRARY_PENDING_ANSWER_EVIDENCE_COLLECTOR_VERSION = 'policy.library_pending_answer_evidence_collector.v1';
 const MAX_LIBRARY_PENDING_ANSWER_EVIDENCE_RECORDS = 50;
@@ -22,6 +25,10 @@ const RESOLVED_PENDING_ANSWER_STATUS_IDS = Object.freeze([
   'reclassified',
   'verified',
   'routed',
+]);
+
+const PENDING_ANSWER_REASON_CODES = Object.freeze([
+  'persisted_pending_answer_requires_learning_guard',
 ]);
 
 const POLICY_QUESTION_RESOLUTION_TRANSITION = JSON.stringify([
@@ -201,6 +208,10 @@ function buildPolicyLibraryPendingAnswerEvidenceCollectorAudit(result = {}) {
   const summary = asPlainObject(result.summary);
   const pendingItemAnswers = asArray(result.pendingItemAnswers);
   const resolvedAnswerRowsRead = Number(summary.resolvedAnswerRowsRead) || 0;
+  const recordAudit = buildPolicyLibraryEvidenceRecordCollectionAudit(
+    pendingItemAnswers,
+    { allowedReasonCodes: PENDING_ANSWER_REASON_CODES }
+  );
 
   if (result.ok === true && result.statusId !== POLICY_LIBRARY_PENDING_ANSWER_EVIDENCE_COLLECTOR_STATUS_IDS.READY) {
     issues.push({
@@ -219,6 +230,8 @@ function buildPolicyLibraryPendingAnswerEvidenceCollectorAudit(result = {}) {
       message: 'Pending-item answer evidence summary counts must match bounded returned records.',
     });
   }
+
+  issues.push(...recordAudit.issues);
 
   Object.entries(asPlainObject(result.sideEffects)).forEach(([sideEffectId, performed]) => {
     if (performed === true && sideEffectId !== 'databaseRead') {
@@ -241,6 +254,7 @@ const policyLibraryPendingAnswerEvidenceCollector = createPolicyLibraryPendingAn
 
 export {
   MAX_LIBRARY_PENDING_ANSWER_EVIDENCE_RECORDS,
+  PENDING_ANSWER_REASON_CODES,
   POLICY_LIBRARY_PENDING_ANSWER_EVIDENCE_COLLECTOR_RISK_IDS,
   POLICY_LIBRARY_PENDING_ANSWER_EVIDENCE_COLLECTOR_STATUS_IDS,
   POLICY_LIBRARY_PENDING_ANSWER_EVIDENCE_COLLECTOR_VERSION,

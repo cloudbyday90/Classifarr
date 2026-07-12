@@ -3376,6 +3376,12 @@ Implementation status:
   that handoff passes, requires every nested audit, and builds exactly one
   evidence envelope without live lookups or writes. Its design record is
   [Policy Library Evidence Loader](policy-library-evidence-loader.md).
+- The shared collector record contract lives in
+  `server/src/services/policyLibraryEvidenceRecordContract.mjs`. It verifies
+  the bounded primitive record shape and source-owned reason codes emitted by
+  outcome, pending-answer, routing, and metadata collectors before envelope
+  aggregation. Its design record is
+  [Policy Library Evidence Record Contract](policy-library-evidence-record-contract.md).
 - The policy evidence handoff verifier lives in
   `server/src/services/policyEvidenceHandoffVerifier.mjs`. It verifies the
   complete profile-to-envelope contract, including the static engine, loader,

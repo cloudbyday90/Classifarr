@@ -1,4 +1,7 @@
 import * as defaultDb from '../config/database.mjs';
+import {
+  buildPolicyLibraryEvidenceRecordCollectionAudit,
+} from './policyLibraryEvidenceRecordContract.mjs';
 
 const POLICY_LIBRARY_ROUTING_OUTCOME_EVIDENCE_COLLECTOR_VERSION = 'policy.library_routing_outcome_evidence_collector.v1';
 const MAX_LIBRARY_ROUTING_OUTCOME_EVIDENCE_RECORDS = 50;
@@ -90,6 +93,10 @@ const ROUTING_OUTCOME_EVIDENCE_DETAILS = Object.freeze({
     reasonCode: 'persisted_routing_skipped',
   }),
 });
+
+const ROUTING_OUTCOME_REASON_CODES = Object.freeze(
+  Object.values(ROUTING_OUTCOME_EVIDENCE_DETAILS).map(details => details.reasonCode)
+);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -246,6 +253,10 @@ function buildPolicyLibraryRoutingOutcomeEvidenceCollectorAudit(result = {}) {
   const issues = [];
   const summary = asPlainObject(result.summary);
   const arrRoutingOutcomes = asArray(result.arrRoutingOutcomes);
+  const recordAudit = buildPolicyLibraryEvidenceRecordCollectionAudit(
+    arrRoutingOutcomes,
+    { allowedReasonCodes: ROUTING_OUTCOME_REASON_CODES }
+  );
   const rowsRead = Number(summary.routingOutcomeRowsRead) || 0;
 
   if (result.ok === true && result.statusId !== POLICY_LIBRARY_ROUTING_OUTCOME_EVIDENCE_COLLECTOR_STATUS_IDS.READY) {
@@ -264,6 +275,8 @@ function buildPolicyLibraryRoutingOutcomeEvidenceCollectorAudit(result = {}) {
       message: 'Routing outcome evidence summary counts must match bounded returned records.',
     });
   }
+
+  issues.push(...recordAudit.issues);
 
   arrRoutingOutcomes.forEach(entry => {
     if (!ROUTING_OUTCOME_EVIDENCE_DETAILS[entry?.value]) {
@@ -300,6 +313,7 @@ export {
   POLICY_LIBRARY_ROUTING_OUTCOME_EVIDENCE_COLLECTOR_STATUS_IDS,
   POLICY_LIBRARY_ROUTING_OUTCOME_EVIDENCE_COLLECTOR_VERSION,
   ROUTING_OUTCOME_STATE_IDS,
+  ROUTING_OUTCOME_REASON_CODES,
   SKIPPED_ROUTING_REASON_IDS,
   SUCCESSFUL_ROUTING_REASON_IDS,
   buildPolicyLibraryRoutingOutcomeEvidenceCollectorAudit,

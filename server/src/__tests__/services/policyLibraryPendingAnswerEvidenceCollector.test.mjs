@@ -14,6 +14,9 @@ import {
 import {
   loadPolicyLibraryProfileEvidence,
 } from '../../services/policyLibraryProfileEvidenceLoader.mjs';
+import {
+  POLICY_LIBRARY_EVIDENCE_RECORD_AUDIT_RISK_IDS,
+} from '../../services/policyLibraryEvidenceRecordContract.mjs';
 
 function createCollector(rows = []) {
   const db = {
@@ -128,6 +131,7 @@ describe('policyLibraryPendingAnswerEvidenceCollector', () => {
     const result = await collector.collectLibraryPendingAnswerEvidence({ libraryId: 42 });
     result.summary.pendingItemAnswerEvidenceCount = 99;
     result.summary.resolvedAnswersTruncated = true;
+    result.pendingItemAnswers[0].reasonCode = 'untrusted_reason';
     result.sideEffects.learningMutationPerformed = true;
 
     const audit = buildPolicyLibraryPendingAnswerEvidenceCollectorAudit(result);
@@ -135,6 +139,7 @@ describe('policyLibraryPendingAnswerEvidenceCollector', () => {
     expect(audit.ok).toBe(false);
     expect(audit.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_LIBRARY_PENDING_ANSWER_EVIDENCE_COLLECTOR_RISK_IDS.SUMMARY_COUNT_MISMATCH,
+      POLICY_LIBRARY_EVIDENCE_RECORD_AUDIT_RISK_IDS.UNSUPPORTED_REASON_CODE,
       POLICY_LIBRARY_PENDING_ANSWER_EVIDENCE_COLLECTOR_RISK_IDS.UNSAFE_SIDE_EFFECT,
     ]));
   });

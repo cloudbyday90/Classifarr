@@ -9,6 +9,9 @@ import {
 } from '../../services/policyLibraryMetadataEvidenceCollector.mjs';
 import { buildPolicyEvidenceEnvelope } from '../../services/policyEvidenceEnvelope.mjs';
 import { loadPolicyLibraryProfileEvidence } from '../../services/policyLibraryProfileEvidenceLoader.mjs';
+import {
+  POLICY_LIBRARY_EVIDENCE_RECORD_AUDIT_RISK_IDS,
+} from '../../services/policyLibraryEvidenceRecordContract.mjs';
 
 function createCollector(rows = []) {
   const db = {
@@ -121,6 +124,7 @@ describe('policyLibraryMetadataEvidenceCollector', () => {
     const result = await collector.collectLibraryMetadataEvidence({ libraryId: 42 });
     result.summary.metadataGenresTruncated = true;
     result.metadataEvidence[0].value = 'Invalid\nGenre';
+    result.metadataEvidence[0].reasonCode = 'untrusted_reason';
     result.sideEffects.metadataRefreshPerformed = true;
 
     const audit = buildPolicyLibraryMetadataEvidenceCollectorAudit(result);
@@ -129,6 +133,7 @@ describe('policyLibraryMetadataEvidenceCollector', () => {
     expect(audit.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_LIBRARY_METADATA_EVIDENCE_COLLECTOR_RISK_IDS.SUMMARY_COUNT_MISMATCH,
       POLICY_LIBRARY_METADATA_EVIDENCE_COLLECTOR_RISK_IDS.INVALID_METADATA_FACT,
+      POLICY_LIBRARY_EVIDENCE_RECORD_AUDIT_RISK_IDS.UNSUPPORTED_REASON_CODE,
       POLICY_LIBRARY_METADATA_EVIDENCE_COLLECTOR_RISK_IDS.UNSAFE_SIDE_EFFECT,
     ]));
   });

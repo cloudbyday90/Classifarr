@@ -59,7 +59,9 @@ only projection contract.
 7. Derive every collector section's source and authority provenance from the
    shared input-gate contract, then audit the sanitized provenance map before a
    downstream engine consumes the envelope.
-8. Keep database reads in small source-specific collector modules; do not turn
+8. Require each collector to audit its bounded primitive records and
+   source-owned reason codes before envelope aggregation.
+9. Keep database reads in small source-specific collector modules; do not turn
    the envelope into a cross-table query service.
 
 ## Pros And Cons
@@ -117,6 +119,12 @@ the source and authority identifiers from the shared input-gate contract. The
 envelope audit rejects missing or relabeled provenance before later engines can
 rely on the handoff. The detailed outcome is recorded in
 [Policy Evidence Envelope Provenance](policy-evidence-envelope-provenance.md).
+
+Each collector validates the records it contributes with the shared
+`policyLibraryEvidenceRecordContract.mjs` helper. This checks canonical
+primitive fields and source-owned reason codes without changing collection or
+provenance ownership. The detailed outcome is recorded in
+[Policy Library Evidence Record Contract](policy-library-evidence-record-contract.md).
 
 ## Security Outcome
 

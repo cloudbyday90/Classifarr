@@ -1,4 +1,7 @@
 import * as defaultDb from '../config/database.mjs';
+import {
+  buildPolicyLibraryEvidenceRecordCollectionAudit,
+} from './policyLibraryEvidenceRecordContract.mjs';
 
 const POLICY_LIBRARY_OUTCOME_EVIDENCE_COLLECTOR_VERSION = 'policy.library_outcome_evidence_collector.v1';
 const MAX_LIBRARY_OUTCOME_EVIDENCE_RECORDS = 50;
@@ -22,6 +25,14 @@ const FINAL_CLASSIFICATION_STATUS_IDS = Object.freeze([
   'verified',
   'reclassified',
   'routed',
+]);
+
+const FINAL_OUTCOME_REASON_CODES = Object.freeze([
+  'persisted_final_outcome',
+]);
+
+const MANUAL_CORRECTION_REASON_CODES = Object.freeze([
+  'persisted_manual_correction',
 ]);
 
 const FINAL_OUTCOME_SQL = `
@@ -107,6 +118,7 @@ function buildManualCorrectionEvidence(row = {}) {
   return {
     key: `correction:${correctionId}:classification:${classificationId}`,
     label: 'Persisted manual correction to this destination',
+    value: null,
     count: 1,
     confidence: null,
     observedAt: normalizeTimestamp(record.created_at),
@@ -246,6 +258,14 @@ function buildPolicyLibraryOutcomeEvidenceCollectorAudit(result = {}) {
   const summary = asPlainObject(result.summary);
   const classificationOutcomes = asArray(result.classificationOutcomes);
   const manualCorrections = asArray(result.manualCorrections);
+  const finalOutcomeRecordAudit = buildPolicyLibraryEvidenceRecordCollectionAudit(
+    classificationOutcomes,
+    { allowedReasonCodes: FINAL_OUTCOME_REASON_CODES }
+  );
+  const manualCorrectionRecordAudit = buildPolicyLibraryEvidenceRecordCollectionAudit(
+    manualCorrections,
+    { allowedReasonCodes: MANUAL_CORRECTION_REASON_CODES }
+  );
 
   if (result.ok === true && result.statusId !== POLICY_LIBRARY_OUTCOME_EVIDENCE_COLLECTOR_STATUS_IDS.READY) {
     issues.push({
@@ -263,6 +283,8 @@ function buildPolicyLibraryOutcomeEvidenceCollectorAudit(result = {}) {
       message: 'Outcome evidence summary counts must match bounded returned records.',
     });
   }
+
+  issues.push(...finalOutcomeRecordAudit.issues, ...manualCorrectionRecordAudit.issues);
 
   Object.entries(asPlainObject(result.sideEffects)).forEach(([sideEffectId, performed]) => {
     if (performed === true && sideEffectId !== 'databaseRead') {
@@ -285,7 +307,9 @@ const policyLibraryOutcomeEvidenceCollector = createPolicyLibraryOutcomeEvidence
 
 export {
   FINAL_CLASSIFICATION_STATUS_IDS,
+  FINAL_OUTCOME_REASON_CODES,
   MAX_LIBRARY_OUTCOME_EVIDENCE_RECORDS,
+  MANUAL_CORRECTION_REASON_CODES,
   POLICY_LIBRARY_OUTCOME_EVIDENCE_COLLECTOR_RISK_IDS,
   POLICY_LIBRARY_OUTCOME_EVIDENCE_COLLECTOR_STATUS_IDS,
   POLICY_LIBRARY_OUTCOME_EVIDENCE_COLLECTOR_VERSION,

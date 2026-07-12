@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto';
 import * as defaultDb from '../config/database.mjs';
+import {
+  buildPolicyLibraryEvidenceRecordCollectionAudit,
+} from './policyLibraryEvidenceRecordContract.mjs';
 
 const POLICY_LIBRARY_METADATA_EVIDENCE_COLLECTOR_VERSION = 'policy.library_metadata_evidence_collector.v1';
 const MAX_LIBRARY_METADATA_EVIDENCE_RECORDS = 50;
@@ -24,6 +27,10 @@ const FINAL_METADATA_STATUS_IDS = Object.freeze([
   'reclassified',
   'verified',
   'routed',
+]);
+
+const METADATA_EVIDENCE_REASON_CODES = Object.freeze([
+  'persisted_metadata_genre_compatibility',
 ]);
 
 const METADATA_GENRE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 &'/-]{0,79}$/;
@@ -221,6 +228,10 @@ function buildPolicyLibraryMetadataEvidenceCollectorAudit(result = {}) {
   const metadataEvidence = asArray(result.metadataEvidence);
   const rowsRead = Number(summary.metadataGenreRowsRead) || 0;
   const invalidFactCount = Number(summary.invalidMetadataGenreFactCount) || 0;
+  const recordAudit = buildPolicyLibraryEvidenceRecordCollectionAudit(
+    metadataEvidence,
+    { allowedReasonCodes: METADATA_EVIDENCE_REASON_CODES }
+  );
 
   if (result.ok === true && result.statusId !== POLICY_LIBRARY_METADATA_EVIDENCE_COLLECTOR_STATUS_IDS.READY) {
     issues.push({
@@ -248,6 +259,8 @@ function buildPolicyLibraryMetadataEvidenceCollectorAudit(result = {}) {
     }
   });
 
+  issues.push(...recordAudit.issues);
+
   Object.entries(asPlainObject(result.sideEffects)).forEach(([sideEffectId, performed]) => {
     if (performed === true && sideEffectId !== 'databaseRead') {
       issues.push({
@@ -270,6 +283,7 @@ const policyLibraryMetadataEvidenceCollector = createPolicyLibraryMetadataEviden
 export {
   FINAL_METADATA_STATUS_IDS,
   MAX_LIBRARY_METADATA_EVIDENCE_RECORDS,
+  METADATA_EVIDENCE_REASON_CODES,
   POLICY_LIBRARY_METADATA_EVIDENCE_COLLECTOR_RISK_IDS,
   POLICY_LIBRARY_METADATA_EVIDENCE_COLLECTOR_STATUS_IDS,
   POLICY_LIBRARY_METADATA_EVIDENCE_COLLECTOR_VERSION,
