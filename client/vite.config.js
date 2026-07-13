@@ -22,8 +22,21 @@ const policyChunkRoots = [
   '/src/views/Evidence.vue',
 ]
 
+const VUEUSE_INVALID_ANNOTATION_LOCATIONS = new Set([
+  3362,
+  5780,
+])
+
 function isChunkMatch(id, roots) {
   return roots.some((root) => id.includes(root))
+}
+
+function isKnownVueUseInvalidAnnotation(log) {
+  const normalizedId = log?.id?.replaceAll('\\', '/')
+
+  return log?.code === 'INVALID_ANNOTATION'
+    && normalizedId?.endsWith('/node_modules/@vueuse/core/dist/index.js')
+    && VUEUSE_INVALID_ANNOTATION_LOCATIONS.has(log?.loc?.line)
 }
 
 export default defineConfig({
@@ -45,11 +58,13 @@ export default defineConfig({
   build: {
     target: 'baseline-widely-available',
     rolldownOptions: {
-      onwarn(warning, defaultHandler) {
-        if (warning.code === 'INVALID_ANNOTATION' && /node_modules\/@vueuse\/core\//.test(warning.message)) {
+      onLog(level, log, defaultHandler) {
+        // VueUse 14.3.0 ships two invalid PURE annotations. Keep the allowance
+        // exact until its published package includes the upstream fix.
+        if (isKnownVueUseInvalidAnnotation(log)) {
           return
         }
-        defaultHandler(warning)
+        defaultHandler(level, log)
       },
       output: {
         manualChunks(id) {

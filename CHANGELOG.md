@@ -21,6 +21,9 @@ unchanged operator or runtime outcome.
 - **Durable Product Naming Gate** - added a side-effect-free repository
   inventory and regression gate to CI so temporary delivery terminology cannot
   re-enter production modules, commands, or current contracts unnoticed.
+- **Client Build Warning Hygiene** - updated the Vite build toolchain and
+  narrowed the temporary VueUse compatibility allowance to its two known
+  upstream annotation locations, so unrelated bundler warnings remain visible.
 
 #### Policy Authoring
 
