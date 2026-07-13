@@ -173,6 +173,37 @@ function baseInput(overrides = {}) {
 }
 
 describe('policyLibraryPolicyRebuild', () => {
+  test('preserves structured strict-constraint descriptors through the bounded intent draft', () => {
+    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
+      existingConstraints: {
+        hardLimits: [{
+          key: 'certification:pg-13',
+          label: 'PG-13 maximum',
+          strictConstraint: {
+            version: 'policy.strict_constraint_descriptor.v1',
+            signal_type: 'certifications',
+            operator: 'max',
+            values: { mode: 'max', max: 'PG-13' },
+            constraint_mode: 'strict',
+            semantics: 'compatibility',
+          },
+        }],
+        avoid: [],
+      },
+    }));
+
+    expect(proposal.intentDraft.hard_limits).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'certification:pg-13',
+        strictConstraint: expect.objectContaining({
+          signal_type: 'certifications',
+          operator: 'max',
+          values: { mode: 'max', max: 'PG-13' },
+        }),
+      }),
+    ]));
+  });
+
   test('requires a guarded-outcome projection for the decision-only rebuild reducer', () => {
     const rawInput = baseInput();
     const { guardedOutcomes, ...rebuildInput } = rawInput;

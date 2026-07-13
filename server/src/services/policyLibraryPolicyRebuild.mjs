@@ -35,6 +35,9 @@ import {
   buildPolicyLibraryRebuildInputSummary,
   validatePolicyLibraryRebuildInputContract,
 } from './policyLibraryRebuildInputContract.mjs';
+import {
+  buildPolicyStrictConstraintDescriptor,
+} from './policyStrictConstraintDescriptor.mjs';
 
 const POLICY_REBUILD_PROPOSAL_STATUS_IDS = Object.freeze({
   READY_FOR_REVIEW: 'ready_for_review',
@@ -185,8 +188,12 @@ function normalizeSignal(value) {
 
   const label = normalizeString(value.label ?? value.name ?? value.value ?? value.key ?? value.id);
   if (!label) return null;
+  const strictConstraintResult = value.strictConstraint === undefined
+    ? null
+    : buildPolicyStrictConstraintDescriptor(value.strictConstraint);
+  if (strictConstraintResult && !strictConstraintResult.ok) return null;
 
-  return {
+  const signal = {
     key: normalizeString(value.key ?? value.id ?? value.name ?? label) || label,
     label,
     value: value.value ?? null,
@@ -196,6 +203,12 @@ function normalizeSignal(value) {
     observedAt: value.observedAt ?? value.updatedAt ?? null,
     stale: value.stale,
   };
+
+  if (strictConstraintResult?.descriptor) {
+    signal.strictConstraint = strictConstraintResult.descriptor;
+  }
+
+  return signal;
 }
 
 function normalizeSignals(values) {

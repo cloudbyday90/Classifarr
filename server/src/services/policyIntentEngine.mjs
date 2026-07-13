@@ -22,6 +22,9 @@ import {
   buildPolicyIntentEntryAudit,
   normalizePolicyIntentEntry,
 } from './policyIntentEntryNormalizer.mjs';
+import {
+  buildPolicyStrictConstraintDescriptor,
+} from './policyStrictConstraintDescriptor.mjs';
 
 const POLICY_INTENT_BOUNDARY_STATUS_IDS = Object.freeze({
   READY: 'ready',
@@ -92,6 +95,7 @@ const POLICY_INTENT_AUDIT_RISK_IDS = Object.freeze({
   INSUFFICIENT_EVIDENCE_QUALITY: 'insufficient_evidence_quality',
   MISSING_EVIDENCE_QUALITY: 'missing_evidence_quality',
   INTENT_ENTRY_FIELD_CONTRACT: 'intent_entry_field_contract',
+  INVALID_STRICT_CONSTRAINT_DESCRIPTOR: 'invalid_strict_constraint_descriptor',
 });
 
 const BROAD_GENRE_LABELS = Object.freeze([
@@ -260,8 +264,12 @@ function buildIntentEntry(entry = {}, {
     reasonCode: reasonCode || entry.reasonCode || 'policy_evidence',
   });
   if (!normalizedEntry) return null;
+  const strictConstraintResult = entry.strictConstraint === undefined
+    ? null
+    : buildPolicyStrictConstraintDescriptor(entry.strictConstraint);
+  if (strictConstraintResult && !strictConstraintResult.ok) return null;
 
-  return {
+  const intentEntry = {
     fieldId,
     ...normalizedEntry,
     evidenceBucketId: entry.bucketId,
@@ -273,13 +281,19 @@ function buildIntentEntry(entry = {}, {
     inferred: Boolean(inferred),
     operatorDeclared: Boolean(operatorDeclared),
   };
+
+  if (strictConstraintResult?.descriptor) {
+    intentEntry.strictConstraint = strictConstraintResult.descriptor;
+  }
+
+  return intentEntry;
 }
 
 function uniqueByKey(entries) {
   const seen = new Set();
   return entries.filter(entry => {
     if (!entry) return false;
-    const key = `${entry.fieldId}:${entry.key}:${entry.authoritySourceId}`;
+    const key = `${entry.fieldId}:${entry.key}:${entry.authoritySourceId}:${JSON.stringify(entry.strictConstraint || null)}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -736,6 +750,15 @@ function validateIntentEntry(entry = {}, fieldId) {
       riskId: POLICY_INTENT_AUDIT_RISK_IDS.INTENT_ENTRY_FIELD_CONTRACT,
       fieldId,
       entryRiskIds: entryFieldAudit.issues.map(issue => issue.riskId),
+    });
+  }
+
+  if (fieldId === POLICY_INTENT_FIELD_IDS.HARD_LIMITS &&
+      Object.prototype.hasOwnProperty.call(entry, 'strictConstraint') &&
+      !buildPolicyStrictConstraintDescriptor(entry.strictConstraint).ok) {
+    issues.push({
+      riskId: POLICY_INTENT_AUDIT_RISK_IDS.INVALID_STRICT_CONSTRAINT_DESCRIPTOR,
+      message: 'Hard-limit intent entries with a strict-constraint descriptor must retain an executable native rule.',
     });
   }
 

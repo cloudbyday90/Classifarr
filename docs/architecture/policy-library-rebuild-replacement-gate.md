@@ -2,10 +2,11 @@
 
 ## Status
 
-Implemented on 2026-07-12 as Task 7R.7.2. The gate replaces one active native
-intent only after the same accepted rebuild has a persisted rollback snapshot
-and a no-difference migration verifier result. It keeps legacy rows intact;
-legacy deletion remains a separate, later decision.
+Implemented on 2026-07-12 as Task 7R.7.2 and extended on 2026-07-13 by Task
+7R.7.3. The gate replaces one active native intent only after the same accepted
+rebuild has a persisted rollback snapshot and a no-difference migration
+verifier result. It keeps legacy rows intact; legacy deletion remains a
+separate, later decision.
 
 ## Problem
 
@@ -133,9 +134,17 @@ Cons:
 - Schema tests require the replacement references, terminal-state constraint,
   index, and migration event type in the Docker-generated schema snapshot.
 
+## Strict-Constraint Descriptors
+
+Task 7R.7.3 adds a versioned structured descriptor that preserves a deliberate
+strict constraint's native signal type, operator, values, mode, and semantics
+through the rebuild proposal. Replacement converts only a validated descriptor
+into a native hard-limit rule; label-only constraints remain blocked. The
+detailed design and verification record is [Policy Library Rebuild
+Strict-Constraint Descriptors](policy-library-rebuild-strict-constraint-descriptors.md).
+
 ## Next Component
 
-Implement structured strict-constraint descriptors for rebuild proposals. That
-component should preserve exact operator and value semantics from the policy
-builder so a deliberately declared hard limit can become a native rule without
-any label parsing or inference.
+Proceed with Task 7R.8: runtime metrics and decision trace. It should consume
+bounded runtime and rebuild outcomes without adding new authoring or
+replacement behavior.

@@ -96,6 +96,40 @@ describe('policyEvidenceEntryNormalizer', () => {
     }).reasonCode).toBe('final_outcome_observed');
   });
 
+  test('preserves only validated strict-constraint descriptors', () => {
+    const entry = normalizePolicyEvidenceEntry({
+      key: 'certification:pg-13',
+      label: 'PG-13 maximum',
+      strictConstraint: {
+        version: 'policy.strict_constraint_descriptor.v1',
+        signal_type: 'certifications',
+        operator: 'max',
+        values: { mode: 'max', max: 'PG-13' },
+        constraint_mode: 'strict',
+        semantics: 'compatibility',
+      },
+    });
+
+    expect(entry).toEqual(expect.objectContaining({
+      strictConstraint: expect.objectContaining({
+        signal_type: 'certifications',
+        operator: 'max',
+      }),
+    }));
+    expect(normalizePolicyEvidenceEntry({
+      key: 'certification:pg-13',
+      label: 'PG-13 maximum',
+      strictConstraint: {
+        version: 'policy.strict_constraint_descriptor.v1',
+        signal_type: 'certifications',
+        operator: 'include',
+        values: { mode: 'max', max: 'PG-13' },
+        constraint_mode: 'strict',
+        semantics: 'compatibility',
+      },
+    })).toBeNull();
+  });
+
   test('audits tampered entries with unbounded or unsafe projected fields', () => {
     const audit = buildPolicyEvidenceEntryAudit({
       key: 'invalid key',

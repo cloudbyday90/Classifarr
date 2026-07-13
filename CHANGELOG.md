@@ -111,6 +111,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   evidence, returns idempotent retries without another write, preserves legacy
   rows, and rejects label-only strict constraints rather than guessing policy
   semantics.
+- **Structured Rebuild Strict Constraints** - rebuild proposals now preserve
+  validated operator, values, mode, and semantics for deliberately authored
+  strict rules. Replacement converts those descriptors directly to native hard
+  limits while keeping label-only or malformed constraints blocked.
 
 #### Native Policy Intent Storage
 

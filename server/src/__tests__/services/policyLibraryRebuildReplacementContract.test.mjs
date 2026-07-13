@@ -29,6 +29,17 @@ function proposal(overrides = {}) {
   };
 }
 
+function strictCertificationMaximum() {
+  return {
+    version: 'policy.strict_constraint_descriptor.v1',
+    signal_type: 'certifications',
+    operator: 'max',
+    values: { mode: 'max', max: 'PG-13' },
+    constraint_mode: 'strict',
+    semantics: 'compatibility',
+  };
+}
+
 jest.unstable_mockModule('../../services/policyLibraryPolicyRebuild.mjs', () => ({
   validatePolicyLibraryPolicyRebuildProposal: () => ({ ok: true }),
 }));
@@ -111,6 +122,60 @@ describe('policyLibraryRebuildReplacementContract', () => {
     expect(result.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: POLICY_LIBRARY_REBUILD_REPLACEMENT_CONTRACT_RISK_IDS.AMBIGUOUS_HARD_LIMIT,
+      }),
+    ]));
+  });
+
+  test('translates an explicit strict-constraint descriptor without parsing its label', () => {
+    const result = buildContract({
+      proposal: proposal({
+        intentDraft: {
+          ...proposal().intentDraft,
+          hard_limits: [{
+            key: 'certification:pg-13',
+            label: 'PG-13 maximum',
+            strictConstraint: strictCertificationMaximum(),
+          }],
+        },
+      }),
+      policy: { id: 44, library_id: 6 },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.contract.hard_limits).toEqual([
+      expect.objectContaining({
+        intent_role: 'hard_limit',
+        signal_type: 'certifications',
+        operator: 'max',
+        values: { mode: 'max', max: 'PG-13' },
+        constraint_mode: 'strict',
+        semantics: 'compatibility',
+      }),
+    ]);
+  });
+
+  test('rejects malformed descriptors rather than falling back to label interpretation', () => {
+    const result = buildContract({
+      proposal: proposal({
+        intentDraft: {
+          ...proposal().intentDraft,
+          hard_limits: [{
+            key: 'certification:pg-13',
+            label: 'PG-13 maximum',
+            strictConstraint: {
+              ...strictCertificationMaximum(),
+              operator: 'include',
+            },
+          }],
+        },
+      }),
+      policy: { id: 44, library_id: 6 },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_LIBRARY_REBUILD_REPLACEMENT_CONTRACT_RISK_IDS.INVALID_STRICT_CONSTRAINT_DESCRIPTOR,
       }),
     ]));
   });

@@ -10,6 +10,7 @@ const POLICY_EVIDENCE_ENTRY_IDENTITY_FIELD_IDS = Object.freeze([
   'reasonCode',
   'observedAt',
   'stale',
+  'strictConstraint',
 ]);
 
 function buildPolicyEvidenceEntrySemanticKey(entry = {}) {

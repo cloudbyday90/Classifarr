@@ -15,6 +15,9 @@ import {
   POLICY_INTENT_SOURCES,
   validatePolicyIntentContract,
 } from './policyIntentSchema.mjs';
+import {
+  buildNativeHardLimitRuleFromStrictConstraintDescriptor,
+} from './policyStrictConstraintDescriptor.mjs';
 
 const POLICY_LIBRARY_REBUILD_REPLACEMENT_CONTRACT_VERSION =
   'policy.library_rebuild_replacement_contract.v1';
@@ -24,6 +27,7 @@ const POLICY_LIBRARY_REBUILD_REPLACEMENT_CONTRACT_RISK_IDS = Object.freeze({
   MISSING_TYPED_PURPOSE: 'missing_typed_purpose',
   UNSUPPORTED_SIGNAL_KEY: 'unsupported_signal_key',
   AMBIGUOUS_HARD_LIMIT: 'ambiguous_hard_limit',
+  INVALID_STRICT_CONSTRAINT_DESCRIPTOR: 'invalid_strict_constraint_descriptor',
   INVALID_NATIVE_CONTRACT: 'invalid_native_contract',
 });
 
@@ -137,12 +141,28 @@ function buildRules(intentDraft = {}) {
     });
   });
 
-  if (asArray(intentDraft.hard_limits).length > 0) {
-    issues.push({
-      riskId: POLICY_LIBRARY_REBUILD_REPLACEMENT_CONTRACT_RISK_IDS.AMBIGUOUS_HARD_LIMIT,
-      message: 'Rebuild replacement cannot infer executable strict-constraint operators from label-only hard limits.',
-    });
-  }
+  asArray(intentDraft.hard_limits).forEach(entry => {
+    if (!Object.prototype.hasOwnProperty.call(asObject(entry), 'strictConstraint')) {
+      issues.push({
+        riskId: POLICY_LIBRARY_REBUILD_REPLACEMENT_CONTRACT_RISK_IDS.AMBIGUOUS_HARD_LIMIT,
+        message: 'Rebuild replacement cannot infer executable strict-constraint operators from label-only hard limits.',
+      });
+      return;
+    }
+
+    const descriptorResult = buildNativeHardLimitRuleFromStrictConstraintDescriptor(
+      entry.strictConstraint
+    );
+    if (!descriptorResult.ok || !descriptorResult.rule) {
+      issues.push({
+        riskId: POLICY_LIBRARY_REBUILD_REPLACEMENT_CONTRACT_RISK_IDS.INVALID_STRICT_CONSTRAINT_DESCRIPTOR,
+        message: 'Rebuild replacement requires a valid structured strict-constraint descriptor.',
+      });
+      return;
+    }
+
+    rules.push(descriptorResult.rule);
+  });
 
   return { rules, issues };
 }

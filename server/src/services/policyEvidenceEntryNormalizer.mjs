@@ -8,6 +8,10 @@
  * (at your option) any later version.
  */
 
+import {
+  buildPolicyStrictConstraintDescriptor,
+} from './policyStrictConstraintDescriptor.mjs';
+
 const MAX_POLICY_EVIDENCE_ENTRY_KEY_LENGTH = 160;
 const MAX_POLICY_EVIDENCE_ENTRY_LABEL_LENGTH = 240;
 const MAX_POLICY_EVIDENCE_ENTRY_VALUE_LENGTH = 240;
@@ -19,6 +23,7 @@ const POLICY_EVIDENCE_ENTRY_AUDIT_RISK_IDS = Object.freeze({
   INVALID_VALUE: 'invalid_evidence_entry_value',
   INVALID_REASON_CODE: 'invalid_evidence_entry_reason_code',
   INVALID_OBSERVED_AT: 'invalid_evidence_entry_observed_at',
+  INVALID_STRICT_CONSTRAINT_DESCRIPTOR: 'invalid_evidence_entry_strict_constraint_descriptor',
   UNBOUNDED_TEXT: 'unbounded_evidence_entry_text',
   UNSAFE_CONTROL_CHARACTER: 'unsafe_evidence_entry_control_character',
 });
@@ -98,6 +103,7 @@ function normalizePolicyEvidenceEntry({
   reasonCode = null,
   observedAt = null,
   stale = null,
+  strictConstraint = undefined,
 } = {}, {
   defaultReasonCode = null,
   allowedReasonCodes = [],
@@ -113,8 +119,12 @@ function normalizePolicyEvidenceEntry({
   const selectedReasonCode = normalizedAllowedReasonCodes.includes(normalizedInputReasonCode)
     ? normalizedInputReasonCode
     : normalizedDefaultReasonCode;
+  const strictConstraintResult = strictConstraint === undefined
+    ? null
+    : buildPolicyStrictConstraintDescriptor(strictConstraint);
+  if (strictConstraintResult && !strictConstraintResult.ok) return null;
 
-  return {
+  const normalizedEntry = {
     key: normalizeEvidenceKey(key, normalizedLabel),
     label: normalizedLabel,
     value: normalizeText(value, MAX_POLICY_EVIDENCE_ENTRY_VALUE_LENGTH) || null,
@@ -125,6 +135,12 @@ function normalizePolicyEvidenceEntry({
     observedAt: normalizeObservedAt(observedAt),
     stale: typeof stale === 'boolean' ? stale : null,
   };
+
+  if (strictConstraintResult?.descriptor) {
+    normalizedEntry.strictConstraint = strictConstraintResult.descriptor;
+  }
+
+  return normalizedEntry;
 }
 
 function buildPolicyEvidenceEntryAudit(entry = {}) {
@@ -135,6 +151,10 @@ function buildPolicyEvidenceEntryAudit(entry = {}) {
   const value = source.value === null ? null : normalizeText(source.value, MAX_POLICY_EVIDENCE_ENTRY_VALUE_LENGTH) || null;
   const reasonCode = source.reasonCode === null ? null : normalizeReasonCode(source.reasonCode);
   const observedAt = source.observedAt === null ? null : normalizeObservedAt(source.observedAt);
+  const hasStrictConstraint = Object.prototype.hasOwnProperty.call(source, 'strictConstraint');
+  const strictConstraintResult = hasStrictConstraint
+    ? buildPolicyStrictConstraintDescriptor(source.strictConstraint)
+    : null;
   const textValues = [source.key, source.label, source.value, source.reasonCode, source.observedAt]
     .filter(value => typeof value === 'string');
 
@@ -170,6 +190,13 @@ function buildPolicyEvidenceEntryAudit(entry = {}) {
     issues.push({
       riskId: POLICY_EVIDENCE_ENTRY_AUDIT_RISK_IDS.INVALID_OBSERVED_AT,
       message: 'Evidence entry timestamps must use canonical ISO-8601 UTC format.',
+    });
+  }
+
+  if (hasStrictConstraint && !strictConstraintResult?.ok) {
+    issues.push({
+      riskId: POLICY_EVIDENCE_ENTRY_AUDIT_RISK_IDS.INVALID_STRICT_CONSTRAINT_DESCRIPTOR,
+      message: 'Evidence strict-constraint descriptors must be valid executable native rules.',
     });
   }
 

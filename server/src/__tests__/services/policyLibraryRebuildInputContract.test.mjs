@@ -185,6 +185,66 @@ describe('policyLibraryRebuildInputContract', () => {
     expect(contract.sideEffects.providerQuotaRead).toBe(false);
   });
 
+  test('preserves a validated strict-constraint descriptor across the rebuild evidence handoff', async () => {
+    const handoff = await profileHandoff();
+    const contract = buildPolicyLibraryRebuildInputFromRuntimeInput({
+      ...baseInput(handoff),
+      existingConstraints: {
+        ...baseInput(handoff).existingConstraints,
+        hardLimits: [{
+          key: 'certification:pg-13',
+          label: 'PG-13 maximum',
+          strictConstraint: {
+            version: 'policy.strict_constraint_descriptor.v1',
+            signal_type: 'certifications',
+            operator: 'max',
+            values: { mode: 'max', max: 'PG-13' },
+            constraint_mode: 'strict',
+            semantics: 'compatibility',
+          },
+        }],
+      },
+      guardedOutcomes: [],
+    });
+
+    expect(contract.existingConstraints.hardLimits).toEqual([
+      expect.objectContaining({
+        strictConstraint: expect.objectContaining({
+          signal_type: 'certifications',
+          operator: 'max',
+          values: { mode: 'max', max: 'PG-13' },
+        }),
+      }),
+    ]);
+    expect(contract.evidenceInput.operatorIntent.hardLimits).toEqual(
+      contract.existingConstraints.hardLimits
+    );
+  });
+
+  test('rejects malformed strict-constraint descriptors before rebuild proposal composition', async () => {
+    const handoff = await profileHandoff();
+
+    expect(() => buildPolicyLibraryRebuildInputFromRuntimeInput({
+      ...baseInput(handoff),
+      existingConstraints: {
+        ...baseInput(handoff).existingConstraints,
+        hardLimits: [{
+          key: 'certification:pg-13',
+          label: 'PG-13 maximum',
+          strictConstraint: {
+            version: 'policy.strict_constraint_descriptor.v1',
+            signal_type: 'certifications',
+            operator: 'include',
+            values: { mode: 'max', max: 'PG-13' },
+            constraint_mode: 'strict',
+            semantics: 'compatibility',
+          },
+        }],
+      },
+      guardedOutcomes: [],
+    })).toThrow('strict-constraint descriptor');
+  });
+
   test('detects tampered contract summaries and side-effect claims', async () => {
     const handoff = await profileHandoff();
     const contract = buildPolicyLibraryRebuildInputFromRuntimeInput({

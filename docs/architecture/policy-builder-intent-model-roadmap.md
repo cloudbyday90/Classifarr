@@ -4532,6 +4532,13 @@ Implementation status:
   avoid entries translate deterministically; label-only strict constraints are
   blocked rather than guessed. Its design record is [Policy Library Rebuild
   Replacement Gate](policy-library-rebuild-replacement-gate.md).
+- Task 7R.7.3 is complete: versioned structured strict-constraint descriptors
+  now preserve exact native signal, operator, values, mode, and semantics
+  through the sanitized rebuild input, evidence projection, and intent draft.
+  Replacement converts only validated descriptors into native hard-limit rules;
+  unknown, malformed, and label-only constraints remain blocked. Its design
+  record is [Policy Library Rebuild Strict-Constraint
+  Descriptors](policy-library-rebuild-strict-constraint-descriptors.md).
 - Legacy deletion readiness is blocked until native intent storage is stable,
   the verifier passes, rollback and retention gates are active, delete checklist
   approval exists, legacy artifacts are classified, and custom-signal

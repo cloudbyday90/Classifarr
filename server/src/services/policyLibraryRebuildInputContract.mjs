@@ -17,6 +17,9 @@ import {
   POLICY_LIBRARY_PROFILE_EVIDENCE_LOADER_VERSION,
   buildPolicyLibraryProfileEvidenceLoaderAudit,
 } from './policyLibraryProfileEvidenceLoader.mjs';
+import {
+  buildPolicyStrictConstraintDescriptor,
+} from './policyStrictConstraintDescriptor.mjs';
 
 const POLICY_LIBRARY_REBUILD_INPUT_CONTRACT_VERSION = 'policy.library_rebuild_input_contract.v1';
 const MAX_REBUILD_SIGNALS_PER_SECTION = 20;
@@ -42,6 +45,7 @@ const POLICY_LIBRARY_REBUILD_INPUT_RISK_IDS = Object.freeze({
   INVALID_GUARDED_OUTCOME_PROJECTION: 'invalid_guarded_outcome_projection',
   GUARDED_OUTCOME_COLLECTION_LIMIT_EXCEEDED: 'guarded_outcome_collection_limit_exceeded',
   INVALID_CONTRACT: 'invalid_contract',
+  INVALID_STRICT_CONSTRAINT_DESCRIPTOR: 'invalid_strict_constraint_descriptor',
   UNSAFE_SIDE_EFFECT: 'unsafe_side_effect',
   SOURCE_SUMMARY_MISMATCH: 'source_summary_mismatch',
 });
@@ -233,8 +237,16 @@ function normalizeSignal(value) {
   const valuePrimitive = ['string', 'number', 'boolean'].includes(typeof rawValue)
     ? rawValue
     : null;
+  const rawStrictConstraint = getDataProperty(source, 'strictConstraint');
+  const strictConstraintResult = rawStrictConstraint === undefined
+    ? null
+    : buildPolicyStrictConstraintDescriptor(rawStrictConstraint);
 
-  return {
+  if (strictConstraintResult && !strictConstraintResult.ok) {
+    throw new TypeError('Library rebuild strict-constraint descriptor must be a supported executable native rule.');
+  }
+
+  const signal = {
     key: normalizeString(
       getDataProperty(source, 'key') ?? getDataProperty(source, 'id') ?? label
     ) || label,
@@ -254,6 +266,12 @@ function normalizeSignal(value) {
     ),
     stale: getDataProperty(source, 'stale') === true,
   };
+
+  if (strictConstraintResult?.descriptor) {
+    signal.strictConstraint = strictConstraintResult.descriptor;
+  }
+
+  return signal;
 }
 
 function normalizeSignals(value) {
@@ -266,7 +284,12 @@ function normalizeSignals(value) {
   values
     .map(normalizeSignal)
     .filter(Boolean)
-    .forEach(signal => byKey.set(signal.key, signal));
+    .forEach(signal => {
+      const semanticKey = signal.strictConstraint
+        ? `${signal.key}:${JSON.stringify(signal.strictConstraint)}`
+        : signal.key;
+      byKey.set(semanticKey, signal);
+    });
 
   return [...byKey.values()].sort((left, right) => left.key.localeCompare(right.key));
 }
@@ -740,6 +763,7 @@ function validatePolicyLibraryRebuildInputContract(contract = {}) {
   const guardedOutcomeProjection = asPlainObject(
     getDataProperty(source, 'guardedOutcomeProjection')
   );
+  const existingConstraints = asPlainObject(getDataProperty(source, 'existingConstraints'));
 
   if (summary.version !== POLICY_LIBRARY_REBUILD_INPUT_CONTRACT_VERSION ||
       summary.statusId !== POLICY_LIBRARY_REBUILD_INPUT_STATUS_IDS.READY ||
@@ -813,6 +837,21 @@ function validatePolicyLibraryRebuildInputContract(contract = {}) {
       message: 'Library rebuild input must retain the bounded evidence envelope inputs.',
     });
   }
+
+  asArray(getDataProperty(existingConstraints, 'hardLimits')).forEach((signal, index) => {
+    const normalizedSignal = asPlainObject(signal);
+    const strictConstraint = getDataProperty(normalizedSignal, 'strictConstraint');
+    if (strictConstraint === undefined) return;
+
+    const result = buildPolicyStrictConstraintDescriptor(strictConstraint);
+    if (!result.ok) {
+      issues.push({
+        riskId: POLICY_LIBRARY_REBUILD_INPUT_RISK_IDS.INVALID_STRICT_CONSTRAINT_DESCRIPTOR,
+        message: 'Library rebuild hard-limit descriptors must remain supported executable native rules.',
+        index,
+      });
+    }
+  });
 
   [
     'libraryProfileRead',

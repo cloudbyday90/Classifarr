@@ -505,6 +505,7 @@ function createEvidenceEntry({
   inputReasonCode = null,
   observedAt = null,
   stale = null,
+  strictConstraint = undefined,
 }) {
   const bucket = getPolicyEvidenceBucket(bucketId);
   const source = getPolicyEvidenceSource(sourceId);
@@ -530,6 +531,7 @@ function createEvidenceEntry({
     reasonCode: inputReasonCode,
     observedAt,
     stale,
+    strictConstraint,
   }, {
     defaultReasonCode: reasonCode,
     allowedReasonCodes: POLICY_EVIDENCE_SOURCE_REASON_CODE_IDS[sourceId],
@@ -611,6 +613,7 @@ function mapSignalEntries(values, {
       inputReasonCode: value.reasonCode,
       observedAt: value.observedAt ?? value.updatedAt,
       stale: value.stale,
+      strictConstraint: value.strictConstraint,
     });
   });
 }
