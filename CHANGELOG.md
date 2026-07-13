@@ -9,6 +9,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ## [Unreleased]
 
+The entries below describe the net product behavior and operational guarantees
+intended for the next release. They do not reproduce intermediate delivery
+phases, temporary diagnostics, or refactors that were replaced before release.
+
 ### Added
 
 #### Policy Authoring
@@ -29,6 +33,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   suggestions, multi-select genre controls, signal provenance, option
   availability diagnostics, and cached-profile freshness so an operator can
   establish a destination from the media server's current collection.
+- **Media-Server-Sourced Policy Context** - added an explicit policy-authoring
+  path that uses the selected media-server library, its observed collection,
+  and its cached profile as the destination context. AI, RAG, and external
+  metadata can assist, but cannot silently redefine what a library means.
 - **Profile Refresh Feedback** - added in-card refresh actions and explicit
   outcomes for profile collection, including unavailable, stale, empty, and
   successfully refreshed states.
@@ -49,6 +57,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Write Safety** - added a validated policy intent contract, detailed
   read/create/update response parity, and a bounded write preflight so invalid
   native-draft sidecars cannot accompany legacy policy writes.
+- **Policy Setup Journey** - added setup-card progress, bounded next actions,
+  authoritative reference-data loading, and complete control-state validation
+  so an operator can see what remains before a policy is ready to save.
 - **Profile-Backed Policy Diagnostics** - added versioned profile-scoring
   diagnostics to History so operators can inspect the rating normalization,
   profile distribution, genre and keyword deltas, and exclusion hits that
@@ -81,6 +92,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   a server-owned decision contract that binds every outcome to its permitted
   action, reason codes, permissions, and trace data before persistence or media
   routing may proceed.
+- **Runtime Evidence Traces and Metrics** - added bounded runtime evidence
+  traces, source fingerprints, decision metrics, and completion audits. The
+  application can now prove which accepted inputs supported an automated
+  outcome without retaining uncontrolled source payloads.
 - **Destination-Focused Clarification** - added normalized question reduction
   that asks only for information required to select or review a destination,
   rather than asking operators to resolve arbitrary genre conflicts.
@@ -88,6 +103,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   requests and manual decisions while keeping final classification success
   distinct from a successfully routed item. Learning evidence cannot become
   policy authority without the required outcome and provenance checks.
+- **Question and Learning Controls** - added deterministic question reduction,
+  permitted-action checks, answer-shape validation, and learning eligibility
+  checks so automation asks only destination-relevant questions and manual
+  resolutions do not create unreviewed policy rules.
 - **Library Rebuild Proposals** - added read-only proposals derived from
   observed library behavior, verified cached profiles, operator intent,
   constraints, routing context, and guarded classification outcomes. Raw
@@ -111,6 +130,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   evidence, returns idempotent retries without another write, preserves legacy
   rows, and rejects label-only strict constraints rather than guessing policy
   semantics.
+- **Current-Policy Rebuild Protection** - rebuild approval, migration
+  comparison, and execution now revalidate the policy, evidence, accepted
+  proposal, sample set, and rollback context at each handoff. Stale, replayed,
+  substituted, or concurrently modified rebuild requests are blocked instead
+  of changing a policy on incomplete proof.
 - **Structured Rebuild Strict Constraints** - rebuild proposals now preserve
   validated operator, values, mode, and semantics for deliberately authored
   strict rules. Replacement converts those descriptors directly to native hard
@@ -130,6 +154,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   validation records, completion checkpoints, final readouts, and requirement
   audits so storage completion is proved from current artifacts rather than
   narrative.
+- **Native Intent Runtime Admission** - added runtime verification that native
+  intent, its storage state, and its migration evidence are current before the
+  classification path may rely on native policy behavior.
 
 #### Classification And RAG Observability
 
@@ -143,6 +170,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   re-check stages with parent relationships, durations, outcomes, reason codes,
   and sanitized scalar attributes before introducing any full telemetry
   exporter.
+- **Stable Classification Progress** - standardized persisted progress,
+  WebSocket events, RAG-loop stages, parser diagnostics, resume diagnostics,
+  and queue history around durable stage names and bounded trace metadata.
 - **Outcome and Signal Separation** - added distinct final-outcome and original
   signal-snapshot views in History so diagnostic evidence is not confused with
   the final classification result.
@@ -210,6 +240,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   retention seed data so new and upgraded installations receive compatible
   Tavily, Brave Search, and Serper rows while migrated Tavily settings remain
   intact.
+- **Provider Operational Feedback** - added bounded provider health, cooldown,
+  quota, cache, decision, and calibration feedback so settings diagnostics can
+  explain why a provider was chosen, skipped, reused, or held back.
 
 #### Notifications And Setup
 
@@ -246,6 +279,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Docker Startup Readiness** - extended the container health-check start
   period for fresh schema loads, PostgreSQL upgrades, and slower storage
   environments while keeping the hardened runtime mount configuration.
+- **Fresh-Install and Upgrade Coverage** - added migration and post-upgrade
+  checks for native policy intent, web-search provider operations, Discord
+  notification settings, rating-profile repair, and rebuild execution state so
+  both a new database and an existing installation reach the same supported
+  runtime shape.
 
 ### Changed
 
@@ -293,6 +331,22 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   replay, parity, provider-readiness, metadata-coverage, and raw-scoring
   surfaces. Migration verification remains bounded, side-effect-free, and
   separate from policy editing.
+
+### Security
+
+- **Policy Authority Enforcement** - policy evidence, intent commands,
+  readiness decisions, clarification answers, learning traces, and rebuild
+  requests now accept only bounded plain data from declared, permitted sources.
+  Inherited values, accessors, prototype-pollution keys, altered fingerprints,
+  and unknown fields are rejected at their owning boundary.
+- **Rebuild Execution Integrity** - rebuild replacement requires a current
+  accepted proposal, a matching rollback snapshot, explicit database locking,
+  and terminal audit evidence. Retried requests return the recorded result
+  rather than applying another policy write.
+- **Secret, Result, and Mention Boundaries** - provider credentials remain
+  masked in read models, normalized provider results are sanitized before
+  persistence or display, and Discord mentions are constrained through
+  allowed-mentions rules and selected server-scoped targets.
 
 ### Fixed
 

@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-13T01:58:01.737Z
+-- Generated: 2026-07-13T20:12:23.259Z
 -- Latest Migration: 20260712_130000_add_policy_library_rebuild_replacement_references.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
@@ -3760,7 +3760,7 @@ CREATE TABLE public.policy_intent_migration_events (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT policy_intent_migration_events_actor_type_chk CHECK (((actor_type)::text = ANY (ARRAY[('operator'::character varying)::text, ('post_upgrade'::character varying)::text, ('test_fixture'::character varying)::text, ('maintainer'::character varying)::text]))),
-    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY ((ARRAY['dry_run_reported'::character varying, 'conversion_started'::character varying, 'conversion_applied'::character varying, 'conversion_failed'::character varying, 'rollback_snapshot_created'::character varying, 'rollback_applied'::character varying, 'native_validated'::character varying, 'legacy_deletion_ready'::character varying, 'library_rebuild_replacement_applied'::character varying])::text[]))),
+    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY (ARRAY[('dry_run_reported'::character varying)::text, ('conversion_started'::character varying)::text, ('conversion_applied'::character varying)::text, ('conversion_failed'::character varying)::text, ('rollback_snapshot_created'::character varying)::text, ('rollback_applied'::character varying)::text, ('native_validated'::character varying)::text, ('legacy_deletion_ready'::character varying)::text, ('library_rebuild_replacement_applied'::character varying)::text]))),
     CONSTRAINT policy_intent_migration_events_metadata_shape_chk CHECK ((jsonb_typeof(metadata) = 'object'::text))
 );
 
