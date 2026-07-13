@@ -73,6 +73,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   constraints, routing context, and guarded classification outcomes. Raw
   profile, freshness, observed-absence, and learning payloads are rejected at
   the proposal boundary.
+- **Verified Rebuild Acceptance** — added a time-bounded manual acceptance
+  transition that fingerprints the reviewed proposal and same-policy rollback
+  plan before migration comparison. Raw approval booleans and unbound rollback
+  objects cannot authorize comparison or policy replacement.
 - **Migration Verification and Rollback Planning** — added bounded sample-set
   provenance, migration comparison, operator-acceptance requirements, rollback
   window planning, and separate verification paths so policy replacement is

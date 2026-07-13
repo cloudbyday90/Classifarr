@@ -4389,6 +4389,14 @@ Implementation status:
   freshness, absence, and learning fields are rejected before proposal
   construction; its design record is [Policy Library Rebuild Input
   Contract](policy-library-rebuild-input-contract.md).
+- Task 7R.6.2 is complete: `policyLibraryRebuildAcceptanceTransition.mjs`
+  converts only a current reviewable rebuild proposal into a time-bounded manual
+  acceptance transition. It binds the full proposal, policy/intent/library
+  context, and same-policy rollback-window plan with SHA-256 fingerprints;
+  migration comparison rejects raw approval booleans and raw rollback objects.
+  The transition cannot replace policy and explicitly requires later persisted
+  snapshot and replay protection evidence. Its design record is [Policy Library
+  Rebuild Acceptance Transition](policy-library-rebuild-acceptance-transition.md).
 - The focused rebuild test suite lives in
   `server/src/__tests__/services/policyLibraryPolicyRebuild.test.mjs`.
 - The focused input-contract suite lives in

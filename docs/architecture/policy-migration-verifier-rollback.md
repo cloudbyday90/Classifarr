@@ -5,11 +5,12 @@
 Implemented as a durable migration-verifier and rollback contract.
 
 This contract compares a library-derived rebuild proposal against sanitized legacy
-behavior samples, emits only migration-relevant differences,
-binds the comparison to a stable sample-set fingerprint, and enforces operator
-acceptance, rollback snapshot, and legacy deletion gates. It does not apply
-policy replacement, create rollback snapshots, delete legacy paths, write
-learning, or expose raw replay/provider payloads.
+behavior samples, emits only migration-relevant differences, and binds the
+comparison to both a stable sample-set fingerprint and a verified rebuild
+acceptance transition. The transition binds the proposal, policy context,
+rollback-window plan, manual approval, and short-lived approval window. The
+verifier does not apply policy replacement, create rollback snapshots, delete
+legacy paths, write learning, or expose raw replay/provider payloads.
 
 This checkpoint also makes the verifier prove that its embedded rebuild
 proposal validation is current. Reports recompute proposal validation during
@@ -145,8 +146,9 @@ Cons:
    - `evidence_confidence_change`.
 8. Bound emitted differences with a configured maximum.
 9. Suppress raw payloads, prompts, embeddings, and provider payloads.
-10. Require explicit operator acceptance before replacement.
-11. Require rollback snapshot and restore path before replacement.
+10. Require a current, verified manual acceptance transition before comparison.
+11. Require a same-policy rollback-window plan and restore path before
+    comparison; require a later persisted snapshot before replacement.
 12. Define deletion criteria for old preset/custom-signal runtime paths:
    - native intent storage stable,
    - verifier passed,
@@ -214,6 +216,11 @@ The service exports:
   fingerprint counts, and guarded-outcome request-proof counts.
 - Report validation recomputes the embedded rebuild proposal validation and
   rejects missing or stale proposal-validation proof.
+- The verifier rejects raw `operatorAccepted` and `rollbackSnapshot` fields.
+  It accepts only a current acceptance transition whose proposal and rollback
+  fingerprints match the embedded decision artifacts.
+- Verifier reports are comparison-only: `canApplyReplacement` remains false
+  until a later transactional path persists a rollback snapshot and replay key.
 - The decision-only verifier reducer rejects raw rebuild input and requires a
   valid rebuild proposal before comparing samples or deriving rollback gates.
 - Report validation rejects sample-set provenance that no longer matches the

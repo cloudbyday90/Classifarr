@@ -696,8 +696,8 @@ describe('policyLibraryPolicyRebuild', () => {
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.nextStep).toEqual(expect.objectContaining({
-      stepId: 'migration_verifier_rollback',
-      label: 'Migration Verifier And Rollback Path',
+      stepId: 'library_rebuild_acceptance_transition',
+      label: 'Library Rebuild Acceptance Transition',
     }));
     expect(proposal.trace.reasons).toEqual(expect.arrayContaining([
       expect.objectContaining({

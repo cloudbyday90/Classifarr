@@ -60,6 +60,11 @@ policy authority.
    Later storage work can write the plan transactionally, but this component
    performs no writes, deletes, or restores.
 
+6. **Redact operator identifiers and free-form reasons from plan reports.**
+   The report exposes actor source, actor presence, reason code, and reason
+   presence only. The durable snapshot payload may retain protected audit data
+   for the later transaction, but report projections must not expose it.
+
 ## Pros And Cons
 
 Pros:
@@ -134,6 +139,7 @@ Required snapshot sections:
 Security and retention behavior:
 
 - raw legacy payloads are suppressed from reports,
+- actor IDs and free-form migration reasons are suppressed from reports,
 - rollback snapshots have an expiry,
 - revert is eligible only during the window,
 - approved actor sources are manual operator, post-upgrade apply, test fixture,

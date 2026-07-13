@@ -10,6 +10,11 @@ import {
   buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput,
   validatePolicyLibraryPolicyRebuildProposal,
 } from './policyLibraryPolicyRebuild.mjs';
+import {
+  POLICY_LIBRARY_REBUILD_ACCEPTANCE_STATUS_IDS,
+  POLICY_LIBRARY_REBUILD_ACCEPTANCE_TRANSITION_VERSION,
+  validatePolicyLibraryRebuildAcceptanceTransition,
+} from './policyLibraryRebuildAcceptanceTransition.mjs';
 
 const POLICY_MIGRATION_DIFFERENCE_TYPE_IDS = Object.freeze({
   DESTINATION_CHANGE: 'destination_change',
@@ -58,6 +63,10 @@ const POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS = Object.freeze({
   RAW_PAYLOAD_EXPOSED: 'raw_payload_exposed',
   NORMAL_WORKFLOW_SURFACE: 'normal_workflow_surface',
   MISSING_APPLICATION_GATE: 'missing_application_gate',
+  MISSING_ACCEPTANCE_TRANSITION: 'missing_acceptance_transition',
+  INVALID_ACCEPTANCE_TRANSITION: 'invalid_acceptance_transition',
+  ACCEPTANCE_TRANSITION_PROVENANCE_MISMATCH: 'acceptance_transition_provenance_mismatch',
+  CAN_VERIFY_WITHOUT_ACCEPTANCE_TRANSITION: 'can_verify_without_acceptance_transition',
   CAN_APPLY_WITHOUT_OPERATOR_ACCEPTANCE: 'can_apply_without_operator_acceptance',
   CAN_APPLY_WITHOUT_ROLLBACK: 'can_apply_without_rollback',
   MISSING_ROLLBACK_PATH: 'missing_rollback_path',
@@ -76,6 +85,8 @@ const CONFIDENCE_DELTA_THRESHOLD_DEFAULT = 0.15;
 const SAMPLE_SET_FINGERPRINT_VERSION = 'policy.migration_verifier_sample_set_fingerprint.v1';
 const SAMPLE_SET_FINGERPRINT_TRACE_ATTRIBUTE =
   'classifarr.policy.migration_verifier.sample_set_fingerprint';
+const ACCEPTANCE_TRANSITION_FINGERPRINT_TRACE_ATTRIBUTE =
+  'classifarr.policy.migration_verifier.acceptance_transition_fingerprint';
 const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
 
 const MIGRATION_RELEVANT_DIFFERENCE_TYPES = Object.freeze(
@@ -87,9 +98,9 @@ const MIGRATION_VERIFIER_REDUCER_INPUT_KEYS = new Set([
   'maxDifferences',
   'confidenceDeltaThreshold',
   'legacyComparisonSamples',
-  'operatorAccepted',
-  'rollbackSnapshot',
+  'acceptanceTransition',
   'deletionCriteria',
+  'now',
 ]);
 
 function asArray(value) {
@@ -191,6 +202,7 @@ function normalizeSample(value = {}, proposal = {}) {
 function buildSampleSetFingerprint({
   samples,
   proposal,
+  acceptanceTransition,
   maxDifferences,
   confidenceDeltaThreshold,
 }) {
@@ -211,6 +223,11 @@ function buildSampleSetFingerprint({
       guardedOutcomeRequestProofCount: proposalGuardedOutcomeSummary.requestProofCount ?? 0,
       guardedOutcomeMissingRequestProofCount: proposalGuardedOutcomeSummary.missingRequestProofCount ?? 0,
       guardedOutcomeInvalidRequestProofCount: proposalGuardedOutcomeSummary.invalidRequestProofCount ?? 0,
+    },
+    acceptanceTransition: {
+      version: acceptanceTransition.version || null,
+      statusId: acceptanceTransition.statusId || null,
+      fingerprint: acceptanceTransition.transitionFingerprint?.fingerprint || null,
     },
     verifierOptions: {
       maxDifferences,
@@ -243,6 +260,10 @@ function buildSampleSetFingerprint({
       proposalGuardedOutcomeMissingRequestProofCount: proposalGuardedOutcomeSummary.missingRequestProofCount ?? 0,
       proposalGuardedOutcomeInvalidRequestProofCount: proposalGuardedOutcomeSummary.invalidRequestProofCount ?? 0,
       proposalGuardedOutcomeFingerprints,
+      acceptanceTransitionVersion: acceptanceTransition.version || null,
+      acceptanceTransitionStatusId: acceptanceTransition.statusId || null,
+      acceptanceTransitionFingerprint:
+        acceptanceTransition.transitionFingerprint?.fingerprint || null,
     },
   };
 }
@@ -363,35 +384,38 @@ function determineStatus(differences) {
   return POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES;
 }
 
-function normalizeRollbackSnapshot(input = {}) {
-  const snapshot = asObject(input.rollbackSnapshot);
-
-  return {
+function buildApplicationGate({ acceptanceTransition, statusId }) {
+  const rollbackPlan = asObject(acceptanceTransition.rollbackWindowPlan);
+  const rollbackSnapshot = {
     required: true,
-    created: snapshot.created === true || Boolean(snapshot.snapshotId),
-    snapshotId: snapshot.snapshotId ?? null,
-    restorePath: normalizeString(snapshot.restorePath),
-    retentionWindowDays: Number.isFinite(Number(snapshot.retentionWindowDays))
-      ? Math.max(0, Math.trunc(Number(snapshot.retentionWindowDays)))
-      : 30,
+    planned: rollbackPlan.snapshot?.planned === true,
+    created: false,
+    snapshotId: null,
+    restorePath: normalizeString(rollbackPlan.snapshot?.restorePath),
+    expiresAt: normalizeString(rollbackPlan.snapshot?.expiresAt),
+    retentionWindowDays: Number.isFinite(Number(rollbackPlan.retention?.windowDays))
+      ? Math.max(0, Math.trunc(Number(rollbackPlan.retention.windowDays)))
+      : null,
   };
-}
-
-function buildApplicationGate({ input, proposal, statusId }) {
-  const rollbackSnapshot = normalizeRollbackSnapshot(input);
-  const operatorAccepted = input.operatorAccepted === true ||
-    proposal.acceptanceGate?.accepted === true;
-  const canApply = operatorAccepted === true &&
-    rollbackSnapshot.created === true &&
-    normalizeString(rollbackSnapshot.restorePath).length > 0 &&
-    statusId !== POLICY_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK;
 
   return {
     requiresOperatorAcceptance: true,
-    operatorAccepted,
+    operatorAccepted: acceptanceTransition.acceptance?.accepted === true,
+    acceptanceTransition: {
+      version: acceptanceTransition.version || null,
+      statusId: acceptanceTransition.statusId || null,
+      fingerprint: acceptanceTransition.transitionFingerprint?.fingerprint || null,
+      expiresAt: acceptanceTransition.acceptance?.expiresAt || null,
+    },
     requiresRollbackSnapshot: true,
     rollbackSnapshot,
-    canApplyReplacement: canApply,
+    canEnterMigrationVerification:
+      acceptanceTransition.application?.canEnterMigrationVerification === true,
+    canApplyReplacement: false,
+    requiresPersistedRollbackSnapshot: true,
+    replacementBlockedReason: statusId === POLICY_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK
+      ? 'migration_risk_blocked'
+      : 'persisted_rollback_snapshot_required',
   };
 }
 
@@ -448,7 +472,13 @@ function buildDeletionCriteria({ input, differences, migrationPlan, applicationG
   };
 }
 
-function buildTrace({ statusId, differences, boundedDifferences, sampleSetFingerprint }) {
+function buildTrace({
+  statusId,
+  differences,
+  boundedDifferences,
+  sampleSetFingerprint,
+  acceptanceTransition,
+}) {
   const reasons = [
     POLICY_MIGRATION_VERIFIER_REASON_IDS.PROPOSAL_VALIDATED,
     POLICY_MIGRATION_VERIFIER_REASON_IDS.LEGACY_COMPARISON_CONSUMED,
@@ -468,6 +498,8 @@ function buildTrace({ statusId, differences, boundedDifferences, sampleSetFinger
       'classifarr.policy.migration_verifier.emitted_difference_count': boundedDifferences.length,
       'classifarr.policy.migration_verifier.truncated': differences.length > boundedDifferences.length,
       [SAMPLE_SET_FINGERPRINT_TRACE_ATTRIBUTE]: sampleSetFingerprint.fingerprint,
+      [ACCEPTANCE_TRANSITION_FINGERPRINT_TRACE_ATTRIBUTE]:
+        acceptanceTransition.transitionFingerprint.fingerprint,
     },
     reasons: reasons.map(reasonId => ({
       reasonId,
@@ -501,9 +533,35 @@ function requireValidRebuildProposal(input = {}) {
   return proposal;
 }
 
+function requireValidAcceptanceTransition(input = {}, proposal = {}) {
+  const acceptanceTransition = asObject(input.acceptanceTransition);
+  if (acceptanceTransition.version !== POLICY_LIBRARY_REBUILD_ACCEPTANCE_TRANSITION_VERSION) {
+    throw new TypeError(
+      'Migration verifier requires a policy.library_rebuild_acceptance_transition.v1 acceptance transition.'
+    );
+  }
+
+  const transitionValidation = validatePolicyLibraryRebuildAcceptanceTransition({
+    transition: acceptanceTransition,
+    proposal,
+    now: input.now,
+  });
+  if (!transitionValidation.ok ||
+      acceptanceTransition.statusId !==
+        POLICY_LIBRARY_REBUILD_ACCEPTANCE_STATUS_IDS.READY_FOR_MIGRATION_VERIFICATION ||
+      acceptanceTransition.application?.canEnterMigrationVerification !== true) {
+    throw new TypeError(
+      'Migration verifier requires a current accepted rebuild transition bound to the rebuild proposal and rollback plan.'
+    );
+  }
+
+  return acceptanceTransition;
+}
+
 function buildPolicyMigrationVerifierReportFromRebuildProposal(input = {}) {
   const verifierInput = asObject(input);
   const proposal = requireValidRebuildProposal(verifierInput);
+  const acceptanceTransition = requireValidAcceptanceTransition(verifierInput, proposal);
   const migrationPlan = verifierInput.migrationPlan?.version === 'policy.migration_deletion_path.v1'
     ? verifierInput.migrationPlan
     : buildPolicyMigrationDeletionPlan();
@@ -518,6 +576,7 @@ function buildPolicyMigrationVerifierReportFromRebuildProposal(input = {}) {
   const sampleSetFingerprint = buildSampleSetFingerprint({
     samples,
     proposal,
+    acceptanceTransition,
     maxDifferences,
     confidenceDeltaThreshold,
   });
@@ -527,8 +586,7 @@ function buildPolicyMigrationVerifierReportFromRebuildProposal(input = {}) {
   const boundedDifferences = differences.slice(0, maxDifferences);
   const statusId = determineStatus(differences);
   const applicationGate = buildApplicationGate({
-    input: verifierInput,
-    proposal,
+    acceptanceTransition,
     statusId,
   });
   const deletionReadiness = buildDeletionCriteria({
@@ -542,6 +600,7 @@ function buildPolicyMigrationVerifierReportFromRebuildProposal(input = {}) {
     version: 'policy.migration_verifier.v1',
     statusId,
     proposal,
+    acceptanceTransition,
     proposalValidation: validatePolicyLibraryPolicyRebuildProposal(proposal),
     migrationPlanValidation: validatePolicyMigrationDeletionPlan(migrationPlan),
     sampleSummary: {
@@ -573,6 +632,7 @@ function buildPolicyMigrationVerifierReportFromRebuildProposal(input = {}) {
       differences,
       boundedDifferences,
       sampleSetFingerprint,
+      acceptanceTransition,
     }),
   };
 }
@@ -600,6 +660,12 @@ function validatePolicyMigrationVerifierReport(report = {}) {
   const proposalValidation = validatePolicyLibraryPolicyRebuildProposal(
     asObject(report.proposal)
   );
+  const acceptanceTransition = asObject(report.acceptanceTransition);
+  const acceptanceTransitionValidation = validatePolicyLibraryRebuildAcceptanceTransition({
+    transition: acceptanceTransition,
+    proposal: asObject(report.proposal),
+    now: acceptanceTransition.evaluatedAt || new Date(),
+  });
 
   if (report.version !== 'policy.migration_verifier.v1') {
     issues.push({
@@ -637,13 +703,34 @@ function validatePolicyMigrationVerifierReport(report = {}) {
     });
   }
 
+  if (acceptanceTransition.version !== POLICY_LIBRARY_REBUILD_ACCEPTANCE_TRANSITION_VERSION) {
+    issues.push({
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MISSING_ACCEPTANCE_TRANSITION,
+      message: 'Migration verifier report must include a rebuild acceptance transition.',
+    });
+  } else if (!acceptanceTransitionValidation.ok ||
+      acceptanceTransition.statusId !==
+        POLICY_LIBRARY_REBUILD_ACCEPTANCE_STATUS_IDS.READY_FOR_MIGRATION_VERIFICATION ||
+      acceptanceTransition.application?.canEnterMigrationVerification !== true) {
+    issues.push({
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_ACCEPTANCE_TRANSITION,
+      message: 'Migration verifier report must include a current accepted transition bound to the proposal and rollback plan.',
+    });
+  }
+
   const sampleSetFingerprint = report.sampleSetFingerprint;
   const sampleFingerprintValue = normalizeString(sampleSetFingerprint?.fingerprint);
   const sampleFingerprintProvenance = asObject(sampleSetFingerprint?.provenance);
   const traceSampleFingerprint = normalizeString(
     report.trace?.attributes?.[SAMPLE_SET_FINGERPRINT_TRACE_ATTRIBUTE]
   );
+  const traceAcceptanceTransitionFingerprint = normalizeString(
+    report.trace?.attributes?.[ACCEPTANCE_TRANSITION_FINGERPRINT_TRACE_ATTRIBUTE]
+  );
   const proposalGuardedOutcomeSummary = asObject(report.proposal?.evidenceSourceSummary?.guardedOutcomes);
+  const acceptanceTransitionFingerprint = normalizeString(
+    acceptanceTransition.transitionFingerprint?.fingerprint
+  );
 
   if (!sampleFingerprintValue) {
     issues.push({
@@ -668,6 +755,14 @@ function validatePolicyMigrationVerifierReport(report = {}) {
     });
   }
 
+  if (acceptanceTransitionFingerprint &&
+      traceAcceptanceTransitionFingerprint !== acceptanceTransitionFingerprint) {
+    issues.push({
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.ACCEPTANCE_TRANSITION_PROVENANCE_MISMATCH,
+      message: 'Migration verifier trace acceptance-transition fingerprint must match the embedded transition.',
+    });
+  }
+
   if (sampleSetFingerprint && (
     sampleFingerprintProvenance.proposalVersion !== report.proposal?.version ||
     sampleFingerprintProvenance.proposalStatusId !== report.proposal?.statusId ||
@@ -680,7 +775,10 @@ function validatePolicyMigrationVerifierReport(report = {}) {
     Number(sampleFingerprintProvenance.proposalGuardedOutcomeMissingRequestProofCount) !==
       Number(proposalGuardedOutcomeSummary.missingRequestProofCount ?? 0) ||
     Number(sampleFingerprintProvenance.proposalGuardedOutcomeInvalidRequestProofCount) !==
-      Number(proposalGuardedOutcomeSummary.invalidRequestProofCount ?? 0)
+      Number(proposalGuardedOutcomeSummary.invalidRequestProofCount ?? 0) ||
+    sampleFingerprintProvenance.acceptanceTransitionVersion !== acceptanceTransition.version ||
+    sampleFingerprintProvenance.acceptanceTransitionStatusId !== acceptanceTransition.statusId ||
+    sampleFingerprintProvenance.acceptanceTransitionFingerprint !== acceptanceTransitionFingerprint
   )) {
     issues.push({
       riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.SAMPLE_SET_PROVENANCE_MISMATCH,
@@ -737,6 +835,15 @@ function validatePolicyMigrationVerifierReport(report = {}) {
     });
   }
 
+  if (report.applicationGate?.canEnterMigrationVerification !== true ||
+      report.applicationGate?.acceptanceTransition?.fingerprint !== acceptanceTransitionFingerprint ||
+      report.applicationGate?.acceptanceTransition?.statusId !== acceptanceTransition.statusId) {
+    issues.push({
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_VERIFY_WITHOUT_ACCEPTANCE_TRANSITION,
+      message: 'Migration verifier may compare samples only through the bound accepted rebuild transition.',
+    });
+  }
+
   if (
     report.applicationGate?.canApplyReplacement === true &&
     report.applicationGate?.operatorAccepted !== true
@@ -754,6 +861,15 @@ function validatePolicyMigrationVerifierReport(report = {}) {
     issues.push({
       riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_APPLY_WITHOUT_ROLLBACK,
       message: 'Migration replacement cannot apply without a rollback snapshot.',
+    });
+  }
+
+  if (report.applicationGate?.canApplyReplacement === true ||
+      report.applicationGate?.requiresPersistedRollbackSnapshot !== true ||
+      report.applicationGate?.rollbackSnapshot?.created === true) {
+    issues.push({
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_APPLY_WITHOUT_ROLLBACK,
+      message: 'Migration verifier is comparison-only; policy replacement requires a later persisted rollback snapshot gate.',
     });
   }
 

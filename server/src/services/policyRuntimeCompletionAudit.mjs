@@ -12,6 +12,9 @@ import {
   buildPolicyLibraryPolicyRebuildAudit,
 } from './policyLibraryPolicyRebuild.mjs';
 import {
+  buildPolicyLibraryRebuildAcceptanceTransitionAudit,
+} from './policyLibraryRebuildAcceptanceTransition.mjs';
+import {
   buildPolicyMigrationVerifierAudit,
 } from './policyMigrationVerifierRollback.mjs';
 import {
@@ -48,6 +51,7 @@ const POLICY_RUNTIME_COMPLETION_COMPONENT_IDS = Object.freeze({
   RUNTIME_QUESTION_REDUCTION: 'runtime_question_reduction',
   REQUEST_TIME_LEARNING: 'request_time_learning',
   LIBRARY_POLICY_REBUILD: 'library_policy_rebuild',
+  LIBRARY_REBUILD_ACCEPTANCE_TRANSITION: 'library_rebuild_acceptance_transition',
   MIGRATION_VERIFIER_ROLLBACK: 'migration_verifier_rollback',
   RUNTIME_METRICS_TRACE: 'runtime_metrics_trace',
   RUNTIME_REBUILD_TEST_RESET: 'runtime_rebuild_test_reset',
@@ -123,8 +127,17 @@ const POLICY_RUNTIME_COMPLETION_COMPONENT_RECORDS = Object.freeze([
     docPath: 'docs/architecture/policy-library-policy-rebuild-module-cutover.md',
     servicePath: 'server/src/services/policyLibraryPolicyRebuild.mjs',
     testPath: 'server/src/__tests__/services/policyLibraryPolicyRebuild.test.mjs',
-    expectedNextStepId: 'migration_verifier_rollback',
+    expectedNextStepId: 'library_rebuild_acceptance_transition',
     evidence: 'Library-derived rebuild proposals are side-effect-free, acceptance-gated, rollback-gated, and preserve explicit constraints.',
+  },
+  {
+    id: POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.LIBRARY_REBUILD_ACCEPTANCE_TRANSITION,
+    label: 'Library rebuild acceptance transition',
+    docPath: 'docs/architecture/policy-library-rebuild-acceptance-transition.md',
+    servicePath: 'server/src/services/policyLibraryRebuildAcceptanceTransition.mjs',
+    testPath: 'server/src/__tests__/services/policyLibraryRebuildAcceptanceTransition.test.mjs',
+    expectedNextStepId: 'migration_verifier_rollback',
+    evidence: 'Manual acceptance is time-bounded and bound to the full rebuild proposal, same-policy rollback plan, and later persistent replay protection requirement.',
   },
   {
     id: POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.MIGRATION_VERIFIER_ROLLBACK,
@@ -133,7 +146,7 @@ const POLICY_RUNTIME_COMPLETION_COMPONENT_RECORDS = Object.freeze([
     servicePath: 'server/src/services/policyMigrationVerifierRollback.mjs',
     testPath: 'server/src/__tests__/services/policyMigrationVerifierRollback.test.mjs',
     expectedNextStepId: 'runtime_metrics_trace',
-    evidence: 'Migration verifier reports require proposal validation, bounded sample-set proof, operator acceptance, and rollback before replacement.',
+    evidence: 'Migration verifier reports require a verified acceptance transition, bounded sample-set proof, and rollback planning; replacement remains disabled pending persisted rollback evidence.',
   },
   {
     id: POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE,
@@ -217,6 +230,8 @@ function buildDefaultComponentAudits() {
       buildPassingRequestTimeLearningAudit(),
     [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.LIBRARY_POLICY_REBUILD]:
       buildPolicyLibraryPolicyRebuildAudit(),
+    [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.LIBRARY_REBUILD_ACCEPTANCE_TRANSITION]:
+      buildPolicyLibraryRebuildAcceptanceTransitionAudit(),
     [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.MIGRATION_VERIFIER_ROLLBACK]:
       buildPolicyMigrationVerifierAudit(),
     [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE]:

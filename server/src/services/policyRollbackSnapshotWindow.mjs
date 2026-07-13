@@ -217,7 +217,7 @@ function summarizeActor(action = {}) {
   return {
     included: true,
     actorSourceId: action.actorSourceId ?? action.actor_source_id ?? null,
-    actorId: action.actorId ?? action.actor_id ?? null,
+    actorIdPresent: Boolean(action.actorId ?? action.actor_id),
   };
 }
 
@@ -225,7 +225,7 @@ function summarizeReason(action = {}) {
   return {
     included: true,
     reasonCode: action.reasonCode ?? action.reason_code ?? 'native_intent_conversion',
-    reason: action.reason ?? null,
+    reasonProvided: Boolean(action.reason),
   };
 }
 
@@ -264,13 +264,13 @@ function buildSnapshotSections({ policy = {}, action = {} } = {}) {
     {
       sectionId: POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.MIGRATION_ACTOR,
       restoreRequired: true,
-      reportRedacted: false,
+      reportRedacted: true,
       summary: summarizeActor(action),
     },
     {
       sectionId: POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.MIGRATION_REASON,
       restoreRequired: true,
-      reportRedacted: false,
+      reportRedacted: true,
       summary: summarizeReason(action),
     },
   ];

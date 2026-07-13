@@ -1577,9 +1577,9 @@ function buildPolicyLibraryPolicyRebuildAudit(proposal = null) {
       proposalValidated: hasProposal,
     },
     nextStep: {
-      stepId: 'migration_verifier_rollback',
-      label: 'Migration Verifier And Rollback Path',
-      reason: 'Library-derived proposals are now side-effect-free and acceptance-gated, so the next boundary is comparing proposal behavior with legacy behavior and enforcing rollback before replacement.',
+      stepId: 'library_rebuild_acceptance_transition',
+      label: 'Library Rebuild Acceptance Transition',
+      reason: 'Library-derived proposals are side-effect-free and require a current manual acceptance transition bound to the proposal and rollback plan before migration comparison.',
     },
   };
 }

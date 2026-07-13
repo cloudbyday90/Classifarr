@@ -111,6 +111,7 @@ describe('policyRuntimeDecisionInventory', () => {
       'server/src/services/policyRuntimeQuestionReduction.mjs',
       'server/src/services/policyRequestTimeLearning.mjs',
       'server/src/services/policyLibraryPolicyRebuild.mjs',
+      'server/src/services/policyLibraryRebuildAcceptanceTransition.mjs',
       'server/src/services/policyMigrationVerifierRollback.mjs',
       'server/src/services/policyRuntimeMetricsTrace.mjs',
     ]));

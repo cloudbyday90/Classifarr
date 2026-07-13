@@ -31,6 +31,7 @@ const POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS = Object.freeze({
   REQUEST_TIME_LEARNING: 'request_time_learning',
   GUARDED_OUTCOME_PROJECTION: 'guarded_outcome_projection',
   LIBRARY_POLICY_REBUILD: 'library_policy_rebuild',
+  LIBRARY_REBUILD_ACCEPTANCE_TRANSITION: 'library_rebuild_acceptance_transition',
   MIGRATION_VERIFIER: 'migration_verifier',
   RUNTIME_METRICS_INPUT: 'runtime_metrics_input',
   RUNTIME_METRICS_TRACE: 'runtime_metrics_trace',
@@ -79,6 +80,7 @@ const REQUIRED_CONTRACT_IDS = Object.freeze([
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.REQUEST_TIME_LEARNING,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.GUARDED_OUTCOME_PROJECTION,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_POLICY_REBUILD,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_REBUILD_ACCEPTANCE_TRANSITION,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.MIGRATION_VERIFIER,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_INPUT,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_TRACE,
@@ -96,6 +98,8 @@ const CONTRACT_IMPORT_MARKERS = Object.freeze({
     '../../services/policyGuardedOutcomeProjection.mjs',
   [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_POLICY_REBUILD]:
     '../../services/policyLibraryPolicyRebuild.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_REBUILD_ACCEPTANCE_TRANSITION]:
+    '../../services/policyLibraryRebuildAcceptanceTransition.mjs',
   [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.MIGRATION_VERIFIER]:
     '../../services/policyMigrationVerifierRollback.mjs',
   [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_INPUT]:
@@ -259,6 +263,24 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     deleteAfterMigration: false,
     normalWorkflowAllowed: true,
     traceReasons: ['migration_verifier_rewrite'],
+  }),
+  Object.freeze({
+    path: 'server/src/__tests__/services/policyLibraryRebuildAcceptanceTransition.test.mjs',
+    owner: 'server',
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER,
+    coverageIds: [
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_REBUILD_ACCEPTANCE_TRANSITION,
+    ],
+    replacement: 'Use a current manual acceptance transition bound to the rebuild proposal and rollback plan before migration comparison.',
+    protectsAuthority: true,
+    distinguishesClassificationFromRouting: true,
+    preservesOldPreviewUi: false,
+    deleteAfterMigration: false,
+    normalWorkflowAllowed: false,
+    traceReasons: ['library_rebuild_acceptance_transition'],
   }),
   Object.freeze({
     path: 'server/src/__tests__/services/policyRuntimeMetricsInput.test.mjs',

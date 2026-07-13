@@ -7,10 +7,18 @@ import {
   POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS,
   POLICY_MIGRATION_VERIFIER_STATUS_IDS,
   buildPolicyMigrationVerifierAudit,
-  buildPolicyMigrationVerifierReportFromRebuildProposal as buildPolicyMigrationVerifierReport,
+  buildPolicyMigrationVerifierReportFromRebuildProposal as buildMigrationVerifierReport,
   buildPolicyMigrationVerifierReportFromRuntimeInput,
   validatePolicyMigrationVerifierReport,
 } from '../../services/policyMigrationVerifierRollback.mjs';
+import {
+  buildPolicyLibraryRebuildAcceptanceTransition,
+} from '../../services/policyLibraryRebuildAcceptanceTransition.mjs';
+import {
+  buildPolicyRollbackSnapshotWindow,
+} from '../../services/policyRollbackSnapshotWindow.mjs';
+
+const NOW = new Date();
 
 function profileHandoff() {
   return {
@@ -85,11 +93,54 @@ function proposalInput(overrides = {}) {
 }
 
 function acceptedProposal() {
-  const proposal = buildPolicyLibraryPolicyRebuildProposal(proposalInput());
-  proposal.acceptanceGate.accepted = true;
-  proposal.acceptanceGate.acceptedBy = 'admin-1';
-  proposal.acceptanceGate.acceptedAt = '2026-06-30T12:00:00.000Z';
-  return proposal;
+  return buildPolicyLibraryPolicyRebuildProposal(proposalInput());
+}
+
+function acceptanceTransition(proposal) {
+  return buildPolicyLibraryRebuildAcceptanceTransition({
+    proposal,
+    policyContext: {
+      policyId: 44,
+      intentId: 101,
+      libraryId: 6,
+    },
+    rollbackWindowPlan: buildPolicyRollbackSnapshotWindow({
+      policy: {
+        id: 44,
+        intent_id: 101,
+        library_id: 6,
+        customSignals: {
+          genres: {
+            require_any: ['Animation'],
+          },
+        },
+      },
+      action: {
+        actorSourceId: 'manual_operator',
+        actorId: 'admin:1',
+        reasonCode: 'library_rebuild',
+        reason: 'Operator accepted a rebuild proposal.',
+      },
+      now: NOW,
+    }),
+    operatorDecision: {
+      actorId: 'admin:1',
+      actorSourceId: 'manual_operator',
+      decisionId: 'accept_rebuild',
+    },
+    now: NOW,
+  });
+}
+
+function buildPolicyMigrationVerifierReport(input = {}) {
+  const rebuildProposal = input.proposal || acceptedProposal();
+
+  return buildMigrationVerifierReport({
+    ...input,
+    proposal: rebuildProposal,
+    acceptanceTransition: input.acceptanceTransition || acceptanceTransition(rebuildProposal),
+    now: input.now || NOW,
+  });
 }
 
 describe('policyMigrationVerifierRollback', () => {
@@ -108,14 +159,29 @@ describe('policyMigrationVerifierRollback', () => {
     expect(() => buildPolicyMigrationVerifierReportFromRuntimeInput({
       proposal,
     })).toThrow('received a rebuild proposal');
+    expect(() => buildPolicyMigrationVerifierReport({
+      proposal,
+      acceptanceTransition: acceptanceTransition(proposal),
+      operatorAccepted: true,
+    })).toThrow('raw input key "operatorAccepted"');
+    expect(() => buildPolicyMigrationVerifierReport({
+      proposal,
+      acceptanceTransition: acceptanceTransition(proposal),
+      rollbackSnapshot: {
+        created: true,
+      },
+    })).toThrow('raw input key "rollbackSnapshot"');
 
     const report = buildPolicyMigrationVerifierReport({
       proposal,
       legacyComparisonSamples: [],
     });
+    const runtimeProposal = buildPolicyLibraryPolicyRebuildProposal(proposalInput());
     const runtimeReport = buildPolicyMigrationVerifierReportFromRuntimeInput({
       proposalInput: proposalInput(),
+      acceptanceTransition: acceptanceTransition(runtimeProposal),
       legacyComparisonSamples: [],
+      now: NOW,
     });
 
     expect(report.proposal).toBe(proposal);
@@ -146,13 +212,6 @@ describe('policyMigrationVerifierRollback', () => {
           },
         },
       ],
-      operatorAccepted: true,
-      rollbackSnapshot: {
-        created: true,
-        snapshotId: 'snapshot-1',
-        restorePath: 'policy_snapshots/snapshot-1.json',
-        retentionWindowDays: 30,
-      },
     });
 
     expect(report.statusId).toBe(POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES);
@@ -161,7 +220,9 @@ describe('policyMigrationVerifierRollback', () => {
       requiresOperatorAcceptance: true,
       operatorAccepted: true,
       requiresRollbackSnapshot: true,
-      canApplyReplacement: true,
+      canEnterMigrationVerification: true,
+      canApplyReplacement: false,
+      requiresPersistedRollbackSnapshot: true,
     }));
     expect(report.deletionReadiness.canDeleteLegacyPaths).toBe(false);
       expect(report.deletionReadiness.criteria).toEqual(expect.arrayContaining([
@@ -427,14 +488,15 @@ describe('policyMigrationVerifierRollback', () => {
       ]));
   });
 
-  test('does not allow replacement without operator acceptance and rollback', () => {
+  test('does not allow a verifier report to apply replacement directly', () => {
     const report = buildPolicyMigrationVerifierReport({
       proposal: buildPolicyLibraryPolicyRebuildProposal(proposalInput()),
       legacyComparisonSamples: [],
     });
 
     expect(report.applicationGate).toEqual(expect.objectContaining({
-      operatorAccepted: false,
+      operatorAccepted: true,
+      canEnterMigrationVerification: true,
       canApplyReplacement: false,
     }));
     expect(report.applicationGate.rollbackSnapshot.created).toBe(false);
@@ -444,9 +506,6 @@ describe('policyMigrationVerifierRollback', () => {
 
     expect(validatePolicyMigrationVerifierReport(report).issues)
       .toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_APPLY_WITHOUT_OPERATOR_ACCEPTANCE,
-        }),
         expect.objectContaining({
           riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.CAN_APPLY_WITHOUT_ROLLBACK,
         }),
@@ -499,10 +558,6 @@ describe('policyMigrationVerifierRollback', () => {
           },
         },
       ],
-      rollbackSnapshot: {
-        created: true,
-        restorePath: 'policy_snapshots/snapshot-1.json',
-      },
       deletionCriteria: {
         rollbackWindowActive: true,
         deleteChecklistApproved: true,
@@ -525,14 +580,10 @@ describe('policyMigrationVerifierRollback', () => {
       ]));
   });
 
-  test('allows delete readiness only after all deletion criteria are met', () => {
+  test('keeps legacy deletion blocked until a later persisted rollback step exists', () => {
     const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       legacyComparisonSamples: [],
-      rollbackSnapshot: {
-        created: true,
-        restorePath: 'policy_snapshots/snapshot-1.json',
-      },
       deletionCriteria: {
         nativeIntentStorageStable: true,
         rollbackWindowActive: true,
@@ -541,7 +592,7 @@ describe('policyMigrationVerifierRollback', () => {
       },
     });
 
-    expect(report.deletionReadiness.canDeleteLegacyPaths).toBe(true);
+    expect(report.deletionReadiness.canDeleteLegacyPaths).toBe(false);
     expect(validatePolicyMigrationVerifierReport(report).ok).toBe(true);
   });
 
@@ -549,10 +600,6 @@ describe('policyMigrationVerifierRollback', () => {
     const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       legacyComparisonSamples: [],
-      rollbackSnapshot: {
-        created: true,
-        restorePath: 'policy_snapshots/snapshot-1.json',
-      },
       deletionCriteria: {
         phase8NativeIntentStable: true,
         rollbackWindowActive: true,

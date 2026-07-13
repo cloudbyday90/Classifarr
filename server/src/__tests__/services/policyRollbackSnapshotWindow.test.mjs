@@ -99,6 +99,26 @@ describe('policyRollbackSnapshotWindow', () => {
         rawPayloadSuppressedFromReport: true,
       }),
     }));
+    expect(windowPlan.snapshot.payloadSections.find(section =>
+      section.sectionId === POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.MIGRATION_ACTOR
+    )).toEqual(expect.objectContaining({
+      reportRedacted: true,
+      summary: expect.objectContaining({
+        actorSourceId: POLICY_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
+        actorIdPresent: true,
+      }),
+    }));
+    expect(windowPlan.snapshot.payloadSections.find(section =>
+      section.sectionId === POLICY_ROLLBACK_PAYLOAD_SECTION_IDS.MIGRATION_REASON
+    )).toEqual(expect.objectContaining({
+      reportRedacted: true,
+      summary: expect.objectContaining({
+        reasonCode: 'native_intent_conversion',
+        reasonProvided: true,
+      }),
+    }));
+    expect(JSON.stringify(windowPlan)).not.toContain('admin:1');
+    expect(JSON.stringify(windowPlan)).not.toContain('operator accepted native intent conversion');
     expect(windowPlan.sideEffects).toEqual({
       rollbackSnapshotWritten: false,
       policyRestored: false,

@@ -16,6 +16,7 @@ describe('policyRuntimeCompletionAudit', () => {
         POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_QUESTION_REDUCTION,
         POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.REQUEST_TIME_LEARNING,
         POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.LIBRARY_POLICY_REBUILD,
+        POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.LIBRARY_REBUILD_ACCEPTANCE_TRANSITION,
         POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.MIGRATION_VERIFIER_ROLLBACK,
         POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE,
         POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_REBUILD_TEST_RESET,
@@ -27,8 +28,8 @@ describe('policyRuntimeCompletionAudit', () => {
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
-    expect(audit.checkedComponentCount).toBe(9);
-    expect(audit.requiredComponentCount).toBe(9);
+    expect(audit.checkedComponentCount).toBe(10);
+    expect(audit.requiredComponentCount).toBe(10);
     expect(audit.policyEngineCompletion).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
@@ -43,6 +44,7 @@ describe('policyRuntimeCompletionAudit', () => {
         'runtime_question_reduction',
         'request_time_learning',
         'library_policy_rebuild',
+        'library_rebuild_acceptance_transition',
         'migration_verifier_rollback',
         'runtime_metrics_trace',
         'runtime_rebuild_test_reset',

@@ -365,7 +365,7 @@ The focused test suite verifies:
 - missing acceptance, rollback, source summary, or constraint-preservation gates
   fail validation,
 - the component audit points to
-  `nextStep.stepId = migration_verifier_rollback`.
+  `nextStep.stepId = library_rebuild_acceptance_transition`.
 
 ## Outcome
 
