@@ -409,8 +409,9 @@ unchanged operator or runtime outcome.
 
 ### Fixed
 
-- **Policy Storage Completion Audit** - removed static-analysis warnings from
-  storage-closure parsing while preserving deterministic completion checks.
+- **Policy Storage Completion Audit** - replaced dynamic roadmap-label regular
+  expression construction with a bounded line parser, preserving deterministic
+  completion checks while removing the remaining static-analysis warning.
 - **Fresh-Install RAG Indexes** - restored the missing text HNSW index in the
   schema snapshot and added an integrity guard so fresh installations do not
   start with a degraded RAG health state.

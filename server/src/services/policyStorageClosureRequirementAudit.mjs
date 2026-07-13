@@ -8,6 +8,7 @@ import {
   POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS,
 } from './policyStorageCurrentClosureAudit.mjs';
 import {
+  ROADMAP_ENTRY_TYPES,
   collectArtifactInventory,
   collectRoadmapComponentIds,
   normalizeRepositoryPath,
@@ -261,12 +262,12 @@ function extractRoadmapComponentEvidence({
     sequenceComponentIds: collectRoadmapComponentIds({
       roadmapContent,
       componentArtifactMap,
-      entryPrefix: '\\d+\\.\\s+\\*\\*',
+      entryType: ROADMAP_ENTRY_TYPES.SEQUENCE,
     }).map(normalizeClosureComponentId),
     implementationStatusComponentIds: collectRoadmapComponentIds({
       roadmapContent,
       componentArtifactMap,
-      entryPrefix: '###\\s+',
+      entryType: ROADMAP_ENTRY_TYPES.IMPLEMENTATION_STATUS,
     }).map(normalizeClosureComponentId),
   };
 }

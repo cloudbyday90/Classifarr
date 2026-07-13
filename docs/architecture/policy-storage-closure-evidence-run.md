@@ -136,6 +136,10 @@ Implemented:
 - Replaced public `phaseId` component evidence with `componentId`.
 - Replaced public `nextPhase` output with semantic `nextStep` output.
 - Preserved Windows/POSIX path normalization.
+- Replaced dynamic roadmap-label regular expression construction with a bounded
+  line parser. It accepts only known sequence and implementation-status entry
+  shapes, matches complete labels case-insensitively, and rejects longer label
+  prefixes instead of interpreting label text as executable pattern syntax.
 - Preserved artifact inventory, roadmap, changelog, final-removal audit,
   validation evidence, checkpoint composition, side-effect rejection, and
   complete/blocked status behavior.

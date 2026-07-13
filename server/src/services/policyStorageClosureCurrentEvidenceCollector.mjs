@@ -26,6 +26,17 @@ const ARTIFACT_INVENTORY_BUCKETS = Object.freeze({
   OTHER: 'otherPaths',
 });
 
+const ROADMAP_ENTRY_TYPES = Object.freeze({
+  IMPLEMENTATION_STATUS: 'implementation_status',
+  SEQUENCE: 'sequence',
+});
+
+const ROADMAP_ENTRY_PATTERNS = Object.freeze({
+  [ROADMAP_ENTRY_TYPES.IMPLEMENTATION_STATUS]: /^###\s+/,
+  [ROADMAP_ENTRY_TYPES.SEQUENCE]: /^\d+\.\s+\*\*/,
+});
+const HISTORIC_COMPONENT_IDENTIFIER_PATTERN = /^\d+[a-z]?\.\d+\s+/i;
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -119,27 +130,52 @@ function collectArtifactInventory({
   };
 }
 
-function escapeRegex(value = '') {
-  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function getRoadmapEntryLabelCandidate({
+  line = '',
+  entryType = ROADMAP_ENTRY_TYPES.SEQUENCE,
+} = {}) {
+  const pattern = ROADMAP_ENTRY_PATTERNS[entryType];
+  const value = String(line || '');
+
+  if (!pattern || !pattern.test(value)) {
+    return '';
+  }
+
+  return value
+    .replace(pattern, '')
+    .replace(HISTORIC_COMPONENT_IDENTIFIER_PATTERN, '');
+}
+
+function hasRoadmapComponentLabel({
+  labelCandidate = '',
+  label = '',
+} = {}) {
+  const normalizedCandidate = String(labelCandidate || '').trim().toLowerCase();
+  const normalizedLabel = String(label || '').trim().toLowerCase();
+
+  if (!normalizedLabel || !normalizedCandidate.startsWith(normalizedLabel)) {
+    return false;
+  }
+
+  const labelBoundary = normalizedCandidate[normalizedLabel.length];
+  return !labelBoundary || !/[a-z0-9_]/i.test(labelBoundary);
 }
 
 function collectRoadmapComponentIds({
   roadmapContent = '',
   componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
-  entryPrefix = '',
+  entryType = ROADMAP_ENTRY_TYPES.SEQUENCE,
 } = {}) {
-  const content = String(roadmapContent || '');
+  const labelCandidates = String(roadmapContent || '')
+    .split(/\r?\n/)
+    .map(line => getRoadmapEntryLabelCandidate({ line, entryType }))
+    .filter(Boolean);
 
   return asArray(componentArtifactMap)
-    .filter(component => {
-      const label = escapeRegex(component.label);
-      const pattern = new RegExp(
-        `^${entryPrefix}(?:\\d+[a-z]?\\.\\d+\\s+)?${label}\\b`,
-        'im'
-      );
-
-      return pattern.test(content);
-    })
+    .filter(component => labelCandidates.some(labelCandidate => hasRoadmapComponentLabel({
+      labelCandidate,
+      label: component.label,
+    })))
     .map(component => component.componentId);
 }
 
@@ -151,12 +187,12 @@ function extractRoadmapEvidence({
     componentSequenceIds: collectRoadmapComponentIds({
       roadmapContent,
       componentArtifactMap,
-      entryPrefix: '\\d+\\.\\s+\\*\\*',
+      entryType: ROADMAP_ENTRY_TYPES.SEQUENCE,
     }),
     implementationStatusComponentIds: collectRoadmapComponentIds({
       roadmapContent,
       componentArtifactMap,
-      entryPrefix: '###\\s+',
+      entryType: ROADMAP_ENTRY_TYPES.IMPLEMENTATION_STATUS,
     }),
   };
 }
@@ -243,11 +279,11 @@ export {
   DEFAULT_CHANGELOG_PATH,
   DEFAULT_POLICY_STORAGE_CLOSURE_ROADMAP_PATH,
   POLICY_STORAGE_CLOSURE_CURRENT_EVIDENCE_COLLECTOR_VERSION,
+  ROADMAP_ENTRY_TYPES,
   buildPolicyStorageClosureCurrentEvidenceRun,
   categorizeArtifactPath,
   collectArtifactInventory,
   collectRoadmapComponentIds,
-  escapeRegex,
   extractChangelogEvidence,
   extractRoadmapEvidence,
   getMappedArtifactPaths,

@@ -139,6 +139,25 @@ describe('policyStorageClosureCurrentEvidenceCollector', () => {
     });
   });
 
+  test('matches complete labels without accepting longer heading or list labels', () => {
+    const evidence = extractRoadmapEvidence({
+      roadmapContent: `
+### native schema contract: implemented
+### Native Schema Contracts
+### Native Schema Contractual Guidance
+
+1. **Native Schema Contract:** completed
+2. **Native Schema Contracts**
+3. **Native Schema Contractual Guidance**
+`,
+    });
+
+    expect(evidence).toEqual({
+      componentSequenceIds: ['native_schema_contract'],
+      implementationStatusComponentIds: ['native_schema_contract'],
+    });
+  });
+
   test('extracts changelog coverage from the durable storage outcome', () => {
     const evidence = extractChangelogEvidence({
       changelogContent: completeChangelogContent(),
