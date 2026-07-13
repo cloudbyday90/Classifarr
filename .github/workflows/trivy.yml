@@ -45,7 +45,7 @@ jobs:
           skip-dirs: .git,node_modules,server/node_modules,client/node_modules,client/dist,client/coverage,server/coverage,data,.tmp
 
       - name: Upload Trivy FS results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
         if: always()
         with:
           sarif_file: trivy-fs-results.sarif
@@ -89,7 +89,7 @@ jobs:
           output: trivy-config-results.sarif
 
       - name: Upload Trivy config results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
         if: always()
         with:
           sarif_file: trivy-config-results.sarif
