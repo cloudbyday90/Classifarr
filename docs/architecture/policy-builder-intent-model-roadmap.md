@@ -4513,6 +4513,15 @@ Implementation status:
   route-readiness changes, and evidence-confidence changes.
 - Application gates require explicit operator acceptance plus rollback snapshot
   and restore path before any later replacement can apply.
+- Task 7R.7.1 is complete: `policyLibraryRebuildSnapshotGate.mjs` revalidates a
+  current accepted rebuild transition inside one database transaction, locks the
+  matching policy and active native intent, persists the authoritative rollback
+  snapshot and migration event, and records one-time execution state keyed by
+  the transition fingerprint. It never replaces policy behavior. Expired,
+  stale, mismatched, and competing requests are blocked; a valid repeat
+  returns the original persisted execution without a second snapshot write.
+  Backup restore intentionally clears this short-lived authorization state
+  rather than reviving a historic approval.
 - Legacy deletion readiness is blocked until native intent storage is stable,
   the verifier passes, rollback and retention gates are active, delete checklist
   approval exists, legacy artifacts are classified, and custom-signal

@@ -30,6 +30,7 @@ const logger = createLogger('BackupRestore');
 
 export async function clearExistingConfig(client) {
   await client.query('DELETE FROM policy_intent_validation_status');
+  await client.query('DELETE FROM policy_library_rebuild_execution_gates');
   await client.query('DELETE FROM policy_intent_rollback_snapshots');
   await client.query('DELETE FROM policy_intent_migration_events');
   await client.query('DELETE FROM policy_intent_template_applications');

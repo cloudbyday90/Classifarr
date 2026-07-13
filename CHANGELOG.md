@@ -80,6 +80,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Migration Comparison and Rollback Planning** - added bounded sample-set
   provenance, comparison, operator-acceptance requirements, and rollback-window
   planning. Policy replacement remains separate from normal authoring.
+- **Persisted Rebuild Rollback Evidence** - added an atomic, one-time execution
+  gate that revalidates accepted rebuilds, locks the current policy and native
+  intent, stores the authoritative rollback snapshot and audit event, and
+  prevents duplicate snapshot writes for replayed, expired, stale, or
+  competing requests. It does not replace policy behavior.
 
 #### Native Policy Intent Storage
 

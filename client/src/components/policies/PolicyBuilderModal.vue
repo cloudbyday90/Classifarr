@@ -103,7 +103,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, toRef } from 'vue'
+import { computed, onMounted, toRef } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
 import PolicyBuilderFooterActions from '@/components/policies/PolicyBuilderFooterActions.vue'
@@ -114,7 +114,6 @@ import PolicyBuilderRoutingReadinessCard from '@/components/policies/PolicyBuild
 import PolicyBuilderSetupCards from '@/components/policies/PolicyBuilderSetupCards.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicyStarterTemplateAccelerator from '@/components/policies/PolicyStarterTemplateAccelerator.vue'
-import api from '@/api'
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
@@ -194,7 +193,6 @@ const {
   totalWeight,
   currentLibrary,
   hasExistingPresets,
-  isValid,
   togglePresetSelection,
   addAllSuggested: addPresetSuggestions,
   removePreset,

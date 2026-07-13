@@ -354,6 +354,39 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_validation_status_lookup');
     });
 
+    test('current.sql includes the library rebuild rollback execution gate', () => {
+        const schemaSql = readSchemaSnapshot();
+        const migrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260712_120000_add_policy_library_rebuild_execution_gates.sql'
+        );
+        const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+        const executionGates = getCreateTableBlock(
+            schemaSql,
+            'policy_library_rebuild_execution_gates'
+        );
+
+        [
+            'CREATE TABLE IF NOT EXISTS policy_library_rebuild_execution_gates',
+            'idx_policy_library_rebuild_execution_gates_idempotency',
+            'idx_policy_library_rebuild_execution_gates_transition',
+            'idx_policy_library_rebuild_execution_gates_active_policy',
+            'idx_policy_library_rebuild_execution_gates_snapshot',
+        ].forEach(expectedSnippet => {
+            expect(migrationSql).toContain(expectedSnippet);
+        });
+
+        expect(executionGates).toContain('idempotency_key character varying(160) NOT NULL');
+        expect(executionGates).toMatch(
+            /transition_fingerprint character varying\(64\).*NOT NULL/
+        );
+        expect(executionGates).toContain('rollback_snapshot_id bigint');
+        expect(executionGates).toContain('migration_event_id bigint');
+        expect(executionGates).toContain('policy_library_rebuild_execution_gates_persisted_snapshot_chk');
+        expect(schemaSql).toContain('CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_idempotency');
+        expect(schemaSql).toContain('CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_active_policy');
+    });
+
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {
         const schemaSql = readSchemaSnapshot();
         const originalMigrationPath = path.resolve(

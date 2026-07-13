@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-11T19:13:23.250Z
--- Latest Migration: 20260711_090100_correct_classification_progress_stage_comments.sql
+-- Generated: 2026-07-13T00:56:11.978Z
+-- Latest Migration: 20260712_120000_add_policy_library_rebuild_execution_gates.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4094,6 +4094,57 @@ ALTER SEQUENCE public.policy_learning_stats_id_seq OWNED BY public.policy_learni
 
 
 --
+-- Name: policy_library_rebuild_execution_gates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_library_rebuild_execution_gates (
+    id bigint NOT NULL,
+    policy_id integer NOT NULL,
+    intent_id bigint NOT NULL,
+    library_id integer NOT NULL,
+    state character varying(40) NOT NULL,
+    idempotency_key character varying(160) NOT NULL,
+    transition_fingerprint character varying(64) CONSTRAINT policy_library_rebuild_executio_transition_fingerprint_not_null NOT NULL,
+    proposal_fingerprint character varying(64) CONSTRAINT policy_library_rebuild_execution__proposal_fingerprint_not_null NOT NULL,
+    rollback_plan_fingerprint character varying(64) CONSTRAINT policy_library_rebuild_execu_rollback_plan_fingerprint_not_null NOT NULL,
+    actor_source_id character varying(40) NOT NULL,
+    actor_reference character varying(64) NOT NULL,
+    acceptance_expires_at timestamp with time zone CONSTRAINT policy_library_rebuild_execution_acceptance_expires_at_not_null NOT NULL,
+    rollback_snapshot_id bigint,
+    migration_event_id bigint,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_library_rebuild_execution_gates_acceptance_window_chk CHECK ((acceptance_expires_at > created_at)),
+    CONSTRAINT policy_library_rebuild_execution_gates_actor_reference_chk CHECK (((actor_reference)::text ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_library_rebuild_execution_gates_idempotency_key_chk CHECK (((idempotency_key)::text ~ '^policy:library_rebuild_acceptance:[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_library_rebuild_execution_gates_persisted_snapshot_chk CHECK ((((state)::text <> ALL ((ARRAY['snapshot_persisted'::character varying, 'replacement_applied'::character varying, 'rollback_applied'::character varying])::text[])) OR ((rollback_snapshot_id IS NOT NULL) AND (migration_event_id IS NOT NULL)))),
+    CONSTRAINT policy_library_rebuild_execution_gates_proposal_fingerprint_chk CHECK (((proposal_fingerprint)::text ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_library_rebuild_execution_gates_rollback_plan_fingerprin CHECK (((rollback_plan_fingerprint)::text ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_library_rebuild_execution_gates_state_chk CHECK (((state)::text = ANY ((ARRAY['snapshot_persisting'::character varying, 'snapshot_persisted'::character varying, 'acceptance_expired'::character varying, 'replacement_applied'::character varying, 'rollback_applied'::character varying, 'invalidated'::character varying])::text[]))),
+    CONSTRAINT policy_library_rebuild_execution_gates_transition_fingerprint_c CHECK (((transition_fingerprint)::text ~ '^[a-f0-9]{64}$'::text))
+);
+
+
+--
+-- Name: policy_library_rebuild_execution_gates_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_library_rebuild_execution_gates_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_library_rebuild_execution_gates_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_library_rebuild_execution_gates_id_seq OWNED BY public.policy_library_rebuild_execution_gates.id;
+
+
+--
 -- Name: policy_overlap_metrics_snapshots; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6001,6 +6052,13 @@ ALTER TABLE ONLY public.policy_learning_stats ALTER COLUMN id SET DEFAULT nextva
 
 
 --
+-- Name: policy_library_rebuild_execution_gates id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_library_rebuild_execution_gates ALTER COLUMN id SET DEFAULT nextval('public.policy_library_rebuild_execution_gates_id_seq'::regclass);
+
+
+--
 -- Name: policy_overlap_metrics_snapshots id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6948,6 +7006,14 @@ ALTER TABLE ONLY public.policy_learning_stats
 
 ALTER TABLE ONLY public.policy_learning_stats
     ADD CONSTRAINT policy_learning_stats_policy_id_key UNIQUE (policy_id);
+
+
+--
+-- Name: policy_library_rebuild_execution_gates policy_library_rebuild_execution_gates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
+    ADD CONSTRAINT policy_library_rebuild_execution_gates_pkey PRIMARY KEY (id);
 
 
 --
@@ -8348,6 +8414,34 @@ CREATE INDEX idx_policy_learning_stats_policy ON public.policy_learning_stats US
 
 
 --
+-- Name: idx_policy_library_rebuild_execution_gates_active_policy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_active_policy ON public.policy_library_rebuild_execution_gates USING btree (policy_id) WHERE ((state)::text = ANY ((ARRAY['snapshot_persisting'::character varying, 'snapshot_persisted'::character varying])::text[]));
+
+
+--
+-- Name: idx_policy_library_rebuild_execution_gates_idempotency; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_idempotency ON public.policy_library_rebuild_execution_gates USING btree (idempotency_key);
+
+
+--
+-- Name: idx_policy_library_rebuild_execution_gates_snapshot; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_library_rebuild_execution_gates_snapshot ON public.policy_library_rebuild_execution_gates USING btree (rollback_snapshot_id) WHERE (rollback_snapshot_id IS NOT NULL);
+
+
+--
+-- Name: idx_policy_library_rebuild_execution_gates_transition; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_transition ON public.policy_library_rebuild_execution_gates USING btree (transition_fingerprint);
+
+
+--
 -- Name: idx_policy_overlap_metrics_snapshots_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9530,6 +9624,46 @@ ALTER TABLE ONLY public.policy_intents
 
 ALTER TABLE ONLY public.policy_learning_stats
     ADD CONSTRAINT policy_learning_stats_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_library_rebuild_execution_gates policy_library_rebuild_execution_gate_rollback_snapshot_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
+    ADD CONSTRAINT policy_library_rebuild_execution_gate_rollback_snapshot_id_fkey FOREIGN KEY (rollback_snapshot_id) REFERENCES public.policy_intent_rollback_snapshots(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: policy_library_rebuild_execution_gates policy_library_rebuild_execution_gates_intent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
+    ADD CONSTRAINT policy_library_rebuild_execution_gates_intent_id_fkey FOREIGN KEY (intent_id) REFERENCES public.policy_intents(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_library_rebuild_execution_gates policy_library_rebuild_execution_gates_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
+    ADD CONSTRAINT policy_library_rebuild_execution_gates_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_library_rebuild_execution_gates policy_library_rebuild_execution_gates_migration_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
+    ADD CONSTRAINT policy_library_rebuild_execution_gates_migration_event_id_fkey FOREIGN KEY (migration_event_id) REFERENCES public.policy_intent_migration_events(id) ON DELETE SET NULL;
+
+
+--
+-- Name: policy_library_rebuild_execution_gates policy_library_rebuild_execution_gates_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
+    ADD CONSTRAINT policy_library_rebuild_execution_gates_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
 
 
 --
@@ -11646,6 +11780,7 @@ FROM unnest(ARRAY[
     '20260625_064500_add_discord_pending_mention_targets.sql',
     '20260701_160000_add_policy_intent_native_storage.sql',
     '20260711_090000_rename_classification_progress_stages.sql',
-    '20260711_090100_correct_classification_progress_stage_comments.sql'
+    '20260711_090100_correct_classification_progress_stage_comments.sql',
+    '20260712_120000_add_policy_library_rebuild_execution_gates.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
