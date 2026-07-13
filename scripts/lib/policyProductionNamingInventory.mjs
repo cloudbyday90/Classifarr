@@ -54,6 +54,11 @@ const PHASE_CODE_TOKENS = Object.freeze([
   'R6',
 ]);
 
+const HISTORIC_TOKEN_SCANNER_PATHS = Object.freeze([
+  'scripts/lib/policyProductionNamingInventory.mjs',
+  'scripts/lib/policyProductLanguageAudit.mjs',
+]);
+
 const DURABLE_TARGET_HINTS = Object.freeze([
   ['policyBuilderProductionNameInventory', 'policyBuilderProductionNameInventory'],
   ['classificationPhaseService', 'classificationProgressStageService'],
@@ -250,7 +255,7 @@ function determineDecision({ categoryId, repoPath, excerpt }) {
 
   if (
     categoryId === PRODUCTION_NAMING_CATEGORY_IDS.SCRIPT_OR_COMMAND &&
-    repoPath === 'scripts/lib/policyProductionNamingInventory.mjs'
+    HISTORIC_TOKEN_SCANNER_PATHS.includes(repoPath)
   ) {
     return PRODUCTION_NAMING_DECISION_IDS.KEEP_MAINTENANCE_HISTORIC_SCANNER;
   }

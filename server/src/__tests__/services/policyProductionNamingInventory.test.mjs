@@ -133,12 +133,16 @@ describe('policyProductionNamingInventory', () => {
     ]));
   });
 
-  test('keeps the historic-token scanner in maintenance tooling without treating it as production debt', () => {
+  test('keeps historic-token scanners in maintenance tooling without treating them as production debt', () => {
     const inventory = buildPolicyProductionNamingInventory({
       files: [
         {
           path: 'scripts/lib/policyProductionNamingInventory.mjs',
           content: "const tokens = ['Phase', '6R'];",
+        },
+        {
+          path: 'scripts/lib/policyProductLanguageAudit.mjs',
+          content: "const matcher = /phase[0-9]+/i;",
         },
       ],
     });
@@ -151,6 +155,7 @@ describe('policyProductionNamingInventory', () => {
       }),
     ]));
     expect(inventory.summary.productionReferenceCount).toBe(0);
+    expect(inventory.summary.renameCandidateCount).toBe(0);
   });
 
   test('extracts only lines that contain phase-coded tokens', () => {

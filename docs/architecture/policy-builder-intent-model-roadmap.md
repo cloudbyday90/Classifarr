@@ -7648,6 +7648,19 @@ Acceptance criteria:
 - Current runtime diagnostics and settings do not expose completed phase labels.
 - Historical docs remain searchable for migration evidence.
 
+Implementation status:
+
+- The current-surface audit is documented in
+  [Product-Language Audit](policy-product-language-audit.md).
+- `npm run policy:product-language-audit` scans runtime UI and server modules,
+  operator commands, public API documentation, the product README, the current
+  release-note section, and only the Unreleased changelog section.
+- The audit has no write, storage, network, or process side effects. It reports
+  only the surface, repository path, line number, matcher identifier, and
+  matched temporary token; it never emits a source-line excerpt.
+- Current results: 7 required surfaces, 1,003 audited files, and 0 temporary
+  delivery-language findings.
+
 ### 9R.6 Completion Gate For Delivery-Term Removal
 
 Intent: prove that the production module tree no longer teaches the current

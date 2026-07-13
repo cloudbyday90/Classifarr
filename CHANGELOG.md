@@ -10,7 +10,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 ## [Unreleased]
 
 The entries below describe distinct product behavior and operational guarantees
-intended for the next release. They consolidate intermediate delivery phases,
+intended for the next release. They consolidate intermediate implementation work,
 temporary diagnostics, and refactors only when those changes resulted in one
 unchanged operator or runtime outcome.
 
@@ -21,6 +21,10 @@ unchanged operator or runtime outcome.
 - **Durable Product Naming Gate** - added a side-effect-free repository
   inventory and regression gate to CI so temporary delivery terminology cannot
   re-enter production modules, commands, or current contracts unnoticed.
+- **Product-Language Audit** - added a side-effect-free CI audit across current
+  runtime UI and server text, operator commands, public API documentation,
+  current release notes, and the Unreleased changelog section. It blocks
+  temporary delivery labels while keeping historical records searchable.
 - **Client Build Warning Hygiene** - updated the Vite build toolchain and
   narrowed the temporary VueUse compatibility allowance to its two known
   upstream annotation locations, so unrelated bundler warnings remain visible.

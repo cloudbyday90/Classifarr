@@ -16,23 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import path from 'node:path';
-
 import {
   buildPolicyProductionNamingInventory,
   validatePolicyBuilderProductionNameInventory,
 } from './policyProductionNamingInventory.mjs';
-
-const DEFAULT_EXCLUDED_DIRECTORIES = Object.freeze([
-  '.git',
-  '.tmp',
-  '.vite',
-  'coverage',
-  'data',
-  'dist',
-  'node_modules',
-]);
+import {
+  DEFAULT_EXCLUDED_DIRECTORIES,
+  collectRepositoryTextFiles,
+} from './repositoryTextFileCollection.mjs';
 
 const DEFAULT_INCLUDED_ROOTS = Object.freeze([
   'server/src',
@@ -46,77 +37,13 @@ const DEFAULT_INCLUDED_ROOTS = Object.freeze([
   'client/package.json',
 ]);
 
-const TEXT_FILE_EXTENSIONS = Object.freeze([
-  '.js',
-  '.json',
-  '.md',
-  '.mjs',
-  '.sql',
-  '.vue',
-]);
-
-function normalizeRepoPath(value) {
-  return String(value || '').trim().replaceAll('\\', '/').replace(/^\/+/, '');
-}
-
-function isTextFile(filePath) {
-  return TEXT_FILE_EXTENSIONS.includes(path.extname(filePath).toLowerCase());
-}
-
-function isExcludedPath(repoPath) {
-  const parts = normalizeRepoPath(repoPath).split('/');
-  return parts.some(part => DEFAULT_EXCLUDED_DIRECTORIES.includes(part));
-}
-
-function listFilesRecursive(absolutePath, rootDir) {
-  if (!existsSync(absolutePath)) {
-    return [];
-  }
-
-  const stats = statSync(absolutePath);
-
-  if (stats.isFile()) {
-    return isTextFile(absolutePath)
-      ? [absolutePath]
-      : [];
-  }
-
-  if (!stats.isDirectory()) {
-    return [];
-  }
-
-  return readdirSync(absolutePath, { withFileTypes: true }).flatMap(entry => {
-    const entryPath = path.join(absolutePath, entry.name);
-    const repoPath = normalizeRepoPath(path.relative(rootDir, entryPath));
-
-    if (isExcludedPath(repoPath)) {
-      return [];
-    }
-
-    if (entry.isDirectory()) {
-      return listFilesRecursive(entryPath, rootDir);
-    }
-
-    if (entry.isFile() && isTextFile(entryPath)) {
-      return [entryPath];
-    }
-
-    return [];
-  });
-}
-
 function loadPolicyProductionNamingRepositoryFiles({
   rootDir = process.cwd(),
 } = {}) {
-  const resolvedRootDir = path.resolve(rootDir);
-  const files = DEFAULT_INCLUDED_ROOTS.flatMap(rootEntry =>
-    listFilesRecursive(path.resolve(resolvedRootDir, rootEntry), resolvedRootDir)
-  );
-
-  return [...new Set(files)].map(absolutePath => ({
-    path: normalizeRepoPath(path.relative(resolvedRootDir, absolutePath)),
-    content: readFileSync(absolutePath, 'utf8'),
-  }));
+  return collectRepositoryTextFiles({
+    rootDir,
+    includedRoots: DEFAULT_INCLUDED_ROOTS,
+  });
 }
 
 function buildPolicyProductionNamingRepositoryInventory({
