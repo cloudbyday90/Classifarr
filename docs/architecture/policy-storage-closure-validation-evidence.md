@@ -25,6 +25,10 @@ decisions.
 - Node.js `child_process.spawn` is the official asynchronous child-process API.
   The generator uses fixed command specs and array arguments with `shell: false`
   instead of constructing user-controlled shell strings.
+- Node.js documents that Windows `.cmd` launchers require shell handling. The
+  generator therefore invokes npm's JavaScript CLI through `process.execPath`
+  when it is available, keeping the command boundary shell-free for direct Node
+  and Windows invocations.
 
 Sources:
 
@@ -93,10 +97,12 @@ Cons:
 3. Expose `npm run policy:storage-closure-validation-evidence`.
 4. Emit `policy.storage_closure_validation_evidence.v1`.
 5. Run command specs with array arguments and `shell: false`.
-6. Continue running later checks after failures by default so output shows all
+6. Resolve npm and npx to their JavaScript CLI through the active or bundled
+   Node distribution before falling back to the platform command path.
+7. Continue running later checks after failures by default so output shows all
    broken gates.
-7. Emit JSON with `focused`, `lint`, `markdown`, and `full` entries.
-8. Reject unknown check IDs and reported file/storage/Git side effects.
+8. Emit JSON with `focused`, `lint`, `markdown`, and `full` entries.
+9. Reject unknown check IDs and reported file/storage/Git side effects.
 
 ## Implementation Outcome
 
@@ -112,6 +118,9 @@ Implemented:
   - missing command results,
   - unknown check IDs,
   - reported file/storage/Git side effects.
+- Added a shell-free, cross-platform command-invocation service for direct Node
+  and Windows validation runs. It resolves npm and npx through the active or
+  Node-distribution JavaScript CLI when available.
 - Updated the closure validation command set to include the renamed storage
   closure current audit and closure requirement audit suites.
 

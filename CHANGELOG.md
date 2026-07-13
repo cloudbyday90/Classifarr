@@ -412,6 +412,9 @@ unchanged operator or runtime outcome.
 - **Policy Storage Completion Audit** - replaced dynamic roadmap-label regular
   expression construction with a bounded line parser, preserving deterministic
   completion checks while removing the remaining static-analysis warning.
+- **Policy Storage Closure Validation** - fixed direct Node and Windows
+  validation evidence generation by resolving npm and npx through a shell-free
+  JavaScript CLI invocation instead of relying on a platform command launcher.
 - **Fresh-Install RAG Indexes** - restored the missing text HNSW index in the
   schema snapshot and added an integrity guard so fresh installations do not
   start with a degraded RAG health state.

@@ -20,6 +20,17 @@ function completeRoadmapContent() {
   return `${componentSections}\n\n## Policy Storage Closure Work Sequence\n\n${sequenceItems}`;
 }
 
+function historicRoadmapContent() {
+  const componentSections = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP
+    .map((component, index) => `### 8R.${index + 1} ${component.label}`)
+    .join('\n');
+  const sequenceItems = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP
+    .map((component, index) => `${index + 1}. **8R.${index + 1} ${component.label}**`)
+    .join('\n');
+
+  return `${componentSections}\n\n## Policy Storage Closure Work Sequence\n\n${sequenceItems}`;
+}
+
 function completeChangelogContent({
   includeOutcome = true,
 } = {}) {
@@ -229,5 +240,18 @@ describe('policyStorageClosureRequirementAudit', () => {
             .RISK_COUNT_MISMATCH,
       }),
     ]));
+  });
+
+  test('accepts phase-coded roadmap entries for durable closure component names', () => {
+    const audit = completeAudit({
+      readTextFile: readTextFileFactory({
+        roadmapContent: historicRoadmapContent(),
+      }),
+    });
+
+    expect(audit.statusId)
+      .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS.COMPLETE);
+    expect(audit.roadmapEvidence.missingSequenceComponentIds).toEqual([]);
+    expect(audit.roadmapEvidence.missingImplementationStatusComponentIds).toEqual([]);
   });
 });

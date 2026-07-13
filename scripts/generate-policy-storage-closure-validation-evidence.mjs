@@ -19,6 +19,9 @@ import {
   buildPolicyStorageClosureValidationEvidence,
   commandToString,
 } from '../server/src/services/policyStorageClosureValidationEvidence.mjs';
+import {
+  buildPolicyStorageClosureValidationCommandInvocation,
+} from '../server/src/services/policyStorageClosureValidationCommandInvocation.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -67,42 +70,10 @@ function usage() {
   ].join('\n');
 }
 
-function resolveNpmCliPath(command) {
-  const npmExecPath = process.env.npm_execpath;
-
-  if (!npmExecPath) {
-    return null;
-  }
-  if (command === 'npm') {
-    return npmExecPath;
-  }
-
-  const npxCliPath = path.join(path.dirname(npmExecPath), 'npx-cli.js');
-  return fs.existsSync(npxCliPath) ? npxCliPath : null;
-}
-
 function buildSpawnInvocation(commandSpec = {}) {
-  if (commandSpec.command === 'node') {
-    return {
-      command: process.execPath,
-      args: commandSpec.args,
-    };
-  }
-  if (['npm', 'npx'].includes(commandSpec.command)) {
-    const cliPath = resolveNpmCliPath(commandSpec.command);
-
-    if (cliPath) {
-      return {
-        command: process.execPath,
-        args: [cliPath, ...commandSpec.args],
-      };
-    }
-  }
-
-  return {
-    command: commandSpec.command,
-    args: commandSpec.args,
-  };
+  return buildPolicyStorageClosureValidationCommandInvocation({
+    commandSpec,
+  });
 }
 
 function writeJsonFile(filePath, value) {

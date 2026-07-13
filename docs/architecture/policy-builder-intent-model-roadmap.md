@@ -5836,7 +5836,7 @@ Implementation status:
   `nextStep` evidence for policy storage final closure readout only when all
   evidence passes.
 
-### 8R.23 Completion Evidence Run
+### 8R.23 Policy Storage Closure Evidence Run
 
 Intent: normalize explicit current-state artifact evidence and run the Phase
 8R.22 completion checkpoint against that evidence before Phase 8R is closed.
@@ -6579,7 +6579,7 @@ Implement Phase 8R in this order:
     Audits the complete Phase 8R roadmap, service contracts, tests, docs,
     changelog coverage, and validation evidence before Phase 8R is considered
     fully implemented.
-23. **8R.23 Completion Evidence Run**
+23. **8R.23 Policy Storage Closure Evidence Run**
     Runs the policy storage checkpoint against current-state evidence and resolves
     any missing component, roadmap, validation, or changelog proof before the
     Phase 8R objective is marked complete.
@@ -6632,20 +6632,18 @@ Implement Phase 8R in this order:
     artifact, roadmap, changelog, and focused-test evidence before the closure
     objective is marked complete.
 
-Current starting point:
+Completion state:
 
-- Do not start Phase 8R schema migration until Phase 5R, 6R, and 7R contracts
-  are stable enough to preserve.
-- Do not expand legacy compatibility as a substitute for native storage.
-- Do not allow rollback snapshots to become permanent alternate policy records.
-- Use Phase 8R as the point where compatibility paths begin shrinking, not
-  growing.
-
-Implementation record:
-
-- Future implementation should create a Phase 8R implementation doc with schema
-  decisions, migration reports, rollback retention, native read/write behavior,
-  and legacy deletion gates.
+- All mapped Phase 8R components have implementation, design, focused-test,
+  roadmap, and Unreleased release-outcome evidence.
+- The storage closure validation generator is shell-free on direct Node and
+  Windows invocations; its current evidence includes focused, lint, Markdown,
+  unit, and integration validation.
+- The current closure audit and requirement audit are the authoritative
+  completion gates. They must be regenerated after any Phase 8R artifact or
+  roadmap change rather than inferred from this roadmap narrative.
+- New policy work follows Phase 9R durable naming rules. Do not recreate a
+  compatibility path, a dual policy model, or phase-derived production contract.
 
 ## Phase 9R: Durable Product Naming Cutover
 

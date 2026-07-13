@@ -80,13 +80,17 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   },
   {
     componentId: 'storage_closure_validation_evidence',
-    label: 'Storage Closure Validation Evidence',
+    label: 'Policy Storage Closure Validation Evidence',
     designDocPaths: ['docs/architecture/policy-storage-closure-validation-evidence.md'],
     contractPaths: [
       'server/src/services/policyStorageClosureValidationEvidence.mjs',
+      'server/src/services/policyStorageClosureValidationCommandInvocation.mjs',
       'scripts/generate-policy-storage-closure-validation-evidence.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyStorageClosureValidationEvidence.test.mjs'],
+    testPaths: [
+      'server/src/__tests__/services/policyStorageClosureValidationEvidence.test.mjs',
+      'server/src/__tests__/services/policyStorageClosureValidationCommandInvocation.test.mjs',
+    ],
   },
   {
     componentId: 'storage_closure_final_removal_audit',
@@ -174,7 +178,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   },
   {
     componentId: 'storage_final_closure_readout',
-    label: 'Final Closure Readout',
+    label: 'Policy Storage Final Closure Readout',
     designDocPaths: ['docs/architecture/policy-storage-final-closure-readout.md'],
     contractPaths: [
       'server/src/services/policyStorageFinalClosureReadout.mjs',
