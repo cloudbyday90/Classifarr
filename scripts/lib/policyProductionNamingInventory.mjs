@@ -56,6 +56,7 @@ const PHASE_CODE_TOKENS = Object.freeze([
 
 const HISTORIC_TOKEN_SCANNER_PATHS = Object.freeze([
   'scripts/lib/policyProductionNamingInventory.mjs',
+  'scripts/lib/policyDeliveryTermMatcher.mjs',
   'scripts/lib/policyProductLanguageAudit.mjs',
 ]);
 

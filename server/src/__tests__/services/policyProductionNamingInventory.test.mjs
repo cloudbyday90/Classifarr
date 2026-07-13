@@ -144,6 +144,10 @@ describe('policyProductionNamingInventory', () => {
           path: 'scripts/lib/policyProductLanguageAudit.mjs',
           content: "const matcher = /phase[0-9]+/i;",
         },
+        {
+          path: 'scripts/lib/policyDeliveryTermMatcher.mjs',
+          content: "const tokens = ['0R', 'R6'];",
+        },
       ],
     });
 

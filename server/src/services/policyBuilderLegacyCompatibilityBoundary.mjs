@@ -44,6 +44,11 @@ const LEGACY_COMPATIBILITY_AUDIT_RISK_IDS = Object.freeze({
   PRODUCT_FACING_RAW_ACCESS: 'product_facing_raw_access',
   MISSING_DELETION_GATE: 'missing_deletion_gate',
   DELETION_GATE_NOT_REQUIRED: 'deletion_gate_not_required',
+  MISSING_MODULE_OWNER: 'missing_module_owner',
+  MISSING_REMOVAL_CONDITION: 'missing_removal_condition',
+  UNKNOWN_REMOVAL_CONDITION: 'unknown_removal_condition',
+  MISSING_REQUIRED_DELETION_GATE: 'missing_required_deletion_gate',
+  MISSING_DELETION_TEST: 'missing_deletion_test',
 });
 
 const LEGACY_COMPATIBILITY_DELETION_GATE_IDS = Object.freeze({
@@ -54,6 +59,20 @@ const LEGACY_COMPATIBILITY_DELETION_GATE_IDS = Object.freeze({
   LEGACY_WRITE_SHUTDOWN: 'legacy_write_shutdown',
   BACKUP_RESTORE_VERIFICATION: 'backup_restore_verification',
   REGRESSION_COVERAGE: 'regression_coverage',
+});
+
+const LEGACY_COMPATIBILITY_REMOVAL_CONDITION_IDS = Object.freeze({
+  NATIVE_INTENT_STORAGE_AUTHORITATIVE: 'native_intent_storage_authoritative',
+});
+
+const LEGACY_COMPATIBILITY_DELETION_TEST_PATH =
+  'server/src/__tests__/services/policyBuilderLegacyCompatibilityBoundary.test.mjs';
+
+const NATIVE_INTENT_STORAGE_REMOVAL_REQUIREMENTS = Object.freeze({
+  removalConditionId:
+    LEGACY_COMPATIBILITY_REMOVAL_CONDITION_IDS.NATIVE_INTENT_STORAGE_AUTHORITATIVE,
+  requiredDeletionGateIds: Object.freeze(Object.values(LEGACY_COMPATIBILITY_DELETION_GATE_IDS)),
+  deletionTestPath: LEGACY_COMPATIBILITY_DELETION_TEST_PATH,
 });
 
 function deepFreeze(value) {
@@ -180,6 +199,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     canMutateRawLegacyPayload: true,
     deleteAfterNativeStorage: true,
     replacementTarget: 'native intent storage mapper',
+    ...NATIVE_INTENT_STORAGE_REMOVAL_REQUIREMENTS,
   },
   {
     id: 'policy_intent_draft_composable',
@@ -201,6 +221,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     canMutateRawLegacyPayload: false,
     deleteAfterNativeStorage: false,
     replacementTarget: 'native intent draft command composable',
+    ...NATIVE_INTENT_STORAGE_REMOVAL_REQUIREMENTS,
   },
   {
     id: 'policy_builder_state',
@@ -221,6 +242,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     canMutateRawLegacyPayload: false,
     deleteAfterNativeStorage: false,
     replacementTarget: 'policy form state backed by native intent storage',
+    ...NATIVE_INTENT_STORAGE_REMOVAL_REQUIREMENTS,
   },
   {
     id: 'template_signal_helper',
@@ -240,6 +262,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     canMutateRawLegacyPayload: false,
     deleteAfterNativeStorage: false,
     replacementTarget: 'native template presentation helper',
+    ...NATIVE_INTENT_STORAGE_REMOVAL_REQUIREMENTS,
   },
   {
     id: 'combined_signal_presentation',
@@ -259,27 +282,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     canMutateRawLegacyPayload: false,
     deleteAfterNativeStorage: false,
     replacementTarget: 'native intent summary projection',
-  },
-  {
-    id: 'starter_template_mechanics',
-    path: 'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
-    ownerId: LEGACY_COMPATIBILITY_OWNER_IDS.PRODUCT_COMPONENT_CONSUMER,
-    role: 'Product component that should emit commands and product-language events, not mutate legacy payloads.',
-    artifactIds: [
-      LEGACY_COMPATIBILITY_ARTIFACT_IDS.PRESET_ATTACHMENTS,
-      LEGACY_COMPATIBILITY_ARTIFACT_IDS.STARTER_TEMPLATE_WEIGHTS,
-      LEGACY_COMPATIBILITY_ARTIFACT_IDS.REMOVED_MARKERS,
-      LEGACY_COMPATIBILITY_ARTIFACT_IDS.STRICT_ADVISORY_METADATA,
-    ],
-    allowedActions: [
-      LEGACY_COMPATIBILITY_ACTION_IDS.ROUTE_THROUGH_DRAFT_COMMAND,
-      LEGACY_COMPATIBILITY_ACTION_IDS.PRESENT_ONLY,
-      LEGACY_COMPATIBILITY_ACTION_IDS.RENAME_PRODUCT_LANGUAGE,
-    ],
-    productFacing: true,
-    canMutateRawLegacyPayload: false,
-    deleteAfterNativeStorage: false,
-    replacementTarget: 'template seed and intent command components',
+    ...NATIVE_INTENT_STORAGE_REMOVAL_REQUIREMENTS,
   },
   {
     id: 'starter_template_details',
@@ -299,6 +302,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     canMutateRawLegacyPayload: false,
     deleteAfterNativeStorage: false,
     replacementTarget: 'native template detail component',
+    ...NATIVE_INTENT_STORAGE_REMOVAL_REQUIREMENTS,
   },
   {
     id: 'policy_intent_request_validator',
@@ -318,6 +322,7 @@ const LEGACY_COMPATIBILITY_MODULE_RECORDS = deepFreeze([
     canMutateRawLegacyPayload: false,
     deleteAfterNativeStorage: false,
     replacementTarget: 'native intent request validator with conversion support',
+    ...NATIVE_INTENT_STORAGE_REMOVAL_REQUIREMENTS,
   },
 ]);
 
@@ -427,6 +432,59 @@ function validateLegacyCompatibilityModuleRecord(record = {}) {
       moduleId: record.id,
       path: record.path,
       message: 'Legacy compatibility module has no declared ownership record.',
+    });
+  }
+
+  if (typeof candidate.ownerId !== 'string' || candidate.ownerId.trim().length === 0) {
+    issues.push({
+      riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.MISSING_MODULE_OWNER,
+      moduleId: candidate.id,
+      message: 'Legacy compatibility module must declare a bounded owner.',
+    });
+  }
+
+  if (
+    typeof candidate.removalConditionId !== 'string' ||
+    candidate.removalConditionId.trim().length === 0
+  ) {
+    issues.push({
+      riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.MISSING_REMOVAL_CONDITION,
+      moduleId: candidate.id,
+      message: 'Legacy compatibility module must declare the migration condition for removal.',
+    });
+  } else if (!Object.values(LEGACY_COMPATIBILITY_REMOVAL_CONDITION_IDS)
+    .includes(candidate.removalConditionId)) {
+    issues.push({
+      riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.UNKNOWN_REMOVAL_CONDITION,
+      moduleId: candidate.id,
+      removalConditionId: candidate.removalConditionId,
+      message: 'Legacy compatibility module uses an unknown removal condition.',
+    });
+  }
+
+  const requiredDeletionGateIds = Array.isArray(candidate.requiredDeletionGateIds)
+    ? candidate.requiredDeletionGateIds
+    : [];
+
+  Object.values(LEGACY_COMPATIBILITY_DELETION_GATE_IDS).forEach(gateId => {
+    if (!requiredDeletionGateIds.includes(gateId)) {
+      issues.push({
+        riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.MISSING_REQUIRED_DELETION_GATE,
+        moduleId: candidate.id,
+        gateId,
+        message: 'Legacy compatibility module must require every deletion gate before removal.',
+      });
+    }
+  });
+
+  if (
+    typeof candidate.deletionTestPath !== 'string' ||
+    candidate.deletionTestPath.trim().length === 0
+  ) {
+    issues.push({
+      riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.MISSING_DELETION_TEST,
+      moduleId: candidate.id,
+      message: 'Legacy compatibility module must declare its deletion-test coverage.',
     });
   }
 
@@ -606,8 +664,10 @@ export {
   LEGACY_COMPATIBILITY_ACTION_IDS,
   LEGACY_COMPATIBILITY_AUDIT_RISK_IDS,
   LEGACY_COMPATIBILITY_ARTIFACT_IDS,
+  LEGACY_COMPATIBILITY_DELETION_TEST_PATH,
   LEGACY_COMPATIBILITY_DELETION_GATE_IDS,
   LEGACY_COMPATIBILITY_OWNER_IDS,
+  LEGACY_COMPATIBILITY_REMOVAL_CONDITION_IDS,
   LEGACY_COMPATIBILITY_RISK_IDS,
   buildLegacyCompatibilityBoundaryAudit,
   canMutateLegacyPayload,

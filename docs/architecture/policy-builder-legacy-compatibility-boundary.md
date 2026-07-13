@@ -100,7 +100,6 @@ Cons:
   - `client/src/composables/usePolicyBuilderState.js`
   - `client/src/composables/usePolicyBuilderTemplateSignals.js`
   - `client/src/composables/usePolicyBuilderCombinedSignals.js`
-  - `client/src/components/policies/PolicyStarterTemplateMechanics.vue`
   - `client/src/components/policies/PolicyStarterTemplateDetails.vue`
   - `server/src/services/policyIntentRequestValidator.mjs`
 - Roadmap:
@@ -128,7 +127,6 @@ Current ownership rules:
 | `usePolicyBuilderState.js` | Save payload coordinator and bridge caller | Not allowed |
 | `usePolicyBuilderTemplateSignals.js` | Template signal presentation helper | Not allowed |
 | `usePolicyBuilderCombinedSignals.js` | Read-only summary projection | Not allowed |
-| `PolicyStarterTemplateMechanics.vue` | Product command and presentation component | Not allowed |
 | `PolicyStarterTemplateDetails.vue` | Product command and presentation component | Not allowed |
 | `policyIntentRequestValidator.mjs` | Server allow-list validation | Not allowed |
 

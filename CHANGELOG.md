@@ -25,6 +25,10 @@ unchanged operator or runtime outcome.
   runtime UI and server text, operator commands, public API documentation,
   current release notes, and the Unreleased changelog section. It blocks
   temporary delivery labels while keeping historical records searchable.
+- **Delivery-Term Removal Completion Gate** - added a CI boundary that rejects
+  delivery terminology and maintenance-parser imports in production source, and
+  verifies every remaining compatibility reader has an owner, migration
+  condition, required deletion gates, and live deletion-test coverage.
 - **Client Build Warning Hygiene** - updated the Vite build toolchain and
   narrowed the temporary VueUse compatibility allowance to its two known
   upstream annotation locations, so unrelated bundler warnings remain visible.

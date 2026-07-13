@@ -44,16 +44,7 @@ const REQUIRED_SURFACE_IDS = Object.freeze(Object.values(
   POLICY_PRODUCT_LANGUAGE_SURFACE_IDS
 ));
 
-const TEMPORARY_DELIVERY_MATCHERS = Object.freeze([
-  {
-    matcherId: 'phase_label',
-    pattern: /\bphase[\s_-]*(?:[0-9]+(?:R)?|R[0-9]+)\b/gi,
-  },
-  {
-    matcherId: 'phase_code',
-    pattern: /\b(?:0R|1R|2R|3R|4R|5R|6R|7R|8R|9R|R6)\b/g,
-  },
-]);
+import { findDeliveryTermMatches } from './policyDeliveryTermMatcher.mjs';
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -75,46 +66,8 @@ function uniqueByValue(values) {
   return [...new Set(values.filter(Boolean))];
 }
 
-function lineNumberAt(content, index) {
-  return content.slice(0, index).split('\n').length;
-}
-
 function findTemporaryDeliveryLanguage(content) {
-  const source = typeof content === 'string' ? content : '';
-  const findings = TEMPORARY_DELIVERY_MATCHERS.flatMap(({ matcherId, pattern }) => {
-    const matches = [];
-    const matcher = new RegExp(pattern.source, pattern.flags);
-    let match = matcher.exec(source);
-
-    while (match) {
-      matches.push({
-        matcherId,
-        token: match[0],
-        index: match.index,
-        lineNumber: lineNumberAt(source, match.index),
-      });
-      match = matcher.exec(source);
-    }
-
-    return matches;
-  });
-
-  const sortedFindings = findings.sort((left, right) => {
-    if (left.index !== right.index) {
-      return left.index - right.index;
-    }
-
-    return right.token.length - left.token.length;
-  });
-
-  return sortedFindings.reduce((accepted, finding) => {
-    const overlapsAcceptedFinding = accepted.some(existing =>
-      finding.index >= existing.index &&
-      finding.index < existing.index + existing.token.length
-    );
-
-    return overlapsAcceptedFinding ? accepted : [...accepted, finding];
-  }, []);
+  return findDeliveryTermMatches(content);
 }
 
 function normalizeSurface(surface) {

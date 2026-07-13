@@ -2,8 +2,10 @@ import {
   LEGACY_COMPATIBILITY_ACTION_IDS,
   LEGACY_COMPATIBILITY_AUDIT_RISK_IDS,
   LEGACY_COMPATIBILITY_ARTIFACT_IDS,
+  LEGACY_COMPATIBILITY_DELETION_TEST_PATH,
   LEGACY_COMPATIBILITY_DELETION_GATE_IDS,
   LEGACY_COMPATIBILITY_OWNER_IDS,
+  LEGACY_COMPATIBILITY_REMOVAL_CONDITION_IDS,
   LEGACY_COMPATIBILITY_RISK_IDS,
   buildLegacyCompatibilityBoundaryAudit,
   canMutateLegacyPayload,
@@ -43,13 +45,10 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
 
     expect(summary).toEqual({
       artifactCount: 6,
-      moduleRecordCount: 8,
+      moduleRecordCount: 7,
       deletionGateCount: 7,
       rawMutationOwnerIds: ['policy_intent_draft_bridge'],
-      productFacingRecordIds: [
-        'starter_template_mechanics',
-        'starter_template_details',
-      ],
+      productFacingRecordIds: ['starter_template_details'],
       deleteAfterNativeStorageRecordIds: ['policy_intent_draft_bridge'],
     });
   });
@@ -74,6 +73,21 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
         issues: [],
       })),
       issues: [],
+    });
+  });
+
+  test('binds every compatibility reader to a migration condition and deletion test', () => {
+    const requiredDeletionGateIds = listLegacyCompatibilityDeletionGates()
+      .map(gate => gate.id);
+
+    listLegacyCompatibilityModuleRecords().forEach(record => {
+      expect(record).toEqual(expect.objectContaining({
+        ownerId: expect.any(String),
+        removalConditionId:
+          LEGACY_COMPATIBILITY_REMOVAL_CONDITION_IDS.NATIVE_INTENT_STORAGE_AUTHORITATIVE,
+        requiredDeletionGateIds,
+        deletionTestPath: LEGACY_COMPATIBILITY_DELETION_TEST_PATH,
+      }));
     });
   });
 
@@ -188,7 +202,7 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
 
   test('allows product components to route draft commands instead of mutating payloads', () => {
     expect(validateLegacyCompatibilityTouchpoint({
-      path: 'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+      path: 'client/src/components/policies/PolicyStarterTemplateDetails.vue',
       artifactId: LEGACY_COMPATIBILITY_ARTIFACT_IDS.STRICT_ADVISORY_METADATA,
       operation: LEGACY_COMPATIBILITY_ACTION_IDS.ROUTE_THROUGH_DRAFT_COMMAND,
     })).toEqual({

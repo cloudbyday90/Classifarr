@@ -7687,6 +7687,24 @@ Acceptance criteria:
 - The naming regression baseline reaches zero for delivery-only production
   references; semantically durable execution lifecycle terms use `stage`.
 
+Implementation status:
+
+- The completion-gate outcome is documented in
+  [Delivery-Term Removal Completion Gate](policy-delivery-term-removal-completion-gate.md).
+- `npm run policy:delivery-term-removal-gate` scans current `client/src` and
+  `server/src` files, excluding tests, then blocks delivery terms in source,
+  exports, diagnostics, telemetry labels, and payload-building code.
+- The gate also prevents production modules from importing maintenance-only
+  historical-token parsers and validates each remaining compatibility reader
+  against its owner, native-storage removal condition, all required deletion
+  gates, and its declared deletion test.
+- Current results: zero delivery-term production matches, zero production
+  maintenance-parser imports, seven live compatibility readers, and zero
+  compatibility-boundary issues.
+- The audit removed the obsolete `PolicyStarterTemplateMechanics.vue` reader
+  from the active compatibility registry after confirming its replacement had
+  already been deployed and the source file deleted.
+
 ## Testing Strategy
 
 Required coverage should follow the re-imagined phase boundaries:
