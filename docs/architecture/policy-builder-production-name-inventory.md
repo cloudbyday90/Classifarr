@@ -14,7 +14,7 @@ evidence, deleted with obsolete tooling, or temporarily adapter-gated.
 
 ## Official Guidance Reviewed
 
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
+- [NIST Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
   emphasizes traceable, risk-based secure software practices. The naming
   cutover starts with an inventory so large refactors are reviewable and
   reversible through source control.
@@ -22,9 +22,10 @@ evidence, deleted with obsolete tooling, or temporarily adapter-gated.
   provides a verification basis for application security controls. The
   inventory separates production code from docs/tests so renames do not weaken
   validation, authorization, auditability, or business-logic boundaries.
-- [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
-  promote stable semantic names. Runtime traces and diagnostics should move
-  toward product-domain terms rather than roadmap phase labels.
+- [OpenTelemetry naming guidance](https://opentelemetry.io/docs/specs/semconv/general/naming/)
+  promotes precise, lowercase, namespaced semantic names. Runtime traces and
+  diagnostics should move toward product-domain terms rather than roadmap
+  phase labels.
 - [W3C Cool URIs Don't Change](https://www.w3.org/Provider/Style/URI)
   reinforces that durable identifiers should not encode temporary project
   history. The same principle applies to long-lived package commands, payload
@@ -92,14 +93,14 @@ Cons:
 
 The current repository inventory validates with no unclassified references.
 After storage-closure reference scanner hardening,
-`node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid`
+`npm run policy:production-naming-gate`
 reported:
 
-- total temporary naming references: 2,155,
+- total temporary naming references: 1,869,
 - production references: 0,
 - rename candidates: 0,
-- docs/history references: 1,954,
-- test or migration evidence references: 201,
+- docs/history references: 1,665,
+- test or migration evidence references: 204,
 - obsolete migration tooling references: 0.
 
 The counts must fall or remain unchanged as the durable naming cutover replaces
@@ -119,8 +120,9 @@ to prevent the debt from growing.
 
 ## Next Step
 
-Use the [Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md)
-as the guardrail after every completed functional component. Select the next
-isolated production contract from the inventory, preserve behavior, and add
-focused import/contract regression tests before the next functional component
-begins.
+Use `npm run policy:production-naming-gate` after every completed functional
+component. It combines the side-effect-free repository inventory with the
+[Policy Production Naming Regression Audit](policy-production-naming-regression-audit.md).
+Select a production contract only when the gate finds a real candidate;
+otherwise retain the zero-debt baseline and continue to the next product-domain
+audit rather than inventing a rename.

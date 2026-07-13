@@ -6789,6 +6789,24 @@ Acceptance criteria:
   `stage` in a dedicated compatibility cutover rather than treating it as an
   allowed exception.
 
+Implementation status:
+
+- The product-domain naming design is recorded in
+  [Policy Builder Production Naming Cutover](policy-builder-production-naming-cutover.md).
+- Historic-token scanning and repository traversal run only from maintenance
+  tooling at `scripts/lib/policyProductionNamingInventory.mjs` and
+  `scripts/lib/policyProductionNamingRepositoryScan.mjs`; normal application
+  imports do not load the scanner.
+- `npm run policy:production-naming-gate` combines the current repository
+  inventory with the zero-debt regression baseline and fails on unclassified,
+  newly phase-coded, or obsolete production naming references.
+- `npm run test:ci` runs the naming gate before type checks and test suites, so
+  a functional component cannot advance while it introduces unbounded
+  delivery-language debt.
+- The current gate reports zero production references, zero rename candidates,
+  and zero obsolete migration-tooling references. The generated inventory is
+  the authoritative current count; historical totals in this roadmap are not.
+
 ### 9R.1 Production Naming Inventory And Ownership Map
 
 Intent: identify every phase-coded production artifact before any rename.

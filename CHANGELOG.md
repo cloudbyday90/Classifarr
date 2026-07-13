@@ -16,6 +16,12 @@ unchanged operator or runtime outcome.
 
 ### Added
 
+#### Platform Integrity
+
+- **Durable Product Naming Gate** - added a side-effect-free repository
+  inventory and regression gate to CI so temporary delivery terminology cannot
+  re-enter production modules, commands, or current contracts unnoticed.
+
 #### Policy Authoring
 
 - **Intent-First Policy Builder** - added a library-centered authoring

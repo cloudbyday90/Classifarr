@@ -42,7 +42,7 @@ native policy storage
 
 ## Official Guidance Reviewed
 
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
+- [NIST Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
   frames secure software development as traceable practices integrated into the
   lifecycle. The naming cutover should therefore be inventory-driven,
   reviewable, tested, and reversible through normal source control.
@@ -50,9 +50,12 @@ native policy storage
   provides a basis for verifying application security controls. Renames must
   preserve server-side validation, authorization, auditability, and
   business-logic boundaries.
-- [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
-  recommend common, meaningful names for operations and data. Runtime telemetry
-  should use stable product-domain terms, not roadmap phase identifiers.
+- [OpenTelemetry naming guidance](https://opentelemetry.io/docs/specs/semconv/general/naming/)
+  recommends precise, lowercase, namespaced semantic names, while its
+  [stability guidance](https://opentelemetry.io/docs/specs/semconv/general/semantic-convention-groups/)
+  uses documented deprecation rather than silent removal for stable
+  conventions. Runtime telemetry should use stable product-domain terms, not
+  roadmap phase identifiers.
 - [W3C Cool URIs Don't Change](https://www.w3.org/Provider/Style/URI)
   reinforces that externally visible identifiers should be chosen for
   persistence. Public API fields, persisted payload names, and operator-facing
@@ -85,9 +88,9 @@ native policy storage
    payload migration, but each adapter needs an owner, reason, and deletion gate.
 
 6. **Make naming testable.**
-   Add a scanner that fails when new phase-coded production references appear
-   outside an allow-list. Docs and historical evidence should be allowed; runtime
-   modules should not.
+   Run the combined repository inventory and regression gate in `test:ci`.
+   It fails when new phase-coded production references appear outside the
+   bounded history, migration-evidence, or maintenance-scanner categories.
 
 7. **Do not defer naming debt.**
    Every new production module, export, contract version, trace attribute,
@@ -157,6 +160,7 @@ Cons:
     runtime.
 - Required validation:
   - focused server/client regression tests,
+  - `npm run policy:production-naming-gate`,
   - scanner for phase-coded production references,
   - `git diff --check`,
   - changelog entry under `Unreleased`.
@@ -198,6 +202,15 @@ history reason is documented.
   `scripts/generate-policy-builder-production-name-inventory.mjs`.
 - Focused inventory tests live in
   `server/src/__tests__/services/policyProductionNamingInventory.test.mjs`.
+- The repository scanner is a maintenance-only module at
+  `scripts/lib/policyProductionNamingRepositoryScan.mjs`; normal application
+  imports do not load roadmap-token logic.
+- The combined inventory and zero-debt regression gate lives at
+  `scripts/run-policy-production-naming-gate.mjs`, is available through
+  `npm run policy:production-naming-gate`, and runs first in `npm run test:ci`.
+- The gate has focused tests at
+  `server/src/__tests__/services/policyProductionNamingGate.test.mjs` and
+  `server/src/__tests__/services/policyProductionNamingRepositoryScan.test.mjs`.
 - The implementation outcome is documented in
   [Policy Builder Production Name Inventory](policy-builder-production-name-inventory.md).
 - The current July 11, 2026 inventory and regression-audit baseline supersedes
