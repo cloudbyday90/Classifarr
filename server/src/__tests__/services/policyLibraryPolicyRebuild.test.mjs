@@ -72,6 +72,59 @@ function guardedOutcome(overrides = {}) {
   });
 }
 
+function profileEvidence(overrides = {}) {
+  return {
+    version: 'policy.library_profile_evidence.v1',
+    libraryProfile: {
+      identityCandidates: [],
+      compatibilityCandidates: [
+        {
+          key: 'genre:animation',
+          label: 'Animation',
+          value: '80%',
+          count: 8,
+          confidence: 0.8,
+          reasonCode: 'observed_library_distribution',
+        },
+      ],
+      outliers: [],
+    },
+    sideEffects: {
+      liveProviderLookupPerformed: false,
+      providerQuotaRead: false,
+      policyStorageMutated: false,
+    },
+    ...overrides,
+  };
+}
+
+function profileHandoff(overrides = {}) {
+  return {
+    version: 'policy.library_profile_evidence_loader.v1',
+    ok: true,
+    statusId: 'ready',
+    libraryId: 6,
+    profileEvidence: profileEvidence(),
+    profileEvidenceAudit: { ok: true },
+    profileFreshness: {
+      stale: false,
+      updatedAt: '2026-06-30T12:00:00.000Z',
+      reasonCode: 'current_profile_timestamp',
+    },
+    evidenceBoundary: { ok: true },
+    evidenceBoundaryAudit: { ok: true },
+    sideEffects: {
+      libraryProfileRead: true,
+      liveMediaServerLookupPerformed: false,
+      liveProviderLookupPerformed: false,
+      providerQuotaRead: false,
+      evidenceProjectionBuilt: true,
+      policyStorageMutated: false,
+    },
+    ...overrides,
+  };
+}
+
 function baseInput(overrides = {}) {
   return {
     library: {
@@ -79,27 +132,14 @@ function baseInput(overrides = {}) {
       libraryName: 'Animated Movies',
       mediaType: 'movie',
     },
-    libraryProfile: {
-      identityCandidates: [
+    profileHandoff: profileHandoff(),
+    operatorIntent: {
+      belongsHere: [
         {
           key: 'studio:disney',
           label: 'Disney',
           count: 7,
           confidence: 0.92,
-        },
-      ],
-      compatibilityCandidates: [
-        {
-          key: 'genre:animation',
-          label: 'Animation',
-          count: 18,
-        },
-      ],
-      outliers: [
-        {
-          key: 'genre:live-action',
-          label: 'Live action',
-          count: 2,
         },
       ],
     },
@@ -128,10 +168,6 @@ function baseInput(overrides = {}) {
       arrConfigId: 1,
       arrRootFolderPath: '/media/Plexmedia/Animated Movies',
     },
-    profileFreshness: {
-      stale: false,
-      updatedAt: '2026-06-30T12:00:00.000Z',
-    },
     ...overrides,
   };
 }
@@ -145,16 +181,16 @@ describe('policyLibraryPolicyRebuild', () => {
     });
 
     expect(() => buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(rawInput))
-      .toThrow('raw input key "guardedOutcomes"');
+      .toThrow('does not accept "guardedOutcomes"');
     expect(() => buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection({
       ...rebuildInput,
       guardedOutcomeProjection,
       learningDecision: {},
-    })).toThrow('raw input key "learningDecision"');
+    })).toThrow('does not accept "learningDecision"');
     expect(() => buildPolicyLibraryPolicyRebuildProposal({
       ...rebuildInput,
       guardedOutcomeProjection,
-    })).toThrow('received a guarded-outcome projection');
+    })).toThrow('does not accept "guardedOutcomeProjection"');
 
     const proposal = buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection({
       ...rebuildInput,
@@ -264,56 +300,21 @@ describe('policyLibraryPolicyRebuild', () => {
     expect(validatePolicyLibraryPolicyRebuildProposal(proposal).ok).toBe(true);
   });
 
-  test('blocks rebuild before projection when the bounded evidence envelope rejects input', () => {
-    const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
+  test('rejects raw library profile data before proposal composition', () => {
+    expect(() => buildPolicyLibraryPolicyRebuildProposal(baseInput({
       libraryProfile: {
         identityCandidates: [{
           key: 'studio:disney',
           label: 'Disney',
-          value: {
-            providerPayload: { apiKey: 'must-not-escape' },
-          },
         }],
       },
-    }));
-
-    expect(proposal).toEqual(expect.objectContaining({
-      statusId: POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
-      evidenceProjection: null,
-      intentDraft: null,
-      readiness: null,
-      evidenceBoundary: expect.objectContaining({
-        ok: false,
-        statusId: 'blocked_by_input_gate',
-        riskIds: ['raw_provider_payload'],
-        projectionFingerprint: null,
-      }),
-      sideEffects: {
-        policyActivated: false,
-        policyReplaced: false,
-        policyDeleted: false,
-        learningWritten: false,
-        routingWritten: false,
-      },
-    }));
-    expect(JSON.stringify(proposal)).not.toContain('must-not-escape');
-    expect(validatePolicyLibraryPolicyRebuildProposal(proposal).ok).toBe(true);
-    expect(buildPolicyLibraryPolicyRebuildAudit(proposal)).toEqual(expect.objectContaining({
-      ok: true,
-      statusId: POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY,
-    }));
+    }))).toThrow('does not accept "libraryProfile"');
   });
 
   test('rejects derived contracts attached to an evidence-boundary-blocked proposal', () => {
-    const blockedProposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
-      libraryProfile: {
-        identityCandidates: [{
-          label: 'Disney',
-          value: { providerPayload: { title: 'raw' } },
-        }],
-      },
-    }));
-
+    const blockedProposal = buildPolicyLibraryPolicyRebuildProposal(baseInput());
+    blockedProposal.statusId = POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED_BY_EVIDENCE_BOUNDARY;
+    blockedProposal.evidenceBoundary.ok = false;
     blockedProposal.intentDraft = {
       version: 'policy.intent.v1',
     };
@@ -445,12 +446,21 @@ describe('policyLibraryPolicyRebuild', () => {
         hardLimits: [],
         avoid: [],
       },
-      observedAbsences: [
-        {
-          key: 'genre:musical',
-          label: 'Musical',
-        },
-      ],
+      profileHandoff: profileHandoff({
+        profileEvidence: profileEvidence({
+          libraryProfile: {
+            identityCandidates: [],
+            compatibilityCandidates: [],
+            outliers: [{
+              key: 'genre:musical',
+              label: 'Musical',
+              count: 0,
+              confidence: null,
+              reasonCode: 'observed_absence_requires_review',
+            }],
+          },
+        }),
+      }),
     }));
 
     expect(proposal.warnings).toEqual(expect.arrayContaining([
@@ -469,17 +479,6 @@ describe('policyLibraryPolicyRebuild', () => {
 
   test('requires routing configuration when no route target exists', () => {
     const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
-      libraryProfile: {
-        identityCandidates: [
-          {
-            key: 'studio:disney',
-            label: 'Disney',
-            count: 7,
-          },
-        ],
-        compatibilityCandidates: [],
-        outliers: [],
-      },
       guardedOutcomes: [],
       routingConfiguration: {
         configured: false,
@@ -503,10 +502,14 @@ describe('policyLibraryPolicyRebuild', () => {
 
   test('requires profile refresh when library profile evidence is stale', () => {
     const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
-      profileFreshness: {
-        stale: true,
-        reasonCode: 'stale_profile',
-      },
+      profileHandoff: profileHandoff({
+        statusId: 'ready_with_stale_profile',
+        profileFreshness: {
+          stale: true,
+          updatedAt: '2026-06-01T12:00:00.000Z',
+          reasonCode: 'stale_profile_timestamp',
+        },
+      }),
       existingConstraints: {
         hardLimits: [],
         avoid: [],
@@ -525,14 +528,8 @@ describe('policyLibraryPolicyRebuild', () => {
 
   test('requires more evidence when the observed library profile has no identity', () => {
     const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
-      libraryProfile: {
-        identityCandidates: [],
-        compatibilityCandidates: [
-          {
-            key: 'genre:animation',
-            label: 'Animation',
-          },
-        ],
+      operatorIntent: {
+        belongsHere: [],
       },
       existingConstraints: {
         hardLimits: [],
@@ -560,8 +557,8 @@ describe('policyLibraryPolicyRebuild', () => {
 
   test('rejects derived contracts on a rebuild stopped by the intent boundary', () => {
     const proposal = buildPolicyLibraryPolicyRebuildProposal(baseInput({
-      libraryProfile: {
-        identityCandidates: [],
+      operatorIntent: {
+        belongsHere: [],
       },
       existingConstraints: {
         hardLimits: [],

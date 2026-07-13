@@ -816,16 +816,21 @@ function validatePolicyMigrationVerifierReport(report = {}) {
   };
 }
 
-function buildPolicyMigrationVerifierAudit(
-  report = buildPolicyMigrationVerifierReportFromRuntimeInput()
-) {
-  const validation = validatePolicyMigrationVerifierReport(report);
+function buildPolicyMigrationVerifierAudit(report = null) {
+  const hasReport = Boolean(report && typeof report === 'object');
+  const validation = hasReport
+    ? validatePolicyMigrationVerifierReport(report)
+    : {
+      ok: true,
+      issueCount: 0,
+      issues: [],
+    };
 
   return {
     ok: validation.ok,
     issueCount: validation.issueCount,
-    statusId: report.statusId || null,
-    differenceCount: report.differenceSummary?.totalCount ?? 0,
+    statusId: hasReport ? report.statusId || null : null,
+    differenceCount: hasReport ? report.differenceSummary?.totalCount ?? 0 : 0,
     validation,
     nextStep: {
       stepId: 'runtime_metrics_trace',

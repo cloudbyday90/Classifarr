@@ -12,6 +12,51 @@ import {
   validatePolicyMigrationVerifierReport,
 } from '../../services/policyMigrationVerifierRollback.mjs';
 
+function profileHandoff() {
+  return {
+    version: 'policy.library_profile_evidence_loader.v1',
+    ok: true,
+    statusId: 'ready',
+    libraryId: 6,
+    profileEvidence: {
+      version: 'policy.library_profile_evidence.v1',
+      libraryProfile: {
+        identityCandidates: [],
+        compatibilityCandidates: [{
+          key: 'genre:animation',
+          label: 'Animation',
+          value: '80%',
+          count: 8,
+          confidence: 0.8,
+          reasonCode: 'observed_library_distribution',
+        }],
+        outliers: [],
+      },
+      sideEffects: {
+        liveProviderLookupPerformed: false,
+        providerQuotaRead: false,
+        policyStorageMutated: false,
+      },
+    },
+    profileEvidenceAudit: { ok: true },
+    profileFreshness: {
+      stale: false,
+      updatedAt: '2026-06-30T12:00:00.000Z',
+      reasonCode: 'current_profile_timestamp',
+    },
+    evidenceBoundary: { ok: true },
+    evidenceBoundaryAudit: { ok: true },
+    sideEffects: {
+      libraryProfileRead: true,
+      liveMediaServerLookupPerformed: false,
+      liveProviderLookupPerformed: false,
+      providerQuotaRead: false,
+      evidenceProjectionBuilt: true,
+      policyStorageMutated: false,
+    },
+  };
+}
+
 function proposalInput(overrides = {}) {
   return {
     library: {
@@ -19,31 +64,21 @@ function proposalInput(overrides = {}) {
       libraryName: 'Animated Movies',
       mediaType: 'movie',
     },
-    libraryProfile: {
-      identityCandidates: [
+    profileHandoff: profileHandoff(),
+    operatorIntent: {
+      belongsHere: [
         {
           key: 'studio:disney',
           label: 'Disney',
           count: 7,
         },
       ],
-      compatibilityCandidates: [
-        {
-          key: 'genre:animation',
-          label: 'Animation',
-          count: 12,
-        },
-      ],
-      outliers: [],
     },
     routingConfiguration: {
       configured: true,
       routeReady: true,
       targetName: 'Animated Movies',
       arrRootFolderPath: '/media/Plexmedia/Animated Movies',
-    },
-    profileFreshness: {
-      stale: false,
     },
     ...overrides,
   };

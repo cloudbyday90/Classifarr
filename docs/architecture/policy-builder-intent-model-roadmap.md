@@ -4381,8 +4381,18 @@ Implementation status:
   [Policy Library-Derived Policy Rebuild Architecture Cutover](policy-library-policy-rebuild-architecture-cutover.md).
 - The server-owned rebuild proposal contract lives in
   `server/src/services/policyLibraryPolicyRebuild.mjs`.
+- Task 7R.6.1 is complete: `policyLibraryRebuildInputContract.mjs` is the
+  server-owned rebuild admission boundary. It requires a verified cached-profile
+  handoff for the selected library, canonicalizes declared constraints and
+  routing, derives observed absences only from profile evidence, and admits
+  guarded outcomes only through the validated projection. Raw profile,
+  freshness, absence, and learning fields are rejected before proposal
+  construction; its design record is [Policy Library Rebuild Input
+  Contract](policy-library-rebuild-input-contract.md).
 - The focused rebuild test suite lives in
   `server/src/__tests__/services/policyLibraryPolicyRebuild.test.mjs`.
+- The focused input-contract suite lives in
+  `server/src/__tests__/services/policyLibraryRebuildInputContract.test.mjs`.
 - Current implementation consumes observed library profile evidence,
   fingerprint-bound guarded outcomes, explicit constraints, routing
   configuration, observed outliers, observed absences, and profile freshness.

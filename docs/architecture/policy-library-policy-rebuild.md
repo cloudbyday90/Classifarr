@@ -12,6 +12,13 @@ produces a policy intent draft plus readiness, source summaries, warnings,
 acceptance gates, and rollback gates. It does not activate, replace, delete, or
 persist policy.
 
+Rebuild now admits those sources only through
+`policy.library_rebuild_input_contract.v1`. The contract requires a verified
+cached-profile handoff for the selected library, derives freshness and observed
+absence from that handoff, and accepts guarded outcomes only through the
+validated projection. Raw profile, freshness, absence, and learning fields are
+not rebuild inputs.
+
 Every rebuild proposal now passes its normalized evidence through the shared
 bounded evidence boundary. A rejected boundary returns a sanitized
 `blocked_by_evidence_boundary` proposal with no projection, intent, or
@@ -59,6 +66,11 @@ Rebuild input now separates raw request-time composition from the decision-only
 proposal reducer. The reducer consumes a valid guarded-outcome projection; raw
 guarded outcomes and separately supplied learning decisions cannot influence
 rebuild evidence or readiness.
+
+The input contract extends that separation to library evidence: the reducer
+consumes a sanitized input-contract summary tied to the selected library and
+profile handoff. The profile distribution remains compatibility evidence, while
+destination identity remains explicit operator authority.
 
 The proposal's validation diagnostics use durable bounded-intent and policy
 automation-readiness terminology. Roadmap phase labels are not part of the
@@ -193,6 +205,8 @@ Cons:
 15. Derive a verified no-write readiness handoff from validated guarded
     outcomes, then require evidence, intent, and readiness-boundary provenance
     to agree before returning a reviewable proposal.
+16. Require a verified cached-profile handoff before rebuild composition, and
+    reject raw profile/freshness/absence input before any proposal exists.
 
 ## Implemented Files
 
@@ -202,6 +216,10 @@ Cons:
   `server/src/services/policyGuardedOutcomeProjection.mjs`
 - Rebuild input-boundary outcome:
   `docs/architecture/policy-library-rebuild-input-boundary.md`
+- Rebuild input contract outcome:
+  `docs/architecture/policy-library-rebuild-input-contract.md`
+- Rebuild input contract:
+  `server/src/services/policyLibraryRebuildInputContract.mjs`
 - Focused tests:
   `server/src/__tests__/services/policyLibraryPolicyRebuild.test.mjs`
 - Evidence dependency:

@@ -2,7 +2,8 @@
 
 ## Status
 
-Implemented for library-derived policy rebuild proposals.
+Implemented as the guarded-outcome projection boundary used by the broader
+[Policy Library Rebuild Input Contract](policy-library-rebuild-input-contract.md).
 
 ## Problem
 
@@ -26,15 +27,20 @@ being a validated request-time learning decision.
 
 ## Recommendation
 
-Use three focused contracts:
+Use the guarded-outcome projection as the inner admission step, then pass it to
+the rebuild input contract:
 
 1. `buildPolicyGuardedOutcomeProjectionFromRequestTimeDecisions` validates
    request-time decisions and projects only bounded rebuild evidence.
-2. `buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput` owns raw input
-   composition and cannot accept a supplied projection.
-3. `buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection`
-   accepts a valid projection and rejects raw guarded outcomes or a raw learning
-   decision.
+2. `buildPolicyLibraryRebuildInputFromRuntimeInput` composes only request-time
+   decisions with a verified cached profile handoff, canonical constraints, and
+   routing configuration.
+3. `buildPolicyLibraryRebuildInputFromGuardedOutcomeProjection` accepts a
+   valid projection with that same verified library handoff; raw library
+   profiles, freshness values, absences, and learning decisions are refused.
+4. `buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput` and
+   `buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection` reduce
+   only the resulting rebuild-input contract.
 
 Invalid request-time decisions are omitted from projection evidence and retained
 only as bounded rejection counts and reason identifiers. The rebuild readiness
@@ -62,7 +68,9 @@ Cons:
 
 - Guarded-outcome projection:
   `server/src/services/policyGuardedOutcomeProjection.mjs`
-- Library rebuild reducer and runtime adapter:
+- Rebuild input contract:
+  `server/src/services/policyLibraryRebuildInputContract.mjs`
+- Library rebuild reducer:
   `server/src/services/policyLibraryPolicyRebuild.mjs`
 - Request-time decision dependency:
   `server/src/services/policyRequestTimeLearning.mjs`
@@ -75,11 +83,14 @@ Cons:
 ```text
 raw request-time decisions
   -> validated guarded-outcome projection
+  -> verified rebuild input contract
   -> library-derived rebuild proposal
 
 existing valid guarded-outcome projection
+  + verified cached profile handoff
+  -> verified rebuild input contract
   -> library-derived rebuild proposal
 ```
 
-The rebuild proposal no longer reads raw guarded outcomes or a separately
-supplied learning decision.
+The rebuild proposal no longer reads raw guarded outcomes, a separately
+supplied learning decision, or raw profile/freshness/absence fields.

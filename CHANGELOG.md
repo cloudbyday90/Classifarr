@@ -51,6 +51,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   proposals from observed library behavior and guarded outcomes, plus bounded
   migration verification, sample-set provenance, rollback evidence, and
   operator acceptance requirements.
+- **Verified Library Rebuild Inputs** — rebuild proposals now require an audited
+  cached-profile handoff for the selected library and a bounded guarded-outcome
+  projection; raw profile, freshness, observed-absence, and learning payloads
+  are rejected before proposal construction.
 - **Native Policy Intent Storage** — added validated native intent schema,
   migration candidate reporting, explicit conversion planning, rollback
   snapshots, runtime read verification, and outcome-based closure evidence.

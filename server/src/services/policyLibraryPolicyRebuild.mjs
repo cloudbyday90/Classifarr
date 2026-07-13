@@ -17,7 +17,6 @@ import {
 } from './policyAutomationReadinessEngine.mjs';
 import {
   POLICY_GUARDED_OUTCOME_PROJECTION_VERSION,
-  buildPolicyGuardedOutcomeProjectionFromRequestTimeDecisions,
   validatePolicyGuardedOutcomeProjection,
 } from './policyGuardedOutcomeProjection.mjs';
 import {
@@ -26,6 +25,16 @@ import {
 import {
   buildPolicyLibraryRebuildReadinessHandoff,
 } from './policyLibraryRebuildReadinessHandoff.mjs';
+import {
+  POLICY_LIBRARY_PROFILE_EVIDENCE_LOADER_VERSION,
+} from './policyLibraryProfileEvidenceLoader.mjs';
+import {
+  POLICY_LIBRARY_REBUILD_INPUT_CONTRACT_VERSION,
+  buildPolicyLibraryRebuildInputFromGuardedOutcomeProjection,
+  buildPolicyLibraryRebuildInputFromRuntimeInput,
+  buildPolicyLibraryRebuildInputSummary,
+  validatePolicyLibraryRebuildInputContract,
+} from './policyLibraryRebuildInputContract.mjs';
 
 const POLICY_REBUILD_PROPOSAL_STATUS_IDS = Object.freeze({
   READY_FOR_REVIEW: 'ready_for_review',
@@ -107,16 +116,15 @@ const POLICY_REBUILD_AUDIT_RISK_IDS = Object.freeze({
   BLOCKED_READINESS_BOUNDARY_WITH_DERIVED_CONTRACT: 'blocked_readiness_boundary_with_derived_contract',
   MISSING_GUARDED_OUTCOME_PROJECTION: 'missing_guarded_outcome_projection',
   INVALID_GUARDED_OUTCOME_PROJECTION: 'invalid_guarded_outcome_projection',
+  MISSING_INPUT_CONTRACT: 'missing_input_contract',
+  INVALID_INPUT_CONTRACT: 'invalid_input_contract',
+  INPUT_CONTRACT_LIBRARY_MISMATCH: 'input_contract_library_mismatch',
 });
 
 const MAX_TRACE_REASONS = 16;
 const MAX_REBUILD_FINGERPRINTS = 20;
 const MAX_EVIDENCE_BOUNDARY_RISK_IDS = 16;
 const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
-const RAW_REBUILD_INPUT_KEYS = new Set([
-  'guardedOutcomes',
-  'learningDecision',
-]);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -717,6 +725,7 @@ function buildTrace({
   statusId,
   evidenceSourceSummary,
   warnings,
+  inputContract,
   evidenceBoundary,
   intentBoundary = null,
   readinessBoundary = null,
@@ -748,6 +757,10 @@ function buildTrace({
     attributes: {
       'classifarr.policy.rebuild.version': 'policy.library_policy_rebuild.v1',
       'classifarr.policy.rebuild.status': statusId,
+      'classifarr.policy.rebuild.input_contract_version': inputContract?.version || null,
+      'classifarr.policy.rebuild.input_contract_profile_stale': inputContract?.profile?.stale === true,
+      'classifarr.policy.rebuild.input_contract_guarded_outcome_count':
+        inputContract?.guardedOutcomes?.count ?? 0,
       'classifarr.policy.rebuild.identity_count': evidenceSourceSummary.libraryProfile.identityCount,
       'classifarr.policy.rebuild.guarded_outcome_count': evidenceSourceSummary.guardedOutcomes.count,
       'classifarr.policy.rebuild.guarded_outcome_fingerprint_count':
@@ -779,14 +792,6 @@ function buildTrace({
 
 function requireValidGuardedOutcomeProjection(input = {}) {
   const rebuildInput = asObject(input);
-  const rawInputKey = [...RAW_REBUILD_INPUT_KEYS].find(key => Object.hasOwn(rebuildInput, key));
-
-  if (rawInputKey) {
-    throw new TypeError(
-      `Library policy rebuild requires a guarded-outcome projection; raw input key "${rawInputKey}" must use buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput.`
-    );
-  }
-
   const projection = asObject(rebuildInput.guardedOutcomeProjection);
   if (projection.version !== POLICY_GUARDED_OUTCOME_PROJECTION_VERSION) {
     throw new TypeError(
@@ -804,6 +809,7 @@ function requireValidGuardedOutcomeProjection(input = {}) {
 
 function buildBlockedPolicyLibraryPolicyRebuildProposal({
   input = {},
+  inputContract = null,
   evidenceInput = {},
   evidenceBoundary,
   intentBoundary = null,
@@ -837,6 +843,7 @@ function buildBlockedPolicyLibraryPolicyRebuildProposal({
       libraryName: normalizeString(input.library?.libraryName ?? input.library?.name ?? input.libraryName),
       mediaType: normalizeString(input.library?.mediaType ?? input.mediaType),
     },
+    inputContract,
     guardedOutcomeProjection,
     evidenceBoundary,
     intentBoundary,
@@ -883,6 +890,7 @@ function buildBlockedPolicyLibraryPolicyRebuildProposal({
       statusId,
       evidenceSourceSummary,
       warnings,
+      inputContract,
       evidenceBoundary,
       intentBoundary,
       readinessBoundary,
@@ -890,7 +898,13 @@ function buildBlockedPolicyLibraryPolicyRebuildProposal({
   };
 }
 
-function buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(input = {}) {
+function buildPolicyLibraryPolicyRebuildProposalFromInputContract(input = {}) {
+  const inputValidation = validatePolicyLibraryRebuildInputContract(input);
+  if (!inputValidation.ok) {
+    throw new TypeError('Library policy rebuild requires a valid rebuild-input contract.');
+  }
+
+  const inputContract = buildPolicyLibraryRebuildInputSummary(input);
   const guardedOutcomeProjection = requireValidGuardedOutcomeProjection(input);
   const evidenceInput = buildEvidenceInput(input, guardedOutcomeProjection);
   const boundedEvidenceResult = buildBoundedPolicyEvidenceProjection({
@@ -901,6 +915,7 @@ function buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(inp
   if (boundedEvidenceResult.ok !== true || !boundedEvidenceResult.projection) {
     return buildBlockedPolicyLibraryPolicyRebuildProposal({
       input,
+      inputContract,
       evidenceInput,
       evidenceBoundary,
       guardedOutcomeProjection,
@@ -919,6 +934,7 @@ function buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(inp
 
     return buildBlockedPolicyLibraryPolicyRebuildProposal({
       input,
+      inputContract,
       evidenceInput,
       evidenceBoundary,
       intentBoundary,
@@ -937,6 +953,7 @@ function buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(inp
   if (boundedLearningResult.ok !== true || !boundedLearningResult.decision) {
     return buildBlockedPolicyLibraryPolicyRebuildProposal({
       input,
+      inputContract,
       evidenceInput,
       evidenceBoundary,
       intentBoundary,
@@ -966,6 +983,7 @@ function buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(inp
   if (boundedReadinessResult.ok !== true || !boundedReadinessResult.readiness) {
     return buildBlockedPolicyLibraryPolicyRebuildProposal({
       input,
+      inputContract,
       evidenceInput,
       evidenceBoundary,
       intentBoundary,
@@ -999,6 +1017,7 @@ function buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(inp
       libraryName: normalizeString(input.library?.libraryName ?? input.library?.name ?? input.libraryName),
       mediaType: normalizeString(input.library?.mediaType ?? input.mediaType),
     },
+    inputContract,
     guardedOutcomeProjection,
     evidenceBoundary,
     intentBoundary,
@@ -1042,6 +1061,7 @@ function buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(inp
       statusId,
       evidenceSourceSummary,
       warnings,
+      inputContract,
       evidenceBoundary,
       intentBoundary,
       readinessBoundary,
@@ -1049,28 +1069,21 @@ function buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(inp
   };
 }
 
+function buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection(input = {}) {
+  const rebuildInput = buildPolicyLibraryRebuildInputFromGuardedOutcomeProjection(input);
+
+  return buildPolicyLibraryPolicyRebuildProposalFromInputContract(rebuildInput);
+}
+
 function buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput(input = {}) {
-  const runtimeInput = asObject(input);
+  const rebuildInput = buildPolicyLibraryRebuildInputFromRuntimeInput(input);
 
-  if (Object.hasOwn(runtimeInput, 'guardedOutcomeProjection')) {
-    throw new TypeError(
-      'Library policy rebuild received a guarded-outcome projection; use buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection.'
-    );
-  }
-
-  const { guardedOutcomes, learningDecision: _learningDecision, ...rebuildInput } = runtimeInput;
-  const guardedOutcomeProjection = buildPolicyGuardedOutcomeProjectionFromRequestTimeDecisions({
-    requestTimeDecisions: guardedOutcomes,
-  });
-
-  return buildPolicyLibraryPolicyRebuildProposalFromGuardedOutcomeProjection({
-    ...rebuildInput,
-    guardedOutcomeProjection,
-  });
+  return buildPolicyLibraryPolicyRebuildProposalFromInputContract(rebuildInput);
 }
 
 function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
   const issues = [];
+  const inputContract = asObject(proposal.inputContract);
   const evidenceBoundary = asObject(proposal.evidenceBoundary);
   const intentBoundary = asObject(proposal.intentBoundary);
   const readinessBoundary = asObject(proposal.readinessBoundary);
@@ -1092,6 +1105,47 @@ function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
     issues.push({
       riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_PROPOSAL_VERSION,
       message: 'Library policy rebuild proposal must use the policy library rebuild version.',
+    });
+  }
+
+  if (inputContract.version !== POLICY_LIBRARY_REBUILD_INPUT_CONTRACT_VERSION ||
+      inputContract.statusId !== 'ready' ||
+      inputContract.ok !== true ||
+      !Number.isInteger(Number(inputContract.libraryId))) {
+    issues.push({
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.MISSING_INPUT_CONTRACT,
+      message: 'Library policy rebuild proposal must retain a ready sanitized rebuild-input contract summary.',
+    });
+  } else if (
+    Number(proposal.library?.libraryId) !== Number(inputContract.libraryId) ||
+    Number(inputContract.profile?.libraryId) !== Number(inputContract.libraryId) ||
+    inputContract.profile?.version !== POLICY_LIBRARY_PROFILE_EVIDENCE_LOADER_VERSION
+  ) {
+    issues.push({
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INPUT_CONTRACT_LIBRARY_MISMATCH,
+      message: 'Library policy rebuild proposal input-contract summary must match the selected library and profile handoff.',
+    });
+  } else if (
+    inputContract.guardedOutcomes?.version !== POLICY_GUARDED_OUTCOME_PROJECTION_VERSION ||
+    inputContract.guardedOutcomes?.count !==
+      inputContract.guardedOutcomes?.acceptedCount +
+      inputContract.guardedOutcomes?.rejectedCount +
+        inputContract.guardedOutcomes?.ignoredCount
+  ) {
+    issues.push({
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INVALID_INPUT_CONTRACT,
+      message: 'Library policy rebuild proposal input-contract summary must retain bounded guarded-outcome provenance.',
+    });
+  } else if (
+    inputContract.guardedOutcomes?.count !== proposal.evidenceSourceSummary?.guardedOutcomes?.count ||
+    inputContract.guardedOutcomes?.acceptedCount !== proposal.evidenceSourceSummary?.guardedOutcomes?.acceptedCount ||
+    inputContract.guardedOutcomes?.rejectedCount !== proposal.evidenceSourceSummary?.guardedOutcomes?.rejectedCount ||
+    inputContract.guardedOutcomes?.fingerprintCount !== proposal.evidenceSourceSummary?.guardedOutcomes?.fingerprintCount ||
+    inputContract.guardedOutcomes?.requestProofCount !== proposal.evidenceSourceSummary?.guardedOutcomes?.requestProofCount
+  ) {
+    issues.push({
+      riskId: POLICY_REBUILD_AUDIT_RISK_IDS.INVALID_INPUT_CONTRACT,
+      message: 'Library policy rebuild proposal input-contract summary must match emitted guarded-outcome evidence.',
     });
   }
 
@@ -1499,16 +1553,29 @@ function validatePolicyLibraryPolicyRebuildProposal(proposal = {}) {
   };
 }
 
-function buildPolicyLibraryPolicyRebuildAudit(
-  proposal = buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput()
-) {
-  const validation = validatePolicyLibraryPolicyRebuildProposal(proposal);
+function buildPolicyLibraryPolicyRebuildAudit(proposal = null) {
+  const hasProposal = Boolean(proposal && typeof proposal === 'object');
+  const validation = hasProposal
+    ? validatePolicyLibraryPolicyRebuildProposal(proposal)
+    : {
+      ok: true,
+      issueCount: 0,
+      issues: [],
+    };
 
   return {
     ok: validation.ok,
     issueCount: validation.issueCount,
-    statusId: proposal.statusId || null,
+    statusId: hasProposal ? proposal.statusId || null : null,
     validation,
+    inputContract: {
+      version: POLICY_LIBRARY_REBUILD_INPUT_CONTRACT_VERSION,
+      requiresVerifiedCachedProfile: true,
+      requiresGuardedOutcomeProjection: true,
+      requiresExplicitOperatorAcceptance: true,
+      requiresRollbackSnapshot: true,
+      proposalValidated: hasProposal,
+    },
     nextStep: {
       stepId: 'migration_verifier_rollback',
       label: 'Migration Verifier And Rollback Path',
