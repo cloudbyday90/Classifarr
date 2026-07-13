@@ -12,6 +12,7 @@ import {
 import {
   POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS,
   POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS,
+  buildPolicyLibraryRebuildSnapshotGateAudit,
   persistPolicyLibraryRebuildRollbackSnapshot,
 } from '../../services/policyLibraryRebuildSnapshotGate.mjs';
 import {
@@ -248,6 +249,20 @@ function createClient({
 }
 
 describe('policyLibraryRebuildSnapshotGate', () => {
+  test('audits the snapshot-gate contract without opening a transaction', () => {
+    const audit = buildPolicyLibraryRebuildSnapshotGateAudit();
+
+    expect(audit).toEqual(expect.objectContaining({
+      ok: true,
+      issueCount: 0,
+      canApplyReplacement: false,
+      persistedRollbackSnapshotPresent: true,
+      nextStep: expect.objectContaining({
+        stepId: 'library_rebuild_replacement_gate',
+      }),
+    }));
+  });
+
   test('persists an accepted rebuild rollback snapshot and replay state atomically', async () => {
     const { rebuildProposal, transition } = acceptedTransition();
     const client = createClient();

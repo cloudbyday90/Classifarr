@@ -18,6 +18,9 @@ describe('policyRuntimeCompletionAudit', () => {
         POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.LIBRARY_POLICY_REBUILD,
         POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.LIBRARY_REBUILD_ACCEPTANCE_TRANSITION,
         POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.MIGRATION_VERIFIER_ROLLBACK,
+        POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.LIBRARY_REBUILD_SNAPSHOT_GATE,
+        POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.LIBRARY_REBUILD_REPLACEMENT_GATE,
+        POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.STRICT_CONSTRAINT_DESCRIPTORS,
         POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE,
         POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_REBUILD_TEST_RESET,
       ]);
@@ -28,8 +31,8 @@ describe('policyRuntimeCompletionAudit', () => {
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
-    expect(audit.checkedComponentCount).toBe(10);
-    expect(audit.requiredComponentCount).toBe(10);
+    expect(audit.checkedComponentCount).toBe(13);
+    expect(audit.requiredComponentCount).toBe(13);
     expect(audit.policyEngineCompletion).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
@@ -46,6 +49,9 @@ describe('policyRuntimeCompletionAudit', () => {
         'library_policy_rebuild',
         'library_rebuild_acceptance_transition',
         'migration_verifier_rollback',
+        'library_rebuild_snapshot_gate',
+        'library_rebuild_replacement_gate',
+        'strict_constraint_descriptors',
         'runtime_metrics_trace',
         'runtime_rebuild_test_reset',
         'completion_audit',

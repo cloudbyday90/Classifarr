@@ -617,7 +617,7 @@ describe('policyMigrationVerifierRollback', () => {
     ]));
   });
 
-  test('passes component audit and points to runtime metrics and decision trace', () => {
+  test('passes component audit and points to the rollback snapshot gate', () => {
     const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),
       legacyComparisonSamples: [],
@@ -627,8 +627,8 @@ describe('policyMigrationVerifierRollback', () => {
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.nextStep).toEqual(expect.objectContaining({
-      stepId: 'runtime_metrics_trace',
-      label: 'Runtime Metrics And Decision Trace',
+      stepId: 'library_rebuild_snapshot_gate',
+      label: 'Library Rebuild Snapshot Gate',
     }));
   });
 });

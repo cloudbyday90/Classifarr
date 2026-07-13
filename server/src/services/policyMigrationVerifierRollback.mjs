@@ -949,9 +949,9 @@ function buildPolicyMigrationVerifierAudit(report = null) {
     differenceCount: hasReport ? report.differenceSummary?.totalCount ?? 0 : 0,
     validation,
     nextStep: {
-      stepId: 'runtime_metrics_trace',
-      label: 'Runtime Metrics And Decision Trace',
-      reason: 'Migration verification and rollback gates now produce bounded decision output, so runtime metrics and decision traces can count automation, review, rollback, and rebuild outcomes safely.',
+      stepId: 'library_rebuild_snapshot_gate',
+      label: 'Library Rebuild Snapshot Gate',
+      reason: 'A no-difference verifier result must first create one current, transaction-gated rollback snapshot before replacement or metrics can consume the rebuild outcome.',
     },
   };
 }

@@ -70,8 +70,9 @@ Cons:
 4. Move the verifier contract version to `policy.migration_verifier.v1`.
 5. Move the sample-set fingerprint version to
    `policy.migration_verifier_sample_set_fingerprint.v1`.
-6. Replace verifier-local phase handoff with
-   `nextStep.stepId = runtime_metrics_trace`.
+6. Route a no-difference verifier result through
+   `nextStep.stepId = library_rebuild_snapshot_gate` before replacement or
+   metrics may consume the rebuild outcome.
 7. Rename deletion readiness to `native_intent_storage_stable` and reject the
    obsolete phase-named input. Repository audit found no persisted, public, or
    downstream caller that requires a compatibility reader.

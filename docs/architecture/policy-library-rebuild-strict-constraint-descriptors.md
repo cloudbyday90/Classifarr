@@ -136,6 +136,7 @@ Cons:
 
 ## Next Component
 
-Proceed with Task 7R.8: runtime metrics and decision trace. It should consume
-the existing bounded runtime and rebuild outcomes without introducing new
-policy-authoring or replacement behavior.
+The runtime/rebuild completion audit must require this descriptor contract as a
+distinct rebuild execution boundary before native intent storage work can
+advance. Runtime metrics and decision tracing may consume only its validated,
+bounded result.

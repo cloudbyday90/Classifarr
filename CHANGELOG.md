@@ -9,9 +9,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ## [Unreleased]
 
-The entries below describe the net product behavior and operational guarantees
-intended for the next release. They do not reproduce intermediate delivery
-phases, temporary diagnostics, or refactors that were replaced before release.
+The entries below describe distinct product behavior and operational guarantees
+intended for the next release. They consolidate intermediate delivery phases,
+temporary diagnostics, and refactors only when those changes resulted in one
+unchanged operator or runtime outcome.
 
 ### Added
 
@@ -71,15 +72,39 @@ phases, temporary diagnostics, or refactors that were replaced before release.
 
 #### Policy Evidence, Decisions, And Learning
 
+- **Library Evidence Sources** - added bounded, read-only collection of cached
+  library profiles, completed outcomes, manual corrections, resolved pending
+  decisions, routing outcomes, and normalized metadata. Each source has a
+  declared role and cannot execute a provider call, refresh, route, or write
+  while policy meaning is being established.
+- **Canonical Evidence Envelope** - added a single library-destination evidence
+  envelope that combines those sources only after their collection contracts
+  pass, reports truncation and blocked states without raw error text, and keeps
+  observations separate from authority.
 - **Canonical Policy Evidence** - added bounded collectors for library
   profiles, metadata, final classification outcomes, pending answers, and
   routing outcomes. They produce one canonical projection for identity,
   compatibility, limits, avoidance, freshness, routing, and insufficient
   evidence.
+- **Evidence Identity and Ordering** - added deterministic source ordering,
+  deduplication, bucket ownership checks, and contribution limits so repeated
+  observations or unordered source records cannot change a policy conclusion.
 - **Evidence Provenance and Quality** - added source-authority validation,
   canonical ordering, deduplication, contribution rules, verified handoffs,
   fingerprints, and input-cardinality limits. Untrusted provider payloads
   cannot acquire policy authority merely by appearing in a collection.
+- **Profile Evidence Safeguards** - added freshness re-evaluation, normalized
+  profile distributions, and review-only absence handling. A stale, unknown,
+  or profile-only signal can assist compatibility but cannot define identity or
+  exclusion behavior.
+- **Outcome and Resolution Safeguards** - added final-outcome normalization and
+  resolved-answer collection that retain only bounded state and timestamps;
+  item titles, raw answers, actor identities, provider payloads, and database
+  errors are excluded from the policy evidence path.
+- **Verified Intent Proposals** - added short-lived, actor-bound proposal
+  references that snapshot the reviewed evidence and exact fingerprint. A
+  proposal can be consumed once and cannot expose stored evidence or perform
+  persistence, learning, routing, provider, or refresh work by itself.
 - **Policy Decision Lineage** - added bounded, server-owned intent, readiness,
   workflow, migration, and completion handoffs. Each consumer revalidates the
   source it relies on, preventing stale, substituted, or altered decisions from
@@ -139,24 +164,49 @@ phases, temporary diagnostics, or refactors that were replaced before release.
   validated operator, values, mode, and semantics for deliberately authored
   strict rules. Replacement converts those descriptors directly to native hard
   limits while keeping label-only or malformed constraints blocked.
+- **Runtime and Rebuild Completion Gate** - added a server-owned audit that
+  verifies the current docs, services, focused direct-import tests, local
+  contracts, and required handoffs for runtime evidence, automation,
+  clarification, learning, rebuild acceptance, rollback snapshots, native
+  replacement, structured hard limits, and metrics before storage work can
+  advance.
 
 #### Native Policy Intent Storage
 
-- **Native Intent Schema and Conversion Planning** - added persistent native
-  policy intent storage, migration-candidate reporting, conversion planning,
-  rollback snapshots, and runtime read verification for a controlled storage
-  transition.
-- **Operational Storage Safeguards** - added backup and restore wiring,
-  post-upgrade dry runs, transaction-gated apply paths, SQL migration coverage,
-  operational safety checks, legacy-write shutdown controls, and
-  compatibility-removal verification.
-- **Storage Completion Evidence** - added current-evidence collection,
-  validation records, completion checkpoints, final readouts, and requirement
-  audits so storage completion is proved from current artifacts rather than
-  narrative.
-- **Native Intent Runtime Admission** - added runtime verification that native
-  intent, its storage state, and its migration evidence are current before the
-  classification path may rely on native policy behavior.
+- **Native Intent Schema Contract** - added a versioned native storage contract
+  for intent headers, executable rules, routing references, template
+  provenance, validation state, migration events, and time-bounded rollback
+  snapshots. It keeps UI drafts, provider payloads, prompts, embeddings, and
+  diagnostic traces outside durable policy storage.
+- **Migration Candidate Reporting** - added dry-run classification of policies
+  as ready, review-required, partial, or unsupported before any conversion
+  action. Candidate reports redact raw legacy configuration and expose only
+  bounded operator reasons and deletion-impact estimates.
+- **Explicit Conversion Planning** - added a server-owned conversion workflow
+  that binds a ready candidate, approved actor source, migration evidence, and
+  rollback plan through an idempotency key before it can plan a native record.
+- **Native Runtime Read Verification** - added runtime admission checks for the
+  active native intent, its validation status, storage state, and matching
+  migration evidence so classification cannot silently rely on stale or
+  incomplete conversion data.
+- **Rollback Window Management** - added expiring rollback snapshot contracts
+  and restore eligibility checks, keeping a recoverable legacy state during the
+  supported window without treating it as a permanent second policy model.
+- **Legacy Write Controls** - added explicit compatibility-write boundaries and
+  deletion readiness checks so old preset/custom-signal paths remain available
+  only while the corresponding native conversion and rollback obligations are
+  still open.
+- **Operational Conversion Safeguards** - added backup/restore wiring,
+  post-upgrade dry-run and apply gates, transaction-aware migration checks, and
+  SQL migration coverage for a controlled storage transition.
+- **Storage Closure Evidence** - added current-evidence collection, validation
+  records, completion checkpoints, final readouts, and requirement audits so
+  storage readiness is proved from live repository and schema artifacts rather
+  than narrative alone.
+- **Compatibility-Removal Controls** - added bounded deletion plans, execution
+  gates, selected-batch manifests, post-removal verification, and next-batch
+  authorization so retirement of replaced compatibility paths remains explicit
+  and reversible until its acceptance criteria are met.
 
 #### Classification And RAG Observability
 
@@ -203,45 +253,54 @@ phases, temporary diagnostics, or refactors that were replaced before release.
 
 #### Web Search Providers
 
-- **Multi-Provider Search Foundation** - added provider-neutral configuration,
-  encrypted secret handling, result normalization, contract validation, and an
-  error taxonomy for Tavily, Brave Search, and Serper.
-- **Web Search Provider Settings** - added an operator settings surface for
-  provider configuration, secure key updates, connectivity checks, usage, route
-  diagnostics, retention settings, calibration controls, and guardrails.
-- **Brave and Serper Adapters** - activated Brave Search and Serper alongside
-  Tavily, letting operators distribute query volume across configured providers.
-- **Provider-Routed Enrichment** - migrated legacy Tavily enrichment and retry
-  execution to the provider router with safe fallback when a provider is
+- **Provider-Neutral Search Configuration** - added shared configuration,
+  encrypted-secret handling, result normalization, contract validation, and
+  failure classification for Tavily, Brave Search, and Serper.
+- **Safe Provider Settings** - added an operator settings surface that manages
+  provider configuration, secure key updates, connectivity checks, priority,
+  purpose coverage, usage, route diagnostics, retention, and calibration
+  controls without returning credentials to the browser.
+- **Brave and Serper Activation** - activated Brave Search and Serper alongside
+  Tavily through capability-gated adapters, letting operators distribute query
+  volume across configured providers.
+- **Tavily Router Modernization** - moved legacy Tavily enrichment and retry
+  work through the provider router, preserving safe fallback when a provider is
   unavailable, cooling down, or has exhausted its configured allowance.
-- **Quota-Aware Routing** - added daily and monthly allowance policies,
-  provider cooldown handling, purpose-aware selection, and decision reasons for
-  selected and skipped providers.
-- **Usage Cache and Retention** - added normalized result caching, request
-  reuse, usage accounting, bounded cleanup, configurable retention, and
-  fresh-install seed reconciliation for provider operational data.
-- **Route and Health History** - added sanitized route-decision history, cache
-  and quota counters, health and cooldown events, and retention policies for
-  operator diagnostics.
-- **Purpose-Aware Calibration** - added outcome feedback, per-purpose
+- **Provider Contract and Result Safety** - added URL filtering, HTML and
+  control-character cleanup, canonical rank/score/date handling, bounded field
+  normalization, provenance-preserving deduplication, and sanitized warnings
+  for corrected or dropped provider data.
+- **Provider Error Taxonomy** - added shared handling for authentication,
+  quota, rate-limit, invalid-request, timeout, network, SSL, provider, and
+  malformed-response failures with sanitized retry metadata and `Retry-After`
+  parsing.
+- **Quota-Aware Provider Selection** - added daily and monthly allowance
+  policies, cooldown handling, purpose-aware selection, and deterministic
+  reasons for selected and skipped providers.
+- **Usage Accounting and Cache** - added normalized result caching, request
+  reuse, per-request usage accounting, cache-hit diagnostics, and bounded
+  cleanup so repeated searches do not unnecessarily consume provider allowance.
+- **Independent Data Retention** - added separately configurable retention for
+  usage, cached results, route decisions, and provider health records rather
+  than applying one deletion policy to unrelated operational evidence.
+- **Route Decision History** - added sanitized decision history that records
+  purpose, candidate set, selected or skipped provider, fallback reason, and
+  retained route outcome without storing API keys or raw response bodies.
+- **Provider Health and Cooldown History** - added bounded health/cooldown
+  events and settings diagnostics that explain why a provider is available,
+  cooling down, reused, or skipped.
+- **Purpose-Specific Quality Controls** - added outcome feedback, per-purpose
   calibration policies, coverage reporting, and side-effect-free previews so an
-  operator can review a calibration before applying it.
-- **Calibration Guardrails** - added configurable thresholds, bounded
-  guardrail events, analytics, and a digest for operator review when provider
-  behavior falls outside the configured safety envelope.
-- **Normalized Search Safety** - hardened provider results through URL
-  filtering, HTML and control-character cleanup, bounded field normalization,
-  and sanitized warnings for corrected or dropped provider data.
-- **Provider Failure Handling** - added shared classification for
-  authentication, quota, rate-limit, invalid-request, timeout, network, SSL,
-  provider, and malformed-response failures. The router can make safe retry
-  and cooldown decisions without exposing provider payloads or credentials.
+  operator can review an adjustment before it affects provider ordering.
+- **Calibration Guardrails and Analytics** - added configurable thresholds,
+  bounded guardrail events, analytics, and a rate-limited digest for review
+  when provider behavior falls outside the configured safety envelope.
 - **Fresh-Install Provider Parity** - reconciled provider configuration and
   retention seed data so new and upgraded installations receive compatible
   Tavily, Brave Search, and Serper rows while migrated Tavily settings remain
   intact.
-- **Provider Operational Feedback** - added bounded provider health, cooldown,
-  quota, cache, decision, and calibration feedback so settings diagnostics can
+- **Provider Operational Feedback** - added bounded health, cooldown, quota,
+  cache, route-decision, and calibration feedback so settings diagnostics can
   explain why a provider was chosen, skipped, reused, or held back.
 
 #### Notifications And Setup

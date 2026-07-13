@@ -33,6 +33,9 @@ const POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS = Object.freeze({
   LIBRARY_POLICY_REBUILD: 'library_policy_rebuild',
   LIBRARY_REBUILD_ACCEPTANCE_TRANSITION: 'library_rebuild_acceptance_transition',
   MIGRATION_VERIFIER: 'migration_verifier',
+  LIBRARY_REBUILD_SNAPSHOT_GATE: 'library_rebuild_snapshot_gate',
+  LIBRARY_REBUILD_REPLACEMENT_GATE: 'library_rebuild_replacement_gate',
+  STRICT_CONSTRAINT_DESCRIPTORS: 'strict_constraint_descriptors',
   RUNTIME_METRICS_INPUT: 'runtime_metrics_input',
   RUNTIME_METRICS_TRACE: 'runtime_metrics_trace',
 });
@@ -82,6 +85,9 @@ const REQUIRED_CONTRACT_IDS = Object.freeze([
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_POLICY_REBUILD,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_REBUILD_ACCEPTANCE_TRANSITION,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.MIGRATION_VERIFIER,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_REBUILD_SNAPSHOT_GATE,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_REBUILD_REPLACEMENT_GATE,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.STRICT_CONSTRAINT_DESCRIPTORS,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_INPUT,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_TRACE,
 ]);
@@ -102,6 +108,12 @@ const CONTRACT_IMPORT_MARKERS = Object.freeze({
     '../../services/policyLibraryRebuildAcceptanceTransition.mjs',
   [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.MIGRATION_VERIFIER]:
     '../../services/policyMigrationVerifierRollback.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_REBUILD_SNAPSHOT_GATE]:
+    '../../services/policyLibraryRebuildSnapshotGate.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_REBUILD_REPLACEMENT_GATE]:
+    '../../services/policyLibraryRebuildReplacementGate.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.STRICT_CONSTRAINT_DESCRIPTORS]:
+    '../../services/policyStrictConstraintDescriptor.mjs',
   [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_INPUT]:
     '../../services/policyRuntimeMetricsInput.mjs',
   [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_TRACE]:
@@ -281,6 +293,60 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     deleteAfterMigration: false,
     normalWorkflowAllowed: false,
     traceReasons: ['library_rebuild_acceptance_transition'],
+  }),
+  Object.freeze({
+    path: 'server/src/__tests__/services/policyLibraryRebuildSnapshotGate.test.mjs',
+    owner: 'server',
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER,
+    coverageIds: [
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_REBUILD_SNAPSHOT_GATE,
+    ],
+    replacement: 'Persist one current rollback snapshot in an execution gate before any native replacement can run.',
+    protectsAuthority: true,
+    distinguishesClassificationFromRouting: true,
+    preservesOldPreviewUi: false,
+    deleteAfterMigration: false,
+    normalWorkflowAllowed: false,
+    traceReasons: ['library_rebuild_snapshot_gate'],
+  }),
+  Object.freeze({
+    path: 'server/src/__tests__/services/policyLibraryRebuildReplacementGate.test.mjs',
+    owner: 'server',
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER,
+    coverageIds: [
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_REBUILD_REPLACEMENT_GATE,
+    ],
+    replacement: 'Replace native intent only from matching persisted rollback and no-difference verifier proof, with idempotent execution.',
+    protectsAuthority: true,
+    distinguishesClassificationFromRouting: true,
+    preservesOldPreviewUi: false,
+    deleteAfterMigration: false,
+    normalWorkflowAllowed: false,
+    traceReasons: ['library_rebuild_replacement_gate'],
+  }),
+  Object.freeze({
+    path: 'server/src/__tests__/services/policyStrictConstraintDescriptor.test.mjs',
+    owner: 'server',
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER,
+    coverageIds: [
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REBUILD_PRESERVES_EXPLICIT_CONSTRAINTS,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.STRICT_CONSTRAINT_DESCRIPTORS,
+    ],
+    replacement: 'Preserve executable strict hard-limit semantics through rebuild instead of inferring a rule from display labels.',
+    protectsAuthority: true,
+    distinguishesClassificationFromRouting: false,
+    preservesOldPreviewUi: false,
+    deleteAfterMigration: false,
+    normalWorkflowAllowed: false,
+    traceReasons: ['strict_constraint_descriptor_rewrite'],
   }),
   Object.freeze({
     path: 'server/src/__tests__/services/policyRuntimeMetricsInput.test.mjs',

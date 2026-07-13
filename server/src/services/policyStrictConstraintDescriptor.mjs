@@ -520,12 +520,44 @@ function buildNativeHardLimitRuleFromStrictConstraintDescriptor(descriptor = {})
   };
 }
 
+function buildPolicyStrictConstraintDescriptorAudit(descriptor = null) {
+  const auditedDescriptor = descriptor || {
+    version: POLICY_STRICT_CONSTRAINT_DESCRIPTOR_VERSION,
+    signal_type: 'certifications',
+    operator: 'max',
+    values: {
+      mode: 'max',
+      max: 'PG-13',
+    },
+    constraint_mode: 'strict',
+    semantics: 'compatibility',
+  };
+  const result = buildPolicyStrictConstraintDescriptor(auditedDescriptor);
+
+  return {
+    ok: result.ok,
+    issueCount: result.issueCount,
+    descriptor: result.descriptor,
+    validation: {
+      ok: result.ok,
+      issueCount: result.issueCount,
+      issues: result.issues,
+    },
+    nextStep: {
+      stepId: 'runtime_metrics_trace',
+      label: 'Runtime Metrics And Decision Trace',
+      reason: 'Validated strict descriptor semantics can now be traced through the bounded runtime and rebuild metrics projection.',
+    },
+  };
+}
+
 export {
   MAX_DESCRIPTOR_TEXT_LENGTH,
   MAX_DESCRIPTOR_VALUE_COUNT,
   POLICY_STRICT_CONSTRAINT_DESCRIPTOR_RISK_IDS,
   POLICY_STRICT_CONSTRAINT_DESCRIPTOR_VERSION,
   buildNativeHardLimitRuleFromStrictConstraintDescriptor,
+  buildPolicyStrictConstraintDescriptorAudit,
   buildPolicyStrictConstraintDescriptor,
   buildPolicyStrictConstraintDescriptorFromNativeRule,
 };

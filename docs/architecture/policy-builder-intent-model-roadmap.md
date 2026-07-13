@@ -4718,13 +4718,15 @@ Implementation record:
   `server/src/services/policyRuntimeCompletionAudit.mjs`.
 - The focused completion audit suite lives in
   `server/src/__tests__/services/policyRuntimeCompletionAudit.test.mjs`.
-- Current completion audit verifies all nine runtime/rebuild
-  components have docs, services, focused tests, passing component audits, and
-  the expected semantic `nextStep` handoff sequence before allowing the native
-  intent storage boundary to begin. It also requires the runtime/rebuild test
-  reset to report complete focused ownership for every required runtime
-  contract; a generic passing reset status cannot bypass that proof. Its design
-  record is
+- Current completion audit verifies all thirteen runtime/rebuild components:
+  the runtime evidence and decision chain, library rebuild proposal and
+  acceptance, migration verifier, persisted rollback snapshot, native
+  replacement, structured strict constraints, metrics, and test reset. Each
+  must have current docs, services, focused tests, a passing component audit,
+  and the expected semantic `nextStep` handoff before the native intent storage
+  boundary can begin. It also requires the runtime/rebuild test reset to report
+  complete focused ownership for every required runtime contract; a generic
+  passing reset status cannot bypass that proof. Its design record is
   [Policy Runtime Completion Audit Contract Coverage](policy-runtime-completion-audit-contract-coverage.md).
 - Runtime completion now also requires the policy-engine completion gate to
   pass with zero issues before native intent storage can begin. It retains only

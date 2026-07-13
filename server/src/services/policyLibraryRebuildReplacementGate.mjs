@@ -273,6 +273,40 @@ function validatePolicyLibraryRebuildReplacementGate(result = {}) {
   };
 }
 
+function buildPolicyLibraryRebuildReplacementGateAudit(result = null) {
+  const auditedResult = result || {
+    version: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_VERSION,
+    statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.REPLACEMENT_APPLIED,
+    execution: {
+      gateId: 1,
+      originalIntentId: 1,
+      replacementIntentId: 2,
+      replacementEventId: 1,
+      rollbackSnapshotId: 1,
+      transitionFingerprint: 'a'.repeat(64),
+    },
+    application: {
+      replacementApplied: true,
+      canApplyReplacement: false,
+    },
+  };
+  const validation = validatePolicyLibraryRebuildReplacementGate(auditedResult);
+
+  return {
+    ok: validation.ok,
+    issueCount: validation.issueCount,
+    statusId: auditedResult.statusId || null,
+    replacementApplied: auditedResult.application?.replacementApplied === true,
+    canApplyReplacement: auditedResult.application?.canApplyReplacement === true,
+    validation,
+    nextStep: {
+      stepId: 'strict_constraint_descriptors',
+      label: 'Structured Rebuild Strict Constraints',
+      reason: 'Native replacement remains auditable only when strict hard-limit semantics are preserved as validated structured descriptors.',
+    },
+  };
+}
+
 async function applyPolicyLibraryRebuildReplacement({
   dbClient,
   transition = {},
@@ -527,5 +561,6 @@ export {
   POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS,
   POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_VERSION,
   applyPolicyLibraryRebuildReplacement,
+  buildPolicyLibraryRebuildReplacementGateAudit,
   validatePolicyLibraryRebuildReplacementGate,
 };

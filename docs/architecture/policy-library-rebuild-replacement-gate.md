@@ -145,6 +145,7 @@ Strict-Constraint Descriptors](policy-library-rebuild-strict-constraint-descript
 
 ## Next Component
 
-Proceed with Task 7R.8: runtime metrics and decision trace. It should consume
-bounded runtime and rebuild outcomes without adding new authoring or
-replacement behavior.
+The runtime/rebuild completion audit must require this replacement gate,
+the persisted rollback-snapshot gate, and structured strict-constraint
+descriptors as distinct execution boundaries before native intent storage work
+can advance.

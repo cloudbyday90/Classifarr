@@ -15,6 +15,12 @@ import {
   buildPolicyLibraryRebuildAcceptanceTransitionAudit,
 } from './policyLibraryRebuildAcceptanceTransition.mjs';
 import {
+  buildPolicyLibraryRebuildReplacementGateAudit,
+} from './policyLibraryRebuildReplacementGate.mjs';
+import {
+  buildPolicyLibraryRebuildSnapshotGateAudit,
+} from './policyLibraryRebuildSnapshotGate.mjs';
+import {
   buildPolicyMigrationVerifierAudit,
 } from './policyMigrationVerifierRollback.mjs';
 import {
@@ -41,6 +47,9 @@ import {
 import {
   buildPolicyRuntimeRebuildTestResetAudit,
 } from './policyRuntimeRebuildTestReset.mjs';
+import {
+  buildPolicyStrictConstraintDescriptorAudit,
+} from './policyStrictConstraintDescriptor.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -53,6 +62,9 @@ const POLICY_RUNTIME_COMPLETION_COMPONENT_IDS = Object.freeze({
   LIBRARY_POLICY_REBUILD: 'library_policy_rebuild',
   LIBRARY_REBUILD_ACCEPTANCE_TRANSITION: 'library_rebuild_acceptance_transition',
   MIGRATION_VERIFIER_ROLLBACK: 'migration_verifier_rollback',
+  LIBRARY_REBUILD_SNAPSHOT_GATE: 'library_rebuild_snapshot_gate',
+  LIBRARY_REBUILD_REPLACEMENT_GATE: 'library_rebuild_replacement_gate',
+  STRICT_CONSTRAINT_DESCRIPTORS: 'strict_constraint_descriptors',
   RUNTIME_METRICS_TRACE: 'runtime_metrics_trace',
   RUNTIME_REBUILD_TEST_RESET: 'runtime_rebuild_test_reset',
 });
@@ -145,8 +157,35 @@ const POLICY_RUNTIME_COMPLETION_COMPONENT_RECORDS = Object.freeze([
     docPath: 'docs/architecture/policy-migration-verifier-rollback-module-cutover.md',
     servicePath: 'server/src/services/policyMigrationVerifierRollback.mjs',
     testPath: 'server/src/__tests__/services/policyMigrationVerifierRollback.test.mjs',
+    expectedNextStepId: 'library_rebuild_snapshot_gate',
+    evidence: 'Migration verifier reports require a verified acceptance transition, bounded sample-set proof, and rollback planning before persisted rollback evidence can be created.',
+  },
+  {
+    id: POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.LIBRARY_REBUILD_SNAPSHOT_GATE,
+    label: 'Library rebuild snapshot gate',
+    docPath: 'docs/architecture/policy-library-rebuild-snapshot-gate.md',
+    servicePath: 'server/src/services/policyLibraryRebuildSnapshotGate.mjs',
+    testPath: 'server/src/__tests__/services/policyLibraryRebuildSnapshotGate.test.mjs',
+    expectedNextStepId: 'library_rebuild_replacement_gate',
+    evidence: 'An accepted rebuild persists one current rollback snapshot and execution record inside a transaction without authorizing replacement.',
+  },
+  {
+    id: POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.LIBRARY_REBUILD_REPLACEMENT_GATE,
+    label: 'Library rebuild replacement gate',
+    docPath: 'docs/architecture/policy-library-rebuild-replacement-gate.md',
+    servicePath: 'server/src/services/policyLibraryRebuildReplacementGate.mjs',
+    testPath: 'server/src/__tests__/services/policyLibraryRebuildReplacementGate.test.mjs',
+    expectedNextStepId: 'strict_constraint_descriptors',
+    evidence: 'A matching accepted transition, persisted rollback snapshot, and no-difference verifier report are revalidated and written once in one transaction.',
+  },
+  {
+    id: POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.STRICT_CONSTRAINT_DESCRIPTORS,
+    label: 'Structured rebuild strict constraints',
+    docPath: 'docs/architecture/policy-library-rebuild-strict-constraint-descriptors.md',
+    servicePath: 'server/src/services/policyStrictConstraintDescriptor.mjs',
+    testPath: 'server/src/__tests__/services/policyStrictConstraintDescriptor.test.mjs',
     expectedNextStepId: 'runtime_metrics_trace',
-    evidence: 'Migration verifier reports require a verified acceptance transition, bounded sample-set proof, and rollback planning; replacement remains disabled pending persisted rollback evidence.',
+    evidence: 'Strict hard limits preserve their executable operator, values, mode, and semantics; ambiguous label-only rules remain blocked.',
   },
   {
     id: POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE,
@@ -234,6 +273,12 @@ function buildDefaultComponentAudits() {
       buildPolicyLibraryRebuildAcceptanceTransitionAudit(),
     [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.MIGRATION_VERIFIER_ROLLBACK]:
       buildPolicyMigrationVerifierAudit(),
+    [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.LIBRARY_REBUILD_SNAPSHOT_GATE]:
+      buildPolicyLibraryRebuildSnapshotGateAudit(),
+    [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.LIBRARY_REBUILD_REPLACEMENT_GATE]:
+      buildPolicyLibraryRebuildReplacementGateAudit(),
+    [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.STRICT_CONSTRAINT_DESCRIPTORS]:
+      buildPolicyStrictConstraintDescriptorAudit(),
     [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE]:
       buildPolicyRuntimeMetricsTraceAudit(),
     [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_REBUILD_TEST_RESET]:

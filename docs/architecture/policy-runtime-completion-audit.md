@@ -9,8 +9,9 @@ Implemented as the durable runtime/rebuild completion gate.
 The runtime automation and rebuild chain now has individual product-domain
 contracts for runtime inventory, runtime evidence, automation decisions,
 runtime questions, request-time learning, library-derived rebuild proposals,
-migration verification, runtime metrics, and test reset. A roadmap checkbox is
-not enough to prove the chain is complete.
+acceptance, migration verification, persisted rollback snapshots, native
+replacement, strict hard-limit preservation, runtime metrics, and test reset.
+A roadmap checkbox is not enough to prove the chain is complete.
 
 The completion audit must prove:
 
@@ -20,6 +21,10 @@ The completion audit must prove:
 - the runtime/rebuild test reset proves complete focused ownership for every
   required runtime contract,
 - request-time learning is checked with a valid bounded question-proof sample,
+- rollback evidence is persisted before replacement and never grants
+  replacement authority on its own,
+- native replacement preserves explicit strict-rule semantics rather than
+  guessing from a display label,
 - policy-engine completion passes before runtime/rebuild completion can advance,
 - the final handoff moves to native intent storage and legacy removal.
 
@@ -47,7 +52,9 @@ The completion audit must prove:
 1. Treat completion as a server-owned audit, not a documentation assertion.
 2. Compose existing component audits instead of duplicating each component's
    validation rules.
-3. Verify docs, services, and focused tests exist for every runtime component.
+3. Verify docs, services, and focused tests exist for every runtime component,
+   including acceptance, rollback snapshot, replacement, and strict-constraint
+   execution boundaries.
 4. Reject next-step drift so the runtime/rebuild sequence cannot silently skip
    a gate.
 5. Require the test-reset audit to report complete contract-to-test coverage;
@@ -90,7 +97,11 @@ Cons:
   - runtime question reduction,
   - request-time learning,
   - library-derived policy rebuild,
+  - library rebuild acceptance transition,
   - migration verifier and rollback path,
+  - library rebuild snapshot gate,
+  - library rebuild replacement gate,
+  - structured rebuild strict constraints,
   - runtime metrics and decision trace,
   - runtime and rebuild test reset.
 - Required proof:
@@ -109,6 +120,7 @@ Runtime completion now has a deterministic completion gate:
 runtime component docs/services/tests
   -> policy-engine completion prerequisite
   -> component audit composition
+  -> persisted rollback and replacement execution-gate checks
   -> nextStep handoff verification
   -> native intent storage readiness
 ```

@@ -18,6 +18,7 @@ import {
   POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS,
   POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS,
   applyPolicyLibraryRebuildReplacement,
+  buildPolicyLibraryRebuildReplacementGateAudit,
 } from '../../services/policyLibraryRebuildReplacementGate.mjs';
 import {
   buildPolicyMigrationVerifierReportFromRebuildProposal,
@@ -246,6 +247,20 @@ function createClient({ gate, failRules = false } = {}) {
 }
 
 describe('policyLibraryRebuildReplacementGate', () => {
+  test('audits the replacement-gate contract with replacement authority closed', () => {
+    const audit = buildPolicyLibraryRebuildReplacementGateAudit();
+
+    expect(audit).toEqual(expect.objectContaining({
+      ok: true,
+      issueCount: 0,
+      replacementApplied: true,
+      canApplyReplacement: false,
+      nextStep: expect.objectContaining({
+        stepId: 'strict_constraint_descriptors',
+      }),
+    }));
+  });
+
   test('replaces a locked native intent from persisted rollback evidence in one transaction', async () => {
     const { proposal, transition, verifierReport } = buildFixture();
     const client = createClient({ gate: execution(transition) });

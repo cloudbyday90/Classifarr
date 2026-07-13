@@ -254,6 +254,40 @@ function validatePolicyLibraryRebuildSnapshotGate(result = {}) {
   };
 }
 
+function buildPolicyLibraryRebuildSnapshotGateAudit(result = null) {
+  const auditedResult = result || {
+    version: POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_VERSION,
+    statusId: POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS.ROLLBACK_SNAPSHOT_PERSISTED,
+    execution: {
+      transitionFingerprint: 'a'.repeat(64),
+      proposalFingerprint: 'b'.repeat(64),
+      rollbackPlanFingerprint: 'c'.repeat(64),
+      rollbackSnapshotId: 1,
+      migrationEventId: 1,
+    },
+    application: {
+      canApplyReplacement: false,
+      persistedRollbackSnapshotPresent: true,
+    },
+  };
+  const validation = validatePolicyLibraryRebuildSnapshotGate(auditedResult);
+
+  return {
+    ok: validation.ok,
+    issueCount: validation.issueCount,
+    statusId: auditedResult.statusId || null,
+    canApplyReplacement: auditedResult.application?.canApplyReplacement === true,
+    persistedRollbackSnapshotPresent:
+      auditedResult.application?.persistedRollbackSnapshotPresent === true,
+    validation,
+    nextStep: {
+      stepId: 'library_rebuild_replacement_gate',
+      label: 'Library Rebuild Replacement Gate',
+      reason: 'A persisted rollback snapshot is now required before the transaction-gated native replacement contract can run.',
+    },
+  };
+}
+
 async function persistPolicyLibraryRebuildRollbackSnapshot({
   dbClient,
   transition = {},
@@ -456,6 +490,7 @@ export {
   POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS,
   POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS,
   POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_VERSION,
+  buildPolicyLibraryRebuildSnapshotGateAudit,
   persistPolicyLibraryRebuildRollbackSnapshot,
   validatePolicyLibraryRebuildSnapshotGate,
 };

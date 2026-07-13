@@ -12,6 +12,7 @@ import {
   POLICY_STRICT_CONSTRAINT_DESCRIPTOR_RISK_IDS,
   POLICY_STRICT_CONSTRAINT_DESCRIPTOR_VERSION,
   buildNativeHardLimitRuleFromStrictConstraintDescriptor,
+  buildPolicyStrictConstraintDescriptorAudit,
   buildPolicyStrictConstraintDescriptor,
   buildPolicyStrictConstraintDescriptorFromNativeRule,
 } from '../../services/policyStrictConstraintDescriptor.mjs';
@@ -32,6 +33,22 @@ function certificationMaximumDescriptor(overrides = {}) {
 }
 
 describe('policyStrictConstraintDescriptor', () => {
+  test('audits a canonical strict descriptor before it can advance to runtime tracing', () => {
+    const audit = buildPolicyStrictConstraintDescriptorAudit();
+
+    expect(audit).toEqual(expect.objectContaining({
+      ok: true,
+      issueCount: 0,
+      descriptor: expect.objectContaining({
+        signal_type: 'certifications',
+        operator: 'max',
+      }),
+      nextStep: expect.objectContaining({
+        stepId: 'runtime_metrics_trace',
+      }),
+    }));
+  });
+
   test('canonicalizes a strict certification maximum and converts it to a native hard-limit rule', () => {
     const descriptorResult = buildPolicyStrictConstraintDescriptor(
       certificationMaximumDescriptor()
