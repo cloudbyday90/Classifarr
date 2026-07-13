@@ -11,161 +11,214 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
-- **Intent-First Policy Builder** — added a library-centered policy-authoring
-  experience that leads with what belongs in a destination, hard limits,
-  helpful signals, confidence boosts, avoidance rules, review behavior, and
-  routing readiness instead of raw preset JSON.
-- **Plain-Language Policy Controls** — added dedicated controls for
-  belongs-here, helpful-match, confidence-boost, maximum-rating, and
-  avoid-rating behavior. Configured rules now describe their effect in operator
-  language and can be removed individually without altering unrelated rules.
-- **Library-Informed Policy Suggestions** — added multi-select genre controls,
-  observed-library genre suggestions, cached-profile freshness states,
-  profile-refresh actions and result feedback, signal provenance, and option
-  availability diagnostics so operators can establish a destination from the
-  media server's existing collection.
-- **Policy Readiness Guidance** — added policy behavior summaries, section
-  completion states, actionable weak-structure warnings, consequences, issue
-  navigation, and a single recommended next action. `Ask When Unsure` is now a
+#### Policy Authoring
+
+- **Intent-First Policy Builder** - added a library-centered authoring
+  experience that starts with destination meaning, then separates belongs-here
+  evidence, hard limits, helpful hints, confidence boosts, avoidance rules,
+  review behavior, and routing readiness.
+- **Plain-Language Rule Controls** - added dedicated, removable controls for
+  identity and helpful genres, rating limits, language requirements, confidence
+  boosts, and avoid rules. Each rule explains its operator-facing effect rather
+  than exposing raw preset JSON.
+- **Library Context and Suggestions** - added observed-library genre
+  suggestions, multi-select genre controls, signal provenance, option
+  availability diagnostics, and cached-profile freshness so an operator can
+  establish a destination from the media server's current collection.
+- **Profile Refresh Feedback** - added in-card refresh actions and explicit
+  outcomes for profile collection, including unavailable, stale, empty, and
+  successfully refreshed states.
+- **Readiness and Review Guidance** - added behavior summaries, section
+  completion states, weak-structure warnings, consequences, issue navigation,
+  review triggers, and one recommended next action. `Ask When Unsure` is now a
   clear review behavior rather than an unexplained genre conflict.
-- **Save and Defer Workflow** — added explicit save readiness, disabled-reason
-  messaging, and a defer-without-saving action, allowing policy work to pause
-  safely without making an incomplete configuration appear applied.
-- **Starter Template Accelerators** — added an accessible browser and detail
-  surface for starter templates while keeping templates optional. They provide
-  starting signals and compatibility context rather than defining the policy's
-  hidden behavior.
-- **Intent Draft Compatibility** — added a typed intent draft, command boundary,
-  draft view, and legacy serialization bridge. Operators work with intent while
-  unchanged legacy preset and custom-signal policies retain their existing save
-  behavior during the transition.
-- **Server-Owned Policy Responses** — added a validated policy intent contract,
-  common detailed-policy projection, read/create/update response parity, and a
-  bounded write preflight. Invalid native-draft sidecars are rejected before a
-  legacy policy write can occur.
-- **Read-Only Intent Comparison** — added a sanitized, on-demand policy impact
-  comparison that shows where a draft differs from the current legacy policy
-  interpretation. Results are fingerprinted and marked stale after edits; the
-  comparison neither persists a draft nor runs classification.
-- **Policy Evidence Engine** — added bounded library-profile, metadata,
-  classification-outcome, pending-answer, and routing-outcome collectors that
-  create one canonical evidence projection for identity, compatibility, limits,
-  avoidance, freshness, routing, and insufficient-evidence signals.
-- **Evidence Quality and Provenance** — added source-authority validation,
-  canonical ordering, deduplication, bounded contribution rules, verified
-  handoffs, and fingerprints. Untrusted provider payloads cannot acquire
-  policy authority merely by being present in a collection.
-- **Policy Intent and Automation Readiness** — added deterministic intent
-  inference, final-outcome versus learning separation, learning eligibility,
-  evidence-quality assessment, explicit automation readiness, and an
-  operator-oriented workflow with clear next actions.
-- **Runtime Evidence Projection** — added a bounded request-time evidence
-  projection that preserves the policy decision inputs without exposing raw
-  provider records to automation or persistence paths.
-- **Runtime Automation Decisions** — added a server-owned automation decision
-  contract that binds every state to its allowed action, permissions, canonical
-  reasons, and trace attributes before any later step may act on it.
-- **Clarification and Learning Contracts** — added normalized clarification
-  reduction, request-time learning, and decision traces that distinguish a
-  completed classification from a successfully routed media item.
-- **Library Rebuild Proposals** — added read-only policy rebuild proposals from
-  observed library behavior, verified cached-profile evidence, operator intent,
+- **Save and Defer Workflow** - added explicit save readiness, disabled-reason
+  messaging, and a defer-without-saving action so incomplete policy work can be
+  paused without appearing applied.
+- **Optional Starter Templates** - added an accessible template browser and
+  detail surface. Templates now provide a starting point and compatibility
+  context without hiding or defining the destination's final behavior.
+- **Intent Draft Compatibility** - added typed intent drafts, a command
+  boundary, a server-owned view, and a legacy serializer. Operators can work in
+  the intent model while unchanged legacy preset and custom-signal policies
+  retain their existing save behavior.
+- **Policy Write Safety** - added a validated policy intent contract, detailed
+  read/create/update response parity, and a bounded write preflight so invalid
+  native-draft sidecars cannot accompany legacy policy writes.
+
+#### Policy Evidence, Decisions, And Learning
+
+- **Canonical Policy Evidence** - added bounded collectors for library
+  profiles, metadata, final classification outcomes, pending answers, and
+  routing outcomes. They produce one canonical projection for identity,
+  compatibility, limits, avoidance, freshness, routing, and insufficient
+  evidence.
+- **Evidence Provenance and Quality** - added source-authority validation,
+  canonical ordering, deduplication, contribution rules, verified handoffs,
+  fingerprints, and input-cardinality limits. Untrusted provider payloads
+  cannot acquire policy authority merely by appearing in a collection.
+- **Intent and Automation Readiness** - added deterministic intent inference,
+  final-outcome versus learning separation, learning eligibility, evidence
+  quality assessment, automation readiness, and an operator workflow with
+  bounded next actions.
+- **Runtime Evidence and Automation Decisions** - added a request-time
+  projection and a server-owned automation decision contract that binds every
+  state to its permitted action, reason codes, permissions, and trace data
+  before downstream persistence or routing may act.
+- **Clarification and Learning Contracts** - added normalized clarification
+  reduction and request-time learning that distinguish a completed
+  classification from a successfully routed media item.
+- **Library Rebuild Proposals** - added read-only proposals derived from
+  observed library behavior, verified cached profiles, operator intent,
   constraints, routing context, and guarded classification outcomes. Raw
-  profile, freshness, observed-absence, and learning payloads are rejected at
-  the proposal boundary.
-- **Verified Rebuild Acceptance** — added a time-bounded manual acceptance
+  profile, freshness, absence, and learning payloads are rejected at the
+  proposal boundary.
+- **Verified Rebuild Acceptance** - added a time-bounded manual acceptance
   transition that fingerprints the reviewed proposal and same-policy rollback
   plan before migration comparison. Raw approval booleans and unbound rollback
-  objects cannot authorize comparison or policy replacement.
-- **Migration Verification and Rollback Planning** — added bounded sample-set
-  provenance, migration comparison, operator-acceptance requirements, rollback
-  window planning, and separate verification paths so policy replacement is
-  never an incidental result of normal authoring.
-- **Native Policy Intent Storage** — added the native policy-intent schema,
-  migration-candidate reporting, conversion planning, rollback snapshots,
-  runtime read verification, and outcome-based closure evidence required for a
-  controlled storage transition.
-- **Native Storage Operations** — added backup and restore wiring, post-upgrade
-  dry runs, transaction-gated apply paths, SQL coverage, operational safety
-  checks, legacy-write shutdown controls, and compatibility-removal planning,
-  execution, and verification contracts.
-- **Storage Closure Evidence** — added current-evidence collection, validation
-  evidence, completion checkpoints, final readouts, and requirement audits so
-  storage completion is proved from current artifacts rather than narrative.
-- **Multi-Provider Web Search Foundation** — added provider-neutral
-  configuration, secret handling, result normalization, contract validation,
-  and error taxonomy for Tavily, Brave Search, and Serper.
-- **Provider-Routed Enrichment** — migrated legacy Tavily enrichment and retry
-  execution to the provider router, activated Brave and Serper adapters, and
-  added safe fallback selection when a provider is unavailable, cooling down,
-  or has exhausted its configured allowance.
-- **Provider Usage Cache** — added normalized result caching, request reuse,
-  daily and monthly usage accounting, configurable retention, bounded cleanup,
-  and fresh-install seed reconciliation for provider operational data.
-- **Route Diagnostics and Health History** — added sanitized route-decision
-  history, selected and skipped-provider reasons, cache and quota counters,
-  health and cooldown events, retention policies, and an operator settings
-  surface for diagnosing provider behavior.
-- **Purpose-Aware Provider Calibration** — added outcome feedback, per-purpose
-  calibration policies, coverage reporting, side-effect-free previews, and
-  operator controls for reviewing the effect of a calibration before applying
-  it.
-- **Provider Guardrails** — added configurable calibration thresholds,
-  bounded guardrail events, analytics, and a digest for operator review when
-  provider behavior falls outside the configured safety envelope.
-- **Discord Pending-Decision Notifications** — added duplicate-safe alerts for
+  objects cannot authorize comparison or replacement.
+- **Migration Comparison and Rollback Planning** - added bounded sample-set
+  provenance, comparison, operator-acceptance requirements, and rollback-window
+  planning. Policy replacement remains separate from normal authoring.
+
+#### Native Policy Intent Storage
+
+- **Native Intent Schema and Conversion Planning** - added persistent native
+  policy intent storage, migration-candidate reporting, conversion planning,
+  rollback snapshots, and runtime read verification for a controlled storage
+  transition.
+- **Operational Storage Safeguards** - added backup and restore wiring,
+  post-upgrade dry runs, transaction-gated apply paths, SQL migration coverage,
+  operational safety checks, legacy-write shutdown controls, and
+  compatibility-removal verification.
+- **Storage Completion Evidence** - added current-evidence collection,
+  validation records, completion checkpoints, final readouts, and requirement
+  audits so storage completion is proved from current artifacts rather than
+  narrative.
+
+#### Classification And RAG Observability
+
+- **RAG Evidence Snapshots** - added bounded, sanitized first- and second-pass
+  RAG neighbor evidence and per-library match counts to classification history,
+  allowing operators to diagnose a classification without direct database
+  inspection.
+- **Decision Trace Correlation** - added W3C-compatible decision trace context
+  to classification outcomes, RAG traces, stage logs, and History details.
+- **Decision Trace Stage Timing** - added bounded child spans for targeted
+  re-check stages with parent relationships, durations, outcomes, reason codes,
+  and sanitized scalar attributes before introducing any full telemetry
+  exporter.
+- **Outcome and Signal Separation** - added distinct final-outcome and original
+  signal-snapshot views in History so diagnostic evidence is not confused with
+  the final classification result.
+- **RAG Evidence Quality Gating** - added deterministic quality scoring that
+  demotes neighbors without a trusted final outcome, known library identity, or
+  compatible profile evidence.
+- **Policy Candidate Calibration** - added bounded calibration and diagnostics
+  so weak profile-only, compatibility-only, or RAG-only candidates cannot
+  outrank stronger identity and multi-source evidence on raw score alone.
+- **Strict Constraint Semantics** - added strict runtime evaluation for
+  configured genres, keywords, studios, languages, media type, certifications,
+  release year, vote average, and runtime while preserving advisory scoring by
+  default.
+- **RAG Retrieval Recall Audit** - added an admin-only, bounded comparison of
+  approximate HNSW retrieval against exact search to measure recall without
+  changing classification behavior.
+
+#### Web Search Providers
+
+- **Multi-Provider Search Foundation** - added provider-neutral configuration,
+  encrypted secret handling, result normalization, contract validation, and an
+  error taxonomy for Tavily, Brave Search, and Serper.
+- **Web Search Provider Settings** - added an operator settings surface for
+  provider configuration, secure key updates, connectivity checks, usage, route
+  diagnostics, retention settings, calibration controls, and guardrails.
+- **Brave and Serper Adapters** - activated Brave Search and Serper alongside
+  Tavily, letting operators distribute query volume across configured providers.
+- **Provider-Routed Enrichment** - migrated legacy Tavily enrichment and retry
+  execution to the provider router with safe fallback when a provider is
+  unavailable, cooling down, or has exhausted its configured allowance.
+- **Quota-Aware Routing** - added daily and monthly allowance policies,
+  provider cooldown handling, purpose-aware selection, and decision reasons for
+  selected and skipped providers.
+- **Usage Cache and Retention** - added normalized result caching, request
+  reuse, usage accounting, bounded cleanup, configurable retention, and
+  fresh-install seed reconciliation for provider operational data.
+- **Route and Health History** - added sanitized route-decision history, cache
+  and quota counters, health and cooldown events, and retention policies for
+  operator diagnostics.
+- **Purpose-Aware Calibration** - added outcome feedback, per-purpose
+  calibration policies, coverage reporting, and side-effect-free previews so an
+  operator can review a calibration before applying it.
+- **Calibration Guardrails** - added configurable thresholds, bounded
+  guardrail events, analytics, and a digest for operator review when provider
+  behavior falls outside the configured safety envelope.
+
+#### Notifications And Setup
+
+- **Discord Pending-Decision Notifications** - added duplicate-safe alerts for
   items awaiting a decision, structured response buttons, optional `@here`, and
   server-scoped role or user mentions constrained through Discord allowed
   mentions.
+- **Simplified Radarr and Sonarr Setup** - added shared setup behavior so a
+  successful connection test saves the connection, exposes library mappings,
+  reports root-folder and quality-profile counts, and supports removal of every
+  configured instance when needed.
 
 ### Changed
 
-- **Simplified Policy Authoring** — routine policy work now prioritizes
-  destination meaning, observed library evidence, constraints, review behavior,
-  and routing readiness. Authoring no longer makes scoring, replay, provider,
-  metadata-coverage, or migration diagnostics a normal prerequisite.
-- **Policy Data Boundaries** — policy inputs now accept only bounded plain
+- **Policy Authoring Model** - routine policy work now prioritizes destination
+  meaning, observed library evidence, constraints, review behavior, and routing
+  readiness. Scoring, provider state, metadata coverage, and migration analysis
+  are no longer normal editing prerequisites.
+- **Media Server Authority** - existing library behavior and the media-server
+  destination are treated as primary context for intent, while AI and external
+  evidence remain bounded inputs rather than policy authority.
+- **Policy Data Boundaries** - policy inputs now accept only bounded plain
   own-data records with known source and authority pairs. Inherited values,
   accessors, prototype-pollution keys, stale handoffs, substituted decision
   sources, and altered fingerprints are rejected.
-- **Runtime Trace Integrity** — evidence projections derive reasons from
-  sanitized evidence; automation, question reduction, and learning outputs are
-  recomputed against their authoritative source. Altered actions, dispositions,
+- **Runtime Trace Integrity** - automation, clarification, and learning outputs
+  are recomputed from authoritative evidence. Altered actions, dispositions,
   learning metadata, reasons, counts, and trace attributes cannot be trusted by
   downstream persistence.
-- **Policy Migration Safety** — migration and compatibility-removal paths now
-  require validated evidence, intent, workflow, readiness, decision-source, and
-  rollback handoffs before advancing. Routine authoring remains separate from
-  migration comparison and policy replacement.
-- **Completion Evidence** — policy engine, runtime, storage, and compatibility
-  audits now require documented services, focused test ownership, quality and
-  provenance continuity, and explicit side-effect-free evidence before they can
-  report completion.
-- **Stable Classification Observability** — progress persistence, WebSocket
-  events, queue history, RAG-loop stages, parse diagnostics, resume diagnostics,
-  and metrics now use stable stage-oriented contracts with bounded trace
-  metadata.
-- **Durable Product Vocabulary** — production modules, contracts, diagnostics,
-  telemetry, and progress storage use product-domain terms rather than internal
-  delivery labels; regression checks enforce the production naming baseline.
-- **Release Evidence** — storage-closure checks now require the implemented
-  Native Policy Intent Storage outcome in `Unreleased`; source, focused tests,
-  and component documents remain the implementation authority.
-- **Dependency and Workflow Maintenance** — refreshed audited server and client
+- **Migration Safety** - migration and compatibility-removal paths require
+  validated evidence, intent, workflow, readiness, decision-source, and
+  rollback handoffs. Routine authoring remains separate from comparison and
+  policy replacement.
+- **Tavily Modernization** - Tavily now runs through the same provider contract,
+  router, error taxonomy, quota policy, usage accounting, and diagnostics as
+  the other web search providers.
+- **Classification Stage Contracts** - progress persistence, WebSocket events,
+  queue history, RAG-loop stages, parse diagnostics, resume diagnostics, and
+  metrics now use stable stage-oriented contracts with bounded trace metadata.
+- **Product Vocabulary** - production modules, diagnostics, telemetry, and
+  progress storage use product-domain terms rather than internal delivery
+  labels, with regression checks against reintroducing temporary terminology.
+- **Dependency and Workflow Maintenance** - refreshed audited server and client
   dependencies, lockfiles, development tooling, and pinned GitHub Actions to
   compatible patched releases.
 
 ### Removed
 
-- **Retired Authoring Diagnostics** — removed the normal policy-authoring
-  impact, replay, parity, provider-readiness, metadata-coverage, and raw-scoring
+- **Retired Authoring Diagnostics** - removed normal policy-authoring impact,
+  replay, parity, provider-readiness, metadata-coverage, and raw-scoring
   surfaces. Migration verification remains bounded, side-effect-free, and
   separate from policy editing.
 
 ### Fixed
 
-- **Policy Storage Completion Audit** — removed static-analysis warnings from
+- **Policy Storage Completion Audit** - removed static-analysis warnings from
   storage-closure parsing while preserving deterministic completion checks.
+- **RAG Library Identity Resolution** - resolved RAG neighbor library names
+  from live library records when historical denormalized names are missing, with
+  stable fallbacks in trace sanitization, AI context, and History details.
+- **Policy Evidence Anchoring** - prevented hard profile exclusions and weak
+  RAG-only, profile-only, or broad compatibility signals from becoming primary
+  policy anchors or second-pass adoption targets.
+- **pgvector Retrieval Recall** - centralized HNSW recall controls, expanded
+  bounded candidate windows, enabled query-local iterative scans, and preserved
+  index eligibility through direct vector-distance ordering.
 
 ## [0.47.5c-beta] - 2026-06-17
 
