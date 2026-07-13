@@ -354,16 +354,25 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_validation_status_lookup');
     });
 
-    test('current.sql includes the library rebuild rollback execution gate', () => {
+    test('current.sql includes the library rebuild rollback execution and replacement gates', () => {
         const schemaSql = readSchemaSnapshot();
-        const migrationPath = path.resolve(
+        const snapshotMigrationPath = path.resolve(
             __dirname,
             '../../../database/migrations/20260712_120000_add_policy_library_rebuild_execution_gates.sql'
         );
-        const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+        const replacementMigrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260712_130000_add_policy_library_rebuild_replacement_references.sql'
+        );
+        const snapshotMigrationSql = fs.readFileSync(snapshotMigrationPath, 'utf8');
+        const replacementMigrationSql = fs.readFileSync(replacementMigrationPath, 'utf8');
         const executionGates = getCreateTableBlock(
             schemaSql,
             'policy_library_rebuild_execution_gates'
+        );
+        const policyIntentMigrationEvents = getCreateTableBlock(
+            schemaSql,
+            'policy_intent_migration_events'
         );
 
         [
@@ -373,7 +382,18 @@ describe('Schema snapshot freshness', () => {
             'idx_policy_library_rebuild_execution_gates_active_policy',
             'idx_policy_library_rebuild_execution_gates_snapshot',
         ].forEach(expectedSnippet => {
-            expect(migrationSql).toContain(expectedSnippet);
+            expect(snapshotMigrationSql).toContain(expectedSnippet);
+        });
+
+        [
+            'replacement_intent_id BIGINT',
+            'replacement_event_id BIGINT',
+            'replacement_applied_at TIMESTAMPTZ',
+            'policy_library_rebuild_execution_gates_replacement_applied_chk',
+            'idx_policy_library_rebuild_execution_gates_replacement_intent',
+            'library_rebuild_replacement_applied',
+        ].forEach(expectedSnippet => {
+            expect(replacementMigrationSql).toContain(expectedSnippet);
         });
 
         expect(executionGates).toContain('idempotency_key character varying(160) NOT NULL');
@@ -382,9 +402,15 @@ describe('Schema snapshot freshness', () => {
         );
         expect(executionGates).toContain('rollback_snapshot_id bigint');
         expect(executionGates).toContain('migration_event_id bigint');
+        expect(executionGates).toContain('replacement_intent_id bigint');
+        expect(executionGates).toContain('replacement_event_id bigint');
+        expect(executionGates).toContain('replacement_applied_at timestamp with time zone');
         expect(executionGates).toContain('policy_library_rebuild_execution_gates_persisted_snapshot_chk');
+        expect(executionGates).toContain('policy_library_rebuild_execution_gates_replacement_applied_chk');
         expect(schemaSql).toContain('CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_idempotency');
         expect(schemaSql).toContain('CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_active_policy');
+        expect(schemaSql).toContain('CREATE INDEX idx_policy_library_rebuild_execution_gates_replacement_intent');
+        expect(policyIntentMigrationEvents).toContain('library_rebuild_replacement_applied');
     });
 
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {

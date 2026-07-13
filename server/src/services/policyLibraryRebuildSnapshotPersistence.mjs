@@ -88,7 +88,7 @@ async function lockPolicy(client, policyContext) {
 
 async function lockIntent(client, policyContext) {
   const result = await client.query(
-    `SELECT id, policy_id, library_id, intent_version, active
+    `SELECT id, policy_id, library_id, intent_version, active, review_behavior
      FROM policy_intents
      WHERE id = $1
        AND policy_id = $2

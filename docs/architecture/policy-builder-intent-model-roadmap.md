@@ -4522,6 +4522,16 @@ Implementation status:
   returns the original persisted execution without a second snapshot write.
   Backup restore intentionally clears this short-lived authorization state
   rather than reviving a historic approval.
+- Task 7R.7.2 is complete: `policyLibraryRebuildReplacementGate.mjs` requires
+  the persisted snapshot gate and a no-difference verifier report bound to the
+  same accepted transition. In one transaction it locks the policy, original
+  intent, execution record, and current rollback snapshot; writes the next
+  native intent version, rules, routing target, validation status, and a
+  replacement event; then marks the gate terminal. A matching retry returns
+  that terminal execution without a second write. Typed identity, helpful, and
+  avoid entries translate deterministically; label-only strict constraints are
+  blocked rather than guessed. Its design record is [Policy Library Rebuild
+  Replacement Gate](policy-library-rebuild-replacement-gate.md).
 - Legacy deletion readiness is blocked until native intent storage is stable,
   the verifier passes, rollback and retention gates are active, delete checklist
   approval exists, legacy artifacts are classified, and custom-signal

@@ -21,6 +21,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   identity and helpful genres, rating limits, language requirements, confidence
   boosts, and avoid rules. Each rule explains its operator-facing effect rather
   than exposing raw preset JSON.
+- **Accessible Authoring Controls** - added keyboard-reachable option controls,
+  removable signal chips, section-level guidance, and focused validation states
+  so policy intent can be reviewed and corrected without relying on dense,
+  expert-only preset configuration.
 - **Library Context and Suggestions** - added observed-library genre
   suggestions, multi-select genre controls, signal provenance, option
   availability diagnostics, and cached-profile freshness so an operator can
@@ -57,17 +61,25 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   canonical ordering, deduplication, contribution rules, verified handoffs,
   fingerprints, and input-cardinality limits. Untrusted provider payloads
   cannot acquire policy authority merely by appearing in a collection.
+- **Policy Decision Lineage** - added bounded, server-owned intent, readiness,
+  workflow, migration, and completion handoffs. Each consumer revalidates the
+  source it relies on, preventing stale, substituted, or altered decisions from
+  being promoted through the policy workflow.
 - **Intent and Automation Readiness** - added deterministic intent inference,
   final-outcome versus learning separation, learning eligibility, evidence
   quality assessment, automation readiness, and an operator workflow with
   bounded next actions.
-- **Runtime Evidence and Automation Decisions** - added a request-time
-  projection and a server-owned automation decision contract that binds every
-  state to its permitted action, reason codes, permissions, and trace data
-  before downstream persistence or routing may act.
-- **Clarification and Learning Contracts** - added normalized clarification
-  reduction and request-time learning that distinguish a completed
-  classification from a successfully routed media item.
+- **Runtime Automation Decisions** - added request-time evidence projection and
+  a server-owned decision contract that binds every outcome to its permitted
+  action, reason codes, permissions, and trace data before persistence or media
+  routing may proceed.
+- **Destination-Focused Clarification** - added normalized question reduction
+  that asks only for information required to select or review a destination,
+  rather than asking operators to resolve arbitrary genre conflicts.
+- **Guarded Request-Time Learning** - added bounded learning from media
+  requests and manual decisions while keeping final classification success
+  distinct from a successfully routed item. Learning evidence cannot become
+  policy authority without the required outcome and provenance checks.
 - **Library Rebuild Proposals** - added read-only proposals derived from
   observed library behavior, verified cached profiles, operator intent,
   constraints, routing context, and guarded classification outcomes. Raw
@@ -85,6 +97,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   intent, stores the authoritative rollback snapshot and audit event, and
   prevents duplicate snapshot writes for replayed, expired, stale, or
   competing requests. It does not replace policy behavior.
+- **Verified Native Rebuild Replacement** - added a transaction-gated native
+  intent replacement path that requires the persisted rollback snapshot and a
+  matching no-difference verifier report. It records terminal replacement
+  evidence, returns idempotent retries without another write, preserves legacy
+  rows, and rejects label-only strict constraints rather than guessing policy
+  semantics.
 
 #### Native Policy Intent Storage
 
