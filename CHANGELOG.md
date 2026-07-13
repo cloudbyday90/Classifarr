@@ -49,6 +49,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Write Safety** - added a validated policy intent contract, detailed
   read/create/update response parity, and a bounded write preflight so invalid
   native-draft sidecars cannot accompany legacy policy writes.
+- **Profile-Backed Policy Diagnostics** - added versioned profile-scoring
+  diagnostics to History so operators can inspect the rating normalization,
+  profile distribution, genre and keyword deltas, and exclusion hits that
+  informed a classification without rerunning it against a later profile.
+- **Library Profile Repair** - normalized rating distributions as profiles are
+  created and read, and added a bounded post-upgrade repair for stale
+  non-canonical rating buckets. Upgraded installations can repair affected
+  profiles automatically without manual database work.
 
 #### Policy Evidence, Decisions, And Learning
 
@@ -147,6 +155,17 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **RAG Retrieval Recall Audit** - added an admin-only, bounded comparison of
   approximate HNSW retrieval against exact search to measure recall without
   changing classification behavior.
+- **Canonical History Lifecycles** - consolidated Classification History to
+  one final outcome per media identity while retaining the full lifecycle of
+  retries, rechecks, manual resolutions, and source-library observations for
+  inspection.
+- **Embedding Contention Resilience** - made temporary embedding-provider lock
+  contention a controlled degraded-search result instead of a classification
+  failure; configured hard failures still propagate when requested.
+- **Reasoning-Model Support** - added local-model detection and parsing paths
+  for Ollama reasoning models so their thinking output does not conflict with
+  constrained JSON generation, along with longer bounded first-token and
+  streaming budgets for legitimate cold or reasoning-heavy responses.
 
 #### Web Search Providers
 
@@ -176,6 +195,17 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Calibration Guardrails** - added configurable thresholds, bounded
   guardrail events, analytics, and a digest for operator review when provider
   behavior falls outside the configured safety envelope.
+- **Normalized Search Safety** - hardened provider results through URL
+  filtering, HTML and control-character cleanup, bounded field normalization,
+  and sanitized warnings for corrected or dropped provider data.
+- **Provider Failure Handling** - added shared classification for
+  authentication, quota, rate-limit, invalid-request, timeout, network, SSL,
+  provider, and malformed-response failures. The router can make safe retry
+  and cooldown decisions without exposing provider payloads or credentials.
+- **Fresh-Install Provider Parity** - reconciled provider configuration and
+  retention seed data so new and upgraded installations receive compatible
+  Tavily, Brave Search, and Serper rows while migrated Tavily settings remain
+  intact.
 
 #### Notifications And Setup
 
@@ -187,6 +217,31 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   successful connection test saves the connection, exposes library mappings,
   reports root-folder and quality-profile counts, and supports removal of every
   configured instance when needed.
+
+#### Media Server Operations
+
+- **Live Enrichment-State Sync** - added immediate media-server status updates
+  when enrichment work is queued, cancelled, retried, or dismissed so library
+  counts and item state stay current without waiting for another full sync.
+- **Rating Normalization Maintenance** - added mutually exclusive status
+  counts, metadata-aware reprioritization, and safe re-queueing when new OMDb
+  or TMDB ratings arrive, so normalization reflects current source data.
+- **Shared Arr Configuration Flow** - unified Radarr and Sonarr connection
+  state, testing, save behavior, and setup transitions in the client so both
+  integrations follow the same predictable configuration experience.
+
+#### Deployment and Fresh-Install Reliability
+
+- **Schema Snapshot Integrity** - added a migration check that verifies the
+  required pgvector HNSW indexes in the schema snapshot, preventing a stale
+  snapshot from producing a degraded RAG installation.
+- **Container Vector Runtime Resilience** - hardened PostgreSQL startup on
+  hosts that cannot load the optimized staged pgvector binary. The container
+  safely links to an immutable image-layer optimized binary when possible and
+  falls back to the generic image-layer binary without a restart loop.
+- **Docker Startup Readiness** - extended the container health-check start
+  period for fresh schema loads, PostgreSQL upgrades, and slower storage
+  environments while keeping the hardened runtime mount configuration.
 
 ### Changed
 
@@ -215,6 +270,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Classification Stage Contracts** - progress persistence, WebSocket events,
   queue history, RAG-loop stages, parse diagnostics, resume diagnostics, and
   metrics now use stable stage-oriented contracts with bounded trace metadata.
+- **Classification and Enrichment State** - classification history now
+  distinguishes final outcomes from intermediate evidence, while enrichment
+  queue actions synchronize their media-server state immediately.
+- **Rating and Profile Consistency** - rating normalization uses canonical
+  values across profile generation, scoring, queue priority, and refreshed
+  source metadata to avoid stale or double-counted library state.
 - **Product Vocabulary** - production modules, diagnostics, telemetry, and
   progress storage use product-domain terms rather than internal delivery
   labels, with regression checks against reintroducing temporary terminology.
@@ -233,6 +294,27 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 - **Policy Storage Completion Audit** - removed static-analysis warnings from
   storage-closure parsing while preserving deterministic completion checks.
+- **Fresh-Install RAG Indexes** - restored the missing text HNSW index in the
+  schema snapshot and added an integrity guard so fresh installations do not
+  start with a degraded RAG health state.
+- **Container Database Startup** - fixed the PostgreSQL/pgvector startup path
+  for optimized runtime binaries and an ambiguous PostgreSQL 18 BIGINT-array
+  migration expression, preventing affected Docker installations from cycling
+  during startup.
+- **Initial Account Setup** - prevented authenticated health polling and
+  expired-session redirects from interrupting the first-admin setup flow.
+- **Ollama Availability Handling** - increased the default cold-start probe
+  timeout and treat missing provider or model responses as controlled AI
+  availability failures instead of hard classification errors.
+- **Media Server Library Removal** - safely closes completed classification
+  history before deleting a removed media-server library, avoiding foreign-key
+  failures during synchronization.
+- **Media Server Setup Actions** - corrected the Configure Media Server route
+  and enabled Connect & Save for valid loaded configurations, including setup
+  wizard steps.
+- **Rating Normalization Loops** - prevented source-sync updates from creating
+  a normalization ping-pong loop and corrected overlapping normalization
+  counts; stale normalized ratings can now be refreshed from new metadata.
 - **RAG Library Identity Resolution** - resolved RAG neighbor library names
   from live library records when historical denormalized names are missing, with
   stable fallbacks in trace sanitization, AI context, and History details.
