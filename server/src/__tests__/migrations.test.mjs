@@ -302,8 +302,13 @@ describe('Schema snapshot freshness', () => {
             __dirname,
             '../../../database/migrations/20260713_150000_enforce_single_active_policy_intent.sql'
         );
+        const retentionMigrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260714_090000_add_policy_rollback_snapshot_retention_event.sql'
+        );
         const migrationSql = fs.readFileSync(migrationPath, 'utf8');
         const integrityMigrationSql = fs.readFileSync(integrityMigrationPath, 'utf8');
+        const retentionMigrationSql = fs.readFileSync(retentionMigrationPath, 'utf8');
         const policyIntents = getCreateTableBlock(schemaSql, 'policy_intents');
         const policyIntentRules = getCreateTableBlock(schemaSql, 'policy_intent_rules');
         const policyIntentRoutingTargets = getCreateTableBlock(schemaSql, 'policy_intent_routing_targets');
@@ -357,10 +362,12 @@ describe('Schema snapshot freshness', () => {
         expect(integrityMigrationSql).toContain('active_intent_integrity_repaired');
         expect(integrityMigrationSql).toContain('CREATE UNIQUE INDEX idx_policy_intents_one_active_policy');
         expect(integrityMigrationSql).toContain('DROP INDEX idx_policy_intents_active_version');
+        expect(retentionMigrationSql).toContain("'rollback_snapshot_payload_redacted'");
         expect(schemaSql).toContain('CREATE UNIQUE INDEX idx_policy_intents_one_active_policy');
         expect(schemaSql).not.toContain('CREATE UNIQUE INDEX idx_policy_intents_active_version');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_rules_values_gin');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_migration_events_state');
+        expect(schemaSql).toContain("'rollback_snapshot_payload_redacted'");
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_validation_status_lookup');
     });
 

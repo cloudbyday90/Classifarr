@@ -26,7 +26,8 @@ const mockDb = {
         IDLE_BACKFILL: 1001, SCHEDULED_BACKFILL: 1002, MANUAL_BACKFILL: 1003,
         STARTUP_RESET: 1234567890,
         GAP_ANALYSIS: 2001, LIBRARY_SYNC: 2002, RETRY_QUEUE: 2003,
-        ENRICHMENT_RETRY_QUEUE: 2004, RATING_NORMALIZATION_CHECK: 2005, STALE_CLEANUP: 2006
+        ENRICHMENT_RETRY_QUEUE: 2004, RATING_NORMALIZATION_CHECK: 2005, STALE_CLEANUP: 2006,
+        POLICY_ROLLBACK_SNAPSHOT_RETENTION: 2007,
     }
 };
 
@@ -47,7 +48,8 @@ const mockSchedulerRetentionService = {
     runRefreshTokenCleanup: jest.fn(),
     runApiKeyAuditPrune: jest.fn(),
     runErrorLogCleanup: jest.fn(),
-    runWebSearchProviderRetentionCleanup: jest.fn()
+    runWebSearchProviderRetentionCleanup: jest.fn(),
+    runPolicyRollbackSnapshotRetentionCleanup: jest.fn()
 };
 
 const mockClassificationMaintenanceService = {
@@ -123,6 +125,7 @@ describe('SchedulerService', () => {
         mockSchedulerRetentionService.runApiKeyAuditPrune.mockReset();
         mockSchedulerRetentionService.runErrorLogCleanup.mockReset();
         mockSchedulerRetentionService.runWebSearchProviderRetentionCleanup.mockReset();
+        mockSchedulerRetentionService.runPolicyRollbackSnapshotRetentionCleanup.mockReset();
         mockClassificationMaintenanceService.cleanupStaleAwaitingDecisions.mockReset();
         mockRatingNormalizationQueueService.queueDailyBackfill.mockReset();
         mockMediaSync.syncLibrary.mockReset();
@@ -165,6 +168,14 @@ describe('SchedulerService', () => {
             await expect(scheduler.runWebSearchProviderRetentionCleanup()).resolves.toBeUndefined();
 
             expect(mockSchedulerRetentionService.runWebSearchProviderRetentionCleanup).toHaveBeenCalledTimes(1);
+        });
+
+        it('runPolicyRollbackSnapshotRetentionCleanup delegates to SchedulerRetentionService', async () => {
+            mockSchedulerRetentionService.runPolicyRollbackSnapshotRetentionCleanup.mockResolvedValueOnce(undefined);
+
+            await expect(scheduler.runPolicyRollbackSnapshotRetentionCleanup()).resolves.toBeUndefined();
+
+            expect(mockSchedulerRetentionService.runPolicyRollbackSnapshotRetentionCleanup).toHaveBeenCalledTimes(1);
         });
     });
 

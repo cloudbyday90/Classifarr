@@ -17,6 +17,9 @@ import {
 import {
     webSearchProviderHealthRetentionService as defaultWebSearchProviderHealthRetentionService,
 } from './webSearchProviderHealthRetention.mjs';
+import {
+    policyRollbackSnapshotRetentionService as defaultPolicyRollbackSnapshotRetentionService,
+} from './policyRollbackSnapshotRetentionService.mjs';
 
 const ERROR_LOG_BATCH_SIZE = 1000;
 
@@ -29,6 +32,8 @@ export class SchedulerRetentionService {
             || defaultWebSearchProviderRouteDecisionRetentionService;
         this.webSearchProviderHealthRetentionService = deps.webSearchProviderHealthRetentionService
             || defaultWebSearchProviderHealthRetentionService;
+        this.policyRollbackSnapshotRetentionService = deps.policyRollbackSnapshotRetentionService
+            || defaultPolicyRollbackSnapshotRetentionService;
     }
 
     async _runCleanupTask(label, task) {
@@ -121,6 +126,10 @@ export class SchedulerRetentionService {
             ...routeDecisionRetention,
             ...healthRetention,
         };
+    }
+
+    async runPolicyRollbackSnapshotRetentionCleanup() {
+        return this.policyRollbackSnapshotRetentionService.cleanup();
     }
 }
 

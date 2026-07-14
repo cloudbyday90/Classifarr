@@ -281,7 +281,7 @@ function buildRestorePath(policyId, snapshotVersion) {
 }
 
 function isExpired(nowIso, expiresAt) {
-  return new Date(nowIso).getTime() > new Date(expiresAt).getTime();
+  return new Date(nowIso).getTime() >= new Date(expiresAt).getTime();
 }
 
 function determineStatus({ actorAllowed, expired, retentionDue }) {

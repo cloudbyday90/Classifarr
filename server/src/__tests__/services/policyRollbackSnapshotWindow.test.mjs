@@ -182,6 +182,22 @@ describe('policyRollbackSnapshotWindow', () => {
     ]));
   });
 
+  test('treats the exact rollback expiry timestamp as expired and ready for cleanup', () => {
+    const windowPlan = buildPolicyRollbackSnapshotWindow({
+      policy: policy(),
+      action: action(),
+      now: '2026-06-15T00:00:00.000Z',
+      snapshot: {
+        expiresAt: '2026-06-15T00:00:00.000Z',
+        bulkPayloadDeleted: false,
+      },
+    });
+
+    expect(windowPlan.statusId).toBe(POLICY_ROLLBACK_STATUS_IDS.RETENTION_CLEANUP_DUE);
+    expect(windowPlan.revert.eligible).toBe(false);
+    expect(windowPlan.retention.retentionDue).toBe(true);
+  });
+
   test('validation rejects unbounded permanent snapshots, raw payload exposure, and side effects', () => {
     const windowPlan = buildPolicyRollbackSnapshotWindow({
       policy: policy(),

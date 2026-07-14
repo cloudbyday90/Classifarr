@@ -36,6 +36,11 @@ unchanged operator or runtime outcome.
   snapshot integrity, expiry, and authority under row locks; it consumes the
   snapshot and records the reversion without exposing legacy payloads or
   rewriting legacy policy rows.
+- **Rollback Snapshot Payload Retention** - expired native-intent rollback
+  payloads are now redacted in bounded, transactionally locked batches while
+  preserving their restore metadata, source audit reference, digest, and a
+  compact migration event. Active policy authority and unexpired recovery data
+  are never changed by cleanup.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

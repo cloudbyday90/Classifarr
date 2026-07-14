@@ -6,12 +6,12 @@ completion criteria for policy work.
 
 Current execution focus:
 
-1. **8R.6.1 Enforced Legacy Mutation Guard**: complete the live enforcement
-   path that prevents converted policies from being changed through legacy
-   writes.
-2. **8R.1.1 Active Native Intent Integrity Correction**: repair the missing
-   database invariant that permits more than one active native intent for a
-   policy before expanding native writes or deleting compatibility paths.
+1. **8R.5.2 Rollback Snapshot Retention Cleanup**: redact expired rollback
+   payloads in bounded, auditable transactions without deleting snapshot
+   history or changing policy authority.
+2. **8R Completion Status Audit**: reconcile each remaining Phase 8R component
+   with its implementation, focused tests, migration state, and closure
+   evidence before declaring the storage refactor complete.
 3. Return to **6R.5 Operator Workflow Rebuild** only after the engine inputs
    and native-authority invariants are reliable. It must replace the current
    manual builder rather than add another layer of controls to it.
@@ -5190,6 +5190,25 @@ Tasks:
   bounded cleanup event or report.
 - Add expiry-boundary, already-cleaned, concurrent-run, and backup/restore
   tests.
+
+Implementation status:
+
+- The design and operational outcome are documented in
+  [Policy Rollback Snapshot Retention](policy-rollback-snapshot-retention.md).
+- `policyRollbackSnapshotRetentionService.mjs` redacts at most 500 expired,
+  unredacted snapshot payloads in a transaction-scoped advisory-lock batch.
+  It uses stable expiry ordering and `FOR UPDATE SKIP LOCKED` so cleanup does
+  not wait on a snapshot another transactional workflow is inspecting.
+- Each retained snapshot row keeps its identifiers, version, lifecycle
+  timestamps, restore path, digest, payload size, and bounded source-audit
+  reference in a redacted marker. The original actor and reason remain in the
+  migration-event history; results and logs do not expose payload values.
+- Redaction and the `rollback_snapshot_payload_redacted` audit event commit
+  together. A failed update or event rolls the transaction back, preserving the
+  original snapshot rather than leaving an unaudited partial cleanup.
+- The daily retention scheduler invokes one bounded batch. The transaction lock
+  makes overlapping scheduler instances a no-op, while a later run can process
+  a row skipped because a reversion transaction held it.
 
 ### 8R.6 Legacy Write Path Shutdown
 

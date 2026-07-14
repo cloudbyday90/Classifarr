@@ -91,6 +91,9 @@ class SchedulerService {
         // Daily pruning of old error_log rows (3:12 AM)
         this.schedule('error-log-cleanup', '12 3 * * *', () => this.runErrorLogCleanup());
 
+        // Daily redaction of expired native-intent rollback payloads (3:13 AM)
+        this.schedule('policy-rollback-snapshot-retention-cleanup', '13 3 * * *', () => this.runPolicyRollbackSnapshotRetentionCleanup());
+
         // Daily cleanup of web-search provider cache and usage rows (3:14 AM)
         this.schedule('web-search-provider-retention-cleanup', '14 3 * * *', () => this.runWebSearchProviderRetentionCleanup());
 
@@ -144,6 +147,14 @@ class SchedulerService {
      */
     async runWebSearchProviderRetentionCleanup() {
         return schedulerRetentionService.runWebSearchProviderRetentionCleanup();
+    }
+
+    /**
+     * Daily redaction of expired rollback snapshot payloads while retaining a
+     * bounded migration audit record.
+     */
+    async runPolicyRollbackSnapshotRetentionCleanup() {
+        return schedulerRetentionService.runPolicyRollbackSnapshotRetentionCleanup();
     }
 
     /**

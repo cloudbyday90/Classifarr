@@ -40,6 +40,12 @@ describe('SchedulerRetentionService', () => {
                     healthEventRetentionDays: 30,
                 }),
             },
+            policyRollbackSnapshotRetentionService: {
+                cleanup: jest.fn().mockResolvedValue({
+                    redactedSnapshotCount: 0,
+                    statusId: 'completed',
+                }),
+            },
         });
     });
 
@@ -185,6 +191,18 @@ describe('SchedulerRetentionService', () => {
             expect(service.webSearchProviderRetentionService.cleanup).toHaveBeenCalledTimes(1);
             expect(service.webSearchProviderRouteDecisionRetentionService.cleanup).toHaveBeenCalledTimes(1);
             expect(service.webSearchProviderHealthRetentionService.cleanup).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('runPolicyRollbackSnapshotRetentionCleanup', () => {
+        it('delegates expired rollback snapshot cleanup to the retention service', async () => {
+            const result = await service.runPolicyRollbackSnapshotRetentionCleanup();
+
+            expect(result).toEqual({
+                redactedSnapshotCount: 0,
+                statusId: 'completed',
+            });
+            expect(service.policyRollbackSnapshotRetentionService.cleanup).toHaveBeenCalledTimes(1);
         });
     });
 });
