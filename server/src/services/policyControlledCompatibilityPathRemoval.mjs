@@ -1,18 +1,21 @@
 import {
-  POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
-  buildPolicyCompatibilityDeletionExecutionPlan,
-} from './policyCompatibilityDeletionExecutionPlan.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION,
+  validatePolicyCompatibilityDeletionExecutionPlanArtifact,
+} from './policyCompatibilityDeletionExecutionPlanArtifact.mjs';
+import {
+  validatePolicyCompatibilityDeletionExecutionPlanArtifactFingerprint,
+} from './policyCompatibilityDeletionExecutionPlanArtifactFingerprint.mjs';
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS,
-  buildPolicyCompatibilityDeletionExecutionGate,
 } from './policyCompatibilityDeletionExecutionGate.mjs';
 
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_VERSION =
-  'policy.controlled_compatibility_path_removal.v1';
+  'policy.controlled_compatibility_path_removal.v2';
 
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS = Object.freeze({
   READY_FOR_REMOVAL_REVIEW: 'ready_for_removal_review',
-  BLOCKED_BY_EXECUTION_PLAN: 'blocked_by_execution_plan',
+  BLOCKED_BY_EXECUTION_ARTIFACT: 'blocked_by_execution_artifact',
   BLOCKED_BY_EXECUTION_GATE: 'blocked_by_execution_gate',
   BLOCKED_BY_SELECTION: 'blocked_by_selection',
   BLOCKED_BY_SCOPE: 'blocked_by_scope',
@@ -20,10 +23,15 @@ const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS = Object.freeze({
 });
 
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS = Object.freeze({
-  EXECUTION_PLAN_NOT_READY: 'execution_plan_not_ready',
-  EXECUTION_PLAN_VALIDATION_FAILED: 'execution_plan_validation_failed',
+  EXECUTION_PLAN_ARTIFACT_NOT_READY: 'execution_plan_artifact_not_ready',
+  EXECUTION_PLAN_ARTIFACT_VALIDATION_FAILED: 'execution_plan_artifact_validation_failed',
+  EXECUTION_PLAN_ARTIFACT_FINGERPRINT_INVALID:
+    'execution_plan_artifact_fingerprint_invalid',
   EXECUTION_GATE_NOT_READY: 'execution_gate_not_ready',
   EXECUTION_GATE_VALIDATION_FAILED: 'execution_gate_validation_failed',
+  EXECUTION_GATE_ARTIFACT_MISSING: 'execution_gate_artifact_missing',
+  EXECUTION_GATE_ARTIFACT_INVALID: 'execution_gate_artifact_invalid',
+  EXECUTION_GATE_ARTIFACT_MISMATCH: 'execution_gate_artifact_mismatch',
   NO_PATHS_SELECTED: 'no_paths_selected',
   SELECTED_PATH_NOT_IN_MANIFEST: 'selected_path_not_in_manifest',
   SELECTED_ENTRY_NOT_READY: 'selected_entry_not_ready',
@@ -39,8 +47,16 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
 function normalizePath(value = '') {
   return String(value || '').replace(/\\/g, '/').trim();
+}
+
+function normalizeFingerprint(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
 
 function buildRisk(riskId, message, metadata = {}) {
@@ -55,39 +71,73 @@ function uniqueNormalizedPaths(paths = []) {
   return [...new Set(asArray(paths).map(normalizePath).filter(Boolean))];
 }
 
-function evaluateExecutionPlan(executionPlan) {
-  const plan = executionPlan || buildPolicyCompatibilityDeletionExecutionPlan();
+function evaluateExecutionPlanArtifact(executionPlanArtifact) {
+  const artifact = asObject(executionPlanArtifact);
   const risks = [];
+  const artifactValidation = validatePolicyCompatibilityDeletionExecutionPlanArtifact(artifact);
+  const fingerprintValidation =
+    validatePolicyCompatibilityDeletionExecutionPlanArtifactFingerprint({
+      artifact,
+      artifactFingerprint: artifact.artifactFingerprint,
+    });
 
   if (
-    plan.statusId !==
-    POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE ||
-    plan.readyForExecutionGate !== true
+    artifact.version !== POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION ||
+    artifact.statusId !== POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS.READY ||
+    artifact.ready !== true
   ) {
     risks.push(buildRisk(
-      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_NOT_READY,
-      'Controlled compatibility path removal requires a ready compatibility deletion execution plan.',
-      { statusId: plan.statusId || null }
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS
+        .EXECUTION_PLAN_ARTIFACT_NOT_READY,
+      'Controlled compatibility path removal requires a ready versioned execution-plan artifact.',
+      {
+        version: artifact.version || null,
+        statusId: artifact.statusId || null,
+      }
     ));
   }
 
-  if (plan.validation?.ok !== true) {
+  if (artifact.validation?.ok !== true || artifactValidation.ok !== true) {
     risks.push(buildRisk(
-      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_VALIDATION_FAILED,
-      'Controlled compatibility path removal requires a valid execution plan.',
-      { issueCount: plan.validation?.issueCount ?? null }
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS
+        .EXECUTION_PLAN_ARTIFACT_VALIDATION_FAILED,
+      'Controlled compatibility path removal requires valid execution-plan artifact evidence.',
+      { issueCount: artifactValidation.issueCount }
+    ));
+  }
+
+  if (!fingerprintValidation.ok) {
+    risks.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS
+        .EXECUTION_PLAN_ARTIFACT_FINGERPRINT_INVALID,
+      'Controlled compatibility path removal requires an intact execution-plan artifact fingerprint.',
+      { issueCount: fingerprintValidation.issueCount }
     ));
   }
 
   return {
-    plan,
+    artifact,
     risks,
   };
 }
 
-function evaluateExecutionGate(executionGate) {
-  const gate = executionGate || buildPolicyCompatibilityDeletionExecutionGate();
+function evaluateExecutionGate({ executionGate, executionPlanArtifact }) {
+  const gate = asObject(executionGate);
+  const gateArtifact = asObject(gate.executionPlanArtifact);
   const risks = [];
+  const gateArtifactValidation =
+    validatePolicyCompatibilityDeletionExecutionPlanArtifact(gateArtifact);
+  const gateArtifactFingerprintValidation =
+    validatePolicyCompatibilityDeletionExecutionPlanArtifactFingerprint({
+      artifact: gateArtifact,
+      artifactFingerprint: gateArtifact.artifactFingerprint,
+    });
+  const expectedFingerprint = normalizeFingerprint(
+    executionPlanArtifact.artifactFingerprint?.fingerprint
+  );
+  const gateFingerprint = normalizeFingerprint(
+    gateArtifact.artifactFingerprint?.fingerprint
+  );
 
   if (
     gate.statusId !==
@@ -109,8 +159,39 @@ function evaluateExecutionGate(executionGate) {
     ));
   }
 
+  if (Object.keys(gateArtifact).length === 0) {
+    risks.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_ARTIFACT_MISSING,
+      'Controlled compatibility path removal requires the execution gate to carry its execution-plan artifact.'
+    ));
+  } else if (
+    gateArtifactValidation.ok !== true ||
+    gateArtifactFingerprintValidation.ok !== true
+  ) {
+    risks.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_ARTIFACT_INVALID,
+      'Controlled compatibility path removal requires valid execution-plan artifact evidence embedded in the execution gate.',
+      {
+        issueCount:
+          gateArtifactValidation.issueCount + gateArtifactFingerprintValidation.issueCount,
+      }
+    ));
+  }
+
+  if (expectedFingerprint && gateFingerprint && expectedFingerprint !== gateFingerprint) {
+    risks.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_ARTIFACT_MISMATCH,
+      'Controlled compatibility path removal requires the execution gate to be bound to the same execution-plan artifact used for manifest selection.',
+      {
+        executionPlanArtifactFingerprint: expectedFingerprint,
+        executionGateArtifactFingerprint: gateFingerprint,
+      }
+    ));
+  }
+
   return {
     gate,
+    gateArtifact,
     risks,
   };
 }
@@ -208,16 +289,22 @@ function evaluateReviewMetadata({
 
 function determineStatusId(risks = []) {
   if (risks.some(risk => [
-    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_NOT_READY,
-    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_VALIDATION_FAILED,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_ARTIFACT_NOT_READY,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS
+      .EXECUTION_PLAN_ARTIFACT_VALIDATION_FAILED,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS
+      .EXECUTION_PLAN_ARTIFACT_FINGERPRINT_INVALID,
   ].includes(risk.riskId))) {
     return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
-      .BLOCKED_BY_EXECUTION_PLAN;
+      .BLOCKED_BY_EXECUTION_ARTIFACT;
   }
 
   if (risks.some(risk => [
     POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_NOT_READY,
     POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_VALIDATION_FAILED,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_ARTIFACT_MISSING,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_ARTIFACT_INVALID,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_ARTIFACT_MISMATCH,
   ].includes(risk.riskId))) {
     return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
       .BLOCKED_BY_EXECUTION_GATE;
@@ -259,24 +346,27 @@ function buildRemovalBatchEntries(entries = []) {
 }
 
 function buildPolicyControlledCompatibilityPathRemoval({
-  executionPlan = null,
+  executionPlanArtifact = null,
   executionGate = null,
   selectedPaths = [],
   maxBatchSize = 3,
   removalReason = null,
   reviewedBy = null,
 } = {}) {
-  const planEvaluation = evaluateExecutionPlan(executionPlan);
-  const gateEvaluation = evaluateExecutionGate(executionGate);
+  const artifactEvaluation = evaluateExecutionPlanArtifact(executionPlanArtifact);
+  const gateEvaluation = evaluateExecutionGate({
+    executionGate,
+    executionPlanArtifact: artifactEvaluation.artifact,
+  });
   const selected = buildSelectedEntries({
-    manifestEntries: planEvaluation.plan.manifest?.entries,
+    manifestEntries: artifactEvaluation.artifact.executionPlan?.manifest?.entries,
     selectedPaths,
   });
   const boundedMaxBatchSize = Number.isFinite(Number(maxBatchSize))
     ? Math.max(1, Number(maxBatchSize))
     : 3;
   const risks = [
-    ...planEvaluation.risks,
+    ...artifactEvaluation.risks,
     ...gateEvaluation.risks,
     ...evaluateSelection({
       selectedEntries: selected.entries,
@@ -293,16 +383,22 @@ function buildPolicyControlledCompatibilityPathRemoval({
     version: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_VERSION,
     statusId: determineStatusId(risks),
     readyForRemovalReview: risks.length === 0,
-    executionPlan: {
-      statusId: planEvaluation.plan.statusId || null,
-      validationOk: planEvaluation.plan.validation?.ok === true,
-      readyForExecutionGate: planEvaluation.plan.readyForExecutionGate === true,
-      manifestEntryCount: planEvaluation.plan.manifest?.entryCount ?? null,
+    executionPlanArtifact: {
+      version: artifactEvaluation.artifact.version || null,
+      statusId: artifactEvaluation.artifact.statusId || null,
+      validationOk: artifactEvaluation.artifact.validation?.ok === true,
+      ready: artifactEvaluation.artifact.ready === true,
+      artifactFingerprint:
+        artifactEvaluation.artifact.artifactFingerprint?.fingerprint || null,
+      manifestEntryCount:
+        artifactEvaluation.artifact.executionPlan?.manifest?.entryCount ?? null,
     },
     executionGate: {
       statusId: gateEvaluation.gate.statusId || null,
       validationOk: gateEvaluation.gate.validation?.ok === true,
       allowControlledDeletion: gateEvaluation.gate.allowControlledDeletion === true,
+      executionPlanArtifactFingerprint:
+        gateEvaluation.gateArtifact.artifactFingerprint?.fingerprint || null,
     },
     removalBatch: {
       selectedCount: selected.entries.length,
@@ -321,6 +417,7 @@ function buildPolicyControlledCompatibilityPathRemoval({
       requireFreshGateForApply: true,
       requireSmallBatch: true,
       requireApprovedManifestPath: true,
+      requireGateArtifactCohesion: true,
     },
     sideEffects: {
       filesDeleted: false,

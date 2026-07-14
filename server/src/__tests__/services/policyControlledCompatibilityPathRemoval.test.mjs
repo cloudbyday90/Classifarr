@@ -166,12 +166,14 @@ function readyExecutionPlan(overrides = {}) {
   });
 }
 
-function readyGate(executionPlan, {
+function readyExecutionPlanArtifact(executionPlan = readyExecutionPlan()) {
+  return buildReadyExecutionPlanArtifact({ executionPlan });
+}
+
+function readyGate(executionPlanArtifact, {
   preflightOverrides = {},
   ...overrides
 } = {}) {
-  const executionPlanArtifact = buildReadyExecutionPlanArtifact({ executionPlan });
-
   return buildPolicyCompatibilityDeletionExecutionGate({
     executionPlanArtifact,
     preflightEvidence: buildReadyExecutionGatePreflightEvidence({
@@ -185,10 +187,10 @@ function readyGate(executionPlan, {
 }
 
 function readyRemoval(overrides = {}) {
-  const executionPlan = readyExecutionPlan();
+  const executionPlanArtifact = readyExecutionPlanArtifact();
   return buildPolicyControlledCompatibilityPathRemoval({
-    executionPlan,
-    executionGate: readyGate(executionPlan),
+    executionPlanArtifact,
+    executionGate: readyGate(executionPlanArtifact),
     selectedPaths: [
       'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
       'server/src/services/policyIntentMapper.mjs',
@@ -208,10 +210,11 @@ describe('policyControlledCompatibilityPathRemoval', () => {
         .READY_FOR_REMOVAL_REVIEW);
     expect(removal.readyForRemovalReview).toBe(true);
     expect(removal.validation.ok).toBe(true);
-    expect(removal.executionPlan).toEqual(expect.objectContaining({
-      statusId: 'ready_for_execution_gate',
+    expect(removal.executionPlanArtifact).toEqual(expect.objectContaining({
+      version: 'policy.compatibility_deletion_execution_plan_artifact.v2',
+      statusId: 'ready',
       validationOk: true,
-      readyForExecutionGate: true,
+      ready: true,
       manifestEntryCount: 18,
     }));
     expect(removal.executionGate).toEqual(expect.objectContaining({
@@ -246,29 +249,38 @@ describe('policyControlledCompatibilityPathRemoval', () => {
     expect(Object.values(removal.sideEffects).some(Boolean)).toBe(false);
   });
 
-  test('blocks when the execution plan is not ready', () => {
-    const executionPlan = buildPolicyCompatibilityDeletionExecutionPlan();
+  test('blocks when the execution-plan artifact is not ready', () => {
+    const executionPlanArtifact = buildReadyExecutionPlanArtifact({
+      executionPlan: buildPolicyCompatibilityDeletionExecutionPlan(),
+      overrides: {
+        statusId: 'blocked',
+        ready: false,
+        riskCount: 1,
+        risks: [{ riskId: 'preflight_not_ready' }],
+      },
+    });
     const removal = readyRemoval({
-      executionPlan,
-      executionGate: readyGate(readyExecutionPlan()),
+      executionPlanArtifact,
+      executionGate: readyGate(executionPlanArtifact),
     });
 
     expect(removal.statusId)
       .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
-        .BLOCKED_BY_EXECUTION_PLAN);
+        .BLOCKED_BY_EXECUTION_ARTIFACT);
     expect(removal.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
-          POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_PLAN_NOT_READY,
+          POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS
+            .EXECUTION_PLAN_ARTIFACT_NOT_READY,
       }),
     ]));
   });
 
   test('blocks when the final execution gate is not ready', () => {
-    const executionPlan = readyExecutionPlan();
+    const executionPlanArtifact = readyExecutionPlanArtifact();
     const removal = readyRemoval({
-      executionPlan,
-      executionGate: readyGate(executionPlan, {
+      executionPlanArtifact,
+      executionGate: readyGate(executionPlanArtifact, {
         preflightOverrides: {
           worktree: { clean: false },
         },
@@ -282,6 +294,66 @@ describe('policyControlledCompatibilityPathRemoval', () => {
       expect.objectContaining({
         riskId:
           POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.EXECUTION_GATE_NOT_READY,
+      }),
+    ]));
+  });
+
+  test('rejects a ready gate bound to a different manifest artifact', () => {
+    const selectedArtifact = readyExecutionPlanArtifact();
+    const selectedPlan = readyExecutionPlan();
+    const differentlyManifestedArtifact = readyExecutionPlanArtifact({
+      ...selectedPlan,
+      manifest: {
+        ...selectedPlan.manifest,
+        entries: selectedPlan.manifest.entries.map((entry, index) => index === 0
+          ? {
+            ...entry,
+            replacementEvidence: {
+              ...entry.replacementEvidence,
+              tests: ['different-manifest-evidence.test.mjs'],
+            },
+          }
+          : entry),
+      },
+    });
+    const removal = readyRemoval({
+      executionPlanArtifact: selectedArtifact,
+      executionGate: readyGate(differentlyManifestedArtifact),
+    });
+
+    expect(removal.statusId)
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+        .BLOCKED_BY_EXECUTION_GATE);
+    expect(removal.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS
+            .EXECUTION_GATE_ARTIFACT_MISMATCH,
+      }),
+    ]));
+  });
+
+  test('does not accept a legacy raw execution plan as removal-review evidence', () => {
+    const executionPlan = readyExecutionPlan();
+    const executionPlanArtifact = readyExecutionPlanArtifact(executionPlan);
+    const removal = buildPolicyControlledCompatibilityPathRemoval({
+      executionPlan,
+      executionGate: readyGate(executionPlanArtifact),
+      selectedPaths: [
+        'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+      ],
+      removalReason: 'Raw plans must not bypass artifact-bound manifest selection.',
+      reviewedBy: 'policy-maintainer',
+    });
+
+    expect(removal.statusId)
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+        .BLOCKED_BY_EXECUTION_ARTIFACT);
+    expect(removal.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS
+            .EXECUTION_PLAN_ARTIFACT_NOT_READY,
       }),
     ]));
   });

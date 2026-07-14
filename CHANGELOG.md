@@ -65,6 +65,9 @@ unchanged operator or runtime outcome.
   removal now requires a current, fingerprint-valid execution-plan artifact and
   timestamped preflight evidence bound to that exact artifact. Stale, detached,
   malformed, or caller-asserted readiness can no longer authorize deletion.
+- **Cohesive Compatibility-Removal Reviews** - reviewed removal batches now
+  select paths only from one fingerprint-valid execution-plan artifact and
+  reject a ready gate bound to any different or altered artifact manifest.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

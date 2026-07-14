@@ -169,12 +169,14 @@ function readyExecutionPlan(overrides = {}) {
   });
 }
 
-function readyGate(executionPlan, {
+function readyExecutionPlanArtifact(executionPlan = readyExecutionPlan()) {
+  return buildReadyExecutionPlanArtifact({ executionPlan });
+}
+
+function readyGate(executionPlanArtifact, {
   preflightOverrides = {},
   ...overrides
 } = {}) {
-  const executionPlanArtifact = buildReadyExecutionPlanArtifact({ executionPlan });
-
   return buildPolicyCompatibilityDeletionExecutionGate({
     executionPlanArtifact,
     preflightEvidence: buildReadyExecutionGatePreflightEvidence({
@@ -188,10 +190,10 @@ function readyGate(executionPlan, {
 }
 
 function readyRemovalBatch(overrides = {}) {
-  const executionPlan = readyExecutionPlan();
+  const executionPlanArtifact = readyExecutionPlanArtifact();
   return buildPolicyControlledCompatibilityPathRemoval({
-    executionPlan,
-    executionGate: readyGate(executionPlan),
+    executionPlanArtifact,
+    executionGate: readyGate(executionPlanArtifact),
     selectedPaths: [
       'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
     ],

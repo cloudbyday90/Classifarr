@@ -5795,10 +5795,12 @@ compatibility path removal batch without performing destructive changes.
 Tasks:
 
 - **8R.17.1 Artifact And Gate Cohesion**
-  - Replace independent execution-plan and gate inputs with one
+  - Completed: replaced independent execution-plan and gate inputs with one
     evidence-bound execution artifact.
-  - Verify the removal manifest is the same manifest fingerprinted by the gate.
-  - Reject a ready gate when it is paired with a different plan or manifest.
+  - Completed: verifies the removal manifest is the same manifest fingerprinted
+    by the gate.
+  - Completed: rejects a ready gate when it is paired with a different plan or
+    manifest.
 - Consume approved compatibility deletion manifest entries.
 - Consume compatibility deletion execution-gate output.
 - Require selected paths to exist in the approved manifest.
@@ -5821,16 +5823,19 @@ Implementation status:
 
 - Controlled compatibility path removal is documented in
   [Policy Controlled Compatibility Path Removal](policy-controlled-compatibility-path-removal.md).
+- Artifact and gate cohesion is documented in
+  [Policy Controlled Compatibility Path Removal Artifact Cohesion](policy-controlled-compatibility-path-removal-artifact-cohesion.md).
 - The module naming cutover is documented in
   [Policy Controlled Compatibility Path Removal Module Cutover](policy-controlled-compatibility-path-removal-module-cutover.md).
 - The removal-batch contract lives in
   `server/src/services/policyControlledCompatibilityPathRemoval.mjs`.
 - The focused removal-batch test suite lives in
   `server/src/__tests__/services/policyControlledCompatibilityPathRemoval.test.mjs`.
-- Current implementation builds a side-effect-free removal review batch from
-  selected manifest paths, emits a semantic `nextStep.stepId`, and defers
-  destructive application to the controlled apply boundary because candidate
-  paths still have live imports.
+- Current implementation builds a side-effect-free removal review batch only
+  from the fingerprint-valid execution-plan artifact whose fingerprint matches
+  the execution gate's embedded artifact. It emits a semantic `nextStep.stepId`
+  and defers destructive application to the controlled apply boundary because
+  candidate paths still have live imports.
 
 ### 8R.18 Controlled Compatibility Path Removal Apply
 
@@ -5840,6 +5845,12 @@ post-removal verification.
 
 Tasks:
 
+- **8R.18.1 Review Artifact Integrity**
+  - Require the apply input to carry a valid controlled removal review bound to
+    one execution-plan artifact and execution gate.
+  - Revalidate that context before an adapter receives any entry.
+  - Reject altered, missing, or mismatched artifact-and-gate context without
+    calling the adapter.
 - Consume a ready controlled compatibility path removal review batch.
 - Require `executeApply=true`.
 - Require explicit operator confirmation with confirming actor.

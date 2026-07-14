@@ -3,16 +3,18 @@
 ## Intent
 
 Controlled Compatibility Path Removal creates a small, reviewable compatibility
-path removal batch after the compatibility deletion execution plan and final
-execution gate pass. It does not delete files, archive files, remove routes,
-remove tests, mutate storage, write manifests, or run Git commands.
+path removal batch after one evidence-bound execution-plan artifact and its
+final execution gate pass. It does not delete files, archive files, remove
+routes, remove tests, mutate storage, write manifests, or run Git commands.
 
 The component separates three concerns:
 
-- compatibility deletion execution planning owns the approved removal manifest,
-- compatibility deletion execution gating owns final preflight approval,
+- the execution-plan artifact owns the approved removal manifest and its
+  deterministic fingerprint,
+- compatibility deletion execution gating owns final preflight approval bound to
+  that artifact,
 - controlled compatibility path removal owns narrow batch selection from the
-  approved manifest.
+  artifact-owned approved manifest.
 
 Current implementation evidence shows several manifest paths still have live
 imports. Because of that, this component prepares and validates the removal
@@ -35,6 +37,11 @@ batch but keeps destructive application for a separate apply step.
   context and avoiding unsafe or excessive detail. This contract keeps review
   metadata explicit while leaving destructive action evidence for the apply
   boundary.
+- SLSA's artifact-verification guidance requires consumers to compare an
+  artifact against its provenance subject digest and reject unexpected values.
+  The removal boundary applies the same consumer-side integrity model by
+  validating the supplied artifact fingerprint and requiring the gate's nested
+  artifact fingerprint to match it before selecting manifest paths.
 
 Sources:
 
@@ -46,6 +53,8 @@ Sources:
   <https://csrc.nist.gov/pubs/sp/800/34/r1/upd1/final>
 - OWASP Logging Cheat Sheet:
   <https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html>
+- SLSA Build: Verifying artifacts:
+  <https://slsa.dev/spec/v1.2/verifying-artifacts>
 
 ## Recommendations
 
@@ -79,6 +88,25 @@ Cons:
 
 - newly discovered paths must flow through the manifest first.
 
+### Bind The Gate To The Selection Artifact
+
+The review builder accepts `executionPlanArtifact`, not a raw execution plan.
+It validates that artifact and its fingerprint, validates the artifact embedded
+in the execution gate, and requires both fingerprints to match before it reads
+manifest entries.
+
+Pros:
+
+- prevents a ready gate from authorizing a different or altered manifest,
+- makes the selected paths traceable to one immutable approval context,
+- keeps selection side-effect-free while rejecting stale caller composition.
+
+Cons:
+
+- callers must carry the versioned artifact through to the review boundary,
+- regenerated artifacts require a matching regenerated gate and preflight
+  evidence.
+
 ### Keep The Batch Narrow
 
 Removal batches should stay small enough to inspect manually. The contract
@@ -98,10 +126,12 @@ Cons:
 
 Use this stack for controlled compatibility path removal:
 
-1. Use the compatibility deletion execution plan as the approved manifest
+1. Use one fingerprint-valid execution-plan artifact as the approved manifest
    source.
-2. Use the compatibility deletion execution gate as final preflight proof.
-3. Select a small manifest-backed batch with a review reason and reviewer.
+2. Require a ready execution gate whose embedded artifact has the same
+   fingerprint.
+3. Select a small artifact-manifest-backed batch with a review reason and
+   reviewer.
 4. Emit a side-effect-free removal batch and semantic `nextStep` for the apply
    boundary.
 
@@ -120,13 +150,18 @@ Implemented:
   - `buildPolicyControlledCompatibilityPathRemoval`,
   - `validatePolicyControlledCompatibilityPathRemoval`.
 - Updated the contract version to
-  `policy.controlled_compatibility_path_removal.v1`.
+  `policy.controlled_compatibility_path_removal.v2`.
+- Replaced independent raw execution-plan and execution-gate inputs with the
+  evidence-bound `executionPlanArtifact` plus gate pair.
+- Validates the selected artifact fingerprint, the gate's embedded artifact,
+  and their equality before manifest selection. A ready gate from a different
+  artifact or manifest is blocked.
 - Replaced runtime `nextPhase.phaseId` with semantic `nextStep.stepId`.
 - Preserved status IDs for ready removal review and blockers from execution
-  plan, execution gate, selection, scope, and approval.
-- Preserved risk IDs for non-ready dependencies, empty selections, unknown
-  paths, too-broad batches, missing review metadata, stale risk counts, and
-  forbidden side effects.
+  artifact, execution gate, selection, scope, and approval.
+- Added bounded risks for missing, invalid, and mismatched gate artifacts while
+  preserving risks for empty selections, unknown paths, too-broad batches,
+  missing review metadata, stale risk counts, and forbidden side effects.
 
 Not implemented in this component:
 
@@ -139,7 +174,6 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Controlled Removal Apply Artifact module naming cutover**. The
-apply boundary now consumes the durable removal batch contract; the next task
-should make the artifact wrapper consume durable apply evidence without carrying
-phase-coded production names.
+Proceed with **8R.18.1 Review Artifact Integrity**. The apply boundary must
+revalidate that its reviewed batch still carries the same artifact and gate
+context before it invokes an adapter.

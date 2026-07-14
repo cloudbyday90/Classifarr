@@ -277,7 +277,10 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     componentId: 'controlled_compatibility_path_removal',
     label: 'Controlled Compatibility Path Removal',
-    designDocPaths: ['docs/architecture/policy-controlled-compatibility-path-removal.md'],
+    designDocPaths: [
+      'docs/architecture/policy-controlled-compatibility-path-removal.md',
+      'docs/architecture/policy-controlled-compatibility-path-removal-artifact-cohesion.md',
+    ],
     contractPaths: ['server/src/services/policyControlledCompatibilityPathRemoval.mjs'],
     testPaths: ['server/src/__tests__/services/policyControlledCompatibilityPathRemoval.test.mjs'],
   },

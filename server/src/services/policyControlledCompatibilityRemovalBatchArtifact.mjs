@@ -72,7 +72,7 @@ function buildRemovalBatchFromInput({
   const evidence = asObject(input);
 
   return buildPolicyControlledCompatibilityPathRemoval({
-    executionPlan: executionPlanArtifact.executionPlan,
+    executionPlanArtifact,
     executionGate,
     selectedPaths: evidence.selectedPaths,
     maxBatchSize: evidence.maxBatchSize,
