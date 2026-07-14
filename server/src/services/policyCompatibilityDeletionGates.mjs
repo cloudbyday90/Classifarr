@@ -263,6 +263,7 @@ function buildPolicyCompatibilityDeletionGates({
   coverage = {},
   unconvertedPolicyCount = null,
   supportStanceId = POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.BLOCK_DELETION,
+  generatedAt = null,
 } = {}) {
   const normalizedUnconvertedPolicyCount =
     normalizeUnconvertedPolicyCount(unconvertedPolicyCount);
@@ -279,6 +280,7 @@ function buildPolicyCompatibilityDeletionGates({
 
   const plan = {
     version: POLICY_COMPATIBILITY_DELETION_GATES_VERSION,
+    generatedAt: generatedAt || new Date().toISOString(),
     statusId,
     readyToDelete,
     supportStanceId,

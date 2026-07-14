@@ -307,6 +307,7 @@ function buildPolicyCompatibilityDeletionReadiness({
     currentPolicyInventory: inventory.currentPolicyInventory
       ? {
         version: inventory.currentPolicyInventory.version || null,
+        generatedAt: inventory.currentPolicyInventory.generatedAt || null,
         statusId: inventory.currentPolicyInventory.statusId || null,
         allEnabledPoliciesNative:
           inventory.currentPolicyInventory.allEnabledPoliciesNative === true,
@@ -316,11 +317,13 @@ function buildPolicyCompatibilityDeletionReadiness({
       }
       : null,
     cutover: {
+      generatedAt: cutover.cutoverVerification.generatedAt || null,
       statusId: cutover.cutoverVerification.statusId || null,
       validationOk: cutover.cutoverVerification.validation?.ok === true,
       riskCount: cutover.cutoverVerification.riskCount ?? null,
     },
     deletionGates: {
+      generatedAt: deletionGates.deletionGatePlan.generatedAt || null,
       statusId: deletionGates.deletionGatePlan.statusId || null,
       readyToDelete: deletionGates.deletionGatePlan.readyToDelete === true,
       validationOk: deletionGates.deletionGatePlan.validation?.ok === true,

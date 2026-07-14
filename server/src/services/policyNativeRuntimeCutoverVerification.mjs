@@ -118,6 +118,7 @@ function buildPolicyNativeRuntimeCutoverVerification({
   rollbackAvailable = false,
   legacyDeletionBlocked = true,
   supportDiagnosticsSafe = true,
+  generatedAt = null,
 } = {}) {
   const converted = evaluateConvertedRead(convertedPolicy);
   const unconverted = evaluateUnconvertedRead(unconvertedPolicy);
@@ -149,6 +150,7 @@ function buildPolicyNativeRuntimeCutoverVerification({
 
   const verification = {
     version: POLICY_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION,
+    generatedAt: generatedAt || new Date().toISOString(),
     statusId: determineStatusId(risks),
     convertedRead: {
       sourceId: converted.readPath.sourceId,

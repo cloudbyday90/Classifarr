@@ -243,9 +243,22 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     componentId: 'compatibility_path_deletion_execution_plan',
     label: 'Compatibility Path Deletion Execution Plan',
-    designDocPaths: ['docs/architecture/policy-compatibility-deletion-execution-plan.md'],
-    contractPaths: ['server/src/services/policyCompatibilityDeletionExecutionPlan.mjs'],
-    testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionExecutionPlan.test.mjs'],
+    designDocPaths: [
+      'docs/architecture/policy-compatibility-deletion-execution-plan.md',
+      'docs/architecture/policy-compatibility-deletion-execution-plan-evidence-bundle.md',
+    ],
+    contractPaths: [
+      'server/src/services/policyCompatibilityDeletionExecutionPlan.mjs',
+      'server/src/services/policyCompatibilityDeletionExecutionPlanEvidenceBundle.mjs',
+      'server/src/services/policyCompatibilityDeletionExecutionPlanArtifact.mjs',
+      'scripts/generate-policy-compatibility-deletion-execution-plan-evidence-bundle.mjs',
+      'scripts/generate-policy-compatibility-deletion-execution-plan-artifact.mjs',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlan.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanEvidenceBundle.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifact.test.mjs',
+    ],
   },
   {
     componentId: 'compatibility_path_deletion_execution_gate',

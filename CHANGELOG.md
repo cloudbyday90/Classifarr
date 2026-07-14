@@ -56,6 +56,11 @@ unchanged operator or runtime outcome.
   valid active native intent. Missing, ambiguous, legacy-sourced, pending, or
   invalid authority blocks planning with bounded diagnostics; a supplied zero
   conversion count can no longer bypass the gate.
+- **Coherent Compatibility Deletion Evidence** - execution-plan artifacts now
+  require one current, side-effect-free evidence bundle that binds enabled-policy
+  authority, runtime cutover, deletion gates, and readiness to a bounded
+  observation window. Stale, mismatched, invalid, or count-divergent evidence
+  cannot be combined into a ready deletion plan.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

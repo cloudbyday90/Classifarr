@@ -131,6 +131,11 @@ Implemented:
 - Required rollback stance, support stance, and explicit approval.
 - Added tests for ready manifest output, readiness blocking, missing evidence,
   missing approval/stance, and side-effect validation.
+- Added a current execution-plan evidence bundle at the artifact boundary. The
+  artifact now uses only the bundle's deletion readiness and deletion-gate plan,
+  which prevents separately supplied reports from drifting apart before an
+  execution manifest is produced. See
+  [Policy Compatibility Deletion Execution-Plan Evidence Bundle](policy-compatibility-deletion-execution-plan-evidence-bundle.md).
 
 Not implemented in this component:
 
@@ -142,7 +147,8 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Compatibility Path Deletion Execution Gate**. That task should
-verify clean worktree state, fresh backup/restore evidence, operator approval,
-manifest freshness, and final rollback/support stance immediately before
-allowing any compatibility path deletion.
+Proceed with **Compatibility Path Deletion Execution Gate**. It should consume
+the ready evidence-bundle-backed plan and independently verify clean worktree
+state, fresh backup/restore evidence, operator approval, manifest freshness,
+and final rollback/support stance immediately before allowing any compatibility
+path deletion.

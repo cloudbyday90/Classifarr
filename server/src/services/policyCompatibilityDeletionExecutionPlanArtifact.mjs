@@ -2,6 +2,11 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
   buildPolicyCompatibilityDeletionExecutionPlan,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
+import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_VERSION,
+  validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle,
+} from './policyCompatibilityDeletionExecutionPlanEvidenceBundle.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION =
   'policy.compatibility_deletion_execution_plan_artifact.v1';
@@ -13,6 +18,9 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS = Object.
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS = Object.freeze({
   INPUT_NOT_OBJECT: 'input_not_object',
+  EVIDENCE_BUNDLE_MISSING: 'evidence_bundle_missing',
+  EVIDENCE_BUNDLE_NOT_READY: 'evidence_bundle_not_ready',
+  EVIDENCE_BUNDLE_VALIDATION_FAILED: 'evidence_bundle_validation_failed',
   EXECUTION_PLAN_NOT_READY: 'execution_plan_not_ready',
   EXECUTION_PLAN_VALIDATION_FAILED: 'execution_plan_validation_failed',
   SIDE_EFFECT_REPORTED: 'side_effect_reported',
@@ -38,20 +46,25 @@ function normalizeGeneratedAt(value) {
 
 function buildPlanFromInput(input = {}) {
   const evidence = asObject(input);
+  const evidenceBundle = asObject(evidence.evidenceBundle);
 
-  return buildPolicyCompatibilityDeletionExecutionPlan({
-    deletionReadiness: evidence.deletionReadiness,
-    deletionGatePlan: evidence.deletionGatePlan,
-    replacementEvidence: evidence.replacementEvidence,
-    rollbackStance: evidence.rollbackStance,
-    supportStance: evidence.supportStance,
-    manifestApproved: evidence.manifestApproved,
-    approvedBy: evidence.approvedBy,
-  });
+  return {
+    evidenceBundle,
+    executionPlan: buildPolicyCompatibilityDeletionExecutionPlan({
+      deletionReadiness: evidenceBundle.deletionReadiness,
+      deletionGatePlan: evidenceBundle.deletionGatePlan,
+      replacementEvidence: evidence.replacementEvidence,
+      rollbackStance: evidence.rollbackStance,
+      supportStance: evidence.supportStance,
+      manifestApproved: evidence.manifestApproved,
+      approvedBy: evidence.approvedBy,
+    }),
+  };
 }
 
 function buildArtifactRisks({
   input = {},
+  evidenceBundle = {},
   executionPlan = {},
   sideEffects = {},
 } = {}) {
@@ -62,6 +75,41 @@ function buildArtifactRisks({
       POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.INPUT_NOT_OBJECT,
       'Compatibility deletion execution-plan artifact input must be a JSON object.'
     ));
+  }
+
+  if (Object.keys(evidenceBundle).length === 0) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS
+        .EVIDENCE_BUNDLE_MISSING,
+      'Compatibility deletion execution-plan artifact requires a current execution-plan evidence bundle.'
+    ));
+  } else {
+    const bundleValidation =
+      validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle(evidenceBundle);
+
+    if (
+      evidenceBundle.version !==
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_VERSION ||
+      evidenceBundle.statusId !==
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS.READY ||
+      evidenceBundle.readyForExecutionPlan !== true
+    ) {
+      risks.push(buildRisk(
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS
+          .EVIDENCE_BUNDLE_NOT_READY,
+        'Compatibility deletion execution-plan artifact requires a ready current evidence bundle.',
+        { statusId: evidenceBundle.statusId || null }
+      ));
+    }
+
+    if (evidenceBundle.validation?.ok !== true || bundleValidation.ok !== true) {
+      risks.push(buildRisk(
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS
+          .EVIDENCE_BUNDLE_VALIDATION_FAILED,
+        'Compatibility deletion execution-plan artifact requires valid current evidence-bundle invariants.',
+        { issueCount: bundleValidation.issueCount }
+      ));
+    }
   }
 
   if (
@@ -107,9 +155,10 @@ function buildPolicyCompatibilityDeletionExecutionPlanArtifact({
   generatedAt = null,
   sideEffects = {},
 } = {}) {
-  const executionPlan = buildPlanFromInput(input);
+  const { evidenceBundle, executionPlan } = buildPlanFromInput(input);
   const risks = buildArtifactRisks({
     input,
+    evidenceBundle,
     executionPlan,
     sideEffects,
   });
@@ -118,6 +167,12 @@ function buildPolicyCompatibilityDeletionExecutionPlanArtifact({
     generatedAt: normalizeGeneratedAt(generatedAt),
     statusId: determineArtifactStatusId(risks),
     ready: risks.length === 0,
+    evidenceBundle: {
+      version: evidenceBundle.version || null,
+      generatedAt: evidenceBundle.generatedAt || null,
+      statusId: evidenceBundle.statusId || null,
+      validationOk: evidenceBundle.validation?.ok === true,
+    },
     executionPlan,
     riskCount: risks.length,
     risks,

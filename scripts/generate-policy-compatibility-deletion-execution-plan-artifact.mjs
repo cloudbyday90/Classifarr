@@ -69,7 +69,7 @@ function usage() {
     'Usage: node scripts/generate-policy-compatibility-deletion-execution-plan-artifact.mjs [options]',
     '',
     'Options:',
-    '  --input <json>             Required explicit compatibility deletion input evidence JSON.',
+    '  --input <json>             Required plan input JSON with a ready execution-plan evidence bundle.',
     '  --output <json>            Write nested execution-plan JSON to this path.',
     '  --artifact-output <json>   Write wrapper artifact JSON to this path.',
     '  --allow-blocked            Allow writing blocked execution-plan output.',

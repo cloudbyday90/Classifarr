@@ -5722,6 +5722,13 @@ Implementation status:
   deletion categories and paths, requires replacement evidence by path or
   category, requires rollback/support/approval stances, emits a semantic
   `nextStep.stepId`, and validates that no deletion side effects occur.
+- **8R.15a Current Execution-Plan Evidence Bundle** - implemented one
+  side-effect-free, bounded observation window for current enabled-policy
+  authority, runtime-cutover verification, compatibility deletion gates, and
+  deletion readiness. The execution-plan artifact now consumes only this
+  versioned bundle, preventing separately supplied readiness and gate evidence
+  from drifting before a manifest is produced. The design and command are
+  documented in [Policy Compatibility Deletion Execution-Plan Evidence Bundle](policy-compatibility-deletion-execution-plan-evidence-bundle.md).
 
 ### 8R.16 Compatibility Path Deletion Execution Gate
 
