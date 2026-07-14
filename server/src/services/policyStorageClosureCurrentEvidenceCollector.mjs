@@ -32,10 +32,9 @@ const ROADMAP_ENTRY_TYPES = Object.freeze({
 });
 
 const ROADMAP_ENTRY_PATTERNS = Object.freeze({
-  [ROADMAP_ENTRY_TYPES.IMPLEMENTATION_STATUS]: /^###\s+/,
-  [ROADMAP_ENTRY_TYPES.SEQUENCE]: /^\d+\.\s+\*\*/,
+  [ROADMAP_ENTRY_TYPES.IMPLEMENTATION_STATUS]: /^#{3,4}\s+/,
+  [ROADMAP_ENTRY_TYPES.SEQUENCE]: /^(?:\d+\.\s+|\s*-\s+)\*\*/,
 });
-const HISTORIC_COMPONENT_IDENTIFIER_PATTERN = /^\d+[a-z]?\.\d+\s+/i;
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -43,6 +42,50 @@ function asArray(value) {
 
 function normalizeRepositoryPath(value = '') {
   return String(value || '').replace(/\\/g, '/').replace(/^\.\//, '').trim();
+}
+
+function isAsciiDigit(character = '') {
+  return character >= '0' && character <= '9';
+}
+
+function isAsciiLetter(character = '') {
+  const normalizedCharacter = character.toLowerCase();
+  return normalizedCharacter >= 'a' && normalizedCharacter <= 'z';
+}
+
+function hasOnlyAsciiDigits(value = '') {
+  return Boolean(value) && [...value].every(isAsciiDigit);
+}
+
+function isHistoricComponentIdentifier(value = '') {
+  const segments = String(value || '').split('.');
+
+  if (segments.length < 2 || !hasOnlyAsciiDigits(segments.at(-1))) {
+    return false;
+  }
+
+  const firstSegment = segments[0];
+  const hasHistoricSuffix = isAsciiLetter(firstSegment.at(-1));
+  const numericFirstSegment = hasHistoricSuffix
+    ? firstSegment.slice(0, -1)
+    : firstSegment;
+
+  return hasOnlyAsciiDigits(numericFirstSegment) &&
+    segments.slice(1).every(hasOnlyAsciiDigits);
+}
+
+function removeHistoricComponentIdentifier(value = '') {
+  const candidate = String(value || '');
+  const separatorIndex = candidate.search(/\s/);
+
+  if (separatorIndex < 1) {
+    return candidate;
+  }
+
+  const identifier = candidate.slice(0, separatorIndex);
+  return isHistoricComponentIdentifier(identifier)
+    ? candidate.slice(separatorIndex).trimStart()
+    : candidate;
 }
 
 function resolveRepositoryPath(cwd, relativePath) {
@@ -141,9 +184,12 @@ function getRoadmapEntryLabelCandidate({
     return '';
   }
 
-  return value
+  const labelCandidate = value
     .replace(pattern, '')
-    .replace(HISTORIC_COMPONENT_IDENTIFIER_PATTERN, '');
+    .replace(/\*\*$/, '')
+    .trimStart();
+
+  return removeHistoricComponentIdentifier(labelCandidate);
 }
 
 function hasRoadmapComponentLabel({
@@ -287,5 +333,7 @@ export {
   extractChangelogEvidence,
   extractRoadmapEvidence,
   getMappedArtifactPaths,
+  isHistoricComponentIdentifier,
   normalizeRepositoryPath,
+  removeHistoricComponentIdentifier,
 };

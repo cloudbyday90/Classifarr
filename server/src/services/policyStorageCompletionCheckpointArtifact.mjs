@@ -1,4 +1,7 @@
 import {
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
+} from './policyCompatibilityRemovalCompletionAuditArtifact.mjs';
+import {
   POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
   buildPolicyStorageCompletionCheckpoint,
 } from './policyStorageCompletionCheckpoint.mjs';
@@ -16,6 +19,8 @@ const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS = Object.freeze({
     'completion_audit_artifact_not_complete',
   COMPLETION_AUDIT_ARTIFACT_VALIDATION_FAILED:
     'completion_audit_artifact_validation_failed',
+  COMPLETION_AUDIT_ARTIFACT_VERSION_UNSUPPORTED:
+    'completion_audit_artifact_version_unsupported',
   COMPLETION_AUDIT_MISSING: 'completion_audit_missing',
   CHECKPOINT_BLOCKED: 'checkpoint_blocked',
   CHECKPOINT_VALIDATION_FAILED: 'checkpoint_validation_failed',
@@ -71,6 +76,7 @@ function normalizeCompletionAuditArtifact(completionAuditArtifact = {}) {
     artifact,
     audit,
     artifactStatusId: artifact.statusId || null,
+    artifactVersion: artifact.version || null,
     artifactComplete: artifact.complete === true,
     artifactValidationOk: artifact.validation?.ok === true,
     auditPresent: Object.keys(audit).length > 0,
@@ -118,6 +124,23 @@ function buildArtifactRisks({
       {
         artifactValidationIssueCount:
           completionAudit.artifact.validation?.issueCount ?? null,
+      }
+    ));
+  }
+
+  if (
+    completionAudit.auditPresent &&
+    completionAudit.artifactVersion !==
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION
+  ) {
+    risks.push(buildRisk(
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
+        .COMPLETION_AUDIT_ARTIFACT_VERSION_UNSUPPORTED,
+      'Policy storage completion checkpoint artifact requires the current compatibility-removal completion-audit artifact version.',
+      {
+        expectedVersion:
+          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
+        receivedVersion: completionAudit.artifactVersion,
       }
     ));
   }
@@ -218,6 +241,7 @@ function buildPolicyStorageCompletionCheckpointArtifact({
       ].filter(evidence => evidence?.passed === true).length,
     },
     completionAuditArtifact: {
+      version: completionAudit.artifactVersion,
       statusId: completionAudit.artifactStatusId,
       complete: completionAudit.artifactComplete,
       validationOk: completionAudit.artifactValidationOk,
@@ -228,6 +252,7 @@ function buildPolicyStorageCompletionCheckpointArtifact({
     sideEffects: combinedSideEffects,
     executionPolicy: {
       requireCompletionAuditArtifact: true,
+      requireCurrentCompletionAuditArtifactVersion: true,
       requireCompleteCheckpoint: true,
       requireComponentEvidence: true,
       requireRoadmapEvidence: true,

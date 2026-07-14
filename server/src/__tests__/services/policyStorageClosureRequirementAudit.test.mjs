@@ -91,12 +91,12 @@ describe('policyStorageClosureRequirementAudit', () => {
     expect(audit.complete).toBe(true);
     expect(audit.validation.ok).toBe(true);
     expect(audit.evidenceScope).toEqual(expect.objectContaining({
-      componentCount: 34,
+      componentCount: POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP.length,
       componentCatalog: 'policy_storage_closure',
     }));
     expect(audit.summary).toEqual(expect.objectContaining({
-      expectedComponentCount: 34,
-      implementedComponentCount: 34,
+      expectedComponentCount: POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP.length,
+      implementedComponentCount: POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP.length,
       missingComponentArtifactCount: 0,
       missingRoadmapSequenceCount: 0,
       missingRoadmapImplementationStatusCount: 0,
@@ -156,7 +156,7 @@ describe('policyStorageClosureRequirementAudit', () => {
 
   test('blocks when the roadmap omits a late storage-closure work-sequence item', () => {
     const roadmapContent = completeRoadmapContent()
-      .replace('34. **Policy Storage Current Closure Audit**', '');
+      .replace(/\d+\. \*\*Policy Storage Current Closure Audit\*\*/, '');
     const audit = completeAudit({
       readTextFile: readTextFileFactory({ roadmapContent }),
     });

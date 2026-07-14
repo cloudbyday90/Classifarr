@@ -42,6 +42,19 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     ],
   },
   {
+    componentId: 'active_native_intent_integrity_correction',
+    label: 'Active Native Intent Integrity Correction',
+    designDocPaths: ['docs/architecture/policy-active-intent-integrity-correction.md'],
+    contractPaths: [
+      'server/src/services/policyActiveIntentIntegrity.mjs',
+      'database/migrations/20260713_150000_enforce_single_active_policy_intent.sql',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyActiveIntentIntegrity.test.mjs',
+      'server/src/__tests__/integration/policy-active-intent-integrity.test.mjs',
+    ],
+  },
+  {
     componentId: 'migration_candidate_report',
     label: 'Migration Candidate Report',
     designDocPaths: [
@@ -50,6 +63,13 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     ],
     contractPaths: ['server/src/services/policyIntentMigrationCandidateReport.mjs'],
     testPaths: ['server/src/__tests__/services/policyIntentMigrationCandidateReport.test.mjs'],
+  },
+  {
+    componentId: 'candidate_authority_eligibility',
+    label: 'Candidate Authority Eligibility',
+    designDocPaths: ['docs/architecture/policy-candidate-authority-eligibility.md'],
+    contractPaths: ['server/src/services/policyCandidateAuthorityEligibility.mjs'],
+    testPaths: ['server/src/__tests__/services/policyCandidateAuthorityEligibility.test.mjs'],
   },
   {
     componentId: 'explicit_conversion_workflow',
@@ -69,23 +89,63 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyIntentRuntimeReadPath.test.mjs'],
   },
   {
-    componentId: 'rollback_snapshot_reversion_window',
-    label: 'Rollback Snapshot And Reversion Window',
+    componentId: 'runtime_authority_selection_integrity',
+    label: 'Runtime Authority Selection Integrity',
     designDocPaths: [
-      'docs/architecture/policy-rollback-snapshot-window.md',
-      'docs/architecture/policy-native-intent-reversion.md',
+      'docs/architecture/policy-native-runtime-authority-selection-integrity.md',
     ],
     contractPaths: [
-      'server/src/services/policyRollbackSnapshotWindow.mjs',
+      'server/src/services/policyNativeIntentAuthority.mjs',
+      'server/src/services/policyNativeIntentAuthorityLock.mjs',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyNativeIntentAuthority.test.mjs',
+      'server/src/__tests__/services/policyNativeIntentAuthorityLock.test.mjs',
+    ],
+  },
+  {
+    componentId: 'rollback_snapshot_reversion_window',
+    label: 'Rollback Snapshot And Reversion Window',
+    designDocPaths: ['docs/architecture/policy-rollback-snapshot-window.md'],
+    contractPaths: ['server/src/services/policyRollbackSnapshotWindow.mjs'],
+    testPaths: [
+      'server/src/__tests__/services/policyRollbackSnapshotWindow.test.mjs',
+    ],
+  },
+  {
+    componentId: 'transactional_native_authority_reversion',
+    label: 'Transactional Native Authority Reversion',
+    designDocPaths: ['docs/architecture/policy-native-intent-reversion.md'],
+    contractPaths: [
       'server/src/services/policyNativeIntentReversionContract.mjs',
       'server/src/services/policyNativeIntentReversionService.mjs',
       'server/src/services/policyNativeIntentReversionPersistence.mjs',
       'server/src/routes/policiesRouteNativeIntentReversion.mjs',
     ],
     testPaths: [
-      'server/src/__tests__/services/policyRollbackSnapshotWindow.test.mjs',
       'server/src/__tests__/services/policyNativeIntentReversionService.test.mjs',
       'server/src/__tests__/policies-native-intent-reversion-routes.test.mjs',
+    ],
+  },
+  {
+    componentId: 'rollback_snapshot_retention_cleanup',
+    label: 'Rollback Snapshot Retention Cleanup',
+    designDocPaths: ['docs/architecture/policy-rollback-snapshot-retention.md'],
+    contractPaths: [
+      'server/src/services/policyRollbackSnapshotRetentionContract.mjs',
+      'server/src/services/policyRollbackSnapshotRetentionPersistence.mjs',
+      'server/src/services/policyRollbackSnapshotRetentionService.mjs',
+      'server/src/services/schedulerRetentionService.mjs',
+      'server/src/services/scheduler.mjs',
+      'database/migrations/20260714_090000_add_policy_rollback_snapshot_retention_event.sql',
+      'database/schema/current.sql',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyRollbackSnapshotRetentionService.test.mjs',
+      'server/src/__tests__/services/policyRollbackSnapshotWindow.test.mjs',
+      'server/src/__tests__/schedulerRetentionService.test.mjs',
+      'server/src/__tests__/services/backupRestoreTables.nativePolicyIntent.test.mjs',
+      'server/src/__tests__/migrations.test.mjs',
     ],
   },
   {

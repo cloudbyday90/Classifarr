@@ -132,6 +132,40 @@ describe('policyStorageClosureEvidenceRun', () => {
     }));
   });
 
+  test('requires discrete authority, reversion, and retention components', () => {
+    const components = new Map(POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
+      .map(component => [component.componentId, component]));
+
+    expect(components.get('active_native_intent_integrity_correction')).toEqual(
+      expect.objectContaining({
+        label: 'Active Native Intent Integrity Correction',
+        contractPaths: expect.arrayContaining([
+          'database/migrations/20260713_150000_enforce_single_active_policy_intent.sql',
+        ]),
+      })
+    );
+    expect(components.get('transactional_native_authority_reversion')).toEqual(
+      expect.objectContaining({
+        contractPaths: expect.arrayContaining([
+          'server/src/routes/policiesRouteNativeIntentReversion.mjs',
+        ]),
+      })
+    );
+    expect(components.get('rollback_snapshot_retention_cleanup')).toEqual(
+      expect.objectContaining({
+        designDocPaths: ['docs/architecture/policy-rollback-snapshot-retention.md'],
+        contractPaths: expect.arrayContaining([
+          'database/migrations/20260714_090000_add_policy_rollback_snapshot_retention_event.sql',
+          'database/schema/current.sql',
+        ]),
+        testPaths: expect.arrayContaining([
+          'server/src/__tests__/services/policyRollbackSnapshotRetentionService.test.mjs',
+          'server/src/__tests__/services/backupRestoreTables.nativePolicyIntent.test.mjs',
+        ]),
+      })
+    );
+  });
+
   test('normalizes Windows-style paths in supplied artifact inventory', () => {
     const windowsInventory = artifactInventory({
       servicePaths: artifactInventory().servicePaths.map(path => path.replace(/\//g, '\\')),
@@ -243,6 +277,31 @@ describe('policyStorageClosureEvidenceRun', () => {
     expect(evidenceRun.risks.map(risk => risk.riskId)).toContain(
       POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.CHECKPOINT_NOT_COMPLETE
     );
+  });
+
+  test('blocks closure when rollback snapshot retention evidence is missing', () => {
+    const inventory = artifactInventory();
+    const evidenceRun = completeRun({
+      artifactInventory: {
+        ...inventory,
+        servicePaths: inventory.servicePaths.filter(path => (
+          path !== 'server/src/services/policyRollbackSnapshotRetentionService.mjs'
+        )),
+      },
+    });
+
+    expect(evidenceRun.statusId)
+      .toBe(POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.BLOCKED_BY_CHECKPOINT);
+    expect(evidenceRun.checkpoint.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: 'component_not_implemented',
+        componentId: 'rollback_snapshot_retention_cleanup',
+      }),
+      expect.objectContaining({
+        riskId: 'component_missing_contract_evidence',
+        componentId: 'rollback_snapshot_retention_cleanup',
+      }),
+    ]));
   });
 
   test('blocks when roadmap or final removal audit evidence does not satisfy checkpoint', () => {

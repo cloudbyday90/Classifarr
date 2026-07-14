@@ -3,6 +3,9 @@ import {
   POLICY_STORAGE_COMPLETION_COMPONENTS,
 } from '../../services/policyStorageCompletionCheckpoint.mjs';
 import {
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
+} from '../../services/policyCompatibilityRemovalCompletionAuditArtifact.mjs';
+import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
 } from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 import {
@@ -38,6 +41,7 @@ function roadmapEvidence(overrides = {}) {
 
 function completionAuditArtifact(overrides = {}) {
   return {
+    version: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
     statusId: 'complete',
     complete: true,
     validation: {
@@ -121,6 +125,7 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
       validationPassedCount: 4,
     }));
     expect(artifact.completionAuditArtifact).toEqual(expect.objectContaining({
+      version: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
       statusId: 'complete',
       complete: true,
       validationOk: true,
@@ -174,6 +179,26 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
       POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_NOT_COMPLETE,
       POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.CHECKPOINT_BLOCKED,
+    ]));
+  });
+
+  test('blocks a predecessor completion-audit artifact wrapper', () => {
+    const artifact = completeArtifact({
+      completionAuditArtifact: completionAuditArtifact({
+        version: 'phase8r.compatibility_removal_completion_audit_artifact.v1',
+      }),
+    });
+
+    expect(artifact.statusId)
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.BLOCKED);
+    expect(artifact.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
+            .COMPLETION_AUDIT_ARTIFACT_VERSION_UNSUPPORTED,
+        expectedVersion:
+          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
+      }),
     ]));
   });
 

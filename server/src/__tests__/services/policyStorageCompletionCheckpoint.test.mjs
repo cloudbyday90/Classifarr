@@ -88,6 +88,16 @@ function completeCheckpoint(overrides = {}) {
 }
 
 describe('policyStorageCompletionCheckpoint', () => {
+  test('includes each discrete native-authority and retention component in the checkpoint', () => {
+    expect(COMPONENT_IDS).toEqual(expect.arrayContaining([
+      'active_native_intent_integrity_correction',
+      'candidate_authority_eligibility',
+      'runtime_authority_selection_integrity',
+      'transactional_native_authority_reversion',
+      'rollback_snapshot_retention_cleanup',
+    ]));
+  });
+
   test('completes when component, roadmap, removal, validation, and changelog evidence pass', () => {
     const checkpoint = completeCheckpoint();
 

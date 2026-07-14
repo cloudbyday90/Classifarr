@@ -2,6 +2,9 @@ import {
   POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
 } from '../../services/policyStorageClosureEvidenceRun.mjs';
 import {
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
+} from '../../services/policyCompatibilityRemovalCompletionAuditArtifact.mjs';
+import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
 } from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 import {
@@ -34,6 +37,7 @@ function completeChangelogContent() {
 
 function completionAuditArtifact(overrides = {}) {
   return {
+    version: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
     statusId: 'complete',
     complete: true,
     validation: {
@@ -184,6 +188,27 @@ describe('policyStorageCurrentClosureAudit', () => {
         .COMPLETION_AUDIT_ARTIFACT_NOT_COMPLETE,
       POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .CURRENT_EVIDENCE_RUN_NOT_COMPLETE,
+    ]));
+  });
+
+  test('blocks historical completion-audit artifact versions', () => {
+    const audit = completeAudit({
+      completionAuditArtifact: completionAuditArtifact({
+        version: 'phase8r.compatibility_removal_completion_audit_artifact.v1',
+      }),
+    });
+
+    expect(audit.statusId)
+      .toBe(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
+        .BLOCKED_BY_CHECKPOINT_ARTIFACT);
+    expect(audit.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
+            .COMPLETION_AUDIT_ARTIFACT_VERSION_UNSUPPORTED,
+        expectedVersion:
+          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
+      }),
     ]));
   });
 

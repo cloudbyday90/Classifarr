@@ -41,6 +41,11 @@ unchanged operator or runtime outcome.
   preserving their restore metadata, source audit reference, digest, and a
   compact migration event. Active policy authority and unexpired recovery data
   are never changed by cleanup.
+- **Native Storage Closure Evidence** - the native-policy storage closure audit now requires
+  separate proof for active-intent repair, migration eligibility, runtime
+  authority selection, transactional reversion, and rollback-payload retention.
+  It also rejects outdated compatibility-removal audit artifacts, preventing
+  stale or broad parent-component evidence from producing a complete result.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

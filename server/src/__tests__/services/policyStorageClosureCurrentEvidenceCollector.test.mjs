@@ -5,7 +5,9 @@ import {
   collectArtifactInventory,
   extractChangelogEvidence,
   extractRoadmapEvidence,
+  isHistoricComponentIdentifier,
   normalizeRepositoryPath,
+  removeHistoricComponentIdentifier,
 } from '../../services/policyStorageClosureCurrentEvidenceCollector.mjs';
 import {
   POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
@@ -136,6 +138,42 @@ describe('policyStorageClosureCurrentEvidenceCollector', () => {
     expect(evidence).toEqual({
       componentSequenceIds: ['native_schema_contract'],
       implementationStatusComponentIds: ['native_schema_contract'],
+    });
+  });
+
+  test('parses historical component identifiers without a backtracking regex', () => {
+    expect(isHistoricComponentIdentifier('8R.5.2')).toBe(true);
+    expect(isHistoricComponentIdentifier('9.12')).toBe(true);
+    expect(isHistoricComponentIdentifier('8R')).toBe(false);
+    expect(isHistoricComponentIdentifier('8R.5a')).toBe(false);
+    expect(removeHistoricComponentIdentifier('8R.5.2 Rollback Snapshot Retention Cleanup'))
+      .toBe('Rollback Snapshot Retention Cleanup');
+    expect(removeHistoricComponentIdentifier('Rollback Snapshot Retention Cleanup'))
+      .toBe('Rollback Snapshot Retention Cleanup');
+  });
+
+  test('collects discrete rollback subcomponents from headings and nested work-sequence items', () => {
+    const evidence = extractRoadmapEvidence({
+      roadmapContent: `
+#### 8R.5.1 Transactional Native Authority Reversion
+#### 8R.5.2 Rollback Snapshot Retention Cleanup
+
+5. **Rollback Snapshot And Reversion Window**
+   - **Transactional Native Authority Reversion**
+   - **Rollback Snapshot Retention Cleanup**
+`,
+    });
+
+    expect(evidence).toEqual({
+      componentSequenceIds: [
+        'rollback_snapshot_reversion_window',
+        'transactional_native_authority_reversion',
+        'rollback_snapshot_retention_cleanup',
+      ],
+      implementationStatusComponentIds: [
+        'transactional_native_authority_reversion',
+        'rollback_snapshot_retention_cleanup',
+      ],
     });
   });
 

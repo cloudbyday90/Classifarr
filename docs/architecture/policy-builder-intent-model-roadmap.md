@@ -6,13 +6,21 @@ completion criteria for policy work.
 
 Current execution focus:
 
-1. **8R.5.2 Rollback Snapshot Retention Cleanup**: redact expired rollback
-   payloads in bounded, auditable transactions without deleting snapshot
-   history or changing policy authority.
-2. **8R Completion Status Audit**: reconcile each remaining Phase 8R component
-   with its implementation, focused tests, migration state, and closure
-   evidence before declaring the storage refactor complete.
-3. Return to **6R.5 Operator Workflow Rebuild** only after the engine inputs
+1. **8R Completion Status Audit**: reconcile each Phase 8R component with its
+   implementation, focused tests, migration state, and closure evidence before
+   declaring the storage refactor complete. The audit must track authority
+   repair, candidate eligibility, runtime authority selection, reversion, and
+   retention independently rather than treating them as one broad component.
+2. **8R.5.2 Rollback Snapshot Retention Cleanup**: completed as bounded,
+   transactionally locked payload redaction with minimal audit retention. Its
+   migration, fresh-install schema, scheduler, restore behavior, and focused
+   tests are now required closure evidence.
+3. **Compatibility-Removal Evidence Regeneration**: regenerate the durable
+   compatibility-removal completion artifact with the current pipeline, then
+   rerun the current-closure and requirement audits. The completion-status audit
+   rejects the retired phase-coded artifact as historical evidence rather than
+   current closure proof.
+4. Return to **6R.5 Operator Workflow Rebuild** only after the engine inputs
    and native-authority invariants are reliable. It must replace the current
    manual builder rather than add another layer of controls to it.
 
@@ -5209,6 +5217,10 @@ Implementation status:
 - The daily retention scheduler invokes one bounded batch. The transaction lock
   makes overlapping scheduler instances a no-op, while a later run can process
   a row skipped because a reversion transaction held it.
+- The storage closure audit maps the rollback window, transactional reversion,
+  and retention cleanup as separate components. A complete closure result now
+  requires the retention design, services, migration, fresh-install schema,
+  scheduler wiring, and focused restore coverage.
 
 ### 8R.6 Legacy Write Path Shutdown
 
@@ -5245,9 +5257,6 @@ Implementation status:
 - Metadata-only updates remain allowed, and unconverted policies retain the
   time-bounded compatibility path. Focused route, service, and transaction
   tests protect both outcomes.
-- The next Phase 8R task is **8R.2.1 Candidate Authority Eligibility**. Do not
-  broaden native write behavior or remove compatibility paths until candidate
-  reporting consumes the one-active-intent authority boundary.
 - Legacy write-boundary behavior is documented in
   [Policy Legacy Write Boundary](policy-legacy-write-boundary.md).
 - The module cutover renamed the service, focused test, architecture record,
@@ -6721,6 +6730,13 @@ Implementation status:
   Phase 1R boundary inventory and Phase 3R workflow inventory so the final
   Phase 8R evidence chain can prove every current policy-builder surface has an
   explicit owner and cutline.
+- The current closure map also treats active-intent integrity correction,
+  candidate authority eligibility, runtime authority selection integrity,
+  transactional reversion, and rollback retention as independent evidence
+  components. It also rejects predecessor compatibility-removal artifact
+  wrappers so current closure cannot rely on stale evidence. The reconciliation
+  and its design outcome are documented in
+  [Policy Storage Completion Status Audit](policy-storage-completion-status-audit.md).
 
 ## Phase 8R Work Sequence
 
@@ -6728,14 +6744,24 @@ Implement Phase 8R in this order:
 
 1. **8R.1 Native Schema Contract**
    Defines durable storage around the final model.
+   - **Active Native Intent Integrity Correction** repairs and enforces the
+     one-active-intent database invariant before authority can be trusted.
 2. **8R.2 Migration Candidate Report**
    Makes readiness visible before mutation.
+   - **Candidate Authority Eligibility** blocks conversion readiness when the
+     active native authority is ambiguous.
 3. **8R.3 Explicit Conversion Workflow**
    Converts selected policies with validation and rollback snapshots.
 4. **8R.4 Native Runtime Read Path**
    Makes converted policies run from native intent.
+   - **Runtime Authority Selection Integrity** makes duplicate active native
+     authority fail closed instead of selecting a row or falling back.
 5. **8R.5 Rollback Snapshot And Reversion Window**
    Provides bounded safety without permanent dual models.
+   - **Transactional Native Authority Reversion** restores only authorized,
+     valid, unexpired direct rollback state in one transaction.
+   - **Rollback Snapshot Retention Cleanup** redacts expired payloads while
+     retaining minimal audit data, a digest, and restore lifecycle metadata.
 6. **8R.6 Legacy Write Path Shutdown**
    Prevents converted policies from drifting back.
 7. **8R.7 Legacy Code Deletion Gates**

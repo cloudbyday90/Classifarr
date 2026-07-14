@@ -42,6 +42,12 @@ describe('policyStorageClosureValidationEvidence', () => {
       .toContain('policyCompatibilityDeletionExecutionPlanArtifact');
     expect(evidence.focused.command)
       .toContain('policyControlledCompatibilityRemovalBatchArtifact');
+    expect(evidence.focused.command).toContain('policyActiveIntentIntegrity');
+    expect(evidence.focused.command).toContain('policyCandidateAuthorityEligibility');
+    expect(evidence.focused.command).toContain('policyNativeIntentAuthority');
+    expect(evidence.focused.command).toContain('policyNativeIntentReversion');
+    expect(evidence.focused.command).toContain('policyRollbackSnapshotRetention');
+    expect(evidence.focused.command).toContain('backupRestoreTables[.]nativePolicyIntent');
     expect(evidence.lint.command).toBe('npm run lint');
     expect(evidence.markdown.command).toContain('markdownlint-cli2');
     expect(evidence.markdown.command)
@@ -50,6 +56,8 @@ describe('policyStorageClosureValidationEvidence', () => {
       .toContain('policy-storage-closure-final-removal-audit.md');
     expect(evidence.markdown.command)
       .toContain('policy-storage-closure-final-removal-audit-module-cutover.md');
+    expect(evidence.markdown.command)
+      .toContain('policy-storage-completion-status-audit.md');
     expect(evidence.markdown.command)
       .toContain('policy-compatibility-deletion-execution-plan-artifact.md');
     expect(evidence.markdown.command)
@@ -64,6 +72,8 @@ describe('policyStorageClosureValidationEvidence', () => {
       .toContain('policy-replay-migration-verifier-retirement.md');
     expect(evidence.markdown.command)
       .toContain('policy-impact-migration-verifier-retirement.md');
+    expect(evidence.markdown.command)
+      .toContain('policy-rollback-snapshot-retention.md');
     expect(evidence.full.command).toBe('npm --prefix server test');
   });
 

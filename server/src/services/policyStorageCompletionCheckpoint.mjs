@@ -44,8 +44,16 @@ const POLICY_STORAGE_COMPLETION_COMPONENTS = Object.freeze([
     label: 'Native Schema Contract',
   },
   {
+    componentId: 'active_native_intent_integrity_correction',
+    label: 'Active Native Intent Integrity Correction',
+  },
+  {
     componentId: 'migration_candidate_report',
     label: 'Migration Candidate Report',
+  },
+  {
+    componentId: 'candidate_authority_eligibility',
+    label: 'Candidate Authority Eligibility',
   },
   {
     componentId: 'explicit_conversion_workflow',
@@ -56,8 +64,20 @@ const POLICY_STORAGE_COMPLETION_COMPONENTS = Object.freeze([
     label: 'Native Runtime Read Path',
   },
   {
+    componentId: 'runtime_authority_selection_integrity',
+    label: 'Runtime Authority Selection Integrity',
+  },
+  {
     componentId: 'rollback_snapshot_reversion_window',
     label: 'Rollback Snapshot And Reversion Window',
+  },
+  {
+    componentId: 'transactional_native_authority_reversion',
+    label: 'Transactional Native Authority Reversion',
+  },
+  {
+    componentId: 'rollback_snapshot_retention_cleanup',
+    label: 'Rollback Snapshot Retention Cleanup',
   },
   {
     componentId: 'legacy_write_path_shutdown',
