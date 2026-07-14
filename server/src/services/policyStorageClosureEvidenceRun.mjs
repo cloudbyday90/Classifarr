@@ -71,9 +71,22 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     componentId: 'rollback_snapshot_reversion_window',
     label: 'Rollback Snapshot And Reversion Window',
-    designDocPaths: ['docs/architecture/policy-rollback-snapshot-window.md'],
-    contractPaths: ['server/src/services/policyRollbackSnapshotWindow.mjs'],
-    testPaths: ['server/src/__tests__/services/policyRollbackSnapshotWindow.test.mjs'],
+    designDocPaths: [
+      'docs/architecture/policy-rollback-snapshot-window.md',
+      'docs/architecture/policy-native-intent-reversion.md',
+    ],
+    contractPaths: [
+      'server/src/services/policyRollbackSnapshotWindow.mjs',
+      'server/src/services/policyNativeIntentReversionContract.mjs',
+      'server/src/services/policyNativeIntentReversionService.mjs',
+      'server/src/services/policyNativeIntentReversionPersistence.mjs',
+      'server/src/routes/policiesRouteNativeIntentReversion.mjs',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyRollbackSnapshotWindow.test.mjs',
+      'server/src/__tests__/services/policyNativeIntentReversionService.test.mjs',
+      'server/src/__tests__/policies-native-intent-reversion-routes.test.mjs',
+    ],
   },
   {
     componentId: 'legacy_write_path_shutdown',

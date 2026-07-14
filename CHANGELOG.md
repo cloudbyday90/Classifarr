@@ -30,6 +30,12 @@ unchanged operator or runtime outcome.
 - **Native Runtime Authority Integrity** - native policy reads now detect an
   ambiguous active-intent state before selecting a row, block runtime use
   without legacy fallback, and report only bounded conflict diagnostics.
+- **Transactional Native-Authority Reversion** - an unexpired, complete
+  rollback snapshot can now restore compatibility authority or its direct prior
+  native intent atomically. The server rechecks approved action context,
+  snapshot integrity, expiry, and authority under row locks; it consumes the
+  snapshot and records the reversion without exposing legacy payloads or
+  rewriting legacy policy rows.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

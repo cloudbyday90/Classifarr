@@ -5139,6 +5139,58 @@ Implementation status:
   retention cleanup, raw-payload suppression, and no-side-effect validation:
   [Policy Rollback Snapshot Window Module Cutover](policy-rollback-snapshot-window-module-cutover.md).
 
+#### 8R.5.1 Transactional Native Authority Reversion
+
+Intent: make an unexpired rollback snapshot operational without restoring a
+second permanent policy model.
+
+Tasks:
+
+- Require an approved server-side actor source and bounded reason code before
+  reversion can begin.
+- Lock policy, snapshot, and native intent rows in one transaction, then
+  revalidate ownership, expiry, manifest completeness, and authority state.
+- Restore compatibility authority only when the snapshot intent is the sole
+  active intent; otherwise restore only the direct predecessor of a current
+  native replacement.
+- Mark the snapshot consumed and persist a bounded `rollback_applied` event in
+  the same transaction.
+- Return no raw snapshot payload and never reapply legacy rows that current
+  conversion/rebuild flows did not mutate.
+
+Implementation status:
+
+- `policyNativeIntentReversionContract.mjs` owns fail-closed action and
+  manifest validation, target selection, and bounded response contracts.
+- `policyNativeIntentReversionService.mjs` orchestrates the approved
+  transaction without owning SQL details.
+- `policyNativeIntentReversionPersistence.mjs` owns row locks, native authority
+  changes, snapshot consumption, and migration-event persistence.
+- The administrator-only policy route derives the operator identity server-side
+  and accepts only a bounded reversion reason; it never accepts actor authority
+  or snapshot data from the client.
+- The command blocks expired, redacted, malformed, foreign, ambiguous, or
+  non-direct-successor state without changing authority.
+- The implementation and official guidance are documented in [Policy Native
+  Intent Reversion](policy-native-intent-reversion.md).
+
+#### 8R.5.2 Rollback Snapshot Retention Cleanup
+
+Intent: remove expired bulky rollback payloads while preserving only minimal
+audit data.
+
+Tasks:
+
+- Select only expired snapshots whose payload is still present, using bounded
+  batches and a transaction-owned cleanup lock.
+- Replace the payload with a minimal redacted marker and retain policy, intent,
+  snapshot version, timestamps, restore path, actor/reason audit data, and a
+  digest when available.
+- Make cleanup idempotent, never delete active runtime authority, and record a
+  bounded cleanup event or report.
+- Add expiry-boundary, already-cleaned, concurrent-run, and backup/restore
+  tests.
+
 ### 8R.6 Legacy Write Path Shutdown
 
 Intent: stop writing new policy behavior through legacy preset/custom-signal

@@ -1,6 +1,7 @@
 # Policy Rollback Snapshot And Reversion Window
 
-Status: implemented as the durable policy rollback snapshot and reversion-window contract.
+Status: implemented as the durable rollback snapshot policy, reversion-window
+contract, and transactional native-authority reversion command.
 
 ## Problem
 
@@ -55,10 +56,11 @@ policy authority.
    snapshot version, created/expiry/restored timestamps, actor, reason, restore
    path, and payload digest.
 
-5. **Keep planning separate from execution.**
-   The rollback snapshot window produces a rollback/revert/retention plan and validation output.
-   Later storage work can write the plan transactionally, but this component
-   performs no writes, deletes, or restores.
+5. **Keep policy planning separate from execution.**
+   The rollback snapshot window produces a rollback/revert/retention plan and
+   validation output. The separate native-authority reversion command performs
+   the approved transaction; the planning contract itself remains
+   side-effect-free.
 
 6. **Redact operator identifiers and free-form reasons from plan reports.**
    The report exposes actor source, actor presence, reason code, and reason
@@ -79,11 +81,13 @@ Pros:
 
 Cons:
 
-- This slice does not yet write the rollback table.
-- Full restore execution still belongs to a later transactional persistence
+- Snapshot retention cleanup still belongs to a later transactional persistence
   task.
-- The service intentionally reports summaries rather than raw payloads, so
-  debugging requires server-side restore tooling instead of UI-visible JSON.
+- The authority reversion command is intentionally server-owned; a caller must
+  supply an approved actor source and bounded reason code rather than treating
+  an ordinary policy save as a restore request.
+- Results report summaries rather than raw payloads, so debugging requires
+  server-side restore tooling instead of UI-visible JSON.
 
 ## Final Recommendation Stack
 
@@ -95,6 +99,14 @@ Cons:
   `server/src/services/policyNativeSchemaContract.mjs`
 - Shared conversion actor-source vocabulary:
   `server/src/services/policyConversionActorSources.mjs`
+- Transactional native-authority reversion:
+  `server/src/services/policyNativeIntentReversionService.mjs`
+- Reversion contract boundary:
+  `server/src/services/policyNativeIntentReversionContract.mjs`
+- Reversion persistence boundary:
+  `server/src/services/policyNativeIntentReversionPersistence.mjs`
+- Reversion design and outcome:
+  [Policy Native Intent Reversion](policy-native-intent-reversion.md)
 
 ## Implemented Contract
 
@@ -148,10 +160,28 @@ Security and retention behavior:
 - bulky payload retention after expiry is invalid,
 - planning output is side-effect-free.
 
+## Transactional Reversion Outcome
+
+The rollback-window plan remains side-effect-free, while
+`applyPolicyNativeIntentReversion` provides the actual recovery command for an
+unexpired snapshot. It locks policy, snapshot, and native intent rows in a
+single transaction; revalidates server-owned actor, reason, snapshot manifest,
+expiry, and current authority; then either:
+
+- deactivates the snapshot intent so the unchanged compatibility bridge becomes
+  authoritative again, or
+- restores that intent when the current active intent is its direct successor
+  from a library rebuild.
+
+The command marks the snapshot `restored_at` and records `rollback_applied` in
+the same transaction. It returns no raw payload and never updates legacy policy
+rows, because the current conversion/rebuild flows do not mutate those rows.
+
 ## Security Outcome
 
 - Rollback cannot be triggered by normal reads or incidental policy saves.
-- Revert eligibility is tied to a bounded window and approved actor source.
+- Revert eligibility is tied to a bounded window, approved actor source, and a
+  bounded reason code.
 - Reports avoid raw legacy JSON exposure while preserving restore manifest
   completeness.
 - Post-window retention keeps only support/compliance metadata and requires
@@ -159,9 +189,12 @@ Security and retention behavior:
 - Validation rejects missing restore sections, unbounded snapshots, permanent
   alternate storage, raw payload exposure, missing actor/reason data, and
   side effects.
+- The transactional command rejects ambiguous native authority, a non-direct
+  successor, expired or redacted snapshots, and any snapshot whose manifest
+  cannot prove it belongs to the current policy/library.
 
 ## Next Step
 
-Proceed to **Legacy Write Path Shutdown**. With bounded rollback behavior
-defined, converted policies can next block accidental drift back into legacy
-preset/custom-signal write paths.
+Implement post-window retention cleanup. It must remove bulky expired snapshot
+payloads while retaining only the minimum audit data needed for support and
+compliance.
