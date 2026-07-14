@@ -46,6 +46,15 @@ const REFERENCE_SCAN_IGNORED_PATHS = Object.freeze([
   'server/src/services/policyBuilderLegacyCompatibilityBoundary.mjs',
 ]);
 
+// These services retain the approved removal manifest as audit evidence. Their
+// string literals are not runtime dependencies, but any actual import from one
+// of them must still block closure.
+const CONTROL_PLANE_EVIDENCE_PATHS = Object.freeze([
+  'server/src/services/policyCompatibilityDeletionGates.mjs',
+  'server/src/services/policyEngineCompletionAudit.mjs',
+  'server/src/services/policyMigrationDeletionPath.mjs',
+]);
+
 function normalizeRepositoryPath(value = '') {
   return String(value || '').replace(/\\/g, '/').replace(/^\.\//, '').trim();
 }
@@ -67,6 +76,69 @@ function isIgnoredReferenceScanPath(repositoryPath = '') {
 
   return REFERENCE_SCAN_IGNORED_PATHS.includes(normalizedPath) ||
     REFERENCE_SCAN_IGNORED_PATH_PREFIXES.some(prefix => normalizedPath.startsWith(prefix));
+}
+
+function isControlPlaneEvidencePath(repositoryPath = '') {
+  return CONTROL_PLANE_EVIDENCE_PATHS.includes(
+    normalizeRepositoryPath(repositoryPath)
+  );
+}
+
+function extractStaticModuleSpecifiers(line = '') {
+  const specifiers = [];
+  const patterns = [
+    /\bimport\s+(?:[^'"()]*?\s+from\s+)?['"]([^'"]+)['"]/g,
+    /\bexport\s+(?:[^'"()]*?\s+from\s+)['"]([^'"]+)['"]/g,
+    /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+    /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+  ];
+
+  patterns.forEach(pattern => {
+    for (const match of line.matchAll(pattern)) {
+      if (match[1]) {
+        specifiers.push(match[1]);
+      }
+    }
+  });
+
+  return [...new Set(specifiers)];
+}
+
+function resolveModuleSpecifier({ cwd, repositoryPath, specifier }) {
+  const normalizedSpecifier = normalizeRepositoryPath(specifier);
+
+  if (specifier.startsWith('.')) {
+    const importerDirectory = path.dirname(
+      resolveRepositoryPath(cwd, repositoryPath)
+    );
+
+    return normalizeRepositoryPath(
+      path.relative(cwd, path.resolve(importerDirectory, specifier))
+    );
+  }
+
+  return normalizedSpecifier;
+}
+
+function buildModuleReferences({
+  cwd,
+  repositoryPath,
+  line,
+  manifestPathSet,
+  lineNumber,
+} = {}) {
+  return extractStaticModuleSpecifiers(line)
+    .map(specifier => resolveModuleSpecifier({ cwd, repositoryPath, specifier }))
+    .filter(resolvedPath => (
+      resolvedPath &&
+      resolvedPath !== repositoryPath &&
+      manifestPathSet.has(resolvedPath)
+    ))
+    .map(path => ({
+      path,
+      referencedBy: repositoryPath,
+      line: lineNumber,
+    }));
 }
 
 function walkTextFiles(rootPath) {
@@ -100,7 +172,18 @@ function scanPolicyStorageClosureReferences({
   scanRoots = DEFAULT_SCAN_ROOTS,
 } = {}) {
   const normalizedManifestPaths = manifestPaths.map(normalizeRepositoryPath);
+  const manifestPathSet = new Set(normalizedManifestPaths);
   const references = [];
+  const referenceKeys = new Set();
+
+  function addReference(reference) {
+    const key = `${reference.path}:${reference.referencedBy}:${reference.line}`;
+
+    if (!referenceKeys.has(key)) {
+      referenceKeys.add(key);
+      references.push(reference);
+    }
+  }
 
   scanRoots
     .map(scanRoot => resolveRepositoryPath(cwd, scanRoot))
@@ -120,12 +203,26 @@ function scanPolicyStorageClosureReferences({
       }
 
       content.split(/\r?\n/).forEach((line, index) => {
+        const lineNumber = index + 1;
+
+        buildModuleReferences({
+          cwd,
+          repositoryPath,
+          line,
+          manifestPathSet,
+          lineNumber,
+        }).forEach(addReference);
+
+        if (isControlPlaneEvidencePath(repositoryPath)) {
+          return;
+        }
+
         normalizedManifestPaths.forEach(manifestPath => {
           if (repositoryPath !== manifestPath && line.includes(manifestPath)) {
-            references.push({
+            addReference({
               path: manifestPath,
               referencedBy: repositoryPath,
-              line: index + 1,
+              line: lineNumber,
             });
           }
         });
@@ -140,8 +237,11 @@ function scanPolicyStorageClosureReferences({
 }
 
 export {
+  CONTROL_PLANE_EVIDENCE_PATHS,
   DEFAULT_SCAN_ROOTS,
+  extractStaticModuleSpecifiers,
   isIgnoredReferenceScanPath,
   normalizeRepositoryPath,
+  resolveModuleSpecifier,
   scanPolicyStorageClosureReferences,
 };

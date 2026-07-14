@@ -16,10 +16,12 @@ Current execution focus:
    migration, fresh-install schema, scheduler, restore behavior, and focused
    tests are now required closure evidence.
 3. **Compatibility-Removal Evidence Regeneration**: regenerate the durable
-   compatibility-removal completion artifact with the current pipeline, then
-   rerun the current-closure and requirement audits. The completion-status audit
-   rejects the retired phase-coded artifact as historical evidence rather than
-   current closure proof.
+   compatibility-removal completion artifact from a current execution plan,
+   checkout path state, operational reference scan, and fresh validation, then
+   rerun the current-closure and requirement audits. The regeneration path
+   rejects predecessor plan contracts and does not manufacture deletion
+   approval. It can therefore report incomplete readiness rather than turning a
+   historical partial manifest into current closure proof.
 4. Return to **6R.5 Operator Workflow Rebuild** only after the engine inputs
    and native-authority invariants are reliable. It must replace the current
    manual builder rather than add another layer of controls to it.
@@ -6738,6 +6740,46 @@ Implementation status:
   and its design outcome are documented in
   [Policy Storage Completion Status Audit](policy-storage-completion-status-audit.md).
 
+### 8R.36 Compatibility-Removal Evidence Regeneration
+
+Intent: regenerate compatibility-removal evidence from the current checkout
+without treating a historical plan or a partial removal batch as current
+closure proof.
+
+Tasks:
+
+- Require the current compatibility-deletion execution-plan contract.
+- Derive manifest path state from the current checkout.
+- Scan operational source references without treating named control-plane
+  manifest inventories as runtime dependencies.
+- Require current focused and full validation evidence.
+- Emit complete, remaining-inventory, or blocked completion-audit evidence
+  without synthesizing deletion approval or performing a destructive action.
+- Feed the nested artifact to the current closure and requirement audits.
+
+Acceptance criteria:
+
+- A predecessor execution-plan contract cannot produce a complete artifact.
+- A source scan that has not completed blocks closure evidence.
+- A path that still exists produces remaining-inventory evidence.
+- Control-plane inventory literals do not mask real imports or create false
+  runtime-reference blockers.
+- Regeneration performs no deletion, storage mutation, manifest write, command
+  execution, or Git operation inside the service.
+
+Implementation status:
+
+- The design and research record is [Policy Compatibility-Removal Evidence
+  Regeneration](policy-compatibility-removal-evidence-regeneration.md).
+- The read-only service lives in
+  `server/src/services/policyCompatibilityRemovalEvidenceRegeneration.mjs`.
+- The root runner is `npm run policy:compatibility-removal-evidence`.
+- The focused suite lives in
+  `server/src/__tests__/services/policyCompatibilityRemovalEvidenceRegeneration.test.mjs`.
+- Current regeneration correctly exposes a broader unresolved deletion-readiness
+  state when no current, approved execution plan is available. It must not be
+  bypassed with a retired artifact.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -6871,11 +6913,19 @@ Implement Phase 8R in this order:
     Verifies the mapped closure component sequence against current closure,
     artifact, roadmap, changelog, and focused-test evidence before the closure
     objective is marked complete.
+36. **8R.36 Compatibility-Removal Evidence Regeneration**
+    Rebuilds compatibility-removal evidence from a current approved execution
+    plan, current repository state, operational reference scan, and fresh
+    validation. It reports the actual readiness state and never converts a
+    historical partial manifest into closure proof.
 
 Completion state:
 
-- All mapped Phase 8R components have implementation, design, focused-test,
-  roadmap, and Unreleased release-outcome evidence.
+- All mapped Phase 8R component contracts have implementation, design,
+  focused-test, roadmap, and Unreleased release-outcome evidence. Storage
+  closure itself remains blocked until compatibility-removal evidence is
+  regenerated from a current approved execution plan and the live deletion
+  readiness gates pass.
 - The storage closure validation generator is shell-free on direct Node and
   Windows invocations; its current evidence includes focused, lint, Markdown,
   unit, and integration validation.

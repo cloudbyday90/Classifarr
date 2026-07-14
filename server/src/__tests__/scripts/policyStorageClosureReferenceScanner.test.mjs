@@ -79,4 +79,28 @@ describe('policyStorageClosureReferenceScanner', () => {
       line: 1,
     }]);
   });
+
+  test('ignores manifest literals in named control-plane evidence but not imports', () => {
+    const manifestPath = 'server/src/services/retiredCompatibilityService.mjs';
+
+    writeFixture(
+      fixtureRoot,
+      'server/src/services/policyCompatibilityDeletionGates.mjs',
+      [
+        `export const removedPath = '${manifestPath}';`,
+        "import './retiredCompatibilityService.mjs';",
+      ].join('\n')
+    );
+
+    const scan = scanPolicyStorageClosureReferences({
+      cwd: fixtureRoot,
+      manifestPaths: [manifestPath],
+    });
+
+    expect(scan.references).toEqual([{
+      path: manifestPath,
+      referencedBy: 'server/src/services/policyCompatibilityDeletionGates.mjs',
+      line: 2,
+    }]);
+  });
 });

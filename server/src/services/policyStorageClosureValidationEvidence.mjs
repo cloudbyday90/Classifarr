@@ -28,7 +28,7 @@ const POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS = Object.freeze([
     command: 'node',
     args: [
       './scripts/run-jest.mjs',
-      '--testPathPatterns=policyActiveIntentIntegrity|policyCandidateAuthorityEligibility|policyNativeIntentAuthority|policyNativeIntentReversion|policyRollbackSnapshotRetention|backupRestoreTables[.]nativePolicyIntent|policyStorageClosureCurrentEvidenceCollector|policyStorageClosureEvidenceRun|policyStorageCompletionCheckpoint|policyStorageCompletionCheckpointArtifact|policyStorageCurrentClosureAudit|policyStorageClosureRequirementAudit|policyCompatibilityRemovalCompletionAudit|policyCompatibilityRemovalCompletionAuditArtifact|policyStorageClosureValidationEvidence|policyCompatibilityDeletionExecutionPlanArtifact|policyControlledCompatibilityRemovalBatchArtifact|policyControlledRemovalApplyArtifact|policyPostRemovalRuntimeVerificationArtifact|policyNextCompatibilityRemovalBatchAuthorizationArtifact|policyStorageClosureFinalRemovalAudit|policyStorageFinalClosureReadout|migrations',
+      '--testPathPatterns=policyActiveIntentIntegrity|policyCandidateAuthorityEligibility|policyNativeIntentAuthority|policyNativeIntentReversion|policyRollbackSnapshotRetention|backupRestoreTables[.]nativePolicyIntent|policyStorageClosureCurrentEvidenceCollector|policyStorageClosureEvidenceRun|policyStorageCompletionCheckpoint|policyStorageCompletionCheckpointArtifact|policyStorageCurrentClosureAudit|policyStorageClosureRequirementAudit|policyCompatibilityRemovalCompletionAudit|policyCompatibilityRemovalCompletionAuditArtifact|policyCompatibilityRemovalEvidenceRegeneration|policyStorageClosureReferenceScanner|policyStorageClosureValidationEvidence|policyCompatibilityDeletionExecutionPlanArtifact|policyControlledCompatibilityRemovalBatchArtifact|policyControlledRemovalApplyArtifact|policyPostRemovalRuntimeVerificationArtifact|policyNextCompatibilityRemovalBatchAuthorizationArtifact|policyStorageClosureFinalRemovalAudit|policyStorageFinalClosureReadout|migrations',
       '--no-coverage',
       '--runInBand',
     ],
@@ -66,6 +66,7 @@ const POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS = Object.freeze([
       'docs/architecture/policy-compatibility-removal-completion-audit.md',
       'docs/architecture/policy-compatibility-removal-completion-audit-artifact-exporter.md',
       'docs/architecture/policy-compatibility-removal-completion-audit-module-cutover.md',
+      'docs/architecture/policy-compatibility-removal-evidence-regeneration.md',
       'docs/architecture/policy-storage-completion-checkpoint.md',
       'docs/architecture/policy-storage-completion-checkpoint-artifact-exporter.md',
       'docs/architecture/policy-storage-completion-checkpoint-module-cutover.md',

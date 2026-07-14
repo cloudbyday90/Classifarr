@@ -1,4 +1,5 @@
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
@@ -37,6 +38,7 @@ function executionPlan(overrides = {}) {
   const entries = overrides.entries || MANIFEST_PATHS.map(path => manifestEntry(path));
 
   return {
+    version: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
     statusId:
       POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,

@@ -143,6 +143,10 @@ const POLICY_STORAGE_COMPLETION_COMPONENTS = Object.freeze([
     componentId: 'compatibility_removal_completion_audit',
     label: 'Compatibility Removal Completion Audit',
   },
+  {
+    componentId: 'compatibility_removal_evidence_regeneration',
+    label: 'Compatibility-Removal Evidence Regeneration',
+  },
 ]);
 
 function asArray(value) {

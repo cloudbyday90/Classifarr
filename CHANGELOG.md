@@ -46,6 +46,11 @@ unchanged operator or runtime outcome.
   authority selection, transactional reversion, and rollback-payload retention.
   It also rejects outdated compatibility-removal audit artifacts, preventing
   stale or broad parent-component evidence from producing a complete result.
+- **Current Compatibility-Removal Evidence** - policy storage closure now
+  regenerates completion evidence from the current execution plan, repository
+  path state, operational reference scan, and fresh validation results. Older
+  plan contracts cannot be rewrapped as current proof, while control-plane
+  inventory records no longer create false runtime-reference blockers.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

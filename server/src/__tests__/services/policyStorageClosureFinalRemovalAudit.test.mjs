@@ -1,4 +1,5 @@
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
@@ -16,6 +17,7 @@ const MANIFEST_PATHS = Object.freeze([
 
 function executionPlan(overrides = {}) {
   return {
+    version: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
     statusId:
       POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,

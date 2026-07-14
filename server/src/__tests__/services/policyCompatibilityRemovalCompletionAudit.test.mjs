@@ -1,4 +1,5 @@
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
@@ -37,6 +38,7 @@ function executionPlan(overrides = {}) {
   const entries = overrides.entries || MANIFEST_PATHS.map(path => manifestEntry(path));
 
   return {
+    version: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
     statusId:
       POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,
@@ -262,6 +264,26 @@ describe('policyCompatibilityRemovalCompletionAudit', () => {
     expect(noManifest.risks.map(risk => risk.riskId)).toContain(
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.NO_MANIFEST_ENTRIES
     );
+  });
+
+  test('blocks predecessor execution-plan contracts before accepting removal evidence', () => {
+    const audit = completeAudit({
+      executionPlan: executionPlan({
+        version: 'phase8r.compatibility_path_deletion_execution_plan.v1',
+      }),
+    });
+
+    expect(audit.statusId)
+      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+        .BLOCKED_BY_EXECUTION_PLAN);
+    expect(audit.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+            .EXECUTION_PLAN_VERSION_UNSUPPORTED,
+        expectedVersion: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
+      }),
+    ]));
   });
 
   test('blocks when removal verification evidence is missing, invalid, or incomplete', () => {

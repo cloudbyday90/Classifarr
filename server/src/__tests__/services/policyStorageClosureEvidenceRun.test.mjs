@@ -233,8 +233,12 @@ describe('policyStorageClosureEvidenceRun', () => {
         missingComponentIds: expect.any(Array),
       }),
     ]));
-    expect(evidenceRun.checkpoint.risks.every(risk => (
-      risk.missingComponentIds?.length === SOURCE_COMPONENT_IDS.length
+    const missingComponentRisks = evidenceRun.checkpoint.risks
+      .filter(risk => Array.isArray(risk.missingComponentIds));
+
+    expect(missingComponentRisks).toHaveLength(3);
+    expect(missingComponentRisks.every(risk => (
+      risk.missingComponentIds.length > 0
     ))).toBe(true);
   });
 

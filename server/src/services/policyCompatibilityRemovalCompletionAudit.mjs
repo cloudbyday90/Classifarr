@@ -1,4 +1,5 @@
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
   buildPolicyCompatibilityDeletionExecutionPlan,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
@@ -26,6 +27,7 @@ const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS = Object.freeze({
   AUTHORIZATION_NOT_COMPLETE: 'authorization_not_complete',
   AUTHORIZATION_VALIDATION_FAILED: 'authorization_validation_failed',
   EXECUTION_PLAN_NOT_READY: 'execution_plan_not_ready',
+  EXECUTION_PLAN_VERSION_UNSUPPORTED: 'execution_plan_version_unsupported',
   EXECUTION_PLAN_VALIDATION_FAILED: 'execution_plan_validation_failed',
   NO_MANIFEST_ENTRIES: 'no_manifest_entries',
   REMOVAL_VERIFICATION_MISSING: 'removal_verification_missing',
@@ -110,6 +112,18 @@ function evaluateCompletionAuthorization(completionAuthorization = {}) {
 function evaluateExecutionPlan(executionPlan = {}) {
   const risks = [];
   const entries = getManifestEntries(executionPlan);
+
+  if (executionPlan.version !== POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .EXECUTION_PLAN_VERSION_UNSUPPORTED,
+      'Compatibility removal completion audit requires the current compatibility deletion execution-plan contract.',
+      {
+        expectedVersion: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
+        receivedVersion: executionPlan.version || null,
+      }
+    ));
+  }
 
   if (
     executionPlan.statusId !==
@@ -319,6 +333,8 @@ function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
 
   if (risks.some(risk => [
     POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.EXECUTION_PLAN_NOT_READY,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      .EXECUTION_PLAN_VERSION_UNSUPPORTED,
     POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
       .EXECUTION_PLAN_VALIDATION_FAILED,
     POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.NO_MANIFEST_ENTRIES,

@@ -280,6 +280,22 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     testPaths: ['server/src/__tests__/services/policyCompatibilityRemovalCompletionAudit.test.mjs'],
   },
   {
+    componentId: 'compatibility_removal_evidence_regeneration',
+    label: 'Compatibility-Removal Evidence Regeneration',
+    designDocPaths: [
+      'docs/architecture/policy-compatibility-removal-evidence-regeneration.md',
+    ],
+    contractPaths: [
+      'server/src/services/policyCompatibilityRemovalEvidenceRegeneration.mjs',
+      'scripts/generate-policy-compatibility-removal-evidence.mjs',
+      'scripts/lib/policyStorageClosureReferenceScanner.mjs',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyCompatibilityRemovalEvidenceRegeneration.test.mjs',
+      'server/src/__tests__/scripts/policyStorageClosureReferenceScanner.test.mjs',
+    ],
+  },
+  {
     componentId: 'storage_completion_checkpoint',
     label: 'Policy Storage Completion Checkpoint',
     designDocPaths: ['docs/architecture/policy-storage-completion-checkpoint.md'],
