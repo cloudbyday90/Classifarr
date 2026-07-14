@@ -298,7 +298,12 @@ describe('Schema snapshot freshness', () => {
             __dirname,
             '../../../database/migrations/20260701_160000_add_policy_intent_native_storage.sql'
         );
+        const integrityMigrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260713_150000_enforce_single_active_policy_intent.sql'
+        );
         const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+        const integrityMigrationSql = fs.readFileSync(integrityMigrationPath, 'utf8');
         const policyIntents = getCreateTableBlock(schemaSql, 'policy_intents');
         const policyIntentRules = getCreateTableBlock(schemaSql, 'policy_intent_rules');
         const policyIntentRoutingTargets = getCreateTableBlock(schemaSql, 'policy_intent_routing_targets');
@@ -348,7 +353,12 @@ describe('Schema snapshot freshness', () => {
         expect(policyIntentRollbackSnapshots).toContain('policy_intent_rollback_snapshots_window_chk');
         expect(policyIntentValidationStatus).toContain('errors jsonb DEFAULT \'[]\'::jsonb NOT NULL');
         expect(policyIntentValidationStatus).toContain('warnings jsonb DEFAULT \'[]\'::jsonb NOT NULL');
-        expect(schemaSql).toContain('CREATE UNIQUE INDEX idx_policy_intents_active_version');
+        expect(integrityMigrationSql).toContain('LOCK TABLE policy_intents IN SHARE ROW EXCLUSIVE MODE');
+        expect(integrityMigrationSql).toContain('active_intent_integrity_repaired');
+        expect(integrityMigrationSql).toContain('CREATE UNIQUE INDEX idx_policy_intents_one_active_policy');
+        expect(integrityMigrationSql).toContain('DROP INDEX idx_policy_intents_active_version');
+        expect(schemaSql).toContain('CREATE UNIQUE INDEX idx_policy_intents_one_active_policy');
+        expect(schemaSql).not.toContain('CREATE UNIQUE INDEX idx_policy_intents_active_version');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_rules_values_gin');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_migration_events_state');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_validation_status_lookup');

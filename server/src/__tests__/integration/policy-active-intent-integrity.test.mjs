@@ -1,0 +1,253 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+import { jest } from '@jest/globals';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
+const activeIntentIntegrityMigrationSql = readFileSync(
+  path.resolve(
+    import.meta.dirname,
+    '../../../../database/migrations/20260713_150000_enforce_single_active_policy_intent.sql'
+  ),
+  'utf8'
+);
+
+async function createPolicyAuthorityFixture() {
+  const suffix = `${Date.now()}_${Math.floor(Math.random() * 1_000_000)}`;
+  const libraryResult = await db.query(
+    `INSERT INTO libraries (external_id, name, media_type)
+     VALUES ($1, $2, 'movie')
+     RETURNING id`,
+    [`native-intent-${suffix}`, `Native Intent ${suffix}`]
+  );
+  const libraryId = libraryResult.rows[0].id;
+  const policyResult = await db.query(
+    `INSERT INTO library_policies (library_id, name)
+     VALUES ($1, $2)
+     RETURNING id`,
+    [libraryId, `Native Intent Policy ${suffix}`]
+  );
+
+  return { libraryId, policyId: policyResult.rows[0].id };
+}
+
+async function insertActiveIntent(client, { policyId, libraryId, intentVersion }) {
+  return client.query(
+    `INSERT INTO policy_intents (
+       policy_id,
+       library_id,
+       intent_version,
+       source,
+       inference_state,
+       review_behavior,
+       validation_status
+     )
+     VALUES ($1, $2, $3, 'native_intent', 'inferred', '{}'::jsonb, 'valid')
+     RETURNING id`,
+    [policyId, libraryId, intentVersion]
+  );
+}
+
+async function restoreHistoricalActiveVersionIndex(client) {
+  await client.query('DROP INDEX idx_policy_intents_one_active_policy');
+  await client.query(
+    `CREATE UNIQUE INDEX idx_policy_intents_active_version
+     ON policy_intents (policy_id, intent_version)
+     WHERE active = TRUE`
+  );
+}
+
+describe('Policy Active Intent Integrity Integration', () => {
+  const createdPolicyIds = [];
+  const createdLibraryIds = [];
+
+  afterEach(async () => {
+    while (createdPolicyIds.length > 0) {
+      await db.query('DELETE FROM library_policies WHERE id = $1', [createdPolicyIds.pop()]);
+    }
+    while (createdLibraryIds.length > 0) {
+      await db.query('DELETE FROM libraries WHERE id = $1', [createdLibraryIds.pop()]);
+    }
+  });
+
+  test('enforces one active native intent across concurrent transactions', async () => {
+    const fixture = await createPolicyAuthorityFixture();
+    createdPolicyIds.push(fixture.policyId);
+    createdLibraryIds.push(fixture.libraryId);
+    const firstClient = await db.pool.connect();
+    const secondClient = await db.pool.connect();
+
+    try {
+      await firstClient.query('BEGIN');
+      await secondClient.query('BEGIN');
+      await insertActiveIntent(firstClient, {
+        ...fixture,
+        intentVersion: 1,
+      });
+
+      const secondInsert = insertActiveIntent(secondClient, {
+        ...fixture,
+        intentVersion: 2,
+      });
+      await firstClient.query('COMMIT');
+
+      await expect(secondInsert).rejects.toMatchObject({ code: '23505' });
+      await secondClient.query('ROLLBACK');
+
+      const activeIntentResult = await db.query(
+        'SELECT id FROM policy_intents WHERE policy_id = $1 AND active = TRUE',
+        [fixture.policyId]
+      );
+      expect(activeIntentResult.rows).toHaveLength(1);
+    } finally {
+      await firstClient.query('ROLLBACK').catch(() => {});
+      await secondClient.query('ROLLBACK').catch(() => {});
+      firstClient.release();
+      secondClient.release();
+    }
+  });
+
+  test('creates the final partial unique index instead of the historical version index', async () => {
+    const result = await db.query(
+      `SELECT indexdef
+       FROM pg_indexes
+       WHERE schemaname = 'public'
+         AND indexname = 'idx_policy_intents_one_active_policy'`
+    );
+
+    expect(result.rows[0].indexdef).toContain('(policy_id) WHERE (active = true)');
+
+    const historicalIndex = await db.query(
+      `SELECT 1
+       FROM pg_indexes
+       WHERE schemaname = 'public'
+         AND indexname = 'idx_policy_intents_active_version'`
+    );
+    expect(historicalIndex.rows).toEqual([]);
+  });
+
+  test('repairs safe duplicate authorities without deleting their history', async () => {
+    const fixture = await createPolicyAuthorityFixture();
+    createdPolicyIds.push(fixture.policyId);
+    createdLibraryIds.push(fixture.libraryId);
+    const client = await db.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      await restoreHistoricalActiveVersionIndex(client);
+      const canonical = await insertActiveIntent(client, {
+        ...fixture,
+        intentVersion: 1,
+      });
+      const duplicate = await insertActiveIntent(client, {
+        ...fixture,
+        intentVersion: 2,
+      });
+      await client.query(
+        `UPDATE policy_intents
+         SET validation_status = 'warning'
+         WHERE id = $1`,
+        [duplicate.rows[0].id]
+      );
+
+      await client.query(activeIntentIntegrityMigrationSql);
+
+      const repaired = await client.query(
+        `SELECT id, active, replaced_by_intent_id
+         FROM policy_intents
+         WHERE policy_id = $1
+         ORDER BY id`,
+        [fixture.policyId]
+      );
+      expect(repaired.rows).toEqual([
+        { id: canonical.rows[0].id, active: true, replaced_by_intent_id: null },
+        {
+          id: duplicate.rows[0].id,
+          active: false,
+          replaced_by_intent_id: canonical.rows[0].id,
+        },
+      ]);
+
+      const event = await client.query(
+        `SELECT event_type, metadata
+         FROM policy_intent_migration_events
+         WHERE policy_id = $1`,
+        [fixture.policyId]
+      );
+      expect(event.rows).toEqual([expect.objectContaining({
+        event_type: 'active_intent_integrity_repaired',
+        metadata: expect.objectContaining({
+          canonical_intent_id: canonical.rows[0].id,
+          deactivated_intent_ids: [duplicate.rows[0].id],
+        }),
+      })]);
+    } finally {
+      await client.query('ROLLBACK').catch(() => {});
+      client.release();
+    }
+  });
+
+  test('rolls back invalid-only duplicate candidates before repairing or changing indexes', async () => {
+    const fixture = await createPolicyAuthorityFixture();
+    createdPolicyIds.push(fixture.policyId);
+    createdLibraryIds.push(fixture.libraryId);
+    const client = await db.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      await restoreHistoricalActiveVersionIndex(client);
+      const first = await insertActiveIntent(client, {
+        ...fixture,
+        intentVersion: 1,
+      });
+      const second = await insertActiveIntent(client, {
+        ...fixture,
+        intentVersion: 2,
+      });
+      await client.query(
+        `UPDATE policy_intents
+         SET validation_status = CASE id
+           WHEN $1 THEN 'invalid'
+           WHEN $2 THEN 'pending_validation'
+         END
+         WHERE id IN ($1, $2)`,
+        [first.rows[0].id, second.rows[0].id]
+      );
+
+      await expect(client.query(activeIntentIntegrityMigrationSql)).rejects.toMatchObject({
+        code: '23514',
+      });
+    } finally {
+      await client.query('ROLLBACK').catch(() => {});
+      client.release();
+    }
+
+    const finalIndex = await db.query(
+      `SELECT 1
+       FROM pg_indexes
+       WHERE schemaname = 'public'
+         AND indexname = 'idx_policy_intents_one_active_policy'`
+    );
+    expect(finalIndex.rows).toHaveLength(1);
+  });
+});

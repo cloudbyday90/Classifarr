@@ -36,8 +36,8 @@ creating tables yet, so later migration work cannot drift back into legacy
    only where the product contract needs structured values or validation output.
 2. Keep durable policy intent separate from routing targets, template
    provenance, migration events, rollback snapshots, and validation status.
-3. Use a partial unique active-version index so only one active native intent
-   version exists per policy.
+3. Use a partial unique active-policy index so only one active native intent
+   authority exists per policy.
 4. Use GIN only for bounded native rule values, not raw provider/replay payloads.
 5. Require server validation before native writes become active.
 6. Do not persist UI draft state, transient readiness, provider payloads,
@@ -75,7 +75,7 @@ Cons:
 - Required indexes:
   - policy lookup,
   - library lookup,
-  - unique active intent version,
+  - unique active policy authority,
   - rule lookup,
   - rule values GIN,
   - routing target lookup,
@@ -94,7 +94,7 @@ Cons:
 Native intent storage now has a side-effect-free native schema contract and
 validator.
 Validation fails when required tables, storage sections, indexes, foreign keys,
-server policy intent rule fields, active-version uniqueness, rollback expiry,
+server policy intent rule fields, single-active-policy uniqueness, rollback expiry,
 or server validation gates are missing. It also rejects forbidden durable fields
 such as UI draft state, provider payloads, prompts, traces, embeddings, replay
 diagnostics, and impact-preview payloads.

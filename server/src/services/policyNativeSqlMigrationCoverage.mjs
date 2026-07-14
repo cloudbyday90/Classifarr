@@ -13,10 +13,19 @@ const POLICY_NATIVE_SQL_MIGRATION_COVERAGE_VERSION =
 const POLICY_NATIVE_SQL_MIGRATION_FILENAME =
   '20260701_160000_add_policy_intent_native_storage.sql';
 
+const POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_FILENAME =
+  '20260713_150000_enforce_single_active_policy_intent.sql';
+
 const POLICY_NATIVE_SQL_MIGRATION_PATH = path.resolve(
   import.meta.dirname,
   '../../../database/migrations',
   POLICY_NATIVE_SQL_MIGRATION_FILENAME
+);
+
+const POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_PATH = path.resolve(
+  import.meta.dirname,
+  '../../../database/migrations',
+  POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_FILENAME
 );
 
 const POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS = Object.freeze({
@@ -42,8 +51,8 @@ const POLICY_NATIVE_SQL_MIGRATION_COVERAGE_REASON_IDS = Object.freeze({
 });
 
 const EXPECTED_INDEX_SQL_NAMES = Object.freeze({
-  [`${POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS}:${POLICY_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_INTENT_VERSION}`]:
-    'idx_policy_intents_active_version',
+  [`${POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS}:${POLICY_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_POLICY}`]:
+    'idx_policy_intents_one_active_policy',
   [`${POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS}:${POLICY_NATIVE_SCHEMA_INDEX_IDS.POLICY_LOOKUP}`]:
     'idx_policy_intents_policy_lookup',
   [`${POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS}:${POLICY_NATIVE_SCHEMA_INDEX_IDS.LIBRARY_LOOKUP}`]:
@@ -104,6 +113,14 @@ function readCanonicalMigrationSql() {
   return readFileSync(POLICY_NATIVE_SQL_MIGRATION_PATH, 'utf8');
 }
 
+function readActiveIntentIntegrityMigrationSql() {
+  if (!existsSync(POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_PATH)) {
+    return null;
+  }
+
+  return readFileSync(POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_PATH, 'utf8');
+}
+
 function stripSqlLineComments(sql) {
   return normalizeString(sql)
     .split('\n')
@@ -141,10 +158,9 @@ function hasCreateIndexStatement(migrationSql, indexName) {
     .split('\n')
     .some(line => {
       const normalizedLine = normalizeSqlLine(line);
-      return normalizedLine.startsWith('create index if not exists ')
-        || normalizedLine.startsWith('create unique index if not exists ')
-        ? normalizedLine.includes(` ${normalizedIndexName}`)
-        : false;
+      const isCreateIndex = normalizedLine.startsWith('create index ')
+        || normalizedLine.startsWith('create unique index ');
+      return isCreateIndex && normalizedLine.includes(` ${normalizedIndexName}`);
     });
 }
 
@@ -328,10 +344,15 @@ function validatePolicyNativeSqlMigrationCoverage(coverage = {}) {
 function buildPolicyNativeSqlMigrationCoverage(options = {}) {
   const schemaContract = options.schemaContract || buildPolicyNativeSchemaContract();
   const schemaContractValidation = validatePolicyNativeSchemaContract(schemaContract);
+  const baseMigrationSql = options.baseMigrationSql ?? readCanonicalMigrationSql() ?? '';
+  const integrityMigrationSql = options.integrityMigrationSql
+    ?? readActiveIntentIntegrityMigrationSql()
+    ?? '';
   const migrationFileExists = options.migrationSql
     ? true
-    : existsSync(POLICY_NATIVE_SQL_MIGRATION_PATH);
-  const migrationSql = options.migrationSql ?? readCanonicalMigrationSql() ?? '';
+    : existsSync(POLICY_NATIVE_SQL_MIGRATION_PATH)
+      && existsSync(POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_PATH);
+  const migrationSql = options.migrationSql ?? `${baseMigrationSql}\n${integrityMigrationSql}`;
   const migrationDdlSql = stripSqlLineComments(migrationSql);
   const tables = asArray(schemaContract.tables);
   const tableCoverage = buildTableCoverage(tables, migrationDdlSql);
@@ -341,6 +362,8 @@ function buildPolicyNativeSqlMigrationCoverage(options = {}) {
     version: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_VERSION,
     migrationFilename: POLICY_NATIVE_SQL_MIGRATION_FILENAME,
     migrationPath: POLICY_NATIVE_SQL_MIGRATION_PATH,
+    integrityMigrationFilename: POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_FILENAME,
+    integrityMigrationPath: POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_PATH,
     migrationFileExists,
     migrationSql,
     migrationDdlSql,
@@ -376,6 +399,7 @@ export {
   POLICY_NATIVE_SQL_MIGRATION_COVERAGE_REASON_IDS,
   POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS,
   POLICY_NATIVE_SQL_MIGRATION_COVERAGE_VERSION,
+  POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_FILENAME,
   POLICY_NATIVE_SQL_MIGRATION_FILENAME,
   buildPolicyNativeSqlMigrationCoverage,
   validatePolicyNativeSqlMigrationCoverage,

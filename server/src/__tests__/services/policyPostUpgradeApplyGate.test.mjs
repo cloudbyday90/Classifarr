@@ -77,6 +77,10 @@ function createApplyClient({ failOnRules = false } = {}) {
         return { rows: [] };
       }
 
+      if (String(sql).includes('FROM library_policies') && String(sql).includes('FOR UPDATE')) {
+        return { rows: [{ id: 14, library_id: 4 }], rowCount: 1 };
+      }
+
       if (String(sql).includes('INSERT INTO policy_intents')) {
         return { rows: [{ id: '501' }], rowCount: 1 };
       }
@@ -149,6 +153,10 @@ describe('policyPostUpgradeApplyGate', () => {
       }),
     ]);
     expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM library_policies'),
+      [14, 4]
+    );
+    expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO policy_intent_rollback_snapshots'),
       expect.any(Array)
     );
@@ -162,6 +170,33 @@ describe('policyPostUpgradeApplyGate', () => {
       migrationEventsWritten: true,
       legacyPathsDeleted: false,
     }));
+  });
+
+  test('fails closed when the policy authority row cannot be locked', async () => {
+    const client = createApplyClient();
+    client.query.mockImplementation(async sql => {
+      if (String(sql).includes('FROM library_policies') && String(sql).includes('FOR UPDATE')) {
+        return { rows: [], rowCount: 0 };
+      }
+      return { rows: [], rowCount: 1 };
+    });
+    const dbClient = { withTransaction: jest.fn(async work => work(client)) };
+
+    const result = await applyPolicyPostUpgradeApplyGate({
+      dbClient,
+      dryRun: readyDryRun(),
+      policies: [policy()],
+      now: '2026-07-01T12:00:00.000Z',
+    });
+
+    expect(result.statusId).toBe(POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.FAILED_ROLLED_BACK);
+    expect(result.operatorErrorIds).toContain(
+      POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.POLICY_AUTHORITY_UNAVAILABLE
+    );
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_intents'),
+      expect.anything()
+    );
   });
 
   test('returns rollback-safe failure details when transaction work rejects', async () => {

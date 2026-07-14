@@ -16,8 +16,13 @@ const migrationPath = path.resolve(
   '../../../../database/migrations/20260701_160000_add_policy_intent_native_storage.sql'
 );
 
+const integrityMigrationPath = path.resolve(
+  import.meta.dirname,
+  '../../../../database/migrations/20260713_150000_enforce_single_active_policy_intent.sql'
+);
+
 function readMigrationSql() {
-  return readFileSync(migrationPath, 'utf8');
+  return `${readFileSync(migrationPath, 'utf8')}\n${readFileSync(integrityMigrationPath, 'utf8')}`;
 }
 
 describe('policyNativeSqlMigrationCoverage', () => {
@@ -26,6 +31,9 @@ describe('policyNativeSqlMigrationCoverage', () => {
 
     expect(coverage.validation.ok).toBe(true);
     expect(coverage.migrationFilename).toBe('20260701_160000_add_policy_intent_native_storage.sql');
+    expect(coverage.integrityMigrationFilename).toBe(
+      '20260713_150000_enforce_single_active_policy_intent.sql'
+    );
     expect(coverage.tableCoverage.map(tableResult => tableResult.tableId)).toEqual(
       expect.arrayContaining(Object.values(POLICY_NATIVE_SCHEMA_TABLE_IDS))
     );

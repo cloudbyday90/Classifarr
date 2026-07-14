@@ -18,6 +18,11 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Single Active Native Intent Authority** - repaired and now enforces the
+  database invariant that each policy has at most one active native intent.
+  Safe historical duplicates are retained as linked inactive history, unsafe
+  duplicate groups block migration without mutation, post-upgrade writers lock
+  policy authority, and backup restore refuses ambiguous active-intent mapping.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

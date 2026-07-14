@@ -90,14 +90,14 @@ describe('policyNativeSchemaContract', () => {
       ]));
   });
 
-  test('defines lookup, active-version, jsonb-rule, migration, rollback, and validation indexes', () => {
+  test('defines lookup, single-active-policy, jsonb-rule, migration, rollback, and validation indexes', () => {
     const contract = buildPolicyNativeSchemaContract();
     const indexes = contract.tables.flatMap(table => table.indexes);
 
     expect(indexes.map(index => index.indexId)).toEqual(expect.arrayContaining([
       POLICY_NATIVE_SCHEMA_INDEX_IDS.POLICY_LOOKUP,
       POLICY_NATIVE_SCHEMA_INDEX_IDS.LIBRARY_LOOKUP,
-      POLICY_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_INTENT_VERSION,
+      POLICY_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_POLICY,
       POLICY_NATIVE_SCHEMA_INDEX_IDS.RULE_LOOKUP,
       POLICY_NATIVE_SCHEMA_INDEX_IDS.RULE_VALUES_GIN,
       POLICY_NATIVE_SCHEMA_INDEX_IDS.ROUTING_TARGET_LOOKUP,
@@ -108,13 +108,37 @@ describe('policyNativeSchemaContract', () => {
 
     expect(indexes).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        indexId: POLICY_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_INTENT_VERSION,
+        indexId: POLICY_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_POLICY,
+        columns: ['policy_id'],
         unique: true,
         partialWhere: 'active = true',
       }),
       expect.objectContaining({
         indexId: POLICY_NATIVE_SCHEMA_INDEX_IDS.RULE_VALUES_GIN,
         method: 'gin',
+      }),
+    ]));
+  });
+
+  test('rejects an active unique index that allows different active versions for one policy', () => {
+    const tables = listPolicyNativeSchemaTables().map(table =>
+      table.tableId === POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS
+        ? {
+          ...table,
+          indexes: table.indexes.map(index =>
+            index.indexId === POLICY_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_POLICY
+              ? { ...index, columns: ['policy_id', 'intent_version'] }
+              : index
+          ),
+        }
+        : table
+    );
+    const contract = buildPolicyNativeSchemaContract({ tables });
+
+    expect(contract.validation.ok).toBe(false);
+    expect(contract.validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_ACTIVE_UNIQUE_INDEX,
       }),
     ]));
   });

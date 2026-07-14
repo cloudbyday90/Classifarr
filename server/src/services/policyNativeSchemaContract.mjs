@@ -33,7 +33,7 @@ const POLICY_NATIVE_SCHEMA_SECTION_IDS = Object.freeze({
 const POLICY_NATIVE_SCHEMA_INDEX_IDS = Object.freeze({
   POLICY_LOOKUP: 'policy_lookup',
   LIBRARY_LOOKUP: 'library_lookup',
-  ACTIVE_INTENT_VERSION: 'active_intent_version',
+  ACTIVE_POLICY: 'active_policy',
   RULE_LOOKUP: 'rule_lookup',
   RULE_VALUES_GIN: 'rule_values_gin',
   ROUTING_TARGET_LOOKUP: 'routing_target_lookup',
@@ -192,12 +192,12 @@ function listPolicyNativeSchemaTables() {
         index(POLICY_NATIVE_SCHEMA_INDEX_IDS.POLICY_LOOKUP, ['policy_id']),
         index(POLICY_NATIVE_SCHEMA_INDEX_IDS.LIBRARY_LOOKUP, ['library_id']),
         index(
-          POLICY_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_INTENT_VERSION,
-          ['policy_id', 'intent_version'],
+          POLICY_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_POLICY,
+          ['policy_id'],
           {
             unique: true,
             partialWhere: 'active = true',
-            purpose: 'Only one active native intent version may exist per policy.',
+            purpose: 'Only one active native intent authority may exist per policy.',
           }
         ),
         index(POLICY_NATIVE_SCHEMA_INDEX_IDS.VALIDATION_STATUS, ['validation_status']),
@@ -582,12 +582,17 @@ function validatePolicyNativeSchemaContract(contract = {}) {
   });
 
   const activeIndex = asArray(headerTable?.indexes).find(indexSpec =>
-    indexSpec.indexId === POLICY_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_INTENT_VERSION
+    indexSpec.indexId === POLICY_NATIVE_SCHEMA_INDEX_IDS.ACTIVE_POLICY
   );
-  if (!activeIndex?.unique || activeIndex.partialWhere !== 'active = true') {
+  if (
+    !activeIndex?.unique ||
+    activeIndex.partialWhere !== 'active = true' ||
+    activeIndex.columns?.length !== 1 ||
+    activeIndex.columns?.[0] !== 'policy_id'
+  ) {
     issues.push({
       riskId: POLICY_NATIVE_SCHEMA_AUDIT_RISK_IDS.MISSING_ACTIVE_UNIQUE_INDEX,
-      message: 'Native schema must enforce one active native intent version per policy.',
+      message: 'Native schema must enforce one active native intent authority per policy.',
     });
   }
 

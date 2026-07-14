@@ -271,7 +271,13 @@ async function restorePolicyIntents(client, policyIntents, { policyIdMap, librar
       newIntentId = existing.rows[0]?.id ?? null;
     }
 
-    if (oldIntentId !== undefined && oldIntentId !== null && newIntentId) {
+    if (!newIntentId) {
+      throw new Error(
+        `Native policy intent restore conflict for policy ${newPolicyId}; active intent authority cannot be resolved without losing a backup row.`
+      );
+    }
+
+    if (oldIntentId !== undefined && oldIntentId !== null) {
       intentIdMap.set(oldIntentId, newIntentId);
       if (replacedByIntentId !== undefined && replacedByIntentId !== null) {
         pendingReplacements.push({ newIntentId, replacedByIntentId });

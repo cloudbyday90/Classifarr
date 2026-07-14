@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-13T20:12:23.259Z
--- Latest Migration: 20260712_130000_add_policy_library_rebuild_replacement_references.sql
+-- Generated: 2026-07-14T03:40:28.292Z
+-- Latest Migration: 20260713_150000_enforce_single_active_policy_intent.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3760,7 +3760,7 @@ CREATE TABLE public.policy_intent_migration_events (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT policy_intent_migration_events_actor_type_chk CHECK (((actor_type)::text = ANY (ARRAY[('operator'::character varying)::text, ('post_upgrade'::character varying)::text, ('test_fixture'::character varying)::text, ('maintainer'::character varying)::text]))),
-    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY (ARRAY[('dry_run_reported'::character varying)::text, ('conversion_started'::character varying)::text, ('conversion_applied'::character varying)::text, ('conversion_failed'::character varying)::text, ('rollback_snapshot_created'::character varying)::text, ('rollback_applied'::character varying)::text, ('native_validated'::character varying)::text, ('legacy_deletion_ready'::character varying)::text, ('library_rebuild_replacement_applied'::character varying)::text]))),
+    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY (ARRAY[('dry_run_reported'::character varying)::text, ('conversion_started'::character varying)::text, ('conversion_applied'::character varying)::text, ('conversion_failed'::character varying)::text, ('rollback_snapshot_created'::character varying)::text, ('rollback_applied'::character varying)::text, ('native_validated'::character varying)::text, ('legacy_deletion_ready'::character varying)::text, ('library_rebuild_replacement_applied'::character varying)::text, ('active_intent_integrity_repaired'::character varying)::text]))),
     CONSTRAINT policy_intent_migration_events_metadata_shape_chk CHECK ((jsonb_typeof(metadata) = 'object'::text))
 );
 
@@ -4914,14 +4914,14 @@ COMMENT ON COLUMN public.task_queue.stage_index IS 'Current classification stage
 -- Name: COLUMN task_queue.stage_started_at; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.task_queue.stage_started_at IS 'When the current phase started';
+COMMENT ON COLUMN public.task_queue.stage_started_at IS 'When the current classification stage started';
 
 
 --
 -- Name: COLUMN task_queue.stage_history; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.task_queue.stage_history IS 'JSON array of completed phases with timestamps and durations';
+COMMENT ON COLUMN public.task_queue.stage_history IS 'JSON array of completed classification stages with timestamps and durations';
 
 
 --
@@ -8377,17 +8377,17 @@ CREATE INDEX idx_policy_intent_validation_status_lookup ON public.policy_intent_
 
 
 --
--- Name: idx_policy_intents_active_version; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_policy_intents_active_version ON public.policy_intents USING btree (policy_id, intent_version) WHERE (active = true);
-
-
---
 -- Name: idx_policy_intents_library_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_policy_intents_library_lookup ON public.policy_intents USING btree (library_id);
+
+
+--
+-- Name: idx_policy_intents_one_active_policy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_policy_intents_one_active_policy ON public.policy_intents USING btree (policy_id) WHERE (active = true);
 
 
 --
@@ -11810,6 +11810,7 @@ FROM unnest(ARRAY[
     '20260711_090000_rename_classification_progress_stages.sql',
     '20260711_090100_correct_classification_progress_stage_comments.sql',
     '20260712_120000_add_policy_library_rebuild_execution_gates.sql',
-    '20260712_130000_add_policy_library_rebuild_replacement_references.sql'
+    '20260712_130000_add_policy_library_rebuild_replacement_references.sql',
+    '20260713_150000_enforce_single_active_policy_intent.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

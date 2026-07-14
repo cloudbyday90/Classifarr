@@ -9,6 +9,7 @@ import {
   buildPolicyPostUpgradeDryRun,
   loadPolicyPostUpgradePolicies,
 } from './policyPostUpgradeDryRun.mjs';
+import { lockPolicyNativeIntentAuthority } from './policyNativeIntentAuthorityLock.mjs';
 
 const POLICY_POST_UPGRADE_APPLY_GATE_VERSION = 'policy.post_upgrade_apply_gate.v1';
 const DEFAULT_TARGET_VERSION = 1;
@@ -32,6 +33,7 @@ const POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS = Object.freeze({
   TRANSACTION_BOUNDARY_REQUIRED: 'transaction_boundary_required',
   APPLY_FAILED_ROLLED_BACK: 'apply_failed_rolled_back',
   POLICY_INPUT_MISSING: 'policy_input_missing',
+  POLICY_AUTHORITY_UNAVAILABLE: 'policy_authority_unavailable',
   CONTRACT_VALIDATION_FAILED: 'contract_validation_failed',
 });
 
@@ -67,6 +69,19 @@ function getReadySteps(dryRun = {}) {
   const normalizedDryRun = asObject(dryRun);
   return asArray(normalizedDryRun.conversionWorkflow?.steps)
     .filter(step => step.statusId === POLICY_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY);
+}
+
+function sortReadyStepsByPolicyAuthority(steps = []) {
+  return [...asArray(steps)].sort((left, right) => {
+    const leftPolicyId = Number(left?.policyId);
+    const rightPolicyId = Number(right?.policyId);
+
+    if (Number.isInteger(leftPolicyId) && Number.isInteger(rightPolicyId) && leftPolicyId !== rightPolicyId) {
+      return leftPolicyId - rightPolicyId;
+    }
+
+    return String(left?.idempotencyKey || '').localeCompare(String(right?.idempotencyKey || ''));
+  });
 }
 
 function unique(values) {
@@ -570,6 +585,16 @@ async function insertValidationStatus({ client, intentId, contract }) {
 }
 
 async function applyReadyStep({ client, policy, step, actorId, appliedAt, targetVersion }) {
+  const lockedPolicy = await lockPolicyNativeIntentAuthority(client, {
+    policyId: policy.id,
+    libraryId: policy.library_id,
+  });
+  if (!lockedPolicy) {
+    const error = new Error(`Policy authority is unavailable for post-upgrade apply: ${policy.id}`);
+    error.operatorErrorId = POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.POLICY_AUTHORITY_UNAVAILABLE;
+    throw error;
+  }
+
   const existingIntentId = await queryAlreadyConvertedIntent(client, policy.id, targetVersion);
   if (existingIntentId) {
     return {
@@ -677,7 +702,7 @@ async function applyPolicyPostUpgradeApplyGate({
 
   try {
     const results = await dbClient.withTransaction(async (client) => {
-      const readySteps = getReadySteps(dryRun);
+      const readySteps = sortReadyStepsByPolicyAuthority(getReadySteps(dryRun));
       const applied = [];
 
       for (const step of readySteps) {

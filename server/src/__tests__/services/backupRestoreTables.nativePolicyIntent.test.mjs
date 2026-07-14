@@ -168,4 +168,36 @@ describe('backupRestoreTables native policy intent restore', () => {
     expect(result.intentRulesRestored).toBe(0);
     expect(client.query).not.toHaveBeenCalled();
   });
+
+  test('fails closed when an active intent conflict cannot be mapped exactly', async () => {
+    const client = {
+      query: jest.fn(async sql => {
+        if (String(sql).includes('INSERT INTO policy_intents')) {
+          return { rows: [], rowCount: 0 };
+        }
+        if (String(sql).includes('SELECT id') && String(sql).includes('FROM policy_intents')) {
+          return { rows: [], rowCount: 0 };
+        }
+        return { rows: [], rowCount: 0 };
+      }),
+    };
+
+    await expect(restoreNativePolicyIntentStorage(
+      client,
+      {
+        policyIntents: [{
+          id: 30,
+          policy_id: 10,
+          library_id: 20,
+          schema_version: 1,
+          intent_version: 2,
+          active: true,
+          source: 'native_intent',
+          inference_state: 'inferred',
+          validation_status: 'valid',
+        }],
+      },
+      { policyIdMap: new Map([[10, 110]]), libraryIdMap: new Map([[20, 220]]) }
+    )).rejects.toThrow('active intent authority cannot be resolved');
+  });
 });

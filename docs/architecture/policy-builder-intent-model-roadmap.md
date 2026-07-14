@@ -4792,7 +4792,7 @@ Tasks:
   intent engine output.
 - Avoid storing UI-only draft state, transient readiness, provider payloads,
   prompts, traces, embeddings, or replay diagnostics as durable policy intent.
-- Add indexes for policy lookup, library lookup, active intent version, and
+- Add indexes for policy lookup, library lookup, single active policy authority, and
   migration state.
 
 Acceptance criteria:
@@ -4812,12 +4812,12 @@ Implementation status:
   native policy intent header, intent rules, routing target reference,
   starter-template application provenance, migration events, rollback snapshots,
   and validation/schema status.
-- The contract requires lookup indexes for policy, library, active intent
-  version, rule lookup, rule JSONB values, routing target, migration state,
+- The contract requires lookup indexes for policy, library, single active policy
+  authority, rule lookup, rule JSONB values, routing target, migration state,
   rollback expiry, and validation status.
 - Validation rejects legacy `customSignals`-style storage gaps, missing server
   policy intent rule fields, unbounded rollback snapshots, missing server
-  validation gates, missing referential boundaries, missing active-version
+  validation gates, missing referential boundaries, missing single-active-policy
   uniqueness, and durable UI/provider/prompt/trace/embedding/replay diagnostic
   fields.
 - This component does not create database tables yet; SQL migration and
@@ -4851,6 +4851,22 @@ Acceptance criteria:
 - Runtime and write guards can rely on that invariant instead of resolving
   duplicates heuristically.
 - Repair never silently discards a native-intent payload.
+
+Implementation status:
+
+- The implementation design and operational outcome are documented in
+  [Policy Active Intent Integrity Correction](policy-active-intent-integrity-correction.md).
+- `policyActiveIntentIntegrity.mjs` provides a read-only, bounded duplicate
+  report and chooses a canonical candidate only from `valid` or `warning`
+  active intents using deterministic precedence.
+- `20260713_150000_enforce_single_active_policy_intent.sql` locks writers,
+  aborts before mutation for invalid-only duplicate groups, preserves every
+  noncanonical row by deactivating and linking it to the canonical record, and
+  records a metadata-only repair event.
+- `idx_policy_intents_one_active_policy` now enforces one active intent per
+  policy at the database level. Post-upgrade writes lock the owning policy row,
+  and restore fails closed rather than silently skipping an unmappable active
+  intent.
 
 ### 8R.2 Migration Candidate Report
 
@@ -4899,6 +4915,27 @@ Implementation status:
 - Runtime output now uses the durable `policy.intent_migration_candidate_report.v1`
   contract and `nextStep.stepId = explicit_conversion_workflow`, leaving roadmap
   phase IDs as planning metadata only.
+
+#### 8R.2.1 Candidate Authority Eligibility
+
+Intent: ensure migration readiness never describes a policy with ambiguous
+active native authority as ready to convert or safe to automate.
+
+Tasks:
+
+- Compose the active-intent integrity report into candidate reporting before
+  conversion readiness is calculated.
+- Mark active-authority conflict as a bounded, explainable blocker with policy
+  ID and candidate state, without exposing raw intent payloads.
+- Keep candidate reporting read-only and preserve the existing compatibility
+  projection for unresolved policies.
+
+Acceptance criteria:
+
+- A policy with two active native intents cannot be marked ready to convert.
+- Invalid-only duplicate groups clearly require operator resolution.
+- Clean policies retain the existing candidate-report result shape and
+  side-effect-free behavior.
 
 ### 8R.3 Explicit Conversion Workflow
 
@@ -5079,9 +5116,9 @@ Implementation status:
 - Metadata-only updates remain allowed, and unconverted policies retain the
   time-bounded compatibility path. Focused route, service, and transaction
   tests protect both outcomes.
-- The next Phase 8R task is **8R.1.1 Active Native Intent Integrity
-  Correction**. Do not broaden native write behavior or remove compatibility
-  paths until the database can guarantee one active native intent per policy.
+- The next Phase 8R task is **8R.2.1 Candidate Authority Eligibility**. Do not
+  broaden native write behavior or remove compatibility paths until candidate
+  reporting consumes the one-active-intent authority boundary.
 - Legacy write-boundary behavior is documented in
   [Policy Legacy Write Boundary](policy-legacy-write-boundary.md).
 - The module cutover renamed the service, focused test, architecture record,
