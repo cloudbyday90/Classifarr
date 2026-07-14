@@ -5671,6 +5671,13 @@ Implementation status:
 - Current implementation composes compatibility deletion gates and native
   runtime cutover verification, blocks residual references and missing safety
   confirmations, and validates that no deletion side effects occur.
+- **8R.14a Current Enabled-Policy Conversion Inventory** - implemented a
+  read-only, current-state inventory over every enabled policy and its latest
+  active-intent validation metadata. Deletion readiness and the execution plan
+  now require this versioned evidence to prove one valid active native intent
+  per enabled policy; caller-supplied zero conversion counts cannot bypass the
+  gate. The design and command are documented in
+  [Policy Compatibility Deletion Current Inventory](policy-compatibility-deletion-current-inventory.md).
 
 ### 8R.15 Compatibility Path Deletion Execution Plan
 

@@ -11,6 +11,9 @@ import {
   buildPolicyCompatibilityDeletionReadiness,
 } from '../../services/policyCompatibilityDeletionReadiness.mjs';
 import {
+  buildPolicyCompatibilityDeletionCurrentInventory,
+} from '../../services/policyCompatibilityDeletionCurrentInventory.mjs';
+import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
@@ -106,8 +109,21 @@ function readyDeletionGates() {
   });
 }
 
+function readyCurrentPolicyInventory() {
+  return buildPolicyCompatibilityDeletionCurrentInventory({
+    policyRows: [{
+      policy_id: 14,
+      active_intent_count: 1,
+      authoritative_native_intent_count: 1,
+      active_intent_sources: ['native_intent'],
+      active_intent_validation_statuses: ['valid'],
+    }],
+  });
+}
+
 function readyReadiness() {
   return buildPolicyCompatibilityDeletionReadiness({
+    currentPolicyInventory: readyCurrentPolicyInventory(),
     cutoverVerification: readyCutover(),
     deletionGatePlan: readyDeletionGates(),
     backupRestoreVerified: true,
@@ -170,6 +186,11 @@ describe('policyCompatibilityDeletionExecutionPlan', () => {
       executeDeletionNow: false,
       requireSeparateExecutionGate: true,
       requireCleanWorktreeBeforeExecution: true,
+    }));
+    expect(plan.readiness.currentPolicyInventory).toEqual(expect.objectContaining({
+      statusId: 'all_enabled_policies_native',
+      validationOk: true,
+      unconvertedPolicyCount: 0,
     }));
     expect(plan.nextStep).toEqual(expect.objectContaining({
       stepId: 'compatibility_deletion_execution_gate',

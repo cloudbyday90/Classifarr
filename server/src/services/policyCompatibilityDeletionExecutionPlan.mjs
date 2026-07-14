@@ -5,6 +5,10 @@ import {
   POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS,
   buildPolicyCompatibilityDeletionReadiness,
 } from './policyCompatibilityDeletionReadiness.mjs';
+import {
+  POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_STATUS_IDS,
+  POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_VERSION,
+} from './policyCompatibilityDeletionCurrentInventory.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION =
   'policy.compatibility_deletion_execution_plan.v1';
@@ -25,6 +29,7 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS = Object.freeze({
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS = Object.freeze({
   READINESS_NOT_READY: 'readiness_not_ready',
   READINESS_VALIDATION_FAILED: 'readiness_validation_failed',
+  CURRENT_POLICY_INVENTORY_NOT_READY: 'current_policy_inventory_not_ready',
   MISSING_DELETION_CATEGORY: 'missing_deletion_category',
   MISSING_MANIFEST_ENTRY_PATH: 'missing_manifest_entry_path',
   MISSING_REPLACEMENT_EVIDENCE: 'missing_replacement_evidence',
@@ -119,6 +124,25 @@ function evaluateReadiness(deletionReadiness) {
       POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.READINESS_VALIDATION_FAILED,
       'Compatibility path deletion readiness must validate before an execution plan can be approved.',
       { issueCount: readiness.validation?.issueCount ?? null }
+    ));
+  }
+
+  const inventory = readiness.currentPolicyInventory;
+  if (
+    !inventory ||
+    inventory.version !== POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_VERSION ||
+    inventory.statusId !==
+      POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_STATUS_IDS.ALL_ENABLED_POLICIES_NATIVE ||
+    inventory.allEnabledPoliciesNative !== true ||
+    inventory.validationOk !== true
+  ) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.CURRENT_POLICY_INVENTORY_NOT_READY,
+      'Compatibility deletion execution planning requires current validated evidence that every enabled policy has one active native intent.',
+      {
+        inventoryStatusId: inventory?.statusId || null,
+        unconvertedPolicyCount: inventory?.unconvertedPolicyCount ?? null,
+      }
     ));
   }
 
@@ -253,6 +277,14 @@ function buildPolicyCompatibilityDeletionExecutionPlan({
       validationOk: readiness.readiness.validation?.ok === true,
       readyForDeletionExecutionPlan:
         readiness.readiness.readyForDeletionExecutionPlan === true,
+      currentPolicyInventory: readiness.readiness.currentPolicyInventory
+        ? {
+          statusId: readiness.readiness.currentPolicyInventory.statusId || null,
+          validationOk: readiness.readiness.currentPolicyInventory.validationOk === true,
+          unconvertedPolicyCount:
+            readiness.readiness.currentPolicyInventory.unconvertedPolicyCount ?? null,
+        }
+        : null,
     },
     manifest: {
       approved: manifestApproved === true,

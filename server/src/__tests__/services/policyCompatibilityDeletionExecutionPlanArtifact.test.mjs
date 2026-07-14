@@ -5,6 +5,10 @@ import {
   POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionReadiness.mjs';
 import {
+  POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_STATUS_IDS,
+  POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_VERSION,
+} from '../../services/policyCompatibilityDeletionCurrentInventory.mjs';
+import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
@@ -28,6 +32,15 @@ function readyInput(overrides = {}) {
         ok: true,
         issueCount: 0,
         issues: [],
+      },
+      currentPolicyInventory: {
+        version: POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_VERSION,
+        statusId:
+          POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_STATUS_IDS
+            .ALL_ENABLED_POLICIES_NATIVE,
+        allEnabledPoliciesNative: true,
+        validationOk: true,
+        unconvertedPolicyCount: 0,
       },
     },
     deletionGatePlan: {

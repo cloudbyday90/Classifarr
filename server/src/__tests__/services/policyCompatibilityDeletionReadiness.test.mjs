@@ -12,6 +12,9 @@ import {
   buildPolicyCompatibilityDeletionReadiness,
   validatePolicyCompatibilityDeletionReadiness,
 } from '../../services/policyCompatibilityDeletionReadiness.mjs';
+import {
+  buildPolicyCompatibilityDeletionCurrentInventory,
+} from '../../services/policyCompatibilityDeletionCurrentInventory.mjs';
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
@@ -101,8 +104,21 @@ function readyDeletionGates() {
   });
 }
 
+function readyCurrentPolicyInventory() {
+  return buildPolicyCompatibilityDeletionCurrentInventory({
+    policyRows: [{
+      policy_id: 14,
+      active_intent_count: 1,
+      authoritative_native_intent_count: 1,
+      active_intent_sources: ['native_intent'],
+      active_intent_validation_statuses: ['valid'],
+    }],
+  });
+}
+
 function readyReadiness(overrides = {}) {
   return buildPolicyCompatibilityDeletionReadiness({
+    currentPolicyInventory: readyCurrentPolicyInventory(),
     cutoverVerification: readyCutover(),
     deletionGatePlan: readyDeletionGates(),
     backupRestoreVerified: true,
@@ -131,6 +147,11 @@ describe('policyCompatibilityDeletionReadiness', () => {
       readyToDelete: true,
       validationOk: true,
       blockerCount: 0,
+    }));
+    expect(readiness.currentPolicyInventory).toEqual(expect.objectContaining({
+      statusId: 'all_enabled_policies_native',
+      validationOk: true,
+      unconvertedPolicyCount: 0,
     }));
     expect(readiness.deletionPolicy).toEqual(expect.objectContaining({
       executeDeletionNow: false,
@@ -161,6 +182,27 @@ describe('policyCompatibilityDeletionReadiness', () => {
     expect(readiness.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.CUTOVER_NOT_READY,
+      }),
+    ]));
+  });
+
+  test('blocks readiness until current enabled-policy conversion evidence is supplied', () => {
+    const readiness = buildPolicyCompatibilityDeletionReadiness({
+      cutoverVerification: readyCutover(),
+      deletionGatePlan: readyDeletionGates(),
+      backupRestoreVerified: true,
+      rollbackSupportVerified: true,
+      supportDiagnosticsVerified: true,
+      deletionManifestApproved: true,
+    });
+
+    expect(readiness.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS
+        .BLOCKED_BY_CURRENT_POLICY_INVENTORY);
+    expect(readiness.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+          .CURRENT_POLICY_INVENTORY_MISSING,
       }),
     ]));
   });
@@ -208,6 +250,7 @@ describe('policyCompatibilityDeletionReadiness', () => {
 
   test('blocks readiness until backup, rollback, diagnostics, and manifest confirmations pass', () => {
     const readiness = buildPolicyCompatibilityDeletionReadiness({
+      currentPolicyInventory: readyCurrentPolicyInventory(),
       cutoverVerification: readyCutover(),
       deletionGatePlan: readyDeletionGates(),
       backupRestoreVerified: false,

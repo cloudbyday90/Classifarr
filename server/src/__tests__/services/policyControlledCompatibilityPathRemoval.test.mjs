@@ -11,6 +11,9 @@ import {
   buildPolicyCompatibilityDeletionReadiness,
 } from '../../services/policyCompatibilityDeletionReadiness.mjs';
 import {
+  buildPolicyCompatibilityDeletionCurrentInventory,
+} from '../../services/policyCompatibilityDeletionCurrentInventory.mjs';
+import {
   buildPolicyCompatibilityDeletionExecutionPlan,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
@@ -111,8 +114,21 @@ function readyDeletionGates() {
   });
 }
 
+function readyCurrentPolicyInventory() {
+  return buildPolicyCompatibilityDeletionCurrentInventory({
+    policyRows: [{
+      policy_id: 14,
+      active_intent_count: 1,
+      authoritative_native_intent_count: 1,
+      active_intent_sources: ['native_intent'],
+      active_intent_validation_statuses: ['valid'],
+    }],
+  });
+}
+
 function readyReadiness() {
   return buildPolicyCompatibilityDeletionReadiness({
+    currentPolicyInventory: readyCurrentPolicyInventory(),
     cutoverVerification: readyCutover(),
     deletionGatePlan: readyDeletionGates(),
     backupRestoreVerified: true,

@@ -7,6 +7,7 @@ code, or mutate storage.
 
 This component composes existing policy migration evidence:
 
+- a current read-only inventory of every enabled policy and its active intent authority,
 - compatibility deletion gates,
 - native runtime cutover verification,
 - residual compatibility-reference review,
@@ -59,6 +60,26 @@ Cons:
 - readiness cannot pass until prior gates are complete,
 - the report remains conservative while unconverted support still exists.
 
+### Measure Current Enabled-Policy Authority
+
+The report must include a newly collected inventory of every enabled policy.
+For each policy, the inventory accepts only one active `native_intent` whose
+latest validation state is `valid` or `warning` without errors. Missing,
+ambiguous, legacy-sourced, pending, invalid, or error-bearing active intents
+block readiness. The inventory reports bounded policy-ID samples and counts,
+never policy intent payloads or library names.
+
+Pros:
+
+- prevents a caller-provided zero conversion count from manufacturing a ready report,
+- detects the real enabled-policy migration state immediately before planning,
+- keeps payloads and collection metadata out of deletion diagnostics.
+
+Cons:
+
+- conversion evidence must be collected again for each deletion-planning attempt,
+- an otherwise complete deletion plan remains blocked while any enabled policy is not native-authoritative.
+
 ### Block On Residual Compatibility References
 
 Even when gates pass, explicit residual references should block readiness until
@@ -100,11 +121,13 @@ Use this stack:
 
 1. `policyCompatibilityDeletionGates.mjs` proves compatibility
    deletion gates and coverage.
-2. `policyNativeRuntimeCutoverVerification.mjs` proves converted
+2. `policyCompatibilityDeletionCurrentInventory.mjs` measures whether every
+   enabled policy has one valid active native intent.
+3. `policyNativeRuntimeCutoverVerification.mjs` proves converted
    and unconverted runtime read behavior.
-3. `policyCompatibilityDeletionReadiness.mjs` composes both
+4. `policyCompatibilityDeletionReadiness.mjs` composes all three
    outputs with residual-reference and safety confirmations.
-4. A later component should create an execution manifest before any
+5. A later component should create an execution manifest before any
    compatibility path is removed.
 
 ## Implementation Outcome
@@ -124,6 +147,13 @@ Implemented:
 - Added focused tests for the ready path, cutover blocker, deletion-gate
   blocker, residual-reference blocker, safety-confirmation blocker, and
   side-effect validation.
+- Added a mandatory current-policy-inventory gate. Compatibility deletion
+  readiness and the execution-plan contract both reject absent, stale-contract,
+  invalid, or non-native-authoritative current inventory evidence.
+- Added `npm run policy:compatibility-deletion-current-inventory` to collect a
+  read-only current inventory. Use
+  `--require-all-enabled-policies-native` when the inventory is an explicit
+  release gate.
 
 Not implemented in this component:
 

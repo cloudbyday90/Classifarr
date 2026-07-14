@@ -6,6 +6,10 @@ import {
   POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS,
   buildPolicyNativeRuntimeCutoverVerification,
 } from './policyNativeRuntimeCutoverVerification.mjs';
+import {
+  POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_STATUS_IDS,
+  POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_VERSION,
+} from './policyCompatibilityDeletionCurrentInventory.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_READINESS_VERSION =
   'policy.compatibility_deletion_readiness.v1';
@@ -13,6 +17,7 @@ const POLICY_COMPATIBILITY_DELETION_READINESS_VERSION =
 const POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS = Object.freeze({
   READY_FOR_DELETION_EXECUTION_PLAN: 'ready_for_deletion_execution_plan',
   BLOCKED_BY_RUNTIME_CUTOVER: 'blocked_by_runtime_cutover',
+  BLOCKED_BY_CURRENT_POLICY_INVENTORY: 'blocked_by_current_policy_inventory',
   BLOCKED_BY_DELETION_GATES: 'blocked_by_deletion_gates',
   BLOCKED_BY_RESIDUAL_COMPATIBILITY_REFERENCES: 'blocked_by_residual_compatibility_references',
   BLOCKED_BY_SAFETY_CONFIRMATION: 'blocked_by_safety_confirmation',
@@ -21,6 +26,9 @@ const POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS = Object.freeze({
 const POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS = Object.freeze({
   CUTOVER_NOT_READY: 'cutover_not_ready',
   CUTOVER_VALIDATION_FAILED: 'cutover_validation_failed',
+  CURRENT_POLICY_INVENTORY_MISSING: 'current_policy_inventory_missing',
+  CURRENT_POLICY_INVENTORY_NOT_READY: 'current_policy_inventory_not_ready',
+  CURRENT_POLICY_INVENTORY_VALIDATION_FAILED: 'current_policy_inventory_validation_failed',
   DELETION_GATES_NOT_READY: 'deletion_gates_not_ready',
   DELETION_GATES_VALIDATION_FAILED: 'deletion_gates_validation_failed',
   RESIDUAL_COMPATIBILITY_REFERENCE: 'residual_compatibility_reference',
@@ -51,6 +59,48 @@ function buildDefaultCutoverVerification() {
 
 function buildDefaultDeletionGatePlan() {
   return buildPolicyCompatibilityDeletionGates();
+}
+
+function evaluateCurrentPolicyInventory(currentPolicyInventory) {
+  const inventory = currentPolicyInventory && typeof currentPolicyInventory === 'object'
+    ? currentPolicyInventory
+    : null;
+  const risks = [];
+
+  if (!inventory) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.CURRENT_POLICY_INVENTORY_MISSING,
+      'Compatibility deletion readiness requires a current read-only inventory of every enabled policy.'
+    ));
+    return { currentPolicyInventory: null, risks };
+  }
+
+  if (
+    inventory.version !== POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_VERSION ||
+    inventory.statusId !==
+      POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_STATUS_IDS.ALL_ENABLED_POLICIES_NATIVE ||
+    inventory.allEnabledPoliciesNative !== true
+  ) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.CURRENT_POLICY_INVENTORY_NOT_READY,
+      'Compatibility deletion readiness requires every enabled policy to have one valid active native intent.',
+      {
+        version: inventory.version || null,
+        statusId: inventory.statusId || null,
+        unconvertedPolicyCount: inventory.policyCounts?.unconvertedPolicyCount ?? null,
+      }
+    ));
+  }
+
+  if (inventory.validation?.ok !== true) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.CURRENT_POLICY_INVENTORY_VALIDATION_FAILED,
+      'Current policy inventory must validate before compatibility deletion readiness can pass.',
+      { issueCount: inventory.validation?.issueCount ?? null }
+    ));
+  }
+
+  return { currentPolicyInventory: inventory, risks };
 }
 
 function normalizeResidualReferences(references = []) {
@@ -181,6 +231,14 @@ function evaluateSafetyConfirmations({
 
 function determineStatusId(risks = []) {
   if (risks.some(risk => [
+    POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.CURRENT_POLICY_INVENTORY_MISSING,
+    POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.CURRENT_POLICY_INVENTORY_NOT_READY,
+    POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.CURRENT_POLICY_INVENTORY_VALIDATION_FAILED,
+  ].includes(risk.riskId))) {
+    return POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS.BLOCKED_BY_CURRENT_POLICY_INVENTORY;
+  }
+
+  if (risks.some(risk => [
     POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.CUTOVER_NOT_READY,
     POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.CUTOVER_VALIDATION_FAILED,
   ].includes(risk.riskId))) {
@@ -216,6 +274,7 @@ function determineStatusId(risks = []) {
 }
 
 function buildPolicyCompatibilityDeletionReadiness({
+  currentPolicyInventory = null,
   cutoverVerification = null,
   deletionGatePlan = null,
   residualCompatibilityReferences = [],
@@ -224,6 +283,7 @@ function buildPolicyCompatibilityDeletionReadiness({
   supportDiagnosticsVerified = false,
   deletionManifestApproved = false,
 } = {}) {
+  const inventory = evaluateCurrentPolicyInventory(currentPolicyInventory);
   const cutover = evaluateCutover(cutoverVerification);
   const deletionGates = evaluateDeletionGates(deletionGatePlan);
   const residual = evaluateResidualReferences(residualCompatibilityReferences);
@@ -234,6 +294,7 @@ function buildPolicyCompatibilityDeletionReadiness({
     deletionManifestApproved,
   });
   const risks = [
+    ...inventory.risks,
     ...cutover.risks,
     ...deletionGates.risks,
     ...residual.risks,
@@ -243,6 +304,17 @@ function buildPolicyCompatibilityDeletionReadiness({
     version: POLICY_COMPATIBILITY_DELETION_READINESS_VERSION,
     statusId: determineStatusId(risks),
     readyForDeletionExecutionPlan: risks.length === 0,
+    currentPolicyInventory: inventory.currentPolicyInventory
+      ? {
+        version: inventory.currentPolicyInventory.version || null,
+        statusId: inventory.currentPolicyInventory.statusId || null,
+        allEnabledPoliciesNative:
+          inventory.currentPolicyInventory.allEnabledPoliciesNative === true,
+        validationOk: inventory.currentPolicyInventory.validation?.ok === true,
+        unconvertedPolicyCount:
+          inventory.currentPolicyInventory.policyCounts?.unconvertedPolicyCount ?? null,
+      }
+      : null,
     cutover: {
       statusId: cutover.cutoverVerification.statusId || null,
       validationOk: cutover.cutoverVerification.validation?.ok === true,

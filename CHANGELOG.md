@@ -51,6 +51,11 @@ unchanged operator or runtime outcome.
   path state, operational reference scan, and fresh validation results. Older
   plan contracts cannot be rewrapped as current proof, while control-plane
   inventory records no longer create false runtime-reference blockers.
+- **Measured Compatibility Deletion Readiness** - compatibility removal plans
+  now require a fresh, read-only inventory proving every enabled policy has one
+  valid active native intent. Missing, ambiguous, legacy-sourced, pending, or
+  invalid authority blocks planning with bounded diagnostics; a supplied zero
+  conversion count can no longer bypass the gate.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

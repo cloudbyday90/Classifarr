@@ -226,9 +226,19 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     componentId: 'compatibility_path_deletion_readiness',
     label: 'Compatibility Path Deletion Readiness',
-    designDocPaths: ['docs/architecture/policy-compatibility-deletion-readiness.md'],
-    contractPaths: ['server/src/services/policyCompatibilityDeletionReadiness.mjs'],
-    testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionReadiness.test.mjs'],
+    designDocPaths: [
+      'docs/architecture/policy-compatibility-deletion-readiness.md',
+      'docs/architecture/policy-compatibility-deletion-current-inventory.md',
+    ],
+    contractPaths: [
+      'server/src/services/policyCompatibilityDeletionReadiness.mjs',
+      'server/src/services/policyCompatibilityDeletionCurrentInventory.mjs',
+      'scripts/generate-policy-compatibility-deletion-current-inventory.mjs',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyCompatibilityDeletionReadiness.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityDeletionCurrentInventory.test.mjs',
+    ],
   },
   {
     componentId: 'compatibility_path_deletion_execution_plan',
