@@ -5846,11 +5846,11 @@ post-removal verification.
 Tasks:
 
 - **8R.18.1 Review Artifact Integrity**
-  - Require the apply input to carry a valid controlled removal review bound to
-    one execution-plan artifact and execution gate.
-  - Revalidate that context before an adapter receives any entry.
-  - Reject altered, missing, or mismatched artifact-and-gate context without
-    calling the adapter.
+  - Completed: apply input now carries a valid controlled removal review bound
+    to one execution-plan artifact and execution gate.
+  - Completed: revalidates that context before an adapter receives any entry.
+  - Completed: rejects altered, missing, or mismatched artifact-and-gate
+    context without calling the adapter.
 - Consume a ready controlled compatibility path removal review batch.
 - Require `executeApply=true`.
 - Require explicit operator confirmation with confirming actor.
@@ -5875,13 +5875,16 @@ Implementation status:
 
 - Controlled compatibility path removal apply is documented in
   [Policy Controlled Compatibility Path Removal Apply](policy-controlled-compatibility-path-removal-apply.md).
+- Review integrity is documented in
+  [Policy Controlled Compatibility Path Removal Review Artifact Integrity](policy-controlled-compatibility-path-removal-review-artifact-integrity.md).
 - The module naming cutover is documented in
   [Policy Controlled Compatibility Path Removal Apply Module Cutover](policy-controlled-compatibility-path-removal-apply-module-cutover.md).
 - The apply contract lives in
   `server/src/services/policyControlledCompatibilityPathRemovalApply.mjs`.
 - The focused apply test suite lives in
   `server/src/__tests__/services/policyControlledCompatibilityPathRemovalApply.test.mjs`.
-- Current implementation applies reviewed batches through an injected adapter,
+- Current implementation fingerprints and replays the complete reviewed
+  artifact-and-gate context before an injected adapter receives any entry. It
   requires explicit confirmation, verifies result parity, rejects archive,
   storage, and Git-command side effects, and emits a semantic `nextStep.stepId`
   for post-removal runtime verification.
@@ -5895,6 +5898,12 @@ proceed.
 
 Tasks:
 
+- **8R.19.1 Runtime Evidence Integrity**
+  - Bind every import scan, runtime check, and validation result to the exact
+    applied controlled-removal review artifact.
+  - Reject missing, altered, or cross-batch evidence before post-removal
+    verification can pass.
+  - Preserve side-effect-free evidence evaluation and bounded diagnostics.
 - Consume completed controlled-removal apply evidence.
 - Require apply evidence to be valid and complete.
 - Require import/reference scan evidence for every applied removal path.

@@ -210,6 +210,10 @@ describe('policyControlledCompatibilityPathRemoval', () => {
         .READY_FOR_REMOVAL_REVIEW);
     expect(removal.readyForRemovalReview).toBe(true);
     expect(removal.validation.ok).toBe(true);
+    expect(removal.reviewArtifact).toEqual(expect.objectContaining({
+      version: 'policy.controlled_compatibility_path_removal_review_artifact.v1',
+      fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    }));
     expect(removal.executionPlanArtifact).toEqual(expect.objectContaining({
       version: 'policy.compatibility_deletion_execution_plan_artifact.v2',
       statusId: 'ready',
@@ -432,5 +436,30 @@ describe('policyControlledCompatibilityPathRemoval', () => {
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.RISK_COUNT_MISMATCH,
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SIDE_EFFECT_PERFORMED,
     ]));
+  });
+
+  test('rejects a removal review whose execution context changes after fingerprinting', () => {
+    const removal = readyRemoval();
+    const validation = validatePolicyControlledCompatibilityPathRemoval({
+      ...removal,
+      executionContext: {
+        ...removal.executionContext,
+        executionGate: {
+          ...removal.executionContext.executionGate,
+          preflightEvidence: {
+            ...removal.executionContext.executionGate.preflightEvidence,
+            worktree: {
+              ...removal.executionContext.executionGate.preflightEvidence.worktree,
+              clean: false,
+            },
+          },
+        },
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.map(issue => issue.riskId)).toContain(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.REVIEW_ARTIFACT_INVALID
+    );
   });
 });

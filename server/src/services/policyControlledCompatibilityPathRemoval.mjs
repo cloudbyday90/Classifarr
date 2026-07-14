@@ -9,6 +9,10 @@ import {
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS,
 } from './policyCompatibilityDeletionExecutionGate.mjs';
+import {
+  buildPolicyControlledCompatibilityPathRemovalReviewArtifact,
+  validatePolicyControlledCompatibilityPathRemovalReviewArtifact,
+} from './policyControlledCompatibilityPathRemovalReviewArtifact.mjs';
 
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_VERSION =
   'policy.controlled_compatibility_path_removal.v2';
@@ -32,6 +36,7 @@ const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS = Object.freeze({
   EXECUTION_GATE_ARTIFACT_MISSING: 'execution_gate_artifact_missing',
   EXECUTION_GATE_ARTIFACT_INVALID: 'execution_gate_artifact_invalid',
   EXECUTION_GATE_ARTIFACT_MISMATCH: 'execution_gate_artifact_mismatch',
+  REVIEW_ARTIFACT_INVALID: 'review_artifact_invalid',
   NO_PATHS_SELECTED: 'no_paths_selected',
   SELECTED_PATH_NOT_IN_MANIFEST: 'selected_path_not_in_manifest',
   SELECTED_ENTRY_NOT_READY: 'selected_entry_not_ready',
@@ -400,6 +405,10 @@ function buildPolicyControlledCompatibilityPathRemoval({
       executionPlanArtifactFingerprint:
         gateEvaluation.gateArtifact.artifactFingerprint?.fingerprint || null,
     },
+    executionContext: {
+      executionPlanArtifact: artifactEvaluation.artifact,
+      executionGate: gateEvaluation.gate,
+    },
     removalBatch: {
       selectedCount: selected.entries.length,
       requestedPathCount: selected.normalizedPaths.length,
@@ -435,10 +444,16 @@ function buildPolicyControlledCompatibilityPathRemoval({
         'The selected removal batch can be reviewed separately before any file, route, test, or storage removal is applied.',
     },
   };
+  const removalWithReviewArtifact = {
+    ...removal,
+    reviewArtifact: buildPolicyControlledCompatibilityPathRemovalReviewArtifact({
+      removalReview: removal,
+    }),
+  };
 
   return {
-    ...removal,
-    validation: validatePolicyControlledCompatibilityPathRemoval(removal),
+    ...removalWithReviewArtifact,
+    validation: validatePolicyControlledCompatibilityPathRemoval(removalWithReviewArtifact),
   };
 }
 
@@ -468,6 +483,19 @@ function validatePolicyControlledCompatibilityPathRemoval(removal = {}) {
       ));
     }
   });
+
+  const reviewArtifactValidation =
+    validatePolicyControlledCompatibilityPathRemovalReviewArtifact({
+      removalReview: removal,
+      reviewArtifact: removal.reviewArtifact,
+    });
+  if (!reviewArtifactValidation.ok) {
+    issues.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.REVIEW_ARTIFACT_INVALID,
+      'Controlled compatibility path removal review artifact must bind its execution context and batch.',
+      { issueCount: reviewArtifactValidation.issueCount }
+    ));
+  }
 
   return {
     ok: issues.length === 0,

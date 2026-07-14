@@ -2,16 +2,24 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS,
+  buildPolicyCompatibilityDeletionExecutionGate,
+} from './policyCompatibilityDeletionExecutionGate.mjs';
+import {
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
   buildPolicyControlledCompatibilityPathRemoval,
 } from './policyControlledCompatibilityPathRemoval.mjs';
+import {
+  validatePolicyControlledCompatibilityPathRemovalReviewArtifact,
+} from './policyControlledCompatibilityPathRemovalReviewArtifact.mjs';
 
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_VERSION =
-  'policy.controlled_compatibility_path_removal_apply.v1';
+  'policy.controlled_compatibility_path_removal_apply.v2';
 
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS = Object.freeze({
   APPLIED: 'applied',
   BLOCKED_BY_REMOVAL_BATCH: 'blocked_by_removal_batch',
+  BLOCKED_BY_REVIEW_INTEGRITY: 'blocked_by_review_integrity',
   BLOCKED_BY_CONFIRMATION: 'blocked_by_confirmation',
   BLOCKED_BY_ADAPTER: 'blocked_by_adapter',
   BLOCKED_BY_APPLY_RESULT: 'blocked_by_apply_result',
@@ -20,6 +28,12 @@ const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS = Object.fre
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS = Object.freeze({
   REMOVAL_BATCH_NOT_READY: 'removal_batch_not_ready',
   REMOVAL_BATCH_VALIDATION_FAILED: 'removal_batch_validation_failed',
+  REVIEW_ARTIFACT_INVALID: 'review_artifact_invalid',
+  REVIEW_EXECUTION_CONTEXT_MISSING: 'review_execution_context_missing',
+  REVIEW_EXECUTION_GATE_REVALIDATION_FAILED:
+    'review_execution_gate_revalidation_failed',
+  REVIEW_CONTEXT_REPLAY_BLOCKED: 'review_context_replay_blocked',
+  REVIEW_CONTEXT_REPLAY_MISMATCH: 'review_context_replay_mismatch',
   APPLY_NOT_ENABLED: 'apply_not_enabled',
   OPERATOR_CONFIRMATION_MISSING: 'operator_confirmation_missing',
   OPERATOR_CONFIRMATION_ACTOR_MISSING: 'operator_confirmation_actor_missing',
@@ -38,8 +52,16 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
 function normalizePath(value = '') {
   return String(value || '').replace(/\\/g, '/').trim();
+}
+
+function normalizeFingerprint(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
 
 function buildRisk(riskId, message, metadata = {}) {
@@ -47,6 +69,114 @@ function buildRisk(riskId, message, metadata = {}) {
     riskId,
     message,
     ...metadata,
+  };
+}
+
+function selectedPathsFromReview(review = {}) {
+  return asArray(review.removalBatch?.entries)
+    .map(entry => normalizePath(entry?.path))
+    .filter(Boolean);
+}
+
+function evaluateReviewExecutionContext(review = {}) {
+  const value = asObject(review);
+  const executionContext = asObject(value.executionContext);
+  const executionPlanArtifact = asObject(executionContext.executionPlanArtifact);
+  const executionGate = asObject(executionContext.executionGate);
+  const risks = [];
+  const reviewArtifactValidation =
+    validatePolicyControlledCompatibilityPathRemovalReviewArtifact({
+      removalReview: value,
+      reviewArtifact: value.reviewArtifact,
+    });
+
+  if (!reviewArtifactValidation.ok) {
+    risks.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.REVIEW_ARTIFACT_INVALID,
+      'Controlled compatibility path removal apply requires an intact review artifact.',
+      { issueCount: reviewArtifactValidation.issueCount }
+    ));
+  }
+
+  if (
+    Object.keys(executionPlanArtifact).length === 0 ||
+    Object.keys(executionGate).length === 0
+  ) {
+    risks.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+        .REVIEW_EXECUTION_CONTEXT_MISSING,
+      'Controlled compatibility path removal apply requires the reviewed execution-plan artifact and execution gate.'
+    ));
+
+    return {
+      executionPlanArtifact,
+      executionGate,
+      risks,
+    };
+  }
+
+  const revalidatedGate = buildPolicyCompatibilityDeletionExecutionGate({
+    executionPlanArtifact,
+    preflightEvidence: executionGate.preflightEvidence,
+    generatedAt: executionGate.generatedAt,
+    now: executionGate.generatedAt,
+  });
+
+  if (
+    revalidatedGate.statusId !==
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
+        .READY_FOR_CONTROLLED_DELETION ||
+    revalidatedGate.allowControlledDeletion !== true ||
+    revalidatedGate.validation?.ok !== true
+  ) {
+    risks.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+        .REVIEW_EXECUTION_GATE_REVALIDATION_FAILED,
+      'Controlled compatibility path removal apply requires preflight evidence that still rebuilds a ready execution gate.',
+      { statusId: revalidatedGate.statusId || null }
+    ));
+  }
+
+  const replay = buildPolicyControlledCompatibilityPathRemoval({
+    executionPlanArtifact,
+    executionGate,
+    selectedPaths: selectedPathsFromReview(value),
+    maxBatchSize: value.removalBatch?.maxBatchSize,
+    removalReason: value.removalBatch?.removalReason,
+    reviewedBy: value.removalBatch?.reviewedBy,
+  });
+
+  if (
+    replay.statusId !==
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.READY_FOR_REMOVAL_REVIEW ||
+    replay.readyForRemovalReview !== true ||
+    replay.validation?.ok !== true
+  ) {
+    risks.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+        .REVIEW_CONTEXT_REPLAY_BLOCKED,
+      'Controlled compatibility path removal apply requires execution context that still replays to a ready removal review.',
+      { statusId: replay.statusId || null }
+    ));
+  } else if (
+    normalizeFingerprint(replay.reviewArtifact?.fingerprint) !==
+    normalizeFingerprint(value.reviewArtifact?.fingerprint)
+  ) {
+    risks.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+        .REVIEW_CONTEXT_REPLAY_MISMATCH,
+      'Controlled compatibility path removal apply requires the replayed review artifact to match the approved review.',
+      {
+        expectedFingerprint: value.reviewArtifact?.fingerprint || null,
+        actualFingerprint: replay.reviewArtifact?.fingerprint || null,
+      }
+    ));
+  }
+
+  return {
+    executionPlanArtifact,
+    executionGate,
+    risks,
   };
 }
 
@@ -75,8 +205,18 @@ function evaluateRemovalReview(removalReview) {
     ));
   }
 
+  const executionContext = risks.length === 0
+    ? evaluateReviewExecutionContext(review)
+    : {
+      executionPlanArtifact: {},
+      executionGate: {},
+      risks: [],
+    };
+  risks.push(...executionContext.risks);
+
   return {
     review,
+    executionContext,
     risks,
   };
 }
@@ -283,6 +423,21 @@ function evaluateSideEffects(sideEffects = {}) {
 
 function determineStatusId(risks = []) {
   if (risks.some(risk => [
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.REVIEW_ARTIFACT_INVALID,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+      .REVIEW_EXECUTION_CONTEXT_MISSING,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+      .REVIEW_EXECUTION_GATE_REVALIDATION_FAILED,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+      .REVIEW_CONTEXT_REPLAY_BLOCKED,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+      .REVIEW_CONTEXT_REPLAY_MISMATCH,
+  ].includes(risk.riskId))) {
+    return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+      .BLOCKED_BY_REVIEW_INTEGRITY;
+  }
+
+  if (risks.some(risk => [
     POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.REMOVAL_BATCH_NOT_READY,
     POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
       .REMOVAL_BATCH_VALIDATION_FAILED,
@@ -360,6 +515,14 @@ async function applyPolicyControlledCompatibilityPathRemoval({
       readyForRemovalReview: reviewEvaluation.review.readyForRemovalReview === true,
       selectedCount: removalEntries.length,
       reviewedBy: reviewEvaluation.review.removalBatch?.reviewedBy || null,
+      reviewArtifactFingerprint:
+        reviewEvaluation.review.reviewArtifact?.fingerprint || null,
+      executionPlanArtifactFingerprint:
+        reviewEvaluation.executionContext.executionPlanArtifact.artifactFingerprint?.fingerprint ||
+        null,
+      executionGateArtifactFingerprint:
+        reviewEvaluation.executionContext.executionGate.executionPlanArtifact?.artifactFingerprint
+          ?.fingerprint || null,
     },
     operatorConfirmation: {
       confirmed: operatorConfirmation?.confirmed === true,
@@ -376,6 +539,8 @@ async function applyPolicyControlledCompatibilityPathRemoval({
     sideEffects,
     executionPolicy: {
       requireReadyRemovalReview: true,
+      requireReviewArtifactIntegrity: true,
+      requireRevalidatedExecutionGate: true,
       requireExplicitExecuteApply: true,
       requireOperatorConfirmation: true,
       requireApplyAdapter: true,

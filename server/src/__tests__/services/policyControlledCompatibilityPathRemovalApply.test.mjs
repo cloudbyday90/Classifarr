@@ -28,6 +28,9 @@ import {
   buildPolicyControlledCompatibilityPathRemoval,
 } from '../../services/policyControlledCompatibilityPathRemoval.mjs';
 import {
+  buildPolicyControlledCompatibilityPathRemovalReviewArtifact,
+} from '../../services/policyControlledCompatibilityPathRemovalReviewArtifact.mjs';
+import {
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS,
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
   applyPolicyControlledCompatibilityPathRemoval,
@@ -253,6 +256,7 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
       validationOk: true,
       readyForRemovalReview: true,
       selectedCount: 2,
+      reviewArtifactFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
     }));
     expect(applyResult.applyBatch).toEqual(expect.objectContaining({
       requestedCount: 2,
@@ -299,6 +303,92 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
       }),
     ]));
     expect(applyResult.applyBatch.appliedCount).toBe(0);
+  });
+
+  test('blocks a missing or altered review context before calling the adapter', async () => {
+    const review = readyRemovalReview();
+    let applyCallCount = 0;
+    const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
+      removalReview: {
+        ...review,
+        executionContext: {},
+      },
+      executeApply: true,
+      operatorConfirmation: operatorConfirmation(),
+      applyAdapter: applyAdapter({
+        async applyEntry(entry) {
+          applyCallCount += 1;
+          return {
+            path: entry.path,
+            actionId: entry.actionId,
+            applied: true,
+            sideEffects: { filesDeleted: true },
+          };
+        },
+      }),
+    });
+
+    expect(applyResult.statusId)
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+        .BLOCKED_BY_REVIEW_INTEGRITY);
+    expect(applyCallCount).toBe(0);
+    expect(applyResult.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.REVIEW_ARTIFACT_INVALID,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+        .REVIEW_EXECUTION_CONTEXT_MISSING,
+    ]));
+  });
+
+  test('revalidates gate preflight evidence before calling the adapter', async () => {
+    const review = readyRemovalReview();
+    const alteredReview = {
+      ...review,
+      executionContext: {
+        ...review.executionContext,
+        executionGate: {
+          ...review.executionContext.executionGate,
+          preflightEvidence: {
+            ...review.executionContext.executionGate.preflightEvidence,
+            worktree: {
+              ...review.executionContext.executionGate.preflightEvidence.worktree,
+              clean: false,
+            },
+          },
+        },
+      },
+    };
+    const removalReview = {
+      ...alteredReview,
+      reviewArtifact: buildPolicyControlledCompatibilityPathRemovalReviewArtifact({
+        removalReview: alteredReview,
+      }),
+    };
+    let applyCallCount = 0;
+    const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
+      removalReview,
+      executeApply: true,
+      operatorConfirmation: operatorConfirmation(),
+      applyAdapter: applyAdapter({
+        async applyEntry(entry) {
+          applyCallCount += 1;
+          return {
+            path: entry.path,
+            actionId: entry.actionId,
+            applied: true,
+            sideEffects: { filesDeleted: true },
+          };
+        },
+      }),
+    });
+
+    expect(applyResult.statusId)
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+        .BLOCKED_BY_REVIEW_INTEGRITY);
+    expect(applyCallCount).toBe(0);
+    expect(applyResult.risks.map(risk => risk.riskId)).toContain(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+        .REVIEW_EXECUTION_GATE_REVALIDATION_FAILED
+    );
   });
 
   test('blocks without explicit execute flag and operator confirmation', async () => {

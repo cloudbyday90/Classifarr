@@ -12,6 +12,12 @@ The service does not run Git commands or mutate database storage. It allows
 only bounded removal side effects reported by the adapter, and rejects archive,
 storage, or Git-command side effects.
 
+Before any adapter call, the apply boundary now validates a fingerprinted review
+artifact, replays the reviewed batch from its embedded execution-plan artifact
+and gate, and rebuilds the gate from its recorded preflight evidence. This
+prevents a ready-looking review object from applying a changed manifest,
+changed batch, missing context, or stale/altered gate evidence.
+
 ## Official-Source Research
 
 - Git `rm` documents that removal affects tracked paths in the index and, by
@@ -26,6 +32,10 @@ storage, or Git-command side effects.
 - OWASP API9:2023 Improper Inventory Management notes risk from deprecated
   surfaces and stale inventory. The apply boundary removes only paths that came
   from the approved manifest-backed review batch.
+- SLSA Build: Verifying artifacts recommends that an artifact consumer verify
+  provenance against the artifact digest and its expected properties before
+  use. The adapter is the consumer in this flow, so Classifarr verifies the
+  review artifact and replays its source context before invoking it.
 
 Sources:
 
@@ -37,6 +47,8 @@ Sources:
   <https://csrc.nist.gov/pubs/sp/800/218/final>
 - OWASP API9:2023 Improper Inventory Management:
   <https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/>
+- SLSA Build: Verifying artifacts:
+  <https://slsa.dev/spec/v1.2/verifying-artifacts>
 
 ## Recommendations
 
@@ -71,6 +83,24 @@ Cons:
 
 - adds one more explicit control before removal.
 
+### Verify Review Artifact Integrity Before Apply
+
+The apply service accepts a review only when its SHA-256 review artifact still
+binds the execution-plan artifact, execution gate, selected entries, review
+reason, and reviewer. It reconstructs the gate from the embedded preflight
+evidence and replays the removal review before an adapter receives any entry.
+
+Pros:
+
+- blocks changed or detached review context before destructive work begins,
+- prevents a stale ready flag from authorizing different entries,
+- keeps integrity verification inside the narrow apply boundary.
+
+Cons:
+
+- reviewed batches must carry the complete bounded execution context,
+- intentional changes require a new review artifact and confirmation.
+
 ### Verify Result Parity
 
 Every adapter result must match the selected path and action and report
@@ -90,12 +120,13 @@ Cons:
 
 Use this stack for controlled compatibility path removal apply:
 
-1. Consume a ready controlled compatibility path removal batch.
-2. Require explicit operator apply confirmation.
-3. Execute each selected entry through an injected `applyEntry(entry)` adapter.
-4. Reject mismatched paths, mismatched actions, incomplete results, archive
+1. Validate the fingerprinted review artifact and replay its execution context.
+2. Rebuild the execution gate from the review's recorded preflight evidence.
+3. Require explicit operator apply confirmation.
+4. Execute each selected entry through an injected `applyEntry(entry)` adapter.
+5. Reject mismatched paths, mismatched actions, incomplete results, archive
    side effects, storage mutation, and Git-command side effects.
-5. Emit apply evidence and semantic `nextStep` for post-removal runtime
+6. Emit apply evidence and semantic `nextStep` for post-removal runtime
    verification.
 
 ## Implementation Outcome
@@ -113,7 +144,13 @@ Implemented:
   - `applyPolicyControlledCompatibilityPathRemoval`,
   - `validatePolicyControlledCompatibilityPathRemovalApply`.
 - Updated the contract version to
-  `policy.controlled_compatibility_path_removal_apply.v1`.
+  `policy.controlled_compatibility_path_removal_apply.v2`.
+- Added a modular review-artifact fingerprint that binds the complete reviewed
+  execution context and removal batch.
+- Revalidates the embedded execution gate from its recorded preflight evidence
+  and replays the review before the adapter can receive an entry.
+- Added a distinct review-integrity blocker for missing, altered, mismatched, or
+  non-replayable review context.
 - Replaced runtime `nextPhase.phaseId` with semantic `nextStep.stepId`.
 - Preserved status IDs for applied output and blockers from removal batch,
   confirmation, adapter, and apply result evidence.
@@ -131,7 +168,6 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Post-Removal Runtime Verification Artifact module naming
-cutover**. That task should consume durable controlled-removal apply evidence
-and remove phase-coded names from the runtime verification wrapper without
-changing verification behavior.
+Proceed with **8R.19.1 Runtime Evidence Integrity**. The runtime verifier
+should bind its import scans and focused/full validation evidence to the exact
+applied removal result before it can authorize another batch.

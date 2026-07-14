@@ -68,6 +68,10 @@ unchanged operator or runtime outcome.
 - **Cohesive Compatibility-Removal Reviews** - reviewed removal batches now
   select paths only from one fingerprint-valid execution-plan artifact and
   reject a ready gate bound to any different or altered artifact manifest.
+- **Verified Compatibility-Removal Apply Reviews** - the removal apply boundary
+  now fingerprints and replays the reviewed artifact, gate, and selected paths
+  before adapter execution. Missing, altered, or non-replayable review context
+  is blocked before any path can be applied.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or
