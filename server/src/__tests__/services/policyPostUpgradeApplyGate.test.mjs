@@ -4,6 +4,7 @@ import {
   POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS,
   applyPolicyPostUpgradeApplyGate,
   buildPolicyPostUpgradeApplyGate,
+  runPolicyPostUpgradeApplyGate,
 } from '../../services/policyPostUpgradeApplyGate.mjs';
 import {
   buildPolicyPostUpgradeDryRun,
@@ -227,5 +228,39 @@ describe('policyPostUpgradeApplyGate', () => {
       legacyPathsDeleted: false,
       policyStorageMutated: false,
     });
+  });
+
+  test('does not enter the apply transaction when loaded authority is ambiguous', async () => {
+    const dbClient = {
+      query: jest.fn()
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              ...policy(),
+              arr_type: 'radarr',
+              arr_config_id: 1,
+              arr_root_folder_path: '/media/Movies',
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            { id: 91, policy_id: 14, intent_version: 1, validation_status: 'valid' },
+            { id: 92, policy_id: 14, intent_version: 2, validation_status: 'valid' },
+          ],
+        }),
+      withTransaction: jest.fn(),
+    };
+
+    const result = await runPolicyPostUpgradeApplyGate({
+      dbClient,
+      now: '2026-07-01T12:00:00.000Z',
+    });
+
+    expect(result.statusId).toBe(POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_DRY_RUN);
+    expect(result.applied).toBe(false);
+    expect(result.readyPolicyIds).toEqual([]);
+    expect(dbClient.withTransaction).not.toHaveBeenCalled();
+    expect(dbClient.query).toHaveBeenCalledTimes(2);
   });
 });

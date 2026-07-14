@@ -2,6 +2,10 @@ import {
   buildPolicyIntentContract,
   POLICY_INTENT_INFERENCE_STATES,
 } from './policyIntentContract.mjs';
+import {
+  POLICY_CANDIDATE_AUTHORITY_ELIGIBILITY_STATE_IDS,
+  buildPolicyCandidateAuthorityEligibility,
+} from './policyCandidateAuthorityEligibility.mjs';
 
 const POLICY_INTENT_MIGRATION_CANDIDATE_REPORT_VERSION = 'policy.intent_migration_candidate_report.v1';
 
@@ -13,6 +17,7 @@ const POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS = Object.freeze({
   MISSING_ROUTING_TARGET: 'missing_routing_target',
   STALE_PROFILE_DEPENDENCY: 'stale_profile_dependency',
   BLOCKED_BY_SERVER_CONTRACT_VALIDATION: 'blocked_by_server_contract_validation',
+  BLOCKED_BY_ACTIVE_INTENT_AUTHORITY: 'blocked_by_active_intent_authority',
 });
 
 const POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS = Object.freeze({
@@ -23,6 +28,7 @@ const POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS = Object.freeze({
   PARTIAL_INFERENCE_REQUIRES_REVIEW: 'partial_inference_requires_review',
   MISSING_ROUTING_TARGET: 'missing_routing_target',
   STALE_PROFILE_DEPENDENCY: 'stale_profile_dependency',
+  ACTIVE_INTENT_AUTHORITY_CONFLICT: 'active_intent_authority_conflict',
   OPERATOR_REVIEW_REQUIRED: 'operator_review_required',
   READY_WITH_ROUTING_TARGET: 'ready_with_routing_target',
   RAW_LEGACY_JSON_SUPPRESSED: 'raw_legacy_json_suppressed',
@@ -50,6 +56,9 @@ const POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS = Object.freeze({
   REPORT_MUTATED_STORAGE: 'report_mutated_storage',
   REPORT_UNBOUNDED: 'report_unbounded',
   MISSING_DELETION_IMPACT: 'missing_deletion_impact',
+  ACTIVE_AUTHORITY_CONFLICT_NOT_BLOCKED: 'active_authority_conflict_not_blocked',
+  ACTIVE_AUTHORITY_BLOCKER_MISSING_DETAILS: 'active_authority_blocker_missing_details',
+  ACTIVE_AUTHORITY_REASON_MISSING: 'active_authority_reason_missing',
 });
 
 const STATUS_IDS = Object.freeze(Object.values(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS));
@@ -223,8 +232,13 @@ function chooseStatus({
   contract,
   routingTarget,
   profileFreshness,
+  authorityEligibility,
   reasons,
 }) {
+  if (authorityEligibility?.eligible === false) {
+    return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_ACTIVE_INTENT_AUTHORITY;
+  }
+
   if (asArray(contract.unsupported_signals).some(signal =>
     signal.reason_code === 'unsupported_signal_type'
   )) {
@@ -262,6 +276,10 @@ function buildPolicyCandidate(policy = {}, options = {}) {
   const contract = options.intentContract || policy.intentContract || buildPolicyIntentContract(policy);
   const routingTarget = buildRoutingTarget(policy);
   const profileFreshness = buildProfileFreshness(policy);
+  const authorityEligibility = buildPolicyCandidateAuthorityEligibility({
+    policyId: policy.id,
+    activeIntentIntegrityReport: options.activeIntentIntegrityReport,
+  });
   const unsupportedSignals = sanitizeUnsupportedSignals(
     contract.unsupported_signals,
     maxUnsupportedSignals
@@ -324,6 +342,21 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     ));
   }
 
+  if (authorityEligibility.eligible === false) {
+    const needsExplicitResolution = authorityEligibility.integrityStatusId === 'blocked_unsafe_duplicate';
+    reasons.push(buildReason(
+      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.ACTIVE_INTENT_AUTHORITY_CONFLICT,
+      needsExplicitResolution
+        ? 'Active native intent authority is ambiguous and requires operator resolution before conversion.'
+        : 'Active native intent authority is ambiguous and must be repaired before conversion.',
+      'blocker',
+      {
+        integrityStatusId: authorityEligibility.integrityStatusId,
+        activeIntentCount: authorityEligibility.activeIntentCount,
+      }
+    ));
+  }
+
   if (asArray(contract.validation?.warnings).length > 0) {
     reasons.push(buildReason(
       POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.OPERATOR_REVIEW_REQUIRED,
@@ -333,7 +366,12 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     ));
   }
 
-  if (routingTarget.configured && contract.validation?.valid === true && !profileFreshness.stale) {
+  if (
+    authorityEligibility.eligible === true &&
+    routingTarget.configured &&
+    contract.validation?.valid === true &&
+    !profileFreshness.stale
+  ) {
     reasons.push(buildReason(
       POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.READY_WITH_ROUTING_TARGET,
       'Policy has a valid intent contract and configured routing target.'
@@ -352,6 +390,7 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     contract,
     routingTarget,
     profileFreshness,
+    authorityEligibility,
     reasons,
   });
 
@@ -375,6 +414,13 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     unsupportedSignals,
     routingTarget,
     profileFreshness,
+    ...(authorityEligibility.eligible === false ? {
+      authorityEligibility: {
+        stateId: authorityEligibility.stateId,
+        integrityStatusId: authorityEligibility.integrityStatusId,
+        activeIntentCount: authorityEligibility.activeIntentCount,
+      },
+    } : {}),
     deletionImpact: buildDeletionImpactEstimate(contract),
     reasons: reasons.slice(0, maxReasons),
     rawLegacyJson: includeRawLegacyJson
@@ -408,6 +454,7 @@ function buildPolicyIntentMigrationCandidateReport({
   maxUnsupportedSignals = MAX_UNSUPPORTED_SIGNALS_DEFAULT,
   maintainerMode = false,
   includeRawLegacyJson = false,
+  activeIntentIntegrityReport = null,
 } = {}) {
   const normalizedMaxPolicies = Math.max(1, Math.min(
     Number.isFinite(Number(maxPolicies)) ? Number(maxPolicies) : MAX_POLICIES_DEFAULT,
@@ -421,6 +468,7 @@ function buildPolicyIntentMigrationCandidateReport({
       maxUnsupportedSignals,
       maintainerMode,
       includeRawLegacyJson,
+      activeIntentIntegrityReport,
     }));
   const report = {
     version: POLICY_INTENT_MIGRATION_CANDIDATE_REPORT_VERSION,
@@ -516,10 +564,49 @@ function validatePolicyIntentMigrationCandidateReport(report = {}) {
     }
 
     if (
+      candidate.authorityEligibility?.stateId ===
+        POLICY_CANDIDATE_AUTHORITY_ELIGIBILITY_STATE_IDS.ACTIVE_INTENT_AUTHORITY_CONFLICT &&
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_ACTIVE_INTENT_AUTHORITY
+    ) {
+      issues.push({
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.ACTIVE_AUTHORITY_CONFLICT_NOT_BLOCKED,
+        policyId: candidate.policyId ?? null,
+        message: 'An active native authority conflict must block conversion explicitly.',
+      });
+    }
+
+    if (
+      candidate.statusId === POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_ACTIVE_INTENT_AUTHORITY &&
+      candidate.authorityEligibility?.stateId !==
+        POLICY_CANDIDATE_AUTHORITY_ELIGIBILITY_STATE_IDS.ACTIVE_INTENT_AUTHORITY_CONFLICT
+    ) {
+      issues.push({
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.ACTIVE_AUTHORITY_BLOCKER_MISSING_DETAILS,
+        policyId: candidate.policyId ?? null,
+        message: 'An active native authority blocker must include bounded authority details.',
+      });
+    }
+
+    if (
+      candidate.authorityEligibility?.stateId ===
+        POLICY_CANDIDATE_AUTHORITY_ELIGIBILITY_STATE_IDS.ACTIVE_INTENT_AUTHORITY_CONFLICT &&
+      !asArray(candidate.reasons).some(reason =>
+        reason.reasonId === POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.ACTIVE_INTENT_AUTHORITY_CONFLICT
+      )
+    ) {
+      issues.push({
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.ACTIVE_AUTHORITY_REASON_MISSING,
+        policyId: candidate.policyId ?? null,
+        message: 'An active native authority conflict must include an explainable bounded reason.',
+      });
+    }
+
+    if (
       asArray(candidate.unsupportedSignals).some(signal =>
         signal.reasonCode === 'unsupported_signal_type'
       ) &&
-      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE &&
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_ACTIVE_INTENT_AUTHORITY
     ) {
       issues.push({
         riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.UNSUPPORTED_POLICY_NOT_EXPLICIT,
@@ -531,7 +618,8 @@ function validatePolicyIntentMigrationCandidateReport(report = {}) {
     if (
       candidate.intentContract?.valid === false &&
       candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION &&
-      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE &&
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_ACTIVE_INTENT_AUTHORITY
     ) {
       issues.push({
         riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.SERVER_VALIDATION_FAILURE_NOT_BLOCKED,
@@ -544,7 +632,8 @@ function validatePolicyIntentMigrationCandidateReport(report = {}) {
       candidate.routingTarget?.configured === false &&
       candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET &&
       candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION &&
-      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE &&
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_ACTIVE_INTENT_AUTHORITY
     ) {
       issues.push({
         riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_ROUTING_NOT_EXPLICIT,
@@ -558,7 +647,8 @@ function validatePolicyIntentMigrationCandidateReport(report = {}) {
       candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.STALE_PROFILE_DEPENDENCY &&
       candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION &&
       candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE &&
-      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET &&
+      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_ACTIVE_INTENT_AUTHORITY
     ) {
       issues.push({
         riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.STALE_PROFILE_NOT_EXPLICIT,

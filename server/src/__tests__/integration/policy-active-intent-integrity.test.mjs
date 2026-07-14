@@ -120,8 +120,8 @@ describe('Policy Active Intent Integrity Integration', () => {
       );
       expect(activeIntentResult.rows).toHaveLength(1);
     } finally {
-      await firstClient.query('ROLLBACK').catch(() => {});
-      await secondClient.query('ROLLBACK').catch(() => {});
+      await firstClient.query('ROLLBACK');
+      await secondClient.query('ROLLBACK');
       firstClient.release();
       secondClient.release();
     }
@@ -202,7 +202,7 @@ describe('Policy Active Intent Integrity Integration', () => {
         }),
       })]);
     } finally {
-      await client.query('ROLLBACK').catch(() => {});
+      await client.query('ROLLBACK');
       client.release();
     }
   });
@@ -238,7 +238,7 @@ describe('Policy Active Intent Integrity Integration', () => {
         code: '23514',
       });
     } finally {
-      await client.query('ROLLBACK').catch(() => {});
+      await client.query('ROLLBACK');
       client.release();
     }
 

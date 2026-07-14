@@ -60,6 +60,11 @@ is now `server/src/services/policyIntentMigrationCandidateReport.mjs`.
    The report should emit `nextStep.stepId = explicit_conversion_workflow`
    rather than a temporary phase identifier.
 
+6. **Compose active-authority eligibility before readiness.**
+   Use the active-intent integrity report to block only affected policies with
+   bounded conflict state and count metadata. Do not expose native intent
+   payloads or convert/report repairable data as part of candidate reporting.
+
 ## Pros And Cons
 
 Pros:
@@ -87,6 +92,10 @@ Cons:
   `server/src/services/policyIntentConversionWorkflow.mjs`
 - Dependent post-upgrade dry run:
   `server/src/services/policyPostUpgradeDryRun.mjs`
+- Candidate authority eligibility:
+  `server/src/services/policyCandidateAuthorityEligibility.mjs`
+- Authority eligibility design:
+  [Policy Candidate Authority Eligibility](policy-candidate-authority-eligibility.md)
 - Validation evidence:
   `server/src/services/policyStorageClosureEvidenceRun.mjs`
 
@@ -117,6 +126,8 @@ Implemented:
 - Validation still rejects reports that mutate storage, omit reasons, omit
   deletion impact, hide blockers behind generic statuses, or expose raw legacy
   JSON in operator mode.
+- Active native-authority conflicts now block conversion explicitly while clean
+  candidate rows retain their existing report shape.
 
 ## Next Step
 

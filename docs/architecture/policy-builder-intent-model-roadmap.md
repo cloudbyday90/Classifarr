@@ -4937,6 +4937,23 @@ Acceptance criteria:
 - Clean policies retain the existing candidate-report result shape and
   side-effect-free behavior.
 
+Implementation status:
+
+- The design and outcome are documented in
+  [Policy Candidate Authority Eligibility](policy-candidate-authority-eligibility.md).
+- `policyCandidateAuthorityEligibility.mjs` reduces the active-intent integrity
+  report to a policy-local, bounded eligibility decision without exposing native
+  intent payloads or row IDs.
+- The migration candidate report now assigns
+  `blocked_by_active_intent_authority` before normal readiness calculation and
+  validates that the blocker cannot be downgraded or emitted without
+  explainable conflict details.
+- Post-upgrade dry-run and apply entry points load the metadata-only integrity
+  report with their bounded policy input, so an ambiguous active native
+  authority cannot be selected for conversion.
+- Policies without an authority conflict keep the existing candidate result
+  shape and the report remains side-effect-free.
+
 ### 8R.3 Explicit Conversion Workflow
 
 Intent: convert policies only when the operator or post-upgrade process has a

@@ -189,4 +189,42 @@ describe('policyPostUpgradeDryRun', () => {
     expect(dryRun.validation.ok).toBe(true);
     expect(dryRun.summary.readyToApplyCount).toBe(1);
   });
+
+  test('loads active-intent integrity before allowing a post-upgrade candidate to apply', async () => {
+    const dbClient = {
+      query: jest.fn()
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              ...policy(),
+              presets: [preset()],
+              arr_type: 'radarr',
+              arr_config_id: 1,
+              arr_root_folder_path: '/media/Movies',
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            { id: 81, policy_id: 14, intent_version: 1, validation_status: 'valid' },
+            { id: 82, policy_id: 14, intent_version: 2, validation_status: 'valid' },
+          ],
+        }),
+    };
+
+    const dryRun = await runPolicyPostUpgradeDryRun({
+      dbClient,
+      maxPolicies: 10,
+      now: '2026-07-01T12:00:00.000Z',
+    });
+
+    expect(dryRun.statusId).toBe(POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.REVIEW_REQUIRED);
+    expect(dryRun.selectedPolicyIds).toEqual([]);
+    expect(dryRun.summary.readyToApplyCount).toBe(0);
+    expect(dryRun.candidateReport.candidates[0]).toEqual(expect.objectContaining({
+      statusId: 'blocked_by_active_intent_authority',
+      canConvert: false,
+    }));
+    expect(dbClient.query).toHaveBeenCalledTimes(2);
+  });
 });

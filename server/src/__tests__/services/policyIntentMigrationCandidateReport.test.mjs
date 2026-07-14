@@ -1,4 +1,8 @@
 import {
+  POLICY_ACTIVE_INTENT_INTEGRITY_STATUS_IDS,
+  buildPolicyActiveIntentIntegrityReport,
+} from '../../services/policyActiveIntentIntegrity.mjs';
+import {
   POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS,
   POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS,
   POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS,
@@ -192,6 +196,93 @@ describe('policyIntentMigrationCandidateReport', () => {
       .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION);
   });
 
+  test('blocks ambiguous active authority before calculating conversion readiness', () => {
+    const activeIntentIntegrityReport = buildPolicyActiveIntentIntegrityReport({
+      activeIntents: [
+        {
+          id: 41,
+          policyId: 14,
+          intentVersion: 1,
+          validationStatus: 'valid',
+          updatedAt: '2026-07-01T12:00:00.000Z',
+        },
+        {
+          id: 42,
+          policyId: 14,
+          intentVersion: 2,
+          validationStatus: 'warning',
+          updatedAt: '2026-07-02T12:00:00.000Z',
+        },
+      ],
+    });
+    const report = buildPolicyIntentMigrationCandidateReport({
+      policies: [policy()],
+      activeIntentIntegrityReport,
+    });
+    const candidate = candidateByPolicyId(report, 14);
+
+    expect(report.validation.ok).toBe(true);
+    expect(candidate).toEqual(expect.objectContaining({
+      statusId: POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_ACTIVE_INTENT_AUTHORITY,
+      canConvert: false,
+      requiresOperatorReview: true,
+      authorityEligibility: {
+        stateId: 'active_intent_authority_conflict',
+        integrityStatusId: POLICY_ACTIVE_INTENT_INTEGRITY_STATUS_IDS.REPAIRABLE_DUPLICATE,
+        activeIntentCount: 2,
+      },
+    }));
+    expect(candidate.authorityEligibility).not.toHaveProperty('activeIntentIds');
+    expect(candidate.reasons).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        reasonId: POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.ACTIVE_INTENT_AUTHORITY_CONFLICT,
+        severity: 'blocker',
+      }),
+    ]));
+  });
+
+  test('requires operator resolution for invalid-only duplicate authority', () => {
+    const report = buildPolicyIntentMigrationCandidateReport({
+      policies: [policy()],
+      activeIntentIntegrityReport: buildPolicyActiveIntentIntegrityReport({
+        activeIntents: [
+          { id: 51, policyId: 14, intentVersion: 1, validationStatus: 'invalid' },
+          { id: 52, policyId: 14, intentVersion: 2, validationStatus: 'rejected' },
+        ],
+      }),
+    });
+    const candidate = candidateByPolicyId(report, 14);
+
+    expect(report.validation.ok).toBe(true);
+    expect(candidate.statusId)
+      .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_ACTIVE_INTENT_AUTHORITY);
+    expect(candidate.authorityEligibility).toEqual(expect.objectContaining({
+      integrityStatusId: POLICY_ACTIVE_INTENT_INTEGRITY_STATUS_IDS.BLOCKED_UNSAFE_DUPLICATE,
+    }));
+    expect(candidate.reasons).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        message: expect.stringContaining('requires operator resolution'),
+      }),
+    ]));
+  });
+
+  test('keeps clean candidate shape unchanged when the integrity report has no affected policy', () => {
+    const baseline = buildPolicyIntentMigrationCandidateReport({ policies: [policy()] });
+    const withCleanAuthority = buildPolicyIntentMigrationCandidateReport({
+      policies: [policy()],
+      activeIntentIntegrityReport: buildPolicyActiveIntentIntegrityReport({
+        activeIntents: [
+          { id: 61, policyId: 99, intentVersion: 1, validationStatus: 'valid' },
+          { id: 62, policyId: 99, intentVersion: 2, validationStatus: 'valid' },
+        ],
+      }),
+    });
+
+    expect(withCleanAuthority.validation.ok).toBe(true);
+    expect(withCleanAuthority.candidates[0]).toEqual(baseline.candidates[0]);
+    expect(withCleanAuthority.candidates[0]).not.toHaveProperty('authorityEligibility');
+  });
+
   test('includes explainable affected policy details and deletion impact estimates', () => {
     const report = buildPolicyIntentMigrationCandidateReport({
       policies: [policy()],
@@ -311,6 +402,35 @@ describe('policyIntentMigrationCandidateReport', () => {
       }),
       expect.objectContaining({
         riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.SERVER_VALIDATION_FAILURE_NOT_BLOCKED,
+      }),
+    ]));
+  });
+
+  test('rejects an active-authority conflict that is downgraded to ready', () => {
+    const report = buildPolicyIntentMigrationCandidateReport({
+      policies: [policy()],
+      activeIntentIntegrityReport: buildPolicyActiveIntentIntegrityReport({
+        activeIntents: [
+          { id: 71, policyId: 14, intentVersion: 1, validationStatus: 'valid' },
+          { id: 72, policyId: 14, intentVersion: 2, validationStatus: 'valid' },
+        ],
+      }),
+    });
+    const downgraded = {
+      ...report,
+      candidates: report.candidates.map(candidate => ({
+        ...candidate,
+        statusId: POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT,
+        canConvert: true,
+        requiresOperatorReview: false,
+      })),
+    };
+    const validation = validatePolicyIntentMigrationCandidateReport(downgraded);
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.ACTIVE_AUTHORITY_CONFLICT_NOT_BLOCKED,
       }),
     ]));
   });

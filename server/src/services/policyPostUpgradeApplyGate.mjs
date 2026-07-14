@@ -7,7 +7,7 @@ import {
   POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS,
   POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS,
   buildPolicyPostUpgradeDryRun,
-  loadPolicyPostUpgradePolicies,
+  loadPolicyPostUpgradeCandidateInputs,
 } from './policyPostUpgradeDryRun.mjs';
 import { lockPolicyNativeIntentAuthority } from './policyNativeIntentAuthorityLock.mjs';
 
@@ -783,7 +783,7 @@ async function runPolicyPostUpgradeApplyGate({
   now = null,
   actorId = null,
 } = {}) {
-  const policies = await loadPolicyPostUpgradePolicies({
+  const { policies, activeIntentIntegrityReport } = await loadPolicyPostUpgradeCandidateInputs({
     dbClient,
     maxPolicies,
   });
@@ -791,6 +791,7 @@ async function runPolicyPostUpgradeApplyGate({
     policies,
     maxPolicies,
     now,
+    activeIntentIntegrityReport,
   });
 
   return applyPolicyPostUpgradeApplyGate({

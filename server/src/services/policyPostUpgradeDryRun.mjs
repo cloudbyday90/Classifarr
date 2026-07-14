@@ -6,6 +6,9 @@ import {
   POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS,
   buildPolicyIntentConversionWorkflow,
 } from './policyIntentConversionWorkflow.mjs';
+import {
+  loadPolicyActiveIntentIntegrityReport,
+} from './policyActiveIntentIntegrity.mjs';
 
 const POLICY_POST_UPGRADE_DRY_RUN_VERSION = 'policy.post_upgrade_dry_run.v1';
 const MAX_POST_UPGRADE_DRY_RUN_POLICIES = 100;
@@ -153,6 +156,21 @@ async function loadPolicyPostUpgradePolicies({
   return asArray(result.rows).map(normalizePolicyRow);
 }
 
+async function loadPolicyPostUpgradeCandidateInputs({
+  dbClient,
+  maxPolicies = MAX_POST_UPGRADE_DRY_RUN_POLICIES,
+} = {}) {
+  const [policies, activeIntentIntegrityReport] = await Promise.all([
+    loadPolicyPostUpgradePolicies({ dbClient, maxPolicies }),
+    loadPolicyActiveIntentIntegrityReport(dbClient),
+  ]);
+
+  return {
+    policies,
+    activeIntentIntegrityReport,
+  };
+}
+
 function getReadyPolicyIds(candidateReport = {}) {
   return asArray(candidateReport.candidates)
     .filter(candidate =>
@@ -211,6 +229,7 @@ function determineStatusId({ candidateReport, conversionWorkflow, operatorErrorI
 function buildPolicyPostUpgradeDryRun({
   policies = [],
   candidateReport = null,
+  activeIntentIntegrityReport = null,
   maxPolicies = MAX_POST_UPGRADE_DRY_RUN_POLICIES,
   now = null,
 } = {}) {
@@ -219,6 +238,7 @@ function buildPolicyPostUpgradeDryRun({
   const report = candidateReport || buildPolicyIntentMigrationCandidateReport({
     policies,
     maxPolicies: normalizedMaxPolicies,
+    activeIntentIntegrityReport,
   });
   const readyPolicyIds = getReadyPolicyIds(report);
   const conversionWorkflow = readyPolicyIds.length > 0
@@ -343,7 +363,7 @@ async function runPolicyPostUpgradeDryRun({
   maxPolicies = MAX_POST_UPGRADE_DRY_RUN_POLICIES,
   now = null,
 } = {}) {
-  const policies = await loadPolicyPostUpgradePolicies({
+  const { policies, activeIntentIntegrityReport } = await loadPolicyPostUpgradeCandidateInputs({
     dbClient,
     maxPolicies,
   });
@@ -352,6 +372,7 @@ async function runPolicyPostUpgradeDryRun({
     policies,
     maxPolicies,
     now,
+    activeIntentIntegrityReport,
   });
 }
 
@@ -362,6 +383,7 @@ export {
   POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS,
   POLICY_POST_UPGRADE_DRY_RUN_VERSION,
   buildPolicyPostUpgradeDryRun,
+  loadPolicyPostUpgradeCandidateInputs,
   loadPolicyPostUpgradePolicies,
   runPolicyPostUpgradeDryRun,
   validatePolicyPostUpgradeDryRun,

@@ -23,6 +23,10 @@ unchanged operator or runtime outcome.
   Safe historical duplicates are retained as linked inactive history, unsafe
   duplicate groups block migration without mutation, post-upgrade writers lock
   policy authority, and backup restore refuses ambiguous active-intent mapping.
+- **Authority-Aware Migration Readiness** - candidate reporting and
+  post-upgrade dry-runs now block a policy with ambiguous active native intent
+  authority before it can be selected for conversion. The operator-safe result
+  reports only the conflict state and active-row count, never native payloads.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or
