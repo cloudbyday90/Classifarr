@@ -22,6 +22,11 @@ import {
   buildPolicyCompatibilityDeletionExecutionGate,
   validatePolicyCompatibilityDeletionExecutionGate,
 } from '../../services/policyCompatibilityDeletionExecutionGate.mjs';
+import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+  buildReadyExecutionGatePreflightEvidence,
+  buildReadyExecutionPlanArtifact,
+} from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
@@ -158,26 +163,29 @@ function readyExecutionPlan(overrides = {}) {
   });
 }
 
-function readyGate(overrides = {}) {
+function readyGate({
+  executionPlan = readyExecutionPlan(),
+  executionPlanArtifact = null,
+  preflightEvidence = null,
+  ...overrides
+} = {}) {
+  const artifact = executionPlanArtifact || buildReadyExecutionPlanArtifact({
+    executionPlan,
+  });
+
   return buildPolicyCompatibilityDeletionExecutionGate({
-    executionPlan: readyExecutionPlan(),
-    worktreeClean: true,
-    backupRestoreVerified: true,
-    backupRestoreFresh: true,
-    operatorApproval: {
-      approved: true,
-      approvedBy: 'policy-maintainer',
-    },
-    rollbackStanceFinal: true,
-    supportStanceFinal: true,
-    manifestFresh: true,
-    manifestMatchesCurrentPlan: true,
+    executionPlanArtifact: artifact,
+    preflightEvidence: preflightEvidence || buildReadyExecutionGatePreflightEvidence({
+      executionPlanArtifact: artifact,
+    }),
+    generatedAt: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+    now: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
     ...overrides,
   });
 }
 
 describe('policyCompatibilityDeletionExecutionGate', () => {
-  test('allows a separate controlled deletion step only when final preflight checks pass', () => {
+  test('allows a separate controlled deletion step only with a current bound artifact and preflight evidence', () => {
     const gate = readyGate();
 
     expect(gate.statusId)
@@ -191,14 +199,17 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
       readyForExecutionGate: true,
       manifestEntryCount: 18,
     }));
-    expect(gate.finalChecks).toEqual(expect.objectContaining({
-      worktreeClean: true,
-      backupRestoreVerified: true,
-      backupRestoreFresh: true,
-      rollbackStanceFinal: true,
-      supportStanceFinal: true,
-      manifestFresh: true,
-      manifestMatchesCurrentPlan: true,
+    expect(gate.preflightEvidence).toEqual(expect.objectContaining({
+      executionPlanArtifactFingerprint:
+        gate.executionPlanArtifact.artifactFingerprint.fingerprint,
+      worktree: expect.objectContaining({ clean: true }),
+      recovery: expect.objectContaining({ backupRestoreVerified: true }),
+      approval: expect.objectContaining({ approved: true, approvedBy: 'policy-maintainer' }),
+      stances: expect.objectContaining({
+        rollbackStanceFinal: true,
+        supportStanceFinal: true,
+      }),
+      manifest: expect.objectContaining({ matchesExecutionPlan: true }),
     }));
     expect(gate.executionPolicy).toEqual(expect.objectContaining({
       executeDeletionNow: false,
@@ -212,25 +223,138 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
     expect(Object.values(gate.sideEffects).some(Boolean)).toBe(false);
   });
 
-  test('blocks when the execution plan is not ready', () => {
-    const gate = readyGate({
-      executionPlan: buildPolicyCompatibilityDeletionExecutionPlan(),
+  test('blocks a missing or non-ready execution-plan artifact', () => {
+    const gate = buildPolicyCompatibilityDeletionExecutionGate({
+      generatedAt: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+      now: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
     });
 
     expect(gate.statusId)
       .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
-        .BLOCKED_BY_EXECUTION_PLAN);
+        .BLOCKED_BY_EXECUTION_ARTIFACT);
     expect(gate.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
-          .EXECUTION_PLAN_NOT_READY,
+          .EXECUTION_PLAN_ARTIFACT_NOT_READY,
+      }),
+    ]));
+  });
+
+  test('does not accept legacy raw readiness fields without a bound artifact', () => {
+    const gate = buildPolicyCompatibilityDeletionExecutionGate({
+      executionPlan: readyExecutionPlan(),
+      worktreeClean: true,
+      backupRestoreVerified: true,
+      backupRestoreFresh: true,
+      operatorApproval: { approved: true, approvedBy: 'policy-maintainer' },
+      rollbackStanceFinal: true,
+      supportStanceFinal: true,
+      manifestFresh: true,
+      manifestMatchesCurrentPlan: true,
+      generatedAt: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+      now: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+    });
+
+    expect(gate.allowControlledDeletion).toBe(false);
+    expect(gate.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+          .EXECUTION_PLAN_ARTIFACT_NOT_READY,
+      }),
+    ]));
+  });
+
+  test('blocks a mutated execution-plan artifact even when its ready claims are unchanged', () => {
+    const artifact = buildReadyExecutionPlanArtifact({
+      executionPlan: readyExecutionPlan(),
+    });
+    artifact.executionPlan.manifest.entries = [];
+    artifact.executionPlan.manifest.entryCount = 0;
+
+    const gate = readyGate({ executionPlanArtifact: artifact });
+
+    expect(gate.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
+        .BLOCKED_BY_EXECUTION_ARTIFACT);
+    expect(gate.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+          .EXECUTION_PLAN_ARTIFACT_FINGERPRINT_INVALID,
+      }),
+    ]));
+  });
+
+  test('blocks stale execution-plan evidence and stale preflight checks', () => {
+    const artifact = buildReadyExecutionPlanArtifact({
+      executionPlan: readyExecutionPlan(),
+      generatedAt: '2026-07-14T19:54:59.999Z',
+    });
+    const staleArtifactGate = readyGate({
+      executionPlanArtifact: artifact,
+    });
+
+    expect(staleArtifactGate.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
+        .BLOCKED_BY_EXECUTION_ARTIFACT);
+    expect(staleArtifactGate.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+          .EXECUTION_PLAN_ARTIFACT_TIMESTAMP_STALE,
+      }),
+    ]));
+
+    const currentArtifact = buildReadyExecutionPlanArtifact({
+      executionPlan: readyExecutionPlan(),
+    });
+    const stalePreflightGate = readyGate({
+      executionPlanArtifact: currentArtifact,
+      preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+        executionPlanArtifact: currentArtifact,
+        observedAt: '2026-07-14T19:54:59.999Z',
+      }),
+    });
+
+    expect(stalePreflightGate.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
+        .BLOCKED_BY_PREFLIGHT_EVIDENCE);
+    expect(stalePreflightGate.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.PREFLIGHT_TIMESTAMP_STALE,
+      }),
+    ]));
+  });
+
+  test('blocks preflight evidence that is not bound to the exact execution-plan artifact', () => {
+    const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
+    const gate = readyGate({
+      executionPlanArtifact: artifact,
+      preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+        executionPlanArtifact: artifact,
+        overrides: {
+          executionPlanArtifactFingerprint: 'a'.repeat(64),
+        },
+      }),
+    });
+
+    expect(gate.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
+        .BLOCKED_BY_PREFLIGHT_EVIDENCE);
+    expect(gate.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+          .PREFLIGHT_ARTIFACT_FINGERPRINT_MISMATCH,
       }),
     ]));
   });
 
   test('blocks when the worktree is not clean', () => {
+    const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
     const gate = readyGate({
-      worktreeClean: false,
+      executionPlanArtifact: artifact,
+      preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+        executionPlanArtifact: artifact,
+        overrides: { worktree: { clean: false } },
+      }),
     });
 
     expect(gate.statusId)
@@ -243,10 +367,14 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
     ]));
   });
 
-  test('blocks when backup and restore evidence is missing or stale', () => {
+  test('blocks when recovery evidence is not verified', () => {
+    const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
     const gate = readyGate({
-      backupRestoreVerified: false,
-      backupRestoreFresh: false,
+      executionPlanArtifact: artifact,
+      preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+        executionPlanArtifact: artifact,
+        overrides: { recovery: { backupRestoreVerified: false } },
+      }),
     });
 
     expect(gate.statusId)
@@ -254,18 +382,23 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
         .BLOCKED_BY_RECOVERY_EVIDENCE);
     expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
       POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.BACKUP_RESTORE_NOT_VERIFIED,
-      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.BACKUP_RESTORE_NOT_FRESH,
     ]));
   });
 
   test('blocks without operator approval and final support stances', () => {
+    const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
     const gate = readyGate({
-      operatorApproval: {
-        approved: false,
-        approvedBy: null,
-      },
-      rollbackStanceFinal: false,
-      supportStanceFinal: false,
+      executionPlanArtifact: artifact,
+      preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+        executionPlanArtifact: artifact,
+        overrides: {
+          approval: { approved: false },
+          stances: {
+            rollbackStanceFinal: false,
+            supportStanceFinal: false,
+          },
+        },
+      }),
     });
 
     expect(gate.statusId)
@@ -273,23 +406,25 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
         .BLOCKED_BY_APPROVAL);
     expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
       POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.OPERATOR_APPROVAL_MISSING,
-      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.OPERATOR_APPROVAL_ACTOR_MISSING,
       POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.ROLLBACK_STANCE_NOT_FINAL,
       POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.SUPPORT_STANCE_NOT_FINAL,
     ]));
   });
 
-  test('blocks when manifest freshness cannot be confirmed', () => {
+  test('blocks when the manifest cannot be verified against the bound artifact', () => {
+    const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
     const gate = readyGate({
-      manifestFresh: false,
-      manifestMatchesCurrentPlan: false,
+      executionPlanArtifact: artifact,
+      preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+        executionPlanArtifact: artifact,
+        overrides: { manifest: { matchesExecutionPlan: false } },
+      }),
     });
 
     expect(gate.statusId)
       .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
-        .BLOCKED_BY_MANIFEST_FRESHNESS);
+        .BLOCKED_BY_MANIFEST_VERIFICATION);
     expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.MANIFEST_NOT_FRESH,
       POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.MANIFEST_NOT_CURRENT,
     ]));
   });

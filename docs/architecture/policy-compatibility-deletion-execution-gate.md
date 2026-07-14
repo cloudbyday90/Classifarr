@@ -9,40 +9,34 @@ mutate storage, write manifests, or run Git commands.
 
 The gate verifies:
 
-- compatibility deletion execution plan is ready and valid,
-- worktree cleanliness has been confirmed,
-- backup and restore evidence is verified and fresh,
-- operator approval exists and names the approving actor,
-- rollback or post-window recovery stance is final,
-- support stance for converted native policies is final,
-- manifest is fresh and still matches the current execution plan.
+- a current v2 execution-plan artifact is ready, valid, and fingerprint-valid,
+- its retained evidence-bundle summary is current and coherent with the
+  artifact timestamp,
+- timestamped preflight evidence names that exact fingerprint,
+- worktree cleanliness, backup/restore, approval, final stances, and manifest
+  verification are all current and have named actors,
+- the preflight checks occurred after the bound artifact was generated.
 
 ## Official-Source Research
 
-- Git `status` documentation defines how to inspect worktree state. This gate
-  treats clean-worktree confirmation as a required precondition, but the
-  contract itself does not run Git commands.
-- NIST SSDF recommends integrating secure software practices into the SDLC and
-  following change-management discipline for software updates. This gate
-  applies that by requiring explicit operator approval and a valid execution
-  plan before deletion.
-- OWASP API9:2023 Improper Inventory Management highlights risk from stale or
-  deprecated surfaces. This gate keeps deletion tied to a current manifest so
-  stale compatibility paths are not removed ad hoc.
-- NIST SP 800-34 provides contingency-planning and recovery guidance. This gate
-  requires fresh backup/restore evidence and final recovery stance before
-  allowing deletion execution to proceed.
+- SLSA verification guidance says consumers should verify artifact provenance
+  before use. The gate recomputes and validates the plan-artifact fingerprint
+  before it trusts preflight evidence.
+- NIST SP 800-204D recommends verifiable CI/CD artifact provenance. The gate
+  ties its final checks to the exact plan and evidence summary that will inform
+  controlled removal.
+- NIST IR 8397 supports automated verification to reduce inconsistent manual
+  checks. Each required preflight record has a timestamp and named actor, and
+  the service evaluates all records deterministically.
 
 Sources:
 
-- Git `status` documentation:
-  <https://git-scm.com/docs/git-status>
-- NIST Secure Software Development Framework:
-  <https://csrc.nist.gov/pubs/sp/800/218/final>
-- OWASP API9:2023 Improper Inventory Management:
-  <https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/>
-- NIST SP 800-34 Rev. 1:
-  <https://csrc.nist.gov/pubs/sp/800/34/r1/upd1/final>
+- SLSA, Verifying Artifacts:
+  <https://slsa.dev/spec/v1.2/verifying-artifacts>
+- NIST SP 800-204D:
+  <https://csrc.nist.gov/pubs/sp/800/204/d/final>
+- NIST IR 8397:
+  <https://csrc.nist.gov/pubs/ir/8397/final>
 
 ## Recommendations
 
@@ -61,30 +55,32 @@ Cons:
 
 - deletion still requires a later execution step.
 
-### Require Worktree And Manifest Freshness
+### Require A Bound Artifact Before Preflight
 
-Deletion should not proceed from a stale manifest or dirty worktree. The gate
-requires callers to provide those confirmations immediately before execution.
+Deletion should not proceed from a raw execution plan and independent boolean
+claims. The gate requires a fingerprint-valid v2 artifact, then requires every
+preflight record to bind to that artifact fingerprint.
 
 Pros:
 
-- prevents deleting from an outdated plan,
-- reduces risk of mixing unrelated work with compatibility removal,
-- makes the final execution step easier to audit.
+- prevents detached preflight checks from authorizing another plan,
+- detects manifest or evidence substitution,
+- makes the final execution step auditable.
 
 Cons:
 
-- the service depends on external preflight evidence, not direct Git execution.
+- preflight must be regenerated whenever the artifact changes.
 
-### Require Recovery And Human Approval
+### Require Fresh Timestamped Records With Named Actors
 
-The final gate requires fresh backup/restore evidence, operator approval, final
-rollback or post-window recovery stance, and final support stance.
+The final gate requires fresh worktree, recovery, approval, stance, and
+manifest records collected after artifact generation. Every record names the
+actor who performed the check.
 
 Pros:
 
 - keeps recovery proof immediately ahead of deletion,
-- requires a named approver,
+- makes missing or stale actors and timestamps fail closed,
 - makes support behavior explicit before compatibility paths disappear.
 
 Cons:
@@ -95,10 +91,10 @@ Cons:
 
 Use this stack:
 
-1. `policyCompatibilityDeletionExecutionPlan.mjs` creates the
-   exact manifest.
-2. `policyCompatibilityDeletionExecutionGate.mjs` validates
-   final worktree, recovery, approval, support, and manifest freshness signals.
+1. `policyCompatibilityDeletionExecutionPlanArtifact.mjs` creates a current v2
+   artifact with a deterministic fingerprint.
+2. `policyCompatibilityDeletionExecutionGate.mjs` validates the artifact and
+   bound final worktree, recovery, approval, stance, and manifest records.
 3. A later controlled deletion component may consume a ready gate output, but
    only that later step should perform file removal.
 
@@ -107,19 +103,20 @@ Use this stack:
 Implemented:
 
 - Added `policyCompatibilityDeletionExecutionGate.mjs`.
-- Added gate status IDs for:
+- Updated the contract to v2 with gate status IDs for:
   - ready for controlled deletion,
-  - blocked by execution plan,
+  - blocked by execution artifact,
+  - blocked by preflight evidence,
   - blocked by worktree,
   - blocked by recovery evidence,
   - blocked by approval,
-  - blocked by manifest freshness.
-- Added risk IDs for execution-plan readiness, worktree cleanliness, recovery
-  evidence, operator approval, final support stances, manifest freshness, and
-  forbidden side effects.
-- Added focused tests for ready gate output, execution-plan blocker, worktree
-  blocker, recovery blocker, approval blocker, manifest freshness blocker, and
-  side-effect validation.
+  - blocked by manifest verification.
+- Requires a v2 fingerprint-valid execution-plan artifact and matching
+  timestamped preflight evidence instead of raw readiness booleans.
+- Rejects stale, future, pre-artifact, malformed, or actorless preflight
+  records.
+- Added focused tests for artifact mutation, evidence binding, stale records,
+  worktree, recovery, approval, stance, manifest, and side-effect blockers.
 
 Not implemented in this component:
 
@@ -132,7 +129,6 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Controlled Compatibility Path Removal**. That task should be the
-first component allowed to remove compatibility paths, and only after it
-consumes a ready compatibility deletion execution-gate output and performs a
-narrow, reviewable deletion scope.
+Proceed with **Controlled Compatibility Path Removal**. It must consume the
+same evidence-bound artifact used by the ready gate, rather than independently
+accepting a plan and a gate that could be from different evaluations.

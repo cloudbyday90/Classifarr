@@ -20,6 +20,11 @@ import {
   buildPolicyCompatibilityDeletionExecutionGate,
 } from '../../services/policyCompatibilityDeletionExecutionGate.mjs';
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+  buildReadyExecutionGatePreflightEvidence,
+  buildReadyExecutionPlanArtifact,
+} from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
+import {
   buildPolicyControlledCompatibilityPathRemoval,
 } from '../../services/policyControlledCompatibilityPathRemoval.mjs';
 import {
@@ -164,20 +169,20 @@ function readyExecutionPlan(overrides = {}) {
   });
 }
 
-function readyGate(executionPlan, overrides = {}) {
+function readyGate(executionPlan, {
+  preflightOverrides = {},
+  ...overrides
+} = {}) {
+  const executionPlanArtifact = buildReadyExecutionPlanArtifact({ executionPlan });
+
   return buildPolicyCompatibilityDeletionExecutionGate({
-    executionPlan,
-    worktreeClean: true,
-    backupRestoreVerified: true,
-    backupRestoreFresh: true,
-    operatorApproval: {
-      approved: true,
-      approvedBy: 'policy-maintainer',
-    },
-    rollbackStanceFinal: true,
-    supportStanceFinal: true,
-    manifestFresh: true,
-    manifestMatchesCurrentPlan: true,
+    executionPlanArtifact,
+    preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+      executionPlanArtifact,
+      overrides: preflightOverrides,
+    }),
+    generatedAt: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+    now: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
     ...overrides,
   });
 }

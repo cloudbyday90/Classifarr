@@ -5737,7 +5737,15 @@ can move to a separate controlled deletion step.
 
 Tasks:
 
-- Consume the compatibility deletion execution plan.
+- **8R.16.1 Execution-Gate Artifact And Evidence Binding**
+  - Consume a current v2 fingerprint-valid compatibility deletion execution-plan
+    artifact, not a raw plan.
+  - Require timestamped preflight records bound to the exact artifact
+    fingerprint for worktree, recovery, approval, final stances, and manifest
+    verification.
+  - Reject stale, future, pre-artifact, malformed, or actorless records.
+  - Remove caller-supplied readiness booleans from the execution-gate and
+    controlled-batch input contracts.
 - Require a clean worktree confirmation.
 - Require verified and fresh backup/restore evidence.
 - Require explicit operator approval with an approving actor.
@@ -5749,8 +5757,8 @@ Tasks:
 
 Acceptance criteria:
 
-- Gate is blocked unless the compatibility deletion execution plan is ready
-  and valid.
+- Gate is blocked unless the current execution-plan artifact is ready, valid,
+  fingerprint-valid, and bound to current preflight evidence.
 - Dirty worktree blocks the gate.
 - Missing or stale backup/restore evidence blocks the gate.
 - Missing approval, approving actor, rollback stance, or support stance blocks
@@ -5769,19 +5777,28 @@ Implementation status:
   `server/src/services/policyCompatibilityDeletionExecutionGate.mjs`.
 - The focused execution-gate test suite lives in
   `server/src/__tests__/services/policyCompatibilityDeletionExecutionGate.test.mjs`.
-- Current implementation verifies execution-plan readiness, worktree
-  cleanliness, backup/restore freshness, operator approval, final support
-  stances, manifest freshness, emits a semantic `nextStep.stepId`, and
-  validates that no deletion side effects occur.
+- Task 8R.16.1 is implemented. The v2 gate verifies a fingerprint-valid
+  execution-plan artifact, evidence-bundle coherence, and preflight records
+  bound to the exact artifact fingerprint. The controlled batch artifact now
+  consumes the same contract and cannot reconstruct trust from raw booleans.
+- Current implementation verifies artifact readiness, worktree cleanliness,
+  backup/restore freshness, operator approval, final support stances, manifest
+  verification, emits a semantic `nextStep.stepId`, and validates that no
+  deletion side effects occur.
 
 ### 8R.17 Controlled Compatibility Path Removal
 
-Intent: consume a ready compatibility deletion execution plan and compatibility
-deletion execution gate, then produce a small, reviewable compatibility path
-removal batch without performing destructive changes.
+Intent: consume the same ready evidence-bound execution-plan artifact and
+compatibility deletion execution gate, then produce a small, reviewable
+compatibility path removal batch without performing destructive changes.
 
 Tasks:
 
+- **8R.17.1 Artifact And Gate Cohesion**
+  - Replace independent execution-plan and gate inputs with one
+    evidence-bound execution artifact.
+  - Verify the removal manifest is the same manifest fingerprinted by the gate.
+  - Reject a ready gate when it is paired with a different plan or manifest.
 - Consume approved compatibility deletion manifest entries.
 - Consume compatibility deletion execution-gate output.
 - Require selected paths to exist in the approved manifest.

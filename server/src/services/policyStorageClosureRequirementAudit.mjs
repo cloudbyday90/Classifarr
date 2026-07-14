@@ -107,12 +107,17 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     label: 'Policy Compatibility Deletion Execution Plan Artifact',
     designDocPaths: [
       'docs/architecture/policy-compatibility-deletion-execution-plan-artifact.md',
+      'docs/architecture/policy-compatibility-deletion-execution-artifact-fingerprint.md',
     ],
     contractPaths: [
       'server/src/services/policyCompatibilityDeletionExecutionPlanArtifact.mjs',
+      'server/src/services/policyCompatibilityDeletionExecutionPlanArtifactFingerprint.mjs',
       'scripts/generate-policy-compatibility-deletion-execution-plan-artifact.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifact.test.mjs'],
+    testPaths: [
+      'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifact.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifactFingerprint.test.mjs',
+    ],
   },
   {
     componentId: 'controlled_compatibility_removal_batch_artifact',

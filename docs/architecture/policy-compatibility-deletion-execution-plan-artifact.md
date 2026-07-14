@@ -139,12 +139,16 @@ Implemented:
 - Added the root runner
   `npm run policy:compatibility-deletion-execution-plan-artifact`.
 - Replaced the phase-coded payload version with
-  `policy.compatibility_deletion_execution_plan_artifact.v1`.
+  `policy.compatibility_deletion_execution_plan_artifact.v2` and a deterministic
+  SHA-256 artifact fingerprint that binds the current plan and evidence
+  summary.
 - Updated storage-closure validation and requirement-audit evidence references
   to require the durable execution-plan artifact contract.
 - Preserved explicit input requirements, blocked-plan diagnostics,
   side-effect rejection, nested-plan writing, and optional wrapper-artifact
-  writing.
+  writing. The v2 wrapper is required by the execution gate and controlled
+  batch artifact; raw execution-plan JSON remains available for earlier
+  read-only audit tooling only.
 
 Example:
 
@@ -167,6 +171,6 @@ npm run --silent policy:storage-closure-final-removal-audit -- \
 
 ## Next Step
 
-Proceed with the controlled removal batch artifact module naming cutover so the
-batch artifact that consumes this execution plan no longer exposes roadmap
-phase naming.
+Collect preflight evidence bound to the v2 artifact fingerprint, then evaluate
+the compatibility deletion execution gate. See
+[Policy Compatibility Deletion Execution Artifact Fingerprint](policy-compatibility-deletion-execution-artifact-fingerprint.md).

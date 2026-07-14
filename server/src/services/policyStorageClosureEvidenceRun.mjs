@@ -246,11 +246,14 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     designDocPaths: [
       'docs/architecture/policy-compatibility-deletion-execution-plan.md',
       'docs/architecture/policy-compatibility-deletion-execution-plan-evidence-bundle.md',
+      'docs/architecture/policy-compatibility-deletion-execution-plan-artifact.md',
+      'docs/architecture/policy-compatibility-deletion-execution-artifact-fingerprint.md',
     ],
     contractPaths: [
       'server/src/services/policyCompatibilityDeletionExecutionPlan.mjs',
       'server/src/services/policyCompatibilityDeletionExecutionPlanEvidenceBundle.mjs',
       'server/src/services/policyCompatibilityDeletionExecutionPlanArtifact.mjs',
+      'server/src/services/policyCompatibilityDeletionExecutionPlanArtifactFingerprint.mjs',
       'scripts/generate-policy-compatibility-deletion-execution-plan-evidence-bundle.mjs',
       'scripts/generate-policy-compatibility-deletion-execution-plan-artifact.mjs',
     ],
@@ -258,12 +261,16 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlan.test.mjs',
       'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanEvidenceBundle.test.mjs',
       'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifact.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifactFingerprint.test.mjs',
     ],
   },
   {
     componentId: 'compatibility_path_deletion_execution_gate',
     label: 'Compatibility Path Deletion Execution Gate',
-    designDocPaths: ['docs/architecture/policy-compatibility-deletion-execution-gate.md'],
+    designDocPaths: [
+      'docs/architecture/policy-compatibility-deletion-execution-gate.md',
+      'docs/architecture/policy-compatibility-deletion-execution-artifact-fingerprint.md',
+    ],
     contractPaths: ['server/src/services/policyCompatibilityDeletionExecutionGate.mjs'],
     testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionExecutionGate.test.mjs'],
   },

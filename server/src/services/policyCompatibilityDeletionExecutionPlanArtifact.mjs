@@ -7,9 +7,13 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_VERSION,
   validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle,
 } from './policyCompatibilityDeletionExecutionPlanEvidenceBundle.mjs';
+import {
+  buildPolicyCompatibilityDeletionExecutionPlanArtifactFingerprint,
+  validatePolicyCompatibilityDeletionExecutionPlanArtifactFingerprint,
+} from './policyCompatibilityDeletionExecutionPlanArtifactFingerprint.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION =
-  'policy.compatibility_deletion_execution_plan_artifact.v1';
+  'policy.compatibility_deletion_execution_plan_artifact.v2';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS = Object.freeze({
   READY: 'ready',
@@ -24,6 +28,9 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS = Object.fr
   EXECUTION_PLAN_NOT_READY: 'execution_plan_not_ready',
   EXECUTION_PLAN_VALIDATION_FAILED: 'execution_plan_validation_failed',
   SIDE_EFFECT_REPORTED: 'side_effect_reported',
+  READY_STATE_MISMATCH: 'ready_state_mismatch',
+  ARTIFACT_FINGERPRINT_INVALID: 'artifact_fingerprint_invalid',
+  UNKNOWN_VERSION: 'unknown_version',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
   UNKNOWN_STATUS: 'unknown_status',
 });
@@ -183,15 +190,29 @@ function buildPolicyCompatibilityDeletionExecutionPlanArtifact({
       gitCommandsRun: sideEffects.gitCommandsRun === true,
     },
   };
+  const artifactWithFingerprint = {
+    ...artifact,
+    artifactFingerprint: buildPolicyCompatibilityDeletionExecutionPlanArtifactFingerprint({
+      artifact,
+    }),
+  };
 
   return {
-    ...artifact,
-    validation: validatePolicyCompatibilityDeletionExecutionPlanArtifact(artifact),
+    ...artifactWithFingerprint,
+    validation: validatePolicyCompatibilityDeletionExecutionPlanArtifact(artifactWithFingerprint),
   };
 }
 
 function validatePolicyCompatibilityDeletionExecutionPlanArtifact(artifact = {}) {
   const issues = [];
+
+  if (artifact.version !== POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.UNKNOWN_VERSION,
+      'Compatibility deletion execution-plan artifact version must be recognized.',
+      { version: artifact.version || null }
+    ));
+  }
 
   if (!Object.values(POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS)
     .includes(artifact.statusId)) {
@@ -205,6 +226,30 @@ function validatePolicyCompatibilityDeletionExecutionPlanArtifact(artifact = {})
     issues.push(buildRisk(
       POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
       'Compatibility deletion execution-plan artifact risk count must match risk list length.'
+    ));
+  }
+
+  const shouldBeReady =
+    artifact.statusId === POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS.READY &&
+    artifact.riskCount === 0;
+  if (artifact.ready !== shouldBeReady) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.READY_STATE_MISMATCH,
+      'Compatibility deletion execution-plan artifact ready state must match its status and risks.'
+    ));
+  }
+
+  const fingerprintValidation =
+    validatePolicyCompatibilityDeletionExecutionPlanArtifactFingerprint({
+      artifact,
+      artifactFingerprint: artifact.artifactFingerprint,
+    });
+  if (!fingerprintValidation.ok) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS
+        .ARTIFACT_FINGERPRINT_INVALID,
+      'Compatibility deletion execution-plan artifact fingerprint must bind the artifact contents.',
+      { issueCount: fingerprintValidation.issueCount }
     ));
   }
 

@@ -1,6 +1,8 @@
 import {
-  POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
-} from './policyCompatibilityDeletionExecutionPlan.mjs';
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION,
+  validatePolicyCompatibilityDeletionExecutionPlanArtifact,
+} from './policyCompatibilityDeletionExecutionPlanArtifact.mjs';
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS,
   buildPolicyCompatibilityDeletionExecutionGate,
@@ -11,7 +13,7 @@ import {
 } from './policyControlledCompatibilityPathRemoval.mjs';
 
 const POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_VERSION =
-  'policy.controlled_compatibility_removal_batch_artifact.v1';
+  'policy.controlled_compatibility_removal_batch_artifact.v2';
 
 const POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS = Object.freeze({
   READY: 'ready',
@@ -19,8 +21,8 @@ const POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS = Object
 });
 
 const POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS = Object.freeze({
-  EXECUTION_PLAN_NOT_READY: 'execution_plan_not_ready',
-  EXECUTION_PLAN_VALIDATION_FAILED: 'execution_plan_validation_failed',
+  EXECUTION_PLAN_ARTIFACT_NOT_READY: 'execution_plan_artifact_not_ready',
+  EXECUTION_PLAN_ARTIFACT_VALIDATION_FAILED: 'execution_plan_artifact_validation_failed',
   EXECUTION_GATE_NOT_READY: 'execution_gate_not_ready',
   EXECUTION_GATE_VALIDATION_FAILED: 'execution_gate_validation_failed',
   REMOVAL_BATCH_NOT_READY: 'removal_batch_not_ready',
@@ -46,31 +48,31 @@ function normalizeGeneratedAt(value) {
   return value || new Date().toISOString();
 }
 
-function buildGateFromInput({ executionPlan = {}, input = {} } = {}) {
+function buildGateFromInput({
+  executionPlanArtifact = {},
+  input = {},
+  generatedAt = null,
+  now = null,
+} = {}) {
   const evidence = asObject(input);
 
   return buildPolicyCompatibilityDeletionExecutionGate({
-    executionPlan,
-    worktreeClean: evidence.worktreeClean,
-    backupRestoreVerified: evidence.backupRestoreVerified,
-    backupRestoreFresh: evidence.backupRestoreFresh,
-    operatorApproval: evidence.operatorApproval,
-    rollbackStanceFinal: evidence.rollbackStanceFinal,
-    supportStanceFinal: evidence.supportStanceFinal,
-    manifestFresh: evidence.manifestFresh,
-    manifestMatchesCurrentPlan: evidence.manifestMatchesCurrentPlan,
+    executionPlanArtifact,
+    preflightEvidence: evidence.preflightEvidence,
+    generatedAt,
+    now,
   });
 }
 
 function buildRemovalBatchFromInput({
-  executionPlan = {},
+  executionPlanArtifact = {},
   executionGate = {},
   input = {},
 } = {}) {
   const evidence = asObject(input);
 
   return buildPolicyControlledCompatibilityPathRemoval({
-    executionPlan,
+    executionPlan: executionPlanArtifact.executionPlan,
     executionGate,
     selectedPaths: evidence.selectedPaths,
     maxBatchSize: evidence.maxBatchSize,
@@ -80,31 +82,40 @@ function buildRemovalBatchFromInput({
 }
 
 function buildArtifactRisks({
-  executionPlan = {},
+  executionPlanArtifact = {},
   executionGate = {},
   removalBatch = {},
   sideEffects = {},
 } = {}) {
   const risks = [];
 
+  const executionPlanArtifactValidation =
+    validatePolicyCompatibilityDeletionExecutionPlanArtifact(executionPlanArtifact);
+
   if (
-    executionPlan.statusId !==
-    POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE ||
-    executionPlan.readyForExecutionGate !== true
+    executionPlanArtifact.version !==
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION ||
+    executionPlanArtifact.statusId !==
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS.READY ||
+    executionPlanArtifact.ready !== true
   ) {
     risks.push(buildRisk(
-      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.EXECUTION_PLAN_NOT_READY,
-      'Controlled compatibility removal batch artifact requires a ready compatibility deletion execution plan.',
-      { statusId: executionPlan.statusId || null }
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS
+        .EXECUTION_PLAN_ARTIFACT_NOT_READY,
+      'Controlled compatibility removal batch artifact requires a ready versioned execution-plan artifact.',
+      {
+        version: executionPlanArtifact.version || null,
+        statusId: executionPlanArtifact.statusId || null,
+      }
     ));
   }
 
-  if (executionPlan.validation?.ok !== true) {
+  if (executionPlanArtifactValidation.ok !== true) {
     risks.push(buildRisk(
       POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS
-        .EXECUTION_PLAN_VALIDATION_FAILED,
-      'Controlled compatibility removal batch artifact requires valid compatibility deletion execution-plan evidence.',
-      { issueCount: executionPlan.validation?.issueCount ?? null }
+        .EXECUTION_PLAN_ARTIFACT_VALIDATION_FAILED,
+      'Controlled compatibility removal batch artifact requires valid execution-plan artifact evidence.',
+      { issueCount: executionPlanArtifactValidation.issueCount }
     ));
   }
 
@@ -170,19 +181,25 @@ function determineArtifactStatusId(risks = []) {
 }
 
 function buildPolicyControlledCompatibilityRemovalBatchArtifact({
-  executionPlan = {},
+  executionPlanArtifact = {},
   input = {},
   generatedAt = null,
+  now = null,
   sideEffects = {},
 } = {}) {
-  const executionGate = buildGateFromInput({ executionPlan, input });
+  const executionGate = buildGateFromInput({
+    executionPlanArtifact,
+    input,
+    generatedAt,
+    now,
+  });
   const removalBatch = buildRemovalBatchFromInput({
-    executionPlan,
+    executionPlanArtifact,
     executionGate,
     input,
   });
   const risks = buildArtifactRisks({
-    executionPlan,
+    executionPlanArtifact,
     executionGate,
     removalBatch,
     sideEffects,

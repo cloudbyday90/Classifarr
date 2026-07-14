@@ -11,6 +11,11 @@ import {
   buildPolicyControlledCompatibilityRemovalBatchArtifact,
   validatePolicyControlledCompatibilityRemovalBatchArtifact,
 } from '../../services/policyControlledCompatibilityRemovalBatchArtifact.mjs';
+import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+  buildReadyExecutionGatePreflightEvidence,
+  buildReadyExecutionPlanArtifact,
+} from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 
 const MANIFEST_PATH =
   'client/src/components/policies/PolicyStarterTemplateMechanics.vue';
@@ -47,19 +52,18 @@ function executionPlan(overrides = {}) {
   };
 }
 
-function readyInput(overrides = {}) {
+function readyExecutionPlanArtifact(overrides = {}) {
+  return buildReadyExecutionPlanArtifact({
+    executionPlan: executionPlan(),
+    overrides,
+  });
+}
+
+function readyInput({ executionPlanArtifact, overrides = {} } = {}) {
   return {
-    worktreeClean: true,
-    backupRestoreVerified: true,
-    backupRestoreFresh: true,
-    operatorApproval: {
-      approved: true,
-      approvedBy: 'storage-closure-maintainer',
-    },
-    rollbackStanceFinal: true,
-    supportStanceFinal: true,
-    manifestFresh: true,
-    manifestMatchesCurrentPlan: true,
+    preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+      executionPlanArtifact,
+    }),
     selectedPaths: [MANIFEST_PATH],
     maxBatchSize: 1,
     removalReason:
@@ -69,13 +73,23 @@ function readyInput(overrides = {}) {
   };
 }
 
+function buildReadyBatchArtifact({
+  executionPlanArtifact = readyExecutionPlanArtifact(),
+  input = null,
+  ...overrides
+} = {}) {
+  return buildPolicyControlledCompatibilityRemovalBatchArtifact({
+    executionPlanArtifact,
+    input: input || readyInput({ executionPlanArtifact }),
+    generatedAt: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+    now: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+    ...overrides,
+  });
+}
+
 describe('policyControlledCompatibilityRemovalBatchArtifact', () => {
   test('builds a ready controlled removal batch artifact', () => {
-    const artifact = buildPolicyControlledCompatibilityRemovalBatchArtifact({
-      executionPlan: executionPlan(),
-      input: readyInput(),
-      generatedAt: '2026-07-01T00:00:00.000Z',
-    });
+    const artifact = buildReadyBatchArtifact();
 
     expect(artifact.statusId)
       .toBe(POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS.READY);
@@ -98,12 +112,16 @@ describe('policyControlledCompatibilityRemovalBatchArtifact', () => {
   });
 
   test('blocks when execution gate evidence is not ready', () => {
-    const artifact = buildPolicyControlledCompatibilityRemovalBatchArtifact({
-      executionPlan: executionPlan(),
+    const executionPlanArtifact = readyExecutionPlanArtifact();
+    const artifact = buildReadyBatchArtifact({
+      executionPlanArtifact,
       input: readyInput({
-        operatorApproval: {
-          approved: false,
-          approvedBy: null,
+        executionPlanArtifact,
+        overrides: {
+          preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+            executionPlanArtifact,
+            overrides: { approval: { approved: false, approvedBy: null } },
+          }),
         },
       }),
     });
@@ -120,10 +138,12 @@ describe('policyControlledCompatibilityRemovalBatchArtifact', () => {
   });
 
   test('blocks when selected path is outside the approved manifest', () => {
-    const artifact = buildPolicyControlledCompatibilityRemovalBatchArtifact({
-      executionPlan: executionPlan(),
+    const executionPlanArtifact = readyExecutionPlanArtifact();
+    const artifact = buildReadyBatchArtifact({
+      executionPlanArtifact,
       input: readyInput({
-        selectedPaths: ['server/src/services/notInManifest.mjs'],
+        executionPlanArtifact,
+        overrides: { selectedPaths: ['server/src/services/notInManifest.mjs'] },
       }),
     });
 
@@ -139,9 +159,7 @@ describe('policyControlledCompatibilityRemovalBatchArtifact', () => {
   });
 
   test('rejects artifact side-effect claims', () => {
-    const artifact = buildPolicyControlledCompatibilityRemovalBatchArtifact({
-      executionPlan: executionPlan(),
-      input: readyInput(),
+    const artifact = buildReadyBatchArtifact({
       sideEffects: {
         filesDeleted: true,
         storageChanged: true,
@@ -158,10 +176,7 @@ describe('policyControlledCompatibilityRemovalBatchArtifact', () => {
   });
 
   test('validates artifact invariants', () => {
-    const artifact = buildPolicyControlledCompatibilityRemovalBatchArtifact({
-      executionPlan: executionPlan(),
-      input: readyInput(),
-    });
+    const artifact = buildReadyBatchArtifact();
     const validation = validatePolicyControlledCompatibilityRemovalBatchArtifact({
       ...artifact,
       statusId: 'unknown',
@@ -172,6 +187,32 @@ describe('policyControlledCompatibilityRemovalBatchArtifact', () => {
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
       POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
+    ]));
+  });
+
+  test('does not accept legacy caller-asserted readiness fields without an artifact', () => {
+    const artifact = buildPolicyControlledCompatibilityRemovalBatchArtifact({
+      input: {
+        worktreeClean: true,
+        backupRestoreVerified: true,
+        backupRestoreFresh: true,
+        manifestFresh: true,
+        manifestMatchesCurrentPlan: true,
+        selectedPaths: [MANIFEST_PATH],
+        maxBatchSize: 1,
+        removalReason: 'Legacy readiness fields must not bypass artifact binding.',
+        reviewedBy: 'storage-closure-maintainer',
+      },
+      generatedAt: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+      now: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+    });
+
+    expect(artifact.ready).toBe(false);
+    expect(artifact.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS
+          .EXECUTION_PLAN_ARTIFACT_NOT_READY,
+      }),
     ]));
   });
 });

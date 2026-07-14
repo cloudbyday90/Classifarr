@@ -61,6 +61,10 @@ unchanged operator or runtime outcome.
   authority, runtime cutover, deletion gates, and readiness to a bounded
   observation window. Stale, mismatched, invalid, or count-divergent evidence
   cannot be combined into a ready deletion plan.
+- **Evidence-Bound Compatibility Deletion Gate** - controlled compatibility
+  removal now requires a current, fingerprint-valid execution-plan artifact and
+  timestamped preflight evidence bound to that exact artifact. Stale, detached,
+  malformed, or caller-asserted readiness can no longer authorize deletion.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

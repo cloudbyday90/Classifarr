@@ -182,12 +182,14 @@ describe('policyCompatibilityDeletionExecutionPlanArtifact', () => {
     });
     const validation = validatePolicyCompatibilityDeletionExecutionPlanArtifact({
       ...artifact,
+      version: 'unknown',
       statusId: 'unknown',
       riskCount: 999,
     });
 
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.UNKNOWN_VERSION,
       POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
       POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
     ]));

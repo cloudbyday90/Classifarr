@@ -19,19 +19,20 @@ import {
 
 function parseArgs(argv = []) {
   const options = {
-    executionPlanPath: null,
+    executionPlanArtifactPath: null,
     inputPath: null,
     outputPath: null,
     artifactOutputPath: null,
     allowBlocked: false,
     generatedAt: null,
+    now: null,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
 
-    if (arg === '--execution-plan') {
-      options.executionPlanPath = argv[index + 1] || null;
+    if (arg === '--execution-plan-artifact') {
+      options.executionPlanArtifactPath = argv[index + 1] || null;
       index += 1;
       continue;
     }
@@ -59,6 +60,11 @@ function parseArgs(argv = []) {
       index += 1;
       continue;
     }
+    if (arg === '--now') {
+      options.now = argv[index + 1] || null;
+      index += 1;
+      continue;
+    }
     if (arg === '--help' || arg === '-h') {
       options.help = true;
       continue;
@@ -75,12 +81,13 @@ function usage() {
     'Usage: node scripts/generate-policy-controlled-compatibility-removal-batch-artifact.mjs [options]',
     '',
     'Options:',
-    '  --execution-plan <json>    Required compatibility deletion execution-plan JSON.',
-    '  --input <json>             Required controlled compatibility removal input evidence JSON.',
+    '  --execution-plan-artifact <json> Required v2 execution-plan artifact JSON.',
+    '  --input <json>             Required input with bound preflightEvidence and removal review data.',
     '  --output <json>            Write nested removal-batch JSON to this path.',
     '  --artifact-output <json>   Write wrapper artifact JSON to this path.',
     '  --allow-blocked            Allow writing blocked removal-batch output.',
     '  --generated-at <iso>       Optional generatedAt timestamp for stable tests.',
+    '  --now <iso>                Optional current timestamp for stable tests.',
     '  --help                     Print this help message.',
   ].join('\n');
 }
@@ -130,13 +137,17 @@ function main() {
     return;
   }
 
-  let executionPlan;
+  let executionPlanArtifact;
   let input;
 
   try {
-    executionPlan = readJsonFile(options.executionPlanPath, 'execution plan', {
-      required: true,
-    });
+    executionPlanArtifact = readJsonFile(
+      options.executionPlanArtifactPath,
+      'execution-plan artifact',
+      {
+        required: true,
+      }
+    );
     input = readJsonFile(options.inputPath, 'removal-batch input evidence', {
       required: true,
     });
@@ -146,9 +157,10 @@ function main() {
   }
 
   const artifact = buildPolicyControlledCompatibilityRemovalBatchArtifact({
-    executionPlan,
+    executionPlanArtifact,
     input,
     generatedAt: options.generatedAt,
+    now: options.now,
   });
 
   if (artifact.ready !== true && options.allowBlocked !== true) {
