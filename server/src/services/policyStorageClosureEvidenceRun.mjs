@@ -319,8 +319,14 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     componentId: 'next_compatibility_removal_batch_authorization',
     label: 'Next Compatibility Removal Batch Authorization',
-    designDocPaths: ['docs/architecture/policy-next-compatibility-removal-batch-authorization.md'],
-    contractPaths: ['server/src/services/policyNextCompatibilityRemovalBatchAuthorization.mjs'],
+    designDocPaths: [
+      'docs/architecture/policy-next-compatibility-removal-batch-authorization.md',
+      'docs/architecture/policy-next-compatibility-removal-batch-authorization-artifact-integrity.md',
+    ],
+    contractPaths: [
+      'server/src/services/policyNextCompatibilityRemovalBatchAuthorization.mjs',
+      'server/src/services/policyPostRemovalRuntimeEvidenceArtifact.mjs',
+    ],
     testPaths: ['server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorization.test.mjs'],
   },
   {

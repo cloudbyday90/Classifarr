@@ -19,7 +19,7 @@ import {
 
 function parseArgs(argv = []) {
   const options = {
-    postRemovalVerificationPath: null,
+    runtimeEvidenceArtifactPath: null,
     executionPlanPath: null,
     inputPath: null,
     outputPath: null,
@@ -31,8 +31,8 @@ function parseArgs(argv = []) {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
 
-    if (arg === '--post-removal-verification') {
-      options.postRemovalVerificationPath = argv[index + 1] || null;
+    if (arg === '--runtime-evidence-artifact') {
+      options.runtimeEvidenceArtifactPath = argv[index + 1] || null;
       index += 1;
       continue;
     }
@@ -81,7 +81,7 @@ function usage() {
     'Usage: node scripts/generate-policy-next-batch-authorization.mjs [options]',
     '',
     'Options:',
-    '  --post-removal-verification <json>  Required post-removal runtime verification JSON.',
+    '  --runtime-evidence-artifact <json>  Required fingerprinted post-removal runtime evidence artifact JSON.',
     '  --execution-plan <json>             Required compatibility deletion execution-plan JSON.',
     '  --input <json>                      Required next-batch authorization input JSON.',
     '  --output <json>                     Write nested authorization JSON to this path.',
@@ -120,7 +120,7 @@ function writeJsonFile(filePath, value) {
   fs.writeFileSync(resolvedPath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function main() {
+async function main() {
   let options;
 
   try {
@@ -137,14 +137,14 @@ function main() {
     return;
   }
 
-  let postRemovalVerification;
+  let runtimeEvidenceArtifact;
   let executionPlan;
   let input;
 
   try {
-    postRemovalVerification = readJsonFile(
-      options.postRemovalVerificationPath,
-      'post-removal verification',
+    runtimeEvidenceArtifact = readJsonFile(
+      options.runtimeEvidenceArtifactPath,
+      'runtime evidence artifact',
       { required: true }
     );
     executionPlan = readJsonFile(options.executionPlanPath, 'execution plan', {
@@ -159,8 +159,8 @@ function main() {
   }
 
   const artifact =
-    buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-      postRemovalVerification,
+    await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+      runtimeEvidenceArtifact,
       executionPlan,
       input,
       generatedAt: options.generatedAt,
@@ -197,4 +197,7 @@ function main() {
   process.exit(artifact.statusId === 'blocked' ? 1 : 0);
 }
 
-main();
+main().catch(err => {
+  console.error(err.message);
+  process.exit(2);
+});

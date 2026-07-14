@@ -77,6 +77,11 @@ unchanged operator or runtime outcome.
   evidence artifact bound to the applied removal review. Missing, altered, or
   cross-batch supplied evidence is blocked before another removal batch can be
   authorized.
+- **Artifact-Bound Next-Batch Authorization** - next compatibility-removal
+  batches now regenerate verification from the fingerprint-valid runtime
+  evidence artifact, require the same applied review fingerprint in their
+  authorization context, and reject applied paths outside the current approved
+  manifest before any remaining path can be authorized.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

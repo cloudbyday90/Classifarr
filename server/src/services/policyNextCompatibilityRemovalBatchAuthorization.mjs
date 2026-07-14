@@ -1,18 +1,34 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
   buildPolicyCompatibilityDeletionExecutionPlan,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
 import {
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
+  buildPolicyPostRemovalRuntimeVerification,
 } from './policyPostRemovalRuntimeVerification.mjs';
+import {
+  POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS,
+  validatePolicyPostRemovalRuntimeEvidenceArtifact,
+} from './policyPostRemovalRuntimeEvidenceArtifact.mjs';
 
 const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_VERSION =
-  'policy.next_compatibility_removal_batch_authorization.v1';
+  'policy.next_compatibility_removal_batch_authorization.v2';
 
 const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS =
   Object.freeze({
     READY_FOR_NEXT_BATCH: 'ready_for_next_batch',
     COMPLETE_NO_REMAINING_PATHS: 'complete_no_remaining_paths',
+    BLOCKED_BY_RUNTIME_EVIDENCE_INTEGRITY: 'blocked_by_runtime_evidence_integrity',
     BLOCKED_BY_POST_REMOVAL_VERIFICATION: 'blocked_by_post_removal_verification',
     BLOCKED_BY_EXECUTION_PLAN: 'blocked_by_execution_plan',
     BLOCKED_BY_SELECTION: 'blocked_by_selection',
@@ -22,6 +38,11 @@ const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS =
 
 const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS =
   Object.freeze({
+    RUNTIME_EVIDENCE_ARTIFACT_MISSING: 'runtime_evidence_artifact_missing',
+    RUNTIME_EVIDENCE_ARTIFACT_INVALID: 'runtime_evidence_artifact_invalid',
+    REVIEW_ARTIFACT_FINGERPRINT_MISSING: 'review_artifact_fingerprint_missing',
+    REVIEW_ARTIFACT_FINGERPRINT_MISMATCH: 'review_artifact_fingerprint_mismatch',
+    APPLIED_PATH_OUTSIDE_EXECUTION_MANIFEST: 'applied_path_outside_execution_manifest',
     POST_REMOVAL_NOT_VERIFIED: 'post_removal_not_verified',
     POST_REMOVAL_VALIDATION_FAILED: 'post_removal_validation_failed',
     EXECUTION_PLAN_NOT_READY: 'execution_plan_not_ready',
@@ -73,33 +94,111 @@ function getManifestEntries(executionPlan = {}) {
     .filter(entry => entry.path);
 }
 
-function evaluatePostRemovalVerification(postRemovalVerification = {}) {
+function evaluateRuntimeEvidenceArtifact(runtimeEvidenceArtifact = null) {
+  const validation = validatePolicyPostRemovalRuntimeEvidenceArtifact(
+    runtimeEvidenceArtifact
+  );
   const risks = [];
 
-  if (
-    postRemovalVerification.statusId !==
-      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED ||
-    postRemovalVerification.verified !== true
-  ) {
+  if (!validation.ok) {
+    const missingArtifact = validation.issues.some(issue =>
+      issue.riskId ===
+      POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS
+        .MISSING_RUNTIME_EVIDENCE_ARTIFACT
+    );
     risks.push(buildRisk(
-      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
-        .POST_REMOVAL_NOT_VERIFIED,
-      'Next compatibility removal batch authorization requires verified post-removal runtime evidence.',
-      { statusId: postRemovalVerification.statusId || null }
-    ));
-  }
-
-  if (postRemovalVerification.validation?.ok !== true) {
-    risks.push(buildRisk(
-      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
-        .POST_REMOVAL_VALIDATION_FAILED,
-      'Next compatibility removal batch authorization requires valid post-removal runtime evidence.',
-      { issueCount: postRemovalVerification.validation?.issueCount ?? null }
+      missingArtifact
+        ? POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+          .RUNTIME_EVIDENCE_ARTIFACT_MISSING
+        : POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+          .RUNTIME_EVIDENCE_ARTIFACT_INVALID,
+      missingArtifact
+        ? 'Next compatibility removal batch authorization requires a runtime evidence artifact.'
+        : 'Next compatibility removal batch authorization requires an intact runtime evidence artifact.',
+      {
+        issueCount: validation.issueCount,
+        issueRiskIds: validation.issues.map(issue => issue.riskId),
+      }
     ));
   }
 
   return {
-    removedPaths: uniqueNormalizedPaths(postRemovalVerification.applyEvidence?.appliedPaths),
+    validation,
+    risks,
+  };
+}
+
+async function evaluatePostRemovalVerification({
+  runtimeEvidenceArtifact = null,
+  runtimeEvidenceValidation = {},
+} = {}) {
+  const verification = await buildPolicyPostRemovalRuntimeVerification({
+    runtimeEvidenceArtifact,
+  });
+  const risks = [];
+
+  if (runtimeEvidenceValidation.ok) {
+    if (
+      verification.statusId !==
+        POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED ||
+      verification.verified !== true
+    ) {
+      risks.push(buildRisk(
+        POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+          .POST_REMOVAL_NOT_VERIFIED,
+        'Next compatibility removal batch authorization requires verified post-removal runtime evidence.',
+        { statusId: verification.statusId || null }
+      ));
+    }
+
+    if (verification.validation?.ok !== true) {
+      risks.push(buildRisk(
+        POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+          .POST_REMOVAL_VALIDATION_FAILED,
+        'Next compatibility removal batch authorization requires valid post-removal runtime evidence.',
+        { issueCount: verification.validation?.issueCount ?? null }
+      ));
+    }
+  }
+
+  return {
+    verification,
+    removedPaths: runtimeEvidenceValidation.ok
+      ? uniqueNormalizedPaths(verification.applyEvidence?.appliedPaths)
+      : [],
+    reviewArtifactFingerprint:
+      runtimeEvidenceValidation.reviewArtifactFingerprint || null,
+    risks,
+  };
+}
+
+function evaluateAuthorizationReviewContext({
+  expectedReviewArtifactFingerprint = null,
+  authorizationReviewArtifactFingerprint = '',
+} = {}) {
+  const risks = [];
+  const reviewArtifactFingerprint = normalizeText(authorizationReviewArtifactFingerprint);
+
+  if (!reviewArtifactFingerprint) {
+    risks.push(buildRisk(
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        .REVIEW_ARTIFACT_FINGERPRINT_MISSING,
+      'Next compatibility removal batch authorization requires the applied removal review artifact fingerprint in its authorization context.'
+    ));
+  } else if (reviewArtifactFingerprint !== expectedReviewArtifactFingerprint) {
+    risks.push(buildRisk(
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        .REVIEW_ARTIFACT_FINGERPRINT_MISMATCH,
+      'Next compatibility removal batch authorization context must be bound to the applied removal review artifact.',
+      {
+        expectedReviewArtifactFingerprint,
+        actualReviewArtifactFingerprint: reviewArtifactFingerprint,
+      }
+    ));
+  }
+
+  return {
+    reviewArtifactFingerprint: reviewArtifactFingerprint || null,
     risks,
   };
 }
@@ -141,6 +240,26 @@ function evaluateExecutionPlan(executionPlan = {}) {
     entries,
     risks,
   };
+}
+
+function evaluateAppliedPathsAgainstExecutionManifest({
+  manifestEntries = [],
+  removedPaths = [],
+} = {}) {
+  if (manifestEntries.length === 0) {
+    return [];
+  }
+
+  const manifestPathSet = new Set(manifestEntries.map(entry => entry.path));
+
+  return uniqueNormalizedPaths(removedPaths)
+    .filter(path => !manifestPathSet.has(path))
+    .map(path => buildRisk(
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        .APPLIED_PATH_OUTSIDE_EXECUTION_MANIFEST,
+      'Applied removal runtime evidence contains a path outside the next-batch execution manifest.',
+      { path }
+    ));
 }
 
 function buildRemainingManifest({ manifestEntries = [], removedPaths = [] } = {}) {
@@ -256,6 +375,22 @@ function evaluateAuthorization({
 function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
   if (risks.some(risk => [
     POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      .RUNTIME_EVIDENCE_ARTIFACT_MISSING,
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      .RUNTIME_EVIDENCE_ARTIFACT_INVALID,
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      .REVIEW_ARTIFACT_FINGERPRINT_MISSING,
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      .REVIEW_ARTIFACT_FINGERPRINT_MISMATCH,
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      .APPLIED_PATH_OUTSIDE_EXECUTION_MANIFEST,
+  ].includes(risk.riskId))) {
+    return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+      .BLOCKED_BY_RUNTIME_EVIDENCE_INTEGRITY;
+  }
+
+  if (risks.some(risk => [
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
       .POST_REMOVAL_NOT_VERIFIED,
     POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
       .POST_REMOVAL_VALIDATION_FAILED,
@@ -309,18 +444,34 @@ function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
   return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS.READY_FOR_NEXT_BATCH;
 }
 
-function buildPolicyNextCompatibilityRemovalBatchAuthorization({
-  postRemovalVerification = {},
+async function buildPolicyNextCompatibilityRemovalBatchAuthorization({
+  runtimeEvidenceArtifact = null,
   executionPlan = null,
   requestedPaths = [],
   maxBatchSize = DEFAULT_MAX_BATCH_SIZE,
   authorizationReason = '',
   authorizedBy = '',
+  reviewArtifactFingerprint = '',
 } = {}) {
   const resolvedExecutionPlan =
     executionPlan || buildPolicyCompatibilityDeletionExecutionPlan();
-  const postRemovalEvaluation = evaluatePostRemovalVerification(postRemovalVerification);
+  const runtimeEvidenceEvaluation = evaluateRuntimeEvidenceArtifact(
+    runtimeEvidenceArtifact
+  );
+  const postRemovalEvaluation = await evaluatePostRemovalVerification({
+    runtimeEvidenceArtifact,
+    runtimeEvidenceValidation: runtimeEvidenceEvaluation.validation,
+  });
+  const reviewContextEvaluation = evaluateAuthorizationReviewContext({
+    expectedReviewArtifactFingerprint:
+      postRemovalEvaluation.reviewArtifactFingerprint,
+    authorizationReviewArtifactFingerprint: reviewArtifactFingerprint,
+  });
   const executionPlanEvaluation = evaluateExecutionPlan(resolvedExecutionPlan);
+  const appliedPathRisks = evaluateAppliedPathsAgainstExecutionManifest({
+    manifestEntries: executionPlanEvaluation.entries,
+    removedPaths: postRemovalEvaluation.removedPaths,
+  });
   const remainingManifest = buildRemainingManifest({
     manifestEntries: executionPlanEvaluation.entries,
     removedPaths: postRemovalEvaluation.removedPaths,
@@ -332,8 +483,11 @@ function buildPolicyNextCompatibilityRemovalBatchAuthorization({
     maxBatchSize,
   });
   const risks = [
+    ...runtimeEvidenceEvaluation.risks,
     ...postRemovalEvaluation.risks,
+    ...reviewContextEvaluation.risks,
     ...executionPlanEvaluation.risks,
+    ...appliedPathRisks,
     ...batchEvaluation.risks,
     ...evaluateAuthorization({
       remainingCount: remainingManifest.remainingCount,
@@ -355,11 +509,23 @@ function buildPolicyNextCompatibilityRemovalBatchAuthorization({
       statusId ===
       POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
         .COMPLETE_NO_REMAINING_PATHS,
+    runtimeEvidenceArtifact: {
+      valid: runtimeEvidenceEvaluation.validation.ok,
+      fingerprint: runtimeEvidenceArtifact?.fingerprint || null,
+      reviewArtifactFingerprint:
+        postRemovalEvaluation.reviewArtifactFingerprint,
+    },
     postRemovalVerification: {
-      statusId: postRemovalVerification.statusId || null,
-      verified: postRemovalVerification.verified === true,
-      validationOk: postRemovalVerification.validation?.ok === true,
+      statusId: postRemovalEvaluation.verification.statusId || null,
+      verified: postRemovalEvaluation.verification.verified === true,
+      validationOk: postRemovalEvaluation.verification.validation?.ok === true,
       appliedPathCount: postRemovalEvaluation.removedPaths.length,
+      reviewArtifactFingerprint:
+        postRemovalEvaluation.reviewArtifactFingerprint,
+    },
+    authorizationContext: {
+      reviewArtifactFingerprint:
+        reviewContextEvaluation.reviewArtifactFingerprint,
     },
     executionPlan: {
       statusId: resolvedExecutionPlan.statusId || null,
@@ -389,7 +555,10 @@ function buildPolicyNextCompatibilityRemovalBatchAuthorization({
     executionPolicy: {
       executeDeletionNow: false,
       requireControlledRemovalBatchBuilder: true,
+      requireRuntimeEvidenceArtifactIntegrity: true,
       requireVerifiedPostRemoval: true,
+      requireAppliedReviewArtifactContext: true,
+      requireAppliedPathsInExecutionManifest: true,
       requireRemainingManifestPath: true,
       requireSmallBatch: true,
       preventAlreadyRemovedPathReuse: true,

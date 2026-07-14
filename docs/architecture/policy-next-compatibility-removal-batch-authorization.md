@@ -9,10 +9,11 @@ commands.
 
 The component consumes bounded evidence:
 
-- verified post-removal runtime verification,
+- a fingerprint-valid post-removal runtime evidence artifact,
 - the approved compatibility deletion manifest,
 - operator-selected remaining manifest paths,
-- the authorizing operator and reason.
+- the authorizing operator and reason, and
+- the applied removal-review fingerprint in the authorization context.
 
 The output calculates remaining approved manifest paths, prevents already
 removed paths from re-entering a removal batch, and emits a ready batch for the
@@ -53,26 +54,29 @@ Sources:
 
 ## Recommendations
 
-### Require Verified Post-Removal Evidence
+### Require Verified Artifact-Bound Post-Removal Evidence
 
-Do not authorize another batch unless post-removal runtime verification proved
-the previous apply, runtime checks, import/reference scans, and focused/full
-validation evidence.
+Do not authorize another batch from a detached verification summary. Validate
+the versioned runtime evidence artifact, re-run post-removal verification from
+it, and require the authorization context to name the same applied removal
+review fingerprint.
 
 Pros:
 
 - prevents compounding broken removals,
-- keeps the batch loop gated by actual verification,
+- detects altered or cross-batch evidence before it can be reused,
+- keeps the batch loop gated by regenerated verification,
 - makes incomplete validation visible before the next batch.
 
 Cons:
 
-- requires callers to pass current verification evidence.
+- requires callers to retain the current runtime evidence artifact.
 
 ### Authorize From Remaining Manifest Inventory
 
 Calculate remaining paths from the original approved manifest minus verified
-applied paths. Treat anything outside that remaining set as blocked.
+applied paths. First require every applied artifact path to be present in that
+manifest. Treat anything outside that remaining set as blocked.
 
 Pros:
 
@@ -117,38 +121,44 @@ Cons:
 
 Use this stack for next-batch authorization:
 
-1. Require post-removal verification with `statusId=verified`,
-   `verified=true`, and valid output.
-2. Require a valid compatibility deletion execution plan with approved manifest
+1. Require an intact post-removal runtime evidence artifact and regenerate
+   verification from it.
+2. Require the authorization context fingerprint to equal the applied removal
+   review fingerprint in that artifact.
+3. Require a valid compatibility deletion execution plan with approved manifest
    entries.
-3. Compute remaining manifest paths from `manifest.entries - appliedPaths`.
-4. Block empty requested batches while remaining paths exist.
-5. Block requested paths that are unknown, already removed, or outside the
+4. Block runtime-artifact applied paths outside the supplied execution manifest,
+   then compute remaining paths from `manifest.entries - appliedPaths`.
+5. Block empty requested batches while remaining paths exist.
+6. Block requested paths that are unknown, already removed, or outside the
    remaining manifest.
-6. Block batches wider than the configured maximum batch size.
-7. Require `authorizationReason` and `authorizedBy` while remaining paths exist.
-8. Emit a side-effect-free authorization payload for the next controlled batch.
+7. Block batches wider than the configured maximum batch size.
+8. Require `authorizationReason` and `authorizedBy` while remaining paths exist.
+9. Emit a side-effect-free authorization payload for the next controlled batch.
 
 ## Implementation Outcome
 
 Implemented:
 
 - Added `policyNextCompatibilityRemovalBatchAuthorization.mjs`.
+- Upgraded the contract to
+  `policy.next_compatibility_removal_batch_authorization.v2`.
+- Replaced detached post-removal verification input with a fingerprint-valid
+  runtime evidence artifact and review-fingerprint authorization context.
 - Added status IDs for:
   - ready for next batch,
   - complete with no remaining paths,
+  - blocked by runtime evidence integrity,
   - blocked by post-removal verification,
   - blocked by execution plan,
   - blocked by selection,
   - blocked by scope,
   - blocked by authorization.
-- Added risk IDs for stale post-removal verification, invalid execution plans,
-  missing manifest entries, empty selections, unknown paths, already removed
-  paths, overly broad batches, missing authorization metadata, side effects,
-  stale risk counts, and unknown statuses.
-- Added focused tests for the ready path, stale verification, invalid execution
-  plan, unknown or already removed paths, empty and broad batches, missing
-  authorization context, no remaining paths, and mutated output validation.
+- Added risk IDs for missing or altered artifacts, mismatched review context,
+  applied paths outside the execution manifest, invalid execution plans,
+  bounded selections, and authorization metadata.
+- Added focused tests for artifact integrity, cross-context and cross-manifest
+  rejection, regenerated verification, and bounded next-batch behavior.
 
 Not implemented in this component:
 
@@ -167,6 +177,6 @@ manifest paths. That task should consume semantic completion-audit evidence and
 remove the remaining phase-coded checkpoint contract names from production
 code.
 The payload now emits `version =
-policy.next_compatibility_removal_batch_authorization.v1` and
+policy.next_compatibility_removal_batch_authorization.v2` and
 `nextStep.stepId = compatibility_removal_completion_audit`; production output
 does not expose `nextPhase.phaseId`.

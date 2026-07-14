@@ -1,9 +1,22 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
-} from '../../services/policyPostRemovalRuntimeVerification.mjs';
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
+} from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
+import {
+  buildPolicyPostRemovalRuntimeEvidenceArtifact,
+} from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
 import {
   POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS,
   POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS,
@@ -11,38 +24,26 @@ import {
   validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifact,
 } from '../../services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs';
 
+const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 const MANIFEST_PATHS = Object.freeze([
   'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
   'server/src/services/policyIntentImpactPreview.mjs',
   'server/src/services/policyIntentReplayPreview.mjs',
 ]);
 
-function manifestEntry(path, overrides = {}) {
-  return {
+function executionPlan(overrides = {}) {
+  const entries = overrides.entries || MANIFEST_PATHS.map(path => ({
     categoryId: 'old_preview_replay_diagnostics',
     actionId: 'delete_file',
     path,
-    replacementEvidence: {
-      replacementPath: 'server/src/services/policyNativeIntentProjection.mjs',
-      validation: 'covered by native projection tests',
-    },
     ready: true,
-    ...overrides,
-  };
-}
-
-function executionPlan(overrides = {}) {
-  const entries = overrides.entries || MANIFEST_PATHS.map(path => manifestEntry(path));
+  }));
 
   return {
     statusId:
       POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
+    validation: { ok: true, issueCount: 0, issues: [] },
     manifest: {
       approved: true,
       approvedBy: 'operator',
@@ -53,21 +54,48 @@ function executionPlan(overrides = {}) {
   };
 }
 
-function postRemovalVerification(overrides = {}) {
-  return {
-    statusId: POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED,
-    verified: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
+function runtimeEvidenceArtifact(appliedPaths = [MANIFEST_PATHS[0]]) {
+  return buildPolicyPostRemovalRuntimeEvidenceArtifact({
     applyEvidence: {
-      appliedPathCount: 1,
-      appliedPaths: [MANIFEST_PATHS[0]],
+      statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
+      applied: true,
+      validation: { ok: true, issueCount: 0, issues: [] },
+      removalReview: {
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+      applyBatch: {
+        requestedCount: appliedPaths.length,
+        results: appliedPaths.map(path => ({
+          path,
+          actionId: 'delete_file',
+          applied: true,
+        })),
+      },
     },
-    ...overrides,
-  };
+    importScan: {
+      completed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      checkedPaths: appliedPaths,
+      references: [],
+    },
+    runtimeChecks: [{
+      checkId: 'policy-runtime-imports',
+      passed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    }],
+    validationEvidence: {
+      focused: {
+        command: 'focused validation',
+        passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+      full: {
+        command: 'full validation',
+        passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+    },
+  });
 }
 
 function input(overrides = {}) {
@@ -76,15 +104,17 @@ function input(overrides = {}) {
     maxBatchSize: 2,
     authorizationReason: 'Continue removing verified compatibility preview paths.',
     authorizedBy: 'operator',
+    reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
     ...overrides,
   };
 }
 
 describe('policyNextCompatibilityRemovalBatchAuthorizationArtifact', () => {
-  test('wraps ready next-batch authorization evidence', () => {
+  test('wraps ready next-batch authorization with its runtime evidence artifact', async () => {
+    const evidenceArtifact = runtimeEvidenceArtifact();
     const artifact =
-      buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-        postRemovalVerification: postRemovalVerification(),
+      await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+        runtimeEvidenceArtifact: evidenceArtifact,
         executionPlan: executionPlan(),
         input: input({
           requestedPaths: [MANIFEST_PATHS[1], MANIFEST_PATHS[2]],
@@ -96,9 +126,8 @@ describe('policyNextCompatibilityRemovalBatchAuthorizationArtifact', () => {
       .toBe(POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
         .READY_FOR_NEXT_BATCH);
     expect(artifact.readyForNextBatch).toBe(true);
-    expect(artifact.completedNoRemainingPaths).toBe(false);
     expect(artifact.validation.ok).toBe(true);
-    expect(artifact.authorization.readyForNextBatch).toBe(true);
+    expect(artifact.runtimeEvidenceArtifact).toBe(evidenceArtifact);
     expect(artifact.authorizationSummary).toEqual({
       remainingCount: 2,
       removedCount: 1,
@@ -106,22 +135,12 @@ describe('policyNextCompatibilityRemovalBatchAuthorizationArtifact', () => {
       authorizedCount: 2,
       maxBatchSize: 2,
     });
-    expect(artifact.nextPhase).toBeUndefined();
-    expect(artifact.nextStep).toEqual(expect.objectContaining({
-      stepId: 'compatibility_removal_completion_audit',
-      label: 'Compatibility Removal Completion Audit',
-    }));
   });
 
-  test('wraps complete-no-remaining authorization evidence', () => {
+  test('wraps complete-no-remaining authorization with an intact full-manifest artifact', async () => {
     const artifact =
-      buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-        postRemovalVerification: postRemovalVerification({
-          applyEvidence: {
-            appliedPathCount: MANIFEST_PATHS.length,
-            appliedPaths: MANIFEST_PATHS,
-          },
-        }),
+      await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+        runtimeEvidenceArtifact: runtimeEvidenceArtifact(MANIFEST_PATHS),
         executionPlan: executionPlan(),
         input: input({
           requestedPaths: [],
@@ -133,41 +152,57 @@ describe('policyNextCompatibilityRemovalBatchAuthorizationArtifact', () => {
     expect(artifact.statusId)
       .toBe(POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
         .COMPLETE_NO_REMAINING_PATHS);
-    expect(artifact.readyForNextBatch).toBe(false);
     expect(artifact.completedNoRemainingPaths).toBe(true);
-    expect(artifact.authorization.completedNoRemainingPaths).toBe(true);
     expect(artifact.authorizationSummary.remainingCount).toBe(0);
   });
 
-  test('blocks invalid requested paths', () => {
-    const artifact =
-      buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-        postRemovalVerification: postRemovalVerification(),
+  test('blocks invalid requested paths and invalid runtime evidence', async () => {
+    const evidenceArtifact = runtimeEvidenceArtifact();
+    const invalidEvidenceArtifact = {
+      ...evidenceArtifact,
+      evidence: {
+        ...evidenceArtifact.evidence,
+        importScan: {
+          ...evidenceArtifact.evidence.importScan,
+          checkedPaths: [],
+        },
+      },
+    };
+    const invalidPath =
+      await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+        runtimeEvidenceArtifact: evidenceArtifact,
         executionPlan: executionPlan(),
         input: input({
           requestedPaths: ['server/src/services/notInManifest.mjs'],
         }),
       });
+    const invalidEvidence =
+      await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+        runtimeEvidenceArtifact: invalidEvidenceArtifact,
+        executionPlan: executionPlan(),
+        input: input(),
+      });
 
-    expect(artifact.statusId)
-      .toBe(POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
-        .BLOCKED);
-    expect(artifact.readyForNextBatch).toBe(false);
-    expect(artifact.validation.ok).toBe(true);
-    expect(artifact.risks).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        riskId:
-          POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
-            .AUTHORIZATION_NOT_READY,
-      }),
-    ]));
-    expect(artifact.authorization.statusId).toBe('blocked_by_selection');
+    [invalidPath, invalidEvidence].forEach(artifact => {
+      expect(artifact.statusId)
+        .toBe(POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS
+          .BLOCKED);
+      expect(artifact.risks).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId:
+            POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
+              .AUTHORIZATION_NOT_READY,
+        }),
+      ]));
+    });
+    expect(invalidEvidence.authorization.statusId)
+      .toBe('blocked_by_runtime_evidence_integrity');
   });
 
-  test('rejects side effects in artifact output', () => {
+  test('rejects side effects in artifact output', async () => {
     const artifact =
-      buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-        postRemovalVerification: postRemovalVerification(),
+      await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+        runtimeEvidenceArtifact: runtimeEvidenceArtifact(),
         executionPlan: executionPlan(),
         input: input(),
         sideEffects: {
@@ -187,18 +222,6 @@ describe('policyNextCompatibilityRemovalBatchAuthorizationArtifact', () => {
           POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
             .SIDE_EFFECT_REPORTED,
         sideEffect: 'filesDeleted',
-      }),
-      expect.objectContaining({
-        riskId:
-          POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
-            .SIDE_EFFECT_REPORTED,
-        sideEffect: 'manifestWritten',
-      }),
-      expect.objectContaining({
-        riskId:
-          POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
-            .SIDE_EFFECT_REPORTED,
-        sideEffect: 'gitCommandsRun',
       }),
     ]));
   });

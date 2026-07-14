@@ -103,8 +103,9 @@ Use this stack for post-removal runtime verification artifact export:
 6. Reject storage mutation and Git-command side effects.
 7. Bind supplied evidence to the exact applied removal-review fingerprint and
    reject altered or cross-batch evidence before runtime verification succeeds.
-8. Write nested verification JSON for next-batch authorization.
-9. Optionally write a wrapper artifact for audit trails.
+8. Write the standalone runtime evidence artifact for next-batch authorization.
+9. Write nested verification JSON and optionally a wrapper artifact for audit
+   trails.
 
 ## Implementation Outcome
 
@@ -139,11 +140,12 @@ npm run --silent policy:post-removal-verification -- \
   --apply-result .tmp/policy-removal/removal-apply.json \
   --input .tmp/policy-removal/post-removal-verification-input.json \
   --output .tmp/policy-removal/post-removal-verification.json \
+  --runtime-evidence-output .tmp/policy-removal/post-removal-runtime-evidence.json \
   --artifact-output .tmp/policy-removal/post-removal-verification-artifact.json
 ```
 
 ## Next Step
 
-Use the generated verification JSON as input to the semantic next-batch
+Use the generated runtime-evidence JSON as input to the semantic next-batch
 authorization contract. The next module cutover should be **Compatibility
 Removal Completion Audit module naming cutover**.

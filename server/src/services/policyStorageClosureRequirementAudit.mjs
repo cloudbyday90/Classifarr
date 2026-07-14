@@ -161,12 +161,20 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   {
     componentId: 'next_compatibility_removal_batch_authorization_artifact_exporter',
     label: 'Next Compatibility Removal Batch Authorization Artifact Exporter',
-    designDocPaths: ['docs/architecture/policy-next-compatibility-removal-batch-authorization-artifact-exporter.md'],
+    designDocPaths: [
+      'docs/architecture/policy-next-compatibility-removal-batch-authorization-artifact-exporter.md',
+      'docs/architecture/policy-next-compatibility-removal-batch-authorization-artifact-integrity.md',
+    ],
     contractPaths: [
+      'server/src/services/policyNextCompatibilityRemovalBatchAuthorization.mjs',
       'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs',
+      'server/src/services/policyPostRemovalRuntimeEvidenceArtifact.mjs',
       'scripts/generate-policy-next-batch-authorization.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.test.mjs'],
+    testPaths: [
+      'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorization.test.mjs',
+      'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.test.mjs',
+    ],
   },
   {
     componentId: 'compatibility_removal_completion_audit_artifact_exporter',

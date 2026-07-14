@@ -22,6 +22,7 @@ function parseArgs(argv = []) {
     applyResultPath: null,
     inputPath: null,
     outputPath: null,
+    runtimeEvidenceOutputPath: null,
     artifactOutputPath: null,
     allowBlocked: false,
     generatedAt: null,
@@ -42,6 +43,11 @@ function parseArgs(argv = []) {
     }
     if (arg === '--output') {
       options.outputPath = argv[index + 1] || null;
+      index += 1;
+      continue;
+    }
+    if (arg === '--runtime-evidence-output') {
+      options.runtimeEvidenceOutputPath = argv[index + 1] || null;
       index += 1;
       continue;
     }
@@ -78,6 +84,7 @@ function usage() {
     '  --apply-result <json>     Required controlled-removal apply-result JSON.',
     '  --input <json>            Required post-removal verification input JSON.',
     '  --output <json>           Write nested verification JSON to this path.',
+    '  --runtime-evidence-output <json>  Write fingerprinted runtime evidence JSON for next-batch authorization.',
     '  --artifact-output <json>  Write wrapper artifact JSON to this path.',
     '  --allow-blocked           Allow writing blocked verification output.',
     '  --generated-at <iso>      Optional generatedAt timestamp for stable tests.',
@@ -168,6 +175,7 @@ async function main() {
 
   try {
     writeJsonFile(options.outputPath, artifact.verification);
+    writeJsonFile(options.runtimeEvidenceOutputPath, artifact.runtimeEvidenceArtifact);
     writeJsonFile(options.artifactOutputPath, artifact);
   } catch (err) {
     console.error(`Could not write post-removal verification JSON: ${err.message}`);

@@ -4,7 +4,7 @@ import {
 } from './policyNextCompatibilityRemovalBatchAuthorization.mjs';
 
 const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_VERSION =
-  'policy.next_compatibility_removal_batch_authorization_artifact.v1';
+  'policy.next_compatibility_removal_batch_authorization_artifact.v2';
 
 const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS =
   Object.freeze({
@@ -131,8 +131,8 @@ function buildArtifactRisks({
   return risks;
 }
 
-function buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-  postRemovalVerification = {},
+async function buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+  runtimeEvidenceArtifact = null,
   executionPlan = {},
   input = {},
   generatedAt = null,
@@ -140,13 +140,14 @@ function buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
 } = {}) {
   const evidence = asObject(input);
   const authorization =
-    buildPolicyNextCompatibilityRemovalBatchAuthorization({
-      postRemovalVerification,
+    await buildPolicyNextCompatibilityRemovalBatchAuthorization({
+      runtimeEvidenceArtifact,
       executionPlan,
       requestedPaths: evidence.requestedPaths,
       maxBatchSize: evidence.maxBatchSize,
       authorizationReason: evidence.authorizationReason,
       authorizedBy: evidence.authorizedBy,
+      reviewArtifactFingerprint: evidence.reviewArtifactFingerprint,
     });
   const combinedSideEffects = summarizeSideEffects(authorization, sideEffects);
   const risks = buildArtifactRisks({
@@ -161,6 +162,7 @@ function buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
       risks.length === 0 && authorization.readyForNextBatch === true,
     completedNoRemainingPaths:
       risks.length === 0 && authorization.completedNoRemainingPaths === true,
+    runtimeEvidenceArtifact,
     authorization,
     authorizationSummary: {
       remainingCount: authorization.remainingManifest?.remainingCount ?? 0,
@@ -173,7 +175,10 @@ function buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
     risks,
     sideEffects: combinedSideEffects,
     executionPolicy: {
+      requireRuntimeEvidenceArtifactIntegrity: true,
+      requireAppliedRemovalReviewContext: true,
       requireVerifiedPostRemovalEvidence: true,
+      requireAppliedPathsInExecutionManifest: true,
       requireReadyCompatibilityDeletionManifest: true,
       requireRemainingManifestSelection: true,
       requireSmallBatch: true,

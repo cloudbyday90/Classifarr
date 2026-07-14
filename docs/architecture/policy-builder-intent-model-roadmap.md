@@ -5957,13 +5957,13 @@ narrow removal batch.
 Tasks:
 
 - **8R.20.1 Next-Batch Authorization Artifact Integrity**
-  - Require a fingerprint-valid post-removal runtime evidence artifact, not a
-    detached verified-status summary.
-  - Revalidate that artifact's applied removal-review fingerprint and removed
-    paths against the next-batch authorization context.
-  - Reject missing, altered, or cross-batch runtime evidence before a remaining
-    manifest path can be authorized.
-  - Preserve bounded, side-effect-free authorization diagnostics.
+  - Completed: requires a fingerprint-valid post-removal runtime evidence
+    artifact, not a detached verified-status summary.
+  - Completed: revalidates the artifact's applied removal-review fingerprint
+    and removed paths against the next-batch authorization context and manifest.
+  - Completed: rejects missing, altered, mismatched, or cross-manifest runtime
+    evidence before a remaining manifest path can be authorized.
+  - Completed: preserves bounded, side-effect-free authorization diagnostics.
 - Require post-removal runtime evidence to be verified and valid.
 - Require compatibility deletion execution-plan evidence to be ready and valid.
 - Calculate remaining manifest paths from approved entries minus applied paths.
@@ -6009,6 +6009,15 @@ inventory that still needs another controlled removal loop.
 
 Tasks:
 
+- **8R.21.1 Completion Audit Artifact Integrity**
+  - Require a fingerprint-valid next-batch authorization artifact, not detached
+    completion authorization and post-removal verification summaries.
+  - Revalidate its embedded runtime evidence artifact and applied
+    removal-review fingerprint against the completion audit context.
+  - Reject missing, altered, cross-batch, or cross-manifest authorization
+    evidence before a completion result can pass.
+  - Preserve the existing bounded remaining-inventory outcome and side-effect
+    prohibition.
 - Require complete next-batch authorization evidence.
 - Require the approved compatibility deletion execution manifest.
 - Require verified post-removal runtime verification evidence.
@@ -6468,7 +6477,8 @@ Tasks:
 - Reuse the post-removal runtime verification contract.
 - Avoid deleting files, mutating storage, running Git, or generating scan
   evidence implicitly.
-- Write the nested verification JSON for next-batch authorization.
+- Write the standalone runtime evidence artifact for next-batch authorization,
+  alongside nested verification JSON for diagnostics.
 
 Acceptance criteria:
 
@@ -6478,7 +6488,8 @@ Acceptance criteria:
 - Missing or failed runtime checks block verification.
 - Missing or failed focused/full validation evidence blocks verification.
 - Storage and Git side effects prevent verified artifact status.
-- The generated verification JSON can be passed to next-batch authorization.
+- The generated runtime evidence artifact can be passed to next-batch
+  authorization.
 
 Implementation status:
 
@@ -6494,20 +6505,25 @@ Implementation status:
   `npm run policy:post-removal-verification`.
 - The focused post-removal verification artifact test suite lives in
   `server/src/__tests__/services/policyPostRemovalRuntimeVerificationArtifact.test.mjs`.
-- Current implementation consumes explicit scan/check/validation evidence and
-  emits semantic `nextStep` evidence for next-batch authorization.
+- Current implementation consumes explicit scan/check/validation evidence,
+  can write the review-bound runtime evidence artifact for next-batch
+  authorization, and emits semantic `nextStep` evidence.
 
 ### 8R.30 Next Compatibility Removal Batch Authorization Artifact Exporter
 
-Intent: generate the machine-readable next-batch authorization artifact from
-verified post-removal runtime evidence, a ready compatibility deletion execution
-plan, requested remaining manifest paths, and operator authorization metadata.
+Intent: generate the machine-readable next-batch authorization artifact from a
+fingerprint-valid post-removal runtime evidence artifact, a ready compatibility
+deletion execution plan, requested remaining manifest paths, and operator
+authorization metadata.
 
 Tasks:
 
-- Require verified post-removal runtime verification JSON.
+- Require fingerprint-valid post-removal runtime evidence artifact JSON.
+- Require authorization context to name the artifact's applied removal-review
+  fingerprint.
 - Require ready compatibility deletion execution-plan JSON with approved
   manifest entries.
+- Reject applied artifact paths that are outside the supplied manifest.
 - Compute remaining manifest inventory from verified applied paths.
 - Block unknown, already removed, empty, or overly broad requested batches.
 - Require authorizing operator and reason while remaining paths exist.
@@ -6519,9 +6535,10 @@ Tasks:
 
 Acceptance criteria:
 
-- The exporter refuses to run without post-removal verification, execution-plan,
+- The exporter refuses to run without runtime evidence artifact, execution-plan,
   and authorization-input JSON.
-- Invalid post-removal verification blocks authorization.
+- Missing, altered, cross-review, or cross-manifest runtime evidence blocks
+  authorization.
 - Invalid execution-plan manifest evidence blocks authorization.
 - Unknown or already removed requested paths block authorization.
 - Empty requested paths block authorization while remaining inventory exists.
@@ -6541,9 +6558,10 @@ Implementation status:
   `npm run policy:next-batch-authorization`.
 - The focused next-batch authorization artifact test suite lives in
   `server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.test.mjs`.
-- Current implementation emits next-batch authorization or completion evidence
-  with semantic `nextStep` output and without performing removal, scan,
-  manifest, storage, or Git side effects.
+- Current implementation regenerates verification from runtime artifact evidence
+  and emits next-batch authorization or completion evidence with semantic
+  `nextStep` output and without performing removal, scan, manifest, storage,
+  or Git side effects.
 
 ### 8R.31 Compatibility Removal Completion Audit Artifact Exporter
 
