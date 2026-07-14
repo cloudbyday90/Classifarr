@@ -1,7 +1,12 @@
 import {
+  attachActiveNativeIntentForPolicy,
   attachNativeIntentToPolicy,
   buildNativeContractFromRows,
+  fetchActiveNativeIntentForPolicy,
 } from '../../services/policyNativePolicyReadService.mjs';
+import {
+  POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS,
+} from '../../services/policyNativeIntentAuthority.mjs';
 
 function policy(overrides = {}) {
   return {
@@ -58,6 +63,18 @@ function rule(overrides = {}) {
     inference_state: 'inferred',
     sort_order: 0,
     ...overrides,
+  };
+}
+
+function createNativeIntentDbClient(rows) {
+  const calls = [];
+
+  return {
+    calls,
+    async query(...args) {
+      calls.push(args);
+      return { rows };
+    },
   };
 }
 
@@ -146,5 +163,47 @@ describe('policyNativePolicyReadService', () => {
     expect(attached.native_intent.contract.source).toBe('native_intent');
     expect(attached.native_intent.contract.purpose[0].values)
       .toEqual({ require_any: ['Animation'] });
+  });
+
+  test('does not select a native intent when duplicate active rows are returned', async () => {
+    const dbClient = createNativeIntentDbClient([
+      intent({ id: 501, intent_version: 2 }),
+      intent({ id: 502, intent_version: 1 }),
+    ]);
+
+    const nativeIntent = await fetchActiveNativeIntentForPolicy(dbClient, 14);
+
+    expect(nativeIntent).toEqual({
+      authority: {
+        stateId: POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS.AMBIGUOUS_ACTIVE_NATIVE_INTENTS,
+        activeIntentCount: 2,
+        authoritative: false,
+      },
+      intent: null,
+      rules: [],
+      templates: [],
+      validation: null,
+    });
+    expect(dbClient.calls).toHaveLength(1);
+    expect(dbClient.calls[0][0]).toContain('LIMIT 2');
+  });
+
+  test('attaches only bounded authority metadata when the active native row is ambiguous', async () => {
+    const dbClient = createNativeIntentDbClient([
+      intent({ id: 501 }),
+      intent({ id: 502, intent_version: 1 }),
+    ]);
+
+    const attached = await attachActiveNativeIntentForPolicy({
+      dbClient,
+      policy: policy(),
+    });
+
+    expect(attached.native_intent).toBeUndefined();
+    expect(attached.native_intent_authority).toEqual({
+      stateId: POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS.AMBIGUOUS_ACTIVE_NATIVE_INTENTS,
+      activeIntentCount: 2,
+      authoritative: false,
+    });
   });
 });

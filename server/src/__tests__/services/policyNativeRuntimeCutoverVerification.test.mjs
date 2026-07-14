@@ -115,6 +115,35 @@ describe('policyNativeRuntimeCutoverVerification', () => {
     ]));
   });
 
+  test('blocks cutover when native authority is ambiguous', () => {
+    const verification = buildPolicyNativeRuntimeCutoverVerification({
+      convertedPolicy: nativePolicy({
+        native_intent_authority: {
+          stateId: 'ambiguous_active_native_intents',
+          activeIntentCount: 2,
+        },
+      }),
+      unconvertedPolicy: policy({ id: 15 }),
+      rollbackAvailable: true,
+      legacyDeletionBlocked: true,
+      supportDiagnosticsSafe: true,
+    });
+
+    expect(verification.statusId)
+      .toBe(POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_NATIVE_READ);
+    expect(verification.convertedRead).toEqual(expect.objectContaining({
+      sourceId: 'native_intent',
+      statusId: 'native_intent_authority_conflict',
+      validationOk: true,
+      dependsOnCustomSignals: false,
+    }));
+    expect(verification.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_NATIVE_READ_INVALID,
+      }),
+    ]));
+  });
+
   test('blocks when rollback availability or deletion gates are missing', () => {
     const verification = buildPolicyNativeRuntimeCutoverVerification({
       convertedPolicy: nativePolicy(),

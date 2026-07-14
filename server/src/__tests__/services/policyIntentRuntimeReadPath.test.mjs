@@ -177,6 +177,39 @@ describe('policyIntentRuntimeReadPath', () => {
     ]));
   });
 
+  test('blocks ambiguous native authority instead of selecting a row or falling back', () => {
+    const readPath = buildPolicyIntentRuntimeReadPath({
+      policy: policy({
+        native_intent_authority: {
+          state_id: 'ambiguous_active_native_intents',
+          active_intent_count: 2,
+        },
+        native_intent: {
+          active: true,
+          intent_version: 3,
+          contract: nativeContract(),
+        },
+      }),
+    });
+
+    expect(readPath.sourceId).toBe(POLICY_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT);
+    expect(readPath.statusId)
+      .toBe(POLICY_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_AUTHORITY_CONFLICT);
+    expect(readPath.validation.ok).toBe(true);
+    expect(readPath.dependsOnCustomSignals).toBe(false);
+    expect(readPath.policy_intent_contract.validation).toEqual(expect.objectContaining({
+      valid: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ code: 'native_intent_authority_conflict' }),
+      ]),
+    }));
+    expect(readPath.trace.attributes).toEqual(expect.objectContaining({
+      'classifarr.policy.read.authority_state': 'ambiguous_active_native_intents',
+      'classifarr.policy.read.active_intent_count': 2,
+    }));
+    expect(JSON.stringify(readPath)).not.toContain('501');
+  });
+
   test('preserves required policy intent contract shape for native and compatibility reads', () => {
     const compatibility = buildPolicyIntentRuntimeReadPath({
       policy: policy(),
@@ -228,6 +261,65 @@ describe('policyIntentRuntimeReadPath', () => {
       POLICY_RUNTIME_READ_AUDIT_RISK_IDS.NATIVE_READ_DEPENDS_ON_CUSTOM_SIGNALS,
       POLICY_RUNTIME_READ_AUDIT_RISK_IDS.SIDE_EFFECT_PERFORMED,
     ]));
+  });
+
+  test('validation rejects authority conflicts without bounded trace metadata', () => {
+    const readPath = buildPolicyIntentRuntimeReadPath({
+      policy: policy({
+        native_intent_authority: {
+          stateId: 'ambiguous_active_native_intents',
+          activeIntentCount: 2,
+        },
+      }),
+    });
+    const weakened = {
+      ...readPath,
+      trace: {
+        ...readPath.trace,
+        attributes: {
+          ...readPath.trace.attributes,
+          'classifarr.policy.read.authority_state': 'single_active_native_intent',
+        },
+      },
+    };
+    const riskIds = validatePolicyIntentRuntimeReadPath(weakened)
+      .issues
+      .map(issue => issue.riskId);
+
+    expect(riskIds).toContain(
+      POLICY_RUNTIME_READ_AUDIT_RISK_IDS.MISSING_NATIVE_AUTHORITY_CONFLICT_TRACE
+    );
+  });
+
+  test('validation rejects an authority conflict relabeled as a compatibility read', () => {
+    const readPath = buildPolicyIntentRuntimeReadPath({
+      policy: policy({
+        native_intent_authority: {
+          stateId: 'ambiguous_active_native_intents',
+          activeIntentCount: 2,
+        },
+      }),
+    });
+    const weakened = {
+      ...readPath,
+      sourceId: POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE,
+      dependsOnCustomSignals: true,
+      trace: {
+        ...readPath.trace,
+        source: POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE,
+        attributes: {
+          ...readPath.trace.attributes,
+          'classifarr.policy.read.source': POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE,
+        },
+      },
+    };
+    const riskIds = validatePolicyIntentRuntimeReadPath(weakened)
+      .issues
+      .map(issue => issue.riskId);
+
+    expect(riskIds).toContain(
+      POLICY_RUNTIME_READ_AUDIT_RISK_IDS.NATIVE_AUTHORITY_CONFLICT_SOURCE_MISMATCH
+    );
   });
 
   test('audits cleanly and points to rollback snapshot work next', () => {

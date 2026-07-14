@@ -27,6 +27,9 @@ unchanged operator or runtime outcome.
   post-upgrade dry-runs now block a policy with ambiguous active native intent
   authority before it can be selected for conversion. The operator-safe result
   reports only the conflict state and active-row count, never native payloads.
+- **Native Runtime Authority Integrity** - native policy reads now detect an
+  ambiguous active-intent state before selecting a row, block runtime use
+  without legacy fallback, and report only bounded conflict diagnostics.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

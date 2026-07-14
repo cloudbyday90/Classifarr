@@ -6,6 +6,11 @@ import {
   POLICY_INTENT_SOURCES,
   validatePolicyIntentContract,
 } from './policyIntentSchema.mjs';
+import {
+  POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS,
+  isNativeIntentAuthorityAmbiguous,
+  normalizeNativeIntentAuthority,
+} from './policyNativeIntentAuthority.mjs';
 
 const POLICY_INTENT_RUNTIME_READ_PATH_VERSION = 'policy.intent_runtime_read_path.v1';
 
@@ -17,6 +22,7 @@ const POLICY_RUNTIME_READ_SOURCE_IDS = Object.freeze({
 const POLICY_RUNTIME_READ_STATUS_IDS = Object.freeze({
   NATIVE_INTENT_ACTIVE: 'native_intent_active',
   NATIVE_INTENT_INVALID: 'native_intent_invalid',
+  NATIVE_INTENT_AUTHORITY_CONFLICT: 'native_intent_authority_conflict',
   COMPATIBILITY_BRIDGE_FALLBACK: 'compatibility_bridge_fallback',
 });
 
@@ -24,6 +30,7 @@ const POLICY_RUNTIME_READ_REASON_IDS = Object.freeze({
   ACTIVE_NATIVE_INTENT_FOUND: 'active_native_intent_found',
   NATIVE_CONTRACT_VALIDATED: 'native_contract_validated',
   NATIVE_CONTRACT_INVALID: 'native_contract_invalid',
+  NATIVE_INTENT_AUTHORITY_CONFLICT: 'native_intent_authority_conflict',
   COMPATIBILITY_BRIDGE_USED: 'compatibility_bridge_used',
   CONTRACT_SHAPE_STABLE: 'contract_shape_stable',
   SOURCE_TRACE_ATTACHED: 'source_trace_attached',
@@ -40,6 +47,8 @@ const POLICY_RUNTIME_READ_AUDIT_RISK_IDS = Object.freeze({
   MISSING_SOURCE_TRACE: 'missing_source_trace',
   SOURCE_TRACE_MISMATCH: 'source_trace_mismatch',
   NATIVE_READ_DEPENDS_ON_CUSTOM_SIGNALS: 'native_read_depends_on_custom_signals',
+  MISSING_NATIVE_AUTHORITY_CONFLICT_TRACE: 'missing_native_authority_conflict_trace',
+  NATIVE_AUTHORITY_CONFLICT_SOURCE_MISMATCH: 'native_authority_conflict_source_mismatch',
   SIDE_EFFECT_PERFORMED: 'side_effect_performed',
   MISSING_REASON: 'missing_reason',
 });
@@ -84,18 +93,30 @@ function buildTrace({
   statusId,
   policyId,
   intentVersion = null,
+  authorityState = null,
+  activeIntentCount = null,
 }) {
+  const attributes = {
+    'classifarr.policy.read.source': sourceId,
+    'classifarr.policy.read.status': statusId,
+    'classifarr.policy.read.policy_id': policyId ?? null,
+    'classifarr.policy.read.intent_version': intentVersion,
+  };
+
+  if (authorityState) {
+    attributes['classifarr.policy.read.authority_state'] = authorityState;
+  }
+
+  if (activeIntentCount !== null) {
+    attributes['classifarr.policy.read.active_intent_count'] = activeIntentCount;
+  }
+
   return {
     source: sourceId,
     status: statusId,
     policy_id: policyId ?? null,
     intent_version: intentVersion,
-    attributes: {
-      'classifarr.policy.read.source': sourceId,
-      'classifarr.policy.read.status': statusId,
-      'classifarr.policy.read.policy_id': policyId ?? null,
-      'classifarr.policy.read.intent_version': intentVersion,
-    },
+    attributes,
   };
 }
 
@@ -313,11 +334,85 @@ function buildNativeReadModel(policy = {}, nativeIntent = {}) {
   };
 }
 
+function buildNativeAuthorityConflictContract(policy = {}) {
+  const normalizedContract = normalizeNativeContract(policy);
+  const authorityError = {
+    code: 'native_intent_authority_conflict',
+    path: 'native_intent_authority',
+    message: 'Multiple active native intents prevent a deterministic policy authority selection.',
+  };
+
+  return {
+    ...normalizedContract,
+    validation: {
+      ...normalizedContract.validation,
+      valid: false,
+      error_count: normalizedContract.validation.error_count + 1,
+      errors: [
+        ...normalizedContract.validation.errors,
+        authorityError,
+      ],
+    },
+  };
+}
+
+function buildNativeAuthorityConflictReadModel(policy = {}) {
+  const authority = normalizeNativeIntentAuthority(policy.native_intent_authority);
+  const policyIntentContract = buildNativeAuthorityConflictContract(policy);
+  const sourceId = POLICY_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT;
+  const statusId = POLICY_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_AUTHORITY_CONFLICT;
+
+  return {
+    version: POLICY_INTENT_RUNTIME_READ_PATH_VERSION,
+    sourceId,
+    statusId,
+    configuration_view: buildConfigurationViewFromIntentContract(policyIntentContract),
+    policy_intent_contract: policyIntentContract,
+    trace: buildTrace({
+      sourceId,
+      statusId,
+      policyId: policy.id,
+      authorityState: authority?.stateId,
+      activeIntentCount: authority?.activeIntentCount ?? null,
+    }),
+    dependsOnCustomSignals: false,
+    sideEffects: {
+      policyStorageMutated: false,
+      nativeRowsRead: true,
+      compatibilityProjectionBuilt: false,
+      legacyRowsDeleted: false,
+    },
+    reasons: [
+      buildReason(
+        POLICY_RUNTIME_READ_REASON_IDS.NATIVE_INTENT_AUTHORITY_CONFLICT,
+        'Multiple active native intents were detected, so no native intent was selected.',
+        'blocker'
+      ),
+      buildReason(
+        POLICY_RUNTIME_READ_REASON_IDS.SOURCE_TRACE_ATTACHED,
+        'Read projection includes bounded source and authority trace metadata.'
+      ),
+      buildReason(
+        POLICY_RUNTIME_READ_REASON_IDS.CUSTOM_SIGNALS_SUPPRESSED_FOR_NATIVE,
+        'Native authority conflicts do not fall back to legacy customSignals.'
+      ),
+      buildReason(
+        POLICY_RUNTIME_READ_REASON_IDS.SIDE_EFFECTS_DISABLED,
+        'Runtime read projection performs no storage mutation.'
+      ),
+    ],
+  };
+}
+
 function buildPolicyIntentRuntimeReadPath({ policy = {} } = {}) {
-  const nativeIntent = findNativeIntentRecord(policy);
-  const readModel = nativeIntent && isNativeIntentActive(nativeIntent)
-    ? buildNativeReadModel(policy, nativeIntent)
-    : buildCompatibilityReadModel(policy);
+  const readModel = isNativeIntentAuthorityAmbiguous(policy.native_intent_authority)
+    ? buildNativeAuthorityConflictReadModel(policy)
+    : (() => {
+      const nativeIntent = findNativeIntentRecord(policy);
+      return nativeIntent && isNativeIntentActive(nativeIntent)
+        ? buildNativeReadModel(policy, nativeIntent)
+        : buildCompatibilityReadModel(policy);
+    })();
 
   return {
     ...readModel,
@@ -369,8 +464,10 @@ function validatePolicyIntentRuntimeReadPath(readModel = {}) {
     });
   });
 
-  if (contract.validation?.valid !== true &&
-      readModel.statusId !== POLICY_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_INVALID) {
+  if (contract.validation?.valid !== true && ![
+    POLICY_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_INVALID,
+    POLICY_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_AUTHORITY_CONFLICT,
+  ].includes(readModel.statusId)) {
     issues.push({
       riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.INVALID_CONTRACT,
       message: 'Invalid policy intent contracts must not be exposed as successful runtime reads.',
@@ -396,6 +493,31 @@ function validatePolicyIntentRuntimeReadPath(readModel = {}) {
       riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.NATIVE_READ_DEPENDS_ON_CUSTOM_SIGNALS,
       message: 'Converted native runtime reads must not depend on legacy customSignals.',
     });
+  }
+
+  if (readModel.statusId === POLICY_RUNTIME_READ_STATUS_IDS.NATIVE_INTENT_AUTHORITY_CONFLICT) {
+    if (
+      readModel.sourceId !== POLICY_RUNTIME_READ_SOURCE_IDS.NATIVE_INTENT ||
+      contract.source !== POLICY_INTENT_SOURCES.NATIVE_INTENT ||
+      readModel.dependsOnCustomSignals === true
+    ) {
+      issues.push({
+        riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.NATIVE_AUTHORITY_CONFLICT_SOURCE_MISMATCH,
+        message: 'Native authority conflicts must remain native-sourced and suppress legacy custom signals.',
+      });
+    }
+
+    const authorityState = readModel.trace?.attributes?.['classifarr.policy.read.authority_state'];
+    const activeIntentCount = readModel.trace?.attributes?.['classifarr.policy.read.active_intent_count'];
+    if (
+      authorityState !== POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS.AMBIGUOUS_ACTIVE_NATIVE_INTENTS ||
+      activeIntentCount !== 2
+    ) {
+      issues.push({
+        riskId: POLICY_RUNTIME_READ_AUDIT_RISK_IDS.MISSING_NATIVE_AUTHORITY_CONFLICT_TRACE,
+        message: 'Native authority conflicts must include bounded duplicate-state trace metadata.',
+      });
+    }
   }
 
   Object.entries(readModel.sideEffects || {}).forEach(([key, value]) => {

@@ -60,6 +60,11 @@ native intent storage or the legacy compatibility bridge.
    This is a read-path contract. It does not create migrations, insert
    native rows, write migration events, delete legacy rows, or disable writes.
 
+6. **Reject ambiguous native authority.**
+   The native loader reads at most two active rows. Two rows prove an authority
+   conflict and produce a native-sourced blocked result; the runtime path does
+   not select one by sort order or fall back to legacy custom signals.
+
 ## Pros And Cons
 
 Pros:
@@ -77,6 +82,7 @@ Cons:
   policy read model by later storage work.
 - Compatibility reads still depend on legacy preset/custom-signal projection
   until write shutdown and deletion gates finish.
+- An anomalous native state blocks runtime policy use until it is repaired.
 
 ## Final Recommendation Stack
 
@@ -127,6 +133,8 @@ Status behavior:
 - `native_intent_active`: active native intent validates successfully.
 - `native_intent_invalid`: active native intent exists but fails server
   contract validation.
+- `native_intent_authority_conflict`: two or more active native intents were
+  detected, so no row is selected and legacy behavior remains suppressed.
 - `compatibility_bridge_fallback`: unconverted policy uses compatibility
   projection.
 
@@ -140,6 +148,10 @@ Status behavior:
   event writes, rollback snapshot writes, or legacy deletion.
 - Server-side validation enforces stable contract shape for native and
   compatibility reads.
+- Ambiguous native authority is traceable only through a bounded conflict state
+  and a capped count; native IDs, rule data, and raw database errors are not
+  exposed. The detailed design is [Policy Native Runtime Authority Selection
+  Integrity](policy-native-runtime-authority-selection-integrity.md).
 
 ## Next Step
 

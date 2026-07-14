@@ -1,4 +1,7 @@
 import { POLICY_INTENT_CONTRACT_SCHEMA_VERSION } from './policyIntentSchema.mjs';
+import {
+  buildNativeIntentAuthority,
+} from './policyNativeIntentAuthority.mjs';
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -81,8 +84,22 @@ function buildNativeContractFromRows({ policy = {}, intent = {}, rules = [], tem
   };
 }
 
-function attachNativeIntentToPolicy({ policy = {}, intent = null, rules = [], templates = [], validation = null } = {}) {
-  if (!intent) return policy;
+function attachNativeIntentToPolicy({
+  policy = {},
+  intent = null,
+  rules = [],
+  templates = [],
+  validation = null,
+  authority = null,
+} = {}) {
+  if (!intent) {
+    return authority
+      ? {
+        ...policy,
+        native_intent_authority: authority,
+      }
+      : policy;
+  }
 
   const contract = buildNativeContractFromRows({
     policy,
@@ -94,6 +111,7 @@ function attachNativeIntentToPolicy({ policy = {}, intent = null, rules = [], te
 
   return {
     ...policy,
+    native_intent_authority: authority || buildNativeIntentAuthority({ activeIntents: [intent] }),
     native_intent_active: intent.active !== false,
     native_intent_version: intent.intent_version ?? null,
     native_intent: {
@@ -111,11 +129,34 @@ async function fetchActiveNativeIntentForPolicy(dbClient, policyId) {
     WHERE policy_id = $1
       AND active = TRUE
     ORDER BY intent_version DESC, id DESC
-    LIMIT 1
+    LIMIT 2
   `, [policyId]);
-  const intent = intentResult.rows?.[0] || null;
-  if (!intent) {
+  const activeIntents = asArray(intentResult.rows);
+  const authority = buildNativeIntentAuthority({ activeIntents });
+
+  if (authority.activeIntentCount === 0) {
     return null;
+  }
+
+  if (!authority.authoritative) {
+    return {
+      authority,
+      intent: null,
+      rules: [],
+      templates: [],
+      validation: null,
+    };
+  }
+
+  const intent = activeIntents[0] || null;
+  if (!intent) {
+    return {
+      authority,
+      intent: null,
+      rules: [],
+      templates: [],
+      validation: null,
+    };
   }
 
   const [
@@ -145,6 +186,7 @@ async function fetchActiveNativeIntentForPolicy(dbClient, policyId) {
   ]);
 
   return {
+    authority,
     intent,
     rules: rulesResult.rows || [],
     templates: templatesResult.rows || [],

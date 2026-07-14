@@ -5045,6 +5045,47 @@ Implementation status:
   selection and compatibility fallback behavior:
   [Policy Intent Runtime Read Path Module Cutover](policy-intent-runtime-read-path-module-cutover.md).
 
+#### 8R.4.1 Runtime Authority Selection Integrity
+
+Intent: make the native runtime read path fail closed if a restored,
+pre-migration, or otherwise inconsistent database has more than one active
+native intent for a policy.
+
+Tasks:
+
+- Read at most two active native rows at the native-policy loader boundary.
+- Treat exactly one active row as authoritative and do not load child rows when
+  the authority is ambiguous.
+- Preserve the native product-contract shape with a bounded blocked status;
+  never choose a row by version, timestamp, or ID.
+- Suppress compatibility fallback and legacy custom signals for the conflict.
+- Record only a bounded authority state and capped active-row count in the
+  runtime trace.
+
+Acceptance criteria:
+
+- Duplicate active native rows cannot result in arbitrary runtime authority.
+- Converted policies with ambiguous authority cannot fall back to legacy
+  custom-signal behavior.
+- Native cutover verification blocks the conflict without exposing raw native
+  policy data or row identifiers.
+
+Implementation status:
+
+- The design and outcome are documented in [Policy Native Runtime Authority
+  Selection Integrity](policy-native-runtime-authority-selection-integrity.md).
+- `policyNativeIntentAuthority.mjs` owns bounded native-authority states and
+  caps ambiguous counts at two without carrying row IDs.
+- `policyNativePolicyReadService.mjs` now uses `LIMIT 2`; it only loads rules,
+  templates, and validation for exactly one active native row.
+- `policyIntentRuntimeReadPath.mjs` emits
+  `native_intent_authority_conflict` instead of selecting an arbitrary row or
+  falling back to legacy signals. The conflict response keeps the stable
+  contract shape and has invalid contract validation by design.
+- Runtime cutover verification treats the bounded conflict as a native-read
+  blocker. Focused authority, loader, read-path, and cutover tests cover the
+  behavior.
+
 ### 8R.5 Rollback Snapshot And Reversion Window
 
 Intent: support safe reversal without preserving the legacy model permanently.
