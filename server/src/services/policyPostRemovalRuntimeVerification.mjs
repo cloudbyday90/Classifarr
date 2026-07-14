@@ -1,13 +1,17 @@
 import {
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
-  applyPolicyControlledCompatibilityPathRemoval,
 } from './policyControlledCompatibilityPathRemovalApply.mjs';
+import {
+  POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS,
+  validatePolicyPostRemovalRuntimeEvidenceArtifact,
+} from './policyPostRemovalRuntimeEvidenceArtifact.mjs';
 
 const POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_VERSION =
-  'policy.post_removal_runtime_verification.v1';
+  'policy.post_removal_runtime_verification.v2';
 
 const POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS = Object.freeze({
   VERIFIED: 'verified',
+  BLOCKED_BY_EVIDENCE_INTEGRITY: 'blocked_by_evidence_integrity',
   BLOCKED_BY_APPLY_EVIDENCE: 'blocked_by_apply_evidence',
   BLOCKED_BY_IMPORT_REFERENCES: 'blocked_by_import_references',
   BLOCKED_BY_RUNTIME_CHECKS: 'blocked_by_runtime_checks',
@@ -15,6 +19,8 @@ const POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS = Object.freeze({
 });
 
 const POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS = Object.freeze({
+  RUNTIME_EVIDENCE_ARTIFACT_MISSING: 'runtime_evidence_artifact_missing',
+  RUNTIME_EVIDENCE_ARTIFACT_INVALID: 'runtime_evidence_artifact_invalid',
   APPLY_NOT_COMPLETE: 'apply_not_complete',
   APPLY_VALIDATION_FAILED: 'apply_validation_failed',
   APPLY_RESULT_COUNT_MISMATCH: 'apply_result_count_mismatch',
@@ -45,6 +51,45 @@ function buildRisk(riskId, message, metadata = {}) {
     riskId,
     message,
     ...metadata,
+  };
+}
+
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function evaluateRuntimeEvidenceArtifact(runtimeEvidenceArtifact = null) {
+  const validation = validatePolicyPostRemovalRuntimeEvidenceArtifact(
+    runtimeEvidenceArtifact
+  );
+  const risks = [];
+
+  if (!validation.ok) {
+    const hasMissingArtifact = validation.issues.some(issue =>
+      issue.riskId ===
+      POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS
+        .MISSING_RUNTIME_EVIDENCE_ARTIFACT
+    );
+    risks.push(buildRisk(
+      hasMissingArtifact
+        ? POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS
+          .RUNTIME_EVIDENCE_ARTIFACT_MISSING
+        : POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS
+          .RUNTIME_EVIDENCE_ARTIFACT_INVALID,
+      hasMissingArtifact
+        ? 'Post-removal runtime verification requires a runtime evidence artifact.'
+        : 'Post-removal runtime verification requires an intact runtime evidence artifact.',
+      {
+        issueCount: validation.issueCount,
+        issueRiskIds: validation.issues.map(issue => issue.riskId),
+      }
+    ));
+  }
+
+  return {
+    evidence: asObject(runtimeEvidenceArtifact?.evidence),
+    validation,
+    risks,
   };
 }
 
@@ -234,6 +279,14 @@ function evaluateSideEffects(sideEffects = {}) {
 
 function determineStatusId(risks = []) {
   if (risks.some(risk => [
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_EVIDENCE_ARTIFACT_MISSING,
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_EVIDENCE_ARTIFACT_INVALID,
+  ].includes(risk.riskId))) {
+    return POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
+      .BLOCKED_BY_EVIDENCE_INTEGRITY;
+  }
+
+  if (risks.some(risk => [
     POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_NOT_COMPLETE,
     POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_VALIDATION_FAILED,
     POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_RESULT_COUNT_MISMATCH,
@@ -263,18 +316,18 @@ function determineStatusId(risks = []) {
   return POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED;
 }
 
-async function buildDefaultApplyEvidence() {
-  return applyPolicyControlledCompatibilityPathRemoval();
-}
-
 async function buildPolicyPostRemovalRuntimeVerification({
-  applyEvidence = null,
-  importScan = {},
-  runtimeChecks = [],
-  validationEvidence = {},
+  runtimeEvidenceArtifact = null,
   sideEffects = {},
 } = {}) {
-  const resolvedApplyEvidence = applyEvidence || await buildDefaultApplyEvidence();
+  const runtimeEvidenceEvaluation = evaluateRuntimeEvidenceArtifact(
+    runtimeEvidenceArtifact
+  );
+  const evidence = runtimeEvidenceEvaluation.evidence;
+  const resolvedApplyEvidence = asObject(evidence.applyEvidence);
+  const importScan = asObject(evidence.importScan);
+  const runtimeChecks = asArray(evidence.runtimeChecks);
+  const validationEvidence = asObject(evidence.validationEvidence);
   const applyEvaluation = evaluateApplyEvidence(resolvedApplyEvidence);
   const importEvaluation = evaluateImportEvidence({
     appliedPaths: applyEvaluation.appliedPaths,
@@ -282,6 +335,7 @@ async function buildPolicyPostRemovalRuntimeVerification({
   });
   const runtimeEvaluation = evaluateRuntimeChecks(runtimeChecks);
   const risks = [
+    ...runtimeEvidenceEvaluation.risks,
     ...applyEvaluation.risks,
     ...importEvaluation.risks,
     ...runtimeEvaluation.risks,
@@ -298,6 +352,14 @@ async function buildPolicyPostRemovalRuntimeVerification({
       applied: resolvedApplyEvidence.applied === true,
       appliedPathCount: applyEvaluation.appliedPaths.length,
       appliedPaths: applyEvaluation.appliedPaths,
+      reviewArtifactFingerprint:
+        runtimeEvidenceEvaluation.validation.reviewArtifactFingerprint,
+    },
+    runtimeEvidenceArtifact: {
+      valid: runtimeEvidenceEvaluation.validation.ok,
+      fingerprint: runtimeEvidenceArtifact?.fingerprint || null,
+      reviewArtifactFingerprint:
+        runtimeEvidenceEvaluation.validation.reviewArtifactFingerprint,
     },
     importScan: {
       completed: importScan.completed === true,

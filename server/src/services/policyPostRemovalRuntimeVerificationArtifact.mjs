@@ -2,6 +2,9 @@ import {
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
   buildPolicyPostRemovalRuntimeVerification,
 } from './policyPostRemovalRuntimeVerification.mjs';
+import {
+  buildPolicyPostRemovalRuntimeEvidenceArtifact,
+} from './policyPostRemovalRuntimeEvidenceArtifact.mjs';
 
 const POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_VERSION =
   'policy.post_removal_runtime_verification_artifact.v1';
@@ -116,11 +119,14 @@ async function buildPolicyPostRemovalRuntimeVerificationArtifact({
   sideEffects = {},
 } = {}) {
   const evidence = asObject(input);
-  const verification = await buildPolicyPostRemovalRuntimeVerification({
+  const runtimeEvidenceArtifact = buildPolicyPostRemovalRuntimeEvidenceArtifact({
     applyEvidence,
     importScan: asObject(evidence.importScan),
     runtimeChecks: asArray(evidence.runtimeChecks),
     validationEvidence: asObject(evidence.validationEvidence),
+  });
+  const verification = await buildPolicyPostRemovalRuntimeVerification({
+    runtimeEvidenceArtifact,
     sideEffects,
   });
   const combinedSideEffects = summarizeSideEffects(verification, sideEffects);
@@ -134,6 +140,7 @@ async function buildPolicyPostRemovalRuntimeVerificationArtifact({
     statusId: determineArtifactStatusId(risks),
     verified: risks.length === 0,
     verification,
+    runtimeEvidenceArtifact,
     applyEvidence: verification.applyEvidence,
     verificationSummary: {
       appliedPathCount: verification.applyEvidence?.appliedPathCount ?? 0,
@@ -151,6 +158,7 @@ async function buildPolicyPostRemovalRuntimeVerificationArtifact({
       requireRuntimeChecks: true,
       requireFocusedValidation: true,
       requireFullValidation: true,
+      requireRuntimeEvidenceArtifactIntegrity: true,
       allowStorageMutation: false,
       allowGitCommandsInsideArtifact: false,
     },

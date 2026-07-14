@@ -8,6 +8,8 @@ import {
   validatePolicyPostRemovalRuntimeVerificationArtifact,
 } from '../../services/policyPostRemovalRuntimeVerificationArtifact.mjs';
 
+const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
+
 function applyEvidence(overrides = {}) {
   return {
     statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
@@ -16,6 +18,9 @@ function applyEvidence(overrides = {}) {
       ok: true,
       issueCount: 0,
       issues: [],
+    },
+    removalReview: {
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
     },
     applyBatch: {
       requestedCount: 2,
@@ -40,6 +45,7 @@ function verificationInput(overrides = {}) {
   return {
     importScan: {
       completed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       checkedPaths: [
         'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
         'server/src/services/policyIntentImpactPreview.mjs',
@@ -50,20 +56,24 @@ function verificationInput(overrides = {}) {
       {
         checkId: 'policy-builder-imports',
         passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       },
       {
         checkId: 'policy-write-runtime',
         passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       },
     ],
     validationEvidence: {
       focused: {
         command: 'node ./scripts/run-jest.mjs --testPathPatterns="policy" --no-coverage',
         passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       },
       full: {
         command: 'npm --prefix server test',
         passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       },
     },
     ...overrides,
@@ -103,6 +113,7 @@ describe('policyPostRemovalRuntimeVerificationArtifact', () => {
       input: verificationInput({
         importScan: {
           completed: true,
+          reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
           checkedPaths: [
             'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
             'server/src/services/policyIntentImpactPreview.mjs',
@@ -136,6 +147,7 @@ describe('policyPostRemovalRuntimeVerificationArtifact', () => {
         runtimeChecks: [{
           checkId: 'policy-write-runtime',
           passed: false,
+          reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
           message: 'policy write route still imports removed path',
         }],
       }),

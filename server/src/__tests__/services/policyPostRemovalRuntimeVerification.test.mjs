@@ -7,6 +7,11 @@ import {
   buildPolicyPostRemovalRuntimeVerification,
   validatePolicyPostRemovalRuntimeVerification,
 } from '../../services/policyPostRemovalRuntimeVerification.mjs';
+import {
+  buildPolicyPostRemovalRuntimeEvidenceArtifact,
+} from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
+
+const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 
 function applyEvidence(overrides = {}) {
   return {
@@ -16,6 +21,9 @@ function applyEvidence(overrides = {}) {
       ok: true,
       issueCount: 0,
       issues: [],
+    },
+    removalReview: {
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
     },
     applyBatch: {
       requestedCount: 2,
@@ -39,6 +47,7 @@ function applyEvidence(overrides = {}) {
 function importScan(overrides = {}) {
   return {
     completed: true,
+    reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
     checkedPaths: [
       'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
       'server/src/services/policyIntentImpactPreview.mjs',
@@ -53,10 +62,12 @@ function runtimeChecks(overrides = []) {
     {
       checkId: 'policy-builder-imports',
       passed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
     },
     {
       checkId: 'policy-write-runtime',
       passed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
     },
     ...overrides,
   ];
@@ -67,22 +78,33 @@ function validationEvidence(overrides = {}) {
     focused: {
       command: 'node ./scripts/run-jest.mjs --testPathPatterns="policy" --no-coverage',
       passed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
     },
     full: {
       command: 'npm test',
       passed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
     },
     ...overrides,
   };
 }
 
 async function verified(overrides = {}) {
+  const apply = overrides.applyEvidence || applyEvidence();
+  const scan = overrides.importScan || importScan();
+  const checks = overrides.runtimeChecks || runtimeChecks();
+  const validation = overrides.validationEvidence || validationEvidence();
+  const runtimeEvidenceArtifact = overrides.runtimeEvidenceArtifact ||
+    buildPolicyPostRemovalRuntimeEvidenceArtifact({
+      applyEvidence: apply,
+      importScan: scan,
+      runtimeChecks: checks,
+      validationEvidence: validation,
+    });
+
   return buildPolicyPostRemovalRuntimeVerification({
-    applyEvidence: applyEvidence(),
-    importScan: importScan(),
-    runtimeChecks: runtimeChecks(),
-    validationEvidence: validationEvidence(),
-    ...overrides,
+    runtimeEvidenceArtifact,
+    sideEffects: overrides.sideEffects,
   });
 }
 
@@ -99,6 +121,11 @@ describe('policyPostRemovalRuntimeVerification', () => {
       validationOk: true,
       applied: true,
       appliedPathCount: 2,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    }));
+    expect(verification.runtimeEvidenceArtifact).toEqual(expect.objectContaining({
+      valid: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
     }));
     expect(verification.importScan).toEqual(expect.objectContaining({
       completed: true,
@@ -136,6 +163,49 @@ describe('policyPostRemovalRuntimeVerification', () => {
       POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_NOT_COMPLETE,
       POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_VALIDATION_FAILED,
     ]));
+  });
+
+  test('blocks missing, altered, or cross-batch evidence before evaluating runtime checks', async () => {
+    const missingArtifact = await buildPolicyPostRemovalRuntimeVerification();
+    const artifact = buildPolicyPostRemovalRuntimeEvidenceArtifact({
+      applyEvidence: applyEvidence(),
+      importScan: importScan(),
+      runtimeChecks: runtimeChecks(),
+      validationEvidence: validationEvidence(),
+    });
+    const alteredArtifact = {
+      ...artifact,
+      evidence: {
+        ...artifact.evidence,
+        importScan: {
+          ...artifact.evidence.importScan,
+          checkedPaths: [],
+        },
+      },
+    };
+    const crossBatchArtifact = buildPolicyPostRemovalRuntimeEvidenceArtifact({
+      applyEvidence: applyEvidence(),
+      importScan: importScan({ reviewArtifactFingerprint: 'b'.repeat(64) }),
+      runtimeChecks: runtimeChecks(),
+      validationEvidence: validationEvidence(),
+    });
+    const altered = await verified({ runtimeEvidenceArtifact: alteredArtifact });
+    const crossBatch = await verified({ runtimeEvidenceArtifact: crossBatchArtifact });
+
+    [missingArtifact, altered, crossBatch].forEach(verification => {
+      expect(verification.statusId)
+        .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
+          .BLOCKED_BY_EVIDENCE_INTEGRITY);
+    });
+    expect(missingArtifact.risks.map(risk => risk.riskId)).toContain(
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.RUNTIME_EVIDENCE_ARTIFACT_MISSING
+    );
+    [altered, crossBatch].forEach(verification => {
+      expect(verification.risks.map(risk => risk.riskId)).toContain(
+        POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS
+          .RUNTIME_EVIDENCE_ARTIFACT_INVALID
+      );
+    });
   });
 
   test('blocks when import scan evidence is missing or removed paths are still referenced', async () => {
@@ -181,6 +251,7 @@ describe('policyPostRemovalRuntimeVerification', () => {
       runtimeChecks: runtimeChecks([{
         checkId: 'policy-write-runtime',
         passed: false,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
         message: 'policy write route still imports removed preview service',
       }]),
     });
@@ -211,11 +282,13 @@ describe('policyPostRemovalRuntimeVerification', () => {
         focused: {
           command: 'focused tests',
           passed: false,
+          reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
           message: 'focused runtime check failed',
         },
         full: {
           command: 'npm test',
           passed: false,
+          reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
           message: 'full suite failed',
         },
       }),

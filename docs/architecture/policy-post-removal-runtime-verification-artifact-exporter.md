@@ -14,6 +14,10 @@ This component does not remove files, scan source itself, mutate storage, or run
 Git. It turns explicit evidence into a verification artifact that can authorize
 only the next bounded compatibility-removal batch.
 
+Before verification, the exporter builds one SHA-256 runtime-evidence artifact.
+It binds every supplied scan, runtime check, and validation result to the
+fingerprint of the applied controlled-removal review.
+
 ## Official-Source Research
 
 - Git `grep` documents source searching as a way to inspect tracked content.
@@ -97,8 +101,10 @@ Use this stack for post-removal runtime verification artifact export:
 4. Require focused runtime/import check evidence.
 5. Require focused and full validation evidence.
 6. Reject storage mutation and Git-command side effects.
-7. Write nested verification JSON for next-batch authorization.
-8. Optionally write a wrapper artifact for audit trails.
+7. Bind supplied evidence to the exact applied removal-review fingerprint and
+   reject altered or cross-batch evidence before runtime verification succeeds.
+8. Write nested verification JSON for next-batch authorization.
+9. Optionally write a wrapper artifact for audit trails.
 
 ## Implementation Outcome
 
@@ -116,6 +122,9 @@ Implemented:
   - `buildPolicyPostRemovalRuntimeVerificationArtifact`,
   - `validatePolicyPostRemovalRuntimeVerificationArtifact`.
 - Replaced runtime `nextPhase.phaseId` with semantic `nextStep.stepId`.
+- Added a nested `policy.post_removal_runtime_evidence_artifact.v1` evidence
+  artifact so the verifier receives only review-bound scan, check, and
+  validation evidence.
 - Added focused tests for:
   - verified post-removal runtime artifact generation,
   - blocked removed-path reference evidence,

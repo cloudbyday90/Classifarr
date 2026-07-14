@@ -72,6 +72,11 @@ unchanged operator or runtime outcome.
   now fingerprints and replays the reviewed artifact, gate, and selected paths
   before adapter execution. Missing, altered, or non-replayable review context
   is blocked before any path can be applied.
+- **Review-Bound Post-Removal Verification** - import scans, runtime checks,
+  and focused/full validation results now travel in one fingerprint-valid
+  evidence artifact bound to the applied removal review. Missing, altered, or
+  cross-batch supplied evidence is blocked before another removal batch can be
+  authorized.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

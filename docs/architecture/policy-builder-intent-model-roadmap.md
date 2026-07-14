@@ -5899,11 +5899,12 @@ proceed.
 Tasks:
 
 - **8R.19.1 Runtime Evidence Integrity**
-  - Bind every import scan, runtime check, and validation result to the exact
-    applied controlled-removal review artifact.
-  - Reject missing, altered, or cross-batch evidence before post-removal
-    verification can pass.
-  - Preserve side-effect-free evidence evaluation and bounded diagnostics.
+  - Completed: binds every supplied import scan, runtime check, and validation
+    result to the exact applied controlled-removal review artifact fingerprint.
+  - Completed: rejects missing, altered, or cross-batch evidence before
+    post-removal verification can pass.
+  - Completed: preserves side-effect-free evidence evaluation and bounded
+    diagnostics.
 - Consume completed controlled-removal apply evidence.
 - Require apply evidence to be valid and complete.
 - Require import/reference scan evidence for every applied removal path.
@@ -5928,15 +5929,22 @@ Implementation status:
 
 - Post-removal runtime verification is documented in
   [Policy Post-Removal Runtime Verification](policy-post-removal-runtime-verification.md).
+- Review-bound runtime evidence is documented in
+  [Policy Post-Removal Runtime Evidence Integrity](policy-post-removal-runtime-evidence-integrity.md).
 - The durable module naming cutover is documented in
   [Policy Post-Removal Runtime Verification Module Cutover](policy-post-removal-runtime-verification-module-cutover.md).
 - The verifier contract lives in
   `server/src/services/policyPostRemovalRuntimeVerification.mjs`.
 - The focused verifier test suite lives in
   `server/src/__tests__/services/policyPostRemovalRuntimeVerification.test.mjs`.
-- Current implementation consumes apply, import scan, runtime check, and
-  focused/full validation evidence; blocks lingering references or failed
-  checks; rejects storage/Git side effects; and emits semantic `nextStep`
+- The runtime-evidence artifact contract lives in
+  `server/src/services/policyPostRemovalRuntimeEvidenceArtifact.mjs`, with
+  focused tests in
+  `server/src/__tests__/services/policyPostRemovalRuntimeEvidenceArtifact.test.mjs`.
+- Current implementation requires a fingerprint-valid, review-bound runtime
+  evidence artifact before it consumes apply, import scan, runtime check, and
+  focused/full validation evidence; it blocks lingering references or failed
+  checks, rejects storage/Git side effects, and emits semantic `nextStep`
   evidence for next-batch authorization.
 
 ### 8R.20 Next Compatibility Removal Batch Authorization
@@ -5948,6 +5956,14 @@ narrow removal batch.
 
 Tasks:
 
+- **8R.20.1 Next-Batch Authorization Artifact Integrity**
+  - Require a fingerprint-valid post-removal runtime evidence artifact, not a
+    detached verified-status summary.
+  - Revalidate that artifact's applied removal-review fingerprint and removed
+    paths against the next-batch authorization context.
+  - Reject missing, altered, or cross-batch runtime evidence before a remaining
+    manifest path can be authorized.
+  - Preserve bounded, side-effect-free authorization diagnostics.
 - Require post-removal runtime evidence to be verified and valid.
 - Require compatibility deletion execution-plan evidence to be ready and valid.
 - Calculate remaining manifest paths from approved entries minus applied paths.

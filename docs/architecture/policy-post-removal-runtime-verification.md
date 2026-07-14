@@ -7,6 +7,12 @@ not leave broken runtime paths, lingering imports, or insufficient validation
 evidence. It is side-effect-free: it does not run Git commands, execute tests,
 mutate storage, or remove additional files.
 
+The verifier consumes one versioned runtime-evidence artifact. Every supplied
+import scan, runtime check, focused validation result, and full validation
+result must carry the fingerprint of the same applied controlled-removal review.
+The verifier rejects missing, altered, or cross-batch supplied evidence before
+it evaluates the nested results.
+
 The component consumes bounded evidence:
 
 - controlled-removal apply evidence,
@@ -33,6 +39,9 @@ passes.
 - OWASP API9:2023 Improper Inventory Management highlights risk from stale or
   deprecated surfaces. This verifier ensures removed compatibility paths are not
   still referenced after the inventory says they were removed.
+- SLSA's verification guidance recommends checking a digest against provenance
+  before use. The runtime-evidence artifact uses the same verification pattern
+  for bounded local control-plane evidence.
 
 Sources:
 
@@ -44,6 +53,8 @@ Sources:
   <https://csrc.nist.gov/projects/ssdf>
 - OWASP API9:2023 Improper Inventory Management:
   <https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/>
+- SLSA Build: Verifying artifacts:
+  <https://slsa.dev/spec/v1.2/verifying-artifacts>
 
 ## Recommendations
 
@@ -78,6 +89,24 @@ Cons:
 
 - callers must supply current evidence.
 
+### Bind Evidence To The Applied Review
+
+The verifier should consume one SHA-256 runtime-evidence artifact and require
+each supplied evidence record to declare the exact removal-review fingerprint
+from the apply result.
+
+Pros:
+
+- blocks mixed-batch and altered evidence before verification can pass,
+- keeps evidence identity explicit without additional operator actions,
+- preserves deterministic, bounded diagnostics.
+
+Cons:
+
+- evidence producers must carry the review fingerprint,
+- digest binding does not replace signatures if evidence crosses an untrusted
+  boundary.
+
 ### Require Both Focused And Full Validation
 
 Focused checks prove the affected surface. Full validation proves broader
@@ -103,7 +132,9 @@ Use this stack for post-removal runtime verification:
 4. Require focused runtime/import checks to pass.
 5. Require focused and full validation evidence to pass.
 6. Reject storage or Git-command side effects inside the verifier.
-7. Emit semantic `nextStep` evidence for next-batch authorization.
+7. Require a versioned, fingerprint-valid evidence artifact bound to the
+   applied removal review before evaluating nested evidence.
+8. Emit semantic `nextStep` evidence for next-batch authorization.
 
 ## Implementation Outcome
 
@@ -117,6 +148,12 @@ Implemented:
   - `buildPolicyPostRemovalRuntimeVerification`,
   - `validatePolicyPostRemovalRuntimeVerification`.
 - Replaced runtime `nextPhase.phaseId` with semantic `nextStep.stepId`.
+- Added `policyPostRemovalRuntimeEvidenceArtifact.mjs`, which fingerprints the
+  evidence payload and requires import, runtime, focused-validation, and
+  full-validation bindings to the applied removal-review fingerprint.
+- Updated the verifier to consume only validated runtime evidence artifacts and
+  block missing, altered, or cross-batch supplied evidence with bounded
+  diagnostics before verification can pass.
 - Added focused tests for verified output, apply blocker, import/reference
   blocker, runtime blocker, validation blocker, side-effect blocker, and mutated
   output validation.
@@ -131,6 +168,5 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **Completion Checkpoint module naming cutover** after semantic
-next-batch authorization and completion-audit evidence report no remaining
-approved manifest paths.
+Proceed with **Next-Batch Authorization Artifact Integrity** so subsequent
+removal authorization consumes the exact verified runtime-evidence artifact.

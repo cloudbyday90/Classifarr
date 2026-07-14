@@ -144,12 +144,19 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   {
     componentId: 'post_removal_runtime_verification_artifact_exporter',
     label: 'Post-Removal Runtime Verification Artifact Exporter',
-    designDocPaths: ['docs/architecture/policy-post-removal-runtime-verification-artifact-exporter.md'],
+    designDocPaths: [
+      'docs/architecture/policy-post-removal-runtime-verification-artifact-exporter.md',
+      'docs/architecture/policy-post-removal-runtime-evidence-integrity.md',
+    ],
     contractPaths: [
       'server/src/services/policyPostRemovalRuntimeVerificationArtifact.mjs',
+      'server/src/services/policyPostRemovalRuntimeEvidenceArtifact.mjs',
       'scripts/generate-policy-post-removal-verification.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyPostRemovalRuntimeVerificationArtifact.test.mjs'],
+    testPaths: [
+      'server/src/__tests__/services/policyPostRemovalRuntimeVerificationArtifact.test.mjs',
+      'server/src/__tests__/services/policyPostRemovalRuntimeEvidenceArtifact.test.mjs',
+    ],
   },
   {
     componentId: 'next_compatibility_removal_batch_authorization_artifact_exporter',
