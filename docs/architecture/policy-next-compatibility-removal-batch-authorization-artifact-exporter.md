@@ -134,9 +134,9 @@ Implemented:
 - Added the next-batch authorization artifact suite and this design doc to the
   fixed policy storage closure validation evidence command set.
 - The artifact now emits `version =
-  policy.next_compatibility_removal_batch_authorization_artifact.v2`, retains
-  the consumed runtime evidence artifact, and rejects detached verification
-  summaries.
+  policy.next_compatibility_removal_batch_authorization_artifact.v3`, retains
+  the consumed runtime evidence artifact, fingerprints its bounded wrapper
+  payload, and rejects detached verification summaries.
   `nextStep.stepId = compatibility_removal_completion_audit`; production output
   does not expose `nextPhase.phaseId`.
 

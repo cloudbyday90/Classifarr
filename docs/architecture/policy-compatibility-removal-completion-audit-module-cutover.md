@@ -41,8 +41,8 @@ describe the durable behavior:
 
 - `policyCompatibilityRemovalCompletionAudit.mjs`
 - `policyCompatibilityRemovalCompletionAuditArtifact.mjs`
-- `policy.compatibility_removal_completion_audit.v1`
-- `policy.compatibility_removal_completion_audit_artifact.v1`
+- `policy.compatibility_removal_completion_audit.v2`
+- `policy.compatibility_removal_completion_audit_artifact.v2`
 - `npm run policy:compatibility-removal-completion-audit`
 
 Pros:

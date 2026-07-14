@@ -332,9 +332,18 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     componentId: 'compatibility_removal_completion_audit',
     label: 'Compatibility Removal Completion Audit',
-    designDocPaths: ['docs/architecture/policy-compatibility-removal-completion-audit.md'],
-    contractPaths: ['server/src/services/policyCompatibilityRemovalCompletionAudit.mjs'],
-    testPaths: ['server/src/__tests__/services/policyCompatibilityRemovalCompletionAudit.test.mjs'],
+    designDocPaths: [
+      'docs/architecture/policy-compatibility-removal-completion-audit.md',
+      'docs/architecture/policy-compatibility-removal-completion-audit-artifact-integrity.md',
+    ],
+    contractPaths: [
+      'server/src/services/policyCompatibilityRemovalCompletionAudit.mjs',
+      'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.mjs',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyCompatibilityRemovalCompletionAudit.test.mjs',
+      'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.test.mjs',
+    ],
   },
   {
     componentId: 'compatibility_removal_evidence_regeneration',

@@ -168,6 +168,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     contractPaths: [
       'server/src/services/policyNextCompatibilityRemovalBatchAuthorization.mjs',
       'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs',
+      'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactFingerprint.mjs',
       'server/src/services/policyPostRemovalRuntimeEvidenceArtifact.mjs',
       'scripts/generate-policy-next-batch-authorization.mjs',
     ],
@@ -179,12 +180,20 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   {
     componentId: 'compatibility_removal_completion_audit_artifact_exporter',
     label: 'Compatibility Removal Completion Audit Artifact Exporter',
-    designDocPaths: ['docs/architecture/policy-compatibility-removal-completion-audit-artifact-exporter.md'],
+    designDocPaths: [
+      'docs/architecture/policy-compatibility-removal-completion-audit-artifact-exporter.md',
+      'docs/architecture/policy-compatibility-removal-completion-audit-artifact-integrity.md',
+    ],
     contractPaths: [
       'server/src/services/policyCompatibilityRemovalCompletionAuditArtifact.mjs',
+      'server/src/services/policyCompatibilityRemovalCompletionAudit.mjs',
+      'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.mjs',
       'scripts/generate-policy-compatibility-removal-completion-audit.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifact.test.mjs'],
+    testPaths: [
+      'server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifact.test.mjs',
+      'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.test.mjs',
+    ],
   },
   {
     componentId: 'storage_completion_checkpoint_artifact_exporter',

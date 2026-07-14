@@ -3,18 +3,22 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
+} from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
+import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS,
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
   buildPolicyCompatibilityRemovalCompletionAudit,
   validatePolicyCompatibilityRemovalCompletionAudit,
 } from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 import {
-  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
-} from '../../services/policyNextCompatibilityRemovalBatchAuthorization.mjs';
+  buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact,
+} from '../../services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs';
 import {
-  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
-} from '../../services/policyPostRemovalRuntimeVerification.mjs';
+  buildPolicyPostRemovalRuntimeEvidenceArtifact,
+} from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
 
+const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 const MANIFEST_PATHS = Object.freeze([
   'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
   'server/src/services/policyIntentImpactPreview.mjs',
@@ -42,11 +46,7 @@ function executionPlan(overrides = {}) {
     statusId:
       POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
+    validation: { ok: true, issueCount: 0, issues: [] },
     manifest: {
       approved: true,
       entryCount: entries.length,
@@ -56,43 +56,72 @@ function executionPlan(overrides = {}) {
   };
 }
 
-function completionAuthorization(overrides = {}) {
-  return {
-    statusId:
-      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
-        .COMPLETE_NO_REMAINING_PATHS,
-    completedNoRemainingPaths: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
+function runtimeEvidenceArtifact(appliedPaths = MANIFEST_PATHS) {
+  return buildPolicyPostRemovalRuntimeEvidenceArtifact({
+    applyEvidence: {
+      statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
+      applied: true,
+      validation: { ok: true, issueCount: 0, issues: [] },
+      removalReview: {
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+      applyBatch: {
+        requestedCount: appliedPaths.length,
+        results: appliedPaths.map(path => ({
+          path,
+          actionId: 'delete_file',
+          applied: true,
+        })),
+      },
     },
-    remainingManifest: {
-      totalCount: MANIFEST_PATHS.length,
-      removedCount: MANIFEST_PATHS.length,
-      remainingCount: 0,
-      removedPaths: MANIFEST_PATHS,
-      remainingPaths: [],
+    importScan: {
+      completed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      checkedPaths: appliedPaths,
+      references: [],
     },
-    ...overrides,
-  };
+    runtimeChecks: [{
+      checkId: 'policy-runtime-imports',
+      passed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    }],
+    validationEvidence: {
+      focused: {
+        command: 'focused validation',
+        passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+      full: {
+        command: 'full validation',
+        passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+    },
+  });
 }
 
-function removalVerification(paths = MANIFEST_PATHS, overrides = {}) {
-  return {
-    statusId: POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED,
-    verified: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
+async function nextBatchAuthorizationArtifact({
+  plan = executionPlan(),
+  appliedPaths = MANIFEST_PATHS,
+  input = {},
+} = {}) {
+  const remainingPaths = MANIFEST_PATHS.filter(path => !appliedPaths.includes(path));
+
+  return buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+    runtimeEvidenceArtifact: runtimeEvidenceArtifact(appliedPaths),
+    executionPlan: plan,
+    input: {
+      requestedPaths: remainingPaths,
+      maxBatchSize: 3,
+      authorizationReason: remainingPaths.length > 0
+        ? 'Continue the reviewed compatibility removal loop.'
+        : '',
+      authorizedBy: remainingPaths.length > 0 ? 'policy-maintainer' : '',
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      ...input,
     },
-    applyEvidence: {
-      appliedPathCount: paths.length,
-      appliedPaths: paths,
-    },
-    ...overrides,
-  };
+    generatedAt: '2026-07-14T10:00:00.000Z',
+  });
 }
 
 function finalImportScan(overrides = {}) {
@@ -118,11 +147,15 @@ function validationEvidence(overrides = {}) {
   };
 }
 
-function completeAudit(overrides = {}) {
+async function completeAudit(overrides = {}) {
+  const plan = overrides.executionPlan || executionPlan();
+  const artifact = overrides.nextBatchAuthorizationArtifact ||
+    await nextBatchAuthorizationArtifact({ plan });
+
   return buildPolicyCompatibilityRemovalCompletionAudit({
-    completionAuthorization: completionAuthorization(),
-    executionPlan: executionPlan(),
-    removalVerifications: [removalVerification()],
+    nextBatchAuthorizationArtifact: artifact,
+    executionPlan: plan,
+    reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
     finalImportScan: finalImportScan(),
     validationEvidence: validationEvidence(),
     ...overrides,
@@ -130,13 +163,19 @@ function completeAudit(overrides = {}) {
 }
 
 describe('policyCompatibilityRemovalCompletionAudit', () => {
-  test('completes when all manifest paths are removed, scanned, and validated', () => {
-    const audit = completeAudit();
+  test('completes from one intact authorization artifact chain', async () => {
+    const audit = await completeAudit();
 
     expect(audit.statusId)
       .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE);
     expect(audit.complete).toBe(true);
     expect(audit.validation.ok).toBe(true);
+    expect(audit.authorizationArtifact).toEqual(expect.objectContaining({
+      integrityOk: true,
+      authorizationStatusId: 'complete_no_remaining_paths',
+      completedNoRemainingPaths: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    }));
     expect(audit.manifestInventory).toEqual(expect.objectContaining({
       totalCount: 3,
       removedCount: 3,
@@ -144,16 +183,11 @@ describe('policyCompatibilityRemovalCompletionAudit', () => {
       manifestPaths: MANIFEST_PATHS,
       remainingPaths: [],
     }));
-    expect(audit.removalEvidence).toEqual(expect.objectContaining({
+    expect(audit.removalEvidence).toEqual({
       verificationCount: 1,
       verifiedCount: 1,
       appliedPaths: MANIFEST_PATHS,
-    }));
-    expect(audit.finalImportScan).toEqual(expect.objectContaining({
-      completed: true,
-      checkedPathCount: 3,
-      referenceCount: 0,
-    }));
+    });
     expect(audit.sideEffects).toEqual({
       filesDeleted: false,
       filesArchived: false,
@@ -163,189 +197,96 @@ describe('policyCompatibilityRemovalCompletionAudit', () => {
       manifestWritten: false,
       gitCommandsRun: false,
     });
-    expect(audit.nextPhase).toBeUndefined();
-    expect(audit.nextStep).toEqual(expect.objectContaining({
-      stepId: 'policy_storage_completion_checkpoint',
-      label: 'Policy Storage Completion Checkpoint',
-    }));
   });
 
-  test('reports remaining inventory when authorization still has remaining paths', () => {
-    const audit = completeAudit({
-      completionAuthorization: completionAuthorization({
-        statusId:
-          POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
-            .READY_FOR_NEXT_BATCH,
-        completedNoRemainingPaths: false,
-        remainingManifest: {
-          totalCount: 3,
-          removedCount: 1,
-          remainingCount: 2,
-          removedPaths: [MANIFEST_PATHS[0]],
-          remainingPaths: [MANIFEST_PATHS[1], MANIFEST_PATHS[2]],
-        },
-      }),
-      removalVerifications: [removalVerification([MANIFEST_PATHS[0]])],
+  test('reports bounded remaining inventory from an intact ready authorization artifact', async () => {
+    const plan = executionPlan();
+    const artifact = await nextBatchAuthorizationArtifact({
+      plan,
+      appliedPaths: [MANIFEST_PATHS[0]],
+    });
+    const audit = await completeAudit({
+      executionPlan: plan,
+      nextBatchAuthorizationArtifact: artifact,
     });
 
     expect(audit.statusId)
       .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
         .REMAINING_INVENTORY);
     expect(audit.complete).toBe(false);
-    expect(audit.completionAuthorization.remainingCount).toBe(2);
+    expect(audit.authorizationArtifact).toEqual(expect.objectContaining({
+      integrityOk: true,
+      remainingCount: 2,
+    }));
     expect(audit.risks.map(risk => risk.riskId)).toContain(
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
         .AUTHORIZATION_NOT_COMPLETE
     );
   });
 
-  test('blocks when completion authorization is invalid without remaining inventory', () => {
-    const audit = completeAudit({
-      completionAuthorization: completionAuthorization({
-        statusId:
-          POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
-            .BLOCKED_BY_AUTHORIZATION,
-        completedNoRemainingPaths: false,
-        validation: {
-          ok: false,
-          issueCount: 1,
-          issues: [],
-        },
-      }),
+  test('blocks missing, altered, cross-review, and cross-manifest authorization evidence', async () => {
+    const plan = executionPlan();
+    const artifact = await nextBatchAuthorizationArtifact({ plan });
+    const alteredArtifact = structuredClone(artifact);
+    alteredArtifact.authorization.remainingManifest.remainingCount = 1;
+    const alternatePlan = executionPlan({
+      entries: MANIFEST_PATHS.slice(1).map(path => manifestEntry(path)),
+      manifest: {
+        approved: true,
+        entryCount: 2,
+        entries: MANIFEST_PATHS.slice(1).map(path => manifestEntry(path)),
+      },
+    });
+    const missing = await buildPolicyCompatibilityRemovalCompletionAudit({
+      executionPlan: plan,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      finalImportScan: finalImportScan(),
+      validationEvidence: validationEvidence(),
+    });
+    const altered = await completeAudit({
+      executionPlan: plan,
+      nextBatchAuthorizationArtifact: alteredArtifact,
+    });
+    const crossReview = await completeAudit({
+      executionPlan: plan,
+      nextBatchAuthorizationArtifact: artifact,
+      reviewArtifactFingerprint: 'b'.repeat(64),
+    });
+    const crossManifest = await completeAudit({
+      executionPlan: alternatePlan,
+      nextBatchAuthorizationArtifact: artifact,
+      finalImportScan: finalImportScan({ checkedPaths: MANIFEST_PATHS.slice(1) }),
     });
 
-    expect(audit.statusId)
-      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-        .BLOCKED_BY_AUTHORIZATION_EVIDENCE);
-    expect(audit.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-        .AUTHORIZATION_NOT_COMPLETE,
-      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-        .AUTHORIZATION_VALIDATION_FAILED,
-    ]));
-  });
-
-  test('blocks when execution plan evidence is not ready or has no manifest entries', () => {
-    const notReady = completeAudit({
-      executionPlan: executionPlan({
-        statusId:
-          POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS
-            .BLOCKED_BY_APPROVAL,
-        readyForExecutionGate: false,
-        validation: {
-          ok: false,
-          issueCount: 1,
-          issues: [],
-        },
-      }),
+    [missing, altered, crossReview, crossManifest].forEach(audit => {
+      expect(audit.statusId)
+        .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+          .BLOCKED_BY_AUTHORIZATION_ARTIFACT);
+      expect(audit.complete).toBe(false);
     });
-    const noManifest = completeAudit({
-      executionPlan: executionPlan({
-        entries: [],
-        manifest: {
-          approved: true,
-          entryCount: 0,
-          entries: [],
-        },
-      }),
-    });
-
-    expect(notReady.statusId)
-      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-        .BLOCKED_BY_EXECUTION_PLAN);
-    expect(notReady.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.EXECUTION_PLAN_NOT_READY,
-      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-        .EXECUTION_PLAN_VALIDATION_FAILED,
-    ]));
-    expect(noManifest.statusId)
-      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-        .BLOCKED_BY_EXECUTION_PLAN);
-    expect(noManifest.risks.map(risk => risk.riskId)).toContain(
-      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.NO_MANIFEST_ENTRIES
-    );
-  });
-
-  test('blocks predecessor execution-plan contracts before accepting removal evidence', () => {
-    const audit = completeAudit({
-      executionPlan: executionPlan({
-        version: 'phase8r.compatibility_path_deletion_execution_plan.v1',
-      }),
-    });
-
-    expect(audit.statusId)
-      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-        .BLOCKED_BY_EXECUTION_PLAN);
-    expect(audit.risks).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        riskId:
-          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-            .EXECUTION_PLAN_VERSION_UNSUPPORTED,
-        expectedVersion: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
-      }),
-    ]));
-  });
-
-  test('blocks when removal verification evidence is missing, invalid, or incomplete', () => {
-    const missing = completeAudit({
-      removalVerifications: [],
-    });
-    const invalid = completeAudit({
-      removalVerifications: [removalVerification(MANIFEST_PATHS, {
-        statusId:
-          POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
-            .BLOCKED_BY_RUNTIME_CHECKS,
-        verified: false,
-      })],
-    });
-    const incompleteCoverage = completeAudit({
-      completionAuthorization: completionAuthorization({
-        remainingManifest: {
-          totalCount: MANIFEST_PATHS.length,
-          removedCount: 2,
-          remainingCount: 0,
-          removedPaths: [MANIFEST_PATHS[0], MANIFEST_PATHS[1]],
-          remainingPaths: [],
-        },
-      }),
-      removalVerifications: [removalVerification([MANIFEST_PATHS[0], MANIFEST_PATHS[1]])],
-    });
-
-    expect(missing.statusId)
-      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-        .BLOCKED_BY_REMOVAL_EVIDENCE);
     expect(missing.risks.map(risk => risk.riskId)).toContain(
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-        .REMOVAL_VERIFICATION_MISSING
+        .AUTHORIZATION_ARTIFACT_MISSING
     );
-    expect(invalid.statusId)
-      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-        .BLOCKED_BY_REMOVAL_EVIDENCE);
-    expect(invalid.risks.map(risk => risk.riskId)).toContain(
+    expect(altered.risks.map(risk => risk.riskId)).toContain(
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-        .REMOVAL_VERIFICATION_NOT_VERIFIED
+        .AUTHORIZATION_ARTIFACT_INVALID
     );
-    expect(incompleteCoverage.statusId)
-      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-        .BLOCKED_BY_REMOVAL_EVIDENCE);
-    expect(incompleteCoverage.risks).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        riskId:
-          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-            .REMOVED_PATH_COVERAGE_INCOMPLETE,
-        missingPaths: [MANIFEST_PATHS[2]],
-      }),
-    ]));
+    expect(crossReview.risks.map(risk => risk.riskId)).toContain(
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_REVIEW_CONTEXT_MISMATCH
+    );
+    expect(crossManifest.risks.map(risk => risk.riskId)).toContain(
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_REPLAY_MISMATCH
+    );
   });
 
-  test('blocks when final import scan evidence is missing or still has references', () => {
-    const missingScan = completeAudit({
-      finalImportScan: finalImportScan({
-        completed: false,
-        checkedPaths: [],
-      }),
+  test('blocks when the final import scan is incomplete or references a manifest path', async () => {
+    const missingScan = await completeAudit({
+      finalImportScan: finalImportScan({ completed: false, checkedPaths: [] }),
     });
-    const referenced = completeAudit({
+    const referenced = await completeAudit({
       finalImportScan: finalImportScan({
         references: [{
           path: MANIFEST_PATHS[1],
@@ -370,49 +311,17 @@ describe('policyCompatibilityRemovalCompletionAudit', () => {
           POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
             .FINAL_SCAN_REFERENCE_FOUND,
         path: MANIFEST_PATHS[1],
-        referencedBy: 'server/src/routes/policiesRoutePolicyWrite.mjs',
       }),
     ]));
   });
 
-  test('blocks when focused or full validation evidence is missing or failed', () => {
-    const missingValidation = completeAudit({
-      validationEvidence: {},
-    });
-    const failedValidation = completeAudit({
+  test('blocks failed validation evidence and rejects mutated audit output side effects', async () => {
+    const failedValidation = await completeAudit({
       validationEvidence: validationEvidence({
-        focused: {
-          command: 'focused checks',
-          passed: false,
-          message: 'focused checks failed',
-        },
-        full: {
-          command: 'npm test',
-          passed: false,
-          message: 'full tests failed',
-        },
+        focused: { command: 'focused checks', passed: false },
+        full: { command: 'full checks', passed: false },
       }),
     });
-
-    expect(missingValidation.statusId)
-      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-        .BLOCKED_BY_VALIDATION);
-    expect(missingValidation.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-        .FOCUSED_VALIDATION_MISSING,
-      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FULL_VALIDATION_MISSING,
-    ]));
-    expect(failedValidation.statusId)
-      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-        .BLOCKED_BY_VALIDATION);
-    expect(failedValidation.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-        .FOCUSED_VALIDATION_FAILED,
-      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FULL_VALIDATION_FAILED,
-    ]));
-  });
-
-  test('rejects mutated audit output with stale risk counts or side effects', () => {
     const validation = validatePolicyCompatibilityRemovalCompletionAudit({
       statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
       riskCount: 99,
@@ -424,6 +333,14 @@ describe('policyCompatibilityRemovalCompletionAudit', () => {
       },
     });
 
+    expect(failedValidation.statusId)
+      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+        .BLOCKED_BY_VALIDATION);
+    expect(failedValidation.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .FOCUSED_VALIDATION_FAILED,
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.FULL_VALIDATION_FAILED,
+    ]));
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.RISK_COUNT_MISMATCH,

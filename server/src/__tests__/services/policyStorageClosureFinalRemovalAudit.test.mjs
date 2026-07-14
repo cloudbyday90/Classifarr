@@ -3,8 +3,17 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
+} from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
+import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
 } from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
+import {
+  buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact,
+} from '../../services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs';
+import {
+  buildPolicyPostRemovalRuntimeEvidenceArtifact,
+} from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
 import {
   buildManifestPathState,
   buildPolicyStorageClosureFinalRemovalAudit,
@@ -14,6 +23,7 @@ const MANIFEST_PATHS = Object.freeze([
   'server/src/services/legacyA.mjs',
   'client/src/components/LegacyB.vue',
 ]);
+const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 
 function executionPlan(overrides = {}) {
   return {
@@ -57,6 +67,70 @@ function validationEvidence(overrides = {}) {
   };
 }
 
+function runtimeEvidenceArtifact(appliedPaths = MANIFEST_PATHS) {
+  return buildPolicyPostRemovalRuntimeEvidenceArtifact({
+    applyEvidence: {
+      statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
+      applied: true,
+      validation: { ok: true, issueCount: 0, issues: [] },
+      removalReview: { reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT },
+      applyBatch: {
+        requestedCount: appliedPaths.length,
+        results: appliedPaths.map(path => ({
+          path,
+          actionId: 'delete_file',
+          applied: true,
+        })),
+      },
+    },
+    importScan: {
+      completed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      checkedPaths: appliedPaths,
+      references: [],
+    },
+    runtimeChecks: [{
+      checkId: 'policy-runtime-imports',
+      passed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    }],
+    validationEvidence: {
+      focused: {
+        command: 'focused validation',
+        passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+      full: {
+        command: 'full validation',
+        passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+    },
+  });
+}
+
+async function nextBatchAuthorizationArtifact({
+  plan = executionPlan(),
+  appliedPaths = MANIFEST_PATHS,
+} = {}) {
+  const remainingPaths = MANIFEST_PATHS.filter(path => !appliedPaths.includes(path));
+
+  return buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+    runtimeEvidenceArtifact: runtimeEvidenceArtifact(appliedPaths),
+    executionPlan: plan,
+    input: {
+      requestedPaths: remainingPaths,
+      maxBatchSize: MANIFEST_PATHS.length,
+      authorizationReason: remainingPaths.length > 0
+        ? 'Continue the reviewed compatibility removal loop.'
+        : '',
+      authorizedBy: remainingPaths.length > 0 ? 'policy-maintainer' : '',
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    },
+    generatedAt: '2026-07-14T10:00:00.000Z',
+  });
+}
+
 describe('policyStorageClosureFinalRemovalAudit', () => {
   test('summarizes manifest path state from the current checkout', () => {
     const state = buildManifestPathState({
@@ -74,11 +148,17 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
     });
   });
 
-  test('reports remaining inventory when approved manifest paths still exist', () => {
-    const evidence = buildPolicyStorageClosureFinalRemovalAudit({
-      executionPlan: executionPlan(),
+  test('reports remaining inventory when an approved manifest path still exists', async () => {
+    const plan = executionPlan();
+    const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
+      executionPlan: plan,
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({
+        plan,
+        appliedPaths: [MANIFEST_PATHS[1]],
+      }),
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
-      fileExists: () => true,
+      fileExists: path => path === MANIFEST_PATHS[0],
       referenceScan: {
         completed: true,
         checkedPaths: MANIFEST_PATHS,
@@ -91,15 +171,18 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
         .REMAINING_INVENTORY);
     expect(evidence.complete).toBe(false);
     expect(evidence.pathState).toEqual(expect.objectContaining({
-      existingCount: 2,
-      removedCount: 0,
+      existingCount: 1,
+      removedCount: 1,
     }));
-    expect(evidence.audit.manifestInventory.remainingPaths).toEqual(MANIFEST_PATHS);
+    expect(evidence.audit.manifestInventory.remainingPaths).toEqual([MANIFEST_PATHS[0]]);
   });
 
-  test('completes when manifest paths are removed, scanned, and validated', () => {
-    const evidence = buildPolicyStorageClosureFinalRemovalAudit({
-      executionPlan: executionPlan(),
+  test('completes when an intact authorization artifact covers removed manifest paths', async () => {
+    const plan = executionPlan();
+    const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
+      executionPlan: plan,
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
       fileExists: () => false,
       referenceScan: {
@@ -119,9 +202,39 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
     expect(evidence.audit.validation.ok).toBe(true);
   });
 
-  test('blocks completion when final scan still reports references', () => {
-    const evidence = buildPolicyStorageClosureFinalRemovalAudit({
-      executionPlan: executionPlan(),
+  test('blocks a stale complete authorization artifact when checkout paths reappear', async () => {
+    const plan = executionPlan();
+    const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
+      executionPlan: plan,
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      validationEvidence: validationEvidence(),
+      fileExists: path => path === MANIFEST_PATHS[0],
+      referenceScan: {
+        completed: true,
+        checkedPaths: MANIFEST_PATHS,
+        references: [],
+      },
+    });
+
+    expect(evidence.statusId)
+      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+        .BLOCKED_BY_AUTHORIZATION_ARTIFACT);
+    expect(evidence.complete).toBe(false);
+    expect(evidence.pathStateVerification).toEqual(expect.objectContaining({
+      checked: true,
+      ok: false,
+      remainingPathsMatch: false,
+      actualRemainingPaths: [MANIFEST_PATHS[0]],
+    }));
+  });
+
+  test('blocks completion when final scan still reports references', async () => {
+    const plan = executionPlan();
+    const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
+      executionPlan: plan,
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
       fileExists: () => false,
       referenceScan: {
@@ -141,9 +254,12 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
     expect(evidence.audit.finalImportScan.referenceCount).toBe(1);
   });
 
-  test('blocks completion when validation evidence is missing', () => {
-    const evidence = buildPolicyStorageClosureFinalRemovalAudit({
-      executionPlan: executionPlan(),
+  test('blocks completion when validation evidence is missing', async () => {
+    const plan = executionPlan();
+    const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
+      executionPlan: plan,
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       fileExists: () => false,
       referenceScan: {
         completed: true,

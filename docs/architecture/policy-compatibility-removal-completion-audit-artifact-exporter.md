@@ -5,11 +5,15 @@
 The compatibility removal completion audit artifact exporter generates a
 machine-readable compatibility removal completion audit artifact from:
 
-- next-batch completion or remaining-inventory authorization JSON,
+- a fingerprint-valid next-batch authorization artifact JSON,
 - compatibility deletion execution-plan JSON with approved manifest entries,
-- verified post-removal runtime verification evidence,
 - final import/reference scan evidence,
 - focused and full validation evidence.
+
+The exporter no longer accepts detached completion-authorization or
+post-removal-verification summaries. Its input JSON must include the applied
+removal-review fingerprint so the nested runtime evidence can be bound to the
+completion context.
 
 This component does not delete files, archive files, write manifests, mutate
 storage, run tests, run source scans, or run Git commands. It produces an audit
@@ -48,20 +52,22 @@ Sources:
 
 ## Recommendations
 
-### Consume Authorization Directly
+### Consume One Authorization Artifact
 
-The artifact exporter should consume authorization JSON instead of inferring
-completion from current files alone.
+The artifact exporter should consume a fingerprint-valid authorization artifact
+instead of a detached authorization summary and a separately supplied runtime
+verification list.
 
 Pros:
 
-- preserves the last authorized removal-loop state,
+- preserves the reviewed removal-loop evidence chain,
 - distinguishes completion from remaining inventory,
-- keeps the audit tied to operator-reviewed evidence.
+- keeps the audit tied to the current execution manifest.
 
 Cons:
 
-- operators must preserve the authorization artifact.
+- operators must retain the runtime evidence embedded in the authorization
+  artifact.
 
 ### Require Removal, Scan, And Validation Evidence
 
@@ -97,15 +103,16 @@ Cons:
 
 Use this stack for compatibility removal completion audit artifact export:
 
-1. Require next-batch authorization JSON.
+1. Require a fingerprint-valid next-batch authorization artifact JSON.
 2. Require compatibility deletion execution-plan JSON with approved manifest
    entries.
-3. Require verified post-removal runtime verification evidence.
-4. Require final import/reference scan evidence covering every manifest path.
-5. Block completion if references remain.
-6. Require focused and full validation evidence to pass.
-7. Emit `complete`, `remaining_inventory`, or `blocked` artifact status.
-8. Reject file deletion, archive, route/test removal, storage mutation,
+3. Require the input review fingerprint to match the nested applied review.
+4. Replay authorization against the current manifest before deriving completion.
+5. Require final import/reference scan evidence covering every manifest path.
+6. Block completion if references remain.
+7. Require focused and full validation evidence to pass.
+8. Emit `complete`, `remaining_inventory`, or `blocked` artifact status.
+9. Reject file deletion, archive, route/test removal, storage mutation,
    manifest writes, and Git side effects.
 
 ## Implementation Outcome
@@ -118,13 +125,14 @@ Implemented:
 - Added focused tests for:
   - complete audit artifact generation,
   - remaining-inventory artifact generation,
+  - altered authorization-artifact rejection,
   - blocked final reference scan evidence,
   - forbidden side-effect rejection,
   - artifact validation invariants.
 - Added the completion-audit artifact suite and this design doc to the fixed
   policy storage closure validation evidence command set.
 - The artifact now emits `version =
-  policy.compatibility_removal_completion_audit_artifact.v1` and
+  policy.compatibility_removal_completion_audit_artifact.v2` and
   `nextStep.stepId = policy_storage_completion_checkpoint`; production output
   does not expose `nextPhase.phaseId`.
 
@@ -132,7 +140,7 @@ Example:
 
 ```bash
 npm run --silent policy:compatibility-removal-completion-audit -- \
-  --completion-authorization .tmp/phase8r/next-batch-authorization.json \
+  --next-batch-authorization-artifact .tmp/phase8r/next-batch-authorization-artifact.json \
   --execution-plan .tmp/phase8r/execution-plan.json \
   --input .tmp/phase8r/completion-audit-input.json \
   --output .tmp/phase8r/completion-audit.json \

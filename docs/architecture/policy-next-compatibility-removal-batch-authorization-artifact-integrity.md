@@ -103,7 +103,7 @@ Cons:
 Implemented in `policyNextCompatibilityRemovalBatchAuthorization.mjs` and its
 artifact exporter:
 
-- contract versions moved to `v2`,
+- authorization contract moved to `v2` and the wrapper artifact to `v3`,
 - detached `postRemovalVerification` input was removed,
 - authorization now validates the runtime evidence artifact and regenerates
   post-removal verification from it,
@@ -111,7 +111,8 @@ artifact exporter:
   fingerprint,
 - applied paths outside the supplied execution manifest block authorization,
 - blocked integrity states expose bounded risk IDs instead of raw evidence,
-- the wrapper artifact retains the consumed runtime evidence artifact,
+- the wrapper artifact retains the consumed runtime evidence artifact and binds
+  its own bounded payload with a SHA-256 fingerprint,
 - `generate-policy-post-removal-verification.mjs` can now write a standalone
   runtime evidence artifact with `--runtime-evidence-output`, and
 - `generate-policy-next-batch-authorization.mjs` now requires that standalone

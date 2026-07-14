@@ -2,12 +2,6 @@ import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
   buildPolicyCompatibilityRemovalCompletionAudit,
 } from './policyCompatibilityRemovalCompletionAudit.mjs';
-import {
-  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
-} from './policyNextCompatibilityRemovalBatchAuthorization.mjs';
-import {
-  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
-} from './policyPostRemovalRuntimeVerification.mjs';
 
 const POLICY_STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT_VERSION =
   'policy.storage_closure_final_removal_audit.v1';
@@ -18,6 +12,18 @@ function asArray(value) {
 
 function normalizePath(value = '') {
   return String(value || '').replace(/\\/g, '/').trim();
+}
+
+function uniqueNormalizedPaths(paths = []) {
+  return [...new Set(asArray(paths).map(normalizePath).filter(Boolean))].sort();
+}
+
+function pathsMatch(left = [], right = []) {
+  const expected = uniqueNormalizedPaths(left);
+  const actual = uniqueNormalizedPaths(right);
+
+  return expected.length === actual.length &&
+    expected.every((path, index) => path === actual[index]);
 }
 
 function getExecutionPlanManifestPaths(executionPlan = {}) {
@@ -52,51 +58,6 @@ function buildManifestPathState({
   };
 }
 
-function buildCompletionAuthorization(pathState = {}) {
-  const complete = pathState.totalCount > 0 && pathState.existingCount === 0;
-
-  return {
-    statusId: complete
-      ? POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
-        .COMPLETE_NO_REMAINING_PATHS
-      : POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
-        .READY_FOR_NEXT_BATCH,
-    completedNoRemainingPaths: complete,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
-    remainingManifest: {
-      totalCount: pathState.totalCount,
-      removedCount: pathState.removedCount,
-      remainingCount: pathState.existingCount,
-      removedPaths: pathState.removedPaths,
-      remainingPaths: pathState.existingPaths,
-    },
-  };
-}
-
-function buildRemovalVerifications(pathState = {}) {
-  if (pathState.removedCount === 0) {
-    return [];
-  }
-
-  return [{
-    statusId: POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED,
-    verified: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
-    applyEvidence: {
-      appliedPathCount: pathState.removedCount,
-      appliedPaths: pathState.removedPaths,
-    },
-  }];
-}
-
 function buildFinalImportScan({
   manifestPaths = [],
   referenceScan = {},
@@ -116,8 +77,29 @@ function buildFinalImportScan({
   };
 }
 
-function buildPolicyStorageClosureFinalRemovalAudit({
+function buildPathStateVerification({ pathState = {}, audit = {} } = {}) {
+  const artifactIntegrityOk = audit.authorizationArtifact?.integrityOk === true;
+  const expectedRemovedPaths = asArray(audit.removalEvidence?.appliedPaths);
+  const expectedRemainingPaths = asArray(audit.manifestInventory?.remainingPaths);
+  const removedPathsMatch = pathsMatch(expectedRemovedPaths, pathState.removedPaths);
+  const remainingPathsMatch = pathsMatch(expectedRemainingPaths, pathState.existingPaths);
+
+  return {
+    checked: artifactIntegrityOk,
+    ok: !artifactIntegrityOk || (removedPathsMatch && remainingPathsMatch),
+    expectedRemovedPaths: uniqueNormalizedPaths(expectedRemovedPaths),
+    actualRemovedPaths: uniqueNormalizedPaths(pathState.removedPaths),
+    expectedRemainingPaths: uniqueNormalizedPaths(expectedRemainingPaths),
+    actualRemainingPaths: uniqueNormalizedPaths(pathState.existingPaths),
+    removedPathsMatch,
+    remainingPathsMatch,
+  };
+}
+
+async function buildPolicyStorageClosureFinalRemovalAudit({
   executionPlan = {},
+  nextBatchAuthorizationArtifact = null,
+  reviewArtifactFingerprint = '',
   validationEvidence = {},
   referenceScan = {},
   fileExists = () => false,
@@ -130,22 +112,29 @@ function buildPolicyStorageClosureFinalRemovalAudit({
     manifestPaths: pathState.manifestPaths,
     referenceScan,
   });
-  const audit = buildPolicyCompatibilityRemovalCompletionAudit({
-    completionAuthorization: buildCompletionAuthorization(pathState),
+  const audit = await buildPolicyCompatibilityRemovalCompletionAudit({
+    nextBatchAuthorizationArtifact,
     executionPlan,
-    removalVerifications: buildRemovalVerifications(pathState),
+    reviewArtifactFingerprint,
     finalImportScan,
     validationEvidence,
   });
+  const pathStateVerification = buildPathStateVerification({ pathState, audit });
+  const statusId = pathStateVerification.ok
+    ? audit.statusId
+    : POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+      .BLOCKED_BY_AUTHORIZATION_ARTIFACT;
 
   return {
     version: POLICY_STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT_VERSION,
-    statusId: audit.statusId,
+    statusId,
     complete:
-      audit.statusId ===
+      statusId ===
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE &&
-      audit.complete === true,
+      audit.complete === true &&
+      pathStateVerification.ok,
     pathState,
+    pathStateVerification,
     finalImportScan,
     audit,
   };
@@ -153,10 +142,9 @@ function buildPolicyStorageClosureFinalRemovalAudit({
 
 export {
   POLICY_STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT_VERSION,
-  buildCompletionAuthorization,
   buildFinalImportScan,
   buildManifestPathState,
+  buildPathStateVerification,
   buildPolicyStorageClosureFinalRemovalAudit,
-  buildRemovalVerifications,
   getExecutionPlanManifestPaths,
 };

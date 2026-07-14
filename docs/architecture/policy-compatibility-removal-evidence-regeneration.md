@@ -8,11 +8,13 @@ work, but it cannot prove that the present execution-plan contract, source
 reference state, or validation results still satisfy the closure conditions.
 
 This component adds a read-only regeneration path. It receives an explicit,
-current compatibility-deletion execution plan and current validation evidence,
-then derives filesystem state and source-reference evidence from the checkout.
-It emits a current completion-audit artifact only when those inputs validate.
-It never treats a historical plan as current approval and never deletes,
-archives, mutates storage, writes manifests, or runs Git.
+current compatibility-deletion execution plan, a fingerprint-valid next-batch
+authorization artifact, its applied removal-review fingerprint, and current
+validation evidence. It then derives filesystem state and source-reference
+evidence from the checkout. It emits a current completion-audit artifact only
+when that one evidence chain validates. It never treats a historical plan as
+current approval and never deletes, archives, mutates storage, writes manifests,
+or runs Git.
 
 ## Official-Source Research
 
@@ -81,14 +83,16 @@ Cons:
 
 1. Require the current `policy.compatibility_deletion_execution_plan.v1`
    execution-plan contract before accepting removal evidence.
-2. Derive manifest path state from the checkout at generation time.
-3. Scan source roots for operational references, while treating only named
+2. Require the fingerprint-valid next-batch authorization artifact and the
+   exact applied removal-review fingerprint bound to its runtime evidence.
+3. Derive manifest path state from the checkout at generation time.
+4. Scan source roots for operational references, while treating only named
    control-plane manifest inventories as evidence rather than dependencies.
-4. Require completed source scanning plus focused and full validation evidence.
-5. Emit a current completion artifact even when it is incomplete, so downstream
+5. Require completed source scanning plus focused and full validation evidence.
+6. Emit a current completion artifact even when it is incomplete, so downstream
    gates report the real readiness blocker.
-6. Do not synthesize deletion approval, run deletion actions, or alter storage.
-7. Pass only a complete, valid generated artifact to the storage closure gates.
+7. Do not synthesize deletion approval, run deletion actions, or alter storage.
+8. Pass only a complete, valid generated artifact to the storage closure gates.
 
 ## Implementation Outcome
 
@@ -101,6 +105,9 @@ Implemented:
   collection path through `npm run policy:compatibility-removal-evidence`.
 - Completion audits now reject a predecessor execution-plan contract, so an
   old plan cannot be rewrapped as current closure proof.
+- Regeneration and the final-removal exporter require the same fingerprint-valid
+  next-batch authorization artifact and applied removal-review fingerprint as
+  the completion audit; neither adapter reconstructs approval from path checks.
 - The source scanner distinguishes named control-plane inventory records from
   operational imports. It still reports a real import from an evidence service.
 - Focused tests cover complete, remaining, predecessor-plan, and incomplete
@@ -111,6 +118,9 @@ Example:
 ```bash
 npm run --silent policy:compatibility-removal-evidence -- \
   --execution-plan .tmp/policy-storage/execution-plan.json \
+  --next-batch-authorization-artifact \
+    .tmp/policy-storage/next-batch-authorization-artifact.json \
+  --review-artifact-fingerprint "$REVIEW_ARTIFACT_FINGERPRINT" \
   --validation-evidence .tmp/policy-storage/validation-evidence.json \
   --output .tmp/policy-storage/compatibility-removal-evidence.json \
   --completion-audit-artifact-output \

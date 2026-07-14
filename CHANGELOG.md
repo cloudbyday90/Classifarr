@@ -82,6 +82,12 @@ unchanged operator or runtime outcome.
   evidence artifact, require the same applied review fingerprint in their
   authorization context, and reject applied paths outside the current approved
   manifest before any remaining path can be authorized.
+- **Artifact-Bound Compatibility Removal Completion** - completion audits and
+  closure evidence exporters now consume and replay one fingerprint-valid
+  next-batch authorization artifact rather than detached authorization and
+  verification summaries. Altered, cross-review, cross-manifest, or
+  checkout-divergent evidence is blocked before completion can be reported,
+  while valid remaining inventory continues through the bounded removal loop.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

@@ -3,10 +3,8 @@ import {
   buildPolicyCompatibilityRemovalCompletionAuditArtifact,
 } from './policyCompatibilityRemovalCompletionAuditArtifact.mjs';
 import {
-  buildCompletionAuthorization,
   buildFinalImportScan,
   buildManifestPathState,
-  buildRemovalVerifications,
 } from './policyStorageClosureFinalRemovalAudit.mjs';
 
 const POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_VERSION =
@@ -82,8 +80,10 @@ function summarizeExecutionPlan(executionPlan = {}) {
   };
 }
 
-function buildPolicyCompatibilityRemovalEvidenceRegeneration({
+async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
   executionPlan = {},
+  nextBatchAuthorizationArtifact = null,
+  reviewArtifactFingerprint = '',
   validationEvidence = {},
   referenceScan = {},
   fileExists = () => false,
@@ -98,13 +98,12 @@ function buildPolicyCompatibilityRemovalEvidenceRegeneration({
     manifestPaths: pathState.manifestPaths,
     referenceScan,
   });
-  const completionAuthorization = buildCompletionAuthorization(pathState);
   const completionAuditArtifact =
-    buildPolicyCompatibilityRemovalCompletionAuditArtifact({
-      completionAuthorization,
+    await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
+      nextBatchAuthorizationArtifact,
       executionPlan: plan,
       input: {
-        removalVerifications: buildRemovalVerifications(pathState),
+        reviewArtifactFingerprint,
         finalImportScan,
         validationEvidence: asObject(validationEvidence),
       },

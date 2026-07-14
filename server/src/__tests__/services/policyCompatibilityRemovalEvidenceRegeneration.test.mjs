@@ -3,6 +3,9 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
+} from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
+import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS,
 } from '../../services/policyCompatibilityRemovalCompletionAuditArtifact.mjs';
 import {
@@ -13,11 +16,18 @@ import {
   POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_VERSION,
   buildPolicyCompatibilityRemovalEvidenceRegeneration,
 } from '../../services/policyCompatibilityRemovalEvidenceRegeneration.mjs';
+import {
+  buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact,
+} from '../../services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs';
+import {
+  buildPolicyPostRemovalRuntimeEvidenceArtifact,
+} from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
 
 const MANIFEST_PATHS = Object.freeze([
   'server/src/services/retiredCompatibilityService.mjs',
   'client/src/components/RetiredCompatibilityPanel.vue',
 ]);
+const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 
 function executionPlan(overrides = {}) {
   return {
@@ -69,10 +79,77 @@ function referenceScan(overrides = {}) {
   };
 }
 
+function runtimeEvidenceArtifact(appliedPaths = MANIFEST_PATHS) {
+  return buildPolicyPostRemovalRuntimeEvidenceArtifact({
+    applyEvidence: {
+      statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
+      applied: true,
+      validation: { ok: true, issueCount: 0, issues: [] },
+      removalReview: { reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT },
+      applyBatch: {
+        requestedCount: appliedPaths.length,
+        results: appliedPaths.map(path => ({
+          path,
+          actionId: 'delete_file',
+          applied: true,
+        })),
+      },
+    },
+    importScan: {
+      completed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      checkedPaths: appliedPaths,
+      references: [],
+    },
+    runtimeChecks: [{
+      checkId: 'policy-runtime-imports',
+      passed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    }],
+    validationEvidence: {
+      focused: {
+        command: 'focused validation',
+        passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+      full: {
+        command: 'full validation',
+        passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+    },
+  });
+}
+
+async function nextBatchAuthorizationArtifact({
+  plan = executionPlan(),
+  appliedPaths = MANIFEST_PATHS,
+} = {}) {
+  const remainingPaths = MANIFEST_PATHS.filter(path => !appliedPaths.includes(path));
+
+  return buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+    runtimeEvidenceArtifact: runtimeEvidenceArtifact(appliedPaths),
+    executionPlan: plan,
+    input: {
+      requestedPaths: remainingPaths,
+      maxBatchSize: MANIFEST_PATHS.length,
+      authorizationReason: remainingPaths.length > 0
+        ? 'Continue the reviewed compatibility removal loop.'
+        : '',
+      authorizedBy: remainingPaths.length > 0 ? 'policy-maintainer' : '',
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    },
+    generatedAt: '2026-07-14T10:00:00.000Z',
+  });
+}
+
 describe('policyCompatibilityRemovalEvidenceRegeneration', () => {
-  test('regenerates a complete current artifact from a current plan and repository state', () => {
-    const evidence = buildPolicyCompatibilityRemovalEvidenceRegeneration({
-      executionPlan: executionPlan(),
+  test('regenerates a complete current artifact from a current plan and repository state', async () => {
+    const plan = executionPlan();
+    const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
+      executionPlan: plan,
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
       referenceScan: referenceScan(),
       fileExists: () => false,
@@ -93,9 +170,15 @@ describe('policyCompatibilityRemovalEvidenceRegeneration', () => {
     expect(evidence.validation.ok).toBe(true);
   });
 
-  test('reports current remaining inventory without manufacturing a completion result', () => {
-    const evidence = buildPolicyCompatibilityRemovalEvidenceRegeneration({
-      executionPlan: executionPlan(),
+  test('reports current remaining inventory without manufacturing a completion result', async () => {
+    const plan = executionPlan();
+    const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
+      executionPlan: plan,
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({
+        plan,
+        appliedPaths: [MANIFEST_PATHS[1]],
+      }),
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
       referenceScan: referenceScan(),
       fileExists: path => path === MANIFEST_PATHS[0],
@@ -113,11 +196,14 @@ describe('policyCompatibilityRemovalEvidenceRegeneration', () => {
       .toBe('policy_compatibility_deletion_readiness');
   });
 
-  test('rejects a predecessor execution-plan contract even when all paths are absent', () => {
-    const evidence = buildPolicyCompatibilityRemovalEvidenceRegeneration({
-      executionPlan: executionPlan({
+  test('rejects a predecessor execution-plan contract even when all paths are absent', async () => {
+    const plan = executionPlan({
         version: 'phase8r.compatibility_path_deletion_execution_plan.v1',
-      }),
+      });
+    const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
+      executionPlan: plan,
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
       referenceScan: referenceScan(),
       fileExists: () => false,
@@ -137,9 +223,12 @@ describe('policyCompatibilityRemovalEvidenceRegeneration', () => {
     ]));
   });
 
-  test('requires a completed current-source reference scan', () => {
-    const evidence = buildPolicyCompatibilityRemovalEvidenceRegeneration({
-      executionPlan: executionPlan(),
+  test('requires a completed current-source reference scan', async () => {
+    const plan = executionPlan();
+    const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
+      executionPlan: plan,
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
       referenceScan: referenceScan({
         completed: false,

@@ -4,19 +4,17 @@ import {
   buildPolicyCompatibilityDeletionExecutionPlan,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
-} from './policyNextCompatibilityRemovalBatchAuthorization.mjs';
-import {
-  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
-} from './policyPostRemovalRuntimeVerification.mjs';
+  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS,
+  validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity,
+} from './policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.mjs';
 
 const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_VERSION =
-  'policy.compatibility_removal_completion_audit.v1';
+  'policy.compatibility_removal_completion_audit.v2';
 
 const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
   REMAINING_INVENTORY: 'remaining_inventory',
-  BLOCKED_BY_AUTHORIZATION_EVIDENCE: 'blocked_by_authorization_evidence',
+  BLOCKED_BY_AUTHORIZATION_ARTIFACT: 'blocked_by_authorization_artifact',
   BLOCKED_BY_EXECUTION_PLAN: 'blocked_by_execution_plan',
   BLOCKED_BY_REMOVAL_EVIDENCE: 'blocked_by_removal_evidence',
   BLOCKED_BY_FINAL_SCAN: 'blocked_by_final_scan',
@@ -24,14 +22,19 @@ const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS = Object.freeze({
 });
 
 const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS = Object.freeze({
+  AUTHORIZATION_ARTIFACT_MISSING: 'authorization_artifact_missing',
+  AUTHORIZATION_ARTIFACT_INVALID: 'authorization_artifact_invalid',
+  AUTHORIZATION_ARTIFACT_NOT_AUTHORIZABLE: 'authorization_artifact_not_authorizable',
+  AUTHORIZATION_RUNTIME_EVIDENCE_INVALID: 'authorization_runtime_evidence_invalid',
+  AUTHORIZATION_REVIEW_CONTEXT_MISSING: 'authorization_review_context_missing',
+  AUTHORIZATION_REVIEW_CONTEXT_MISMATCH: 'authorization_review_context_mismatch',
+  AUTHORIZATION_REPLAY_MISMATCH: 'authorization_replay_mismatch',
   AUTHORIZATION_NOT_COMPLETE: 'authorization_not_complete',
   AUTHORIZATION_VALIDATION_FAILED: 'authorization_validation_failed',
   EXECUTION_PLAN_NOT_READY: 'execution_plan_not_ready',
   EXECUTION_PLAN_VERSION_UNSUPPORTED: 'execution_plan_version_unsupported',
   EXECUTION_PLAN_VALIDATION_FAILED: 'execution_plan_validation_failed',
   NO_MANIFEST_ENTRIES: 'no_manifest_entries',
-  REMOVAL_VERIFICATION_MISSING: 'removal_verification_missing',
-  REMOVAL_VERIFICATION_NOT_VERIFIED: 'removal_verification_not_verified',
   REMOVED_PATH_COVERAGE_INCOMPLETE: 'removed_path_coverage_incomplete',
   FINAL_SCAN_MISSING: 'final_scan_missing',
   FINAL_SCAN_PATH_MISSING: 'final_scan_path_missing',
@@ -74,37 +77,96 @@ function getManifestEntries(executionPlan = {}) {
     .filter(entry => entry.path);
 }
 
-function evaluateCompletionAuthorization(completionAuthorization = {}) {
+function mapAuthorizationArtifactIntegrityRisk(risk = {}) {
+  const riskIdMap = {
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
+      .AUTHORIZATION_ARTIFACT_MISSING]:
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_ARTIFACT_MISSING,
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
+      .AUTHORIZATION_ARTIFACT_INVALID]:
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_ARTIFACT_INVALID,
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
+      .AUTHORIZATION_ARTIFACT_NOT_AUTHORIZABLE]:
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_ARTIFACT_NOT_AUTHORIZABLE,
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
+      .RUNTIME_EVIDENCE_ARTIFACT_INVALID]:
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_RUNTIME_EVIDENCE_INVALID,
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
+      .REVIEW_ARTIFACT_FINGERPRINT_MISSING]:
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_REVIEW_CONTEXT_MISSING,
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
+      .REVIEW_ARTIFACT_FINGERPRINT_MISMATCH]:
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_REVIEW_CONTEXT_MISMATCH,
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
+      .AUTHORIZATION_REPLAY_MISMATCH]:
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_REPLAY_MISMATCH,
+  };
+
+  return buildRisk(
+    riskIdMap[risk.riskId] ||
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_ARTIFACT_INVALID,
+    risk.message || 'Compatibility removal completion audit authorization artifact failed integrity validation.',
+    {
+      authorizationArtifactRiskId: risk.riskId || null,
+      ...Object.fromEntries(
+        Object.entries(risk).filter(([key]) => !['riskId', 'message'].includes(key))
+      ),
+    }
+  );
+}
+
+async function evaluateCompletionAuthorizationArtifact({
+  nextBatchAuthorizationArtifact = null,
+  executionPlan = null,
+  reviewArtifactFingerprint = '',
+} = {}) {
+  const integrity =
+    await validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity({
+      authorizationArtifact: nextBatchAuthorizationArtifact,
+      executionPlan,
+      reviewArtifactFingerprint,
+    });
+  const authorization = integrity.authorization || {};
   const risks = [];
 
-  if (
-    completionAuthorization.statusId !==
-      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
-        .COMPLETE_NO_REMAINING_PATHS ||
-    completionAuthorization.completedNoRemainingPaths !== true
-  ) {
+  if (!integrity.ok) {
+    risks.push(...integrity.issues.map(mapAuthorizationArtifactIntegrityRisk));
+  }
+
+  if (authorization.completedNoRemainingPaths !== true) {
     risks.push(buildRisk(
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
         .AUTHORIZATION_NOT_COMPLETE,
-      'Compatibility removal completion audit requires complete next-batch authorization evidence.',
-      { statusId: completionAuthorization.statusId || null }
+      'Compatibility removal completion audit requires authorization evidence showing no approved paths remain.',
+      { statusId: authorization.statusId || null }
     ));
   }
 
-  if (completionAuthorization.validation?.ok !== true) {
+  if (authorization.validation?.ok !== true) {
     risks.push(buildRisk(
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
         .AUTHORIZATION_VALIDATION_FAILED,
       'Compatibility removal completion audit requires valid next-batch authorization evidence.',
-      { issueCount: completionAuthorization.validation?.issueCount ?? null }
+      { issueCount: authorization.validation?.issueCount ?? null }
     ));
   }
 
   return {
+    integrity,
+    authorization,
     remainingCount:
-      Number(completionAuthorization.remainingManifest?.remainingCount ?? 0),
+      Number(authorization.remainingManifest?.remainingCount ?? 0),
     removedPaths:
-      uniqueNormalizedPaths(completionAuthorization.remainingManifest?.removedPaths),
+      uniqueNormalizedPaths(authorization.remainingManifest?.removedPaths),
+    appliedPaths: uniqueNormalizedPaths(integrity.appliedPaths),
     risks,
   };
 }
@@ -156,51 +218,6 @@ function evaluateExecutionPlan(executionPlan = {}) {
   return {
     manifestPaths: entries.map(entry => entry.path),
     entries,
-    risks,
-  };
-}
-
-function evaluateRemovalVerifications(removalVerifications = []) {
-  const verifications = asArray(removalVerifications);
-  const risks = [];
-  const appliedPaths = uniqueNormalizedPaths(verifications.flatMap(verification => (
-    asArray(verification.applyEvidence?.appliedPaths)
-  )));
-
-  if (verifications.length === 0) {
-    risks.push(buildRisk(
-      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-        .REMOVAL_VERIFICATION_MISSING,
-      'Compatibility removal completion audit requires verified post-removal runtime evidence.'
-    ));
-  }
-
-  verifications.forEach((verification, index) => {
-    if (
-      verification.statusId !== POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED ||
-      verification.verified !== true ||
-      verification.validation?.ok !== true
-    ) {
-      risks.push(buildRisk(
-        POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-          .REMOVAL_VERIFICATION_NOT_VERIFIED,
-        'Every removal verification used for completion must be verified and valid.',
-        {
-          index,
-          statusId: verification.statusId || null,
-        }
-      ));
-    }
-  });
-
-  return {
-    verificationCount: verifications.length,
-    verifiedCount: verifications.filter(verification => (
-      verification.statusId === POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED &&
-      verification.verified === true &&
-      verification.validation?.ok === true
-    )).length,
-    appliedPaths,
     risks,
   };
 }
@@ -319,6 +336,26 @@ function evaluateValidationEvidence(validationEvidence = {}) {
 
 function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
   if (risks.some(risk => [
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      .AUTHORIZATION_ARTIFACT_MISSING,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      .AUTHORIZATION_ARTIFACT_INVALID,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      .AUTHORIZATION_ARTIFACT_NOT_AUTHORIZABLE,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      .AUTHORIZATION_RUNTIME_EVIDENCE_INVALID,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      .AUTHORIZATION_REVIEW_CONTEXT_MISSING,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      .AUTHORIZATION_REVIEW_CONTEXT_MISMATCH,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      .AUTHORIZATION_REPLAY_MISMATCH,
+  ].includes(risk.riskId))) {
+    return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+      .BLOCKED_BY_AUTHORIZATION_ARTIFACT;
+  }
+
+  if (risks.some(risk => [
     POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS.AUTHORIZATION_NOT_COMPLETE,
     POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
       .AUTHORIZATION_VALIDATION_FAILED,
@@ -328,7 +365,7 @@ function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
     }
 
     return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-      .BLOCKED_BY_AUTHORIZATION_EVIDENCE;
+      .BLOCKED_BY_AUTHORIZATION_ARTIFACT;
   }
 
   if (risks.some(risk => [
@@ -344,10 +381,6 @@ function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
   }
 
   if (risks.some(risk => [
-    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-      .REMOVAL_VERIFICATION_MISSING,
-    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-      .REMOVAL_VERIFICATION_NOT_VERIFIED,
     POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
       .REMOVED_PATH_COVERAGE_INCOMPLETE,
   ].includes(risk.riskId))) {
@@ -372,19 +405,23 @@ function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
   return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE;
 }
 
-function buildPolicyCompatibilityRemovalCompletionAudit({
-  completionAuthorization = {},
+async function buildPolicyCompatibilityRemovalCompletionAudit({
+  nextBatchAuthorizationArtifact = null,
   executionPlan = null,
-  removalVerifications = [],
+  reviewArtifactFingerprint = '',
   finalImportScan = {},
   validationEvidence = {},
   sideEffects = {},
 } = {}) {
   const resolvedExecutionPlan =
     executionPlan || buildPolicyCompatibilityDeletionExecutionPlan();
-  const authorizationEvaluation = evaluateCompletionAuthorization(completionAuthorization);
+  const authorizationEvaluation =
+    await evaluateCompletionAuthorizationArtifact({
+      nextBatchAuthorizationArtifact,
+      executionPlan: resolvedExecutionPlan,
+      reviewArtifactFingerprint,
+    });
   const executionPlanEvaluation = evaluateExecutionPlan(resolvedExecutionPlan);
-  const removalEvaluation = evaluateRemovalVerifications(removalVerifications);
   const finalScanEvaluation = evaluateFinalImportScan({
     manifestPaths: executionPlanEvaluation.manifestPaths,
     finalImportScan,
@@ -392,11 +429,10 @@ function buildPolicyCompatibilityRemovalCompletionAudit({
   const risks = [
     ...authorizationEvaluation.risks,
     ...executionPlanEvaluation.risks,
-    ...removalEvaluation.risks,
     ...evaluatePathCoverage({
       manifestPaths: executionPlanEvaluation.manifestPaths,
       removedPaths: authorizationEvaluation.removedPaths,
-      appliedPaths: removalEvaluation.appliedPaths,
+      appliedPaths: authorizationEvaluation.appliedPaths,
     }),
     ...finalScanEvaluation.risks,
     ...evaluateValidationEvidence(validationEvidence),
@@ -410,10 +446,20 @@ function buildPolicyCompatibilityRemovalCompletionAudit({
     statusId,
     complete:
       statusId === POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
-    completionAuthorization: {
-      statusId: completionAuthorization.statusId || null,
-      validationOk: completionAuthorization.validation?.ok === true,
-      completedNoRemainingPaths: completionAuthorization.completedNoRemainingPaths === true,
+    authorizationArtifact: {
+      version: nextBatchAuthorizationArtifact?.version || null,
+      statusId: nextBatchAuthorizationArtifact?.statusId || null,
+      validationOk: nextBatchAuthorizationArtifact?.validation?.ok === true,
+      fingerprint:
+        nextBatchAuthorizationArtifact?.artifactFingerprint?.fingerprint || null,
+      integrityOk: authorizationEvaluation.integrity.ok,
+      reviewArtifactFingerprint:
+        authorizationEvaluation.integrity.reviewArtifactFingerprint || null,
+      authorizationStatusId: authorizationEvaluation.authorization.statusId || null,
+      authorizationValidationOk:
+        authorizationEvaluation.authorization.validation?.ok === true,
+      completedNoRemainingPaths:
+        authorizationEvaluation.authorization.completedNoRemainingPaths === true,
       remainingCount: authorizationEvaluation.remainingCount,
     },
     executionPlan: {
@@ -426,18 +472,24 @@ function buildPolicyCompatibilityRemovalCompletionAudit({
       totalCount: executionPlanEvaluation.manifestPaths.length,
       removedCount: uniqueNormalizedPaths([
         ...authorizationEvaluation.removedPaths,
-        ...removalEvaluation.appliedPaths,
+        ...authorizationEvaluation.appliedPaths,
       ]).filter(path => executionPlanEvaluation.manifestPaths.includes(path)).length,
       remainingCount: authorizationEvaluation.remainingCount,
       manifestPaths: executionPlanEvaluation.manifestPaths,
-      remainingPaths: asArray(completionAuthorization.remainingManifest?.remainingPaths)
+      remainingPaths: asArray(authorizationEvaluation.authorization.remainingManifest?.remainingPaths)
         .map(normalizePath)
         .filter(Boolean),
     },
     removalEvidence: {
-      verificationCount: removalEvaluation.verificationCount,
-      verifiedCount: removalEvaluation.verifiedCount,
-      appliedPaths: removalEvaluation.appliedPaths,
+      verificationCount: authorizationEvaluation.integrity.runtimeEvidenceValidation.ok
+        ? 1
+        : 0,
+      verifiedCount:
+        authorizationEvaluation.authorization.postRemovalVerification?.verified === true &&
+        authorizationEvaluation.authorization.postRemovalVerification?.validationOk === true
+          ? 1
+          : 0,
+      appliedPaths: authorizationEvaluation.appliedPaths,
     },
     finalImportScan: {
       completed: finalScanEvaluation.completed,

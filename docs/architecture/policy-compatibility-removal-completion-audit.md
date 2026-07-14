@@ -9,11 +9,14 @@ write manifests, run tests, run Git commands, or execute source searches.
 
 The component consumes bounded evidence:
 
-- complete next-batch authorization evidence,
+- a fingerprint-valid next-batch authorization artifact,
 - the approved compatibility deletion manifest,
-- verified post-removal runtime evidence,
 - final import/reference scan evidence,
 - focused and full validation evidence.
+
+The audit revalidates the artifact's embedded runtime evidence and replays its
+authorization against the current manifest. The supplied completion context
+must name the exact removal-review fingerprint applied by that evidence.
 
 If approved manifest paths remain, the audit reports bounded remaining
 inventory instead of claiming completion. If completion evidence is stale or
@@ -61,7 +64,7 @@ coverage, verified removals, final scan evidence, and validation results.
 
 Pros:
 
-- prevents false completion claims,
+- prevents false completion claims and detached-evidence substitution,
 - keeps the audit tied to explicit manifest inventory,
 - makes missing evidence actionable.
 
@@ -83,6 +86,23 @@ Pros:
 Cons:
 
 - introduces another non-complete status to handle.
+
+### Replay The Authorization Artifact
+
+Validate an authorization artifact's SHA-256 fingerprint, revalidate its
+embedded runtime evidence, and rebuild authorization using the current
+execution manifest.
+
+Pros:
+
+- rejects altered artifact payloads,
+- rejects evidence from another review or manifest,
+- preserves one authoritative removal-evidence chain.
+
+Cons:
+
+- requires retaining the artifact,
+- makes evaluation asynchronous.
 
 ### Require Final Reference Evidence
 
@@ -118,15 +138,20 @@ Cons:
 
 Use this stack for compatibility removal completion audit:
 
-1. Require valid `complete_no_remaining_paths` authorization evidence.
-2. Require a valid compatibility deletion execution plan with approved manifest
+1. Require a fingerprint-valid next-batch authorization artifact.
+2. Require the completion context fingerprint to match the artifact's applied
+   removal-review fingerprint.
+3. Revalidate embedded runtime evidence and replay authorization against the
+   current execution manifest.
+4. Require valid `complete_no_remaining_paths` authorization evidence for a
+   completed outcome.
+5. Require a valid compatibility deletion execution plan with approved manifest
    entries.
-3. Require at least one verified post-removal runtime verification.
-4. Prove every approved manifest path is covered by verified removal evidence.
-5. Require final import/reference scan evidence for every manifest path.
-6. Block if the final scan reports any remaining reference.
-7. Require focused and full validation evidence to pass.
-8. Reject file, route, test, storage, manifest, archive, or Git side effects
+6. Prove every approved manifest path is covered by replayed removal evidence.
+7. Require final import/reference scan evidence for every manifest path.
+8. Block if the final scan reports any remaining reference.
+9. Require focused and full validation evidence to pass.
+10. Reject file, route, test, storage, manifest, archive, or Git side effects
    inside the audit.
 
 ## Implementation Outcome
@@ -137,20 +162,19 @@ Implemented:
 - Added status IDs for:
   - complete,
   - remaining inventory,
-  - blocked by authorization evidence,
+  - blocked by authorization artifact integrity,
   - blocked by execution plan,
   - blocked by removal evidence,
   - blocked by final scan,
   - blocked by validation.
-- Added risk IDs for incomplete authorization, invalid authorization, invalid
-  execution plans, empty manifests, missing or invalid removal verification,
-  incomplete path coverage, missing final scan evidence, lingering references,
-  missing or failed focused/full validation, side effects, stale risk counts,
-  and unknown statuses.
-- Added focused tests for complete output, remaining inventory, invalid
-  authorization, invalid execution plan, missing/invalid/incomplete removal
-  evidence, missing or referenced final scans, validation failures, and mutated
-  output validation.
+- Added risk IDs for missing, invalid, altered, cross-review, and replayed
+  authorization artifacts; invalid execution plans; empty manifests; incomplete
+  path coverage; missing final scan evidence; lingering references; missing or
+  failed focused/full validation; side effects; stale risk counts; and unknown
+  statuses.
+- Added focused tests for complete output, remaining inventory, missing,
+  altered, cross-review, and cross-manifest authorization artifacts, final scan
+  failures, validation failures, and mutated output validation.
 
 Not implemented in this component:
 
@@ -169,6 +193,6 @@ That task should consume semantic storage-completion checkpoint evidence and
 remove the remaining phase-coded final closure readout names from production
 code.
 The payload now emits `version =
-policy.compatibility_removal_completion_audit.v1` and
+policy.compatibility_removal_completion_audit.v2` and
 `nextStep.stepId = policy_storage_completion_checkpoint`; production output
 does not expose `nextPhase.phaseId`.

@@ -6,8 +6,9 @@ This cutover removes temporary phase-coded names from the final removal audit
 module while preserving the underlying storage-closure evidence behavior.
 
 The final audit remains the read-only proof step that checks approved deletion
-manifest paths, product/runtime references, and validation evidence before the
-storage closure evidence run can claim completion.
+manifest paths, a fingerprint-valid authorization/runtime-evidence chain,
+current checkout state, product/runtime references, and validation evidence
+before the storage closure evidence run can claim completion.
 
 ## Official-Source Research
 
@@ -53,20 +54,21 @@ Cons:
 - requires coordinated reference updates across validation, docs, tests, and
   runners.
 
-### Keep Behavior Stable
+### Preserve Artifact And Checkout Integrity
 
-The cutover should not change path-state derivation, reference scanning,
-validation gating, remaining-inventory reporting, or completion semantics.
+The audit must revalidate the authorization artifact chain and compare its
+authorized removed and remaining paths with the current checkout before
+reporting a terminal result.
 
 Pros:
 
-- avoids changing storage-closure behavior during a naming cutover,
-- keeps focused test coverage meaningful,
-- narrows review to contract naming and docs.
+- rejects stale completion evidence when a manifest path reappears,
+- keeps current checkout inspection meaningful after artifact hardening,
+- preserves bounded remaining-inventory reporting.
 
 Cons:
 
-- deeper scanner improvements must remain separate future work.
+- callers must retain the authorization artifact and review fingerprint.
 
 ### Preserve Read-Only Execution
 
@@ -91,8 +93,11 @@ Cons:
 2. Update closure requirement and validation evidence maps to require the new
    paths.
 3. Update roadmap, design records, handoff docs, and changelog references.
-4. Preserve the existing read-only final audit behavior and focused tests.
-5. Validate both direct command help and package runner help.
+4. Require a fingerprint-valid next-batch authorization artifact and applied
+   review fingerprint at the generator boundary.
+5. Reconcile the verified artifact path sets with the current checkout.
+6. Preserve read-only behavior and focused tests.
+7. Validate both direct command help and package runner help.
 
 ## Implementation Outcome
 

@@ -4,7 +4,7 @@ import {
 } from './policyCompatibilityRemovalCompletionAudit.mjs';
 
 const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION =
-  'policy.compatibility_removal_completion_audit_artifact.v1';
+  'policy.compatibility_removal_completion_audit_artifact.v2';
 
 const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS =
   Object.freeze({
@@ -128,18 +128,18 @@ function buildArtifactRisks({
   return risks;
 }
 
-function buildPolicyCompatibilityRemovalCompletionAuditArtifact({
-  completionAuthorization = {},
+async function buildPolicyCompatibilityRemovalCompletionAuditArtifact({
+  nextBatchAuthorizationArtifact = null,
   executionPlan = {},
   input = {},
   generatedAt = null,
   sideEffects = {},
 } = {}) {
   const evidence = asObject(input);
-  const audit = buildPolicyCompatibilityRemovalCompletionAudit({
-    completionAuthorization,
+  const audit = await buildPolicyCompatibilityRemovalCompletionAudit({
+    nextBatchAuthorizationArtifact,
     executionPlan,
-    removalVerifications: asArray(evidence.removalVerifications),
+    reviewArtifactFingerprint: evidence.reviewArtifactFingerprint,
     finalImportScan: asObject(evidence.finalImportScan),
     validationEvidence: asObject(evidence.validationEvidence),
     sideEffects,
@@ -161,6 +161,7 @@ function buildPolicyCompatibilityRemovalCompletionAuditArtifact({
       risks.length === 0 &&
       audit.statusId ===
         POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.REMAINING_INVENTORY,
+    nextBatchAuthorizationArtifact,
     audit,
     auditSummary: {
       manifestTotalCount: audit.manifestInventory?.totalCount ?? 0,
@@ -174,9 +175,10 @@ function buildPolicyCompatibilityRemovalCompletionAuditArtifact({
     risks,
     sideEffects: combinedSideEffects,
     executionPolicy: {
-      requireCompletionAuthorization: true,
+      requireFingerprintValidNextBatchAuthorizationArtifact: true,
+      requireAuthorizationReviewArtifactContext: true,
       requireReadyExecutionPlanManifest: true,
-      requireRemovalVerificationEvidence: true,
+      requireVerifiedRuntimeEvidenceArtifact: true,
       requireFinalReferenceScan: true,
       requireFocusedValidation: true,
       requireFullValidation: true,

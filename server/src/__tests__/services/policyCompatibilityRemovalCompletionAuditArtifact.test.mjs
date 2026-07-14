@@ -3,129 +3,138 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
-  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
-} from '../../services/policyNextCompatibilityRemovalBatchAuthorization.mjs';
-import {
-  POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
-} from '../../services/policyPostRemovalRuntimeVerification.mjs';
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
+} from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
 import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS,
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS,
   buildPolicyCompatibilityRemovalCompletionAuditArtifact,
   validatePolicyCompatibilityRemovalCompletionAuditArtifact,
 } from '../../services/policyCompatibilityRemovalCompletionAuditArtifact.mjs';
+import {
+  buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact,
+} from '../../services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs';
+import {
+  buildPolicyPostRemovalRuntimeEvidenceArtifact,
+} from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
 
+const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 const MANIFEST_PATHS = Object.freeze([
   'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
   'server/src/services/policyIntentImpactPreview.mjs',
   'server/src/services/policyIntentReplayPreview.mjs',
 ]);
 
-function manifestEntry(path, overrides = {}) {
-  return {
+function executionPlan() {
+  const entries = MANIFEST_PATHS.map(path => ({
     categoryId: 'old_preview_replay_diagnostics',
     actionId: 'delete_file',
     path,
-    replacementEvidence: {
-      replacementPath: 'server/src/services/policyNativeIntentProjection.mjs',
-    },
     ready: true,
-    ...overrides,
-  };
-}
-
-function executionPlan(overrides = {}) {
-  const entries = overrides.entries || MANIFEST_PATHS.map(path => manifestEntry(path));
+  }));
 
   return {
     version: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
     statusId:
       POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
+    validation: { ok: true, issueCount: 0, issues: [] },
     manifest: {
       approved: true,
       entryCount: entries.length,
       entries,
     },
-    ...overrides,
   };
 }
 
-function completionAuthorization(overrides = {}) {
-  return {
-    statusId:
-      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
-        .COMPLETE_NO_REMAINING_PATHS,
-    completedNoRemainingPaths: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
-    remainingManifest: {
-      totalCount: MANIFEST_PATHS.length,
-      removedCount: MANIFEST_PATHS.length,
-      remainingCount: 0,
-      removedPaths: MANIFEST_PATHS,
-      remainingPaths: [],
-    },
-    ...overrides,
-  };
-}
-
-function removalVerification(paths = MANIFEST_PATHS, overrides = {}) {
-  return {
-    statusId: POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED,
-    verified: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
+function runtimeEvidenceArtifact(appliedPaths = MANIFEST_PATHS) {
+  return buildPolicyPostRemovalRuntimeEvidenceArtifact({
     applyEvidence: {
-      appliedPathCount: paths.length,
-      appliedPaths: paths,
+      statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
+      applied: true,
+      validation: { ok: true, issueCount: 0, issues: [] },
+      removalReview: {
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+      applyBatch: {
+        requestedCount: appliedPaths.length,
+        results: appliedPaths.map(path => ({ path, actionId: 'delete_file', applied: true })),
+      },
     },
-    ...overrides,
-  };
+    importScan: {
+      completed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      checkedPaths: appliedPaths,
+      references: [],
+    },
+    runtimeChecks: [{
+      checkId: 'policy-runtime-imports',
+      passed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    }],
+    validationEvidence: {
+      focused: {
+        command: 'focused validation',
+        passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+      full: {
+        command: 'full validation',
+        passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+    },
+  });
+}
+
+async function nextBatchAuthorizationArtifact({
+  plan = executionPlan(),
+  appliedPaths = MANIFEST_PATHS,
+} = {}) {
+  const remainingPaths = MANIFEST_PATHS.filter(path => !appliedPaths.includes(path));
+
+  return buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+    runtimeEvidenceArtifact: runtimeEvidenceArtifact(appliedPaths),
+    executionPlan: plan,
+    input: {
+      requestedPaths: remainingPaths,
+      maxBatchSize: 3,
+      authorizationReason: remainingPaths.length > 0
+        ? 'Continue the reviewed compatibility removal loop.'
+        : '',
+      authorizedBy: remainingPaths.length > 0 ? 'policy-maintainer' : '',
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    },
+    generatedAt: '2026-07-14T10:00:00.000Z',
+  });
 }
 
 function input(overrides = {}) {
   return {
-    removalVerifications: [removalVerification()],
+    reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
     finalImportScan: {
       completed: true,
       checkedPaths: MANIFEST_PATHS,
       references: [],
     },
     validationEvidence: {
-      focused: {
-        command: 'focused phase8r checks',
-        passed: true,
-      },
-      full: {
-        command: 'npm --prefix server test',
-        passed: true,
-      },
+      focused: { command: 'focused phase8r checks', passed: true },
+      full: { command: 'npm --prefix server test', passed: true },
     },
     ...overrides,
   };
 }
 
 describe('policyCompatibilityRemovalCompletionAuditArtifact', () => {
-  test('wraps a complete compatibility-removal completion audit', () => {
-    const artifact =
-      buildPolicyCompatibilityRemovalCompletionAuditArtifact({
-        completionAuthorization: completionAuthorization(),
-        executionPlan: executionPlan(),
-        input: input(),
-        generatedAt: '2026-06-25T11:00:00.000Z',
-      });
+  test('wraps a complete artifact-bound compatibility-removal completion audit', async () => {
+    const plan = executionPlan();
+    const authorizationArtifact = await nextBatchAuthorizationArtifact({ plan });
+    const artifact = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
+      nextBatchAuthorizationArtifact: authorizationArtifact,
+      executionPlan: plan,
+      input: input(),
+      generatedAt: '2026-07-14T11:00:00.000Z',
+    });
 
     expect(artifact.statusId)
       .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS
@@ -133,7 +142,11 @@ describe('policyCompatibilityRemovalCompletionAuditArtifact', () => {
     expect(artifact.complete).toBe(true);
     expect(artifact.remainingInventory).toBe(false);
     expect(artifact.validation.ok).toBe(true);
-    expect(artifact.audit.complete).toBe(true);
+    expect(artifact.nextBatchAuthorizationArtifact).toBe(authorizationArtifact);
+    expect(artifact.audit.authorizationArtifact).toEqual(expect.objectContaining({
+      integrityOk: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    }));
     expect(artifact.auditSummary).toEqual({
       manifestTotalCount: 3,
       manifestRemovedCount: 3,
@@ -142,34 +155,19 @@ describe('policyCompatibilityRemovalCompletionAuditArtifact', () => {
       removalVerifiedCount: 1,
       finalScanReferenceCount: 0,
     });
-    expect(artifact.nextPhase).toBeUndefined();
-    expect(artifact.nextStep).toEqual(expect.objectContaining({
-      stepId: 'policy_storage_completion_checkpoint',
-      label: 'Policy Storage Completion Checkpoint',
-    }));
   });
 
-  test('wraps remaining-inventory audit output without treating it as corruption', () => {
-    const artifact =
-      buildPolicyCompatibilityRemovalCompletionAuditArtifact({
-        completionAuthorization: completionAuthorization({
-          statusId:
-            POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
-              .READY_FOR_NEXT_BATCH,
-          completedNoRemainingPaths: false,
-          remainingManifest: {
-            totalCount: MANIFEST_PATHS.length,
-            removedCount: 1,
-            remainingCount: 2,
-            removedPaths: [MANIFEST_PATHS[0]],
-            remainingPaths: [MANIFEST_PATHS[1], MANIFEST_PATHS[2]],
-          },
-        }),
-        executionPlan: executionPlan(),
-        input: input({
-          removalVerifications: [removalVerification([MANIFEST_PATHS[0]])],
-        }),
-      });
+  test('wraps intact remaining-inventory output without treating it as corruption', async () => {
+    const plan = executionPlan();
+    const authorizationArtifact = await nextBatchAuthorizationArtifact({
+      plan,
+      appliedPaths: [MANIFEST_PATHS[0]],
+    });
+    const artifact = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
+      nextBatchAuthorizationArtifact: authorizationArtifact,
+      executionPlan: plan,
+      input: input(),
+    });
 
     expect(artifact.statusId)
       .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS
@@ -181,49 +179,60 @@ describe('policyCompatibilityRemovalCompletionAuditArtifact', () => {
       .toEqual([MANIFEST_PATHS[1], MANIFEST_PATHS[2]]);
   });
 
-  test('blocks when the final import scan still contains references', () => {
-    const artifact =
-      buildPolicyCompatibilityRemovalCompletionAuditArtifact({
-        completionAuthorization: completionAuthorization(),
-        executionPlan: executionPlan(),
-        input: input({
-          finalImportScan: {
-            completed: true,
-            checkedPaths: MANIFEST_PATHS,
-            references: [{
-              path: MANIFEST_PATHS[0],
-              referencedBy: 'server/src/routes/policiesRoutePolicyWrite.mjs',
-            }],
-          },
-        }),
-      });
-
-    expect(artifact.statusId)
-      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS
-        .BLOCKED);
-    expect(artifact.complete).toBe(false);
-    expect(artifact.risks).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        riskId:
-          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
-            .AUDIT_BLOCKED,
+  test('blocks an altered authorization artifact and a final scan reference', async () => {
+    const plan = executionPlan();
+    const authorizationArtifact = await nextBatchAuthorizationArtifact({ plan });
+    const alteredAuthorizationArtifact = structuredClone(authorizationArtifact);
+    alteredAuthorizationArtifact.authorizationSummary.remainingCount = 1;
+    const altered = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
+      nextBatchAuthorizationArtifact: alteredAuthorizationArtifact,
+      executionPlan: plan,
+      input: input(),
+    });
+    const referenced = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
+      nextBatchAuthorizationArtifact: authorizationArtifact,
+      executionPlan: plan,
+      input: input({
+        finalImportScan: {
+          completed: true,
+          checkedPaths: MANIFEST_PATHS,
+          references: [{
+            path: MANIFEST_PATHS[0],
+            referencedBy: 'server/src/routes/policiesRoutePolicyWrite.mjs',
+          }],
+        },
       }),
-    ]));
-    expect(artifact.audit.statusId).toBe('blocked_by_final_scan');
+    });
+
+    [altered, referenced].forEach(artifact => {
+      expect(artifact.statusId)
+        .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS
+          .BLOCKED);
+      expect(artifact.complete).toBe(false);
+      expect(artifact.risks).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId:
+            POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+              .AUDIT_BLOCKED,
+        }),
+      ]));
+    });
+    expect(altered.audit.statusId).toBe('blocked_by_authorization_artifact');
+    expect(referenced.audit.statusId).toBe('blocked_by_final_scan');
   });
 
-  test('rejects side effects in artifact output', () => {
-    const artifact =
-      buildPolicyCompatibilityRemovalCompletionAuditArtifact({
-        completionAuthorization: completionAuthorization(),
-        executionPlan: executionPlan(),
-        input: input(),
-        sideEffects: {
-          filesDeleted: true,
-          manifestWritten: true,
-          gitCommandsRun: true,
-        },
-      });
+  test('rejects side effects in artifact output', async () => {
+    const plan = executionPlan();
+    const artifact = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
+      executionPlan: plan,
+      input: input(),
+      sideEffects: {
+        filesDeleted: true,
+        manifestWritten: true,
+        gitCommandsRun: true,
+      },
+    });
 
     expect(artifact.statusId)
       .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS
@@ -236,29 +245,16 @@ describe('policyCompatibilityRemovalCompletionAuditArtifact', () => {
             .SIDE_EFFECT_REPORTED,
         sideEffect: 'filesDeleted',
       }),
-      expect.objectContaining({
-        riskId:
-          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
-            .SIDE_EFFECT_REPORTED,
-        sideEffect: 'manifestWritten',
-      }),
-      expect.objectContaining({
-        riskId:
-          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
-            .SIDE_EFFECT_REPORTED,
-        sideEffect: 'gitCommandsRun',
-      }),
     ]));
   });
 
   test('validates status and risk-count invariants', () => {
-    const validation =
-      validatePolicyCompatibilityRemovalCompletionAuditArtifact({
-        statusId: 'unexpected',
-        riskCount: 1,
-        risks: [],
-        sideEffects: {},
-      });
+    const validation = validatePolicyCompatibilityRemovalCompletionAuditArtifact({
+      statusId: 'unexpected',
+      riskCount: 1,
+      risks: [],
+      sideEffects: {},
+    });
 
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([

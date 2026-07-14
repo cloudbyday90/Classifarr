@@ -2,9 +2,13 @@ import {
   POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
   buildPolicyNextCompatibilityRemovalBatchAuthorization,
 } from './policyNextCompatibilityRemovalBatchAuthorization.mjs';
+import {
+  buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifactFingerprint,
+  validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactFingerprint,
+} from './policyNextCompatibilityRemovalBatchAuthorizationArtifactFingerprint.mjs';
 
 const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_VERSION =
-  'policy.next_compatibility_removal_batch_authorization_artifact.v2';
+  'policy.next_compatibility_removal_batch_authorization_artifact.v3';
 
 const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS =
   Object.freeze({
@@ -20,6 +24,8 @@ const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS =
     SIDE_EFFECT_REPORTED: 'side_effect_reported',
     READY_FLAG_MISMATCH: 'ready_flag_mismatch',
     COMPLETION_FLAG_MISMATCH: 'completion_flag_mismatch',
+    ARTIFACT_FINGERPRINT_INVALID: 'artifact_fingerprint_invalid',
+    UNKNOWN_VERSION: 'unknown_version',
     RISK_COUNT_MISMATCH: 'risk_count_mismatch',
     UNKNOWN_STATUS: 'unknown_status',
   });
@@ -196,10 +202,16 @@ async function buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
     },
   };
 
-  return {
+  const artifactWithFingerprint = {
     ...artifact,
+    artifactFingerprint:
+      buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifactFingerprint({ artifact }),
+  };
+
+  return {
+    ...artifactWithFingerprint,
     validation:
-      validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifact(artifact),
+      validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifact(artifactWithFingerprint),
   };
 }
 
@@ -207,6 +219,15 @@ function validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifact(
   artifact = {}
 ) {
   const issues = [];
+
+  if (artifact.version !== POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_VERSION) {
+    issues.push(buildRisk(
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
+        .UNKNOWN_VERSION,
+      'Next compatibility removal batch authorization artifact version must be recognized.',
+      { version: artifact.version || null }
+    ));
+  }
 
   if (!Object.values(POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS)
     .includes(artifact.statusId)) {
@@ -235,6 +256,20 @@ function validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifact(
       POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
         .READY_FLAG_MISMATCH,
       'Next compatibility removal batch authorization artifact ready flag must match ready status.'
+    ));
+  }
+
+  const fingerprintValidation =
+    validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactFingerprint({
+      artifact,
+      artifactFingerprint: artifact.artifactFingerprint,
+    });
+  if (!fingerprintValidation.ok) {
+    issues.push(buildRisk(
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS
+        .ARTIFACT_FINGERPRINT_INVALID,
+      'Next compatibility removal batch authorization artifact fingerprint must bind the artifact contents.',
+      { issueCount: fingerprintValidation.issueCount }
     ));
   }
 

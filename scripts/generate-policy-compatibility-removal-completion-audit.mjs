@@ -19,7 +19,7 @@ import {
 
 function parseArgs(argv = []) {
   const options = {
-    completionAuthorizationPath: null,
+    nextBatchAuthorizationArtifactPath: null,
     executionPlanPath: null,
     inputPath: null,
     outputPath: null,
@@ -32,8 +32,8 @@ function parseArgs(argv = []) {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
 
-    if (arg === '--completion-authorization') {
-      options.completionAuthorizationPath = argv[index + 1] || null;
+    if (arg === '--next-batch-authorization-artifact') {
+      options.nextBatchAuthorizationArtifactPath = argv[index + 1] || null;
       index += 1;
       continue;
     }
@@ -86,7 +86,8 @@ function usage() {
     'Usage: node scripts/generate-policy-compatibility-removal-completion-audit.mjs [options]',
     '',
     'Options:',
-    '  --completion-authorization <json>  Required next-batch authorization JSON.',
+    '  --next-batch-authorization-artifact <json>',
+    '                                      Required fingerprint-valid next-batch authorization artifact JSON.',
     '  --execution-plan <json>            Required compatibility deletion execution-plan JSON.',
     '  --input <json>                     Required completion audit input JSON.',
     '  --output <json>                    Write nested audit JSON to this path.',
@@ -126,7 +127,7 @@ function writeJsonFile(filePath, value) {
   fs.writeFileSync(resolvedPath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function main() {
+async function main() {
   let options;
 
   try {
@@ -143,14 +144,14 @@ function main() {
     return;
   }
 
-  let completionAuthorization;
+  let nextBatchAuthorizationArtifact;
   let executionPlan;
   let input;
 
   try {
-    completionAuthorization = readJsonFile(
-      options.completionAuthorizationPath,
-      'completion authorization',
+    nextBatchAuthorizationArtifact = readJsonFile(
+      options.nextBatchAuthorizationArtifactPath,
+      'next-batch authorization artifact',
       { required: true }
     );
     executionPlan = readJsonFile(options.executionPlanPath, 'execution plan', {
@@ -164,8 +165,8 @@ function main() {
     process.exit(2);
   }
 
-  const artifact = buildPolicyCompatibilityRemovalCompletionAuditArtifact({
-    completionAuthorization,
+  const artifact = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
+    nextBatchAuthorizationArtifact,
     executionPlan,
     input,
     generatedAt: options.generatedAt,
@@ -203,4 +204,7 @@ function main() {
   process.exit(artifact.statusId === 'blocked' ? 1 : 0);
 }
 
-main();
+main().catch(err => {
+  console.error(`Could not generate compatibility removal completion audit JSON: ${err.message}`);
+  process.exit(2);
+});

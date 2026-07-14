@@ -6055,11 +6055,17 @@ Implementation status:
   `server/src/services/policyCompatibilityRemovalCompletionAudit.mjs`.
 - The focused audit test suite lives in
   `server/src/__tests__/services/policyCompatibilityRemovalCompletionAudit.test.mjs`.
-- Current implementation consumes completion authorization, execution manifest,
-  verified removal evidence, final scan evidence, and focused/full validation
-  evidence; reports remaining inventory separately; blocks incomplete
-  completion claims; and emits semantic `nextStep` evidence for the storage
-  completion checkpoint.
+- Task 8R.21.1 is implemented. Completion audit now consumes a
+  fingerprint-valid next-batch authorization artifact instead of detached
+  authorization and post-removal-verification summaries. It revalidates the
+  embedded runtime evidence, binds the applied removal-review fingerprint to
+  audit context, and replays authorization against the current manifest before
+  a complete result can pass. The design is documented in
+  [Policy Compatibility Removal Completion Audit Artifact Integrity](policy-compatibility-removal-completion-audit-artifact-integrity.md).
+- Current implementation reports remaining inventory separately; blocks
+  missing, altered, cross-review, or cross-manifest authorization evidence;
+  requires final scan and focused/full validation evidence; and emits semantic
+  `nextStep` evidence for the storage completion checkpoint.
 
 Current removal slice:
 

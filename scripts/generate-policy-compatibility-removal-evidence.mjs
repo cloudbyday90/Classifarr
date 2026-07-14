@@ -24,6 +24,8 @@ function parseArgs(argv = []) {
   const options = {
     cwd: process.cwd(),
     executionPlanPath: null,
+    nextBatchAuthorizationArtifactPath: null,
+    reviewArtifactFingerprint: '',
     validationEvidencePath: null,
     outputPath: null,
     completionAuditArtifactOutputPath: null,
@@ -41,6 +43,16 @@ function parseArgs(argv = []) {
     }
     if (arg === '--execution-plan') {
       options.executionPlanPath = argv[index + 1] || null;
+      index += 1;
+      continue;
+    }
+    if (arg === '--next-batch-authorization-artifact') {
+      options.nextBatchAuthorizationArtifactPath = argv[index + 1] || null;
+      index += 1;
+      continue;
+    }
+    if (arg === '--review-artifact-fingerprint') {
+      options.reviewArtifactFingerprint = argv[index + 1] || '';
       index += 1;
       continue;
     }
@@ -86,6 +98,8 @@ function usage() {
     'Options:',
     '  --cwd <path>                               Repository root. Defaults to process cwd.',
     '  --execution-plan <json>                    Required current compatibility deletion execution-plan JSON.',
+    '  --next-batch-authorization-artifact <json> Required fingerprint-valid next-batch authorization artifact JSON.',
+    '  --review-artifact-fingerprint <sha256>     Required applied removal-review artifact fingerprint.',
     '  --validation-evidence <json>               Required current validation-evidence JSON.',
     '  --output <json>                            Write evidence-regeneration JSON to this path.',
     '  --completion-audit-artifact-output <json>  Write the nested completion-audit artifact JSON.',
@@ -127,7 +141,7 @@ function fileExistsAtRepositoryPath(cwd, repositoryPath) {
   return fs.existsSync(path.resolve(cwd, repositoryPath));
 }
 
-function main() {
+async function main() {
   let options;
 
   try {
@@ -146,12 +160,18 @@ function main() {
 
   const cwd = path.resolve(process.cwd(), options.cwd);
   let executionPlan;
+  let nextBatchAuthorizationArtifact;
   let validationEvidence;
 
   try {
     executionPlan = readJsonFile(options.executionPlanPath, 'execution plan', {
       required: true,
     });
+    nextBatchAuthorizationArtifact = readJsonFile(
+      options.nextBatchAuthorizationArtifactPath,
+      'next-batch authorization artifact',
+      { required: true }
+    );
     validationEvidence = readJsonFile(
       options.validationEvidencePath,
       'validation evidence',
@@ -165,8 +185,10 @@ function main() {
   const manifestPaths = Array.isArray(executionPlan.manifest?.entries)
     ? executionPlan.manifest.entries.map(entry => entry?.path).filter(Boolean)
     : [];
-  const evidence = buildPolicyCompatibilityRemovalEvidenceRegeneration({
+  const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
     executionPlan,
+    nextBatchAuthorizationArtifact,
+    reviewArtifactFingerprint: options.reviewArtifactFingerprint,
     validationEvidence,
     referenceScan: scanPolicyStorageClosureReferences({
       cwd,
@@ -194,4 +216,7 @@ function main() {
   }
 }
 
-main();
+main().catch(err => {
+  console.error(`Could not generate compatibility-removal evidence JSON: ${err.message}`);
+  process.exit(2);
+});

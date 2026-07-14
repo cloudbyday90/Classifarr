@@ -9,6 +9,9 @@ safe terminal state.
 The audit is intentionally read-only. It consumes:
 
 - an approved compatibility deletion execution-plan artifact,
+- a fingerprint-valid next-batch authorization artifact with embedded runtime
+  evidence,
+- the applied removal-review artifact fingerprint,
 - current checkout path state,
 - product/runtime source reference-scan evidence,
 - optional policy storage closure validation evidence.
@@ -124,10 +127,10 @@ Use this stack for final removal audit evidence:
 1. Require an explicit compatibility deletion execution-plan JSON file.
 2. Read approved manifest paths from that file.
 3. Inspect current checkout path existence for each manifest path.
-4. Build next-batch authorization evidence from current remaining/removed path
-   state.
-5. Build post-removal runtime verification evidence for paths that no longer
-   exist.
+4. Revalidate the supplied next-batch authorization artifact, its embedded
+   runtime evidence, and its applied removal-review fingerprint.
+5. Compare the authorized removed and remaining path sets with the current
+   checkout before reporting any status.
 6. Scan product/runtime source roots for exact manifest path references while
    excluding tests and named compatibility-removal control-plane evidence
    services only.
@@ -155,12 +158,20 @@ Implemented:
 - Preserved path-state derivation, remaining-inventory reporting, completion
   proof when paths are gone, final-scan blockers, and missing-validation
   blockers.
+- Requires a fingerprint-valid next-batch authorization artifact and its
+  applied removal-review fingerprint instead of synthesizing authorization from
+  checkout state.
+- Compares the artifact's removed and remaining path sets with the current
+  checkout before a storage-closure result can be reported.
 
 Example:
 
 ```bash
 npm run --silent policy:storage-closure-final-removal-audit -- \
   --execution-plan .tmp/policy-storage/execution-plan.json \
+  --next-batch-authorization-artifact \
+    .tmp/policy-storage/next-batch-authorization-artifact.json \
+  --review-artifact-fingerprint "$REVIEW_ARTIFACT_FINGERPRINT" \
   --validation-evidence .tmp/policy-storage/validation-evidence.json \
   --output .tmp/policy-storage/final-removal-audit.json
 ```

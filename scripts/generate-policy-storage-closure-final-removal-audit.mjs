@@ -25,6 +25,8 @@ function parseArgs(argv = []) {
   const options = {
     cwd: process.cwd(),
     executionPlanPath: null,
+    nextBatchAuthorizationArtifactPath: null,
+    reviewArtifactFingerprint: '',
     validationEvidencePath: null,
     outputPath: null,
     requireComplete: false,
@@ -40,6 +42,16 @@ function parseArgs(argv = []) {
     }
     if (arg === '--execution-plan') {
       options.executionPlanPath = argv[index + 1] || null;
+      index += 1;
+      continue;
+    }
+    if (arg === '--next-batch-authorization-artifact') {
+      options.nextBatchAuthorizationArtifactPath = argv[index + 1] || null;
+      index += 1;
+      continue;
+    }
+    if (arg === '--review-artifact-fingerprint') {
+      options.reviewArtifactFingerprint = argv[index + 1] || '';
       index += 1;
       continue;
     }
@@ -75,6 +87,8 @@ function usage() {
     'Options:',
     '  --cwd <path>                    Repository root. Defaults to process cwd.',
     '  --execution-plan <json>         Required compatibility deletion execution-plan JSON.',
+    '  --next-batch-authorization-artifact <json> Required fingerprint-valid next-batch authorization artifact JSON.',
+    '  --review-artifact-fingerprint <sha256> Required applied removal-review artifact fingerprint.',
     '  --validation-evidence <json>    Optional policy storage closure validation evidence JSON.',
     '  --output <json>                 Write final-removal-audit JSON to this path.',
     '  --require-complete              Exit non-zero unless the audit completes.',
@@ -114,7 +128,7 @@ function fileExistsAtRepositoryPath(cwd, repositoryPath) {
   return fs.existsSync(path.resolve(cwd, repositoryPath));
 }
 
-function main() {
+async function main() {
   let options;
 
   try {
@@ -133,12 +147,18 @@ function main() {
 
   const cwd = path.resolve(process.cwd(), options.cwd);
   let executionPlan;
+  let nextBatchAuthorizationArtifact;
   let validationEvidence;
 
   try {
     executionPlan = readJsonFile(options.executionPlanPath, 'execution plan', {
       required: true,
     });
+    nextBatchAuthorizationArtifact = readJsonFile(
+      options.nextBatchAuthorizationArtifactPath,
+      'next-batch authorization artifact',
+      { required: true }
+    );
     validationEvidence = readJsonFile(
       options.validationEvidencePath,
       'validation evidence'
@@ -149,8 +169,10 @@ function main() {
   }
 
   const manifestPaths = getExecutionPlanManifestPaths(executionPlan);
-  const evidence = buildPolicyStorageClosureFinalRemovalAudit({
+  const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
     executionPlan,
+    nextBatchAuthorizationArtifact,
+    reviewArtifactFingerprint: options.reviewArtifactFingerprint,
     validationEvidence,
     referenceScan: scanPolicyStorageClosureReferences({
       cwd,
@@ -173,4 +195,7 @@ function main() {
   }
 }
 
-main();
+main().catch(err => {
+  console.error(`Could not generate storage-closure final-removal audit JSON: ${err.message}`);
+  process.exit(2);
+});
