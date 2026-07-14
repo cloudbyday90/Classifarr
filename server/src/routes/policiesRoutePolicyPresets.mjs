@@ -7,6 +7,13 @@ import {
   validatePresetAttachmentWeight,
   annotatePresetAttachment,
 } from './policiesRouteHelpers.mjs';
+import {
+  POLICY_LEGACY_WRITE_OPERATION_IDS,
+} from '../services/policyLegacyWriteBoundary.mjs';
+import {
+  assertLegacyPolicyWriteAllowed,
+  lockPolicyAuthorityForWrite,
+} from '../services/policyLegacyWriteGuard.mjs';
 
 export function registerPolicyPresetRoutes(router, { db, normalizeSignalConfig, describePresetRuntimeSemantics }) {
   function annotate(preset) {
@@ -43,39 +50,61 @@ export function registerPolicyPresetRoutes(router, { db, normalizeSignalConfig, 
       throw new ValidationError(presetWeightError);
     }
 
-    const existing = await db.query(
-      'SELECT * FROM policy_presets WHERE policy_id = $1 AND preset_id = $2',
-      [id, preset_id],
-    );
-
-    if (existing.rows.length > 0) {
-      throw new ValidationError('Preset already attached to this policy');
-    }
-
     const customSignals = sanitizeCustomSignals(req.body.customSignals ?? req.body.custom_signals);
-    const result = await db.query(`
-      INSERT INTO policy_presets (policy_id, preset_id, weight, custom_signals)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `, [id, preset_id, weight, customSignals]);
-    await db.query('UPDATE library_policies SET updated_at = NOW() WHERE id = $1', [id]);
+    const preset = await db.withTransaction(async (client) => {
+      const policy = await lockPolicyAuthorityForWrite({
+        client,
+        policyId: id,
+      });
+      assertLegacyPolicyWriteAllowed({
+        policy,
+        payload: req.body,
+        operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.ATTACH_PRESET,
+      });
 
-    return sendData(res, annotate(result.rows[0]), 201);
+      const existing = await client.query(
+        'SELECT * FROM policy_presets WHERE policy_id = $1 AND preset_id = $2',
+        [id, preset_id],
+      );
+      if (existing.rows.length > 0) {
+        throw new ValidationError('Preset already attached to this policy');
+      }
+
+      const result = await client.query(`
+        INSERT INTO policy_presets (policy_id, preset_id, weight, custom_signals)
+        VALUES ($1, $2, $3, $4)
+        RETURNING *
+      `, [id, preset_id, weight, customSignals]);
+      await client.query('UPDATE library_policies SET updated_at = NOW() WHERE id = $1', [id]);
+      return result.rows[0];
+    });
+
+    return sendData(res, annotate(preset), 201);
   }));
 
   router.delete('/:id/presets/:presetId', asyncHandler(async (req, res) => {
     const { id, presetId } = req.params;
 
-    const result = await db.query(
-      'DELETE FROM policy_presets WHERE policy_id = $1 AND preset_id = $2 RETURNING *',
-      [id, presetId],
-    );
+    await db.withTransaction(async (client) => {
+      const policy = await lockPolicyAuthorityForWrite({
+        client,
+        policyId: id,
+      });
+      assertLegacyPolicyWriteAllowed({
+        policy,
+        operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.DETACH_PRESET,
+      });
 
-    if (result.rows.length === 0) {
-      throw new NotFoundError('Preset not attached to this policy');
-    }
+      const result = await client.query(
+        'DELETE FROM policy_presets WHERE policy_id = $1 AND preset_id = $2 RETURNING *',
+        [id, presetId],
+      );
+      if (result.rows.length === 0) {
+        throw new NotFoundError('Preset not attached to this policy');
+      }
 
-    await db.query('UPDATE library_policies SET updated_at = NOW() WHERE id = $1', [id]);
+      await client.query('UPDATE library_policies SET updated_at = NOW() WHERE id = $1', [id]);
+    });
 
     return sendData(res, { message: 'Preset removed successfully' });
   }));

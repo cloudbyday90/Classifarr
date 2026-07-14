@@ -41,6 +41,7 @@ describe('LegacyMigrationService (legacyMigration.js)', () => {
             // Pinned client queries inside the transaction
             clientMock.query
                 .mockResolvedValueOnce({ rows: [{ id: 99 }] })                          // getOrCreatePolicy SELECT
+                .mockResolvedValueOnce({ rows: [{ id: 99, native_intent_active: false }] }) // policy authority lock
                 .mockResolvedValueOnce({ rows: [{ id: 7, is_system: true, is_public: false, user_id: null }] }) // content_presets SELECT
                 .mockResolvedValueOnce({ rows: [] })                                    // policy_presets INSERT ON CONFLICT
                 .mockResolvedValueOnce({ rowCount: 1 });                                // UPDATE library_custom_rules
@@ -68,6 +69,7 @@ describe('LegacyMigrationService (legacyMigration.js)', () => {
 
             clientMock.query
                 .mockResolvedValueOnce({ rows: [{ id: 99 }] })   // getOrCreatePolicy SELECT
+                .mockResolvedValueOnce({ rows: [{ id: 99, native_intent_active: false }] }) // policy authority lock
                 .mockResolvedValueOnce({ rows: [] })              // policy_overrides INSERT
                 .mockResolvedValueOnce({ rowCount: 1 });          // UPDATE library_custom_rules
 
@@ -83,6 +85,24 @@ describe('LegacyMigrationService (legacyMigration.js)', () => {
                 ([sql]) => sql && sql.includes('policy_overrides')
             );
             expect(overrideInsertCall).toBeDefined();
+        });
+
+        it('blocks migration into legacy preset storage for an active native-intent policy', async () => {
+            dbModule.query.mockResolvedValue({ rows: [{ id: 10, library_id: 5 }] });
+            clientMock.query
+                .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+                .mockResolvedValueOnce({ rows: [{ id: 99, native_intent_active: true }] });
+
+            await expect(
+                legacyMigration.migrateRule(10, { type: 'preset', preset_id: 7 }, 'user1')
+            ).rejects.toMatchObject({
+                statusCode: 409,
+                code: 'POLICY_NATIVE_INTENT_LEGACY_WRITE_BLOCKED',
+            });
+
+            expect(clientMock.query.mock.calls.some(
+                ([sql]) => sql && sql.includes('INSERT INTO policy_presets')
+            )).toBe(false);
         });
 
         it('throws without opening a transaction when the rule is not found', async () => {
@@ -110,6 +130,7 @@ describe('LegacyMigrationService (legacyMigration.js)', () => {
             clientMock.query
                 .mockResolvedValueOnce({ rows: [] })              // getOrCreatePolicy SELECT: no policy exists
                 .mockResolvedValueOnce({ rows: [{ id: 200 }] })  // getOrCreatePolicy INSERT: new policy
+                .mockResolvedValueOnce({ rows: [{ id: 200, native_intent_active: false }] }) // policy authority lock
                 .mockResolvedValueOnce({ rows: [{ id: 7, is_system: true, is_public: false, user_id: null }] }) // content_presets
                 .mockResolvedValueOnce({ rows: [] })              // policy_presets INSERT
                 .mockResolvedValueOnce({ rowCount: 1 });          // UPDATE library_custom_rules

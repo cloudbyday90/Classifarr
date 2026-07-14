@@ -192,6 +192,28 @@ describe('policyIntentRequestValidator', () => {
     expect(result.persistence_reason_code).toBe('native_intent_storage_not_enabled');
   });
 
+  test('accepts review-trigger entries emitted by the policy builder', () => {
+    const draft = validDraft();
+    draft.presets[0].buckets.review_triggers = [{
+      bucket: 'review_triggers',
+      signal_type: 'review_triggers',
+      values: { when_any: ['missing_identity'] },
+      metadata: {},
+      source: 'intent_draft',
+    }];
+    draft.summary.counts.review_triggers = 1;
+
+    expect(validatePolicyIntentDraftRequest(draft)).toEqual(expect.objectContaining({
+      presets: [expect.objectContaining({
+        buckets: expect.objectContaining({
+          review_triggers: [expect.objectContaining({
+            values: { when_any: ['missing_identity'] },
+          })],
+        }),
+      })],
+    }));
+  });
+
   test('builds sanitized write preflight diagnostics without echoing the draft', () => {
     const result = buildPolicyIntentWritePreflight({
       policyIntentDraft: validDraft(),

@@ -375,7 +375,7 @@ describe('addGenreToPrefer', () => {
     await autoLearningService.addGenreToPrefer(5, 'Action', 3, 'user1');
 
     expect(client.query).toHaveBeenCalledWith('BEGIN');
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('SELECT id FROM library_policies'), [5]);
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('WHERE lp.library_id = $1'), [5]);
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE policy_presets'), expect.arrayContaining([10]));
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO auto_learned_preferences'), expect.arrayContaining([5, 10, 'Action', 3, 'user1']));
     expect(client.query).toHaveBeenCalledWith('COMMIT');
@@ -410,6 +410,23 @@ describe('addGenreToPrefer', () => {
       .rejects.toThrow('constraint fail');
     expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     expect(client.release).toHaveBeenCalled();
+  });
+
+  test('does not let automatic learning mutate legacy presets for active native intent', async () => {
+    const client = makeMockClient();
+    db.pool.connect.mockResolvedValueOnce(client);
+    client.query
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [{ id: 10, native_intent_active: true }] });
+
+    await expect(autoLearningService.addGenreToPrefer(5, 'Action', 3, 'user1'))
+      .rejects.toMatchObject({
+        statusCode: 409,
+        code: 'POLICY_NATIVE_INTENT_LEGACY_WRITE_BLOCKED',
+      });
+
+    expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(client.query.mock.calls.some(([sql]) => String(sql).includes('UPDATE policy_presets'))).toBe(false);
   });
 });
 
@@ -718,6 +735,7 @@ describe('revertPreference', () => {
           preference_type: 'genre_prefer', preference_value: 'Action'
         }]
       })
+      .mockResolvedValueOnce({ rows: [{ id: 10, native_intent_active: false }] }) // lock policy
       .mockResolvedValueOnce({}) // UPDATE auto_learned_preferences
       .mockResolvedValueOnce({}) // UPDATE policy_presets
       .mockResolvedValueOnce({}); // COMMIT
@@ -772,6 +790,7 @@ describe('revertPreference', () => {
           preference_type: 'genre_prefer', preference_value: 'Action'
         }]
       })
+      .mockResolvedValueOnce({ rows: [{ id: 10, native_intent_active: false }] })
       .mockRejectedValueOnce(new Error('update failed')); // UPDATE fails
 
     await expect(autoLearningService.revertPreference(1, 42, 'reason'))
@@ -787,11 +806,38 @@ describe('revertPreference', () => {
       client.query
         .mockResolvedValueOnce({})
         .mockResolvedValueOnce({ rows: [{ id: 1, library_id: 5, policy_id: 10, preference_type: prefType, preference_value: 'val' }] })
+        .mockResolvedValueOnce({ rows: [{ id: 10, native_intent_active: false }] })
         .mockResolvedValueOnce({})
         .mockResolvedValueOnce({})
         .mockResolvedValueOnce({});
 
       await expect(autoLearningService.revertPreference(1, 42, 'reason')).resolves.toEqual({ success: true });
     }
+  });
+
+  test('does not revert legacy preset signals for a policy with active native intent', async () => {
+    const client = makeMockClient();
+    db.pool.connect.mockResolvedValueOnce(client);
+    client.query
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 1,
+          library_id: 5,
+          policy_id: 10,
+          preference_type: 'genre_prefer',
+          preference_value: 'Action',
+        }],
+      })
+      .mockResolvedValueOnce({ rows: [{ id: 10, native_intent_active: true }] });
+
+    await expect(autoLearningService.revertPreference(1, 42, 'reason'))
+      .rejects.toMatchObject({
+        statusCode: 409,
+        code: 'POLICY_NATIVE_INTENT_LEGACY_WRITE_BLOCKED',
+      });
+
+    expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(client.query.mock.calls.some(([sql]) => String(sql).includes('UPDATE policy_presets'))).toBe(false);
   });
 });

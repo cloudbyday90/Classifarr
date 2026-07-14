@@ -1,18 +1,24 @@
 # Policy Builder Intent Model Roadmap
 
-Status: active roadmap under re-imagination. Earlier Phase 0 through Phase 3
-builder presentation work was implemented and checkpointed, but Phases 0, 1, 2,
-3, 5, and 6 have been reset into source-of-truth, boundary, server-authority,
-and engine-roadmap phases. Prior Phase 5 work remains useful as raw server
-authority material: contract validation, write preflight, impact preview, and
-representative replay preview must now be classified as keep, rewrite, replace,
-or delete. Existing Phase 6 replay/TMDB enrichment work is scheduled for
-deconstruction: reusable engine pieces should be extracted, redundant
-operator-facing surfaces should be removed, and the replacement workflow should
-center on media requests, manual decisions, guarded learning, and library
-profile updates. Native intent storage, conversion, and runtime authority remain
-planned Phase 8R work after the re-imagined contracts and rollback safety are
-proven.
+Status: authoritative phased implementation plan and component inventory. This
+document defines the execution sequence, task names, product rationale, and
+completion criteria for policy work.
+
+Current execution focus:
+
+1. **8R.6.1 Enforced Legacy Mutation Guard**: complete the live enforcement
+   path that prevents converted policies from being changed through legacy
+   writes.
+2. **8R.1.1 Active Native Intent Integrity Correction**: repair the missing
+   database invariant that permits more than one active native intent for a
+   policy before expanding native writes or deleting compatibility paths.
+3. Return to **6R.5 Operator Workflow Rebuild** only after the engine inputs
+   and native-authority invariants are reliable. It must replace the current
+   manual builder rather than add another layer of controls to it.
+
+Phase 4R remains folded into Phase 3R by design. It is not an unimplemented
+standalone phase. Phase 5R is the server-authority and learning boundary that
+must underpin, but does not itself render, the replacement UI.
 
 ## Goal
 
@@ -4818,6 +4824,34 @@ Implementation status:
   conversion are reserved for later Phase 8R components after the candidate
   report and explicit conversion workflow are defined.
 
+#### 8R.1.1 Active Native Intent Integrity Correction
+
+Intent: repair the live schema invariant before native intent is treated as a
+single policy authority.
+
+The existing partial unique index covers `(policy_id, intent_version)` when
+`active = true`. It does **not** prevent two active rows with different
+versions for the same policy. That leaves runtime reads and legacy-write guards
+to infer authority from an ambiguous state.
+
+Tasks:
+
+- Add a report that identifies policies with more than one active intent and
+  records the candidate canonical row without changing data.
+- Define a transactional, idempotent repair migration with an explicit
+  precedence rule and migration-event audit record.
+- Replace the insufficient index with a partial unique index on `policy_id`
+  where `active = true`.
+- Test clean installs, upgraded installations, duplicate repair, rollback on
+  invalid candidates, and concurrent active-intent attempts.
+
+Acceptance criteria:
+
+- Every policy has zero or one active native intent at the database level.
+- Runtime and write guards can rely on that invariant instead of resolving
+  duplicates heuristically.
+- Repair never silently discards a native-intent payload.
+
 ### 8R.2 Migration Candidate Report
 
 Intent: identify which policies can safely move to native intent before writing
@@ -5034,6 +5068,20 @@ Acceptance criteria:
 
 Implementation status:
 
+- **8R.6.1 Enforced Legacy Mutation Guard** is complete when this roadmap
+  update ships. The existing boundary planner is now invoked inside the same
+  transaction as legacy mutations, rather than only describing what a caller
+  should do.
+- The guard locks the policy authority row and rejects legacy policy updates,
+  reset flows, preset attach/detach operations, incompatible-preset cleanup,
+  automatic preference writers, preference reverts, legacy rule migration,
+  and legacy tuning-suggestion application when native intent is active.
+- Metadata-only updates remain allowed, and unconverted policies retain the
+  time-bounded compatibility path. Focused route, service, and transaction
+  tests protect both outcomes.
+- The next Phase 8R task is **8R.1.1 Active Native Intent Integrity
+  Correction**. Do not broaden native write behavior or remove compatibility
+  paths until the database can guarantee one active native intent per policy.
 - Legacy write-boundary behavior is documented in
   [Policy Legacy Write Boundary](policy-legacy-write-boundary.md).
 - The module cutover renamed the service, focused test, architecture record,

@@ -83,6 +83,13 @@ function validPolicyIntentDraft(overrides = {}) {
           metadata: {},
           source: 'intent_draft',
         }],
+        [POLICY_INTENT_DRAFT_BUCKETS.REVIEW_TRIGGERS]: [{
+          bucket: POLICY_INTENT_DRAFT_BUCKETS.REVIEW_TRIGGERS,
+          signal_type: 'review_triggers',
+          values: { when_any: ['missing_identity'] },
+          metadata: {},
+          source: 'intent_draft',
+        }],
       },
       warnings: [],
     }],
@@ -436,6 +443,7 @@ describe('Policies routes coverage', () => {
             },
           ],
         })
+        .mockResolvedValueOnce({ rows: [{ id: 27, native_intent_active: false }] })
         .mockResolvedValueOnce({ rowCount: 1 });
 
       const res = await request(app)
@@ -446,8 +454,8 @@ describe('Policies routes coverage', () => {
       expect(db.withTransaction).toHaveBeenCalled();
       expect(db.query.mock.calls[0][0]).toContain('WHERE pp.policy_id = $1');
       expect(db.query.mock.calls[0][1]).toEqual([27]);
-      expect(db.query).toHaveBeenCalledTimes(2);
-      expect(db.query.mock.calls[1]).toEqual([
+      expect(db.query).toHaveBeenCalledTimes(3);
+      expect(db.query.mock.calls[2]).toEqual([
         'DELETE FROM policy_presets WHERE policy_id = $1 AND preset_id = $2',
         [27, 11],
       ]);
@@ -459,6 +467,33 @@ describe('Policies routes coverage', () => {
           migration_state: 'advisory_defaulted',
         }),
       }));
+    });
+
+    test('POST /api/policies/presets/migration/drop-incompatible blocks converted policies', async () => {
+      db.query
+        .mockResolvedValueOnce({
+          rows: [{
+            policy_id: 27,
+            policy_name: 'Comedy and Standup Policy',
+            library_id: 56,
+            library_name: 'Comedy and Standup',
+            id: 11,
+            key: 'scandinavian',
+            name: 'Scandinavian',
+            signals: { language: { require_any: ['sv', 'no'] } },
+            custom_signals: null,
+            weight: 1,
+          }],
+        })
+        .mockResolvedValueOnce({ rows: [{ id: 27, native_intent_active: true }] });
+
+      const res = await request(app)
+        .post('/api/policies/presets/migration/drop-incompatible')
+        .send({ policy_id: 27 })
+        .expect(409);
+
+      expect(res.body.code).toBe('POLICY_NATIVE_INTENT_LEGACY_WRITE_BLOCKED');
+      expect(db.query.mock.calls.some(([sql]) => sql === 'DELETE FROM policy_presets WHERE policy_id = $1 AND preset_id = $2')).toBe(false);
     });
   });
 
@@ -893,6 +928,60 @@ describe('Policies routes coverage', () => {
   });
 
   describe('PUT /api/policies/:id', () => {
+    test('blocks legacy behavior updates for policies with active native intent', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{
+          id: 8,
+          native_intent_active: true,
+          auto_classify_threshold: 85,
+          prompt_threshold: 60,
+          preset_weight: 0.35,
+          profile_weight: 0.25,
+          pattern_weight: 0.15,
+          rag_weight: 0.15,
+          history_weight: 0.1,
+        }],
+      });
+
+      const res = await request(app)
+        .put('/api/policies/8')
+        .send({ preset_weight: 0.35 })
+        .expect(409);
+
+      expect(res.body.code).toBe('POLICY_NATIVE_INTENT_LEGACY_WRITE_BLOCKED');
+      expect(res.body.required_action).toBe('use_native_intent_command');
+      expect(db.query).toHaveBeenCalledTimes(1);
+    });
+
+    test('allows metadata updates for policies with active native intent', async () => {
+      db.query
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 8,
+            native_intent_active: true,
+            auto_classify_threshold: 85,
+            prompt_threshold: 60,
+            preset_weight: 0.35,
+            profile_weight: 0.25,
+            pattern_weight: 0.15,
+            rag_weight: 0.15,
+            history_weight: 0.1,
+          }],
+        })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ id: 8, name: 'Renamed', library_id: 1, library_name: 'Movies' }],
+        })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await request(app)
+        .put('/api/policies/8')
+        .send({ name: 'Renamed' })
+        .expect(200);
+
+      expect(res.body.name).toBe('Renamed');
+    });
+
     test('validates update constraints', async () => {
       const res = await request(app)
         .put('/api/policies/8')
@@ -923,7 +1012,7 @@ describe('Policies routes coverage', () => {
         .expect(400);
 
       expect(res.body.error).toContain('prompt_threshold must be less than or equal to auto_classify_threshold');
-      expect(db.withTransaction).not.toHaveBeenCalled();
+      expect(db.withTransaction).toHaveBeenCalledTimes(1);
     });
 
     test('rejects unsupported combination modes on update', async () => {
@@ -1086,7 +1175,7 @@ describe('Policies routes coverage', () => {
         .expect(400);
 
       expect(res.body.error).toContain('Weights must sum to 1.0');
-      expect(db.withTransaction).not.toHaveBeenCalled();
+      expect(db.withTransaction).toHaveBeenCalledTimes(1);
     });
 
     test('returns 404 after update when policy no longer exists', async () => {
@@ -1100,6 +1189,19 @@ describe('Policies routes coverage', () => {
   });
 
   describe('DELETE /api/policies/:id', () => {
+    test('blocks reset-by-recreation for policies with active native intent', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{ id: 9, library_id: 3, native_intent_active: true }],
+      });
+
+      const res = await request(app)
+        .delete('/api/policies/9')
+        .expect(409);
+
+      expect(res.body.code).toBe('POLICY_NATIVE_INTENT_LEGACY_WRITE_BLOCKED');
+      expect(db.query).toHaveBeenCalledTimes(1);
+    });
+
     test('returns 404 for missing policy', async () => {
       db.query.mockResolvedValueOnce({ rows: [] });
 
@@ -1113,6 +1215,7 @@ describe('Policies routes coverage', () => {
         .mockResolvedValueOnce({
           rows: [{ id: 9, library_id: 3, library_name: 'Family', name: 'Old' }],
         })
+        .mockResolvedValueOnce({ rows: [{ name: 'Family' }] })
         .mockResolvedValueOnce({})
         .mockResolvedValueOnce({
           rows: [{ id: 10, library_id: 3, name: 'Family Policy' }],
@@ -1151,6 +1254,20 @@ describe('Policies routes coverage', () => {
   });
 
   describe('POST /api/policies/:id/presets', () => {
+    test('blocks preset attachment for policies with active native intent', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{ id: 22, native_intent_active: true }],
+      });
+
+      const res = await request(app)
+        .post('/api/policies/22/presets')
+        .send({ preset_id: 4, weight: 1 })
+        .expect(409);
+
+      expect(res.body.code).toBe('POLICY_NATIVE_INTENT_LEGACY_WRITE_BLOCKED');
+      expect(db.query).toHaveBeenCalledTimes(1);
+    });
+
     test('requires preset_id', async () => {
       await request(app)
         .post('/api/policies/22/presets')
@@ -1166,7 +1283,9 @@ describe('Policies routes coverage', () => {
     });
 
     test('rejects duplicate attachment', async () => {
-      db.query.mockResolvedValueOnce({ rows: [{ id: 1 }] });
+      db.query
+        .mockResolvedValueOnce({ rows: [{ id: 22, native_intent_active: false }] })
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] });
 
       await request(app)
         .post('/api/policies/22/presets')
@@ -1176,6 +1295,7 @@ describe('Policies routes coverage', () => {
 
     test('attaches preset and returns runtime semantics', async () => {
       db.query
+        .mockResolvedValueOnce({ rows: [{ id: 22, native_intent_active: false }] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({
           rows: [{
@@ -1200,8 +1320,23 @@ describe('Policies routes coverage', () => {
   });
 
   describe('DELETE /api/policies/:id/presets/:presetId', () => {
+    test('blocks preset removal for policies with active native intent', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{ id: 22, native_intent_active: true }],
+      });
+
+      const res = await request(app)
+        .delete('/api/policies/22/presets/5')
+        .expect(409);
+
+      expect(res.body.code).toBe('POLICY_NATIVE_INTENT_LEGACY_WRITE_BLOCKED');
+      expect(db.query).toHaveBeenCalledTimes(1);
+    });
+
     test('returns 404 when preset is not attached', async () => {
-      db.query.mockResolvedValueOnce({ rows: [] });
+      db.query
+        .mockResolvedValueOnce({ rows: [{ id: 22, native_intent_active: false }] })
+        .mockResolvedValueOnce({ rows: [] });
 
       await request(app)
         .delete('/api/policies/22/presets/5')
@@ -1210,6 +1345,7 @@ describe('Policies routes coverage', () => {
 
     test('removes preset from policy', async () => {
       db.query
+        .mockResolvedValueOnce({ rows: [{ id: 22, native_intent_active: false }] })
         .mockResolvedValueOnce({ rows: [{ id: 1 }] })
         .mockResolvedValueOnce({ rows: [] });
 

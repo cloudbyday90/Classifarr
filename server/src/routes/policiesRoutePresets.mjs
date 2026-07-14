@@ -21,6 +21,13 @@ import {
   isLegacyIncompatibleAttachment,
   fetchPolicyPresetAttachments,
 } from './policiesRouteHelpers.mjs';
+import {
+  POLICY_LEGACY_WRITE_OPERATION_IDS,
+} from '../services/policyLegacyWriteBoundary.mjs';
+import {
+  assertLegacyPolicyWriteAllowed,
+  lockPolicyAuthorityForWrite,
+} from '../services/policyLegacyWriteGuard.mjs';
 
 export function registerPresetRoutes(router, { db, listPresets, normalizeSignalConfig, describePresetRuntimeSemantics, logger }) {
   function annotate(preset) {
@@ -239,6 +246,16 @@ export function registerPresetRoutes(router, { db, listPresets, normalizeSignalC
         .filter(isLegacyIncompatibleAttachment);
 
       for (const attachment of incompatible) {
+        const policy = await lockPolicyAuthorityForWrite({
+          client,
+          policyId: attachment.policy_id,
+        });
+        assertLegacyPolicyWriteAllowed({
+          policy,
+          payload: { preset_id: attachment.id },
+          operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.DETACH_PRESET,
+        });
+
         await client.query(
           'DELETE FROM policy_presets WHERE policy_id = $1 AND preset_id = $2',
           [attachment.policy_id, attachment.id],

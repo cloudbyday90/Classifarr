@@ -65,4 +65,30 @@ describe('PolicyBuilderFooterActions.vue', () => {
 
     expect(wrapper.emitted('save')).toEqual([[]])
   })
+
+  it('prevents duplicate saves and exposes a returned save error', () => {
+    const wrapper = mount(PolicyBuilderFooterActions, {
+      props: {
+        boundary: {
+          canSave: true,
+          saveLabel: 'Save Policy',
+          deferLabel: 'Defer for now',
+          status: 'ready',
+          tone: 'success',
+          statusLabel: 'Ready to save',
+          statusMessage: 'This policy has the required setup.',
+          disabledReason: '',
+        },
+        saving: true,
+        saveError: 'The server rejected the policy intent draft.',
+      },
+    })
+
+    const saveButton = wrapper.findAll('button')
+      .find(button => button.text().includes('Saving policy...'))
+
+    expect(saveButton.attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[role="alert"]').text()).toContain('The server rejected the policy intent draft.')
+    expect(saveButton.attributes('aria-describedby')).toContain('policy-builder-save-error')
+  })
 })

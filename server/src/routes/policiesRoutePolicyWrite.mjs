@@ -17,6 +17,13 @@ import {
   validateWeightSum,
   annotatePresetAttachment,
 } from './policiesRouteHelpers.mjs';
+import {
+  POLICY_LEGACY_WRITE_OPERATION_IDS,
+} from '../services/policyLegacyWriteBoundary.mjs';
+import {
+  assertLegacyPolicyWriteAllowed,
+  lockPolicyAuthorityForWrite,
+} from '../services/policyLegacyWriteGuard.mjs';
 
 export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, describePresetRuntimeSemantics, DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD, DEFAULT_POLICY_PROMPT_THRESHOLD, validatePolicyDecisionThresholds, validatePolicyThresholdField, logger }) {
   function annotate(preset) {
@@ -240,42 +247,43 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
       }
     }
 
-    const existingPolicyResult = await db.query(`
-      SELECT id, auto_classify_threshold, prompt_threshold, preset_weight, profile_weight, pattern_weight, rag_weight, history_weight
-      FROM library_policies
-      WHERE id = $1
-    `, [id]);
-
-    if (existingPolicyResult.rows.length === 0) {
-      throw new NotFoundError('Policy not found');
-    }
-
-    const mergedWeights = buildMergedWeightSet(existingPolicyResult.rows[0], {
-      preset_weight,
-      profile_weight,
-      pattern_weight,
-      rag_weight,
-      history_weight,
-    });
-
-    const mergedThresholdError = validatePolicyThresholdPayload({
-      auto_classify_threshold: autoThresholdField.hasValue
-        ? autoThresholdField.value
-        : existingPolicyResult.rows[0].auto_classify_threshold,
-      prompt_threshold: promptThresholdField.hasValue
-        ? promptThresholdField.value
-        : existingPolicyResult.rows[0].prompt_threshold,
-    }, validatePolicyDecisionThresholds);
-    if (mergedThresholdError) {
-      throw new ValidationError(mergedThresholdError);
-    }
-
-    const weightSumError = validateWeightSum(mergedWeights);
-    if (weightSumError) {
-      throw new ValidationError(weightSumError);
-    }
-
     await db.withTransaction(async (client) => {
+      const existingPolicy = await lockPolicyAuthorityForWrite({
+        client,
+        policyId: id,
+      });
+
+      assertLegacyPolicyWriteAllowed({
+        policy: existingPolicy,
+        payload: req.body,
+        operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.UPDATE_POLICY,
+      });
+
+      const mergedWeights = buildMergedWeightSet(existingPolicy, {
+        preset_weight,
+        profile_weight,
+        pattern_weight,
+        rag_weight,
+        history_weight,
+      });
+
+      const mergedThresholdError = validatePolicyThresholdPayload({
+        auto_classify_threshold: autoThresholdField.hasValue
+          ? autoThresholdField.value
+          : existingPolicy.auto_classify_threshold,
+        prompt_threshold: promptThresholdField.hasValue
+          ? promptThresholdField.value
+          : existingPolicy.prompt_threshold,
+      }, validatePolicyDecisionThresholds);
+      if (mergedThresholdError) {
+        throw new ValidationError(mergedThresholdError);
+      }
+
+      const weightSumError = validateWeightSum(mergedWeights);
+      if (weightSumError) {
+        throw new ValidationError(weightSumError);
+      }
+
       await client.query(`
         UPDATE library_policies SET
           name = COALESCE($1, name),
@@ -355,42 +363,53 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
   router.delete('/:id', asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const policyResult = await db.query(
-      `SELECT lp.*, l.name as library_name 
-       FROM library_policies lp 
-       JOIN libraries l ON lp.library_id = l.id 
-       WHERE lp.id = $1`,
-      [id],
-    );
+    const { oldPolicy, newPolicy } = await db.withTransaction(async (client) => {
+      const oldPolicy = await lockPolicyAuthorityForWrite({
+        client,
+        policyId: id,
+      });
 
-    if (policyResult.rows.length === 0) {
-      throw new NotFoundError('Policy not found');
-    }
+      assertLegacyPolicyWriteAllowed({
+        policy: oldPolicy,
+        operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.RESET_POLICY,
+      });
 
-    const oldPolicy = policyResult.rows[0];
-    const libraryId = oldPolicy.library_id;
-    const libraryName = oldPolicy.library_name;
+      const libraryResult = await client.query(
+        'SELECT name FROM libraries WHERE id = $1',
+        [oldPolicy.library_id],
+      );
+      const libraryName = libraryResult.rows?.[0]?.name;
+      if (!libraryName) {
+        throw new NotFoundError('Policy library not found');
+      }
 
-    await db.query('DELETE FROM library_policies WHERE id = $1', [id]);
+      oldPolicy.library_name = libraryName;
+      await client.query('DELETE FROM library_policies WHERE id = $1', [id]);
 
-    const newPolicyResult = await db.query(
-      `INSERT INTO library_policies (library_id, name, description, enabled, priority, auto_classify_threshold, prompt_threshold)
-       VALUES ($1, $2, $3, true, 5, 85, 60)
-       RETURNING *`,
-      [libraryId, `${libraryName} Policy`, `Reset policy for ${libraryName}`],
-    );
+      const newPolicyResult = await client.query(
+        `INSERT INTO library_policies (library_id, name, description, enabled, priority, auto_classify_threshold, prompt_threshold)
+         VALUES ($1, $2, $3, true, 5, 85, 60)
+         RETURNING *`,
+        [oldPolicy.library_id, `${libraryName} Policy`, `Reset policy for ${libraryName}`],
+      );
+
+      return {
+        oldPolicy,
+        newPolicy: newPolicyResult.rows[0],
+      };
+    });
 
     logger.info('Policy reset (delete + recreate)', {
       oldPolicyId: id,
-      newPolicyId: newPolicyResult.rows[0].id,
-      libraryId,
-      libraryName,
+      newPolicyId: newPolicy.id,
+      libraryId: oldPolicy.library_id,
+      libraryName: oldPolicy.library_name,
     });
 
     return sendData(res, {
       message: 'Policy reset successfully',
       oldPolicy,
-      newPolicy: newPolicyResult.rows[0],
+      newPolicy,
     });
   }));
 }

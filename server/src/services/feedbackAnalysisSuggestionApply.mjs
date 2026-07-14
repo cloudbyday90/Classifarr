@@ -2,6 +2,13 @@ import * as db from '../config/database.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
+import {
+    POLICY_LEGACY_WRITE_OPERATION_IDS,
+} from './policyLegacyWriteBoundary.mjs';
+import {
+    assertLegacyPolicyWriteAllowed,
+    lockPolicyAuthorityForWrite,
+} from './policyLegacyWriteGuard.mjs';
 
 const logger = createLogger('FeedbackAnalysis');
 
@@ -20,6 +27,19 @@ export async function applySuggestion(suggestionId, userId) {
 
         const suggestion = suggestionResult.rows[0];
         const config = suggestion.suggestion_config;
+
+        const policy = await lockPolicyAuthorityForWrite({
+            client,
+            policyId: suggestion.policy_id,
+        });
+        assertLegacyPolicyWriteAllowed({
+            policy,
+            payload: {
+                suggestion_type: suggestion.suggestion_type,
+                suggestion_config: config,
+            },
+            operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.APPLY_LEGACY_TUNING_SUGGESTION,
+        });
 
         const beforeResult = await client.query(`
             SELECT 

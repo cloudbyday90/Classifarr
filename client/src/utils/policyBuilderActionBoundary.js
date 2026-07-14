@@ -28,14 +28,14 @@ function buildPolicyBuilderSaveBoundary({
   form = {},
   selectedPresets = [],
   totalWeight = 0,
-  hasExistingPresets = false,
+  hasExistingPolicy = false,
   routingReadiness = null,
 } = {}) {
   const selectedPresetCount = countSelectedPresets(selectedPresets)
   const hasStarterTemplate = selectedPresetCount > 0
   const librarySelected = hasSelectedLibrary(form)
   const weightsValid = weightsAreValid(totalWeight)
-  const saveLabel = hasExistingPresets ? 'Save Policy' : 'Create Policy'
+  const saveLabel = hasExistingPolicy ? 'Save Policy' : 'Create Policy'
 
   if (!librarySelected) {
     return {

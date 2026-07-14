@@ -99,7 +99,7 @@
       v-model="showModal"
       :policy="editingPolicy"
       :library-id="selectedLibraryId"
-      @save="savePolicy"
+      :submit-policy="savePolicy"
       @close="closeModal"
     />
   </div>
@@ -194,25 +194,19 @@ const editPolicy = async (policy) => {
 }
 
 const savePolicy = async (policyData) => {
-  try {
-    let response
-    if (editingPolicy.value) {
-      // Update existing policy
-      response = await api.updatePolicy(editingPolicy.value.id, policyData)
-    } else {
-      response = await api.createPolicy(policyData)
-    }
-
-    lastPolicyIntentWritePreflight.value = normalizePolicyIntentWritePreflight(
-      response?.data?.policy_intent_write_preflight
-    )
-    
-    await fetchPolicies()
-    closeModal()
-  } catch (error) {
-    console.error('Failed to save policy:', error)
-    throw error
+  let response
+  if (editingPolicy.value) {
+    response = await api.updatePolicy(editingPolicy.value.id, policyData)
+  } else {
+    response = await api.createPolicy(policyData)
   }
+
+  lastPolicyIntentWritePreflight.value = normalizePolicyIntentWritePreflight(
+    response?.data?.policy_intent_write_preflight
+  )
+
+  await fetchPolicies()
+  closeModal()
 }
 
 const confirmReset = async (policy) => {

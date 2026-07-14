@@ -1,23 +1,54 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
+import {
+    POLICY_LEGACY_WRITE_OPERATION_IDS,
+} from './policyLegacyWriteBoundary.mjs';
+import {
+    assertLegacyPolicyWriteAllowed,
+    lockPolicyAuthorityForLibraryWrite,
+} from './policyLegacyWriteGuard.mjs';
 
 const logger = createLogger('AutoLearningWriters');
+
+async function lockLegacyPreferencePolicy({ client, libraryId, signalType, value }) {
+    const policy = await lockPolicyAuthorityForLibraryWrite({
+        client,
+        libraryId,
+    });
+
+    if (!policy) {
+        logger.warn('No policy found for library', { libraryId });
+        return null;
+    }
+
+    assertLegacyPolicyWriteAllowed({
+        policy,
+        payload: {
+            custom_signals: {
+                [signalType]: {
+                    prefer: [value],
+                },
+            },
+        },
+        operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.UPDATE_PRESET_CUSTOM_SIGNALS,
+    });
+
+    return policy;
+}
 
 export async function addGenreToPrefer(libraryId, genre, confirmCount, userId) {
     return withServiceCatch(logger, 'Failed to add genre to prefer list', { libraryId, genre }, async () => {
         await db.withTransaction(async (client) => {
-            const policy = await client.query(
-                'SELECT id FROM library_policies WHERE library_id = $1',
-                [libraryId]
-            );
-
-            if (policy.rows.length === 0) {
-                logger.warn('No policy found for library', { libraryId });
+            const policy = await lockLegacyPreferencePolicy({
+                client,
+                libraryId,
+                signalType: 'genres',
+                value: genre,
+            });
+            if (!policy) {
                 return;
             }
-
-            const policyId = policy.rows[0].id;
 
             await client.query(`
                 UPDATE policy_presets
@@ -28,7 +59,7 @@ export async function addGenreToPrefer(libraryId, genre, confirmCount, userId) {
                 )
                 WHERE policy_id = $2
                 AND NOT (COALESCE(custom_signals->'genres'->'prefer', '[]'::jsonb) @> $1::jsonb)
-            `, [JSON.stringify([genre]), policyId]);
+            `, [JSON.stringify([genre]), policy.id]);
 
             await client.query(`
                 INSERT INTO auto_learned_preferences (
@@ -40,11 +71,11 @@ export async function addGenreToPrefer(libraryId, genre, confirmCount, userId) {
                     confidence_count = $4,
                     learned_at = NOW(),
                     status = 'active'
-            `, [libraryId, policyId, genre, confirmCount, userId]);
+            `, [libraryId, policy.id, genre, confirmCount, userId]);
 
             logger.info('Genre added to prefer list', {
                 libraryId,
-                policyId,
+                policyId: policy.id,
                 genre,
                 confirmCount
             });
@@ -55,16 +86,15 @@ export async function addGenreToPrefer(libraryId, genre, confirmCount, userId) {
 export async function addKeywordToPrefer(libraryId, keyword, confirmCount, userId) {
     return withServiceCatch(logger, 'Failed to add keyword to prefer list', async () => {
         await db.withTransaction(async (client) => {
-            const policy = await client.query(
-                'SELECT id FROM library_policies WHERE library_id = $1',
-                [libraryId]
-            );
-
-            if (policy.rows.length === 0) {
+            const policy = await lockLegacyPreferencePolicy({
+                client,
+                libraryId,
+                signalType: 'keywords',
+                value: keyword,
+            });
+            if (!policy) {
                 return;
             }
-
-            const policyId = policy.rows[0].id;
 
             await client.query(`
                 UPDATE policy_presets
@@ -75,7 +105,7 @@ export async function addKeywordToPrefer(libraryId, keyword, confirmCount, userI
                 )
                 WHERE policy_id = $2
                 AND NOT (COALESCE(custom_signals->'keywords'->'prefer', '[]'::jsonb) @> $1::jsonb)
-            `, [JSON.stringify([keyword]), policyId]);
+            `, [JSON.stringify([keyword]), policy.id]);
 
             await client.query(`
                 INSERT INTO auto_learned_preferences (
@@ -87,11 +117,11 @@ export async function addKeywordToPrefer(libraryId, keyword, confirmCount, userI
                     confidence_count = $4,
                     learned_at = NOW(),
                     status = 'active'
-            `, [libraryId, policyId, keyword, confirmCount, userId]);
+            `, [libraryId, policy.id, keyword, confirmCount, userId]);
 
             logger.info('Keyword added to prefer list', {
                 libraryId,
-                policyId,
+                policyId: policy.id,
                 keyword,
                 confirmCount
             });
@@ -102,16 +132,15 @@ export async function addKeywordToPrefer(libraryId, keyword, confirmCount, userI
 export async function addStudioToPrefer(libraryId, studio, confirmCount, userId) {
     return withServiceCatch(logger, 'Failed to add studio to prefer list', async () => {
         await db.withTransaction(async (client) => {
-            const policy = await client.query(
-                'SELECT id FROM library_policies WHERE library_id = $1',
-                [libraryId]
-            );
-
-            if (policy.rows.length === 0) {
+            const policy = await lockLegacyPreferencePolicy({
+                client,
+                libraryId,
+                signalType: 'studios',
+                value: studio,
+            });
+            if (!policy) {
                 return;
             }
-
-            const policyId = policy.rows[0].id;
 
             await client.query(`
                 UPDATE policy_presets
@@ -122,7 +151,7 @@ export async function addStudioToPrefer(libraryId, studio, confirmCount, userId)
                 )
                 WHERE policy_id = $2
                 AND NOT (COALESCE(custom_signals->'studios'->'prefer', '[]'::jsonb) @> $1::jsonb)
-            `, [JSON.stringify([studio]), policyId]);
+            `, [JSON.stringify([studio]), policy.id]);
 
             await client.query(`
                 INSERT INTO auto_learned_preferences (
@@ -134,11 +163,11 @@ export async function addStudioToPrefer(libraryId, studio, confirmCount, userId)
                     confidence_count = $4,
                     learned_at = NOW(),
                     status = 'active'
-            `, [libraryId, policyId, studio, confirmCount, userId]);
+            `, [libraryId, policy.id, studio, confirmCount, userId]);
 
             logger.info('Studio added to prefer list', {
                 libraryId,
-                policyId,
+                policyId: policy.id,
                 studio,
                 confirmCount
             });

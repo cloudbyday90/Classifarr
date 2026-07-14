@@ -2,6 +2,13 @@ import * as db from '../config/database.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
+import {
+    POLICY_LEGACY_WRITE_OPERATION_IDS,
+} from './policyLegacyWriteBoundary.mjs';
+import {
+    assertLegacyPolicyWriteAllowed,
+    lockPolicyAuthorityForWrite,
+} from './policyLegacyWriteGuard.mjs';
 
 const logger = createLogger('AutoLearning');
 
@@ -107,6 +114,26 @@ export async function revertPreference(preferenceId, userId, reason) {
             }
 
             const preference = pref.rows[0];
+            const validTypes = ['genre_prefer', 'keyword_prefer', 'studio_prefer'];
+            if (!validTypes.includes(preference.preference_type)) {
+                throw new ValidationError('Invalid preference type');
+            }
+
+            const policy = await lockPolicyAuthorityForWrite({
+                client,
+                policyId: preference.policy_id,
+            });
+            assertLegacyPolicyWriteAllowed({
+                policy,
+                payload: {
+                    custom_signals: {
+                        [preference.preference_type.replace('_prefer', '')]: {
+                            prefer: [preference.preference_value],
+                        },
+                    },
+                },
+                operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.UPDATE_PRESET_CUSTOM_SIGNALS,
+            });
 
             await client.query(`
             UPDATE auto_learned_preferences
@@ -116,11 +143,6 @@ export async function revertPreference(preferenceId, userId, reason) {
                 revert_reason = $2
             WHERE id = $3
         `, [userId, reason, preferenceId]);
-
-            const validTypes = ['genre_prefer', 'keyword_prefer', 'studio_prefer'];
-            if (!validTypes.includes(preference.preference_type)) {
-                throw new ValidationError('Invalid preference type');
-            }
 
             const signalPath = preference.preference_type.replace('_prefer', '');
 

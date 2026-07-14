@@ -18,6 +18,10 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Native Policy Authority Guard** - active native-intent policies now reject
+  legacy scoring, preset, reset, migration, automatic-preference, and tuning
+  mutations atomically, preventing a legacy path from silently replacing or
+  diverging durable policy intent.
 - **Durable Product Naming Gate** - added a side-effect-free repository
   inventory and regression gate to CI so temporary delivery terminology cannot
   re-enter production modules, commands, or current contracts unnoticed.
@@ -65,6 +69,9 @@ unchanged operator or runtime outcome.
 - **Save and Defer Workflow** - added explicit save readiness, disabled-reason
   messaging, and a defer-without-saving action so incomplete policy work can be
   paused without appearing applied.
+- **Policy Save Reliability** - aligned review-trigger drafts with server
+  validation, corrected existing-policy save labels, and now keep the form open
+  with a clear error when a policy write fails.
 - **Optional Starter Templates** - added an accessible template browser and
   detail surface. Templates now provide a starting point and compatibility
   context without hiding or defining the destination's final behavior.

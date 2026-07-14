@@ -109,6 +109,6 @@ describe('Policies threshold routes', () => {
       .expect(400);
 
     expect(res.body.error).toContain('prompt_threshold must be less than or equal to auto_classify_threshold');
-    expect(db.withTransaction).not.toHaveBeenCalled();
+    expect(db.withTransaction).toHaveBeenCalledTimes(1);
   });
 });

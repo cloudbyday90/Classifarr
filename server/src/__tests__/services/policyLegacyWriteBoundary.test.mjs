@@ -61,6 +61,25 @@ describe('policyLegacyWriteBoundary', () => {
     });
   });
 
+  test('classifies legacy rule migration as behavior that converted policies cannot mutate', () => {
+    const boundary = buildPolicyLegacyWriteBoundary({
+      policy: policy(),
+      operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.MIGRATE_LEGACY_RULE,
+      payload: {
+        preset_id: 7,
+        override_config: { match_field: 'genres' },
+      },
+    });
+
+    expect(boundary.allowed).toBe(false);
+    expect(boundary.detectedFields.legacyBehavior.map(field => field.groupId))
+      .toEqual(expect.arrayContaining([
+        'preset_attachments',
+        'legacy_overrides',
+        'legacy_migration',
+      ]));
+  });
+
   test('allows converted metadata-only policy edits', () => {
     const boundary = buildPolicyLegacyWriteBoundary({
       policy: policy(),

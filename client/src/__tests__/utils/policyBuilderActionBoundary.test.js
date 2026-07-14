@@ -76,7 +76,7 @@ describe('policyBuilderActionBoundary', () => {
       form: { library_id: 1 },
       selectedPresets: [{ id: 1 }],
       totalWeight: 1,
-      hasExistingPresets: true,
+      hasExistingPolicy: true,
       routingReadiness: {
         canRoute: true,
       },
@@ -89,5 +89,16 @@ describe('policyBuilderActionBoundary', () => {
       tone: 'success',
       statusLabel: 'Ready to save',
     })
+  })
+
+  it('uses Save Policy for an existing policy without starter templates', () => {
+    const boundary = buildPolicyBuilderSaveBoundary({
+      form: { library_id: 1 },
+      selectedPresets: [],
+      totalWeight: 1,
+      hasExistingPolicy: true,
+    })
+
+    expect(boundary.saveLabel).toBe('Save Policy')
   })
 })

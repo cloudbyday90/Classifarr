@@ -3,6 +3,13 @@ import { createLogger } from '../utils/logger.mjs';
 import { analyzeRule as _analyzeRule, normalizeRuleItems as _normalizeRuleItems, matchItems as _matchItems, calculateMatchConfidence as _calculateMatchConfidence } from './legacyMigrationAnalysis.mjs';
 import { NotFoundError } from '../utils/appError.mjs';
 import { ruleToOverride as _ruleToOverride, determineMatchField as _determineMatchField, determineMatchValue as _determineMatchValue } from './legacyMigrationConversion.mjs';
+import {
+    POLICY_LEGACY_WRITE_OPERATION_IDS,
+} from './policyLegacyWriteBoundary.mjs';
+import {
+    assertLegacyPolicyWriteAllowed,
+    lockPolicyAuthorityForWrite,
+} from './policyLegacyWriteGuard.mjs';
 
 const logger = createLogger('LegacyMigration');
 
@@ -80,8 +87,6 @@ class LegacyMigration {
 
         await db.withTransaction(async (client) => {
             if (migrationChoice.type === 'preset') {
-                const policy = await this.getOrCreatePolicy(ruleData.library_id, client);
-
                 if (!migrationChoice.preset_id) {
                     throw createMigrationError(
                         'Preset id is required for preset migration',
@@ -89,6 +94,18 @@ class LegacyMigration {
                         400
                     );
                 }
+
+                const policy = await this.getOrCreatePolicy(ruleData.library_id, client);
+
+                const lockedPolicy = await lockPolicyAuthorityForWrite({
+                    client,
+                    policyId: policy.id,
+                });
+                assertLegacyPolicyWriteAllowed({
+                    policy: lockedPolicy,
+                    payload: { preset_id: migrationChoice.preset_id },
+                    operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.MIGRATE_LEGACY_RULE,
+                });
 
                 const presetResult = await client.query(
                     'SELECT id, is_system, is_public, user_id FROM content_presets WHERE id = $1',
@@ -124,6 +141,16 @@ class LegacyMigration {
 
             } else if (migrationChoice.type === 'override') {
                 const policy = await this.getOrCreatePolicy(ruleData.library_id, client);
+
+                const lockedPolicy = await lockPolicyAuthorityForWrite({
+                    client,
+                    policyId: policy.id,
+                });
+                assertLegacyPolicyWriteAllowed({
+                    policy: lockedPolicy,
+                    payload: { override_config: migrationChoice.override_config },
+                    operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.MIGRATE_LEGACY_RULE,
+                });
 
                 await client.query(`
                     INSERT INTO policy_overrides (

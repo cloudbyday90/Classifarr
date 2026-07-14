@@ -95,6 +95,8 @@
     <template #footer>
       <PolicyBuilderFooterActions
         :boundary="saveBoundary"
+        :saving="saving"
+        :save-error="saveError"
         @defer="defer"
         @save="save"
       />
@@ -103,7 +105,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, toRef } from 'vue'
+import { computed, onMounted, ref, toRef } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
 import PolicyBuilderFooterActions from '@/components/policies/PolicyBuilderFooterActions.vue'
@@ -137,6 +139,10 @@ const props = defineProps({
     type: Number,
     default: null,
   },
+  submitPolicy: {
+    type: Function,
+    default: null,
+  },
 })
 
 const emit = defineEmits({
@@ -146,6 +152,8 @@ const emit = defineEmits({
 })
 
 const toast = useToast()
+const saving = ref(false)
+const saveError = ref('')
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -192,7 +200,6 @@ const {
   expandedPresetIds,
   totalWeight,
   currentLibrary,
-  hasExistingPresets,
   togglePresetSelection,
   addAllSuggested: addPresetSuggestions,
   removePreset,
@@ -245,7 +252,7 @@ const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({
   form: form.value,
   selectedPresets: selectedPresets.value,
   totalWeight: totalWeight.value,
-  hasExistingPresets: hasExistingPresets.value,
+  hasExistingPolicy: Boolean(props.policy?.id),
   routingReadiness: routingReadiness.value,
 }))
 
@@ -315,15 +322,24 @@ const defer = () => {
 }
 
 const save = async () => {
-  if (!saveBoundary.value.canSave) return
+  if (!saveBoundary.value.canSave || saving.value) return
 
   const policyData = buildSavePayload()
+  saveError.value = ''
+  saving.value = true
 
   try {
-    await emit('save', policyData)
+    if (props.submitPolicy) {
+      await props.submitPolicy(policyData)
+    } else {
+      emit('save', policyData)
+    }
   } catch (error) {
-    console.error('Failed to save policy:', error)
-    toast.error(error?.message || 'Failed to save policy', 'Failed to save policy')
+    const message = error?.response?.data?.error || error?.message || 'Failed to save policy'
+    saveError.value = message
+    toast.error(message, 'Failed to save policy')
+  } finally {
+    saving.value = false
   }
 }
 </script>

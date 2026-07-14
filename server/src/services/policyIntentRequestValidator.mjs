@@ -18,6 +18,7 @@ export const POLICY_INTENT_DRAFT_BUCKETS = Object.freeze({
   STRICT_CONSTRAINTS: 'strict_constraints',
   BOOSTERS: 'boosters',
   EXCLUSIONS: 'exclusions',
+  REVIEW_TRIGGERS: 'review_triggers',
 });
 
 const DRAFT_BUCKET_VALUES = Object.freeze(Object.values(POLICY_INTENT_DRAFT_BUCKETS));
@@ -32,6 +33,7 @@ const DRAFT_SIGNAL_TYPES = Object.freeze([
   'release_year',
   'vote_average',
   'runtime',
+  'review_triggers',
 ]);
 const DRAFT_ENTRY_SOURCES = Object.freeze([
   'intent_draft',
@@ -111,6 +113,7 @@ const entryValuesSchema = z.object({
   min: scalarValueSchema.optional(),
   min_minutes: z.coerce.number().int().min(0).max(100000).optional(),
   max_minutes: z.coerce.number().int().min(0).max(100000).optional(),
+  when_any: stringListSchema.optional(),
 }).strict().superRefine((values, ctx) => {
   if (Object.keys(values).length === 0) {
     ctx.addIssue({
@@ -183,6 +186,7 @@ const bucketsSchema = z.object({
   [POLICY_INTENT_DRAFT_BUCKETS.STRICT_CONSTRAINTS]: bucketSchema(POLICY_INTENT_DRAFT_BUCKETS.STRICT_CONSTRAINTS).default([]),
   [POLICY_INTENT_DRAFT_BUCKETS.BOOSTERS]: bucketSchema(POLICY_INTENT_DRAFT_BUCKETS.BOOSTERS).default([]),
   [POLICY_INTENT_DRAFT_BUCKETS.EXCLUSIONS]: bucketSchema(POLICY_INTENT_DRAFT_BUCKETS.EXCLUSIONS).default([]),
+  [POLICY_INTENT_DRAFT_BUCKETS.REVIEW_TRIGGERS]: bucketSchema(POLICY_INTENT_DRAFT_BUCKETS.REVIEW_TRIGGERS).default([]),
 }).strict();
 
 const signalRemovalOverridesSchema = allowListedRecord(

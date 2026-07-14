@@ -9,6 +9,8 @@ const POLICY_LEGACY_WRITE_OPERATION_IDS = Object.freeze({
   DETACH_PRESET: 'detach_preset',
   REPLACE_PRESETS: 'replace_presets',
   UPDATE_PRESET_CUSTOM_SIGNALS: 'update_preset_custom_signals',
+  MIGRATE_LEGACY_RULE: 'migrate_legacy_rule',
+  APPLY_LEGACY_TUNING_SUGGESTION: 'apply_legacy_tuning_suggestion',
   NATIVE_INTENT_WRITE: 'native_intent_write',
 });
 
@@ -55,6 +57,9 @@ const POLICY_LEGACY_WRITE_FIELD_GROUP_IDS = Object.freeze({
   LEGACY_TRUST_FLAGS: 'legacy_trust_flags',
   LEGACY_DECISION_THRESHOLDS: 'legacy_decision_thresholds',
   LEGACY_COMBINATION_MODE: 'legacy_combination_mode',
+  LEGACY_OVERRIDES: 'legacy_overrides',
+  LEGACY_MIGRATION: 'legacy_migration',
+  LEGACY_TUNING: 'legacy_tuning',
   NATIVE_INTENT: 'native_intent',
   METADATA: 'metadata',
 });
@@ -134,6 +139,10 @@ const LEGACY_BEHAVIOR_FIELD_DEFINITIONS = Object.freeze([
     field: 'combination_mode',
     groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_COMBINATION_MODE,
   },
+  {
+    field: 'override_config',
+    groupId: POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_OVERRIDES,
+  },
 ]);
 
 const NATIVE_INTENT_FIELD_NAMES = Object.freeze([
@@ -160,6 +169,8 @@ const REQUIRED_REMOVAL_CHECKLIST_ITEMS = Object.freeze([
   'guard_policy_preset_delete_route_for_converted_policies',
   'guard_policy_reset_route_for_converted_policies',
   'guard_auto_learning_custom_signal_writers_for_converted_policies',
+  'guard_legacy_rule_migration_for_converted_policies',
+  'guard_legacy_tuning_writers_for_converted_policies',
   'route_native_intent_writes_to_native_storage',
 ]);
 
@@ -201,6 +212,27 @@ function detectConvertedPolicy(policy = {}) {
     nativeContract.model?.native_intent === true;
 }
 
+function legacyOperationFieldGroup(operationId) {
+  if (operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.UPDATE_PRESET_CUSTOM_SIGNALS) {
+    return POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_CUSTOM_SIGNALS;
+  }
+  if (operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.MIGRATE_LEGACY_RULE) {
+    return POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_MIGRATION;
+  }
+  if (operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.APPLY_LEGACY_TUNING_SUGGESTION) {
+    return POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.LEGACY_TUNING;
+  }
+  if ([
+    POLICY_LEGACY_WRITE_OPERATION_IDS.ATTACH_PRESET,
+    POLICY_LEGACY_WRITE_OPERATION_IDS.DETACH_PRESET,
+    POLICY_LEGACY_WRITE_OPERATION_IDS.REPLACE_PRESETS,
+  ].includes(operationId)) {
+    return POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_ATTACHMENTS;
+  }
+
+  return null;
+}
+
 function detectLegacyBehaviorFields(payload = {}, operationId) {
   const fields = [];
 
@@ -213,17 +245,11 @@ function detectLegacyBehaviorFields(payload = {}, operationId) {
     }
   });
 
-  if (
-    operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.ATTACH_PRESET ||
-    operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.DETACH_PRESET ||
-    operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.REPLACE_PRESETS ||
-    operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.UPDATE_PRESET_CUSTOM_SIGNALS
-  ) {
+  const operationFieldGroup = legacyOperationFieldGroup(operationId);
+  if (operationFieldGroup) {
     fields.push({
       field: operationId,
-      groupId: operationId === POLICY_LEGACY_WRITE_OPERATION_IDS.UPDATE_PRESET_CUSTOM_SIGNALS
-        ? POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_CUSTOM_SIGNALS
-        : POLICY_LEGACY_WRITE_FIELD_GROUP_IDS.PRESET_ATTACHMENTS,
+      groupId: operationFieldGroup,
     });
   }
 

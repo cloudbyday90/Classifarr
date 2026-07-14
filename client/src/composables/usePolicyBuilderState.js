@@ -183,10 +183,6 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     }
   })
 
-  const hasExistingPresets = computed(() => {
-    return unref(policy)?.presets?.length > 0 || selectedPresets.value.length > 0
-  })
-
   const isValid = computed(() => {
     const hasBasicInfo = Boolean(form.value.library_id)
     const weightsValid = Math.abs(totalWeight.value - 1) <= 0.001
@@ -332,7 +328,6 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     expandedPresetIds,
     totalWeight,
     currentLibrary,
-    hasExistingPresets,
     isValid,
     resetForm,
     loadPolicy,

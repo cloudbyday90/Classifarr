@@ -224,6 +224,52 @@ describe('PolicyBuilderModal.vue', () => {
     });
   });
 
+  it('awaits the parent save operation and shows an actionable save failure', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+    const submitPolicy = vi.fn().mockRejectedValue({
+      response: {
+        data: {
+          error: 'The policy intent draft is invalid.',
+        },
+      },
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          id: 1,
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [],
+        },
+        submitPolicy,
+      },
+      attachTo: document.body,
+    });
+
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('Save Policy');
+
+    await wrapper.vm.save();
+
+    expect(submitPolicy).toHaveBeenCalledTimes(1);
+    expect(wrapper.emitted('save')).toBeFalsy();
+    expect(document.body.querySelector('[role="alert"]')?.textContent)
+      .toContain('The policy intent draft is invalid.');
+    expect(mockToast.error).toHaveBeenCalledWith(
+      'The policy intent draft is invalid.',
+      'Failed to save policy',
+    );
+  });
+
   it('keeps modal public events bounded to visibility, close, and delegated save payloads', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
