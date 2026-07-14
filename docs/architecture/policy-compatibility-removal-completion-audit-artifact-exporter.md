@@ -20,6 +20,10 @@ storage, run tests, run source scans, or run Git commands. It produces an audit
 artifact that either proves compatibility removal is complete, reports bounded
 remaining inventory, or blocks completion with explicit risks.
 
+The current artifact retains its execution plan and normalized audit input and
+adds a SHA-256 fingerprint. Downstream closure gates validate that fingerprint
+and replay the nested audit before consuming its status.
+
 ## Official-Source Research
 
 - NIST SP 800-128 frames configuration management as controlled change with
@@ -112,7 +116,9 @@ Use this stack for compatibility removal completion audit artifact export:
 6. Block completion if references remain.
 7. Require focused and full validation evidence to pass.
 8. Emit `complete`, `remaining_inventory`, or `blocked` artifact status.
-9. Reject file deletion, archive, route/test removal, storage mutation,
+9. Retain the execution plan and audit input, fingerprint the bounded artifact,
+   and require exact audit replay in downstream closure gates.
+10. Reject file deletion, archive, route/test removal, storage mutation,
    manifest writes, and Git side effects.
 
 ## Implementation Outcome
@@ -132,7 +138,11 @@ Implemented:
 - Added the completion-audit artifact suite and this design doc to the fixed
   policy storage closure validation evidence command set.
 - The artifact now emits `version =
-  policy.compatibility_removal_completion_audit_artifact.v2` and
+  policy.compatibility_removal_completion_audit_artifact.v3`, retains replay
+  inputs, and includes a bounded SHA-256 artifact fingerprint.
+- The storage completion checkpoint now consumes the complete artifact, not the
+  nested audit JSON, and blocks altered or non-replayable evidence.
+- Production output emits
   `nextStep.stepId = policy_storage_completion_checkpoint`; production output
   does not expose `nextPhase.phaseId`.
 
@@ -149,6 +159,6 @@ npm run --silent policy:compatibility-removal-completion-audit -- \
 
 ## Next Step
 
-Use the generated audit JSON as input for the policy storage completion
-checkpoint artifact export. After that artifact is complete, proceed with
-**Policy Storage Current Closure Audit module naming cutover**.
+Use the generated completion-audit artifact as input for the policy storage
+completion checkpoint artifact export. After that artifact is complete, proceed
+with the policy storage current closure audit.

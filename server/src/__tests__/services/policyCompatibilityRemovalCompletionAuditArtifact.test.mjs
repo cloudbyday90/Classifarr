@@ -142,6 +142,12 @@ describe('policyCompatibilityRemovalCompletionAuditArtifact', () => {
     expect(artifact.complete).toBe(true);
     expect(artifact.remainingInventory).toBe(false);
     expect(artifact.validation.ok).toBe(true);
+    expect(artifact.artifactFingerprint).toEqual(expect.objectContaining({
+      algorithm: 'sha256',
+      fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    }));
+    expect(artifact.executionPlan).toEqual(plan);
+    expect(artifact.auditInput).toEqual(input());
     expect(artifact.nextBatchAuthorizationArtifact).toBe(authorizationArtifact);
     expect(artifact.audit.authorizationArtifact).toEqual(expect.objectContaining({
       integrityOk: true,

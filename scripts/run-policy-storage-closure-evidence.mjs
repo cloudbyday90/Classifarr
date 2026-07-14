@@ -20,7 +20,7 @@ import {
 function parseArgs(argv = []) {
   const options = {
     cwd: process.cwd(),
-    finalRemovalAuditPath: null,
+    completionAuditArtifactPath: null,
     validationEvidencePath: null,
     requireComplete: false,
   };
@@ -33,8 +33,8 @@ function parseArgs(argv = []) {
       index += 1;
       continue;
     }
-    if (arg === '--final-removal-audit') {
-      options.finalRemovalAuditPath = argv[index + 1] || null;
+    if (arg === '--completion-audit-artifact') {
+      options.completionAuditArtifactPath = argv[index + 1] || null;
       index += 1;
       continue;
     }
@@ -64,7 +64,8 @@ function usage() {
     '',
     'Options:',
     '  --cwd <path>                    Repository root. Defaults to process cwd.',
-    '  --final-removal-audit <json>    JSON file containing compatibility-removal completion audit evidence.',
+    '  --completion-audit-artifact <json>',
+    '                                  JSON file containing a fingerprint-valid compatibility-removal completion-audit artifact.',
     '  --validation-evidence <json>    JSON file containing focused/lint/markdown/full validation evidence.',
     '  --require-complete              Exit non-zero unless the evidence run completes.',
     '  --help                          Print this help message.',
@@ -85,7 +86,7 @@ function readJsonFile(filePath, label) {
   }
 }
 
-function main() {
+async function main() {
   let options;
 
   try {
@@ -102,13 +103,13 @@ function main() {
     return;
   }
 
-  let finalRemovalAudit;
+  let completionAuditArtifact;
   let validationEvidence;
 
   try {
-    finalRemovalAudit = readJsonFile(
-      options.finalRemovalAuditPath,
-      'final removal audit'
+    completionAuditArtifact = readJsonFile(
+      options.completionAuditArtifactPath,
+      'completion audit artifact'
     );
     validationEvidence = readJsonFile(
       options.validationEvidencePath,
@@ -119,9 +120,9 @@ function main() {
     process.exit(2);
   }
 
-  const result = buildPolicyStorageClosureCurrentEvidenceRun({
+  const result = await buildPolicyStorageClosureCurrentEvidenceRun({
     cwd: path.resolve(process.cwd(), options.cwd),
-    finalRemovalAudit,
+    completionAuditArtifact,
     validationEvidence,
   });
 
@@ -132,4 +133,7 @@ function main() {
   }
 }
 
-main();
+main().catch(err => {
+  console.error(`Could not run policy storage closure evidence: ${err.message}`);
+  process.exit(2);
+});

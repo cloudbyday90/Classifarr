@@ -6,8 +6,9 @@ import {
   validatePolicyStorageClosureEvidenceRun,
 } from '../../services/policyStorageClosureEvidenceRun.mjs';
 import {
-  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-} from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
+  MANIFEST_PATHS,
+  buildCompletionAuditArtifactFixture,
+} from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
 
 const SOURCE_COMPONENT_IDS = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
   .map(component => component.componentId);
@@ -45,19 +46,6 @@ function roadmapEvidence(overrides = {}) {
   };
 }
 
-function finalRemovalAudit(overrides = {}) {
-  return {
-    statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
-    complete: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
-    ...overrides,
-  };
-}
-
 function validationEvidence(overrides = {}) {
   return {
     focused: {
@@ -88,11 +76,14 @@ function changelogEvidence(overrides = {}) {
   };
 }
 
-function completeRun(overrides = {}) {
+async function completeRun(overrides = {}) {
+  const completionAuditArtifact =
+    overrides.completionAuditArtifact || await buildCompletionAuditArtifactFixture();
+
   return buildPolicyStorageClosureEvidenceRun({
     artifactInventory: artifactInventory(),
     roadmapEvidence: roadmapEvidence(),
-    finalRemovalAudit: finalRemovalAudit(),
+    completionAuditArtifact,
     validationEvidence: validationEvidence(),
     changelogEvidence: changelogEvidence(),
     ...overrides,
@@ -100,8 +91,8 @@ function completeRun(overrides = {}) {
 }
 
 describe('policyStorageClosureEvidenceRun', () => {
-  test('completes when artifact, roadmap, final audit, validation, and changelog evidence pass', () => {
-    const evidenceRun = completeRun();
+  test('completes when artifact, roadmap, final audit, validation, and changelog evidence pass', async () => {
+    const evidenceRun = await completeRun();
 
     expect(evidenceRun.statusId).toBe(POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.COMPLETE);
     expect(evidenceRun.complete).toBe(true);
@@ -166,7 +157,7 @@ describe('policyStorageClosureEvidenceRun', () => {
     );
   });
 
-  test('normalizes Windows-style paths in supplied artifact inventory', () => {
+  test('normalizes Windows-style paths in supplied artifact inventory', async () => {
     const windowsInventory = artifactInventory({
       servicePaths: artifactInventory().servicePaths.map(path => path.replace(/\//g, '\\')),
       routePaths: artifactInventory().routePaths.map(path => path.replace(/\//g, '\\')),
@@ -175,7 +166,7 @@ describe('policyStorageClosureEvidenceRun', () => {
       docPaths: artifactInventory().docPaths.map(path => path.replace(/\//g, '\\')),
       otherPaths: artifactInventory().otherPaths.map(path => path.replace(/\//g, '\\')),
     });
-    const evidenceRun = completeRun({
+    const evidenceRun = await completeRun({
       artifactInventory: windowsInventory,
     });
 
@@ -183,11 +174,11 @@ describe('policyStorageClosureEvidenceRun', () => {
     expect(evidenceRun.artifactInventory.componentsWithMissingArtifactCount).toBe(0);
   });
 
-  test('blocks historical roadmap identifiers instead of normalizing them as component IDs', () => {
+  test('blocks historical roadmap identifiers instead of normalizing them as component IDs', async () => {
     const historicalRoadmapIds = SOURCE_COMPONENT_IDS.map((_componentId, index) => (
       `8R.${index + 1}`
     ));
-    const evidenceRun = completeRun({
+    const evidenceRun = await completeRun({
       roadmapEvidence: {
         componentSequenceIds: historicalRoadmapIds,
         implementationStatusComponentIds: historicalRoadmapIds,
@@ -209,8 +200,8 @@ describe('policyStorageClosureEvidenceRun', () => {
     ]));
   });
 
-  test('blocks legacy evidence keys instead of treating them as durable component fields', () => {
-    const evidenceRun = completeRun({
+  test('blocks legacy evidence keys instead of treating them as durable component fields', async () => {
+    const evidenceRun = await completeRun({
       roadmapEvidence: {
         sequencePhaseIds: SOURCE_COMPONENT_IDS,
         implementationStatusPhaseIds: SOURCE_COMPONENT_IDS,
@@ -242,8 +233,8 @@ describe('policyStorageClosureEvidenceRun', () => {
     ))).toBe(true);
   });
 
-  test('blocks when artifact inventory is missing', () => {
-    const evidenceRun = completeRun({
+  test('blocks when artifact inventory is missing', async () => {
+    const evidenceRun = await completeRun({
       artifactInventory: {},
     });
 
@@ -254,9 +245,9 @@ describe('policyStorageClosureEvidenceRun', () => {
     );
   });
 
-  test('blocks through checkpoint when a mapped artifact is missing', () => {
+  test('blocks through checkpoint when a mapped artifact is missing', async () => {
     const inventory = artifactInventory();
-    const evidenceRun = completeRun({
+    const evidenceRun = await completeRun({
       artifactInventory: {
         ...inventory,
         servicePaths: inventory.servicePaths.filter(path => (
@@ -283,9 +274,9 @@ describe('policyStorageClosureEvidenceRun', () => {
     );
   });
 
-  test('blocks closure when rollback snapshot retention evidence is missing', () => {
+  test('blocks closure when rollback snapshot retention evidence is missing', async () => {
     const inventory = artifactInventory();
-    const evidenceRun = completeRun({
+    const evidenceRun = await completeRun({
       artifactInventory: {
         ...inventory,
         servicePaths: inventory.servicePaths.filter(path => (
@@ -308,8 +299,8 @@ describe('policyStorageClosureEvidenceRun', () => {
     ]));
   });
 
-  test('blocks when roadmap or final removal audit evidence does not satisfy checkpoint', () => {
-    const roadmapBlocked = completeRun({
+  test('blocks when roadmap or final removal audit evidence does not satisfy checkpoint', async () => {
+    const roadmapBlocked = await completeRun({
       roadmapEvidence: roadmapEvidence({
         componentSequenceIds:
           SOURCE_COMPONENT_IDS.filter(componentId => (
@@ -317,12 +308,9 @@ describe('policyStorageClosureEvidenceRun', () => {
           )),
       }),
     });
-    const removalAuditBlocked = completeRun({
-      finalRemovalAudit: finalRemovalAudit({
-        statusId:
-          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-            .BLOCKED_BY_FINAL_SCAN,
-        complete: false,
+    const removalAuditBlocked = await completeRun({
+      completionAuditArtifact: await buildCompletionAuditArtifactFixture({
+        appliedPaths: [MANIFEST_PATHS[0]],
       }),
     });
 
@@ -343,8 +331,8 @@ describe('policyStorageClosureEvidenceRun', () => {
     ]));
   });
 
-  test('blocks when validation or changelog evidence fails checkpoint', () => {
-    const validationBlocked = completeRun({
+  test('blocks when validation or changelog evidence fails checkpoint', async () => {
+    const validationBlocked = await completeRun({
       validationEvidence: validationEvidence({
         full: {
           command: 'npm test',
@@ -353,7 +341,7 @@ describe('policyStorageClosureEvidenceRun', () => {
         },
       }),
     });
-    const changelogBlocked = completeRun({
+    const changelogBlocked = await completeRun({
       changelogEvidence: changelogEvidence({
         componentIds:
           SOURCE_COMPONENT_IDS.filter(componentId => (

@@ -140,7 +140,7 @@ function writeJsonFile(filePath, value) {
   fs.writeFileSync(resolvedPath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function main() {
+async function main() {
   let options;
 
   try {
@@ -194,7 +194,7 @@ function main() {
     process.exit(2);
   }
 
-  const artifact = buildPolicyStorageCompletionCheckpointArtifact({
+  const artifact = await buildPolicyStorageCompletionCheckpointArtifact({
     componentEvidence,
     roadmapEvidence,
     completionAuditArtifact,
@@ -235,4 +235,7 @@ function main() {
   process.exit(artifact.statusId === 'blocked' ? 1 : 0);
 }
 
-main();
+main().catch(err => {
+  console.error(`Could not generate policy storage completion checkpoint JSON: ${err.message}`);
+  process.exit(2);
+});

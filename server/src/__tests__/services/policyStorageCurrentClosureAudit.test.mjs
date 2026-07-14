@@ -2,11 +2,9 @@ import {
   POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
 } from '../../services/policyStorageClosureEvidenceRun.mjs';
 import {
-  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
-} from '../../services/policyCompatibilityRemovalCompletionAuditArtifact.mjs';
-import {
-  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-} from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
+  MANIFEST_PATHS,
+  buildCompletionAuditArtifactFixture,
+} from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
 import {
   POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS,
   POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS,
@@ -33,31 +31,6 @@ function completeChangelogContent() {
 
 - **Native Policy Intent Storage** — added durable policy storage.
 `;
-}
-
-function completionAuditArtifact(overrides = {}) {
-  return {
-    version: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
-    statusId: 'complete',
-    complete: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
-    riskCount: 0,
-    risks: [],
-    audit: {
-      statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
-      complete: true,
-      validation: {
-        ok: true,
-        issueCount: 0,
-        issues: [],
-      },
-    },
-    ...overrides,
-  };
 }
 
 function validationEvidence(overrides = {}) {
@@ -88,10 +61,13 @@ function readTextFile(filePath) {
     : completeRoadmapContent();
 }
 
-function completeAudit(overrides = {}) {
+async function completeAudit(overrides = {}) {
+  const completionAuditArtifact =
+    overrides.completionAuditArtifact || await buildCompletionAuditArtifactFixture();
+
   return buildPolicyStorageCurrentClosureAudit({
     cwd: '/repo',
-    completionAuditArtifact: completionAuditArtifact(),
+    completionAuditArtifact,
     validationEvidence: validationEvidence(),
     generatedAt: '2026-06-25T14:00:00.000Z',
     fileExists: () => true,
@@ -101,8 +77,8 @@ function completeAudit(overrides = {}) {
 }
 
 describe('policyStorageCurrentClosureAudit', () => {
-  test('completes when current repository evidence, completion audit, and validation pass', () => {
-    const audit = completeAudit();
+  test('completes when current repository evidence, completion audit, and validation pass', async () => {
+    const audit = await completeAudit();
 
     expect(audit.statusId)
       .toBe(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS.COMPLETE);
@@ -124,9 +100,9 @@ describe('policyStorageCurrentClosureAudit', () => {
     }));
   });
 
-  test('blocks on current evidence when a mapped repository artifact is missing', () => {
+  test('blocks on current evidence when a mapped repository artifact is missing', async () => {
     const missingPath = 'server/src/services/policyStorageCompletionCheckpoint.mjs';
-    const audit = completeAudit({
+    const audit = await completeAudit({
       fileExists: absolutePath => (
         !absolutePath.replace(/\\/g, '/').endsWith(missingPath)
       ),
@@ -145,8 +121,8 @@ describe('policyStorageCurrentClosureAudit', () => {
     ]));
   });
 
-  test('blocks when validation evidence is missing', () => {
-    const audit = completeAudit({
+  test('blocks when validation evidence is missing', async () => {
+    const audit = await completeAudit({
       validationEvidence: {},
     });
 
@@ -161,22 +137,10 @@ describe('policyStorageCurrentClosureAudit', () => {
     ]));
   });
 
-  test('blocks when the completion-audit artifact is incomplete', () => {
-    const audit = completeAudit({
-      completionAuditArtifact: completionAuditArtifact({
-        statusId: 'remaining_inventory',
-        complete: false,
-        audit: {
-          statusId:
-            POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-              .REMAINING_INVENTORY,
-          complete: false,
-          validation: {
-            ok: true,
-            issueCount: 0,
-            issues: [],
-          },
-        },
+  test('blocks when the completion-audit artifact is incomplete', async () => {
+    const audit = await completeAudit({
+      completionAuditArtifact: await buildCompletionAuditArtifactFixture({
+        appliedPaths: [MANIFEST_PATHS[0]],
       }),
     });
 
@@ -191,29 +155,31 @@ describe('policyStorageCurrentClosureAudit', () => {
     ]));
   });
 
-  test('blocks historical completion-audit artifact versions', () => {
-    const audit = completeAudit({
-      completionAuditArtifact: completionAuditArtifact({
-        version: 'phase8r.compatibility_removal_completion_audit_artifact.v1',
-      }),
+  test('blocks historical completion-audit artifact versions', async () => {
+    const completionAuditArtifact = structuredClone(
+      await buildCompletionAuditArtifactFixture()
+    );
+    completionAuditArtifact.version =
+      'phase8r.compatibility_removal_completion_audit_artifact.v1';
+    const audit = await completeAudit({
+      completionAuditArtifact,
     });
 
     expect(audit.statusId)
       .toBe(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
-        .BLOCKED_BY_CHECKPOINT_ARTIFACT);
+        .BLOCKED_BY_CURRENT_EVIDENCE);
     expect(audit.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
           POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
             .COMPLETION_AUDIT_ARTIFACT_VERSION_UNSUPPORTED,
-        expectedVersion:
-          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
+        expectedVersion: expect.any(String),
       }),
     ]));
   });
 
-  test('blocks on side effects other than repository file reads', () => {
-    const audit = completeAudit({
+  test('blocks on side effects other than repository file reads', async () => {
+    const audit = await completeAudit({
       sideEffects: {
         filesWritten: true,
         storageChanged: true,

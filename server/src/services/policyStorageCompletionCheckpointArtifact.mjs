@@ -7,7 +7,7 @@ import {
 } from './policyStorageCompletionCheckpoint.mjs';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_VERSION =
-  'policy.storage_completion_checkpoint_artifact.v1';
+  'policy.storage_completion_checkpoint_artifact.v2';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -21,6 +21,8 @@ const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS = Object.freeze({
     'completion_audit_artifact_validation_failed',
   COMPLETION_AUDIT_ARTIFACT_VERSION_UNSUPPORTED:
     'completion_audit_artifact_version_unsupported',
+  COMPLETION_AUDIT_ARTIFACT_INTEGRITY_FAILED:
+    'completion_audit_artifact_integrity_failed',
   COMPLETION_AUDIT_MISSING: 'completion_audit_missing',
   CHECKPOINT_BLOCKED: 'checkpoint_blocked',
   CHECKPOINT_VALIDATION_FAILED: 'checkpoint_validation_failed',
@@ -28,6 +30,7 @@ const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS = Object.freeze({
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
   COMPLETE_FLAG_MISMATCH: 'complete_flag_mismatch',
   UNKNOWN_STATUS: 'unknown_status',
+  UNKNOWN_VERSION: 'unknown_version',
 });
 
 function asObject(value) {
@@ -113,6 +116,18 @@ function buildArtifactRisks({
     ));
   }
 
+  if (checkpoint.finalRemovalAudit?.integrityOk !== true) {
+    risks.push(buildRisk(
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
+        .COMPLETION_AUDIT_ARTIFACT_INTEGRITY_FAILED,
+      'Policy storage completion checkpoint artifact requires replay-validated completion-audit artifact evidence.',
+      {
+        integrityIssueCount:
+          checkpoint.finalRemovalAudit?.integrityIssueCount ?? null,
+      }
+    ));
+  }
+
   if (
     completionAudit.auditPresent &&
     completionAudit.artifactValidationOk !== true
@@ -190,7 +205,7 @@ function determineArtifactStatusId(risks = []) {
   return POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE;
 }
 
-function buildPolicyStorageCompletionCheckpointArtifact({
+async function buildPolicyStorageCompletionCheckpointArtifact({
   componentEvidence = [],
   roadmapEvidence = {},
   completionAuditArtifact = {},
@@ -201,10 +216,10 @@ function buildPolicyStorageCompletionCheckpointArtifact({
 } = {}) {
   const completionAudit =
     normalizeCompletionAuditArtifact(completionAuditArtifact);
-  const checkpoint = buildPolicyStorageCompletionCheckpoint({
+  const checkpoint = await buildPolicyStorageCompletionCheckpoint({
     componentEvidence: asArray(componentEvidence),
     roadmapEvidence: asObject(roadmapEvidence),
-    finalRemovalAudit: completionAudit.audit,
+    completionAuditArtifact,
     validationEvidence: asObject(validationEvidence),
     changelogEvidence: asObject(changelogEvidence),
     sideEffects,
@@ -253,6 +268,8 @@ function buildPolicyStorageCompletionCheckpointArtifact({
     executionPolicy: {
       requireCompletionAuditArtifact: true,
       requireCurrentCompletionAuditArtifactVersion: true,
+      requireFingerprintValidCompletionAuditArtifact: true,
+      requireReplayedCompletionAuditArtifact: true,
       requireCompleteCheckpoint: true,
       requireComponentEvidence: true,
       requireRoadmapEvidence: true,
@@ -281,6 +298,14 @@ function buildPolicyStorageCompletionCheckpointArtifact({
 
 function validatePolicyStorageCompletionCheckpointArtifact(artifact = {}) {
   const issues = [];
+
+  if (artifact.version !== POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_VERSION) {
+    issues.push(buildRisk(
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.UNKNOWN_VERSION,
+      'Policy storage completion checkpoint artifact version must be recognized.',
+      { version: artifact.version || null }
+    ));
+  }
 
   if (!Object.values(POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS)
     .includes(artifact.statusId)) {

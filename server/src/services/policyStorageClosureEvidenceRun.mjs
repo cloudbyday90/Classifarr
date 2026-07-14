@@ -335,13 +335,19 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     designDocPaths: [
       'docs/architecture/policy-compatibility-removal-completion-audit.md',
       'docs/architecture/policy-compatibility-removal-completion-audit-artifact-integrity.md',
+      'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity.md',
     ],
     contractPaths: [
       'server/src/services/policyCompatibilityRemovalCompletionAudit.mjs',
+      'server/src/services/policyCompatibilityRemovalCompletionAuditArtifact.mjs',
+      'server/src/services/policyCompatibilityRemovalCompletionAuditArtifactFingerprint.mjs',
+      'server/src/services/policyCompatibilityRemovalCompletionAuditArtifactIntegrity.mjs',
       'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.mjs',
     ],
     testPaths: [
       'server/src/__tests__/services/policyCompatibilityRemovalCompletionAudit.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifact.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifactIntegrity.test.mjs',
       'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.test.mjs',
     ],
   },
@@ -364,9 +370,18 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
   {
     componentId: 'storage_completion_checkpoint',
     label: 'Policy Storage Completion Checkpoint',
-    designDocPaths: ['docs/architecture/policy-storage-completion-checkpoint.md'],
-    contractPaths: ['server/src/services/policyStorageCompletionCheckpoint.mjs'],
-    testPaths: ['server/src/__tests__/services/policyStorageCompletionCheckpoint.test.mjs'],
+    designDocPaths: [
+      'docs/architecture/policy-storage-completion-checkpoint.md',
+      'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity.md',
+    ],
+    contractPaths: [
+      'server/src/services/policyStorageCompletionCheckpoint.mjs',
+      'server/src/services/policyStorageCompletionCheckpointArtifact.mjs',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyStorageCompletionCheckpoint.test.mjs',
+      'server/src/__tests__/services/policyStorageCompletionCheckpointArtifact.test.mjs',
+    ],
   },
 ]);
 
@@ -510,11 +525,11 @@ function determineStatusId({ risks = [], checkpoint = {} } = {}) {
   return POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.COMPLETE;
 }
 
-function buildPolicyStorageClosureEvidenceRun({
+async function buildPolicyStorageClosureEvidenceRun({
   artifactInventory = {},
   componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
   roadmapEvidence = {},
-  finalRemovalAudit = {},
+  completionAuditArtifact = {},
   validationEvidence = {},
   changelogEvidence = {},
   sideEffects = {},
@@ -534,11 +549,11 @@ function buildPolicyStorageClosureEvidenceRun({
     ...POLICY_STORAGE_COMPLETION_COMPONENTS,
     POLICY_STORAGE_CLOSURE_COMPLETION_CHECKPOINT_COMPONENT,
   ];
-  const checkpoint = buildPolicyStorageCompletionCheckpoint({
+  const checkpoint = await buildPolicyStorageCompletionCheckpoint({
     expectedComponents,
     componentEvidence,
     roadmapEvidence: normalizedRoadmapEvidence,
-    finalRemovalAudit,
+    completionAuditArtifact,
     validationEvidence,
     changelogEvidence: normalizedChangelogEvidence,
   });

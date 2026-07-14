@@ -42,7 +42,7 @@ describe the durable behavior:
 - `policyCompatibilityRemovalCompletionAudit.mjs`
 - `policyCompatibilityRemovalCompletionAuditArtifact.mjs`
 - `policy.compatibility_removal_completion_audit.v2`
-- `policy.compatibility_removal_completion_audit_artifact.v2`
+- `policy.compatibility_removal_completion_audit_artifact.v3`
 - `npm run policy:compatibility-removal-completion-audit`
 
 Pros:
@@ -96,8 +96,10 @@ Implemented:
   documentation references.
 - Replaced production `nextPhase.phaseId` handoffs with semantic `nextStep`
   payloads.
+- Added a bounded SHA-256 artifact fingerprint and retained the execution plan
+  and audit input so storage closure can replay the audit before consuming it.
 
 Next:
 
-- Cut over the completion checkpoint modules, docs, and runners to durable
-  policy-domain names.
+- Add equivalent integrity protection to the current-state closure evidence
+  artifact.

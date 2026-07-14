@@ -2,9 +2,13 @@ import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
   buildPolicyCompatibilityRemovalCompletionAudit,
 } from './policyCompatibilityRemovalCompletionAudit.mjs';
+import {
+  buildPolicyCompatibilityRemovalCompletionAuditArtifactFingerprint,
+  validatePolicyCompatibilityRemovalCompletionAuditArtifactFingerprint,
+} from './policyCompatibilityRemovalCompletionAuditArtifactFingerprint.mjs';
 
 const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION =
-  'policy.compatibility_removal_completion_audit_artifact.v2';
+  'policy.compatibility_removal_completion_audit_artifact.v3';
 
 const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS =
   Object.freeze({
@@ -18,6 +22,8 @@ const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS =
     AUDIT_BLOCKED: 'audit_blocked',
     AUDIT_VALIDATION_FAILED: 'audit_validation_failed',
     SIDE_EFFECT_REPORTED: 'side_effect_reported',
+    ARTIFACT_FINGERPRINT_INVALID: 'artifact_fingerprint_invalid',
+    UNKNOWN_VERSION: 'unknown_version',
     COMPLETE_FLAG_MISMATCH: 'complete_flag_mismatch',
     RISK_COUNT_MISMATCH: 'risk_count_mismatch',
     UNKNOWN_STATUS: 'unknown_status',
@@ -162,6 +168,12 @@ async function buildPolicyCompatibilityRemovalCompletionAuditArtifact({
       audit.statusId ===
         POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.REMAINING_INVENTORY,
     nextBatchAuthorizationArtifact,
+    executionPlan: asObject(executionPlan),
+    auditInput: {
+      reviewArtifactFingerprint: evidence.reviewArtifactFingerprint || '',
+      finalImportScan: asObject(evidence.finalImportScan),
+      validationEvidence: asObject(evidence.validationEvidence),
+    },
     audit,
     auditSummary: {
       manifestTotalCount: audit.manifestInventory?.totalCount ?? 0,
@@ -196,10 +208,17 @@ async function buildPolicyCompatibilityRemovalCompletionAuditArtifact({
     },
   };
 
-  return {
+  const artifactWithFingerprint = {
     ...artifact,
-    validation:
-      validatePolicyCompatibilityRemovalCompletionAuditArtifact(artifact),
+    artifactFingerprint:
+      buildPolicyCompatibilityRemovalCompletionAuditArtifactFingerprint({ artifact }),
+  };
+
+  return {
+    ...artifactWithFingerprint,
+    validation: validatePolicyCompatibilityRemovalCompletionAuditArtifact(
+      artifactWithFingerprint
+    ),
   };
 }
 
@@ -207,6 +226,14 @@ function validatePolicyCompatibilityRemovalCompletionAuditArtifact(
   artifact = {}
 ) {
   const issues = [];
+
+  if (artifact.version !== POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS.UNKNOWN_VERSION,
+      'Compatibility removal completion audit artifact version must be recognized.',
+      { version: artifact.version || null }
+    ));
+  }
 
   if (!Object.values(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS)
     .includes(artifact.statusId)) {
@@ -234,6 +261,20 @@ function validatePolicyCompatibilityRemovalCompletionAuditArtifact(
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
         .COMPLETE_FLAG_MISMATCH,
       'Compatibility removal completion audit artifact complete flag must match complete status.'
+    ));
+  }
+
+  const fingerprintValidation =
+    validatePolicyCompatibilityRemovalCompletionAuditArtifactFingerprint({
+      artifact,
+      artifactFingerprint: artifact.artifactFingerprint,
+    });
+  if (!fingerprintValidation.ok) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+        .ARTIFACT_FINGERPRINT_INVALID,
+      'Compatibility removal completion audit artifact fingerprint must bind the artifact contents.',
+      { issueCount: fingerprintValidation.issueCount }
     ));
   }
 

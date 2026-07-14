@@ -133,7 +133,7 @@ function writeJsonFile(filePath, value) {
   fs.writeFileSync(resolvedPath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function main() {
+async function main() {
   let options;
 
   try {
@@ -169,7 +169,7 @@ function main() {
     process.exit(2);
   }
 
-  const audit = buildPolicyStorageCurrentClosureAudit({
+  const audit = await buildPolicyStorageCurrentClosureAudit({
     cwd: path.resolve(process.cwd(), options.cwd),
     completionAuditArtifact,
     validationEvidence,
@@ -208,4 +208,7 @@ function main() {
   process.exit(audit.statusId === 'complete' ? 0 : 1);
 }
 
-main();
+main().catch(err => {
+  console.error(`Could not run policy storage current closure audit: ${err.message}`);
+  process.exit(2);
+});

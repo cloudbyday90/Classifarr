@@ -14,8 +14,8 @@ import {
   POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS,
 } from '../../services/policyStorageClosureEvidenceRun.mjs';
 import {
-  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-} from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
+  buildCompletionAuditArtifactFixture,
+} from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
 
 const ALL_MAPPED_PATHS = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
   .flatMap(component => [
@@ -43,18 +43,6 @@ function completeChangelogContent() {
 
 - **Native Policy Intent Storage** — added durable policy storage.
 `;
-}
-
-function completeFinalRemovalAudit() {
-  return {
-    statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
-    complete: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
-  };
 }
 
 function completeValidationEvidence() {
@@ -208,8 +196,8 @@ describe('policyStorageClosureCurrentEvidenceCollector', () => {
     );
   });
 
-  test('builds a complete current evidence run from supplied repository evidence', () => {
-    const result = buildPolicyStorageClosureCurrentEvidenceRun({
+  test('builds a complete current evidence run from supplied repository evidence', async () => {
+    const result = await buildPolicyStorageClosureCurrentEvidenceRun({
       cwd: '/repo',
       fileExists: () => true,
       readTextFile: filePath => (
@@ -217,7 +205,7 @@ describe('policyStorageClosureCurrentEvidenceCollector', () => {
           ? completeChangelogContent()
           : completeRoadmapContent()
       ),
-      finalRemovalAudit: completeFinalRemovalAudit(),
+      completionAuditArtifact: await buildCompletionAuditArtifactFixture(),
       validationEvidence: completeValidationEvidence(),
     });
 
@@ -227,8 +215,8 @@ describe('policyStorageClosureCurrentEvidenceCollector', () => {
     expect(result.artifactInventory.missingPathCount).toBe(0);
   });
 
-  test('blocks current evidence run when validation evidence is absent', () => {
-    const result = buildPolicyStorageClosureCurrentEvidenceRun({
+  test('blocks current evidence run when validation evidence is absent', async () => {
+    const result = await buildPolicyStorageClosureCurrentEvidenceRun({
       cwd: '/repo',
       fileExists: () => true,
       readTextFile: filePath => (
@@ -236,7 +224,7 @@ describe('policyStorageClosureCurrentEvidenceCollector', () => {
           ? completeChangelogContent()
           : completeRoadmapContent()
       ),
-      finalRemovalAudit: completeFinalRemovalAudit(),
+      completionAuditArtifact: await buildCompletionAuditArtifactFixture(),
     });
 
     expect(result.evidenceRun.statusId)

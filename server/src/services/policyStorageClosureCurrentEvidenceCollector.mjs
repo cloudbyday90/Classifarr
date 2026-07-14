@@ -265,12 +265,12 @@ function readOptionalTextFile({
   }
 }
 
-function buildPolicyStorageClosureCurrentEvidenceRun({
+async function buildPolicyStorageClosureCurrentEvidenceRun({
   cwd = process.cwd(),
   componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
   roadmapPath = DEFAULT_POLICY_STORAGE_CLOSURE_ROADMAP_PATH,
   changelogPath = DEFAULT_CHANGELOG_PATH,
-  finalRemovalAudit = {},
+  completionAuditArtifact = {},
   validationEvidence = {},
   sideEffects = {},
   fileExists = defaultFileExists,
@@ -299,11 +299,11 @@ function buildPolicyStorageClosureCurrentEvidenceRun({
     changelogContent,
     componentArtifactMap,
   });
-  const evidenceRun = buildPolicyStorageClosureEvidenceRun({
+  const evidenceRun = await buildPolicyStorageClosureEvidenceRun({
     artifactInventory: artifactInventoryResult.artifactInventory,
     componentArtifactMap,
     roadmapEvidence,
-    finalRemovalAudit,
+    completionAuditArtifact,
     validationEvidence,
     changelogEvidence,
     sideEffects,

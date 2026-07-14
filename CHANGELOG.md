@@ -88,6 +88,12 @@ unchanged operator or runtime outcome.
   verification summaries. Altered, cross-review, cross-manifest, or
   checkout-divergent evidence is blocked before completion can be reported,
   while valid remaining inventory continues through the bounded removal loop.
+- **Replay-Verified Storage Closure Evidence** - policy storage closure now
+  accepts a completion-audit artifact only when its SHA-256 fingerprint,
+  retained authorization and manifest inputs, and deterministic audit replay
+  agree. Checkpoint and current-state closure paths no longer unwrap a detached
+  completion audit, preventing altered or stale audit summaries from closing
+  the storage migration.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

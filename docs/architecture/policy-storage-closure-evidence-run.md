@@ -4,7 +4,8 @@
 
 Policy storage closure needs a durable evidence runner that proves the current
 repository still satisfies the storage-closure checkpoint. The runner consumes
-bounded repository evidence, final compatibility-removal audit evidence,
+bounded repository evidence, a fingerprint-valid compatibility-removal
+completion-audit artifact,
 validation evidence, roadmap coverage, and changelog coverage, then delegates
 the completion decision to the policy storage completion checkpoint.
 
@@ -140,7 +141,7 @@ Implemented:
   line parser. It accepts only known sequence and implementation-status entry
   shapes, matches complete labels case-insensitively, and rejects longer label
   prefixes instead of interpreting label text as executable pattern syntax.
-- Preserved artifact inventory, roadmap, changelog, final-removal audit,
+- Preserved artifact inventory, roadmap, changelog, completion-audit artifact,
   validation evidence, checkpoint composition, side-effect rejection, and
   complete/blocked status behavior.
 
@@ -148,7 +149,7 @@ Example:
 
 ```bash
 node scripts/run-policy-storage-closure-evidence.mjs \
-  --final-removal-audit .tmp/policy-storage/final-removal-audit.json \
+  --completion-audit-artifact .tmp/policy-storage/completion-audit-artifact.json \
   --validation-evidence .tmp/policy-storage/validation-evidence.json \
   --require-complete
 ```

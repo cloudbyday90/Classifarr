@@ -67,7 +67,8 @@ Cons:
 ### Require Completion-Audit Artifact Evidence
 
 The exporter should consume the compatibility-removal completion-audit wrapper
-artifact and pass its nested audit into the storage checkpoint.
+artifact directly. The storage checkpoint validates its fingerprint and replays
+the retained evidence before evaluating the nested audit.
 
 Pros:
 
@@ -103,7 +104,8 @@ Use this stack for the policy storage completion checkpoint artifact:
 
 1. Require explicit storage component evidence.
 2. Require explicit storage roadmap evidence.
-3. Require a complete and valid compatibility-removal completion-audit artifact.
+3. Require a current, fingerprint-valid, replay-verified
+   compatibility-removal completion-audit artifact.
 4. Require focused, lint, markdown, and full validation evidence.
 5. Require changelog evidence.
 6. Reuse the policy storage completion checkpoint contract.
@@ -126,6 +128,8 @@ Implemented:
   durable policy storage names.
 - Replaced production `nextPhase.phaseId` output with semantic
   `nextStep.stepId = policy_storage_final_closure_readout`.
+- Upgraded the exporter to await checkpoint verification so it never passes a
+  detached nested completion audit into the storage checkpoint.
 - Added focused tests for:
   - complete checkpoint artifact generation,
   - missing completion-audit artifact evidence,

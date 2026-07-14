@@ -183,22 +183,29 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     designDocPaths: [
       'docs/architecture/policy-compatibility-removal-completion-audit-artifact-exporter.md',
       'docs/architecture/policy-compatibility-removal-completion-audit-artifact-integrity.md',
+      'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity.md',
     ],
     contractPaths: [
       'server/src/services/policyCompatibilityRemovalCompletionAuditArtifact.mjs',
+      'server/src/services/policyCompatibilityRemovalCompletionAuditArtifactFingerprint.mjs',
+      'server/src/services/policyCompatibilityRemovalCompletionAuditArtifactIntegrity.mjs',
       'server/src/services/policyCompatibilityRemovalCompletionAudit.mjs',
       'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.mjs',
       'scripts/generate-policy-compatibility-removal-completion-audit.mjs',
     ],
     testPaths: [
       'server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifact.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifactIntegrity.test.mjs',
       'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.test.mjs',
     ],
   },
   {
     componentId: 'storage_completion_checkpoint_artifact_exporter',
     label: 'Completion Checkpoint Artifact Exporter',
-    designDocPaths: ['docs/architecture/policy-storage-completion-checkpoint-artifact-exporter.md'],
+    designDocPaths: [
+      'docs/architecture/policy-storage-completion-checkpoint-artifact-exporter.md',
+      'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity.md',
+    ],
     contractPaths: [
       'server/src/services/policyStorageCompletionCheckpointArtifact.mjs',
       'scripts/generate-policy-storage-completion-checkpoint.mjs',

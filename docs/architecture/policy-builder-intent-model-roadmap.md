@@ -6107,6 +6107,11 @@ Tasks:
   expected phase ID.
 - Require a complete and valid Phase 8R.21 compatibility removal completion
   audit.
+- **Task 8R.22.1: Completion Checkpoint Artifact Integrity.** Require the
+  completion audit to arrive as a current fingerprint-valid artifact that
+  retains its authorization artifact, execution plan, and audit inputs. Replay
+  the audit before the checkpoint reads its completion status; do not accept a
+  detached nested audit object.
 - Require focused, lint, markdown, and full validation evidence to pass.
 - Require changelog coverage for every expected component.
 - Reject file-write, storage, command-execution, and Git side effects inside
@@ -6119,7 +6124,8 @@ Acceptance criteria:
 - Storage checkpoint completion is blocked when the roadmap sequence or implementation
   status omits an expected phase ID.
 - Storage checkpoint completion is blocked unless compatibility-removal
-  completion audit evidence is complete and valid.
+  completion-audit artifact evidence is complete, fingerprint-valid, and
+  replay-valid.
 - Storage checkpoint completion is blocked when focused, lint, markdown, or full
   validation evidence is missing or failed.
 - Storage checkpoint completion is blocked when changelog coverage is missing for any
@@ -6138,10 +6144,14 @@ Implementation status:
 - The focused checkpoint test suite lives in
   `server/src/__tests__/services/policyStorageCompletionCheckpoint.test.mjs`.
 - Current implementation consumes component evidence, roadmap evidence,
-  compatibility-removal completion-audit evidence, validation evidence, and
-  changelog evidence; blocks incomplete coverage; and emits semantic
+  compatibility-removal completion-audit artifact evidence, validation evidence,
+  and changelog evidence; blocks incomplete coverage; and emits semantic
   `nextStep` evidence for policy storage final closure readout only when all
   evidence passes.
+- Task 8R.22.1 is implemented. The checkpoint no longer accepts a detached
+  completion-audit object. It verifies the current completion-audit artifact
+  fingerprint, requires retained replay inputs, and recreates the audit before
+  it evaluates completion.
 
 ### 8R.23 Policy Storage Closure Evidence Run
 
@@ -6186,8 +6196,8 @@ Acceptance criteria:
 - The evidence run does not scan files, run commands, mutate storage, write
   docs/changelog, delete code, or run Git itself.
 - The current-state script reports mapped artifact, roadmap, and changelog
-  coverage while requiring caller-supplied final-removal-audit and validation
-  evidence before closure can pass.
+  coverage while requiring a caller-supplied fingerprint-valid
+  completion-audit artifact and validation evidence before closure can pass.
 
 Implementation status:
 
@@ -6616,7 +6626,9 @@ Implementation status:
   `server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifact.test.mjs`.
 - Current implementation emits complete, remaining-inventory, or blocked audit
   artifacts with semantic `nextStep` output and without performing removal,
-  scan, manifest, storage, or Git side effects.
+  scan, manifest, storage, or Git side effects. The artifact now retains the
+  execution plan and audit inputs, binds them with a SHA-256 fingerprint, and
+  supports deterministic replay by the storage completion checkpoint.
 
 ### 8R.32 Completion Checkpoint Artifact Exporter
 

@@ -10,8 +10,8 @@ The durable production names are:
 
 - `policyStorageCompletionCheckpoint.mjs`
 - `policyStorageCompletionCheckpointArtifact.mjs`
-- `policy.storage_completion_checkpoint.v1`
-- `policy.storage_completion_checkpoint_artifact.v1`
+- `policy.storage_completion_checkpoint.v2`
+- `policy.storage_completion_checkpoint_artifact.v2`
 - `npm run policy:storage-completion-checkpoint`
 
 ## Official-Source Research
@@ -91,8 +91,10 @@ Implemented:
   documentation references.
 - Replaced production `nextPhase.phaseId` handoffs with semantic `nextStep`
   payloads.
+- Bound the checkpoint to the full completion-audit artifact and made the
+  checkpoint, exporter, and closure consumers asynchronous so artifact
+  fingerprint and replay verification complete before closure status is read.
 
 Next:
 
-- Cut over final closure readout modules, docs, and runners to durable
-  policy-domain names.
+- Add integrity verification to the current-state closure evidence artifact.

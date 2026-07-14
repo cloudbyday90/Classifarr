@@ -11,7 +11,8 @@ The checkpoint requires evidence for:
 
 - every expected storage migration component,
 - roadmap sequence and implementation-status coverage,
-- compatibility-removal completion audit evidence,
+- a fingerprint-valid, replay-verified compatibility-removal completion-audit
+  artifact,
 - focused, lint, markdown, and full validation,
 - changelog coverage for every expected component.
 
@@ -119,7 +120,8 @@ Use this stack for the policy storage completion checkpoint:
    evidence for every component.
 3. Require roadmap sequence and implementation-status evidence for every
    expected component.
-4. Require a complete and valid compatibility-removal completion audit.
+4. Require a current fingerprint-valid completion-audit artifact that retains
+   and replays its authorization, manifest, and audit input evidence.
 5. Require focused, lint, markdown, and full validation evidence to pass.
 6. Reject file-write, storage, Git-command, or command-execution side effects
    inside the checkpoint.
@@ -148,6 +150,10 @@ Implemented:
 - Replaced production `nextPhase.phaseId` output with semantic
   `nextStep.stepId = policy_storage_final_closure_readout`.
 - Renamed focused tests to `policyStorageCompletionCheckpoint.test.mjs`.
+- Upgraded the checkpoint to consume the completion-audit artifact directly
+  rather than a detached nested audit object. The checkpoint verifies the
+  artifact fingerprint and deterministic audit replay before evaluating its
+  completion status.
 
 Not implemented in this component:
 
@@ -161,6 +167,5 @@ Not implemented in this component:
 ## Next Step
 
 Run the policy storage completion checkpoint through the artifact exporter. If
-the artifact proves complete, proceed to **Policy Storage Current Closure Audit
-module naming cutover**; if not, continue with the exact blocker category the
-checkpoint reports.
+the artifact proves complete, proceed to the current-state closure evidence
+run; if not, continue with the exact blocker category the checkpoint reports.

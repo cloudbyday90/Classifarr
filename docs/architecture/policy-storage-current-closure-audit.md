@@ -109,7 +109,8 @@ Use this stack for the policy storage current closure audit:
 3. Read the current Unreleased storage outcome note. It confirms the release
    result, while mapped docs, contracts, and focused tests remain the
    component-level evidence.
-4. Require a complete and valid compatibility-removal completion-audit artifact.
+4. Require a complete, fingerprint-valid, replay-verified
+   compatibility-removal completion-audit artifact.
 5. Require focused, lint, markdown, and full validation evidence to pass.
 6. Build the current evidence run.
 7. Build the policy storage completion-checkpoint artifact from current
@@ -137,6 +138,9 @@ Implemented:
   - audit validation invariants.
 - Added the policy storage current closure audit suite and this design doc to
   the fixed validation evidence command set.
+- The audit now passes the full completion-audit artifact through the current
+  evidence run and checkpoint artifact. It never unwraps a detached nested
+  audit object.
 
 Example:
 

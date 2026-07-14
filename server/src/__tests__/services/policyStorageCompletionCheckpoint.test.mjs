@@ -6,8 +6,9 @@ import {
   validatePolicyStorageCompletionCheckpoint,
 } from '../../services/policyStorageCompletionCheckpoint.mjs';
 import {
-  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-} from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
+  MANIFEST_PATHS,
+  buildCompletionAuditArtifactFixture,
+} from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
 
 const COMPONENT_IDS =
   POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => component.componentId);
@@ -29,19 +30,6 @@ function roadmapEvidence(overrides = {}) {
   return {
     componentSequenceIds: COMPONENT_IDS,
     implementationStatusComponentIds: COMPONENT_IDS,
-    ...overrides,
-  };
-}
-
-function finalRemovalAudit(overrides = {}) {
-  return {
-    statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
-    complete: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
     ...overrides,
   };
 }
@@ -76,11 +64,14 @@ function changelogEvidence(overrides = {}) {
   };
 }
 
-function completeCheckpoint(overrides = {}) {
+async function completeCheckpoint(overrides = {}) {
+  const completionAuditArtifact =
+    overrides.completionAuditArtifact || await buildCompletionAuditArtifactFixture();
+
   return buildPolicyStorageCompletionCheckpoint({
     componentEvidence: componentEvidence(),
     roadmapEvidence: roadmapEvidence(),
-    finalRemovalAudit: finalRemovalAudit(),
+    completionAuditArtifact,
     validationEvidence: validationEvidence(),
     changelogEvidence: changelogEvidence(),
     ...overrides,
@@ -98,8 +89,8 @@ describe('policyStorageCompletionCheckpoint', () => {
     ]));
   });
 
-  test('completes when component, roadmap, removal, validation, and changelog evidence pass', () => {
-    const checkpoint = completeCheckpoint();
+  test('completes when component, roadmap, removal, validation, and changelog evidence pass', async () => {
+    const checkpoint = await completeCheckpoint();
 
     expect(checkpoint.statusId).toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE);
     expect(checkpoint.complete).toBe(true);
@@ -138,12 +129,12 @@ describe('policyStorageCompletionCheckpoint', () => {
     }));
   });
 
-  test('blocks when component implementation evidence is missing or incomplete', () => {
-    const missing = completeCheckpoint({
+  test('blocks when component implementation evidence is missing or incomplete', async () => {
+    const missing = await completeCheckpoint({
       componentEvidence: componentEvidence()
         .filter(component => component.componentId !== 'compatibility_removal_completion_audit'),
     });
-    const incomplete = completeCheckpoint({
+    const incomplete = await completeCheckpoint({
       componentEvidence: componentEvidence({
         native_backup_restore_wiring: {
           implemented: false,
@@ -169,8 +160,8 @@ describe('policyStorageCompletionCheckpoint', () => {
     ]));
   });
 
-  test('blocks when roadmap sequence or implementation status evidence is incomplete', () => {
-    const checkpoint = completeCheckpoint({
+  test('blocks when roadmap sequence or implementation status evidence is incomplete', async () => {
+    const checkpoint = await completeCheckpoint({
       roadmapEvidence: roadmapEvidence({
         componentSequenceIds:
           COMPONENT_IDS.filter(componentId => (
@@ -199,8 +190,8 @@ describe('policyStorageCompletionCheckpoint', () => {
     ]));
   });
 
-  test('blocks legacy roadmap evidence keys instead of treating them as durable fields', () => {
-    const checkpoint = completeCheckpoint({
+  test('blocks legacy roadmap evidence keys instead of treating them as durable fields', async () => {
+    const checkpoint = await completeCheckpoint({
       roadmapEvidence: {
         sequencePhaseIds: COMPONENT_IDS,
         implementationStatusPhaseIds: COMPONENT_IDS,
@@ -215,33 +206,39 @@ describe('policyStorageCompletionCheckpoint', () => {
       .toEqual(COMPONENT_IDS);
   });
 
-  test('blocks when compatibility-removal completion audit is not complete or invalid', () => {
-    const checkpoint = completeCheckpoint({
-      finalRemovalAudit: finalRemovalAudit({
-        statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-          .BLOCKED_BY_FINAL_SCAN,
-        complete: false,
-        validation: {
-          ok: false,
-          issueCount: 1,
-          issues: [],
-        },
-      }),
+  test('blocks a remaining-inventory or altered completion-audit artifact', async () => {
+    const remainingArtifact = await buildCompletionAuditArtifactFixture({
+      appliedPaths: [MANIFEST_PATHS[0]],
     });
+    const alteredArtifact = structuredClone(await buildCompletionAuditArtifactFixture());
+    alteredArtifact.auditSummary.manifestRemovedCount = 0;
+    const checkpoint = await completeCheckpoint({
+      completionAuditArtifact: remainingArtifact,
+    });
+    const altered = await completeCheckpoint({ completionAuditArtifact: alteredArtifact });
 
     expect(checkpoint.statusId)
       .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_FINAL_REMOVAL_AUDIT);
     expect(checkpoint.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
       POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FINAL_REMOVAL_AUDIT_NOT_COMPLETE,
-      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FINAL_REMOVAL_AUDIT_VALIDATION_FAILED,
     ]));
+    expect(altered.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS
+            .FINAL_REMOVAL_AUDIT_ARTIFACT_INTEGRITY_FAILED,
+      }),
+    ]));
+    expect(altered.risks.map(risk => risk.riskId)).not.toContain(
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FINAL_REMOVAL_AUDIT_NOT_COMPLETE
+    );
   });
 
-  test('blocks when focused, lint, markdown, or full validation evidence is missing or failed', () => {
-    const missing = completeCheckpoint({
+  test('blocks when focused, lint, markdown, or full validation evidence is missing or failed', async () => {
+    const missing = await completeCheckpoint({
       validationEvidence: {},
     });
-    const failed = completeCheckpoint({
+    const failed = await completeCheckpoint({
       validationEvidence: validationEvidence({
         focused: {
           command: 'focused',
@@ -284,8 +281,8 @@ describe('policyStorageCompletionCheckpoint', () => {
     ]));
   });
 
-  test('blocks when changelog coverage is missing for expected components', () => {
-    const checkpoint = completeCheckpoint({
+  test('blocks when changelog coverage is missing for expected components', async () => {
+    const checkpoint = await completeCheckpoint({
       changelogEvidence: changelogEvidence({
         updated: true,
         componentIds: COMPONENT_IDS.filter(componentId => (

@@ -1,9 +1,12 @@
 import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
 } from './policyCompatibilityRemovalCompletionAudit.mjs';
+import {
+  validatePolicyCompatibilityRemovalCompletionAuditArtifactIntegrity,
+} from './policyCompatibilityRemovalCompletionAuditArtifactIntegrity.mjs';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_VERSION =
-  'policy.storage_completion_checkpoint.v1';
+  'policy.storage_completion_checkpoint.v2';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -22,6 +25,8 @@ const POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS = Object.freeze({
   COMPONENT_MISSING_TEST_EVIDENCE: 'component_missing_test_evidence',
   ROADMAP_SEQUENCE_INCOMPLETE: 'roadmap_sequence_incomplete',
   ROADMAP_IMPLEMENTATION_STATUS_INCOMPLETE: 'roadmap_implementation_status_incomplete',
+  FINAL_REMOVAL_AUDIT_ARTIFACT_INTEGRITY_FAILED:
+    'final_removal_audit_artifact_integrity_failed',
   FINAL_REMOVAL_AUDIT_NOT_COMPLETE: 'final_removal_audit_not_complete',
   FINAL_REMOVAL_AUDIT_VALIDATION_FAILED: 'final_removal_audit_validation_failed',
   FOCUSED_VALIDATION_MISSING: 'focused_validation_missing',
@@ -305,13 +310,31 @@ function evaluateRoadmapEvidence({
   };
 }
 
-function evaluateFinalRemovalAudit(finalRemovalAudit = {}) {
+async function evaluateFinalRemovalAudit(completionAuditArtifact = {}) {
   const risks = [];
+  const integrity =
+    await validatePolicyCompatibilityRemovalCompletionAuditArtifactIntegrity({
+      completionAuditArtifact,
+    });
+  const finalRemovalAudit = integrity.audit;
+
+  if (!integrity.ok) {
+    risks.push(buildRisk(
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS
+        .FINAL_REMOVAL_AUDIT_ARTIFACT_INTEGRITY_FAILED,
+      'Policy storage completion checkpoint requires a fingerprint-valid replayable compatibility-removal completion-audit artifact.',
+      {
+        issueCount: integrity.issueCount,
+        issueRiskIds: integrity.issues.map(issue => issue.riskId),
+      }
+    ));
+  }
 
   if (
-    finalRemovalAudit.statusId !==
+    integrity.ok &&
+    (finalRemovalAudit.statusId !==
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE ||
-    finalRemovalAudit.complete !== true
+      finalRemovalAudit.complete !== true)
   ) {
     risks.push(buildRisk(
       POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FINAL_REMOVAL_AUDIT_NOT_COMPLETE,
@@ -320,7 +343,7 @@ function evaluateFinalRemovalAudit(finalRemovalAudit = {}) {
     ));
   }
 
-  if (finalRemovalAudit.validation?.ok !== true) {
+  if (integrity.ok && finalRemovalAudit.validation?.ok !== true) {
     risks.push(buildRisk(
       POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FINAL_REMOVAL_AUDIT_VALIDATION_FAILED,
       'Policy storage completion checkpoint requires valid compatibility-removal completion-audit evidence.',
@@ -332,6 +355,9 @@ function evaluateFinalRemovalAudit(finalRemovalAudit = {}) {
     statusId: finalRemovalAudit.statusId || null,
     complete: finalRemovalAudit.complete === true,
     validationOk: finalRemovalAudit.validation?.ok === true,
+    integrityOk: integrity.ok,
+    artifactFingerprint: integrity.artifactFingerprint,
+    integrityIssueCount: integrity.issueCount,
     risks,
   };
 }
@@ -432,6 +458,8 @@ function determineStatusId(risks = []) {
   }
 
   if (risks.some(risk => [
+    POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS
+      .FINAL_REMOVAL_AUDIT_ARTIFACT_INTEGRITY_FAILED,
     POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FINAL_REMOVAL_AUDIT_NOT_COMPLETE,
     POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FINAL_REMOVAL_AUDIT_VALIDATION_FAILED,
   ].includes(risk.riskId))) {
@@ -460,11 +488,11 @@ function determineStatusId(risks = []) {
   return POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE;
 }
 
-function buildPolicyStorageCompletionCheckpoint({
+async function buildPolicyStorageCompletionCheckpoint({
   expectedComponents = POLICY_STORAGE_COMPLETION_COMPONENTS,
   componentEvidence = [],
   roadmapEvidence = {},
-  finalRemovalAudit = {},
+  completionAuditArtifact = {},
   validationEvidence = {},
   changelogEvidence = {},
   sideEffects = {},
@@ -477,7 +505,7 @@ function buildPolicyStorageCompletionCheckpoint({
     roadmapEvidence,
     expectedComponents,
   });
-  const finalRemoval = evaluateFinalRemovalAudit(finalRemovalAudit);
+  const finalRemoval = await evaluateFinalRemovalAudit(completionAuditArtifact);
   const changelog = evaluateChangelogEvidence({
     componentCoverage,
     changelogEvidence,

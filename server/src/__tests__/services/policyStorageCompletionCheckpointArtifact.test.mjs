@@ -6,14 +6,15 @@ import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
 } from '../../services/policyCompatibilityRemovalCompletionAuditArtifact.mjs';
 import {
-  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
-} from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
-import {
   POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS,
   POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
   buildPolicyStorageCompletionCheckpointArtifact,
   validatePolicyStorageCompletionCheckpointArtifact,
 } from '../../services/policyStorageCompletionCheckpointArtifact.mjs';
+import {
+  MANIFEST_PATHS,
+  buildCompletionAuditArtifactFixture,
+} from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
 
 const COMPONENT_IDS =
   POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => component.componentId);
@@ -35,31 +36,6 @@ function roadmapEvidence(overrides = {}) {
   return {
     componentSequenceIds: COMPONENT_IDS,
     implementationStatusComponentIds: COMPONENT_IDS,
-    ...overrides,
-  };
-}
-
-function completionAuditArtifact(overrides = {}) {
-  return {
-    version: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
-    statusId: 'complete',
-    complete: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
-    riskCount: 0,
-    risks: [],
-    audit: {
-      statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
-      complete: true,
-      validation: {
-        ok: true,
-        issueCount: 0,
-        issues: [],
-      },
-    },
     ...overrides,
   };
 }
@@ -94,11 +70,14 @@ function changelogEvidence(overrides = {}) {
   };
 }
 
-function completeArtifact(overrides = {}) {
+async function completeArtifact(overrides = {}) {
+  const completionAuditArtifact =
+    overrides.completionAuditArtifact || await buildCompletionAuditArtifactFixture();
+
   return buildPolicyStorageCompletionCheckpointArtifact({
     componentEvidence: componentEvidence(),
     roadmapEvidence: roadmapEvidence(),
-    completionAuditArtifact: completionAuditArtifact(),
+    completionAuditArtifact,
     validationEvidence: validationEvidence(),
     changelogEvidence: changelogEvidence(),
     generatedAt: '2026-06-25T12:00:00.000Z',
@@ -107,8 +86,8 @@ function completeArtifact(overrides = {}) {
 }
 
 describe('policyStorageCompletionCheckpointArtifact', () => {
-  test('wraps a complete policy storage completion checkpoint artifact', () => {
-    const artifact = completeArtifact();
+  test('wraps a complete policy storage completion checkpoint artifact', async () => {
+    const artifact = await completeArtifact();
 
     expect(artifact.statusId)
       .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE);
@@ -120,8 +99,7 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
       componentExpectedCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
       componentImplementedCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
       checkpointRiskCount: 0,
-      finalRemovalAuditStatusId:
-        POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
+      finalRemovalAuditStatusId: 'complete',
       validationPassedCount: 4,
     }));
     expect(artifact.completionAuditArtifact).toEqual(expect.objectContaining({
@@ -138,8 +116,8 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
     }));
   });
 
-  test('blocks when the compatibility-removal completion-audit artifact is missing', () => {
-    const artifact = completeArtifact({
+  test('blocks when the compatibility-removal completion-audit artifact is missing', async () => {
+    const artifact = await completeArtifact({
       completionAuditArtifact: {},
     });
 
@@ -154,22 +132,10 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
     ]));
   });
 
-  test('blocks when the compatibility-removal completion-audit artifact is not complete', () => {
-    const artifact = completeArtifact({
-      completionAuditArtifact: completionAuditArtifact({
-        statusId: 'remaining_inventory',
-        complete: false,
-        audit: {
-          statusId:
-            POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
-              .REMAINING_INVENTORY,
-          complete: false,
-          validation: {
-            ok: true,
-            issueCount: 0,
-            issues: [],
-          },
-        },
+  test('blocks when the compatibility-removal completion-audit artifact is not complete', async () => {
+    const artifact = await completeArtifact({
+      completionAuditArtifact: await buildCompletionAuditArtifactFixture({
+        appliedPaths: [MANIFEST_PATHS[0]],
       }),
     });
 
@@ -182,11 +148,14 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
     ]));
   });
 
-  test('blocks a predecessor completion-audit artifact wrapper', () => {
-    const artifact = completeArtifact({
-      completionAuditArtifact: completionAuditArtifact({
-        version: 'phase8r.compatibility_removal_completion_audit_artifact.v1',
-      }),
+  test('blocks a predecessor completion-audit artifact wrapper', async () => {
+    const completionAuditArtifact = structuredClone(
+      await buildCompletionAuditArtifactFixture()
+    );
+    completionAuditArtifact.version =
+      'phase8r.compatibility_removal_completion_audit_artifact.v1';
+    const artifact = await completeArtifact({
+      completionAuditArtifact,
     });
 
     expect(artifact.statusId)
@@ -202,8 +171,8 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
     ]));
   });
 
-  test('blocks when checkpoint evidence is incomplete', () => {
-    const artifact = completeArtifact({
+  test('blocks when checkpoint evidence is incomplete', async () => {
+    const artifact = await completeArtifact({
       roadmapEvidence: roadmapEvidence({
         componentSequenceIds: COMPONENT_IDS.filter(componentId => (
           componentId !== 'next_compatibility_removal_batch_authorization'
@@ -223,8 +192,8 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
     ]));
   });
 
-  test('rejects side effects in artifact output', () => {
-    const artifact = completeArtifact({
+  test('rejects side effects in artifact output', async () => {
+    const artifact = await completeArtifact({
       sideEffects: {
         filesWritten: true,
         storageChanged: true,

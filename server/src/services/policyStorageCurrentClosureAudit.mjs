@@ -287,7 +287,7 @@ function determineStatusId({
     .BLOCKED_BY_CHECKPOINT_ARTIFACT;
 }
 
-function buildPolicyStorageCurrentClosureAudit({
+async function buildPolicyStorageCurrentClosureAudit({
   cwd = process.cwd(),
   completionAuditArtifact = {},
   validationEvidence = {},
@@ -296,16 +296,15 @@ function buildPolicyStorageCurrentClosureAudit({
   fileExists,
   readTextFile,
 } = {}) {
-  const finalRemovalAudit = asObject(completionAuditArtifact).audit || {};
-  const currentEvidence = buildPolicyStorageClosureCurrentEvidenceRun({
+  const currentEvidence = await buildPolicyStorageClosureCurrentEvidenceRun({
     cwd,
-    finalRemovalAudit,
+    completionAuditArtifact,
     validationEvidence,
     sideEffects,
     fileExists,
     readTextFile,
   });
-  const checkpointArtifact = buildPolicyStorageCompletionCheckpointArtifact({
+  const checkpointArtifact = await buildPolicyStorageCompletionCheckpointArtifact({
     componentEvidence: currentEvidence.evidenceRun.componentEvidence,
     roadmapEvidence: currentEvidence.roadmapEvidence,
     completionAuditArtifact,
