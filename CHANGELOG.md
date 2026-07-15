@@ -60,6 +60,11 @@ unchanged operator or runtime outcome.
   replay. Altered, forged, historical, or unreplayable artifacts fail closed;
   public final-readout export writes blocked diagnostics only when explicitly
   requested.
+- **Public Current-Closure Audit Assurance** - the storage current-closure
+  command is now verified against an isolated mapped checkout and coherent
+  completion and validation artifacts. It emits matching audit, checkpoint, and
+  final-readout evidence; altered inputs fail closed before output, while
+  blocked diagnostics remain explicit.
 
 - **Single Active Native Intent Authority** - repaired and now enforces the
   database invariant that each policy has at most one active native intent.

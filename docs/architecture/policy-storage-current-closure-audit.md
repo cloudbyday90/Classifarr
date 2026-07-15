@@ -35,6 +35,10 @@ write manifests, mutate storage, or infer missing removal evidence.
 - OWASP Logging Cheat Sheet recommends consistent, attributable, bounded event
   records. The audit emits structured status, risk, validation, and next-step
   fields rather than raw logs or ambiguous prose.
+- OWASP Input Validation Cheat Sheet recommends server-side syntactic and
+  semantic validation with allow-listed values. The public command accepts only
+  explicit artifact paths and refuses altered validation evidence before it
+  writes a completion claim.
 - Git `mv` documents move handling as an explicit index operation. The module
   cutover keeps durable file names and references synchronized instead of
   leaving stale compatibility wrappers.
@@ -47,6 +51,8 @@ Sources:
   <https://csrc.nist.gov/pubs/sp/800/128/upd1/final>
 - OWASP Logging Cheat Sheet:
   <https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html>
+- OWASP Input Validation Cheat Sheet:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html>
 - Git `mv` documentation:
   <https://git-scm.com/docs/git-mv>
 
@@ -118,6 +124,25 @@ Cons:
 - current-closure artifacts retain more bounded evidence,
 - the requirement-audit boundary is asynchronous because it performs replay.
 
+### Public Artifact-Chain Verification
+
+The public current-closure command should be tested against an isolated
+checkout containing the complete mapped artifact range. The test must confirm
+that its audit, checkpoint, and final-readout outputs are one coherent chain,
+that altered validation evidence writes no output by default, and that missing
+checkout evidence writes diagnostics only through explicit blocked-output mode.
+
+Pros:
+
+- verifies the real command boundary rather than only in-process composition,
+- keeps output-write policy fail-closed for altered evidence,
+- detects contract-map drift when a closure artifact changes.
+
+Cons:
+
+- requires temporary filesystem fixtures,
+- repeats some service-level coverage at the public command boundary.
+
 ## Final Recommendation Stack
 
 Use this stack for the policy storage current closure audit:
@@ -141,6 +166,8 @@ Use this stack for the policy storage current closure audit:
 11. Emit complete only when all three layers complete.
 12. Reject file writes, storage mutation, command execution, Git commands, and
     manifest writes.
+13. Verify the public command against an isolated mapped checkout and require
+    one coherent audit, checkpoint, and final-readout artifact chain.
 
 ## Implementation Outcome
 
@@ -163,7 +190,7 @@ Implemented:
 - The audit now passes the full completion-audit artifact through the current
   evidence run and checkpoint artifact. It never unwraps a detached nested
   audit object.
-- Current closure audit v2 retains normalized replay inputs and emits a
+- Current closure audit v3 retains normalized replay inputs and emits a
   fingerprint that binds the full closure decision, including current evidence,
   completion evidence, validation evidence, status, risks, and side effects.
 - The downstream requirement audit validates that fingerprint and rebuilds the
@@ -171,6 +198,10 @@ Implemented:
   refingerprinted-but-inconsistent, or non-replayable artifacts block closure.
 - The detailed integrity contract and trust boundary are documented in
   [Policy Storage Current Closure Audit Artifact Integrity](policy-storage-current-closure-audit-artifact-integrity.md).
+- Added an isolated-checkout command test proving that complete mapped evidence
+  produces matching audit, checkpoint, and final-readout outputs; altered
+  validation evidence writes nothing by default; and missing checkout evidence
+  produces diagnostics only with explicit blocked-output allowance.
 
 Example:
 

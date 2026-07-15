@@ -6927,6 +6927,14 @@ Tasks:
 - Compose the policy storage final closure readout.
 - Reject file writes, manifest writes, storage mutation, command execution, and
   Git commands inside the service.
+- **8R.34.1 Public Current-Closure Audit Artifact-Chain Verification**
+  - Run the public current-closure command against an isolated checkout with
+    the complete mapped closure artifact range.
+  - Prove emitted current audit, checkpoint, and final readout form one
+    coherent artifact chain.
+  - Prove altered validation evidence writes no output by default and missing
+    checkout evidence emits diagnostics only through explicit blocked-output
+    allowance.
 
 Acceptance criteria:
 
@@ -6938,6 +6946,8 @@ Acceptance criteria:
 - Any side effect other than repository file reads prevents complete status.
 - Generated audit JSON can feed the final requirement-by-requirement Phase 8R
   completion audit.
+- Public command coverage proves the current audit, checkpoint, and final
+  readout outputs agree for a complete isolated checkout.
 
 Implementation status:
 
@@ -6953,13 +6963,16 @@ Implementation status:
   `npm run policy:storage-current-closure-audit`.
 - The focused policy storage current closure audit test suite lives in
   `server/src/__tests__/services/policyStorageCurrentClosureAudit.test.mjs`.
-- Task 8R.23.1 is implemented. Current closure audit v2 retains the normalized
-  evidence needed to reproduce the closure decision, emits a SHA-256
-  fingerprint, and blocks the final requirement audit unless artifact
-  verification and deterministic replay agree.
+- Current closure audit v3 retains the normalized evidence needed to reproduce
+  the closure decision, emits a SHA-256 fingerprint, and blocks the final
+  requirement audit unless artifact verification and deterministic replay
+  agree.
 - Current implementation reads mapped repository evidence and emits complete or
   blocked closure audits without writing files, mutating storage, running
   commands, or running Git.
+- Task 8R.34.1 is implemented. Its isolated-checkout CLI test is mapped as
+  closure evidence and part of the fixed validation command, verifying coherent
+  outputs and fail-closed altered or missing evidence handling.
 
 ### 8R.35 Policy Storage Closure Requirement Audit
 

@@ -109,7 +109,7 @@ Implemented:
 
 - `policyStorageCurrentClosureAuditFingerprint.mjs` produces and validates the
   SHA-256 projection and bounded provenance.
-- `policyStorageCurrentClosureAuditIntegrity.mjs` verifies a v2 artifact,
+- `policyStorageCurrentClosureAuditIntegrity.mjs` verifies a v3 artifact,
   reconstructs the pure closure chain from retained inputs, and rejects replay
   mismatches.
 - `policyStorageCurrentClosureAudit.mjs` now retains its closure inputs,

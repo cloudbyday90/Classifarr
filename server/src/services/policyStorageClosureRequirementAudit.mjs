@@ -299,6 +299,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: [
       'server/src/__tests__/services/policyStorageCurrentClosureAudit.test.mjs',
       'server/src/__tests__/services/policyStorageCurrentClosureAuditIntegrity.test.mjs',
+      'server/src/__tests__/scripts/runPolicyStorageCurrentClosureAudit.test.mjs',
     ],
   },
 ]);
