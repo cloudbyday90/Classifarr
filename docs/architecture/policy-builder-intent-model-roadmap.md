@@ -6332,13 +6332,21 @@ Tasks:
     authorization, artifact, integrity, completion-audit, and final-audit
     coverage. Design rationale is documented in
     [Next-Batch Authorization Path-State Binding](policy-next-compatibility-removal-batch-authorization-path-state-binding.md).
-- Build post-removal runtime verification evidence for paths that no longer
-  exist.
-- Scan source roots for exact manifest path references and feed that into the
-  final import/reference scan evidence.
-- Compose the existing policy compatibility removal completion audit.
-- Emit audit JSON without deleting files, mutating storage, running Git, or
-  changing checkpoint semantics.
+- **8R.25.4 Final-Removal Generator Artifact-Chain Verification**
+  - Completed: runs the public final-removal-audit JSON generator against a
+    temporary checkout with a ready plan artifact, replay-verified path-state
+    evidence, retained runtime verification through next-batch authorization,
+    review fingerprint, validation evidence, and the real current-source scan.
+  - Completed: proves the generator blocks a live product import and a
+    snapshot from another execution-plan artifact without deletion, storage,
+    Git, or source mutation.
+- Completed: post-removal runtime verification is retained in the
+  fingerprint-valid next-batch authorization artifact consumed by the final
+  audit.
+- Completed: the generator scans source roots for exact manifest-path
+  references and supplies the result as final import/reference scan evidence.
+- Completed: the generator composes the existing policy compatibility removal
+  completion audit and emits JSON without changing checkpoint semantics.
 
 Acceptance criteria:
 
@@ -6373,6 +6381,9 @@ Implementation status:
   the policy storage closure evidence run. It now requires the wrapper artifact
   and a replay-verified path-state artifact at the generator boundary;
   completion remains dependent on its real current checkout removal state.
+- Task 8R.25.4 adds process-level coverage of that public generator boundary,
+  including a complete artifact chain, a real scanner-derived reference block,
+  and a cross-artifact checkout-snapshot block.
 
 ### 8R.26 Policy Compatibility Deletion Execution Plan Artifact
 

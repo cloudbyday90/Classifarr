@@ -125,6 +125,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     ],
     testPaths: [
       'server/src/__tests__/services/policyStorageClosureFinalRemovalAudit.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyStorageClosureFinalRemovalAudit.test.mjs',
       'server/src/__tests__/services/policyStorageClosureExecutionPlanSource.test.mjs',
       'server/src/__tests__/services/policyStorageClosurePathStateCollector.test.mjs',
       'server/src/__tests__/services/policyStorageClosurePathStateEvidence.test.mjs',

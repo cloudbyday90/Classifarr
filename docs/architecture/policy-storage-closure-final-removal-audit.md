@@ -136,6 +136,31 @@ Cons:
 - requires coordinated updates across validation, requirement audit, roadmap,
   docs, and package scripts.
 
+### Verify The Public Generator As One Artifact Chain
+
+The generator should have an end-to-end contract test that invokes the public
+Node command against a temporary checkout. The test should pass the ready
+execution-plan artifact, replay-verified checkout snapshot, next-batch
+authorization artifact with retained runtime evidence, review fingerprint, and
+validation evidence through the same JSON file boundary used by operators.
+
+It should prove a complete path and fail closed when either a live product
+reference remains or the checkout snapshot belongs to another plan artifact.
+
+Pros:
+
+- proves the CLI composes the artifact chain, current-source scanner, and
+  completion audit instead of merely testing them independently,
+- exercises the external JSON boundary without any real repository, storage,
+  Git, or deletion side effect,
+- keeps an altered or cross-artifact input from quietly producing a complete
+  closure result.
+
+Cons:
+
+- process-level tests take longer than direct service tests,
+- fixture artifacts must remain current with the versioned contracts.
+
 ## Final Recommendation Stack
 
 Use this stack for final removal audit evidence:
@@ -157,7 +182,9 @@ Use this stack for final removal audit evidence:
    services only.
 7. Compose the existing policy compatibility removal completion audit.
 8. Emit the audit JSON without mutating source, storage, Git, or manifests.
-9. Expose the contract through durable storage-closure service, script, runner,
+9. Exercise the public generator against both complete and adversarial artifact
+   chains, including a live source reference and cross-artifact snapshot.
+10. Expose the contract through durable storage-closure service, script, runner,
    version, test, and documentation names.
 
 ## Implementation Outcome
@@ -191,6 +218,13 @@ Implemented:
 - Rejects raw nested plans, invalid or unready artifacts, bad fingerprints,
   incomplete approvals, and unsafe or duplicate manifest paths before it can
   inspect checkout paths or source references.
+- Added a process-level generator suite at
+  `server/src/__tests__/scripts/generatePolicyStorageClosureFinalRemovalAudit.test.mjs`.
+  It runs the public JSON command against a temporary checkout, proves a
+  complete replay-verified chain, and blocks both a live runtime import and a
+  path-state snapshot from another execution-plan artifact. The test confirms
+  the audit reports no deletion, storage, route, test, manifest, or Git side
+  effects.
 
 Example:
 
@@ -215,6 +249,7 @@ npm run --silent policy:storage-closure-evidence -- \
 
 ## Next Step
 
-Bind the verified path-state evidence fingerprint to the next-batch
-authorization artifact so later authorization decisions cannot silently use a
-different checkout snapshot.
+Keep the generated final-removal audit as an input to the current storage
+closure evidence run. Before a real compatibility-removal cutover, regenerate
+every artifact from the target checkout and require the public generator to
+complete with no remaining path or reference evidence.

@@ -26,6 +26,11 @@ unchanged operator or runtime outcome.
   consume a fingerprinted, replay-verified snapshot of approved manifest path
   state instead of reading the live checkout during completion evaluation.
   Missing, altered, incomplete, or cross-artifact snapshots block closure.
+- **Final-Removal Artifact-Chain Assurance** - the public storage-closure
+  audit generator is now verified end to end against its approved plan,
+  checkout snapshot, runtime authorization, validation, and source-scan
+  inputs. A live product import or cross-artifact snapshot cannot produce a
+  complete closure result.
 
 - **Single Active Native Intent Authority** - repaired and now enforces the
   database invariant that each policy has at most one active native intent.
