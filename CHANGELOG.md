@@ -40,6 +40,10 @@ unchanged operator or runtime outcome.
   generator preserves approved review and execution bindings for the later
   controlled-apply confirmation step. Mismatched preflight evidence cannot
   write a batch by default, and blocked diagnostic export remains explicit.
+- **Controlled File Apply Containment** - moved the controlled-removal CLI file
+  adapter into a tested ESM service and verified mutation in an isolated
+  repository. File removal now remains explicitly opt-in, scope-bound to a
+  reviewed repo-relative path, and resistant to traversal or absolute paths.
 
 - **Single Active Native Intent Authority** - repaired and now enforces the
   database invariant that each policy has at most one active native intent.
@@ -87,7 +91,8 @@ unchanged operator or runtime outcome.
 - **Evidence-Bound Compatibility Deletion Gate** - controlled compatibility
   removal now requires a current, fingerprint-valid execution-plan artifact and
   timestamped preflight evidence bound to that exact artifact. Stale, detached,
-  malformed, or caller-asserted readiness can no longer authorize deletion.
+  malformed, caller-asserted, or altered serialized readiness can no longer
+  authorize deletion.
 - **Cohesive Compatibility-Removal Reviews** - reviewed removal batches now
   select paths only from one fingerprint-valid execution-plan artifact and
   reject a ready gate bound to any different or altered artifact manifest.

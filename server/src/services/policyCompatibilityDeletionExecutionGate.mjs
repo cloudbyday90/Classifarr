@@ -69,6 +69,11 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS = Object.freeze({
   PREFLIGHT_TIMESTAMP_PRECEDES_ARTIFACT:
     'preflight_timestamp_precedes_artifact',
   PREFLIGHT_ACTOR_MISSING: 'preflight_actor_missing',
+  EXECUTION_GATE_TIMESTAMP_INVALID: 'execution_gate_timestamp_invalid',
+  EXECUTION_GATE_EVIDENCE_RISK_MISMATCH: 'execution_gate_evidence_risk_mismatch',
+  EXECUTION_GATE_STATUS_MISMATCH: 'execution_gate_status_mismatch',
+  EXECUTION_POLICY_MISMATCH: 'execution_policy_mismatch',
+  NEXT_STEP_MISMATCH: 'next_step_mismatch',
   WORKTREE_NOT_CLEAN: 'worktree_not_clean',
   BACKUP_RESTORE_NOT_VERIFIED: 'backup_restore_not_verified',
   OPERATOR_APPROVAL_MISSING: 'operator_approval_missing',
@@ -508,6 +513,59 @@ function summarizePreflightEvidence(preflightEvidence = {}) {
   };
 }
 
+function countRiskIds(risks = []) {
+  return asArray(risks).reduce((counts, risk) => {
+    const riskId = String(risk?.riskId || '').trim();
+
+    if (riskId) {
+      counts[riskId] = (counts[riskId] || 0) + 1;
+    }
+
+    return counts;
+  }, {});
+}
+
+function riskIdCountsMatch(left = {}, right = {}) {
+  const riskIds = new Set([...Object.keys(left), ...Object.keys(right)]);
+
+  return [...riskIds].every(riskId => left[riskId] === right[riskId]);
+}
+
+function evaluateSerializedGateEvidence(gate = {}) {
+  const gateTimestamp = parseTimestamp(gate.generatedAt);
+
+  if (!gateTimestamp) {
+    return {
+      gateTimestamp: null,
+      risks: [],
+      statusId: null,
+    };
+  }
+
+  const maximumAgeMs = normalizeMaximumAge(gate.executionPolicy?.maxEvidenceAgeMs);
+  const artifactEvaluation = evaluateExecutionPlanArtifact({
+    executionPlanArtifact: gate.executionPlanArtifact,
+    now: gateTimestamp.value,
+    maxEvidenceAgeMs: maximumAgeMs,
+  });
+  const risks = [
+    ...artifactEvaluation.risks,
+    ...evaluatePreflightEvidence({
+      preflightEvidence: gate.preflightEvidence,
+      artifactFingerprint: artifactEvaluation.artifact.artifactFingerprint,
+      artifactTimestamp: artifactEvaluation.artifactTimestamp,
+      evaluationTime: artifactEvaluation.evaluationTime,
+      maximumAgeMs: artifactEvaluation.maximumAgeMs,
+    }),
+  ];
+
+  return {
+    gateTimestamp,
+    risks,
+    statusId: determineStatusId(risks),
+  };
+}
+
 function buildPolicyCompatibilityDeletionExecutionGate({
   executionPlanArtifact = null,
   preflightEvidence = null,
@@ -560,6 +618,7 @@ function buildPolicyCompatibilityDeletionExecutionGate({
       requireFreshBackupRestoreEvidence: true,
       requireOperatorApproval: true,
       requireManifestVerification: true,
+      maxEvidenceAgeMs: artifactEvaluation.maximumAgeMs,
     },
     sideEffects: {
       filesDeleted: false,
@@ -613,6 +672,72 @@ function validatePolicyCompatibilityDeletionExecutionGate(gate = {}) {
       'Compatibility path deletion execution gate allow state must match its risks.'
     ));
   }
+
+  const serializedEvidence = evaluateSerializedGateEvidence(gate);
+
+  if (!serializedEvidence.gateTimestamp) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.EXECUTION_GATE_TIMESTAMP_INVALID,
+      'Compatibility path deletion execution gate must retain a valid generation timestamp.'
+    ));
+  } else {
+    const expectedRiskCounts = countRiskIds(serializedEvidence.risks);
+    const actualRiskCounts = countRiskIds(gate.risks);
+
+    if (!riskIdCountsMatch(actualRiskCounts, expectedRiskCounts)) {
+      issues.push(buildRisk(
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+          .EXECUTION_GATE_EVIDENCE_RISK_MISMATCH,
+        'Compatibility path deletion execution gate risks must be derived from its embedded artifact and preflight evidence.',
+        {
+          expectedRiskCounts,
+          actualRiskCounts,
+        }
+      ));
+    }
+
+    if (gate.statusId !== serializedEvidence.statusId) {
+      issues.push(buildRisk(
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.EXECUTION_GATE_STATUS_MISMATCH,
+        'Compatibility path deletion execution gate status must match its embedded artifact and preflight evidence.',
+        {
+          expectedStatusId: serializedEvidence.statusId,
+          actualStatusId: gate.statusId || null,
+        }
+      ));
+    }
+  }
+
+  const executionPolicy = asObject(gate.executionPolicy);
+
+  if (
+    executionPolicy.executeDeletionNow !== false ||
+    executionPolicy.requireSeparateControlledDeletionStep !== true ||
+    executionPolicy.requireBoundExecutionPlanArtifact !== true ||
+    executionPolicy.requireFreshExecutionEvidence !== true ||
+    executionPolicy.requireTimestampedPreflightEvidence !== true ||
+    executionPolicy.requireCleanWorktree !== true ||
+    executionPolicy.requireFreshBackupRestoreEvidence !== true ||
+    executionPolicy.requireOperatorApproval !== true ||
+    executionPolicy.requireManifestVerification !== true ||
+    executionPolicy.maxEvidenceAgeMs !== normalizeMaximumAge(executionPolicy.maxEvidenceAgeMs)
+  ) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.EXECUTION_POLICY_MISMATCH,
+      'Compatibility path deletion execution gate must remain side-effect-free and retain its required preflight policy.'
+    ));
+  }
+
+  if (
+    gate.nextStep?.stepId !== 'controlled_compatibility_path_removal' ||
+    gate.nextStep?.label !== 'Controlled Compatibility Path Removal'
+  ) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.NEXT_STEP_MISMATCH,
+      'Compatibility path deletion execution gate must hand off only to controlled compatibility path removal.'
+    ));
+  }
+
   Object.entries(gate.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(

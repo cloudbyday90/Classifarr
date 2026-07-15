@@ -29,6 +29,14 @@ Git commands.
   and testable.
 - Git `rm` documents tracked-path removal behavior. The CLI adapter deletes
   only repo-relative files when explicitly enabled and does not run Git commands.
+- Node.js documents that `path.resolve()` normalizes an input path into an
+  absolute path and `path.relative()` describes its relationship to a root.
+  The file adapter uses both operations to reject a resolved path that escapes
+  the configured repository before calling a filesystem API.
+- OWASP path-traversal guidance recommends known-good input validation and
+  normalization before filesystem I/O. The public command is tested against a
+  sentinel outside an isolated temporary repository to prove the containment
+  check is enforced at the command boundary.
 
 Sources:
 
@@ -40,6 +48,10 @@ Sources:
   <https://csrc.nist.gov/pubs/sp/800/218/final>
 - Git `rm` documentation:
   <https://git-scm.com/docs/git-rm>
+- Node.js path API:
+  <https://nodejs.org/api/path.html>
+- OWASP Path Traversal:
+  <https://owasp.org/www-community/attacks/Path_Traversal>
 
 ## Recommendations
 
@@ -91,6 +103,28 @@ Cons:
 - replacement-style code-path removals need a later adapter instead of being
   silently treated as file deletion.
 
+### Verify The Public Apply Boundary In An Isolated Repository
+
+The public command should be tested in a temporary repository with disposable
+files. It must leave the reviewed file and output paths untouched without
+`--apply-files`; with the flag, it may remove only the approved repo-relative
+regular file. Traversal and absolute paths must fail before mutation, and a
+blocked diagnostic must require explicit `--allow-blocked`.
+
+Pros:
+
+- proves the real CLI adapter, current working directory, and JSON boundaries
+  preserve the service containment rule,
+- demonstrates the opt-in apply flag rather than asserting it only through a
+  mocked adapter,
+- avoids risk to the checkout by exercising mutation only in a disposable
+  temporary repository.
+
+Cons:
+
+- process-level filesystem tests cost more than pure service tests,
+- the sandbox fixture must preserve an intact reviewed batch contract.
+
 ## Final Recommendation Stack
 
 Use this stack for controlled removal apply artifact generation:
@@ -105,6 +139,8 @@ Use this stack for controlled removal apply artifact generation:
 5. Reject archive, storage, and Git-command side effects.
 6. Write nested apply-result JSON for post-removal runtime verification.
 7. Optionally write the wrapper artifact for audit trails.
+8. Verify the public apply command in an isolated repository, including the
+   explicit apply flag and containment failures.
 
 ## Implementation Outcome
 
@@ -127,6 +163,16 @@ Implemented:
 - Preserved focused tests for successful apply artifact generation through an
   injected adapter, blocked apply when explicit execution is missing,
   forbidden side-effect rejection, and artifact validation invariants.
+- Extracted the CLI filesystem behavior to
+  `server/src/services/policyControlledRemovalFileApplyAdapter.mjs`. It permits
+  only repo-relative regular files within the configured root and rejects empty,
+  absolute, and escaping paths before file mutation.
+- Added isolated public-command coverage at
+  `server/src/__tests__/scripts/generatePolicyControlledRemovalApply.test.mjs`
+  and adapter coverage at
+  `server/src/__tests__/services/policyControlledRemovalFileApplyAdapter.test.mjs`.
+  The tests prove the no-apply default, explicit blocked diagnostics,
+  one-reviewed-file apply behavior, and traversal containment.
 
 Example:
 

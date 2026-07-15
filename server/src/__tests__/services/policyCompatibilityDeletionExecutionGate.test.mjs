@@ -447,4 +447,53 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
       POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.SIDE_EFFECT_PERFORMED,
     ]));
   });
+
+  test('rejects a serialized gate whose preflight evidence no longer derives its ready state', () => {
+    const gate = readyGate();
+    const validation = validatePolicyCompatibilityDeletionExecutionGate({
+      ...gate,
+      preflightEvidence: {
+        ...gate.preflightEvidence,
+        approval: {
+          ...gate.preflightEvidence.approval,
+          approved: false,
+        },
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+        .EXECUTION_GATE_EVIDENCE_RISK_MISMATCH,
+    ]));
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+          .EXECUTION_GATE_STATUS_MISMATCH,
+        expectedStatusId:
+          POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS.BLOCKED_BY_APPROVAL,
+      }),
+    ]));
+  });
+
+  test('rejects a gate that changes its side-effect-free handoff policy', () => {
+    const gate = readyGate();
+    const validation = validatePolicyCompatibilityDeletionExecutionGate({
+      ...gate,
+      executionPolicy: {
+        ...gate.executionPolicy,
+        executeDeletionNow: true,
+      },
+      nextStep: {
+        ...gate.nextStep,
+        stepId: 'delete_now',
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.EXECUTION_POLICY_MISMATCH,
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.NEXT_STEP_MISMATCH,
+    ]));
+  });
 });

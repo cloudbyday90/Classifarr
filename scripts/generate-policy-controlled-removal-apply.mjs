@@ -14,11 +14,11 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
-} from '../server/src/services/policyCompatibilityDeletionExecutionPlan.mjs';
-import {
   buildPolicyControlledRemovalApplyArtifact,
 } from '../server/src/services/policyControlledRemovalApplyArtifact.mjs';
+import {
+  createPolicyControlledRemovalFileApplyAdapter,
+} from '../server/src/services/policyControlledRemovalFileApplyAdapter.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -122,129 +122,6 @@ function writeJsonFile(filePath, value) {
   fs.writeFileSync(resolvedPath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function normalizeRepoPath(value = '') {
-  return String(value || '').replace(/\\/g, '/').trim();
-}
-
-function resolveRepoRelativePath(repoPath) {
-  const normalizedPath = normalizeRepoPath(repoPath);
-
-  if (!normalizedPath) {
-    throw new Error('Removal entry path is empty.');
-  }
-
-  if (path.isAbsolute(normalizedPath)) {
-    throw new Error(`Removal entry path must be repo-relative: ${repoPath}`);
-  }
-
-  const repoRoot = process.cwd();
-  const resolvedPath = path.resolve(repoRoot, normalizedPath);
-  const relativePath = path.relative(repoRoot, resolvedPath);
-
-  if (
-    relativePath.startsWith('..') ||
-    path.isAbsolute(relativePath)
-  ) {
-    throw new Error(`Removal entry path escapes the repository: ${repoPath}`);
-  }
-
-  return {
-    normalizedPath,
-    resolvedPath,
-  };
-}
-
-function createFileApplyAdapter({ applyFiles = false } = {}) {
-  return {
-    async applyEntry(entry = {}) {
-      const { normalizedPath, resolvedPath } = resolveRepoRelativePath(entry.path);
-      const actionId = entry.actionId;
-      const supportedAction = [
-        POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
-        POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_TEST,
-      ].includes(actionId);
-
-      if (!supportedAction) {
-        return {
-          path: normalizedPath,
-          actionId,
-          categoryId: entry.categoryId,
-          applied: false,
-          operationId: null,
-          sideEffects: {
-            filesDeleted: false,
-            filesArchived: false,
-            routesRemoved: false,
-            testsRemoved: false,
-            storageChanged: false,
-            gitCommandsRun: false,
-          },
-        };
-      }
-
-      if (applyFiles !== true) {
-        return {
-          path: normalizedPath,
-          actionId,
-          categoryId: entry.categoryId,
-          applied: false,
-          operationId: 'apply-files-flag-required',
-          sideEffects: {
-            filesDeleted: false,
-            filesArchived: false,
-            routesRemoved: false,
-            testsRemoved: false,
-            storageChanged: false,
-            gitCommandsRun: false,
-          },
-        };
-      }
-
-      const stat = fs.statSync(resolvedPath, { throwIfNoEntry: false });
-
-      if (!stat || !stat.isFile()) {
-        return {
-          path: normalizedPath,
-          actionId,
-          categoryId: entry.categoryId,
-          applied: false,
-          operationId: 'file-not-found',
-          sideEffects: {
-            filesDeleted: false,
-            filesArchived: false,
-            routesRemoved: false,
-            testsRemoved: false,
-            storageChanged: false,
-            gitCommandsRun: false,
-          },
-        };
-      }
-
-      fs.rmSync(resolvedPath, {
-        force: false,
-        recursive: false,
-      });
-
-      return {
-        path: normalizedPath,
-        actionId,
-        categoryId: entry.categoryId,
-        applied: true,
-        operationId: `deleted:${normalizedPath}`,
-        sideEffects: {
-          filesDeleted: true,
-          filesArchived: false,
-          routesRemoved: false,
-          testsRemoved:
-            actionId === POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_TEST,
-          storageChanged: false,
-          gitCommandsRun: false,
-        },
-      };
-    },
-  };
-}
-
 async function main() {
   let options;
 
@@ -280,8 +157,9 @@ async function main() {
   const artifact = await buildPolicyControlledRemovalApplyArtifact({
     removalBatch,
     input,
-    applyAdapter: createFileApplyAdapter({
+    applyAdapter: createPolicyControlledRemovalFileApplyAdapter({
       applyFiles: options.applyFiles,
+      repoRoot: process.cwd(),
     }),
     generatedAt: options.generatedAt,
   });

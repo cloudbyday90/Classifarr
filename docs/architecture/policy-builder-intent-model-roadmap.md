@@ -5781,6 +5781,9 @@ Implementation status:
   execution-plan artifact, evidence-bundle coherence, and preflight records
   bound to the exact artifact fingerprint. The controlled batch artifact now
   consumes the same contract and cannot reconstruct trust from raw booleans.
+- Serialized execution-gate output is revalidated against its retained artifact
+  and preflight evidence. A modified ready claim, execution policy, or handoff
+  cannot remain valid merely because its outer envelope is well-formed.
 - Current implementation verifies artifact readiness, worktree cleanliness,
   backup/restore freshness, operator approval, final support stances, manifest
   verification, emits a semantic `nextStep.stepId`, and validates that no
@@ -6522,6 +6525,14 @@ confirmation, and a bounded apply adapter.
 
 Tasks:
 
+- **8R.28.1 Public Apply Sandbox And Path-Boundary Verification**
+  - Completed: moves the file apply adapter into a focused ESM service that
+    resolves only repo-relative paths and rejects traversal or absolute input
+    before filesystem mutation.
+  - Completed: runs the public command in an isolated temporary repository and
+    proves no file or output changes occur without `--apply-files`, only the
+    reviewed file is removed with the flag, and an escaped path cannot touch a
+    sentinel outside the repository.
 - Require a ready reviewed removal-batch JSON artifact.
 - Require explicit apply input with `executeApply: true`,
   `operatorConfirmation.confirmed: true`, and a confirming actor.
@@ -6562,6 +6573,10 @@ Implementation status:
 - Current implementation applies only supported file-backed deletion actions
   through an explicit CLI flag and emits semantic `nextStep` apply evidence
   for post-removal runtime validation.
+- Task 8R.28.1 adds public-command sandbox coverage and a reusable
+  `policyControlledRemovalFileApplyAdapter.mjs` boundary. The CLI delegates
+  filesystem mutation to that adapter instead of retaining a local deletion
+  implementation.
 
 ### 8R.29 Post-Removal Runtime Verification Artifact Exporter
 

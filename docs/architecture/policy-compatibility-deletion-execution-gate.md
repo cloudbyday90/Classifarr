@@ -28,6 +28,13 @@ The gate verifies:
 - NIST IR 8397 supports automated verification to reduce inconsistent manual
   checks. Each required preflight record has a timestamp and named actor, and
   the service evaluates all records deterministically.
+- OWASP's secure-code-review guidance recommends validating workflow state at
+  each trust boundary. Consumers therefore validate that a serialized gate's
+  status and risks are still derived from its retained artifact and preflight
+  evidence rather than trusting its ready claim alone.
+- NIST SSDF recommends integrating secure development practices into the
+  lifecycle. The gate applies this with deterministic, focused evidence tests
+  for altered preflight, execution-policy, and handoff data.
 
 Sources:
 
@@ -37,6 +44,10 @@ Sources:
   <https://csrc.nist.gov/pubs/sp/800/204/d/final>
 - NIST IR 8397:
   <https://csrc.nist.gov/pubs/ir/8397/final>
+- OWASP Secure Code Review Cheat Sheet:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Secure_Code_Review_Cheat_Sheet.html>
+- NIST SP 800-218, Secure Software Development Framework:
+  <https://csrc.nist.gov/pubs/sp/800/218/final>
 
 ## Recommendations
 
@@ -87,6 +98,26 @@ Cons:
 
 - more conservative than direct automated cleanup.
 
+### Revalidate Serialized Gate Semantics
+
+Any consumer that receives a serialized gate must recompute the artifact and
+preflight risks at the gate's recorded observation time. The reported status,
+risk IDs, non-destructive execution policy, and controlled-removal handoff must
+match that evaluation; a ready claim by itself is never authority.
+
+Pros:
+
+- prevents a modified JSON gate from passing only because its envelope remains
+  structurally valid,
+- preserves the side-effect-free boundary at every consumer,
+- makes the audit trail useful without treating it as a source of authority.
+
+Cons:
+
+- serialized gates are intentionally invalidated when their retained evidence
+  is edited,
+- consumers must retain the complete, bounded preflight summary.
+
 ## Final Recommendation Stack
 
 Use this stack:
@@ -95,7 +126,10 @@ Use this stack:
    artifact with a deterministic fingerprint.
 2. `policyCompatibilityDeletionExecutionGate.mjs` validates the artifact and
    bound final worktree, recovery, approval, stance, and manifest records.
-3. A later controlled deletion component may consume a ready gate output, but
+3. Every gate consumer revalidates that the serialized status, risks,
+   non-destructive policy, and next step still derive from that retained
+   evidence.
+4. A later controlled deletion component may consume a ready gate output, but
    only that later step should perform file removal.
 
 ## Implementation Outcome
@@ -115,6 +149,9 @@ Implemented:
   timestamped preflight evidence instead of raw readiness booleans.
 - Rejects stale, future, pre-artifact, malformed, or actorless preflight
   records.
+- Revalidates serialized gate risk and status derivation from retained artifact
+  and preflight evidence; altered ready claims, execution policies, or handoff
+  targets cannot validate.
 - Added focused tests for artifact mutation, evidence binding, stale records,
   worktree, recovery, approval, stance, manifest, and side-effect blockers.
 
