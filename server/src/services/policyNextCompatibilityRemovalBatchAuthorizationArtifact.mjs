@@ -8,7 +8,7 @@ import {
 } from './policyNextCompatibilityRemovalBatchAuthorizationArtifactFingerprint.mjs';
 
 const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_VERSION =
-  'policy.next_compatibility_removal_batch_authorization_artifact.v3';
+  'policy.next_compatibility_removal_batch_authorization_artifact.v4';
 
 const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS =
   Object.freeze({
@@ -139,7 +139,8 @@ function buildArtifactRisks({
 
 async function buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
   runtimeEvidenceArtifact = null,
-  executionPlan = {},
+  executionPlanArtifact = null,
+  pathStateEvidence = null,
   input = {},
   generatedAt = null,
   sideEffects = {},
@@ -148,7 +149,8 @@ async function buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
   const authorization =
     await buildPolicyNextCompatibilityRemovalBatchAuthorization({
       runtimeEvidenceArtifact,
-      executionPlan,
+      executionPlanArtifact,
+      pathStateEvidence,
       requestedPaths: evidence.requestedPaths,
       maxBatchSize: evidence.maxBatchSize,
       authorizationReason: evidence.authorizationReason,
@@ -169,6 +171,8 @@ async function buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
     completedNoRemainingPaths:
       risks.length === 0 && authorization.completedNoRemainingPaths === true,
     runtimeEvidenceArtifact,
+    executionPlanArtifact,
+    pathStateEvidence,
     authorization,
     authorizationSummary: {
       remainingCount: authorization.remainingManifest?.remainingCount ?? 0,
@@ -185,6 +189,10 @@ async function buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
       requireAppliedRemovalReviewContext: true,
       requireVerifiedPostRemovalEvidence: true,
       requireAppliedPathsInExecutionManifest: true,
+      requireReplayVerifiedPathStateEvidence: true,
+      requireExactPathStateArtifactBinding: true,
+      requireRuntimeAppliedPathsMatchPathState: true,
+      requirePathStateDerivedRemainingManifest: true,
       requireReadyCompatibilityDeletionManifest: true,
       requireRemainingManifestSelection: true,
       requireSmallBatch: true,

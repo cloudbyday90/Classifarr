@@ -91,6 +91,11 @@ unchanged operator or runtime outcome.
   evidence artifact, require the same applied review fingerprint in their
   authorization context, and reject applied paths outside the current approved
   manifest before any remaining path can be authorized.
+- **Snapshot-Bound Next-Batch Authorization** - next compatibility-removal
+  batches now require a replay-verified checkout snapshot from the exact
+  approved execution-plan artifact. Runtime removals must match that snapshot
+  exactly; raw plans, altered or cross-artifact snapshots, divergent manifests,
+  and mismatched final-audit sources are blocked before a later batch runs.
 - **Artifact-Bound Compatibility Removal Completion** - completion audits and
   closure evidence exporters now consume and replay one fingerprint-valid
   next-batch authorization artifact rather than detached authorization and

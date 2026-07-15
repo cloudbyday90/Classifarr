@@ -14,6 +14,9 @@ import {
 import {
   buildPolicyPostRemovalRuntimeEvidenceArtifact,
 } from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
+import {
+  buildNextBatchAuthorizationPathStateSource,
+} from './fixtures/policyNextCompatibilityRemovalBatchAuthorizationFixtures.mjs';
 
 const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 const MANIFEST_PATHS = Object.freeze([
@@ -27,6 +30,9 @@ function buildExecutionPlan() {
     categoryId: 'old_preview_replay_diagnostics',
     actionId: 'delete_file',
     path,
+    replacementEvidence: {
+      replacementPath: 'server/src/services/policyNativeIntentProjection.mjs',
+    },
     ready: true,
   }));
 
@@ -36,7 +42,20 @@ function buildExecutionPlan() {
       POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,
     validation: { ok: true, issueCount: 0, issues: [] },
-    manifest: { approved: true, entryCount: entries.length, entries },
+    riskCount: 0,
+    risks: [],
+    sideEffects: {
+      filesDeleted: false,
+      filesArchived: false,
+      storageChanged: false,
+      gitCommandsRun: false,
+    },
+    manifest: {
+      approved: true,
+      approvedBy: 'policy-maintainer',
+      entryCount: entries.length,
+      entries,
+    },
   };
 }
 
@@ -85,10 +104,14 @@ async function buildCompletionAuditArtifactFixture({
 } = {}) {
   const executionPlan = buildExecutionPlan();
   const remainingPaths = MANIFEST_PATHS.filter(path => !appliedPaths.includes(path));
+  const source = buildNextBatchAuthorizationPathStateSource({
+    executionPlan,
+    existingPaths: remainingPaths,
+  });
   const nextBatchAuthorizationArtifact =
     await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
       runtimeEvidenceArtifact: buildRuntimeEvidenceArtifact(appliedPaths),
-      executionPlan,
+      ...source,
       input: {
         requestedPaths: remainingPaths,
         maxBatchSize: 3,

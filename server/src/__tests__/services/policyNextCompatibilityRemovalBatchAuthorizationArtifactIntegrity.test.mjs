@@ -1,4 +1,5 @@
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
@@ -14,6 +15,9 @@ import {
 import {
   buildPolicyPostRemovalRuntimeEvidenceArtifact,
 } from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
+import {
+  buildNextBatchAuthorizationPathStateSource,
+} from './fixtures/policyNextCompatibilityRemovalBatchAuthorizationFixtures.mjs';
 
 const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 const MANIFEST_PATHS = Object.freeze([
@@ -23,10 +27,19 @@ const MANIFEST_PATHS = Object.freeze([
 
 function executionPlan(paths = MANIFEST_PATHS) {
   return {
+    version: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
     statusId:
       POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,
     validation: { ok: true, issueCount: 0, issues: [] },
+    riskCount: 0,
+    risks: [],
+    sideEffects: {
+      filesDeleted: false,
+      filesArchived: false,
+      storageChanged: false,
+      gitCommandsRun: false,
+    },
     manifest: {
       approved: true,
       approvedBy: 'policy-maintainer',
@@ -35,6 +48,9 @@ function executionPlan(paths = MANIFEST_PATHS) {
         categoryId: 'old_preview_replay_diagnostics',
         actionId: 'delete_file',
         path,
+        replacementEvidence: {
+          replacementPath: 'server/src/services/policyNativeIntentProjection.mjs',
+        },
         ready: true,
       })),
     },
@@ -79,10 +95,16 @@ function runtimeEvidenceArtifact(paths = MANIFEST_PATHS) {
   });
 }
 
-async function authorizationArtifact(plan = executionPlan()) {
+async function authorizationArtifact({
+  plan = executionPlan(),
+  source = null,
+} = {}) {
+  const authorizationSource = source ||
+    buildNextBatchAuthorizationPathStateSource({ executionPlan: plan });
+
   return buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
     runtimeEvidenceArtifact: runtimeEvidenceArtifact(),
-    executionPlan: plan,
+    ...authorizationSource,
     input: {
       requestedPaths: [],
       maxBatchSize: 2,
@@ -97,10 +119,12 @@ async function authorizationArtifact(plan = executionPlan()) {
 describe('policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity', () => {
   test('accepts an intact artifact replayed against the same manifest and review context', async () => {
     const plan = executionPlan();
+    const source = buildNextBatchAuthorizationPathStateSource({ executionPlan: plan });
     const integrity =
       await validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity({
-        authorizationArtifact: await authorizationArtifact(plan),
-        executionPlan: plan,
+        authorizationArtifact: await authorizationArtifact({ plan, source }),
+        expectedExecutionPlanArtifactFingerprint:
+          source.executionPlanArtifact.artifactFingerprint.fingerprint,
         reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       });
 
@@ -111,25 +135,31 @@ describe('policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity', ()
 
   test('rejects an altered artifact, mismatched review context, and cross-manifest replay', async () => {
     const plan = executionPlan();
-    const artifact = await authorizationArtifact(plan);
+    const source = buildNextBatchAuthorizationPathStateSource({ executionPlan: plan });
+    const artifact = await authorizationArtifact({ plan, source });
     const alteredArtifact = structuredClone(artifact);
     alteredArtifact.authorizationSummary.remainingCount = 1;
     const altered =
       await validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity({
         authorizationArtifact: alteredArtifact,
-        executionPlan: plan,
+        expectedExecutionPlanArtifactFingerprint:
+          source.executionPlanArtifact.artifactFingerprint.fingerprint,
         reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       });
     const crossReview =
       await validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity({
         authorizationArtifact: artifact,
-        executionPlan: plan,
+        expectedExecutionPlanArtifactFingerprint:
+          source.executionPlanArtifact.artifactFingerprint.fingerprint,
         reviewArtifactFingerprint: 'b'.repeat(64),
       });
     const crossManifest =
       await validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity({
         authorizationArtifact: artifact,
-        executionPlan: executionPlan([MANIFEST_PATHS[1]]),
+        expectedExecutionPlanArtifactFingerprint:
+          buildNextBatchAuthorizationPathStateSource({
+            executionPlan: executionPlan([MANIFEST_PATHS[1]]),
+          }).executionPlanArtifact.artifactFingerprint.fingerprint,
         reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       });
 
@@ -146,7 +176,7 @@ describe('policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity', ()
     );
     expect(crossManifest.issues.map(issue => issue.riskId)).toContain(
       POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
-        .AUTHORIZATION_REPLAY_MISMATCH
+        .EXECUTION_PLAN_ARTIFACT_FINGERPRINT_MISMATCH
     );
   });
 });

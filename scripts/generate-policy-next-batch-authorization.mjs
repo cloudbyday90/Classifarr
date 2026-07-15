@@ -20,7 +20,8 @@ import {
 function parseArgs(argv = []) {
   const options = {
     runtimeEvidenceArtifactPath: null,
-    executionPlanPath: null,
+    executionPlanArtifactPath: null,
+    pathStateEvidencePath: null,
     inputPath: null,
     outputPath: null,
     artifactOutputPath: null,
@@ -36,8 +37,13 @@ function parseArgs(argv = []) {
       index += 1;
       continue;
     }
-    if (arg === '--execution-plan') {
-      options.executionPlanPath = argv[index + 1] || null;
+    if (arg === '--execution-plan-artifact') {
+      options.executionPlanArtifactPath = argv[index + 1] || null;
+      index += 1;
+      continue;
+    }
+    if (arg === '--path-state-evidence') {
+      options.pathStateEvidencePath = argv[index + 1] || null;
       index += 1;
       continue;
     }
@@ -82,7 +88,8 @@ function usage() {
     '',
     'Options:',
     '  --runtime-evidence-artifact <json>  Required fingerprinted post-removal runtime evidence artifact JSON.',
-    '  --execution-plan <json>             Required compatibility deletion execution-plan JSON.',
+    '  --execution-plan-artifact <json>    Required ready fingerprint-valid execution-plan artifact JSON.',
+    '  --path-state-evidence <json>        Required replay-verified checkout path-state evidence JSON.',
     '  --input <json>                      Required next-batch authorization input JSON.',
     '  --output <json>                     Write nested authorization JSON to this path.',
     '  --artifact-output <json>            Write wrapper artifact JSON to this path.',
@@ -138,7 +145,8 @@ async function main() {
   }
 
   let runtimeEvidenceArtifact;
-  let executionPlan;
+  let executionPlanArtifact;
+  let pathStateEvidence;
   let input;
 
   try {
@@ -147,9 +155,20 @@ async function main() {
       'runtime evidence artifact',
       { required: true }
     );
-    executionPlan = readJsonFile(options.executionPlanPath, 'execution plan', {
-      required: true,
-    });
+    executionPlanArtifact = readJsonFile(
+      options.executionPlanArtifactPath,
+      'execution plan artifact',
+      {
+        required: true,
+      }
+    );
+    pathStateEvidence = readJsonFile(
+      options.pathStateEvidencePath,
+      'path-state evidence',
+      {
+        required: true,
+      }
+    );
     input = readJsonFile(options.inputPath, 'next-batch authorization input evidence', {
       required: true,
     });
@@ -161,7 +180,8 @@ async function main() {
   const artifact =
     await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
       runtimeEvidenceArtifact,
-      executionPlan,
+      executionPlanArtifact,
+      pathStateEvidence,
       input,
       generatedAt: options.generatedAt,
     });

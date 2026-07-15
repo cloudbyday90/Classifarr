@@ -147,7 +147,9 @@ Use this stack for final removal audit evidence:
 3. Capture current checkout path state for each manifest path in a fingerprinted
    evidence artifact, then replay it before the audit uses it.
 4. Revalidate the supplied next-batch authorization artifact, its embedded
-   runtime evidence, and its applied removal-review fingerprint.
+   runtime evidence, its path-state evidence, and its applied removal-review
+   fingerprint. Require its retained execution-plan artifact fingerprint to
+   equal the final audit's approved source.
 5. Compare the authorized removed and remaining path sets with the current
    checkout before reporting any status.
 6. Scan product/runtime source roots for exact manifest path references while
@@ -181,7 +183,9 @@ Implemented:
   gone, final-scan blockers, and missing-validation blockers.
 - Requires a fingerprint-valid next-batch authorization artifact and its
   applied removal-review fingerprint instead of synthesizing authorization from
-  checkout state.
+  checkout state. Its retained execution-plan artifact fingerprint must equal
+  the final audit's source, and its runtime removals must agree with its
+  replay-verified checkout snapshot.
 - Compares the artifact's removed and remaining path sets with the current
   checkout before a storage-closure result can be reported.
 - Rejects raw nested plans, invalid or unready artifacts, bad fingerprints,

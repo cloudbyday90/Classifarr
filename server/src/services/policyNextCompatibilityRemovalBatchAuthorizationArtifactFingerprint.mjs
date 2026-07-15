@@ -79,6 +79,8 @@ function buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifactProjection
       readyForNextBatch: value.readyForNextBatch === true,
       completedNoRemainingPaths: value.completedNoRemainingPaths === true,
       runtimeEvidenceArtifact: stableValue(asObject(value.runtimeEvidenceArtifact)),
+      executionPlanArtifact: stableValue(asObject(value.executionPlanArtifact)),
+      pathStateEvidence: stableValue(asObject(value.pathStateEvidence)),
       authorization: stableValue(asObject(value.authorization)),
       authorizationSummary: stableValue(asObject(value.authorizationSummary)),
       riskCount: value.riskCount ?? null,
@@ -111,6 +113,10 @@ function buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifactFingerprin
       completedNoRemainingPaths: projection.artifact.completedNoRemainingPaths,
       runtimeEvidenceFingerprint:
         projection.artifact.runtimeEvidenceArtifact.fingerprint || null,
+      executionPlanArtifactFingerprint:
+        projection.artifact.executionPlanArtifact.artifactFingerprint?.fingerprint || null,
+      pathStateEvidenceFingerprint:
+        projection.artifact.pathStateEvidence.artifactFingerprint?.fingerprint || null,
       authorizationStatusId: projection.artifact.authorization.statusId || null,
       remainingCount:
         projection.artifact.authorizationSummary.remainingCount ?? null,
@@ -185,6 +191,9 @@ function validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactFingerp
     provenance.readyForNextBatch !== expected.provenance.readyForNextBatch ||
     provenance.completedNoRemainingPaths !== expected.provenance.completedNoRemainingPaths ||
     provenance.runtimeEvidenceFingerprint !== expected.provenance.runtimeEvidenceFingerprint ||
+    provenance.executionPlanArtifactFingerprint !==
+      expected.provenance.executionPlanArtifactFingerprint ||
+    provenance.pathStateEvidenceFingerprint !== expected.provenance.pathStateEvidenceFingerprint ||
     provenance.authorizationStatusId !== expected.provenance.authorizationStatusId ||
     Number(provenance.remainingCount) !== Number(expected.provenance.remainingCount)
   ) {

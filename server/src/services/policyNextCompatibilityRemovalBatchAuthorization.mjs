@@ -9,20 +9,23 @@
  */
 
 import {
-  POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
-  buildPolicyCompatibilityDeletionExecutionPlan,
-} from './policyCompatibilityDeletionExecutionPlan.mjs';
-import {
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
   buildPolicyPostRemovalRuntimeVerification,
 } from './policyPostRemovalRuntimeVerification.mjs';
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
+} from './policyCompatibilityDeletionExecutionPlan.mjs';
+import {
   POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS,
   validatePolicyPostRemovalRuntimeEvidenceArtifact,
 } from './policyPostRemovalRuntimeEvidenceArtifact.mjs';
+import {
+  POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_PATH_STATE_SOURCE_RISK_IDS,
+  resolvePolicyNextCompatibilityRemovalBatchAuthorizationPathStateSource,
+} from './policyNextCompatibilityRemovalBatchAuthorizationPathStateSource.mjs';
 
 const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_VERSION =
-  'policy.next_compatibility_removal_batch_authorization.v2';
+  'policy.next_compatibility_removal_batch_authorization.v3';
 
 const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS =
   Object.freeze({
@@ -31,6 +34,7 @@ const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS =
     BLOCKED_BY_RUNTIME_EVIDENCE_INTEGRITY: 'blocked_by_runtime_evidence_integrity',
     BLOCKED_BY_POST_REMOVAL_VERIFICATION: 'blocked_by_post_removal_verification',
     BLOCKED_BY_EXECUTION_PLAN: 'blocked_by_execution_plan',
+    BLOCKED_BY_PATH_STATE_EVIDENCE: 'blocked_by_path_state_evidence',
     BLOCKED_BY_SELECTION: 'blocked_by_selection',
     BLOCKED_BY_SCOPE: 'blocked_by_scope',
     BLOCKED_BY_AUTHORIZATION: 'blocked_by_authorization',
@@ -45,6 +49,11 @@ const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS =
     APPLIED_PATH_OUTSIDE_EXECUTION_MANIFEST: 'applied_path_outside_execution_manifest',
     POST_REMOVAL_NOT_VERIFIED: 'post_removal_not_verified',
     POST_REMOVAL_VALIDATION_FAILED: 'post_removal_validation_failed',
+    EXECUTION_PLAN_ARTIFACT_INVALID: 'execution_plan_artifact_invalid',
+    PATH_STATE_EVIDENCE_INVALID: 'path_state_evidence_invalid',
+    PATH_STATE_EVIDENCE_ARTIFACT_MISMATCH: 'path_state_evidence_artifact_mismatch',
+    PATH_STATE_EVIDENCE_MANIFEST_MISMATCH: 'path_state_evidence_manifest_mismatch',
+    RUNTIME_APPLIED_PATH_STATE_MISMATCH: 'runtime_applied_path_state_mismatch',
     EXECUTION_PLAN_NOT_READY: 'execution_plan_not_ready',
     EXECUTION_PLAN_VALIDATION_FAILED: 'execution_plan_validation_failed',
     NO_MANIFEST_ENTRIES: 'no_manifest_entries',
@@ -242,6 +251,42 @@ function evaluateExecutionPlan(executionPlan = {}) {
   };
 }
 
+function evaluatePathStateSource(pathStateSource = {}) {
+  const riskIdMap = {
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_PATH_STATE_SOURCE_RISK_IDS
+      .EXECUTION_PLAN_ARTIFACT_INVALID]:
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        .EXECUTION_PLAN_ARTIFACT_INVALID,
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_PATH_STATE_SOURCE_RISK_IDS
+      .PATH_STATE_EVIDENCE_INVALID]:
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        .PATH_STATE_EVIDENCE_INVALID,
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_PATH_STATE_SOURCE_RISK_IDS
+      .PATH_STATE_EVIDENCE_ARTIFACT_MISMATCH]:
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        .PATH_STATE_EVIDENCE_ARTIFACT_MISMATCH,
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_PATH_STATE_SOURCE_RISK_IDS
+      .PATH_STATE_EVIDENCE_MANIFEST_MISMATCH]:
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        .PATH_STATE_EVIDENCE_MANIFEST_MISMATCH,
+  };
+
+  return {
+    risks: asArray(pathStateSource.issues).map(issue => buildRisk(
+      riskIdMap[issue.riskId] ||
+        POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+          .PATH_STATE_EVIDENCE_INVALID,
+      issue.message || 'Next compatibility removal batch authorization requires a verified path-state source.',
+      {
+        pathStateSourceRiskId: issue.riskId || null,
+        ...Object.fromEntries(
+          Object.entries(issue).filter(([key]) => !['riskId', 'message'].includes(key))
+        ),
+      }
+    )),
+  };
+}
+
 function evaluateAppliedPathsAgainstExecutionManifest({
   manifestEntries = [],
   removedPaths = [],
@@ -260,6 +305,31 @@ function evaluateAppliedPathsAgainstExecutionManifest({
       'Applied removal runtime evidence contains a path outside the next-batch execution manifest.',
       { path }
     ));
+}
+
+function evaluateRuntimeAppliedPathsAgainstPathState({
+  runtimeAppliedPaths = [],
+  pathStateRemovedPaths = [],
+} = {}) {
+  const expected = uniqueNormalizedPaths(pathStateRemovedPaths).sort();
+  const actual = uniqueNormalizedPaths(runtimeAppliedPaths).sort();
+
+  if (
+    expected.length === actual.length &&
+    expected.every((path, index) => path === actual[index])
+  ) {
+    return [];
+  }
+
+  return [buildRisk(
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      .RUNTIME_APPLIED_PATH_STATE_MISMATCH,
+    'Next compatibility removal batch authorization requires runtime applied paths to match the replay-verified checkout path-state snapshot exactly.',
+    {
+      expectedRemovedPaths: expected,
+      actualAppliedPaths: actual,
+    }
+  )];
 }
 
 function buildRemainingManifest({ manifestEntries = [], removedPaths = [] } = {}) {
@@ -401,6 +471,8 @@ function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
 
   if (risks.some(risk => [
     POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      .EXECUTION_PLAN_ARTIFACT_INVALID,
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
       .EXECUTION_PLAN_NOT_READY,
     POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
       .EXECUTION_PLAN_VALIDATION_FAILED,
@@ -408,6 +480,20 @@ function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
   ].includes(risk.riskId))) {
     return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
       .BLOCKED_BY_EXECUTION_PLAN;
+  }
+
+  if (risks.some(risk => [
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      .PATH_STATE_EVIDENCE_INVALID,
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      .PATH_STATE_EVIDENCE_ARTIFACT_MISMATCH,
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      .PATH_STATE_EVIDENCE_MANIFEST_MISMATCH,
+    POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+      .RUNTIME_APPLIED_PATH_STATE_MISMATCH,
+  ].includes(risk.riskId))) {
+    return POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+      .BLOCKED_BY_PATH_STATE_EVIDENCE;
   }
 
   if (remainingCount === 0) {
@@ -446,15 +532,21 @@ function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
 
 async function buildPolicyNextCompatibilityRemovalBatchAuthorization({
   runtimeEvidenceArtifact = null,
-  executionPlan = null,
+  executionPlanArtifact = null,
+  pathStateEvidence = null,
   requestedPaths = [],
   maxBatchSize = DEFAULT_MAX_BATCH_SIZE,
   authorizationReason = '',
   authorizedBy = '',
   reviewArtifactFingerprint = '',
 } = {}) {
-  const resolvedExecutionPlan =
-    executionPlan || buildPolicyCompatibilityDeletionExecutionPlan();
+  const pathStateSource =
+    resolvePolicyNextCompatibilityRemovalBatchAuthorizationPathStateSource({
+      executionPlanArtifact,
+      pathStateEvidence,
+    });
+  const pathStateSourceEvaluation = evaluatePathStateSource(pathStateSource);
+  const resolvedExecutionPlan = pathStateSource.executionPlan || {};
   const runtimeEvidenceEvaluation = evaluateRuntimeEvidenceArtifact(
     runtimeEvidenceArtifact
   );
@@ -472,9 +564,13 @@ async function buildPolicyNextCompatibilityRemovalBatchAuthorization({
     manifestEntries: executionPlanEvaluation.entries,
     removedPaths: postRemovalEvaluation.removedPaths,
   });
+  const appliedPathStateRisks = evaluateRuntimeAppliedPathsAgainstPathState({
+    runtimeAppliedPaths: postRemovalEvaluation.removedPaths,
+    pathStateRemovedPaths: pathStateSource.pathState.removedPaths,
+  });
   const remainingManifest = buildRemainingManifest({
     manifestEntries: executionPlanEvaluation.entries,
-    removedPaths: postRemovalEvaluation.removedPaths,
+    removedPaths: pathStateSource.pathState.removedPaths,
   });
   const batchEvaluation = evaluateRequestedBatch({
     requestedPaths,
@@ -486,8 +582,10 @@ async function buildPolicyNextCompatibilityRemovalBatchAuthorization({
     ...runtimeEvidenceEvaluation.risks,
     ...postRemovalEvaluation.risks,
     ...reviewContextEvaluation.risks,
+    ...pathStateSourceEvaluation.risks,
     ...executionPlanEvaluation.risks,
     ...appliedPathRisks,
+    ...appliedPathStateRisks,
     ...batchEvaluation.risks,
     ...evaluateAuthorization({
       remainingCount: remainingManifest.remainingCount,
@@ -523,6 +621,15 @@ async function buildPolicyNextCompatibilityRemovalBatchAuthorization({
       reviewArtifactFingerprint:
         postRemovalEvaluation.reviewArtifactFingerprint,
     },
+    pathStateEvidence: {
+      valid: pathStateSource.ok,
+      fingerprint: pathStateSource.pathStateEvidenceFingerprint,
+      executionPlanArtifactFingerprint:
+        pathStateSource.executionPlanArtifactFingerprint,
+      totalCount: pathStateSource.pathState.totalCount,
+      existingCount: pathStateSource.pathState.existingCount,
+      removedCount: pathStateSource.pathState.removedCount,
+    },
     authorizationContext: {
       reviewArtifactFingerprint:
         reviewContextEvaluation.reviewArtifactFingerprint,
@@ -532,6 +639,7 @@ async function buildPolicyNextCompatibilityRemovalBatchAuthorization({
       readyForExecutionGate: resolvedExecutionPlan.readyForExecutionGate === true,
       validationOk: resolvedExecutionPlan.validation?.ok === true,
       manifestEntryCount: executionPlanEvaluation.entries.length,
+      artifactFingerprint: pathStateSource.executionPlanArtifactFingerprint,
     },
     remainingManifest,
     authorizedBatch: {
@@ -559,6 +667,10 @@ async function buildPolicyNextCompatibilityRemovalBatchAuthorization({
       requireVerifiedPostRemoval: true,
       requireAppliedReviewArtifactContext: true,
       requireAppliedPathsInExecutionManifest: true,
+      requireReplayVerifiedPathStateEvidence: true,
+      requireExactPathStateArtifactBinding: true,
+      requireRuntimeAppliedPathsMatchPathState: true,
+      requirePathStateDerivedRemainingManifest: true,
       requireRemainingManifestPath: true,
       requireSmallBatch: true,
       preventAlreadyRemovedPathReuse: true,

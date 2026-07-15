@@ -147,6 +147,8 @@ async function buildPolicyStorageClosureFinalRemovalAudit({
   const audit = await buildPolicyCompatibilityRemovalCompletionAudit({
     nextBatchAuthorizationArtifact,
     executionPlan,
+    expectedExecutionPlanArtifactFingerprint:
+      executionPlanSource.artifactFingerprint,
     reviewArtifactFingerprint,
     finalImportScan,
     validationEvidence,

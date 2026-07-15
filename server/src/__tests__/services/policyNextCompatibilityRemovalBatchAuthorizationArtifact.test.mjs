@@ -9,6 +9,7 @@
  */
 
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
@@ -17,6 +18,9 @@ import {
 import {
   buildPolicyPostRemovalRuntimeEvidenceArtifact,
 } from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
+import {
+  buildNextBatchAuthorizationPathStateSource,
+} from './fixtures/policyNextCompatibilityRemovalBatchAuthorizationFixtures.mjs';
 import {
   POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_RISK_IDS,
   POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_STATUS_IDS,
@@ -33,17 +37,29 @@ const MANIFEST_PATHS = Object.freeze([
 
 function executionPlan(overrides = {}) {
   const entries = overrides.entries || MANIFEST_PATHS.map(path => ({
-    categoryId: 'old_preview_replay_diagnostics',
-    actionId: 'delete_file',
-    path,
-    ready: true,
+      categoryId: 'old_preview_replay_diagnostics',
+      actionId: 'delete_file',
+      path,
+      replacementEvidence: {
+        replacementPath: 'server/src/services/policyNativeIntentProjection.mjs',
+      },
+      ready: true,
   }));
 
   return {
+    version: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
     statusId:
       POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,
     validation: { ok: true, issueCount: 0, issues: [] },
+    riskCount: 0,
+    risks: [],
+    sideEffects: {
+      filesDeleted: false,
+      filesArchived: false,
+      storageChanged: false,
+      gitCommandsRun: false,
+    },
     manifest: {
       approved: true,
       approvedBy: 'operator',
@@ -109,14 +125,33 @@ function input(overrides = {}) {
   };
 }
 
+async function authorizationArtifact({
+  plan = executionPlan(),
+  runtimeArtifact = runtimeEvidenceArtifact(),
+  authorizationInput = input(),
+  ...overrides
+} = {}) {
+  const appliedPaths = runtimeArtifact.provenance?.appliedPaths || [];
+  const source = buildNextBatchAuthorizationPathStateSource({
+    executionPlan: plan,
+    existingPaths: MANIFEST_PATHS.filter(path => !appliedPaths.includes(path)),
+  });
+
+  return buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+    runtimeEvidenceArtifact: runtimeArtifact,
+    ...source,
+    input: authorizationInput,
+    ...overrides,
+  });
+}
+
 describe('policyNextCompatibilityRemovalBatchAuthorizationArtifact', () => {
   test('wraps ready next-batch authorization with its runtime evidence artifact', async () => {
     const evidenceArtifact = runtimeEvidenceArtifact();
     const artifact =
-      await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-        runtimeEvidenceArtifact: evidenceArtifact,
-        executionPlan: executionPlan(),
-        input: input({
+      await authorizationArtifact({
+        runtimeArtifact: evidenceArtifact,
+        authorizationInput: input({
           requestedPaths: [MANIFEST_PATHS[1], MANIFEST_PATHS[2]],
         }),
         generatedAt: '2026-06-25T10:00:00.000Z',
@@ -139,10 +174,9 @@ describe('policyNextCompatibilityRemovalBatchAuthorizationArtifact', () => {
 
   test('wraps complete-no-remaining authorization with an intact full-manifest artifact', async () => {
     const artifact =
-      await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-        runtimeEvidenceArtifact: runtimeEvidenceArtifact(MANIFEST_PATHS),
-        executionPlan: executionPlan(),
-        input: input({
+      await authorizationArtifact({
+        runtimeArtifact: runtimeEvidenceArtifact(MANIFEST_PATHS),
+        authorizationInput: input({
           requestedPaths: [],
           authorizationReason: '',
           authorizedBy: '',
@@ -169,18 +203,16 @@ describe('policyNextCompatibilityRemovalBatchAuthorizationArtifact', () => {
       },
     };
     const invalidPath =
-      await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-        runtimeEvidenceArtifact: evidenceArtifact,
-        executionPlan: executionPlan(),
-        input: input({
+      await authorizationArtifact({
+        runtimeArtifact: evidenceArtifact,
+        authorizationInput: input({
           requestedPaths: ['server/src/services/notInManifest.mjs'],
         }),
       });
     const invalidEvidence =
-      await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-        runtimeEvidenceArtifact: invalidEvidenceArtifact,
-        executionPlan: executionPlan(),
-        input: input(),
+      await authorizationArtifact({
+        runtimeArtifact: invalidEvidenceArtifact,
+        authorizationInput: input(),
       });
 
     [invalidPath, invalidEvidence].forEach(artifact => {
@@ -201,10 +233,8 @@ describe('policyNextCompatibilityRemovalBatchAuthorizationArtifact', () => {
 
   test('rejects side effects in artifact output', async () => {
     const artifact =
-      await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-        runtimeEvidenceArtifact: runtimeEvidenceArtifact(),
-        executionPlan: executionPlan(),
-        input: input(),
+      await authorizationArtifact({
+        authorizationInput: input(),
         sideEffects: {
           filesDeleted: true,
           manifestWritten: true,

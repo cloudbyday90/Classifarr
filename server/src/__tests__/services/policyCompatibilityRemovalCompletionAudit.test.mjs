@@ -17,6 +17,9 @@ import {
 import {
   buildPolicyPostRemovalRuntimeEvidenceArtifact,
 } from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
+import {
+  buildNextBatchAuthorizationPathStateSource,
+} from './fixtures/policyNextCompatibilityRemovalBatchAuthorizationFixtures.mjs';
 
 const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 const MANIFEST_PATHS = Object.freeze([
@@ -47,8 +50,17 @@ function executionPlan(overrides = {}) {
       POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,
     validation: { ok: true, issueCount: 0, issues: [] },
+    riskCount: 0,
+    risks: [],
+    sideEffects: {
+      filesDeleted: false,
+      filesArchived: false,
+      storageChanged: false,
+      gitCommandsRun: false,
+    },
     manifest: {
       approved: true,
+      approvedBy: 'policy-maintainer',
       entryCount: entries.length,
       entries,
     },
@@ -106,10 +118,14 @@ async function nextBatchAuthorizationArtifact({
   input = {},
 } = {}) {
   const remainingPaths = MANIFEST_PATHS.filter(path => !appliedPaths.includes(path));
+  const source = buildNextBatchAuthorizationPathStateSource({
+    executionPlan: plan,
+    existingPaths: remainingPaths,
+  });
 
   return buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
     runtimeEvidenceArtifact: runtimeEvidenceArtifact(appliedPaths),
-    executionPlan: plan,
+    ...source,
     input: {
       requestedPaths: remainingPaths,
       maxBatchSize: 3,
@@ -278,7 +294,7 @@ describe('policyCompatibilityRemovalCompletionAudit', () => {
     );
     expect(crossManifest.risks.map(risk => risk.riskId)).toContain(
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-        .AUTHORIZATION_REPLAY_MISMATCH
+        .AUTHORIZATION_EXECUTION_PLAN_MANIFEST_MISMATCH
     );
   });
 

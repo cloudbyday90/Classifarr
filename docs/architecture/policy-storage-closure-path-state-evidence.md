@@ -131,8 +131,9 @@ npm run --silent policy:storage-closure-path-state-evidence -- \
   --output .tmp/policy-storage/path-state-evidence.json
 ```
 
-## Next Step
+## Outcome
 
-Proceed with **8R.25.3 Next-Batch Authorization Snapshot Binding**. The
-authorization artifact should consume this verified snapshot fingerprint and
-authorize only the currently removed and remaining paths it proves.
+**8R.25.3 Next-Batch Authorization Snapshot Binding** now consumes this
+verified snapshot. It rejects raw plans, altered snapshots, cross-artifact
+snapshots, and any runtime applied-path set that differs from the snapshot's
+removed paths before it authorizes another batch.

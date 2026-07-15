@@ -27,6 +27,9 @@ import {
 import {
   buildReadyExecutionPlanArtifact,
 } from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
+import {
+  buildNextBatchAuthorizationPathStateSource,
+} from './fixtures/policyNextCompatibilityRemovalBatchAuthorizationFixtures.mjs';
 
 const MANIFEST_PATHS = Object.freeze([
   'server/src/services/legacyA.mjs',
@@ -149,13 +152,19 @@ function runtimeEvidenceArtifact(appliedPaths = MANIFEST_PATHS) {
 
 async function nextBatchAuthorizationArtifact({
   plan = executionPlan(),
+  planArtifact = null,
   appliedPaths = MANIFEST_PATHS,
 } = {}) {
   const remainingPaths = MANIFEST_PATHS.filter(path => !appliedPaths.includes(path));
+  const source = buildNextBatchAuthorizationPathStateSource({
+    executionPlan: plan,
+    executionPlanArtifact: planArtifact,
+    existingPaths: remainingPaths,
+  });
 
   return buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
     runtimeEvidenceArtifact: runtimeEvidenceArtifact(appliedPaths),
-    executionPlan: plan,
+    ...source,
     input: {
       requestedPaths: remainingPaths,
       maxBatchSize: MANIFEST_PATHS.length,
@@ -197,6 +206,7 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
       }),
       nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({
         plan,
+        planArtifact,
         appliedPaths: [MANIFEST_PATHS[1]],
       }),
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
@@ -225,7 +235,10 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
     const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
       executionPlanArtifact: planArtifact,
       pathStateEvidence: pathStateEvidence({ planArtifact }),
-      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({
+        plan,
+        planArtifact,
+      }),
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
       referenceScan: {
@@ -254,7 +267,10 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
         planArtifact,
         existingPaths: [MANIFEST_PATHS[0]],
       }),
-      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({
+        plan,
+        planArtifact,
+      }),
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
       referenceScan: {
@@ -282,7 +298,10 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
     const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
       executionPlanArtifact: planArtifact,
       pathStateEvidence: pathStateEvidence({ planArtifact }),
-      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({
+        plan,
+        planArtifact,
+      }),
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
       referenceScan: {
@@ -308,7 +327,10 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
     const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
       executionPlanArtifact: planArtifact,
       pathStateEvidence: pathStateEvidence({ planArtifact }),
-      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({
+        plan,
+        planArtifact,
+      }),
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       referenceScan: {
         completed: true,

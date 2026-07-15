@@ -22,6 +22,9 @@ import {
 import {
   buildPolicyPostRemovalRuntimeEvidenceArtifact,
 } from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
+import {
+  buildNextBatchAuthorizationPathStateSource,
+} from './fixtures/policyNextCompatibilityRemovalBatchAuthorizationFixtures.mjs';
 
 const MANIFEST_PATHS = Object.freeze([
   'server/src/services/retiredCompatibilityService.mjs',
@@ -40,8 +43,17 @@ function executionPlan(overrides = {}) {
       issueCount: 0,
       issues: [],
     },
+    riskCount: 0,
+    risks: [],
+    sideEffects: {
+      filesDeleted: false,
+      filesArchived: false,
+      storageChanged: false,
+      gitCommandsRun: false,
+    },
     manifest: {
       approved: true,
+      approvedBy: 'policy-maintainer',
       entryCount: MANIFEST_PATHS.length,
       entries: MANIFEST_PATHS.map(path => ({
         categoryId: 'client_bridge_ui',
@@ -126,10 +138,14 @@ async function nextBatchAuthorizationArtifact({
   appliedPaths = MANIFEST_PATHS,
 } = {}) {
   const remainingPaths = MANIFEST_PATHS.filter(path => !appliedPaths.includes(path));
+  const source = buildNextBatchAuthorizationPathStateSource({
+    executionPlan: plan,
+    existingPaths: remainingPaths,
+  });
 
   return buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
     runtimeEvidenceArtifact: runtimeEvidenceArtifact(appliedPaths),
-    executionPlan: plan,
+    ...source,
     input: {
       requestedPaths: remainingPaths,
       maxBatchSize: MANIFEST_PATHS.length,

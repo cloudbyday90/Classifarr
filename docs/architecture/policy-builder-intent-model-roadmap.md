@@ -6317,10 +6317,21 @@ Tasks:
     snapshot bound to the exact execution-plan artifact instead of a live
     filesystem callback.
 - **8R.25.3 Next-Batch Authorization Snapshot Binding**
-  - Require next-batch authorization to consume the verified path-state
-    evidence fingerprint from the same approved execution-plan artifact.
-  - Authorize only the current removed and remaining paths replayed by that
-    snapshot; reject a snapshot from another artifact or a divergent path set.
+  - Completed: require next-batch authorization to consume a replay-verified
+    path-state evidence artifact bound to the exact ready execution-plan
+    artifact it retains.
+  - Completed: derive remaining inventory from the snapshot's removed paths and
+    require runtime applied paths to match that snapshot exactly before a new
+    batch can be authorized.
+  - Completed: reject raw plans, missing or altered snapshots, snapshots from a
+    different execution-plan artifact, divergent manifest paths, and final
+    audit consumers whose expected artifact fingerprint differs.
+  - Implemented by
+    `server/src/services/policyNextCompatibilityRemovalBatchAuthorizationPathStateSource.mjs`,
+    the v3 authorization service, the v4 authorization artifact, and focused
+    authorization, artifact, integrity, completion-audit, and final-audit
+    coverage. Design rationale is documented in
+    [Next-Batch Authorization Path-State Binding](policy-next-compatibility-removal-batch-authorization-path-state-binding.md).
 - Build post-removal runtime verification evidence for paths that no longer
   exist.
 - Scan source roots for exact manifest path references and feed that into the

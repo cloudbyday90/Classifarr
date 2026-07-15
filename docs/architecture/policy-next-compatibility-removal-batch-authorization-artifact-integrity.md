@@ -8,10 +8,13 @@ Next compatibility-removal batch authorization must not trust a detached
 previous controlled-removal review, re-run post-removal verification from that
 artifact, and bind the authorization context to the same review fingerprint.
 
-The authorization also verifies that every applied path in that runtime
-artifact exists in the supplied execution manifest before it calculates the
-remaining inventory. This prevents a valid artifact from a different removal
-scope from authorizing another batch.
+The authorization also consumes replay-verified checkout path-state evidence
+bound to the exact ready execution-plan artifact retained in the authorization
+artifact. It derives the remaining inventory from that snapshot, verifies every
+runtime applied path against the approved manifest, and requires the runtime
+applied set to match the snapshot's removed-path set exactly. This prevents a
+valid artifact from a different removal scope or checkout snapshot from
+authorizing another batch.
 
 This boundary remains read-only. It does not remove files, write manifests,
 mutate storage, run checks, or execute Git commands.
@@ -94,22 +97,31 @@ Cons:
    it to equal the fingerprint bound to the runtime artifact's apply evidence.
 4. Require every applied path to exist in the current approved execution
    manifest before subtracting it from remaining inventory.
-5. Retain existing bounded selection, maximum batch size, and authorizer/reason
+5. Require replay-verified path-state evidence to match the exact approved
+   execution-plan artifact and manifest, then calculate remaining inventory
+   from that snapshot.
+6. Require runtime applied paths to exactly equal the snapshot's removed paths.
+7. Retain existing bounded selection, maximum batch size, and authorizer/reason
    rules.
-6. Keep the authorization service and exporter side-effect-free.
+8. Keep the authorization service and exporter side-effect-free.
 
 ## Implementation Outcome
 
 Implemented in `policyNextCompatibilityRemovalBatchAuthorization.mjs` and its
 artifact exporter:
 
-- authorization contract moved to `v2` and the wrapper artifact to `v3`,
+- authorization contract moved to `v3` and the wrapper artifact to `v4`,
 - detached `postRemovalVerification` input was removed,
 - authorization now validates the runtime evidence artifact and regenerates
   post-removal verification from it,
 - the authorization context must carry the exact applied removal-review
   fingerprint,
 - applied paths outside the supplied execution manifest block authorization,
+- raw execution plans are no longer an authorization input; the exporter now
+  requires `--execution-plan-artifact` and `--path-state-evidence`,
+- the wrapper retains the exact plan artifact and replay-verified path-state
+  evidence, rejects cross-artifact or divergent snapshots, and derives its
+  remaining manifest from the snapshot,
 - blocked integrity states expose bounded risk IDs instead of raw evidence,
 - the wrapper artifact retains the consumed runtime evidence artifact and binds
   its own bounded payload with a SHA-256 fingerprint,

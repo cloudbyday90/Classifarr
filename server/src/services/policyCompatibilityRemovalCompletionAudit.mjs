@@ -9,7 +9,7 @@ import {
 } from './policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.mjs';
 
 const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_VERSION =
-  'policy.compatibility_removal_completion_audit.v2';
+  'policy.compatibility_removal_completion_audit.v3';
 
 const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -28,6 +28,8 @@ const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS = Object.freeze({
   AUTHORIZATION_RUNTIME_EVIDENCE_INVALID: 'authorization_runtime_evidence_invalid',
   AUTHORIZATION_REVIEW_CONTEXT_MISSING: 'authorization_review_context_missing',
   AUTHORIZATION_REVIEW_CONTEXT_MISMATCH: 'authorization_review_context_mismatch',
+  AUTHORIZATION_EXECUTION_PLAN_MANIFEST_MISMATCH:
+    'authorization_execution_plan_manifest_mismatch',
   AUTHORIZATION_REPLAY_MISMATCH: 'authorization_replay_mismatch',
   AUTHORIZATION_NOT_COMPLETE: 'authorization_not_complete',
   AUTHORIZATION_VALIDATION_FAILED: 'authorization_validation_failed',
@@ -77,6 +79,14 @@ function getManifestEntries(executionPlan = {}) {
     .filter(entry => entry.path);
 }
 
+function manifestPathsMatch(left = [], right = []) {
+  const expected = uniqueNormalizedPaths(left).sort();
+  const actual = uniqueNormalizedPaths(right).sort();
+
+  return expected.length === actual.length &&
+    expected.every((path, index) => path === actual[index]);
+}
+
 function mapAuthorizationArtifactIntegrityRisk(risk = {}) {
   const riskIdMap = {
     [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
@@ -107,6 +117,18 @@ function mapAuthorizationArtifactIntegrityRisk(risk = {}) {
       .AUTHORIZATION_REPLAY_MISMATCH]:
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
         .AUTHORIZATION_REPLAY_MISMATCH,
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
+      .EXECUTION_PLAN_ARTIFACT_FINGERPRINT_MISSING]:
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_ARTIFACT_INVALID,
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
+      .EXECUTION_PLAN_ARTIFACT_FINGERPRINT_MISMATCH]:
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_ARTIFACT_INVALID,
+    [POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
+      .PATH_STATE_EVIDENCE_INVALID]:
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_ARTIFACT_INVALID,
   };
 
   return buildRisk(
@@ -126,12 +148,13 @@ function mapAuthorizationArtifactIntegrityRisk(risk = {}) {
 async function evaluateCompletionAuthorizationArtifact({
   nextBatchAuthorizationArtifact = null,
   executionPlan = null,
+  expectedExecutionPlanArtifactFingerprint = '',
   reviewArtifactFingerprint = '',
 } = {}) {
   const integrity =
     await validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity({
       authorizationArtifact: nextBatchAuthorizationArtifact,
-      executionPlan,
+      expectedExecutionPlanArtifactFingerprint,
       reviewArtifactFingerprint,
     });
   const authorization = integrity.authorization || {};
@@ -139,6 +162,28 @@ async function evaluateCompletionAuthorizationArtifact({
 
   if (!integrity.ok) {
     risks.push(...integrity.issues.map(mapAuthorizationArtifactIntegrityRisk));
+  }
+
+  const expectedManifestPaths = getManifestEntries(executionPlan).map(entry => entry.path);
+  const artifactManifestPaths = getManifestEntries(
+    nextBatchAuthorizationArtifact?.executionPlanArtifact?.executionPlan
+  ).map(entry => entry.path);
+
+  if (
+    expectedManifestPaths.length > 0 &&
+    artifactManifestPaths.length > 0 &&
+    !manifestPathsMatch(expectedManifestPaths, artifactManifestPaths)
+  ) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_EXECUTION_PLAN_MANIFEST_MISMATCH,
+      'Compatibility removal completion audit requires the supplied execution plan to cover the exact manifest retained by its next-batch authorization artifact.',
+      {
+        expectedManifestPaths: uniqueNormalizedPaths(expectedManifestPaths).sort(),
+        authorizationArtifactManifestPaths:
+          uniqueNormalizedPaths(artifactManifestPaths).sort(),
+      }
+    ));
   }
 
   if (authorization.completedNoRemainingPaths !== true) {
@@ -349,6 +394,8 @@ function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
     POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
       .AUTHORIZATION_REVIEW_CONTEXT_MISMATCH,
     POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+      .AUTHORIZATION_EXECUTION_PLAN_MANIFEST_MISMATCH,
+    POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
       .AUTHORIZATION_REPLAY_MISMATCH,
   ].includes(risk.riskId))) {
     return POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
@@ -408,6 +455,7 @@ function determineStatusId({ risks = [], remainingCount = 0 } = {}) {
 async function buildPolicyCompatibilityRemovalCompletionAudit({
   nextBatchAuthorizationArtifact = null,
   executionPlan = null,
+  expectedExecutionPlanArtifactFingerprint = '',
   reviewArtifactFingerprint = '',
   finalImportScan = {},
   validationEvidence = {},
@@ -419,6 +467,7 @@ async function buildPolicyCompatibilityRemovalCompletionAudit({
     await evaluateCompletionAuthorizationArtifact({
       nextBatchAuthorizationArtifact,
       executionPlan: resolvedExecutionPlan,
+      expectedExecutionPlanArtifactFingerprint,
       reviewArtifactFingerprint,
     });
   const executionPlanEvaluation = evaluateExecutionPlan(resolvedExecutionPlan);
@@ -467,6 +516,8 @@ async function buildPolicyCompatibilityRemovalCompletionAudit({
       readyForExecutionGate: resolvedExecutionPlan.readyForExecutionGate === true,
       validationOk: resolvedExecutionPlan.validation?.ok === true,
       manifestEntryCount: executionPlanEvaluation.entries.length,
+      artifactFingerprint:
+        authorizationEvaluation.integrity.executionPlanArtifactFingerprint || null,
     },
     manifestInventory: {
       totalCount: executionPlanEvaluation.manifestPaths.length,

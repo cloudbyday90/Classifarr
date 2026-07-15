@@ -6,8 +6,9 @@ The next-batch authorization artifact exporter generates a machine-readable
 policy next compatibility removal batch authorization artifact from:
 
 - a fingerprint-valid post-removal runtime evidence artifact,
-- a ready compatibility deletion execution-plan JSON with approved manifest
-  entries,
+- a ready, fingerprint-valid compatibility deletion execution-plan artifact,
+- replay-verified checkout path-state evidence bound to that exact execution
+  plan artifact,
 - requested remaining manifest paths,
 - authorizing operator and reason.
 
@@ -67,21 +68,25 @@ Cons:
 - next-batch authorization cannot run until runtime evidence artifact output is
   available.
 
-### Authorize Only Remaining Manifest Paths
+### Authorize Only Snapshot-Proven Remaining Manifest Paths
 
-The exporter should compute remaining inventory from the original approved
-manifest minus verified applied paths, then reject unknown or already removed
+The exporter should derive removed and remaining inventory from the verified
+checkout snapshot, require runtime applied paths to exactly equal the
+snapshot's removed paths, and reject unknown or already removed requested
 paths.
 
 Pros:
 
+- prevents another runtime artifact or checkout snapshot from silently
+  redefining deletion state,
 - prevents out-of-manifest deletion,
 - prevents duplicate removal attempts,
 - keeps cleanup tied to approved compatibility inventory.
 
 Cons:
 
-- the execution-plan artifact must remain available until cleanup completes.
+- both the execution-plan artifact and a current snapshot must remain available
+  until cleanup completes.
 
 ### Emit Either Next Batch Or Completion State
 
@@ -107,14 +112,16 @@ Use this stack for next-batch authorization:
 1. Require an intact runtime evidence artifact, then regenerate post-removal
    verification from it.
 2. Require the input review fingerprint to match the artifact's applied review.
-3. Require compatibility deletion execution-plan JSON with ready approved
-   manifest entries.
-4. Block applied paths outside the current manifest before calculating remaining
-   inventory.
-5. Block unknown, already removed, empty, or overly broad requested batches.
-6. Require `authorizationReason` and `authorizedBy` while remaining paths exist.
-7. Emit ready next-batch authorization or complete-no-remaining-paths evidence.
-8. Reject file deletion, archive, route/test removal, storage mutation, manifest
+3. Require a ready, fingerprint-valid compatibility deletion execution-plan
+   artifact with approved manifest entries.
+4. Require replay-verified checkout path-state evidence bound to that exact
+   artifact and exact manifest.
+5. Derive remaining inventory from the snapshot and require runtime applied
+   paths to exactly equal its removed paths.
+6. Block unknown, already removed, empty, or overly broad requested batches.
+7. Require `authorizationReason` and `authorizedBy` while remaining paths exist.
+8. Emit ready next-batch authorization or complete-no-remaining-paths evidence.
+9. Reject file deletion, archive, route/test removal, storage mutation, manifest
    writes, and Git side effects.
 
 ## Implementation Outcome
@@ -134,9 +141,11 @@ Implemented:
 - Added the next-batch authorization artifact suite and this design doc to the
   fixed policy storage closure validation evidence command set.
 - The artifact now emits `version =
-  policy.next_compatibility_removal_batch_authorization_artifact.v3`, retains
-  the consumed runtime evidence artifact, fingerprints its bounded wrapper
-  payload, and rejects detached verification summaries.
+  policy.next_compatibility_removal_batch_authorization_artifact.v4`, retains
+  the consumed runtime evidence, execution-plan artifact, and path-state
+  evidence, fingerprints its bounded wrapper payload, and rejects detached
+  verification summaries, raw plans, cross-artifact snapshots, and divergent
+  snapshot path sets.
   `nextStep.stepId = compatibility_removal_completion_audit`; production output
   does not expose `nextPhase.phaseId`.
 
@@ -145,7 +154,8 @@ Example:
 ```bash
 npm run --silent policy:next-batch-authorization -- \
   --runtime-evidence-artifact .tmp/phase8r/post-removal-runtime-evidence.json \
-  --execution-plan .tmp/phase8r/execution-plan.json \
+  --execution-plan-artifact .tmp/phase8r/execution-plan-artifact.json \
+  --path-state-evidence .tmp/phase8r/path-state-evidence.json \
   --input .tmp/phase8r/next-batch-authorization-input.json \
   --output .tmp/phase8r/next-batch-authorization.json \
   --artifact-output .tmp/phase8r/next-batch-authorization-artifact.json
@@ -153,7 +163,6 @@ npm run --silent policy:next-batch-authorization -- \
 
 ## Next Step
 
-Use the generated authorization JSON as input for the compatibility removal
-completion-audit artifact export. When that audit reports no remaining
-approved manifest paths, proceed to **Completion Checkpoint module naming
-cutover** so checkpoint contracts consume semantic completion-audit evidence.
+Use the generated authorization artifact as input for the compatibility removal
+completion-audit artifact export. Final storage-closure audit consumers must
+also bind it to the expected execution-plan artifact fingerprint.

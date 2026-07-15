@@ -9,6 +9,7 @@
  */
 
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
@@ -18,11 +19,17 @@ import {
   buildPolicyPostRemovalRuntimeEvidenceArtifact,
 } from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
 import {
+  buildPolicyStorageClosurePathStateEvidence,
+} from '../../services/policyStorageClosurePathStateEvidence.mjs';
+import {
   POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS,
   POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS,
   buildPolicyNextCompatibilityRemovalBatchAuthorization,
   validatePolicyNextCompatibilityRemovalBatchAuthorization,
 } from '../../services/policyNextCompatibilityRemovalBatchAuthorization.mjs';
+import {
+  buildReadyExecutionPlanArtifact,
+} from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 
 const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 const MANIFEST_PATHS = Object.freeze([
@@ -49,6 +56,7 @@ function executionPlan(overrides = {}) {
   const entries = overrides.entries || MANIFEST_PATHS.map(path => manifestEntry(path));
 
   return {
+    version: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
     statusId:
       POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE,
     readyForExecutionGate: true,
@@ -56,6 +64,14 @@ function executionPlan(overrides = {}) {
       ok: true,
       issueCount: 0,
       issues: [],
+    },
+    riskCount: 0,
+    risks: [],
+    sideEffects: {
+      filesDeleted: false,
+      filesArchived: false,
+      storageChanged: false,
+      gitCommandsRun: false,
     },
     manifest: {
       approved: true,
@@ -65,6 +81,27 @@ function executionPlan(overrides = {}) {
     },
     ...overrides,
   };
+}
+
+function executionPlanArtifact(plan = executionPlan()) {
+  return buildReadyExecutionPlanArtifact({ executionPlan: plan });
+}
+
+function pathStateEvidence({
+  planArtifact,
+  existingPaths = [],
+} = {}) {
+  const existingPathSet = new Set(existingPaths);
+
+  return buildPolicyStorageClosurePathStateEvidence({
+    executionPlanArtifact: planArtifact,
+    observations: MANIFEST_PATHS.map(path => ({
+      path,
+      exists: existingPathSet.has(path),
+    })),
+    generatedAt: '2026-07-15T12:00:00.000Z',
+    sideEffects: { filesRead: true },
+  });
 }
 
 function runtimeEvidenceArtifact({
@@ -121,9 +158,19 @@ function runtimeEvidenceArtifact({
 }
 
 async function readyAuthorization(overrides = {}) {
+  const plan = overrides.executionPlan || executionPlan();
+  const planArtifact = overrides.executionPlanArtifact || executionPlanArtifact(plan);
+  const runtimeArtifact = overrides.runtimeEvidenceArtifact || runtimeEvidenceArtifact();
+  const appliedPaths = runtimeArtifact.provenance?.appliedPaths || [];
+  const snapshot = overrides.pathStateEvidence || pathStateEvidence({
+    planArtifact,
+    existingPaths: MANIFEST_PATHS.filter(path => !appliedPaths.includes(path)),
+  });
+
   return buildPolicyNextCompatibilityRemovalBatchAuthorization({
-    runtimeEvidenceArtifact: runtimeEvidenceArtifact(),
-    executionPlan: executionPlan(),
+    runtimeEvidenceArtifact: runtimeArtifact,
+    executionPlanArtifact: planArtifact,
+    pathStateEvidence: snapshot,
     requestedPaths: [MANIFEST_PATHS[1]],
     authorizationReason: 'Continue removing verified compatibility preview paths.',
     authorizedBy: 'operator',
@@ -297,9 +344,11 @@ describe('policyNextCompatibilityRemovalBatchAuthorization', () => {
         .BLOCKED_BY_EXECUTION_PLAN);
     expect(notReady.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
       POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
-        .EXECUTION_PLAN_NOT_READY,
+        .EXECUTION_PLAN_ARTIFACT_INVALID,
+    ]));
+    expect(notReady.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
       POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
-        .EXECUTION_PLAN_VALIDATION_FAILED,
+        .PATH_STATE_EVIDENCE_INVALID,
     ]));
     expect(noManifest.statusId)
       .toBe(POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
@@ -307,6 +356,70 @@ describe('policyNextCompatibilityRemovalBatchAuthorization', () => {
     expect(noManifest.risks.map(risk => risk.riskId)).toContain(
       POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS.NO_MANIFEST_ENTRIES
     );
+  });
+
+  test('requires an approved execution-plan artifact and a snapshot bound to it', async () => {
+    const plan = executionPlan();
+    const planArtifact = executionPlanArtifact(plan);
+    const alternatePlanArtifact = buildReadyExecutionPlanArtifact({
+      executionPlan: plan,
+      generatedAt: '2026-07-14T20:00:01.000Z',
+    });
+    const rawPlan = await buildPolicyNextCompatibilityRemovalBatchAuthorization({
+      runtimeEvidenceArtifact: runtimeEvidenceArtifact(),
+      executionPlan: plan,
+      requestedPaths: [MANIFEST_PATHS[1]],
+      authorizationReason: 'Raw plans must not authorize compatibility removal.',
+      authorizedBy: 'operator',
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    });
+    const crossArtifact = await readyAuthorization({
+      executionPlanArtifact: planArtifact,
+      pathStateEvidence: pathStateEvidence({
+        planArtifact: alternatePlanArtifact,
+        existingPaths: [MANIFEST_PATHS[1], MANIFEST_PATHS[2]],
+      }),
+    });
+
+    expect(rawPlan.statusId)
+      .toBe(POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+        .BLOCKED_BY_EXECUTION_PLAN);
+    expect(rawPlan.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        .EXECUTION_PLAN_ARTIFACT_INVALID,
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        .PATH_STATE_EVIDENCE_INVALID,
+    ]));
+    expect(crossArtifact.statusId)
+      .toBe(POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+        .BLOCKED_BY_PATH_STATE_EVIDENCE);
+    expect(crossArtifact.risks.map(risk => risk.riskId)).toContain(
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        .PATH_STATE_EVIDENCE_ARTIFACT_MISMATCH
+    );
+  });
+
+  test('requires runtime removal evidence to match the verified snapshot exactly', async () => {
+    const planArtifact = executionPlanArtifact();
+    const authorization = await readyAuthorization({
+      executionPlanArtifact: planArtifact,
+      pathStateEvidence: pathStateEvidence({
+        planArtifact,
+        existingPaths: MANIFEST_PATHS,
+      }),
+    });
+
+    expect(authorization.statusId)
+      .toBe(POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+        .BLOCKED_BY_PATH_STATE_EVIDENCE);
+    expect(authorization.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+          .RUNTIME_APPLIED_PATH_STATE_MISMATCH,
+        expectedRemovedPaths: [],
+        actualAppliedPaths: [MANIFEST_PATHS[0]],
+      }),
+    ]));
   });
 
   test('blocks unknown paths, removed paths, empty batches, and broad batches', async () => {
