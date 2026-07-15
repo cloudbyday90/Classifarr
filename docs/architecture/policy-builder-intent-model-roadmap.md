@@ -5016,10 +5016,54 @@ Implementation status:
   fresh candidate report, and a fresh conversion plan. It remains excluded from
   automatic post-upgrade execution and records manual conversion events with
   `actor_type = operator`.
+- The dedicated administrator maintenance surface is documented in
+  [Policy Native Intent Conversion Maintenance UI](policy-native-intent-conversion-maintenance-ui.md).
+  It shows only the bounded server preview, permits selection of ready
+  candidates, requires the same exact confirmation in a native modal dialog,
+  and keeps conversion separate from policy authoring and automation setup.
 - Runtime output now uses the durable `policy.intent_conversion_workflow.v1`
   contract, `policy-intent:convert` idempotency keys, and
   `nextStep.stepId = native_runtime_read_path`, leaving roadmap phase IDs as
   planning metadata only.
+
+#### 8R.3.1 Administrator Conversion Maintenance Surface
+
+Intent: give an administrator one focused place to review and explicitly
+confirm native intent conversion without placing migration controls in routine
+policy authoring or automation setup.
+
+Tasks:
+
+- Expose the bounded server candidate preview on a dedicated maintenance route.
+- Render conversion eligibility and automation readiness as separate states.
+- Permit selection only for current ready-to-convert policies and bound a batch
+  to the server's maximum selection count.
+- Require the existing exact conversion phrase in an accessible native modal
+  dialog before calling the apply route.
+- Refresh the server preview after a successful conversion; never trust cached
+  client eligibility at apply time.
+
+Acceptance criteria:
+
+- Ordinary policy editing cannot invoke conversion.
+- Review-required policies remain visible but cannot be selected.
+- The confirmation clearly states selected scope and that conversion does not
+  configure routing or automate a library.
+- The UI sends only policy IDs and the confirmation; server authorization and
+  current-state eligibility remain mandatory.
+
+Implementation status:
+
+- Implemented at `/policies/native-intent-migration` and linked from the
+  policy list as `Native intent maintenance`.
+- The screen consumes only the operator-safe candidate report, keeps native
+  conversion and automation readiness distinct, and caps interactive selection
+  at twenty-five policies.
+- `PolicyNativeIntentConversionConfirmDialog.vue` uses a native modal dialog
+  with a labeled exact-phrase field, a cancel path, and selected-policy review.
+- Focused client API, composable, dialog, view, and route tests cover the
+  boundary; the production Compose image resolves the dedicated route while the
+  apply API remains authentication protected.
 
 ### 8R.4 Native Runtime Read Path
 

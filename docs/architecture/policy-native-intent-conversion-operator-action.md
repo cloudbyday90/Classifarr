@@ -151,8 +151,9 @@ Cons:
 - Focused route tests cover administrator enforcement, server-derived actor
   identity, and bounded validation errors.
 
-## Next Step
+## Product Surface
 
-Add an administrator-facing migration maintenance screen that consumes the
-preview and exposes the same explicit selection and confirmation flow. It must
-remain separate from normal policy authoring and from runtime automation.
+The administrator-facing maintenance screen is documented in
+[Policy Native Intent Conversion Maintenance UI](policy-native-intent-conversion-maintenance-ui.md).
+It consumes this preview and apply boundary while remaining separate from normal
+policy authoring and runtime automation.

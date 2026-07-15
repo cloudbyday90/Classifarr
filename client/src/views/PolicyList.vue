@@ -8,7 +8,7 @@
 
 <template>
   <div class="space-y-6">
-    <div class="flex items-start justify-between">
+    <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold">
           Library Policies
@@ -17,6 +17,12 @@
           Configure policies with presets to classify your media
         </p>
       </div>
+      <RouterLink
+        to="/policies/native-intent-migration"
+        class="rounded border border-gray-600 px-4 py-2 text-sm font-medium text-gray-200 hover:border-primary hover:text-white"
+      >
+        Native intent maintenance
+      </RouterLink>
     </div>
 
     <div
