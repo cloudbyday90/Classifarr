@@ -17,6 +17,14 @@ describe('policyStorageClosureReferenceScanner', () => {
 
   beforeEach(() => {
     fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'classifarr-storage-closure-'));
+    [
+      'client/src',
+      'server/src',
+      'scripts',
+      'database/migrations',
+    ].forEach(repositoryPath => {
+      fs.mkdirSync(path.join(fixtureRoot, repositoryPath), { recursive: true });
+    });
   });
 
   afterEach(() => {
@@ -102,5 +110,23 @@ describe('policyStorageClosureReferenceScanner', () => {
       referencedBy: 'server/src/services/policyCompatibilityDeletionGates.mjs',
       line: 2,
     }]);
+  });
+
+  test('marks the scan incomplete when a configured scan root is unavailable', () => {
+    const scan = scanPolicyStorageClosureReferences({
+      cwd: fixtureRoot,
+      manifestPaths: ['server/src/services/retiredCompatibilityService.mjs'],
+      scanRoots: ['server/src', 'missing/root'],
+    });
+
+    expect(scan).toEqual(expect.objectContaining({
+      completed: false,
+      checkedPaths: ['server/src/services/retiredCompatibilityService.mjs'],
+      references: [],
+      scanIssues: [{
+        issueId: 'scan_root_missing',
+        repositoryPath: 'missing/root',
+      }],
+    }));
   });
 });

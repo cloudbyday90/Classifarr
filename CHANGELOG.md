@@ -103,7 +103,9 @@ unchanged operator or runtime outcome.
   regenerates completion evidence from the current execution plan, repository
   path state, operational reference scan, and fresh validation results. Older
   plan contracts cannot be rewrapped as current proof, while control-plane
-  inventory records no longer create false runtime-reference blockers.
+  inventory records no longer create false runtime-reference blockers. The
+  public generator now fails closed for blocked regeneration and writes
+  diagnostics only through explicit operator allowance.
 - **Measured Compatibility Deletion Readiness** - compatibility removal plans
   now require a fresh, read-only inventory proving every enabled policy has one
   valid active native intent. Missing, ambiguous, legacy-sourced, pending, or

@@ -7062,6 +7062,13 @@ closure proof.
 
 Tasks:
 
+- **8R.36.1 Public Regeneration Artifact-Chain Verification**
+  - Completed: runs the public regeneration command against an isolated
+    checkout with coherent execution-plan, authorization, review, and
+    validation artifacts.
+  - Completed: proves remaining inventory remains observable, while predecessor
+    plans and live operational imports fail closed without output unless an
+    operator explicitly requests a blocked diagnostic.
 - Require the current compatibility-deletion execution-plan contract.
 - Derive manifest path state from the current checkout.
 - Scan operational source references without treating named control-plane
@@ -7090,9 +7097,14 @@ Implementation status:
 - The root runner is `npm run policy:compatibility-removal-evidence`.
 - The focused suite lives in
   `server/src/__tests__/services/policyCompatibilityRemovalEvidenceRegeneration.test.mjs`.
+- The public artifact-chain suite lives in
+  `server/src/__tests__/scripts/generatePolicyCompatibilityRemovalEvidence.test.mjs`.
 - Current regeneration correctly exposes a broader unresolved deletion-readiness
   state when no current, approved execution plan is available. It must not be
   bypassed with a retired artifact.
+- Task 8R.36.1 is implemented. The public command now exports only coherent
+  current evidence by default; blocked output requires explicit diagnostic
+  allowance and cannot silently become current-closure authority.
 
 ## Phase 8R Work Sequence
 

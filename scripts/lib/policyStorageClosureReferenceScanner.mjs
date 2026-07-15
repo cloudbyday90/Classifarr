@@ -63,6 +63,13 @@ function resolveRepositoryPath(cwd, repositoryPath) {
   return path.resolve(cwd, normalizeRepositoryPath(repositoryPath));
 }
 
+function buildScanIssue(issueId, repositoryPath) {
+  return {
+    issueId,
+    repositoryPath: normalizeRepositoryPath(repositoryPath),
+  };
+}
+
 function isIgnoredDirectory(dirent) {
   return dirent.isDirectory() && IGNORED_DIR_NAMES.includes(dirent.name);
 }
@@ -141,12 +148,23 @@ function buildModuleReferences({
     }));
 }
 
-function walkTextFiles(rootPath) {
+function walkTextFiles({ cwd, rootPath, scanIssues }) {
   if (!fs.existsSync(rootPath)) {
     return [];
   }
 
-  const entries = fs.readdirSync(rootPath, { withFileTypes: true });
+  let entries;
+
+  try {
+    entries = fs.readdirSync(rootPath, { withFileTypes: true });
+  } catch (_err) {
+    scanIssues.push(buildScanIssue(
+      'scan_directory_unreadable',
+      path.relative(cwd, rootPath)
+    ));
+    return [];
+  }
+
   const files = [];
 
   for (const entry of entries) {
@@ -157,7 +175,7 @@ function walkTextFiles(rootPath) {
     }
 
     if (entry.isDirectory()) {
-      files.push(...walkTextFiles(fullPath));
+      files.push(...walkTextFiles({ cwd, rootPath: fullPath, scanIssues }));
     } else if (entry.isFile() && isTextFile(fullPath)) {
       files.push(fullPath);
     }
@@ -175,6 +193,11 @@ function scanPolicyStorageClosureReferences({
   const manifestPathSet = new Set(normalizedManifestPaths);
   const references = [];
   const referenceKeys = new Set();
+  const scanIssues = [];
+  const scanIssueKeys = new Set();
+  const normalizedScanRoots = [...new Set(
+    scanRoots.map(normalizeRepositoryPath).filter(Boolean)
+  )];
 
   function addReference(reference) {
     const key = `${reference.path}:${reference.referencedBy}:${reference.line}`;
@@ -185,9 +208,30 @@ function scanPolicyStorageClosureReferences({
     }
   }
 
-  scanRoots
+  function addScanIssue(issue) {
+    const key = `${issue.issueId}:${issue.repositoryPath}`;
+
+    if (!scanIssueKeys.has(key)) {
+      scanIssueKeys.add(key);
+      scanIssues.push(issue);
+    }
+  }
+
+  if (normalizedScanRoots.length === 0) {
+    addScanIssue(buildScanIssue('scan_roots_missing', ''));
+  }
+
+  normalizedScanRoots.forEach(scanRoot => {
+    const rootPath = resolveRepositoryPath(cwd, scanRoot);
+
+    if (!fs.existsSync(rootPath)) {
+      addScanIssue(buildScanIssue('scan_root_missing', scanRoot));
+    }
+  });
+
+  normalizedScanRoots
     .map(scanRoot => resolveRepositoryPath(cwd, scanRoot))
-    .flatMap(walkTextFiles)
+    .flatMap(rootPath => walkTextFiles({ cwd, rootPath, scanIssues }))
     .forEach(filePath => {
       const repositoryPath = normalizeRepositoryPath(path.relative(cwd, filePath));
       if (isIgnoredReferenceScanPath(repositoryPath)) {
@@ -199,6 +243,10 @@ function scanPolicyStorageClosureReferences({
       try {
         content = fs.readFileSync(filePath, 'utf8');
       } catch (_err) {
+        addScanIssue(buildScanIssue(
+          'scan_file_unreadable',
+          path.relative(cwd, filePath)
+        ));
         return;
       }
 
@@ -229,11 +277,21 @@ function scanPolicyStorageClosureReferences({
       });
     });
 
-  return {
+  const scan = {
     completed: normalizedManifestPaths.length > 0,
     checkedPaths: normalizedManifestPaths,
     references,
   };
+
+  if (scanIssues.length > 0) {
+    return {
+      ...scan,
+      completed: false,
+      scanIssues,
+    };
+  }
+
+  return scan;
 }
 
 export {

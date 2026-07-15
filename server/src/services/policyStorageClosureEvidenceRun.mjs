@@ -377,6 +377,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     ],
     testPaths: [
       'server/src/__tests__/services/policyCompatibilityRemovalEvidenceRegeneration.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyCompatibilityRemovalEvidence.test.mjs',
       'server/src/__tests__/scripts/policyStorageClosureReferenceScanner.test.mjs',
     ],
   },

@@ -19,6 +19,9 @@ import {
 import {
   buildPolicyCompatibilityRemovalEvidenceRegeneration,
 } from '../server/src/services/policyCompatibilityRemovalEvidenceRegeneration.mjs';
+import {
+  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS,
+} from '../server/src/services/policyCompatibilityRemovalCompletionAuditArtifact.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -29,6 +32,7 @@ function parseArgs(argv = []) {
     validationEvidencePath: null,
     outputPath: null,
     completionAuditArtifactOutputPath: null,
+    allowBlocked: false,
     requireComplete: false,
     generatedAt: null,
   };
@@ -71,6 +75,10 @@ function parseArgs(argv = []) {
       index += 1;
       continue;
     }
+    if (arg === '--allow-blocked') {
+      options.allowBlocked = true;
+      continue;
+    }
     if (arg === '--require-complete') {
       options.requireComplete = true;
       continue;
@@ -103,6 +111,7 @@ function usage() {
     '  --validation-evidence <json>               Required current validation-evidence JSON.',
     '  --output <json>                            Write evidence-regeneration JSON to this path.',
     '  --completion-audit-artifact-output <json>  Write the nested completion-audit artifact JSON.',
+    '  --allow-blocked                            Allow writing blocked diagnostic output.',
     '  --require-complete                         Exit non-zero unless the evidence is complete.',
     '  --generated-at <iso>                       Optional generatedAt timestamp for stable tests.',
     '  --help                                     Print this help message.',
@@ -198,6 +207,25 @@ async function main() {
     generatedAt: options.generatedAt,
   });
 
+  if (
+    evidence.statusId ===
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS.BLOCKED &&
+    options.allowBlocked !== true
+  ) {
+    console.error(
+      'Compatibility-removal evidence regeneration is blocked; pass --allow-blocked to write diagnostic output.'
+    );
+    console.error(JSON.stringify({
+      statusId: evidence.statusId,
+      complete: evidence.complete,
+      riskCount: evidence.riskCount,
+      risks: evidence.risks,
+      completionAuditArtifactStatusId: evidence.completionAuditArtifact?.statusId || null,
+      completionAuditArtifactRiskCount: evidence.completionAuditArtifact?.riskCount ?? null,
+    }, null, 2));
+    process.exit(1);
+  }
+
   try {
     writeJsonFile(options.outputPath, evidence);
     writeJsonFile(
@@ -214,6 +242,13 @@ async function main() {
   if (options.requireComplete && evidence.complete !== true) {
     process.exit(1);
   }
+
+  process.exit(
+    evidence.statusId ===
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS.BLOCKED
+      ? 1
+      : 0
+  );
 }
 
 main().catch(err => {

@@ -18,24 +18,23 @@ or runs Git.
 
 ## Official-Source Research
 
-- NIST's Secure Software Development Framework (SSDF) treats secure delivery
-  as an outcome-based process and calls out collection and sharing of release
-  component provenance in PS.3.2. Current closure evidence therefore binds
-  plan, repository state, and validation rather than accepting an unverified
-  historical summary.
-- NIST's 2026 DevSecOps project describes risk-based practices aligned to SSDF.
-  A read-only generator that produces explicit blockers supports that model: a
-  failed readiness condition becomes evidence for the next decision instead of
-  a reason to weaken the gate.
-- SLSA artifact verification requires evidence to match consumer expectations;
-  absent or mismatched provenance must fail verification. The regeneration path
-  rejects predecessor execution-plan contract versions before they can support
-  a current completion claim.
+- NIST SP 800-218 describes secure development practices as additions to the
+  SDLC that reduce exploitable vulnerabilities and their impact. Current
+  closure evidence therefore binds the plan, checkout state, and validation
+  instead of accepting a historical summary as a release decision.
+- OWASP recommends server-side syntactic and semantic validation as early as
+  possible. The command requires explicit JSON inputs, accepts only its fixed
+  options, and asks the service to validate both their shape and their
+  relationship before it writes an artifact.
+- SLSA artifact verification compares provenance to trusted expectations and
+  recommends failing unrecognized parameters. The regeneration path rejects a
+  predecessor execution-plan contract and a blocked evidence chain by default;
+  it never treats a caller-supplied ready flag as authority.
 
 Sources:
 
-- [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf)
-- [NIST DevSecOps Practices](https://csrc.nist.gov/pubs/other/2026/03/24/devsecops-practices/iprd)
+- [NIST SP 800-218 Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
+- [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
 - [SLSA Verifying Artifacts](https://slsa.dev/spec/v1.2/verifying-artifacts)
 
 ## Options Considered
@@ -91,8 +90,10 @@ Cons:
 5. Require completed source scanning plus focused and full validation evidence.
 6. Emit a current completion artifact even when it is incomplete, so downstream
    gates report the real readiness blocker.
-7. Do not synthesize deletion approval, run deletion actions, or alter storage.
-8. Pass only a complete, valid generated artifact to the storage closure gates.
+7. Refuse blocked artifact writes by default; allow bounded diagnostic output
+   only through an explicit operator flag.
+8. Do not synthesize deletion approval, run deletion actions, or alter storage.
+9. Pass only a complete, valid generated artifact to the storage closure gates.
 
 ## Implementation Outcome
 
@@ -109,9 +110,15 @@ Implemented:
   next-batch authorization artifact and applied removal-review fingerprint as
   the completion audit; neither adapter reconstructs approval from path checks.
 - The source scanner distinguishes named control-plane inventory records from
-  operational imports. It still reports a real import from an evidence service.
+  operational imports. It still reports a real import from an evidence service
+  and marks evidence incomplete when a configured source root cannot be read.
 - Focused tests cover complete, remaining, predecessor-plan, and incomplete
   source-scan outcomes.
+- The public generator has an isolated-worktree artifact-chain test. It proves
+  coherent current input can reach completion, remaining inventory remains
+  observable, and predecessor plans or current operational imports fail closed.
+  Blocked JSON is written only with explicit `--allow-blocked` diagnostic
+  authorization.
 
 Example:
 
@@ -128,8 +135,12 @@ npm run --silent policy:compatibility-removal-evidence -- \
 ```
 
 Use `--require-complete` only when a complete result is an explicit release
-gate. Without it, the command writes an incomplete or blocked evidence record
-for operator review and the next readiness task.
+gate. Without it, a valid remaining-inventory record is still written for
+operator review. A blocked record requires explicit `--allow-blocked`; this
+prevents invalid evidence from being accidentally reused as closure authority.
+The nested completion-audit artifact is the only regeneration output accepted
+by the current-closure command; that command's current-closure artifact is then
+the input to the requirement audit.
 
 ## Next Step
 
