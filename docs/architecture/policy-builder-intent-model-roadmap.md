@@ -5674,6 +5674,12 @@ Implementation status:
 - Focused tests cover native row contract building, converted route projection,
   converted/unconverted cutover verification, rollback blocking, and deletion
   blocking.
+- Approved native-intent conversion now returns a bounded, read-only
+  post-conversion observation for only the selected policy IDs. It re-reads the
+  current native runtime path and confirms active rollback availability without
+  exposing payloads, adding a concise maintenance-screen outcome without
+  creating another operator workflow. See
+  [Policy Native Intent Post-Conversion Runtime Observation](policy-native-intent-post-conversion-runtime-observation.md).
 - The module cutover renamed the route-facing native policy read service,
   runtime cutover verifier, focused tests, architecture record, payload version,
   exported verifier constants/builders, and runtime handoff to durable

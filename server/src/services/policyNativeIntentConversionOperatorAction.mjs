@@ -21,6 +21,9 @@ import {
   loadPolicyPostUpgradeCandidateInputs,
 } from './policyPostUpgradeDryRun.mjs';
 import { POLICY_CONVERSION_ACTOR_SOURCE_IDS } from './policyConversionActorSources.mjs';
+import {
+  buildPolicyNativeIntentRuntimeObservation,
+} from './policyNativeIntentRuntimeObservation.mjs';
 
 const POLICY_NATIVE_INTENT_CONVERSION_OPERATOR_ACTION_VERSION =
   'policy.native_intent_conversion_operator_action.v1';
@@ -182,6 +185,7 @@ function buildActionResult({
   candidateReport = null,
   dryRun = null,
   applyGate = null,
+  runtimeObservation = null,
   issues = [],
 } = {}) {
   const applied = applyGate?.applied === true;
@@ -196,6 +200,7 @@ function buildActionResult({
     ...(candidateReport ? { candidateReport } : {}),
     ...(dryRun ? { dryRun } : {}),
     ...(applyGate ? { applyGate } : {}),
+    ...(runtimeObservation ? { runtimeObservation } : {}),
     confirmation: {
       requiredValue: POLICY_NATIVE_INTENT_CONVERSION_OPERATOR_CONFIRMATION,
       accepted: applied,
@@ -338,6 +343,16 @@ async function applyPolicyNativeIntentConversion({
     : applyGate.statusId === POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.FAILED_ROLLED_BACK
       ? POLICY_NATIVE_INTENT_CONVERSION_OPERATOR_ACTION_STATUS_IDS.FAILED_ROLLED_BACK
       : POLICY_NATIVE_INTENT_CONVERSION_OPERATOR_ACTION_STATUS_IDS.BLOCKED_BY_DRY_RUN;
+  const runtimeObservation = [
+    POLICY_NATIVE_INTENT_CONVERSION_OPERATOR_ACTION_STATUS_IDS.APPLIED,
+    POLICY_NATIVE_INTENT_CONVERSION_OPERATOR_ACTION_STATUS_IDS.ALREADY_CURRENT,
+  ].includes(statusId)
+    ? await buildPolicyNativeIntentRuntimeObservation({
+      dbClient,
+      policyIds: actionValidation.policyIds,
+      now: evaluatedAt,
+    })
+    : null;
 
   return buildActionResult({
     mode: 'apply',
@@ -347,6 +362,7 @@ async function applyPolicyNativeIntentConversion({
     candidateReport,
     dryRun,
     applyGate,
+    runtimeObservation,
     issues: statusId === POLICY_NATIVE_INTENT_CONVERSION_OPERATOR_ACTION_STATUS_IDS.BLOCKED_BY_DRY_RUN
       ? [{
         riskId: POLICY_NATIVE_INTENT_CONVERSION_OPERATOR_ACTION_RISK_IDS.DRY_RUN_INVALID,

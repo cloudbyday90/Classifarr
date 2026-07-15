@@ -93,6 +93,14 @@ describe('usePolicyNativeIntentConversionMaintenance', () => {
           appliedPolicyCount: 1,
           alreadyConvertedCount: 0,
         },
+        runtimeObservation: {
+          statusId: 'verified',
+          summary: {
+            observedPolicyCount: 1,
+            nativeReadVerifiedCount: 1,
+            rollbackAvailableCount: 1,
+          },
+        },
       },
     })
     const maintenance = usePolicyNativeIntentConversionMaintenance()
@@ -116,6 +124,12 @@ describe('usePolicyNativeIntentConversionMaintenance', () => {
     expect(apiMock.getNativeIntentConversionPreview).toHaveBeenCalledTimes(2)
     expect(maintenance.selectedCount.value).toBe(0)
     expect(maintenance.successMessage.value).toBe('1 policy was converted to native intent.')
+    expect(maintenance.runtimeObservation.value).toEqual(expect.objectContaining({
+      statusId: 'verified',
+      summary: expect.objectContaining({
+        nativeReadVerifiedCount: 1,
+      }),
+    }))
   })
 
   it('shows a bounded error message when the current preview cannot load', async () => {

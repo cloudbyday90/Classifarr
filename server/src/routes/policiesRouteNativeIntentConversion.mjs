@@ -85,6 +85,8 @@ export function registerPolicyNativeIntentConversionRoutes(router, { db, logger,
       statusId: result.statusId,
       appliedPolicyCount: result.summary?.appliedPolicyCount ?? 0,
       alreadyConvertedCount: result.summary?.alreadyConvertedCount ?? 0,
+      runtimeObservationStatusId: result.runtimeObservation?.statusId ?? null,
+      runtimeObservationRiskCount: result.runtimeObservation?.riskCount ?? 0,
     });
 
     if (

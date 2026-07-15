@@ -111,4 +111,40 @@ describe('PolicyNativeIntentMigration.vue', () => {
     expect(wrapper.text()).toContain('Confirm native intent conversion')
     expect(wrapper.text()).toContain('Family Movies, Movies')
   })
+
+  it('shows the bounded runtime verification outcome after a successful conversion', async () => {
+    apiMock.applyNativeIntentConversion.mockResolvedValue({
+      data: {
+        summary: {
+          appliedPolicyCount: 1,
+          alreadyConvertedCount: 0,
+        },
+        runtimeObservation: {
+          statusId: 'verified',
+          summary: {
+            observedPolicyCount: 1,
+            nativeReadVerifiedCount: 1,
+            rollbackAvailableCount: 1,
+          },
+        },
+      },
+    })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.findAll('input[type="checkbox"]')[0].setValue(true)
+    const reviewButton = wrapper.findAll('button')
+      .find(button => button.text().includes('Review conversion'))
+    await reviewButton.trigger('click')
+    await flushPromises()
+
+    await wrapper.find('input[id="native-intent-conversion-confirmation"]')
+      .setValue('CONVERT_NATIVE_INTENT')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Post-conversion runtime verification')
+    expect(wrapper.text()).toContain('Native reads verified')
+    expect(wrapper.text()).toContain('Verified')
+  })
 })

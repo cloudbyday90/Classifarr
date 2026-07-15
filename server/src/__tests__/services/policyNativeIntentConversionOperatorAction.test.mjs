@@ -233,5 +233,12 @@ describe('policyNativeIntentConversionOperatorAction', () => {
       rollbackSnapshotsWritten: true,
       legacyPathsDeleted: false,
     }));
+    expect(result.runtimeObservation).toEqual(expect.objectContaining({
+      statusId: expect.any(String),
+      sideEffects: expect.objectContaining({
+        policyStorageMutated: false,
+        legacyPathsDeleted: false,
+      }),
+    }));
   });
 });

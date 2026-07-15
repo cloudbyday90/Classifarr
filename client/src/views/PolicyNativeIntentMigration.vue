@@ -57,6 +57,72 @@
     </div>
 
     <section
+      v-if="runtimeObservation"
+      class="rounded-lg border p-5"
+      :class="runtimeObservation.statusId === 'verified'
+        ? 'border-green-500/50 bg-green-950/20'
+        : 'border-yellow-500/50 bg-yellow-950/20'"
+      aria-labelledby="runtime-observation-heading"
+    >
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2
+            id="runtime-observation-heading"
+            class="text-lg font-semibold"
+          >
+            Post-conversion runtime verification
+          </h2>
+          <p class="mt-1 max-w-3xl text-sm text-gray-300">
+            Classifarr re-read the selected policies from native storage after
+            conversion. This proof does not change routing, automation, or
+            compatibility-deletion readiness.
+          </p>
+        </div>
+        <span
+          class="rounded-full border px-2 py-1 text-xs font-medium"
+          :class="runtimeObservation.statusId === 'verified'
+            ? 'border-green-500/60 text-green-200'
+            : 'border-yellow-500/60 text-yellow-200'"
+        >
+          {{ formatRuntimeObservationStatus(runtimeObservation.statusId) }}
+        </span>
+      </div>
+      <dl class="mt-4 grid gap-3 sm:grid-cols-3">
+        <div>
+          <dt class="text-xs uppercase tracking-wide text-gray-400">
+            Policies checked
+          </dt>
+          <dd class="mt-1 font-semibold text-white">
+            {{ runtimeObservation.summary?.observedPolicyCount ?? 0 }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-wide text-gray-400">
+            Native reads verified
+          </dt>
+          <dd class="mt-1 font-semibold text-white">
+            {{ runtimeObservation.summary?.nativeReadVerifiedCount ?? 0 }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-wide text-gray-400">
+            Active rollback snapshots
+          </dt>
+          <dd class="mt-1 font-semibold text-white">
+            {{ runtimeObservation.summary?.rollbackAvailableCount ?? 0 }}
+          </dd>
+        </div>
+      </dl>
+      <p
+        v-if="runtimeObservation.statusId !== 'verified'"
+        class="mt-4 text-sm text-yellow-100"
+      >
+        Conversion completed, but this read-only verification needs attention.
+        Native storage was not reverted automatically.
+      </p>
+    </section>
+
+    <section
       class="rounded-lg border border-primary/40 bg-primary/5 p-5"
       aria-labelledby="conversion-boundary-heading"
     >
@@ -282,6 +348,7 @@ const {
   isApplying,
   errorMessage,
   successMessage,
+  runtimeObservation,
   canOpenConfirmation,
   isSelected,
   selectPolicy,
@@ -297,8 +364,18 @@ const AUTOMATION_READINESS_LABELS = {
   needs_routing_target_and_profile_refresh: 'Routing and profile refresh needed',
 }
 
+const RUNTIME_OBSERVATION_STATUS_LABELS = {
+  verified: 'Verified',
+  blocked: 'Needs attention',
+  unavailable: 'Verification unavailable',
+}
+
 function formatAutomationReadiness(statusId) {
   return AUTOMATION_READINESS_LABELS[statusId] || 'Readiness unavailable'
+}
+
+function formatRuntimeObservationStatus(statusId) {
+  return RUNTIME_OBSERVATION_STATUS_LABELS[statusId] || 'Verification unavailable'
 }
 
 function visibleReasons(candidate) {

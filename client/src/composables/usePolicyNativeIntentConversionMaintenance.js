@@ -58,6 +58,7 @@ export function usePolicyNativeIntentConversionMaintenance() {
   const isApplying = ref(false)
   const errorMessage = ref('')
   const successMessage = ref('')
+  const runtimeObservation = ref(null)
   const selectedPolicyIds = ref([])
 
   const candidateReport = computed(() => normalizeCandidateReport(preview.value))
@@ -144,6 +145,7 @@ export function usePolicyNativeIntentConversionMaintenance() {
     isApplying.value = true
     errorMessage.value = ''
     successMessage.value = ''
+    runtimeObservation.value = null
 
     try {
       const response = await api.applyNativeIntentConversion({
@@ -153,6 +155,7 @@ export function usePolicyNativeIntentConversionMaintenance() {
       const result = response?.data ?? response
       const appliedPolicyCount = Number(result?.summary?.appliedPolicyCount ?? 0)
       const alreadyConvertedCount = Number(result?.summary?.alreadyConvertedCount ?? 0)
+      runtimeObservation.value = result?.runtimeObservation ?? null
 
       successMessage.value = appliedPolicyCount > 0
         ? `${appliedPolicyCount} ${appliedPolicyCount === 1 ? 'policy was' : 'policies were'} converted to native intent.`
@@ -185,6 +188,7 @@ export function usePolicyNativeIntentConversionMaintenance() {
     isApplying,
     errorMessage,
     successMessage,
+    runtimeObservation,
     canOpenConfirmation,
     isSelected,
     selectPolicy,
