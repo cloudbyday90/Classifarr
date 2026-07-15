@@ -6,9 +6,11 @@ Implemented as the durable dry-run report for policy intent migration
 readiness.
 
 This component evaluates existing legacy policy records against the server
-intent contract, routing target availability, profile freshness, unsupported
-legacy shapes, and deletion-impact estimates before any native intent
-conversion workflow is allowed to run.
+intent contract, unsupported legacy shapes, active-intent authority, and
+deletion-impact estimates before any native intent conversion workflow is
+allowed to run. It reports routing-target availability and profile freshness as
+separate automation-readiness information, rather than treating either as a
+reason to leave valid policy intent in legacy storage.
 
 ## Problem
 
@@ -34,10 +36,14 @@ is now `server/src/services/policyIntentMigrationCandidateReport.mjs`.
 - [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
   cautions against exposing unnecessary sensitive data. The report continues to
   suppress raw legacy JSON unless maintainer mode explicitly requests it.
-- [PostgreSQL transactions](https://www.postgresql.org/docs/current/tutorial-transactions.html)
-  describe explicit transaction boundaries for grouped changes. This report
-  remains dry-run only and feeds later explicit conversion planning rather than
-  mutating storage itself.
+- [PostgreSQL `SET TRANSACTION`](https://www.postgresql.org/docs/18/sql-set-transaction.html)
+  supports read-only transaction mode for inspection work and explicit
+  transaction characteristics for later writes. Candidate reporting remains
+  read-only; the separate apply gate owns atomic conversion.
+- [PostgreSQL explicit locking](https://www.postgresql.org/docs/current/explicit-locking.html)
+  documents row-level locking and deadlock considerations. The apply gate locks
+  policy authority in a deterministic transaction; the report takes no write
+  locks and does not mutate storage.
 
 ## Recommendations
 
@@ -49,8 +55,10 @@ is now `server/src/services/policyIntentMigrationCandidateReport.mjs`.
    Keep the service as `policyIntentMigrationCandidateReport.mjs` and exported
    symbols under `POLICY_INTENT_MIGRATION_CANDIDATE_*`.
 
-3. **Classify every emitted policy explicitly.**
-   Each candidate should have one readiness state and bounded reasons.
+3. **Separate conversion eligibility from automation readiness.**
+   Each candidate has one conversion status (`canConvert`) and a separate,
+   bounded `automationReadiness` projection (`canAutomate`). A missing route or
+   stale observed-library profile blocks automation, not native-intent storage.
 
 4. **Suppress raw legacy JSON by default.**
    Operator output must not include raw legacy policy payloads. Maintainer mode
@@ -65,11 +73,20 @@ is now `server/src/services/policyIntentMigrationCandidateReport.mjs`.
    bounded conflict state and count metadata. Do not expose native intent
    payloads or convert/report repairable data as part of candidate reporting.
 
+7. **Persist an honest routing state.**
+   A converted policy without an Arr mapping is stored with routing target
+   status `missing`, never misrepresented as `configured`. Existing runtime
+   readiness controls remain the authority for whether routing can occur.
+
 ## Pros And Cons
 
 Pros:
 
 - Operators can understand conversion readiness before storage changes.
+- Valid policy intent can leave compatibility storage even when a later routing
+  or profile-refresh action remains necessary.
+- Storage accurately preserves unmapped destinations as `missing` instead of
+  falsely claiming routing readiness.
 - Unsupported legacy policies are visible and actionable.
 - The report remains the input contract for explicit conversion workflow.
 - Sensitive or bulky legacy JSON stays out of normal operator output.
@@ -78,7 +95,8 @@ Pros:
 Cons:
 
 - The report does not create native rows or migration events.
-- Some policies still require operator cleanup before conversion can proceed.
+- Some policies still require operator work before routing automation can
+  proceed.
 - Downstream conversion workflow remains a separate phase-coded component until
   its own cutover.
 
@@ -94,6 +112,10 @@ Cons:
   `server/src/services/policyPostUpgradeDryRun.mjs`
 - Candidate authority eligibility:
   `server/src/services/policyCandidateAuthorityEligibility.mjs`
+- Runtime automation readiness:
+  `server/src/services/policyAutomationReadinessEngine.mjs`
+- Conversion/readiness boundary:
+  [Policy Intent Conversion And Automation Readiness Separation](policy-intent-conversion-automation-readiness-separation.md)
 - Authority eligibility design:
   [Policy Candidate Authority Eligibility](policy-candidate-authority-eligibility.md)
 - Validation evidence:
@@ -109,9 +131,15 @@ Implemented:
   `POLICY_INTENT_MIGRATION_CANDIDATE_*` and
   `buildPolicyIntentMigrationCandidateReport*`.
 - Replaced the phase-coded payload version with
-  `policy.intent_migration_candidate_report.v1`.
+  `policy.intent_migration_candidate_report.v2`.
 - Replaced public `nextPhase.phaseId` output with
   `nextStep.stepId = explicit_conversion_workflow`.
+- Split candidate conversion eligibility from automation readiness. A valid
+  native-intent contract can convert even when routing is unconfigured or the
+  library profile needs refresh; those conditions are emitted as explicit,
+  bounded automation blockers.
+- Updated the post-upgrade apply writer to persist unmapped routing targets as
+  `missing` rather than `configured`.
 - Updated explicit conversion workflow, post-upgrade dry run, storage-closure
   evidence, native-storage test reset metadata, roadmap, and changelog
   references.
@@ -124,12 +152,17 @@ Implemented:
   limits.
 - Raw legacy JSON remains suppressed outside explicit maintainer mode.
 - Validation still rejects reports that mutate storage, omit reasons, omit
-  deletion impact, hide blockers behind generic statuses, or expose raw legacy
+  deletion impact, hide conversion or automation blockers, or expose raw legacy
   JSON in operator mode.
 - Active native-authority conflicts now block conversion explicitly while clean
   candidate rows retain their existing report shape.
+- Missing routing and stale profiles remain fail-closed for automation through
+  the distinct automation-readiness contract; this report does not authorize a
+  route merely because conversion is safe.
 
 ## Next Step
 
-Cut over the explicit conversion workflow component to durable product-domain
-naming.
+Use the explicit conversion workflow only after an operator selects the
+candidate scope and approves a transactional write. Conversion and automation
+readiness must remain separate in that workflow and in the eventual operator
+surface.

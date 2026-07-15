@@ -86,22 +86,29 @@ describe('policyPostUpgradeDryRun', () => {
     expect(dryRun.nextPhase).toBeUndefined();
   });
 
-  test('reports review-required status without building an invalid empty-selection workflow', () => {
+  test('plans conversion when routing is not configured and leaves automation blocked', () => {
     const dryRun = buildPolicyPostUpgradeDryRun({
       policies: [policy({
         id: 15,
         name: 'Missing Route',
         routingTarget: {},
+        libraryMapping: {},
       })],
     });
 
-    expect(dryRun.statusId).toBe(POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.REVIEW_REQUIRED);
+    expect(dryRun.statusId).toBe(POLICY_POST_UPGRADE_DRY_RUN_STATUS_IDS.READY_FOR_APPLY_GATE);
     expect(dryRun.validation.ok).toBe(true);
-    expect(dryRun.conversionWorkflow).toBeNull();
-    expect(dryRun.operatorErrorIds).toEqual(expect.arrayContaining([
-      POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.NO_READY_CANDIDATES,
-      POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.OPERATOR_REVIEW_REQUIRED,
-    ]));
+    expect(dryRun.selectedPolicyIds).toEqual([15]);
+    expect(dryRun.summary.readyToApplyCount).toBe(1);
+    expect(dryRun.candidateReport.candidates[0]).toEqual(expect.objectContaining({
+      statusId: 'ready_to_convert',
+      canConvert: true,
+      automationReadiness: expect.objectContaining({
+        statusId: 'needs_routing_target',
+        canAutomate: false,
+      }),
+    }));
+    expect(dryRun.operatorErrorIds).toEqual([]);
   });
 
   test('reports no-policy dry-run without side effects', () => {

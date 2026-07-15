@@ -173,6 +173,39 @@ describe('policyPostUpgradeApplyGate', () => {
     }));
   });
 
+  test('persists a missing routing status without blocking native-intent conversion', async () => {
+    const client = createApplyClient();
+    const dbClient = {
+      withTransaction: jest.fn(async work => work(client)),
+    };
+    const unmappedPolicy = policy({
+      routingTarget: {},
+      libraryMapping: {},
+    });
+    const dryRun = buildPolicyPostUpgradeDryRun({
+      policies: [unmappedPolicy],
+      now: '2026-07-01T12:00:00.000Z',
+    });
+
+    const result = await applyPolicyPostUpgradeApplyGate({
+      dbClient,
+      dryRun,
+      policies: [unmappedPolicy],
+      now: '2026-07-01T12:00:00.000Z',
+      actorId: 42,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      statusId: POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.APPLIED,
+      applied: true,
+      appliedPolicyCount: 1,
+    }));
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_intent_routing_targets'),
+      ['501', 4, null, null, null, null, null, 'missing']
+    );
+  });
+
   test('fails closed when the policy authority row cannot be locked', async () => {
     const client = createApplyClient();
     client.query.mockImplementation(async sql => {

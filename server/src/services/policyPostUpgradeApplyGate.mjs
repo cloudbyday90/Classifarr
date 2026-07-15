@@ -503,6 +503,7 @@ async function insertIntentRules({ client, intentId, contract }) {
 
 async function insertRoutingTarget({ client, intentId, policy, step }) {
   const routingTarget = step.routingTarget || {};
+  const targetStatus = routingTarget.configured === true ? 'configured' : 'missing';
 
   await client.query(
     `INSERT INTO policy_intent_routing_targets (
@@ -515,7 +516,7 @@ async function insertRoutingTarget({ client, intentId, policy, step }) {
        quality_profile_id,
        target_status
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'configured')`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [
       intentId,
       policy.library_id,
@@ -524,6 +525,7 @@ async function insertRoutingTarget({ client, intentId, policy, step }) {
       policy.libraryMapping?.arr_root_folder_id ?? null,
       routingTarget.rootFolderPath ?? routingTarget.arr_root_folder_path ?? null,
       policy.libraryMapping?.quality_profile_id ?? policy.quality_profile_id ?? null,
+      targetStatus,
     ]
   );
 }

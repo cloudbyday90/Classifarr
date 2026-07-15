@@ -4890,9 +4890,10 @@ Tasks:
   - needs operator review,
   - partial legacy inference,
   - unsupported legacy shape,
-  - missing routing target,
-  - stale profile dependency,
   - blocked by server contract validation.
+- Report routing-target availability and profile freshness as a separate,
+  bounded automation-readiness projection. Neither operational condition may
+  block conversion of an otherwise valid native-intent contract.
 - Include explainable reasons and affected policy IDs/names.
 - Do not mutate policy storage in report mode.
 - Include estimated deletion impact for legacy-only code paths when conversion
@@ -4913,16 +4914,19 @@ Implementation status:
   [Policy Intent Migration Candidate Report Module Cutover](policy-intent-migration-candidate-report-module-cutover.md).
 - Current implementation adds a server-owned dry-run report that classifies each
   emitted policy as ready to convert, needing operator review, partial legacy
-  inference, unsupported legacy shape, missing routing target, stale profile
-  dependency, or blocked by server contract validation.
+  inference, unsupported legacy shape, or blocked by server contract
+  validation. It separately reports whether routing automation is ready, needs
+  a routing target, needs a profile refresh, or needs both.
 - The report uses the existing policy intent compatibility contract as the
-  projection authority, then adds routing-target, profile-freshness,
-  unsupported-shape, validation, bounded-reason, and deletion-impact checks.
+  projection authority, then adds unsupported-shape, validation, bounded-reason,
+  and deletion-impact checks. Routing-target and profile-freshness state are
+  retained as automation blockers without retaining valid intent in legacy
+  storage.
 - Validation rejects reports that mutate storage, omit affected policy details,
-  hide unsupported/routing/stale/validation blockers behind generic statuses,
-  omit deletion-impact estimates, or expose raw legacy JSON outside explicit
+  hide conversion or automation blockers behind generic statuses, omit
+  deletion-impact estimates, or expose raw legacy JSON outside explicit
   maintainer mode.
-- Runtime output now uses the durable `policy.intent_migration_candidate_report.v1`
+- Runtime output now uses the durable `policy.intent_migration_candidate_report.v2`
   contract and `nextStep.stepId = explicit_conversion_workflow`, leaving roadmap
   phase IDs as planning metadata only.
 

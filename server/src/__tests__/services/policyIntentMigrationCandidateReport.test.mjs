@@ -3,6 +3,8 @@ import {
   buildPolicyActiveIntentIntegrityReport,
 } from '../../services/policyActiveIntentIntegrity.mjs';
 import {
+  POLICY_INTENT_MIGRATION_AUTOMATION_REASON_IDS,
+  POLICY_INTENT_MIGRATION_AUTOMATION_STATUS_IDS,
   POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS,
   POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS,
   POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS,
@@ -87,7 +89,7 @@ describe('policyIntentMigrationCandidateReport', () => {
     }));
     expect(report.candidates[0].reasons).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.READY_WITH_ROUTING_TARGET,
+        reasonId: POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.READY_TO_CONVERT,
       }),
       expect.objectContaining({
         reasonId: POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.RAW_LEGACY_JSON_SUPPRESSED,
@@ -95,7 +97,7 @@ describe('policyIntentMigrationCandidateReport', () => {
     ]));
   });
 
-  test('classifies every intent migration status explicitly', () => {
+  test('classifies conversion eligibility separately from automation readiness', () => {
     const report = buildPolicyIntentMigrationCandidateReport({
       policies: [
         policy({ id: 1, name: 'Ready' }),
@@ -189,9 +191,19 @@ describe('policyIntentMigrationCandidateReport', () => {
     expect(candidateByPolicyId(report, 4).statusId)
       .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE);
     expect(candidateByPolicyId(report, 5).statusId)
-      .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET);
+      .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT);
+    expect(candidateByPolicyId(report, 5).automationReadiness).toEqual(expect.objectContaining({
+      statusId: POLICY_INTENT_MIGRATION_AUTOMATION_STATUS_IDS.NEEDS_ROUTING_TARGET,
+      canAutomate: false,
+      blockerIds: [POLICY_INTENT_MIGRATION_AUTOMATION_REASON_IDS.ROUTING_TARGET_MISSING],
+    }));
     expect(candidateByPolicyId(report, 6).statusId)
-      .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.STALE_PROFILE_DEPENDENCY);
+      .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT);
+    expect(candidateByPolicyId(report, 6).automationReadiness).toEqual(expect.objectContaining({
+      statusId: POLICY_INTENT_MIGRATION_AUTOMATION_STATUS_IDS.NEEDS_PROFILE_REFRESH,
+      canAutomate: false,
+      blockerIds: [POLICY_INTENT_MIGRATION_AUTOMATION_REASON_IDS.PROFILE_REFRESH_REQUIRED],
+    }));
     expect(candidateByPolicyId(report, 7).statusId)
       .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION);
   });
@@ -341,7 +353,7 @@ describe('policyIntentMigrationCandidateReport', () => {
     });
   });
 
-  test('rejects unsupported, validation, routing, and stale blockers that are not explicit', () => {
+  test('rejects hidden conversion blockers or malformed automation readiness', () => {
     const report = buildPolicyIntentMigrationCandidateReport({
       policies: [
         policy({
@@ -385,6 +397,11 @@ describe('policyIntentMigrationCandidateReport', () => {
       candidates: report.candidates.map(candidate => ({
         ...candidate,
         statusId: POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.NEEDS_OPERATOR_REVIEW,
+        automationReadiness: {
+          ...candidate.automationReadiness,
+          canAutomate: true,
+          blockerIds: [],
+        },
       })),
     };
     const validation = validatePolicyIntentMigrationCandidateReport(weakened);
@@ -395,10 +412,13 @@ describe('policyIntentMigrationCandidateReport', () => {
         riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.UNSUPPORTED_POLICY_NOT_EXPLICIT,
       }),
       expect.objectContaining({
-        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_ROUTING_NOT_EXPLICIT,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.AUTOMATION_ROUTING_NOT_EXPLICIT,
       }),
       expect.objectContaining({
-        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.STALE_PROFILE_NOT_EXPLICIT,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.AUTOMATION_PROFILE_NOT_EXPLICIT,
+      }),
+      expect.objectContaining({
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.AUTOMATION_READY_STATE_MISMATCH,
       }),
       expect.objectContaining({
         riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.SERVER_VALIDATION_FAILURE_NOT_BLOCKED,

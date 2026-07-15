@@ -7,17 +7,22 @@ import {
   buildPolicyCandidateAuthorityEligibility,
 } from './policyCandidateAuthorityEligibility.mjs';
 
-const POLICY_INTENT_MIGRATION_CANDIDATE_REPORT_VERSION = 'policy.intent_migration_candidate_report.v1';
+const POLICY_INTENT_MIGRATION_CANDIDATE_REPORT_VERSION = 'policy.intent_migration_candidate_report.v2';
 
 const POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS = Object.freeze({
   READY_TO_CONVERT: 'ready_to_convert',
   NEEDS_OPERATOR_REVIEW: 'needs_operator_review',
   PARTIAL_LEGACY_INFERENCE: 'partial_legacy_inference',
   UNSUPPORTED_LEGACY_SHAPE: 'unsupported_legacy_shape',
-  MISSING_ROUTING_TARGET: 'missing_routing_target',
-  STALE_PROFILE_DEPENDENCY: 'stale_profile_dependency',
   BLOCKED_BY_SERVER_CONTRACT_VALIDATION: 'blocked_by_server_contract_validation',
   BLOCKED_BY_ACTIVE_INTENT_AUTHORITY: 'blocked_by_active_intent_authority',
+});
+
+const POLICY_INTENT_MIGRATION_AUTOMATION_STATUS_IDS = Object.freeze({
+  READY_FOR_AUTOMATION: 'ready_for_automation',
+  NEEDS_ROUTING_TARGET: 'needs_routing_target',
+  NEEDS_PROFILE_REFRESH: 'needs_profile_refresh',
+  NEEDS_ROUTING_TARGET_AND_PROFILE_REFRESH: 'needs_routing_target_and_profile_refresh',
 });
 
 const POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS = Object.freeze({
@@ -26,12 +31,16 @@ const POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS = Object.freeze({
   UNSUPPORTED_SIGNAL_TYPE: 'unsupported_signal_type',
   UNSUPPORTED_SIGNAL_KEYS: 'unsupported_signal_keys',
   PARTIAL_INFERENCE_REQUIRES_REVIEW: 'partial_inference_requires_review',
-  MISSING_ROUTING_TARGET: 'missing_routing_target',
-  STALE_PROFILE_DEPENDENCY: 'stale_profile_dependency',
   ACTIVE_INTENT_AUTHORITY_CONFLICT: 'active_intent_authority_conflict',
   OPERATOR_REVIEW_REQUIRED: 'operator_review_required',
-  READY_WITH_ROUTING_TARGET: 'ready_with_routing_target',
+  READY_TO_CONVERT: 'ready_to_convert',
   RAW_LEGACY_JSON_SUPPRESSED: 'raw_legacy_json_suppressed',
+});
+
+const POLICY_INTENT_MIGRATION_AUTOMATION_REASON_IDS = Object.freeze({
+  ROUTING_TARGET_MISSING: 'routing_target_missing',
+  PROFILE_REFRESH_REQUIRED: 'profile_refresh_required',
+  AUTOMATION_READY: 'automation_ready',
 });
 
 const POLICY_INTENT_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS = Object.freeze({
@@ -50,8 +59,11 @@ const POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS = Object.freeze({
   MISSING_REASON: 'missing_reason',
   UNSUPPORTED_POLICY_NOT_EXPLICIT: 'unsupported_policy_not_explicit',
   SERVER_VALIDATION_FAILURE_NOT_BLOCKED: 'server_validation_failure_not_blocked',
-  MISSING_ROUTING_NOT_EXPLICIT: 'missing_routing_not_explicit',
-  STALE_PROFILE_NOT_EXPLICIT: 'stale_profile_not_explicit',
+  AUTOMATION_READINESS_MISSING: 'automation_readiness_missing',
+  AUTOMATION_READINESS_INVALID: 'automation_readiness_invalid',
+  AUTOMATION_ROUTING_NOT_EXPLICIT: 'automation_routing_not_explicit',
+  AUTOMATION_PROFILE_NOT_EXPLICIT: 'automation_profile_not_explicit',
+  AUTOMATION_READY_STATE_MISMATCH: 'automation_ready_state_mismatch',
   RAW_LEGACY_JSON_EXPOSED: 'raw_legacy_json_exposed',
   REPORT_MUTATED_STORAGE: 'report_mutated_storage',
   REPORT_UNBOUNDED: 'report_unbounded',
@@ -62,6 +74,9 @@ const POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS = Object.freeze({
 });
 
 const STATUS_IDS = Object.freeze(Object.values(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS));
+const AUTOMATION_STATUS_IDS = Object.freeze(
+  Object.values(POLICY_INTENT_MIGRATION_AUTOMATION_STATUS_IDS)
+);
 const MAX_POLICIES_DEFAULT = 100;
 const MAX_REASONS_DEFAULT = 12;
 const MAX_UNSUPPORTED_SIGNALS_DEFAULT = 10;
@@ -153,6 +168,53 @@ function buildProfileFreshness(policy = {}) {
   };
 }
 
+function buildAutomationReadiness({ routingTarget = {}, profileFreshness = {} } = {}) {
+  const reasons = [];
+  const routingConfigured = routingTarget.configured === true;
+  const profileStale = profileFreshness.stale === true;
+
+  if (!routingConfigured) {
+    reasons.push(buildReason(
+      POLICY_INTENT_MIGRATION_AUTOMATION_REASON_IDS.ROUTING_TARGET_MISSING,
+      'Automation cannot route approved matches until this library has a configured Arr target.',
+      'blocker'
+    ));
+  }
+
+  if (profileStale) {
+    reasons.push(buildReason(
+      POLICY_INTENT_MIGRATION_AUTOMATION_REASON_IDS.PROFILE_REFRESH_REQUIRED,
+      'Automation needs a refreshed library profile before it can rely on observed-library evidence.',
+      'blocker',
+      { state: profileFreshness.state ?? null }
+    ));
+  }
+
+  let statusId = POLICY_INTENT_MIGRATION_AUTOMATION_STATUS_IDS.READY_FOR_AUTOMATION;
+  if (!routingConfigured && profileStale) {
+    statusId = POLICY_INTENT_MIGRATION_AUTOMATION_STATUS_IDS
+      .NEEDS_ROUTING_TARGET_AND_PROFILE_REFRESH;
+  } else if (!routingConfigured) {
+    statusId = POLICY_INTENT_MIGRATION_AUTOMATION_STATUS_IDS.NEEDS_ROUTING_TARGET;
+  } else if (profileStale) {
+    statusId = POLICY_INTENT_MIGRATION_AUTOMATION_STATUS_IDS.NEEDS_PROFILE_REFRESH;
+  } else {
+    reasons.push(buildReason(
+      POLICY_INTENT_MIGRATION_AUTOMATION_REASON_IDS.AUTOMATION_READY,
+      'Routing and observed-library profile evidence are ready for automation.'
+    ));
+  }
+
+  return {
+    statusId,
+    canAutomate: routingConfigured && !profileStale,
+    blockerIds: reasons
+      .filter(reason => reason.severity === 'blocker')
+      .map(reason => reason.reasonId),
+    reasons,
+  };
+}
+
 function buildReason(reasonId, message, severity = 'info', metadata = {}) {
   return {
     reasonId,
@@ -230,8 +292,6 @@ function buildDeletionImpactEstimate(contract = {}) {
 
 function chooseStatus({
   contract,
-  routingTarget,
-  profileFreshness,
   authorityEligibility,
   reasons,
 }) {
@@ -247,14 +307,6 @@ function chooseStatus({
 
   if (contract.validation?.valid !== true) {
     return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION;
-  }
-
-  if (!routingTarget.configured) {
-    return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET;
-  }
-
-  if (profileFreshness.stale) {
-    return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.STALE_PROFILE_DEPENDENCY;
   }
 
   if (contract.inference_state === POLICY_INTENT_INFERENCE_STATES.PARTIAL) {
@@ -276,6 +328,10 @@ function buildPolicyCandidate(policy = {}, options = {}) {
   const contract = options.intentContract || policy.intentContract || buildPolicyIntentContract(policy);
   const routingTarget = buildRoutingTarget(policy);
   const profileFreshness = buildProfileFreshness(policy);
+  const automationReadiness = buildAutomationReadiness({
+    routingTarget,
+    profileFreshness,
+  });
   const authorityEligibility = buildPolicyCandidateAuthorityEligibility({
     policyId: policy.id,
     activeIntentIntegrityReport: options.activeIntentIntegrityReport,
@@ -325,23 +381,6 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     ));
   }
 
-  if (!routingTarget.configured) {
-    reasons.push(buildReason(
-      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.MISSING_ROUTING_TARGET,
-      'Policy is missing a configured Arr routing target.',
-      'blocker'
-    ));
-  }
-
-  if (profileFreshness.stale) {
-    reasons.push(buildReason(
-      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.STALE_PROFILE_DEPENDENCY,
-      'Policy depends on stale library profile evidence.',
-      'blocker',
-      { state: profileFreshness.state }
-    ));
-  }
-
   if (authorityEligibility.eligible === false) {
     const needsExplicitResolution = authorityEligibility.integrityStatusId === 'blocked_unsafe_duplicate';
     reasons.push(buildReason(
@@ -366,18 +405,6 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     ));
   }
 
-  if (
-    authorityEligibility.eligible === true &&
-    routingTarget.configured &&
-    contract.validation?.valid === true &&
-    !profileFreshness.stale
-  ) {
-    reasons.push(buildReason(
-      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.READY_WITH_ROUTING_TARGET,
-      'Policy has a valid intent contract and configured routing target.'
-    ));
-  }
-
   if (!includeRawLegacyJson) {
     reasons.push(buildReason(
       POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.RAW_LEGACY_JSON_SUPPRESSED,
@@ -388,11 +415,16 @@ function buildPolicyCandidate(policy = {}, options = {}) {
 
   const statusId = chooseStatus({
     contract,
-    routingTarget,
-    profileFreshness,
     authorityEligibility,
     reasons,
   });
+
+  if (statusId === POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT) {
+    reasons.push(buildReason(
+      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.READY_TO_CONVERT,
+      'Policy has a valid native-intent contract and can convert without changing automation readiness.'
+    ));
+  }
 
   return {
     policyId: policy.id ?? null,
@@ -414,6 +446,7 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     unsupportedSignals,
     routingTarget,
     profileFreshness,
+    automationReadiness,
     ...(authorityEligibility.eligible === false ? {
       authorityEligibility: {
         stateId: authorityEligibility.stateId,
@@ -628,32 +661,52 @@ function validatePolicyIntentMigrationCandidateReport(report = {}) {
       });
     }
 
+    const automationReadiness = asObject(candidate.automationReadiness);
+    if (!AUTOMATION_STATUS_IDS.includes(automationReadiness.statusId)) {
+      issues.push({
+        riskId: automationReadiness.statusId
+          ? POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.AUTOMATION_READINESS_INVALID
+          : POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.AUTOMATION_READINESS_MISSING,
+        policyId: candidate.policyId ?? null,
+        message: 'Migration candidates must include a known automation-readiness state separate from conversion eligibility.',
+      });
+    }
+
+    const automationBlockerIds = asArray(automationReadiness.blockerIds);
+    const expectedAutomationReady =
+      candidate.routingTarget?.configured === true &&
+      candidate.profileFreshness?.stale !== true;
+    if (automationReadiness.canAutomate !== expectedAutomationReady) {
+      issues.push({
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.AUTOMATION_READY_STATE_MISMATCH,
+        policyId: candidate.policyId ?? null,
+        message: 'Automation readiness must agree with routing-target and profile-freshness state.',
+      });
+    }
+
     if (
       candidate.routingTarget?.configured === false &&
-      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET &&
-      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION &&
-      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE &&
-      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_ACTIVE_INTENT_AUTHORITY
+      !automationBlockerIds.includes(
+        POLICY_INTENT_MIGRATION_AUTOMATION_REASON_IDS.ROUTING_TARGET_MISSING
+      )
     ) {
       issues.push({
-        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.MISSING_ROUTING_NOT_EXPLICIT,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.AUTOMATION_ROUTING_NOT_EXPLICIT,
         policyId: candidate.policyId ?? null,
-        message: 'Missing routing target must be explicit unless a higher-priority blocker exists.',
+        message: 'Missing routing target must be explicit in automation readiness.',
       });
     }
 
     if (
       candidate.profileFreshness?.stale === true &&
-      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.STALE_PROFILE_DEPENDENCY &&
-      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION &&
-      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.UNSUPPORTED_LEGACY_SHAPE &&
-      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.MISSING_ROUTING_TARGET &&
-      candidate.statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_ACTIVE_INTENT_AUTHORITY
+      !automationBlockerIds.includes(
+        POLICY_INTENT_MIGRATION_AUTOMATION_REASON_IDS.PROFILE_REFRESH_REQUIRED
+      )
     ) {
       issues.push({
-        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.STALE_PROFILE_NOT_EXPLICIT,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.AUTOMATION_PROFILE_NOT_EXPLICIT,
         policyId: candidate.policyId ?? null,
-        message: 'Stale profile dependency must be explicit unless a higher-priority blocker exists.',
+        message: 'Stale profile dependency must be explicit in automation readiness.',
       });
     }
 
@@ -710,6 +763,8 @@ function buildPolicyIntentMigrationCandidateReportAudit(
 }
 
 export {
+  POLICY_INTENT_MIGRATION_AUTOMATION_REASON_IDS,
+  POLICY_INTENT_MIGRATION_AUTOMATION_STATUS_IDS,
   POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS,
   POLICY_INTENT_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS,
   POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS,

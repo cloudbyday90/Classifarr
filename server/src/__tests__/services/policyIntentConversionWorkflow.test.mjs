@@ -160,7 +160,7 @@ describe('policyIntentConversionWorkflow', () => {
     ]));
   });
 
-  test('blocks selected policies that are not ready in the candidate report', () => {
+  test('plans conversion for an unmapped destination while automation remains blocked', () => {
     const candidateReport = buildPolicyIntentMigrationCandidateReport({
       policies: [
         policy({
@@ -178,9 +178,14 @@ describe('policyIntentConversionWorkflow', () => {
 
     expect(workflow.validation.ok).toBe(true);
     expect(workflow.steps[0]).toEqual(expect.objectContaining({
-      statusId: POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_CANDIDATE_STATUS,
-      readyToApply: false,
-      candidateStatusId: 'missing_routing_target',
+      statusId: POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.READY_TO_APPLY,
+      readyToApply: true,
+      candidateStatusId: 'ready_to_convert',
+    }));
+    expect(candidateReport.candidates[0].automationReadiness).toEqual(expect.objectContaining({
+      statusId: 'needs_routing_target',
+      canAutomate: false,
+      blockerIds: ['routing_target_missing'],
     }));
   });
 

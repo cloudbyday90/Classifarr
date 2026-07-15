@@ -18,6 +18,11 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Native Conversion And Automation Readiness Separation** - valid policies
+  can now convert to native intent even when routing or profile freshness still
+  needs work. Those automation blockers are reported separately, and unmapped
+  native routing targets persist as `missing` rather than `configured`; routing
+  remains fail-closed until setup is complete.
 - **Approved Final-Removal Manifest Source** - storage-closure final-removal
   audits now require ready, fingerprint-valid execution-plan artifacts and
   reject raw, unapproved, altered, unsafe, or duplicate manifest paths before
