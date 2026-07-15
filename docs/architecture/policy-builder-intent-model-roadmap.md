@@ -6316,8 +6316,11 @@ Tasks:
   - Completed: require the v3 final-removal audit to consume only the replayed
     snapshot bound to the exact execution-plan artifact instead of a live
     filesystem callback.
-- Build next-batch authorization evidence from current removed and remaining
-  path state.
+- **8R.25.3 Next-Batch Authorization Snapshot Binding**
+  - Require next-batch authorization to consume the verified path-state
+    evidence fingerprint from the same approved execution-plan artifact.
+  - Authorize only the current removed and remaining paths replayed by that
+    snapshot; reject a snapshot from another artifact or a divergent path set.
 - Build post-removal runtime verification evidence for paths that no longer
   exist.
 - Scan source roots for exact manifest path references and feed that into the
