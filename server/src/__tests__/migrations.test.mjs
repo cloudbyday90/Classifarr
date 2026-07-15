@@ -306,9 +306,17 @@ describe('Schema snapshot freshness', () => {
             __dirname,
             '../../../database/migrations/20260714_090000_add_policy_rollback_snapshot_retention_event.sql'
         );
+        const reconciliationStateMigrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260715_140000_add_native_intent_reconciliation_state.sql'
+        );
         const migrationSql = fs.readFileSync(migrationPath, 'utf8');
         const integrityMigrationSql = fs.readFileSync(integrityMigrationPath, 'utf8');
         const retentionMigrationSql = fs.readFileSync(retentionMigrationPath, 'utf8');
+        const reconciliationStateMigrationSql = fs.readFileSync(
+            reconciliationStateMigrationPath,
+            'utf8'
+        );
         const policyIntents = getCreateTableBlock(schemaSql, 'policy_intents');
         const policyIntentRules = getCreateTableBlock(schemaSql, 'policy_intent_rules');
         const policyIntentRoutingTargets = getCreateTableBlock(schemaSql, 'policy_intent_routing_targets');
@@ -332,6 +340,10 @@ describe('Schema snapshot freshness', () => {
         const reconciliationOutcomes = getCreateTableBlock(
             schemaSql,
             'policy_native_intent_reconciliation_outcomes'
+        );
+        const reconciliationStates = getCreateTableBlock(
+            schemaSql,
+            'policy_native_intent_reconciliation_states'
         );
 
         [
@@ -376,11 +388,25 @@ describe('Schema snapshot freshness', () => {
         expect(reconciliationOutcomes).toContain('policy_native_intent_reconciliation_outcomes_fingerprint_chk');
         expect(reconciliationOutcomes).toContain('policy_native_intent_reconciliation_outcomes_retry_after_evalua');
         expect(reconciliationOutcomes).toContain('retry_not_before timestamp with time zone');
+        expect(reconciliationOutcomes).toContain("'requires_maintenance'::character varying");
+        expect(reconciliationStates).toContain('policy_id integer NOT NULL');
+        expect(reconciliationStates).toContain('candidate_fingerprint character varying(71)');
+        expect(reconciliationStates).toContain('failure_count integer DEFAULT 0');
+        expect(reconciliationStates).toContain('policy_native_intent_reconciliation_states_fingerprint_chk');
+        expect(reconciliationStates).toContain('policy_native_intent_reconciliation_states_outcome_chk');
+        expect(reconciliationStates).toContain('policy_native_intent_reconciliation_states_retry_state_chk');
+        expect(reconciliationStates).toContain("'requires_maintenance'::character varying");
         expect(integrityMigrationSql).toContain('LOCK TABLE policy_intents IN SHARE ROW EXCLUSIVE MODE');
         expect(integrityMigrationSql).toContain('active_intent_integrity_repaired');
         expect(integrityMigrationSql).toContain('CREATE UNIQUE INDEX idx_policy_intents_one_active_policy');
         expect(integrityMigrationSql).toContain('DROP INDEX idx_policy_intents_active_version');
         expect(retentionMigrationSql).toContain("'rollback_snapshot_payload_redacted'");
+        expect(reconciliationStateMigrationSql).toContain(
+            'CREATE TABLE IF NOT EXISTS policy_native_intent_reconciliation_states'
+        );
+        expect(reconciliationStateMigrationSql).toContain(
+            'CREATE INDEX IF NOT EXISTS idx_policy_native_intent_reconciliation_states_retry'
+        );
         expect(schemaSql).toContain('CREATE UNIQUE INDEX idx_policy_intents_one_active_policy');
         expect(schemaSql).not.toContain('CREATE UNIQUE INDEX idx_policy_intents_active_version');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_rules_values_gin');
@@ -389,6 +415,8 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_validation_status_lookup');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_runs_finished');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_outcomes_policy');
+        expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_states_retry');
+        expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_states_outcome');
     });
 
     test('current.sql includes the library rebuild rollback execution and replacement gates', () => {

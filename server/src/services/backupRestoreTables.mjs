@@ -190,6 +190,11 @@ const POLICY_NATIVE_INTENT_RECONCILIATION_OUTCOME_ALLOWED_COLUMNS = [
   'retry_not_before', 'evaluated_at', 'created_at',
 ];
 
+const POLICY_NATIVE_INTENT_RECONCILIATION_STATE_ALLOWED_COLUMNS = [
+  'candidate_fingerprint', 'candidate_status_id', 'outcome_state', 'reason_id',
+  'retry_not_before', 'failure_count', 'evaluated_at', 'created_at', 'updated_at',
+];
+
 function normalizeJsonbValue(value) {
   if (value == null || typeof value === 'string') return value;
   return JSON.stringify(value);
@@ -327,6 +332,7 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     validationStatusesRestored: 0,
     reconciliationRunsRestored: 0,
     reconciliationOutcomesRestored: 0,
+    reconciliationStatesRestored: 0,
   };
 
   stats.intentRulesRestored = await insertNativeChildRows({
@@ -475,6 +481,34 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
       [restoredRunId, restoredPolicyId, ...values],
     );
     stats.reconciliationOutcomesRestored += 1;
+  }
+
+  for (const state of nativeStorage.policyNativeIntentReconciliationStates || []) {
+    const restoredPolicyId = policyIdMap.get(state.policy_id);
+    if (!restoredPolicyId) continue;
+
+    const { keys, values } = buildAllowedColumnValues(
+      state,
+      POLICY_NATIVE_INTENT_RECONCILIATION_STATE_ALLOWED_COLUMNS,
+    );
+    if (keys.length === 0) continue;
+
+    const placeholders = keys.map((_, index) => `$${index + 2}`).join(', ');
+    await client.query(
+      `INSERT INTO policy_native_intent_reconciliation_states (policy_id, ${keys.join(', ')})
+       VALUES ($1, ${placeholders})
+       ON CONFLICT (policy_id) DO UPDATE
+       SET candidate_fingerprint = EXCLUDED.candidate_fingerprint,
+           candidate_status_id = EXCLUDED.candidate_status_id,
+           outcome_state = EXCLUDED.outcome_state,
+           reason_id = EXCLUDED.reason_id,
+           retry_not_before = EXCLUDED.retry_not_before,
+           failure_count = EXCLUDED.failure_count,
+           evaluated_at = EXCLUDED.evaluated_at,
+           updated_at = EXCLUDED.updated_at`,
+      [restoredPolicyId, ...values],
+    );
+    stats.reconciliationStatesRestored += 1;
   }
 
   return stats;

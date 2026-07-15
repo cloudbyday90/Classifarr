@@ -90,6 +90,7 @@ class BackupService {
         policyIntentValidationStatus,
         policyNativeIntentReconciliationRuns,
         policyNativeIntentReconciliationOutcomes,
+        policyNativeIntentReconciliationStates,
         libraryCustomRules,
         labelPresets,
         scheduledTasks,
@@ -119,6 +120,7 @@ class BackupService {
         db.query('SELECT * FROM policy_intent_validation_status ORDER BY id'),
         db.query('SELECT * FROM policy_native_intent_reconciliation_runs ORDER BY id'),
         db.query('SELECT * FROM policy_native_intent_reconciliation_outcomes ORDER BY id'),
+        db.query('SELECT * FROM policy_native_intent_reconciliation_states ORDER BY policy_id'),
         db.query('SELECT * FROM library_custom_rules ORDER BY id'),
         db.query('SELECT * FROM label_presets ORDER BY id'),
         db.query('SELECT * FROM scheduled_tasks ORDER BY id'),
@@ -153,6 +155,7 @@ class BackupService {
           policyIntentValidationStatus: policyIntentValidationStatus.rows,
           policyNativeIntentReconciliationRuns: policyNativeIntentReconciliationRuns.rows,
           policyNativeIntentReconciliationOutcomes: policyNativeIntentReconciliationOutcomes.rows,
+          policyNativeIntentReconciliationStates: policyNativeIntentReconciliationStates.rows,
           libraryCustomRules: libraryCustomRules.rows,
           labelPresets: labelPresets.rows,
           scheduledTasks: scheduledTasks.rows,
@@ -181,6 +184,7 @@ class BackupService {
           policyIntentValidationStatusCount: policyIntentValidationStatus.rows.length,
           policyNativeIntentReconciliationRunsCount: policyNativeIntentReconciliationRuns.rows.length,
           policyNativeIntentReconciliationOutcomesCount: policyNativeIntentReconciliationOutcomes.rows.length,
+          policyNativeIntentReconciliationStatesCount: policyNativeIntentReconciliationStates.rows.length,
           autoLearnedCount: autoLearnedPreferences.rows.length
         }
       };

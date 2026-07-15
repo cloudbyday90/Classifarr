@@ -35,6 +35,12 @@ unchanged operator or runtime outcome.
   Empty evaluations and scheduler lock skips cannot masquerade as completed
   work; retention and backup/restore preserve support evidence without copying
   legacy policy payloads.
+- **Fingerprint-Bound Reconciliation Retry Safety** - automatic native-intent
+  conversion now keeps a compact, per-policy retry and maintenance state.
+  Ready policies are selected ahead of unchanged blockers or active backoff;
+  technical failures retry with bounded backoff, while unsupported policies
+  remain visible without starving safe conversions. Routing and profile
+  readiness remain separate from conversion eligibility.
 - **Native Conversion And Automation Readiness Separation** - valid policies
   can now convert to native intent even when routing or profile freshness still
   needs work. Those automation blockers are reported separately, and unmapped

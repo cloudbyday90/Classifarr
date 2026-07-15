@@ -11,14 +11,14 @@
 import * as database from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
-  runPolicyPostUpgradeApplyGate,
-} from './policyPostUpgradeApplyGate.mjs';
-import {
   POLICY_CONVERSION_ACTOR_SOURCE_IDS,
 } from './policyConversionActorSources.mjs';
 import {
   nativeIntentReconciliationLedgerService as defaultLedgerService,
 } from './nativeIntentReconciliationLedgerService.mjs';
+import {
+  nativeIntentReconciliationExecutionService,
+} from './nativeIntentReconciliationExecutionService.mjs';
 
 const NATIVE_INTENT_RECONCILIATION_VERSION = 'native_intent_reconciliation.v1';
 const NATIVE_INTENT_RECONCILIATION_BATCH_SIZE = 10;
@@ -89,7 +89,9 @@ function buildResult({ applyGate = {}, startedAt, deadlineAt, failed = false } =
 class NativeIntentReconciliationService {
   constructor({
     dbClient = database,
-    runApplyGate = runPolicyPostUpgradeApplyGate,
+    runApplyGate = nativeIntentReconciliationExecutionService.run.bind(
+      nativeIntentReconciliationExecutionService,
+    ),
     ledgerService = defaultLedgerService,
     now = () => new Date(),
     loggerInstance = logger,

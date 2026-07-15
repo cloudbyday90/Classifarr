@@ -97,6 +97,7 @@ async function loadPolicyPostUpgradePolicies({
   maxPolicies = MAX_POST_UPGRADE_DRY_RUN_POLICIES,
   unconvertedOnly = false,
   excludeRevertedPolicies = false,
+  prioritizeReconciliationEligibility = false,
 } = {}) {
   if (!dbClient || typeof dbClient.query !== 'function') {
     throw new TypeError('dbClient with query(sql, params) is required');
@@ -122,6 +123,20 @@ async function loadPolicyPostUpgradePolicies({
   }
   const nativeIntentFilter = eligibilityFilters.length > 0
     ? `WHERE ${eligibilityFilters.join('\n      AND ')}`
+    : '';
+  const reconciliationStateJoin = prioritizeReconciliationEligibility === true
+    ? `LEFT JOIN policy_native_intent_reconciliation_states reconciliation_state
+      ON reconciliation_state.policy_id = lp.id`
+    : '';
+  const reconciliationOrder = prioritizeReconciliationEligibility === true
+    ? `CASE
+        WHEN reconciliation_state.policy_id IS NULL THEN 0
+        WHEN lp.updated_at > reconciliation_state.evaluated_at THEN 0
+        WHEN reconciliation_state.outcome_state IN ('deferred_retry', 'system_failure')
+          AND reconciliation_state.retry_not_before <= NOW() THEN 1
+        WHEN reconciliation_state.outcome_state IN ('deferred_retry', 'system_failure') THEN 2
+        ELSE 3
+      END,`
     : '';
   const result = await dbClient.query(`
     SELECT
@@ -171,8 +186,9 @@ async function loadPolicyPostUpgradePolicies({
       JOIN content_presets cp ON cp.id = pp.preset_id
       WHERE pp.policy_id = lp.id
     ) pa ON true
+    ${reconciliationStateJoin}
     ${nativeIntentFilter}
-    ORDER BY l.name NULLS LAST, lp.priority DESC, lp.sort_order ASC, lp.id ASC
+    ORDER BY ${reconciliationOrder} l.name NULLS LAST, lp.priority DESC, lp.sort_order ASC, lp.id ASC
     LIMIT $1
   `, [normalizedMaxPolicies + 1]);
 
@@ -184,6 +200,7 @@ async function loadPolicyPostUpgradeCandidateInputs({
   maxPolicies = MAX_POST_UPGRADE_DRY_RUN_POLICIES,
   unconvertedOnly = false,
   excludeRevertedPolicies = false,
+  prioritizeReconciliationEligibility = false,
 } = {}) {
   const [policies, activeIntentIntegrityReport] = await Promise.all([
     loadPolicyPostUpgradePolicies({
@@ -191,6 +208,7 @@ async function loadPolicyPostUpgradeCandidateInputs({
       maxPolicies,
       unconvertedOnly,
       excludeRevertedPolicies,
+      prioritizeReconciliationEligibility,
     }),
     loadPolicyActiveIntentIntegrityReport(dbClient),
   ]);

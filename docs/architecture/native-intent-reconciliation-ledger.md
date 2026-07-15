@@ -2,9 +2,10 @@
 
 ## Status
 
-Implemented as Phase 8R.3.2.2. This component adds durable, bounded evidence
-for automatic native-intent conversion. It does not yet define retry backoff,
-quarantine, circuit breaking, or the read-only status interface.
+Implemented as Phase 8R.3.2.2. The ledger adds durable, bounded evidence for
+automatic native-intent conversion. Phase 8R.3.2.3 now adds separate current
+retry and quarantine state; the later circuit breaker and read-only status
+interface remain out of scope here.
 
 ## Problem
 
@@ -110,14 +111,17 @@ rewrites a committed conversion as failed.
   execution budget or an incomplete apply result.
 - `blocked_current_state` represents a non-writing candidate that is not safe
   to convert now.
+- `requires_maintenance` represents a policy whose current legacy shape or
+  repeated technical failure has no safe automatic resolution.
 - `system_failure` represents a rolled-back conversion attempt.
 
 An empty candidate evaluation receives run state `evaluated` and reason
 `no_candidates`; it is not a durable completion marker. Scheduler lock
 contention never invokes the service and therefore creates no ledger row.
-`retry_not_before` is intentionally nullable in this component. Phase
-8R.3.2.3 will write bounded retry timing and quarantine state only after it
-adds fingerprint-aware retry selection.
+`retry_not_before` remains historical outcome evidence in this component. The
+current retry and quarantine decision now lives in the separate
+[Native Intent Reconciliation Eligibility](native-intent-reconciliation-eligibility.md)
+control-plane contract, bound to the current candidate fingerprint.
 
 ### Retention And Restore
 
@@ -158,7 +162,8 @@ re-evaluates current policy state and fingerprint.
 
 ## Result
 
-Classifarr can now explain whether an automatic reconciliation evaluation
-applied, deferred, blocked, or rolled back a candidate without retaining raw
-legacy policy data. The next component is Phase 8R.3.2.3: fingerprint-aware
-retry, quarantine, and system-failure semantics.
+Classifarr can explain whether an automatic reconciliation evaluation applied,
+deferred, blocked, requires maintenance, or rolled back a candidate without
+retaining raw legacy policy data. Current retry and quarantine semantics are
+implemented separately; the next component is Phase 8R.3.2.4: reversion,
+restore, and new-policy interaction guards.

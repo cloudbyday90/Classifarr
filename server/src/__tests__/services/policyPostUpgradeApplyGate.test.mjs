@@ -316,6 +316,58 @@ describe('policyPostUpgradeApplyGate', () => {
     });
   });
 
+  test('classifies a serializable database failure as retryable without exposing its message', async () => {
+    const serializationError = Object.assign(
+      new Error('could not serialize access due to concurrent update'),
+      { code: '40001' },
+    );
+    const dbClient = {
+      withTransaction: jest.fn(async () => {
+        throw serializationError;
+      }),
+    };
+
+    const result = await applyPolicyPostUpgradeApplyGate({
+      dbClient,
+      dryRun: readyDryRun(),
+      policies: [policy()],
+      now: '2026-07-01T12:00:00.000Z',
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      statusId: POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.FAILED_ROLLED_BACK,
+      failureCategory: 'transient_database',
+      operatorErrorIds: ['transient_database'],
+    }));
+    expect(JSON.stringify(result)).not.toContain('concurrent update');
+  });
+
+  test('classifies a serializable database failure as retryable without exposing its message', async () => {
+    const serializationError = Object.assign(
+      new Error('could not serialize access due to concurrent update'),
+      { code: '40001' },
+    );
+    const dbClient = {
+      withTransaction: jest.fn(async () => {
+        throw serializationError;
+      }),
+    };
+
+    const result = await applyPolicyPostUpgradeApplyGate({
+      dbClient,
+      dryRun: readyDryRun(),
+      policies: [policy()],
+      now: '2026-07-01T12:00:00.000Z',
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      statusId: POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.FAILED_ROLLED_BACK,
+      failureCategory: 'transient_database',
+      operatorErrorIds: ['transient_database'],
+    }));
+    expect(JSON.stringify(result)).not.toContain('concurrent update');
+  });
+
   test('does not enter the apply transaction when loaded authority is ambiguous', async () => {
     const dbClient = {
       query: jest.fn()

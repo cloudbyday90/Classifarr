@@ -155,6 +155,23 @@ function unique(values) {
   return [...new Set(asArray(values).filter(Boolean))];
 }
 
+function classifyApplyFailureCategory(error = {}) {
+  const operatorErrorId = normalizeString(error.operatorErrorId);
+  if (operatorErrorId) return operatorErrorId;
+
+  const code = normalizeString(error.code).toUpperCase();
+  if ([
+    '40001', '40P01', '55P03',
+    '08000', '08001', '08003', '08004', '08006', '08007', '08P01',
+    'ECONNABORTED', 'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH',
+    'ENETUNREACH', 'EPIPE', 'ETIMEDOUT',
+  ].includes(code)) {
+    return 'transient_database';
+  }
+
+  return POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.APPLY_FAILED_ROLLED_BACK;
+}
+
 function getDryRunOperatorErrors(dryRun = {}) {
   return asArray(dryRun.operatorErrorIds)
     .filter(errorId => errorId !== POLICY_POST_UPGRADE_DRY_RUN_OPERATOR_ERROR_IDS.OPERATOR_REVIEW_REQUIRED);
@@ -890,6 +907,7 @@ async function applyPolicyPostUpgradeApplyGate({
       },
     };
   } catch (error) {
+    const failureCategory = classifyApplyFailureCategory(error);
     return {
       ...gate,
       statusId: error.operatorErrorId === POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.EXECUTION_BUDGET_EXHAUSTED
@@ -900,8 +918,9 @@ async function applyPolicyPostUpgradeApplyGate({
       results: [],
       operatorErrorIds: unique([
         ...asArray(gate.operatorErrorIds),
-        error.operatorErrorId || POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.APPLY_FAILED_ROLLED_BACK,
+        failureCategory,
       ]),
+      failureCategory,
       rollback: {
         assumedComplete: true,
         reason: 'db.withTransaction rejected and is expected to roll back the transaction.',

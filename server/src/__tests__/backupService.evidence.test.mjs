@@ -253,6 +253,7 @@ describe('BackupService classification_evidence export (Phase 6A)', () => {
             if (sql.includes('FROM policy_intent_validation_status')) return { rows: [{ id: 7, intent_id: 1 }] };
             if (sql.includes('FROM policy_native_intent_reconciliation_runs')) return { rows: [{ id: 8, run_key: 'a9cf9f4a-61e3-4ca7-8fe6-b810efff7c1c' }] };
             if (sql.includes('FROM policy_native_intent_reconciliation_outcomes')) return { rows: [{ id: 9, policy_id: 10 }] };
+            if (sql.includes('FROM policy_native_intent_reconciliation_states')) return { rows: [{ policy_id: 10, outcome_state: 'system_failure' }] };
             return { rows: [] };
         });
         classificationEvidenceService.listLegacyPatterns.mockResolvedValue([]);
@@ -271,10 +272,14 @@ describe('BackupService classification_evidence export (Phase 6A)', () => {
             { id: 8, run_key: 'a9cf9f4a-61e3-4ca7-8fe6-b810efff7c1c' },
         ]);
         expect(result.data.policyNativeIntentReconciliationOutcomes).toEqual([{ id: 9, policy_id: 10 }]);
+        expect(result.data.policyNativeIntentReconciliationStates).toEqual([
+            { policy_id: 10, outcome_state: 'system_failure' },
+        ]);
         expect(result.meta.policyIntentsCount).toBe(1);
         expect(result.meta.policyIntentRollbackSnapshotsCount).toBe(1);
         expect(result.meta.policyNativeIntentReconciliationRunsCount).toBe(1);
         expect(result.meta.policyNativeIntentReconciliationOutcomesCount).toBe(1);
+        expect(result.meta.policyNativeIntentReconciliationStatesCount).toBe(1);
     });
 });
 

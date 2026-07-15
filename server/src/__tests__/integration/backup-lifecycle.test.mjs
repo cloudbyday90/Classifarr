@@ -108,6 +108,14 @@ const STUB_DDLS = [
         created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
         UNIQUE (run_id, policy_id)
     )`,
+    `CREATE TABLE IF NOT EXISTS policy_native_intent_reconciliation_states (
+        policy_id INTEGER PRIMARY KEY, candidate_fingerprint VARCHAR(71) NOT NULL,
+        candidate_status_id VARCHAR(80) NOT NULL, outcome_state VARCHAR(40) NOT NULL,
+        reason_id VARCHAR(80) NOT NULL, retry_not_before TIMESTAMPTZ,
+        failure_count INTEGER NOT NULL DEFAULT 0, evaluated_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    )`,
     `CREATE TABLE IF NOT EXISTS scheduled_tasks (
         id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL,
         task_type VARCHAR(50) DEFAULT 'library_scan' NOT NULL,

@@ -5261,6 +5261,27 @@ Acceptance criteria:
 - An unsupported policy remains explicitly visible to support and blocks legacy
   deletion until it receives a real resolution.
 
+Implementation outcome:
+
+- `20260715_140000_add_native_intent_reconciliation_state.sql` adds one
+  policy-local control-plane row with only a candidate fingerprint, safe state
+  and reason IDs, retry timing, bounded failure count, and timestamps. It has
+  no policy JSON, prompt, provider, credential, or exception-text field.
+- Reconciliation inspects a bounded 100-candidate window but selects only the
+  existing ten-policy apply batch. Unchanged terminal state and active retry
+  backoff no longer consume the conversion batch; matching terminal state is
+  quarantined until a changed fingerprint clears stale state and makes the
+  policy eligible for current evaluation.
+- Serialization, transaction, lock, database, and connection failures receive
+  bounded fingerprint-stable backoff. Execution-budget pressure also backs off,
+  but never consumes or resets the technical-failure limit; only three matching
+  technical failures escalate to policy-local `requires_maintenance`.
+- Backup, restore, generated schema, and ledger outcomes preserve the compact
+  state. Routing and profile freshness remain automation-readiness signals and
+  are excluded from conversion retry eligibility.
+- Design and outcome record:
+  [Native Intent Reconciliation Eligibility](native-intent-reconciliation-eligibility.md).
+
 ##### 8R.3.2.4 Reversion, Restore, And New-Policy Interaction Guard
 
 Intent: prevent automation from undoing a valid rollback, racing a restore, or

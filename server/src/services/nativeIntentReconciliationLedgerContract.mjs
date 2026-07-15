@@ -28,6 +28,7 @@ const NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES = Object.freeze({
   ALREADY_NATIVE: 'already_native',
   DEFERRED_RETRY: 'deferred_retry',
   BLOCKED_CURRENT_STATE: 'blocked_current_state',
+  REQUIRES_MAINTENANCE: 'requires_maintenance',
   SYSTEM_FAILURE: 'system_failure',
 });
 
@@ -170,8 +171,13 @@ function buildFallbackCandidates(applyGate = {}) {
 }
 
 function normalizeLedgerCandidates(applyGate = {}) {
-  const sourceCandidates = asArray(applyGate.reconciliationCandidates);
-  const candidates = sourceCandidates.length > 0 ? sourceCandidates : buildFallbackCandidates(applyGate);
+  const hasExplicitCandidates = Object.prototype.hasOwnProperty.call(
+    applyGate,
+    'reconciliationCandidates',
+  );
+  const candidates = hasExplicitCandidates
+    ? asArray(applyGate.reconciliationCandidates)
+    : buildFallbackCandidates(applyGate);
   const byPolicyId = new Map();
 
   candidates.forEach(candidate => {
@@ -195,6 +201,31 @@ function buildAppliedResultMap(applyGate = {}) {
   return resultsByPolicyId;
 }
 
+function buildOutcomeOverrideMap(applyGate = {}) {
+  const overrides = new Map();
+  const allowedStates = new Set(Object.values(NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES));
+
+  asArray(applyGate.reconciliationOutcomeOverrides).forEach(override => {
+    const policyId = normalizePositiveInteger(override?.policyId);
+    const outcomeState = normalizeSafeId(override?.outcomeState, null);
+    if (!policyId || !allowedStates.has(outcomeState)) return;
+
+    const retryNotBefore = override?.retryNotBefore
+      ? normalizeTimestamp(override.retryNotBefore)
+      : null;
+    overrides.set(policyId, {
+      outcomeState,
+      reasonId: normalizeSafeId(
+        override?.reasonId,
+        NATIVE_INTENT_RECONCILIATION_LEDGER_REASON_IDS.BLOCKED_CURRENT_STATE,
+      ),
+      retryNotBefore,
+    });
+  });
+
+  return overrides;
+}
+
 function determineRunState(sourceStatusId) {
   if (sourceStatusId === 'applied') {
     return NATIVE_INTENT_RECONCILIATION_RUN_STATES.APPLIED;
@@ -216,12 +247,18 @@ function primaryOperatorErrorId(applyGate = {}, fallback) {
   return normalizeReasonIds(applyGate.operatorErrorIds)[0] || fallback;
 }
 
-function buildOutcome({ candidate, sourceStatusId, runReasonId, appliedResults }) {
+function buildOutcome({ candidate, sourceStatusId, runReasonId, appliedResults, outcomeOverrides }) {
   const appliedResult = appliedResults.get(candidate.policyId);
+  const override = outcomeOverrides.get(candidate.policyId);
   let outcomeState = NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.BLOCKED_CURRENT_STATE;
   let reasonId = primaryReasonId(candidate, runReasonId);
+  let retryNotBefore = null;
 
-  if (appliedResult) {
+  if (override) {
+    outcomeState = override.outcomeState;
+    reasonId = override.reasonId;
+    retryNotBefore = override.retryNotBefore;
+  } else if (appliedResult) {
     outcomeState = appliedResult.alreadyConverted
       ? NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.ALREADY_NATIVE
       : NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.APPLIED;
@@ -248,7 +285,7 @@ function buildOutcome({ candidate, sourceStatusId, runReasonId, appliedResults }
     candidateStatusId: candidate.statusId,
     outcomeState,
     reasonId: normalizeSafeId(reasonId, NATIVE_INTENT_RECONCILIATION_LEDGER_REASON_IDS.BLOCKED_CURRENT_STATE),
-    retryNotBefore: null,
+    retryNotBefore,
   };
 }
 
@@ -311,6 +348,7 @@ function buildNativeIntentReconciliationLedgerRecord({
   const sourceStatusId = normalizeSafeId(applyGate.statusId, 'unknown');
   const candidates = normalizeLedgerCandidates(applyGate);
   const appliedResults = buildAppliedResultMap(applyGate);
+  const outcomeOverrides = buildOutcomeOverrideMap(applyGate);
   const runReasonId = resolveRunReasonId({
     sourceStatusId,
     applyGate,
@@ -321,6 +359,7 @@ function buildNativeIntentReconciliationLedgerRecord({
     sourceStatusId,
     runReasonId,
     appliedResults,
+    outcomeOverrides,
   }));
   const outcomeCounts = countOutcomes(outcomes);
 

@@ -147,7 +147,9 @@ creating a second compatibility store.
 
 ### 8R.3.2.3 Eligibility, Retry, And Quarantine Semantics
 
-The service separates four outcomes:
+Implemented through [Native Intent Reconciliation Eligibility](native-intent-reconciliation-eligibility.md).
+The service separates four current dispositions in addition to completed
+outcomes:
 
 - `applied`: native authority was written transactionally.
 - `deferred_retry`: an eligible policy encountered a transient system failure.
@@ -156,10 +158,12 @@ The service separates four outcomes:
 - `requires_maintenance`: the legacy policy shape has no supported automatic
   resolution and must block compatibility deletion.
 
-Retry only system failures with bounded backoff. Reevaluate blockers when their
-candidate fingerprint changes or a conservative retry interval expires. Routing
-and profile freshness remain automation-readiness information and are never
-conversion retry triggers.
+The reconciler scans a bounded discovery window and selects only ready or due
+policies for its existing conversion batch. Retry only technical system failures
+with bounded fingerprint-stable backoff; execution-budget deferral backs off
+without spending the technical-failure allowance. Reevaluate blockers when
+their candidate fingerprint changes. Routing and profile freshness remain
+automation-readiness information and are never conversion retry triggers.
 
 ### 8R.3.2.4 Reversion, Restore, And New-Policy Guards
 

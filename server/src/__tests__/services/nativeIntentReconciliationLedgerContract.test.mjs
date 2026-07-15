@@ -131,6 +131,64 @@ describe('nativeIntentReconciliationLedgerContract', () => {
     });
   });
 
+  test('uses a safe execution override for a terminal maintenance disposition', () => {
+    const record = buildNativeIntentReconciliationLedgerRecord({
+      applyGate: {
+        statusId: 'evaluated',
+        reconciliationCandidates: [{
+          policyId: 10,
+          statusId: 'unsupported_legacy_shape',
+          canConvert: false,
+          reasonIds: ['unsupported_signal_type'],
+          rawLegacyJson: { token: 'must never escape' },
+        }],
+        reconciliationOutcomeOverrides: [{
+          policyId: 10,
+          outcomeState: 'requires_maintenance',
+          reasonId: 'technical_retry_limit_reached',
+          errorMessage: 'must never escape',
+        }],
+      },
+    });
+
+    expect(record.outcomes).toEqual([expect.objectContaining({
+      policyId: 10,
+      outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.REQUIRES_MAINTENANCE,
+      reasonId: 'technical_retry_limit_reached',
+      retryNotBefore: null,
+    })]);
+    expect(JSON.stringify(record)).not.toContain('must never escape');
+  });
+
+  test('uses a safe execution override for a terminal maintenance disposition', () => {
+    const record = buildNativeIntentReconciliationLedgerRecord({
+      applyGate: {
+        statusId: 'evaluated',
+        reconciliationCandidates: [{
+          policyId: 10,
+          statusId: 'unsupported_legacy_shape',
+          canConvert: false,
+          reasonIds: ['unsupported_signal_type'],
+          rawLegacyJson: { token: 'must never escape' },
+        }],
+        reconciliationOutcomeOverrides: [{
+          policyId: 10,
+          outcomeState: 'requires_maintenance',
+          reasonId: 'technical_retry_limit_reached',
+          errorMessage: 'must never escape',
+        }],
+      },
+    });
+
+    expect(record.outcomes).toEqual([expect.objectContaining({
+      policyId: 10,
+      outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.REQUIRES_MAINTENANCE,
+      reasonId: 'technical_retry_limit_reached',
+      retryNotBefore: null,
+    })]);
+    expect(JSON.stringify(record)).not.toContain('must never escape');
+  });
+
   test('never returns a finish timestamp before the run start time', () => {
     const record = buildNativeIntentReconciliationLedgerRecord({
       startedAt: '2026-07-15T12:00:20.000Z',

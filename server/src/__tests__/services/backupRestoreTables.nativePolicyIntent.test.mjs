@@ -122,6 +122,16 @@ describe('backupRestoreTables native policy intent restore', () => {
           retry_not_before: null,
           evaluated_at: '2026-07-15T00:00:01.000Z',
         }],
+        policyNativeIntentReconciliationStates: [{
+          policy_id: 10,
+          candidate_fingerprint: `sha256:${'b'.repeat(64)}`,
+          candidate_status_id: 'ready_to_convert',
+          outcome_state: 'system_failure',
+          reason_id: 'transient_database',
+          retry_not_before: '2026-07-15T00:05:00.000Z',
+          failure_count: 1,
+          evaluated_at: '2026-07-15T00:00:01.000Z',
+        }],
       },
       { policyIdMap, libraryIdMap }
     );
@@ -136,6 +146,7 @@ describe('backupRestoreTables native policy intent restore', () => {
       validationStatusesRestored: 1,
       reconciliationRunsRestored: 1,
       reconciliationOutcomesRestored: 1,
+      reconciliationStatesRestored: 1,
     });
 
     expect(client.query).toHaveBeenCalledWith(
@@ -165,6 +176,10 @@ describe('backupRestoreTables native policy intent restore', () => {
     expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO policy_native_intent_reconciliation_outcomes'),
       expect.arrayContaining([expect.any(Number), 110])
+    );
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_native_intent_reconciliation_states'),
+      expect.arrayContaining([110, `sha256:${'b'.repeat(64)}`, 'system_failure'])
     );
   });
 

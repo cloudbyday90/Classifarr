@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-15T22:59:49.967Z
--- Latest Migration: 20260715_131000_harden_native_intent_reconciliation_ledger_constraints.sql
+-- Generated: 2026-07-15T23:31:43.473Z
+-- Latest Migration: 20260715_140000_add_native_intent_reconciliation_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4168,7 +4168,7 @@ CREATE TABLE public.policy_native_intent_reconciliation_outcomes (
     CONSTRAINT policy_native_intent_reconciliation_outcomes_fingerprint_chk CHECK (((candidate_fingerprint)::text ~ '^sha256:[a-f0-9]{64}$'::text)),
     CONSTRAINT policy_native_intent_reconciliation_outcomes_reason_id_chk CHECK (((reason_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text)),
     CONSTRAINT policy_native_intent_reconciliation_outcomes_retry_after_evalua CHECK (((retry_not_before IS NULL) OR (retry_not_before >= evaluated_at))),
-    CONSTRAINT policy_native_intent_reconciliation_outcomes_state_chk CHECK (((outcome_state)::text = ANY (ARRAY[('applied'::character varying)::text, ('already_native'::character varying)::text, ('deferred_retry'::character varying)::text, ('blocked_current_state'::character varying)::text, ('system_failure'::character varying)::text])))
+    CONSTRAINT policy_native_intent_reconciliation_outcomes_state_chk CHECK (((outcome_state)::text = ANY ((ARRAY['applied'::character varying, 'already_native'::character varying, 'deferred_retry'::character varying, 'blocked_current_state'::character varying, 'requires_maintenance'::character varying, 'system_failure'::character varying])::text[])))
 );
 
 
@@ -4237,6 +4237,31 @@ CREATE SEQUENCE public.policy_native_intent_reconciliation_runs_id_seq
 --
 
 ALTER SEQUENCE public.policy_native_intent_reconciliation_runs_id_seq OWNED BY public.policy_native_intent_reconciliation_runs.id;
+
+
+--
+-- Name: policy_native_intent_reconciliation_states; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_native_intent_reconciliation_states (
+    policy_id integer NOT NULL,
+    candidate_fingerprint character varying(71) CONSTRAINT policy_native_intent_reconcilia_candidate_fingerprint_not_null1 NOT NULL,
+    candidate_status_id character varying(80) CONSTRAINT policy_native_intent_reconciliati_candidate_status_id_not_null1 NOT NULL,
+    outcome_state character varying(40) CONSTRAINT policy_native_intent_reconciliation_stat_outcome_state_not_null NOT NULL,
+    reason_id character varying(80) NOT NULL,
+    retry_not_before timestamp with time zone,
+    failure_count integer DEFAULT 0 CONSTRAINT policy_native_intent_reconciliation_stat_failure_count_not_null NOT NULL,
+    evaluated_at timestamp with time zone CONSTRAINT policy_native_intent_reconciliation_state_evaluated_at_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_native_intent_reconciliation_states_candidate_status_chk CHECK (((candidate_status_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text)),
+    CONSTRAINT policy_native_intent_reconciliation_states_failure_count_chk CHECK (((failure_count >= 0) AND (failure_count <= 3))),
+    CONSTRAINT policy_native_intent_reconciliation_states_fingerprint_chk CHECK (((candidate_fingerprint)::text ~ '^sha256:[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_native_intent_reconciliation_states_outcome_chk CHECK (((outcome_state)::text = ANY ((ARRAY['deferred_retry'::character varying, 'blocked_current_state'::character varying, 'requires_maintenance'::character varying, 'system_failure'::character varying])::text[]))),
+    CONSTRAINT policy_native_intent_reconciliation_states_reason_chk CHECK (((reason_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text)),
+    CONSTRAINT policy_native_intent_reconciliation_states_retry_after_eval_chk CHECK (((retry_not_before IS NULL) OR (retry_not_before >= evaluated_at))),
+    CONSTRAINT policy_native_intent_reconciliation_states_retry_state_chk CHECK (((((outcome_state)::text = ANY ((ARRAY['deferred_retry'::character varying, 'system_failure'::character varying])::text[])) AND (retry_not_before IS NOT NULL)) OR (((outcome_state)::text = ANY ((ARRAY['blocked_current_state'::character varying, 'requires_maintenance'::character varying])::text[])) AND (retry_not_before IS NULL))))
+);
 
 
 --
@@ -7158,6 +7183,14 @@ ALTER TABLE ONLY public.policy_native_intent_reconciliation_runs
 
 
 --
+-- Name: policy_native_intent_reconciliation_states policy_native_intent_reconciliation_states_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_states
+    ADD CONSTRAINT policy_native_intent_reconciliation_states_pkey PRIMARY KEY (policy_id);
+
+
+--
 -- Name: policy_overlap_metrics_snapshots policy_overlap_metrics_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8611,6 +8644,20 @@ CREATE INDEX idx_policy_native_intent_reconciliation_runs_finished ON public.pol
 
 
 --
+-- Name: idx_policy_native_intent_reconciliation_states_outcome; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_native_intent_reconciliation_states_outcome ON public.policy_native_intent_reconciliation_states USING btree (outcome_state, evaluated_at, policy_id);
+
+
+--
+-- Name: idx_policy_native_intent_reconciliation_states_retry; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_native_intent_reconciliation_states_retry ON public.policy_native_intent_reconciliation_states USING btree (retry_not_before, policy_id) WHERE ((outcome_state)::text = ANY ((ARRAY['deferred_retry'::character varying, 'system_failure'::character varying])::text[]));
+
+
+--
 -- Name: idx_policy_overlap_metrics_snapshots_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9865,6 +9912,14 @@ ALTER TABLE ONLY public.policy_native_intent_reconciliation_outcomes
 
 ALTER TABLE ONLY public.policy_native_intent_reconciliation_outcomes
     ADD CONSTRAINT policy_native_intent_reconciliation_outcomes_run_id_fkey FOREIGN KEY (run_id) REFERENCES public.policy_native_intent_reconciliation_runs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_native_intent_reconciliation_states policy_native_intent_reconciliation_states_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_states
+    ADD CONSTRAINT policy_native_intent_reconciliation_states_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
 
 
 --
@@ -11988,6 +12043,7 @@ FROM unnest(ARRAY[
     '20260714_090000_add_policy_rollback_snapshot_retention_event.sql',
     '20260715_120000_add_native_intent_reconciliation_actor.sql',
     '20260715_130000_add_native_intent_reconciliation_ledger.sql',
-    '20260715_131000_harden_native_intent_reconciliation_ledger_constraints.sql'
+    '20260715_131000_harden_native_intent_reconciliation_ledger_constraints.sql',
+    '20260715_140000_add_native_intent_reconciliation_state.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

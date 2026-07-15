@@ -82,6 +82,8 @@ export async function restoreAllTables(client, backupData, mode) {
         backupData.data.policyNativeIntentReconciliationRuns,
       policyNativeIntentReconciliationOutcomes:
         backupData.data.policyNativeIntentReconciliationOutcomes,
+      policyNativeIntentReconciliationStates:
+        backupData.data.policyNativeIntentReconciliationStates,
     },
     { policyIdMap, libraryIdMap }
   );
@@ -124,6 +126,8 @@ export async function restoreAllTables(client, backupData, mode) {
         nativePolicyIntentStats.reconciliationRunsRestored,
       policyNativeIntentReconciliationOutcomesRestored:
         nativePolicyIntentStats.reconciliationOutcomesRestored,
+      policyNativeIntentReconciliationStatesRestored:
+        nativePolicyIntentStats.reconciliationStatesRestored,
       rulesRestored: backupData.data.libraryCustomRules?.length || 0,
       patternsRestored: backupData.data.learningPatterns?.length || 0,
       classificationEvidenceRestored: backupData.data.classificationEvidence?.length || 0
