@@ -136,6 +136,21 @@ Not implemented in this component:
 - no Git or filesystem mutation other than the CLI's explicitly requested JSON
   output path.
 
+## Operational Execution Boundary
+
+The execution-plan evidence command is repository or CI maintenance tooling,
+not a production application endpoint. The production image deliberately copies
+only shared `scripts/lib` modules; it does not ship the source-tree generator
+entry points or the complete source checkout that the closure scan must inspect.
+
+Run the command from a version-matched reviewed checkout or a controlled
+maintenance runner that has an explicit connection to the target database. Do
+not copy an unreviewed generator into a running application container to work
+around that boundary. The read-only evidence collection should use the least
+privileged database access that can read the required policy inventory; later
+approval and controlled file-application steps remain separate, named-actor
+operations.
+
 ## Next Step
 
 Proceed with the existing **Compatibility Path Deletion Execution Gate**. It
