@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Explicit Native Intent Conversion** - administrators can now preview and
+  selectively convert current, eligible policies to native intent through a
+  confirmed, rate-limited action. The server recomputes eligibility at apply
+  time, records the verified administrator as the migration actor, preserves
+  transactional rollback protection, and never runs conversion automatically
+  during post-upgrade startup.
 - **Native Conversion And Automation Readiness Separation** - valid policies
   can now convert to native intent even when routing or profile freshness still
   needs work. Those automation blockers are reported separately, and unmapped

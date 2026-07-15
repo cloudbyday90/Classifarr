@@ -9,6 +9,7 @@
  */
 
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
@@ -30,6 +31,7 @@ const logger = createLogger('PoliciesRoute');
 
 export const router = createPoliciesRouter({
   express,
+  rateLimit,
   db,
   logger,
   listPresets,

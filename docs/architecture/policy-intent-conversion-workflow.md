@@ -103,6 +103,8 @@ Cons:
   `server/src/services/policyPostUpgradeDryRun.mjs`
 - Apply-gate consumer:
   `server/src/services/policyPostUpgradeApplyGate.mjs`
+- Administrator apply boundary:
+  `server/src/services/policyNativeIntentConversionOperatorAction.mjs`
 - Storage-closure evidence:
   `server/src/services/policyStorageClosureEvidenceRun.mjs`
 
@@ -134,5 +136,7 @@ Implemented:
 
 ## Next Step
 
-Cut over the native runtime read path naming and remove any remaining
-phase-coded payload/version/handoff vocabulary from that component.
+Use the administrator-only conversion preview and apply action documented in
+[Policy Native Intent Conversion Operator Action](policy-native-intent-conversion-operator-action.md)
+to convert selected current candidates. Then verify native runtime behavior
+before compatibility-path removal work begins.

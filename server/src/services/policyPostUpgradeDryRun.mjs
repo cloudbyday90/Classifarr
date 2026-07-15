@@ -230,6 +230,8 @@ function buildPolicyPostUpgradeDryRun({
   policies = [],
   candidateReport = null,
   activeIntentIntegrityReport = null,
+  selectedPolicyIds = null,
+  action = null,
   maxPolicies = MAX_POST_UPGRADE_DRY_RUN_POLICIES,
   now = null,
 } = {}) {
@@ -241,16 +243,21 @@ function buildPolicyPostUpgradeDryRun({
     activeIntentIntegrityReport,
   });
   const readyPolicyIds = getReadyPolicyIds(report);
+  const requestedPolicyIds = Array.isArray(selectedPolicyIds)
+    ? selectedPolicyIds
+    : readyPolicyIds;
+  const workflowAction = {
+    actorSourceId: action?.actorSourceId ?? POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY,
+    actorId: action?.actorId ?? null,
+    reasonCode: action?.reasonCode ?? 'policy_post_upgrade_dry_run',
+    requestedAt: action?.requestedAt ?? now,
+  };
   const conversionWorkflow = readyPolicyIds.length > 0
     ? buildPolicyIntentConversionWorkflow({
       policies,
       candidateReport: report,
-      selectedPolicyIds: readyPolicyIds,
-      action: {
-        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY,
-        reasonCode: 'policy_post_upgrade_dry_run',
-        requestedAt: now,
-      },
+      selectedPolicyIds: requestedPolicyIds,
+      action: workflowAction,
       now,
     })
     : null;
@@ -271,7 +278,7 @@ function buildPolicyPostUpgradeDryRun({
     statusId,
     candidateReport: report,
     conversionWorkflow,
-    selectedPolicyIds: readyPolicyIds,
+    selectedPolicyIds: requestedPolicyIds,
     operatorErrorIds,
     summary: {
       totalPolicyCount: report.summary?.totalPolicyCount ?? 0,

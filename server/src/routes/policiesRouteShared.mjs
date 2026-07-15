@@ -13,6 +13,7 @@ import { registerPolicyCrudRoutes } from './policiesRoutePolicyCrud.mjs';
 
 export function createPoliciesRouter({
   express,
+  rateLimit,
   db,
   logger,
   listPresets,
@@ -39,6 +40,7 @@ export function createPoliciesRouter({
 
   registerPolicyCrudRoutes(router, {
     ...sharedDeps,
+    rateLimit,
     DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD,
     DEFAULT_POLICY_PROMPT_THRESHOLD,
     validatePolicyDecisionThresholds,

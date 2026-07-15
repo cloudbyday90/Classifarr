@@ -99,6 +99,16 @@ export const setupLimiterConfig = {
   legacyHeaders: false,
 };
 
+/** Native policy-intent conversion (per IP, per 15 minutes). */
+export const policyNativeIntentConversionLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  message: { error: 'Too many native policy-intent conversion attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
+};
+
 /**
  * User profile update (per IP, per hour).
  * Skipped in test environments to avoid interference with route tests.

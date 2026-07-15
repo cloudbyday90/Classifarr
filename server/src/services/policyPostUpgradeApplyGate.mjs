@@ -10,6 +10,7 @@ import {
   loadPolicyPostUpgradeCandidateInputs,
 } from './policyPostUpgradeDryRun.mjs';
 import { lockPolicyNativeIntentAuthority } from './policyNativeIntentAuthorityLock.mjs';
+import { POLICY_CONVERSION_ACTOR_SOURCE_IDS } from './policyConversionActorSources.mjs';
 
 const POLICY_POST_UPGRADE_APPLY_GATE_VERSION = 'policy.post_upgrade_apply_gate.v1';
 const DEFAULT_TARGET_VERSION = 1;
@@ -35,6 +36,30 @@ const POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS = Object.freeze({
   POLICY_INPUT_MISSING: 'policy_input_missing',
   POLICY_AUTHORITY_UNAVAILABLE: 'policy_authority_unavailable',
   CONTRACT_VALIDATION_FAILED: 'contract_validation_failed',
+  CONVERSION_ACTION_INVALID: 'conversion_action_invalid',
+});
+
+const APPLY_AUDIT_CONTEXT_BY_ACTOR_SOURCE_ID = Object.freeze({
+  [POLICY_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR]: {
+    actorType: 'operator',
+    defaultReasonCode: 'operator_native_intent_conversion',
+    summaryPrefix: 'Policy native intent conversion',
+  },
+  [POLICY_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY]: {
+    actorType: 'post_upgrade',
+    defaultReasonCode: 'policy_post_upgrade_apply',
+    summaryPrefix: 'Policy post-upgrade native intent conversion',
+  },
+  [POLICY_CONVERSION_ACTOR_SOURCE_IDS.TEST_FIXTURE]: {
+    actorType: 'test_fixture',
+    defaultReasonCode: 'test_fixture_native_intent_conversion',
+    summaryPrefix: 'Policy test-fixture native intent conversion',
+  },
+  [POLICY_CONVERSION_ACTOR_SOURCE_IDS.MAINTAINER_MIGRATION_TOOL]: {
+    actorType: 'maintainer',
+    defaultReasonCode: 'maintainer_native_intent_conversion',
+    summaryPrefix: 'Policy maintainer native intent conversion',
+  },
 });
 
 function asArray(value) {
@@ -43,6 +68,41 @@ function asArray(value) {
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function normalizePositiveInteger(value) {
+  const numericValue = Number(value);
+  return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null;
+}
+
+function normalizeString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function buildApplyAuditContext({ dryRun = {}, actorId = null } = {}) {
+  const action = asObject(dryRun?.conversionWorkflow?.action);
+  const actorSourceId = normalizeString(action.actorSourceId);
+  const actorConfig = APPLY_AUDIT_CONTEXT_BY_ACTOR_SOURCE_ID[actorSourceId];
+  const normalizedActorId = normalizePositiveInteger(actorId ?? action.actorId);
+
+  if (!actorConfig) {
+    return null;
+  }
+
+  if (
+    actorSourceId === POLICY_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR &&
+    !normalizedActorId
+  ) {
+    return null;
+  }
+
+  return {
+    actorSourceId,
+    actorType: actorConfig.actorType,
+    actorId: normalizedActorId,
+    reasonCode: normalizeString(action.reasonCode) || actorConfig.defaultReasonCode,
+    summaryPrefix: actorConfig.summaryPrefix,
+  };
 }
 
 function normalizeTimestamp(value) {
@@ -399,6 +459,7 @@ async function insertMigrationEvent({
   intentId,
   policyId,
   eventType,
+  actorType,
   actorId,
   reasonCode,
   summary,
@@ -418,11 +479,12 @@ async function insertMigrationEvent({
        summary,
        metadata
      )
-     VALUES ($1, $2, $3, 'post_upgrade', $4, NULL, $5, $6, $7, $8::jsonb)`,
+     VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9::jsonb)`,
     [
       intentId,
       policyId,
       eventType,
+      actorType,
       actorId,
       targetVersion,
       reasonCode,
@@ -586,7 +648,7 @@ async function insertValidationStatus({ client, intentId, contract }) {
   );
 }
 
-async function applyReadyStep({ client, policy, step, actorId, appliedAt, targetVersion }) {
+async function applyReadyStep({ client, policy, step, auditContext, appliedAt, targetVersion }) {
   const lockedPolicy = await lockPolicyNativeIntentAuthority(client, {
     policyId: policy.id,
     libraryId: policy.library_id,
@@ -621,7 +683,7 @@ async function applyReadyStep({ client, policy, step, actorId, appliedAt, target
     contract,
     targetVersion,
     appliedAt,
-    actorId,
+    actorId: auditContext.actorId,
   });
 
   await insertMigrationEvent({
@@ -629,9 +691,10 @@ async function applyReadyStep({ client, policy, step, actorId, appliedAt, target
     intentId,
     policyId: policy.id,
     eventType: 'conversion_started',
-    actorId,
-    reasonCode: 'policy_post_upgrade_apply',
-    summary: 'Policy post-upgrade native intent conversion started.',
+    actorType: auditContext.actorType,
+    actorId: auditContext.actorId,
+    reasonCode: auditContext.reasonCode,
+    summary: `${auditContext.summaryPrefix} started.`,
     metadata: { idempotencyKey: step.idempotencyKey },
     targetVersion,
   });
@@ -641,9 +704,10 @@ async function applyReadyStep({ client, policy, step, actorId, appliedAt, target
     intentId,
     policyId: policy.id,
     eventType: 'rollback_snapshot_created',
-    actorId,
-    reasonCode: 'policy_post_upgrade_apply',
-    summary: 'Rollback snapshot created before native intent conversion.',
+    actorType: auditContext.actorType,
+    actorId: auditContext.actorId,
+    reasonCode: auditContext.reasonCode,
+    summary: `Rollback snapshot created before ${auditContext.summaryPrefix.toLowerCase()}.`,
     metadata: { restorePath: step.rollbackSnapshot?.restorePath ?? null },
     targetVersion,
   });
@@ -656,9 +720,10 @@ async function applyReadyStep({ client, policy, step, actorId, appliedAt, target
     intentId,
     policyId: policy.id,
     eventType: 'conversion_applied',
-    actorId,
-    reasonCode: 'policy_post_upgrade_apply',
-    summary: 'Policy post-upgrade native intent conversion applied.',
+    actorType: auditContext.actorType,
+    actorId: auditContext.actorId,
+    reasonCode: auditContext.reasonCode,
+    summary: `${auditContext.summaryPrefix} applied.`,
     metadata: {
       idempotencyKey: step.idempotencyKey,
       rulesInserted,
@@ -700,6 +765,21 @@ async function applyPolicyPostUpgradeApplyGate({
     };
   }
 
+  const auditContext = buildApplyAuditContext({ dryRun, actorId });
+  if (!auditContext) {
+    return {
+      ...gate,
+      statusId: POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.BLOCKED_BY_DRY_RUN,
+      applied: false,
+      appliedPolicyCount: 0,
+      results: [],
+      operatorErrorIds: unique([
+        ...asArray(gate.operatorErrorIds),
+        POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.CONVERSION_ACTION_INVALID,
+      ]),
+    };
+  }
+
   const policyMap = buildPolicyMap(policies);
 
   try {
@@ -719,7 +799,7 @@ async function applyPolicyPostUpgradeApplyGate({
           client,
           policy,
           step,
-          actorId,
+          auditContext,
           appliedAt,
           targetVersion,
         }));

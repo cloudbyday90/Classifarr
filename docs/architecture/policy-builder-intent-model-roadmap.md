@@ -5010,6 +5010,12 @@ Implementation status:
   deterministic idempotency key, and legacy behavior retained until commit.
 - Behavior-sensitive policies must have passing or accepted migration verifier
   output before the workflow can mark them ready.
+- The administrator-only operator action now exposes a read-only current
+  preview and a selected-policy apply endpoint. Apply requires a server-derived
+  administrator identity, exact confirmation, bounded unique policy IDs, a
+  fresh candidate report, and a fresh conversion plan. It remains excluded from
+  automatic post-upgrade execution and records manual conversion events with
+  `actor_type = operator`.
 - Runtime output now uses the durable `policy.intent_conversion_workflow.v1`
   contract, `policy-intent:convert` idempotency keys, and
   `nextStep.stepId = native_runtime_read_path`, leaving roadmap phase IDs as
