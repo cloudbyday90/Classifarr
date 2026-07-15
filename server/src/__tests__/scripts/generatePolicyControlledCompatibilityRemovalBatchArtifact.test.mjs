@@ -27,6 +27,9 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS,
+} from '../../services/policyCompatibilityDeletionExecutionGate.mjs';
+import {
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
 } from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
 import {
@@ -206,6 +209,17 @@ describe('generate-policy-controlled-compatibility-removal-batch-artifact', () =
       validation: expect.objectContaining({ ok: true }),
     }));
     expect(removalBatch).toEqual(artifact.removalBatch);
+    expect(artifact.executionGate).toEqual(expect.objectContaining({
+      statusId:
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
+          .READY_FOR_CONTROLLED_DELETION,
+      allowControlledDeletion: true,
+      validation: expect.objectContaining({ ok: true }),
+      executionPlan: expect.objectContaining({
+        artifactFingerprint:
+          executionPlanArtifact.artifactFingerprint.fingerprint,
+      }),
+    }));
     expect(removalBatch.statusId).toBe(
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.READY_FOR_REMOVAL_REVIEW
     );

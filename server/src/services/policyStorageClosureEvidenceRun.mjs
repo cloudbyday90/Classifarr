@@ -272,7 +272,10 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'docs/architecture/policy-compatibility-deletion-execution-artifact-fingerprint.md',
     ],
     contractPaths: ['server/src/services/policyCompatibilityDeletionExecutionGate.mjs'],
-    testPaths: ['server/src/__tests__/services/policyCompatibilityDeletionExecutionGate.test.mjs'],
+    testPaths: [
+      'server/src/__tests__/services/policyCompatibilityDeletionExecutionGate.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyControlledCompatibilityRemovalBatchArtifact.test.mjs',
+    ],
   },
   {
     componentId: 'controlled_compatibility_path_removal',

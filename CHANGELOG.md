@@ -40,6 +40,9 @@ unchanged operator or runtime outcome.
   generator preserves approved review and execution bindings for the later
   controlled-apply confirmation step. Mismatched preflight evidence cannot
   write a batch by default, and blocked diagnostic export remains explicit.
+- **Execution-Gate Public Handoff Assurance** - verified the public controlled
+  removal batch artifact retains a ready, fingerprint-bound execution gate;
+  later apply tooling cannot rely on an unbound readiness claim.
 - **Controlled File Apply Containment** - moved the controlled-removal CLI file
   adapter into a tested ESM service and verified mutation in an isolated
   repository. File removal now remains explicitly opt-in, scope-bound to a

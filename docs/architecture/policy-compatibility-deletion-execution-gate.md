@@ -154,6 +154,12 @@ Implemented:
   targets cannot validate.
 - Added focused tests for artifact mutation, evidence binding, stale records,
   worktree, recovery, approval, stance, manifest, and side-effect blockers.
+- The public `policy:controlled-compatibility-removal-batch` command is the
+  intentional operator boundary for the gate. It consumes one v2
+  execution-plan artifact and bound preflight input, serializes the evaluated
+  gate as `executionGate` inside its batch artifact, and is covered by a
+  public contract test. A second standalone gate writer would duplicate
+  authority without providing a new workflow capability.
 
 Not implemented in this component:
 

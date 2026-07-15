@@ -5784,6 +5784,11 @@ Implementation status:
 - Serialized execution-gate output is revalidated against its retained artifact
   and preflight evidence. A modified ready claim, execution policy, or handoff
   cannot remain valid merely because its outer envelope is well-formed.
+- The public controlled-removal batch command is the operator-facing gate
+  handoff: it serializes the evaluated `executionGate` inside the batch
+  artifact, and its public contract test verifies the ready gate remains bound
+  to the exact execution-plan artifact fingerprint. No duplicate standalone
+  gate writer is required.
 - Current implementation verifies artifact readiness, worktree cleanliness,
   backup/restore freshness, operator approval, final support stances, manifest
   verification, emits a semantic `nextStep.stepId`, and validates that no
