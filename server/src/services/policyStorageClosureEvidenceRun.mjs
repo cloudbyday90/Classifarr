@@ -344,6 +344,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     label: 'Compatibility Removal Completion Audit',
     designDocPaths: [
       'docs/architecture/policy-compatibility-removal-completion-audit.md',
+      'docs/architecture/policy-compatibility-removal-completion-audit-artifact-exporter.md',
       'docs/architecture/policy-compatibility-removal-completion-audit-artifact-integrity.md',
       'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity.md',
     ],
@@ -353,12 +354,14 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'server/src/services/policyCompatibilityRemovalCompletionAuditArtifactFingerprint.mjs',
       'server/src/services/policyCompatibilityRemovalCompletionAuditArtifactIntegrity.mjs',
       'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.mjs',
+      'scripts/generate-policy-compatibility-removal-completion-audit.mjs',
     ],
     testPaths: [
       'server/src/__tests__/services/policyCompatibilityRemovalCompletionAudit.test.mjs',
       'server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifact.test.mjs',
       'server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifactIntegrity.test.mjs',
       'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyCompatibilityRemovalCompletionAudit.test.mjs',
     ],
   },
   {

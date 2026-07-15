@@ -32,6 +32,13 @@ and replay the nested audit before consuming its status.
 - NIST SSDF recommends secure development practices across the SDLC. The
   artifact preserves evidence that legacy compatibility code was removed only
   after validation and scan evidence passed.
+- SLSA artifact verification requires consumers to inspect provenance and
+  reject unexpected values. The public exporter test exercises the retained
+  authorization artifact, exact execution plan, and review context as one
+  verification chain rather than trusting a detached completion summary.
+- OWASP input validation recommends server-side allowlisting. The generator
+  accepts only explicit JSON artifact inputs and blocks altered authorization,
+  cross-review, and final-reference evidence before writing normal output.
 - OWASP Logging guidance recommends event records with enough context for
   review. The artifact records inventory counts, verification counts, final
   scan results, validation state, risks, and side-effect status.
@@ -47,6 +54,10 @@ Sources:
   <https://csrc.nist.gov/pubs/sp/800/128/upd1/final>
 - NIST Secure Software Development Framework:
   <https://csrc.nist.gov/projects/ssdf>
+- SLSA Verifying Artifacts:
+  <https://slsa.dev/spec/v1.2/verifying-artifacts>
+- OWASP Input Validation Cheat Sheet:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html>
 - OWASP Logging Cheat Sheet:
   <https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html>
 - Git `mv` documentation:
@@ -103,6 +114,29 @@ Cons:
 
 - downstream consumers need to handle a non-complete but valid state.
 
+### Verify The Public Artifact Chain
+
+The public generator should be tested with the same retained authorization
+artifact, exact execution plan, final scan, validation, and review context that
+the checkpoint will consume. A complete chain writes a complete wrapper and
+nested audit. A valid remaining-inventory chain writes its artifact but fails
+`--require-complete`. Altered authorization, a different review fingerprint, or
+final scan references must fail closed without writing output unless the caller
+explicitly requests a blocked diagnostic with `--allow-blocked`.
+
+Pros:
+
+- catches CLI serialization and file-boundary regressions that service tests do
+  not exercise,
+- preserves remaining inventory as an explicit, resumable state,
+- prevents an altered, cross-review, or reference-bearing artifact chain from
+  being mistaken for closure evidence.
+
+Cons:
+
+- fixture builders must retain a small, coherent execution-plan and
+  authorization-artifact chain.
+
 ## Final Recommendation Stack
 
 Use this stack for compatibility removal completion audit artifact export:
@@ -119,7 +153,10 @@ Use this stack for compatibility removal completion audit artifact export:
 9. Retain the execution plan and audit input, fingerprint the bounded artifact,
    and require exact audit replay in downstream closure gates.
 10. Reject file deletion, archive, route/test removal, storage mutation,
-   manifest writes, and Git side effects.
+    manifest writes, and Git side effects.
+11. Exercise the public generator with coherent complete and remaining chains;
+    fail closed without output for altered, cross-review, or final-reference
+    evidence unless a blocked diagnostic is explicitly requested.
 
 ## Implementation Outcome
 
@@ -135,8 +172,12 @@ Implemented:
   - blocked final reference scan evidence,
   - forbidden side-effect rejection,
   - artifact validation invariants.
+- Added a public generator test that verifies coherent complete and
+  remaining-inventory chains, `--require-complete` semantics, fail-closed
+  altered/cross-review/reference cases, and explicit blocked diagnostics.
 - Added the completion-audit artifact suite and this design doc to the fixed
-  policy storage closure validation evidence command set.
+  policy storage closure validation evidence command set and the current
+  closure evidence inventory.
 - The artifact now emits `version =
   policy.compatibility_removal_completion_audit_artifact.v3`, retains replay
   inputs, and includes a bounded SHA-256 artifact fingerprint.

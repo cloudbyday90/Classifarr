@@ -6713,6 +6713,13 @@ import/reference scan evidence, and focused/full validation evidence.
 
 Tasks:
 
+- **8R.31.1 Public Completion-Audit Artifact-Chain Verification**
+  - Completed: runs the public JSON generator with a fingerprint-valid
+    next-batch artifact, exact execution plan, final scan, validation evidence,
+    and matching review context.
+  - Completed: proves complete and valid remaining-inventory output behavior,
+    then proves altered authorization, cross-review input, and final scan
+    references fail closed without output by default.
 - Require next-batch authorization or completion JSON.
 - Require compatibility deletion execution-plan JSON with approved manifest
   entries.
@@ -6749,6 +6756,10 @@ Implementation status:
   `npm run policy:compatibility-removal-completion-audit`.
 - The focused completion-audit artifact test suite lives in
   `server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifact.test.mjs`.
+- Public command coverage lives in
+  `server/src/__tests__/scripts/generatePolicyCompatibilityRemovalCompletionAudit.test.mjs`
+  and is mapped in both the fixed closure requirement audit and current closure
+  evidence inventory.
 - Current implementation emits complete, remaining-inventory, or blocked audit
   artifacts with semantic `nextStep` output and without performing removal,
   scan, manifest, storage, or Git side effects. The artifact now retains the

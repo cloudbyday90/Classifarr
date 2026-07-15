@@ -242,6 +242,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
       'server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifact.test.mjs',
       'server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifactIntegrity.test.mjs',
       'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyCompatibilityRemovalCompletionAudit.test.mjs',
     ],
   },
   {

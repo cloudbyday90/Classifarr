@@ -25,7 +25,7 @@ const MANIFEST_PATHS = Object.freeze([
   'server/src/services/policyIntentReplayPreview.mjs',
 ]);
 
-function buildExecutionPlan() {
+function buildCompletionAuditExecutionPlan() {
   const entries = MANIFEST_PATHS.map(path => ({
     categoryId: 'old_preview_replay_diagnostics',
     actionId: 'delete_file',
@@ -59,7 +59,7 @@ function buildExecutionPlan() {
   };
 }
 
-function buildRuntimeEvidenceArtifact(appliedPaths = MANIFEST_PATHS) {
+function buildCompletionAuditRuntimeEvidenceArtifact(appliedPaths = MANIFEST_PATHS) {
   return buildPolicyPostRemovalRuntimeEvidenceArtifact({
     applyEvidence: {
       statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
@@ -97,49 +97,65 @@ function buildRuntimeEvidenceArtifact(appliedPaths = MANIFEST_PATHS) {
   });
 }
 
-async function buildCompletionAuditArtifactFixture({
+function buildCompletionAuditInput(overrides = {}) {
+  return {
+    reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    finalImportScan: {
+      completed: true,
+      checkedPaths: MANIFEST_PATHS,
+      references: [],
+    },
+    validationEvidence: {
+      focused: { command: 'focused phase8r checks', passed: true },
+      full: { command: 'npm --prefix server test', passed: true },
+    },
+    ...overrides,
+  };
+}
+
+async function buildCompletionAuditNextBatchAuthorizationArtifact({
+  executionPlan = buildCompletionAuditExecutionPlan(),
   appliedPaths = MANIFEST_PATHS,
-  input = {},
-  generatedAt = '2026-07-14T11:00:00.000Z',
+  generatedAt = '2026-07-14T10:00:00.000Z',
 } = {}) {
-  const executionPlan = buildExecutionPlan();
   const remainingPaths = MANIFEST_PATHS.filter(path => !appliedPaths.includes(path));
   const source = buildNextBatchAuthorizationPathStateSource({
     executionPlan,
     existingPaths: remainingPaths,
   });
+
+  return buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+    runtimeEvidenceArtifact: buildCompletionAuditRuntimeEvidenceArtifact(appliedPaths),
+    ...source,
+    input: {
+      requestedPaths: remainingPaths,
+      maxBatchSize: 3,
+      authorizationReason: remainingPaths.length > 0
+        ? 'Continue the reviewed compatibility removal loop.'
+        : '',
+      authorizedBy: remainingPaths.length > 0 ? 'policy-maintainer' : '',
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    },
+    generatedAt,
+  });
+}
+
+async function buildCompletionAuditArtifactFixture({
+  appliedPaths = MANIFEST_PATHS,
+  input = {},
+  generatedAt = '2026-07-14T11:00:00.000Z',
+} = {}) {
+  const executionPlan = buildCompletionAuditExecutionPlan();
   const nextBatchAuthorizationArtifact =
-    await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-      runtimeEvidenceArtifact: buildRuntimeEvidenceArtifact(appliedPaths),
-      ...source,
-      input: {
-        requestedPaths: remainingPaths,
-        maxBatchSize: 3,
-        authorizationReason: remainingPaths.length > 0
-          ? 'Continue the reviewed compatibility removal loop.'
-          : '',
-        authorizedBy: remainingPaths.length > 0 ? 'policy-maintainer' : '',
-        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
-      },
-      generatedAt: '2026-07-14T10:00:00.000Z',
+    await buildCompletionAuditNextBatchAuthorizationArtifact({
+      executionPlan,
+      appliedPaths,
     });
 
   return buildPolicyCompatibilityRemovalCompletionAuditArtifact({
     nextBatchAuthorizationArtifact,
     executionPlan,
-    input: {
-      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
-      finalImportScan: {
-        completed: true,
-        checkedPaths: MANIFEST_PATHS,
-        references: [],
-      },
-      validationEvidence: {
-        focused: { command: 'focused phase8r checks', passed: true },
-        full: { command: 'npm --prefix server test', passed: true },
-      },
-      ...input,
-    },
+    input: buildCompletionAuditInput(input),
     generatedAt,
   });
 }
@@ -147,5 +163,9 @@ async function buildCompletionAuditArtifactFixture({
 export {
   MANIFEST_PATHS,
   REVIEW_ARTIFACT_FINGERPRINT,
+  buildCompletionAuditExecutionPlan,
   buildCompletionAuditArtifactFixture,
+  buildCompletionAuditInput,
+  buildCompletionAuditNextBatchAuthorizationArtifact,
+  buildCompletionAuditRuntimeEvidenceArtifact,
 };

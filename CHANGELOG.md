@@ -131,6 +131,11 @@ unchanged operator or runtime outcome.
   verification summaries. Altered, cross-review, cross-manifest, or
   checkout-divergent evidence is blocked before completion can be reported,
   while valid remaining inventory continues through the bounded removal loop.
+- **Public Completion-Audit Export Assurance** - the completion-audit command
+  now has end-to-end artifact-chain coverage for coherent completion and
+  remaining inventory. Altered authorization, a mismatched review context, or
+  a final scan reference fails closed without output by default; blocked
+  diagnostics require an explicit opt-in.
 - **Replay-Verified Storage Closure Evidence** - policy storage closure now
   accepts a completion-audit artifact only when its SHA-256 fingerprint,
   retained authorization and manifest inputs, and deterministic audit replay
