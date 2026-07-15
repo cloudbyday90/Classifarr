@@ -93,7 +93,8 @@ Pros:
 Cons:
 
 - deletion is intentionally delayed,
-- support surfaces still need a later user-facing diagnostic shape.
+- the immediate conversion outcome is not a replacement for later
+  current-state deletion-readiness evidence.
 
 ## Final Recommendation Stack
 
@@ -106,6 +107,9 @@ Use this stack for native runtime cutover verification:
    converted policies and compatibility fallback for unconverted policies.
 4. `policyNativeRuntimeCutoverVerification.mjs` audits cutover
    readiness and keeps deletion blocked until the next readiness gate.
+5. The approved conversion response performs the bounded, read-only
+   post-conversion observation described in
+   [Policy Native Intent Post-Conversion Runtime Observation](policy-native-intent-post-conversion-runtime-observation.md).
 
 ## Implementation Outcome
 
@@ -119,13 +123,18 @@ Implemented:
 - Added tests for native row contract building, route-level native policy
   projection, converted/unconverted cutover verification, rollback blocking, and
   deletion blocking.
+- The existing administrator conversion screen now renders an automatic,
+  bounded post-conversion runtime observation for the policies selected in that
+  one confirmed action. It is outcome feedback, not a separate approval or
+  verification workflow.
 
 Not implemented in this component:
 
 - no native intent list-read expansion,
 - no compatibility path deletion,
 - no rollback-window cleanup,
-- no operator UI for cutover verification.
+- no standalone historical monitoring or deletion-readiness UI for cutover
+  verification.
 
 ## Next Step
 
