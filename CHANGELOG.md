@@ -65,6 +65,11 @@ unchanged operator or runtime outcome.
   completion and validation artifacts. It emits matching audit, checkpoint, and
   final-readout evidence; altered inputs fail closed before output, while
   blocked diagnostics remain explicit.
+- **Public Closure Requirement-Audit Assurance** - the final closure command
+  now has isolated command-chain verification from current-closure provenance
+  through component coverage. Altered current-closure evidence writes no final
+  audit by default, and missing component evidence produces diagnostics only
+  when explicitly requested.
 
 - **Single Active Native Intent Authority** - repaired and now enforces the
   database invariant that each policy has at most one active native intent.

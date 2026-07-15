@@ -6,7 +6,7 @@ The policy storage closure requirement audit proves that every mapped storage
 closure component has current implementation evidence before the closure
 sequence is treated as complete.
 
-The audit consumes a generated v2 policy storage current closure audit, first
+The audit consumes a generated v3 policy storage current closure audit, first
 validates its fingerprint and deterministic replay, then checks
 the current checkout for each mapped component's design/outcome document,
 service/script/route/migration/wiring evidence, focused test evidence, and
@@ -31,6 +31,14 @@ files, mutate storage, or write manifests.
 - OWASP Logging Cheat Sheet recommends consistent, attributable, bounded event
   records. The audit emits structured status, risk, summary, and final-decision
   fields instead of embedding raw command logs or ambiguous prose.
+- OWASP Input Validation Cheat Sheet recommends server-side syntactic and
+  semantic validation with allow-listed values. The public command validates
+  its explicit artifact input before the audit evaluates any status field.
+- SLSA artifact verification requires provenance to be checked against known
+  expectations and to fail for unrecognized parameters. The audit verifies the
+  current-closure fingerprint and replay before it accepts the artifact as
+  closure evidence. This is local integrity verification, not a substitute for
+  signed provenance or a trusted build identity.
 - Git `mv` documents explicit repository rename handling. The module cutover
   uses durable filenames and stale-reference scans so old phase-coded module
   names do not remain as compatibility debt.
@@ -43,6 +51,10 @@ Sources:
   <https://csrc.nist.gov/pubs/sp/800/128/upd1/final>
 - OWASP Logging Cheat Sheet:
   <https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html>
+- OWASP Input Validation Cheat Sheet:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html>
+- SLSA Build: Verifying Artifacts:
+  <https://slsa.dev/spec/v1.2/verifying-artifacts>
 - Git `mv` documentation:
   <https://git-scm.com/docs/git-mv>
 
@@ -113,7 +125,32 @@ Pros:
 Cons:
 
 - artifact verification requires an asynchronous, pure replay step,
-- legacy v1 current-closure artifacts are intentionally not accepted.
+- legacy v1 current-closure artifacts are intentionally not accepted,
+- an actor able to alter every retained input and recompute the unsigned
+  fingerprint requires an external trusted-execution or attestation boundary.
+
+### Verify The Public Artifact Chain Outside The Catalog
+
+The public current-closure and requirement-audit commands should be run in
+sequence against an isolated mapped checkout. The proof must show that a
+complete current-closure artifact produces a complete requirement audit, an
+altered input writes no final audit by default, and a requirement-only missing
+artifact produces output only with explicit diagnostic allowance.
+
+This command proof belongs to the fixed closure-validation catalog, rather than
+the requirement-component catalog evaluated by the audit. That preserves an
+independent check instead of allowing the audit to self-certify its own test.
+
+Pros:
+
+- verifies the real public command sequence and file-write policy,
+- detects drift between current-closure provenance and requirement-audit input,
+- keeps altered or incomplete closure evidence fail-closed.
+
+Cons:
+
+- requires temporary mapped-checkout fixtures,
+- repeats a small amount of pure service coverage at the command boundary.
 
 ## Final Recommendation Stack
 
@@ -133,6 +170,8 @@ Cons:
    Unreleased storage outcome note.
 9. Reject file writes, storage mutation, Git commands, command execution, and
    manifest writes inside the service.
+10. Verify the public current-closure to requirement-audit sequence in an
+    isolated mapped checkout and register the proof in fixed validation evidence.
 
 ## Implementation Outcome
 
@@ -159,6 +198,10 @@ Implemented:
 - Updated the requirement audit to v2. It now rejects missing, malformed,
   altered, or non-replayable current-closure audit artifacts before evaluating
   their completion status, then relies only on the replayed artifact.
+- Added a public command-chain test that generates a real current-closure
+  artifact in an isolated mapped checkout before invoking the requirement audit.
+  It verifies coherent complete output, fail-closed altered input, and explicit
+  blocked diagnostics for requirement-only missing evidence.
 
 Example:
 

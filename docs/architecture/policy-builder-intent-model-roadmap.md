@@ -6992,6 +6992,13 @@ Tasks:
 - Require changelog coverage for every component.
 - Reject file writes, manifest writes, storage mutation, command execution, and
   Git commands inside the audit service.
+- **8R.35.1 Public Closure Requirement-Audit Artifact-Chain Verification**
+  - Generate a public current-closure artifact and consume it through the
+    public requirement-audit command in an isolated mapped checkout.
+  - Prove complete provenance produces a complete requirement audit.
+  - Prove altered current-closure evidence writes no final audit by default and
+    requirement-only missing evidence emits diagnostics only through explicit
+    blocked-output allowance.
 
 Acceptance criteria:
 
@@ -7008,6 +7015,8 @@ Acceptance criteria:
   public payload fields.
 - The service reads repository files only and performs no writes, storage
   mutation, command execution, manifest writes, or Git operations.
+- Public command coverage verifies a real current-closure to requirement-audit
+  artifact chain in an isolated mapped checkout.
 
 Implementation status:
 
@@ -7040,6 +7049,10 @@ Implementation status:
   wrappers so current closure cannot rely on stale evidence. The reconciliation
   and its design outcome are documented in
   [Policy Storage Completion Status Audit](policy-storage-completion-status-audit.md).
+- Task 8R.35.1 is implemented. Its isolated-checkout public command test is
+  part of fixed closure-validation evidence, proving the requirement audit
+  consumes coherent current-closure provenance and fails closed for altered or
+  incomplete evidence.
 
 ### 8R.36 Compatibility-Removal Evidence Regeneration
 
