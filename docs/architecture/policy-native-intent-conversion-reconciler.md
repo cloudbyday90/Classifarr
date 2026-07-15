@@ -32,6 +32,10 @@ retried, and a newly restored legacy policy would be missed.
   recommends appropriate controls for automated sensitive workflows. The
   reconciler therefore has a fixed batch limit, one active runner, auditable
   outcomes, and no user-controlled conversion write endpoint.
+- [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
+  recommends correlation, sanitization, protected access, and retention limits
+  for operational logs. Reconciliation state must retain reason IDs and counts,
+  not raw legacy policy payloads, credentials, sessions, or exception bodies.
 
 ## Recommendation
 
@@ -110,3 +114,80 @@ Cons:
 - A conversion failure rolls back; a blocked policy remains untouched.
 - The reconciler never configures a routing target or activates automation.
 - Status output is bounded and does not expose raw legacy policy payloads.
+
+## Component Sequence And Edge Cases
+
+### 8R.3.2.1 Scheduler Ownership And Single-Runner Exclusion
+
+Reuse `schedulerService` and its session advisory-lock pattern with a dedicated
+lock key. The initial opportunity is scheduled after application readiness; it
+is non-blocking and is not a conversion side effect of ordinary startup. Each
+run has a fixed item and elapsed-time budget. Per-policy conversion continues to
+use the existing authority lock inside its own transaction.
+
+This prevents two replicas from processing the same batch while allowing a new
+run after a process or database-session failure releases the session lock.
+
+### 8R.3.2.2 Durable Run And Candidate Outcome Ledger
+
+Add bounded run-header and policy-outcome records. They retain timestamps,
+state, policy reference, candidate fingerprint, stable blocker/retry reason,
+and compact counts. They must not duplicate legacy policy payloads or become a
+second compatibility store.
+
+An empty scan, lock-held skip, or temporarily blocked policy must never make
+the overall migration look permanently complete.
+
+### 8R.3.2.3 Eligibility, Retry, And Quarantine Semantics
+
+The service separates four outcomes:
+
+- `applied`: native authority was written transactionally.
+- `deferred_retry`: an eligible policy encountered a transient system failure.
+- `blocked_current_state`: current authority, validation, or verifier evidence
+  makes conversion unsafe.
+- `requires_maintenance`: the legacy policy shape has no supported automatic
+  resolution and must block compatibility deletion.
+
+Retry only system failures with bounded backoff. Reevaluate blockers when their
+candidate fingerprint changes or a conservative retry interval expires. Routing
+and profile freshness remain automation-readiness information and are never
+conversion retry triggers.
+
+### 8R.3.2.4 Reversion, Restore, And New-Policy Guards
+
+A rollback is an intentional authority change. Reversion must add a hold that
+prevents immediate reconversion until an approved future re-entry condition.
+Restore suppresses reconciliation until schema, restore, and active-authority
+integrity checks complete. Already-native policies are excluded from discovery.
+
+### 8R.3.2.5 Circuit Breaker
+
+Use one default-enabled server-side operational setting and a persisted circuit
+breaker. It opens only for systemic faults, such as database availability,
+schema incompatibility, or integrity violation. Policy-local blockers do not
+open it. The emergency stop does not change native reads, policy editing,
+routing, or rollback behavior.
+
+### 8R.3.2.6 Status And Deletion Safety
+
+The maintenance UI becomes read-only: current run state, counts, next attempt,
+bounded blocker categories, and circuit status. Logs carry a correlation ID,
+sanitized event category, and counts. Compatibility deletion remains blocked
+until every legacy policy has native storage or a real supported resolution;
+acknowledging a blocker is not sufficient.
+
+### 8R.3.2.7 Verification
+
+Focused tests must cover lock contention, duplicate scheduler calls, runner
+restart, backoff, changed candidate state, mixed batches, transaction rollback,
+reversion, restore suppression, circuit recovery, status sanitization, and a
+full scheduler-driven conversion without a client request.
+
+## Explicit Non-Goals
+
+- It does not infer policy intent from absence or alter explicit constraints.
+- It does not set routing targets, enable automation, or write learning data.
+- It does not add a per-policy opt-in switch to routine authoring.
+- It does not retain raw legacy payloads outside the existing bounded rollback
+  snapshot window.

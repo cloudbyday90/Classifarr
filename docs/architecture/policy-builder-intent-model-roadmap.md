@@ -4777,8 +4777,11 @@ Non-negotiable storage principles:
 - Native intent storage must preserve already-proven server contracts.
 - Legacy payloads are rollback snapshots with bounded lifetime, not a permanent
   second policy model.
-- Migration must be explicit, reportable, reversible during the rollback window,
-  and eventually followed by deletion of replaced paths.
+- Migration must be current-state validated, reportable, reversible during the
+  rollback window, and eventually followed by deletion of replaced paths.
+- Automatic reconciliation is permitted only through the bounded Phase 8R.3.2
+  maintenance workflow; ordinary policy reads, saves, and runtime decisions
+  remain side-effect-free.
 - Runtime reads native intent as the authority once a policy is converted.
 
 ## Phase 8R Component Map
@@ -5013,9 +5016,9 @@ Implementation status:
 - The administrator-only operator action now exposes a read-only current
   preview and a selected-policy apply endpoint. Apply requires a server-derived
   administrator identity, exact confirmation, bounded unique policy IDs, a
-  fresh candidate report, and a fresh conversion plan. It remains excluded from
-  automatic post-upgrade execution and records manual conversion events with
-  `actor_type = operator`.
+  fresh candidate report, and a fresh conversion plan. It records manual
+  conversion events with `actor_type = operator` and remains the temporary
+  recovery path until automatic reconciliation replaces normal conversion.
 - The dedicated administrator maintenance surface is documented in
   [Policy Native Intent Conversion Maintenance UI](policy-native-intent-conversion-maintenance-ui.md).
   It shows only the bounded server preview, permits selection of ready
@@ -5128,6 +5131,212 @@ Implementation status:
 - Design and outcome record:
   [Policy Native Intent Conversion Reconciler](policy-native-intent-conversion-reconciler.md).
 
+##### 8R.3.2.1 Scheduler Ownership And Single-Runner Exclusion
+
+Intent: ensure automatic conversion can run from multiple application
+instances without applying the same batch twice or making application startup
+wait on storage maintenance.
+
+Tasks:
+
+- Register one bounded reconciliation task through the existing scheduler only
+  after migrations and service initialization are complete.
+- Add a dedicated `DB_ADVISORY_LOCKS` key and reuse
+  `withSessionAdvisoryLock`; a runner that cannot acquire the lock reports a
+  no-op lock-held outcome and performs no candidate scan or write.
+- Run an initial non-blocking reconciliation opportunity after application
+  readiness, then use a fixed maintenance cadence. Do not run conversion from
+  request handlers, policy reads, or policy saves.
+- Keep the scheduler lock scope around one reconciliation run while retaining
+  the existing deterministic per-policy authority lock inside each apply
+  transaction.
+- Bound a run by both policy count and elapsed time so a large legacy inventory
+  cannot monopolize the scheduler or database connection.
+
+Acceptance criteria:
+
+- Concurrent application instances produce at most one active reconciliation
+  run.
+- A runner that loses or cannot acquire the scheduler lock changes no policy
+  state and does not create duplicate run evidence.
+- A crashed runner releases its session lock with the database connection; a
+  later scheduled run can resume from durable state.
+- Application readiness does not wait for conversion completion.
+
+##### 8R.3.2.2 Durable Run And Candidate Outcome Ledger
+
+Intent: distinguish completed conversion work from deferred, blocked, and
+transiently failed work without storing a second legacy-policy payload.
+
+Tasks:
+
+- Add a native-storage migration for bounded reconciliation run headers and
+  per-policy outcomes, including run state, timestamps, candidate fingerprint,
+  stable reason ID, retry-not-before timestamp, and compact counts.
+- Persist outcomes only after the corresponding conversion transaction commits
+  or the current candidate evaluation reaches a non-writing result. Do not let
+  an empty, skipped, or lock-held attempt look like durable completion.
+- Store only policy references, bounded reason IDs, state transitions, and
+  fingerprints or digests; never copy `customSignals`, raw legacy JSON,
+  prompts, provider payloads, or trace bodies into the ledger.
+- Add retention that preserves the minimal support/audit record while pruning
+  old run detail consistently with migration-event and rollback retention.
+- Include the new tables in backup, restore, schema snapshot, and test-reset
+  coverage.
+
+Acceptance criteria:
+
+- Status can explain whether a policy was converted, deferred, blocked, or
+  waiting to retry without reading raw legacy policy data.
+- A retry is tied to the current candidate fingerprint and cannot reuse a
+  stale success or stale blocker as authority.
+- Backup/restore preserves enough ledger state to resume safely without
+  fabricating completed conversion work.
+
+##### 8R.3.2.3 Eligibility, Retry, And Quarantine Semantics
+
+Intent: retry transient conditions without thrashing permanently unsupported or
+operator-remediation cases.
+
+Tasks:
+
+- Classify outcomes into `applied`, `deferred_retry`,
+  `blocked_current_state`, `requires_maintenance`, and `system_failure` using
+  stable server-owned reason IDs.
+- Treat active-authority conflicts, invalid native state, incompatible legacy
+  shapes, and required-verifier failures as non-writing blockers. They must not
+  be converted merely to make inventory counts reach zero.
+- Use bounded backoff for transaction, database, and transient service errors;
+  reset retry eligibility only when the backoff expires or relevant candidate
+  input has changed.
+- Keep routing-target and profile freshness states separate from conversion
+  eligibility. They can inform automation readiness but must not cause
+  conversion retry churn.
+- Escalate repeated technical failures to a circuit-breaker state, while keeping
+  policy-local blockers visible rather than retrying them on every cadence.
+
+Acceptance criteria:
+
+- A blocked policy cannot prevent unrelated ready policies in the same or later
+  batch from converting.
+- A transient failure is retried without duplicate snapshots or migration
+  events.
+- An unsupported policy remains explicitly visible to support and blocks legacy
+  deletion until it receives a real resolution.
+
+##### 8R.3.2.4 Reversion, Restore, And New-Policy Interaction Guard
+
+Intent: prevent automation from undoing a valid rollback, racing a restore, or
+attempting to convert policies that are already native by construction.
+
+Tasks:
+
+- When reversion restores a policy during the rollback window, persist a
+  reconciliation hold tied to the reversion event. The reconciler must not
+  immediately reconvert that policy before an explicit future eligibility
+  transition or approved re-entry condition.
+- Keep reconciliation disabled during backup restore until restore validation,
+  schema parity, and native-authority integrity checks pass.
+- On a verified restore, resume from current policy state rather than trusting
+  an imported in-progress run as still active.
+- Exclude already-native new policies from conversion discovery, and admit
+  legacy-created policies only through the existing migration candidate report
+  while the compatibility window remains open.
+- Verify that converted-policy legacy-write guards and reversion transactions
+  cannot race a reconciliation apply.
+
+Acceptance criteria:
+
+- A successful reversion remains reverted for its defined hold period.
+- Restore cannot trigger conversion while source IDs, authority, or schema state
+  are still being reconciled.
+- New native policies never receive an unnecessary rollback snapshot or
+  conversion event.
+
+##### 8R.3.2.5 Operational Circuit Breaker And Emergency Stop
+
+Intent: contain systemic failure without turning routine policy authoring into
+an operator-controlled migration workflow.
+
+Tasks:
+
+- Add one server-side, default-enabled reconciliation setting with a documented
+  emergency disable path. It is operational break-glass control, not a per
+  policy-builder option.
+- Open a persisted circuit breaker only for repeated system-level failures such
+  as database unavailability, schema incompatibility, or invariant violations;
+  policy-local blockers must not open it.
+- Record the triggering bounded error category, opened timestamp, and recovery
+  condition. Do not record exception stacks, credentials, or raw policy data in
+  the status payload.
+- Require a healthy subsequent evaluation before automatic recovery, or an
+  explicit administrator reset when the failure category requires human
+  remediation.
+
+Acceptance criteria:
+
+- A systemic failure stops further automatic conversion before repeated write
+  attempts can amplify the issue.
+- Disabling reconciliation does not affect native runtime reads, rollback,
+  ordinary policy saves, or routing.
+- Emergency state and recovery are auditable without exposing sensitive data.
+
+##### 8R.3.2.6 Read-Only Status, Alerting, And Legacy Deletion Integration
+
+Intent: make automatic conversion observable without retaining a second
+interactive conversion workflow or permitting unsafe cleanup.
+
+Tasks:
+
+- Replace dialog apply controls with a read-only administrator status contract:
+  last completed run, current state, bounded counts, next scheduled attempt,
+  circuit state, and grouped blocker reason IDs.
+- Emit structured migration events and application logs with a run correlation
+  ID, sanitized reason category, and outcome counts. Do not log raw payloads,
+  sessions, credentials, or unbounded exception text.
+- Alert only on circuit-open, prolonged unresolved inventory, or repeated
+  system failure; rate-limit and deduplicate alerts so scheduled work cannot
+  create notification noise.
+- Update compatibility deletion gates to require zero unconverted policies and
+  no unresolved `requires_maintenance` outcomes. An operator support stance is
+  not a substitute for a real storage-resolution path.
+- Retire the manual apply endpoint and confirmation dialog only after the
+  reconciler and status surface meet their production verification gates.
+
+Acceptance criteria:
+
+- Operators can determine why automatic conversion is waiting without being
+  asked to select or confirm a normal batch.
+- Logging and status output provide correlation and support value without
+  exposing raw legacy data.
+- Compatibility deletion cannot proceed because a blocked policy was merely
+  acknowledged instead of resolved.
+
+##### 8R.3.2.7 Failure-Injection And Lifecycle Test Matrix
+
+Intent: prove the reconciler behaves safely across the operational states that
+manual dialog testing cannot cover.
+
+Tasks:
+
+- Add focused tests for lock contention, process restart, expired retry delay,
+  changed candidate fingerprints, mixed ready/blocked batches, duplicate
+  scheduler invocation, and time-budget exhaustion.
+- Add transaction tests for authority conflicts, concurrent legacy writes,
+  reversion races, database failure after snapshot creation, and restore-time
+  suppression.
+- Add lifecycle tests for disabled state, circuit opening and recovery,
+  backup/restore continuity, status sanitization, and alert deduplication.
+- Add one integration test proving a ready legacy policy converts through the
+  scheduler with no client dialog or apply endpoint request.
+
+Acceptance criteria:
+
+- Tests prove automatic conversion is idempotent, bounded, recoverable, and
+  non-authoritative for routing and policy learning.
+- Tests prove no client interaction is required for an eligible policy.
+- Tests prove failure paths preserve legacy behavior and rollback evidence.
+
 ### 8R.4 Native Runtime Read Path
 
 Intent: make converted policies use native intent as the runtime authority.
@@ -5231,12 +5440,15 @@ Tasks:
 - Add a revert path for converted policies during the rollback window.
 - After the rollback window, retain only minimal audit metadata needed for
   support/compliance and delete bulky legacy payload snapshots.
+- Require automatic reconciliation to honor reversion holds so a successful
+  rollback cannot be immediately undone by the next maintenance cadence.
 
 Acceptance criteria:
 
 - Rollback is possible during the defined window.
 - Rollback snapshots are not permanent alternate policy storage.
 - Retention behavior is documented and testable.
+- A valid reversion is not immediately reconverted by automatic maintenance.
 
 Implementation status:
 
@@ -5255,6 +5467,9 @@ Implementation status:
   ordinary policy reads and unrelated saves are blocked.
 - Post-window retention requires bulky payload deletion and keeps only minimal
   audit metadata needed for support/compliance.
+- Phase 8R.3.2 must persist and enforce a reversion hold before automatic
+  reconciliation is enabled; a rollback is an intentional authority change, not
+  another candidate to convert on the next scheduled run.
 - Validation rejects missing restore sections, missing actor/reason data,
   unbounded snapshots, raw payload exposure, permanent alternate storage,
   ordinary read/write revert, missing retention policy, bulky payload retention
@@ -5423,7 +5638,7 @@ Tasks:
   - backup/restore tests,
   - post-upgrade dry-run/apply tests.
 - Track remaining unconverted policies and block deletion until support stance is
-  explicit.
+  explicit and every policy has a real native-storage resolution.
 
 Acceptance criteria:
 
@@ -5431,6 +5646,8 @@ Acceptance criteria:
 - Remaining compatibility is intentional and time-bounded.
 - The repository no longer carries two full policy models after migration gates
   pass.
+- A reconciler `requires_maintenance` outcome is a deletion blocker, not an
+  exception that can be waived through a support stance alone.
 
 Implementation status:
 
@@ -5462,6 +5679,9 @@ Tasks:
 
 - Include native intent tables in backup and restore flows.
 - Include rollback snapshots and migration events in restore validation.
+- Include automatic reconciliation run/outcome state in backup and restore, and
+  suppress scheduled conversion until restored native authority passes integrity
+  and schema validation.
 - Add post-upgrade dry-run reporting before apply mode.
 - Ensure failed post-upgrade migration cannot leave mixed partial writes.
 - Add versioned schema checks and clear operator-facing migration errors.
@@ -5471,6 +5691,7 @@ Acceptance criteria:
 - Fresh install and upgraded install schemas match after migrations.
 - Backup/restore proves native policy recovery.
 - Post-upgrade can report and apply conversion candidates safely.
+- Restore cannot resume automatic conversion from stale in-progress state.
 
 Implementation status:
 
@@ -5495,6 +5716,9 @@ Implementation status:
   conversion is atomic, failure rolls back, legacy behavior stays active until
   commit, mixed partial native/legacy writes are prevented, and clear
   operator-facing migration error IDs are present.
+- Phase 8R.3.2 extends backup/restore wiring with reconciliation state and a
+  post-restore suppression gate. The reconciler must evaluate restored policy
+  state afresh after integrity validation, not trust an imported active run.
 - Validation rejects missing backup/restore coverage, missing restore
   validations, schema mismatch, apply without dry-run, mixed partial writes,
   missing operator errors, and any planning side effects.
@@ -5513,6 +5737,8 @@ Tasks:
   - rollback and reversion,
   - legacy write blocking for converted policies,
   - backup/restore coverage,
+  - automatic reconciliation scheduler, run/outcome ledger, retry, reversion,
+    restore-suppression, circuit-breaker, and read-only status coverage,
   - deletion-gate checks.
 - Rewrite tests that currently assert legacy payload preservation so they apply
   only to unconverted policies or rollback snapshots.
