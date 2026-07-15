@@ -44,6 +44,11 @@ unchanged operator or runtime outcome.
   adapter into a tested ESM service and verified mutation in an isolated
   repository. File removal now remains explicitly opt-in, scope-bound to a
   reviewed repo-relative path, and resistant to traversal or absolute paths.
+- **Post-Removal Verification Export Assurance** - verified the public
+  post-removal exporter preserves applied-review provenance across its
+  verification, evidence, and wrapper outputs. Incomplete scans, lingering
+  references, and cross-review evidence fail closed unless a blocked diagnostic
+  is explicitly requested.
 
 - **Single Active Native Intent Authority** - repaired and now enforces the
   database invariant that each policy has at most one active native intent.

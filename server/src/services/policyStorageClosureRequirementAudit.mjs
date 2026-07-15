@@ -196,6 +196,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: [
       'server/src/__tests__/services/policyPostRemovalRuntimeVerificationArtifact.test.mjs',
       'server/src/__tests__/services/policyPostRemovalRuntimeEvidenceArtifact.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyPostRemovalVerification.test.mjs',
     ],
   },
   {

@@ -6586,6 +6586,13 @@ runtime/import checks, and focused/full validation evidence.
 
 Tasks:
 
+- **8R.29.1 Public Runtime Verification Artifact-Chain Verification**
+  - Completed: runs the public exporter against a nested controlled-apply
+    result and verifies that its verification, runtime-evidence, and wrapper
+    outputs retain the same reviewed-removal provenance.
+  - Completed: proves incomplete scan coverage, remaining references, and
+    cross-review evidence fail closed without output; blocked diagnostics
+    require explicit `--allow-blocked`.
 - Require controlled-removal apply-result JSON.
 - Require completed import/reference scan evidence that covers every applied
   removal path.
@@ -6626,6 +6633,9 @@ Implementation status:
 - Current implementation consumes explicit scan/check/validation evidence,
   can write the review-bound runtime evidence artifact for next-batch
   authorization, and emits semantic `nextStep` evidence.
+- Task 8R.29.1 adds process-level proof that the public exporter preserves the
+  controlled-apply result contract and refuses unscanned, still-referenced, or
+  cross-review evidence by default.
 
 ### 8R.30 Next Compatibility Removal Batch Authorization Artifact Exporter
 

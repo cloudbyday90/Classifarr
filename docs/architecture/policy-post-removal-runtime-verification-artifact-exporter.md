@@ -32,6 +32,12 @@ fingerprint of the applied controlled-removal review.
 - Node.js file-system APIs support ES Module import syntax for bounded local
   file I/O. The exporter uses file reads/writes only for explicit evidence
   artifacts.
+- SLSA verification guidance states that provenance must be inspected against
+  expectations to provide value. The public exporter test verifies its real
+  JSON inputs and outputs retain the reviewed-removal binding.
+- NIST SP 800-204D describes supply-chain security measures across CI/CD flow
+  stages. The exporter preserves a traceable apply-to-verification handoff and
+  rejects evidence from another review.
 
 Sources:
 
@@ -43,6 +49,10 @@ Sources:
   <https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/>
 - Node.js file system API:
   <https://nodejs.org/api/fs.html>
+- SLSA, Verifying Artifacts:
+  <https://slsa.dev/spec/v1.2/verifying-artifacts>
+- NIST SP 800-204D:
+  <https://csrc.nist.gov/pubs/sp/800/204/d/final>
 
 ## Recommendations
 
@@ -91,6 +101,27 @@ Cons:
 
 - verification cannot pass until full validation output is available.
 
+### Verify The Public Artifact Chain
+
+Run the public command against a disposable JSON fixture that represents the
+nested apply-result output of controlled removal. A verified run must write
+matching verification, runtime-evidence, and wrapper artifacts. Incomplete
+scan coverage, remaining references, or evidence bound to another review must
+not write outputs unless an operator explicitly requests a blocked diagnostic.
+
+Pros:
+
+- verifies the actual CLI argument, file, and JSON boundaries rather than only
+  the in-memory service,
+- proves the next-batch handoff retains the same reviewed-removal provenance,
+- keeps blocked evidence visible only through an explicit operator action.
+
+Cons:
+
+- process-level tests are slower than service-only tests,
+- fixture evidence must remain structurally faithful to the controlled-apply
+  output contract.
+
 ## Final Recommendation Stack
 
 Use this stack for post-removal runtime verification artifact export:
@@ -106,6 +137,8 @@ Use this stack for post-removal runtime verification artifact export:
 8. Write the standalone runtime evidence artifact for next-batch authorization.
 9. Write nested verification JSON and optionally a wrapper artifact for audit
    trails.
+10. Verify the public artifact chain preserves apply provenance and fails
+    closed for incomplete, referenced, or cross-review evidence.
 
 ## Implementation Outcome
 
@@ -132,6 +165,12 @@ Implemented:
   - blocked runtime check evidence,
   - forbidden side-effect rejection,
   - artifact validation invariants.
+- Added `generatePolicyPostRemovalVerification.test.mjs` to verify the public
+  command writes coherent verification, runtime-evidence, and wrapper outputs
+  only for a reviewed applied-removal result with complete evidence. The test
+  also proves the default no-output behavior for incomplete scan coverage and
+  cross-review evidence, plus explicit blocked diagnostics for remaining
+  references.
 
 Example:
 
