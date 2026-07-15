@@ -2,9 +2,11 @@
 
 ## Status
 
-Implemented as the administrator-only preview and explicit apply boundary for
-moving selected, conversion-ready policies from the compatibility projection to
-native policy-intent storage.
+Implemented as the temporary administrator-only preview and explicit apply
+boundary for moving selected, conversion-ready policies from the compatibility
+projection to native policy-intent storage. It remains a recovery path while
+Phase 8R.3.2 replaces the normal conversion flow with server-owned automatic
+reconciliation.
 
 ## Problem
 
@@ -52,8 +54,10 @@ ordinary saves, release startup, or a client-supplied actor identity.
 5. Keep conversion eligibility distinct from routing automation readiness. A
    selected policy can enter native storage with an explicitly `missing`
    routing target; it still cannot automate until routing is configured.
-6. Do not register the action in post-upgrade startup tasks. Each apply is a
-   deliberate, authenticated operator decision.
+6. Do not register this dialog action as a one-time post-upgrade task. A
+   skipped or blocked one-time task would incorrectly look complete and would
+   not retry. The replacement is a dedicated, idempotent reconciliation service
+   with durable run state, not an unbounded startup write.
 
 ## Options Considered
 
@@ -130,7 +134,9 @@ Cons:
 - The writer now maps the approved workflow actor source to the persistent
   migration-event `actor_type`. Manual actions write `operator`; post-upgrade,
   fixture, and maintainer paths retain their respective types.
-- No post-upgrade task was added. No automatic conversion occurs at startup.
+- No one-time post-upgrade task was added. Phase 8R.3.2 now defines the
+  replacement automatic reconciler; until it is implemented, this explicit
+  operator action remains the recovery path.
 
 ## Security Outcome
 
@@ -155,7 +161,8 @@ Cons:
 
 ## Product Surface
 
-The administrator-facing maintenance screen is documented in
+The temporary administrator-facing maintenance screen is documented in
 [Policy Native Intent Conversion Maintenance UI](policy-native-intent-conversion-maintenance-ui.md).
 It consumes this preview and apply boundary while remaining separate from normal
-policy authoring and runtime automation.
+policy authoring and runtime automation. Once the reconciler is implemented,
+the surface becomes read-only conversion status and bounded blocked reasons.

@@ -5021,6 +5021,10 @@ Implementation status:
   It shows only the bounded server preview, permits selection of ready
   candidates, requires the same exact confirmation in a native modal dialog,
   and keeps conversion separate from policy authoring and automation setup.
+- The manual maintenance surface is transitional. Task 8R.3.2 replaces its
+  conversion controls with automatic reconciliation once the reconciler is
+  verified; the retained surface becomes read-only conversion status and
+  blocked-reason visibility.
 - Runtime output now uses the durable `policy.intent_conversion_workflow.v1`
   contract, `policy-intent:convert` idempotency keys, and
   `nextStep.stepId = native_runtime_read_path`, leaving roadmap phase IDs as
@@ -5064,6 +5068,65 @@ Implementation status:
 - Focused client API, composable, dialog, view, and route tests cover the
   boundary; the production Compose image resolves the dedicated route while the
   apply API remains authentication protected.
+
+#### 8R.3.2 Automatic Native Intent Conversion Reconciliation
+
+Intent: make native-intent conversion a bounded, server-owned maintenance
+process rather than an administrator dialog, while preserving the current
+authority, rollback, and audit guarantees.
+
+Tasks:
+
+- Create one dedicated reconciliation service that discovers unconverted
+  policies, rebuilds current candidate eligibility, and invokes the existing
+  post-upgrade apply gate only for ready policies.
+- Run reconciliation after database migrations and on a bounded maintenance
+  schedule until no ready legacy policies remain. Do not couple durable writes
+  to ordinary reads, policy saves, or every process startup.
+- Reuse the existing `post_upgrade_apply` actor source, transactional authority
+  locks, idempotency keys, rollback snapshots, migration events, and current
+  policy validation. Do not introduce a second conversion writer.
+- Process a bounded batch per run, record structured run outcomes, and leave
+  blocked or incomplete candidates unchanged for a later retry.
+- Fail closed on invalid authority, stale or insufficient evidence, missing
+  required verification, or transaction failure. A blocked candidate is not a
+  failed conversion and must not mark reconciliation complete.
+- Keep routing, activation, policy learning, and explicit constraints outside
+  the reconciler's authority. Native storage conversion must never make a
+  destination automation-ready by itself.
+- Replace the administrator apply dialog with a read-only status surface that
+  shows last-run time, converted count, remaining ready count, and bounded
+  blocked reasons. Retain an emergency disable control only as a server-side
+  operational safeguard, not a normal authoring choice.
+- Define a durable run/progress record so a skipped, empty, or blocked run is
+  not treated as a permanently completed post-upgrade task.
+- Add focused service, lifecycle, route/status, and transaction tests covering
+  idempotent re-runs, mixed ready/blocked batches, retries, concurrent runner
+  exclusion, rollback, and the absence of routing or policy-authoring writes.
+
+Acceptance criteria:
+
+- An eligible legacy policy converts without client selection, confirmation, or
+  a modal dialog.
+- Re-running the reconciler does not duplicate native intents, snapshots, or
+  migration events for an already converted policy.
+- A blocked policy remains visible to the status surface and is retried when
+  its current data becomes eligible; it does not prevent other ready policies
+  from converting.
+- Only one reconciliation worker can apply a given batch at a time, and each
+  conversion revalidates current state inside the existing transaction boundary.
+- Conversion status is observable without exposing raw legacy payloads or
+  creating a user-controlled write endpoint.
+- Removing the dialog does not remove rollback, audit, authority-locking, or
+  native runtime-read guarantees.
+
+Implementation status:
+
+- Planned. The current manual administrator surface remains available only as
+  the temporary recovery path until the reconciler and its status replacement
+  have passed the acceptance criteria.
+- Design and outcome record:
+  [Policy Native Intent Conversion Reconciler](policy-native-intent-conversion-reconciler.md).
 
 ### 8R.4 Native Runtime Read Path
 
