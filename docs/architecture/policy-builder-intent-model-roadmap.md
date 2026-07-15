@@ -6387,12 +6387,20 @@ Implementation status:
 
 ### 8R.26 Policy Compatibility Deletion Execution Plan Artifact
 
-Intent: generate the machine-readable compatibility deletion execution-plan JSON
-that the policy storage closure final-removal audit requires, without
-fabricating deletion readiness or performing compatibility path removal.
+Intent: generate the fingerprint-valid compatibility deletion execution-plan
+artifact that the policy storage closure final-removal audit requires, without
+fabricating deletion readiness or performing compatibility path removal. The
+nested execution plan is a diagnostic payload, not final-removal authority.
 
 Tasks:
 
+- **8R.26.1 Execution-Plan Exporter Artifact-Chain Verification**
+  - Completed: runs the public exporter with ready evidence and proves its
+    wrapper output is accepted as the authoritative final-removal manifest
+    source while its nested plan output remains diagnostic only.
+  - Completed: proves blocked readiness writes no output by default and
+    produces only an explicit, non-authoritative diagnostic with
+    `--allow-blocked`.
 - Require explicit input evidence for readiness, deletion gates, replacement
   evidence, rollback stance, support stance, manifest approval, and approving
   actor.
@@ -6400,9 +6408,10 @@ Tasks:
   execution-plan contract.
 - Wrap the generated plan with bounded artifact metadata, risks, validation,
   and no-side-effect evidence.
-- Write the nested execution-plan JSON for downstream storage-closure final
-  audit tooling.
-- Optionally write the wrapper artifact for audit trails.
+- Write the nested execution-plan JSON only for diagnostics and earlier
+  read-only consumers.
+- Write the fingerprint-valid wrapper artifact for downstream storage-closure
+  final-removal audit authority.
 - Block by default when the generated execution plan is not ready.
 - Avoid deleting files, archiving files, mutating storage, running Git, or
   applying compatibility-removal batches.
@@ -6411,11 +6420,12 @@ Acceptance criteria:
 
 - The exporter refuses to run without explicit input evidence.
 - Missing approval or blocked readiness prevents ready output.
-- Ready input writes a valid compatibility deletion execution-plan JSON
-  artifact.
+- Ready input writes a valid fingerprint-valid compatibility deletion
+  execution-plan wrapper artifact.
 - Blocked diagnostic output requires explicit `--allow-blocked`.
-- The generated execution-plan JSON can be passed to
-  `npm run policy:storage-closure-final-removal-audit`.
+- The generated wrapper artifact can be passed to
+  `npm run policy:storage-closure-final-removal-audit`; its nested plan cannot
+  be passed as final-removal authority.
 - The exporter does not delete files, archive files, mutate storage, run Git, or
   apply removal batches.
 
@@ -6433,9 +6443,13 @@ Implementation status:
   `npm run policy:compatibility-deletion-execution-plan-artifact`.
 - The focused execution-plan artifact test suite lives in
   `server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifact.test.mjs`.
-- Current implementation generates the execution-plan JSON input required by
-  the policy storage closure final-removal audit while keeping deletion
-  readiness caller-owned and explicit.
+- Current implementation generates the fingerprint-valid wrapper artifact
+  required by the policy storage closure final-removal audit while keeping
+  deletion readiness caller-owned and explicit. The nested execution-plan JSON
+  remains non-authoritative diagnostic output.
+- Task 8R.26.1 adds process-level coverage of the public JSON boundary and
+  confirms the wrapper-versus-diagnostic authority distinction and
+  fail-closed blocked-output behavior.
 
 ### 8R.27 Policy Controlled Compatibility Removal Batch Artifact
 
@@ -7042,9 +7056,9 @@ Implement Phase 8R in this order:
     execution-plan manifest, current path state, source reference scan, and
     validation JSON.
 26. **8R.26 Policy Compatibility Deletion Execution Plan Artifact**
-    Generates the machine-readable compatibility deletion execution-plan JSON
-    from explicit readiness, manifest, replacement, approval, rollback, and
-    support evidence for downstream final-removal-audit tooling.
+    Generates the fingerprint-valid compatibility deletion execution-plan
+    wrapper artifact from explicit readiness, manifest, replacement, approval,
+    rollback, and support evidence for downstream final-removal-audit tooling.
 27. **8R.27 Policy Controlled Compatibility Removal Batch Artifact**
     Generates a machine-readable controlled compatibility removal batch from a
     ready execution plan, explicit execution-gate evidence, selected approved

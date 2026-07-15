@@ -3,13 +3,14 @@
 ## Intent
 
 The policy compatibility deletion execution-plan artifact creates the
-machine-readable plan consumed by storage-closure final-removal audit and later
-controlled-removal tooling.
+fingerprint-valid wrapper consumed by storage-closure final-removal audit and
+later controlled-removal tooling. Its nested execution plan is available only
+for diagnostics and earlier read-only consumers.
 
 The artifact generator turns explicit compatibility deletion evidence into:
 
-- a nested compatibility deletion execution plan,
-- wrapper metadata for audit trails,
+- a nested compatibility deletion execution plan for diagnostics,
+- a fingerprint-valid wrapper artifact for final-removal authority,
 - readiness status,
 - bounded risk evidence,
 - no-side-effect evidence.
@@ -33,6 +34,13 @@ actor metadata.
 - Node.js documents synchronous file-system APIs as blocking and immediately
   throwing exceptions. That tradeoff remains appropriate because this generator
   is a bounded local/CI evidence command, not request-path runtime code.
+- SLSA verification guidance recommends comparing an artifact against expected
+  provenance and rejecting unexpected inputs. The public generator therefore
+  distinguishes its fingerprint-valid wrapper artifact, which storage closure
+  may consume, from the nested plan JSON, which is diagnostic only.
+- NIST SP 800-204D recommends supply-chain controls in CI/CD pipelines. The
+  command boundary is tested with ready and blocked evidence so the published
+  JSON behavior is as constrained as the service contract.
 
 Sources:
 
@@ -44,6 +52,10 @@ Sources:
   <https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html>
 - Node.js file system API:
   <https://nodejs.org/api/fs.html>
+- SLSA artifact verification:
+  <https://slsa.dev/spec/v1.2/verifying-artifacts>
+- NIST SP 800-204D:
+  <https://csrc.nist.gov/pubs/sp/800/204/d/final>
 
 ## Recommendations
 
@@ -110,6 +122,30 @@ Cons:
 - requires coordinated updates across validation, requirement audit, roadmap,
   docs, and package scripts.
 
+### Verify The Public Exporter Boundary
+
+The public Node command should be tested with the JSON files that an operator
+or CI job actually supplies and receives. A ready invocation must write a
+fingerprint-valid wrapper artifact that the downstream storage-closure source
+resolver accepts. The nested plan output remains diagnostic and must not be
+accepted as the authority artifact.
+
+Blocked input must write neither output by default. The command may emit a
+bounded blocked diagnostic only when `--allow-blocked` is explicitly supplied;
+that diagnostic must remain non-authoritative.
+
+Pros:
+
+- proves the CLI preserves the producer-to-consumer artifact boundary,
+- prevents a raw nested plan or incomplete evidence from becoming
+  storage-closure authority,
+- confirms blocked diagnostics require an explicit operator or CI choice.
+
+Cons:
+
+- process-level checks are slower than direct service tests,
+- fixture input needs maintenance as evidence-bundle contracts evolve.
+
 ## Final Recommendation Stack
 
 Use this stack for compatibility deletion execution-plan artifact generation:
@@ -125,7 +161,9 @@ Use this stack for compatibility deletion execution-plan artifact generation:
    read-only consumers.
 6. Write the fingerprint-valid wrapper artifact for downstream storage-closure
    final-removal audit tooling.
-7. Expose durable compatibility deletion execution-plan artifact service,
+7. Verify the public exporter produces authoritative ready output and refuses
+   blocked output unless diagnostic export is explicitly enabled.
+8. Expose durable compatibility deletion execution-plan artifact service,
    script, runner, version, test, and documentation names.
 
 ## Implementation Outcome
@@ -151,6 +189,12 @@ Implemented:
   writing. The v2 wrapper is required by the execution gate, controlled batch
   artifact, and storage-closure final-removal audit; raw execution-plan JSON
   remains available for earlier read-only diagnostic tooling only.
+- Added a process-level generator suite at
+  `server/src/__tests__/scripts/generatePolicyCompatibilityDeletionExecutionPlanArtifact.test.mjs`.
+  It proves the public command writes a ready wrapper artifact accepted by the
+  downstream storage-closure source resolver, rejects the nested raw plan as
+  authority, writes nothing for blocked input by default, and writes a bounded
+  non-authoritative blocked diagnostic only with `--allow-blocked`.
 
 Example:
 

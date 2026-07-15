@@ -31,6 +31,11 @@ unchanged operator or runtime outcome.
   checkout snapshot, runtime authorization, validation, and source-scan
   inputs. A live product import or cross-artifact snapshot cannot produce a
   complete closure result.
+- **Execution-Plan Artifact Export Assurance** - ready compatibility-deletion
+  input now has end-to-end command verification that its fingerprint-valid
+  wrapper, not the diagnostic nested plan, is accepted as storage-closure
+  authority. Blocked input writes no output unless explicit diagnostic export
+  is requested.
 
 - **Single Active Native Intent Authority** - repaired and now enforces the
   database invariant that each policy has at most one active native intent.

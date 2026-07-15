@@ -148,6 +148,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     testPaths: [
       'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifact.test.mjs',
       'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifactFingerprint.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyCompatibilityDeletionExecutionPlanArtifact.test.mjs',
     ],
   },
   {
