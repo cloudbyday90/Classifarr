@@ -1,13 +1,17 @@
 import {
-  POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS,
-} from '../../services/policyStorageCurrentClosureAudit.mjs';
-import {
   POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
   POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS,
   POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS,
   buildPolicyStorageClosureRequirementAudit,
   validatePolicyStorageClosureRequirementAudit,
 } from '../../services/policyStorageClosureRequirementAudit.mjs';
+import {
+  MANIFEST_PATHS,
+  buildCompletionAuditArtifactFixture,
+} from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
+import {
+  buildPolicyStorageCurrentClosureAuditFixture,
+} from './policyStorageCurrentClosureAuditFixture.mjs';
 
 function completeRoadmapContent() {
   const componentSections = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP
@@ -43,23 +47,6 @@ ${includeOutcome ? '- **Native Policy Intent Storage** — added durable policy 
 `;
 }
 
-function currentClosureAudit(overrides = {}) {
-  return {
-    version: 'policy.storage_current_closure_audit.v1',
-    statusId:
-      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS.COMPLETE,
-    complete: true,
-    validation: {
-      ok: true,
-      issueCount: 0,
-      issues: [],
-    },
-    riskCount: 0,
-    risks: [],
-    ...overrides,
-  };
-}
-
 function readTextFileFactory({
   changelogContent = completeChangelogContent(),
   roadmapContent = completeRoadmapContent(),
@@ -71,10 +58,14 @@ function readTextFileFactory({
   );
 }
 
-function completeAudit(overrides = {}) {
+async function completeAudit(overrides = {}) {
+  const currentClosureAudit =
+    overrides.currentClosureAudit ||
+    await buildPolicyStorageCurrentClosureAuditFixture();
+
   return buildPolicyStorageClosureRequirementAudit({
     cwd: '/repo',
-    currentClosureAudit: currentClosureAudit(),
+    currentClosureAudit,
     generatedAt: '2026-06-25T18:00:00.000Z',
     fileExists: () => true,
     readTextFile: readTextFileFactory(),
@@ -83,8 +74,8 @@ function completeAudit(overrides = {}) {
 }
 
 describe('policyStorageClosureRequirementAudit', () => {
-  test('completes when current closure and all catalog component evidence pass', () => {
-    const audit = completeAudit();
+  test('completes when current closure and all catalog component evidence pass', async () => {
+    const audit = await completeAudit();
 
     expect(audit.statusId)
       .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS.COMPLETE);
@@ -104,14 +95,14 @@ describe('policyStorageClosureRequirementAudit', () => {
     }));
   });
 
-  test('blocks when the policy storage current closure audit is incomplete', () => {
-    const audit = completeAudit({
-      currentClosureAudit: currentClosureAudit({
-        statusId:
-          POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
-            .BLOCKED_BY_CURRENT_EVIDENCE,
-        complete: false,
+  test('blocks when the policy storage current closure audit is incomplete', async () => {
+    const currentClosureAudit = await buildPolicyStorageCurrentClosureAuditFixture({
+      completionAuditArtifact: await buildCompletionAuditArtifactFixture({
+        appliedPaths: [MANIFEST_PATHS[0]],
       }),
+    });
+    const audit = await completeAudit({
+      currentClosureAudit,
     });
 
     expect(audit.statusId)
@@ -126,10 +117,31 @@ describe('policyStorageClosureRequirementAudit', () => {
     ]));
   });
 
-  test('blocks when a later closure component artifact is missing', () => {
+  test('blocks an altered current closure audit artifact before evaluating closure status', async () => {
+    const currentClosureAudit = await buildPolicyStorageCurrentClosureAuditFixture();
+    currentClosureAudit.summary.missingCurrentArtifactCount = 1;
+    const audit = await completeAudit({ currentClosureAudit });
+
+    expect(audit.statusId)
+      .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
+        .BLOCKED_BY_CURRENT_CLOSURE);
+    expect(audit.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
+            .CURRENT_CLOSURE_AUDIT_ARTIFACT_INTEGRITY_FAILED,
+      }),
+    ]));
+    expect(audit.risks.map(risk => risk.riskId)).not.toContain(
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
+        .CURRENT_CLOSURE_AUDIT_NOT_COMPLETE
+    );
+  });
+
+  test('blocks when a later closure component artifact is missing', async () => {
     const missingPath =
       'server/src/services/policyStorageCurrentClosureAudit.mjs';
-    const audit = completeAudit({
+    const audit = await completeAudit({
       fileExists: absolutePath => (
         !absolutePath.replace(/\\/g, '/').endsWith(missingPath)
       ),
@@ -154,10 +166,10 @@ describe('policyStorageClosureRequirementAudit', () => {
     ]));
   });
 
-  test('blocks when the roadmap omits a late storage-closure work-sequence item', () => {
+  test('blocks when the roadmap omits a late storage-closure work-sequence item', async () => {
     const roadmapContent = completeRoadmapContent()
       .replace(/\d+\. \*\*Policy Storage Current Closure Audit\*\*/, '');
-    const audit = completeAudit({
+    const audit = await completeAudit({
       readTextFile: readTextFileFactory({ roadmapContent }),
     });
 
@@ -168,8 +180,8 @@ describe('policyStorageClosureRequirementAudit', () => {
       .toContain('storage_current_closure_audit');
   });
 
-  test('blocks when the durable storage outcome is absent from Unreleased', () => {
-    const audit = completeAudit({
+  test('blocks when the durable storage outcome is absent from Unreleased', async () => {
+    const audit = await completeAudit({
       readTextFile: readTextFileFactory({
         changelogContent: completeChangelogContent({
           includeOutcome: false,
@@ -185,8 +197,8 @@ describe('policyStorageClosureRequirementAudit', () => {
         .map(component => component.componentId));
   });
 
-  test('blocks on side effects other than repository file reads', () => {
-    const audit = completeAudit({
+  test('blocks on side effects other than repository file reads', async () => {
+    const audit = await completeAudit({
       sideEffects: {
         filesWritten: true,
         storageChanged: true,
@@ -242,8 +254,8 @@ describe('policyStorageClosureRequirementAudit', () => {
     ]));
   });
 
-  test('accepts phase-coded roadmap entries for durable closure component names', () => {
-    const audit = completeAudit({
+  test('accepts phase-coded roadmap entries for durable closure component names', async () => {
+    const audit = await completeAudit({
       readTextFile: readTextFileFactory({
         roadmapContent: historicRoadmapContent(),
       }),

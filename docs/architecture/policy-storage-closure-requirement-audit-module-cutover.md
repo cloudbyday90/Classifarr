@@ -109,7 +109,7 @@ Implemented:
 - Renamed the service, test, CLI, and design doc to policy-storage closure
   requirement names.
 - Replaced payload versioning with
-  `policy.storage_closure_requirement_audit.v1`.
+  `policy.storage_closure_requirement_audit.v2`.
 - Replaced exported constants, builder, and validator names with durable
   policy-storage names.
 - Replaced final decision output with
@@ -117,6 +117,8 @@ Implemented:
 - Replaced public missing-evidence fields with component-oriented names.
 - Updated validation evidence, roadmap, changelog, npm runner, and docs
   references to the durable audit name.
+- Added asynchronous validation of fingerprint-valid, replay-verifiable
+  current-closure artifacts before their completion status is consumed.
 
 ## Next Step
 

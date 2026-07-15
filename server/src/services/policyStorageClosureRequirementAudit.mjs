@@ -8,6 +8,9 @@ import {
   POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS,
 } from './policyStorageCurrentClosureAudit.mjs';
 import {
+  validatePolicyStorageCurrentClosureAuditIntegrity,
+} from './policyStorageCurrentClosureAuditIntegrity.mjs';
+import {
   ROADMAP_ENTRY_TYPES,
   collectArtifactInventory,
   collectRoadmapComponentIds,
@@ -18,7 +21,7 @@ import {
 } from './policyStorageReleaseNoteCoverage.mjs';
 
 const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_VERSION =
-  'policy.storage_closure_requirement_audit.v1';
+  'policy.storage_closure_requirement_audit.v2';
 
 const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -34,6 +37,8 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS = Object.freeze({
   CURRENT_CLOSURE_AUDIT_NOT_COMPLETE: 'current_closure_audit_not_complete',
   CURRENT_CLOSURE_AUDIT_VALIDATION_FAILED:
     'current_closure_audit_validation_failed',
+  CURRENT_CLOSURE_AUDIT_ARTIFACT_INTEGRITY_FAILED:
+    'current_closure_audit_artifact_integrity_failed',
   COMPONENT_ARTIFACT_MISSING: 'component_artifact_missing',
   COMPONENT_DESIGN_DOC_MISSING: 'component_design_doc_missing',
   COMPONENT_CONTRACT_EVIDENCE_MISSING: 'component_contract_evidence_missing',
@@ -225,12 +230,20 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   {
     componentId: 'storage_current_closure_audit',
     label: 'Policy Storage Current Closure Audit',
-    designDocPaths: ['docs/architecture/policy-storage-current-closure-audit.md'],
+    designDocPaths: [
+      'docs/architecture/policy-storage-current-closure-audit.md',
+      'docs/architecture/policy-storage-current-closure-audit-artifact-integrity.md',
+    ],
     contractPaths: [
       'server/src/services/policyStorageCurrentClosureAudit.mjs',
+      'server/src/services/policyStorageCurrentClosureAuditFingerprint.mjs',
+      'server/src/services/policyStorageCurrentClosureAuditIntegrity.mjs',
       'scripts/run-policy-storage-current-closure-audit.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyStorageCurrentClosureAudit.test.mjs'],
+    testPaths: [
+      'server/src/__tests__/services/policyStorageCurrentClosureAudit.test.mjs',
+      'server/src/__tests__/services/policyStorageCurrentClosureAuditIntegrity.test.mjs',
+    ],
   },
 ]);
 
@@ -433,6 +446,7 @@ function summarizeSideEffects(sideEffects = {}) {
 
 function buildAuditRisks({
   currentClosureAudit = {},
+  currentClosureAuditIntegrity = {},
   componentEvidence = {},
   roadmapEvidence = {},
   changelogEvidence = {},
@@ -440,6 +454,7 @@ function buildAuditRisks({
 } = {}) {
   const risks = [];
   const normalizedCurrentClosureAudit = asObject(currentClosureAudit);
+  const integrity = asObject(currentClosureAuditIntegrity);
 
   if (Object.keys(normalizedCurrentClosureAudit).length === 0) {
     risks.push(buildRisk(
@@ -449,7 +464,20 @@ function buildAuditRisks({
     ));
   }
 
+  if (integrity.ok !== true) {
+    risks.push(buildRisk(
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
+        .CURRENT_CLOSURE_AUDIT_ARTIFACT_INTEGRITY_FAILED,
+      'Policy storage closure requirement audit requires a fingerprint-valid replay-verified current closure audit artifact.',
+      {
+        issueCount: integrity.issueCount ?? null,
+        issueRiskIds: asArray(integrity.issues).map(issue => issue.riskId),
+      }
+    ));
+  }
+
   if (
+    integrity.ok === true &&
     Object.keys(normalizedCurrentClosureAudit).length > 0 &&
     (
       normalizedCurrentClosureAudit.statusId !==
@@ -469,6 +497,7 @@ function buildAuditRisks({
   }
 
   if (
+    integrity.ok === true &&
     Object.keys(normalizedCurrentClosureAudit).length > 0 &&
     normalizedCurrentClosureAudit.validation?.ok !== true
   ) {
@@ -589,6 +618,7 @@ function buildAuditRisks({
 function determineStatusId({
   risks = [],
   currentClosureAudit = {},
+  currentClosureAuditIntegrity = {},
   componentEvidence = {},
   roadmapEvidence = {},
   changelogEvidence = {},
@@ -606,6 +636,7 @@ function determineStatusId({
   }
 
   if (
+    currentClosureAuditIntegrity.ok !== true ||
     currentClosureAudit.statusId !==
       POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS.COMPLETE ||
     currentClosureAudit.complete !== true ||
@@ -640,7 +671,7 @@ function determineStatusId({
     .BLOCKED_BY_COMPONENT_EVIDENCE;
 }
 
-function buildPolicyStorageClosureRequirementAudit({
+async function buildPolicyStorageClosureRequirementAudit({
   cwd = process.cwd(),
   currentClosureAudit = {},
   componentArtifactMap = POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
@@ -651,6 +682,12 @@ function buildPolicyStorageClosureRequirementAudit({
   fileExists = defaultFileExists,
   readTextFile = defaultReadTextFile,
 } = {}) {
+  const currentClosureAuditIntegrity =
+    await validatePolicyStorageCurrentClosureAuditIntegrity({
+      currentClosureAudit,
+    });
+  const verifiedCurrentClosureAudit =
+    asObject(currentClosureAuditIntegrity.audit);
   const artifactInventoryResult = collectArtifactInventory({
     cwd,
     componentArtifactMap,
@@ -692,6 +729,7 @@ function buildPolicyStorageClosureRequirementAudit({
   });
   const risks = buildAuditRisks({
     currentClosureAudit,
+    currentClosureAuditIntegrity,
     componentEvidence,
     roadmapEvidence,
     changelogEvidence,
@@ -699,7 +737,8 @@ function buildPolicyStorageClosureRequirementAudit({
   });
   const statusId = determineStatusId({
     risks,
-    currentClosureAudit: asObject(currentClosureAudit),
+    currentClosureAudit: verifiedCurrentClosureAudit,
+    currentClosureAuditIntegrity,
     componentEvidence,
     roadmapEvidence,
     changelogEvidence,
@@ -720,18 +759,23 @@ function buildPolicyStorageClosureRequirementAudit({
       requiresCurrentClosureAudit: true,
     },
     currentClosureAudit: {
-      statusId: currentClosureAudit.statusId || null,
-      complete: currentClosureAudit.complete === true,
-      validationOk: currentClosureAudit.validation?.ok === true,
-      riskCount: currentClosureAudit.riskCount ?? null,
+      statusId: verifiedCurrentClosureAudit.statusId || null,
+      complete: verifiedCurrentClosureAudit.complete === true,
+      validationOk: verifiedCurrentClosureAudit.validation?.ok === true,
+      integrityOk: currentClosureAuditIntegrity.ok === true,
+      artifactFingerprint: currentClosureAuditIntegrity.artifactFingerprint,
+      integrityIssueCount: currentClosureAuditIntegrity.issueCount,
+      riskCount: verifiedCurrentClosureAudit.riskCount ?? null,
     },
     artifactInventory: artifactInventoryResult,
     componentEvidence,
     roadmapEvidence,
     changelogEvidence,
     summary: {
-      currentClosureAuditComplete: currentClosureAudit.complete === true,
-      currentClosureAuditValidationOk: currentClosureAudit.validation?.ok === true,
+      currentClosureAuditComplete: verifiedCurrentClosureAudit.complete === true,
+      currentClosureAuditValidationOk:
+        verifiedCurrentClosureAudit.validation?.ok === true,
+      currentClosureAuditIntegrityOk: currentClosureAuditIntegrity.ok === true,
       expectedComponentCount: componentEvidence.expectedCount,
       implementedComponentCount: componentEvidence.implementedCount,
       missingComponentArtifactCount: componentEvidence.missingArtifactCount,
@@ -747,6 +791,8 @@ function buildPolicyStorageClosureRequirementAudit({
     executionPolicy: {
       readsCurrentRepositoryFiles: true,
       requireCurrentClosureAudit: true,
+      requireFingerprintValidCurrentClosureAudit: true,
+      requireReplayedCurrentClosureAudit: true,
       requireAllClosureComponentArtifacts: true,
       requireRoadmapSequenceCoverage: true,
       requireRoadmapImplementationStatusCoverage: true,

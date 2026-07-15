@@ -15,9 +15,13 @@ import {
   POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS,
   buildPolicyStorageFinalClosureReadout,
 } from './policyStorageFinalClosureReadout.mjs';
+import {
+  buildPolicyStorageCurrentClosureAuditFingerprint,
+  validatePolicyStorageCurrentClosureAuditFingerprint,
+} from './policyStorageCurrentClosureAuditFingerprint.mjs';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION =
-  'policy.storage_current_closure_audit.v1';
+  'policy.storage_current_closure_audit.v2';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -36,6 +40,8 @@ const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS = Object.freeze({
   COMPLETION_AUDIT_ARTIFACT_VERSION_UNSUPPORTED:
     'completion_audit_artifact_version_unsupported',
   VALIDATION_EVIDENCE_MISSING: 'validation_evidence_missing',
+  UNKNOWN_VERSION: 'unknown_version',
+  ARTIFACT_FINGERPRINT_INVALID: 'artifact_fingerprint_invalid',
   CURRENT_EVIDENCE_RUN_NOT_COMPLETE: 'current_evidence_run_not_complete',
   CHECKPOINT_ARTIFACT_NOT_COMPLETE: 'checkpoint_artifact_not_complete',
   FINAL_READOUT_NOT_COMPLETE: 'final_readout_not_complete',
@@ -68,6 +74,29 @@ function normalizeGeneratedAt(value) {
 function hasValidationEvidence(validationEvidence = {}) {
   return ['focused', 'lint', 'markdown', 'full']
     .every(key => asObject(validationEvidence)[key]?.passed === true);
+}
+
+function buildClosureInput({
+  currentEvidence = {},
+  completionAuditArtifact = {},
+  validationEvidence = {},
+  sideEffects = {},
+} = {}) {
+  const evidence = asObject(currentEvidence);
+
+  return {
+    currentEvidence: {
+      version: evidence.version || null,
+      roadmapPath: evidence.roadmapPath || null,
+      changelogPath: evidence.changelogPath || null,
+      artifactInventory: asObject(evidence.artifactInventory),
+      roadmapEvidence: asObject(evidence.roadmapEvidence),
+      changelogEvidence: asObject(evidence.changelogEvidence),
+    },
+    completionAuditArtifact: asObject(completionAuditArtifact),
+    validationEvidence: asObject(validationEvidence),
+    sideEffects: asObject(sideEffects),
+  };
 }
 
 function summarizeSideEffects({
@@ -287,6 +316,125 @@ function determineStatusId({
     .BLOCKED_BY_CHECKPOINT_ARTIFACT;
 }
 
+async function buildPolicyStorageCurrentClosureAuditFromEvidence({
+  currentEvidence = {},
+  completionAuditArtifact = {},
+  validationEvidence = {},
+  generatedAt = null,
+  sideEffects = {},
+} = {}) {
+  const normalizedCurrentEvidence = asObject(currentEvidence);
+  const checkpointArtifact = await buildPolicyStorageCompletionCheckpointArtifact({
+    componentEvidence: normalizedCurrentEvidence.evidenceRun?.componentEvidence,
+    roadmapEvidence: normalizedCurrentEvidence.roadmapEvidence,
+    completionAuditArtifact,
+    validationEvidence,
+    changelogEvidence: normalizedCurrentEvidence.changelogEvidence,
+    generatedAt,
+    sideEffects,
+  });
+  const finalReadout = buildPolicyStorageFinalClosureReadout({
+    checkpointArtifact,
+    generatedAt,
+    sideEffects,
+  });
+  const combinedSideEffects = summarizeSideEffects({
+    currentEvidenceRun: normalizedCurrentEvidence.evidenceRun,
+    checkpointArtifact,
+    finalReadout,
+    sideEffects: {
+      filesRead: true,
+      ...sideEffects,
+    },
+  });
+  const risks = buildAuditRisks({
+    completionAuditArtifact,
+    validationEvidence,
+    currentEvidenceRun: normalizedCurrentEvidence.evidenceRun,
+    checkpointArtifact,
+    finalReadout,
+    sideEffects: combinedSideEffects,
+  });
+  const statusId = determineStatusId({
+    risks,
+    currentEvidenceRun: normalizedCurrentEvidence.evidenceRun,
+    checkpointArtifact,
+    finalReadout,
+    sideEffects: combinedSideEffects,
+  });
+  const audit = {
+    version: POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION,
+    generatedAt: normalizeGeneratedAt(generatedAt),
+    statusId,
+    complete:
+      statusId ===
+        POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS.COMPLETE,
+    currentEvidence: {
+      roadmapPath: normalizedCurrentEvidence.roadmapPath,
+      changelogPath: normalizedCurrentEvidence.changelogPath,
+      artifactInventory: normalizedCurrentEvidence.artifactInventory,
+      roadmapEvidence: normalizedCurrentEvidence.roadmapEvidence,
+      changelogEvidence: normalizedCurrentEvidence.changelogEvidence,
+      evidenceRun: normalizedCurrentEvidence.evidenceRun,
+    },
+    closureInput: buildClosureInput({
+      currentEvidence: normalizedCurrentEvidence,
+      completionAuditArtifact,
+      validationEvidence,
+      sideEffects,
+    }),
+    checkpointArtifact,
+    finalReadout,
+    summary: {
+      evidenceRunStatusId: normalizedCurrentEvidence.evidenceRun?.statusId || null,
+      evidenceRunComplete: normalizedCurrentEvidence.evidenceRun?.complete === true,
+      checkpointArtifactStatusId: checkpointArtifact.statusId,
+      checkpointArtifactComplete: checkpointArtifact.complete === true,
+      finalReadoutStatusId: finalReadout.statusId,
+      finalReadoutComplete: finalReadout.complete === true,
+      missingCurrentArtifactCount:
+        normalizedCurrentEvidence.artifactInventory?.missingPathCount ?? 0,
+      validationEvidenceComplete: hasValidationEvidence(validationEvidence),
+    },
+    riskCount: risks.length,
+    risks,
+    sideEffects: combinedSideEffects,
+    executionPolicy: {
+      readsCurrentRepositoryFiles: true,
+      requireCompletionAuditArtifact: true,
+      requireCurrentCompletionAuditArtifactVersion: true,
+      requireValidationEvidence: true,
+      requireCurrentRoadmapEvidence: true,
+      requireCurrentChangelogEvidence: true,
+      requireCurrentArtifactInventory: true,
+      retainClosureInputs: true,
+      emitArtifactFingerprint: true,
+      allowFileWrites: false,
+      allowStorageMutation: false,
+      allowGitCommandsInsideAudit: false,
+      allowCommandExecutionInsideService: false,
+      allowManifestWrite: false,
+    },
+    nextStep: {
+      stepId: 'policy_storage_current_closure_complete',
+      label: 'Policy Storage Current Closure Complete',
+      reason:
+        'A complete policy storage current closure audit proves the current checkout satisfies the policy storage closure chain.',
+    },
+  };
+
+  const auditWithFingerprint = {
+    ...audit,
+    artifactFingerprint: buildPolicyStorageCurrentClosureAuditFingerprint({ audit }),
+  };
+
+  return {
+    ...auditWithFingerprint,
+    validation:
+      validatePolicyStorageCurrentClosureAudit(auditWithFingerprint),
+  };
+}
+
 async function buildPolicyStorageCurrentClosureAudit({
   cwd = process.cwd(),
   completionAuditArtifact = {},
@@ -304,106 +452,26 @@ async function buildPolicyStorageCurrentClosureAudit({
     fileExists,
     readTextFile,
   });
-  const checkpointArtifact = await buildPolicyStorageCompletionCheckpointArtifact({
-    componentEvidence: currentEvidence.evidenceRun.componentEvidence,
-    roadmapEvidence: currentEvidence.roadmapEvidence,
-    completionAuditArtifact,
-    validationEvidence,
-    changelogEvidence: currentEvidence.changelogEvidence,
-    generatedAt,
-    sideEffects,
-  });
-  const finalReadout = buildPolicyStorageFinalClosureReadout({
-    checkpointArtifact,
-    generatedAt,
-    sideEffects,
-  });
-  const combinedSideEffects = summarizeSideEffects({
-    currentEvidenceRun: currentEvidence.evidenceRun,
-    checkpointArtifact,
-    finalReadout,
-    sideEffects: {
-      filesRead: true,
-      ...sideEffects,
-    },
-  });
-  const risks = buildAuditRisks({
-    completionAuditArtifact,
-    validationEvidence,
-    currentEvidenceRun: currentEvidence.evidenceRun,
-    checkpointArtifact,
-    finalReadout,
-    sideEffects: combinedSideEffects,
-  });
-  const statusId = determineStatusId({
-    risks,
-    currentEvidenceRun: currentEvidence.evidenceRun,
-    checkpointArtifact,
-    finalReadout,
-    sideEffects: combinedSideEffects,
-  });
-  const audit = {
-    version: POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION,
-    generatedAt: normalizeGeneratedAt(generatedAt),
-    statusId,
-    complete:
-      statusId ===
-        POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS.COMPLETE,
-    currentEvidence: {
-      roadmapPath: currentEvidence.roadmapPath,
-      changelogPath: currentEvidence.changelogPath,
-      artifactInventory: currentEvidence.artifactInventory,
-      roadmapEvidence: currentEvidence.roadmapEvidence,
-      changelogEvidence: currentEvidence.changelogEvidence,
-      evidenceRun: currentEvidence.evidenceRun,
-    },
-    checkpointArtifact,
-    finalReadout,
-    summary: {
-      evidenceRunStatusId: currentEvidence.evidenceRun.statusId,
-      evidenceRunComplete: currentEvidence.evidenceRun.complete === true,
-      checkpointArtifactStatusId: checkpointArtifact.statusId,
-      checkpointArtifactComplete: checkpointArtifact.complete === true,
-      finalReadoutStatusId: finalReadout.statusId,
-      finalReadoutComplete: finalReadout.complete === true,
-      missingCurrentArtifactCount:
-        currentEvidence.artifactInventory?.missingPathCount ?? 0,
-      validationEvidenceComplete: hasValidationEvidence(validationEvidence),
-    },
-    riskCount: risks.length,
-    risks,
-    sideEffects: combinedSideEffects,
-    executionPolicy: {
-      readsCurrentRepositoryFiles: true,
-      requireCompletionAuditArtifact: true,
-      requireCurrentCompletionAuditArtifactVersion: true,
-      requireValidationEvidence: true,
-      requireCurrentRoadmapEvidence: true,
-      requireCurrentChangelogEvidence: true,
-      requireCurrentArtifactInventory: true,
-      allowFileWrites: false,
-      allowStorageMutation: false,
-      allowGitCommandsInsideAudit: false,
-      allowCommandExecutionInsideService: false,
-      allowManifestWrite: false,
-    },
-    nextStep: {
-      stepId: 'policy_storage_current_closure_complete',
-      label: 'Policy Storage Current Closure Complete',
-      reason:
-        'A complete policy storage current closure audit proves the current checkout satisfies the policy storage closure chain.',
-    },
-  };
 
-  return {
-    ...audit,
-    validation:
-      validatePolicyStorageCurrentClosureAudit(audit),
-  };
+  return buildPolicyStorageCurrentClosureAuditFromEvidence({
+    currentEvidence,
+    completionAuditArtifact,
+    validationEvidence,
+    generatedAt,
+    sideEffects,
+  });
 }
 
 function validatePolicyStorageCurrentClosureAudit(audit = {}) {
   const issues = [];
+
+  if (audit.version !== POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION) {
+    issues.push(buildRisk(
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS.UNKNOWN_VERSION,
+      'Policy storage current closure audit version must be recognized.',
+      { version: audit.version || null }
+    ));
+  }
 
   if (!Object.values(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS)
     .includes(audit.statusId)) {
@@ -432,6 +500,19 @@ function validatePolicyStorageCurrentClosureAudit(audit = {}) {
     ));
   }
 
+  const fingerprintValidation =
+    validatePolicyStorageCurrentClosureAuditFingerprint({
+      audit,
+      artifactFingerprint: audit.artifactFingerprint,
+    });
+  if (!fingerprintValidation.ok) {
+    issues.push(buildRisk(
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS.ARTIFACT_FINGERPRINT_INVALID,
+      'Policy storage current closure audit fingerprint must bind the audit contents.',
+      { issueCount: fingerprintValidation.issueCount }
+    ));
+  }
+
   Object.entries(audit.sideEffects || {}).forEach(([key, value]) => {
     if (key !== 'filesRead' && value === true) {
       issues.push(buildRisk(
@@ -455,5 +536,6 @@ export {
   POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS,
   POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION,
   buildPolicyStorageCurrentClosureAudit,
+  buildPolicyStorageCurrentClosureAuditFromEvidence,
   validatePolicyStorageCurrentClosureAudit,
 };

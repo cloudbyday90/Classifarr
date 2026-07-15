@@ -84,6 +84,19 @@ describe('policyStorageCurrentClosureAudit', () => {
       .toBe(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS.COMPLETE);
     expect(audit.complete).toBe(true);
     expect(audit.validation.ok).toBe(true);
+    expect(audit.artifactFingerprint).toEqual(expect.objectContaining({
+      algorithm: 'sha256',
+      fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    }));
+    expect(audit.closureInput).toEqual(expect.objectContaining({
+      completionAuditArtifact: expect.any(Object),
+      validationEvidence: expect.any(Object),
+      currentEvidence: expect.objectContaining({
+        artifactInventory: expect.any(Object),
+        roadmapEvidence: expect.any(Object),
+        changelogEvidence: expect.any(Object),
+      }),
+    }));
     expect(audit.summary).toEqual(expect.objectContaining({
       evidenceRunComplete: true,
       checkpointArtifactComplete: true,

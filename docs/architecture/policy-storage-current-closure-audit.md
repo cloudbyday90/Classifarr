@@ -18,7 +18,7 @@ It then builds:
 - the existing current evidence run,
 - a policy storage completion-checkpoint artifact,
 - a policy storage final closure readout,
-- a single policy storage current closure audit JSON.
+- a fingerprinted, replay-verifiable policy storage current closure audit JSON.
 
 The service reads repository files but does not run tests, run Git, write files,
 write manifests, mutate storage, or infer missing removal evidence.
@@ -100,6 +100,24 @@ Cons:
 
 - stale or missing JSON artifacts block closure until regenerated.
 
+### Bind And Replay The Current Closure Artifact
+
+The emitted current-closure artifact should retain the normalized inputs needed
+to rebuild the evidence run, checkpoint, and final readout. A downstream
+consumer must validate a bounded SHA-256 fingerprint and require exact
+deterministic replay before it relies on the reported status.
+
+Pros:
+
+- detects altered or stale closure summaries before a final requirement audit,
+- prevents a detached status field from standing in for the evidence chain,
+- preserves a pure verification path without repository reads or commands.
+
+Cons:
+
+- current-closure artifacts retain more bounded evidence,
+- the requirement-audit boundary is asynchronous because it performs replay.
+
 ## Final Recommendation Stack
 
 Use this stack for the policy storage current closure audit:
@@ -116,8 +134,12 @@ Use this stack for the policy storage current closure audit:
 7. Build the policy storage completion-checkpoint artifact from current
    evidence.
 8. Build the policy storage final closure readout.
-9. Emit complete only when all three layers complete.
-10. Reject file writes, storage mutation, command execution, Git commands, and
+9. Retain normalized closure inputs and bind the full current-closure artifact
+   with a SHA-256 fingerprint.
+10. Require exact replay before the final requirement audit consumes the
+    artifact status.
+11. Emit complete only when all three layers complete.
+12. Reject file writes, storage mutation, command execution, Git commands, and
     manifest writes.
 
 ## Implementation Outcome
@@ -141,6 +163,14 @@ Implemented:
 - The audit now passes the full completion-audit artifact through the current
   evidence run and checkpoint artifact. It never unwraps a detached nested
   audit object.
+- Current closure audit v2 retains normalized replay inputs and emits a
+  fingerprint that binds the full closure decision, including current evidence,
+  completion evidence, validation evidence, status, risks, and side effects.
+- The downstream requirement audit validates that fingerprint and rebuilds the
+  pure closure chain before it accepts the current-closure status. Altered,
+  refingerprinted-but-inconsistent, or non-replayable artifacts block closure.
+- The detailed integrity contract and trust boundary are documented in
+  [Policy Storage Current Closure Audit Artifact Integrity](policy-storage-current-closure-audit-artifact-integrity.md).
 
 Example:
 
@@ -157,7 +187,7 @@ npm run --silent policy:storage-current-closure-audit -- \
 ## Next Step
 
 Generate current compatibility-removal and validation evidence, then run the
-policy storage current closure audit. If it completes, perform the final
-requirement-by-requirement closure audit. If it blocks, resolve the exact
-component, roadmap, validation, or release-outcome evidence category reported
-by the audit summary.
+policy storage current closure audit. The final requirement audit will replay
+the artifact before it accepts completion. If either audit blocks, resolve the
+exact component, roadmap, validation, or release-outcome evidence category
+reported by its structured risks.

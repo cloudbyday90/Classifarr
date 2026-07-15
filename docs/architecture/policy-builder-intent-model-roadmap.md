@@ -6160,6 +6160,14 @@ Intent: normalize explicit current-state artifact evidence and run the Phase
 
 Tasks:
 
+- **8R.23.1 Current-State Closure Evidence Artifact Integrity**
+  - Emit a v2 current-closure audit that retains normalized closure inputs and
+    binds the complete artifact with a SHA-256 fingerprint.
+  - Require the final requirement audit to validate the fingerprint and
+    deterministically replay the closure evidence run, checkpoint artifact,
+    and final readout before it evaluates completion.
+  - Reject missing, legacy, malformed, altered, or non-replayable current
+    closure artifacts without executing repository commands or mutations.
 - Accept explicit artifact inventory grouped by service, route, migration,
   test, documentation, wiring, and other paths.
 - Provide a current-state evidence collector that reads the repository checkout
@@ -6772,6 +6780,10 @@ Implementation status:
   `npm run policy:storage-current-closure-audit`.
 - The focused policy storage current closure audit test suite lives in
   `server/src/__tests__/services/policyStorageCurrentClosureAudit.test.mjs`.
+- Task 8R.23.1 is implemented. Current closure audit v2 retains the normalized
+  evidence needed to reproduce the closure decision, emits a SHA-256
+  fingerprint, and blocks the final requirement audit unless artifact
+  verification and deterministic replay agree.
 - Current implementation reads mapped repository evidence and emits complete or
   blocked closure audits without writing files, mutating storage, running
   commands, or running Git.

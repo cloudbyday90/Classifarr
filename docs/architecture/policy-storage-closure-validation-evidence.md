@@ -122,7 +122,10 @@ Implemented:
   and Windows validation runs. It resolves npm and npx through the active or
   Node-distribution JavaScript CLI when available.
 - Updated the closure validation command set to include the renamed storage
-  closure current audit and closure requirement audit suites.
+  closure current audit, its fingerprint/replay integrity suite, and closure
+  requirement audit suites.
+- Added the current-closure artifact-integrity design record to the fixed
+  markdown validation manifest.
 
 Example:
 

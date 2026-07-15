@@ -94,6 +94,10 @@ unchanged operator or runtime outcome.
   agree. Checkpoint and current-state closure paths no longer unwrap a detached
   completion audit, preventing altered or stale audit summaries from closing
   the storage migration.
+- **Replay-Verified Current Closure Audits** - final storage closure now
+  requires a fingerprint-valid current-state audit with retained normalized
+  evidence and deterministic replay. Altered, stale, or non-replayable closure
+  summaries cannot satisfy the final requirement audit.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or

@@ -6,7 +6,8 @@ The policy storage closure requirement audit proves that every mapped storage
 closure component has current implementation evidence before the closure
 sequence is treated as complete.
 
-The audit consumes a generated policy storage current closure audit, then checks
+The audit consumes a generated v2 policy storage current closure audit, first
+validates its fingerprint and deterministic replay, then checks
 the current checkout for each mapped component's design/outcome document,
 service/script/route/migration/wiring evidence, focused test evidence, and
 roadmap component section and work-sequence entry. It separately requires one
@@ -95,17 +96,37 @@ Cons:
 
 - completion can block on non-code evidence even when runtime tests pass.
 
+### Verify The Closure Artifact Before Reading Its Status
+
+The requirement audit must consume a current closure artifact only after the
+artifact fingerprint is valid, its retained inputs are present, and deterministic
+replay recreates the exact artifact. It must use the replayed audit rather than
+the caller-supplied status summary.
+
+Pros:
+
+- prevents altered, stale, or detached closure summaries from satisfying the
+  final gate,
+- makes the downstream decision reproduce the same current-state evidence,
+- preserves clear integrity risks without running repository commands.
+
+Cons:
+
+- artifact verification requires an asynchronous, pure replay step,
+- legacy v1 current-closure artifacts are intentionally not accepted.
+
 ## Final Recommendation Stack
 
 1. Use `policyStorageClosureRequirementAudit.mjs` as the pure decision service.
 2. Use `run-policy-storage-closure-requirement-audit.mjs` as the CLI wrapper.
 3. Expose `npm run policy:storage-closure-requirement-audit`.
-4. Emit `policy.storage_closure_requirement_audit.v1`.
+4. Emit `policy.storage_closure_requirement_audit.v2`.
 5. Use component-oriented payload fields:
    `componentId`, `componentCatalog`,
    `missingSequenceComponentIds`, `missingImplementationStatusComponentIds`,
    and `missingComponentIds`.
-6. Require a complete and valid policy storage current closure audit.
+6. Require a complete, fingerprint-valid, replay-verified policy storage
+   current closure audit.
 7. Require mapped design, contract/wiring, and test evidence for every closure
    component.
 8. Require roadmap coverage for every closure component and the durable
@@ -135,6 +156,9 @@ Implemented:
   outcome-oriented evidence extraction for the Unreleased storage note.
 - Replaced phase-coded payload versioning, constants, builders, validators, and
   operator messages with durable policy-storage names.
+- Updated the requirement audit to v2. It now rejects missing, malformed,
+  altered, or non-replayable current-closure audit artifacts before evaluating
+  their completion status, then relies only on the replayed artifact.
 
 Example:
 

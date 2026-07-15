@@ -39,6 +39,8 @@ describe('policyStorageClosureValidationEvidence', () => {
     expect(evidence.focused.command)
       .toContain('policyStorageClosureFinalRemovalAudit');
     expect(evidence.focused.command)
+      .toContain('policyStorageCurrentClosureAuditIntegrity');
+    expect(evidence.focused.command)
       .toContain('policyCompatibilityDeletionExecutionPlanArtifact');
     expect(evidence.focused.command)
       .toContain('policyControlledCompatibilityRemovalBatchArtifact');
@@ -56,6 +58,8 @@ describe('policyStorageClosureValidationEvidence', () => {
       .toContain('policy-storage-closure-final-removal-audit.md');
     expect(evidence.markdown.command)
       .toContain('policy-storage-closure-final-removal-audit-module-cutover.md');
+    expect(evidence.markdown.command)
+      .toContain('policy-storage-current-closure-audit-artifact-integrity.md');
     expect(evidence.markdown.command)
       .toContain('policy-storage-completion-status-audit.md');
     expect(evidence.markdown.command)
