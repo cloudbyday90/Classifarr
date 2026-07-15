@@ -6307,8 +6307,15 @@ Tasks:
     and entry-count or readiness mismatches before filesystem inspection.
   - Completed: expose only the validated nested plan to path-state and
     reference-scan work; invalid sources cannot define audit scope.
-- Read approved manifest paths from the execution plan.
-- Inspect current checkout path existence for every manifest path.
+- **8R.25.2 Replayable Current-Checkout Path-State Evidence**
+  - Completed: collect read-only boolean observations only for the approved,
+    canonical manifest paths from one ready execution-plan artifact.
+  - Completed: retain the artifact, observations, derived path state, and
+    side-effect declaration in a fingerprint-valid, deterministic replay
+    artifact; reject missing, unknown, duplicate, incomplete, or altered input.
+  - Completed: require the v3 final-removal audit to consume only the replayed
+    snapshot bound to the exact execution-plan artifact instead of a live
+    filesystem callback.
 - Build next-batch authorization evidence from current removed and remaining
   path state.
 - Build post-removal runtime verification evidence for paths that no longer
@@ -6321,7 +6328,8 @@ Tasks:
 
 Acceptance criteria:
 
-- The exporter refuses to run without an explicit execution-plan JSON path.
+- The exporter refuses to run without explicit execution-plan and replayable
+  checkout path-state JSON paths.
 - Existing manifest paths are reported as remaining inventory.
 - Removed manifest paths are covered by bounded removal verification evidence.
 - Final scan references block completion.
@@ -6342,10 +6350,15 @@ Implementation status:
 - The root runner is exposed as `npm run policy:storage-closure-final-removal-audit`.
 - The focused final-removal audit evidence test suite lives in
   `server/src/__tests__/services/policyStorageClosureFinalRemovalAudit.test.mjs`.
+- Checkout snapshot design and implementation are documented in
+  [Policy Storage Closure Path-State Evidence](policy-storage-closure-path-state-evidence.md).
+- The snapshot collector, evidence, fingerprint, and integrity contracts live
+  under `server/src/services/policyStorageClosurePathState*.mjs` and the root
+  runner is exposed as `npm run policy:storage-closure-path-state-evidence`.
 - Current implementation can generate the final-removal-audit JSON input for
   the policy storage closure evidence run. It now requires the wrapper artifact
-  at the generator boundary; completion remains dependent on its real current
-  checkout removal state.
+  and a replay-verified path-state artifact at the generator boundary;
+  completion remains dependent on its real current checkout removal state.
 
 ### 8R.26 Policy Compatibility Deletion Execution Plan Artifact
 

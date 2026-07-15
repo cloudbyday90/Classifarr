@@ -13,7 +13,7 @@ The audit is intentionally read-only. It consumes:
 - a fingerprint-valid next-batch authorization artifact with embedded runtime
   evidence,
 - the applied removal-review artifact fingerprint,
-- current checkout path state,
+- fingerprint-valid, replay-verified current checkout path-state evidence,
 - product/runtime source reference-scan evidence,
 - optional policy storage closure validation evidence.
 
@@ -79,20 +79,23 @@ Cons:
 - callers must preserve or regenerate the wrapper artifact rather than only
   its nested plan.
 
-### Derive Remaining Inventory From The Checkout
+### Consume A Replay-Verified Checkout Snapshot
 
-The generator should inspect whether each manifest path still exists and report
-those paths as remaining inventory.
+The path-state collector should inspect each approved manifest path once and
+write a fingerprinted evidence artifact. The final-removal audit should consume
+only the verified replayed snapshot, then report its existing paths as remaining
+inventory.
 
 Pros:
 
-- prevents false completion claims,
+- prevents false completion claims and live-read drift,
 - gives the next removal batch an exact remaining list,
-- makes the evidence runner reflect the repository state.
+- makes the evidence runner reflect a retained repository observation.
 
 Cons:
 
-- path existence alone does not prove no references remain.
+- path existence alone does not prove no references remain,
+- a snapshot must be regenerated after checkout changes.
 
 ### Scan Product References Separately
 
@@ -141,7 +144,8 @@ Use this stack for final removal audit evidence:
    artifact JSON file.
 2. Validate the nested plan and expose only its approved, canonical, unique,
    repository-relative manifest paths.
-3. Inspect current checkout path existence for each manifest path.
+3. Capture current checkout path state for each manifest path in a fingerprinted
+   evidence artifact, then replay it before the audit uses it.
 4. Revalidate the supplied next-batch authorization artifact, its embedded
    runtime evidence, and its applied removal-review fingerprint.
 5. Compare the authorized removed and remaining path sets with the current
@@ -166,13 +170,15 @@ Implemented:
   `server/src/__tests__/services/policyStorageClosureFinalRemovalAudit.test.mjs`.
 - Added the root runner
   `npm run policy:storage-closure-final-removal-audit`.
-- Replaced the phase-coded payload version with
-  `policy.storage_closure_final_removal_audit.v2`.
+- Updated the payload version to
+  `policy.storage_closure_final_removal_audit.v3`.
 - Updated storage-closure validation and requirement-audit evidence references
   to require the durable final removal audit contract.
-- Preserved path-state derivation, remaining-inventory reporting, completion
-  proof when paths are gone, final-scan blockers, and missing-validation
-  blockers.
+- Requires `policy.storage_closure_path_state_evidence.v1`, replays its
+  retained approved artifact and observations, and blocks when it is missing,
+  altered, non-captured, stale-source, or cross-artifact.
+- Preserved remaining-inventory reporting, completion proof when paths are
+  gone, final-scan blockers, and missing-validation blockers.
 - Requires a fingerprint-valid next-batch authorization artifact and its
   applied removal-review fingerprint instead of synthesizing authorization from
   checkout state.
@@ -187,6 +193,7 @@ Example:
 ```bash
 npm run --silent policy:storage-closure-final-removal-audit -- \
   --execution-plan-artifact .tmp/policy-storage/execution-plan-artifact.json \
+  --path-state-evidence .tmp/policy-storage/path-state-evidence.json \
   --next-batch-authorization-artifact \
     .tmp/policy-storage/next-batch-authorization-artifact.json \
   --review-artifact-fingerprint "$REVIEW_ARTIFACT_FINGERPRINT" \
@@ -204,6 +211,6 @@ npm run --silent policy:storage-closure-evidence -- \
 
 ## Next Step
 
-Proceed with the controlled removal batch artifact module naming cutover so the
-batch artifact produced from this execution plan is also exposed through
-durable policy-domain naming.
+Bind the verified path-state evidence fingerprint to the next-batch
+authorization artifact so later authorization decisions cannot silently use a
+different checkout snapshot.

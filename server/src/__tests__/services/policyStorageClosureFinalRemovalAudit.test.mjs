@@ -16,9 +16,14 @@ import {
 } from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
 import {
   POLICY_STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT_STATUS_IDS,
-  buildManifestPathState,
   buildPolicyStorageClosureFinalRemovalAudit,
 } from '../../services/policyStorageClosureFinalRemovalAudit.mjs';
+import {
+  buildManifestPathState,
+} from '../../services/policyStorageClosureManifestPathState.mjs';
+import {
+  buildPolicyStorageClosurePathStateEvidence,
+} from '../../services/policyStorageClosurePathStateEvidence.mjs';
 import {
   buildReadyExecutionPlanArtifact,
 } from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
@@ -67,6 +72,23 @@ function executionPlan(overrides = {}) {
 
 function executionPlanArtifact(plan = executionPlan()) {
   return buildReadyExecutionPlanArtifact({ executionPlan: plan });
+}
+
+function pathStateEvidence({
+  planArtifact,
+  existingPaths = [],
+} = {}) {
+  const existingPathSet = new Set(existingPaths);
+
+  return buildPolicyStorageClosurePathStateEvidence({
+    executionPlanArtifact: planArtifact,
+    observations: MANIFEST_PATHS.map(path => ({
+      path,
+      exists: existingPathSet.has(path),
+    })),
+    generatedAt: '2026-07-15T12:00:00.000Z',
+    sideEffects: { filesRead: true },
+  });
 }
 
 function validationEvidence(overrides = {}) {
@@ -166,15 +188,19 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
 
   test('reports remaining inventory when an approved manifest path still exists', async () => {
     const plan = executionPlan();
+    const planArtifact = executionPlanArtifact(plan);
     const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
-      executionPlanArtifact: executionPlanArtifact(plan),
+      executionPlanArtifact: planArtifact,
+      pathStateEvidence: pathStateEvidence({
+        planArtifact,
+        existingPaths: [MANIFEST_PATHS[0]],
+      }),
       nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({
         plan,
         appliedPaths: [MANIFEST_PATHS[1]],
       }),
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
-      fileExists: path => path === MANIFEST_PATHS[0],
       referenceScan: {
         completed: true,
         checkedPaths: MANIFEST_PATHS,
@@ -195,12 +221,13 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
 
   test('completes when an intact authorization artifact covers removed manifest paths', async () => {
     const plan = executionPlan();
+    const planArtifact = executionPlanArtifact(plan);
     const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
-      executionPlanArtifact: executionPlanArtifact(plan),
+      executionPlanArtifact: planArtifact,
+      pathStateEvidence: pathStateEvidence({ planArtifact }),
       nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
-      fileExists: () => false,
       referenceScan: {
         completed: true,
         checkedPaths: MANIFEST_PATHS,
@@ -220,12 +247,16 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
 
   test('blocks a stale complete authorization artifact when checkout paths reappear', async () => {
     const plan = executionPlan();
+    const planArtifact = executionPlanArtifact(plan);
     const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
-      executionPlanArtifact: executionPlanArtifact(plan),
+      executionPlanArtifact: planArtifact,
+      pathStateEvidence: pathStateEvidence({
+        planArtifact,
+        existingPaths: [MANIFEST_PATHS[0]],
+      }),
       nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
-      fileExists: path => path === MANIFEST_PATHS[0],
       referenceScan: {
         completed: true,
         checkedPaths: MANIFEST_PATHS,
@@ -247,12 +278,13 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
 
   test('blocks completion when final scan still reports references', async () => {
     const plan = executionPlan();
+    const planArtifact = executionPlanArtifact(plan);
     const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
-      executionPlanArtifact: executionPlanArtifact(plan),
+      executionPlanArtifact: planArtifact,
+      pathStateEvidence: pathStateEvidence({ planArtifact }),
       nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
-      fileExists: () => false,
       referenceScan: {
         completed: true,
         checkedPaths: MANIFEST_PATHS,
@@ -272,11 +304,12 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
 
   test('blocks completion when validation evidence is missing', async () => {
     const plan = executionPlan();
+    const planArtifact = executionPlanArtifact(plan);
     const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
-      executionPlanArtifact: executionPlanArtifact(plan),
+      executionPlanArtifact: planArtifact,
+      pathStateEvidence: pathStateEvidence({ planArtifact }),
       nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
-      fileExists: () => false,
       referenceScan: {
         completed: true,
         checkedPaths: MANIFEST_PATHS,
@@ -300,7 +333,6 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
       nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: validationEvidence(),
-      fileExists: () => false,
       referenceScan: {
         completed: true,
         checkedPaths: MANIFEST_PATHS,
@@ -315,5 +347,36 @@ describe('policyStorageClosureFinalRemovalAudit', () => {
     expect(evidence.executionPlanSource.ok).toBe(false);
     expect(evidence.executionPlanSource.issues.map(issue => issue.riskId))
       .toContain('artifact_not_ready');
+  });
+
+  test('blocks a missing or cross-artifact checkout snapshot before completion can be evaluated', async () => {
+    const plan = executionPlan();
+    const planArtifact = executionPlanArtifact(plan);
+    const otherArtifact = buildReadyExecutionPlanArtifact({
+      executionPlan: plan,
+      generatedAt: '2026-07-15T12:01:00.000Z',
+    });
+    const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
+      executionPlanArtifact: planArtifact,
+      pathStateEvidence: pathStateEvidence({ planArtifact: otherArtifact }),
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      validationEvidence: validationEvidence(),
+      referenceScan: {
+        completed: true,
+        checkedPaths: MANIFEST_PATHS,
+        references: [],
+      },
+    });
+
+    expect(evidence.statusId)
+      .toBe(POLICY_STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT_STATUS_IDS
+        .BLOCKED_BY_PATH_STATE_EVIDENCE);
+    expect(evidence.complete).toBe(false);
+    expect(evidence.pathStateEvidenceIntegrity.ok).toBe(true);
+    expect(evidence.pathStateEvidenceBinding).toEqual(expect.objectContaining({
+      ok: false,
+      artifactFingerprintMatches: false,
+    }));
   });
 });

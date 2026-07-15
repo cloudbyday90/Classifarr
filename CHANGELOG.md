@@ -22,6 +22,10 @@ unchanged operator or runtime outcome.
   audits now require ready, fingerprint-valid execution-plan artifacts and
   reject raw, unapproved, altered, unsafe, or duplicate manifest paths before
   repository inspection.
+- **Replayable Final-Removal Checkout Evidence** - final-removal audits now
+  consume a fingerprinted, replay-verified snapshot of approved manifest path
+  state instead of reading the live checkout during completion evaluation.
+  Missing, altered, incomplete, or cross-artifact snapshots block closure.
 
 - **Single Active Native Intent Authority** - repaired and now enforces the
   database invariant that each policy has at most one active native intent.

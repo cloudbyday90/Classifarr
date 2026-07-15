@@ -27,6 +27,7 @@ function parseArgs(argv = []) {
   const options = {
     cwd: process.cwd(),
     executionPlanArtifactPath: null,
+    pathStateEvidencePath: null,
     nextBatchAuthorizationArtifactPath: null,
     reviewArtifactFingerprint: '',
     validationEvidencePath: null,
@@ -44,6 +45,11 @@ function parseArgs(argv = []) {
     }
     if (arg === '--execution-plan-artifact') {
       options.executionPlanArtifactPath = argv[index + 1] || null;
+      index += 1;
+      continue;
+    }
+    if (arg === '--path-state-evidence') {
+      options.pathStateEvidencePath = argv[index + 1] || null;
       index += 1;
       continue;
     }
@@ -89,6 +95,7 @@ function usage() {
     'Options:',
     '  --cwd <path>                    Repository root. Defaults to process cwd.',
     '  --execution-plan-artifact <json> Required approved compatibility deletion execution-plan artifact JSON.',
+    '  --path-state-evidence <json>    Required fingerprint-valid checkout path-state evidence JSON.',
     '  --next-batch-authorization-artifact <json> Required fingerprint-valid next-batch authorization artifact JSON.',
     '  --review-artifact-fingerprint <sha256> Required applied removal-review artifact fingerprint.',
     '  --validation-evidence <json>    Optional policy storage closure validation evidence JSON.',
@@ -126,10 +133,6 @@ function writeJsonFile(filePath, value) {
   fs.writeFileSync(resolvedPath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function fileExistsAtRepositoryPath(cwd, repositoryPath) {
-  return fs.existsSync(path.resolve(cwd, repositoryPath));
-}
-
 async function main() {
   let options;
 
@@ -149,6 +152,7 @@ async function main() {
 
   const cwd = path.resolve(process.cwd(), options.cwd);
   let executionPlanArtifact;
+  let pathStateEvidence;
   let nextBatchAuthorizationArtifact;
   let validationEvidence;
 
@@ -158,6 +162,11 @@ async function main() {
       'execution-plan artifact', {
       required: true,
       }
+    );
+    pathStateEvidence = readJsonFile(
+      options.pathStateEvidencePath,
+      'path-state evidence',
+      { required: true }
     );
     nextBatchAuthorizationArtifact = readJsonFile(
       options.nextBatchAuthorizationArtifactPath,
@@ -187,6 +196,7 @@ async function main() {
 
   const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
     executionPlanArtifact,
+    pathStateEvidence,
     nextBatchAuthorizationArtifact,
     reviewArtifactFingerprint: options.reviewArtifactFingerprint,
     validationEvidence,
@@ -194,7 +204,6 @@ async function main() {
       cwd,
       manifestPaths: executionPlanSource.manifestPaths,
     }),
-    fileExists: repositoryPath => fileExistsAtRepositoryPath(cwd, repositoryPath),
   });
 
   try {

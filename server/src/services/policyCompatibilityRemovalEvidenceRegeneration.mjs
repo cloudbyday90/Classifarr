@@ -4,8 +4,10 @@ import {
 } from './policyCompatibilityRemovalCompletionAuditArtifact.mjs';
 import {
   buildFinalImportScan,
-  buildManifestPathState,
 } from './policyStorageClosureFinalRemovalAudit.mjs';
+import {
+  buildManifestPathState,
+} from './policyStorageClosureManifestPathState.mjs';
 
 const POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_VERSION =
   'policy.compatibility_removal_evidence_regeneration.v1';

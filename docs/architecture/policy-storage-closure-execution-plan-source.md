@@ -106,9 +106,10 @@ Implemented:
 
 - `policyStorageClosureExecutionPlanSource.mjs` resolves the only accepted
   manifest source for final-removal audit generation.
-- `policyStorageClosureFinalRemovalAudit.mjs` is now v2 and blocks with
-  `blocked_by_execution_plan_artifact` before it can derive path state from an
-  invalid source.
+- `policyStorageClosurePathStateEvidence.mjs` binds every checkout observation
+  to the resolved artifact fingerprint, while the v3 final audit blocks with
+  `blocked_by_execution_plan_artifact` before it can consume any snapshot from
+  an invalid source.
 - `generate-policy-storage-closure-final-removal-audit.mjs` now requires
   `--execution-plan-artifact` and rejects invalid sources before scanning or
   writing output.
@@ -118,6 +119,6 @@ Implemented:
 
 ## Next Step
 
-Continue Phase 8R.25 by making the final-removal audit's current-checkout path
-state a bounded, replayable evidence input before it is consumed by the
-completion audit.
+Continue Phase 8R.25 by binding the verified checkout path-state snapshot to
+next-batch authorization, so the bounded removal loop retains the same approved
+manifest source through its authorization decision.

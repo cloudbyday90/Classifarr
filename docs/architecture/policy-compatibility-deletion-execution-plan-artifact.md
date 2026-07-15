@@ -161,12 +161,26 @@ npm run --silent policy:compatibility-deletion-execution-plan-artifact -- \
   --artifact-output .tmp/policy-storage/execution-plan-artifact.json
 ```
 
-Then pass the generated execution-plan artifact into the storage-closure
-final-removal audit:
+Capture a replayable checkout snapshot for that exact generated artifact before
+the storage-closure final-removal audit:
+
+```bash
+npm run --silent policy:storage-closure-path-state-evidence -- \
+  --execution-plan-artifact .tmp/policy-storage/execution-plan-artifact.json \
+  --output .tmp/policy-storage/path-state-evidence.json
+```
+
+Then pass the generated execution-plan artifact and its snapshot into the
+storage-closure final-removal audit together with the existing reviewed
+authorization inputs:
 
 ```bash
 npm run --silent policy:storage-closure-final-removal-audit -- \
   --execution-plan-artifact .tmp/policy-storage/execution-plan-artifact.json \
+  --path-state-evidence .tmp/policy-storage/path-state-evidence.json \
+  --next-batch-authorization-artifact \
+    .tmp/policy-storage/next-batch-authorization-artifact.json \
+  --review-artifact-fingerprint "$REVIEW_ARTIFACT_FINGERPRINT" \
   --validation-evidence .tmp/policy-storage/validation-evidence.json \
   --output .tmp/policy-storage/final-removal-audit.json
 ```

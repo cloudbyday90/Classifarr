@@ -110,15 +110,26 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     designDocPaths: [
       'docs/architecture/policy-storage-closure-final-removal-audit.md',
       'docs/architecture/policy-storage-closure-execution-plan-source.md',
+      'docs/architecture/policy-storage-closure-path-state-evidence.md',
     ],
     contractPaths: [
       'server/src/services/policyStorageClosureFinalRemovalAudit.mjs',
       'server/src/services/policyStorageClosureExecutionPlanSource.mjs',
+      'server/src/services/policyStorageClosureManifestPathState.mjs',
+      'server/src/services/policyStorageClosurePathStateCollector.mjs',
+      'server/src/services/policyStorageClosurePathStateEvidence.mjs',
+      'server/src/services/policyStorageClosurePathStateEvidenceFingerprint.mjs',
+      'server/src/services/policyStorageClosurePathStateEvidenceIntegrity.mjs',
+      'scripts/generate-policy-storage-closure-path-state-evidence.mjs',
       'scripts/generate-policy-storage-closure-final-removal-audit.mjs',
     ],
     testPaths: [
       'server/src/__tests__/services/policyStorageClosureFinalRemovalAudit.test.mjs',
       'server/src/__tests__/services/policyStorageClosureExecutionPlanSource.test.mjs',
+      'server/src/__tests__/services/policyStorageClosurePathStateCollector.test.mjs',
+      'server/src/__tests__/services/policyStorageClosurePathStateEvidence.test.mjs',
+      'server/src/__tests__/services/policyStorageClosurePathStateEvidenceFingerprint.test.mjs',
+      'server/src/__tests__/services/policyStorageClosurePathStateEvidenceIntegrity.test.mjs',
     ],
   },
   {

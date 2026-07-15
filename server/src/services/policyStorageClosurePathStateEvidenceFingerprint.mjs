@@ -1,0 +1,223 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+import { createHash } from 'node:crypto';
+
+const POLICY_STORAGE_CLOSURE_PATH_STATE_EVIDENCE_FINGERPRINT_VERSION =
+  'policy.storage_closure_path_state_evidence_fingerprint.v1';
+
+const POLICY_STORAGE_CLOSURE_PATH_STATE_EVIDENCE_FINGERPRINT_RISK_IDS = Object.freeze({
+  MISSING_EVIDENCE: 'missing_evidence',
+  MISSING_FINGERPRINT: 'missing_fingerprint',
+  MALFORMED_FINGERPRINT: 'malformed_fingerprint',
+  FINGERPRINT_MISMATCH: 'fingerprint_mismatch',
+  PROVENANCE_MISMATCH: 'provenance_mismatch',
+});
+
+const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/;
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function normalizePath(value = '') {
+  return String(value || '').replace(/\\/g, '/').trim();
+}
+
+function stableValue(value) {
+  if (Array.isArray(value)) return value.map(item => stableValue(item));
+  if (!value || typeof value !== 'object') {
+    return typeof value === 'bigint' ? value.toString() : value;
+  }
+
+  return Object.keys(value)
+    .filter(key => !['function', 'symbol', 'undefined'].includes(typeof value[key]))
+    .sort()
+    .reduce((normalized, key) => {
+      normalized[key] = stableValue(value[key]);
+      return normalized;
+    }, {});
+}
+
+function stableStringify(value) {
+  return JSON.stringify(stableValue(value));
+}
+
+function normalizePaths(paths = []) {
+  return [...new Set(asArray(paths).map(normalizePath).filter(Boolean))].sort();
+}
+
+function normalizeObservations(observations = []) {
+  return asArray(observations)
+    .map(observation => {
+      const value = asObject(observation);
+
+      return {
+        path: normalizePath(value.path),
+        exists: value.exists === true,
+        hasBooleanExists: typeof value.exists === 'boolean',
+      };
+    })
+    .sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function normalizeRisks(risks = []) {
+  return asArray(risks)
+    .map(risk => stableValue(asObject(risk)))
+    .sort((left, right) => stableStringify(left).localeCompare(stableStringify(right)));
+}
+
+function buildPolicyStorageClosurePathStateEvidenceProjection(evidence = {}) {
+  const value = asObject(evidence);
+  const pathState = asObject(value.pathState);
+  const observationInput = asObject(value.observationInput);
+  const executionPlanArtifact = asObject(observationInput.executionPlanArtifact);
+
+  return {
+    version: POLICY_STORAGE_CLOSURE_PATH_STATE_EVIDENCE_FINGERPRINT_VERSION,
+    evidence: {
+      version: value.version || null,
+      generatedAt: value.generatedAt || null,
+      statusId: value.statusId || null,
+      captured: value.captured === true,
+      executionPlanArtifactFingerprint:
+        value.executionPlanArtifactFingerprint || null,
+      pathState: {
+        manifestPaths: normalizePaths(pathState.manifestPaths),
+        existingPaths: normalizePaths(pathState.existingPaths),
+        removedPaths: normalizePaths(pathState.removedPaths),
+        totalCount: pathState.totalCount ?? null,
+        existingCount: pathState.existingCount ?? null,
+        removedCount: pathState.removedCount ?? null,
+      },
+      observationInput: {
+        executionPlanArtifactFingerprint:
+          executionPlanArtifact.artifactFingerprint?.fingerprint || null,
+        observations: normalizeObservations(observationInput.observations),
+        sideEffects: stableValue(asObject(observationInput.sideEffects)),
+      },
+      riskCount: value.riskCount ?? null,
+      risks: normalizeRisks(value.risks),
+      sideEffects: stableValue(asObject(value.sideEffects)),
+    },
+  };
+}
+
+function buildPolicyStorageClosurePathStateEvidenceFingerprint({ evidence = {} } = {}) {
+  const projection = buildPolicyStorageClosurePathStateEvidenceProjection(evidence);
+  const fingerprint = createHash('sha256')
+    .update(stableStringify(projection))
+    .digest('hex');
+
+  return {
+    version: POLICY_STORAGE_CLOSURE_PATH_STATE_EVIDENCE_FINGERPRINT_VERSION,
+    algorithm: 'sha256',
+    fingerprint,
+    provenance: {
+      evidenceVersion: projection.evidence.version,
+      generatedAt: projection.evidence.generatedAt,
+      statusId: projection.evidence.statusId,
+      captured: projection.evidence.captured,
+      executionPlanArtifactFingerprint:
+        projection.evidence.executionPlanArtifactFingerprint,
+      manifestEntryCount: projection.evidence.pathState.manifestPaths.length,
+      existingPathCount: projection.evidence.pathState.existingPaths.length,
+      removedPathCount: projection.evidence.pathState.removedPaths.length,
+    },
+  };
+}
+
+function validatePolicyStorageClosurePathStateEvidenceFingerprint({
+  evidence = null,
+  artifactFingerprint = null,
+} = {}) {
+  const issues = [];
+
+  if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) {
+    issues.push({
+      riskId: POLICY_STORAGE_CLOSURE_PATH_STATE_EVIDENCE_FINGERPRINT_RISK_IDS
+        .MISSING_EVIDENCE,
+      message: 'Path-state evidence fingerprint validation requires an evidence object.',
+    });
+  }
+
+  if (
+    !artifactFingerprint ||
+    typeof artifactFingerprint !== 'object' ||
+    Array.isArray(artifactFingerprint)
+  ) {
+    issues.push({
+      riskId: POLICY_STORAGE_CLOSURE_PATH_STATE_EVIDENCE_FINGERPRINT_RISK_IDS
+        .MISSING_FINGERPRINT,
+      message: 'Path-state evidence fingerprint validation requires a fingerprint object.',
+    });
+  }
+
+  if (issues.length > 0) {
+    return { ok: false, issueCount: issues.length, issues };
+  }
+
+  const expected = buildPolicyStorageClosurePathStateEvidenceFingerprint({ evidence });
+  const actualFingerprint = String(artifactFingerprint.fingerprint || '').trim().toLowerCase();
+
+  if (
+    artifactFingerprint.version !==
+      POLICY_STORAGE_CLOSURE_PATH_STATE_EVIDENCE_FINGERPRINT_VERSION ||
+    artifactFingerprint.algorithm !== 'sha256' ||
+    !SHA256_FINGERPRINT_PATTERN.test(actualFingerprint)
+  ) {
+    issues.push({
+      riskId: POLICY_STORAGE_CLOSURE_PATH_STATE_EVIDENCE_FINGERPRINT_RISK_IDS
+        .MALFORMED_FINGERPRINT,
+      message: 'Path-state evidence fingerprint must be a versioned SHA-256 hex digest.',
+    });
+  }
+
+  if (actualFingerprint && actualFingerprint !== expected.fingerprint) {
+    issues.push({
+      riskId: POLICY_STORAGE_CLOSURE_PATH_STATE_EVIDENCE_FINGERPRINT_RISK_IDS
+        .FINGERPRINT_MISMATCH,
+      message: 'Path-state evidence fingerprint must match its exact bounded projection.',
+    });
+  }
+
+  const provenance = asObject(artifactFingerprint.provenance);
+  if (
+    provenance.evidenceVersion !== expected.provenance.evidenceVersion ||
+    provenance.generatedAt !== expected.provenance.generatedAt ||
+    provenance.statusId !== expected.provenance.statusId ||
+    provenance.captured !== expected.provenance.captured ||
+    provenance.executionPlanArtifactFingerprint !==
+      expected.provenance.executionPlanArtifactFingerprint ||
+    Number(provenance.manifestEntryCount) !== Number(expected.provenance.manifestEntryCount) ||
+    Number(provenance.existingPathCount) !== Number(expected.provenance.existingPathCount) ||
+    Number(provenance.removedPathCount) !== Number(expected.provenance.removedPathCount)
+  ) {
+    issues.push({
+      riskId: POLICY_STORAGE_CLOSURE_PATH_STATE_EVIDENCE_FINGERPRINT_RISK_IDS
+        .PROVENANCE_MISMATCH,
+      message: 'Path-state evidence fingerprint provenance must match the bounded evidence projection.',
+    });
+  }
+
+  return { ok: issues.length === 0, issueCount: issues.length, issues };
+}
+
+export {
+  POLICY_STORAGE_CLOSURE_PATH_STATE_EVIDENCE_FINGERPRINT_RISK_IDS,
+  POLICY_STORAGE_CLOSURE_PATH_STATE_EVIDENCE_FINGERPRINT_VERSION,
+  buildPolicyStorageClosurePathStateEvidenceFingerprint,
+  buildPolicyStorageClosurePathStateEvidenceProjection,
+  validatePolicyStorageClosurePathStateEvidenceFingerprint,
+};
