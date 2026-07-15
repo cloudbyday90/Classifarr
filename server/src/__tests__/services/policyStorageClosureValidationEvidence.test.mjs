@@ -3,9 +3,11 @@ import {
   POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS,
   POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS,
   POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_STATUS_IDS,
+  POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_VERSION,
   buildPolicyStorageClosureValidationEvidence,
   buildValidationCheckEvidence,
   commandToString,
+  validatePolicyStorageClosureValidationEvidence,
 } from '../../services/policyStorageClosureValidationEvidence.mjs';
 
 function commandResults(overrides = {}) {
@@ -27,10 +29,22 @@ describe('policyStorageClosureValidationEvidence', () => {
     });
 
     expect(evidence.statusId).toBe(POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_STATUS_IDS.PASSED);
+    expect(evidence.version).toBe(POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_VERSION);
     expect(evidence.complete).toBe(true);
     expect(evidence.checkCount).toBe(POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS.length);
     expect(evidence.passedCount).toBe(POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS.length);
     expect(evidence.riskCount).toBe(0);
+    expect(evidence.commandCatalog).toHaveLength(
+      POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS.length
+    );
+    expect(evidence.validationInput.commandResults).toHaveLength(
+      POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS.length
+    );
+    expect(evidence.artifactFingerprint).toEqual(expect.objectContaining({
+      algorithm: 'sha256',
+      fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    }));
+    expect(evidence.validation.ok).toBe(true);
     expect(evidence.focused).toEqual(expect.objectContaining({
       passed: true,
       exitCode: 0,
@@ -168,5 +182,27 @@ describe('policyStorageClosureValidationEvidence', () => {
       POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS.UNKNOWN_CHECK_ID,
       POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS.SIDE_EFFECT_REPORTED,
     ]));
+  });
+
+  test('rejects duplicate command results and invalid generated timestamps', () => {
+    const evidence = buildPolicyStorageClosureValidationEvidence({
+      commandResults: [
+        ...commandResults(),
+        {
+          checkId: POLICY_STORAGE_CLOSURE_VALIDATION_CHECK_IDS.FULL,
+          exitCode: 0,
+        },
+      ],
+      generatedAt: 'not-a-timestamp',
+    });
+    const validation = validatePolicyStorageClosureValidationEvidence(evidence);
+
+    expect(evidence.risks.map(risk => risk.riskId)).toContain(
+      POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS.DUPLICATE_CHECK_ID
+    );
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.map(issue => issue.riskId)).toContain(
+      POLICY_STORAGE_CLOSURE_VALIDATION_EVIDENCE_RISK_IDS.GENERATED_AT_INVALID
+    );
   });
 });

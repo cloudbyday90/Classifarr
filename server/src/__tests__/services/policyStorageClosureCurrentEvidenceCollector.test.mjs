@@ -16,6 +16,9 @@ import {
 import {
   buildCompletionAuditArtifactFixture,
 } from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
+import {
+  buildPolicyStorageClosureValidationEvidenceFixture,
+} from './policyStorageClosureValidationEvidenceFixture.mjs';
 
 const ALL_MAPPED_PATHS = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
   .flatMap(component => [
@@ -46,24 +49,7 @@ function completeChangelogContent() {
 }
 
 function completeValidationEvidence() {
-  return {
-    focused: {
-      command: 'node ./scripts/run-jest.mjs --testPathPatterns="policyBuilderPhase8"',
-      passed: true,
-    },
-    lint: {
-      command: 'npm run lint:server',
-      passed: true,
-    },
-    markdown: {
-      command: 'npm run lint:docs',
-      passed: true,
-    },
-    full: {
-      command: 'npm --prefix server test',
-      passed: true,
-    },
-  };
+  return buildPolicyStorageClosureValidationEvidenceFixture();
 }
 
 describe('policyStorageClosureCurrentEvidenceCollector', () => {

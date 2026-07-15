@@ -17,6 +17,9 @@ import {
 import {
   buildCompletionAuditArtifactFixture,
 } from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
+import {
+  buildPolicyStorageClosureValidationEvidenceFixture,
+} from './policyStorageClosureValidationEvidenceFixture.mjs';
 
 function completeRoadmapContent() {
   const componentSections = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
@@ -39,13 +42,17 @@ function completeChangelogContent() {
 `;
 }
 
-function buildCurrentClosureValidationEvidence(overrides = {}) {
+function buildCurrentClosureValidationEvidence({
+  commandResultOverrides = {},
+  ...artifactOverrides
+} = {}) {
+  const artifact = buildPolicyStorageClosureValidationEvidenceFixture({
+    commandResultOverrides,
+  });
+
   return {
-    focused: { command: 'focused', passed: true },
-    lint: { command: 'lint', passed: true },
-    markdown: { command: 'markdown', passed: true },
-    full: { command: 'full', passed: true },
-    ...overrides,
+    ...artifact,
+    ...artifactOverrides,
   };
 }
 

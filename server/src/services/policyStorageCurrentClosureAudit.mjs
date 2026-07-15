@@ -19,9 +19,12 @@ import {
   buildPolicyStorageCurrentClosureAuditFingerprint,
   validatePolicyStorageCurrentClosureAuditFingerprint,
 } from './policyStorageCurrentClosureAuditFingerprint.mjs';
+import {
+  validatePolicyStorageClosureValidationEvidenceIntegrity,
+} from './policyStorageClosureValidationEvidenceIntegrity.mjs';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION =
-  'policy.storage_current_closure_audit.v2';
+  'policy.storage_current_closure_audit.v3';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -40,6 +43,8 @@ const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS = Object.freeze({
   COMPLETION_AUDIT_ARTIFACT_VERSION_UNSUPPORTED:
     'completion_audit_artifact_version_unsupported',
   VALIDATION_EVIDENCE_MISSING: 'validation_evidence_missing',
+  VALIDATION_EVIDENCE_ARTIFACT_INTEGRITY_FAILED:
+    'validation_evidence_artifact_integrity_failed',
   UNKNOWN_VERSION: 'unknown_version',
   ARTIFACT_FINGERPRINT_INVALID: 'artifact_fingerprint_invalid',
   CURRENT_EVIDENCE_RUN_NOT_COMPLETE: 'current_evidence_run_not_complete',
@@ -72,8 +77,11 @@ function normalizeGeneratedAt(value) {
 }
 
 function hasValidationEvidence(validationEvidence = {}) {
-  return ['focused', 'lint', 'markdown', 'full']
-    .every(key => asObject(validationEvidence)[key]?.passed === true);
+  const validationIntegrity =
+    validatePolicyStorageClosureValidationEvidenceIntegrity({ validationEvidence });
+
+  return validationIntegrity.ok === true && ['focused', 'lint', 'markdown', 'full']
+    .every(key => asObject(validationIntegrity.evidence)[key]?.passed === true);
 }
 
 function buildClosureInput({
@@ -144,6 +152,8 @@ function buildAuditRisks({
 } = {}) {
   const risks = [];
   const normalizedCompletionArtifact = asObject(completionAuditArtifact);
+  const validationIntegrity =
+    validatePolicyStorageClosureValidationEvidenceIntegrity({ validationEvidence });
 
   if (Object.keys(normalizedCompletionArtifact).length === 0) {
     risks.push(buildRisk(
@@ -196,6 +206,18 @@ function buildAuditRisks({
         expectedVersion:
           POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
         receivedVersion: normalizedCompletionArtifact.version || null,
+      }
+    ));
+  }
+
+  if (!validationIntegrity.ok) {
+    risks.push(buildRisk(
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
+        .VALIDATION_EVIDENCE_ARTIFACT_INTEGRITY_FAILED,
+      'Policy storage current closure audit requires fingerprint-valid, replay-verified validation evidence.',
+      {
+        issueCount: validationIntegrity.issueCount,
+        issueRiskIds: validationIntegrity.issues.map(issue => issue.riskId),
       }
     ));
   }
@@ -395,6 +417,8 @@ async function buildPolicyStorageCurrentClosureAuditFromEvidence({
       missingCurrentArtifactCount:
         normalizedCurrentEvidence.artifactInventory?.missingPathCount ?? 0,
       validationEvidenceComplete: hasValidationEvidence(validationEvidence),
+      validationEvidenceArtifactFingerprint:
+        validationEvidence.artifactFingerprint?.fingerprint || null,
     },
     riskCount: risks.length,
     risks,
@@ -404,6 +428,8 @@ async function buildPolicyStorageCurrentClosureAuditFromEvidence({
       requireCompletionAuditArtifact: true,
       requireCurrentCompletionAuditArtifactVersion: true,
       requireValidationEvidence: true,
+      requireFingerprintValidValidationEvidence: true,
+      requireReplayedValidationEvidence: true,
       requireCurrentRoadmapEvidence: true,
       requireCurrentChangelogEvidence: true,
       requireCurrentArtifactInventory: true,

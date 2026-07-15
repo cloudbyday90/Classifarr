@@ -9,6 +9,9 @@ import {
   MANIFEST_PATHS,
   buildCompletionAuditArtifactFixture,
 } from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
+import {
+  buildPolicyStorageClosureValidationEvidenceFixture,
+} from './policyStorageClosureValidationEvidenceFixture.mjs';
 
 const SOURCE_COMPONENT_IDS = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
   .map(component => component.componentId);
@@ -47,24 +50,14 @@ function roadmapEvidence(overrides = {}) {
 }
 
 function validationEvidence(overrides = {}) {
+  const {
+    commandResultOverrides = {},
+    ...artifactOverrides
+  } = overrides;
+
   return {
-    focused: {
-      command: 'node ./scripts/run-jest.mjs --testPathPatterns="policyBuilderPhase8" --no-coverage',
-      passed: true,
-    },
-    lint: {
-      command: 'npm run lint -- --no-error-on-unmatched-pattern',
-      passed: true,
-    },
-    markdown: {
-      command: 'npx markdownlint-cli2 "CHANGELOG.md" "docs/architecture/policy-builder-intent-model-roadmap.md"',
-      passed: true,
-    },
-    full: {
-      command: 'npm test',
-      passed: true,
-    },
-    ...overrides,
+    ...buildPolicyStorageClosureValidationEvidenceFixture({ commandResultOverrides }),
+    ...artifactOverrides,
   };
 }
 
@@ -334,10 +327,11 @@ describe('policyStorageClosureEvidenceRun', () => {
   test('blocks when validation or changelog evidence fails checkpoint', async () => {
     const validationBlocked = await completeRun({
       validationEvidence: validationEvidence({
-        full: {
-          command: 'npm test',
-          passed: false,
-          message: 'full suite failed',
+        commandResultOverrides: {
+          full: {
+            exitCode: 1,
+            message: 'full suite failed',
+          },
         },
       }),
     });

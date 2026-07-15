@@ -11,6 +11,9 @@ import {
   buildPolicyStorageCurrentClosureAudit,
   validatePolicyStorageCurrentClosureAudit,
 } from '../../services/policyStorageCurrentClosureAudit.mjs';
+import {
+  buildPolicyStorageClosureValidationEvidenceFixture,
+} from './policyStorageClosureValidationEvidenceFixture.mjs';
 
 function completeRoadmapContent() {
   const componentSections = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
@@ -34,24 +37,14 @@ function completeChangelogContent() {
 }
 
 function validationEvidence(overrides = {}) {
+  const {
+    commandResultOverrides = {},
+    ...artifactOverrides
+  } = overrides;
+
   return {
-    focused: {
-      command: 'focused',
-      passed: true,
-    },
-    lint: {
-      command: 'lint',
-      passed: true,
-    },
-    markdown: {
-      command: 'markdown',
-      passed: true,
-    },
-    full: {
-      command: 'full',
-      passed: true,
-    },
-    ...overrides,
+    ...buildPolicyStorageClosureValidationEvidenceFixture({ commandResultOverrides }),
+    ...artifactOverrides,
   };
 }
 
@@ -148,6 +141,23 @@ describe('policyStorageCurrentClosureAudit', () => {
       POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .CURRENT_EVIDENCE_RUN_NOT_COMPLETE,
     ]));
+  });
+
+  test('rejects validation evidence whose fingerprint no longer binds its checks', async () => {
+    const alteredValidationEvidence = validationEvidence();
+    alteredValidationEvidence.full.passed = false;
+
+    const audit = await completeAudit({
+      validationEvidence: alteredValidationEvidence,
+    });
+
+    expect(audit.statusId)
+      .toBe(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
+        .BLOCKED_BY_CURRENT_EVIDENCE);
+    expect(audit.risks.map(risk => risk.riskId)).toContain(
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
+        .VALIDATION_EVIDENCE_ARTIFACT_INTEGRITY_FAILED
+    );
   });
 
   test('blocks when the completion-audit artifact is incomplete', async () => {

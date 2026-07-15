@@ -7,7 +7,7 @@ import {
 } from './policyStorageCompletionCheckpoint.mjs';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_VERSION =
-  'policy.storage_completion_checkpoint_artifact.v2';
+  'policy.storage_completion_checkpoint_artifact.v3';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -248,6 +248,10 @@ async function buildPolicyStorageCompletionCheckpointArtifact({
       checkpointRiskCount: checkpoint.riskCount ?? 0,
       finalRemovalAuditStatusId:
         checkpoint.finalRemovalAudit?.statusId || null,
+      validationEvidenceIntegrityOk:
+        checkpoint.validationEvidenceIntegrity?.ok === true,
+      validationEvidenceArtifactFingerprint:
+        checkpoint.validationEvidenceIntegrity?.artifactFingerprint || null,
       validationPassedCount: [
         checkpoint.validationEvidence?.focused,
         checkpoint.validationEvidence?.lint,
@@ -274,6 +278,8 @@ async function buildPolicyStorageCompletionCheckpointArtifact({
       requireComponentEvidence: true,
       requireRoadmapEvidence: true,
       requireValidationEvidence: true,
+      requireFingerprintValidValidationEvidence: true,
+      requireReplayedValidationEvidence: true,
       requireChangelogEvidence: true,
       allowFileWrites: false,
       allowStorageMutation: false,

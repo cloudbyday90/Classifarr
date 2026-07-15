@@ -6240,6 +6240,13 @@ completion checkpoint.
 
 Tasks:
 
+- **8R.24.1 Validation Evidence Artifact Integrity**
+  - Bind the fixed command catalog, normalized command results, side-effect
+    input, and derived check state with a versioned SHA-256 fingerprint.
+  - Replay the artifact from retained input without command execution before
+    a checkpoint or current-closure audit consumes it.
+  - Reject legacy summary-only, malformed, altered, or re-fingerprinted
+    derived-state-inconsistent evidence.
 - Define fixed validation command specs for focused policy storage closure tests,
   server lint, markdown validation, and full server validation.
 - Execute those commands from a root script with array arguments and no
@@ -6277,11 +6284,12 @@ Implementation status:
 - The root runner is exposed as `npm run policy:storage-closure-validation-evidence`.
 - The focused validation evidence test suite lives in
   `server/src/__tests__/services/policyStorageClosureValidationEvidence.test.mjs`.
-- Current implementation generates the validation JSON input still required by
-  the storage closure evidence run.
-- Current execution produced complete validation evidence and cleared validation
-  blockers in the storage closure evidence run; final-removal-audit JSON remains
-  the next closure input.
+- Task 8R.24.1 is implemented. The v2 artifact binds a source-controlled
+  command catalog, bounded normalized results, side-effect input, and derived
+  status through a SHA-256 fingerprint. The completion checkpoint and
+  current-closure audit now require exact pure replay before they trust it.
+- Current implementation generates validation JSON for the storage closure
+  evidence run without moving command execution into closure consumers.
 
 ### 8R.25 Policy Storage Closure Final Removal Audit
 

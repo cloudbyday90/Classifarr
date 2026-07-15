@@ -86,14 +86,21 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   {
     componentId: 'storage_closure_validation_evidence',
     label: 'Policy Storage Closure Validation Evidence',
-    designDocPaths: ['docs/architecture/policy-storage-closure-validation-evidence.md'],
+    designDocPaths: [
+      'docs/architecture/policy-storage-closure-validation-evidence.md',
+      'docs/architecture/policy-storage-closure-validation-evidence-artifact-integrity.md',
+    ],
     contractPaths: [
       'server/src/services/policyStorageClosureValidationEvidence.mjs',
+      'server/src/services/policyStorageClosureValidationEvidenceFingerprint.mjs',
+      'server/src/services/policyStorageClosureValidationEvidenceIntegrity.mjs',
       'server/src/services/policyStorageClosureValidationCommandInvocation.mjs',
       'scripts/generate-policy-storage-closure-validation-evidence.mjs',
     ],
     testPaths: [
       'server/src/__tests__/services/policyStorageClosureValidationEvidence.test.mjs',
+      'server/src/__tests__/services/policyStorageClosureValidationEvidenceFingerprint.test.mjs',
+      'server/src/__tests__/services/policyStorageClosureValidationEvidenceIntegrity.test.mjs',
       'server/src/__tests__/services/policyStorageClosureValidationCommandInvocation.test.mjs',
     ],
   },

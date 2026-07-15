@@ -29,6 +29,12 @@ decisions.
   generator therefore invokes npm's JavaScript CLI through `process.execPath`
   when it is available, keeping the command boundary shell-free for direct Node
   and Windows invocations.
+- SLSA verification guidance recommends comparing supplied provenance with
+  trusted expected values and rejecting unrecognized inputs. The v2 artifact
+  uses a source-controlled command catalog as that expectation, then replays
+  retained normalized input without executing commands.
+- Node.js `crypto` provides the SHA-256 primitive used to bind the bounded
+  artifact projection before a closure consumer accepts it.
 
 Sources:
 
@@ -40,6 +46,10 @@ Sources:
   <https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html>
 - Node.js child process API:
   <https://nodejs.org/api/child_process.html>
+- SLSA artifact verification guidance:
+  <https://slsa.dev/spec/v1.2/verifying-artifacts>
+- Node.js crypto API:
+  <https://nodejs.org/api/crypto.html>
 
 ## Recommendations
 
@@ -88,6 +98,22 @@ Cons:
 
 - requires callers to generate validation JSON before running closure audits.
 
+### Fingerprint And Replay Evidence
+
+Retain normalized command results and side-effect input, bind the derived
+artifact with SHA-256, and rebuild it in pure consumers before use.
+
+Pros:
+
+- rejects stale or altered validation summaries,
+- catches a regenerated digest whose derived check state disagrees with input,
+- keeps the checkpoint and current audit free of command execution.
+
+Cons:
+
+- increases artifact size modestly,
+- requires current v2 evidence rather than legacy four-check summaries.
+
 ## Final Recommendation Stack
 
 1. Use `policyStorageClosureValidationEvidence.mjs` as the fixed command
@@ -95,14 +121,18 @@ Cons:
 2. Use `generate-policy-storage-closure-validation-evidence.mjs` as the CLI
    wrapper.
 3. Expose `npm run policy:storage-closure-validation-evidence`.
-4. Emit `policy.storage_closure_validation_evidence.v1`.
+4. Emit `policy.storage_closure_validation_evidence.v2` with a canonical
+   command catalog, retained normalized input, and a versioned SHA-256 digest.
 5. Run command specs with array arguments and `shell: false`.
 6. Resolve npm and npx to their JavaScript CLI through the active or bundled
    Node distribution before falling back to the platform command path.
 7. Continue running later checks after failures by default so output shows all
    broken gates.
 8. Emit JSON with `focused`, `lint`, `markdown`, and `full` entries.
-9. Reject unknown check IDs and reported file/storage/Git side effects.
+9. Reject unknown check IDs, duplicate results, invalid generation timestamps,
+   and reported file/storage/Git side effects.
+10. Require a pure fingerprint and replay verification before the completion
+    checkpoint or current-closure audit consumes the evidence.
 
 ## Implementation Outcome
 
@@ -126,6 +156,9 @@ Implemented:
   requirement audit suites.
 - Added the current-closure artifact-integrity design record to the fixed
   markdown validation manifest.
+- Added v2 fingerprint and pure replay services. The completion checkpoint and
+  current-closure audit now reject validation evidence that is legacy,
+  malformed, altered, or not reproducible from retained bounded inputs.
 
 Example:
 
@@ -134,8 +167,8 @@ npm run --silent policy:storage-closure-validation-evidence -- \
   --output .tmp/policy-storage/validation-evidence.json
 ```
 
-## Next Step
+## Security Boundary
 
-Proceed with **Completion Evidence Run module naming cutover** so the current
-evidence collection and closure validation command set can stop depending on
-phase-coded evidence-run module names.
+The SHA-256 field provides workflow-integrity evidence, not remote-producer
+authentication. Cross-host or untrusted-operator handoff requires signed CI
+provenance and a trusted builder policy.

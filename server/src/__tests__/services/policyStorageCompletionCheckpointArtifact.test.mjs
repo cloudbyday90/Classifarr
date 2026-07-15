@@ -15,6 +15,9 @@ import {
   MANIFEST_PATHS,
   buildCompletionAuditArtifactFixture,
 } from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
+import {
+  buildPolicyStorageClosureValidationEvidenceFixture,
+} from './policyStorageClosureValidationEvidenceFixture.mjs';
 
 const COMPONENT_IDS =
   POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => component.componentId);
@@ -41,24 +44,14 @@ function roadmapEvidence(overrides = {}) {
 }
 
 function validationEvidence(overrides = {}) {
+  const {
+    commandResultOverrides = {},
+    ...artifactOverrides
+  } = overrides;
+
   return {
-    focused: {
-      command: 'node ./scripts/run-jest.mjs --testPathPatterns="policyBuilderPhase8" --no-coverage',
-      passed: true,
-    },
-    lint: {
-      command: 'npm run lint',
-      passed: true,
-    },
-    markdown: {
-      command: 'npx markdownlint-cli2 CHANGELOG.md docs/architecture/policy-builder-intent-model-roadmap.md',
-      passed: true,
-    },
-    full: {
-      command: 'npm --prefix server test',
-      passed: true,
-    },
-    ...overrides,
+    ...buildPolicyStorageClosureValidationEvidenceFixture({ commandResultOverrides }),
+    ...artifactOverrides,
   };
 }
 
@@ -100,6 +93,8 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
       componentImplementedCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
       checkpointRiskCount: 0,
       finalRemovalAuditStatusId: 'complete',
+      validationEvidenceIntegrityOk: true,
+      validationEvidenceArtifactFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
       validationPassedCount: 4,
     }));
     expect(artifact.completionAuditArtifact).toEqual(expect.objectContaining({

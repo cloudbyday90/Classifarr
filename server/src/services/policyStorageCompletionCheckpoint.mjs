@@ -4,9 +4,12 @@ import {
 import {
   validatePolicyCompatibilityRemovalCompletionAuditArtifactIntegrity,
 } from './policyCompatibilityRemovalCompletionAuditArtifactIntegrity.mjs';
+import {
+  validatePolicyStorageClosureValidationEvidenceIntegrity,
+} from './policyStorageClosureValidationEvidenceIntegrity.mjs';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_VERSION =
-  'policy.storage_completion_checkpoint.v2';
+  'policy.storage_completion_checkpoint.v3';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -37,6 +40,8 @@ const POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS = Object.freeze({
   MARKDOWN_VALIDATION_FAILED: 'markdown_validation_failed',
   FULL_VALIDATION_MISSING: 'full_validation_missing',
   FULL_VALIDATION_FAILED: 'full_validation_failed',
+  VALIDATION_EVIDENCE_ARTIFACT_INTEGRITY_FAILED:
+    'validation_evidence_artifact_integrity_failed',
   CHANGELOG_ENTRY_MISSING: 'changelog_entry_missing',
   SIDE_EFFECT_PERFORMED: 'side_effect_performed',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
@@ -412,6 +417,22 @@ function evaluateValidationEvidence(validationEvidence = {}) {
   return risks;
 }
 
+function evaluateValidationEvidenceArtifact(validationIntegrity = {}) {
+  if (validationIntegrity.ok === true) {
+    return [];
+  }
+
+  return [buildRisk(
+    POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS
+      .VALIDATION_EVIDENCE_ARTIFACT_INTEGRITY_FAILED,
+    'Policy storage completion checkpoint requires fingerprint-valid, replay-verified validation evidence.',
+    {
+      issueCount: validationIntegrity.issueCount ?? null,
+      issueRiskIds: asArray(validationIntegrity.issues).map(issue => issue.riskId),
+    }
+  )];
+}
+
 function evaluateChangelogEvidence({
   componentCoverage = {},
   changelogEvidence = {},
@@ -467,6 +488,8 @@ function determineStatusId(risks = []) {
   }
 
   if (risks.some(risk => [
+    POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS
+      .VALIDATION_EVIDENCE_ARTIFACT_INTEGRITY_FAILED,
     POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FOCUSED_VALIDATION_MISSING,
     POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FOCUSED_VALIDATION_FAILED,
     POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.LINT_VALIDATION_MISSING,
@@ -506,6 +529,11 @@ async function buildPolicyStorageCompletionCheckpoint({
     expectedComponents,
   });
   const finalRemoval = await evaluateFinalRemovalAudit(completionAuditArtifact);
+  const validationIntegrity =
+    validatePolicyStorageClosureValidationEvidenceIntegrity({ validationEvidence });
+  const verifiedValidationEvidence = validationIntegrity.ok
+    ? validationIntegrity.evidence
+    : validationEvidence;
   const changelog = evaluateChangelogEvidence({
     componentCoverage,
     changelogEvidence,
@@ -515,7 +543,8 @@ async function buildPolicyStorageCompletionCheckpoint({
     ...componentCoverage.risks,
     ...roadmap.risks,
     ...finalRemoval.risks,
-    ...evaluateValidationEvidence(validationEvidence),
+    ...evaluateValidationEvidenceArtifact(validationIntegrity),
+    ...evaluateValidationEvidence(verifiedValidationEvidence),
     ...changelog.risks,
   ];
   const checkpoint = {
@@ -526,10 +555,15 @@ async function buildPolicyStorageCompletionCheckpoint({
     roadmapEvidence: roadmap,
     finalRemovalAudit: finalRemoval,
     validationEvidence: {
-      focused: validationEvidence.focused || null,
-      lint: validationEvidence.lint || null,
-      markdown: validationEvidence.markdown || null,
-      full: validationEvidence.full || null,
+      focused: verifiedValidationEvidence.focused || null,
+      lint: verifiedValidationEvidence.lint || null,
+      markdown: verifiedValidationEvidence.markdown || null,
+      full: verifiedValidationEvidence.full || null,
+    },
+    validationEvidenceIntegrity: {
+      ok: validationIntegrity.ok,
+      issueCount: validationIntegrity.issueCount,
+      artifactFingerprint: validationIntegrity.artifactFingerprint,
     },
     changelogEvidence: changelog,
     riskCount: risks.length,

@@ -9,6 +9,9 @@ import {
   MANIFEST_PATHS,
   buildCompletionAuditArtifactFixture,
 } from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
+import {
+  buildPolicyStorageClosureValidationEvidenceFixture,
+} from './policyStorageClosureValidationEvidenceFixture.mjs';
 
 const COMPONENT_IDS =
   POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => component.componentId);
@@ -35,24 +38,14 @@ function roadmapEvidence(overrides = {}) {
 }
 
 function validationEvidence(overrides = {}) {
+  const {
+    commandResultOverrides = {},
+    ...artifactOverrides
+  } = overrides;
+
   return {
-    focused: {
-      command: 'node ./scripts/run-jest.mjs --testPathPatterns="policyBuilderPhase8" --no-coverage',
-      passed: true,
-    },
-    lint: {
-      command: 'npm run lint -- --no-error-on-unmatched-pattern',
-      passed: true,
-    },
-    markdown: {
-      command: 'npx markdownlint-cli2 "CHANGELOG.md" "docs/architecture/policy-builder-intent-model-roadmap.md"',
-      passed: true,
-    },
-    full: {
-      command: 'npm test',
-      passed: true,
-    },
-    ...overrides,
+    ...buildPolicyStorageClosureValidationEvidenceFixture({ commandResultOverrides }),
+    ...artifactOverrides,
   };
 }
 
@@ -240,25 +233,11 @@ describe('policyStorageCompletionCheckpoint', () => {
     });
     const failed = await completeCheckpoint({
       validationEvidence: validationEvidence({
-        focused: {
-          command: 'focused',
-          passed: false,
-          message: 'focused failed',
-        },
-        lint: {
-          command: 'lint',
-          passed: false,
-          message: 'lint failed',
-        },
-        markdown: {
-          command: 'markdown',
-          passed: false,
-          message: 'markdown failed',
-        },
-        full: {
-          command: 'full',
-          passed: false,
-          message: 'full failed',
+        commandResultOverrides: {
+          focused: { exitCode: 1, message: 'focused failed' },
+          lint: { exitCode: 1, message: 'lint failed' },
+          markdown: { exitCode: 1, message: 'markdown failed' },
+          full: { exitCode: 1, message: 'full failed' },
         },
       }),
     });
@@ -279,6 +258,23 @@ describe('policyStorageCompletionCheckpoint', () => {
       POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.MARKDOWN_VALIDATION_FAILED,
       POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FULL_VALIDATION_FAILED,
     ]));
+  });
+
+  test('rejects validation evidence whose derived checks no longer match its fingerprint', async () => {
+    const alteredValidationEvidence = validationEvidence();
+    alteredValidationEvidence.full.passed = false;
+
+    const checkpoint = await completeCheckpoint({
+      validationEvidence: alteredValidationEvidence,
+    });
+
+    expect(checkpoint.statusId)
+      .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_VALIDATION);
+    expect(checkpoint.validationEvidenceIntegrity.ok).toBe(false);
+    expect(checkpoint.risks.map(risk => risk.riskId)).toContain(
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS
+        .VALIDATION_EVIDENCE_ARTIFACT_INTEGRITY_FAILED
+    );
   });
 
   test('blocks when changelog coverage is missing for expected components', async () => {

@@ -87,7 +87,7 @@ Cons:
 
 ## Final Recommendation Stack
 
-1. Emit `policy.storage_current_closure_audit.v2` only with retained normalized
+1. Emit `policy.storage_current_closure_audit.v3` only with retained normalized
    current-state evidence, completion-audit artifact, validation evidence, and
    side-effect input.
 2. Bind the complete artifact projection using a versioned SHA-256 fingerprint.

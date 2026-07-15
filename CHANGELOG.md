@@ -98,6 +98,11 @@ unchanged operator or runtime outcome.
   requires a fingerprint-valid current-state audit with retained normalized
   evidence and deterministic replay. Altered, stale, or non-replayable closure
   summaries cannot satisfy the final requirement audit.
+- **Replay-Verified Closure Validation Evidence** - storage closure validation
+  now retains bounded normalized command results under a fixed catalog and
+  binds the derived result with SHA-256. Checkpoint and current-closure
+  consumers replay the artifact without command execution, rejecting legacy,
+  altered, or derived-state-inconsistent validation summaries.
 - **Native Policy Authority Guard** - active native-intent policies now reject
   legacy scoring, preset, reset, migration, automatic-preference, and tuning
   mutations atomically, preventing a legacy path from silently replacing or
