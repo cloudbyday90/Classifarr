@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import { policyNativeIntentConversionLimiterConfig } from '../config/rateLimits.mjs';
+import { policyNativeIntentConversionApplyLimiterConfig } from '../config/rateLimits.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import {
   ConflictError,
@@ -58,15 +58,15 @@ function getConversionHttpError(result) {
 }
 
 export function registerPolicyNativeIntentConversionRoutes(router, { db, logger, rateLimit }) {
-  const conversionLimiter = rateLimit(policyNativeIntentConversionLimiterConfig);
+  const conversionApplyLimiter = rateLimit(policyNativeIntentConversionApplyLimiterConfig);
 
-  router.get('/native-intent-conversions/preview', conversionLimiter, asyncHandler(async (req, res) => {
+  router.get('/native-intent-conversions/preview', asyncHandler(async (req, res) => {
     assertAdministrator(req);
     const result = await previewPolicyNativeIntentConversion({ dbClient: db });
     return sendData(res, result);
   }));
 
-  router.post('/native-intent-conversions/apply', conversionLimiter, asyncHandler(async (req, res) => {
+  router.post('/native-intent-conversions/apply', conversionApplyLimiter, asyncHandler(async (req, res) => {
     assertAdministrator(req);
 
     const actorId = toPositiveInteger(req.user?.id);

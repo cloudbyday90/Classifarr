@@ -112,8 +112,8 @@ Cons:
   `server/src/services/policyIntentMigrationCandidateReport.mjs`
 - Selection-aware dry-run plan:
   `server/src/services/policyPostUpgradeDryRun.mjs`
-- Route limiter:
-  `policyNativeIntentConversionLimiterConfig`
+- Apply-route limiter:
+  `policyNativeIntentConversionApplyLimiterConfig`
 
 ## Implementation Outcome
 
@@ -123,6 +123,8 @@ Cons:
   confirmation, derives the actor from the authenticated administrator, and
   rejects duplicate, empty, invalid, over-limit, unknown, or non-ready
   selections before starting a transaction.
+- Kept the bounded preview read-only and authenticated without consuming the
+  apply-attempt budget; only confirmed conversion writes are rate limited.
 - The apply action rebuilds candidate eligibility and the selected conversion
   workflow from current data before calling the transaction-gated writer.
 - The writer now maps the approved workflow actor source to the persistent

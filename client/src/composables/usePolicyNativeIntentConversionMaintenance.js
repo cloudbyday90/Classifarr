@@ -35,10 +35,13 @@ function toPositiveInteger(value) {
 
 function getErrorMessage(error, fallbackMessage) {
   const responseMessage = error?.response?.data?.message
+  const responseError = error?.response?.data?.error
   const errorMessage = error?.message
 
   return typeof responseMessage === 'string' && responseMessage.trim()
     ? responseMessage
+    : typeof responseError === 'string' && responseError.trim()
+      ? responseError
     : typeof errorMessage === 'string' && errorMessage.trim()
       ? errorMessage
       : fallbackMessage

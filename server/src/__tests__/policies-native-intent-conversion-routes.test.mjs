@@ -18,6 +18,7 @@ const queryMock = jest.fn();
 const withTransactionMock = jest.fn(async work => work({ query: queryMock }));
 const previewPolicyNativeIntentConversionMock = jest.fn();
 const applyPolicyNativeIntentConversionMock = jest.fn();
+const conversionRateLimitMock = jest.fn();
 
 jest.unstable_mockModule('../config/database.mjs', () => ({
   query: queryMock,
@@ -41,6 +42,7 @@ jest.unstable_mockModule('../services/policyNativeIntentConversionOperatorAction
 }));
 
 const { router: policiesRouter } = await import('../routes/policies.mjs');
+const { registerPolicyNativeIntentConversionRoutes } = await import('../routes/policiesRouteNativeIntentConversion.mjs');
 const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 function successResult(overrides = {}) {
@@ -73,18 +75,41 @@ function createApp(user = { id: 7, role: 'admin' }) {
   return app;
 }
 
+function createConversionApp({
+  user = { id: 7, role: 'admin' },
+  rateLimit = conversionRateLimitMock,
+} = {}) {
+  const app = express();
+  const router = express.Router();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    req.user = user;
+    next();
+  });
+  registerPolicyNativeIntentConversionRoutes(router, {
+    db: { query: queryMock, withTransaction: withTransactionMock },
+    logger: { info: jest.fn() },
+    rateLimit,
+  });
+  app.use('/api/policies', router);
+  app.use(errorHandler);
+  return app;
+}
+
 describe('Policy native intent conversion routes', () => {
   beforeEach(() => {
     queryMock.mockReset();
     withTransactionMock.mockReset();
     previewPolicyNativeIntentConversionMock.mockReset();
     applyPolicyNativeIntentConversionMock.mockReset();
+    conversionRateLimitMock.mockReset();
     withTransactionMock.mockImplementation(async work => work({ query: queryMock }));
     previewPolicyNativeIntentConversionMock.mockResolvedValue({
       statusId: 'preview_ready',
       candidateReport: { rawLegacyJsonIncluded: false },
     });
     applyPolicyNativeIntentConversionMock.mockResolvedValue(successResult());
+    conversionRateLimitMock.mockReturnValue((_req, _res, next) => next());
   });
 
   test('returns an administrator-only conversion preview', async () => {
@@ -96,6 +121,30 @@ describe('Policy native intent conversion routes', () => {
     expect(previewPolicyNativeIntentConversionMock).toHaveBeenCalledWith({
       dbClient: expect.any(Object),
     });
+  });
+
+  test('limits only conversion applies so previews do not consume the write budget', async () => {
+    conversionRateLimitMock.mockReturnValue((_req, res) => {
+      res.status(429).json({ error: 'conversion apply rate limited' });
+    });
+    const app = createConversionApp();
+
+    await request(app)
+      .get('/api/policies/native-intent-conversions/preview')
+      .expect(200);
+
+    await request(app)
+      .post('/api/policies/native-intent-conversions/apply')
+      .send({ policy_ids: [14], confirmation: 'CONVERT_NATIVE_INTENT' })
+      .expect(429);
+
+    expect(conversionRateLimitMock).toHaveBeenCalledTimes(1);
+    expect(conversionRateLimitMock).toHaveBeenCalledWith(expect.objectContaining({
+      limit: 3,
+      windowMs: 15 * 60 * 1000,
+    }));
+    expect(previewPolicyNativeIntentConversionMock).toHaveBeenCalledTimes(1);
+    expect(applyPolicyNativeIntentConversionMock).not.toHaveBeenCalled();
   });
 
   test('derives the operator identity server-side for apply', async () => {

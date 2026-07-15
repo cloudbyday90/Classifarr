@@ -99,10 +99,10 @@ export const setupLimiterConfig = {
   legacyHeaders: false,
 };
 
-/** Native policy-intent conversion (per IP, per 15 minutes). */
-export const policyNativeIntentConversionLimiterConfig = {
+/** Native policy-intent conversion applies (per IP, per 15 minutes). */
+export const policyNativeIntentConversionApplyLimiterConfig = {
   windowMs: 15 * 60 * 1000,
-  max: 3,
+  limit: 3,
   message: { error: 'Too many native policy-intent conversion attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,

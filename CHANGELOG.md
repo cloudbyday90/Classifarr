@@ -605,6 +605,11 @@ unchanged operator or runtime outcome.
 
 ### Fixed
 
+- **Native Intent Conversion Rate Limit** - conversion previews no longer
+  consume the protected apply-attempt budget. Administrators can inspect or
+  refresh eligibility without blocking a confirmed conversion, while the
+  write endpoint remains independently rate limited and now shows its
+  server-provided retry message.
 - **Policy Storage Completion Audit** - replaced dynamic roadmap-label regular
   expression construction with a bounded line parser, preserving deterministic
   completion checks while removing the remaining static-analysis warning.

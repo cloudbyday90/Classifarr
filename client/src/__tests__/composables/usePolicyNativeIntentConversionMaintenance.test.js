@@ -142,4 +142,28 @@ describe('usePolicyNativeIntentConversionMaintenance', () => {
 
     expect(maintenance.errorMessage.value).toBe('Admin access required')
   })
+
+  it('shows the server rate-limit message when a conversion apply is rejected', async () => {
+    apiMock.getNativeIntentConversionPreview.mockResolvedValue(preview)
+    apiMock.applyNativeIntentConversion.mockRejectedValue({
+      response: {
+        data: {
+          error: 'Too many native policy-intent conversion attempts, please try again later',
+        },
+      },
+      message: 'Request failed with status code 429',
+    })
+    const maintenance = usePolicyNativeIntentConversionMaintenance()
+
+    await maintenance.loadPreview()
+    maintenance.selectPolicy(11, true)
+
+    await expect(maintenance.applySelectedPolicies('CONVERT_NATIVE_INTENT')).resolves.toEqual({
+      applied: false,
+      reason: 'request_failed',
+    })
+
+    expect(maintenance.errorMessage.value)
+      .toBe('Too many native policy-intent conversion attempts, please try again later')
+  })
 })
