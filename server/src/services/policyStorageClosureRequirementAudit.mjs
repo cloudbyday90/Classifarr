@@ -161,7 +161,10 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
       'server/src/services/policyControlledCompatibilityRemovalBatchArtifact.mjs',
       'scripts/generate-policy-controlled-compatibility-removal-batch-artifact.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyControlledCompatibilityRemovalBatchArtifact.test.mjs'],
+    testPaths: [
+      'server/src/__tests__/services/policyControlledCompatibilityRemovalBatchArtifact.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyControlledCompatibilityRemovalBatchArtifact.test.mjs',
+    ],
   },
   {
     componentId: 'controlled_removal_apply_artifact_exporter',

@@ -6454,12 +6454,21 @@ Implementation status:
 ### 8R.27 Policy Controlled Compatibility Removal Batch Artifact
 
 Intent: generate the machine-readable controlled compatibility removal batch
-JSON from a ready compatibility deletion execution plan, explicit gate
-evidence, selected manifest paths, review reason, and reviewer metadata.
+JSON from a ready fingerprint-valid compatibility deletion execution-plan
+artifact, explicit gate evidence, selected manifest paths, review reason, and
+reviewer metadata.
 
 Tasks:
 
-- Require a ready compatibility deletion execution-plan JSON artifact.
+- **8R.27.1 Controlled-Removal Batch Exporter Artifact-Chain Verification**
+  - Completed: runs the public exporter with ready evidence and proves its
+    nested review batch preserves the approved review artifact, execution-plan
+    fingerprint, and execution-gate binding required by controlled apply.
+  - Completed: proves mismatched preflight evidence writes no output by default
+    and an out-of-manifest selection produces only an explicit, bounded
+    diagnostic with `--allow-blocked`.
+- Require a ready fingerprint-valid compatibility deletion execution-plan
+  artifact.
 - Require explicit gate input evidence for clean worktree,
   backup/restore freshness, operator approval, final rollback/support stance,
   and manifest freshness.
@@ -6501,6 +6510,9 @@ Implementation status:
 - Current implementation generates the reviewed removal-batch JSON input for
   a later controlled apply artifact while keeping destructive removal out of
   this component.
+- Task 8R.27.1 adds process-level coverage of the public JSON boundary and
+  confirms that its nested review batch reaches controlled-apply confirmation
+  checks without an integrity failure or an apply-adapter invocation.
 
 ### 8R.28 Controlled Removal Apply Artifact Exporter
 
@@ -7061,8 +7073,9 @@ Implement Phase 8R in this order:
     rollback, and support evidence for downstream final-removal-audit tooling.
 27. **8R.27 Policy Controlled Compatibility Removal Batch Artifact**
     Generates a machine-readable controlled compatibility removal batch from a
-    ready execution plan, explicit execution-gate evidence, selected approved
-    manifest paths, review reason, and reviewer metadata.
+    ready fingerprint-valid execution-plan artifact, explicit execution-gate
+    evidence, selected approved manifest paths, review reason, and reviewer
+    metadata.
 28. **8R.28 Controlled Removal Apply Artifact Exporter**
     Generates a machine-readable controlled-removal apply artifact from a
     ready reviewed batch, explicit execute confirmation, and a bounded

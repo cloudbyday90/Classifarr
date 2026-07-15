@@ -36,6 +36,10 @@ unchanged operator or runtime outcome.
   wrapper, not the diagnostic nested plan, is accepted as storage-closure
   authority. Blocked input writes no output unless explicit diagnostic export
   is requested.
+- **Controlled Removal Batch Export Assurance** - verified the public batch
+  generator preserves approved review and execution bindings for the later
+  controlled-apply confirmation step. Mismatched preflight evidence cannot
+  write a batch by default, and blocked diagnostic export remains explicit.
 
 - **Single Active Native Intent Authority** - repaired and now enforces the
   database invariant that each policy has at most one active native intent.

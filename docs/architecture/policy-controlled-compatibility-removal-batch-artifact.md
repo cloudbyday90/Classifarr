@@ -25,6 +25,13 @@ manifests, or run Git commands.
 - Node.js file-system APIs support ESM and local tooling reads/writes. The
   generator uses bounded synchronous JSON I/O because it is a short-lived local
   evidence command, not request-path runtime code.
+- SLSA verification guidance recommends evaluating an artifact against its
+  expected inputs and rejecting unexpected external parameters. The public
+  exporter therefore proves that preflight evidence bound to another
+  execution-plan artifact cannot produce a review batch.
+- NIST SSDF recommends integrating secure development practices with the SDLC.
+  The public-command test reaches controlled-apply confirmation checks with a
+  valid reviewed batch while preserving the separate, explicit apply decision.
 
 Sources:
 
@@ -36,6 +43,10 @@ Sources:
   <https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/>
 - Node.js file system API:
   <https://nodejs.org/api/fs.html>
+- SLSA artifact verification:
+  <https://slsa.dev/spec/v1.2/verifying-artifacts>
+- NIST SP 800-218:
+  <https://csrc.nist.gov/pubs/sp/800/218/final>
 
 ## Recommendations
 
@@ -104,6 +115,30 @@ Cons:
 - requires coordinated updates across validation, requirement audit, roadmap,
   docs, and package scripts.
 
+### Verify The Public Exporter And Review-Consumer Chain
+
+The public Node command should be tested with the JSON files that an operator
+or CI job supplies. A ready invocation must preserve the approved review
+artifact and execution context in the nested removal batch. The controlled
+apply layer must accept that review through its integrity checks, but stop at
+the separate confirmation step without invoking an apply adapter.
+
+Blocked input must write neither output by default. A mismatched preflight
+fingerprint is blocked, and a bounded blocked diagnostic may be written only
+when `--allow-blocked` is explicitly supplied.
+
+Pros:
+
+- proves the CLI preserves artifact, gate, and reviewer bindings into the
+  downstream consumer,
+- prevents a detached preflight record from authorizing a removal review,
+- proves the test does not apply or delete a compatibility path.
+
+Cons:
+
+- process-level checks are slower than direct service tests,
+- fixture input must evolve with the reviewed-batch contract.
+
 ## Final Recommendation Stack
 
 Use this stack for controlled compatibility removal batch generation:
@@ -120,7 +155,9 @@ Use this stack for controlled compatibility removal batch generation:
 5. Refuse ready output unless both gate and batch validate.
 6. Write the nested removal-batch JSON for controlled apply tooling.
 7. Optionally write the wrapper artifact for audit trails.
-8. Expose durable controlled compatibility removal batch service, script,
+8. Verify the public exporter preserves review integrity and refuses blocked
+   output unless diagnostic export is explicitly enabled.
+9. Expose durable controlled compatibility removal batch service, script,
    runner, version, test, and documentation names.
 
 ## Implementation Outcome
@@ -142,6 +179,12 @@ Implemented:
 - Preserved execution-plan gating, execution-gate gating, manifest-bound path
   selection, blocked-batch diagnostics, side-effect rejection, nested batch
   output, and optional wrapper-artifact output.
+- Added a process-level generator suite at
+  `server/src/__tests__/scripts/generatePolicyControlledCompatibilityRemovalBatchArtifact.test.mjs`.
+  It proves the public command preserves the review artifact and execution
+  context into controlled-apply confirmation checks, writes no output for a
+  fingerprint-mismatched preflight by default, and writes a bounded blocked
+  diagnostic only with `--allow-blocked`.
 
 Example:
 
