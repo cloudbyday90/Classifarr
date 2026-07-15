@@ -8,7 +8,8 @@ safe terminal state.
 
 The audit is intentionally read-only. It consumes:
 
-- an approved compatibility deletion execution-plan artifact,
+- an approved compatibility deletion execution-plan artifact as its only
+  manifest source,
 - a fingerprint-valid next-batch authorization artifact with embedded runtime
   evidence,
 - the applied removal-review artifact fingerprint,
@@ -37,6 +38,9 @@ is consumed by `npm run policy:storage-closure-evidence`.
 - Node.js documents synchronous file-system APIs as blocking and immediately
   throwing exceptions. That tradeoff is acceptable here because the generator is
   a bounded local/CI verification command, not request-path runtime code.
+- SLSA recommends verifying artifacts against expected provenance and rejecting
+  unrecognized external parameters. The audit therefore validates one
+  versioned artifact contract before it accepts any manifest path.
 
 Sources:
 
@@ -48,23 +52,32 @@ Sources:
   <https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html>
 - Node.js file system API:
   <https://nodejs.org/api/fs.html>
+- SLSA artifact verification:
+  <https://slsa.dev/spec/v1.2/verifying-artifacts>
 
 ## Recommendations
 
-### Require An Explicit Deletion Execution Plan
+### Require An Approved Execution-Plan Artifact
 
-The generator should require an approved compatibility deletion execution-plan
-JSON file rather than inventing a manifest from broad searches.
+The generator should require the ready, fingerprint-valid compatibility
+deletion execution-plan artifact rather than accepting a raw nested plan or
+inventing a manifest from broad searches. Its manifest must retain approval and
+approver metadata, matching ready entries, and canonical repository-relative
+paths before the generator checks the checkout.
 
 Pros:
 
 - keeps the audit tied to approved deletion intent,
+- prevents a plan-shaped JSON file from becoming deletion scope,
+- rejects traversal, absolute, duplicate, and non-canonical paths before any
+  filesystem work,
 - prevents broad accidental source inventory from becoming deletion scope,
 - makes missing manifest evidence explicit.
 
 Cons:
 
-- callers must preserve or regenerate the execution-plan artifact.
+- callers must preserve or regenerate the wrapper artifact rather than only
+  its nested plan.
 
 ### Derive Remaining Inventory From The Checkout
 
@@ -124,8 +137,10 @@ Cons:
 
 Use this stack for final removal audit evidence:
 
-1. Require an explicit compatibility deletion execution-plan JSON file.
-2. Read approved manifest paths from that file.
+1. Require a ready, fingerprint-valid compatibility deletion execution-plan
+   artifact JSON file.
+2. Validate the nested plan and expose only its approved, canonical, unique,
+   repository-relative manifest paths.
 3. Inspect current checkout path existence for each manifest path.
 4. Revalidate the supplied next-batch authorization artifact, its embedded
    runtime evidence, and its applied removal-review fingerprint.
@@ -152,7 +167,7 @@ Implemented:
 - Added the root runner
   `npm run policy:storage-closure-final-removal-audit`.
 - Replaced the phase-coded payload version with
-  `policy.storage_closure_final_removal_audit.v1`.
+  `policy.storage_closure_final_removal_audit.v2`.
 - Updated storage-closure validation and requirement-audit evidence references
   to require the durable final removal audit contract.
 - Preserved path-state derivation, remaining-inventory reporting, completion
@@ -163,12 +178,15 @@ Implemented:
   checkout state.
 - Compares the artifact's removed and remaining path sets with the current
   checkout before a storage-closure result can be reported.
+- Rejects raw nested plans, invalid or unready artifacts, bad fingerprints,
+  incomplete approvals, and unsafe or duplicate manifest paths before it can
+  inspect checkout paths or source references.
 
 Example:
 
 ```bash
 npm run --silent policy:storage-closure-final-removal-audit -- \
-  --execution-plan .tmp/policy-storage/execution-plan.json \
+  --execution-plan-artifact .tmp/policy-storage/execution-plan-artifact.json \
   --next-batch-authorization-artifact \
     .tmp/policy-storage/next-batch-authorization-artifact.json \
   --review-artifact-fingerprint "$REVIEW_ARTIFACT_FINGERPRINT" \

@@ -6299,8 +6299,14 @@ approved manifest paths still exist.
 
 Tasks:
 
-- Require an approved compatibility deletion execution-plan JSON artifact as
-  the manifest source.
+- **8R.25.1 Approved Execution-Plan Artifact Source**
+  - Completed: require the ready, fingerprint-valid compatibility deletion
+    execution-plan artifact as the final-removal audit's sole manifest source.
+  - Completed: reject raw plans, unready or malformed artifacts, invalid
+    fingerprints, missing approval metadata, unsafe paths, duplicate paths,
+    and entry-count or readiness mismatches before filesystem inspection.
+  - Completed: expose only the validated nested plan to path-state and
+    reference-scan work; invalid sources cannot define audit scope.
 - Read approved manifest paths from the execution plan.
 - Inspect current checkout path existence for every manifest path.
 - Build next-batch authorization evidence from current removed and remaining
@@ -6337,8 +6343,9 @@ Implementation status:
 - The focused final-removal audit evidence test suite lives in
   `server/src/__tests__/services/policyStorageClosureFinalRemovalAudit.test.mjs`.
 - Current implementation can generate the final-removal-audit JSON input for
-  the policy storage closure evidence run; completion remains dependent on the
-  real execution-plan artifact and current checkout removal state.
+  the policy storage closure evidence run. It now requires the wrapper artifact
+  at the generator boundary; completion remains dependent on its real current
+  checkout removal state.
 
 ### 8R.26 Policy Compatibility Deletion Execution Plan Artifact
 

@@ -93,11 +93,13 @@ Cons:
 2. Update closure requirement and validation evidence maps to require the new
    paths.
 3. Update roadmap, design records, handoff docs, and changelog references.
-4. Require a fingerprint-valid next-batch authorization artifact and applied
+4. Require a ready, fingerprint-valid execution-plan artifact as the sole
+   manifest source and reject unsafe or unapproved paths before filesystem work.
+5. Require a fingerprint-valid next-batch authorization artifact and applied
    review fingerprint at the generator boundary.
-5. Reconcile the verified artifact path sets with the current checkout.
-6. Preserve read-only behavior and focused tests.
-7. Validate both direct command help and package runner help.
+6. Reconcile the verified artifact path sets with the current checkout.
+7. Preserve read-only behavior and focused tests.
+8. Validate both direct command help and package runner help.
 
 ## Implementation Outcome
 
@@ -107,7 +109,8 @@ Implemented:
 - `policyStorageClosureFinalRemovalAudit.test.mjs`
 - `generate-policy-storage-closure-final-removal-audit.mjs`
 - `policy:storage-closure-final-removal-audit`
-- `policy.storage_closure_final_removal_audit.v1`
+- `policy.storage_closure_final_removal_audit.v2`
+- `policyStorageClosureExecutionPlanSource.mjs`
 - validation-evidence markdown coverage for this cutover record
 
 The cutover keeps the final audit as a storage-closure evidence artifact and

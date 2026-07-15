@@ -18,6 +18,11 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Approved Final-Removal Manifest Source** - storage-closure final-removal
+  audits now require ready, fingerprint-valid execution-plan artifacts and
+  reject raw, unapproved, altered, unsafe, or duplicate manifest paths before
+  repository inspection.
+
 - **Single Active Native Intent Authority** - repaired and now enforces the
   database invariant that each policy has at most one active native intent.
   Safe historical duplicates are retained as linked inactive history, unsafe

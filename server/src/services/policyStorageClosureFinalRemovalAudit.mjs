@@ -2,9 +2,16 @@ import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
   buildPolicyCompatibilityRemovalCompletionAudit,
 } from './policyCompatibilityRemovalCompletionAudit.mjs';
+import {
+  resolvePolicyStorageClosureExecutionPlanSource,
+} from './policyStorageClosureExecutionPlanSource.mjs';
 
 const POLICY_STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT_VERSION =
-  'policy.storage_closure_final_removal_audit.v1';
+  'policy.storage_closure_final_removal_audit.v2';
+
+const POLICY_STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT_STATUS_IDS = Object.freeze({
+  BLOCKED_BY_EXECUTION_PLAN_ARTIFACT: 'blocked_by_execution_plan_artifact',
+});
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -26,21 +33,17 @@ function pathsMatch(left = [], right = []) {
     expected.every((path, index) => path === actual[index]);
 }
 
-function getExecutionPlanManifestPaths(executionPlan = {}) {
-  return asArray(executionPlan.manifest?.entries)
-    .map(entry => normalizePath(entry?.path))
-    .filter(Boolean);
-}
-
 function buildManifestPathState({
-  executionPlan = {},
+  manifestPaths = [],
   fileExists = () => false,
 } = {}) {
-  const manifestPaths = getExecutionPlanManifestPaths(executionPlan);
+  const normalizedManifestPaths = asArray(manifestPaths)
+    .map(normalizePath)
+    .filter(Boolean);
   const existingPaths = [];
   const removedPaths = [];
 
-  manifestPaths.forEach(path => {
+  normalizedManifestPaths.forEach(path => {
     if (fileExists(path)) {
       existingPaths.push(path);
     } else {
@@ -49,10 +52,10 @@ function buildManifestPathState({
   });
 
   return {
-    totalCount: manifestPaths.length,
+    totalCount: normalizedManifestPaths.length,
     existingCount: existingPaths.length,
     removedCount: removedPaths.length,
-    manifestPaths,
+    manifestPaths: normalizedManifestPaths,
     existingPaths,
     removedPaths,
   };
@@ -97,15 +100,19 @@ function buildPathStateVerification({ pathState = {}, audit = {} } = {}) {
 }
 
 async function buildPolicyStorageClosureFinalRemovalAudit({
-  executionPlan = {},
+  executionPlanArtifact = null,
   nextBatchAuthorizationArtifact = null,
   reviewArtifactFingerprint = '',
   validationEvidence = {},
   referenceScan = {},
   fileExists = () => false,
 } = {}) {
+  const executionPlanSource = resolvePolicyStorageClosureExecutionPlanSource({
+    executionPlanArtifact,
+  });
+  const executionPlan = executionPlanSource.executionPlan || {};
   const pathState = buildManifestPathState({
-    executionPlan,
+    manifestPaths: executionPlanSource.manifestPaths,
     fileExists,
   });
   const finalImportScan = buildFinalImportScan({
@@ -120,7 +127,10 @@ async function buildPolicyStorageClosureFinalRemovalAudit({
     validationEvidence,
   });
   const pathStateVerification = buildPathStateVerification({ pathState, audit });
-  const statusId = pathStateVerification.ok
+  const statusId = !executionPlanSource.ok
+    ? POLICY_STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT_STATUS_IDS
+      .BLOCKED_BY_EXECUTION_PLAN_ARTIFACT
+    : pathStateVerification.ok
     ? audit.statusId
     : POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
       .BLOCKED_BY_AUTHORIZATION_ARTIFACT;
@@ -132,7 +142,9 @@ async function buildPolicyStorageClosureFinalRemovalAudit({
       statusId ===
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE &&
       audit.complete === true &&
+      executionPlanSource.ok &&
       pathStateVerification.ok,
+    executionPlanSource,
     pathState,
     pathStateVerification,
     finalImportScan,
@@ -142,9 +154,9 @@ async function buildPolicyStorageClosureFinalRemovalAudit({
 
 export {
   POLICY_STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT_VERSION,
+  POLICY_STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT_STATUS_IDS,
   buildFinalImportScan,
   buildManifestPathState,
   buildPathStateVerification,
   buildPolicyStorageClosureFinalRemovalAudit,
-  getExecutionPlanManifestPaths,
 };

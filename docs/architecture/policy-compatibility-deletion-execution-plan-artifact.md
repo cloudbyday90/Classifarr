@@ -64,19 +64,20 @@ Cons:
 
 ### Write The Nested Execution Plan Separately
 
-The script should write the nested compatibility deletion execution plan to the
-path that later tools expect, while optionally writing the wrapper artifact for
-audit.
+The script may write the nested compatibility deletion execution plan for
+diagnostics and earlier read-only consumers while writing the wrapper artifact
+for final-removal audit authority.
 
 Pros:
 
-- keeps storage-closure final-removal audit input simple,
+- supports diagnostic and earlier read-only plan consumers,
 - preserves richer generation metadata when desired,
 - avoids changing the existing deletion execution-plan contract.
 
 Cons:
 
-- produces two related JSON shapes when `--artifact-output` is used.
+- produces two related JSON shapes when `--artifact-output` is used; the raw
+  nested plan is not final-removal audit authority.
 
 ### Block By Default When The Plan Is Not Ready
 
@@ -120,9 +121,10 @@ Use this stack for compatibility deletion execution-plan artifact generation:
    and no-side-effect evidence.
 4. Refuse to write ready execution-plan output when readiness is blocked unless
    `--allow-blocked` is passed.
-5. Write the nested execution-plan JSON for downstream storage-closure final
-   audit tooling.
-6. Optionally write the wrapper artifact for audit trails.
+5. Optionally write the nested execution-plan JSON for diagnostic and earlier
+   read-only consumers.
+6. Write the fingerprint-valid wrapper artifact for downstream storage-closure
+   final-removal audit tooling.
 7. Expose durable compatibility deletion execution-plan artifact service,
    script, runner, version, test, and documentation names.
 
@@ -146,9 +148,9 @@ Implemented:
   to require the durable execution-plan artifact contract.
 - Preserved explicit input requirements, blocked-plan diagnostics,
   side-effect rejection, nested-plan writing, and optional wrapper-artifact
-  writing. The v2 wrapper is required by the execution gate and controlled
-  batch artifact; raw execution-plan JSON remains available for earlier
-  read-only audit tooling only.
+  writing. The v2 wrapper is required by the execution gate, controlled batch
+  artifact, and storage-closure final-removal audit; raw execution-plan JSON
+  remains available for earlier read-only diagnostic tooling only.
 
 Example:
 
@@ -159,12 +161,12 @@ npm run --silent policy:compatibility-deletion-execution-plan-artifact -- \
   --artifact-output .tmp/policy-storage/execution-plan-artifact.json
 ```
 
-Then pass the generated execution plan into the storage-closure final-removal
-audit:
+Then pass the generated execution-plan artifact into the storage-closure
+final-removal audit:
 
 ```bash
 npm run --silent policy:storage-closure-final-removal-audit -- \
-  --execution-plan .tmp/policy-storage/execution-plan.json \
+  --execution-plan-artifact .tmp/policy-storage/execution-plan-artifact.json \
   --validation-evidence .tmp/policy-storage/validation-evidence.json \
   --output .tmp/policy-storage/final-removal-audit.json
 ```

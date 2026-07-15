@@ -107,12 +107,19 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
   {
     componentId: 'storage_closure_final_removal_audit',
     label: 'Policy Storage Closure Final Removal Audit',
-    designDocPaths: ['docs/architecture/policy-storage-closure-final-removal-audit.md'],
+    designDocPaths: [
+      'docs/architecture/policy-storage-closure-final-removal-audit.md',
+      'docs/architecture/policy-storage-closure-execution-plan-source.md',
+    ],
     contractPaths: [
       'server/src/services/policyStorageClosureFinalRemovalAudit.mjs',
+      'server/src/services/policyStorageClosureExecutionPlanSource.mjs',
       'scripts/generate-policy-storage-closure-final-removal-audit.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyStorageClosureFinalRemovalAudit.test.mjs'],
+    testPaths: [
+      'server/src/__tests__/services/policyStorageClosureFinalRemovalAudit.test.mjs',
+      'server/src/__tests__/services/policyStorageClosureExecutionPlanSource.test.mjs',
+    ],
   },
   {
     componentId: 'compatibility_deletion_execution_plan_artifact',

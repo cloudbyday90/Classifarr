@@ -18,13 +18,15 @@ import {
 } from './lib/policyStorageClosureReferenceScanner.mjs';
 import {
   buildPolicyStorageClosureFinalRemovalAudit,
-  getExecutionPlanManifestPaths,
 } from '../server/src/services/policyStorageClosureFinalRemovalAudit.mjs';
+import {
+  resolvePolicyStorageClosureExecutionPlanSource,
+} from '../server/src/services/policyStorageClosureExecutionPlanSource.mjs';
 
 function parseArgs(argv = []) {
   const options = {
     cwd: process.cwd(),
-    executionPlanPath: null,
+    executionPlanArtifactPath: null,
     nextBatchAuthorizationArtifactPath: null,
     reviewArtifactFingerprint: '',
     validationEvidencePath: null,
@@ -40,8 +42,8 @@ function parseArgs(argv = []) {
       index += 1;
       continue;
     }
-    if (arg === '--execution-plan') {
-      options.executionPlanPath = argv[index + 1] || null;
+    if (arg === '--execution-plan-artifact') {
+      options.executionPlanArtifactPath = argv[index + 1] || null;
       index += 1;
       continue;
     }
@@ -86,7 +88,7 @@ function usage() {
     '',
     'Options:',
     '  --cwd <path>                    Repository root. Defaults to process cwd.',
-    '  --execution-plan <json>         Required compatibility deletion execution-plan JSON.',
+    '  --execution-plan-artifact <json> Required approved compatibility deletion execution-plan artifact JSON.',
     '  --next-batch-authorization-artifact <json> Required fingerprint-valid next-batch authorization artifact JSON.',
     '  --review-artifact-fingerprint <sha256> Required applied removal-review artifact fingerprint.',
     '  --validation-evidence <json>    Optional policy storage closure validation evidence JSON.',
@@ -146,14 +148,17 @@ async function main() {
   }
 
   const cwd = path.resolve(process.cwd(), options.cwd);
-  let executionPlan;
+  let executionPlanArtifact;
   let nextBatchAuthorizationArtifact;
   let validationEvidence;
 
   try {
-    executionPlan = readJsonFile(options.executionPlanPath, 'execution plan', {
+    executionPlanArtifact = readJsonFile(
+      options.executionPlanArtifactPath,
+      'execution-plan artifact', {
       required: true,
-    });
+      }
+    );
     nextBatchAuthorizationArtifact = readJsonFile(
       options.nextBatchAuthorizationArtifactPath,
       'next-batch authorization artifact',
@@ -168,15 +173,26 @@ async function main() {
     process.exit(2);
   }
 
-  const manifestPaths = getExecutionPlanManifestPaths(executionPlan);
+  const executionPlanSource = resolvePolicyStorageClosureExecutionPlanSource({
+    executionPlanArtifact,
+  });
+  if (!executionPlanSource.ok) {
+    console.error('Execution-plan artifact is not an approved storage-closure manifest source.');
+    console.error(JSON.stringify({
+      issueCount: executionPlanSource.issueCount,
+      issues: executionPlanSource.issues,
+    }, null, 2));
+    process.exit(2);
+  }
+
   const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
-    executionPlan,
+    executionPlanArtifact,
     nextBatchAuthorizationArtifact,
     reviewArtifactFingerprint: options.reviewArtifactFingerprint,
     validationEvidence,
     referenceScan: scanPolicyStorageClosureReferences({
       cwd,
-      manifestPaths,
+      manifestPaths: executionPlanSource.manifestPaths,
     }),
     fileExists: repositoryPath => fileExistsAtRepositoryPath(cwd, repositoryPath),
   });

@@ -80,6 +80,12 @@ function summarizeExecutionPlan(executionPlan = {}) {
   };
 }
 
+function getExecutionPlanManifestPaths(executionPlan = {}) {
+  return asArray(executionPlan.manifest?.entries)
+    .map(entry => String(entry?.path || '').replace(/\\/g, '/').trim())
+    .filter(Boolean);
+}
+
 async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
   executionPlan = {},
   nextBatchAuthorizationArtifact = null,
@@ -91,7 +97,7 @@ async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
 } = {}) {
   const plan = asObject(executionPlan);
   const pathState = buildManifestPathState({
-    executionPlan: plan,
+    manifestPaths: getExecutionPlanManifestPaths(plan),
     fileExists,
   });
   const finalImportScan = buildCurrentFinalImportScan({
