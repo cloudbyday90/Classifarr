@@ -219,6 +219,7 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
       'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorization.test.mjs',
       'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationPathStateSource.test.mjs',
       'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyNextBatchAuthorization.test.mjs',
     ],
   },
   {

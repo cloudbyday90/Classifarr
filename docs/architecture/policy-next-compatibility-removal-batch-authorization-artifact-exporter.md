@@ -33,6 +33,15 @@ or records that no approved manifest paths remain.
 - OWASP API9:2023 Improper Inventory Management treats stale or unmanaged
   surfaces as a security risk. This exporter keeps cleanup tied to the approved
   compatibility inventory and blocks unknown or already removed paths.
+- SLSA's artifact verification guidance requires consumers to compare an
+  artifact and its provenance against expected values and recommends
+  defense-in-depth verification at more than one boundary. The public exporter
+  therefore rechecks the runtime artifact, execution-plan artifact, and
+  replayed path-state evidence instead of treating a JSON file as trusted.
+- OWASP input-validation guidance recommends server-side allowlists. The
+  exporter authorizes only paths in the retained approved manifest, and its
+  process test proves that unknown and previously removed paths cannot cause
+  output writes by default.
 
 Sources:
 
@@ -46,6 +55,10 @@ Sources:
   <https://git-scm.com/docs/git-mv>
 - OWASP API9:2023 Improper Inventory Management:
   <https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/>
+- SLSA Verifying Artifacts:
+  <https://slsa.dev/spec/v1.2/verifying-artifacts>
+- OWASP Input Validation Cheat Sheet:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html>
 
 ## Recommendations
 
@@ -105,6 +118,27 @@ Cons:
 - operators must distinguish next-batch authorization from completion
   authorization.
 
+### Verify the Public Artifact Chain
+
+The command-level boundary should be tested with the genuine versioned runtime
+evidence artifact, execution-plan wrapper, and replayed path-state evidence.
+The test should assert that a coherent chain writes the nested authorization and
+its wrapper together, while unknown paths, another review fingerprint, another
+manifest, or an already-removed path fail closed. Blocked diagnostics may be
+written only after an explicit operator flag.
+
+Pros:
+
+- proves the CLI preserves service-level provenance and allowlist checks,
+- prevents a future argument or serialization change from bypassing no-write
+  defaults,
+- validates the exact output consumed by the next removal or completion loop.
+
+Cons:
+
+- the test deliberately mirrors a small verified removal context, so fixture
+  changes must keep all three artifacts coherent.
+
 ## Final Recommendation Stack
 
 Use this stack for next-batch authorization:
@@ -123,6 +157,8 @@ Use this stack for next-batch authorization:
 8. Emit ready next-batch authorization or complete-no-remaining-paths evidence.
 9. Reject file deletion, archive, route/test removal, storage mutation, manifest
    writes, and Git side effects.
+10. Exercise the public command with a coherent artifact chain and require an
+    explicit flag before blocked diagnostics are written.
 
 ## Implementation Outcome
 
@@ -138,8 +174,14 @@ Implemented:
   - blocked invalid requested paths,
   - forbidden side-effect rejection,
   - artifact validation invariants.
+- Added public generator verification that:
+  - writes ready nested and wrapper authorization output only from one coherent
+    runtime-evidence, execution-plan, and path-state artifact chain,
+  - fails closed without writing output for unknown paths, a cross-review
+    authorization context, or runtime evidence from another manifest,
+  - writes an already-removed-path diagnostic only with `--allow-blocked`.
 - Added the next-batch authorization artifact suite and this design doc to the
-  fixed policy storage closure validation evidence command set.
+  fixed policy storage-closure requirement audit and current-evidence inventory.
 - The artifact now emits `version =
   policy.next_compatibility_removal_batch_authorization_artifact.v4`, retains
   the consumed runtime evidence, execution-plan artifact, and path-state

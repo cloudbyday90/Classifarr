@@ -322,12 +322,22 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     designDocPaths: [
       'docs/architecture/policy-next-compatibility-removal-batch-authorization.md',
       'docs/architecture/policy-next-compatibility-removal-batch-authorization-artifact-integrity.md',
+      'docs/architecture/policy-next-compatibility-removal-batch-authorization-artifact-exporter.md',
     ],
     contractPaths: [
       'server/src/services/policyNextCompatibilityRemovalBatchAuthorization.mjs',
+      'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationPathStateSource.mjs',
+      'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs',
+      'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactFingerprint.mjs',
       'server/src/services/policyPostRemovalRuntimeEvidenceArtifact.mjs',
+      'scripts/generate-policy-next-batch-authorization.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorization.test.mjs'],
+    testPaths: [
+      'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorization.test.mjs',
+      'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationPathStateSource.test.mjs',
+      'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyNextBatchAuthorization.test.mjs',
+    ],
   },
   {
     componentId: 'compatibility_removal_completion_audit',

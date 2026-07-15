@@ -49,6 +49,11 @@ unchanged operator or runtime outcome.
   verification, evidence, and wrapper outputs. Incomplete scans, lingering
   references, and cross-review evidence fail closed unless a blocked diagnostic
   is explicitly requested.
+- **Next-Batch Authorization Export Assurance** - verified the public
+  next-batch authorization exporter accepts only one coherent runtime-evidence,
+  execution-plan, and replayed path-state artifact chain. Unknown paths,
+  cross-review or cross-manifest evidence, and already removed paths cannot
+  write authorization by default; blocked diagnostics require explicit opt-in.
 
 - **Single Active Native Intent Authority** - repaired and now enforces the
   database invariant that each policy has at most one active native intent.

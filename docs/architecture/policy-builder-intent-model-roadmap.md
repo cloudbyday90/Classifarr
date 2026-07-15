@@ -6646,6 +6646,13 @@ authorization metadata.
 
 Tasks:
 
+- **8R.30.1 Public Next-Batch Authorization Artifact-Chain Verification**
+  - Completed: runs the public JSON generator with a coherent fingerprinted
+    runtime-evidence artifact, ready execution-plan wrapper, replay-verified
+    path-state evidence, bounded path request, and matching review context.
+  - Completed: proves unknown paths, a different review context, and runtime
+    evidence from another manifest fail closed without output; an
+    already-removed-path diagnostic requires explicit blocked-output allowance.
 - Require fingerprint-valid post-removal runtime evidence artifact JSON.
 - Require authorization context to name the artifact's applied removal-review
   fingerprint.
@@ -6686,6 +6693,12 @@ Implementation status:
   `npm run policy:next-batch-authorization`.
 - The focused next-batch authorization artifact test suite lives in
   `server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.test.mjs`.
+- Task 8R.30.1 adds public process-level coverage in
+  `server/src/__tests__/scripts/generatePolicyNextBatchAuthorization.test.mjs`
+  and includes it in both the fixed storage-closure requirement audit and
+  current-evidence inventory. It verifies one coherent artifact chain can
+  produce authorization, while cross-review, cross-manifest, unknown, and
+  already removed path inputs remain fail-closed.
 - Current implementation regenerates verification from runtime artifact evidence
   and emits next-batch authorization or completion evidence with semantic
   `nextStep` output and without performing removal, scan, manifest, storage,
