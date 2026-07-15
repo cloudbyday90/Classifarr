@@ -251,25 +251,37 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     designDocPaths: [
       'docs/architecture/policy-storage-completion-checkpoint-artifact-exporter.md',
       'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity.md',
+      'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity-boundary.md',
     ],
     contractPaths: [
       'server/src/services/policyStorageCompletionCheckpointArtifact.mjs',
+      'server/src/services/policyStorageCompletionCheckpointArtifactFingerprint.mjs',
+      'server/src/services/policyStorageCompletionCheckpointArtifactIntegrity.mjs',
       'scripts/generate-policy-storage-completion-checkpoint.mjs',
     ],
     testPaths: [
       'server/src/__tests__/services/policyStorageCompletionCheckpointArtifact.test.mjs',
+      'server/src/__tests__/services/policyStorageCompletionCheckpointArtifactFingerprint.test.mjs',
+      'server/src/__tests__/services/policyStorageCompletionCheckpointArtifactIntegrity.test.mjs',
       'server/src/__tests__/scripts/generatePolicyStorageCompletionCheckpoint.test.mjs',
     ],
   },
   {
     componentId: 'storage_final_closure_readout',
     label: 'Policy Storage Final Closure Readout',
-    designDocPaths: ['docs/architecture/policy-storage-final-closure-readout.md'],
+    designDocPaths: [
+      'docs/architecture/policy-storage-final-closure-readout.md',
+      'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity-boundary.md',
+    ],
     contractPaths: [
       'server/src/services/policyStorageFinalClosureReadout.mjs',
+      'server/src/services/policyStorageCompletionCheckpointArtifactIntegrity.mjs',
       'scripts/generate-policy-storage-final-closure-readout.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyStorageFinalClosureReadout.test.mjs'],
+    testPaths: [
+      'server/src/__tests__/services/policyStorageFinalClosureReadout.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyStorageFinalClosureReadout.test.mjs',
+    ],
   },
   {
     componentId: 'storage_current_closure_audit',

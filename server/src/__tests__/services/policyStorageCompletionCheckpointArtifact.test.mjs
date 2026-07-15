@@ -5,6 +5,7 @@ import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
 } from '../../services/policyCompatibilityRemovalCompletionAuditArtifact.mjs';
 import {
+  POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_VERSION,
   POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS,
   POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
   buildPolicyStorageCompletionCheckpointArtifact,
@@ -55,8 +56,20 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
       version: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
       statusId: 'complete',
       complete: true,
+    }));
+    expect(artifact.completionAuditArtifactSummary).toEqual(expect.objectContaining({
+      version: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
+      statusId: 'complete',
+      complete: true,
       validationOk: true,
       riskCount: 0,
+    }));
+    expect(artifact).toEqual(expect.objectContaining({
+      version: POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_VERSION,
+      artifactFingerprint: expect.objectContaining({
+        algorithm: 'sha256',
+        fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
     }));
     expect(artifact.nextPhase).toBeUndefined();
     expect(artifact.nextStep).toEqual(expect.objectContaining({

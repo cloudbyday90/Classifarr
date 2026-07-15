@@ -6782,6 +6782,15 @@ Tasks:
   - Completed: proves a coherent chain produces complete output and altered
     completion-audit, roadmap, or validation evidence fails closed without
     output unless an operator explicitly requests a blocked diagnostic.
+- **8R.32.2 Completion-Checkpoint Artifact Integrity Boundary**
+  - Completed: retain the explicit component, roadmap, completion-audit,
+    validation, changelog, and side-effect inputs in a versioned checkpoint
+    artifact wrapper.
+  - Completed: bind the wrapper with a versioned SHA-256 fingerprint and
+    bounded provenance, then deterministically replay it before a final
+    closure readout may use its status.
+  - Completed: reject historical, malformed, altered, non-replayable, and
+    replay-divergent checkpoint artifacts without a compatibility fallback.
 - Require component evidence for the storage migration implementation set.
 - Require roadmap sequence and implementation-status evidence.
 - Require a complete and valid compatibility-removal completion-audit artifact.
@@ -6804,6 +6813,8 @@ Acceptance criteria:
   completion through the nested checkpoint.
 - Any side effect prevents complete artifact status.
 - Generated checkpoint JSON can feed the final policy storage closure readout.
+- The final consumer can verify a versioned wrapper fingerprint and exactly
+  replay the artifact from its retained inputs.
 
 Implementation status:
 
@@ -6826,6 +6837,12 @@ Implementation status:
 - Current implementation emits complete or blocked checkpoint artifacts with
   semantic `nextStep` evidence and without collecting evidence, running
   commands, mutating storage, or running Git.
+- Version 4 checkpoint artifacts retain bounded source evidence and use a
+  SHA-256 fingerprint plus deterministic replay verification at the final
+  closure boundary. The contract and focused tests live in
+  `policyStorageCompletionCheckpointArtifactFingerprint.mjs`,
+  `policyStorageCompletionCheckpointArtifactIntegrity.mjs`, and
+  `policyStorageCompletionCheckpointArtifactIntegrityBoundary.md`.
 
 ### 8R.33 Policy Storage Final Closure Readout
 
@@ -6834,7 +6851,15 @@ the policy storage completion-checkpoint artifact.
 
 Tasks:
 
+- **8R.33.1 Public Final-Closure Readout Artifact-Chain Verification**
+  - Completed: exercises the public final-readout generator against one
+    fingerprint-valid, replayable checkpoint artifact.
+  - Completed: proves altered checkpoint artifacts fail closed without output
+    and valid blocked checkpoints write diagnostics only with explicit
+    operator allowance.
 - Require a policy storage completion-checkpoint artifact.
+- Require a current, fingerprint-valid, replayable checkpoint artifact before
+  its status can be used.
 - Require the artifact to be complete and valid before closure can pass.
 - Require the nested policy storage checkpoint to be complete and valid.
 - Map blocked checkpoint states to component, roadmap, removal-audit,
@@ -6849,6 +6874,8 @@ Acceptance criteria:
 - The exporter refuses missing checkpoint-artifact JSON.
 - A complete policy storage completion-checkpoint artifact yields a complete
   readout.
+- Altered, historical, non-replayable, or replay-divergent checkpoint artifact
+  evidence blocks with artifact-validation status.
 - Missing or invalid policy storage checkpoint evidence blocks with artifact-validation
   status.
 - Nested checkpoint failures preserve their blocker category.
@@ -6870,9 +6897,16 @@ Implementation status:
   `npm run policy:storage-final-closure-readout`.
 - The focused final closure readout test suite lives in
   `server/src/__tests__/services/policyStorageFinalClosureReadout.test.mjs`.
+- Public command coverage lives in
+  `server/src/__tests__/scripts/generatePolicyStorageFinalClosureReadout.test.mjs`
+  and is mapped in the fixed closure requirement audit and current closure
+  evidence inventory.
 - Current implementation emits complete or blocked final readouts without
   collecting evidence, running commands, mutating storage, or running Git; it
   emits semantic `nextStep` evidence for policy storage closure completion.
+- The readout accepts only a version 4 checkpoint wrapper after fingerprint
+  validation and deterministic replay. It uses the replayed artifact rather
+  than the caller-supplied wrapper when it evaluates completion.
 
 ### 8R.34 Policy Storage Current Closure Audit
 

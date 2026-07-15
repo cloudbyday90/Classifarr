@@ -105,7 +105,7 @@ function writeJsonFile(filePath, value) {
   fs.writeFileSync(resolvedPath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function main() {
+async function main() {
   let options;
 
   try {
@@ -135,7 +135,7 @@ function main() {
     process.exit(2);
   }
 
-  const readout = buildPolicyStorageFinalClosureReadout({
+  const readout = await buildPolicyStorageFinalClosureReadout({
     checkpointArtifact,
     generatedAt: options.generatedAt,
   });
@@ -171,4 +171,7 @@ function main() {
   process.exit(readout.statusId === 'complete' ? 0 : 1);
 }
 
-main();
+main().catch(err => {
+  console.error(`Could not generate policy storage final closure readout JSON: ${err.message}`);
+  process.exit(2);
+});

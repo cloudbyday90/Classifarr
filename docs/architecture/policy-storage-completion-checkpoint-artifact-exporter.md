@@ -131,6 +131,24 @@ Cons:
 
 - a shared fixture must maintain the current full component-evidence set.
 
+### Bind And Retain The Checkpoint Artifact Inputs
+
+The exporter should retain its bounded evidence inputs in the wrapper and bind
+the completed artifact with a versioned SHA-256 fingerprint. The final closure
+readout then validates and replays the artifact rather than trusting a wrapper
+status assertion.
+
+Pros:
+
+- detects altered derived fields and forged but self-consistent summaries,
+- makes the final handoff deterministic and independently verifiable,
+- prevents an unreplayable historical wrapper from claiming storage closure.
+
+Cons:
+
+- wrapper JSON includes the bounded source evidence,
+- consumers must regenerate older unreplayable artifacts.
+
 ## Final Recommendation Stack
 
 Use this stack for the policy storage completion checkpoint artifact:
@@ -147,7 +165,11 @@ Use this stack for the policy storage completion checkpoint artifact:
    manifest writes inside the service contract.
 9. Emit semantic `nextStep` evidence for the policy storage final closure
    readout.
-10. Exercise the public generator with a coherent complete chain and fail
+10. Retain the explicit evidence inputs and bind the wrapper with a versioned
+    SHA-256 artifact fingerprint.
+11. Require final consumers to validate and replay the wrapper before using
+    its status or nested checkpoint.
+12. Exercise the public generator with a coherent complete chain and fail
     closed without output for altered completion-audit, roadmap, or validation
     evidence unless a blocked diagnostic is explicitly requested.
 
@@ -181,6 +203,12 @@ Implemented:
 - Added the checkpoint artifact suite and this design doc to the fixed policy
   storage closure validation evidence command set and current closure evidence
   inventory.
+- Upgraded the checkpoint artifact wrapper to version 4. It now retains its
+  bounded inputs and emits a versioned SHA-256 fingerprint so final closure
+  consumers can verify and replay the artifact before using its status.
+- Added fingerprint and replay-integrity tests, and a public final-readout
+  CLI artifact-chain test. Historical unreplayable version 3 wrappers are
+  intentionally rejected rather than carried as a compatibility fallback.
 
 Example:
 

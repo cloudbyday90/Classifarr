@@ -5,9 +5,13 @@ import {
   POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
   buildPolicyStorageCompletionCheckpoint,
 } from './policyStorageCompletionCheckpoint.mjs';
+import {
+  buildPolicyStorageCompletionCheckpointArtifactFingerprint,
+  validatePolicyStorageCompletionCheckpointArtifactFingerprint,
+} from './policyStorageCompletionCheckpointArtifactFingerprint.mjs';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_VERSION =
-  'policy.storage_completion_checkpoint_artifact.v3';
+  'policy.storage_completion_checkpoint_artifact.v4';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -31,6 +35,7 @@ const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS = Object.freeze({
   COMPLETE_FLAG_MISMATCH: 'complete_flag_mismatch',
   UNKNOWN_STATUS: 'unknown_status',
   UNKNOWN_VERSION: 'unknown_version',
+  ARTIFACT_FINGERPRINT_INVALID: 'artifact_fingerprint_invalid',
 });
 
 function asObject(value) {
@@ -238,6 +243,11 @@ async function buildPolicyStorageCompletionCheckpointArtifact({
       risks.length === 0 &&
       checkpoint.statusId === POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE &&
       checkpoint.complete === true,
+    componentEvidence: asArray(componentEvidence),
+    roadmapEvidence: asObject(roadmapEvidence),
+    completionAuditArtifact: asObject(completionAuditArtifact),
+    validationEvidence: asObject(validationEvidence),
+    changelogEvidence: asObject(changelogEvidence),
     checkpoint,
     checkpointSummary: {
       checkpointStatusId: checkpoint.statusId,
@@ -259,7 +269,7 @@ async function buildPolicyStorageCompletionCheckpointArtifact({
         checkpoint.validationEvidence?.full,
       ].filter(evidence => evidence?.passed === true).length,
     },
-    completionAuditArtifact: {
+    completionAuditArtifactSummary: {
       version: completionAudit.artifactVersion,
       statusId: completionAudit.artifactStatusId,
       complete: completionAudit.artifactComplete,
@@ -295,10 +305,15 @@ async function buildPolicyStorageCompletionCheckpointArtifact({
     },
   };
 
-  return {
+  const artifactWithFingerprint = {
     ...artifact,
+    artifactFingerprint: buildPolicyStorageCompletionCheckpointArtifactFingerprint({ artifact }),
+  };
+
+  return {
+    ...artifactWithFingerprint,
     validation:
-      validatePolicyStorageCompletionCheckpointArtifact(artifact),
+      validatePolicyStorageCompletionCheckpointArtifact(artifactWithFingerprint),
   };
 }
 
@@ -336,6 +351,20 @@ function validatePolicyStorageCompletionCheckpointArtifact(artifact = {}) {
     issues.push(buildRisk(
       POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS.COMPLETE_FLAG_MISMATCH,
       'Policy storage completion checkpoint artifact complete flag must match complete status.'
+    ));
+  }
+
+  const fingerprintValidation =
+    validatePolicyStorageCompletionCheckpointArtifactFingerprint({
+      artifact,
+      artifactFingerprint: artifact.artifactFingerprint,
+    });
+  if (!fingerprintValidation.ok) {
+    issues.push(buildRisk(
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_RISK_IDS
+        .ARTIFACT_FINGERPRINT_INVALID,
+      'Policy storage completion checkpoint artifact fingerprint must bind its bounded contents.',
+      { issueCount: fingerprintValidation.issueCount }
     ));
   }
 

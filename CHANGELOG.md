@@ -54,6 +54,12 @@ unchanged operator or runtime outcome.
   execution-plan, and replayed path-state artifact chain. Unknown paths,
   cross-review or cross-manifest evidence, and already removed paths cannot
   write authorization by default; blocked diagnostics require explicit opt-in.
+- **Replay-Verified Storage Closure Checkpoints** - final storage-closure
+  decisions now accept only current checkpoint artifacts whose versioned
+  fingerprint, provenance, and retained evidence inputs pass deterministic
+  replay. Altered, forged, historical, or unreplayable artifacts fail closed;
+  public final-readout export writes blocked diagnostics only when explicitly
+  requested.
 
 - **Single Active Native Intent Authority** - repaired and now enforces the
   database invariant that each policy has at most one active native intent.

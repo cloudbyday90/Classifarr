@@ -355,7 +355,7 @@ async function buildPolicyStorageCurrentClosureAuditFromEvidence({
     generatedAt,
     sideEffects,
   });
-  const finalReadout = buildPolicyStorageFinalClosureReadout({
+  const finalReadout = await buildPolicyStorageFinalClosureReadout({
     checkpointArtifact,
     generatedAt,
     sideEffects,

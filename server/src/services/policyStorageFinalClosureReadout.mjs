@@ -4,6 +4,9 @@ import {
 import {
   POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
 } from './policyStorageCompletionCheckpoint.mjs';
+import {
+  validatePolicyStorageCompletionCheckpointArtifactIntegrity,
+} from './policyStorageCompletionCheckpointArtifactIntegrity.mjs';
 
 const POLICY_STORAGE_FINAL_CLOSURE_READOUT_VERSION =
   'policy.storage_final_closure_readout.v1';
@@ -25,6 +28,8 @@ const POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS = Object.freeze({
   CHECKPOINT_ARTIFACT_NOT_COMPLETE: 'checkpoint_artifact_not_complete',
   CHECKPOINT_ARTIFACT_VALIDATION_FAILED:
     'checkpoint_artifact_validation_failed',
+  CHECKPOINT_ARTIFACT_INTEGRITY_FAILED:
+    'checkpoint_artifact_integrity_failed',
   CHECKPOINT_MISSING: 'checkpoint_missing',
   CHECKPOINT_NOT_COMPLETE: 'checkpoint_not_complete',
   SIDE_EFFECT_REPORTED: 'side_effect_reported',
@@ -97,10 +102,24 @@ function normalizeCheckpointArtifact(checkpointArtifact = {}) {
 
 function buildReadoutRisks({
   checkpointArtifact = {},
+  checkpointArtifactIntegrity = {},
   sideEffects = {},
 } = {}) {
   const risks = [];
   const normalized = normalizeCheckpointArtifact(checkpointArtifact);
+
+  if (checkpointArtifactIntegrity.ok !== true) {
+    risks.push(buildRisk(
+      POLICY_STORAGE_FINAL_CLOSURE_READOUT_RISK_IDS
+        .CHECKPOINT_ARTIFACT_INTEGRITY_FAILED,
+      'Policy storage final closure readout requires a fingerprint-valid replayable completion-checkpoint artifact.',
+      {
+        integrityIssueCount: checkpointArtifactIntegrity.issueCount ?? null,
+        integrityIssueRiskIds:
+          asArray(checkpointArtifactIntegrity.issues).map(issue => issue.riskId),
+      }
+    ));
+  }
 
   if (!normalized.artifactPresent) {
     risks.push(buildRisk(
@@ -183,19 +202,18 @@ function buildReadoutRisks({
   return risks;
 }
 
-function determineBlockedStatusId({ checkpointArtifact = {}, sideEffects = {} } = {}) {
+function determineBlockedStatusId({
+  checkpointArtifact = {},
+  checkpointArtifactIntegrity = {},
+  sideEffects = {},
+} = {}) {
   const normalized = normalizeCheckpointArtifact(checkpointArtifact);
 
   if (hasAnySideEffect(sideEffects)) {
     return POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_SIDE_EFFECTS;
   }
 
-  if (
-    !normalized.artifactPresent ||
-    normalized.artifactValidationOk !== true ||
-    normalized.artifactStatusId !==
-      POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS.COMPLETE
-  ) {
+  if (checkpointArtifactIntegrity.ok !== true) {
     return POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS
       .BLOCKED_BY_ARTIFACT_VALIDATION;
   }
@@ -224,13 +242,18 @@ function determineBlockedStatusId({ checkpointArtifact = {}, sideEffects = {} } 
 function determineStatusId({
   risks = [],
   checkpointArtifact = {},
+  checkpointArtifactIntegrity = {},
   sideEffects = {},
 } = {}) {
   if (risks.length === 0) {
     return POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE;
   }
 
-  return determineBlockedStatusId({ checkpointArtifact, sideEffects });
+  return determineBlockedStatusId({
+    checkpointArtifact,
+    checkpointArtifactIntegrity,
+    sideEffects,
+  });
 }
 
 function buildOperatorSummary({
@@ -287,23 +310,32 @@ function buildNextAction(statusId) {
   }
 }
 
-function buildPolicyStorageFinalClosureReadout({
+async function buildPolicyStorageFinalClosureReadout({
   checkpointArtifact = {},
   generatedAt = null,
   sideEffects = {},
 } = {}) {
-  const normalized = normalizeCheckpointArtifact(checkpointArtifact);
+  const checkpointArtifactIntegrity =
+    await validatePolicyStorageCompletionCheckpointArtifactIntegrity({
+      checkpointArtifact,
+    });
+  const verifiedCheckpointArtifact = checkpointArtifactIntegrity.ok === true
+    ? checkpointArtifactIntegrity.artifact
+    : checkpointArtifact;
+  const normalized = normalizeCheckpointArtifact(verifiedCheckpointArtifact);
   const combinedSideEffects = summarizeSideEffects(
     normalized.artifact,
     sideEffects
   );
   const risks = buildReadoutRisks({
-    checkpointArtifact,
+    checkpointArtifact: verifiedCheckpointArtifact,
+    checkpointArtifactIntegrity,
     sideEffects: combinedSideEffects,
   });
   const statusId = determineStatusId({
     risks,
-    checkpointArtifact,
+    checkpointArtifact: verifiedCheckpointArtifact,
+    checkpointArtifactIntegrity,
     sideEffects: combinedSideEffects,
   });
   const readout = {
@@ -313,7 +345,7 @@ function buildPolicyStorageFinalClosureReadout({
     complete: statusId === POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.COMPLETE,
     operatorSummary: buildOperatorSummary({
       statusId,
-      checkpointArtifact,
+      checkpointArtifact: verifiedCheckpointArtifact,
       risks,
     }),
     checkpointArtifactSummary: {
@@ -321,6 +353,11 @@ function buildPolicyStorageFinalClosureReadout({
       complete: normalized.artifactComplete,
       validationOk: normalized.artifactValidationOk,
       riskCount: normalized.artifact.riskCount ?? null,
+    },
+    checkpointArtifactIntegrity: {
+      ok: checkpointArtifactIntegrity.ok,
+      issueCount: checkpointArtifactIntegrity.issueCount,
+      artifactFingerprint: checkpointArtifactIntegrity.artifactFingerprint,
     },
     checkpointSummary: {
       statusId: normalized.checkpointStatusId,
@@ -342,6 +379,8 @@ function buildPolicyStorageFinalClosureReadout({
     sideEffects: combinedSideEffects,
     executionPolicy: {
       requireCheckpointArtifact: true,
+      requireFingerprintValidCheckpointArtifact: true,
+      requireReplayedCheckpointArtifact: true,
       requireCompleteCheckpointArtifact: true,
       requireCompleteNestedCheckpoint: true,
       allowFileWrites: false,
