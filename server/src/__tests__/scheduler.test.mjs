@@ -27,7 +27,7 @@ const mockDb = {
         STARTUP_RESET: 1234567890,
         GAP_ANALYSIS: 2001, LIBRARY_SYNC: 2002, RETRY_QUEUE: 2003,
         ENRICHMENT_RETRY_QUEUE: 2004, RATING_NORMALIZATION_CHECK: 2005, STALE_CLEANUP: 2006,
-        POLICY_ROLLBACK_SNAPSHOT_RETENTION: 2007,
+        POLICY_ROLLBACK_SNAPSHOT_RETENTION: 2007, NATIVE_INTENT_RECONCILIATION: 2008,
     }
 };
 
@@ -58,6 +58,10 @@ const mockClassificationMaintenanceService = {
 
 const mockRatingNormalizationQueueService = {
     queueDailyBackfill: jest.fn()
+};
+
+const mockNativeIntentReconciliationService = {
+    run: jest.fn(),
 };
 
 const mockMediaSync = {
@@ -97,6 +101,8 @@ jest.unstable_mockModule('../services/classificationMaintenanceService.mjs', () 
 
 jest.unstable_mockModule('../services/ratingNormalizationQueueService.mjs', () => createNamedMockModule('ratingNormalizationQueueService', mockRatingNormalizationQueueService));
 
+jest.unstable_mockModule('../services/nativeIntentReconciliationService.mjs', () => createNamedMockModule('nativeIntentReconciliationService', mockNativeIntentReconciliationService));
+
 jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
@@ -128,6 +134,7 @@ describe('SchedulerService', () => {
         mockSchedulerRetentionService.runPolicyRollbackSnapshotRetentionCleanup.mockReset();
         mockClassificationMaintenanceService.cleanupStaleAwaitingDecisions.mockReset();
         mockRatingNormalizationQueueService.queueDailyBackfill.mockReset();
+        mockNativeIntentReconciliationService.run.mockReset();
         mockMediaSync.syncLibrary.mockReset();
         mockClassification.retryClassification.mockReset();
         logger.info.mockReset();
@@ -473,6 +480,52 @@ describe('SchedulerService', () => {
 
             expect(handler).toHaveBeenCalledTimes(1);
             expect(dbModule.withSessionAdvisoryLock).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('native intent reconciliation scheduling', () => {
+        afterEach(() => {
+            jest.useRealTimers();
+        });
+
+        it('registers one lock-protected recurring task and one non-blocking initial run', async () => {
+            jest.useFakeTimers();
+            mockDb.withSessionAdvisoryLock.mockImplementation(async (_key, handler) => {
+                await handler();
+                return true;
+            });
+            mockNativeIntentReconciliationService.run.mockResolvedValue({ statusId: 'applied' });
+
+            expect(scheduler.startNativeIntentReconciliation()).toBe(true);
+            expect(scheduler.startNativeIntentReconciliation()).toBe(false);
+            expect(mockNodeCron.schedule).toHaveBeenCalledWith(
+                '*/10 * * * *',
+                expect.any(Function),
+            );
+
+            const cronHandler = mockNodeCron.schedule.mock.calls.at(-1)[1];
+            await cronHandler();
+            await jest.advanceTimersByTimeAsync(90_000);
+
+            expect(mockDb.withSessionAdvisoryLock).toHaveBeenCalledWith(
+                2008,
+                expect.any(Function),
+            );
+            expect(mockNativeIntentReconciliationService.run).toHaveBeenCalledTimes(2);
+        });
+
+        it('cancels a pending initial reconciliation run during scheduler reset', async () => {
+            jest.useFakeTimers();
+            mockDb.withSessionAdvisoryLock.mockImplementation(async (_key, handler) => {
+                await handler();
+                return true;
+            });
+
+            scheduler.startNativeIntentReconciliation();
+            scheduler.resetState();
+            await jest.advanceTimersByTimeAsync(90_000);
+
+            expect(mockNativeIntentReconciliationService.run).not.toHaveBeenCalled();
         });
     });
 

@@ -5086,9 +5086,12 @@ Tasks:
 - Run reconciliation after database migrations and on a bounded maintenance
   schedule until no ready legacy policies remain. Do not couple durable writes
   to ordinary reads, policy saves, or every process startup.
-- Reuse the existing `post_upgrade_apply` actor source, transactional authority
-  locks, idempotency keys, rollback snapshots, migration events, and current
-  policy validation. Do not introduce a second conversion writer.
+- Reuse the transactional authority locks, idempotency keys, rollback snapshots,
+  migration events, and current policy validation from the existing conversion
+  gate. Use the distinct `native_intent_reconciliation` actor source so
+  automatic storage maintenance is auditable without being mistaken for an
+  administrator or release-startup action. Do not introduce a second
+  conversion writer.
 - Process a bounded batch per run, record structured run outcomes, and leave
   blocked or incomplete candidates unchanged for a later retry.
 - Fail closed on invalid authority, stale or insufficient evidence, missing
@@ -5125,11 +5128,12 @@ Acceptance criteria:
 
 Implementation status:
 
-- Planned. The current manual administrator surface remains available only as
-  the temporary recovery path until the reconciler and its status replacement
-  have passed the acceptance criteria.
-- Design and outcome record:
-  [Policy Native Intent Conversion Reconciler](policy-native-intent-conversion-reconciler.md).
+- Task 8R.3.2.1 is implemented. The current manual administrator surface
+  remains a temporary recovery path until the reconciler status replacement has
+  passed the remaining acceptance criteria.
+- Design and outcome records:
+  [Policy Native Intent Conversion Reconciler](policy-native-intent-conversion-reconciler.md)
+  and [Native Intent Reconciliation Scheduler](native-intent-reconciliation-scheduler.md).
 
 ##### 8R.3.2.1 Scheduler Ownership And Single-Runner Exclusion
 
@@ -5162,6 +5166,21 @@ Acceptance criteria:
 - A crashed runner releases its session lock with the database connection; a
   later scheduled run can resume from durable state.
 - Application readiness does not wait for conversion completion.
+
+Implementation outcome:
+
+- `nativeIntentReconciliationService.mjs` invokes the existing transactional
+  conversion gate with a fixed ten-policy, twenty-second execution budget.
+- The service selects only policies without active native authority and excludes
+  policies with a `rollback_applied` event, so ordinary recurring maintenance
+  cannot immediately undo an intentional reversion.
+- `schedulerService` owns one ten-minute cron task plus one non-blocking,
+  ninety-second post-readiness opportunity. Both use the dedicated session
+  advisory lock key `2008`; duplicate registration, lock contention, and a
+  pending initial timer are all harmless.
+- Every automatic migration event has actor type `reconciler` and metadata
+  source `native_intent_reconciliation`. The service returns and logs only
+  bounded status, counts, and stable error IDs, never raw policy payloads.
 
 ##### 8R.3.2.2 Durable Run And Candidate Outcome Ledger
 
@@ -5467,9 +5486,10 @@ Implementation status:
   ordinary policy reads and unrelated saves are blocked.
 - Post-window retention requires bulky payload deletion and keeps only minimal
   audit metadata needed for support/compliance.
-- Phase 8R.3.2 must persist and enforce a reversion hold before automatic
-  reconciliation is enabled; a rollback is an intentional authority change, not
-  another candidate to convert on the next scheduled run.
+- Automatic reconciliation already excludes policies with a persisted
+  `rollback_applied` event. Task 8R.3.2.4 will define the explicit,
+  server-verified restore and re-entry conditions required before a reverted
+  policy may ever become an automatic candidate again.
 - Validation rejects missing restore sections, missing actor/reason data,
   unbounded snapshots, raw payload exposure, permanent alternate storage,
   ordinary read/write revert, missing retention policy, bulky payload retention

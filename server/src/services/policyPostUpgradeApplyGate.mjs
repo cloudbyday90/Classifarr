@@ -24,6 +24,7 @@ const POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS = Object.freeze({
   BLOCKED_BY_NO_READY_STEPS: 'blocked_by_no_ready_steps',
   BLOCKED_BY_TRANSACTION_BOUNDARY: 'blocked_by_transaction_boundary',
   FAILED_ROLLED_BACK: 'failed_rolled_back',
+  DEFERRED_BY_EXECUTION_BUDGET: 'deferred_by_execution_budget',
 });
 
 const POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS = Object.freeze({
@@ -37,6 +38,7 @@ const POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS = Object.freeze({
   POLICY_AUTHORITY_UNAVAILABLE: 'policy_authority_unavailable',
   CONTRACT_VALIDATION_FAILED: 'contract_validation_failed',
   CONVERSION_ACTION_INVALID: 'conversion_action_invalid',
+  EXECUTION_BUDGET_EXHAUSTED: 'execution_budget_exhausted',
 });
 
 const APPLY_AUDIT_CONTEXT_BY_ACTOR_SOURCE_ID = Object.freeze({
@@ -49,6 +51,11 @@ const APPLY_AUDIT_CONTEXT_BY_ACTOR_SOURCE_ID = Object.freeze({
     actorType: 'post_upgrade',
     defaultReasonCode: 'policy_post_upgrade_apply',
     summaryPrefix: 'Policy post-upgrade native intent conversion',
+  },
+  [POLICY_CONVERSION_ACTOR_SOURCE_IDS.NATIVE_INTENT_RECONCILIATION]: {
+    actorType: 'reconciler',
+    defaultReasonCode: 'native_intent_reconciliation',
+    summaryPrefix: 'Policy native intent reconciliation',
   },
   [POLICY_CONVERSION_ACTOR_SOURCE_IDS.TEST_FIXTURE]: {
     actorType: 'test_fixture',
@@ -464,6 +471,7 @@ async function insertMigrationEvent({
   reasonCode,
   summary,
   metadata,
+  actorSourceId = null,
   targetVersion = DEFAULT_TARGET_VERSION,
 }) {
   await client.query(
@@ -489,7 +497,10 @@ async function insertMigrationEvent({
       targetVersion,
       reasonCode,
       summary,
-      JSON.stringify(asObject(metadata)),
+      JSON.stringify({
+        ...asObject(metadata),
+        ...(normalizeString(actorSourceId) ? { actorSourceId: normalizeString(actorSourceId) } : {}),
+      }),
     ]
   );
 }
@@ -648,6 +659,34 @@ async function insertValidationStatus({ client, intentId, contract }) {
   );
 }
 
+function createExecutionBudgetError() {
+  const error = new Error('Native intent conversion execution budget exhausted.');
+  error.operatorErrorId = POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.EXECUTION_BUDGET_EXHAUSTED;
+  return error;
+}
+
+function isExecutionDeadlineExceeded(deadlineAt) {
+  if (!deadlineAt) return false;
+
+  const deadline = new Date(deadlineAt);
+  return Number.isNaN(deadline.getTime()) || Date.now() >= deadline.getTime();
+}
+
+async function configureExecutionDeadline(client, deadlineAt) {
+  if (!deadlineAt) return;
+
+  const deadline = new Date(deadlineAt);
+  const remainingMs = deadline.getTime() - Date.now();
+  if (!Number.isFinite(remainingMs) || remainingMs <= 0) {
+    throw createExecutionBudgetError();
+  }
+
+  await client.query(
+    "SELECT set_config('statement_timeout', $1, TRUE)",
+    [String(Math.max(1, Math.trunc(remainingMs)))],
+  );
+}
+
 async function applyReadyStep({ client, policy, step, auditContext, appliedAt, targetVersion }) {
   const lockedPolicy = await lockPolicyNativeIntentAuthority(client, {
     policyId: policy.id,
@@ -696,6 +735,7 @@ async function applyReadyStep({ client, policy, step, auditContext, appliedAt, t
     reasonCode: auditContext.reasonCode,
     summary: `${auditContext.summaryPrefix} started.`,
     metadata: { idempotencyKey: step.idempotencyKey },
+    actorSourceId: auditContext.actorSourceId,
     targetVersion,
   });
   await insertRollbackSnapshot({ client, intentId, policy, contract, step, appliedAt });
@@ -709,6 +749,7 @@ async function applyReadyStep({ client, policy, step, auditContext, appliedAt, t
     reasonCode: auditContext.reasonCode,
     summary: `Rollback snapshot created before ${auditContext.summaryPrefix.toLowerCase()}.`,
     metadata: { restorePath: step.rollbackSnapshot?.restorePath ?? null },
+    actorSourceId: auditContext.actorSourceId,
     targetVersion,
   });
   const rulesInserted = await insertIntentRules({ client, intentId, contract });
@@ -729,6 +770,7 @@ async function applyReadyStep({ client, policy, step, auditContext, appliedAt, t
       rulesInserted,
       templateApplicationsInserted,
     },
+    actorSourceId: auditContext.actorSourceId,
     targetVersion,
   });
 
@@ -748,6 +790,7 @@ async function applyPolicyPostUpgradeApplyGate({
   now = null,
   actorId = null,
   targetVersion = DEFAULT_TARGET_VERSION,
+  executionDeadlineAt = null,
 } = {}) {
   const appliedAt = normalizeTimestamp(now);
   const gate = buildPolicyPostUpgradeApplyGate({
@@ -762,6 +805,20 @@ async function applyPolicyPostUpgradeApplyGate({
       applied: false,
       appliedPolicyCount: 0,
       results: [],
+    };
+  }
+
+  if (isExecutionDeadlineExceeded(executionDeadlineAt)) {
+    return {
+      ...gate,
+      statusId: POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.DEFERRED_BY_EXECUTION_BUDGET,
+      applied: false,
+      appliedPolicyCount: 0,
+      results: [],
+      operatorErrorIds: unique([
+        ...asArray(gate.operatorErrorIds),
+        POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.EXECUTION_BUDGET_EXHAUSTED,
+      ]),
     };
   }
 
@@ -784,10 +841,14 @@ async function applyPolicyPostUpgradeApplyGate({
 
   try {
     const results = await dbClient.withTransaction(async (client) => {
+      await configureExecutionDeadline(client, executionDeadlineAt);
       const readySteps = sortReadyStepsByPolicyAuthority(getReadySteps(dryRun));
       const applied = [];
 
       for (const step of readySteps) {
+        if (isExecutionDeadlineExceeded(executionDeadlineAt)) {
+          throw createExecutionBudgetError();
+        }
         const policy = policyMap.get(String(step.policyId));
         if (!policy) {
           const error = new Error(`Policy input missing for post-upgrade apply: ${step.policyId}`);
@@ -831,7 +892,9 @@ async function applyPolicyPostUpgradeApplyGate({
   } catch (error) {
     return {
       ...gate,
-      statusId: POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.FAILED_ROLLED_BACK,
+      statusId: error.operatorErrorId === POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.EXECUTION_BUDGET_EXHAUSTED
+        ? POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.DEFERRED_BY_EXECUTION_BUDGET
+        : POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.FAILED_ROLLED_BACK,
       applied: false,
       appliedPolicyCount: 0,
       results: [],
@@ -864,16 +927,23 @@ async function runPolicyPostUpgradeApplyGate({
   maxPolicies,
   now = null,
   actorId = null,
+  unconvertedOnly = false,
+  excludeRevertedPolicies = false,
+  action = null,
+  executionDeadlineAt = null,
 } = {}) {
   const { policies, activeIntentIntegrityReport } = await loadPolicyPostUpgradeCandidateInputs({
     dbClient,
     maxPolicies,
+    unconvertedOnly,
+    excludeRevertedPolicies,
   });
   const dryRun = buildPolicyPostUpgradeDryRun({
     policies,
     maxPolicies,
     now,
     activeIntentIntegrityReport,
+    action,
   });
 
   return applyPolicyPostUpgradeApplyGate({
@@ -882,6 +952,7 @@ async function runPolicyPostUpgradeApplyGate({
     policies,
     now,
     actorId,
+    executionDeadlineAt,
   });
 }
 

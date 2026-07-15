@@ -18,14 +18,17 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
-- **Explicit Native Intent Conversion** - administrators can now preview and
-  selectively convert current, eligible policies to native intent through a
-  confirmed, rate-limited action from a dedicated maintenance screen. The
-  server recomputes eligibility at apply time, records the verified
-  administrator as the migration actor, preserves transactional rollback
-  protection, automatically verifies the selected policies' post-conversion
-  native runtime reads and rollback availability, and never runs conversion
-  automatically during post-upgrade startup.
+- **Native Intent Conversion Foundation** - administrators can preview and use
+  the temporary recovery path to convert current, eligible policies to native
+  intent. The server recomputes eligibility at apply time, preserves
+  transactional rollback protection, and verifies post-conversion native runtime
+  reads and rollback availability.
+- **Bounded Native Intent Reconciliation** - Classifarr now schedules safe,
+  server-owned native-intent conversion after application readiness and every
+  ten minutes. A database advisory lock permits only one replica to run; each
+  run is capped by policy count and time, excludes already-native and reverted
+  policies, reuses transactional authority safeguards, and records a distinct
+  reconciliation actor without exposing raw policy payloads.
 - **Native Conversion And Automation Readiness Separation** - valid policies
   can now convert to native intent even when routing or profile freshness still
   needs work. Those automation blockers are reported separately, and unmapped

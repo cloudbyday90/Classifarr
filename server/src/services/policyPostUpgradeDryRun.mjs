@@ -95,12 +95,34 @@ function normalizePolicyRow(row = {}) {
 async function loadPolicyPostUpgradePolicies({
   dbClient,
   maxPolicies = MAX_POST_UPGRADE_DRY_RUN_POLICIES,
+  unconvertedOnly = false,
+  excludeRevertedPolicies = false,
 } = {}) {
   if (!dbClient || typeof dbClient.query !== 'function') {
     throw new TypeError('dbClient with query(sql, params) is required');
   }
 
   const normalizedMaxPolicies = normalizePolicyLimit(maxPolicies);
+  const eligibilityFilters = [];
+  if (unconvertedOnly === true) {
+    eligibilityFilters.push(`NOT EXISTS (
+      SELECT 1
+      FROM policy_intents active_intent
+      WHERE active_intent.policy_id = lp.id
+        AND active_intent.active = TRUE
+    )`);
+  }
+  if (excludeRevertedPolicies === true) {
+    eligibilityFilters.push(`NOT EXISTS (
+      SELECT 1
+      FROM policy_intent_migration_events reversion_event
+      WHERE reversion_event.policy_id = lp.id
+        AND reversion_event.event_type = 'rollback_applied'
+    )`);
+  }
+  const nativeIntentFilter = eligibilityFilters.length > 0
+    ? `WHERE ${eligibilityFilters.join('\n      AND ')}`
+    : '';
   const result = await dbClient.query(`
     SELECT
       lp.*,
@@ -149,6 +171,7 @@ async function loadPolicyPostUpgradePolicies({
       JOIN content_presets cp ON cp.id = pp.preset_id
       WHERE pp.policy_id = lp.id
     ) pa ON true
+    ${nativeIntentFilter}
     ORDER BY l.name NULLS LAST, lp.priority DESC, lp.sort_order ASC, lp.id ASC
     LIMIT $1
   `, [normalizedMaxPolicies + 1]);
@@ -159,9 +182,16 @@ async function loadPolicyPostUpgradePolicies({
 async function loadPolicyPostUpgradeCandidateInputs({
   dbClient,
   maxPolicies = MAX_POST_UPGRADE_DRY_RUN_POLICIES,
+  unconvertedOnly = false,
+  excludeRevertedPolicies = false,
 } = {}) {
   const [policies, activeIntentIntegrityReport] = await Promise.all([
-    loadPolicyPostUpgradePolicies({ dbClient, maxPolicies }),
+    loadPolicyPostUpgradePolicies({
+      dbClient,
+      maxPolicies,
+      unconvertedOnly,
+      excludeRevertedPolicies,
+    }),
     loadPolicyActiveIntentIntegrityReport(dbClient),
   ]);
 
@@ -369,10 +399,15 @@ async function runPolicyPostUpgradeDryRun({
   dbClient,
   maxPolicies = MAX_POST_UPGRADE_DRY_RUN_POLICIES,
   now = null,
+  unconvertedOnly = false,
+  excludeRevertedPolicies = false,
+  action = null,
 } = {}) {
   const { policies, activeIntentIntegrityReport } = await loadPolicyPostUpgradeCandidateInputs({
     dbClient,
     maxPolicies,
+    unconvertedOnly,
+    excludeRevertedPolicies,
   });
 
   return buildPolicyPostUpgradeDryRun({
@@ -380,6 +415,7 @@ async function runPolicyPostUpgradeDryRun({
     maxPolicies,
     now,
     activeIntentIntegrityReport,
+    action,
   });
 }
 

@@ -9,6 +9,9 @@ import {
 import {
   buildPolicyPostUpgradeDryRun,
 } from '../../services/policyPostUpgradeDryRun.mjs';
+import {
+  POLICY_CONVERSION_ACTOR_SOURCE_IDS,
+} from '../../services/policyConversionActorSources.mjs';
 
 function preset(overrides = {}) {
   return {
@@ -134,7 +137,7 @@ describe('policyPostUpgradeApplyGate', () => {
 
     const result = await applyPolicyPostUpgradeApplyGate({
       dbClient,
-      dryRun: readyDryRun(),
+      dryRun: readyDryRun(new Date().toISOString()),
       policies: [policy()],
       now: '2026-07-01T12:00:00.000Z',
       actorId: 42,
@@ -171,6 +174,56 @@ describe('policyPostUpgradeApplyGate', () => {
       migrationEventsWritten: true,
       legacyPathsDeleted: false,
     }));
+  });
+
+  test('records the reconciliation actor source without treating it as an operator action', async () => {
+    const client = createApplyClient();
+    const dbClient = {
+      withTransaction: jest.fn(async (work) => work(client)),
+    };
+    const dryRun = buildPolicyPostUpgradeDryRun({
+      policies: [policy()],
+      now: '2026-07-01T12:00:00.000Z',
+      action: {
+        actorSourceId: POLICY_CONVERSION_ACTOR_SOURCE_IDS.NATIVE_INTENT_RECONCILIATION,
+        reasonCode: 'native_intent_reconciliation',
+      },
+    });
+
+    const result = await applyPolicyPostUpgradeApplyGate({
+      dbClient,
+      dryRun,
+      policies: [policy()],
+      now: '2026-07-01T12:00:00.000Z',
+    });
+
+    expect(result.statusId).toBe(POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.APPLIED);
+    const eventCall = client.query.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO policy_intent_migration_events')
+    );
+    expect(eventCall[1][3]).toBe('reconciler');
+    expect(JSON.parse(eventCall[1][8])).toEqual(expect.objectContaining({
+      actorSourceId: 'native_intent_reconciliation',
+    }));
+  });
+
+  test('defers a ready conversion without a transaction when its execution budget is exhausted', async () => {
+    const dbClient = {
+      withTransaction: jest.fn(),
+    };
+
+    const result = await applyPolicyPostUpgradeApplyGate({
+      dbClient,
+      dryRun: readyDryRun(new Date().toISOString()),
+      policies: [policy()],
+      executionDeadlineAt: new Date(Date.now() - 1_000).toISOString(),
+    });
+
+    expect(result.statusId).toBe(POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.DEFERRED_BY_EXECUTION_BUDGET);
+    expect(result.operatorErrorIds).toContain(
+      POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.EXECUTION_BUDGET_EXHAUSTED,
+    );
+    expect(dbClient.withTransaction).not.toHaveBeenCalled();
   });
 
   test('persists a missing routing status without blocking native-intent conversion', async () => {

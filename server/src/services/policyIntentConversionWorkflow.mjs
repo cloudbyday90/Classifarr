@@ -66,6 +66,7 @@ const POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS = Object.freeze({
 const ALLOWED_ACTOR_SOURCE_IDS = Object.freeze([
   POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
   POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY,
+  POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.NATIVE_INTENT_RECONCILIATION,
   POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.TEST_FIXTURE,
   POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MAINTAINER_MIGRATION_TOOL,
 ]);
@@ -205,7 +206,7 @@ function buildConversionStep({
     statusId = POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_ACTOR_SOURCE;
     reasons.push(buildReason(
       POLICY_INTENT_CONVERSION_REASON_IDS.ORDINARY_READ_WRITE_BLOCKED,
-      'Conversion can only run from an explicit operator, post-upgrade, fixture, or maintainer migration action.',
+      'Conversion can only run from an explicit operator, native reconciliation, post-upgrade, fixture, or maintainer migration action.',
       'blocker'
     ));
   } else if (!selected) {

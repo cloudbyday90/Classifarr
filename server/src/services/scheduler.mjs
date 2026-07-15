@@ -16,6 +16,7 @@ import { queueMaintenanceService } from './queueMaintenanceService.mjs';
 import { schedulerRetentionService } from './schedulerRetentionService.mjs';
 import { classificationMaintenanceService } from './classificationMaintenanceService.mjs';
 import { ratingNormalizationQueueService } from './ratingNormalizationQueueService.mjs';
+import { nativeIntentReconciliationService } from './nativeIntentReconciliationService.mjs';
 import {
     runGapAnalysis as _runGapAnalysis,
     runPeriodicLibrarySync as _runPeriodicLibrarySync,
@@ -27,10 +28,14 @@ import { runAutoLearnRules as _runAutoLearnRules } from './schedulerAutoLearnRul
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
+const NATIVE_INTENT_RECONCILIATION_TASK_NAME = 'native-intent-reconciliation';
+const NATIVE_INTENT_RECONCILIATION_CRON = '*/10 * * * *';
+const NATIVE_INTENT_RECONCILIATION_INITIAL_DELAY_MS = 90_000;
 
 class SchedulerService {
     constructor() {
         this.tasks = new Map();
+        this.initialTaskTimers = new Map();
         this.ratingNormalizationQueueService = ratingNormalizationQueueService;
         queueService.setScheduler(this);
     }
@@ -42,6 +47,10 @@ class SchedulerService {
             }
         }
         this.tasks.clear();
+        for (const timer of this.initialTaskTimers.values()) {
+            clearTimeout(timer);
+        }
+        this.initialTaskTimers.clear();
         this.ratingNormalizationQueueService = ratingNormalizationQueueService;
     }
 
@@ -183,25 +192,72 @@ class SchedulerService {
         }
 
         const task = cron.schedule(cronExpression, async () => {
-            logger.info(`Starting scheduled task: ${name}`);
-            try {
-                if (lockKey !== null) {
-                    const acquired = await withSessionAdvisoryLock(lockKey, handler);
-                    if (!acquired) {
-                        logger.debug(`Scheduled task ${name} skipped — advisory lock held by another process`, { lockKey });
-                        return;
-                    }
-                } else {
-                    await handler();
-                }
-                logger.info(`Completed scheduled task: ${name}`);
-            } catch (error) {
-                logger.error(`Failed scheduled task: ${name}`, { error: error.message });
-            }
+            await this.runScheduledTask(name, handler, lockKey);
         });
 
         this.tasks.set(name, task);
         logger.info(`Scheduled task registered: ${name} (${cronExpression})`);
+    }
+
+    async runScheduledTask(name, handler, lockKey = null) {
+        logger.info(`Starting scheduled task: ${name}`);
+        try {
+            if (lockKey !== null) {
+                const acquired = await withSessionAdvisoryLock(lockKey, handler);
+                if (!acquired) {
+                    logger.debug(`Scheduled task ${name} skipped — advisory lock held by another process`, { lockKey });
+                    return false;
+                }
+            } else {
+                await handler();
+            }
+            logger.info(`Completed scheduled task: ${name}`);
+            return true;
+        } catch (error) {
+            logger.error(`Failed scheduled task: ${name}`, { error: error.message });
+            return false;
+        }
+    }
+
+    scheduleInitial(name, delayMs, handler, lockKey = null) {
+        const existingTimer = this.initialTaskTimers.get(name);
+        if (existingTimer) {
+            clearTimeout(existingTimer);
+        }
+
+        const timer = setTimeout(async () => {
+            this.initialTaskTimers.delete(name);
+            await this.runScheduledTask(name, handler, lockKey);
+        }, delayMs);
+
+        this.initialTaskTimers.set(name, timer);
+    }
+
+    startNativeIntentReconciliation() {
+        if (this.tasks.has(NATIVE_INTENT_RECONCILIATION_TASK_NAME)) {
+            return false;
+        }
+
+        const handler = () => this.runNativeIntentReconciliation();
+        this.schedule(
+            NATIVE_INTENT_RECONCILIATION_TASK_NAME,
+            NATIVE_INTENT_RECONCILIATION_CRON,
+            handler,
+            DB_ADVISORY_LOCKS.NATIVE_INTENT_RECONCILIATION,
+        );
+        this.scheduleInitial(
+            NATIVE_INTENT_RECONCILIATION_TASK_NAME,
+            NATIVE_INTENT_RECONCILIATION_INITIAL_DELAY_MS,
+            handler,
+            DB_ADVISORY_LOCKS.NATIVE_INTENT_RECONCILIATION,
+        );
+
+        logger.info('Native intent reconciliation scheduled after application readiness');
+        return true;
+    }
+
+    async runNativeIntentReconciliation() {
+        return nativeIntentReconciliationService.run();
     }
 
     /**

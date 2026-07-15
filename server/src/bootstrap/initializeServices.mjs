@@ -93,6 +93,19 @@ function startQueueAndScheduler(queueService, schedulerService, runtimeWiringSta
   }
 }
 
+function startNativeIntentReconciliation(schedulerService, runtimeWiringStatus) {
+  if (!runtimeWiringStatus.ok || typeof schedulerService.startNativeIntentReconciliation !== 'function') {
+    return;
+  }
+
+  try {
+    schedulerService.startNativeIntentReconciliation();
+    logger.info('Native intent reconciliation scheduler started successfully');
+  } catch (error) {
+    logger.warn('Native intent reconciliation scheduler failed to start:', { error: error.message });
+  }
+}
+
 async function initializeProviderLock(providerLock) {
   try {
     await providerLock.init();
@@ -244,4 +257,5 @@ export async function initializeServices({
   await startupRatingNormalizationQueue.queueStartupBackfill();
   await ensureDefaultApiKey(apiKeyService);
   await ensureWebhookSecret(webhookService);
+  startNativeIntentReconciliation(schedulerService, runtimeWiringStatus);
 }

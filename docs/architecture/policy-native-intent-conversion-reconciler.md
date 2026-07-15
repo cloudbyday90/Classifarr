@@ -2,8 +2,10 @@
 
 ## Status
 
-Planned Phase 8R.3.2 production replacement for the temporary manual native
-intent conversion dialog.
+Phase 8R.3.2 production replacement for the temporary manual native-intent
+conversion dialog. Scheduler ownership and single-runner exclusion are
+implemented; durable outcome state, retry semantics, circuit breaking, and
+read-only status remain follow-on components.
 
 ## Problem
 
@@ -39,10 +41,10 @@ retried, and a newly restored legacy policy would be missed.
 
 ## Recommendation
 
-Implement `policyNativeIntentConversionReconciler.mjs` as one server-owned
-service. It should run after migrations have completed and on the existing
-maintenance scheduler, discover current conversion candidates, and invoke the
-existing post-upgrade workflow and transactional writer only for ready policies.
+Implement one server-owned reconciliation service. It runs after service
+initialization and on the existing maintenance scheduler, discovers current
+conversion candidates, and invokes the existing post-upgrade workflow and
+transactional writer only for ready policies.
 
 The reconciler must not own conversion rules. It composes:
 
@@ -119,14 +121,19 @@ Cons:
 
 ### 8R.3.2.1 Scheduler Ownership And Single-Runner Exclusion
 
-Reuse `schedulerService` and its session advisory-lock pattern with a dedicated
-lock key. The initial opportunity is scheduled after application readiness; it
-is non-blocking and is not a conversion side effect of ordinary startup. Each
-run has a fixed item and elapsed-time budget. Per-policy conversion continues to
-use the existing authority lock inside its own transaction.
+Implemented with `nativeIntentReconciliationService.mjs` and
+`schedulerService`. The scheduler owns a ten-minute task and a one-time
+post-readiness opportunity after ninety seconds. Both use a dedicated session
+advisory lock; duplicate registration is ignored and reset cancels the pending
+initial timer. Each execution has a fixed ten-policy, twenty-second budget;
+per-policy conversion continues to use the existing authority lock inside its
+own transaction.
 
 This prevents two replicas from processing the same batch while allowing a new
 run after a process or database-session failure releases the session lock.
+The automatic selector excludes already-native policies and every policy with a
+persisted `rollback_applied` event. Re-entry after an intentional rollback is
+reserved for the explicit, future 8R.3.2.4 contract.
 
 ### 8R.3.2.2 Durable Run And Candidate Outcome Ledger
 

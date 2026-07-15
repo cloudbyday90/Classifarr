@@ -171,6 +171,26 @@ describe('policyPostUpgradeDryRun', () => {
     ]);
   });
 
+  test('can select only policies without an active native intent for recurring reconciliation', async () => {
+    const dbClient = {
+      query: jest.fn().mockResolvedValue({ rows: [] }),
+    };
+
+    await loadPolicyPostUpgradePolicies({
+      dbClient,
+      maxPolicies: 7,
+      unconvertedOnly: true,
+      excludeRevertedPolicies: true,
+    });
+
+    expect(dbClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM policy_intents active_intent'),
+      [8],
+    );
+    expect(dbClient.query.mock.calls[0][0]).toContain('active_intent.active = TRUE');
+    expect(dbClient.query.mock.calls[0][0]).toContain("reversion_event.event_type = 'rollback_applied'");
+  });
+
   test('runs loader and dry-run together for post-upgrade orchestration', async () => {
     const dbClient = {
       query: jest.fn().mockResolvedValue({

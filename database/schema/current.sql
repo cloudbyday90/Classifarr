@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-14T13:31:28.908Z
--- Latest Migration: 20260714_090000_add_policy_rollback_snapshot_retention_event.sql
+-- Generated: 2026-07-15T22:16:21.755Z
+-- Latest Migration: 20260715_120000_add_native_intent_reconciliation_actor.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3312,7 +3312,7 @@ CREATE TABLE public.media_server_items (
     original_rating character varying(10),
     enrichment_provider_state character varying(20) DEFAULT 'none'::character varying NOT NULL,
     enrichment_deferred_reason text,
-    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY ((ARRAY['none'::character varying, 'omdb'::character varying, 'tavily'::character varying, 'omdb+tavily'::character varying, 'web_search'::character varying, 'omdb+web_search'::character varying])::text[]))),
+    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY (ARRAY[('none'::character varying)::text, ('omdb'::character varying)::text, ('tavily'::character varying)::text, ('omdb+tavily'::character varying)::text, ('web_search'::character varying)::text, ('omdb+web_search'::character varying)::text]))),
     CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('deferred'::character varying)::text, ('failed'::character varying)::text, ('not_needed'::character varying)::text])))
 );
 
@@ -3434,7 +3434,7 @@ CREATE TABLE public.notification_config (
     pending_mention_type character varying(20) DEFAULT 'none'::character varying NOT NULL,
     pending_mention_target_id character varying(100),
     pending_mention_target_label character varying(150),
-    CONSTRAINT notification_config_pending_mention_type_check CHECK (((pending_mention_type)::text = ANY ((ARRAY['none'::character varying, 'user'::character varying, 'role'::character varying])::text[])))
+    CONSTRAINT notification_config_pending_mention_type_check CHECK (((pending_mention_type)::text = ANY (ARRAY[('none'::character varying)::text, ('user'::character varying)::text, ('role'::character varying)::text])))
 );
 
 
@@ -3759,8 +3759,8 @@ CREATE TABLE public.policy_intent_migration_events (
     summary text,
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT policy_intent_migration_events_actor_type_chk CHECK (((actor_type)::text = ANY ((ARRAY['operator'::character varying, 'post_upgrade'::character varying, 'test_fixture'::character varying, 'maintainer'::character varying])::text[]))),
-    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY ((ARRAY['dry_run_reported'::character varying, 'conversion_started'::character varying, 'conversion_applied'::character varying, 'conversion_failed'::character varying, 'rollback_snapshot_created'::character varying, 'rollback_applied'::character varying, 'rollback_snapshot_payload_redacted'::character varying, 'native_validated'::character varying, 'legacy_deletion_ready'::character varying, 'library_rebuild_replacement_applied'::character varying, 'active_intent_integrity_repaired'::character varying])::text[]))),
+    CONSTRAINT policy_intent_migration_events_actor_type_chk CHECK (((actor_type)::text = ANY ((ARRAY['operator'::character varying, 'post_upgrade'::character varying, 'reconciler'::character varying, 'test_fixture'::character varying, 'maintainer'::character varying])::text[]))),
+    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY (ARRAY[('dry_run_reported'::character varying)::text, ('conversion_started'::character varying)::text, ('conversion_applied'::character varying)::text, ('conversion_failed'::character varying)::text, ('rollback_snapshot_created'::character varying)::text, ('rollback_applied'::character varying)::text, ('rollback_snapshot_payload_redacted'::character varying)::text, ('native_validated'::character varying)::text, ('legacy_deletion_ready'::character varying)::text, ('library_rebuild_replacement_applied'::character varying)::text, ('active_intent_integrity_repaired'::character varying)::text]))),
     CONSTRAINT policy_intent_migration_events_metadata_shape_chk CHECK ((jsonb_typeof(metadata) = 'object'::text))
 );
 
@@ -3840,8 +3840,8 @@ CREATE TABLE public.policy_intent_routing_targets (
     target_status character varying(40) DEFAULT 'configured'::character varying NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT policy_intent_routing_targets_arr_type_chk CHECK (((arr_type IS NULL) OR ((arr_type)::text = ANY ((ARRAY['radarr'::character varying, 'sonarr'::character varying])::text[])))),
-    CONSTRAINT policy_intent_routing_targets_status_chk CHECK (((target_status)::text = ANY ((ARRAY['configured'::character varying, 'missing'::character varying, 'disabled'::character varying, 'review_required'::character varying])::text[])))
+    CONSTRAINT policy_intent_routing_targets_arr_type_chk CHECK (((arr_type IS NULL) OR ((arr_type)::text = ANY (ARRAY[('radarr'::character varying)::text, ('sonarr'::character varying)::text])))),
+    CONSTRAINT policy_intent_routing_targets_status_chk CHECK (((target_status)::text = ANY (ARRAY[('configured'::character varying)::text, ('missing'::character varying)::text, ('disabled'::character varying)::text, ('review_required'::character varying)::text])))
 );
 
 
@@ -3882,14 +3882,14 @@ CREATE TABLE public.policy_intent_rules (
     inference_state character varying(40) NOT NULL,
     sort_order integer DEFAULT 0 NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT policy_intent_rules_collection_chk CHECK (((collection)::text = ANY ((ARRAY['purpose'::character varying, 'hard_limits'::character varying, 'helpful_hints'::character varying, 'avoid'::character varying])::text[]))),
+    CONSTRAINT policy_intent_rules_collection_chk CHECK (((collection)::text = ANY (ARRAY[('purpose'::character varying)::text, ('hard_limits'::character varying)::text, ('helpful_hints'::character varying)::text, ('avoid'::character varying)::text]))),
     CONSTRAINT policy_intent_rules_collection_role_chk CHECK (((((collection)::text = 'purpose'::text) AND ((intent_role)::text = 'purpose'::text)) OR (((collection)::text = 'hard_limits'::text) AND ((intent_role)::text = 'hard_limit'::text)) OR (((collection)::text = 'helpful_hints'::text) AND ((intent_role)::text = 'helpful_hint'::text)) OR (((collection)::text = 'avoid'::text) AND ((intent_role)::text = 'avoid'::text)))),
-    CONSTRAINT policy_intent_rules_constraint_mode_chk CHECK (((constraint_mode IS NULL) OR ((constraint_mode)::text = ANY ((ARRAY['strict'::character varying, 'advisory'::character varying])::text[])))),
-    CONSTRAINT policy_intent_rules_inference_state_chk CHECK (((inference_state)::text = ANY ((ARRAY['empty'::character varying, 'inferred'::character varying, 'partial'::character varying])::text[]))),
-    CONSTRAINT policy_intent_rules_operator_chk CHECK (((operator)::text = ANY ((ARRAY['require_all'::character varying, 'require_any'::character varying, 'prefer'::character varying, 'include'::character varying, 'exclude'::character varying, 'max'::character varying, 'range'::character varying, 'runtime_range'::character varying, 'configured'::character varying])::text[]))),
-    CONSTRAINT policy_intent_rules_role_chk CHECK (((intent_role)::text = ANY ((ARRAY['purpose'::character varying, 'hard_limit'::character varying, 'helpful_hint'::character varying, 'avoid'::character varying])::text[]))),
-    CONSTRAINT policy_intent_rules_semantics_chk CHECK (((semantics IS NULL) OR ((semantics)::text = ANY ((ARRAY['identity'::character varying, 'compatibility'::character varying])::text[])))),
-    CONSTRAINT policy_intent_rules_signal_type_chk CHECK (((signal_type)::text = ANY ((ARRAY['genres'::character varying, 'keywords'::character varying, 'studios'::character varying, 'language'::character varying, 'media_type'::character varying, 'certifications'::character varying, 'release_year'::character varying, 'vote_average'::character varying, 'runtime'::character varying])::text[]))),
+    CONSTRAINT policy_intent_rules_constraint_mode_chk CHECK (((constraint_mode IS NULL) OR ((constraint_mode)::text = ANY (ARRAY[('strict'::character varying)::text, ('advisory'::character varying)::text])))),
+    CONSTRAINT policy_intent_rules_inference_state_chk CHECK (((inference_state)::text = ANY (ARRAY[('empty'::character varying)::text, ('inferred'::character varying)::text, ('partial'::character varying)::text]))),
+    CONSTRAINT policy_intent_rules_operator_chk CHECK (((operator)::text = ANY (ARRAY[('require_all'::character varying)::text, ('require_any'::character varying)::text, ('prefer'::character varying)::text, ('include'::character varying)::text, ('exclude'::character varying)::text, ('max'::character varying)::text, ('range'::character varying)::text, ('runtime_range'::character varying)::text, ('configured'::character varying)::text]))),
+    CONSTRAINT policy_intent_rules_role_chk CHECK (((intent_role)::text = ANY (ARRAY[('purpose'::character varying)::text, ('hard_limit'::character varying)::text, ('helpful_hint'::character varying)::text, ('avoid'::character varying)::text]))),
+    CONSTRAINT policy_intent_rules_semantics_chk CHECK (((semantics IS NULL) OR ((semantics)::text = ANY (ARRAY[('identity'::character varying)::text, ('compatibility'::character varying)::text])))),
+    CONSTRAINT policy_intent_rules_signal_type_chk CHECK (((signal_type)::text = ANY (ARRAY[('genres'::character varying)::text, ('keywords'::character varying)::text, ('studios'::character varying)::text, ('language'::character varying)::text, ('media_type'::character varying)::text, ('certifications'::character varying)::text, ('release_year'::character varying)::text, ('vote_average'::character varying)::text, ('runtime'::character varying)::text]))),
     CONSTRAINT policy_intent_rules_values_shape_chk CHECK ((jsonb_typeof("values") = 'object'::text))
 );
 
@@ -3927,7 +3927,7 @@ CREATE TABLE public.policy_intent_template_applications (
     signal_count integer DEFAULT 0 NOT NULL,
     link_state character varying(40) DEFAULT 'applied'::character varying NOT NULL,
     applied_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT policy_intent_template_applications_link_state_chk CHECK (((link_state)::text = ANY ((ARRAY['applied'::character varying, 'removed'::character varying, 'replaced'::character varying, 'ignored'::character varying])::text[]))),
+    CONSTRAINT policy_intent_template_applications_link_state_chk CHECK (((link_state)::text = ANY (ARRAY[('applied'::character varying)::text, ('removed'::character varying)::text, ('replaced'::character varying)::text, ('ignored'::character varying)::text]))),
     CONSTRAINT policy_intent_template_applications_signal_count_chk CHECK ((signal_count >= 0))
 );
 
@@ -3969,7 +3969,7 @@ CREATE TABLE public.policy_intent_validation_status (
     CONSTRAINT policy_intent_validation_status_error_count_chk CHECK ((error_count >= 0)),
     CONSTRAINT policy_intent_validation_status_errors_shape_chk CHECK ((jsonb_typeof(errors) = 'array'::text)),
     CONSTRAINT policy_intent_validation_status_schema_version_chk CHECK ((schema_version = 1)),
-    CONSTRAINT policy_intent_validation_status_status_chk CHECK (((status)::text = ANY ((ARRAY['valid'::character varying, 'invalid'::character varying, 'warning'::character varying])::text[]))),
+    CONSTRAINT policy_intent_validation_status_status_chk CHECK (((status)::text = ANY (ARRAY[('valid'::character varying)::text, ('invalid'::character varying)::text, ('warning'::character varying)::text]))),
     CONSTRAINT policy_intent_validation_status_warning_count_chk CHECK ((warning_count >= 0)),
     CONSTRAINT policy_intent_validation_status_warnings_shape_chk CHECK ((jsonb_typeof(warnings) = 'array'::text))
 );
@@ -4015,12 +4015,12 @@ CREATE TABLE public.policy_intents (
     accepted_at timestamp with time zone,
     accepted_by integer,
     replaced_by_intent_id bigint,
-    CONSTRAINT policy_intents_inference_state_chk CHECK (((inference_state)::text = ANY ((ARRAY['empty'::character varying, 'inferred'::character varying, 'partial'::character varying])::text[]))),
+    CONSTRAINT policy_intents_inference_state_chk CHECK (((inference_state)::text = ANY (ARRAY[('empty'::character varying)::text, ('inferred'::character varying)::text, ('partial'::character varying)::text]))),
     CONSTRAINT policy_intents_intent_version_chk CHECK ((intent_version > 0)),
     CONSTRAINT policy_intents_review_behavior_shape_chk CHECK ((jsonb_typeof(review_behavior) = 'object'::text)),
     CONSTRAINT policy_intents_schema_version_chk CHECK ((schema_version = 1)),
-    CONSTRAINT policy_intents_source_chk CHECK (((source)::text = ANY ((ARRAY['empty'::character varying, 'legacy_presets'::character varying, 'native_intent'::character varying])::text[]))),
-    CONSTRAINT policy_intents_validation_status_chk CHECK (((validation_status)::text = ANY ((ARRAY['pending_validation'::character varying, 'valid'::character varying, 'invalid'::character varying, 'warning'::character varying])::text[])))
+    CONSTRAINT policy_intents_source_chk CHECK (((source)::text = ANY (ARRAY[('empty'::character varying)::text, ('legacy_presets'::character varying)::text, ('native_intent'::character varying)::text]))),
+    CONSTRAINT policy_intents_validation_status_chk CHECK (((validation_status)::text = ANY (ARRAY[('pending_validation'::character varying)::text, ('valid'::character varying)::text, ('invalid'::character varying)::text, ('warning'::character varying)::text])))
 );
 
 
@@ -4120,12 +4120,12 @@ CREATE TABLE public.policy_library_rebuild_execution_gates (
     CONSTRAINT policy_library_rebuild_execution_gates_acceptance_window_chk CHECK ((acceptance_expires_at > created_at)),
     CONSTRAINT policy_library_rebuild_execution_gates_actor_reference_chk CHECK (((actor_reference)::text ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT policy_library_rebuild_execution_gates_idempotency_key_chk CHECK (((idempotency_key)::text ~ '^policy:library_rebuild_acceptance:[a-f0-9]{64}$'::text)),
-    CONSTRAINT policy_library_rebuild_execution_gates_persisted_snapshot_chk CHECK ((((state)::text <> ALL ((ARRAY['snapshot_persisted'::character varying, 'replacement_applied'::character varying, 'rollback_applied'::character varying])::text[])) OR ((rollback_snapshot_id IS NOT NULL) AND (migration_event_id IS NOT NULL)))),
+    CONSTRAINT policy_library_rebuild_execution_gates_persisted_snapshot_chk CHECK ((((state)::text <> ALL (ARRAY[('snapshot_persisted'::character varying)::text, ('replacement_applied'::character varying)::text, ('rollback_applied'::character varying)::text])) OR ((rollback_snapshot_id IS NOT NULL) AND (migration_event_id IS NOT NULL)))),
     CONSTRAINT policy_library_rebuild_execution_gates_proposal_fingerprint_chk CHECK (((proposal_fingerprint)::text ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT policy_library_rebuild_execution_gates_replacement_applied_chk CHECK ((((state)::text <> 'replacement_applied'::text) OR ((replacement_intent_id IS NOT NULL) AND (replacement_event_id IS NOT NULL) AND (replacement_applied_at IS NOT NULL)))),
     CONSTRAINT policy_library_rebuild_execution_gates_replacement_intent_chk CHECK (((replacement_intent_id IS NULL) OR (replacement_intent_id <> intent_id))),
     CONSTRAINT policy_library_rebuild_execution_gates_rollback_plan_fingerprin CHECK (((rollback_plan_fingerprint)::text ~ '^[a-f0-9]{64}$'::text)),
-    CONSTRAINT policy_library_rebuild_execution_gates_state_chk CHECK (((state)::text = ANY ((ARRAY['snapshot_persisting'::character varying, 'snapshot_persisted'::character varying, 'acceptance_expired'::character varying, 'replacement_applied'::character varying, 'rollback_applied'::character varying, 'invalidated'::character varying])::text[]))),
+    CONSTRAINT policy_library_rebuild_execution_gates_state_chk CHECK (((state)::text = ANY (ARRAY[('snapshot_persisting'::character varying)::text, ('snapshot_persisted'::character varying)::text, ('acceptance_expired'::character varying)::text, ('replacement_applied'::character varying)::text, ('rollback_applied'::character varying)::text, ('invalidated'::character varying)::text]))),
     CONSTRAINT policy_library_rebuild_execution_gates_transition_fingerprint_c CHECK (((transition_fingerprint)::text ~ '^[a-f0-9]{64}$'::text))
 );
 
@@ -5299,7 +5299,7 @@ CREATE TABLE public.web_search_provider_guardrail_events (
     CONSTRAINT web_search_provider_guardrail_events_code_check CHECK (((guardrail_code)::text ~ '^[a-z0-9_]{1,80}$'::text)),
     CONSTRAINT web_search_provider_guardrail_events_provider_key_check CHECK (((provider_key IS NULL) OR ((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text))),
     CONSTRAINT web_search_provider_guardrail_events_purpose_check CHECK (((purpose)::text ~ '^[a-z0-9_-]{1,60}$'::text)),
-    CONSTRAINT web_search_provider_guardrail_events_severity_check CHECK (((severity)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'critical'::character varying])::text[])))
+    CONSTRAINT web_search_provider_guardrail_events_severity_check CHECK (((severity)::text = ANY (ARRAY[('info'::character varying)::text, ('warning'::character varying)::text, ('critical'::character varying)::text])))
 );
 
 
@@ -5349,8 +5349,8 @@ CREATE TABLE public.web_search_provider_health_events (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT web_search_provider_health_events_error_http_status_check CHECK (((error_http_status IS NULL) OR ((error_http_status >= 100) AND (error_http_status <= 599)))),
-    CONSTRAINT web_search_provider_health_events_event_type_check CHECK (((event_type)::text = ANY ((ARRAY['success'::character varying, 'error'::character varying, 'cooldown_started'::character varying])::text[]))),
-    CONSTRAINT web_search_provider_health_events_health_status_check CHECK (((health_status)::text = ANY ((ARRAY['available'::character varying, 'degraded'::character varying, 'cooldown'::character varying])::text[]))),
+    CONSTRAINT web_search_provider_health_events_event_type_check CHECK (((event_type)::text = ANY (ARRAY[('success'::character varying)::text, ('error'::character varying)::text, ('cooldown_started'::character varying)::text]))),
+    CONSTRAINT web_search_provider_health_events_health_status_check CHECK (((health_status)::text = ANY (ARRAY[('available'::character varying)::text, ('degraded'::character varying)::text, ('cooldown'::character varying)::text]))),
     CONSTRAINT web_search_provider_health_events_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
     CONSTRAINT web_search_provider_health_events_retry_after_check CHECK (((retry_after_seconds IS NULL) OR (retry_after_seconds >= 0)))
 );
@@ -5411,7 +5411,7 @@ CREATE TABLE public.web_search_provider_route_decisions (
     CONSTRAINT web_search_provider_route_decisions_duration_ms_check CHECK (((duration_ms IS NULL) OR (duration_ms >= 0))),
     CONSTRAINT web_search_provider_route_decisions_error_http_status_check CHECK (((error_http_status IS NULL) OR ((error_http_status >= 100) AND (error_http_status <= 599)))),
     CONSTRAINT web_search_provider_route_decisions_final_provider_key_check CHECK (((final_provider_key IS NULL) OR ((final_provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text))),
-    CONSTRAINT web_search_provider_route_decisions_outcome_check CHECK (((outcome)::text = ANY ((ARRAY['success'::character varying, 'no_provider'::character varying, 'failed'::character varying, 'error'::character varying])::text[]))),
+    CONSTRAINT web_search_provider_route_decisions_outcome_check CHECK (((outcome)::text = ANY (ARRAY[('success'::character varying)::text, ('no_provider'::character varying)::text, ('failed'::character varying)::text, ('error'::character varying)::text]))),
     CONSTRAINT web_search_provider_route_decisions_selected_provider_key_check CHECK (((selected_provider_key IS NULL) OR ((selected_provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)))
 );
 
@@ -5470,7 +5470,7 @@ CREATE TABLE public.web_search_provider_usage (
     CONSTRAINT web_search_provider_usage_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
     CONSTRAINT web_search_provider_usage_result_count_check CHECK (((result_count >= 0) AND (result_count <= 20))),
     CONSTRAINT web_search_provider_usage_retry_after_seconds_check CHECK (((retry_after_seconds IS NULL) OR (retry_after_seconds >= 0))),
-    CONSTRAINT web_search_provider_usage_status_check CHECK (((status)::text = ANY ((ARRAY['success'::character varying, 'failed'::character varying, 'skipped'::character varying, 'rate_limited'::character varying, 'quota_exhausted'::character varying])::text[])))
+    CONSTRAINT web_search_provider_usage_status_check CHECK (((status)::text = ANY (ARRAY[('success'::character varying)::text, ('failed'::character varying)::text, ('skipped'::character varying)::text, ('rate_limited'::character varying)::text, ('quota_exhausted'::character varying)::text])))
 );
 
 
@@ -8422,7 +8422,7 @@ CREATE INDEX idx_policy_learning_stats_policy ON public.policy_learning_stats US
 -- Name: idx_policy_library_rebuild_execution_gates_active_policy; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_active_policy ON public.policy_library_rebuild_execution_gates USING btree (policy_id) WHERE ((state)::text = ANY ((ARRAY['snapshot_persisting'::character varying, 'snapshot_persisted'::character varying])::text[]));
+CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_active_policy ON public.policy_library_rebuild_execution_gates USING btree (policy_id) WHERE ((state)::text = ANY (ARRAY[('snapshot_persisting'::character varying)::text, ('snapshot_persisted'::character varying)::text]));
 
 
 --
@@ -11812,6 +11812,7 @@ FROM unnest(ARRAY[
     '20260712_120000_add_policy_library_rebuild_execution_gates.sql',
     '20260712_130000_add_policy_library_rebuild_replacement_references.sql',
     '20260713_150000_enforce_single_active_policy_intent.sql',
-    '20260714_090000_add_policy_rollback_snapshot_retention_event.sql'
+    '20260714_090000_add_policy_rollback_snapshot_retention_event.sql',
+    '20260715_120000_add_native_intent_reconciliation_actor.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

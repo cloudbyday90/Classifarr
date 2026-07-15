@@ -1,6 +1,7 @@
 const POLICY_CONVERSION_ACTOR_SOURCE_IDS = Object.freeze({
   MANUAL_OPERATOR: 'manual_operator',
   POST_UPGRADE_APPLY: 'post_upgrade_apply',
+  NATIVE_INTENT_RECONCILIATION: 'native_intent_reconciliation',
   TEST_FIXTURE: 'test_fixture',
   MAINTAINER_MIGRATION_TOOL: 'maintainer_migration_tool',
   ORDINARY_POLICY_READ: 'ordinary_policy_read',
