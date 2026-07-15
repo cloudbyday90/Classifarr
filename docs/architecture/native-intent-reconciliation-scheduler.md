@@ -2,9 +2,8 @@
 
 ## Status
 
-Implemented as Phase 8R.3.2.1. This is the first automatic native-intent
-reconciliation component; it does not replace the remaining ledger, retry,
-circuit-breaker, or read-only-status work.
+Implemented as Phase 8R.3.2.1. The follow-on durable ledger is also now
+implemented; retry, circuit-breaker, and read-only-status work remain.
 
 ## Objective
 
@@ -85,7 +84,7 @@ can be removed.
 ## Recommendation Stack
 
 1. Keep this bounded scheduler and existing transactional conversion writer.
-2. Build the durable run and candidate-outcome ledger next.
+2. Keep the durable run and candidate-outcome ledger bounded and payload-free.
 3. Add retry/quarantine and explicit re-entry guards before deleting the manual
    recovery path.
 4. Add circuit breaking and a read-only status projection before compatibility

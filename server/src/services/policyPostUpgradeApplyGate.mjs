@@ -931,6 +931,7 @@ async function runPolicyPostUpgradeApplyGate({
   excludeRevertedPolicies = false,
   action = null,
   executionDeadlineAt = null,
+  includeReconciliationCandidates = false,
 } = {}) {
   const { policies, activeIntentIntegrityReport } = await loadPolicyPostUpgradeCandidateInputs({
     dbClient,
@@ -946,7 +947,7 @@ async function runPolicyPostUpgradeApplyGate({
     action,
   });
 
-  return applyPolicyPostUpgradeApplyGate({
+  const result = await applyPolicyPostUpgradeApplyGate({
     dbClient,
     dryRun,
     policies,
@@ -954,6 +955,38 @@ async function runPolicyPostUpgradeApplyGate({
     actorId,
     executionDeadlineAt,
   });
+
+  if (includeReconciliationCandidates !== true) {
+    return result;
+  }
+
+  return {
+    ...result,
+    reconciliationCandidates: asArray(dryRun.candidateReport?.candidates)
+      .map(candidate => ({
+        policyId: candidate.policyId,
+        statusId: candidate.statusId,
+        canConvert: candidate.canConvert === true,
+        reasonIds: asArray(candidate.reasons).map(reason => reason?.reasonId),
+        intentContract: {
+          schemaVersion: candidate.intentContract?.schemaVersion,
+          source: candidate.intentContract?.source,
+          inferenceState: candidate.intentContract?.inferenceState,
+          valid: candidate.intentContract?.valid === true,
+          errorCount: candidate.intentContract?.errorCount,
+          warningCount: candidate.intentContract?.warningCount,
+          unsupportedSignalCount: candidate.intentContract?.unsupportedSignalCount,
+        },
+        authorityEligibility: candidate.authorityEligibility
+          ? {
+            stateId: candidate.authorityEligibility.stateId,
+            integrityStatusId: candidate.authorityEligibility.integrityStatusId,
+            activeIntentCount: candidate.authorityEligibility.activeIntentCount,
+          }
+          : undefined,
+      }))
+      .filter(candidate => candidate.policyId !== null && candidate.policyId !== undefined),
+  };
 }
 
 export {

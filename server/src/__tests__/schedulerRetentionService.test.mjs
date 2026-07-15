@@ -46,6 +46,13 @@ describe('SchedulerRetentionService', () => {
                     statusId: 'completed',
                 }),
             },
+            nativeIntentReconciliationLedgerRetentionService: {
+                cleanup: jest.fn().mockResolvedValue({
+                    outcomeDeletedCount: 0,
+                    runDeletedCount: 0,
+                    statusId: 'completed',
+                }),
+            },
         });
     });
 
@@ -203,6 +210,20 @@ describe('SchedulerRetentionService', () => {
                 statusId: 'completed',
             });
             expect(service.policyRollbackSnapshotRetentionService.cleanup).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('runNativeIntentReconciliationLedgerRetentionCleanup', () => {
+        it('delegates bounded reconciliation ledger cleanup to its retention service', async () => {
+            const result = await service.runNativeIntentReconciliationLedgerRetentionCleanup();
+
+            expect(result).toEqual({
+                outcomeDeletedCount: 0,
+                runDeletedCount: 0,
+                statusId: 'completed',
+            });
+            expect(service.nativeIntentReconciliationLedgerRetentionService.cleanup)
+                .toHaveBeenCalledTimes(1);
         });
     });
 });

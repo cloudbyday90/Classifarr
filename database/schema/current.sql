@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-15T22:16:21.755Z
--- Latest Migration: 20260715_120000_add_native_intent_reconciliation_actor.sql
+-- Generated: 2026-07-15T22:59:49.967Z
+-- Latest Migration: 20260715_131000_harden_native_intent_reconciliation_ledger_constraints.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3759,7 +3759,7 @@ CREATE TABLE public.policy_intent_migration_events (
     summary text,
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT policy_intent_migration_events_actor_type_chk CHECK (((actor_type)::text = ANY ((ARRAY['operator'::character varying, 'post_upgrade'::character varying, 'reconciler'::character varying, 'test_fixture'::character varying, 'maintainer'::character varying])::text[]))),
+    CONSTRAINT policy_intent_migration_events_actor_type_chk CHECK (((actor_type)::text = ANY (ARRAY[('operator'::character varying)::text, ('post_upgrade'::character varying)::text, ('reconciler'::character varying)::text, ('test_fixture'::character varying)::text, ('maintainer'::character varying)::text]))),
     CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY (ARRAY[('dry_run_reported'::character varying)::text, ('conversion_started'::character varying)::text, ('conversion_applied'::character varying)::text, ('conversion_failed'::character varying)::text, ('rollback_snapshot_created'::character varying)::text, ('rollback_applied'::character varying)::text, ('rollback_snapshot_payload_redacted'::character varying)::text, ('native_validated'::character varying)::text, ('legacy_deletion_ready'::character varying)::text, ('library_rebuild_replacement_applied'::character varying)::text, ('active_intent_integrity_repaired'::character varying)::text]))),
     CONSTRAINT policy_intent_migration_events_metadata_shape_chk CHECK ((jsonb_typeof(metadata) = 'object'::text))
 );
@@ -4147,6 +4147,96 @@ CREATE SEQUENCE public.policy_library_rebuild_execution_gates_id_seq
 --
 
 ALTER SEQUENCE public.policy_library_rebuild_execution_gates_id_seq OWNED BY public.policy_library_rebuild_execution_gates.id;
+
+
+--
+-- Name: policy_native_intent_reconciliation_outcomes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_native_intent_reconciliation_outcomes (
+    id bigint NOT NULL,
+    run_id bigint NOT NULL,
+    policy_id integer NOT NULL,
+    candidate_fingerprint character varying(71) CONSTRAINT policy_native_intent_reconciliat_candidate_fingerprint_not_null NOT NULL,
+    candidate_status_id character varying(80) CONSTRAINT policy_native_intent_reconciliatio_candidate_status_id_not_null NOT NULL,
+    outcome_state character varying(40) CONSTRAINT policy_native_intent_reconciliation_outc_outcome_state_not_null NOT NULL,
+    reason_id character varying(80) NOT NULL,
+    retry_not_before timestamp with time zone,
+    evaluated_at timestamp with time zone CONSTRAINT policy_native_intent_reconciliation_outco_evaluated_at_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT policy_native_intent_reconciliation_outcome_created_at_not_null NOT NULL,
+    CONSTRAINT policy_native_intent_reconciliation_outcomes_candidate_status_c CHECK (((candidate_status_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text)),
+    CONSTRAINT policy_native_intent_reconciliation_outcomes_fingerprint_chk CHECK (((candidate_fingerprint)::text ~ '^sha256:[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_native_intent_reconciliation_outcomes_reason_id_chk CHECK (((reason_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text)),
+    CONSTRAINT policy_native_intent_reconciliation_outcomes_retry_after_evalua CHECK (((retry_not_before IS NULL) OR (retry_not_before >= evaluated_at))),
+    CONSTRAINT policy_native_intent_reconciliation_outcomes_state_chk CHECK (((outcome_state)::text = ANY (ARRAY[('applied'::character varying)::text, ('already_native'::character varying)::text, ('deferred_retry'::character varying)::text, ('blocked_current_state'::character varying)::text, ('system_failure'::character varying)::text])))
+);
+
+
+--
+-- Name: policy_native_intent_reconciliation_outcomes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_native_intent_reconciliation_outcomes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_native_intent_reconciliation_outcomes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_native_intent_reconciliation_outcomes_id_seq OWNED BY public.policy_native_intent_reconciliation_outcomes.id;
+
+
+--
+-- Name: policy_native_intent_reconciliation_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_native_intent_reconciliation_runs (
+    id bigint NOT NULL,
+    run_key uuid NOT NULL,
+    reconciler_version character varying(80) CONSTRAINT policy_native_intent_reconciliation_reconciler_version_not_null NOT NULL,
+    run_state character varying(40) NOT NULL,
+    source_status_id character varying(80) CONSTRAINT policy_native_intent_reconciliation_r_source_status_id_not_null NOT NULL,
+    reason_id character varying(80) NOT NULL,
+    started_at timestamp with time zone NOT NULL,
+    finished_at timestamp with time zone NOT NULL,
+    candidate_count integer DEFAULT 0 CONSTRAINT policy_native_intent_reconciliation_ru_candidate_count_not_null NOT NULL,
+    converted_count integer DEFAULT 0 CONSTRAINT policy_native_intent_reconciliation_ru_converted_count_not_null NOT NULL,
+    already_native_count integer DEFAULT 0 CONSTRAINT policy_native_intent_reconciliati_already_native_count_not_null NOT NULL,
+    deferred_count integer DEFAULT 0 CONSTRAINT policy_native_intent_reconciliation_run_deferred_count_not_null NOT NULL,
+    blocked_count integer DEFAULT 0 NOT NULL,
+    failed_count integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_native_intent_reconciliation_runs_count_total_chk CHECK ((candidate_count = ((((converted_count + already_native_count) + deferred_count) + blocked_count) + failed_count))),
+    CONSTRAINT policy_native_intent_reconciliation_runs_counts_chk CHECK (((candidate_count >= 0) AND (converted_count >= 0) AND (already_native_count >= 0) AND (deferred_count >= 0) AND (blocked_count >= 0) AND (failed_count >= 0))),
+    CONSTRAINT policy_native_intent_reconciliation_runs_finished_after_started CHECK ((finished_at >= started_at)),
+    CONSTRAINT policy_native_intent_reconciliation_runs_reason_id_chk CHECK (((reason_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text)),
+    CONSTRAINT policy_native_intent_reconciliation_runs_state_chk CHECK (((run_state)::text = ANY (ARRAY[('applied'::character varying)::text, ('evaluated'::character varying)::text, ('deferred'::character varying)::text, ('failed'::character varying)::text]))),
+    CONSTRAINT policy_native_intent_reconciliation_runs_status_id_chk CHECK (((source_status_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text))
+);
+
+
+--
+-- Name: policy_native_intent_reconciliation_runs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_native_intent_reconciliation_runs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_native_intent_reconciliation_runs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_native_intent_reconciliation_runs_id_seq OWNED BY public.policy_native_intent_reconciliation_runs.id;
 
 
 --
@@ -6064,6 +6154,20 @@ ALTER TABLE ONLY public.policy_library_rebuild_execution_gates ALTER COLUMN id S
 
 
 --
+-- Name: policy_native_intent_reconciliation_outcomes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_outcomes ALTER COLUMN id SET DEFAULT nextval('public.policy_native_intent_reconciliation_outcomes_id_seq'::regclass);
+
+
+--
+-- Name: policy_native_intent_reconciliation_runs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_runs ALTER COLUMN id SET DEFAULT nextval('public.policy_native_intent_reconciliation_runs_id_seq'::regclass);
+
+
+--
 -- Name: policy_overlap_metrics_snapshots id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7019,6 +7123,38 @@ ALTER TABLE ONLY public.policy_learning_stats
 
 ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
     ADD CONSTRAINT policy_library_rebuild_execution_gates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_native_intent_reconciliation_outcomes policy_native_intent_reconciliation_outcomes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_outcomes
+    ADD CONSTRAINT policy_native_intent_reconciliation_outcomes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_native_intent_reconciliation_outcomes policy_native_intent_reconciliation_outcomes_run_policy_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_outcomes
+    ADD CONSTRAINT policy_native_intent_reconciliation_outcomes_run_policy_uniq UNIQUE (run_id, policy_id);
+
+
+--
+-- Name: policy_native_intent_reconciliation_runs policy_native_intent_reconciliation_runs_key_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_runs
+    ADD CONSTRAINT policy_native_intent_reconciliation_runs_key_uniq UNIQUE (run_key);
+
+
+--
+-- Name: policy_native_intent_reconciliation_runs policy_native_intent_reconciliation_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_runs
+    ADD CONSTRAINT policy_native_intent_reconciliation_runs_pkey PRIMARY KEY (id);
 
 
 --
@@ -8454,6 +8590,27 @@ CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_transition ON pub
 
 
 --
+-- Name: idx_policy_native_intent_reconciliation_outcomes_policy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_native_intent_reconciliation_outcomes_policy ON public.policy_native_intent_reconciliation_outcomes USING btree (policy_id, evaluated_at DESC, id DESC);
+
+
+--
+-- Name: idx_policy_native_intent_reconciliation_outcomes_retention; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_native_intent_reconciliation_outcomes_retention ON public.policy_native_intent_reconciliation_outcomes USING btree (created_at, id);
+
+
+--
+-- Name: idx_policy_native_intent_reconciliation_runs_finished; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_native_intent_reconciliation_runs_finished ON public.policy_native_intent_reconciliation_runs USING btree (finished_at, id);
+
+
+--
 -- Name: idx_policy_overlap_metrics_snapshots_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9692,6 +9849,22 @@ ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
 
 ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
     ADD CONSTRAINT policy_library_rebuild_execution_gates_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_native_intent_reconciliation_outcomes policy_native_intent_reconciliation_outcomes_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_outcomes
+    ADD CONSTRAINT policy_native_intent_reconciliation_outcomes_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_native_intent_reconciliation_outcomes policy_native_intent_reconciliation_outcomes_run_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_outcomes
+    ADD CONSTRAINT policy_native_intent_reconciliation_outcomes_run_id_fkey FOREIGN KEY (run_id) REFERENCES public.policy_native_intent_reconciliation_runs(id) ON DELETE CASCADE;
 
 
 --
@@ -11813,6 +11986,8 @@ FROM unnest(ARRAY[
     '20260712_130000_add_policy_library_rebuild_replacement_references.sql',
     '20260713_150000_enforce_single_active_policy_intent.sql',
     '20260714_090000_add_policy_rollback_snapshot_retention_event.sql',
-    '20260715_120000_add_native_intent_reconciliation_actor.sql'
+    '20260715_120000_add_native_intent_reconciliation_actor.sql',
+    '20260715_130000_add_native_intent_reconciliation_ledger.sql',
+    '20260715_131000_harden_native_intent_reconciliation_ledger_constraints.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

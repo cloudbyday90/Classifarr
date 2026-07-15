@@ -29,6 +29,12 @@ unchanged operator or runtime outcome.
   run is capped by policy count and time, excludes already-native and reverted
   policies, reuses transactional authority safeguards, and records a distinct
   reconciliation actor without exposing raw policy payloads.
+- **Native Intent Reconciliation Ledger** - automatic native-intent conversion
+  now retains bounded, post-commit run and per-policy outcome evidence using
+  safe state IDs, timestamps, policy references, and candidate fingerprints.
+  Empty evaluations and scheduler lock skips cannot masquerade as completed
+  work; retention and backup/restore preserve support evidence without copying
+  legacy policy payloads.
 - **Native Conversion And Automation Readiness Separation** - valid policies
   can now convert to native intent even when routing or profile freshness still
   needs work. Those automation blockers are reported separately, and unmapped

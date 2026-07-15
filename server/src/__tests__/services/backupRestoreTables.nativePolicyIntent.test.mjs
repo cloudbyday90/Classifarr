@@ -95,6 +95,33 @@ describe('backupRestoreTables native policy intent restore', () => {
           errors: [],
           warnings: [],
         }],
+        policyNativeIntentReconciliationRuns: [{
+          id: 37,
+          run_key: 'a9cf9f4a-61e3-4ca7-8fe6-b810efff7c1c',
+          reconciler_version: 'native_intent_reconciliation.ledger.v1',
+          run_state: 'evaluated',
+          source_status_id: 'blocked_by_no_ready_steps',
+          reason_id: 'no_candidates',
+          started_at: '2026-07-15T00:00:00.000Z',
+          finished_at: '2026-07-15T00:00:01.000Z',
+          candidate_count: 0,
+          converted_count: 0,
+          already_native_count: 0,
+          deferred_count: 0,
+          blocked_count: 0,
+          failed_count: 0,
+        }],
+        policyNativeIntentReconciliationOutcomes: [{
+          id: 38,
+          run_id: 37,
+          policy_id: 10,
+          candidate_fingerprint: `sha256:${'a'.repeat(64)}`,
+          candidate_status_id: 'ready_to_convert',
+          outcome_state: 'deferred_retry',
+          reason_id: 'execution_budget_exhausted',
+          retry_not_before: null,
+          evaluated_at: '2026-07-15T00:00:01.000Z',
+        }],
       },
       { policyIdMap, libraryIdMap }
     );
@@ -107,6 +134,8 @@ describe('backupRestoreTables native policy intent restore', () => {
       migrationEventsRestored: 1,
       rollbackSnapshotsRestored: 1,
       validationStatusesRestored: 1,
+      reconciliationRunsRestored: 1,
+      reconciliationOutcomesRestored: 1,
     });
 
     expect(client.query).toHaveBeenCalledWith(
@@ -128,6 +157,14 @@ describe('backupRestoreTables native policy intent restore', () => {
     expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO policy_intent_rollback_snapshots'),
       expect.arrayContaining([501, 110])
+    );
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_native_intent_reconciliation_runs'),
+      expect.arrayContaining(['a9cf9f4a-61e3-4ca7-8fe6-b810efff7c1c'])
+    );
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_native_intent_reconciliation_outcomes'),
+      expect.arrayContaining([expect.any(Number), 110])
     );
   });
 

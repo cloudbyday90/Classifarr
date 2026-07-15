@@ -20,6 +20,9 @@ import {
 import {
     policyRollbackSnapshotRetentionService as defaultPolicyRollbackSnapshotRetentionService,
 } from './policyRollbackSnapshotRetentionService.mjs';
+import {
+    nativeIntentReconciliationLedgerRetentionService as defaultNativeIntentReconciliationLedgerRetentionService,
+} from './nativeIntentReconciliationLedgerRetentionService.mjs';
 
 const ERROR_LOG_BATCH_SIZE = 1000;
 
@@ -34,6 +37,9 @@ export class SchedulerRetentionService {
             || defaultWebSearchProviderHealthRetentionService;
         this.policyRollbackSnapshotRetentionService = deps.policyRollbackSnapshotRetentionService
             || defaultPolicyRollbackSnapshotRetentionService;
+        this.nativeIntentReconciliationLedgerRetentionService =
+            deps.nativeIntentReconciliationLedgerRetentionService
+            || defaultNativeIntentReconciliationLedgerRetentionService;
     }
 
     async _runCleanupTask(label, task) {
@@ -130,6 +136,10 @@ export class SchedulerRetentionService {
 
     async runPolicyRollbackSnapshotRetentionCleanup() {
         return this.policyRollbackSnapshotRetentionService.cleanup();
+    }
+
+    async runNativeIntentReconciliationLedgerRetentionCleanup() {
+        return this.nativeIntentReconciliationLedgerRetentionService.cleanup();
     }
 }
 

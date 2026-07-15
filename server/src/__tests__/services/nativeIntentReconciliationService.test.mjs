@@ -28,9 +28,17 @@ describe('NativeIntentReconciliationService', () => {
       operatorErrorIds: [],
     });
     const logger = { info: jest.fn(), error: jest.fn() };
+    const ledgerService = {
+      record: jest.fn().mockResolvedValue({
+        statusId: 'persisted',
+        runId: 44,
+        rawPayloadExposed: false,
+      }),
+    };
     const service = new NativeIntentReconciliationService({
       dbClient,
       runApplyGate,
+      ledgerService,
       now: () => new Date('2026-07-15T12:00:00.000Z'),
       loggerInstance: logger,
     });
@@ -42,6 +50,7 @@ describe('NativeIntentReconciliationService', () => {
       maxPolicies: NATIVE_INTENT_RECONCILIATION_BATCH_SIZE,
       unconvertedOnly: true,
       excludeRevertedPolicies: true,
+      includeReconciliationCandidates: true,
       action: expect.objectContaining({
         actorSourceId: 'native_intent_reconciliation',
         reasonCode: 'native_intent_reconciliation',
@@ -66,6 +75,11 @@ describe('NativeIntentReconciliationService', () => {
     }));
     expect(result).not.toHaveProperty('results');
     expect(JSON.stringify(result)).not.toContain('must not escape');
+    expect(ledgerService.record).toHaveBeenCalledWith(expect.objectContaining({
+      applyGate: expect.objectContaining({ statusId: 'applied' }),
+      startedAt: '2026-07-15T12:00:00.000Z',
+      finishedAt: expect.any(String),
+    }));
     expect(logger.info).toHaveBeenCalledWith(
       'Native intent reconciliation completed',
       expect.objectContaining({ statusId: 'applied' }),
@@ -74,8 +88,10 @@ describe('NativeIntentReconciliationService', () => {
 
   test('returns a sanitized failure result when the conversion gate throws', async () => {
     const logger = { info: jest.fn(), error: jest.fn() };
+    const ledgerService = { record: jest.fn() };
     const service = new NativeIntentReconciliationService({
       runApplyGate: jest.fn().mockRejectedValue(new Error('database password should not be exposed')),
+      ledgerService,
       now: () => new Date('2026-07-15T12:00:00.000Z'),
       loggerInstance: logger,
     });
@@ -92,5 +108,67 @@ describe('NativeIntentReconciliationService', () => {
       'Native intent reconciliation failed',
       { statusId: 'failed', failureCategory: 'execution' },
     );
+    expect(ledgerService.record).not.toHaveBeenCalled();
+  });
+
+  test('does not re-label a committed conversion as failed when the ledger write fails', async () => {
+    const logger = { info: jest.fn(), error: jest.fn() };
+    const service = new NativeIntentReconciliationService({
+      runApplyGate: jest.fn().mockResolvedValue({
+        statusId: 'applied',
+        applied: true,
+        readyPolicyIds: [18],
+        appliedPolicyCount: 1,
+      }),
+      ledgerService: {
+        record: jest.fn().mockRejectedValue(new Error('sensitive storage details')),
+      },
+      now: () => new Date('2026-07-15T12:00:00.000Z'),
+      loggerInstance: logger,
+    });
+
+    const result = await service.run();
+
+    expect(result).toMatchObject({
+      statusId: 'applied',
+      applied: true,
+      ledger: {
+        statusId: 'failed',
+        reasonId: 'ledger_write_failed',
+        rawPayloadExposed: false,
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('sensitive storage details');
+    expect(logger.error).toHaveBeenCalledWith(
+      'Native intent reconciliation ledger write failed',
+      { statusId: 'applied', failureCategory: 'ledger_write' },
+    );
+  });
+
+  test('keeps a committed conversion when a ledger implementation returns no status', async () => {
+    const logger = { info: jest.fn(), error: jest.fn() };
+    const service = new NativeIntentReconciliationService({
+      runApplyGate: jest.fn().mockResolvedValue({
+        statusId: 'applied',
+        applied: true,
+        readyPolicyIds: [18],
+        appliedPolicyCount: 1,
+      }),
+      ledgerService: { record: jest.fn().mockResolvedValue(undefined) },
+      now: () => new Date('2026-07-15T12:00:00.000Z'),
+      loggerInstance: logger,
+    });
+
+    const result = await service.run();
+
+    expect(result).toMatchObject({
+      statusId: 'applied',
+      applied: true,
+      ledger: {
+        statusId: 'failed',
+        reasonId: 'ledger_write_invalid_result',
+        rawPayloadExposed: false,
+      },
+    });
   });
 });

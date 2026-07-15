@@ -16,6 +16,9 @@ import {
 import {
   POLICY_CONVERSION_ACTOR_SOURCE_IDS,
 } from './policyConversionActorSources.mjs';
+import {
+  nativeIntentReconciliationLedgerService as defaultLedgerService,
+} from './nativeIntentReconciliationLedgerService.mjs';
 
 const NATIVE_INTENT_RECONCILIATION_VERSION = 'native_intent_reconciliation.v1';
 const NATIVE_INTENT_RECONCILIATION_BATCH_SIZE = 10;
@@ -41,6 +44,18 @@ function normalizeOperatorErrorIds(value) {
   return [...new Set(asArray(value)
     .filter(errorId => typeof errorId === 'string' && /^[a-z0-9][a-z0-9_:-]{0,79}$/u.test(errorId)))]
     .slice(0, MAX_OPERATOR_ERROR_IDS);
+}
+
+function normalizeLedgerResult(value) {
+  if (value && typeof value === 'object' && typeof value.statusId === 'string') {
+    return value;
+  }
+
+  return {
+    statusId: 'failed',
+    reasonId: 'ledger_write_invalid_result',
+    rawPayloadExposed: false,
+  };
 }
 
 function buildResult({ applyGate = {}, startedAt, deadlineAt, failed = false } = {}) {
@@ -75,11 +90,13 @@ class NativeIntentReconciliationService {
   constructor({
     dbClient = database,
     runApplyGate = runPolicyPostUpgradeApplyGate,
+    ledgerService = defaultLedgerService,
     now = () => new Date(),
     loggerInstance = logger,
   } = {}) {
     this.dbClient = dbClient;
     this.runApplyGate = runApplyGate;
+    this.ledgerService = ledgerService;
     this.now = now;
     this.logger = loggerInstance;
   }
@@ -98,6 +115,7 @@ class NativeIntentReconciliationService {
         executionDeadlineAt: deadlineAt,
         unconvertedOnly: true,
         excludeRevertedPolicies: true,
+        includeReconciliationCandidates: true,
         action: {
           actorSourceId: POLICY_CONVERSION_ACTOR_SOURCE_IDS.NATIVE_INTENT_RECONCILIATION,
           reasonCode: 'native_intent_reconciliation',
@@ -106,11 +124,30 @@ class NativeIntentReconciliationService {
       });
       const result = buildResult({ applyGate, startedAt, deadlineAt });
 
+      try {
+        result.ledger = normalizeLedgerResult(await this.ledgerService.record({
+          applyGate,
+          startedAt,
+          finishedAt: result.completedAt,
+        }));
+      } catch {
+        result.ledger = {
+          statusId: 'failed',
+          reasonId: 'ledger_write_failed',
+          rawPayloadExposed: false,
+        };
+        this.logger.error('Native intent reconciliation ledger write failed', {
+          statusId: result.statusId,
+          failureCategory: 'ledger_write',
+        });
+      }
+
       this.logger.info('Native intent reconciliation completed', {
         statusId: result.statusId,
         applied: result.applied,
         counts: result.counts,
         operatorErrorIds: result.operatorErrorIds,
+        ledgerStatusId: result.ledger.statusId,
       });
 
       return result;

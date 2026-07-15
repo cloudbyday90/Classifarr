@@ -88,6 +88,8 @@ class BackupService {
         policyIntentMigrationEvents,
         policyIntentRollbackSnapshots,
         policyIntentValidationStatus,
+        policyNativeIntentReconciliationRuns,
+        policyNativeIntentReconciliationOutcomes,
         libraryCustomRules,
         labelPresets,
         scheduledTasks,
@@ -115,6 +117,8 @@ class BackupService {
         db.query('SELECT * FROM policy_intent_migration_events ORDER BY id'),
         db.query('SELECT * FROM policy_intent_rollback_snapshots ORDER BY id'),
         db.query('SELECT * FROM policy_intent_validation_status ORDER BY id'),
+        db.query('SELECT * FROM policy_native_intent_reconciliation_runs ORDER BY id'),
+        db.query('SELECT * FROM policy_native_intent_reconciliation_outcomes ORDER BY id'),
         db.query('SELECT * FROM library_custom_rules ORDER BY id'),
         db.query('SELECT * FROM label_presets ORDER BY id'),
         db.query('SELECT * FROM scheduled_tasks ORDER BY id'),
@@ -147,6 +151,8 @@ class BackupService {
           policyIntentMigrationEvents: policyIntentMigrationEvents.rows,
           policyIntentRollbackSnapshots: policyIntentRollbackSnapshots.rows,
           policyIntentValidationStatus: policyIntentValidationStatus.rows,
+          policyNativeIntentReconciliationRuns: policyNativeIntentReconciliationRuns.rows,
+          policyNativeIntentReconciliationOutcomes: policyNativeIntentReconciliationOutcomes.rows,
           libraryCustomRules: libraryCustomRules.rows,
           labelPresets: labelPresets.rows,
           scheduledTasks: scheduledTasks.rows,
@@ -173,6 +179,8 @@ class BackupService {
           policyIntentMigrationEventsCount: policyIntentMigrationEvents.rows.length,
           policyIntentRollbackSnapshotsCount: policyIntentRollbackSnapshots.rows.length,
           policyIntentValidationStatusCount: policyIntentValidationStatus.rows.length,
+          policyNativeIntentReconciliationRunsCount: policyNativeIntentReconciliationRuns.rows.length,
+          policyNativeIntentReconciliationOutcomesCount: policyNativeIntentReconciliationOutcomes.rows.length,
           autoLearnedCount: autoLearnedPreferences.rows.length
         }
       };

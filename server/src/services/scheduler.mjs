@@ -106,6 +106,9 @@ class SchedulerService {
         // Daily cleanup of web-search provider cache and usage rows (3:14 AM)
         this.schedule('web-search-provider-retention-cleanup', '14 3 * * *', () => this.runWebSearchProviderRetentionCleanup());
 
+        // Daily pruning of bounded native-intent reconciliation ledger rows (3:16 AM)
+        this.schedule('native-intent-reconciliation-ledger-retention-cleanup', '16 3 * * *', () => this.runNativeIntentReconciliationLedgerRetentionCleanup());
+
         // Daily cleanup of stale awaiting_decision rows (4 AM)
         this.schedule('stale-awaiting-cleanup', '0 4 * * *', () => this.cleanupStaleAwaitingDecisions(), DB_ADVISORY_LOCKS.STALE_CLEANUP);
 
@@ -164,6 +167,13 @@ class SchedulerService {
      */
     async runPolicyRollbackSnapshotRetentionCleanup() {
         return schedulerRetentionService.runPolicyRollbackSnapshotRetentionCleanup();
+    }
+
+    /**
+     * Daily cleanup of bounded native-intent reconciliation support evidence.
+     */
+    async runNativeIntentReconciliationLedgerRetentionCleanup() {
+        return schedulerRetentionService.runNativeIntentReconciliationLedgerRetentionCleanup();
     }
 
     /**

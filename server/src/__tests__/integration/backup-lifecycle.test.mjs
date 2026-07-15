@@ -90,6 +90,24 @@ const STUB_DDLS = [
         errors JSONB DEFAULT '[]'::jsonb, warnings JSONB DEFAULT '[]'::jsonb,
         validated_at TIMESTAMPTZ DEFAULT NOW()
     )`,
+    `CREATE TABLE IF NOT EXISTS policy_native_intent_reconciliation_runs (
+        id BIGSERIAL PRIMARY KEY, run_key UUID NOT NULL UNIQUE,
+        reconciler_version VARCHAR(80) NOT NULL, run_state VARCHAR(40) NOT NULL,
+        source_status_id VARCHAR(80) NOT NULL, reason_id VARCHAR(80) NOT NULL,
+        started_at TIMESTAMPTZ NOT NULL, finished_at TIMESTAMPTZ NOT NULL,
+        candidate_count INTEGER DEFAULT 0 NOT NULL, converted_count INTEGER DEFAULT 0 NOT NULL,
+        already_native_count INTEGER DEFAULT 0 NOT NULL, deferred_count INTEGER DEFAULT 0 NOT NULL,
+        blocked_count INTEGER DEFAULT 0 NOT NULL, failed_count INTEGER DEFAULT 0 NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS policy_native_intent_reconciliation_outcomes (
+        id BIGSERIAL PRIMARY KEY, run_id BIGINT NOT NULL, policy_id INTEGER NOT NULL,
+        candidate_fingerprint VARCHAR(71) NOT NULL, candidate_status_id VARCHAR(80) NOT NULL,
+        outcome_state VARCHAR(40) NOT NULL, reason_id VARCHAR(80) NOT NULL,
+        retry_not_before TIMESTAMPTZ, evaluated_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        UNIQUE (run_id, policy_id)
+    )`,
     `CREATE TABLE IF NOT EXISTS scheduled_tasks (
         id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL,
         task_type VARCHAR(50) DEFAULT 'library_scan' NOT NULL,

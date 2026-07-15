@@ -28,6 +28,7 @@ const mockDb = {
         GAP_ANALYSIS: 2001, LIBRARY_SYNC: 2002, RETRY_QUEUE: 2003,
         ENRICHMENT_RETRY_QUEUE: 2004, RATING_NORMALIZATION_CHECK: 2005, STALE_CLEANUP: 2006,
         POLICY_ROLLBACK_SNAPSHOT_RETENTION: 2007, NATIVE_INTENT_RECONCILIATION: 2008,
+        NATIVE_INTENT_RECONCILIATION_LEDGER_RETENTION: 2009,
     }
 };
 
@@ -49,7 +50,8 @@ const mockSchedulerRetentionService = {
     runApiKeyAuditPrune: jest.fn(),
     runErrorLogCleanup: jest.fn(),
     runWebSearchProviderRetentionCleanup: jest.fn(),
-    runPolicyRollbackSnapshotRetentionCleanup: jest.fn()
+    runPolicyRollbackSnapshotRetentionCleanup: jest.fn(),
+    runNativeIntentReconciliationLedgerRetentionCleanup: jest.fn(),
 };
 
 const mockClassificationMaintenanceService = {
@@ -132,6 +134,7 @@ describe('SchedulerService', () => {
         mockSchedulerRetentionService.runErrorLogCleanup.mockReset();
         mockSchedulerRetentionService.runWebSearchProviderRetentionCleanup.mockReset();
         mockSchedulerRetentionService.runPolicyRollbackSnapshotRetentionCleanup.mockReset();
+        mockSchedulerRetentionService.runNativeIntentReconciliationLedgerRetentionCleanup.mockReset();
         mockClassificationMaintenanceService.cleanupStaleAwaitingDecisions.mockReset();
         mockRatingNormalizationQueueService.queueDailyBackfill.mockReset();
         mockNativeIntentReconciliationService.run.mockReset();
@@ -183,6 +186,15 @@ describe('SchedulerService', () => {
             await expect(scheduler.runPolicyRollbackSnapshotRetentionCleanup()).resolves.toBeUndefined();
 
             expect(mockSchedulerRetentionService.runPolicyRollbackSnapshotRetentionCleanup).toHaveBeenCalledTimes(1);
+        });
+
+        it('runNativeIntentReconciliationLedgerRetentionCleanup delegates to SchedulerRetentionService', async () => {
+            mockSchedulerRetentionService.runNativeIntentReconciliationLedgerRetentionCleanup.mockResolvedValueOnce(undefined);
+
+            await expect(scheduler.runNativeIntentReconciliationLedgerRetentionCleanup()).resolves.toBeUndefined();
+
+            expect(mockSchedulerRetentionService.runNativeIntentReconciliationLedgerRetentionCleanup)
+                .toHaveBeenCalledTimes(1);
         });
     });
 

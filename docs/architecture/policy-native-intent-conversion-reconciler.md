@@ -3,8 +3,8 @@
 ## Status
 
 Phase 8R.3.2 production replacement for the temporary manual native-intent
-conversion dialog. Scheduler ownership and single-runner exclusion are
-implemented; durable outcome state, retry semantics, circuit breaking, and
+conversion dialog. Scheduler ownership, single-runner exclusion, and the
+durable bounded ledger are implemented; retry semantics, circuit breaking, and
 read-only status remain follow-on components.
 
 ## Problem
@@ -137,13 +137,13 @@ reserved for the explicit, future 8R.3.2.4 contract.
 
 ### 8R.3.2.2 Durable Run And Candidate Outcome Ledger
 
-Add bounded run-header and policy-outcome records. They retain timestamps,
-state, policy reference, candidate fingerprint, stable blocker/retry reason,
-and compact counts. They must not duplicate legacy policy payloads or become a
-second compatibility store.
-
-An empty scan, lock-held skip, or temporarily blocked policy must never make
-the overall migration look permanently complete.
+Implemented through [Native Intent Reconciliation Ledger](native-intent-reconciliation-ledger.md).
+The run header and per-policy outcome contract retains only timestamps, state,
+policy references, candidate fingerprints, stable IDs, and compact counts. An
+empty evaluation is explicitly `evaluated`, a scheduler lock skip creates no
+ledger row, and a ledger write failure cannot relabel a committed conversion as
+failed. Bounded retention and backup/restore preserve support evidence without
+creating a second compatibility store.
 
 ### 8R.3.2.3 Eligibility, Retry, And Quarantine Semantics
 

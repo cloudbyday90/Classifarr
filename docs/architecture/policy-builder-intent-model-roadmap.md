@@ -5212,6 +5212,24 @@ Acceptance criteria:
 - Backup/restore preserves enough ledger state to resume safely without
   fabricating completed conversion work.
 
+Implementation outcome:
+
+- `20260715_130000_add_native_intent_reconciliation_ledger.sql` adds bounded
+  native-storage run headers and per-policy outcomes with named state,
+  fingerprint, count, timestamp, and reference constraints; it deliberately
+  contains no policy JSON, prompts, provider data, or trace payloads.
+- Reconciliation records the complete safe candidate evaluation only after the
+  existing conversion transaction has returned. A failed or malformed ledger
+  result cannot relabel a committed conversion as failed.
+- Empty work is `evaluated` with `no_candidates`; scheduler lock contention
+  does not create a durable row. Deferred outcomes carry their current
+  fingerprint, while explicit retry timing and quarantine remain the scope of
+  Task 8R.3.2.3.
+- The ledger has transactionally locked, bounded 30-day outcome and 90-day
+  header retention, plus schema, backup, restore, and lifecycle test coverage.
+- Design and outcome record:
+  [Native Intent Reconciliation Ledger](native-intent-reconciliation-ledger.md).
+
 ##### 8R.3.2.3 Eligibility, Retry, And Quarantine Semantics
 
 Intent: retry transient conditions without thrashing permanently unsupported or

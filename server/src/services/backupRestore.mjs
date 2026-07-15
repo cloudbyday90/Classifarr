@@ -29,6 +29,8 @@ import {
 const logger = createLogger('BackupRestore');
 
 export async function clearExistingConfig(client) {
+  await client.query('DELETE FROM policy_native_intent_reconciliation_outcomes');
+  await client.query('DELETE FROM policy_native_intent_reconciliation_runs');
   await client.query('DELETE FROM policy_intent_validation_status');
   await client.query('DELETE FROM policy_library_rebuild_execution_gates');
   await client.query('DELETE FROM policy_intent_rollback_snapshots');
@@ -76,6 +78,10 @@ export async function restoreAllTables(client, backupData, mode) {
       policyIntentMigrationEvents: backupData.data.policyIntentMigrationEvents,
       policyIntentRollbackSnapshots: backupData.data.policyIntentRollbackSnapshots,
       policyIntentValidationStatus: backupData.data.policyIntentValidationStatus,
+      policyNativeIntentReconciliationRuns:
+        backupData.data.policyNativeIntentReconciliationRuns,
+      policyNativeIntentReconciliationOutcomes:
+        backupData.data.policyNativeIntentReconciliationOutcomes,
     },
     { policyIdMap, libraryIdMap }
   );
@@ -114,6 +120,10 @@ export async function restoreAllTables(client, backupData, mode) {
       policyIntentMigrationEventsRestored: nativePolicyIntentStats.migrationEventsRestored,
       policyIntentRollbackSnapshotsRestored: nativePolicyIntentStats.rollbackSnapshotsRestored,
       policyIntentValidationStatusRestored: nativePolicyIntentStats.validationStatusesRestored,
+      policyNativeIntentReconciliationRunsRestored:
+        nativePolicyIntentStats.reconciliationRunsRestored,
+      policyNativeIntentReconciliationOutcomesRestored:
+        nativePolicyIntentStats.reconciliationOutcomesRestored,
       rulesRestored: backupData.data.libraryCustomRules?.length || 0,
       patternsRestored: backupData.data.learningPatterns?.length || 0,
       classificationEvidenceRestored: backupData.data.classificationEvidence?.length || 0

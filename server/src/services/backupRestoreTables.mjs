@@ -178,6 +178,18 @@ const POLICY_INTENT_VALIDATION_STATUS_ALLOWED_COLUMNS = [
 ];
 const POLICY_INTENT_VALIDATION_STATUS_JSONB_COLUMNS = new Set(['errors', 'warnings']);
 
+const POLICY_NATIVE_INTENT_RECONCILIATION_RUN_ALLOWED_COLUMNS = [
+  'reconciler_version', 'run_state', 'source_status_id', 'reason_id',
+  'started_at', 'finished_at', 'candidate_count', 'converted_count',
+  'already_native_count', 'deferred_count', 'blocked_count', 'failed_count',
+  'created_at',
+];
+
+const POLICY_NATIVE_INTENT_RECONCILIATION_OUTCOME_ALLOWED_COLUMNS = [
+  'candidate_fingerprint', 'candidate_status_id', 'outcome_state', 'reason_id',
+  'retry_not_before', 'evaluated_at', 'created_at',
+];
+
 function normalizeJsonbValue(value) {
   if (value == null || typeof value === 'string') return value;
   return JSON.stringify(value);
@@ -313,6 +325,8 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     migrationEventsRestored: 0,
     rollbackSnapshotsRestored: 0,
     validationStatusesRestored: 0,
+    reconciliationRunsRestored: 0,
+    reconciliationOutcomesRestored: 0,
   };
 
   stats.intentRulesRestored = await insertNativeChildRows({
@@ -405,6 +419,63 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     allowedColumns: POLICY_INTENT_VALIDATION_STATUS_ALLOWED_COLUMNS,
     jsonbColumns: POLICY_INTENT_VALIDATION_STATUS_JSONB_COLUMNS,
   });
+
+  const reconciliationRunIdMap = new Map();
+  for (const run of nativeStorage.policyNativeIntentReconciliationRuns || []) {
+    if (typeof run.run_key !== 'string' || !run.run_key.trim()) continue;
+
+    const { keys, values } = buildAllowedColumnValues(
+      run,
+      POLICY_NATIVE_INTENT_RECONCILIATION_RUN_ALLOWED_COLUMNS,
+    );
+    if (keys.length === 0) continue;
+
+    const placeholders = keys.map((_, index) => `$${index + 2}`).join(', ');
+    const result = await client.query(
+      `INSERT INTO policy_native_intent_reconciliation_runs (run_key, ${keys.join(', ')})
+       VALUES ($1, ${placeholders})
+       ON CONFLICT (run_key) DO NOTHING
+       RETURNING id`,
+      [run.run_key, ...values],
+    );
+    let restoredRunId = result.rows[0]?.id ?? null;
+    if (!restoredRunId) {
+      const existing = await client.query(
+        `SELECT id
+         FROM policy_native_intent_reconciliation_runs
+         WHERE run_key = $1
+         LIMIT 1`,
+        [run.run_key],
+      );
+      restoredRunId = existing.rows[0]?.id ?? null;
+    }
+
+    if (restoredRunId && run.id !== undefined && run.id !== null) {
+      reconciliationRunIdMap.set(run.id, restoredRunId);
+      stats.reconciliationRunsRestored += 1;
+    }
+  }
+
+  for (const outcome of nativeStorage.policyNativeIntentReconciliationOutcomes || []) {
+    const restoredRunId = reconciliationRunIdMap.get(outcome.run_id);
+    const restoredPolicyId = policyIdMap.get(outcome.policy_id);
+    if (!restoredRunId || !restoredPolicyId) continue;
+
+    const { keys, values } = buildAllowedColumnValues(
+      outcome,
+      POLICY_NATIVE_INTENT_RECONCILIATION_OUTCOME_ALLOWED_COLUMNS,
+    );
+    if (keys.length === 0) continue;
+
+    const placeholders = keys.map((_, index) => `$${index + 3}`).join(', ');
+    await client.query(
+      `INSERT INTO policy_native_intent_reconciliation_outcomes (run_id, policy_id, ${keys.join(', ')})
+       VALUES ($1, $2, ${placeholders})
+       ON CONFLICT (run_id, policy_id) DO NOTHING`,
+      [restoredRunId, restoredPolicyId, ...values],
+    );
+    stats.reconciliationOutcomesRestored += 1;
+  }
 
   return stats;
 }
