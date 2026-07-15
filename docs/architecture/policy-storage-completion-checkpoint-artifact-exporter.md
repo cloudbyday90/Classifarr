@@ -28,6 +28,14 @@ a stable JSON contract.
   controlled change with integrity monitoring. The artifact requires current
   roadmap, component, validation, changelog, and removal-loop closure evidence
   before storage migration is marked complete.
+- SLSA artifact verification recommends validating artifact provenance against
+  known expectations and rejecting unexpected values. The public generator
+  verifies the retained completion-audit artifact together with the explicit
+  component, roadmap, validation, and changelog evidence it will summarize.
+- OWASP input validation recommends server-side allowlisting. The command
+  accepts only the required JSON evidence inputs and blocks altered
+  completion-audit, roadmap, and validation evidence before normal output is
+  written.
 - OWASP Logging guidance emphasizes event attributes that support
   accountability. The artifact preserves status, risk, and side-effect
   attributes for downstream closure readouts.
@@ -41,6 +49,10 @@ Sources:
   <https://csrc.nist.gov/projects/ssdf>
 - NIST SP 800-128:
   <https://csrc.nist.gov/pubs/sp/800/128/upd1/final>
+- SLSA Verifying Artifacts:
+  <https://slsa.dev/spec/v1.2/verifying-artifacts>
+- OWASP Input Validation Cheat Sheet:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html>
 - OWASP Logging Cheat Sheet:
   <https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html>
 - Git `mv` documentation:
@@ -98,6 +110,27 @@ Cons:
 - workflows need separate evidence-generation commands before calling this
   exporter.
 
+### Verify The Public Checkpoint Evidence Chain
+
+The public generator should be exercised with the same fingerprint-valid
+completion-audit artifact, component evidence, roadmap evidence, validation
+artifact, and changelog evidence that the final closure readout will consume.
+A coherent chain writes a complete checkpoint and wrapper. Altered removal
+proof, incomplete roadmap evidence, or altered validation evidence must fail
+closed without output by default. Operators may write a blocked diagnostic only
+with `--allow-blocked`.
+
+Pros:
+
+- catches JSON serialization and CLI file-boundary regressions that service
+  tests cannot cover,
+- confirms every explicit closure input remains part of the public contract,
+- prevents a false completion artifact from reaching the final closure readout.
+
+Cons:
+
+- a shared fixture must maintain the current full component-evidence set.
+
 ## Final Recommendation Stack
 
 Use this stack for the policy storage completion checkpoint artifact:
@@ -114,6 +147,9 @@ Use this stack for the policy storage completion checkpoint artifact:
    manifest writes inside the service contract.
 9. Emit semantic `nextStep` evidence for the policy storage final closure
    readout.
+10. Exercise the public generator with a coherent complete chain and fail
+    closed without output for altered completion-audit, roadmap, or validation
+    evidence unless a blocked diagnostic is explicitly requested.
 
 ## Implementation Outcome
 
@@ -137,8 +173,14 @@ Implemented:
   - incomplete checkpoint evidence,
   - forbidden side-effect rejection,
   - artifact validation invariants.
+- Added shared checkpoint-artifact input fixtures so service and public-command
+  coverage use one fingerprint-valid evidence chain.
+- Added a public generator test that verifies complete output,
+  `--require-complete`, fail-closed altered completion-audit/roadmap/validation
+  boundaries, and explicitly allowed blocked diagnostics.
 - Added the checkpoint artifact suite and this design doc to the fixed policy
-  storage closure validation evidence command set.
+  storage closure validation evidence command set and current closure evidence
+  inventory.
 
 Example:
 

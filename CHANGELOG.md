@@ -136,6 +136,11 @@ unchanged operator or runtime outcome.
   remaining inventory. Altered authorization, a mismatched review context, or
   a final scan reference fails closed without output by default; blocked
   diagnostics require an explicit opt-in.
+- **Public Storage Checkpoint Export Assurance** - the storage completion
+  checkpoint command now verifies its full evidence chain before writing
+  output. Altered removal proof, incomplete roadmap evidence, or altered
+  validation artifacts fail closed by default; blocked diagnostics require an
+  explicit opt-in.
 - **Replay-Verified Storage Closure Evidence** - policy storage closure now
   accepts a completion-audit artifact only when its SHA-256 fingerprint,
   retained authorization and manifest inputs, and deterministic audit replay

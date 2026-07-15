@@ -385,15 +385,18 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     label: 'Policy Storage Completion Checkpoint',
     designDocPaths: [
       'docs/architecture/policy-storage-completion-checkpoint.md',
+      'docs/architecture/policy-storage-completion-checkpoint-artifact-exporter.md',
       'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity.md',
     ],
     contractPaths: [
       'server/src/services/policyStorageCompletionCheckpoint.mjs',
       'server/src/services/policyStorageCompletionCheckpointArtifact.mjs',
+      'scripts/generate-policy-storage-completion-checkpoint.mjs',
     ],
     testPaths: [
       'server/src/__tests__/services/policyStorageCompletionCheckpoint.test.mjs',
       'server/src/__tests__/services/policyStorageCompletionCheckpointArtifact.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyStorageCompletionCheckpoint.test.mjs',
     ],
   },
 ]);

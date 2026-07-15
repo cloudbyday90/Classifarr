@@ -1,6 +1,5 @@
 import {
   POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
-  POLICY_STORAGE_COMPLETION_COMPONENTS,
 } from '../../services/policyStorageCompletionCheckpoint.mjs';
 import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION,
@@ -16,63 +15,18 @@ import {
   buildCompletionAuditArtifactFixture,
 } from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
 import {
-  buildPolicyStorageClosureValidationEvidenceFixture,
-} from './policyStorageClosureValidationEvidenceFixture.mjs';
-
-const COMPONENT_IDS =
-  POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => component.componentId);
-
-function componentEvidence(overrides = {}) {
-  return POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => ({
-    componentId: component.componentId,
-    label: component.label,
-    implemented: true,
-    designDocPresent: true,
-    contractEvidencePresent: true,
-    testEvidencePresent: true,
-    changelogEntryPresent: true,
-    ...overrides[component.componentId],
-  }));
-}
-
-function roadmapEvidence(overrides = {}) {
-  return {
-    componentSequenceIds: COMPONENT_IDS,
-    implementationStatusComponentIds: COMPONENT_IDS,
-    ...overrides,
-  };
-}
-
-function validationEvidence(overrides = {}) {
-  const {
-    commandResultOverrides = {},
-    ...artifactOverrides
-  } = overrides;
-
-  return {
-    ...buildPolicyStorageClosureValidationEvidenceFixture({ commandResultOverrides }),
-    ...artifactOverrides,
-  };
-}
-
-function changelogEvidence(overrides = {}) {
-  return {
-    updated: true,
-    componentIds: COMPONENT_IDS,
-    ...overrides,
-  };
-}
+  POLICY_STORAGE_COMPLETION_COMPONENT_IDS,
+  buildPolicyStorageCompletionCheckpointArtifactInputs,
+  buildPolicyStorageCompletionCheckpointRoadmapEvidence,
+} from './policyStorageCompletionCheckpointArtifactFixture.mjs';
 
 async function completeArtifact(overrides = {}) {
-  const completionAuditArtifact =
-    overrides.completionAuditArtifact || await buildCompletionAuditArtifactFixture();
+  const inputs = await buildPolicyStorageCompletionCheckpointArtifactInputs({
+    completionAuditArtifact: overrides.completionAuditArtifact,
+  });
 
   return buildPolicyStorageCompletionCheckpointArtifact({
-    componentEvidence: componentEvidence(),
-    roadmapEvidence: roadmapEvidence(),
-    completionAuditArtifact,
-    validationEvidence: validationEvidence(),
-    changelogEvidence: changelogEvidence(),
+    ...inputs,
     generatedAt: '2026-06-25T12:00:00.000Z',
     ...overrides,
   });
@@ -89,8 +43,8 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
     expect(artifact.checkpoint.statusId)
       .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE);
     expect(artifact.checkpointSummary).toEqual(expect.objectContaining({
-      componentExpectedCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
-      componentImplementedCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
+      componentExpectedCount: POLICY_STORAGE_COMPLETION_COMPONENT_IDS.length,
+      componentImplementedCount: POLICY_STORAGE_COMPLETION_COMPONENT_IDS.length,
       checkpointRiskCount: 0,
       finalRemovalAuditStatusId: 'complete',
       validationEvidenceIntegrityOk: true,
@@ -168,8 +122,8 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
 
   test('blocks when checkpoint evidence is incomplete', async () => {
     const artifact = await completeArtifact({
-      roadmapEvidence: roadmapEvidence({
-        componentSequenceIds: COMPONENT_IDS.filter(componentId => (
+      roadmapEvidence: buildPolicyStorageCompletionCheckpointRoadmapEvidence({
+        componentSequenceIds: POLICY_STORAGE_COMPLETION_COMPONENT_IDS.filter(componentId => (
           componentId !== 'next_compatibility_removal_batch_authorization'
         )),
       }),

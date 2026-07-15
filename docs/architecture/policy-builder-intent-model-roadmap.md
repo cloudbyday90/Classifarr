@@ -6775,6 +6775,13 @@ and changelog evidence.
 
 Tasks:
 
+- **8R.32.1 Public Completion-Checkpoint Artifact-Chain Verification**
+  - Completed: runs the public JSON generator with one fingerprint-valid
+    completion-audit artifact and explicit component, roadmap, validation, and
+    changelog evidence.
+  - Completed: proves a coherent chain produces complete output and altered
+    completion-audit, roadmap, or validation evidence fails closed without
+    output unless an operator explicitly requests a blocked diagnostic.
 - Require component evidence for the storage migration implementation set.
 - Require roadmap sequence and implementation-status evidence.
 - Require a complete and valid compatibility-removal completion-audit artifact.
@@ -6812,6 +6819,10 @@ Implementation status:
   `npm run policy:storage-completion-checkpoint`.
 - The focused completion-checkpoint artifact test suite lives in
   `server/src/__tests__/services/policyStorageCompletionCheckpointArtifact.test.mjs`.
+- Public command coverage lives in
+  `server/src/__tests__/scripts/generatePolicyStorageCompletionCheckpoint.test.mjs`
+  and is mapped in both the fixed closure requirement audit and current closure
+  evidence inventory.
 - Current implementation emits complete or blocked checkpoint artifacts with
   semantic `nextStep` evidence and without collecting evidence, running
   commands, mutating storage, or running Git.

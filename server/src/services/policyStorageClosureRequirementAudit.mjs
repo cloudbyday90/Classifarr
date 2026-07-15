@@ -256,7 +256,10 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
       'server/src/services/policyStorageCompletionCheckpointArtifact.mjs',
       'scripts/generate-policy-storage-completion-checkpoint.mjs',
     ],
-    testPaths: ['server/src/__tests__/services/policyStorageCompletionCheckpointArtifact.test.mjs'],
+    testPaths: [
+      'server/src/__tests__/services/policyStorageCompletionCheckpointArtifact.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyStorageCompletionCheckpoint.test.mjs',
+    ],
   },
   {
     componentId: 'storage_final_closure_readout',
