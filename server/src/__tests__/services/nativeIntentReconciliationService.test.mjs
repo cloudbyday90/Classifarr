@@ -14,6 +14,10 @@ import {
   NATIVE_INTENT_RECONCILIATION_MAX_ELAPSED_MS,
   NativeIntentReconciliationService,
 } from '../../services/nativeIntentReconciliationService.mjs';
+import {
+  NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_FIELD,
+  NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_IDS,
+} from '../../services/nativeIntentReconciliationAlertFailureAttribution.mjs';
 
 function readyControlService() {
   return {
@@ -394,6 +398,11 @@ describe('NativeIntentReconciliationService', () => {
 
   test('keeps reconciliation result when alert evaluation fails', async () => {
     const logger = { info: jest.fn(), error: jest.fn() };
+    const alertFailure = Object.assign(new Error('notification token must not escape'), {
+      code: '42P08',
+      [NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_FIELD]:
+        NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_IDS.STATE_PERSIST,
+    });
     const service = new NativeIntentReconciliationService({
       runApplyGate: jest.fn().mockResolvedValue({
         statusId: 'applied',
@@ -403,7 +412,7 @@ describe('NativeIntentReconciliationService', () => {
       }),
       ledgerService: { record: jest.fn().mockResolvedValue({ statusId: 'persisted' }) },
       controlService: readyControlService(),
-      alertService: { evaluateAndNotify: jest.fn().mockRejectedValue(new Error('notification token must not escape')) },
+      alertService: { evaluateAndNotify: jest.fn().mockRejectedValue(alertFailure) },
       now: () => new Date('2026-07-15T12:00:00.000Z'),
       loggerInstance: logger,
     });
@@ -414,7 +423,9 @@ describe('NativeIntentReconciliationService', () => {
       statusId: 'applied',
       alertEvaluation: {
         statusId: 'failed',
-        reasonId: 'alert_evaluation_failed',
+        reasonId: 'reconciliation_alert_state_parameter_contract_invalid',
+        stageId: 'alert_state_persist',
+        categoryId: 'alert_evaluation',
         rawPayloadExposed: false,
       },
     });
@@ -423,6 +434,8 @@ describe('NativeIntentReconciliationService', () => {
       'Native intent reconciliation alert evaluation failed',
       expect.objectContaining({
         statusId: 'applied',
+        alertFailureStageId: 'alert_state_persist',
+        alertFailureReasonId: 'reconciliation_alert_state_parameter_contract_invalid',
         failureCategory: 'alert_evaluation',
         rawPayloadExposed: false,
       }),

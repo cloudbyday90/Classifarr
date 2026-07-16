@@ -10,6 +10,10 @@ import { jest } from '@jest/globals';
 import {
   NativeIntentReconciliationAlertService,
 } from '../../services/nativeIntentReconciliationAlertService.mjs';
+import {
+  NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_FIELD,
+  NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_IDS,
+} from '../../services/nativeIntentReconciliationAlertFailureAttribution.mjs';
 
 describe('NativeIntentReconciliationAlertService', () => {
   test('writes a bounded alert state and one in-app notification inside one transaction', async () => {
@@ -115,5 +119,31 @@ describe('NativeIntentReconciliationAlertService', () => {
       notifiedAt: null,
       alert: expect.objectContaining({ alertState: 'resolved' }),
     }));
+  });
+
+  test('attributes alert-state persistence failures without retaining database text', async () => {
+    const sourceError = Object.assign(
+      new Error('inconsistent types deduced for parameter $2; postgres://secret@example'),
+      { code: '42P08' },
+    );
+    const service = new NativeIntentReconciliationAlertService({
+      db: { withTransaction: jest.fn(async work => work({})) },
+      statusService: { getStatus: jest.fn().mockResolvedValue({ statusId: 'attention_required' }) },
+      loadAlertStates: jest.fn().mockResolvedValue([]),
+      insertNotification: jest.fn(),
+      upsertAlertState: jest.fn().mockRejectedValue(sourceError),
+      buildEvaluation: jest.fn().mockReturnValue([{
+        alertTypeId: 'repeated_system_failure',
+        alertState: 'firing',
+        notificationDue: false,
+      }]),
+      loggerInstance: { info: jest.fn() },
+    });
+
+    await expect(service.evaluateAndNotify()).rejects.toMatchObject({
+      code: '42P08',
+      [NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_FIELD]:
+        NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_IDS.STATE_PERSIST,
+    });
   });
 });

@@ -47,8 +47,8 @@ the same durable lifecycle state without changing reconciliation execution.
 
 Alert evaluation is observational. If it cannot read or persist its own data,
 the completed reconciliation result remains truthful and unchanged. The failure
-is logged as a bounded `alert_evaluation` operational event without a raw stack
-or exception message.
+is logged as a bounded `alert_evaluation` operational event with a fixed
+lifecycle stage and reason, without a raw stack or exception message.
 
 ## Research And Recommendation
 

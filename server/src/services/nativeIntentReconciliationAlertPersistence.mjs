@@ -33,10 +33,10 @@ export async function upsertNativeIntentReconciliationAlertState({
        alert_type_id, alert_state, first_detected_at, last_detected_at,
        last_notified_at, last_resolved_at, occurrence_count, updated_at
      )
-     VALUES ($1, $2, $3, $3, $4,
-       CASE WHEN $2 = 'resolved' THEN $3 ELSE NULL END,
-       CASE WHEN $2 = 'firing' THEN 1 ELSE 0 END,
-       $3)
+     VALUES ($1::varchar, $2::varchar, $3::timestamptz, $3::timestamptz, $4::timestamptz,
+       CASE WHEN $2::varchar = 'resolved'::varchar THEN $3::timestamptz ELSE NULL END,
+       CASE WHEN $2::varchar = 'firing'::varchar THEN 1 ELSE 0 END,
+       $3::timestamptz)
      ON CONFLICT (alert_type_id) DO UPDATE
      SET alert_state = EXCLUDED.alert_state,
          first_detected_at = CASE

@@ -41,6 +41,11 @@ unchanged operator or runtime outcome.
   instead of treating the intentionally absent conversion workflow as a system
   error. Empty inventory remains auditable as `no_candidates` without false
   failure alerts or conversion attempts.
+- **Native Reconciliation Alert Persistence Safety** - reconciliation alerts
+  now explicitly type their PostgreSQL lifecycle-state parameters, preventing
+  failed alert transactions and cooldown loss. Alert persistence failures retain
+  only a safe lifecycle stage and reason while real PostgreSQL coverage verifies
+  notification deduplication and resolution behavior.
 - **Native Reconciliation Scheduler Collision And Restart Assurance** - added
   failure-injection coverage proving a delayed startup reconciliation skips
   when a recurring run already holds the shared advisory lock, scheduler

@@ -5463,6 +5463,13 @@ slice and full Testcontainers integration suite passed on 2026-07-16. The
 design and outcome record is [Native Intent Reconciliation Failure-Injection
 And Lifecycle Matrix](native-intent-reconciliation-failure-injection-lifecycle-matrix.md).
 
+Alert lifecycle persistence now also has PostgreSQL-backed regression coverage.
+The upsert explicitly types all reused `varchar` and `timestamptz` parameters,
+so PostgreSQL cannot infer conflicting types for the firing-state parameter.
+Alert failures retain only a fixed lifecycle stage and bounded reason, never
+raw query or exception detail. The design and outcome record is [Native Intent
+Reconciliation Alert Persistence Safety](native-intent-reconciliation-alert-persistence-safety.md).
+
 Tasks:
 
 - Add focused tests for lock contention, process restart, expired retry delay,

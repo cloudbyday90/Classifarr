@@ -18,6 +18,10 @@ import {
   upsertNativeIntentReconciliationAlertState,
 } from './nativeIntentReconciliationAlertPersistence.mjs';
 import {
+  NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_IDS,
+  runNativeIntentReconciliationAlertStage,
+} from './nativeIntentReconciliationAlertFailureAttribution.mjs';
+import {
   nativeIntentReconciliationStatusService as defaultStatusService,
 } from './nativeIntentReconciliationStatusService.mjs';
 
@@ -63,35 +67,50 @@ export class NativeIntentReconciliationAlertService {
 
     const evaluatedAt = toIsoTimestamp(this.now());
     const safeCorrelationId = normalizeCorrelationId(correlationId);
-    const status = await this.statusService.getStatus({ dbClient, now: evaluatedAt });
+    const status = await runNativeIntentReconciliationAlertStage({
+      stageId: NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_IDS.STATUS_READ,
+      execute: () => this.statusService.getStatus({ dbClient, now: evaluatedAt }),
+    });
     const alertTypeIds = Object.values(NATIVE_INTENT_RECONCILIATION_ALERT_TYPE_IDS);
 
-    const result = await dbClient.withTransaction(async client => {
-      const priorAlertStates = await this.loadAlertStates({ client, alertTypeIds });
-      const evaluations = this.buildEvaluation({
-        status,
-        priorAlertStates,
-        evaluatedAt,
-      });
-      const knownAlertTypes = new Set(priorAlertStates.map(state => state.alert_type_id));
-      let notificationCount = 0;
-
-      for (const alert of evaluations) {
-        if (alert.alertState !== 'firing' && !knownAlertTypes.has(alert.alertTypeId)) continue;
-
-        if (alert.notificationDue) {
-          await this.insertNotification({ client, alert });
-          notificationCount += 1;
-        }
-        await this.upsertAlertState({
-          client,
-          alert,
-          evaluatedAt,
-          notifiedAt: alert.notificationDue ? evaluatedAt : null,
+    const result = await runNativeIntentReconciliationAlertStage({
+      stageId: NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_IDS.TRANSACTION,
+      execute: () => dbClient.withTransaction(async client => {
+        const priorAlertStates = await runNativeIntentReconciliationAlertStage({
+          stageId: NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_IDS.STATE_LOAD,
+          execute: () => this.loadAlertStates({ client, alertTypeIds }),
         });
-      }
+        const evaluations = this.buildEvaluation({
+          status,
+          priorAlertStates,
+          evaluatedAt,
+        });
+        const knownAlertTypes = new Set(priorAlertStates.map(state => state.alert_type_id));
+        let notificationCount = 0;
 
-      return { evaluations, notificationCount };
+        for (const alert of evaluations) {
+          if (alert.alertState !== 'firing' && !knownAlertTypes.has(alert.alertTypeId)) continue;
+
+          if (alert.notificationDue) {
+            await runNativeIntentReconciliationAlertStage({
+              stageId: NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_IDS.NOTIFICATION_PERSIST,
+              execute: () => this.insertNotification({ client, alert }),
+            });
+            notificationCount += 1;
+          }
+          await runNativeIntentReconciliationAlertStage({
+            stageId: NATIVE_INTENT_RECONCILIATION_ALERT_FAILURE_STAGE_IDS.STATE_PERSIST,
+            execute: () => this.upsertAlertState({
+              client,
+              alert,
+              evaluatedAt,
+              notifiedAt: alert.notificationDue ? evaluatedAt : null,
+            }),
+          });
+        }
+
+        return { evaluations, notificationCount };
+      }),
     });
 
     const firingAlertTypeIds = result.evaluations

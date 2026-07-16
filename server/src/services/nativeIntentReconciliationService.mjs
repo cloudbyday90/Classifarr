@@ -31,6 +31,9 @@ import {
   NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS,
   runNativeIntentReconciliationStage,
 } from './nativeIntentReconciliationFailureAttribution.mjs';
+import {
+  buildNativeIntentReconciliationAlertFailureAttribution,
+} from './nativeIntentReconciliationAlertFailureAttribution.mjs';
 
 const NATIVE_INTENT_RECONCILIATION_VERSION = 'native_intent_reconciliation.v1';
 const NATIVE_INTENT_RECONCILIATION_BATCH_SIZE = 10;
@@ -164,16 +167,21 @@ class NativeIntentReconciliationService {
         dbClient: this.dbClient,
         correlationId: result.correlationId,
       });
-    } catch {
+    } catch (error) {
+      const failure = buildNativeIntentReconciliationAlertFailureAttribution(error);
       result.alertEvaluation = {
         statusId: 'failed',
-        reasonId: 'alert_evaluation_failed',
+        reasonId: failure.reasonId,
+        stageId: failure.stageId,
+        categoryId: failure.categoryId,
         rawPayloadExposed: false,
       };
       this.logger.error('Native intent reconciliation alert evaluation failed', {
         correlationId: result.correlationId,
         statusId: result.statusId,
-        failureCategory: 'alert_evaluation',
+        alertFailureStageId: failure.stageId,
+        alertFailureReasonId: failure.reasonId,
+        failureCategory: failure.categoryId,
         rawPayloadExposed: false,
       }, { persistStack: false });
     }

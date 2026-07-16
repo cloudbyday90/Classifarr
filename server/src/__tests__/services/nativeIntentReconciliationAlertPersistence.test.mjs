@@ -25,6 +25,10 @@ describe('Native intent reconciliation alert persistence', () => {
     const [sql, values] = query.mock.calls[0];
     expect(sql).toContain("alert_state = 'resolved'");
     expect(sql).toContain('THEN EXCLUDED.last_notified_at');
+    expect(sql).toContain('$1::varchar');
+    expect(sql).toContain('$2::varchar');
+    expect(sql).toContain('$3::timestamptz');
+    expect(sql).toContain('$4::timestamptz');
     expect(values).toEqual([
       'circuit_open',
       'firing',
