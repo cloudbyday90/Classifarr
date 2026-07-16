@@ -2,16 +2,17 @@
 
 ## Status
 
-In progress as Task 8R.3.2.7 of the policy-builder intent model roadmap.
+Completed on 2026-07-16 as Task 8R.3.2.7 of the policy-builder intent model
+roadmap.
 
-The first three matrix slices, implemented on 2026-07-16, prove that a
-recurring native-intent reconciliation run and the delayed startup run cannot
-execute the same conversion concurrently; that a fresh scheduler and
-reconciliation state service recover safely after process reinitialization; and
-that a late conversion write failure rolls back the earlier rollback snapshot,
-native-intent header, and migration events as one transaction. The remaining
-matrix work is deliberately kept as separate, focused test slices rather than
-one broad mock-heavy test.
+The matrix proves that a recurring native-intent reconciliation run and the
+delayed startup run cannot execute the same conversion concurrently; that a
+fresh scheduler and reconciliation state service recover safely after process
+reinitialization; that a late conversion write failure rolls back the earlier
+rollback snapshot, native-intent header, and migration events as one
+transaction; and that a ready legacy policy converts through the real
+PostgreSQL scheduler path without any client dialog or apply request. The work
+remains split into focused slices rather than one broad mock-heavy test.
 
 ## Decision
 
@@ -36,6 +37,15 @@ restore a client preview, selection, confirmation, or apply path.
   transaction. A late-write failure test must therefore prove that the
   snapshot, audit events, and native header are staged before failure but
   absent from committed state after `ROLLBACK`.
+- [Testcontainers for Node.js PostgreSQL](https://node.testcontainers.org/modules/postgresql/)
+  documents starting an isolated PostgreSQL container and connecting through a
+  real `pg` client. The integration slice should use the repository's existing
+  Testcontainers template database rather than simulate the PostgreSQL
+  transaction or lock boundary.
+- [Docker Testcontainers prerequisites](https://docs.docker.com/testcontainers/)
+  requires a Docker-API-compatible runtime. The integration command must fail
+  before suites execute when that runtime is unavailable, rather than silently
+  downgrade the production database boundary to a mock.
 - [NIST SP 800-218 Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
   recommends outcome-based secure development practices that reduce both
   vulnerabilities and the impact of undiscovered defects. Focused,
@@ -61,7 +71,9 @@ restore a client preview, selection, confirmation, or apply path.
    client to assert `ROLLBACK`, no `COMMIT`, and zero committed rows.
 4. **Run one real-database scheduler integration test.** Once the Docker test
    engine is reachable, create a ready legacy policy, trigger the scheduler,
-   and prove conversion occurs without any client conversion request.
+   and prove conversion occurs without any client conversion request. Its
+   database facade must acquire and release the same PostgreSQL session
+   advisory lock contract as production.
 5. **Keep support evidence safe.** Assert only fixed failure IDs, safe ledger
    status, and correlation IDs. Never assert or persist a raw exception stack.
 
@@ -125,8 +137,23 @@ restore a client preview, selection, confirmation, or apply path.
   deduplication.
 - Removed a duplicate serializable-database-failure test from the apply-gate
   suite so each matrix assertion has one clear owner.
+- Added `native-intent-reconciliation-scheduler.test.mjs`, a Testcontainers
+  integration test that creates a minimal ready legacy policy and invokes only
+  `schedulerService.runScheduledTask`. It asserts the active native intent,
+  native purpose rule, template provenance, rollback snapshot, reconciler
+  migration events, reconciliation ledger outcome, and removal of transient
+  retry state. It makes no HTTP request and imports no client conversion flow.
+- Updated the Testcontainers database facade so scheduler integration tests use
+  PostgreSQL `pg_try_advisory_lock` and release the acquired session lock. The
+  prior facade executed a handler without any lock, which could not validate
+  the production scheduler boundary.
 
-## Remaining Matrix Slice
+## Verification
 
-- Docker-backed integration proving a ready legacy policy converts through the
-  scheduler without a client dialog or apply request.
+- The Docker-backed scheduler integration passed on 2026-07-16 using the
+  repository's `pgvector/pgvector:pg18` Testcontainers template database.
+- The full Testcontainers integration suite passed: 51 suites and 805 tests.
+- The focused scheduler, lifecycle, apply-gate, and database-resilience unit
+  suite passed: 20 suites and 145 tests.
+- Server lint, server typecheck, documentation lint, and copyright compliance
+  checks passed.

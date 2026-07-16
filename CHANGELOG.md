@@ -39,6 +39,12 @@ unchanged operator or runtime outcome.
   transaction-aware failure injection proving that a late native-rule write
   failure rolls back the earlier native-intent header, rollback snapshot, and
   migration events rather than committing partial conversion or recovery data.
+- **Native Reconciliation Database Integration Assurance** - added real
+  PostgreSQL scheduler coverage proving a ready legacy policy converts without
+  a client dialog or apply request. The scheduler-owned path acquires its
+  session advisory lock and persists the validated active native intent, native
+  rule/template/rollback/audit records, and reconciliation ledger outcome while
+  clearing transient retry state.
 - **Native Intent Reconciliation Ledger** - automatic native-intent conversion
   now retains bounded, post-commit run and per-policy outcome evidence using
   safe state IDs, timestamps, policy references, and candidate fingerprints.

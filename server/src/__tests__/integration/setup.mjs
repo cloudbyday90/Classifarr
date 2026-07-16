@@ -129,6 +129,28 @@ function createIntegrationDatabaseFacade() {
             client.release();
         }
     };
+    const withSessionAdvisoryLock = async (lockKey, fn) => {
+        const client = await getPool().connect();
+
+        try {
+            const result = await client.query(
+                'SELECT pg_try_advisory_lock($1) AS acquired',
+                [lockKey],
+            );
+            if (result.rows?.[0]?.acquired !== true) {
+                return false;
+            }
+
+            try {
+                await fn();
+                return true;
+            } finally {
+                await client.query('SELECT pg_advisory_unlock($1)', [lockKey]);
+            }
+        } finally {
+            client.release();
+        }
+    };
 
     return {
         query,
@@ -136,7 +158,7 @@ function createIntegrationDatabaseFacade() {
         withTransaction,
         healthCheck: async () => ({ connected: true, responseTime: 0 }),
         tryAdvisoryLock: async () => true,
-        withSessionAdvisoryLock: async (_lockKey, fn) => { await fn(); return true; },
+        withSessionAdvisoryLock,
         prewarmHnswIndexes: async () => ({ loaded: false, error: 'pg_prewarm not available in integration test environment' }),
         checkPgStatStatements: async () => ({ active: false, reason: 'skipped in integration test environment' }),
         DB_ADVISORY_LOCKS: {
@@ -144,6 +166,8 @@ function createIntegrationDatabaseFacade() {
             SCHEDULED_BACKFILL: 1002,
             MANUAL_BACKFILL: 1003,
             BACKFILL_OWNER: 1004,
+            NATIVE_INTENT_RECONCILIATION: 2008,
+            NATIVE_INTENT_RECONCILIATION_LEDGER_RETENTION: 2009,
         },
     };
 }

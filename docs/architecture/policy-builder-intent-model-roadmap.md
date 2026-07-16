@@ -5444,17 +5444,19 @@ Acceptance criteria:
 Intent: prove the reconciler behaves safely across the operational states that
 manual dialog testing cannot cover.
 
-Progress: scheduler collision, restart continuity, and post-snapshot
-transaction-failure slices are complete. They prove that a recurring
-reconciliation run holding the native-intent advisory lock causes the delayed
-startup run to skip rather than duplicate conversion; scheduler reinitialization
-creates one fresh initial run while a fresh state service reloads persisted retry
-backoff before selecting a candidate; and a rule-insert failure after rollback
-snapshot creation causes the transaction wrapper to roll back all staged native
-writes without a commit. The design and outcome record is [Native Intent
-Reconciliation Failure-Injection And Lifecycle Matrix](native-intent-reconciliation-failure-injection-lifecycle-matrix.md).
-This task remains in progress until the Docker-backed scheduler coverage is
-complete.
+Completion: scheduler collision, restart continuity, post-snapshot
+transaction-failure, and Docker-backed scheduler integration slices are
+complete. They prove that a recurring reconciliation run holding the native
+intent advisory lock causes the delayed startup run to skip rather than
+duplicate conversion; scheduler reinitialization creates one fresh initial run
+while a fresh state service reloads persisted retry backoff before selecting a
+candidate; a rule-insert failure after rollback snapshot creation causes the
+transaction wrapper to roll back all staged native writes without a commit; and
+a ready legacy policy converts through the scheduler with a real PostgreSQL
+session advisory lock and no client dialog or apply request. The Docker-backed
+slice and full Testcontainers integration suite passed on 2026-07-16. The
+design and outcome record is [Native Intent Reconciliation Failure-Injection
+And Lifecycle Matrix](native-intent-reconciliation-failure-injection-lifecycle-matrix.md).
 
 Tasks:
 
