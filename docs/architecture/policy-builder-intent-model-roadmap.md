@@ -6370,6 +6370,33 @@ Tasks:
     execution gate.
   - Do not create an apply path, run a deletion, mutate storage, or invoke the
     production application endpoint.
+- **8R.16.3 Collector-To-Gate Attestation Integration**
+  - Make the execution-gate boundary consume a separately supplied preflight
+    evidence artifact only after it revalidates the artifact fingerprint,
+    source revision, timestamps, and manifest observation ordering against the
+    current execution-plan artifact.
+  - Derive worktree and manifest verification records from that artifact; do
+    not let the caller replace them with booleans or use the artifact as a
+    substitute for recovery, support, rollback, or approval evidence.
+  - Reject stale, cross-artifact, altered, duplicate, or post-observation
+    checkout evidence before a controlled removal batch can be assembled.
+- **8R.16.4 Pre-Apply Change Detection And TOCTOU Boundary**
+  - Immediately before a controlled apply adapter receives an entry, compare
+    the current checkout revision and the approved manifest path state to the
+    preflight artifact.
+  - Block an apply if the source revision changed, a manifest path changed
+    type, became a symlink, disappeared, or no longer matches `HEAD` after
+    preflight collection.
+  - Keep this as a final read-only recheck owned by the controlled apply
+    boundary; do not broaden the preflight collector into a deletion command.
+- **8R.16.5 Embedded-Runtime Evidence Escalation Rules**
+  - Define the limited conditions that require an embedded runtime probe
+    instead of the retained execution-plan evidence reference.
+  - Reuse the 8R.15a.2 revision-matched image, read-only filesystem, dropped
+    capability, bounded resource, and read-only PostgreSQL containment model
+    for any such probe.
+  - Fail closed if image provenance, containment, or runtime query evidence is
+    unavailable; never fall back to an unverified host or container claim.
 - Require a clean worktree confirmation.
 - Require verified and fresh backup/restore evidence.
 - Require explicit operator approval with an approving actor.
@@ -6417,6 +6444,13 @@ Implementation status:
   backup/restore freshness, operator approval, final support stances, manifest
   verification, emits a semantic `nextStep.stepId`, and validates that no
   deletion side effects occur.
+- Task 8R.16.2 is implemented. The new public preflight collector derives a
+  versioned `.tmp` artifact from the reviewed checkout, exact approved artifact
+  fingerprint, manifest-path continuity, and retained runtime-evidence
+  reference. It emits only `observed`, `missing`, `stale`, or `invalid` states,
+  rejects unsafe paths and caller-controlled time, and does not contact Docker,
+  PostgreSQL, or the production application. The design and outcome record is
+  [Policy Compatibility Deletion Preflight Evidence Collection](policy-compatibility-deletion-preflight-evidence-collection.md).
 
 ### 8R.17 Controlled Compatibility Path Removal
 

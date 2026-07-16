@@ -18,6 +18,14 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Compatibility Deletion Preflight Evidence Collection** - added a
+  non-destructive command that independently records the reviewed checkout,
+  approved execution-plan fingerprint, manifest-path continuity, and current
+  runtime-evidence reference before compatibility cleanup. Dirty checkouts,
+  stale or malformed artifacts, unsafe or missing manifest paths, output-path
+  escapes, and caller-controlled timestamps fail closed; recovery proof and
+  human approval remain separate final gate requirements.
+
 - **Native Policy Engine Authority** - converted policies now classify from
   persisted native intent rather than retained legacy presets or
   `custom_signals`. Native purpose establishes eligibility before supporting
