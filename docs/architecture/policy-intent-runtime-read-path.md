@@ -128,6 +128,12 @@ Source behavior:
 - `native_intent`: selected when an active native intent contract is attached.
 - `compatibility_bridge`: selected when no active native intent is attached.
 
+The policy engine now consumes the same source boundary. Its active-policy
+loader batch-attaches native authority before loading compatibility presets,
+does not query legacy presets for converted policies, and passes native rules
+to `policyNativeIntentRuntimeEvaluator.mjs`. This makes the source trace an
+execution guarantee rather than a detail-route-only projection.
+
 Status behavior:
 
 - `native_intent_active`: active native intent validates successfully.
@@ -155,7 +161,7 @@ Status behavior:
 
 ## Next Step
 
-Proceed to **Rollback Snapshot And Reversion Window**. Now that the read path
-can identify native versus compatibility authority, rollback needs a bounded
-restore contract before converted policies can safely move through apply-mode
-migration.
+Proceed to **Compatibility Path Deletion Readiness** after the rollback and
+reversion window audit. Native runtime authority is now enforced during live
+classification; the remaining work is to prove all compatibility readers can
+be removed safely after the rollback window.

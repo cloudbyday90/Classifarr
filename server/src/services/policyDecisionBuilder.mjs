@@ -54,6 +54,8 @@ class PolicyDecisionBuilder {
       agreement: result.agreement ?? top?.agreement ?? null,
       candidateDiagnostics: result.candidateDiagnostics ?? top?.candidate_diagnostics ?? null,
       decisionDiagnostics: result.decisionDiagnostics ?? null,
+      policyIntentReadTrace: result.policyIntentReadTrace ?? top?.policy_intent_read_trace ?? null,
+      nativeIntentRuntime: result.nativeIntentRuntime ?? top?.native_intent_runtime ?? null,
       thresholds
     };
   }
@@ -80,6 +82,8 @@ class PolicyDecisionBuilder {
       baseResult.breakdown = candidate.breakdown;
       baseResult.agreement = candidate.agreement;
       baseResult.candidateDiagnostics = candidate.candidate_diagnostics || null;
+      baseResult.policyIntentReadTrace = candidate.policy_intent_read_trace || null;
+      baseResult.nativeIntentRuntime = candidate.native_intent_runtime || null;
     }
 
     if (action === 'prompt_select' || action === 'manual') {

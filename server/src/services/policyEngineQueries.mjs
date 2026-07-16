@@ -1,8 +1,53 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeSignalConfig, mergePresetSignals } from '../utils/policySignals.mjs';
+import {
+    attachActiveNativeIntentsForPolicies,
+} from './policyNativePolicyReadService.mjs';
+import {
+    hasAttachedNativePolicyIntent,
+    withPolicyEngineRuntimeAuthority,
+} from './policyEngineRuntimeAuthority.mjs';
 
 const logger = createLogger('PolicyEngine');
+
+function buildLegacyPreset(policyPreset) {
+    const baseSignals = normalizeSignalConfig(policyPreset.signals);
+    const customSignals = normalizeSignalConfig(policyPreset.custom_signals);
+    return {
+        ...policyPreset,
+        signals: mergePresetSignals(baseSignals, customSignals),
+        custom_signals: customSignals,
+    };
+}
+
+async function loadLegacyPresetsByPolicyId(policyIds = []) {
+    if (policyIds.length === 0) {
+        return new Map();
+    }
+
+    const presetsResult = await db.query(`
+        SELECT
+            pp.policy_id,
+            cp.id,
+            cp.key,
+            cp.name,
+            cp.signals,
+            pp.weight,
+            pp.custom_signals
+        FROM policy_presets pp
+        JOIN content_presets cp ON pp.preset_id = cp.id
+        WHERE pp.policy_id = ANY($1::integer[])
+        ORDER BY pp.policy_id, pp.id
+    `, [policyIds]);
+
+    return (presetsResult.rows || []).reduce((presetsByPolicyId, preset) => {
+        const presets = presetsByPolicyId.get(preset.policy_id) || [];
+        presets.push(buildLegacyPreset(preset));
+        presetsByPolicyId.set(preset.policy_id, presets);
+        return presetsByPolicyId;
+    }, new Map());
+}
 
 export async function checkAuthoritativeSignals(item) {
     try {
@@ -75,32 +120,28 @@ export async function getActivePolicies() {
             ORDER BY lp.priority DESC, lp.sort_order ASC
         `);
 
-        const policies = [];
-        for (const policy of result.rows) {
-            const presetsResult = await db.query(`
-                SELECT 
-                    cp.id,
-                    cp.key,
-                    cp.name,
-                    cp.signals,
-                    pp.weight,
-                    pp.custom_signals
-                FROM policy_presets pp
-                JOIN content_presets cp ON pp.preset_id = cp.id
-                WHERE pp.policy_id = $1
-            `, [policy.id]);
-
-            policy.presets = presetsResult.rows.map(preset => {
-                const baseSignals = normalizeSignalConfig(preset.signals);
-                const customSignals = normalizeSignalConfig(preset.custom_signals);
-                return {
-                    ...preset,
-                    signals: mergePresetSignals(baseSignals, customSignals),
-                    custom_signals: customSignals
-                };
-            });
-            policies.push(policy);
+        if (result.rows.length === 0) {
+            return [];
         }
+
+        const policiesWithNativeIntent = await attachActiveNativeIntentsForPolicies({
+            dbClient: db,
+            policies: result.rows,
+        });
+        const compatibilityPolicyIds = policiesWithNativeIntent
+            .filter((policy) => !hasAttachedNativePolicyIntent(policy))
+            .map((policy) => policy.id);
+        const legacyPresetsByPolicyId = await loadLegacyPresetsByPolicyId(compatibilityPolicyIds);
+        const policies = policiesWithNativeIntent.map((policy) => {
+            if (hasAttachedNativePolicyIntent(policy)) {
+                return withPolicyEngineRuntimeAuthority(policy);
+            }
+
+            return withPolicyEngineRuntimeAuthority({
+                ...policy,
+                presets: legacyPresetsByPolicyId.get(policy.id) || [],
+            });
+        });
 
         logger.debug('Retrieved active policies', { count: policies.length });
         return policies;

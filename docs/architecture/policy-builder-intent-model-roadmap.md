@@ -5522,6 +5522,45 @@ Implementation status:
   selection and compatibility fallback behavior:
   [Policy Intent Runtime Read Path Module Cutover](policy-intent-runtime-read-path-module-cutover.md).
 
+#### 8R.4.2 Policy Engine Native Authority Enforcement
+
+Intent: ensure the native runtime read path is the actual classification
+authority, not a policy-detail projection that coexists with legacy scoring.
+
+Tasks:
+
+- Batch-load bounded active native authority before loading compatibility
+  presets for enabled policies.
+- Load `policy_presets` only for unconverted policies; converted native,
+  invalid-native, and authority-conflict policies must never enter the legacy
+  scoring branch.
+- Evaluate native purpose, hard-limit, helpful-hint, and avoid rules through a
+  dedicated server module. Purpose must establish fit before supporting
+  evidence can contribute.
+- Fail closed for invalid/ambiguous authority and failed or unknown hard limits.
+- Preserve compatibility behavior for unconverted policies and retain bounded
+  source/status decision traces.
+
+Acceptance criteria:
+
+- A converted policy cannot be classified because of retained legacy preset or
+  `custom_signals` data.
+- Native purpose controls candidate eligibility before profile, RAG, pattern,
+  or history evidence is considered.
+- Native decision output records bounded source/status trace metadata without
+  returning raw policy payloads.
+
+Implementation status:
+
+- Implemented by `policyEngineRuntimeAuthority.mjs` and
+  `policyNativeIntentRuntimeEvaluator.mjs`; design and outcome are documented
+  in [Policy Engine Native Runtime Authority](policy-engine-native-runtime-authority.md).
+- `policyNativePolicyReadService.mjs` batch-loads active authority and child
+  rows only for exactly one active intent. `policyEngineQueries.mjs` queries
+  compatibility presets only for policies without native authority.
+- Focused unit coverage plus a PostgreSQL policy-engine integration test prove
+  native Animation intent overrides a retained legacy Horror preset.
+
 #### 8R.4.1 Runtime Authority Selection Integrity
 
 Intent: make the native runtime read path fail closed if a restored,

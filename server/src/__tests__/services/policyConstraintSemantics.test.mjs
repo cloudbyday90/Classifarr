@@ -4,6 +4,7 @@ import {
   evaluatePolicyConstraints,
   evaluateSignalConstraint,
   hasPolicyConstraintFailure,
+  getPolicyConstraintEntries,
   normalizePolicyConstraintMode,
 } from '../../services/policyConstraintSemantics.mjs';
 
@@ -97,5 +98,37 @@ describe('policyConstraintSemantics', () => {
       'certification_above_max',
     ]);
     expect(hasPolicyConstraintFailure(report)).toBe(true);
+  });
+
+  test('uses native hard limits without reading legacy presets for converted policies', () => {
+    const policy = {
+      id: 77,
+      library_id: 14,
+      presets: [{
+        signals: { genres: { require_any: ['Horror'], strict: true } },
+      }],
+      policy_runtime_authority: { sourceId: 'native_intent' },
+      policy_intent_contract: {
+        source: 'native_intent',
+        hard_limits: [{
+          signal_type: 'certifications',
+          values: { mode: 'max', max: 'PG-13' },
+          constraint_mode: 'strict',
+        }],
+      },
+    };
+
+    expect(getPolicyConstraintEntries(policy)).toEqual([expect.objectContaining({
+      signal_type: 'certifications',
+      source: 'native_intent',
+    })]);
+    expect(evaluatePolicyConstraints(policy, {
+      genres: ['Horror'],
+      certification: 'PG',
+      media_type: 'movie',
+    })).toEqual(expect.objectContaining({
+      failed: false,
+      evaluated_count: 1,
+    }));
   });
 });

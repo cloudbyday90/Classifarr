@@ -5,6 +5,8 @@ import { policyExclusionService } from './policyExclusionService.mjs';
 import { policyCandidateRanker } from './policyCandidateRanker.mjs';
 import { buildCandidateDiagnostics } from './policyCandidateDiagnostics.mjs';
 import { evaluatePolicyConstraints } from './policyConstraintSemantics.mjs';
+import { evaluateNativePolicyIntent } from './policyNativeIntentRuntimeEvaluator.mjs';
+import { isNativePolicyRuntimeAuthority } from './policyEngineRuntimeAuthority.mjs';
 
 import { FORMULA_CONFIDENCE_CAP, DEFAULT_RAG_WEIGHT, normalizeCombinationMode, isPositiveContribution } from './policyEngineUtils.mjs';
 import { calculateAgreementMultiplier, scoreRelatedEvidence } from './policyEngineSourceScoring.mjs';
@@ -86,7 +88,14 @@ export async function evaluateItem(item, options, deps) {
 
         let ragCache = options.ragCache ? normalizeRagCache(options.ragCache) : null;
         const relatedEvidence = Array.isArray(options.relatedEvidence) ? options.relatedEvidence : [];
-        const anyPolicyUsesRAG = candidatePolicies.some(p => p.trust_rag && (p.rag_weight ?? DEFAULT_RAG_WEIGHT) > 0);
+        const anyPolicyUsesRAG = candidatePolicies.some((policy) => {
+            if (!policy.trust_rag || (policy.rag_weight ?? DEFAULT_RAG_WEIGHT) <= 0) {
+                return false;
+            }
+
+            return !isNativePolicyRuntimeAuthority(policy) ||
+                evaluateNativePolicyIntent(policy, item).eligible;
+        });
         if (!ragCache) {
             ragCache = { matches: [], timestamp: Date.now() };
             if (anyPolicyUsesRAG) {
@@ -172,6 +181,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
     try {
         const scores = {
             preset: 0,
+            intent: 0,
             pattern: 0,
             rag: 0,
             history: 0,
@@ -180,20 +190,27 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
         let profileDiagnostics = null;
         let ragDiagnostics = null;
         const constraintDiagnostics = evaluatePolicyConstraints(policy, item);
+        const nativeIntentEvaluation = isNativePolicyRuntimeAuthority(policy)
+            ? evaluateNativePolicyIntent(policy, item)
+            : null;
 
-        if (policy.presets && policy.presets.length > 0) {
+        if (nativeIntentEvaluation) {
+            scores.intent = nativeIntentEvaluation.score;
+        } else if (policy.presets && policy.presets.length > 0) {
             scores.preset = await scorePresets(policy.presets, item, policy.combination_mode);
         }
 
-        if (typeof scoreProfileWithDiagnostics === 'function') {
+        const canUseSupportingEvidence = !nativeIntentEvaluation || nativeIntentEvaluation.eligible;
+
+        if (canUseSupportingEvidence && typeof scoreProfileWithDiagnostics === 'function') {
             const profileResult = await scoreProfileWithDiagnostics(policy.library_id, item);
             scores.profile = profileResult.score;
             profileDiagnostics = profileResult.diagnostics || null;
-        } else {
+        } else if (canUseSupportingEvidence) {
             scores.profile = await scoreProfile(policy.library_id, item);
         }
 
-        if (policy.trust_patterns) {
+        if (canUseSupportingEvidence && policy.trust_patterns) {
             if (relatedEvidence.length > 0) {
                 scores.pattern = await scoreRelatedEvidence(policy.library_id, relatedEvidence);
                 logger.debug('Pattern scored via related evidence', {
@@ -210,7 +227,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
             }
         }
 
-        if (policy.trust_rag) {
+        if (canUseSupportingEvidence && policy.trust_rag) {
             if (typeof scoreRAGWithDiagnostics === 'function') {
                 const ragResult = await scoreRAGWithDiagnostics(policy.library_id, item, ragCache, {
                     profileDiagnostics,
@@ -222,12 +239,13 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
             }
         }
 
-        if (policy.trust_history) {
+        if (canUseSupportingEvidence && policy.trust_history) {
             scores.history = await scoreHistory(policy.library_id, item);
         }
 
         const weights = {
-            preset: policy.preset_weight ?? 0.35,
+            preset: nativeIntentEvaluation ? 0 : (policy.preset_weight ?? 0.35),
+            intent: nativeIntentEvaluation ? (policy.preset_weight ?? 0.35) : 0,
             profile: policy.profile_weight ?? 0.25,
             pattern: policy.pattern_weight ?? 0.15,
             rag: policy.rag_weight ?? 0.15,
@@ -236,6 +254,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
 
         const effectiveWeights = {
             preset: isPositiveContribution(scores.preset) ? weights.preset : 0,
+            intent: isPositiveContribution(scores.intent) ? weights.intent : 0,
             profile: isPositiveContribution(scores.profile) ? weights.profile : 0,
             pattern: policy.trust_patterns && isPositiveContribution(scores.pattern) ? weights.pattern : 0,
             rag: policy.trust_rag && isPositiveContribution(scores.rag) ? weights.rag : 0,
@@ -243,7 +262,15 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
         };
 
         const breakdown = [
-            { type: 'preset', score: scores.preset, weight: weights.preset, activeWeight: effectiveWeights.preset },
+            ...(nativeIntentEvaluation
+                ? [{
+                    type: 'native_intent',
+                    score: scores.intent,
+                    weight: weights.intent,
+                    activeWeight: effectiveWeights.intent,
+                    statusId: nativeIntentEvaluation.statusId,
+                  }]
+                : [{ type: 'preset', score: scores.preset, weight: weights.preset, activeWeight: effectiveWeights.preset }]),
             { type: 'profile', score: scores.profile, weight: weights.profile, activeWeight: effectiveWeights.profile },
             { type: 'pattern', score: scores.pattern, weight: weights.pattern, activeWeight: effectiveWeights.pattern },
             { type: 'rag', score: scores.rag, weight: weights.rag, activeWeight: effectiveWeights.rag },
@@ -252,6 +279,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
 
         const weightedScore = 
             (scores.preset * effectiveWeights.preset) +
+            (scores.intent * effectiveWeights.intent) +
             (scores.profile * effectiveWeights.profile) +
             (scores.pattern * effectiveWeights.pattern) +
             (scores.rag * effectiveWeights.rag) +
@@ -259,6 +287,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
 
         const totalWeight =
             effectiveWeights.preset +
+            effectiveWeights.intent +
             effectiveWeights.profile +
             effectiveWeights.pattern +
             effectiveWeights.rag +
@@ -271,6 +300,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
             profileDiagnostics,
             ragDiagnostics,
             constraintDiagnostics,
+            nativeIntentDiagnostics: nativeIntentEvaluation,
         });
 
         return {
@@ -284,6 +314,8 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
             breakdown,
             agreement,
             candidate_diagnostics: candidateDiagnostics,
+            native_intent_runtime: nativeIntentEvaluation,
+            policy_intent_read_trace: policy.policy_intent_read_trace || null,
             combination_mode: normalizeCombinationMode(policy.combination_mode),
             auto_classify_threshold: policy.auto_classify_threshold,
             prompt_threshold: policy.prompt_threshold
@@ -300,8 +332,8 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
             library_id: policy.library_id,
             library_name: policy.library_name,
             score: 0,
-            scores: { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
-            weights: { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
+            scores: { preset: 0, intent: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
+            weights: { preset: 0, intent: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
             breakdown: []
         };
     }

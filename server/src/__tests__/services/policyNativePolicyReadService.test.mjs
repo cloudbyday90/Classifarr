@@ -1,8 +1,10 @@
 import {
   attachActiveNativeIntentForPolicy,
+  attachActiveNativeIntentsForPolicies,
   attachNativeIntentToPolicy,
   buildNativeContractFromRows,
   fetchActiveNativeIntentForPolicy,
+  fetchActiveNativeIntentsForPolicies,
 } from '../../services/policyNativePolicyReadService.mjs';
 import {
   POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS,
@@ -205,5 +207,56 @@ describe('policyNativePolicyReadService', () => {
       activeIntentCount: 2,
       authoritative: false,
     });
+  });
+
+  test('batch-loads child rows only for policies with exactly one active native intent', async () => {
+    const calls = [];
+    const dbClient = {
+      async query(query) {
+        calls.push(query);
+        if (query.includes('ranked_active_intents')) {
+          return {
+            rows: [
+              intent({ id: 501, policy_id: 14 }),
+              intent({ id: 502, policy_id: 15 }),
+              intent({ id: 503, policy_id: 15, intent_version: 1 }),
+            ],
+          };
+        }
+        if (query.includes('policy_intent_rules')) {
+          return { rows: [rule({ intent_id: 501 })] };
+        }
+        if (query.includes('policy_intent_template_applications')) {
+          return { rows: [] };
+        }
+        if (query.includes('policy_intent_validation_status')) {
+          return { rows: [{ intent_id: 501, status: 'valid', error_count: 0, warning_count: 0 }] };
+        }
+        throw new Error(`Unexpected query: ${query}`);
+      },
+    };
+
+    const nativeIntents = await fetchActiveNativeIntentsForPolicies(dbClient, [14, 15, 16]);
+    const attached = await attachActiveNativeIntentsForPolicies({
+      dbClient,
+      policies: [policy(), policy({ id: 15 }), policy({ id: 16 })],
+    });
+
+    expect(nativeIntents.get(14)).toEqual(expect.objectContaining({
+      intent: expect.objectContaining({ id: 501 }),
+      rules: [expect.objectContaining({ intent_id: 501 })],
+    }));
+    expect(nativeIntents.get(15)).toEqual(expect.objectContaining({
+      authority: expect.objectContaining({
+        stateId: POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS.AMBIGUOUS_ACTIVE_NATIVE_INTENTS,
+      }),
+      intent: null,
+      rules: [],
+    }));
+    expect(nativeIntents.has(16)).toBe(false);
+    expect(calls.filter((query) => query.includes('policy_intent_rules'))).toHaveLength(2);
+    expect(attached[0].native_intent.contract.purpose).toHaveLength(1);
+    expect(attached[1].native_intent).toBeUndefined();
+    expect(attached[1].native_intent_authority.authoritative).toBe(false);
   });
 });

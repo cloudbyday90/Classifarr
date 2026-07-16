@@ -194,6 +194,120 @@ async function fetchActiveNativeIntentForPolicy(dbClient, policyId) {
   };
 }
 
+function normalizePolicyIds(policies = []) {
+  return [...new Set(
+    asArray(policies)
+      .map((policy) => Number(policy?.id ?? policy))
+      .filter(Number.isInteger)
+  )];
+}
+
+function groupRowsBy(rows = [], key) {
+  return asArray(rows).reduce((grouped, row) => {
+    const value = row?.[key];
+    if (value === null || value === undefined) return grouped;
+    const entries = grouped.get(value) || [];
+    entries.push(row);
+    grouped.set(value, entries);
+    return grouped;
+  }, new Map());
+}
+
+async function fetchActiveNativeIntentsForPolicies(dbClient, policies = []) {
+  const policyIds = normalizePolicyIds(policies);
+  const nativeIntentsByPolicyId = new Map();
+
+  if (!dbClient || typeof dbClient.query !== 'function' || policyIds.length === 0) {
+    return nativeIntentsByPolicyId;
+  }
+
+  const intentResult = await dbClient.query(`
+    WITH ranked_active_intents AS (
+      SELECT
+        policy_intents.*,
+        ROW_NUMBER() OVER (
+          PARTITION BY policy_id
+          ORDER BY intent_version DESC, id DESC
+        ) AS active_intent_rank
+      FROM policy_intents
+      WHERE policy_id = ANY($1::integer[])
+        AND active = TRUE
+    )
+    SELECT *
+    FROM ranked_active_intents
+    WHERE active_intent_rank <= 2
+    ORDER BY policy_id, active_intent_rank
+  `, [policyIds]);
+
+  const activeIntentsByPolicyId = groupRowsBy(intentResult.rows, 'policy_id');
+  const authoritativeEntries = [];
+
+  for (const policyId of policyIds) {
+    const activeIntents = activeIntentsByPolicyId.get(policyId) || [];
+    const authority = buildNativeIntentAuthority({ activeIntents });
+    if (authority.activeIntentCount === 0) continue;
+
+    if (!authority.authoritative) {
+      nativeIntentsByPolicyId.set(policyId, {
+        authority,
+        intent: null,
+        rules: [],
+        templates: [],
+        validation: null,
+      });
+      continue;
+    }
+
+    authoritativeEntries.push({
+      policyId,
+      authority,
+      intent: activeIntents[0],
+    });
+  }
+
+  if (authoritativeEntries.length === 0) {
+    return nativeIntentsByPolicyId;
+  }
+
+  const intentIds = authoritativeEntries.map(({ intent }) => intent.id);
+  const [rulesResult, templatesResult, validationsResult] = await Promise.all([
+    dbClient.query(`
+      SELECT *
+      FROM policy_intent_rules
+      WHERE intent_id = ANY($1::integer[])
+      ORDER BY intent_id, collection, sort_order, id
+    `, [intentIds]),
+    dbClient.query(`
+      SELECT *
+      FROM policy_intent_template_applications
+      WHERE intent_id = ANY($1::integer[])
+      ORDER BY intent_id, id
+    `, [intentIds]),
+    dbClient.query(`
+      SELECT DISTINCT ON (intent_id) *
+      FROM policy_intent_validation_status
+      WHERE intent_id = ANY($1::integer[])
+      ORDER BY intent_id, validated_at DESC, id DESC
+    `, [intentIds]),
+  ]);
+
+  const rulesByIntentId = groupRowsBy(rulesResult.rows, 'intent_id');
+  const templatesByIntentId = groupRowsBy(templatesResult.rows, 'intent_id');
+  const validationsByIntentId = groupRowsBy(validationsResult.rows, 'intent_id');
+
+  for (const { policyId, authority, intent } of authoritativeEntries) {
+    nativeIntentsByPolicyId.set(policyId, {
+      authority,
+      intent,
+      rules: rulesByIntentId.get(intent.id) || [],
+      templates: templatesByIntentId.get(intent.id) || [],
+      validation: validationsByIntentId.get(intent.id)?.[0] || null,
+    });
+  }
+
+  return nativeIntentsByPolicyId;
+}
+
 async function attachActiveNativeIntentForPolicy({ dbClient, policy } = {}) {
   if (!policy?.id || !dbClient || typeof dbClient.query !== 'function') {
     return policy;
@@ -208,9 +322,22 @@ async function attachActiveNativeIntentForPolicy({ dbClient, policy } = {}) {
   });
 }
 
+async function attachActiveNativeIntentsForPolicies({ dbClient, policies = [] } = {}) {
+  const policyList = asArray(policies);
+  const nativeIntentsByPolicyId = await fetchActiveNativeIntentsForPolicies(dbClient, policyList);
+
+  return policyList.map((policy) => {
+    const nativeIntent = nativeIntentsByPolicyId.get(policy?.id);
+    if (!nativeIntent) return policy;
+    return attachNativeIntentToPolicy({ policy, ...nativeIntent });
+  });
+}
+
 export {
   attachActiveNativeIntentForPolicy,
+  attachActiveNativeIntentsForPolicies,
   attachNativeIntentToPolicy,
   buildNativeContractFromRows,
   fetchActiveNativeIntentForPolicy,
+  fetchActiveNativeIntentsForPolicies,
 };

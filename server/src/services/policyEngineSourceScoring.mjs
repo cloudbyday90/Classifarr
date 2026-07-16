@@ -24,7 +24,9 @@ const logger = createLogger('PolicyEngine');
 
 export function calculateAgreementMultiplier(scores, policy) {
     let contributing = 0;
-    if ((policy.presets && policy.presets.length > 0) && scores.preset > 0) contributing++;
+    const usesNativeIntent = policy?.policy_runtime_authority?.sourceId === 'native_intent';
+    if (usesNativeIntent && scores.intent > 0) contributing++;
+    if (!usesNativeIntent && (policy.presets && policy.presets.length > 0) && scores.preset > 0) contributing++;
     if (scores.profile > 0) contributing++;
     if (policy.trust_patterns && scores.pattern > 0) contributing++;
     if (policy.trust_rag && scores.rag > 0) contributing++;

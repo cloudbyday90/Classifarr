@@ -182,6 +182,53 @@ describe('Bug Fixes - Comprehensive PR', () => {
             // RAG should not be called when no policies use it (optimization)
             expect(ragRetriever.semanticSearch).toHaveBeenCalledTimes(0);
         });
+
+        it('should not retrieve RAG for a native policy whose purpose does not match', async () => {
+            const nativePolicy = {
+                id: 3,
+                library_id: 3,
+                library_name: 'Animation',
+                name: 'Native Animation Policy',
+                trust_rag: true,
+                rag_weight: 0.15,
+                trust_patterns: false,
+                trust_history: false,
+                preset_weight: 0.35,
+                profile_weight: 0.25,
+                pattern_weight: 0.15,
+                history_weight: 0.10,
+                policy_runtime_authority: {
+                    sourceId: 'native_intent',
+                    validationOk: true,
+                },
+                policy_intent_contract: {
+                    source: 'native_intent',
+                    validation: { valid: true },
+                    purpose: [{
+                        signal_type: 'genres',
+                        operator: 'require_any',
+                        values: { require_any: ['Animation'] },
+                    }],
+                    hard_limits: [],
+                    helpful_hints: [],
+                    avoid: [],
+                    review_behavior: {},
+                },
+            };
+            const getActivePoliciesSpy = jest.spyOn(policyEngine, 'getActivePolicies')
+                .mockResolvedValue([nativePolicy]);
+            ragRetriever.semanticSearch.mockResolvedValue([]);
+            db.query.mockResolvedValueOnce(createDbRowsResult());
+
+            await policyEngine.evaluateItem({
+                title: 'Horror Feature',
+                genres: ['Horror'],
+                media_type: 'movie',
+            });
+
+            expect(ragRetriever.semanticSearch).not.toHaveBeenCalled();
+            getActivePoliciesSpy.mockRestore();
+        });
     });
 
     describe('Bug 3: Genre Distribution TEXT[] Handling', () => {

@@ -10,6 +10,7 @@
 import {
   POLICY_CONSTRAINT_MODES,
   evaluatePolicyConstraints,
+  getPolicyConstraintEntries,
   normalizePolicyConstraintMode,
 } from './policyConstraintSemantics.mjs';
 
@@ -72,9 +73,12 @@ class PolicyExclusionService {
     const evaluationMap = new Map(evaluations.map(e => [e.policy_id ?? e.id, e]));
 
     for (const policy of candidatePolicies) {
-      for (const preset of (policy.presets || [])) {
-        const signals = preset.signals || {};
-        const languageConflict = this.getStrictLanguageConflict(signals.language, itemLanguage);
+      for (const entry of getPolicyConstraintEntries(policy)) {
+        if (entry.signal_type !== 'language') {
+          continue;
+        }
+
+        const languageConflict = this.getStrictLanguageConflict(entry.config, itemLanguage);
         if (languageConflict) {
           languageConflicts.push({
             policy_id:          policy.id,

@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Native Policy Engine Authority** - converted policies now classify from
+  persisted native intent rather than retained legacy presets or
+  `custom_signals`. Native purpose establishes eligibility before supporting
+  evidence can contribute; invalid authority and unknown hard limits fail
+  closed with bounded decision-source diagnostics.
+
 - **Read-Only Native Intent Reconciliation** - retired the interactive native
   intent preview, selection, confirmation, and apply workflow. Administrators
   now have a bounded reconciliation-status view while scheduler-owned

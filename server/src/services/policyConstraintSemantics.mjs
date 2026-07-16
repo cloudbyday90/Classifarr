@@ -361,6 +361,68 @@ function evaluateRangeConstraint(signalType, config, item, mode, itemKeys, minKe
   });
 }
 
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function nativeContractForPolicy(policy = {}) {
+  if (policy?.policy_runtime_authority?.sourceId !== 'native_intent') {
+    return null;
+  }
+
+  const contract = asObject(policy.policy_intent_contract);
+  return contract.source === 'native_intent' ? contract : null;
+}
+
+function nativeConstraintEntries(policy = {}) {
+  const contract = nativeContractForPolicy(policy);
+  if (!contract) return [];
+
+  return (Array.isArray(contract.hard_limits) ? contract.hard_limits : [])
+    .map((rule) => {
+      const values = normalizeSignalConfig(rule?.values) || {};
+      if (!rule?.signal_type) return null;
+      return {
+        signal_type: rule.signal_type,
+        config: {
+          ...values,
+          constraint_mode: rule.constraint_mode || POLICY_CONSTRAINT_MODES.STRICT,
+          semantics: rule.semantics || values.semantics,
+        },
+        source: 'native_intent',
+      };
+    })
+    .filter(Boolean);
+}
+
+function compatibilityConstraintEntries(policy = {}) {
+  const entries = [];
+
+  for (const preset of policy.presets || []) {
+    const mergedSignals = mergePresetSignals(
+      normalizeSignalConfig(preset.signals),
+      normalizeSignalConfig(preset.custom_signals)
+    );
+
+    for (const [signalType, config] of Object.entries(mergedSignals || {})) {
+      entries.push({
+        signal_type: signalType,
+        config,
+        source: 'compatibility_bridge',
+      });
+    }
+  }
+
+  return entries;
+}
+
+export function getPolicyConstraintEntries(policy = {}) {
+  const nativeEntries = nativeConstraintEntries(policy);
+  return nativeEntries.length > 0 || nativeContractForPolicy(policy)
+    ? nativeEntries
+    : compatibilityConstraintEntries(policy);
+}
+
 export function evaluateSignalConstraint(signalType, rawConfig, item = {}) {
   const config = normalizeSignalConfig(rawConfig) || {};
   const mode = normalizePolicyConstraintMode(config);
@@ -403,17 +465,13 @@ export function evaluateSignalConstraint(signalType, rawConfig, item = {}) {
 export function evaluatePolicyConstraints(policy = {}, item = {}) {
   const evaluations = [];
 
-  for (const preset of policy.presets || []) {
-    const mergedSignals = mergePresetSignals(
-      normalizeSignalConfig(preset.signals),
-      normalizeSignalConfig(preset.custom_signals)
-    );
-
-    for (const [signalType, config] of Object.entries(mergedSignals || {})) {
-      const evaluation = evaluateSignalConstraint(signalType, config, item);
-      if (evaluation.mode === POLICY_CONSTRAINT_MODES.STRICT) {
-        evaluations.push(evaluation);
-      }
+  for (const entry of getPolicyConstraintEntries(policy)) {
+    const evaluation = evaluateSignalConstraint(entry.signal_type, entry.config, item);
+    if (evaluation.mode === POLICY_CONSTRAINT_MODES.STRICT) {
+      evaluations.push({
+        ...evaluation,
+        source: entry.source,
+      });
     }
   }
 

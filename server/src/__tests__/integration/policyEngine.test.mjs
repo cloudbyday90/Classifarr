@@ -95,6 +95,109 @@ describe('PolicyEngine Integration Tests', () => {
             expect(testPolicy.history_weight).toBe(0.1);
         });
 
+        test('uses native intent instead of retained legacy presets for converted policy evaluation', async () => {
+            const fixture = await createPolicyEngineIntegrationFixture(db, {
+                mediaServerName: 'Native Runtime Authority Media Server',
+                libraryExternalIdPrefix: 'test-native-runtime-authority',
+                libraryName: 'Native Runtime Authority Library',
+                presetKeyPrefix: 'test-native-runtime-horror',
+                presetName: 'Retained Legacy Horror Preset',
+                presetSignals: { genres: { require_any: ['Horror'] } },
+                policyName: 'Native Runtime Authority Policy',
+                policyValues: {
+                    trust_patterns: false,
+                    trust_rag: false,
+                    trust_history: false,
+                    preset_weight: 1,
+                    profile_weight: 0,
+                    pattern_weight: 0,
+                    rag_weight: 0,
+                    history_weight: 0,
+                },
+            });
+
+            try {
+                const intentResult = await db.query(`
+                    INSERT INTO policy_intents (
+                        policy_id, library_id, schema_version, intent_version,
+                        active, source, inference_state, review_behavior, validation_status
+                    )
+                    VALUES ($1, $2, 1, 1, true, 'native_intent', 'inferred', $3::jsonb, 'valid')
+                    RETURNING id
+                `, [
+                    fixture.policyId,
+                    fixture.libraryId,
+                    JSON.stringify({
+                        auto_classify_threshold: 85,
+                        prompt_threshold: 60,
+                        trust_patterns: false,
+                        trust_rag: false,
+                        trust_history: false,
+                        combination_mode: 'best_match',
+                    }),
+                ]);
+                const intentId = intentResult.rows[0].id;
+
+                await db.query(`
+                    INSERT INTO policy_intent_rules (
+                        intent_id, intent_role, collection, signal_type, operator,
+                        values, constraint_mode, semantics, source, inference_state
+                    )
+                    VALUES ($1, 'purpose', 'purpose', 'genres', 'require_any',
+                        '{"require_any": ["Animation"]}'::jsonb,
+                        'advisory', 'identity', 'native_intent', 'inferred')
+                `, [intentId]);
+                await db.query(`
+                    INSERT INTO policy_intent_validation_status (
+                        intent_id, schema_version, status, validator_version,
+                        error_count, warning_count, errors, warnings
+                    )
+                    VALUES ($1, 1, 'valid', 'native-runtime-test', 0, 0, '[]'::jsonb, '[]'::jsonb)
+                `, [intentId]);
+
+                const policies = await policyEngine.getActivePolicies();
+                const nativePolicy = policies.find((policy) => policy.id === fixture.policyId);
+                expect(nativePolicy).toEqual(expect.objectContaining({
+                    presets: [],
+                    policy_runtime_authority: expect.objectContaining({
+                        sourceId: 'native_intent',
+                        statusId: 'native_intent_active',
+                        dependsOnCustomSignals: false,
+                    }),
+                }));
+
+                const animation = await policyEngine.evaluatePolicy(nativePolicy, {
+                    title: 'Animated Feature',
+                    genres: ['Animation'],
+                    media_type: 'movie',
+                });
+                const horror = await policyEngine.evaluatePolicy(nativePolicy, {
+                    title: 'Horror Feature',
+                    genres: ['Horror'],
+                    media_type: 'movie',
+                });
+
+                expect(animation).toEqual(expect.objectContaining({
+                    score: 80,
+                    scores: expect.objectContaining({ intent: 80, preset: 0 }),
+                    native_intent_runtime: expect.objectContaining({
+                        statusId: 'native_intent_runtime_active',
+                        eligible: true,
+                    }),
+                }));
+                expect(horror).toEqual(expect.objectContaining({
+                    score: 0,
+                    scores: expect.objectContaining({ intent: 0, preset: 0 }),
+                    native_intent_runtime: expect.objectContaining({
+                        statusId: 'native_intent_runtime_purpose_not_matched',
+                        eligible: false,
+                    }),
+                }));
+            } finally {
+                await fixture.cleanup();
+            }
+        });
+
         test('should preserve stored combination_mode and use it in DB-backed evaluation', async () => {
             const comboLibraryRes = await db.query(`
                 INSERT INTO libraries (media_server_id, external_id, name, media_type, is_active)

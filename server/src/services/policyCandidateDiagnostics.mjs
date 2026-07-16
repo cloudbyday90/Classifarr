@@ -104,7 +104,31 @@ function summarizePresetSemantics(presets = []) {
   };
 }
 
+function summarizeNativePurposeSemantics(policy = {}) {
+  const contract = policy?.policy_intent_contract;
+  if (policy?.policy_runtime_authority?.sourceId !== 'native_intent' ||
+      contract?.source !== 'native_intent') {
+    return null;
+  }
+
+  return (contract.purpose || []).some((rule) =>
+    resolvePresetSignalEvidenceMode(rule?.signal_type, {
+      ...(rule?.values || {}),
+      ...(rule?.semantics ? { semantics: rule.semantics } : {}),
+    }) === SIGNAL_SEMANTICS.IDENTITY
+  )
+    ? SIGNAL_SEMANTICS.IDENTITY
+    : (contract.purpose || []).length > 0
+      ? SIGNAL_SEMANTICS.COMPATIBILITY
+      : null;
+}
+
 export function inferPresetEvidenceMode(policy, scores = {}) {
+  const nativePurposeSemantics = summarizeNativePurposeSemantics(policy);
+  if (nativePurposeSemantics) {
+    return isPositiveContribution(scores.intent) ? nativePurposeSemantics : null;
+  }
+
   if (!isPositiveContribution(scores.preset)) {
     return null;
   }
@@ -242,6 +266,16 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null,
     profile_scoring: details.profileDiagnostics || null,
     rag_evidence_quality: details.ragDiagnostics || null,
     policy_constraints: constraintDiagnostics,
+    native_intent_runtime: details.nativeIntentDiagnostics
+      ? {
+        status_id: details.nativeIntentDiagnostics.statusId,
+        eligible: details.nativeIntentDiagnostics.eligible === true,
+        purpose_score: details.nativeIntentDiagnostics.purposeScore,
+        helpful_boost: details.nativeIntentDiagnostics.helpfulBoost,
+        avoid_penalty: details.nativeIntentDiagnostics.avoidPenalty,
+        rule_counts: details.nativeIntentDiagnostics.ruleCounts,
+      }
+      : null,
   };
 }
 
