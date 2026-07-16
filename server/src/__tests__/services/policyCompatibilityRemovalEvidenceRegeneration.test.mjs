@@ -46,6 +46,12 @@ describe('policyCompatibilityRemovalEvidenceRegeneration', () => {
       removedCount: EVIDENCE_REGENERATION_MANIFEST_PATHS.length,
     }));
     expect(evidence.completionAuditArtifact.complete).toBe(true);
+    expect(evidence.completionAuditArtifact.auditInput.validationEvidence).toEqual({
+      focused: { passed: true },
+      full: { passed: true },
+    });
+    expect(JSON.stringify(evidence)).not.toContain('focused checks');
+    expect(JSON.stringify(evidence)).not.toContain('npm --prefix server test');
     expect(evidence.validation.ok).toBe(true);
   });
 
@@ -136,6 +142,53 @@ describe('policyCompatibilityRemovalEvidenceRegeneration', () => {
             .SOURCE_SCAN_INCOMPLETE,
       }),
     ]));
+  });
+
+  test('reports absent closure inputs as a blocked non-authoritative diagnostic', async () => {
+    const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
+      referenceScan: buildEvidenceRegenerationReferenceScan(),
+      fileExists: () => false,
+    });
+
+    expect(evidence.statusId)
+      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS
+        .BLOCKED);
+    expect(evidence.complete).toBe(false);
+    expect(evidence.inputEvidence).toEqual({
+      executionPlanArtifactProvided: false,
+      nextBatchAuthorizationArtifactProvided: false,
+      reviewArtifactFingerprintProvided: false,
+      validationEvidenceProvided: false,
+    });
+    expect(evidence.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+            .EXECUTION_PLAN_ARTIFACT_MISSING,
+      }),
+      expect.objectContaining({
+        riskId:
+          POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+            .NEXT_BATCH_AUTHORIZATION_ARTIFACT_MISSING,
+      }),
+      expect.objectContaining({
+        riskId:
+          POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+            .REVIEW_ARTIFACT_FINGERPRINT_MISSING,
+      }),
+      expect.objectContaining({
+        riskId:
+          POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+            .VALIDATION_EVIDENCE_MISSING,
+      }),
+    ]));
+    expect(evidence.sideEffects).toEqual(expect.objectContaining({
+      filesDeleted: false,
+      filesArchived: false,
+      storageChanged: false,
+      manifestWritten: false,
+      gitCommandsRun: false,
+    }));
   });
 
   test('rejects a raw or altered nested plan instead of accepting it as authority', async () => {

@@ -7665,6 +7665,14 @@ Tasks:
     plans, raw nested plans, altered wrappers, and live operational imports fail
     closed without output unless an operator explicitly requests a blocked
     diagnostic.
+- **8R.36.2 Missing Evidence-Chain Diagnostics**
+  - Completed: default collection still refuses to write an artifact when a
+    current execution plan, next-batch authorization artifact, applied review
+    fingerprint, or validation evidence is absent.
+  - Completed: explicit `--allow-blocked` collection now emits a bounded,
+    non-authoritative blocked record that identifies only the missing evidence
+    categories. It never manufactures approval, accepts unreadable supplied
+    JSON, or permits the record to satisfy current-closure gates.
 - Require the current compatibility-deletion execution-plan artifact and bind
   its fingerprint through authorization, completion evidence, and replay.
 - Derive manifest path state from the current checkout.
@@ -7680,6 +7688,8 @@ Acceptance criteria:
 - A predecessor execution-plan contract cannot produce a complete artifact.
 - A source scan that has not completed blocks closure evidence.
 - A path that still exists produces remaining-inventory evidence.
+- In explicit diagnostic mode, absent approval-chain inputs produce stable
+  blocked risk IDs and boolean presence state; default mode writes nothing.
 - Control-plane inventory literals do not mask real imports or create false
   runtime-reference blockers.
 - Regeneration performs no deletion, storage mutation, manifest write, command
@@ -7703,6 +7713,9 @@ Implementation status:
   current evidence from a ready fingerprint-valid execution-plan wrapper;
   blocked output requires explicit diagnostic allowance and cannot silently
   become current-closure authority.
+- Task 8R.36.2 is implemented. Missing current evidence can now be observed
+  safely before plan approval exists, while malformed supplied inputs remain a
+  hard command failure and the diagnostic output remains unusable as approval.
 
 ## Phase 8R Work Sequence
 

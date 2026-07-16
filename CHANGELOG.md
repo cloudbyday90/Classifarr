@@ -205,6 +205,11 @@ unchanged operator or runtime outcome.
   inventory records no longer create false runtime-reference blockers. The
   public generator now fails closed for blocked regeneration and writes
   diagnostics only through explicit operator allowance.
+- **Compatibility-Removal Readiness Diagnostics** - explicit diagnostic mode
+  now reports absent current plan, authorization, review, or validation evidence
+  as bounded blocked state without creating approval. Normal collection still
+  writes nothing for missing inputs, and unreadable supplied artifacts remain
+  hard failures.
 - **Artifact-Bound Compatibility-Removal Evidence** - compatibility-removal
   regeneration and completion audits now accept only the ready,
   fingerprint-valid execution-plan wrapper that already binds their

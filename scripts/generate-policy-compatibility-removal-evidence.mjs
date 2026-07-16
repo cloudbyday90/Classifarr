@@ -114,20 +114,16 @@ function usage() {
     '  --validation-evidence <json>               Required current validation-evidence JSON.',
     '  --output <json>                            Write evidence-regeneration JSON to this path.',
     '  --completion-audit-artifact-output <json>  Write the nested completion-audit artifact JSON.',
-    '  --allow-blocked                            Allow writing blocked diagnostic output.',
+    '  --allow-blocked                            Allow writing blocked diagnostic output, including missing-input readiness diagnostics.',
     '  --require-complete                         Exit non-zero unless the evidence is complete.',
     '  --generated-at <iso>                       Optional generatedAt timestamp for stable tests.',
     '  --help                                     Print this help message.',
   ].join('\n');
 }
 
-function readJsonFile(filePath, label, { required = false } = {}) {
+function readJsonFile(filePath, label) {
   if (!filePath) {
-    if (required) {
-      throw new Error(`Missing required ${label} JSON path.`);
-    }
-
-    return {};
+    return null;
   }
 
   const resolvedPath = path.resolve(process.cwd(), filePath);
@@ -137,6 +133,25 @@ function readJsonFile(filePath, label, { required = false } = {}) {
   } catch (err) {
     throw new Error(`Could not read ${label} JSON at ${resolvedPath}: ${err.message}`);
   }
+}
+
+function getMissingRequiredInputs(options = {}) {
+  const missing = [];
+
+  if (!options.executionPlanArtifactPath) {
+    missing.push('execution-plan artifact');
+  }
+  if (!options.nextBatchAuthorizationArtifactPath) {
+    missing.push('next-batch authorization artifact');
+  }
+  if (!String(options.reviewArtifactFingerprint || '').trim()) {
+    missing.push('review artifact fingerprint');
+  }
+  if (!options.validationEvidencePath) {
+    missing.push('validation evidence');
+  }
+
+  return missing;
 }
 
 function writeJsonFile(filePath, value) {
@@ -174,24 +189,30 @@ async function main() {
   let executionPlanArtifact;
   let nextBatchAuthorizationArtifact;
   let validationEvidence;
+  const missingRequiredInputs = getMissingRequiredInputs(options);
+
+  if (missingRequiredInputs.length > 0 && options.allowBlocked !== true) {
+    console.error(
+      `Missing required compatibility-removal evidence input(s): ${missingRequiredInputs.join(', ')}.`
+    );
+    console.error(
+      'Pass --allow-blocked only to write a non-authoritative readiness diagnostic.'
+    );
+    process.exit(2);
+  }
 
   try {
     executionPlanArtifact = readJsonFile(
       options.executionPlanArtifactPath,
-      'execution-plan artifact',
-      {
-        required: true,
-      }
+      'execution-plan artifact'
     );
     nextBatchAuthorizationArtifact = readJsonFile(
       options.nextBatchAuthorizationArtifactPath,
-      'next-batch authorization artifact',
-      { required: true }
+      'next-batch authorization artifact'
     );
     validationEvidence = readJsonFile(
       options.validationEvidencePath,
-      'validation evidence',
-      { required: true }
+      'validation evidence'
     );
   } catch (err) {
     console.error(err.message);

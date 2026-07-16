@@ -17,11 +17,16 @@ const POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_VERSION =
 
 const POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS = Object.freeze({
   ARTIFACT_VALIDATION_FAILED: 'artifact_validation_failed',
+  EXECUTION_PLAN_ARTIFACT_MISSING: 'execution_plan_artifact_missing',
   EXECUTION_PLAN_ARTIFACT_INVALID: 'execution_plan_artifact_invalid',
+  NEXT_BATCH_AUTHORIZATION_ARTIFACT_MISSING:
+    'next_batch_authorization_artifact_missing',
+  REVIEW_ARTIFACT_FINGERPRINT_MISSING: 'review_artifact_fingerprint_missing',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
   SIDE_EFFECT_REPORTED: 'side_effect_reported',
   SOURCE_SCAN_INCOMPLETE: 'source_scan_incomplete',
   UNKNOWN_STATUS: 'unknown_status',
+  VALIDATION_EVIDENCE_MISSING: 'validation_evidence_missing',
 });
 
 function asArray(value) {
@@ -37,6 +42,45 @@ function buildRisk(riskId, message, metadata = {}) {
     riskId,
     message,
     ...metadata,
+  };
+}
+
+function hasObjectValues(value) {
+  return Object.keys(asObject(value)).length > 0;
+}
+
+function buildInputEvidence({
+  executionPlanArtifact = null,
+  nextBatchAuthorizationArtifact = null,
+  reviewArtifactFingerprint = '',
+  validationEvidence = null,
+} = {}) {
+  return {
+    executionPlanArtifactProvided: hasObjectValues(executionPlanArtifact),
+    nextBatchAuthorizationArtifactProvided:
+      hasObjectValues(nextBatchAuthorizationArtifact),
+    reviewArtifactFingerprintProvided:
+      String(reviewArtifactFingerprint || '').trim().length > 0,
+    validationEvidenceProvided: hasObjectValues(validationEvidence),
+  };
+}
+
+function summarizeValidationCheck(value) {
+  if (!hasObjectValues(value)) {
+    return null;
+  }
+
+  return {
+    passed: asObject(value).passed === true,
+  };
+}
+
+function summarizeValidationEvidence(value) {
+  const evidence = asObject(value);
+
+  return {
+    focused: summarizeValidationCheck(evidence.focused),
+    full: summarizeValidationCheck(evidence.full),
   };
 }
 
@@ -59,12 +103,45 @@ function buildCurrentFinalImportScan({
 function buildEvidenceRisks({
   completionAuditArtifact = {},
   executionPlanSource = {},
+  inputEvidence = {},
   referenceScan = {},
 } = {}) {
   const risks = [
     ...asArray(completionAuditArtifact.audit?.risks),
     ...asArray(completionAuditArtifact.risks),
   ];
+
+  if (inputEvidence.executionPlanArtifactProvided !== true) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+        .EXECUTION_PLAN_ARTIFACT_MISSING,
+      'Compatibility removal evidence regeneration requires a current execution-plan artifact before closure can be evaluated.'
+    ));
+  }
+
+  if (inputEvidence.nextBatchAuthorizationArtifactProvided !== true) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+        .NEXT_BATCH_AUTHORIZATION_ARTIFACT_MISSING,
+      'Compatibility removal evidence regeneration requires a current next-batch authorization artifact before closure can be evaluated.'
+    ));
+  }
+
+  if (inputEvidence.reviewArtifactFingerprintProvided !== true) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+        .REVIEW_ARTIFACT_FINGERPRINT_MISSING,
+      'Compatibility removal evidence regeneration requires the applied removal-review fingerprint before closure can be evaluated.'
+    ));
+  }
+
+  if (inputEvidence.validationEvidenceProvided !== true) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+        .VALIDATION_EVIDENCE_MISSING,
+      'Compatibility removal evidence regeneration requires current validation evidence before closure can be evaluated.'
+    ));
+  }
 
   if (executionPlanSource.ok !== true) {
     risks.push(buildRisk(
@@ -78,7 +155,10 @@ function buildEvidenceRisks({
     ));
   }
 
-  if (referenceScan.completed !== true) {
+  if (
+    executionPlanSource.ok === true &&
+    referenceScan.completed !== true
+  ) {
     risks.push(buildRisk(
       POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
         .SOURCE_SCAN_INCOMPLETE,
@@ -115,6 +195,13 @@ async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
   fileExists = () => false,
   generatedAt = null,
 } = {}) {
+  const inputEvidence = buildInputEvidence({
+    executionPlanArtifact,
+    nextBatchAuthorizationArtifact,
+    reviewArtifactFingerprint,
+    validationEvidence,
+  });
+  const boundedValidationEvidence = summarizeValidationEvidence(validationEvidence);
   const executionPlanSource = resolvePolicyStorageClosureExecutionPlanSource({
     executionPlanArtifact,
   });
@@ -134,13 +221,14 @@ async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
       input: {
         reviewArtifactFingerprint,
         finalImportScan,
-        validationEvidence: asObject(validationEvidence),
+        validationEvidence: boundedValidationEvidence,
       },
       generatedAt,
     });
   const risks = buildEvidenceRisks({
     completionAuditArtifact,
     executionPlanSource,
+    inputEvidence,
     referenceScan: asObject(referenceScan),
   });
   const statusId = completionAuditArtifact.statusId;
@@ -150,6 +238,7 @@ async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
     generatedAt: generatedAt || new Date().toISOString(),
     statusId,
     complete,
+    inputEvidence,
     executionPlan: summarizeExecutionPlan(
       plan,
       executionPlanSource.artifactFingerprint

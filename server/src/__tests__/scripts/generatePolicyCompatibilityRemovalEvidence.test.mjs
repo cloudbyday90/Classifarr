@@ -72,25 +72,32 @@ function runGenerator({
   fixtureRoot,
   executionPlanArtifact,
   nextBatchAuthorizationArtifact,
+  reviewArtifactFingerprint = EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
   validationEvidence,
   allowBlocked = false,
   requireComplete = false,
 } = {}) {
-  const executionPlanArtifactPath = writeJson(
-    fixtureRoot,
-    'execution-plan-artifact.json',
-    executionPlanArtifact
-  );
-  const authorizationArtifactPath = writeJson(
-    fixtureRoot,
-    'next-batch-authorization-artifact.json',
-    nextBatchAuthorizationArtifact
-  );
-  const validationEvidencePath = writeJson(
-    fixtureRoot,
-    'validation-evidence.json',
-    validationEvidence
-  );
+  const executionPlanArtifactPath = executionPlanArtifact === undefined
+    ? null
+    : writeJson(
+      fixtureRoot,
+      'execution-plan-artifact.json',
+      executionPlanArtifact
+    );
+  const authorizationArtifactPath = nextBatchAuthorizationArtifact === undefined
+    ? null
+    : writeJson(
+      fixtureRoot,
+      'next-batch-authorization-artifact.json',
+      nextBatchAuthorizationArtifact
+    );
+  const validationEvidencePath = validationEvidence === undefined
+    ? null
+    : writeJson(
+      fixtureRoot,
+      'validation-evidence.json',
+      validationEvidence
+    );
   const outputPath = path.join(fixtureRoot, '.artifacts', 'evidence.json');
   const artifactOutputPath = path.join(
     fixtureRoot,
@@ -100,14 +107,23 @@ function runGenerator({
   const args = [
     GENERATOR_PATH,
     '--cwd', fixtureRoot,
-    '--execution-plan-artifact', executionPlanArtifactPath,
-    '--next-batch-authorization-artifact', authorizationArtifactPath,
-    '--review-artifact-fingerprint', EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
-    '--validation-evidence', validationEvidencePath,
     '--output', outputPath,
     '--completion-audit-artifact-output', artifactOutputPath,
     '--generated-at', GENERATED_AT,
   ];
+
+  if (executionPlanArtifactPath) {
+    args.push('--execution-plan-artifact', executionPlanArtifactPath);
+  }
+  if (authorizationArtifactPath) {
+    args.push('--next-batch-authorization-artifact', authorizationArtifactPath);
+  }
+  if (reviewArtifactFingerprint !== '') {
+    args.push('--review-artifact-fingerprint', reviewArtifactFingerprint);
+  }
+  if (validationEvidencePath) {
+    args.push('--validation-evidence', validationEvidencePath);
+  }
 
   if (allowBlocked) {
     args.push('--allow-blocked');
@@ -274,6 +290,58 @@ describe('generate-policy-compatibility-removal-evidence', () => {
     expect(evidence.completionAuditArtifact).toEqual(completionAuditArtifact);
     expect(evidence.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({ riskId: 'final_scan_reference_found' }),
+    ]));
+    expect(evidence.sideEffects).toEqual(expect.objectContaining({
+      filesDeleted: false,
+      filesArchived: false,
+      storageChanged: false,
+      manifestWritten: false,
+      gitCommandsRun: false,
+    }));
+  });
+
+  test('reports missing approval-chain inputs only through explicit diagnostic allowance', () => {
+    const strictResult = runGenerator({
+      fixtureRoot,
+      reviewArtifactFingerprint: '',
+    });
+
+    expect(strictResult.error).toBeUndefined();
+    expect(strictResult.status).toBe(2);
+    expect(strictResult.stdoutJson).toBeNull();
+    expect(strictResult.stderr)
+      .toContain('Missing required compatibility-removal evidence input(s)');
+    expect(fs.existsSync(strictResult.outputPath)).toBe(false);
+    expect(fs.existsSync(strictResult.artifactOutputPath)).toBe(false);
+
+    const diagnosticResult = runGenerator({
+      fixtureRoot,
+      allowBlocked: true,
+      reviewArtifactFingerprint: '',
+    });
+    const evidence = JSON.parse(fs.readFileSync(diagnosticResult.outputPath, 'utf8'));
+
+    expect(diagnosticResult.error).toBeUndefined();
+    expect(diagnosticResult.status).toBe(1);
+    expect(diagnosticResult.stderr).toBe('');
+    expect(diagnosticResult.stdoutJson).toEqual(expect.objectContaining({
+      statusId:
+        POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS.BLOCKED,
+      complete: false,
+      inputEvidence: {
+        executionPlanArtifactProvided: false,
+        nextBatchAuthorizationArtifactProvided: false,
+        reviewArtifactFingerprintProvided: false,
+        validationEvidenceProvided: false,
+      },
+    }));
+    expect(evidence.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ riskId: 'execution_plan_artifact_missing' }),
+      expect.objectContaining({
+        riskId: 'next_batch_authorization_artifact_missing',
+      }),
+      expect.objectContaining({ riskId: 'review_artifact_fingerprint_missing' }),
+      expect.objectContaining({ riskId: 'validation_evidence_missing' }),
     ]));
     expect(evidence.sideEffects).toEqual(expect.objectContaining({
       filesDeleted: false,

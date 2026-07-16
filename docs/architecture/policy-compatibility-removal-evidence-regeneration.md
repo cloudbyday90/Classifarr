@@ -31,12 +31,24 @@ never deletes, archives, mutates storage, writes manifests, or runs Git.
   recommends failing unrecognized parameters. The regeneration path rejects a
   predecessor execution-plan contract and a blocked evidence chain by default;
   it never treats a caller-supplied ready flag as authority.
+- GitHub's artifact-attestation guidance treats provenance as verifiable build
+  context rather than an assertion made by a later caller. The regeneration
+  path therefore distinguishes an absent evidence chain from a malformed
+  supplied artifact, and never substitutes diagnostic output for approval.
+- OWASP logging guidance favors useful security events without exposing
+  sensitive values. Missing-input risks record stable evidence categories
+  rather than echoing absent values. Regenerated output retains only the
+  established replay inputs and bounded focused/full validation pass state; it
+  does not include credentials, absolute filesystem paths, or copied policy
+  payloads.
 
 Sources:
 
 - [NIST SP 800-218 Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
+- [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
 - [SLSA Verifying Artifacts](https://slsa.dev/spec/v1.2/verifying-artifacts)
+- [GitHub Docs: Artifact Attestations](https://docs.github.com/en/actions/concepts/security/artifact-attestations)
 
 ## Options Considered
 
@@ -98,8 +110,11 @@ Cons:
    gates report the real readiness blocker.
 7. Refuse blocked artifact writes by default; allow bounded diagnostic output
    only through an explicit operator flag.
-8. Do not synthesize deletion approval, run deletion actions, or alter storage.
-9. Pass only a complete, valid generated artifact to the storage closure gates.
+8. In that explicit diagnostic mode, report each absent evidence category as a
+   stable blocked risk. An unreadable explicitly supplied JSON path remains a
+   command error, because it is not evidence absence.
+9. Do not synthesize deletion approval, run deletion actions, or alter storage.
+10. Pass only a complete, valid generated artifact to the storage closure gates.
 
 ## Implementation Outcome
 
@@ -127,6 +142,13 @@ Implemented:
   observable, and predecessor plans or current operational imports fail closed.
   Blocked JSON is written only with explicit `--allow-blocked` diagnostic
   authorization.
+- Explicit diagnostic mode now handles the realistic pre-approval state where
+  a current execution plan, authorization artifact, review fingerprint, or
+  validation artifact has not yet been created. It emits only a blocked record
+  with boolean input-presence flags and stable missing-evidence risk IDs. The
+  record is non-authoritative, performs no side effects, and cannot satisfy a
+  closure gate. Default mode still exits before writing output; unreadable
+  explicitly supplied JSON remains a command error.
 
 Example:
 
@@ -149,6 +171,21 @@ prevents invalid evidence from being accidentally reused as closure authority.
 The nested completion-audit artifact is the only regeneration output accepted
 by the current-closure command; that command's current-closure artifact is then
 the input to the requirement audit.
+
+To capture the current readiness state before a new approved chain exists:
+
+```bash
+npm run --silent policy:compatibility-removal-evidence -- \
+  --allow-blocked \
+  --output .tmp/policy-storage/compatibility-removal-evidence.json \
+  --completion-audit-artifact-output \
+    .tmp/policy-storage/compatibility-removal-completion-artifact.json
+```
+
+This command intentionally exits `1` and writes only a blocked diagnostic. It
+does not create an execution plan, authorization, review fingerprint, or
+validation claim. Supply an explicit path only when that artifact actually
+exists; a supplied path that cannot be read exits `2` and writes no output.
 
 ## Next Step
 
