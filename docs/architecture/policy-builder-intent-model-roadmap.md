@@ -6355,6 +6355,21 @@ Tasks:
   - Reject stale, future, pre-artifact, malformed, or actorless records.
   - Remove caller-supplied readiness booleans from the execution-gate and
     controlled-batch input contracts.
+- **8R.16.2 Preflight Evidence Collection Boundary**
+  - Build a separately invoked, provenance-bound collector for only
+    machine-verifiable execution-gate observations: the reviewed checkout
+    state, approved artifact fingerprint, manifest-path continuity, and current
+    runtime evidence references.
+  - Emit a versioned bounded artifact under `.tmp` that distinguishes observed,
+    missing, stale, and invalid preflight evidence without accepting caller
+    asserted readiness flags.
+  - Reuse the 8R.15a.2 source/image provenance and read-only containment model
+    when the collector needs embedded runtime observation.
+  - Do not manufacture backup/restore recovery proof, final support stance, or
+    named-actor approval. Those remain explicit evidence inputs to the existing
+    execution gate.
+  - Do not create an apply path, run a deletion, mutate storage, or invoke the
+    production application endpoint.
 - Require a clean worktree confirmation.
 - Require verified and fresh backup/restore evidence.
 - Require explicit operator approval with an approving actor.
