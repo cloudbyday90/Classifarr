@@ -12,6 +12,7 @@ import {
 import {
   POLICY_CONVERSION_ACTOR_SOURCE_IDS,
 } from '../../services/policyConversionActorSources.mjs';
+import { createDatabaseModule } from '../../config/database.mjs';
 
 function preset(overrides = {}) {
   return {
@@ -94,6 +95,89 @@ function createApplyClient({ failOnRules = false } = {}) {
   };
 
   return client;
+}
+
+function createTransactionAwareApplyDatabase() {
+  const transaction = {
+    begun: false,
+    committedWrites: [],
+    rolledBackWrites: [],
+    stagedWrites: [],
+  };
+  const writeIdByQuery = [
+    ['UPDATE policy_intents', 'active_intent_deactivated'],
+    ['INSERT INTO policy_intents', 'native_intent_inserted'],
+    ['INSERT INTO policy_intent_migration_events', 'migration_event_inserted'],
+    ['INSERT INTO policy_intent_rollback_snapshots', 'rollback_snapshot_inserted'],
+  ];
+  const client = {
+    query: jest.fn(async (sql) => {
+      const normalizedSql = String(sql);
+
+      if (normalizedSql === 'BEGIN') {
+        transaction.begun = true;
+        return { rows: [], rowCount: 0 };
+      }
+
+      if (normalizedSql === 'COMMIT') {
+        transaction.committedWrites.push(...transaction.stagedWrites);
+        transaction.stagedWrites.length = 0;
+        return { rows: [], rowCount: 0 };
+      }
+
+      if (normalizedSql === 'ROLLBACK') {
+        transaction.rolledBackWrites.push(...transaction.stagedWrites);
+        transaction.stagedWrites.length = 0;
+        return { rows: [], rowCount: 0 };
+      }
+
+      if (normalizedSql.includes('SELECT id') && normalizedSql.includes('FROM policy_intents')) {
+        return { rows: [] };
+      }
+
+      if (normalizedSql.includes('FROM library_policies') && normalizedSql.includes('FOR UPDATE')) {
+        return { rows: [{ id: 14, library_id: 4 }], rowCount: 1 };
+      }
+
+      if (normalizedSql.includes('INSERT INTO policy_intent_rules')) {
+        throw new Error('rule insert failed after rollback snapshot creation');
+      }
+
+      const writeId = writeIdByQuery.find(([queryFragment]) => normalizedSql.includes(queryFragment))?.[1];
+      if (writeId) {
+        transaction.stagedWrites.push(writeId);
+      }
+
+      if (normalizedSql.includes('INSERT INTO policy_intents')) {
+        return { rows: [{ id: '501' }], rowCount: 1 };
+      }
+
+      return { rows: [], rowCount: 1 };
+    }),
+    release: jest.fn(),
+  };
+  const pool = {
+    connect: jest.fn(async () => client),
+    on: jest.fn(),
+  };
+  const logger = {
+    debug: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+  };
+  const dbClient = createDatabaseModule({
+    pgModule: {
+      Pool: jest.fn(() => pool),
+    },
+    loggerFactory: jest.fn(() => logger),
+    environment: {
+      POSTGRES_CONNECT_RETRIES: '0',
+      POSTGRES_CONNECT_RETRY_DELAY_MS: '0',
+    },
+  });
+
+  return { client, dbClient, pool, transaction };
 }
 
 describe('policyPostUpgradeApplyGate', () => {
@@ -349,6 +433,47 @@ describe('policyPostUpgradeApplyGate', () => {
       legacyPathsDeleted: false,
       policyStorageMutated: false,
     });
+  });
+
+  test('rolls back every staged native-intent write when rule insertion fails after the snapshot', async () => {
+    const { client, dbClient, pool, transaction } = createTransactionAwareApplyDatabase();
+
+    const result = await applyPolicyPostUpgradeApplyGate({
+      dbClient,
+      dryRun: readyDryRun(),
+      policies: [policy()],
+      now: '2026-07-01T12:00:00.000Z',
+    });
+
+    expect(transaction.begun).toBe(true);
+    expect(transaction.rolledBackWrites).toEqual([
+      'active_intent_deactivated',
+      'native_intent_inserted',
+      'migration_event_inserted',
+      'rollback_snapshot_inserted',
+      'migration_event_inserted',
+    ]);
+    expect(transaction.stagedWrites).toEqual([]);
+    expect(transaction.committedWrites).toEqual([]);
+    expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(client.query).not.toHaveBeenCalledWith('COMMIT');
+    expect(pool.connect).toHaveBeenCalledTimes(1);
+    expect(client.release).toHaveBeenCalledTimes(1);
+
+    expect(result).toEqual(expect.objectContaining({
+      statusId: POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.FAILED_ROLLED_BACK,
+      applied: false,
+      appliedPolicyCount: 0,
+      rollback: expect.objectContaining({ assumedComplete: true }),
+      sideEffects: {
+        rollbackSnapshotsWritten: false,
+        nativeRowsInserted: false,
+        migrationEventsWritten: false,
+        legacyPathsDeleted: false,
+        policyStorageMutated: false,
+      },
+    }));
+    expect(JSON.stringify(result)).not.toContain('rule insert failed after rollback snapshot creation');
   });
 
   test('classifies a serializable database failure as retryable without exposing its message', async () => {

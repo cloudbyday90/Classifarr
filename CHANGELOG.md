@@ -35,6 +35,10 @@ unchanged operator or runtime outcome.
   when a recurring run already holds the shared advisory lock, scheduler
   reinitialization produces one fresh locked run, and persisted retry backoff
   survives a fresh reconciliation state-service instance.
+- **Native Reconciliation Transaction Rollback Assurance** - added
+  transaction-aware failure injection proving that a late native-rule write
+  failure rolls back the earlier native-intent header, rollback snapshot, and
+  migration events rather than committing partial conversion or recovery data.
 - **Native Intent Reconciliation Ledger** - automatic native-intent conversion
   now retains bounded, post-commit run and per-policy outcome evidence using
   safe state IDs, timestamps, policy references, and candidate fingerprints.

@@ -4,10 +4,12 @@
 
 In progress as Task 8R.3.2.7 of the policy-builder intent model roadmap.
 
-The first two matrix slices, implemented on 2026-07-16, prove that a recurring
-native-intent reconciliation run and the delayed startup run cannot execute the
-same conversion concurrently, and that a fresh scheduler and reconciliation
-state service recover safely after process reinitialization. The remaining
+The first three matrix slices, implemented on 2026-07-16, prove that a
+recurring native-intent reconciliation run and the delayed startup run cannot
+execute the same conversion concurrently; that a fresh scheduler and
+reconciliation state service recover safely after process reinitialization; and
+that a late conversion write failure rolls back the earlier rollback snapshot,
+native-intent header, and migration events as one transaction. The remaining
 matrix work is deliberately kept as separate, focused test slices rather than
 one broad mock-heavy test.
 
@@ -29,6 +31,11 @@ restore a client preview, selection, confirmation, or apply path.
   explains that concurrent serializable work can be rolled back with a
   serialization failure. Transaction tests must distinguish bounded retryable
   database failure from successful conversion and preserve rollback evidence.
+- [PostgreSQL ROLLBACK](https://www.postgresql.org/docs/18/sql-rollback.html)
+  states that rolling back a transaction discards all updates made by that
+  transaction. A late-write failure test must therefore prove that the
+  snapshot, audit events, and native header are staged before failure but
+  absent from committed state after `ROLLBACK`.
 - [NIST SP 800-218 Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final)
   recommends outcome-based secure development practices that reduce both
   vulnerabilities and the impact of undiscovered defects. Focused,
@@ -48,9 +55,10 @@ restore a client preview, selection, confirmation, or apply path.
    state-contract tests for expired retry delays, changed fingerprints, mixed
    ready and blocked candidates, and execution-budget exhaustion.
 3. **Use transaction-level tests for write races.** Exercise authority locks,
-   concurrent serialization failure, reversion guards, and failure after
+   concurrent serialization failure, reversion guards, and late failure after
    rollback-snapshot creation through the apply gate rather than the client or
-   scheduler layer.
+   scheduler layer. Use the real transaction wrapper with a staged-write
+   client to assert `ROLLBACK`, no `COMMIT`, and zero committed rows.
 4. **Run one real-database scheduler integration test.** Once the Docker test
    engine is reachable, create a ready legacy policy, trigger the scheduler,
    and prove conversion occurs without any client conversion request.
@@ -104,6 +112,12 @@ restore a client preview, selection, confirmation, or apply path.
   run. A freshly constructed state service reloads persisted retry state from
   the database, defers the candidate until its retry time, and selects it once
   that time has expired.
+- Added a transaction-aware apply-gate failure test that stages the native
+  intent header, conversion-started event, rollback snapshot, and
+  snapshot-created event, then injects a rule-insert failure. It proves the
+  production transaction wrapper issues `ROLLBACK`, never issues `COMMIT`,
+  commits none of the staged writes, releases the client, and returns only safe
+  failure and rollback evidence.
 - Confirmed existing focused tests already cover candidate fingerprint changes,
   retry backoff, mixed candidate batches, execution-budget deferral, authority
   locking, serialization failure, rollback guards, control disablement,
@@ -112,9 +126,7 @@ restore a client preview, selection, confirmation, or apply path.
 - Removed a duplicate serializable-database-failure test from the apply-gate
   suite so each matrix assertion has one clear owner.
 
-## Remaining Matrix Slices
+## Remaining Matrix Slice
 
-- Database failure after rollback-snapshot creation using a transaction-aware
-  failure injection that proves rollback evidence remains truthful.
 - Docker-backed integration proving a ready legacy policy converts through the
   scheduler without a client dialog or apply request.
