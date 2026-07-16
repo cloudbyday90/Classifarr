@@ -146,6 +146,7 @@ describe('backupRestoreTables native policy intent restore', () => {
       templateApplicationsRestored: 1,
       migrationEventsRestored: 1,
       rollbackSnapshotsRestored: 1,
+      initialIntentEstablishmentsRestored: 0,
       validationStatusesRestored: 1,
       reconciliationRunsRestored: 1,
       reconciliationOutcomesRestored: 1,

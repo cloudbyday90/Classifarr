@@ -178,6 +178,11 @@ const POLICY_INTENT_VALIDATION_STATUS_ALLOWED_COLUMNS = [
 ];
 const POLICY_INTENT_VALIDATION_STATUS_JSONB_COLUMNS = new Set(['errors', 'warnings']);
 
+const POLICY_INITIAL_INTENT_ESTABLISHMENT_ALLOWED_COLUMNS = [
+  'idempotency_key', 'request_fingerprint', 'authority_source_id', 'accepted_by',
+  'state', 'established_at', 'created_at', 'updated_at',
+];
+
 const POLICY_NATIVE_INTENT_RECONCILIATION_RUN_ALLOWED_COLUMNS = [
   'reconciler_version', 'run_state', 'source_status_id', 'reason_id',
   'started_at', 'finished_at', 'candidate_count', 'converted_count',
@@ -329,6 +334,7 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     migrationEventsRestored: 0,
     rollbackSnapshotsRestored: 0,
     validationStatusesRestored: 0,
+    initialIntentEstablishmentsRestored: 0,
     reconciliationRunsRestored: 0,
     reconciliationOutcomesRestored: 0,
     reconciliationStatesRestored: 0,
@@ -455,6 +461,7 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     stats.reconciliationHoldsRehydrated += 1;
   }
 
+  const rollbackSnapshotIdMap = new Map();
   for (const snapshot of nativeStorage.policyIntentRollbackSnapshots || []) {
     const newIntentId = intentIdMap.get(snapshot.intent_id);
     const newPolicyId = policyIdMap.get(snapshot.policy_id);
@@ -468,12 +475,17 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     if (keys.length === 0) continue;
 
     const placeholders = keys.map((_, index) => `$${index + 3}`).join(', ');
-    await client.query(
+    const result = await client.query(
       `INSERT INTO policy_intent_rollback_snapshots (intent_id, policy_id, ${keys.join(', ')})
        VALUES ($1, $2, ${placeholders})
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT DO NOTHING
+       RETURNING id`,
       [newIntentId, newPolicyId, ...values]
     );
+    const restoredSnapshotId = result.rows[0]?.id ?? null;
+    if (restoredSnapshotId && snapshot.id != null) {
+      rollbackSnapshotIdMap.set(snapshot.id, restoredSnapshotId);
+    }
     stats.rollbackSnapshotsRestored += 1;
   }
 
@@ -485,6 +497,46 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     allowedColumns: POLICY_INTENT_VALIDATION_STATUS_ALLOWED_COLUMNS,
     jsonbColumns: POLICY_INTENT_VALIDATION_STATUS_JSONB_COLUMNS,
   });
+
+  for (const establishment of nativeStorage.policyInitialIntentEstablishments || []) {
+    const newPolicyId = policyIdMap.get(establishment.policy_id);
+    const newLibraryId = libraryIdMap.get(establishment.library_id);
+    const newIntentId = intentIdMap.get(establishment.intent_id);
+    const newMigrationEventId = migrationEventIdMap.get(establishment.migration_event_id);
+    const newRollbackSnapshotId = rollbackSnapshotIdMap.get(establishment.rollback_snapshot_id);
+    if (!newPolicyId || !newLibraryId || !newIntentId || !newMigrationEventId || !newRollbackSnapshotId) {
+      continue;
+    }
+
+    const { keys, values } = buildAllowedColumnValues(
+      establishment,
+      POLICY_INITIAL_INTENT_ESTABLISHMENT_ALLOWED_COLUMNS,
+    );
+    if (keys.length === 0) continue;
+
+    const placeholders = keys.map((_, index) => `$${index + 6}`).join(', ');
+    await client.query(
+      `INSERT INTO policy_initial_intent_establishments (
+         policy_id,
+         library_id,
+         intent_id,
+         migration_event_id,
+         rollback_snapshot_id,
+         ${keys.join(', ')}
+       )
+       VALUES ($1, $2, $3, $4, $5, ${placeholders})
+       ON CONFLICT DO NOTHING`,
+      [
+        newPolicyId,
+        newLibraryId,
+        newIntentId,
+        newMigrationEventId,
+        newRollbackSnapshotId,
+        ...values,
+      ]
+    );
+    stats.initialIntentEstablishmentsRestored += 1;
+  }
 
   const reconciliationRunIdMap = new Map();
   for (const run of nativeStorage.policyNativeIntentReconciliationRuns || []) {

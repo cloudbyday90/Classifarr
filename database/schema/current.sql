@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-16T20:24:55.071Z
--- Latest Migration: 20260716_040000_enforce_semantic_native_intent_authority.sql
+-- Generated: 2026-07-16T22:16:21.848Z
+-- Latest Migration: 20260716_050000_add_policy_initial_intent_establishments.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3782,6 +3782,52 @@ ALTER SEQUENCE public.policy_feedback_log_id_seq OWNED BY public.policy_feedback
 
 
 --
+-- Name: policy_initial_intent_establishments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_initial_intent_establishments (
+    id bigint NOT NULL,
+    policy_id integer NOT NULL,
+    library_id integer NOT NULL,
+    intent_id bigint,
+    migration_event_id bigint,
+    rollback_snapshot_id bigint,
+    idempotency_key character varying(128) NOT NULL,
+    request_fingerprint character(64) CONSTRAINT policy_initial_intent_establishmen_request_fingerprint_not_null NOT NULL,
+    authority_source_id character varying(50) CONSTRAINT policy_initial_intent_establishmen_authority_source_id_not_null NOT NULL,
+    accepted_by integer NOT NULL,
+    state character varying(20) DEFAULT 'pending'::character varying NOT NULL,
+    established_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_initial_intent_establishments_authority_source_chk CHECK (((authority_source_id)::text = 'operator_declared_intent'::text)),
+    CONSTRAINT policy_initial_intent_establishments_fingerprint_shape_chk CHECK ((request_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_initial_intent_establishments_idempotency_shape_chk CHECK (((idempotency_key)::text ~ '^[A-Za-z0-9][A-Za-z0-9_-]{31,127}$'::text)),
+    CONSTRAINT policy_initial_intent_establishments_state_chk CHECK (((state)::text = ANY (ARRAY[('pending'::character varying)::text, ('established'::character varying)::text]))),
+    CONSTRAINT policy_initial_intent_establishments_state_reference_chk CHECK (((((state)::text = 'pending'::text) AND (intent_id IS NULL) AND (migration_event_id IS NULL) AND (rollback_snapshot_id IS NULL) AND (established_at IS NULL)) OR (((state)::text = 'established'::text) AND (intent_id IS NOT NULL) AND (migration_event_id IS NOT NULL) AND (rollback_snapshot_id IS NOT NULL) AND (established_at IS NOT NULL))))
+);
+
+
+--
+-- Name: policy_initial_intent_establishments_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_initial_intent_establishments_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_initial_intent_establishments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_initial_intent_establishments_id_seq OWNED BY public.policy_initial_intent_establishments.id;
+
+
+--
 -- Name: policy_intent_migration_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3799,7 +3845,7 @@ CREATE TABLE public.policy_intent_migration_events (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT policy_intent_migration_events_actor_type_chk CHECK (((actor_type)::text = ANY (ARRAY[('operator'::character varying)::text, ('post_upgrade'::character varying)::text, ('reconciler'::character varying)::text, ('test_fixture'::character varying)::text, ('maintainer'::character varying)::text]))),
-    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY (ARRAY[('dry_run_reported'::character varying)::text, ('conversion_started'::character varying)::text, ('conversion_applied'::character varying)::text, ('conversion_failed'::character varying)::text, ('rollback_snapshot_created'::character varying)::text, ('rollback_applied'::character varying)::text, ('rollback_snapshot_payload_redacted'::character varying)::text, ('native_validated'::character varying)::text, ('legacy_deletion_ready'::character varying)::text, ('library_rebuild_replacement_applied'::character varying)::text, ('active_intent_integrity_repaired'::character varying)::text, ('reconciliation_reentry_approved'::character varying)::text, ('semantic_intent_authority_repaired'::character varying)::text]))),
+    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY (ARRAY[('dry_run_reported'::character varying)::text, ('conversion_started'::character varying)::text, ('conversion_applied'::character varying)::text, ('conversion_failed'::character varying)::text, ('rollback_snapshot_created'::character varying)::text, ('rollback_applied'::character varying)::text, ('rollback_snapshot_payload_redacted'::character varying)::text, ('native_validated'::character varying)::text, ('legacy_deletion_ready'::character varying)::text, ('library_rebuild_replacement_applied'::character varying)::text, ('active_intent_integrity_repaired'::character varying)::text, ('reconciliation_reentry_approved'::character varying)::text, ('semantic_intent_authority_repaired'::character varying)::text, ('initial_intent_established'::character varying)::text]))),
     CONSTRAINT policy_intent_migration_events_metadata_shape_chk CHECK ((jsonb_typeof(metadata) = 'object'::text))
 );
 
@@ -6295,6 +6341,13 @@ ALTER TABLE ONLY public.policy_feedback_log ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: policy_initial_intent_establishments id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_initial_intent_establishments ALTER COLUMN id SET DEFAULT nextval('public.policy_initial_intent_establishments_id_seq'::regclass);
+
+
+--
 -- Name: policy_intent_migration_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7254,6 +7307,54 @@ ALTER TABLE ONLY public.policy_change_log
 
 ALTER TABLE ONLY public.policy_feedback_log
     ADD CONSTRAINT policy_feedback_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_initial_intent_establishments policy_initial_intent_establishments_event_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_initial_intent_establishments
+    ADD CONSTRAINT policy_initial_intent_establishments_event_unique UNIQUE (migration_event_id);
+
+
+--
+-- Name: policy_initial_intent_establishments policy_initial_intent_establishments_idempotency_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_initial_intent_establishments
+    ADD CONSTRAINT policy_initial_intent_establishments_idempotency_unique UNIQUE (idempotency_key);
+
+
+--
+-- Name: policy_initial_intent_establishments policy_initial_intent_establishments_intent_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_initial_intent_establishments
+    ADD CONSTRAINT policy_initial_intent_establishments_intent_unique UNIQUE (intent_id);
+
+
+--
+-- Name: policy_initial_intent_establishments policy_initial_intent_establishments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_initial_intent_establishments
+    ADD CONSTRAINT policy_initial_intent_establishments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_initial_intent_establishments policy_initial_intent_establishments_policy_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_initial_intent_establishments
+    ADD CONSTRAINT policy_initial_intent_establishments_policy_unique UNIQUE (policy_id);
+
+
+--
+-- Name: policy_initial_intent_establishments policy_initial_intent_establishments_snapshot_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_initial_intent_establishments
+    ADD CONSTRAINT policy_initial_intent_establishments_snapshot_unique UNIQUE (rollback_snapshot_id);
 
 
 --
@@ -8739,6 +8840,13 @@ CREATE INDEX idx_policy_feedback_was_correction ON public.policy_feedback_log US
 
 
 --
+-- Name: idx_policy_initial_intent_establishments_library; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_initial_intent_establishments_library ON public.policy_initial_intent_establishments USING btree (library_id, established_at DESC, id DESC);
+
+
+--
 -- Name: idx_policy_intent_migration_events_state; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9982,6 +10090,46 @@ ALTER TABLE ONLY public.policy_feedback_log
 
 ALTER TABLE ONLY public.policy_feedback_log
     ADD CONSTRAINT policy_feedback_log_selected_policy_id_fkey FOREIGN KEY (selected_policy_id) REFERENCES public.library_policies(id);
+
+
+--
+-- Name: policy_initial_intent_establishments policy_initial_intent_establishments_intent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_initial_intent_establishments
+    ADD CONSTRAINT policy_initial_intent_establishments_intent_id_fkey FOREIGN KEY (intent_id) REFERENCES public.policy_intents(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: policy_initial_intent_establishments policy_initial_intent_establishments_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_initial_intent_establishments
+    ADD CONSTRAINT policy_initial_intent_establishments_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_initial_intent_establishments policy_initial_intent_establishments_migration_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_initial_intent_establishments
+    ADD CONSTRAINT policy_initial_intent_establishments_migration_event_id_fkey FOREIGN KEY (migration_event_id) REFERENCES public.policy_intent_migration_events(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: policy_initial_intent_establishments policy_initial_intent_establishments_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_initial_intent_establishments
+    ADD CONSTRAINT policy_initial_intent_establishments_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_initial_intent_establishments policy_initial_intent_establishments_rollback_snapshot_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_initial_intent_establishments
+    ADD CONSTRAINT policy_initial_intent_establishments_rollback_snapshot_id_fkey FOREIGN KEY (rollback_snapshot_id) REFERENCES public.policy_intent_rollback_snapshots(id) ON DELETE RESTRICT;
 
 
 --
@@ -12343,6 +12491,7 @@ FROM unnest(ARRAY[
     '20260715_160000_add_native_intent_reconciliation_control.sql',
     '20260716_020000_add_native_intent_reconciliation_alert_states.sql',
     '20260716_030000_add_native_intent_reconciliation_runtime_provenance.sql',
-    '20260716_040000_enforce_semantic_native_intent_authority.sql'
+    '20260716_040000_enforce_semantic_native_intent_authority.sql',
+    '20260716_050000_add_policy_initial_intent_establishments.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

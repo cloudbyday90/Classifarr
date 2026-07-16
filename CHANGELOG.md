@@ -18,6 +18,15 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Explicit First Native-Intent Establishment** - an empty destination can now
+  receive its first native policy authority only through an administrator's
+  bounded declared-rule transition. The server rechecks that legacy preset and
+  override configuration is still empty under transaction locks, records an
+  idempotent authority event and reversible compatibility snapshot, copies
+  routing configuration without triggering automation, and rejects library
+  observations, metadata, RAG, AI output, and client-supplied actor or
+  provenance fields as policy authority.
+
 - **Initial Native Policy Establishment Triage** - reconciliation now separates
   destinations with no legacy preset configuration from malformed or
   purpose-less legacy policies. Empty destinations are recorded as bounded

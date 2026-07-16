@@ -36,6 +36,7 @@ export async function clearExistingConfig(client) {
   await client.query('DELETE FROM policy_native_intent_reconciliation_outcomes');
   await client.query('DELETE FROM policy_native_intent_reconciliation_runs');
   await client.query('DELETE FROM policy_native_intent_reconciliation_holds');
+  await client.query('DELETE FROM policy_initial_intent_establishments');
   await client.query('DELETE FROM policy_intent_validation_status');
   await client.query('DELETE FROM policy_library_rebuild_execution_gates');
   await client.query('DELETE FROM policy_intent_rollback_snapshots');
@@ -83,6 +84,8 @@ export async function restoreAllTables(client, backupData, mode) {
       policyIntentMigrationEvents: backupData.data.policyIntentMigrationEvents,
       policyIntentRollbackSnapshots: backupData.data.policyIntentRollbackSnapshots,
       policyIntentValidationStatus: backupData.data.policyIntentValidationStatus,
+      policyInitialIntentEstablishments:
+        backupData.data.policyInitialIntentEstablishments,
       policyNativeIntentReconciliationRuns:
         backupData.data.policyNativeIntentReconciliationRuns,
       policyNativeIntentReconciliationOutcomes:
@@ -131,6 +134,8 @@ export async function restoreAllTables(client, backupData, mode) {
       policyIntentMigrationEventsRestored: nativePolicyIntentStats.migrationEventsRestored,
       policyIntentRollbackSnapshotsRestored: nativePolicyIntentStats.rollbackSnapshotsRestored,
       policyIntentValidationStatusRestored: nativePolicyIntentStats.validationStatusesRestored,
+      policyInitialIntentEstablishmentsRestored:
+        nativePolicyIntentStats.initialIntentEstablishmentsRestored,
       policyNativeIntentReconciliationRunsRestored:
         nativePolicyIntentStats.reconciliationRunsRestored,
       policyNativeIntentReconciliationOutcomesRestored:

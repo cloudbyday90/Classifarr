@@ -5622,10 +5622,18 @@ Implementation status:
 - Task 8R.3.2.10.1 is implemented as server-owned, read-only candidate triage
   and reconciliation-state mapping. The design and outcome record is
   [Native Policy Initial-Establishment Triage](native-policy-initial-establishment-triage.md).
-- **Next task: 8R.3.2.10.2 Initial Establishment Authority Transition.** Define
-  the permitted declared-intent source, explicit acceptance semantics,
-  transactional revalidation, idempotency, rollback evidence, and automation
-  boundary before any empty destination can receive a first native intent.
+- Task 8R.3.2.10.2 is implemented as an admin-only, server-owned initial
+  establishment transition. It accepts a strict declared-rule DTO, derives
+  the authority and actor server-side, locks and revalidates empty legacy
+  state, records one durable idempotent transition with rollback evidence, and
+  never starts classification, learning, or external routing. The design and
+  outcome record is [Native Policy Initial-Establishment
+  Transition](native-policy-initial-establishment-transition.md).
+- **Next task: 8R.3.2.10.3 Initial Establishment Readiness and Recovery
+  Surface.** Build a bounded read model that explains eligibility, blockers,
+  idempotent/reverted history, and the exact declared-rule summary without
+  allowing library observations, metadata, RAG, or AI output to become durable
+  authority or turning first establishment into routine editor complexity.
 
 ### 8R.4 Native Runtime Read Path
 
