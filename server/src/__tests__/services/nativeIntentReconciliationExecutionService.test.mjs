@@ -72,6 +72,70 @@ describe('NativeIntentReconciliationExecutionService', () => {
     }
   });
 
+  test('treats an empty unconverted inventory as an evaluated no-op', async () => {
+    const stateService = {
+      plan: jest.fn(),
+      persist: jest.fn(),
+      resolveApplyOutcomes: jest.fn(),
+    };
+    const lifecycleService = {
+      getExecutionEligibility: jest.fn().mockResolvedValue({
+        allowed: true,
+        gateState: 'ready',
+        reasonId: 'startup_ready',
+      }),
+      partitionCandidates: jest.fn(),
+    };
+    const buildDryRun = jest.fn();
+    const applyGate = jest.fn();
+    const service = new NativeIntentReconciliationExecutionService({
+      dbClient: {},
+      stateService,
+      lifecycleService,
+      loggerInstance: { error: jest.fn() },
+      loadCandidateInputs: jest.fn().mockResolvedValue({
+        policies: [],
+        activeIntentIntegrityReport: { statusId: 'clean' },
+      }),
+      buildCandidateReport: jest.fn().mockReturnValue({ candidates: [] }),
+      buildDryRun,
+      applyGate,
+    });
+
+    const result = await service.run({
+      dbClient: { query: jest.fn(), withTransaction: jest.fn() },
+      now: '2026-07-16T01:00:00.000Z',
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      statusId: 'evaluated',
+      applied: false,
+      readyPolicyIds: [],
+      operatorErrorIds: [],
+      reconciliationCandidates: [],
+      reconciliationSteps: [],
+      reconciliationSelection: {
+        selectedPolicyCount: 0,
+        deferredPolicyCount: 0,
+        heldPolicyCount: 0,
+        quarantinedPolicyCount: 0,
+        discoveredPolicyCount: 0,
+        rawPayloadExposed: false,
+      },
+      reconciliationState: {
+        statusId: 'unchanged',
+        upsertedCount: 0,
+        deletedCount: 0,
+        rawPayloadExposed: false,
+      },
+    }));
+    expect(lifecycleService.partitionCandidates).not.toHaveBeenCalled();
+    expect(stateService.plan).not.toHaveBeenCalled();
+    expect(stateService.persist).not.toHaveBeenCalled();
+    expect(buildDryRun).not.toHaveBeenCalled();
+    expect(applyGate).not.toHaveBeenCalled();
+  });
+
   test('scans a bounded window, selects only due candidates, and keeps compact ledger input', async () => {
     const selectedCandidate = {
       policyId: 11,

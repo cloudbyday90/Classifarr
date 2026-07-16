@@ -36,6 +36,11 @@ unchanged operator or runtime outcome.
   respects active rollback holds, reuses transactional authority safeguards,
   and records a distinct reconciliation actor without exposing raw policy
   payloads.
+- **No-Work Native Reconciliation Safety** - a reconciliation pass with no
+  unconverted policies now completes as a side-effect-free evaluated outcome
+  instead of treating the intentionally absent conversion workflow as a system
+  error. Empty inventory remains auditable as `no_candidates` without false
+  failure alerts or conversion attempts.
 - **Native Reconciliation Scheduler Collision And Restart Assurance** - added
   failure-injection coverage proving a delayed startup reconciliation skips
   when a recurring run already holds the shared advisory lock, scheduler

@@ -74,10 +74,10 @@ function toSafeCandidate(candidate = {}) {
   };
 }
 
-function toSafeConversionSteps(workflow = {}, selectedPolicyIds = []) {
+function toSafeConversionSteps(workflow, selectedPolicyIds = []) {
   const selected = new Set(asArray(selectedPolicyIds).map(policyId => Number(policyId)));
 
-  return asArray(workflow.steps)
+  return asArray(workflow?.steps)
     .filter(step => selected.has(Number(step?.policyId)))
     .map(step => ({
       policyId: Number(step.policyId),
@@ -116,6 +116,20 @@ function buildLifecycleDeferredApplyGate(eligibility = {}) {
     operatorErrorIds: [eligibility.reasonId || 'restore_validation_failed'],
     failureCategory: eligibility.reasonId || 'restore_validation_failed',
     rawPayloadExposed: false,
+  };
+}
+
+function buildNoCandidateApplyGate() {
+  return {
+    statusId: 'evaluated',
+    applied: false,
+    appliedPolicyCount: 0,
+    alreadyConvertedCount: 0,
+    readyPolicyIds: [],
+    operatorErrorIds: [],
+    results: [],
+    reconciliationCandidates: [],
+    reconciliationOutcomeOverrides: [],
   };
 }
 
@@ -201,6 +215,27 @@ export class NativeIntentReconciliationExecutionService {
     const safeCandidates = asArray(candidateReport.candidates)
       .map(toSafeCandidate)
       .filter(Boolean);
+    if (policies.length === 0) {
+      return {
+        ...buildNoCandidateApplyGate(),
+        reconciliationSteps: [],
+        reconciliationSelection: {
+          selectedPolicyCount: 0,
+          deferredPolicyCount: 0,
+          heldPolicyCount: 0,
+          quarantinedPolicyCount: 0,
+          discoveredPolicyCount: 0,
+          rawPayloadExposed: false,
+        },
+        reconciliationLifecycle: executionEligibility,
+        reconciliationState: {
+          statusId: 'unchanged',
+          upsertedCount: 0,
+          deletedCount: 0,
+          rawPayloadExposed: false,
+        },
+      };
+    }
     const lifecyclePlan = await runNativeIntentReconciliationStage({
       stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.LIFECYCLE_PARTITION,
       execute: () => this.lifecycleService.partitionCandidates({

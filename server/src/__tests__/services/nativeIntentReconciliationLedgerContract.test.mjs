@@ -152,6 +152,26 @@ describe('nativeIntentReconciliationLedgerContract', () => {
     expect(record.outcomes).toEqual([]);
   });
 
+  test('records an empty evaluated execution as no candidates', () => {
+    const record = buildNativeIntentReconciliationLedgerRecord({
+      startedAt: '2026-07-16T01:00:00.000Z',
+      finishedAt: '2026-07-16T01:00:01.000Z',
+      applyGate: {
+        statusId: 'evaluated',
+        reconciliationCandidates: [],
+      },
+    });
+
+    expect(record.run).toMatchObject({
+      runState: NATIVE_INTENT_RECONCILIATION_RUN_STATES.EVALUATED,
+      sourceStatusId: 'evaluated',
+      reasonId: 'no_candidates',
+      candidateCount: 0,
+      failedCount: 0,
+    });
+    expect(record.outcomes).toEqual([]);
+  });
+
   test('uses a safe execution override for a terminal maintenance disposition', () => {
     const record = buildNativeIntentReconciliationLedgerRecord({
       applyGate: {

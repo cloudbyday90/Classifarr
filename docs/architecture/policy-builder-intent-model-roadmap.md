@@ -5101,6 +5101,11 @@ Implementation status:
 - Design and outcome records:
   [Policy Native Intent Conversion Reconciler](policy-native-intent-conversion-reconciler.md)
   and [Native Intent Reconciliation Scheduler](native-intent-reconciliation-scheduler.md).
+- Empty unconverted inventory now exits before lifecycle partitioning, state
+  persistence, dry-run creation, and the conversion gate. It records the
+  existing evaluated `no_candidates` ledger outcome rather than treating the
+  intentionally absent conversion workflow as a failure. The design and outcome
+  record is [Native Intent Reconciliation No-Work Safety](native-intent-reconciliation-noop-safety.md).
 
 ##### 8R.3.2.1 Scheduler Ownership And Single-Runner Exclusion
 
