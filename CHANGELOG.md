@@ -27,6 +27,14 @@ unchanged operator or runtime outcome.
   observations, metadata, RAG, AI output, and client-supplied actor or
   provenance fields as policy authority.
 
+- **First Native-Intent Readiness And Recovery** - administrators can now read
+  whether first establishment is available, why it is blocked, and whether a
+  recorded first authority remains recoverable or was reverted. The bounded,
+  read-only surface exposes only attachment counts, native-history counts,
+  stable recovery IDs, and revalidated declared-rule groups; it never exposes
+  idempotency material, actors, rollback payloads, routing paths, library
+  observations, metadata, RAG, or AI output, and it cannot start automation.
+
 - **Initial Native Policy Establishment Triage** - reconciliation now separates
   destinations with no legacy preset configuration from malformed or
   purpose-less legacy policies. Empty destinations are recorded as bounded

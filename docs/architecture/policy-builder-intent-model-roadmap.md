@@ -5629,11 +5629,17 @@ Implementation status:
   never starts classification, learning, or external routing. The design and
   outcome record is [Native Policy Initial-Establishment
   Transition](native-policy-initial-establishment-transition.md).
-- **Next task: 8R.3.2.10.3 Initial Establishment Readiness and Recovery
-  Surface.** Build a bounded read model that explains eligibility, blockers,
-  idempotent/reverted history, and the exact declared-rule summary without
-  allowing library observations, metadata, RAG, or AI output to become durable
-  authority or turning first establishment into routine editor complexity.
+- Task 8R.3.2.10.3 is implemented as an admin-only, side-effect-free
+  readiness and recovery read model. It reports only server-owned eligibility,
+  attachment counts, native-history counts, non-secret idempotency/reversion
+  state, stable recovery identifiers, and revalidated declared-rule groups. It
+  never returns an idempotency key, fingerprint, actor, snapshot payload,
+  routing configuration, observed library data, metadata, RAG, or AI output.
+  The design and outcome record is [Native Policy Initial-Establishment
+  Readiness](native-policy-initial-establishment-readiness.md).
+- **Initial-establishment triage is complete.** Select subsequent work from
+  the remaining 8R runtime-authority and production-cutover acceptance
+  criteria; do not add a routine editor around first establishment.
 
 ### 8R.4 Native Runtime Read Path
 

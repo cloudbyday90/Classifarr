@@ -250,6 +250,23 @@ function validatePolicyInitialIntentEstablishmentRequest(payload = {}) {
   return parsed.data;
 }
 
+function validatePolicyInitialDeclaredIntent(declaredIntent = {}) {
+  const parsed = declaredIntentSchema.safeParse(declaredIntent);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      declaredIntent: null,
+      issues: normalizeIssues(parsed.error.issues),
+    };
+  }
+
+  return {
+    ok: true,
+    declaredIntent: parsed.data,
+    issues: [],
+  };
+}
+
 function buildInitialPolicyIntentContract({ policy = {}, declaredIntent = {} } = {}) {
   const contract = {
     schema_version: POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
@@ -313,5 +330,6 @@ export {
   VALUES_KEYS as POLICY_INITIAL_INTENT_ESTABLISHMENT_VALUE_KEYS,
   buildInitialIntentRequestFingerprint,
   buildInitialPolicyIntentContract,
+  validatePolicyInitialDeclaredIntent,
   validatePolicyInitialIntentEstablishmentRequest,
 };
