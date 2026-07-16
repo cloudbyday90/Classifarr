@@ -15,6 +15,28 @@ import {
   NativeIntentReconciliationService,
 } from '../../services/nativeIntentReconciliationService.mjs';
 
+function readyControlService() {
+  return {
+    getExecutionEligibility: jest.fn().mockResolvedValue({
+      allowed: true,
+      control: {
+        automationEnabled: true,
+        circuitState: 'closed',
+        rawPayloadExposed: false,
+      },
+    }),
+    recordExecutionResult: jest.fn().mockResolvedValue({
+      changed: false,
+      control: {
+        automationEnabled: true,
+        circuitState: 'closed',
+        rawPayloadExposed: false,
+      },
+    }),
+    recordExecutionError: jest.fn().mockResolvedValue({ changed: false }),
+  };
+}
+
 describe('NativeIntentReconciliationService', () => {
   test('uses a fixed unconverted-only batch and returns compact execution evidence', async () => {
     const dbClient = { query: jest.fn() };
@@ -39,6 +61,7 @@ describe('NativeIntentReconciliationService', () => {
       dbClient,
       runApplyGate,
       ledgerService,
+      controlService: readyControlService(),
       now: () => new Date('2026-07-15T12:00:00.000Z'),
       loggerInstance: logger,
     });
@@ -48,9 +71,6 @@ describe('NativeIntentReconciliationService', () => {
     expect(runApplyGate).toHaveBeenCalledWith(expect.objectContaining({
       dbClient,
       maxPolicies: NATIVE_INTENT_RECONCILIATION_BATCH_SIZE,
-      unconvertedOnly: true,
-      excludeRevertedPolicies: true,
-      includeReconciliationCandidates: true,
       action: expect.objectContaining({
         actorSourceId: 'native_intent_reconciliation',
         reasonCode: 'native_intent_reconciliation',
@@ -65,7 +85,7 @@ describe('NativeIntentReconciliationService', () => {
         maxElapsedMs: NATIVE_INTENT_RECONCILIATION_MAX_ELAPSED_MS,
         currentStateOnly: true,
         unconvertedOnly: true,
-        excludesRevertedPolicies: true,
+        respectsActiveReversionHolds: true,
       }),
       counts: {
         attemptedPolicyCount: 2,
@@ -92,6 +112,7 @@ describe('NativeIntentReconciliationService', () => {
     const service = new NativeIntentReconciliationService({
       runApplyGate: jest.fn().mockRejectedValue(new Error('database password should not be exposed')),
       ledgerService,
+      controlService: readyControlService(),
       now: () => new Date('2026-07-15T12:00:00.000Z'),
       loggerInstance: logger,
     });
@@ -123,6 +144,7 @@ describe('NativeIntentReconciliationService', () => {
       ledgerService: {
         record: jest.fn().mockRejectedValue(new Error('sensitive storage details')),
       },
+      controlService: readyControlService(),
       now: () => new Date('2026-07-15T12:00:00.000Z'),
       loggerInstance: logger,
     });
@@ -145,6 +167,42 @@ describe('NativeIntentReconciliationService', () => {
     );
   });
 
+  test('does not re-label a committed conversion when circuit state recording fails', async () => {
+    const logger = { info: jest.fn(), error: jest.fn() };
+    const controlService = readyControlService();
+    controlService.recordExecutionResult.mockRejectedValue(
+      new Error('control storage details must not escape'),
+    );
+    const service = new NativeIntentReconciliationService({
+      runApplyGate: jest.fn().mockResolvedValue({
+        statusId: 'applied',
+        applied: true,
+        readyPolicyIds: [18],
+        appliedPolicyCount: 1,
+      }),
+      ledgerService: { record: jest.fn().mockResolvedValue({ statusId: 'persisted' }) },
+      controlService,
+      now: () => new Date('2026-07-15T12:00:00.000Z'),
+      loggerInstance: logger,
+    });
+
+    const result = await service.run();
+
+    expect(result).toMatchObject({
+      statusId: 'applied',
+      applied: true,
+      control: {
+        statusId: 'unavailable',
+        rawPayloadExposed: false,
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('storage details');
+    expect(logger.error).toHaveBeenCalledWith(
+      'Native intent reconciliation control write failed',
+      { statusId: 'applied', failureCategory: 'control_state' },
+    );
+  });
+
   test('keeps a committed conversion when a ledger implementation returns no status', async () => {
     const logger = { info: jest.fn(), error: jest.fn() };
     const service = new NativeIntentReconciliationService({
@@ -155,6 +213,7 @@ describe('NativeIntentReconciliationService', () => {
         appliedPolicyCount: 1,
       }),
       ledgerService: { record: jest.fn().mockResolvedValue(undefined) },
+      controlService: readyControlService(),
       now: () => new Date('2026-07-15T12:00:00.000Z'),
       loggerInstance: logger,
     });
@@ -170,5 +229,38 @@ describe('NativeIntentReconciliationService', () => {
         rawPayloadExposed: false,
       },
     });
+  });
+
+  test('stops before the apply gate when the emergency control disables automation', async () => {
+    const runApplyGate = jest.fn();
+    const controlService = readyControlService();
+    controlService.getExecutionEligibility.mockResolvedValue({
+      allowed: false,
+      statusId: 'deferred_by_reconciliation_emergency_stop',
+      reasonId: 'operator_incident',
+      control: {
+        automationEnabled: false,
+        circuitState: 'closed',
+        rawPayloadExposed: false,
+      },
+    });
+    const service = new NativeIntentReconciliationService({
+      dbClient: {},
+      runApplyGate,
+      ledgerService: { record: jest.fn() },
+      controlService,
+      now: () => new Date('2026-07-15T12:00:00.000Z'),
+      loggerInstance: { info: jest.fn(), error: jest.fn() },
+    });
+
+    const result = await service.run();
+
+    expect(runApplyGate).not.toHaveBeenCalled();
+    expect(result).toEqual(expect.objectContaining({
+      statusId: 'deferred_by_reconciliation_emergency_stop',
+      applied: false,
+      operatorErrorIds: ['operator_incident'],
+      control: expect.objectContaining({ automationEnabled: false }),
+    }));
   });
 });

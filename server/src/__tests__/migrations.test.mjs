@@ -314,6 +314,10 @@ describe('Schema snapshot freshness', () => {
             __dirname,
             '../../../database/migrations/20260715_150000_add_native_intent_reconciliation_lifecycle_guards.sql'
         );
+        const reconciliationControlMigrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260715_160000_add_native_intent_reconciliation_control.sql'
+        );
         const migrationSql = fs.readFileSync(migrationPath, 'utf8');
         const integrityMigrationSql = fs.readFileSync(integrityMigrationPath, 'utf8');
         const retentionMigrationSql = fs.readFileSync(retentionMigrationPath, 'utf8');
@@ -323,6 +327,10 @@ describe('Schema snapshot freshness', () => {
         );
         const reconciliationLifecycleMigrationSql = fs.readFileSync(
             reconciliationLifecycleMigrationPath,
+            'utf8'
+        );
+        const reconciliationControlMigrationSql = fs.readFileSync(
+            reconciliationControlMigrationPath,
             'utf8'
         );
         const policyIntents = getCreateTableBlock(schemaSql, 'policy_intents');
@@ -360,6 +368,14 @@ describe('Schema snapshot freshness', () => {
         const reconciliationRestoreGates = getCreateTableBlock(
             schemaSql,
             'policy_native_intent_reconciliation_restore_gates'
+        );
+        const reconciliationControls = getCreateTableBlock(
+            schemaSql,
+            'policy_native_intent_reconciliation_controls'
+        );
+        const reconciliationControlEvents = getCreateTableBlock(
+            schemaSql,
+            'policy_native_intent_reconciliation_control_events'
         );
 
         [
@@ -435,6 +451,45 @@ describe('Schema snapshot freshness', () => {
         expect(reconciliationLifecycleMigrationSql).toContain(
             'CREATE TABLE IF NOT EXISTS policy_native_intent_reconciliation_restore_gates'
         );
+        expect(reconciliationControlMigrationSql).toContain(
+            'CREATE TABLE IF NOT EXISTS policy_native_intent_reconciliation_controls'
+        );
+        expect(reconciliationControlMigrationSql).toContain(
+            'CREATE TABLE IF NOT EXISTS policy_native_intent_reconciliation_control_events'
+        );
+        expect(reconciliationControlMigrationSql).toContain(
+            'CREATE INDEX IF NOT EXISTS idx_policy_native_intent_reconciliation_control_events_occurred'
+        );
+        expect(reconciliationControlMigrationSql).toContain(
+            "VALUES (1, TRUE, 'closed', 'none')"
+        );
+        expect(reconciliationControls).toContain(
+            "automation_enabled boolean DEFAULT true"
+        );
+        expect(reconciliationControls).toContain(
+            "circuit_state character varying(32) DEFAULT 'closed'::character varying"
+        );
+        expect(reconciliationControls).toContain(
+            "recovery_requirement character varying(40) DEFAULT 'none'::character varying"
+        );
+        expect(reconciliationControls).toContain(
+            'policy_native_intent_reconciliation_controls_circuit_shape_chk'
+        );
+        expect(reconciliationControls).toContain(
+            'policy_native_intent_reconciliation_controls_disabled_shape_chk'
+        );
+        expect(reconciliationControlEvents).toContain(
+            'event_type character varying(50)'
+        );
+        expect(reconciliationControlEvents).toContain(
+            'reason_id character varying(80)'
+        );
+        expect(reconciliationControlEvents).toContain(
+            'actor_id integer'
+        );
+        expect(reconciliationControlEvents).toContain(
+            'policy_native_intent_reconciliation_control_events_actor_shape_'
+        );
         expect(schemaSql).toContain('CREATE UNIQUE INDEX idx_policy_intents_one_active_policy');
         expect(schemaSql).not.toContain('CREATE UNIQUE INDEX idx_policy_intents_active_version');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_rules_values_gin');
@@ -446,6 +501,9 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_states_retry');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_states_outcome');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_holds_active');
+        expect(schemaSql).toContain(
+            'CREATE INDEX idx_policy_native_intent_reconciliation_control_events_occurred'
+        );
     });
 
     test('current.sql includes the library rebuild rollback execution and replacement gates', () => {

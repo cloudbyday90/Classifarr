@@ -49,6 +49,12 @@ unchanged operator or runtime outcome.
   authority validation pass, preserves safe rollback history, and recalculates
   retry scheduling from restored current state rather than resuming imported
   work.
+- **Native Intent Reconciliation Circuit Breaker** - automatic conversion now
+  pauses after repeated same-category database, schema, or native-authority
+  failures. Administrators have an attributable emergency stop and reset path;
+  automatic recovery uses a read-only health probe before a later scheduled
+  conversion pass, while policy-local blockers and normal policy operations
+  continue independently.
 - **Native Conversion And Automation Readiness Separation** - valid policies
   can now convert to native intent even when routing or profile freshness still
   needs work. Those automation blockers are reported separately, and unmapped

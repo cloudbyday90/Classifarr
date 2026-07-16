@@ -5361,6 +5361,25 @@ Acceptance criteria:
   ordinary policy saves, or routing.
 - Emergency state and recovery are auditable without exposing sensitive data.
 
+Implementation outcome:
+
+- `20260715_160000_add_native_intent_reconciliation_control.sql` adds one
+  default-enabled singleton reconciliation control and compact control-event
+  audit evidence. Both store only stable IDs, timestamps, and authenticated
+  actor identifiers; neither stores policy payloads, stack traces, credentials,
+  or raw database errors.
+- Automatic reconciliation opens its persisted circuit only after three
+  same-category systemic failures within fifteen minutes. Policy-local
+  blockers, review requirements, routing setup, rollback holds, and
+  post-commit ledger errors cannot open it.
+- A transient circuit recovers only through a one-at-a-time, read-only probe
+  and defers that pass before conversion resumes. Schema and authority-integrity
+  categories require an attributable administrator reset before the probe.
+- Protected reconciliation-control endpoints provide emergency stop, resume,
+  status, and reset without adding any option to normal policy authoring.
+- Design and outcome record:
+  [Native Intent Reconciliation Circuit Breaker](native-intent-reconciliation-circuit-breaker.md).
+
 ##### 8R.3.2.6 Read-Only Status, Alerting, And Legacy Deletion Integration
 
 Intent: make automatic conversion observable without retaining a second

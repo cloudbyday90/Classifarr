@@ -19,6 +19,9 @@ import {
 import {
   nativeIntentReconciliationExecutionService,
 } from './nativeIntentReconciliationExecutionService.mjs';
+import {
+  nativeIntentReconciliationControlService as defaultControlService,
+} from './nativeIntentReconciliationControlService.mjs';
 
 const NATIVE_INTENT_RECONCILIATION_VERSION = 'native_intent_reconciliation.v1';
 const NATIVE_INTENT_RECONCILIATION_BATCH_SIZE = 10;
@@ -58,7 +61,7 @@ function normalizeLedgerResult(value) {
   };
 }
 
-function buildResult({ applyGate = {}, startedAt, deadlineAt, failed = false } = {}) {
+function buildResult({ applyGate = {}, startedAt, deadlineAt, failed = false, control = null } = {}) {
   const readyPolicyIds = asArray(applyGate.readyPolicyIds);
 
   return {
@@ -70,7 +73,7 @@ function buildResult({ applyGate = {}, startedAt, deadlineAt, failed = false } =
     scope: {
       currentStateOnly: true,
       unconvertedOnly: true,
-      excludesRevertedPolicies: true,
+      respectsActiveReversionHolds: true,
       batchSize: NATIVE_INTENT_RECONCILIATION_BATCH_SIZE,
       maxElapsedMs: NATIVE_INTENT_RECONCILIATION_MAX_ELAPSED_MS,
     },
@@ -83,6 +86,18 @@ function buildResult({ applyGate = {}, startedAt, deadlineAt, failed = false } =
     operatorErrorIds: failed
       ? ['native_intent_reconciliation_failed']
       : normalizeOperatorErrorIds(applyGate.operatorErrorIds),
+    ...(control ? { control } : {}),
+  };
+}
+
+function buildControlDeferredApplyGate(eligibility = {}) {
+  return {
+    statusId: eligibility.statusId || 'deferred_by_reconciliation_control',
+    applied: false,
+    appliedPolicyCount: 0,
+    alreadyConvertedCount: 0,
+    readyPolicyIds: [],
+    operatorErrorIds: [eligibility.reasonId || 'reconciliation_control_unavailable'],
   };
 }
 
@@ -93,12 +108,14 @@ class NativeIntentReconciliationService {
       nativeIntentReconciliationExecutionService,
     ),
     ledgerService = defaultLedgerService,
+    controlService = defaultControlService,
     now = () => new Date(),
     loggerInstance = logger,
   } = {}) {
     this.dbClient = dbClient;
     this.runApplyGate = runApplyGate;
     this.ledgerService = ledgerService;
+    this.controlService = controlService;
     this.now = now;
     this.logger = loggerInstance;
   }
@@ -110,21 +127,62 @@ class NativeIntentReconciliationService {
     ).toISOString();
 
     try {
+      const controlEligibility = await this.controlService.getExecutionEligibility({
+        dbClient: this.dbClient,
+        now: startedAt,
+      });
+      if (!controlEligibility.allowed) {
+        const result = buildResult({
+          applyGate: buildControlDeferredApplyGate(controlEligibility),
+          startedAt,
+          deadlineAt,
+          control: controlEligibility.control,
+        });
+        this.logger.info('Native intent reconciliation deferred by operational control', {
+          statusId: result.statusId,
+          reasonId: controlEligibility.reasonId,
+          circuitState: controlEligibility.control?.circuitState,
+        });
+        return result;
+      }
+
       const applyGate = await this.runApplyGate({
         dbClient: this.dbClient,
         maxPolicies: NATIVE_INTENT_RECONCILIATION_BATCH_SIZE,
         now: startedAt,
         executionDeadlineAt: deadlineAt,
-        unconvertedOnly: true,
-        excludeRevertedPolicies: true,
-        includeReconciliationCandidates: true,
         action: {
           actorSourceId: POLICY_CONVERSION_ACTOR_SOURCE_IDS.NATIVE_INTENT_RECONCILIATION,
           reasonCode: 'native_intent_reconciliation',
           requestedAt: startedAt,
         },
       });
-      const result = buildResult({ applyGate, startedAt, deadlineAt });
+      const result = buildResult({
+        applyGate,
+        startedAt,
+        deadlineAt,
+        control: controlEligibility.control,
+      });
+
+      try {
+        const controlOutcome = await this.controlService.recordExecutionResult({
+          dbClient: this.dbClient,
+          applyGate,
+          now: result.completedAt,
+        });
+        if (controlOutcome?.control) {
+          result.control = controlOutcome.control;
+        }
+      } catch {
+        result.control = {
+          statusId: 'unavailable',
+          rawPayloadExposed: false,
+        };
+        this.logger.error('Native intent reconciliation control write failed', {
+          statusId: result.statusId,
+          failureCategory: 'control_state',
+        });
+      }
 
       try {
         result.ledger = normalizeLedgerResult(await this.ledgerService.record({
@@ -153,8 +211,27 @@ class NativeIntentReconciliationService {
       });
 
       return result;
-    } catch {
-      const result = buildResult({ startedAt, deadlineAt, failed: true });
+    } catch (error) {
+      let control = null;
+      try {
+        const controlOutcome = await this.controlService.recordExecutionError({
+          dbClient: this.dbClient,
+          error,
+          now: new Date(),
+        });
+        control = controlOutcome?.control || null;
+      } catch {
+        control = {
+          statusId: 'unavailable',
+          rawPayloadExposed: false,
+        };
+        this.logger.error('Native intent reconciliation control failure recording failed', {
+          statusId: 'failed',
+          failureCategory: 'control_state',
+        });
+      }
+
+      const result = buildResult({ startedAt, deadlineAt, failed: true, control });
 
       this.logger.error('Native intent reconciliation failed', {
         statusId: result.statusId,

@@ -17,6 +17,9 @@ import { sendData } from '../utils/responseHelpers.mjs';
 import {
   nativeIntentReconciliationLifecycleService,
 } from '../services/nativeIntentReconciliationLifecycleService.mjs';
+import {
+  nativeIntentReconciliationControlService,
+} from '../services/nativeIntentReconciliationControlService.mjs';
 
 function toPositiveInteger(value) {
   const numericValue = Number(value);
@@ -44,7 +47,90 @@ function getReentryError(result) {
   }
 }
 
+function getControlActionError(result) {
+  if (result?.reasonId === 'control_action_invalid') {
+    return new ValidationError('A verified administrator identity and valid reason code are required.', {
+      code: 'POLICY_RECONCILIATION_CONTROL_REQUEST_INVALID',
+    });
+  }
+
+  return new ConflictError('Native intent reconciliation control cannot change in its current state.', {
+    code: 'POLICY_RECONCILIATION_CONTROL_CHANGE_BLOCKED',
+  });
+}
+
+function requireAdministratorAction(req) {
+  if (req.user?.role !== 'admin') {
+    throw new ForbiddenError('Admin access required');
+  }
+
+  const actorId = toPositiveInteger(req.user.id);
+  if (!actorId) {
+    throw new ValidationError('A verified administrator identity is required.', {
+      code: 'POLICY_RECONCILIATION_CONTROL_ACTOR_REQUIRED',
+    });
+  }
+
+  return {
+    actorId,
+    reasonCode: toReasonCode(req.body?.reason_code),
+  };
+}
+
 export function registerPolicyNativeIntentReconciliationRoutes(router, { db, logger }) {
+  router.get('/native-intent-reconciliation/control', asyncHandler(async (req, res) => {
+    if (req.user?.role !== 'admin') {
+      throw new ForbiddenError('Admin access required');
+    }
+
+    return sendData(res, await nativeIntentReconciliationControlService.getStatus({ dbClient: db }));
+  }));
+
+  router.post('/native-intent-reconciliation/control/emergency-stop', asyncHandler(async (req, res) => {
+    const action = requireAdministratorAction(req);
+    const result = await nativeIntentReconciliationControlService.disableAutomation({
+      dbClient: db,
+      action,
+    });
+    if (!result.changed) throw getControlActionError(result);
+
+    logger.warn?.('Native intent reconciliation emergency stop enabled', {
+      actorId: action.actorId,
+      reasonId: result.reasonId,
+    });
+    return sendData(res, result);
+  }));
+
+  router.post('/native-intent-reconciliation/control/resume', asyncHandler(async (req, res) => {
+    const action = requireAdministratorAction(req);
+    const result = await nativeIntentReconciliationControlService.resumeAutomation({
+      dbClient: db,
+      action,
+    });
+    if (!result.changed) throw getControlActionError(result);
+
+    logger.info('Native intent reconciliation emergency stop released', {
+      actorId: action.actorId,
+      reasonId: result.reasonId,
+    });
+    return sendData(res, result);
+  }));
+
+  router.post('/native-intent-reconciliation/control/reset', asyncHandler(async (req, res) => {
+    const action = requireAdministratorAction(req);
+    const result = await nativeIntentReconciliationControlService.resetCircuit({
+      dbClient: db,
+      action,
+    });
+    if (!result.changed) throw getControlActionError(result);
+
+    logger.info('Native intent reconciliation circuit reset approved', {
+      actorId: action.actorId,
+      reasonId: result.reasonId,
+    });
+    return sendData(res, result);
+  }));
+
   router.post('/:id/native-intent-reconciliation/reentry', asyncHandler(async (req, res) => {
     if (req.user?.role !== 'admin') {
       throw new ForbiddenError('Admin access required');

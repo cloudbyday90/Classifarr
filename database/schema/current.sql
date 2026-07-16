@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-16T00:43:06.984Z
--- Latest Migration: 20260715_150000_add_native_intent_reconciliation_lifecycle_guards.sql
+-- Generated: 2026-07-16T01:17:33.294Z
+-- Latest Migration: 20260715_160000_add_native_intent_reconciliation_control.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4150,6 +4150,75 @@ ALTER SEQUENCE public.policy_library_rebuild_execution_gates_id_seq OWNED BY pub
 
 
 --
+-- Name: policy_native_intent_reconciliation_control_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_native_intent_reconciliation_control_events (
+    id bigint NOT NULL,
+    event_type character varying(50) CONSTRAINT policy_native_intent_reconciliation_control_event_type_not_null NOT NULL,
+    reason_id character varying(80) CONSTRAINT policy_native_intent_reconciliation_control__reason_id_not_null NOT NULL,
+    failure_category character varying(80),
+    actor_type character varying(24) CONSTRAINT policy_native_intent_reconciliation_control_actor_type_not_null NOT NULL,
+    actor_id integer,
+    occurred_at timestamp with time zone DEFAULT now() CONSTRAINT policy_native_intent_reconciliation_contro_occurred_at_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT policy_native_intent_reconciliation_control_created_at_not_null NOT NULL,
+    CONSTRAINT policy_native_intent_reconciliation_control_events_actor_shape_ CHECK (((((actor_type)::text = 'system'::text) AND (actor_id IS NULL)) OR (((actor_type)::text = 'operator'::text) AND (actor_id IS NOT NULL) AND (actor_id > 0)))),
+    CONSTRAINT policy_native_intent_reconciliation_control_events_actor_type_c CHECK (((actor_type)::text = ANY (ARRAY[('system'::character varying)::text, ('operator'::character varying)::text]))),
+    CONSTRAINT policy_native_intent_reconciliation_control_events_failure_cate CHECK (((failure_category IS NULL) OR ((failure_category)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text))),
+    CONSTRAINT policy_native_intent_reconciliation_control_events_reason_chk CHECK (((reason_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text)),
+    CONSTRAINT policy_native_intent_reconciliation_control_events_type_chk CHECK (((event_type)::text = ANY (ARRAY[('automation_disabled'::character varying)::text, ('automation_enabled'::character varying)::text, ('circuit_opened'::character varying)::text, ('circuit_recovered'::character varying)::text, ('circuit_reset'::character varying)::text])))
+);
+
+
+--
+-- Name: policy_native_intent_reconciliation_control_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_native_intent_reconciliation_control_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_native_intent_reconciliation_control_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_native_intent_reconciliation_control_events_id_seq OWNED BY public.policy_native_intent_reconciliation_control_events.id;
+
+
+--
+-- Name: policy_native_intent_reconciliation_controls; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_native_intent_reconciliation_controls (
+    control_id smallint DEFAULT 1 CONSTRAINT policy_native_intent_reconciliation_control_control_id_not_null NOT NULL,
+    automation_enabled boolean DEFAULT true CONSTRAINT policy_native_intent_reconciliation_automation_enabled_not_null NOT NULL,
+    circuit_state character varying(32) DEFAULT 'closed'::character varying CONSTRAINT policy_native_intent_reconciliation_cont_circuit_state_not_null NOT NULL,
+    recovery_requirement character varying(40) DEFAULT 'none'::character varying CONSTRAINT policy_native_intent_reconciliati_recovery_requirement_not_null NOT NULL,
+    failure_count smallint DEFAULT 0 CONSTRAINT policy_native_intent_reconciliation_cont_failure_count_not_null NOT NULL,
+    failure_window_started_at timestamp with time zone,
+    last_failure_category character varying(80),
+    opened_at timestamp with time zone,
+    recovery_probe_started_at timestamp with time zone,
+    recovered_at timestamp with time zone,
+    manual_disabled_at timestamp with time zone,
+    manual_disabled_reason_id character varying(80),
+    updated_at timestamp with time zone DEFAULT now() CONSTRAINT policy_native_intent_reconciliation_control_updated_at_not_null NOT NULL,
+    CONSTRAINT policy_native_intent_reconciliation_controls_circuit_shape_chk CHECK (((((circuit_state)::text = 'closed'::text) AND ((recovery_requirement)::text = 'none'::text) AND (opened_at IS NULL) AND (recovery_probe_started_at IS NULL)) OR (((circuit_state)::text = 'open'::text) AND ((recovery_requirement)::text = ANY (ARRAY[('healthy_evaluation'::character varying)::text, ('admin_reset'::character varying)::text])) AND (opened_at IS NOT NULL) AND (recovery_probe_started_at IS NULL)) OR (((circuit_state)::text = 'half_open'::text) AND ((recovery_requirement)::text = 'healthy_evaluation'::text) AND (opened_at IS NOT NULL) AND (recovery_probe_started_at IS NOT NULL)))),
+    CONSTRAINT policy_native_intent_reconciliation_controls_disabled_reason_ch CHECK (((manual_disabled_reason_id IS NULL) OR ((manual_disabled_reason_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text))),
+    CONSTRAINT policy_native_intent_reconciliation_controls_disabled_shape_chk CHECK ((((automation_enabled = true) AND (manual_disabled_at IS NULL) AND (manual_disabled_reason_id IS NULL)) OR ((automation_enabled = false) AND (manual_disabled_at IS NOT NULL) AND (manual_disabled_reason_id IS NOT NULL)))),
+    CONSTRAINT policy_native_intent_reconciliation_controls_failure_category_c CHECK (((last_failure_category IS NULL) OR ((last_failure_category)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text))),
+    CONSTRAINT policy_native_intent_reconciliation_controls_failure_count_chk CHECK (((failure_count >= 0) AND (failure_count <= 3))),
+    CONSTRAINT policy_native_intent_reconciliation_controls_id_chk CHECK ((control_id = 1)),
+    CONSTRAINT policy_native_intent_reconciliation_controls_recovery_chk CHECK (((recovery_requirement)::text = ANY (ARRAY[('none'::character varying)::text, ('healthy_evaluation'::character varying)::text, ('admin_reset'::character varying)::text]))),
+    CONSTRAINT policy_native_intent_reconciliation_controls_state_chk CHECK (((circuit_state)::text = ANY (ARRAY[('closed'::character varying)::text, ('open'::character varying)::text, ('half_open'::character varying)::text])))
+);
+
+
+--
 -- Name: policy_native_intent_reconciliation_holds; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6223,6 +6292,13 @@ ALTER TABLE ONLY public.policy_library_rebuild_execution_gates ALTER COLUMN id S
 
 
 --
+-- Name: policy_native_intent_reconciliation_control_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_control_events ALTER COLUMN id SET DEFAULT nextval('public.policy_native_intent_reconciliation_control_events_id_seq'::regclass);
+
+
+--
 -- Name: policy_native_intent_reconciliation_outcomes id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7192,6 +7268,22 @@ ALTER TABLE ONLY public.policy_learning_stats
 
 ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
     ADD CONSTRAINT policy_library_rebuild_execution_gates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_native_intent_reconciliation_control_events policy_native_intent_reconciliation_control_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_control_events
+    ADD CONSTRAINT policy_native_intent_reconciliation_control_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_native_intent_reconciliation_controls policy_native_intent_reconciliation_controls_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_controls
+    ADD CONSTRAINT policy_native_intent_reconciliation_controls_pkey PRIMARY KEY (control_id);
 
 
 --
@@ -8696,6 +8788,13 @@ CREATE INDEX idx_policy_library_rebuild_execution_gates_snapshot ON public.polic
 --
 
 CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_transition ON public.policy_library_rebuild_execution_gates USING btree (transition_fingerprint);
+
+
+--
+-- Name: idx_policy_native_intent_reconciliation_control_events_occurred; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_native_intent_reconciliation_control_events_occurred ON public.policy_native_intent_reconciliation_control_events USING btree (occurred_at DESC, id DESC);
 
 
 --
@@ -12152,6 +12251,7 @@ FROM unnest(ARRAY[
     '20260715_130000_add_native_intent_reconciliation_ledger.sql',
     '20260715_131000_harden_native_intent_reconciliation_ledger_constraints.sql',
     '20260715_140000_add_native_intent_reconciliation_state.sql',
-    '20260715_150000_add_native_intent_reconciliation_lifecycle_guards.sql'
+    '20260715_150000_add_native_intent_reconciliation_lifecycle_guards.sql',
+    '20260715_160000_add_native_intent_reconciliation_control.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
