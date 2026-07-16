@@ -20,7 +20,7 @@ import {
 function parseArgs(argv = []) {
   const options = {
     nextBatchAuthorizationArtifactPath: null,
-    executionPlanPath: null,
+    executionPlanArtifactPath: null,
     inputPath: null,
     outputPath: null,
     artifactOutputPath: null,
@@ -37,8 +37,8 @@ function parseArgs(argv = []) {
       index += 1;
       continue;
     }
-    if (arg === '--execution-plan') {
-      options.executionPlanPath = argv[index + 1] || null;
+    if (arg === '--execution-plan-artifact') {
+      options.executionPlanArtifactPath = argv[index + 1] || null;
       index += 1;
       continue;
     }
@@ -88,7 +88,7 @@ function usage() {
     'Options:',
     '  --next-batch-authorization-artifact <json>',
     '                                      Required fingerprint-valid next-batch authorization artifact JSON.',
-    '  --execution-plan <json>            Required compatibility deletion execution-plan JSON.',
+    '  --execution-plan-artifact <json>   Required ready fingerprint-valid compatibility deletion execution-plan artifact JSON.',
     '  --input <json>                     Required completion audit input JSON.',
     '  --output <json>                    Write nested audit JSON to this path.',
     '  --artifact-output <json>           Write wrapper artifact JSON to this path.',
@@ -145,7 +145,7 @@ async function main() {
   }
 
   let nextBatchAuthorizationArtifact;
-  let executionPlan;
+  let executionPlanArtifact;
   let input;
 
   try {
@@ -154,9 +154,13 @@ async function main() {
       'next-batch authorization artifact',
       { required: true }
     );
-    executionPlan = readJsonFile(options.executionPlanPath, 'execution plan', {
-      required: true,
-    });
+    executionPlanArtifact = readJsonFile(
+      options.executionPlanArtifactPath,
+      'execution-plan artifact',
+      {
+        required: true,
+      }
+    );
     input = readJsonFile(options.inputPath, 'completion audit input evidence', {
       required: true,
     });
@@ -167,7 +171,7 @@ async function main() {
 
   const artifact = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
     nextBatchAuthorizationArtifact,
-    executionPlan,
+    executionPlanArtifact,
     input,
     generatedAt: options.generatedAt,
   });

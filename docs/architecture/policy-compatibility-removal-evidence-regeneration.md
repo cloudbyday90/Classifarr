@@ -7,14 +7,15 @@ the current validation result. A predecessor artifact can document historical
 work, but it cannot prove that the present execution-plan contract, source
 reference state, or validation results still satisfy the closure conditions.
 
-This component adds a read-only regeneration path. It receives an explicit,
-current compatibility-deletion execution plan, a fingerprint-valid next-batch
-authorization artifact, its applied removal-review fingerprint, and current
-validation evidence. It then derives filesystem state and source-reference
-evidence from the checkout. It emits a current completion-audit artifact only
-when that one evidence chain validates. It never treats a historical plan as
-current approval and never deletes, archives, mutates storage, writes manifests,
-or runs Git.
+This component adds a read-only regeneration path. It receives a ready,
+fingerprint-valid compatibility-deletion execution-plan artifact, a
+fingerprint-valid next-batch authorization artifact, its applied removal-review
+fingerprint, and current validation evidence. It derives the nested plan only
+from that wrapper, then derives filesystem state and source-reference evidence
+from the checkout. It emits a current completion-audit artifact only when that
+one evidence chain validates. A raw nested plan is diagnostic data, not
+authority. The path never treats a historical plan as current approval and
+never deletes, archives, mutates storage, writes manifests, or runs Git.
 
 ## Official-Source Research
 
@@ -64,27 +65,32 @@ Cons:
 - bypasses deletion gates, rollback evidence, and support stance,
 - violates the explicit approval boundary for destructive work.
 
-### Regenerate From A Current Explicit Plan
+### Regenerate From A Current Fingerprint-Valid Plan Artifact
 
 Pros:
 
-- preserves operator approval as an input rather than fabricating it,
+- preserves operator approval and its exact fingerprint as inputs rather than
+  fabricating them,
 - derives path state and source references from the current checkout,
 - rejects predecessor contracts and reports incomplete readiness clearly,
 - is safe to run repeatedly because it is read-only.
 
 Cons:
 
-- cannot complete until deletion readiness produces a current execution plan,
+- cannot complete until deletion readiness produces a current execution-plan
+  artifact,
 - requires fresh validation evidence for each closure attempt.
 
 ## Final Recommendation Stack
 
-1. Require the current `policy.compatibility_deletion_execution_plan.v1`
-   execution-plan contract before accepting removal evidence.
+1. Require the ready, fingerprint-valid execution-plan artifact that carries
+   the current `policy.compatibility_deletion_execution_plan.v1` contract;
+   reject raw nested plan JSON at the public and service boundaries.
 2. Require the fingerprint-valid next-batch authorization artifact and the
    exact applied removal-review fingerprint bound to its runtime evidence.
-3. Derive manifest path state from the checkout at generation time.
+3. Derive the manifest and path state from the verified wrapper at generation
+   time, and bind that wrapper fingerprint through authorization and completion
+   audit evidence.
 4. Scan source roots for operational references, while treating only named
    control-plane manifest inventories as evidence rather than dependencies.
 5. Require completed source scanning plus focused and full validation evidence.
@@ -99,13 +105,15 @@ Cons:
 
 Implemented:
 
-- `policyCompatibilityRemovalEvidenceRegeneration.mjs` composes current plan,
-  path-state, source-reference scan, and validation evidence into a durable
-  regeneration record and nested completion-audit artifact.
+- `policyCompatibilityRemovalEvidenceRegeneration.mjs` composes a verified
+  execution-plan wrapper, path-state, source-reference scan, and validation
+  evidence into a durable regeneration record and nested completion-audit
+  artifact.
 - `generate-policy-compatibility-removal-evidence.mjs` exposes that read-only
   collection path through `npm run policy:compatibility-removal-evidence`.
-- Completion audits now reject a predecessor execution-plan contract, so an
-  old plan cannot be rewrapped as current closure proof.
+- Completion audits now require the same verified execution-plan wrapper that
+  bound the authorization artifact. Raw nested plans, altered wrappers, and
+  cross-chain wrappers cannot be rewrapped as current closure proof.
 - Regeneration and the final-removal exporter require the same fingerprint-valid
   next-batch authorization artifact and applied removal-review fingerprint as
   the completion audit; neither adapter reconstructs approval from path checks.
@@ -124,7 +132,7 @@ Example:
 
 ```bash
 npm run --silent policy:compatibility-removal-evidence -- \
-  --execution-plan .tmp/policy-storage/execution-plan.json \
+  --execution-plan-artifact .tmp/policy-storage/execution-plan-artifact.json \
   --next-batch-authorization-artifact \
     .tmp/policy-storage/next-batch-authorization-artifact.json \
   --review-artifact-fingerprint "$REVIEW_ARTIFACT_FINGERPRINT" \

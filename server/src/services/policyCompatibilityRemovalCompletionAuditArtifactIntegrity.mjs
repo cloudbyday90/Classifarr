@@ -62,8 +62,10 @@ function hasReplayInputs(artifact = {}) {
   const auditInput = asObject(value.auditInput);
 
   return Object.keys(asObject(value.nextBatchAuthorizationArtifact)).length > 0 &&
+    Object.keys(asObject(value.executionPlanArtifact)).length > 0 &&
     Object.keys(asObject(value.executionPlan)).length > 0 &&
     typeof auditInput.reviewArtifactFingerprint === 'string' &&
+    typeof auditInput.executionPlanArtifactFingerprint === 'string' &&
     Object.keys(asObject(auditInput.finalImportScan)).length > 0 &&
     Object.keys(asObject(auditInput.validationEvidence)).length > 0;
 }
@@ -104,8 +106,8 @@ async function validatePolicyCompatibilityRemovalCompletionAuditArtifactIntegrit
   if (!hasReplayInputs(artifact)) {
     risks.push(buildRisk(
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_INTEGRITY_RISK_IDS
-        .COMPLETION_AUDIT_ARTIFACT_NOT_REPLAYABLE,
-      'Completion-audit artifact must retain its authorization artifact, execution plan, and audit input for deterministic verification.'
+      .COMPLETION_AUDIT_ARTIFACT_NOT_REPLAYABLE,
+      'Completion-audit artifact must retain its authorization artifact, verified execution-plan artifact, and audit input for deterministic verification.'
     ));
   }
 
@@ -114,7 +116,7 @@ async function validatePolicyCompatibilityRemovalCompletionAuditArtifactIntegrit
     const replayInput = asObject(artifact.auditInput);
     replayedArtifact = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
       nextBatchAuthorizationArtifact: artifact.nextBatchAuthorizationArtifact,
-      executionPlan: artifact.executionPlan,
+      executionPlanArtifact: artifact.executionPlanArtifact,
       input: replayInput,
       generatedAt: artifact.generatedAt,
       sideEffects: artifact.sideEffects,
@@ -124,7 +126,7 @@ async function validatePolicyCompatibilityRemovalCompletionAuditArtifactIntegrit
       risks.push(buildRisk(
         POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_INTEGRITY_RISK_IDS
           .COMPLETION_AUDIT_REPLAY_MISMATCH,
-        'Completion-audit artifact does not match the retained authorization artifact, execution plan, and audit input.',
+        'Completion-audit artifact does not match the retained authorization artifact, verified execution-plan artifact, and audit input.',
         {
           artifactStatusId: artifact.statusId || null,
           replayStatusId: replayedArtifact.statusId || null,

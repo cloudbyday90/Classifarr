@@ -8,12 +8,16 @@ import {
 import {
   buildManifestPathState,
 } from './policyStorageClosureManifestPathState.mjs';
+import {
+  resolvePolicyStorageClosureExecutionPlanSource,
+} from './policyStorageClosureExecutionPlanSource.mjs';
 
 const POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_VERSION =
-  'policy.compatibility_removal_evidence_regeneration.v1';
+  'policy.compatibility_removal_evidence_regeneration.v2';
 
 const POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS = Object.freeze({
   ARTIFACT_VALIDATION_FAILED: 'artifact_validation_failed',
+  EXECUTION_PLAN_ARTIFACT_INVALID: 'execution_plan_artifact_invalid',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
   SIDE_EFFECT_REPORTED: 'side_effect_reported',
   SOURCE_SCAN_INCOMPLETE: 'source_scan_incomplete',
@@ -54,12 +58,25 @@ function buildCurrentFinalImportScan({
 
 function buildEvidenceRisks({
   completionAuditArtifact = {},
+  executionPlanSource = {},
   referenceScan = {},
 } = {}) {
   const risks = [
     ...asArray(completionAuditArtifact.audit?.risks),
     ...asArray(completionAuditArtifact.risks),
   ];
+
+  if (executionPlanSource.ok !== true) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+        .EXECUTION_PLAN_ARTIFACT_INVALID,
+      'Compatibility removal evidence regeneration requires a ready fingerprint-valid execution-plan artifact.',
+      {
+        issueCount: executionPlanSource.issueCount ?? null,
+        issueRiskIds: asArray(executionPlanSource.issues).map(issue => issue.riskId),
+      }
+    ));
+  }
 
   if (referenceScan.completed !== true) {
     risks.push(buildRisk(
@@ -72,13 +89,14 @@ function buildEvidenceRisks({
   return risks;
 }
 
-function summarizeExecutionPlan(executionPlan = {}) {
+function summarizeExecutionPlan(executionPlan = {}, artifactFingerprint = '') {
   return {
     version: executionPlan.version || null,
     statusId: executionPlan.statusId || null,
     readyForExecutionGate: executionPlan.readyForExecutionGate === true,
     validationOk: executionPlan.validation?.ok === true,
     manifestEntryCount: asArray(executionPlan.manifest?.entries).length,
+    artifactFingerprint: artifactFingerprint || null,
   };
 }
 
@@ -89,7 +107,7 @@ function getExecutionPlanManifestPaths(executionPlan = {}) {
 }
 
 async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
-  executionPlan = {},
+  executionPlanArtifact = null,
   nextBatchAuthorizationArtifact = null,
   reviewArtifactFingerprint = '',
   validationEvidence = {},
@@ -97,7 +115,10 @@ async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
   fileExists = () => false,
   generatedAt = null,
 } = {}) {
-  const plan = asObject(executionPlan);
+  const executionPlanSource = resolvePolicyStorageClosureExecutionPlanSource({
+    executionPlanArtifact,
+  });
+  const plan = asObject(executionPlanSource.executionPlan);
   const pathState = buildManifestPathState({
     manifestPaths: getExecutionPlanManifestPaths(plan),
     fileExists,
@@ -109,7 +130,7 @@ async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
   const completionAuditArtifact =
     await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
       nextBatchAuthorizationArtifact,
-      executionPlan: plan,
+      executionPlanArtifact,
       input: {
         reviewArtifactFingerprint,
         finalImportScan,
@@ -119,15 +140,20 @@ async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
     });
   const risks = buildEvidenceRisks({
     completionAuditArtifact,
+    executionPlanSource,
     referenceScan: asObject(referenceScan),
   });
   const statusId = completionAuditArtifact.statusId;
+  const complete = completionAuditArtifact.complete === true && risks.length === 0;
   const evidence = {
     version: POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_VERSION,
     generatedAt: generatedAt || new Date().toISOString(),
     statusId,
-    complete: completionAuditArtifact.complete === true && risks.length === 0,
-    executionPlan: summarizeExecutionPlan(plan),
+    complete,
+    executionPlan: summarizeExecutionPlan(
+      plan,
+      executionPlanSource.artifactFingerprint
+    ),
     pathState,
     finalImportScan,
     completionAuditArtifact,
@@ -142,7 +168,7 @@ async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
       manifestWritten: false,
       gitCommandsRun: false,
     },
-    nextStep: completionAuditArtifact.complete === true
+    nextStep: complete === true
       ? {
         stepId: 'policy_storage_current_closure_audit',
         label: 'Policy Storage Current Closure Audit',

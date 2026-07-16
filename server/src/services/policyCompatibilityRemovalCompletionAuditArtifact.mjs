@@ -6,9 +6,12 @@ import {
   buildPolicyCompatibilityRemovalCompletionAuditArtifactFingerprint,
   validatePolicyCompatibilityRemovalCompletionAuditArtifactFingerprint,
 } from './policyCompatibilityRemovalCompletionAuditArtifactFingerprint.mjs';
+import {
+  resolvePolicyStorageClosureExecutionPlanSource,
+} from './policyStorageClosureExecutionPlanSource.mjs';
 
 const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION =
-  'policy.compatibility_removal_completion_audit_artifact.v3';
+  'policy.compatibility_removal_completion_audit_artifact.v4';
 
 const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS =
   Object.freeze({
@@ -21,6 +24,11 @@ const POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS =
   Object.freeze({
     AUDIT_BLOCKED: 'audit_blocked',
     AUDIT_VALIDATION_FAILED: 'audit_validation_failed',
+    EXECUTION_PLAN_ARTIFACT_INVALID: 'execution_plan_artifact_invalid',
+    EXECUTION_PLAN_ARTIFACT_FINGERPRINT_MISMATCH:
+      'execution_plan_artifact_fingerprint_mismatch',
+    EXECUTION_PLAN_ARTIFACT_CONTENT_MISMATCH:
+      'execution_plan_artifact_content_mismatch',
     SIDE_EFFECT_REPORTED: 'side_effect_reported',
     ARTIFACT_FINGERPRINT_INVALID: 'artifact_fingerprint_invalid',
     UNKNOWN_VERSION: 'unknown_version',
@@ -35,6 +43,22 @@ function asObject(value) {
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function stableValue(value) {
+  if (Array.isArray(value)) return value.map(item => stableValue(item));
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.keys(value)
+    .sort()
+    .reduce((normalized, key) => {
+      normalized[key] = stableValue(value[key]);
+      return normalized;
+    }, {});
+}
+
+function stableStringify(value) {
+  return JSON.stringify(stableValue(value));
 }
 
 function buildRisk(riskId, message, metadata = {}) {
@@ -91,6 +115,7 @@ function determineArtifactStatusId(audit = {}, risks = []) {
 
 function buildArtifactRisks({
   audit = {},
+  executionPlanSource = {},
   sideEffects = {},
 } = {}) {
   const risks = [];
@@ -98,6 +123,18 @@ function buildArtifactRisks({
     POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.COMPLETE,
     POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.REMAINING_INVENTORY,
   ];
+
+  if (executionPlanSource.ok !== true) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+        .EXECUTION_PLAN_ARTIFACT_INVALID,
+      'Compatibility removal completion audit artifact requires a ready fingerprint-valid execution-plan artifact.',
+      {
+        issueCount: executionPlanSource.issueCount ?? null,
+        issueRiskIds: asArray(executionPlanSource.issues).map(issue => issue.riskId),
+      }
+    ));
+  }
 
   if (!acceptableStatusIds.includes(audit.statusId)) {
     risks.push(buildRisk(
@@ -136,23 +173,34 @@ function buildArtifactRisks({
 
 async function buildPolicyCompatibilityRemovalCompletionAuditArtifact({
   nextBatchAuthorizationArtifact = null,
-  executionPlan = {},
+  executionPlanArtifact = null,
   input = {},
   generatedAt = null,
   sideEffects = {},
 } = {}) {
   const evidence = asObject(input);
+  const executionPlanSource = resolvePolicyStorageClosureExecutionPlanSource({
+    executionPlanArtifact,
+  });
+  const executionPlan = structuredClone(executionPlanSource.executionPlan || {});
+  const auditInput = {
+    ...evidence,
+    executionPlanArtifactFingerprint: executionPlanSource.artifactFingerprint || '',
+  };
   const audit = await buildPolicyCompatibilityRemovalCompletionAudit({
     nextBatchAuthorizationArtifact,
     executionPlan,
-    reviewArtifactFingerprint: evidence.reviewArtifactFingerprint,
-    finalImportScan: asObject(evidence.finalImportScan),
-    validationEvidence: asObject(evidence.validationEvidence),
+    expectedExecutionPlanArtifactFingerprint:
+      auditInput.executionPlanArtifactFingerprint,
+    reviewArtifactFingerprint: auditInput.reviewArtifactFingerprint,
+    finalImportScan: asObject(auditInput.finalImportScan),
+    validationEvidence: asObject(auditInput.validationEvidence),
     sideEffects,
   });
   const combinedSideEffects = summarizeSideEffects(audit, sideEffects);
   const risks = buildArtifactRisks({
     audit,
+    executionPlanSource,
     sideEffects: combinedSideEffects,
   });
   const artifact = {
@@ -168,11 +216,16 @@ async function buildPolicyCompatibilityRemovalCompletionAuditArtifact({
       audit.statusId ===
         POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS.REMAINING_INVENTORY,
     nextBatchAuthorizationArtifact,
+    // Retain the verified wrapper for replay. The nested plan below is derived
+    // only from this wrapper and is diagnostic, not an authorization input.
+    executionPlanArtifact: asObject(executionPlanArtifact),
     executionPlan: asObject(executionPlan),
     auditInput: {
-      reviewArtifactFingerprint: evidence.reviewArtifactFingerprint || '',
-      finalImportScan: asObject(evidence.finalImportScan),
-      validationEvidence: asObject(evidence.validationEvidence),
+      reviewArtifactFingerprint: auditInput.reviewArtifactFingerprint || '',
+      executionPlanArtifactFingerprint:
+        auditInput.executionPlanArtifactFingerprint || '',
+      finalImportScan: asObject(auditInput.finalImportScan),
+      validationEvidence: asObject(auditInput.validationEvidence),
     },
     audit,
     auditSummary: {
@@ -188,6 +241,7 @@ async function buildPolicyCompatibilityRemovalCompletionAuditArtifact({
     sideEffects: combinedSideEffects,
     executionPolicy: {
       requireFingerprintValidNextBatchAuthorizationArtifact: true,
+      requireFingerprintValidExecutionPlanArtifact: true,
       requireAuthorizationReviewArtifactContext: true,
       requireReadyExecutionPlanManifest: true,
       requireVerifiedRuntimeEvidenceArtifact: true,
@@ -226,6 +280,9 @@ function validatePolicyCompatibilityRemovalCompletionAuditArtifact(
   artifact = {}
 ) {
   const issues = [];
+  const executionPlanSource = resolvePolicyStorageClosureExecutionPlanSource({
+    executionPlanArtifact: artifact.executionPlanArtifact,
+  });
 
   if (artifact.version !== POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_VERSION) {
     issues.push(buildRisk(
@@ -261,6 +318,48 @@ function validatePolicyCompatibilityRemovalCompletionAuditArtifact(
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
         .COMPLETE_FLAG_MISMATCH,
       'Compatibility removal completion audit artifact complete flag must match complete status.'
+    ));
+  }
+
+  if (executionPlanSource.ok !== true) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+        .EXECUTION_PLAN_ARTIFACT_INVALID,
+      'Compatibility removal completion audit artifact requires a ready fingerprint-valid execution-plan artifact.',
+      { issueCount: executionPlanSource.issueCount }
+    ));
+  }
+
+  if (
+    artifact.auditInput?.executionPlanArtifactFingerprint !==
+      (executionPlanSource.artifactFingerprint || '')
+  ) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+        .EXECUTION_PLAN_ARTIFACT_FINGERPRINT_MISMATCH,
+      'Completion-audit evidence must bind the exact execution-plan artifact fingerprint.',
+      {
+        expectedExecutionPlanArtifactFingerprint:
+          executionPlanSource.artifactFingerprint || null,
+        receivedExecutionPlanArtifactFingerprint:
+          artifact.auditInput?.executionPlanArtifactFingerprint || null,
+      }
+    ));
+  }
+
+  if (
+    executionPlanSource.ok === true &&
+    stableStringify(artifact.executionPlan) !==
+      stableStringify(executionPlanSource.executionPlan)
+  ) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+        .EXECUTION_PLAN_ARTIFACT_CONTENT_MISMATCH,
+      'Completion-audit diagnostic execution-plan data must match the verified execution-plan artifact.',
+      {
+        executionPlanArtifactFingerprint:
+          executionPlanSource.artifactFingerprint || null,
+      }
     ));
   }
 

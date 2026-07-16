@@ -22,11 +22,14 @@ import {
 import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS,
 } from '../server/src/services/policyCompatibilityRemovalCompletionAuditArtifact.mjs';
+import {
+  resolvePolicyStorageClosureExecutionPlanSource,
+} from '../server/src/services/policyStorageClosureExecutionPlanSource.mjs';
 
 function parseArgs(argv = []) {
   const options = {
     cwd: process.cwd(),
-    executionPlanPath: null,
+    executionPlanArtifactPath: null,
     nextBatchAuthorizationArtifactPath: null,
     reviewArtifactFingerprint: '',
     validationEvidencePath: null,
@@ -45,8 +48,8 @@ function parseArgs(argv = []) {
       index += 1;
       continue;
     }
-    if (arg === '--execution-plan') {
-      options.executionPlanPath = argv[index + 1] || null;
+    if (arg === '--execution-plan-artifact') {
+      options.executionPlanArtifactPath = argv[index + 1] || null;
       index += 1;
       continue;
     }
@@ -105,7 +108,7 @@ function usage() {
     '',
     'Options:',
     '  --cwd <path>                               Repository root. Defaults to process cwd.',
-    '  --execution-plan <json>                    Required current compatibility deletion execution-plan JSON.',
+    '  --execution-plan-artifact <json>           Required ready fingerprint-valid compatibility deletion execution-plan artifact JSON.',
     '  --next-batch-authorization-artifact <json> Required fingerprint-valid next-batch authorization artifact JSON.',
     '  --review-artifact-fingerprint <sha256>     Required applied removal-review artifact fingerprint.',
     '  --validation-evidence <json>               Required current validation-evidence JSON.',
@@ -168,14 +171,18 @@ async function main() {
   }
 
   const cwd = path.resolve(process.cwd(), options.cwd);
-  let executionPlan;
+  let executionPlanArtifact;
   let nextBatchAuthorizationArtifact;
   let validationEvidence;
 
   try {
-    executionPlan = readJsonFile(options.executionPlanPath, 'execution plan', {
-      required: true,
-    });
+    executionPlanArtifact = readJsonFile(
+      options.executionPlanArtifactPath,
+      'execution-plan artifact',
+      {
+        required: true,
+      }
+    );
     nextBatchAuthorizationArtifact = readJsonFile(
       options.nextBatchAuthorizationArtifactPath,
       'next-batch authorization artifact',
@@ -191,11 +198,12 @@ async function main() {
     process.exit(2);
   }
 
-  const manifestPaths = Array.isArray(executionPlan.manifest?.entries)
-    ? executionPlan.manifest.entries.map(entry => entry?.path).filter(Boolean)
-    : [];
+  const executionPlanSource = resolvePolicyStorageClosureExecutionPlanSource({
+    executionPlanArtifact,
+  });
+  const manifestPaths = executionPlanSource.manifestPaths;
   const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
-    executionPlan,
+    executionPlanArtifact,
     nextBatchAuthorizationArtifact,
     reviewArtifactFingerprint: options.reviewArtifactFingerprint,
     validationEvidence,

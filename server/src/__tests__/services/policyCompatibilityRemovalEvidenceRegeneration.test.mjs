@@ -1,12 +1,6 @@
 import {
-  POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
-} from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
-import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS,
 } from '../../services/policyCompatibilityRemovalCompletionAuditArtifact.mjs';
-import {
-  POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS,
-} from '../../services/policyCompatibilityRemovalCompletionAudit.mjs';
 import {
   POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS,
   POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_VERSION,
@@ -16,6 +10,7 @@ import {
   EVIDENCE_REGENERATION_MANIFEST_PATHS,
   EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
   buildEvidenceRegenerationExecutionPlan,
+  buildEvidenceRegenerationExecutionPlanArtifact,
   buildEvidenceRegenerationNextBatchAuthorizationArtifact,
   buildEvidenceRegenerationReferenceScan,
   buildEvidenceRegenerationValidationEvidence,
@@ -24,10 +19,15 @@ import {
 describe('policyCompatibilityRemovalEvidenceRegeneration', () => {
   test('regenerates a complete current artifact from a current plan and repository state', async () => {
     const plan = buildEvidenceRegenerationExecutionPlan();
+    const executionPlanArtifact =
+      buildEvidenceRegenerationExecutionPlanArtifact({ executionPlan: plan });
     const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
-      executionPlan: plan,
+      executionPlanArtifact,
       nextBatchAuthorizationArtifact:
-        await buildEvidenceRegenerationNextBatchAuthorizationArtifact({ plan }),
+        await buildEvidenceRegenerationNextBatchAuthorizationArtifact({
+          plan,
+          executionPlanArtifact,
+        }),
       reviewArtifactFingerprint: EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: buildEvidenceRegenerationValidationEvidence(),
       referenceScan: buildEvidenceRegenerationReferenceScan(),
@@ -51,10 +51,13 @@ describe('policyCompatibilityRemovalEvidenceRegeneration', () => {
 
   test('reports current remaining inventory without manufacturing a completion result', async () => {
     const plan = buildEvidenceRegenerationExecutionPlan();
+    const executionPlanArtifact =
+      buildEvidenceRegenerationExecutionPlanArtifact({ executionPlan: plan });
     const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
-      executionPlan: plan,
+      executionPlanArtifact,
       nextBatchAuthorizationArtifact: await buildEvidenceRegenerationNextBatchAuthorizationArtifact({
         plan,
+        executionPlanArtifact,
         appliedPaths: [EVIDENCE_REGENERATION_MANIFEST_PATHS[1]],
       }),
       reviewArtifactFingerprint: EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
@@ -79,10 +82,15 @@ describe('policyCompatibilityRemovalEvidenceRegeneration', () => {
     const plan = buildEvidenceRegenerationExecutionPlan({
         version: 'phase8r.compatibility_path_deletion_execution_plan.v1',
       });
+    const executionPlanArtifact =
+      buildEvidenceRegenerationExecutionPlanArtifact({ executionPlan: plan });
     const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
-      executionPlan: plan,
+      executionPlanArtifact,
       nextBatchAuthorizationArtifact:
-        await buildEvidenceRegenerationNextBatchAuthorizationArtifact({ plan }),
+        await buildEvidenceRegenerationNextBatchAuthorizationArtifact({
+          plan,
+          executionPlanArtifact,
+        }),
       reviewArtifactFingerprint: EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: buildEvidenceRegenerationValidationEvidence(),
       referenceScan: buildEvidenceRegenerationReferenceScan(),
@@ -95,20 +103,22 @@ describe('policyCompatibilityRemovalEvidenceRegeneration', () => {
     expect(evidence.complete).toBe(false);
     expect(evidence.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId:
-          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
-            .EXECUTION_PLAN_VERSION_UNSUPPORTED,
-        expectedVersion: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION,
+        riskId: 'execution_plan_artifact_invalid',
       }),
     ]));
   });
 
   test('requires a completed current-source reference scan', async () => {
     const plan = buildEvidenceRegenerationExecutionPlan();
+    const executionPlanArtifact =
+      buildEvidenceRegenerationExecutionPlanArtifact({ executionPlan: plan });
     const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
-      executionPlan: plan,
+      executionPlanArtifact,
       nextBatchAuthorizationArtifact:
-        await buildEvidenceRegenerationNextBatchAuthorizationArtifact({ plan }),
+        await buildEvidenceRegenerationNextBatchAuthorizationArtifact({
+          plan,
+          executionPlanArtifact,
+        }),
       reviewArtifactFingerprint: EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
       validationEvidence: buildEvidenceRegenerationValidationEvidence(),
       referenceScan: buildEvidenceRegenerationReferenceScan({
@@ -126,5 +136,42 @@ describe('policyCompatibilityRemovalEvidenceRegeneration', () => {
             .SOURCE_SCAN_INCOMPLETE,
       }),
     ]));
+  });
+
+  test('rejects a raw or altered nested plan instead of accepting it as authority', async () => {
+    const plan = buildEvidenceRegenerationExecutionPlan();
+    const validArtifact =
+      buildEvidenceRegenerationExecutionPlanArtifact({ executionPlan: plan });
+    const authorizationArtifact =
+      await buildEvidenceRegenerationNextBatchAuthorizationArtifact({
+        plan,
+        executionPlanArtifact: validArtifact,
+      });
+    const rawPlanEvidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
+      executionPlanArtifact: plan,
+      nextBatchAuthorizationArtifact: authorizationArtifact,
+      reviewArtifactFingerprint: EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
+      validationEvidence: buildEvidenceRegenerationValidationEvidence(),
+      referenceScan: buildEvidenceRegenerationReferenceScan(),
+      fileExists: () => false,
+    });
+    const alteredArtifact = structuredClone(validArtifact);
+    alteredArtifact.executionPlan.manifest.entries[0].path = 'server/src/unsafe.mjs';
+    const alteredEvidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
+      executionPlanArtifact: alteredArtifact,
+      nextBatchAuthorizationArtifact: authorizationArtifact,
+      reviewArtifactFingerprint: EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
+      validationEvidence: buildEvidenceRegenerationValidationEvidence(),
+      referenceScan: buildEvidenceRegenerationReferenceScan(),
+      fileExists: () => false,
+    });
+
+    [rawPlanEvidence, alteredEvidence].forEach(evidence => {
+      expect(evidence.statusId).toBe('blocked');
+      expect(evidence.complete).toBe(false);
+      expect(evidence.risks).toEqual(expect.arrayContaining([
+        expect.objectContaining({ riskId: 'execution_plan_artifact_invalid' }),
+      ]));
+    });
   });
 });

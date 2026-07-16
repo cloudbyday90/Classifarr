@@ -29,6 +29,7 @@ import {
   EVIDENCE_REGENERATION_MANIFEST_PATHS,
   EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
   buildEvidenceRegenerationExecutionPlan,
+  buildEvidenceRegenerationExecutionPlanArtifact,
   buildEvidenceRegenerationNextBatchAuthorizationArtifact,
   buildEvidenceRegenerationValidationEvidence,
 } from '../services/fixtures/policyCompatibilityRemovalEvidenceRegenerationFixtures.mjs';
@@ -52,11 +53,15 @@ async function buildGeneratorInputs({
   plan = buildEvidenceRegenerationExecutionPlan(),
   appliedPaths = EVIDENCE_REGENERATION_MANIFEST_PATHS,
 } = {}) {
-  return {
+  const executionPlanArtifact = buildEvidenceRegenerationExecutionPlanArtifact({
     executionPlan: plan,
+  });
+  return {
+    executionPlanArtifact,
     nextBatchAuthorizationArtifact:
       await buildEvidenceRegenerationNextBatchAuthorizationArtifact({
         plan,
+        executionPlanArtifact,
         appliedPaths,
       }),
     validationEvidence: buildEvidenceRegenerationValidationEvidence(),
@@ -65,16 +70,16 @@ async function buildGeneratorInputs({
 
 function runGenerator({
   fixtureRoot,
-  executionPlan,
+  executionPlanArtifact,
   nextBatchAuthorizationArtifact,
   validationEvidence,
   allowBlocked = false,
   requireComplete = false,
 } = {}) {
-  const executionPlanPath = writeJson(
+  const executionPlanArtifactPath = writeJson(
     fixtureRoot,
-    'execution-plan.json',
-    executionPlan
+    'execution-plan-artifact.json',
+    executionPlanArtifact
   );
   const authorizationArtifactPath = writeJson(
     fixtureRoot,
@@ -95,7 +100,7 @@ function runGenerator({
   const args = [
     GENERATOR_PATH,
     '--cwd', fixtureRoot,
-    '--execution-plan', executionPlanPath,
+    '--execution-plan-artifact', executionPlanArtifactPath,
     '--next-batch-authorization-artifact', authorizationArtifactPath,
     '--review-artifact-fingerprint', EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
     '--validation-evidence', validationEvidencePath,
@@ -277,5 +282,22 @@ describe('generate-policy-compatibility-removal-evidence', () => {
       manifestWritten: false,
       gitCommandsRun: false,
     }));
+  });
+
+  test('fails closed when a raw nested execution plan is supplied as the artifact', async () => {
+    const inputs = await buildGeneratorInputs();
+    const result = runGenerator({
+      fixtureRoot,
+      ...inputs,
+      executionPlanArtifact: inputs.executionPlanArtifact.executionPlan,
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    expect(result.stdoutJson).toBeNull();
+    expect(result.stderr).toContain('evidence regeneration is blocked');
+    expect(result.stderr).toContain('execution_plan_artifact_invalid');
+    expect(fs.existsSync(result.outputPath)).toBe(false);
+    expect(fs.existsSync(result.artifactOutputPath)).toBe(false);
   });
 });

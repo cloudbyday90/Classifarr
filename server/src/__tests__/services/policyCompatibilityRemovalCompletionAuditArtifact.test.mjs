@@ -12,6 +12,9 @@ import {
   validatePolicyCompatibilityRemovalCompletionAuditArtifact,
 } from '../../services/policyCompatibilityRemovalCompletionAuditArtifact.mjs';
 import {
+  buildPolicyCompatibilityRemovalCompletionAuditArtifactFingerprint,
+} from '../../services/policyCompatibilityRemovalCompletionAuditArtifactFingerprint.mjs';
+import {
   buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact,
 } from '../../services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs';
 import {
@@ -20,6 +23,9 @@ import {
 import {
   buildNextBatchAuthorizationPathStateSource,
 } from './fixtures/policyNextCompatibilityRemovalBatchAuthorizationFixtures.mjs';
+import {
+  buildReadyExecutionPlanArtifact,
+} from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 
 const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 const MANIFEST_PATHS = Object.freeze([
@@ -104,11 +110,13 @@ function runtimeEvidenceArtifact(appliedPaths = MANIFEST_PATHS) {
 
 async function nextBatchAuthorizationArtifact({
   plan = executionPlan(),
+  executionPlanArtifact = buildReadyExecutionPlanArtifact({ executionPlan: plan }),
   appliedPaths = MANIFEST_PATHS,
 } = {}) {
   const remainingPaths = MANIFEST_PATHS.filter(path => !appliedPaths.includes(path));
   const source = buildNextBatchAuthorizationPathStateSource({
     executionPlan: plan,
+    executionPlanArtifact,
     existingPaths: remainingPaths,
   });
 
@@ -147,10 +155,14 @@ function input(overrides = {}) {
 describe('policyCompatibilityRemovalCompletionAuditArtifact', () => {
   test('wraps a complete artifact-bound compatibility-removal completion audit', async () => {
     const plan = executionPlan();
-    const authorizationArtifact = await nextBatchAuthorizationArtifact({ plan });
+    const executionPlanArtifact = buildReadyExecutionPlanArtifact({ executionPlan: plan });
+    const authorizationArtifact = await nextBatchAuthorizationArtifact({
+      plan,
+      executionPlanArtifact,
+    });
     const artifact = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
       nextBatchAuthorizationArtifact: authorizationArtifact,
-      executionPlan: plan,
+      executionPlanArtifact,
       input: input(),
       generatedAt: '2026-07-14T11:00:00.000Z',
     });
@@ -166,7 +178,12 @@ describe('policyCompatibilityRemovalCompletionAuditArtifact', () => {
       fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
     }));
     expect(artifact.executionPlan).toEqual(plan);
-    expect(artifact.auditInput).toEqual(input());
+    expect(artifact.executionPlanArtifact).toEqual(executionPlanArtifact);
+    expect(artifact.auditInput).toEqual(expect.objectContaining({
+      ...input(),
+      executionPlanArtifactFingerprint:
+        executionPlanArtifact.artifactFingerprint.fingerprint,
+    }));
     expect(artifact.nextBatchAuthorizationArtifact).toBe(authorizationArtifact);
     expect(artifact.audit.authorizationArtifact).toEqual(expect.objectContaining({
       integrityOk: true,
@@ -184,13 +201,15 @@ describe('policyCompatibilityRemovalCompletionAuditArtifact', () => {
 
   test('wraps intact remaining-inventory output without treating it as corruption', async () => {
     const plan = executionPlan();
+    const executionPlanArtifact = buildReadyExecutionPlanArtifact({ executionPlan: plan });
     const authorizationArtifact = await nextBatchAuthorizationArtifact({
       plan,
+      executionPlanArtifact,
       appliedPaths: [MANIFEST_PATHS[0]],
     });
     const artifact = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
       nextBatchAuthorizationArtifact: authorizationArtifact,
-      executionPlan: plan,
+      executionPlanArtifact,
       input: input(),
     });
 
@@ -206,17 +225,21 @@ describe('policyCompatibilityRemovalCompletionAuditArtifact', () => {
 
   test('blocks an altered authorization artifact and a final scan reference', async () => {
     const plan = executionPlan();
-    const authorizationArtifact = await nextBatchAuthorizationArtifact({ plan });
+    const executionPlanArtifact = buildReadyExecutionPlanArtifact({ executionPlan: plan });
+    const authorizationArtifact = await nextBatchAuthorizationArtifact({
+      plan,
+      executionPlanArtifact,
+    });
     const alteredAuthorizationArtifact = structuredClone(authorizationArtifact);
     alteredAuthorizationArtifact.authorizationSummary.remainingCount = 1;
     const altered = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
       nextBatchAuthorizationArtifact: alteredAuthorizationArtifact,
-      executionPlan: plan,
+      executionPlanArtifact,
       input: input(),
     });
     const referenced = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
       nextBatchAuthorizationArtifact: authorizationArtifact,
-      executionPlan: plan,
+      executionPlanArtifact,
       input: input({
         finalImportScan: {
           completed: true,
@@ -248,9 +271,13 @@ describe('policyCompatibilityRemovalCompletionAuditArtifact', () => {
 
   test('rejects side effects in artifact output', async () => {
     const plan = executionPlan();
+    const executionPlanArtifact = buildReadyExecutionPlanArtifact({ executionPlan: plan });
     const artifact = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
-      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({ plan }),
-      executionPlan: plan,
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({
+        plan,
+        executionPlanArtifact,
+      }),
+      executionPlanArtifact,
       input: input(),
       sideEffects: {
         filesDeleted: true,
@@ -292,6 +319,83 @@ describe('policyCompatibilityRemovalCompletionAuditArtifact', () => {
         riskId:
           POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
             .RISK_COUNT_MISMATCH,
+      }),
+    ]));
+  });
+
+  test('blocks raw, altered, or cross-chain execution-plan artifacts', async () => {
+    const plan = executionPlan();
+    const executionPlanArtifact = buildReadyExecutionPlanArtifact({ executionPlan: plan });
+    const authorizationArtifact = await nextBatchAuthorizationArtifact({
+      plan,
+      executionPlanArtifact,
+    });
+    const rawArtifact = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
+      nextBatchAuthorizationArtifact: authorizationArtifact,
+      executionPlanArtifact: plan,
+      input: input(),
+    });
+    const alteredExecutionPlanArtifact = structuredClone(executionPlanArtifact);
+    alteredExecutionPlanArtifact.executionPlan.manifest.entries[0].path =
+      'server/src/unsafe.mjs';
+    const alteredArtifact = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
+      nextBatchAuthorizationArtifact: authorizationArtifact,
+      executionPlanArtifact: alteredExecutionPlanArtifact,
+      input: input(),
+    });
+    const otherPlan = executionPlan();
+    otherPlan.manifest.entries[0].path = 'server/src/services/other.mjs';
+    const otherExecutionPlanArtifact = buildReadyExecutionPlanArtifact({
+      executionPlan: otherPlan,
+    });
+    const crossChainArtifact = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
+      nextBatchAuthorizationArtifact: authorizationArtifact,
+      executionPlanArtifact: otherExecutionPlanArtifact,
+      input: input(),
+    });
+
+    [rawArtifact, alteredArtifact, crossChainArtifact].forEach(artifact => {
+      expect(artifact.statusId).toBe('blocked');
+      expect(artifact.complete).toBe(false);
+    });
+    [rawArtifact, alteredArtifact].forEach(artifact => {
+      expect(artifact.risks).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId:
+            POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+              .EXECUTION_PLAN_ARTIFACT_INVALID,
+        }),
+      ]));
+    });
+    expect(crossChainArtifact.audit.statusId)
+      .toBe('blocked_by_authorization_artifact');
+  });
+
+  test('rejects a re-fingerprinted diagnostic plan that diverges from its wrapper', async () => {
+    const plan = executionPlan();
+    const executionPlanArtifact = buildReadyExecutionPlanArtifact({ executionPlan: plan });
+    const artifact = await buildPolicyCompatibilityRemovalCompletionAuditArtifact({
+      nextBatchAuthorizationArtifact: await nextBatchAuthorizationArtifact({
+        plan,
+        executionPlanArtifact,
+      }),
+      executionPlanArtifact,
+      input: input(),
+    });
+    artifact.executionPlan = structuredClone(artifact.executionPlan);
+    artifact.executionPlan.manifest.entries[0].path = 'server/src/other.mjs';
+    artifact.artifactFingerprint =
+      buildPolicyCompatibilityRemovalCompletionAuditArtifactFingerprint({ artifact });
+
+    const validation =
+      validatePolicyCompatibilityRemovalCompletionAuditArtifact(artifact);
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_RISK_IDS
+            .EXECUTION_PLAN_ARTIFACT_CONTENT_MISMATCH,
       }),
     ]));
   });

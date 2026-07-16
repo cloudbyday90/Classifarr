@@ -6,7 +6,8 @@ The compatibility removal completion audit artifact exporter generates a
 machine-readable compatibility removal completion audit artifact from:
 
 - a fingerprint-valid next-batch authorization artifact JSON,
-- compatibility deletion execution-plan JSON with approved manifest entries,
+- a ready fingerprint-valid compatibility deletion execution-plan artifact with
+  approved manifest entries,
 - final import/reference scan evidence,
 - focused and full validation evidence.
 
@@ -20,9 +21,11 @@ storage, run tests, run source scans, or run Git commands. It produces an audit
 artifact that either proves compatibility removal is complete, reports bounded
 remaining inventory, or blocks completion with explicit risks.
 
-The current artifact retains its execution plan and normalized audit input and
-adds a SHA-256 fingerprint. Downstream closure gates validate that fingerprint
-and replay the nested audit before consuming its status.
+The current artifact retains the verified execution-plan wrapper, its derived
+nested plan for diagnostics, and normalized audit input, then adds a SHA-256
+fingerprint. Downstream closure gates validate that fingerprint and replay the
+nested audit before consuming its status. Raw nested plan JSON is never an
+authorization input.
 
 ## Official-Source Research
 
@@ -34,8 +37,9 @@ and replay the nested audit before consuming its status.
   after validation and scan evidence passed.
 - SLSA artifact verification requires consumers to inspect provenance and
   reject unexpected values. The public exporter test exercises the retained
-  authorization artifact, exact execution plan, and review context as one
-  verification chain rather than trusting a detached completion summary.
+  authorization artifact, fingerprint-valid execution-plan wrapper, and review
+  context as one verification chain rather than trusting a detached completion
+  summary.
 - OWASP input validation recommends server-side allowlisting. The generator
   accepts only explicit JSON artifact inputs and blocks altered authorization,
   cross-review, and final-reference evidence before writing normal output.
@@ -142,16 +146,17 @@ Cons:
 Use this stack for compatibility removal completion audit artifact export:
 
 1. Require a fingerprint-valid next-batch authorization artifact JSON.
-2. Require compatibility deletion execution-plan JSON with approved manifest
-   entries.
+2. Require a ready fingerprint-valid compatibility deletion execution-plan
+   artifact with approved manifest entries; reject raw nested plan JSON.
 3. Require the input review fingerprint to match the nested applied review.
 4. Replay authorization against the current manifest before deriving completion.
 5. Require final import/reference scan evidence covering every manifest path.
 6. Block completion if references remain.
 7. Require focused and full validation evidence to pass.
 8. Emit `complete`, `remaining_inventory`, or `blocked` artifact status.
-9. Retain the execution plan and audit input, fingerprint the bounded artifact,
-   and require exact audit replay in downstream closure gates.
+9. Retain the verified execution-plan wrapper, derived execution plan, and audit
+   input; fingerprint the bounded artifact; and require exact audit replay in
+   downstream closure gates.
 10. Reject file deletion, archive, route/test removal, storage mutation,
     manifest writes, and Git side effects.
 11. Exercise the public generator with coherent complete and remaining chains;
@@ -179,8 +184,10 @@ Implemented:
   policy storage closure validation evidence command set and the current
   closure evidence inventory.
 - The artifact now emits `version =
-  policy.compatibility_removal_completion_audit_artifact.v3`, retains replay
-  inputs, and includes a bounded SHA-256 artifact fingerprint.
+  policy.compatibility_removal_completion_audit_artifact.v4`, retains the
+  verified execution-plan wrapper for replay, binds its fingerprint through the
+  audit and artifact provenance, and includes a bounded SHA-256 artifact
+  fingerprint.
 - The storage completion checkpoint now consumes the complete artifact, not the
   nested audit JSON, and blocks altered or non-replayable evidence.
 - Production output emits
@@ -192,7 +199,7 @@ Example:
 ```bash
 npm run --silent policy:compatibility-removal-completion-audit -- \
   --next-batch-authorization-artifact .tmp/phase8r/next-batch-authorization-artifact.json \
-  --execution-plan .tmp/phase8r/execution-plan.json \
+  --execution-plan-artifact .tmp/phase8r/execution-plan-artifact.json \
   --input .tmp/phase8r/completion-audit-input.json \
   --output .tmp/phase8r/completion-audit.json \
   --artifact-output .tmp/phase8r/completion-audit-artifact.json

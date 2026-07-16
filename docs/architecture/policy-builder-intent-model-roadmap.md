@@ -7611,12 +7611,15 @@ Tasks:
 
 - **8R.36.1 Public Regeneration Artifact-Chain Verification**
   - Completed: runs the public regeneration command against an isolated
-    checkout with coherent execution-plan, authorization, review, and
+    checkout with a coherent fingerprint-valid execution-plan artifact,
+    authorization, review, and
     validation artifacts.
   - Completed: proves remaining inventory remains observable, while predecessor
-    plans and live operational imports fail closed without output unless an
-    operator explicitly requests a blocked diagnostic.
-- Require the current compatibility-deletion execution-plan contract.
+    plans, raw nested plans, altered wrappers, and live operational imports fail
+    closed without output unless an operator explicitly requests a blocked
+    diagnostic.
+- Require the current compatibility-deletion execution-plan artifact and bind
+  its fingerprint through authorization, completion evidence, and replay.
 - Derive manifest path state from the current checkout.
 - Scan operational source references without treating named control-plane
   manifest inventories as runtime dependencies.
@@ -7650,8 +7653,9 @@ Implementation status:
   state when no current, approved execution plan is available. It must not be
   bypassed with a retired artifact.
 - Task 8R.36.1 is implemented. The public command now exports only coherent
-  current evidence by default; blocked output requires explicit diagnostic
-  allowance and cannot silently become current-closure authority.
+  current evidence from a ready fingerprint-valid execution-plan wrapper;
+  blocked output requires explicit diagnostic allowance and cannot silently
+  become current-closure authority.
 
 ## Phase 8R Work Sequence
 

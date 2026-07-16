@@ -42,7 +42,7 @@ describe the durable behavior:
 - `policyCompatibilityRemovalCompletionAudit.mjs`
 - `policyCompatibilityRemovalCompletionAuditArtifact.mjs`
 - `policy.compatibility_removal_completion_audit.v2`
-- `policy.compatibility_removal_completion_audit_artifact.v3`
+- `policy.compatibility_removal_completion_audit_artifact.v4`
 - `npm run policy:compatibility-removal-completion-audit`
 
 Pros:
@@ -96,8 +96,10 @@ Implemented:
   documentation references.
 - Replaced production `nextPhase.phaseId` handoffs with semantic `nextStep`
   payloads.
-- Added a bounded SHA-256 artifact fingerprint and retained the execution plan
-  and audit input so storage closure can replay the audit before consuming it.
+- Added a bounded SHA-256 artifact fingerprint and retained the verified
+  execution-plan wrapper, derived execution plan, and audit input so storage
+  closure can replay the audit before consuming it. Raw nested plans are not
+  accepted as authority.
 
 Next:
 

@@ -71,6 +71,7 @@ function buildPolicyCompatibilityRemovalCompletionAuditArtifactProjection(artifa
       nextBatchAuthorizationArtifact: stableValue(
         asObject(value.nextBatchAuthorizationArtifact)
       ),
+      executionPlanArtifact: stableValue(asObject(value.executionPlanArtifact)),
       executionPlan: stableValue(asObject(value.executionPlan)),
       auditInput: stableValue(asObject(value.auditInput)),
       audit: stableValue(asObject(value.audit)),
@@ -104,6 +105,8 @@ function buildPolicyCompatibilityRemovalCompletionAuditArtifactFingerprint({
       complete: projection.artifact.complete,
       authorizationArtifactFingerprint:
         projection.artifact.nextBatchAuthorizationArtifact.artifactFingerprint?.fingerprint || null,
+      executionPlanArtifactFingerprint:
+        projection.artifact.executionPlanArtifact.artifactFingerprint?.fingerprint || null,
       executionPlanVersion: projection.artifact.executionPlan.version || null,
       auditStatusId: projection.artifact.audit.statusId || null,
       manifestRemainingCount:
@@ -181,6 +184,8 @@ function validatePolicyCompatibilityRemovalCompletionAuditArtifactFingerprint({
     provenance.complete !== expected.provenance.complete ||
     provenance.authorizationArtifactFingerprint !==
       expected.provenance.authorizationArtifactFingerprint ||
+    provenance.executionPlanArtifactFingerprint !==
+      expected.provenance.executionPlanArtifactFingerprint ||
     provenance.executionPlanVersion !== expected.provenance.executionPlanVersion ||
     provenance.auditStatusId !== expected.provenance.auditStatusId ||
     Number(provenance.manifestRemainingCount) !==

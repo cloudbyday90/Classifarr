@@ -199,6 +199,11 @@ unchanged operator or runtime outcome.
   inventory records no longer create false runtime-reference blockers. The
   public generator now fails closed for blocked regeneration and writes
   diagnostics only through explicit operator allowance.
+- **Artifact-Bound Compatibility-Removal Evidence** - compatibility-removal
+  regeneration and completion audits now accept only the ready,
+  fingerprint-valid execution-plan wrapper that already binds their
+  authorization chain. Raw nested plans, altered wrappers, and cross-chain
+  substitutions are blocked before they can become closure evidence.
 - **Measured Compatibility Deletion Readiness** - compatibility removal plans
   now require a fresh, read-only inventory proving every enabled policy has one
   valid active native intent. Missing, ambiguous, legacy-sourced, pending, or

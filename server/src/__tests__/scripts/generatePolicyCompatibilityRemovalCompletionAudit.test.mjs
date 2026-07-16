@@ -29,6 +29,7 @@ import {
   MANIFEST_PATHS,
   REVIEW_ARTIFACT_FINGERPRINT,
   buildCompletionAuditExecutionPlan,
+  buildCompletionAuditExecutionPlanArtifact,
   buildCompletionAuditInput,
   buildCompletionAuditNextBatchAuthorizationArtifact,
 } from '../services/policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
@@ -54,15 +55,19 @@ async function buildGeneratorInputs({
   input = buildCompletionAuditInput(),
 } = {}) {
   const executionPlan = buildCompletionAuditExecutionPlan();
+  const executionPlanArtifact = buildCompletionAuditExecutionPlanArtifact({
+    executionPlan,
+  });
   const nextBatchAuthorizationArtifact =
     await buildCompletionAuditNextBatchAuthorizationArtifact({
       executionPlan,
+      executionPlanArtifact,
       appliedPaths,
     });
 
   return {
     nextBatchAuthorizationArtifact,
-    executionPlan,
+    executionPlanArtifact,
     input,
   };
 }
@@ -70,7 +75,7 @@ async function buildGeneratorInputs({
 function runGenerator({
   fixtureRoot,
   nextBatchAuthorizationArtifact,
-  executionPlan,
+  executionPlanArtifact,
   input,
   allowBlocked = false,
   requireComplete = false,
@@ -80,7 +85,11 @@ function runGenerator({
     'next-batch-authorization-artifact.json',
     nextBatchAuthorizationArtifact
   );
-  const executionPlanPath = writeJson(fixtureRoot, 'execution-plan.json', executionPlan);
+  const executionPlanArtifactPath = writeJson(
+    fixtureRoot,
+    'execution-plan-artifact.json',
+    executionPlanArtifact
+  );
   const inputPath = writeJson(fixtureRoot, 'completion-audit-input.json', input);
   const outputPath = path.join(fixtureRoot, '.artifacts', 'completion-audit.json');
   const artifactOutputPath = path.join(
@@ -91,7 +100,7 @@ function runGenerator({
   const args = [
     GENERATOR_PATH,
     '--next-batch-authorization-artifact', authorizationPath,
-    '--execution-plan', executionPlanPath,
+    '--execution-plan-artifact', executionPlanArtifactPath,
     '--input', inputPath,
     '--output', outputPath,
     '--artifact-output', artifactOutputPath,
@@ -147,8 +156,13 @@ describe('generate-policy-compatibility-removal-completion-audit', () => {
     expect(audit).toEqual(artifact.audit);
     expect(artifact.nextBatchAuthorizationArtifact)
       .toEqual(inputs.nextBatchAuthorizationArtifact);
-    expect(artifact.executionPlan).toEqual(inputs.executionPlan);
-    expect(artifact.auditInput).toEqual(inputs.input);
+    expect(artifact.executionPlan).toEqual(inputs.executionPlanArtifact.executionPlan);
+    expect(artifact.executionPlanArtifact).toEqual(inputs.executionPlanArtifact);
+    expect(artifact.auditInput).toEqual(expect.objectContaining({
+      ...inputs.input,
+      executionPlanArtifactFingerprint:
+        inputs.executionPlanArtifact.artifactFingerprint.fingerprint,
+    }));
     expect(audit).toEqual(expect.objectContaining({
       statusId: 'complete',
       authorizationArtifact: expect.objectContaining({
@@ -261,5 +275,22 @@ describe('generate-policy-compatibility-removal-completion-audit', () => {
       routesRemoved: false,
       testsRemoved: false,
     }));
+  });
+
+  test('fails closed when a raw nested execution plan is supplied as the artifact', async () => {
+    const inputs = await buildGeneratorInputs();
+    const result = runGenerator({
+      fixtureRoot,
+      ...inputs,
+      executionPlanArtifact: inputs.executionPlanArtifact.executionPlan,
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    expect(result.stdoutJson).toBeNull();
+    expect(result.stderr).toContain('artifact is blocked');
+    expect(result.stderr).toContain('execution_plan_artifact_invalid');
+    expect(fs.existsSync(result.outputPath)).toBe(false);
+    expect(fs.existsSync(result.artifactOutputPath)).toBe(false);
   });
 });

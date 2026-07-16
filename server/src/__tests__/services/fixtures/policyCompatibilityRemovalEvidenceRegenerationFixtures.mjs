@@ -32,6 +32,9 @@ import {
 import {
   buildNextBatchAuthorizationPathStateSource,
 } from './policyNextCompatibilityRemovalBatchAuthorizationFixtures.mjs';
+import {
+  buildReadyExecutionPlanArtifact,
+} from './policyCompatibilityDeletionExecutionGateFixtures.mjs';
 
 const EVIDENCE_REGENERATION_MANIFEST_PATHS = Object.freeze([
   'server/src/services/retiredCompatibilityService.mjs',
@@ -77,6 +80,15 @@ function buildEvidenceRegenerationExecutionPlan(overrides = {}) {
     },
     ...overrides,
   };
+}
+
+function buildEvidenceRegenerationExecutionPlanArtifact({
+  executionPlan = buildEvidenceRegenerationExecutionPlan(),
+} = {}) {
+  return buildReadyExecutionPlanArtifact({
+    executionPlan,
+    generatedAt: EVIDENCE_REGENERATION_GENERATED_AT,
+  });
 }
 
 function buildEvidenceRegenerationValidationEvidence() {
@@ -149,12 +161,16 @@ function buildEvidenceRegenerationRuntimeEvidenceArtifact(
 
 async function buildEvidenceRegenerationNextBatchAuthorizationArtifact({
   plan = buildEvidenceRegenerationExecutionPlan(),
+  executionPlanArtifact = buildEvidenceRegenerationExecutionPlanArtifact({
+    executionPlan: plan,
+  }),
   appliedPaths = EVIDENCE_REGENERATION_MANIFEST_PATHS,
 } = {}) {
   const manifestPaths = plan.manifest?.entries?.map(entry => entry.path) || [];
   const remainingPaths = manifestPaths.filter(path => !appliedPaths.includes(path));
   const source = buildNextBatchAuthorizationPathStateSource({
     executionPlan: plan,
+    executionPlanArtifact,
     existingPaths: remainingPaths,
   });
 
@@ -180,6 +196,7 @@ export {
   EVIDENCE_REGENERATION_MANIFEST_PATHS,
   EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
   buildEvidenceRegenerationExecutionPlan,
+  buildEvidenceRegenerationExecutionPlanArtifact,
   buildEvidenceRegenerationNextBatchAuthorizationArtifact,
   buildEvidenceRegenerationReferenceScan,
   buildEvidenceRegenerationRuntimeEvidenceArtifact,

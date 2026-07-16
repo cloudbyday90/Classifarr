@@ -17,6 +17,9 @@ import {
 import {
   buildNextBatchAuthorizationPathStateSource,
 } from './fixtures/policyNextCompatibilityRemovalBatchAuthorizationFixtures.mjs';
+import {
+  buildReadyExecutionPlanArtifact,
+} from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 
 const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 const MANIFEST_PATHS = Object.freeze([
@@ -57,6 +60,13 @@ function buildCompletionAuditExecutionPlan() {
       entries,
     },
   };
+}
+
+function buildCompletionAuditExecutionPlanArtifact({
+  executionPlan = buildCompletionAuditExecutionPlan(),
+  generatedAt = '2026-07-14T10:00:00.000Z',
+} = {}) {
+  return buildReadyExecutionPlanArtifact({ executionPlan, generatedAt });
 }
 
 function buildCompletionAuditRuntimeEvidenceArtifact(appliedPaths = MANIFEST_PATHS) {
@@ -115,12 +125,17 @@ function buildCompletionAuditInput(overrides = {}) {
 
 async function buildCompletionAuditNextBatchAuthorizationArtifact({
   executionPlan = buildCompletionAuditExecutionPlan(),
-  appliedPaths = MANIFEST_PATHS,
   generatedAt = '2026-07-14T10:00:00.000Z',
+  executionPlanArtifact = buildCompletionAuditExecutionPlanArtifact({
+    executionPlan,
+    generatedAt,
+  }),
+  appliedPaths = MANIFEST_PATHS,
 } = {}) {
   const remainingPaths = MANIFEST_PATHS.filter(path => !appliedPaths.includes(path));
   const source = buildNextBatchAuthorizationPathStateSource({
     executionPlan,
+    executionPlanArtifact,
     existingPaths: remainingPaths,
   });
 
@@ -146,15 +161,19 @@ async function buildCompletionAuditArtifactFixture({
   generatedAt = '2026-07-14T11:00:00.000Z',
 } = {}) {
   const executionPlan = buildCompletionAuditExecutionPlan();
+  const executionPlanArtifact = buildCompletionAuditExecutionPlanArtifact({
+    executionPlan,
+  });
   const nextBatchAuthorizationArtifact =
     await buildCompletionAuditNextBatchAuthorizationArtifact({
       executionPlan,
+      executionPlanArtifact,
       appliedPaths,
     });
 
   return buildPolicyCompatibilityRemovalCompletionAuditArtifact({
     nextBatchAuthorizationArtifact,
-    executionPlan,
+    executionPlanArtifact,
     input: buildCompletionAuditInput(input),
     generatedAt,
   });
@@ -164,6 +183,7 @@ export {
   MANIFEST_PATHS,
   REVIEW_ARTIFACT_FINGERPRINT,
   buildCompletionAuditExecutionPlan,
+  buildCompletionAuditExecutionPlanArtifact,
   buildCompletionAuditArtifactFixture,
   buildCompletionAuditInput,
   buildCompletionAuditNextBatchAuthorizationArtifact,
