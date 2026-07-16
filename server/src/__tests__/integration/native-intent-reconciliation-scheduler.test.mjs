@@ -99,7 +99,7 @@ describe('Native intent reconciliation scheduler integration', () => {
                 policy_id: fixture.policyId,
                 library_id: fixture.libraryId,
                 active: true,
-                source: 'legacy_presets',
+                source: 'native_intent',
                 inference_state: 'inferred',
                 validation_status: 'valid',
             }),

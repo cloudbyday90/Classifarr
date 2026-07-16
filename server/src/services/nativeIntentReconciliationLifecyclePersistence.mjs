@@ -8,6 +8,10 @@
  * (at your option) any later version.
  */
 
+import {
+  buildNativeIntentAuthoritySqlPredicate,
+} from './policyNativeIntentAuthorityEligibility.mjs';
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -152,7 +156,7 @@ export async function lockNativeIntentReconciliationReentryPolicy({ client, poli
               SELECT 1
               FROM policy_intents intent
               WHERE intent.policy_id = policy.id
-                AND intent.active = TRUE
+                AND ${buildNativeIntentAuthoritySqlPredicate({ intentAlias: 'intent' })}
             ) AS has_active_native_intent
      FROM library_policies policy
      WHERE policy.id = $1

@@ -18,6 +18,13 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Semantic Native Intent Authority** - native intent now replaces
+  compatibility behavior only when its active header is fully materialized:
+  native source, completed inference, safe validation, and a persisted purpose
+  rule. Historical empty placeholders are deactivated with bounded audit
+  evidence; incomplete active rows fall back to compatibility behavior or block
+  unsafe conversion rather than suppressing the existing policy.
+
 - **Contained Runtime Evidence Escalation** - compatibility cleanup now
   distinguishes current retained runtime evidence from the narrow safe case
   that requires a fresh embedded probe. Only an otherwise-valid preflight with

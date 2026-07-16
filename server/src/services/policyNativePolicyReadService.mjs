@@ -92,11 +92,15 @@ function attachNativeIntentToPolicy({
   validation = null,
   authority = null,
 } = {}) {
-  if (!intent) {
-    return authority
+  const resolvedAuthority = authority || buildNativeIntentAuthority({
+    activeIntents: intent ? [intent] : [],
+  });
+
+  if (!intent || resolvedAuthority.authoritative !== true) {
+    return resolvedAuthority.activeIntentCount > 0
       ? {
         ...policy,
-        native_intent_authority: authority,
+        native_intent_authority: resolvedAuthority,
       }
       : policy;
   }
@@ -111,7 +115,7 @@ function attachNativeIntentToPolicy({
 
   return {
     ...policy,
-    native_intent_authority: authority || buildNativeIntentAuthority({ activeIntents: [intent] }),
+    native_intent_authority: resolvedAuthority,
     native_intent_active: intent.active !== false,
     native_intent_version: intent.intent_version ?? null,
     native_intent: {
@@ -124,7 +128,14 @@ function attachNativeIntentToPolicy({
 
 async function fetchActiveNativeIntentForPolicy(dbClient, policyId) {
   const intentResult = await dbClient.query(`
-    SELECT *
+    SELECT
+      policy_intents.*,
+      (
+        SELECT COUNT(*)
+        FROM policy_intent_rules authority_purpose_rule
+        WHERE authority_purpose_rule.intent_id = policy_intents.id
+          AND authority_purpose_rule.intent_role = 'purpose'
+      ) AS purpose_rule_count
     FROM policy_intents
     WHERE policy_id = $1
       AND active = TRUE
@@ -225,6 +236,12 @@ async function fetchActiveNativeIntentsForPolicies(dbClient, policies = []) {
     WITH ranked_active_intents AS (
       SELECT
         policy_intents.*,
+        (
+          SELECT COUNT(*)
+          FROM policy_intent_rules authority_purpose_rule
+          WHERE authority_purpose_rule.intent_id = policy_intents.id
+            AND authority_purpose_rule.intent_role = 'purpose'
+        ) AS purpose_rule_count,
         ROW_NUMBER() OVER (
           PARTITION BY policy_id
           ORDER BY intent_version DESC, id DESC

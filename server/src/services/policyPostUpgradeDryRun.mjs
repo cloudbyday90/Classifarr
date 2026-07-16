@@ -9,6 +9,9 @@ import {
 import {
   loadPolicyActiveIntentIntegrityReport,
 } from './policyActiveIntentIntegrity.mjs';
+import {
+  buildNativeIntentAuthoritySqlPredicate,
+} from './policyNativeIntentAuthorityEligibility.mjs';
 
 const POLICY_POST_UPGRADE_DRY_RUN_VERSION = 'policy.post_upgrade_dry_run.v1';
 const MAX_POST_UPGRADE_DRY_RUN_POLICIES = 100;
@@ -110,7 +113,7 @@ async function loadPolicyPostUpgradePolicies({
       SELECT 1
       FROM policy_intents active_intent
       WHERE active_intent.policy_id = lp.id
-        AND active_intent.active = TRUE
+        AND ${buildNativeIntentAuthoritySqlPredicate({ intentAlias: 'active_intent' })}
     )`);
   }
   if (excludeRevertedPolicies === true) {

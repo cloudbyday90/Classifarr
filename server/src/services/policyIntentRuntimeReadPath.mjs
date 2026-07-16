@@ -9,6 +9,7 @@ import {
 import {
   POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS,
   isNativeIntentAuthorityAmbiguous,
+  isNativeIntentAuthorityNonAuthoritative,
   normalizeNativeIntentAuthority,
 } from './policyNativeIntentAuthority.mjs';
 
@@ -31,6 +32,7 @@ const POLICY_RUNTIME_READ_REASON_IDS = Object.freeze({
   NATIVE_CONTRACT_VALIDATED: 'native_contract_validated',
   NATIVE_CONTRACT_INVALID: 'native_contract_invalid',
   NATIVE_INTENT_AUTHORITY_CONFLICT: 'native_intent_authority_conflict',
+  NON_AUTHORITATIVE_NATIVE_INTENT_IGNORED: 'non_authoritative_native_intent_ignored',
   COMPATIBILITY_BRIDGE_USED: 'compatibility_bridge_used',
   CONTRACT_SHAPE_STABLE: 'contract_shape_stable',
   SOURCE_TRACE_ATTACHED: 'source_trace_attached',
@@ -228,13 +230,15 @@ function buildConfigurationViewFromIntentContract(contract = {}) {
   };
 }
 
-function buildCompatibilityReadModel(policy = {}) {
+function buildCompatibilityReadModel(policy = {}, { authority = null } = {}) {
   const configurationView = policy.configuration_view || buildPolicyConfigurationView(policy);
   const policyIntentContract = policy.policy_intent_contract || buildPolicyIntentContract(policy, {
     configurationView,
   });
   const sourceId = POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE;
   const statusId = POLICY_RUNTIME_READ_STATUS_IDS.COMPATIBILITY_BRIDGE_FALLBACK;
+  const hasNonAuthoritativeIntent = authority?.authoritative === false &&
+    authority?.activeIntentCount === 1;
 
   return {
     version: POLICY_INTENT_RUNTIME_READ_PATH_VERSION,
@@ -246,6 +250,8 @@ function buildCompatibilityReadModel(policy = {}) {
       sourceId,
       statusId,
       policyId: policy.id,
+      authorityState: hasNonAuthoritativeIntent ? authority.stateId : null,
+      activeIntentCount: hasNonAuthoritativeIntent ? authority.activeIntentCount : null,
     }),
     dependsOnCustomSignals: true,
     sideEffects: {
@@ -255,9 +261,18 @@ function buildCompatibilityReadModel(policy = {}) {
       legacyRowsDeleted: false,
     },
     reasons: [
+      ...(hasNonAuthoritativeIntent ? [
+        buildReason(
+          POLICY_RUNTIME_READ_REASON_IDS.NON_AUTHORITATIVE_NATIVE_INTENT_IGNORED,
+          'An active native-intent row was incomplete, so compatibility behavior remains authoritative until it is repaired.',
+          'warning'
+        ),
+      ] : []),
       buildReason(
         POLICY_RUNTIME_READ_REASON_IDS.COMPATIBILITY_BRIDGE_USED,
-        'No active native intent was attached, so the compatibility bridge remains the read source.'
+        hasNonAuthoritativeIntent
+          ? 'Compatibility behavior remains the read source because the active native-intent row is not authoritative.'
+          : 'No active native intent was attached, so the compatibility bridge remains the read source.'
       ),
       buildReason(
         POLICY_RUNTIME_READ_REASON_IDS.SOURCE_TRACE_ATTACHED,
@@ -405,13 +420,15 @@ function buildNativeAuthorityConflictReadModel(policy = {}) {
 }
 
 function buildPolicyIntentRuntimeReadPath({ policy = {} } = {}) {
-  const readModel = isNativeIntentAuthorityAmbiguous(policy.native_intent_authority)
+  const authority = normalizeNativeIntentAuthority(policy.native_intent_authority);
+  const readModel = isNativeIntentAuthorityAmbiguous(authority)
     ? buildNativeAuthorityConflictReadModel(policy)
     : (() => {
       const nativeIntent = findNativeIntentRecord(policy);
-      return nativeIntent && isNativeIntentActive(nativeIntent)
+      return nativeIntent && isNativeIntentActive(nativeIntent) &&
+          !isNativeIntentAuthorityNonAuthoritative(authority)
         ? buildNativeReadModel(policy, nativeIntent)
-        : buildCompatibilityReadModel(policy);
+        : buildCompatibilityReadModel(policy, { authority });
     })();
 
   return {

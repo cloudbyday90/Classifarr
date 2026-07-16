@@ -25,11 +25,13 @@ const NATIVE_INTENT_RECONCILIATION_REASON_IDS = Object.freeze({
   SERVER_CONTRACT_VALIDATION_FAILED: 'server_contract_validation_failed',
   UNSUPPORTED_LEGACY_SHAPE: 'unsupported_legacy_shape',
   PARTIAL_LEGACY_INFERENCE: 'partial_inference_requires_review',
+  NO_CONVERTIBLE_INTENT: 'no_convertible_intent',
   OPERATOR_REVIEW_REQUIRED: 'operator_review_required',
   CANDIDATE_NOT_READY: 'candidate_not_ready',
   REQUIRED_VERIFIER_FAILED: 'required_verifier_failed',
   POLICY_AUTHORITY_UNAVAILABLE: 'policy_authority_unavailable',
   CONTRACT_VALIDATION_FAILED: 'contract_validation_failed',
+  NON_MATERIALIZABLE_INTENT_CONTRACT: 'non_materializable_intent_contract',
   POLICY_INPUT_MISSING: 'policy_input_missing',
   CONVERSION_ACTION_INVALID: 'conversion_action_invalid',
   EXECUTION_BUDGET_EXHAUSTED: 'execution_budget_exhausted',
@@ -172,6 +174,13 @@ function classifyCandidateDisposition(candidate = {}) {
         eligibility: 'requires_maintenance',
         outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.REQUIRES_MAINTENANCE,
         reasonId: NATIVE_INTENT_RECONCILIATION_REASON_IDS.PARTIAL_LEGACY_INFERENCE,
+      };
+    case 'no_convertible_intent':
+      return {
+        candidate: normalized,
+        eligibility: 'requires_maintenance',
+        outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.REQUIRES_MAINTENANCE,
+        reasonId: NATIVE_INTENT_RECONCILIATION_REASON_IDS.NO_CONVERTIBLE_INTENT,
       };
     case 'needs_operator_review':
       return {
@@ -474,6 +483,7 @@ function buildNativeIntentReconciliationStateOutcome({
   const policyBlockerReasonId = operatorErrorIds.find(reasonId => [
     NATIVE_INTENT_RECONCILIATION_REASON_IDS.POLICY_AUTHORITY_UNAVAILABLE,
     NATIVE_INTENT_RECONCILIATION_REASON_IDS.CONTRACT_VALIDATION_FAILED,
+    NATIVE_INTENT_RECONCILIATION_REASON_IDS.NON_MATERIALIZABLE_INTENT_CONTRACT,
     NATIVE_INTENT_RECONCILIATION_REASON_IDS.POLICY_INPUT_MISSING,
     NATIVE_INTENT_RECONCILIATION_REASON_IDS.CONVERSION_ACTION_INVALID,
   ].includes(reasonId));

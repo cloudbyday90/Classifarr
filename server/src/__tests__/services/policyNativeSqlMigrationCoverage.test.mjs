@@ -21,8 +21,13 @@ const integrityMigrationPath = path.resolve(
   '../../../../database/migrations/20260713_150000_enforce_single_active_policy_intent.sql'
 );
 
+const semanticAuthorityMigrationPath = path.resolve(
+  import.meta.dirname,
+  '../../../../database/migrations/20260716_040000_enforce_semantic_native_intent_authority.sql'
+);
+
 function readMigrationSql() {
-  return `${readFileSync(migrationPath, 'utf8')}\n${readFileSync(integrityMigrationPath, 'utf8')}`;
+  return `${readFileSync(migrationPath, 'utf8')}\n${readFileSync(integrityMigrationPath, 'utf8')}\n${readFileSync(semanticAuthorityMigrationPath, 'utf8')}`;
 }
 
 describe('policyNativeSqlMigrationCoverage', () => {
@@ -34,6 +39,10 @@ describe('policyNativeSqlMigrationCoverage', () => {
     expect(coverage.integrityMigrationFilename).toBe(
       '20260713_150000_enforce_single_active_policy_intent.sql'
     );
+    expect(coverage.semanticAuthorityMigrationFilename).toBe(
+      '20260716_040000_enforce_semantic_native_intent_authority.sql'
+    );
+    expect(coverage.semanticAuthorityGuardPresent).toBe(true);
     expect(coverage.tableCoverage.map(tableResult => tableResult.tableId)).toEqual(
       expect.arrayContaining(Object.values(POLICY_NATIVE_SCHEMA_TABLE_IDS))
     );

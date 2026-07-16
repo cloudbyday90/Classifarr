@@ -3,6 +3,10 @@ import {
   POLICY_INTENT_INFERENCE_STATES,
 } from './policyIntentContract.mjs';
 import {
+  POLICY_NATIVE_INTENT_MATERIALIZATION_STATE_IDS,
+  buildNativeIntentMaterializationEligibility,
+} from './policyNativeIntentAuthorityEligibility.mjs';
+import {
   POLICY_CANDIDATE_AUTHORITY_ELIGIBILITY_STATE_IDS,
   buildPolicyCandidateAuthorityEligibility,
 } from './policyCandidateAuthorityEligibility.mjs';
@@ -13,6 +17,7 @@ const POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS = Object.freeze({
   READY_TO_CONVERT: 'ready_to_convert',
   NEEDS_OPERATOR_REVIEW: 'needs_operator_review',
   PARTIAL_LEGACY_INFERENCE: 'partial_legacy_inference',
+  NO_CONVERTIBLE_INTENT: 'no_convertible_intent',
   UNSUPPORTED_LEGACY_SHAPE: 'unsupported_legacy_shape',
   BLOCKED_BY_SERVER_CONTRACT_VALIDATION: 'blocked_by_server_contract_validation',
   BLOCKED_BY_ACTIVE_INTENT_AUTHORITY: 'blocked_by_active_intent_authority',
@@ -31,6 +36,7 @@ const POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS = Object.freeze({
   UNSUPPORTED_SIGNAL_TYPE: 'unsupported_signal_type',
   UNSUPPORTED_SIGNAL_KEYS: 'unsupported_signal_keys',
   PARTIAL_INFERENCE_REQUIRES_REVIEW: 'partial_inference_requires_review',
+  NO_CONVERTIBLE_INTENT: 'no_convertible_intent',
   ACTIVE_INTENT_AUTHORITY_CONFLICT: 'active_intent_authority_conflict',
   OPERATOR_REVIEW_REQUIRED: 'operator_review_required',
   READY_TO_CONVERT: 'ready_to_convert',
@@ -293,6 +299,7 @@ function buildDeletionImpactEstimate(contract = {}) {
 function chooseStatus({
   contract,
   authorityEligibility,
+  materializationEligibility,
   reasons,
 }) {
   if (authorityEligibility?.eligible === false) {
@@ -307,6 +314,13 @@ function chooseStatus({
 
   if (contract.validation?.valid !== true) {
     return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION;
+  }
+
+  if ([
+    POLICY_NATIVE_INTENT_MATERIALIZATION_STATE_IDS.EMPTY_CONTRACT,
+    POLICY_NATIVE_INTENT_MATERIALIZATION_STATE_IDS.MISSING_PURPOSE,
+  ].includes(materializationEligibility.stateId)) {
+    return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.NO_CONVERTIBLE_INTENT;
   }
 
   if (contract.inference_state === POLICY_INTENT_INFERENCE_STATES.PARTIAL) {
@@ -336,6 +350,7 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     policyId: policy.id,
     activeIntentIntegrityReport: options.activeIntentIntegrityReport,
   });
+  const materializationEligibility = buildNativeIntentMaterializationEligibility(contract);
   const unsupportedSignals = sanitizeUnsupportedSignals(
     contract.unsupported_signals,
     maxUnsupportedSignals
@@ -381,6 +396,18 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     ));
   }
 
+  if ([
+    POLICY_NATIVE_INTENT_MATERIALIZATION_STATE_IDS.EMPTY_CONTRACT,
+    POLICY_NATIVE_INTENT_MATERIALIZATION_STATE_IDS.MISSING_PURPOSE,
+  ].includes(materializationEligibility.stateId)) {
+    reasons.push(buildReason(
+      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.NO_CONVERTIBLE_INTENT,
+      'No complete legacy intent evidence is available to materialize a native policy intent, so compatibility behavior remains in place.',
+      'blocker',
+      { materializationStateId: materializationEligibility.stateId }
+    ));
+  }
+
   if (authorityEligibility.eligible === false) {
     const needsExplicitResolution = authorityEligibility.integrityStatusId === 'blocked_unsafe_duplicate';
     reasons.push(buildReason(
@@ -416,6 +443,7 @@ function buildPolicyCandidate(policy = {}, options = {}) {
   const statusId = chooseStatus({
     contract,
     authorityEligibility,
+    materializationEligibility,
     reasons,
   });
 
@@ -442,6 +470,7 @@ function buildPolicyCandidate(policy = {}, options = {}) {
       errorCount: contract.validation?.error_count ?? 0,
       warningCount: contract.validation?.warning_count ?? 0,
       unsupportedSignalCount: asArray(contract.unsupported_signals).length,
+      materializationStateId: materializationEligibility.stateId,
     },
     unsupportedSignals,
     routingTarget,

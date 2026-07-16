@@ -11,23 +11,28 @@ Current execution focus:
    declaring the storage refactor complete. The audit must track authority
    repair, candidate eligibility, runtime authority selection, reversion, and
    retention independently rather than treating them as one broad component.
-2. **8R.3.2.8 Runtime Provenance And Failed-Run Recovery**: completed as
+2. **8R.3.2.9 Semantic Native Authority Eligibility And Empty-Intent
+   Recovery**: completed as a shared semantic-authority contract, safe
+   compatibility fallback, guarded automatic-conversion eligibility, and a
+   database repair/invariant for active intent headers. It prevents empty
+   reconciliation placeholders from replacing real policy behavior.
+3. **8R.3.2.8 Runtime Provenance And Failed-Run Recovery**: completed as
    bounded release-version and immutable-revision evidence on the scheduler
    result, reconciliation ledger, and read-only administrator status. It makes
    stale deployment triage possible without exposing container internals,
    mutable tags, raw environment values, or a manual recovery path.
-3. **8R.5.2 Rollback Snapshot Retention Cleanup**: completed as bounded,
+4. **8R.5.2 Rollback Snapshot Retention Cleanup**: completed as bounded,
    transactionally locked payload redaction with minimal audit retention. Its
    migration, fresh-install schema, scheduler, restore behavior, and focused
    tests are now required closure evidence.
-4. **Compatibility-Removal Evidence Regeneration**: regenerate the durable
+5. **Compatibility-Removal Evidence Regeneration**: regenerate the durable
    compatibility-removal completion artifact from a current execution plan,
    checkout path state, operational reference scan, and fresh validation, then
    rerun the current-closure and requirement audits. The regeneration path
    rejects predecessor plan contracts and does not manufacture deletion
    approval. It can therefore report incomplete readiness rather than turning a
    historical partial manifest into current closure proof.
-5. Return to **6R.5 Operator Workflow Rebuild** only after the engine inputs
+6. Return to **6R.5 Operator Workflow Rebuild** only after the engine inputs
    and native-authority invariants are reliable. It must replace the current
    manual builder rather than add another layer of controls to it.
 
@@ -5418,10 +5423,6 @@ Implementation status:
   surface; the scheduler is the normal conversion path and protected recovery
   lifecycle actions remain separate. The design and outcome record is
   [Native Intent Manual Apply Retirement](native-intent-manual-apply-retirement.md).
-- Next task: **8R.3.2.7 Failure-Injection And Lifecycle Test Matrix**. Prove
-  automatic conversion remains idempotent, bounded, recoverable, and fully
-  independent of client conversion controls.
-
 ##### 8R.3.2.6.1 Sanitized Failure Attribution And Failed-Run Evidence
 
 Intent: make automatic reconciliation failures diagnostically useful without
@@ -5536,6 +5537,55 @@ Implementation status:
   `unknown` revision.
 - The design and outcome record is [Native Intent Reconciliation Runtime
   Provenance](native-intent-reconciliation-runtime-provenance.md).
+
+##### 8R.3.2.9 Semantic Native Authority Eligibility And Empty-Intent Recovery
+
+Intent: make native runtime authority depend on a complete, safe, persisted
+intent rather than the mere existence of one active header.
+
+Tasks:
+
+- Define one shared eligibility contract for runtime reads, reconciliation
+  inventory, dry-run discovery, and native-intent materialization. An
+  authoritative active header must have native source, inferred state, safe
+  validation, and at least one persisted purpose rule.
+- Treat a single active but non-authoritative row as compatibility behavior at
+  the read boundary. Preserve the bounded reason state; do not load its child
+  rules or silently treat its presence as completed conversion.
+- Refuse automatic conversion for empty, incomplete, unsafe, or purpose-less
+  contracts. Record the bounded condition as maintenance rather than a
+  conversion success, retry loop, or raw-payload diagnostic.
+- Repair only provable historical data: normalize a fully materialized legacy
+  header to native source, deactivate an exact empty placeholder, and fail the
+  migration for every other unresolved active shape.
+- Enforce the semantic invariant with a deferred database constraint trigger
+  so header and purpose-rule writes can complete in one transaction but an
+  active purpose-less intent can never commit.
+- Cover semantic authority selection, compatibility fallback, candidate
+  eligibility, migration repair/refusal, and a real PostgreSQL deferred
+  constraint transaction.
+
+Acceptance criteria:
+
+- An empty reconciliation header cannot suppress an otherwise-valid legacy
+  policy at runtime.
+- The scheduler never records a purpose-less or incomplete contract as a
+  native conversion.
+- A fresh or upgraded database cannot commit an active intent without native,
+  inferred, safely validated header data and a purpose rule.
+- Repair events contain only bounded action identifiers and no legacy policy,
+  prompt, or exception payload.
+
+Implementation status:
+
+- Implemented by `policyNativeIntentAuthorityEligibility.mjs`, the native
+  loader/read path, candidate report, post-upgrade apply gate, reconciliation
+  lifecycle persistence, and migration
+  `20260716_040000_enforce_semantic_native_intent_authority.sql`.
+- The migration performs safe normalization or deactivation only for provable
+  rows, fails closed for unresolved active data, and adds deferred header/rule
+  constraints. The design and outcome record is [Policy Native Intent Semantic
+  Authority Integrity](policy-native-intent-semantic-authority-integrity.md).
 
 ### 8R.4 Native Runtime Read Path
 

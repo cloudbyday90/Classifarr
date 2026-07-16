@@ -108,7 +108,14 @@ describe('policyIntentMigrationCandidateReport', () => {
             schema_version: 1,
             source: 'legacy_presets',
             inference_state: 'inferred',
-            purpose: [],
+            purpose: [{
+              intent_role: 'purpose',
+              collection: 'purpose',
+              signal_type: 'genres',
+              operator: 'require_any',
+              values: { require_any: ['Family'] },
+              inference_state: 'inferred',
+            }],
             hard_limits: [],
             helpful_hints: [],
             avoid: [],
@@ -206,6 +213,44 @@ describe('policyIntentMigrationCandidateReport', () => {
     }));
     expect(candidateByPolicyId(report, 7).statusId)
       .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION);
+  });
+
+  test('marks empty inferred intent as maintenance instead of convertible authority', () => {
+    const report = buildPolicyIntentMigrationCandidateReport({
+      policies: [policy({
+        id: 81,
+        presets: [],
+        intentContract: {
+          schema_version: 1,
+          source: 'empty',
+          inference_state: 'empty',
+          purpose: [],
+          hard_limits: [],
+          helpful_hints: [],
+          avoid: [],
+          template_links: [],
+          warnings: [],
+          unsupported_signals: [],
+          validation: {
+            valid: true,
+            error_count: 0,
+            warning_count: 0,
+            errors: [],
+            warnings: [],
+          },
+        },
+      })],
+    });
+
+    expect(report.candidates[0]).toEqual(expect.objectContaining({
+      statusId: POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.NO_CONVERTIBLE_INTENT,
+      canConvert: false,
+    }));
+    expect(report.candidates[0].reasons).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        reasonId: POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.NO_CONVERTIBLE_INTENT,
+      }),
+    ]));
   });
 
   test('blocks ambiguous active authority before calculating conversion readiness', () => {

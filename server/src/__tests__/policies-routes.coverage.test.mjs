@@ -619,8 +619,9 @@ describe('Policies routes coverage', () => {
             schema_version: 1,
             intent_version: 2,
             active: true,
-            source: 'legacy_presets',
+            source: 'native_intent',
             inference_state: 'inferred',
+            purpose_rule_count: '1',
             review_behavior: {
               auto_classify_threshold: 85,
               prompt_threshold: 60,

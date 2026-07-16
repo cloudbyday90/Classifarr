@@ -1,5 +1,13 @@
 import { buildPolicyIntentContract } from './policyIntentContract.mjs';
 import {
+  POLICY_INTENT_INFERENCE_STATES,
+  POLICY_INTENT_SOURCES,
+} from './policyIntentSchema.mjs';
+import {
+  buildNativeIntentAuthoritySqlPredicate,
+  buildNativeIntentMaterializationEligibility,
+} from './policyNativeIntentAuthorityEligibility.mjs';
+import {
   POLICY_INTENT_CONVERSION_STEP_STATUS_IDS as POLICY_CONVERSION_STEP_STATUS_IDS,
 } from './policyIntentConversionWorkflow.mjs';
 import {
@@ -37,6 +45,7 @@ const POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS = Object.freeze({
   POLICY_INPUT_MISSING: 'policy_input_missing',
   POLICY_AUTHORITY_UNAVAILABLE: 'policy_authority_unavailable',
   CONTRACT_VALIDATION_FAILED: 'contract_validation_failed',
+  NON_MATERIALIZABLE_INTENT_CONTRACT: 'non_materializable_intent_contract',
   CONVERSION_ACTION_INVALID: 'conversion_action_invalid',
   EXECUTION_BUDGET_EXHAUSTED: 'execution_budget_exhausted',
 });
@@ -415,7 +424,7 @@ async function queryAlreadyConvertedIntent(client, policyId, targetVersion) {
      FROM policy_intents
      WHERE policy_id = $1
        AND intent_version = $2
-       AND active = TRUE
+       AND ${buildNativeIntentAuthoritySqlPredicate({ intentAlias: 'policy_intents' })}
      LIMIT 1`,
     [policyId, targetVersion]
   );
@@ -454,8 +463,8 @@ async function insertPolicyIntentHeader({ client, policy, contract, targetVersio
       policy.library_id,
       contract.schema_version,
       targetVersion,
-      contract.source,
-      contract.inference_state,
+      POLICY_INTENT_SOURCES.NATIVE_INTENT,
+      POLICY_INTENT_INFERENCE_STATES.INFERRED,
       JSON.stringify(asObject(contract.review_behavior)),
       contract.validation?.warning_count > 0 ? 'warning' : 'valid',
       actorId,
@@ -743,9 +752,16 @@ async function applyReadyStep({
   }
 
   const contract = buildPolicyIntentContract(policy);
+  const materializationEligibility = buildNativeIntentMaterializationEligibility(contract);
   if (contract.validation?.valid !== true) {
     const error = new Error(`Policy ${policy.id} failed native intent validation during apply.`);
     error.operatorErrorId = POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.CONTRACT_VALIDATION_FAILED;
+    throw error;
+  }
+  if (!materializationEligibility.materializable) {
+    const error = new Error(`Policy ${policy.id} does not have a materializable native intent contract.`);
+    error.operatorErrorId =
+      POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.NON_MATERIALIZABLE_INTENT_CONTRACT;
     throw error;
   }
 
@@ -767,7 +783,11 @@ async function applyReadyStep({
     actorId: auditContext.actorId,
     reasonCode: auditContext.reasonCode,
     summary: `${auditContext.summaryPrefix} started.`,
-    metadata: { idempotencyKey: step.idempotencyKey },
+    metadata: {
+      idempotencyKey: step.idempotencyKey,
+      conversionSource: contract.source,
+      conversionInferenceState: contract.inference_state,
+    },
     actorSourceId: auditContext.actorSourceId,
     targetVersion,
   });

@@ -117,13 +117,35 @@ describe('PolicyEngine Integration Tests', () => {
             });
 
             try {
-                const intentResult = await db.query(`
-                    INSERT INTO policy_intents (
-                        policy_id, library_id, schema_version, intent_version,
-                        active, source, inference_state, review_behavior, validation_status
+                await db.query(`
+                    WITH native_intent AS (
+                        INSERT INTO policy_intents (
+                            policy_id, library_id, schema_version, intent_version,
+                            active, source, inference_state, review_behavior, validation_status
+                        )
+                        VALUES ($1, $2, 1, 1, true, 'native_intent', 'inferred', $3::jsonb, 'valid')
+                        RETURNING id
+                    ),
+                    purpose_rule AS (
+                        INSERT INTO policy_intent_rules (
+                            intent_id, intent_role, collection, signal_type, operator,
+                            values, constraint_mode, semantics, source, inference_state
+                        )
+                        SELECT id, 'purpose', 'purpose', 'genres', 'require_any',
+                            '{"require_any": ["Animation"]}'::jsonb,
+                            'advisory', 'identity', 'native_intent', 'inferred'
+                        FROM native_intent
+                    ),
+                    validation_status AS (
+                        INSERT INTO policy_intent_validation_status (
+                            intent_id, schema_version, status, validator_version,
+                            error_count, warning_count, errors, warnings
+                        )
+                        SELECT id, 1, 'valid', 'native-runtime-test', 0, 0,
+                            '[]'::jsonb, '[]'::jsonb
+                        FROM native_intent
                     )
-                    VALUES ($1, $2, 1, 1, true, 'native_intent', 'inferred', $3::jsonb, 'valid')
-                    RETURNING id
+                    SELECT id FROM native_intent
                 `, [
                     fixture.policyId,
                     fixture.libraryId,
@@ -136,25 +158,6 @@ describe('PolicyEngine Integration Tests', () => {
                         combination_mode: 'best_match',
                     }),
                 ]);
-                const intentId = intentResult.rows[0].id;
-
-                await db.query(`
-                    INSERT INTO policy_intent_rules (
-                        intent_id, intent_role, collection, signal_type, operator,
-                        values, constraint_mode, semantics, source, inference_state
-                    )
-                    VALUES ($1, 'purpose', 'purpose', 'genres', 'require_any',
-                        '{"require_any": ["Animation"]}'::jsonb,
-                        'advisory', 'identity', 'native_intent', 'inferred')
-                `, [intentId]);
-                await db.query(`
-                    INSERT INTO policy_intent_validation_status (
-                        intent_id, schema_version, status, validator_version,
-                        error_count, warning_count, errors, warnings
-                    )
-                    VALUES ($1, 1, 'valid', 'native-runtime-test', 0, 0, '[]'::jsonb, '[]'::jsonb)
-                `, [intentId]);
-
                 const policies = await policyEngine.getActivePolicies();
                 const nativePolicy = policies.find((policy) => policy.id === fixture.policyId);
                 expect(nativePolicy).toEqual(expect.objectContaining({

@@ -8,11 +8,34 @@ import {
 describe('policyNativeIntentAuthority', () => {
   test('recognizes exactly one active intent as the authority', () => {
     expect(buildNativeIntentAuthority({
-      activeIntents: [{ id: 42 }],
+      activeIntents: [{
+        id: 42,
+        source: 'native_intent',
+        inference_state: 'inferred',
+        validation_status: 'valid',
+        purpose_rule_count: 1,
+      }],
     })).toEqual({
       stateId: POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS.SINGLE_ACTIVE_NATIVE_INTENT,
       activeIntentCount: 1,
       authoritative: true,
+    });
+  });
+
+  test('does not treat a structurally present empty row as authority', () => {
+    expect(buildNativeIntentAuthority({
+      activeIntents: [{
+        id: 42,
+        source: 'empty',
+        inference_state: 'empty',
+        validation_status: 'valid',
+        purpose_rule_count: 0,
+      }],
+    })).toEqual({
+      stateId: POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS.SINGLE_NON_AUTHORITATIVE_ACTIVE_INTENT,
+      activeIntentCount: 1,
+      authoritative: false,
+      integrityStatusId: 'empty_active_intent',
     });
   });
 

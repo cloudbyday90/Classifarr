@@ -1,6 +1,12 @@
+import {
+  POLICY_NATIVE_INTENT_AUTHORITY_ELIGIBILITY_STATE_IDS,
+  buildNativeIntentAuthorityEligibility,
+} from './policyNativeIntentAuthorityEligibility.mjs';
+
 const POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS = Object.freeze({
   NO_ACTIVE_NATIVE_INTENT: 'no_active_native_intent',
   SINGLE_ACTIVE_NATIVE_INTENT: 'single_active_native_intent',
+  SINGLE_NON_AUTHORITATIVE_ACTIVE_INTENT: 'single_non_authoritative_active_intent',
   AMBIGUOUS_ACTIVE_NATIVE_INTENTS: 'ambiguous_active_native_intents',
 });
 
@@ -21,7 +27,12 @@ function getActiveIntentCount(value = {}) {
   return Number.isInteger(numericValue) && numericValue >= 0 ? numericValue : null;
 }
 
+function getIntegrityStatusId(value = {}) {
+  return value.integrityStatusId ?? value.integrity_status_id ?? null;
+}
+
 function buildNativeIntentAuthority({ activeIntents = [] } = {}) {
+  const eligibility = buildNativeIntentAuthorityEligibility({ activeIntents });
   const boundedActiveIntentCount = Math.min(asArray(activeIntents).length, 2);
 
   if (boundedActiveIntentCount === 0) {
@@ -32,11 +43,20 @@ function buildNativeIntentAuthority({ activeIntents = [] } = {}) {
     };
   }
 
-  if (boundedActiveIntentCount === 1) {
+  if (eligibility.authoritative) {
     return {
       stateId: POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS.SINGLE_ACTIVE_NATIVE_INTENT,
       activeIntentCount: 1,
       authoritative: true,
+    };
+  }
+
+  if (boundedActiveIntentCount === 1) {
+    return {
+      stateId: POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS.SINGLE_NON_AUTHORITATIVE_ACTIVE_INTENT,
+      activeIntentCount: 1,
+      authoritative: false,
+      integrityStatusId: eligibility.stateId,
     };
   }
 
@@ -76,6 +96,20 @@ function normalizeNativeIntentAuthority(value = {}) {
   }
 
   if (
+    stateId === POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS.SINGLE_NON_AUTHORITATIVE_ACTIVE_INTENT &&
+    activeIntentCount === 1 &&
+    Object.values(POLICY_NATIVE_INTENT_AUTHORITY_ELIGIBILITY_STATE_IDS)
+      .includes(getIntegrityStatusId(authority))
+  ) {
+    return {
+      stateId: POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS.SINGLE_NON_AUTHORITATIVE_ACTIVE_INTENT,
+      activeIntentCount: 1,
+      authoritative: false,
+      integrityStatusId: getIntegrityStatusId(authority),
+    };
+  }
+
+  if (
     stateId === POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS.NO_ACTIVE_NATIVE_INTENT &&
     activeIntentCount === 0
   ) {
@@ -94,9 +128,15 @@ function isNativeIntentAuthorityAmbiguous(value = {}) {
     POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS.AMBIGUOUS_ACTIVE_NATIVE_INTENTS;
 }
 
+function isNativeIntentAuthorityNonAuthoritative(value = {}) {
+  return normalizeNativeIntentAuthority(value)?.stateId ===
+    POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS.SINGLE_NON_AUTHORITATIVE_ACTIVE_INTENT;
+}
+
 export {
   POLICY_NATIVE_INTENT_AUTHORITY_STATE_IDS,
   buildNativeIntentAuthority,
   isNativeIntentAuthorityAmbiguous,
+  isNativeIntentAuthorityNonAuthoritative,
   normalizeNativeIntentAuthority,
 };

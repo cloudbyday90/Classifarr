@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-16T15:38:20.899Z
--- Latest Migration: 20260716_030000_add_native_intent_reconciliation_runtime_provenance.sql
+-- Generated: 2026-07-16T20:24:55.071Z
+-- Latest Migration: 20260716_040000_enforce_semantic_native_intent_authority.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -111,6 +111,45 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 --
 
 COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access methods';
+
+
+--
+-- Name: enforce_policy_intent_active_purpose_rule(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.enforce_policy_intent_active_purpose_rule() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    affected_intent_id BIGINT;
+BEGIN
+    IF TG_TABLE_NAME = 'policy_intents' THEN
+        affected_intent_id := COALESCE(NEW.id, OLD.id);
+    ELSE
+        affected_intent_id := COALESCE(NEW.intent_id, OLD.intent_id);
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM policy_intents AS intent
+        WHERE intent.id = affected_intent_id
+          AND intent.active = TRUE
+    ) AND NOT EXISTS (
+        SELECT 1
+        FROM policy_intent_rules AS purpose_rule
+        WHERE purpose_rule.intent_id = affected_intent_id
+          AND purpose_rule.intent_role = 'purpose'
+    ) THEN
+        RAISE EXCEPTION
+            'Active native intent % requires at least one purpose rule',
+            affected_intent_id
+            USING ERRCODE = '23514',
+                  HINT = 'Insert a purpose rule in the same transaction or deactivate the intent.';
+    END IF;
+
+    RETURN NULL;
+END;
+$$;
 
 
 --
@@ -3760,7 +3799,7 @@ CREATE TABLE public.policy_intent_migration_events (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT policy_intent_migration_events_actor_type_chk CHECK (((actor_type)::text = ANY (ARRAY[('operator'::character varying)::text, ('post_upgrade'::character varying)::text, ('reconciler'::character varying)::text, ('test_fixture'::character varying)::text, ('maintainer'::character varying)::text]))),
-    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY (ARRAY[('dry_run_reported'::character varying)::text, ('conversion_started'::character varying)::text, ('conversion_applied'::character varying)::text, ('conversion_failed'::character varying)::text, ('rollback_snapshot_created'::character varying)::text, ('rollback_applied'::character varying)::text, ('rollback_snapshot_payload_redacted'::character varying)::text, ('native_validated'::character varying)::text, ('legacy_deletion_ready'::character varying)::text, ('library_rebuild_replacement_applied'::character varying)::text, ('active_intent_integrity_repaired'::character varying)::text, ('reconciliation_reentry_approved'::character varying)::text]))),
+    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY (ARRAY[('dry_run_reported'::character varying)::text, ('conversion_started'::character varying)::text, ('conversion_applied'::character varying)::text, ('conversion_failed'::character varying)::text, ('rollback_snapshot_created'::character varying)::text, ('rollback_applied'::character varying)::text, ('rollback_snapshot_payload_redacted'::character varying)::text, ('native_validated'::character varying)::text, ('legacy_deletion_ready'::character varying)::text, ('library_rebuild_replacement_applied'::character varying)::text, ('active_intent_integrity_repaired'::character varying)::text, ('reconciliation_reentry_approved'::character varying)::text, ('semantic_intent_authority_repaired'::character varying)::text]))),
     CONSTRAINT policy_intent_migration_events_metadata_shape_chk CHECK ((jsonb_typeof(metadata) = 'object'::text))
 );
 
@@ -4015,6 +4054,7 @@ CREATE TABLE public.policy_intents (
     accepted_at timestamp with time zone,
     accepted_by integer,
     replaced_by_intent_id bigint,
+    CONSTRAINT policy_intents_active_native_authority_header_chk CHECK (((active = false) OR (((source)::text = 'native_intent'::text) AND ((inference_state)::text = 'inferred'::text) AND ((validation_status)::text = ANY (ARRAY[('valid'::character varying)::text, ('warning'::character varying)::text]))))),
     CONSTRAINT policy_intents_inference_state_chk CHECK (((inference_state)::text = ANY (ARRAY[('empty'::character varying)::text, ('inferred'::character varying)::text, ('partial'::character varying)::text]))),
     CONSTRAINT policy_intents_intent_version_chk CHECK ((intent_version > 0)),
     CONSTRAINT policy_intents_review_behavior_shape_chk CHECK ((jsonb_typeof(review_behavior) = 'object'::text)),
@@ -9406,6 +9446,20 @@ CREATE TRIGGER classification_search_text_trigger BEFORE INSERT OR UPDATE ON pub
 
 
 --
+-- Name: policy_intent_rules policy_intent_rules_active_purpose_rule_chk; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER policy_intent_rules_active_purpose_rule_chk AFTER INSERT OR DELETE OR UPDATE ON public.policy_intent_rules DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.enforce_policy_intent_active_purpose_rule();
+
+
+--
+-- Name: policy_intents policy_intents_active_purpose_rule_chk; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER policy_intents_active_purpose_rule_chk AFTER INSERT OR UPDATE OF active, source, inference_state, validation_status ON public.policy_intents DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.enforce_policy_intent_active_purpose_rule();
+
+
+--
 -- Name: classification_evidence trg_classification_evidence_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -12288,6 +12342,7 @@ FROM unnest(ARRAY[
     '20260715_150000_add_native_intent_reconciliation_lifecycle_guards.sql',
     '20260715_160000_add_native_intent_reconciliation_control.sql',
     '20260716_020000_add_native_intent_reconciliation_alert_states.sql',
-    '20260716_030000_add_native_intent_reconciliation_runtime_provenance.sql'
+    '20260716_030000_add_native_intent_reconciliation_runtime_provenance.sql',
+    '20260716_040000_enforce_semantic_native_intent_authority.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

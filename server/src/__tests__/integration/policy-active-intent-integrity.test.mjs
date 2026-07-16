@@ -31,6 +31,13 @@ const activeIntentIntegrityMigrationSql = readFileSync(
   ),
   'utf8'
 );
+const semanticAuthorityMigrationSql = readFileSync(
+  path.resolve(
+    import.meta.dirname,
+    '../../../../database/migrations/20260716_040000_enforce_semantic_native_intent_authority.sql'
+  ),
+  'utf8'
+);
 
 async function createPolicyAuthorityFixture() {
   const suffix = `${Date.now()}_${Math.floor(Math.random() * 1_000_000)}`;
@@ -66,6 +73,35 @@ async function insertActiveIntent(client, { policyId, libraryId, intentVersion }
      RETURNING id`,
     [policyId, libraryId, intentVersion]
   );
+}
+
+async function insertPurposeRule(client, intentId) {
+  return client.query(
+    `INSERT INTO policy_intent_rules (
+       intent_id,
+       intent_role,
+       collection,
+       signal_type,
+       operator,
+       values,
+       inference_state
+     )
+     VALUES ($1, 'purpose', 'purpose', 'genres', 'require_any', $2::jsonb, 'inferred')`,
+    [intentId, JSON.stringify({ require_any: ['Animation'] })]
+  );
+}
+
+async function restorePreSemanticAuthoritySchema(client) {
+  await client.query(
+    'DROP TRIGGER IF EXISTS policy_intent_rules_active_purpose_rule_chk ON policy_intent_rules'
+  );
+  await client.query(
+    'DROP TRIGGER IF EXISTS policy_intents_active_purpose_rule_chk ON policy_intents'
+  );
+  await client.query(
+    'ALTER TABLE policy_intents DROP CONSTRAINT IF EXISTS policy_intents_active_native_authority_header_chk'
+  );
+  await client.query('DROP FUNCTION IF EXISTS enforce_policy_intent_active_purpose_rule()');
 }
 
 async function restoreHistoricalActiveVersionIndex(client) {
@@ -104,6 +140,11 @@ describe('Policy Active Intent Integrity Integration', () => {
         ...fixture,
         intentVersion: 1,
       });
+      const firstActiveIntent = await firstClient.query(
+        'SELECT id FROM policy_intents WHERE policy_id = $1 AND active = TRUE',
+        [fixture.policyId]
+      );
+      await insertPurposeRule(firstClient, firstActiveIntent.rows[0].id);
 
       const secondInsert = insertActiveIntent(secondClient, {
         ...fixture,
@@ -154,6 +195,7 @@ describe('Policy Active Intent Integrity Integration', () => {
 
     try {
       await client.query('BEGIN');
+      await restorePreSemanticAuthoritySchema(client);
       await restoreHistoricalActiveVersionIndex(client);
       const canonical = await insertActiveIntent(client, {
         ...fixture,
@@ -163,6 +205,8 @@ describe('Policy Active Intent Integrity Integration', () => {
         ...fixture,
         intentVersion: 2,
       });
+      await insertPurposeRule(client, canonical.rows[0].id);
+      await insertPurposeRule(client, duplicate.rows[0].id);
       await client.query(
         `UPDATE policy_intents
          SET validation_status = 'warning'
@@ -215,6 +259,7 @@ describe('Policy Active Intent Integrity Integration', () => {
 
     try {
       await client.query('BEGIN');
+      await restorePreSemanticAuthoritySchema(client);
       await restoreHistoricalActiveVersionIndex(client);
       const first = await insertActiveIntent(client, {
         ...fixture,
@@ -224,6 +269,8 @@ describe('Policy Active Intent Integrity Integration', () => {
         ...fixture,
         intentVersion: 2,
       });
+      await insertPurposeRule(client, first.rows[0].id);
+      await insertPurposeRule(client, second.rows[0].id);
       await client.query(
         `UPDATE policy_intents
          SET validation_status = CASE id
@@ -249,5 +296,91 @@ describe('Policy Active Intent Integrity Integration', () => {
          AND indexname = 'idx_policy_intents_one_active_policy'`
     );
     expect(finalIndex.rows).toHaveLength(1);
+  });
+
+  test('deactivates only exact empty active headers before semantic authority enforcement', async () => {
+    const fixture = await createPolicyAuthorityFixture();
+    const client = await db.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      await restorePreSemanticAuthoritySchema(client);
+      const emptyIntent = await client.query(
+        `INSERT INTO policy_intents (
+           policy_id, library_id, intent_version, source, inference_state,
+           review_behavior, validation_status
+         )
+         VALUES ($1, $2, 1, 'empty', 'empty', '{}'::jsonb, 'valid')
+         RETURNING id`,
+        [fixture.policyId, fixture.libraryId]
+      );
+
+      await client.query(semanticAuthorityMigrationSql);
+
+      const intentResult = await client.query(
+        'SELECT active FROM policy_intents WHERE id = $1',
+        [emptyIntent.rows[0].id]
+      );
+      const eventResult = await client.query(
+        `SELECT event_type, reason_code
+         FROM policy_intent_migration_events
+         WHERE intent_id = $1`,
+        [emptyIntent.rows[0].id]
+      );
+
+      expect(intentResult.rows).toEqual([{ active: false }]);
+      expect(eventResult.rows).toEqual([{
+        event_type: 'semantic_intent_authority_repaired',
+        reason_code: 'empty_header_deactivated',
+      }]);
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+    }
+  });
+
+  test('defers active-purpose enforcement so a header and purpose can be written atomically', async () => {
+    const fixture = await createPolicyAuthorityFixture();
+    const client = await db.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      await restorePreSemanticAuthoritySchema(client);
+      await client.query(semanticAuthorityMigrationSql);
+      const nativeIntent = await insertActiveIntent(client, {
+        ...fixture,
+        intentVersion: 1,
+      });
+      await insertPurposeRule(client, nativeIntent.rows[0].id);
+
+      await expect(client.query('SET CONSTRAINTS ALL IMMEDIATE')).resolves.toEqual(
+        expect.objectContaining({})
+      );
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+    }
+  });
+
+  test('rejects an active native header that reaches transaction validation without a purpose rule', async () => {
+    const fixture = await createPolicyAuthorityFixture();
+    const client = await db.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      await restorePreSemanticAuthoritySchema(client);
+      await client.query(semanticAuthorityMigrationSql);
+      await insertActiveIntent(client, {
+        ...fixture,
+        intentVersion: 1,
+      });
+
+      await expect(client.query('SET CONSTRAINTS ALL IMMEDIATE')).rejects.toMatchObject({
+        code: '23514',
+      });
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+    }
   });
 });

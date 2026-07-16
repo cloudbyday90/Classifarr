@@ -210,6 +210,35 @@ describe('policyIntentRuntimeReadPath', () => {
     expect(JSON.stringify(readPath)).not.toContain('501');
   });
 
+  test('keeps compatibility behavior when the only active native row is non-authoritative', () => {
+    const readPath = buildPolicyIntentRuntimeReadPath({
+      policy: policy({
+        native_intent_authority: {
+          stateId: 'single_non_authoritative_active_intent',
+          activeIntentCount: 1,
+          integrityStatusId: 'empty_active_intent',
+        },
+        native_intent: {
+          active: true,
+          intent_version: 3,
+          contract: nativeContract({ purpose: [] }),
+        },
+      }),
+    });
+
+    expect(readPath.sourceId).toBe(POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE);
+    expect(readPath.dependsOnCustomSignals).toBe(true);
+    expect(readPath.reasons).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        reasonId: 'non_authoritative_native_intent_ignored',
+      }),
+    ]));
+    expect(readPath.trace.attributes).toEqual(expect.objectContaining({
+      'classifarr.policy.read.authority_state': 'single_non_authoritative_active_intent',
+      'classifarr.policy.read.active_intent_count': 1,
+    }));
+  });
+
   test('preserves required policy intent contract shape for native and compatibility reads', () => {
     const compatibility = buildPolicyIntentRuntimeReadPath({
       policy: policy(),

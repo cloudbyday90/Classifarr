@@ -16,6 +16,9 @@ const POLICY_NATIVE_SQL_MIGRATION_FILENAME =
 const POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_FILENAME =
   '20260713_150000_enforce_single_active_policy_intent.sql';
 
+const POLICY_NATIVE_SEMANTIC_AUTHORITY_MIGRATION_FILENAME =
+  '20260716_040000_enforce_semantic_native_intent_authority.sql';
+
 const POLICY_NATIVE_SQL_MIGRATION_PATH = path.resolve(
   import.meta.dirname,
   '../../../database/migrations',
@@ -28,6 +31,12 @@ const POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_PATH = path.resolve(
   POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_FILENAME
 );
 
+const POLICY_NATIVE_SEMANTIC_AUTHORITY_MIGRATION_PATH = path.resolve(
+  import.meta.dirname,
+  '../../../database/migrations',
+  POLICY_NATIVE_SEMANTIC_AUTHORITY_MIGRATION_FILENAME
+);
+
 const POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS = Object.freeze({
   MISSING_MIGRATION_FILE: 'missing_migration_file',
   EMPTY_MIGRATION_SQL: 'empty_migration_sql',
@@ -37,6 +46,8 @@ const POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS = Object.freeze({
   MISSING_INDEX_DDL: 'missing_index_ddl',
   MISSING_JSONB_SHAPE_CHECK: 'missing_jsonb_shape_check',
   MISSING_ROLLBACK_EXPIRY_BOUNDARY: 'missing_rollback_expiry_boundary',
+  MISSING_SEMANTIC_AUTHORITY_MIGRATION: 'missing_semantic_authority_migration',
+  MISSING_SEMANTIC_AUTHORITY_GUARD: 'missing_semantic_authority_guard',
   FORBIDDEN_LEGACY_FIELD: 'forbidden_legacy_field',
   SIDE_EFFECT_PERFORMED: 'side_effect_performed',
 });
@@ -119,6 +130,14 @@ function readActiveIntentIntegrityMigrationSql() {
   }
 
   return readFileSync(POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_PATH, 'utf8');
+}
+
+function readSemanticAuthorityMigrationSql() {
+  if (!existsSync(POLICY_NATIVE_SEMANTIC_AUTHORITY_MIGRATION_PATH)) {
+    return null;
+  }
+
+  return readFileSync(POLICY_NATIVE_SEMANTIC_AUTHORITY_MIGRATION_PATH, 'utf8');
 }
 
 function stripSqlLineComments(sql) {
@@ -322,6 +341,21 @@ function validatePolicyNativeSqlMigrationCoverage(coverage = {}) {
     });
   }
 
+  if (coverage.semanticAuthorityMigrationFileExists !== true) {
+    issues.push({
+      riskId: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_SEMANTIC_AUTHORITY_MIGRATION,
+      migrationPath: coverage.semanticAuthorityMigrationPath,
+      message: 'Semantic native-intent authority migration file must exist.',
+    });
+  }
+
+  if (coverage.semanticAuthorityGuardPresent !== true) {
+    issues.push({
+      riskId: POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS.MISSING_SEMANTIC_AUTHORITY_GUARD,
+      message: 'Native storage must enforce semantic authority on active headers and purpose rules.',
+    });
+  }
+
   issues.push(...asArray(coverage.forbiddenFieldFindings));
 
   Object.entries(coverage.sideEffects || {}).forEach(([sideEffectId, performed]) => {
@@ -348,11 +382,18 @@ function buildPolicyNativeSqlMigrationCoverage(options = {}) {
   const integrityMigrationSql = options.integrityMigrationSql
     ?? readActiveIntentIntegrityMigrationSql()
     ?? '';
+  const semanticAuthorityMigrationSql = options.semanticAuthorityMigrationSql
+    ?? readSemanticAuthorityMigrationSql()
+    ?? '';
   const migrationFileExists = options.migrationSql
     ? true
     : existsSync(POLICY_NATIVE_SQL_MIGRATION_PATH)
       && existsSync(POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_PATH);
-  const migrationSql = options.migrationSql ?? `${baseMigrationSql}\n${integrityMigrationSql}`;
+  const semanticAuthorityMigrationFileExists = options.migrationSql
+    ? true
+    : existsSync(POLICY_NATIVE_SEMANTIC_AUTHORITY_MIGRATION_PATH);
+  const migrationSql = options.migrationSql ??
+    `${baseMigrationSql}\n${integrityMigrationSql}\n${semanticAuthorityMigrationSql}`;
   const migrationDdlSql = stripSqlLineComments(migrationSql);
   const tables = asArray(schemaContract.tables);
   const tableCoverage = buildTableCoverage(tables, migrationDdlSql);
@@ -364,6 +405,9 @@ function buildPolicyNativeSqlMigrationCoverage(options = {}) {
     migrationPath: POLICY_NATIVE_SQL_MIGRATION_PATH,
     integrityMigrationFilename: POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_FILENAME,
     integrityMigrationPath: POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_PATH,
+    semanticAuthorityMigrationFilename: POLICY_NATIVE_SEMANTIC_AUTHORITY_MIGRATION_FILENAME,
+    semanticAuthorityMigrationPath: POLICY_NATIVE_SEMANTIC_AUTHORITY_MIGRATION_PATH,
+    semanticAuthorityMigrationFileExists,
     migrationFileExists,
     migrationSql,
     migrationDdlSql,
@@ -373,6 +417,10 @@ function buildPolicyNativeSqlMigrationCoverage(options = {}) {
     indexCoverage,
     jsonbShapeChecksPresent: hasJsonbShapeChecks(migrationDdlSql),
     rollbackExpiryBoundaryPresent: hasRollbackExpiryBoundary(migrationDdlSql),
+    semanticAuthorityGuardPresent:
+      migrationDdlSql.includes('policy_intents_active_native_authority_header_chk') &&
+      migrationDdlSql.includes('policy_intents_active_purpose_rule_chk') &&
+      migrationDdlSql.includes('policy_intent_rules_active_purpose_rule_chk'),
     forbiddenFieldFindings: buildForbiddenFieldFindings(migrationDdlSql),
     traceReasons: Object.values(POLICY_NATIVE_SQL_MIGRATION_COVERAGE_REASON_IDS),
     sideEffects: {
@@ -400,6 +448,7 @@ export {
   POLICY_NATIVE_SQL_MIGRATION_COVERAGE_RISK_IDS,
   POLICY_NATIVE_SQL_MIGRATION_COVERAGE_VERSION,
   POLICY_NATIVE_ACTIVE_INTENT_INTEGRITY_MIGRATION_FILENAME,
+  POLICY_NATIVE_SEMANTIC_AUTHORITY_MIGRATION_FILENAME,
   POLICY_NATIVE_SQL_MIGRATION_FILENAME,
   buildPolicyNativeSqlMigrationCoverage,
   validatePolicyNativeSqlMigrationCoverage,

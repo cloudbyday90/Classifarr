@@ -40,7 +40,7 @@ function intent(overrides = {}) {
     schema_version: 1,
     intent_version: 2,
     active: true,
-    source: 'legacy_presets',
+    source: 'native_intent',
     inference_state: 'inferred',
     review_behavior: {
       auto_classify_threshold: 85,
@@ -48,6 +48,7 @@ function intent(overrides = {}) {
       require_ai_validation: true,
     },
     validation_status: 'valid',
+    purpose_rule_count: 1,
     ...overrides,
   };
 }
@@ -254,7 +255,7 @@ describe('policyNativePolicyReadService', () => {
       rules: [],
     }));
     expect(nativeIntents.has(16)).toBe(false);
-    expect(calls.filter((query) => query.includes('policy_intent_rules'))).toHaveLength(2);
+    expect(calls.filter((query) => /^\s*SELECT \*\s+FROM policy_intent_rules/m.test(query))).toHaveLength(2);
     expect(attached[0].native_intent.contract.purpose).toHaveLength(1);
     expect(attached[1].native_intent).toBeUndefined();
     expect(attached[1].native_intent_authority.authoritative).toBe(false);
