@@ -7,7 +7,9 @@ import {
   POLICY_INTENT_MIGRATION_AUTOMATION_STATUS_IDS,
   POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS,
   POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS,
+  POLICY_INTENT_MIGRATION_CANDIDATE_REPORT_VERSION,
   POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS,
+  POLICY_INTENT_MIGRATION_LEGACY_CONFIGURATION_STATUS_IDS,
   buildPolicyIntentMigrationCandidateReport,
   buildPolicyIntentMigrationCandidateReportAudit,
   validatePolicyIntentMigrationCandidateReport,
@@ -66,6 +68,7 @@ describe('policyIntentMigrationCandidateReport', () => {
     });
 
     expect(report.mode).toBe('dry_run');
+    expect(report.version).toBe(POLICY_INTENT_MIGRATION_CANDIDATE_REPORT_VERSION);
     expect(report.validation.ok).toBe(true);
     expect(report.sideEffects).toEqual({
       policyStorageMutated: false,
@@ -215,7 +218,7 @@ describe('policyIntentMigrationCandidateReport', () => {
       .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION);
   });
 
-  test('marks empty inferred intent as maintenance instead of convertible authority', () => {
+  test('distinguishes empty legacy policy configuration from an unconvertible legacy shape', () => {
     const report = buildPolicyIntentMigrationCandidateReport({
       policies: [policy({
         id: 81,
@@ -243,12 +246,86 @@ describe('policyIntentMigrationCandidateReport', () => {
     });
 
     expect(report.candidates[0]).toEqual(expect.objectContaining({
+      statusId: POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.REQUIRES_INITIAL_POLICY_ESTABLISHMENT,
+      canConvert: false,
+      legacyConfiguration: {
+        statusId: POLICY_INTENT_MIGRATION_LEGACY_CONFIGURATION_STATUS_IDS.EMPTY,
+        attachedPresetCount: 0,
+      },
+    }));
+    expect(report.candidates[0].reasons).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        reasonId: POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.REQUIRES_INITIAL_POLICY_ESTABLISHMENT,
+        message: expect.stringContaining('not promoted to durable intent'),
+      }),
+    ]));
+    expect(report.validation.ok).toBe(true);
+  });
+
+  test('keeps configured legacy policies without a materializable purpose distinct from initial establishment', () => {
+    const report = buildPolicyIntentMigrationCandidateReport({
+      policies: [policy({
+        id: 82,
+        presets: [preset()],
+        intentContract: {
+          schema_version: 1,
+          source: 'legacy_presets',
+          inference_state: 'inferred',
+          purpose: [],
+          hard_limits: [],
+          helpful_hints: [],
+          avoid: [],
+          template_links: [],
+          warnings: [],
+          unsupported_signals: [],
+          validation: {
+            valid: true,
+            error_count: 0,
+            warning_count: 0,
+            errors: [],
+            warnings: [],
+          },
+        },
+      })],
+    });
+
+    expect(report.candidates[0]).toEqual(expect.objectContaining({
       statusId: POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.NO_CONVERTIBLE_INTENT,
       canConvert: false,
+      legacyConfiguration: {
+        statusId: POLICY_INTENT_MIGRATION_LEGACY_CONFIGURATION_STATUS_IDS.PRESENT,
+        attachedPresetCount: 1,
+      },
     }));
     expect(report.candidates[0].reasons).toEqual(expect.arrayContaining([
       expect.objectContaining({
         reasonId: POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.NO_CONVERTIBLE_INTENT,
+      }),
+    ]));
+  });
+
+  test('rejects a downgraded or unexplained initial-establishment candidate', () => {
+    const report = buildPolicyIntentMigrationCandidateReport({
+      policies: [policy({ id: 83, presets: [] })],
+    });
+    const downgraded = {
+      ...report,
+      candidates: report.candidates.map(candidate => ({
+        ...candidate,
+        statusId: POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.NO_CONVERTIBLE_INTENT,
+        reasons: candidate.reasons.filter(reason =>
+          reason.reasonId !==
+          POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.REQUIRES_INITIAL_POLICY_ESTABLISHMENT
+        ),
+      })),
+    };
+
+    const validation = validatePolicyIntentMigrationCandidateReport(downgraded);
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.INITIAL_ESTABLISHMENT_NOT_EXPLICIT,
       }),
     ]));
   });

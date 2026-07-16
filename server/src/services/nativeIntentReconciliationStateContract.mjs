@@ -25,6 +25,7 @@ const NATIVE_INTENT_RECONCILIATION_REASON_IDS = Object.freeze({
   SERVER_CONTRACT_VALIDATION_FAILED: 'server_contract_validation_failed',
   UNSUPPORTED_LEGACY_SHAPE: 'unsupported_legacy_shape',
   PARTIAL_LEGACY_INFERENCE: 'partial_inference_requires_review',
+  REQUIRES_INITIAL_POLICY_ESTABLISHMENT: 'requires_initial_policy_establishment',
   NO_CONVERTIBLE_INTENT: 'no_convertible_intent',
   OPERATOR_REVIEW_REQUIRED: 'operator_review_required',
   CANDIDATE_NOT_READY: 'candidate_not_ready',
@@ -174,6 +175,13 @@ function classifyCandidateDisposition(candidate = {}) {
         eligibility: 'requires_maintenance',
         outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.REQUIRES_MAINTENANCE,
         reasonId: NATIVE_INTENT_RECONCILIATION_REASON_IDS.PARTIAL_LEGACY_INFERENCE,
+      };
+    case 'requires_initial_policy_establishment':
+      return {
+        candidate: normalized,
+        eligibility: 'requires_maintenance',
+        outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.REQUIRES_MAINTENANCE,
+        reasonId: NATIVE_INTENT_RECONCILIATION_REASON_IDS.REQUIRES_INITIAL_POLICY_ESTABLISHMENT,
       };
     case 'no_convertible_intent':
       return {

@@ -131,7 +131,10 @@ Implemented:
   `POLICY_INTENT_MIGRATION_CANDIDATE_*` and
   `buildPolicyIntentMigrationCandidateReport*`.
 - Replaced the phase-coded payload version with
-  `policy.intent_migration_candidate_report.v2`.
+  `policy.intent_migration_candidate_report.v3`. Version 3 adds a bounded
+  distinction between empty legacy configuration and a configured legacy policy
+  that cannot safely convert; it does not expose raw configuration or make
+  observed library evidence durable intent.
 - Replaced public `nextPhase.phaseId` output with
   `nextStep.stepId = explicit_conversion_workflow`.
 - Split candidate conversion eligibility from automation readiness. A valid

@@ -4939,7 +4939,7 @@ Implementation status:
   hide conversion or automation blockers behind generic statuses, omit
   deletion-impact estimates, or expose raw legacy JSON outside explicit
   maintainer mode.
-- Runtime output now uses the durable `policy.intent_migration_candidate_report.v2`
+- Runtime output now uses the durable `policy.intent_migration_candidate_report.v3`
   contract and `nextStep.stepId = explicit_conversion_workflow`, leaving roadmap
   phase IDs as planning metadata only.
 
@@ -5586,6 +5586,46 @@ Implementation status:
   rows, fails closed for unresolved active data, and adds deferred header/rule
   constraints. The design and outcome record is [Policy Native Intent Semantic
   Authority Integrity](policy-native-intent-semantic-authority-integrity.md).
+
+##### 8R.3.2.10 Initial Policy Establishment Triage
+
+Intent: distinguish a destination with no legacy policy configuration from a
+legacy policy that cannot safely convert, without treating observed library
+contents as durable policy authority.
+
+Tasks:
+
+- Classify a zero-preset, empty compatibility contract as
+  `requires_initial_policy_establishment` only after authority and validation
+  blockers have been evaluated.
+- Preserve malformed, partial, purpose-less configured, and unsafe legacy
+  policies in their existing conversion-maintenance categories.
+- Persist the dedicated status as bounded `requires_maintenance` evidence and
+  keep it out of the ready conversion batch.
+- Expose only an attachment-count summary and stable IDs; do not include
+  profile distributions, library items, raw presets, prompts, or AI output.
+- Require candidate-report audit coverage so an empty configuration cannot be
+  silently downgraded into an ordinary conversion status.
+
+Acceptance criteria:
+
+- An empty policy is never selected or written by automatic conversion.
+- A policy with attached legacy configuration but no materializable purpose is
+  not mislabeled as initial establishment.
+- Library observations, metadata, and AI output cannot establish native intent
+  through reconciliation triage alone.
+- Existing status/reason storage constraints accept the bounded identifier
+  without a schema migration.
+
+Implementation status:
+
+- Task 8R.3.2.10.1 is implemented as server-owned, read-only candidate triage
+  and reconciliation-state mapping. The design and outcome record is
+  [Native Policy Initial-Establishment Triage](native-policy-initial-establishment-triage.md).
+- **Next task: 8R.3.2.10.2 Initial Establishment Authority Transition.** Define
+  the permitted declared-intent source, explicit acceptance semantics,
+  transactional revalidation, idempotency, rollback evidence, and automation
+  boundary before any empty destination can receive a first native intent.
 
 ### 8R.4 Native Runtime Read Path
 

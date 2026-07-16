@@ -18,6 +18,13 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Initial Native Policy Establishment Triage** - reconciliation now separates
+  destinations with no legacy preset configuration from malformed or
+  purpose-less legacy policies. Empty destinations are recorded as bounded
+  initial-establishment maintenance and are never selected for conversion;
+  observed library contents, metadata, and AI output remain unable to create
+  durable policy intent.
+
 - **Bounded Compatibility-Removal Readiness Diagnostics** - when the approved
   compatibility-removal evidence chain has not yet been created, Classifarr now
   emits only the missing approval categories in an explicit diagnostic run. The

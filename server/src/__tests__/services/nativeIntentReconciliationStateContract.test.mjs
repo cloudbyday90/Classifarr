@@ -65,6 +65,32 @@ describe('nativeIntentReconciliationStateContract', () => {
     })]);
   });
 
+  test('records an empty legacy policy as initial-establishment maintenance without selecting it', () => {
+    const plan = buildNativeIntentReconciliationCandidatePlan({
+      candidates: [
+        {
+          policyId: 12,
+          statusId: 'requires_initial_policy_establishment',
+          canConvert: false,
+          reasonIds: ['requires_initial_policy_establishment'],
+        },
+        readyCandidate(13),
+      ],
+      maxPolicies: 1,
+      evaluatedAt: '2026-07-15T12:00:00.000Z',
+    });
+
+    expect(plan.selectedPolicyIds).toEqual([13]);
+    expect(plan.stateUpserts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        policyId: 12,
+        candidateStatusId: 'requires_initial_policy_establishment',
+        outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.REQUIRES_MAINTENANCE,
+        reasonId: NATIVE_INTENT_RECONCILIATION_REASON_IDS.REQUIRES_INITIAL_POLICY_ESTABLISHMENT,
+      }),
+    ]));
+  });
+
   test('honors a matching retry backoff but resets eligibility when the candidate fingerprint changes', () => {
     const candidate = readyCandidate(22);
     const normalized = normalizeCandidate(candidate);
