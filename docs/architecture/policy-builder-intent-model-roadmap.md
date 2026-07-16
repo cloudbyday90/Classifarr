@@ -5419,10 +5419,17 @@ Implementation status:
   available, and a structured log record with no synthetic or raw stack trace.
   The design and outcome record is
   [Native Intent Reconciliation Failure Attribution](native-intent-reconciliation-failure-attribution.md).
-- Next task: **8R.3.2.6.2 Read-Only Reconciliation Status Contract And Alert
-  Evaluation**. It will expose last-run/state/blocker data without restoring a
-  manual conversion dialog, then define rate-limited circuit, unresolved
-  inventory, and repeated-system-failure alert evaluation.
+- Task 8R.3.2.6.2 is implemented as an administrator-only, read-only status
+  contract and durable alert evaluation. It exposes bounded last-run, control,
+  unresolved-state, and grouped blocker evidence without restoring a manual
+  conversion dialog. Only circuit-open, prolonged unresolved inventory, and
+  repeated systemic failure can notify; durable lifecycle records deduplicate
+  notices across replicas and restarts. The design and outcome record is
+  [Native Intent Reconciliation Status And Alerting](native-intent-reconciliation-status-alerting.md).
+- Next task: **8R.3.2.6.3 Compatibility Deletion Resolution Gate**. Require
+  zero unconverted policies and zero unresolved `requires_maintenance` states
+  before compatibility storage removal. An acknowledgement, support note, or
+  alert lifecycle transition must not satisfy the gate.
 
 ##### 8R.3.2.6.1 Sanitized Failure Attribution And Failed-Run Evidence
 

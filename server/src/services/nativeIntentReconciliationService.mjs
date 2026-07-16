@@ -24,6 +24,9 @@ import {
   nativeIntentReconciliationControlService as defaultControlService,
 } from './nativeIntentReconciliationControlService.mjs';
 import {
+  nativeIntentReconciliationAlertService as defaultAlertService,
+} from './nativeIntentReconciliationAlertService.mjs';
+import {
   buildNativeIntentReconciliationFailureAttribution,
   NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS,
   runNativeIntentReconciliationStage,
@@ -142,6 +145,7 @@ class NativeIntentReconciliationService {
     ),
     ledgerService = defaultLedgerService,
     controlService = defaultControlService,
+    alertService = defaultAlertService,
     now = () => new Date(),
     loggerInstance = logger,
   } = {}) {
@@ -149,8 +153,31 @@ class NativeIntentReconciliationService {
     this.runApplyGate = runApplyGate;
     this.ledgerService = ledgerService;
     this.controlService = controlService;
+    this.alertService = alertService;
     this.now = now;
     this.logger = loggerInstance;
+  }
+
+  async evaluateAlerts(result) {
+    try {
+      result.alertEvaluation = await this.alertService.evaluateAndNotify({
+        dbClient: this.dbClient,
+        correlationId: result.correlationId,
+      });
+    } catch {
+      result.alertEvaluation = {
+        statusId: 'failed',
+        reasonId: 'alert_evaluation_failed',
+        rawPayloadExposed: false,
+      };
+      this.logger.error('Native intent reconciliation alert evaluation failed', {
+        correlationId: result.correlationId,
+        statusId: result.statusId,
+        failureCategory: 'alert_evaluation',
+        rawPayloadExposed: false,
+      }, { persistStack: false });
+    }
+    return result;
   }
 
   async run() {
@@ -181,7 +208,7 @@ class NativeIntentReconciliationService {
           reasonId: controlEligibility.reasonId,
           circuitState: controlEligibility.control?.circuitState,
         });
-        return result;
+        return this.evaluateAlerts(result);
       }
 
       const applyGate = await this.runApplyGate({
@@ -256,7 +283,7 @@ class NativeIntentReconciliationService {
         correlationId,
       });
 
-      return result;
+      return this.evaluateAlerts(result);
     } catch (error) {
       const failure = buildNativeIntentReconciliationFailureAttribution(error);
       let control = null;
@@ -316,7 +343,7 @@ class NativeIntentReconciliationService {
         rawPayloadExposed: false,
       }, { persistStack: false });
 
-      return result;
+      return this.evaluateAlerts(result);
     }
   }
 }

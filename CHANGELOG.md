@@ -60,6 +60,12 @@ unchanged operator or runtime outcome.
   truthful failed-run ledger record when storage is available. Structured logs
   no longer substitute a logger-generated stack for the original failure, and
   do not persist raw exception text, stacks, credentials, or legacy payloads.
+- **Native Intent Reconciliation Status And Alerts** - administrators can now
+  read a bounded, read-only reconciliation status with safe run correlation,
+  automation control, unresolved-state, and blocker evidence. Classifarr
+  persistently deduplicates in-app alerts for an open circuit, prolonged
+  unresolved inventory, or repeated systemic failures without restoring a
+  manual conversion workflow.
 - **Native Conversion And Automation Readiness Separation** - valid policies
   can now convert to native intent even when routing or profile freshness still
   needs work. Those automation blockers are reported separately, and unmapped

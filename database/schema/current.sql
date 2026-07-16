@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-16T01:17:33.294Z
--- Latest Migration: 20260715_160000_add_native_intent_reconciliation_control.sql
+-- Generated: 2026-07-16T02:25:36.032Z
+-- Latest Migration: 20260716_020000_add_native_intent_reconciliation_alert_states.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4150,6 +4150,28 @@ ALTER SEQUENCE public.policy_library_rebuild_execution_gates_id_seq OWNED BY pub
 
 
 --
+-- Name: policy_native_intent_reconciliation_alert_states; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_native_intent_reconciliation_alert_states (
+    alert_type_id character varying(80) CONSTRAINT policy_native_intent_reconciliation_aler_alert_type_id_not_null NOT NULL,
+    alert_state character varying(40) CONSTRAINT policy_native_intent_reconciliation_alert__alert_state_not_null NOT NULL,
+    first_detected_at timestamp with time zone CONSTRAINT policy_native_intent_reconciliation__first_detected_at_not_null NOT NULL,
+    last_detected_at timestamp with time zone CONSTRAINT policy_native_intent_reconciliation_a_last_detected_at_not_null NOT NULL,
+    last_notified_at timestamp with time zone,
+    last_resolved_at timestamp with time zone,
+    occurrence_count integer DEFAULT 0 CONSTRAINT policy_native_intent_reconciliation_a_occurrence_count_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT policy_native_intent_reconciliation_alert_s_created_at_not_null NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() CONSTRAINT policy_native_intent_reconciliation_alert_s_updated_at_not_null NOT NULL,
+    CONSTRAINT policy_native_intent_reconciliation_alert_occurrence_count_chk CHECK ((occurrence_count >= 0)),
+    CONSTRAINT policy_native_intent_reconciliation_alert_resolution_shape_chk CHECK (((((alert_state)::text = 'firing'::text) AND (last_resolved_at IS NULL)) OR (((alert_state)::text = 'resolved'::text) AND (last_resolved_at IS NOT NULL)))),
+    CONSTRAINT policy_native_intent_reconciliation_alert_state_chk CHECK (((alert_state)::text = ANY (ARRAY[('firing'::character varying)::text, ('resolved'::character varying)::text]))),
+    CONSTRAINT policy_native_intent_reconciliation_alert_time_order_chk CHECK (((last_detected_at >= first_detected_at) AND ((last_notified_at IS NULL) OR (last_notified_at >= first_detected_at)) AND ((last_resolved_at IS NULL) OR (last_resolved_at >= first_detected_at)))),
+    CONSTRAINT policy_native_intent_reconciliation_alert_type_chk CHECK (((alert_type_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text))
+);
+
+
+--
 -- Name: policy_native_intent_reconciliation_control_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7268,6 +7290,14 @@ ALTER TABLE ONLY public.policy_learning_stats
 
 ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
     ADD CONSTRAINT policy_library_rebuild_execution_gates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_native_intent_reconciliation_alert_states policy_native_intent_reconciliation_alert_states_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_reconciliation_alert_states
+    ADD CONSTRAINT policy_native_intent_reconciliation_alert_states_pkey PRIMARY KEY (alert_type_id);
 
 
 --
@@ -12252,6 +12282,7 @@ FROM unnest(ARRAY[
     '20260715_131000_harden_native_intent_reconciliation_ledger_constraints.sql',
     '20260715_140000_add_native_intent_reconciliation_state.sql',
     '20260715_150000_add_native_intent_reconciliation_lifecycle_guards.sql',
-    '20260715_160000_add_native_intent_reconciliation_control.sql'
+    '20260715_160000_add_native_intent_reconciliation_control.sql',
+    '20260716_020000_add_native_intent_reconciliation_alert_states.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

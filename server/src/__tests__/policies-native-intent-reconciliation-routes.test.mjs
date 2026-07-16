@@ -13,6 +13,7 @@ import request from 'supertest';
 import { jest } from '@jest/globals';
 
 const getStatus = jest.fn();
+const getReconciliationStatus = jest.fn();
 const disableAutomation = jest.fn();
 const resumeAutomation = jest.fn();
 const resetCircuit = jest.fn();
@@ -29,6 +30,12 @@ jest.unstable_mockModule('../services/nativeIntentReconciliationControlService.m
     disableAutomation,
     resumeAutomation,
     resetCircuit,
+  },
+}));
+
+jest.unstable_mockModule('../services/nativeIntentReconciliationStatusService.mjs', () => ({
+  nativeIntentReconciliationStatusService: {
+    getStatus: getReconciliationStatus,
   },
 }));
 
@@ -56,12 +63,17 @@ function createApp(user = { id: 7, role: 'admin' }) {
 describe('Policy native intent reconciliation control routes', () => {
   beforeEach(() => {
     getStatus.mockReset();
+    getReconciliationStatus.mockReset();
     disableAutomation.mockReset();
     resumeAutomation.mockReset();
     resetCircuit.mockReset();
     getStatus.mockResolvedValue({
       automationEnabled: true,
       circuitState: 'closed',
+      rawPayloadExposed: false,
+    });
+    getReconciliationStatus.mockResolvedValue({
+      statusId: 'ready',
       rawPayloadExposed: false,
     });
     disableAutomation.mockResolvedValue({
@@ -85,6 +97,21 @@ describe('Policy native intent reconciliation control routes', () => {
       rawPayloadExposed: false,
     }));
     expect(getStatus).toHaveBeenCalledWith({ dbClient: expect.any(Object) });
+  });
+
+  test('returns the administrator-only, read-only reconciliation status contract', async () => {
+    const response = await request(createApp())
+      .get('/api/policies/native-intent-reconciliation/status')
+      .expect(200);
+
+    expect(response.body).toEqual(expect.objectContaining({
+      statusId: 'ready',
+      rawPayloadExposed: false,
+    }));
+    expect(getReconciliationStatus).toHaveBeenCalledWith({ dbClient: expect.any(Object) });
+    await request(createApp({ id: 9, role: 'operator' }))
+      .get('/api/policies/native-intent-reconciliation/status')
+      .expect(403);
   });
 
   test('derives the emergency-stop actor from the authenticated administrator', async () => {

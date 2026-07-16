@@ -18,6 +18,11 @@ import { classificationMaintenanceService } from './classificationMaintenanceSer
 import { ratingNormalizationQueueService } from './ratingNormalizationQueueService.mjs';
 import { nativeIntentReconciliationService } from './nativeIntentReconciliationService.mjs';
 import {
+    NATIVE_INTENT_RECONCILIATION_CRON,
+    NATIVE_INTENT_RECONCILIATION_INITIAL_DELAY_MS,
+    NATIVE_INTENT_RECONCILIATION_TASK_NAME,
+} from './nativeIntentReconciliationSchedule.mjs';
+import {
     runGapAnalysis as _runGapAnalysis,
     runPeriodicLibrarySync as _runPeriodicLibrarySync,
     runLibraryWatchdog as _runLibraryWatchdog,
@@ -28,9 +33,6 @@ import { runAutoLearnRules as _runAutoLearnRules } from './schedulerAutoLearnRul
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
-const NATIVE_INTENT_RECONCILIATION_TASK_NAME = 'native-intent-reconciliation';
-const NATIVE_INTENT_RECONCILIATION_CRON = '*/10 * * * *';
-const NATIVE_INTENT_RECONCILIATION_INITIAL_DELAY_MS = 90_000;
 
 class SchedulerService {
     constructor() {

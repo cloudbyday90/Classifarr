@@ -37,6 +37,17 @@ function readyControlService() {
   };
 }
 
+function quietAlertService() {
+  return {
+    evaluateAndNotify: jest.fn().mockResolvedValue({
+      statusId: 'evaluated',
+      notificationCount: 0,
+      firingAlertTypeIds: [],
+      rawPayloadExposed: false,
+    }),
+  };
+}
+
 describe('NativeIntentReconciliationService', () => {
   test('uses a fixed unconverted-only batch and returns compact execution evidence', async () => {
     const dbClient = { query: jest.fn() };
@@ -62,6 +73,7 @@ describe('NativeIntentReconciliationService', () => {
       runApplyGate,
       ledgerService,
       controlService: readyControlService(),
+      alertService: quietAlertService(),
       now: () => new Date('2026-07-15T12:00:00.000Z'),
       loggerInstance: logger,
     });
@@ -121,6 +133,7 @@ describe('NativeIntentReconciliationService', () => {
       runApplyGate: jest.fn().mockRejectedValue(failure),
       ledgerService,
       controlService: readyControlService(),
+      alertService: quietAlertService(),
       now: () => new Date('2026-07-15T12:00:00.000Z'),
       loggerInstance: logger,
     });
@@ -176,6 +189,7 @@ describe('NativeIntentReconciliationService', () => {
       controlService,
       ledgerService: { record: jest.fn().mockResolvedValue({ statusId: 'persisted' }) },
       now: () => new Date('2026-07-15T12:00:00.000Z'),
+      alertService: quietAlertService(),
       loggerInstance: logger,
     });
 
@@ -207,6 +221,7 @@ describe('NativeIntentReconciliationService', () => {
         record: jest.fn().mockRejectedValue(new Error('sensitive storage details')),
       },
       controlService: readyControlService(),
+      alertService: quietAlertService(),
       now: () => new Date('2026-07-15T12:00:00.000Z'),
       loggerInstance: logger,
     });
@@ -249,6 +264,7 @@ describe('NativeIntentReconciliationService', () => {
       }),
       ledgerService: { record: jest.fn().mockResolvedValue({ statusId: 'persisted' }) },
       controlService,
+      alertService: quietAlertService(),
       now: () => new Date('2026-07-15T12:00:00.000Z'),
       loggerInstance: logger,
     });
@@ -286,6 +302,7 @@ describe('NativeIntentReconciliationService', () => {
       }),
       ledgerService: { record: jest.fn().mockResolvedValue(undefined) },
       controlService: readyControlService(),
+      alertService: quietAlertService(),
       now: () => new Date('2026-07-15T12:00:00.000Z'),
       loggerInstance: logger,
     });
@@ -321,6 +338,7 @@ describe('NativeIntentReconciliationService', () => {
       runApplyGate,
       ledgerService: { record: jest.fn() },
       controlService,
+      alertService: quietAlertService(),
       now: () => new Date('2026-07-15T12:00:00.000Z'),
       loggerInstance: { info: jest.fn(), error: jest.fn() },
     });
@@ -334,5 +352,81 @@ describe('NativeIntentReconciliationService', () => {
       operatorErrorIds: ['operator_incident'],
       control: expect.objectContaining({ automationEnabled: false }),
     }));
+  });
+
+  test('evaluates alert conditions after a persisted automatic run without restoring a manual path', async () => {
+    const alertService = {
+      evaluateAndNotify: jest.fn().mockResolvedValue({
+        statusId: 'evaluated',
+        notificationCount: 1,
+        firingAlertTypeIds: ['repeated_system_failure'],
+        rawPayloadExposed: false,
+      }),
+    };
+    const dbClient = {};
+    const service = new NativeIntentReconciliationService({
+      dbClient,
+      runApplyGate: jest.fn().mockResolvedValue({
+        statusId: 'evaluated',
+        applied: false,
+        readyPolicyIds: [],
+      }),
+      ledgerService: { record: jest.fn().mockResolvedValue({ statusId: 'persisted' }) },
+      controlService: readyControlService(),
+      alertService,
+      now: () => new Date('2026-07-15T12:00:00.000Z'),
+      loggerInstance: { info: jest.fn(), error: jest.fn() },
+    });
+
+    const result = await service.run();
+
+    expect(alertService.evaluateAndNotify).toHaveBeenCalledWith({
+      dbClient,
+      correlationId: expect.stringMatching(/^[0-9a-f-]{36}$/u),
+    });
+    expect(result.alertEvaluation).toEqual(expect.objectContaining({
+      statusId: 'evaluated',
+      firingAlertTypeIds: ['repeated_system_failure'],
+      rawPayloadExposed: false,
+    }));
+    expect(result).not.toHaveProperty('manualApply');
+  });
+
+  test('keeps reconciliation result when alert evaluation fails', async () => {
+    const logger = { info: jest.fn(), error: jest.fn() };
+    const service = new NativeIntentReconciliationService({
+      runApplyGate: jest.fn().mockResolvedValue({
+        statusId: 'applied',
+        applied: true,
+        readyPolicyIds: [18],
+        appliedPolicyCount: 1,
+      }),
+      ledgerService: { record: jest.fn().mockResolvedValue({ statusId: 'persisted' }) },
+      controlService: readyControlService(),
+      alertService: { evaluateAndNotify: jest.fn().mockRejectedValue(new Error('notification token must not escape')) },
+      now: () => new Date('2026-07-15T12:00:00.000Z'),
+      loggerInstance: logger,
+    });
+
+    const result = await service.run();
+
+    expect(result).toMatchObject({
+      statusId: 'applied',
+      alertEvaluation: {
+        statusId: 'failed',
+        reasonId: 'alert_evaluation_failed',
+        rawPayloadExposed: false,
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('token');
+    expect(logger.error).toHaveBeenCalledWith(
+      'Native intent reconciliation alert evaluation failed',
+      expect.objectContaining({
+        statusId: 'applied',
+        failureCategory: 'alert_evaluation',
+        rawPayloadExposed: false,
+      }),
+      { persistStack: false },
+    );
   });
 });
