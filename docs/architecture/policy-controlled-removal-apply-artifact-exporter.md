@@ -13,7 +13,9 @@ controlled removal apply artifact from:
 This component is the local artifact wrapper around controlled removal apply. It
 can remove files only when the caller explicitly passes `--apply-files`. It
 does not decide what belongs in the batch, archive paths, mutate storage, or run
-Git commands.
+Git mutation commands. It passes the command checkout root to the controlled
+apply boundary so every adapter entry receives final read-only Git and path
+verification.
 
 ## Official-Source Research
 
@@ -136,7 +138,9 @@ Use this stack for controlled removal apply artifact generation:
    injected adapter.
 4. Let the CLI adapter delete only repo-relative file paths when
    `--apply-files` is present.
-5. Reject archive, storage, and Git-command side effects.
+5. Require a final per-entry revision, path-type, tree, and content recheck
+   before the adapter receives an entry.
+6. Reject archive, storage, and Git-mutation side effects.
 6. Write nested apply-result JSON for post-removal runtime verification.
 7. Optionally write the wrapper artifact for audit trails.
 8. Verify the public apply command in an isolated repository, including the
@@ -158,7 +162,10 @@ Implemented:
   - `POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS`,
   - `buildPolicyControlledRemovalApplyArtifact`,
   - `validatePolicyControlledRemovalApplyArtifact`.
-- Updated the artifact version to `policy.controlled_removal_apply_artifact.v1`.
+- Updated the artifact version to `policy.controlled_removal_apply_artifact.v2`.
+- Retains the controlled apply's pre-apply verification count and policy so the
+  exported artifact distinguishes read-only Git verification from forbidden Git
+  mutation.
 - Replaced runtime `nextPhase.phaseId` with semantic `nextStep.stepId`.
 - Preserved focused tests for successful apply artifact generation through an
   injected adapter, blocked apply when explicit execution is missing,

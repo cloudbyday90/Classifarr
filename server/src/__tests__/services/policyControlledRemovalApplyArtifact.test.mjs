@@ -254,12 +254,36 @@ function applyAdapter(overrides = {}) {
   };
 }
 
+function verifiedPreApplyChangeDetector() {
+  return async ({ entry }) => ({
+    statusId: 'verified',
+    verified: true,
+    entry: {
+      path: entry.path,
+      actionId: entry.actionId,
+    },
+    riskCount: 0,
+    risks: [],
+    sideEffects: {
+      filesDeleted: false,
+      gitCommandsRun: false,
+      storageChanged: false,
+    },
+    validation: {
+      ok: true,
+      issueCount: 0,
+      issues: [],
+    },
+  });
+}
+
 describe('policyControlledRemovalApplyArtifact', () => {
   test('wraps an applied controlled removal batch with bounded side effects', async () => {
     const artifact = await buildPolicyControlledRemovalApplyArtifact({
       removalBatch: readyRemovalBatch(),
       input: applyInput(),
       applyAdapter: applyAdapter(),
+      preApplyChangeDetector: verifiedPreApplyChangeDetector(),
       generatedAt: '2026-06-25T08:00:00.000Z',
     });
 
@@ -270,6 +294,7 @@ describe('policyControlledRemovalApplyArtifact', () => {
     expect(artifact.applyResult.applied).toBe(true);
     expect(artifact.applySummary).toEqual({
       requestedCount: 1,
+      checkedCount: 1,
       appliedCount: 1,
       resultCount: 1,
     });
@@ -311,6 +336,7 @@ describe('policyControlledRemovalApplyArtifact', () => {
       removalBatch: readyRemovalBatch(),
       input: applyInput(),
       applyAdapter: applyAdapter(),
+      preApplyChangeDetector: verifiedPreApplyChangeDetector(),
       sideEffects: {
         storageChanged: true,
       },

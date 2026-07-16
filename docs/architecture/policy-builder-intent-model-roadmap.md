@@ -6380,7 +6380,7 @@ Tasks:
     substitute for recovery, support, rollback, or approval evidence.
   - Reject stale, cross-artifact, altered, duplicate, or post-observation
     checkout evidence before a controlled removal batch can be assembled.
-- **8R.16.4 Pre-Apply Change Detection And TOCTOU Boundary**
+- **8R.16.4 Pre-Apply Change Detection And TOCTOU Boundary (Completed)**
   - Immediately before a controlled apply adapter receives an entry, compare
     the current checkout revision and the approved manifest path state to the
     preflight artifact.
@@ -6459,6 +6459,14 @@ Implementation status:
   duplicate, post-observation, and machine-claim substitution cases block
   before a controlled removal batch can be assembled. The design and outcome
   record is [Policy Compatibility Deletion Preflight Attestation](policy-compatibility-deletion-preflight-attestation.md).
+- Task 8R.16.4 is implemented. The controlled apply boundary now performs a
+  final per-entry, read-only checkout recheck immediately before an adapter
+  receives an entry. It requires the approved source revision, observed
+  manifest membership, a regular non-symlink live path, an exact regular
+  `HEAD` blob, and a clean path-to-`HEAD` comparison. Revision or path drift
+  blocks the entry and stops the remaining batch; bounded verification summaries
+  distinguish that state from adapter or result failure. The design and outcome
+  record is [Policy Compatibility Deletion Pre-Apply Change Detection](policy-compatibility-deletion-pre-apply-change-detection.md).
 
 ### 8R.17 Controlled Compatibility Path Removal
 

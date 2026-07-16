@@ -98,7 +98,10 @@ function executionPlan({ selectedPath = TARGET_PATH } = {}) {
   };
 }
 
-function buildReadyRemovalBatch({ selectedPath = TARGET_PATH } = {}) {
+function buildReadyRemovalBatch({
+  selectedPath = TARGET_PATH,
+  sourceRevision = '0123456789abcdef0123456789abcdef01234567',
+} = {}) {
   const executionPlanArtifact = buildReadyExecutionPlanArtifact({
     executionPlan: executionPlan({ selectedPath }),
   });
@@ -109,6 +112,9 @@ function buildReadyRemovalBatch({ selectedPath = TARGET_PATH } = {}) {
     }),
     preflightEvidenceArtifact: buildReadyExecutionGatePreflightEvidenceArtifact({
       executionPlanArtifact,
+      overrides: {
+        checkoutObservation: { sourceRevision },
+      },
     }),
     generatedAt: GENERATED_AT,
     now: GENERATED_AT,
@@ -122,6 +128,26 @@ function buildReadyRemovalBatch({ selectedPath = TARGET_PATH } = {}) {
     removalReason: 'Remove the one reviewed sandbox compatibility path.',
     reviewedBy: 'storage-closure-maintainer',
   });
+}
+
+function runGit(rootPath, args) {
+  const result = spawnSync('git', args, {
+    cwd: rootPath,
+    encoding: 'utf8',
+  });
+
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(' ')} failed: ${result.stderr || result.stdout}`);
+  }
+
+  return result.stdout.trim();
+}
+
+function commitFixtureFile(rootPath, relativePath) {
+  runGit(rootPath, ['add', '--', relativePath]);
+  runGit(rootPath, ['commit', '-m', `Add ${relativePath}`]);
+
+  return runGit(rootPath, ['rev-parse', 'HEAD']);
 }
 
 function applyInput(overrides = {}) {
@@ -181,6 +207,11 @@ describe('generate-policy-controlled-removal-apply', () => {
 
   beforeEach(() => {
     fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'classifarr-removal-apply-'));
+    runGit(fixtureRoot, ['init']);
+    runGit(fixtureRoot, ['config', 'user.email', 'classifarr-test@example.invalid']);
+    runGit(fixtureRoot, ['config', 'user.name', 'Classifarr Test']);
+    writeFixtureFile(fixtureRoot, 'README.md', 'isolated controlled removal fixture\n');
+    commitFixtureFile(fixtureRoot, 'README.md');
   });
 
   afterEach(() => {
@@ -189,9 +220,10 @@ describe('generate-policy-controlled-removal-apply', () => {
 
   test('does not delete or write output without the explicit apply-files flag', () => {
     const targetPath = writeFixtureFile(fixtureRoot, TARGET_PATH);
+    const sourceRevision = commitFixtureFile(fixtureRoot, TARGET_PATH);
     const result = runGenerator({
       fixtureRoot,
-      removalBatch: buildReadyRemovalBatch(),
+      removalBatch: buildReadyRemovalBatch({ sourceRevision }),
     });
 
     expect(result.error).toBeUndefined();
@@ -206,9 +238,10 @@ describe('generate-policy-controlled-removal-apply', () => {
 
   test('writes a bounded blocked diagnostic only when explicitly requested', () => {
     const targetPath = writeFixtureFile(fixtureRoot, TARGET_PATH);
+    const sourceRevision = commitFixtureFile(fixtureRoot, TARGET_PATH);
     const result = runGenerator({
       fixtureRoot,
-      removalBatch: buildReadyRemovalBatch(),
+      removalBatch: buildReadyRemovalBatch({ sourceRevision }),
       allowBlocked: true,
     });
     const artifact = JSON.parse(fs.readFileSync(result.artifactOutputPath, 'utf8'));
@@ -233,9 +266,10 @@ describe('generate-policy-controlled-removal-apply', () => {
   test('applies only the reviewed repo-relative file inside an isolated repository', () => {
     const targetPath = writeFixtureFile(fixtureRoot, TARGET_PATH);
     const retainedPath = writeFixtureFile(fixtureRoot, 'compatibility/retain.mjs');
+    const sourceRevision = commitFixtureFile(fixtureRoot, TARGET_PATH);
     const result = runGenerator({
       fixtureRoot,
-      removalBatch: buildReadyRemovalBatch(),
+      removalBatch: buildReadyRemovalBatch({ sourceRevision }),
       applyFiles: true,
     });
     const applyResult = JSON.parse(fs.readFileSync(result.outputPath, 'utf8'));
@@ -276,16 +310,20 @@ describe('generate-policy-controlled-removal-apply', () => {
     fs.writeFileSync(outsidePath, 'outside sentinel\n');
 
     try {
+      const sourceRevision = runGit(fixtureRoot, ['rev-parse', 'HEAD']);
       const result = runGenerator({
         fixtureRoot,
-        removalBatch: buildReadyRemovalBatch({ selectedPath: escapedPath }),
+        removalBatch: buildReadyRemovalBatch({
+          selectedPath: escapedPath,
+          sourceRevision,
+        }),
         applyFiles: true,
       });
 
       expect(result.error).toBeUndefined();
       expect(result.status).toBe(1);
       expect(result.stdoutJson).toBeNull();
-      expect(result.stderr).toContain('escapes the repository');
+      expect(result.stderr).toContain('path_escapes_repository');
       expect(fs.existsSync(outsidePath)).toBe(true);
       expect(fs.existsSync(result.outputPath)).toBe(false);
       expect(fs.existsSync(result.artifactOutputPath)).toBe(false);

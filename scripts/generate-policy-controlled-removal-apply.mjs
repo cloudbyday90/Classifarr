@@ -162,6 +162,7 @@ async function main() {
       repoRoot: process.cwd(),
     }),
     generatedAt: options.generatedAt,
+    repoRoot: process.cwd(),
   });
 
   if (artifact.applied !== true && options.allowBlocked !== true) {

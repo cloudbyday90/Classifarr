@@ -255,6 +255,30 @@ function applyAdapter(overrides = {}) {
   };
 }
 
+function verifiedPreApplyChangeDetector(overrides = {}) {
+  return async ({ entry }) => ({
+    statusId: 'verified',
+    verified: true,
+    entry: {
+      path: entry.path,
+      actionId: entry.actionId,
+    },
+    riskCount: 0,
+    risks: [],
+    sideEffects: {
+      filesDeleted: false,
+      gitCommandsRun: false,
+      storageChanged: false,
+    },
+    validation: {
+      ok: true,
+      issueCount: 0,
+      issues: [],
+    },
+    ...overrides,
+  });
+}
+
 describe('policyControlledCompatibilityPathRemovalApply', () => {
   test('applies a ready reviewed removal batch through the injected adapter', async () => {
     const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
@@ -262,6 +286,7 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
       executeApply: true,
       operatorConfirmation: operatorConfirmation(),
       applyAdapter: applyAdapter(),
+      preApplyChangeDetector: verifiedPreApplyChangeDetector(),
     });
 
     expect(applyResult.statusId)
@@ -343,6 +368,7 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
           };
         },
       }),
+      preApplyChangeDetector: verifiedPreApplyChangeDetector(),
     });
 
     expect(applyResult.statusId)
@@ -396,6 +422,7 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
           };
         },
       }),
+      preApplyChangeDetector: verifiedPreApplyChangeDetector(),
     });
 
     expect(applyResult.statusId)
@@ -465,6 +492,7 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
           };
         },
       }),
+      preApplyChangeDetector: verifiedPreApplyChangeDetector(),
     });
 
     expect(applyResult.statusId)
@@ -489,6 +517,7 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
           throw new Error(`cannot remove ${entry.path}`);
         },
       }),
+      preApplyChangeDetector: verifiedPreApplyChangeDetector(),
     });
 
     expect(applyResult.statusId)
@@ -522,6 +551,7 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
           };
         },
       }),
+      preApplyChangeDetector: verifiedPreApplyChangeDetector(),
     });
 
     expect(applyResult.statusId)
@@ -530,6 +560,94 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
     expect(applyResult.validation.ok).toBe(false);
     expect(applyResult.risks.map(risk => risk.riskId)).toContain(
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.UNEXPECTED_SIDE_EFFECT
+    );
+  });
+
+  test('blocks a changed entry before its adapter call and preserves prior verified results', async () => {
+    const adapterCalls = [];
+    const detectorCalls = [];
+    const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
+      removalReview: readyRemovalReview(),
+      executeApply: true,
+      operatorConfirmation: operatorConfirmation(),
+      applyAdapter: applyAdapter({
+        async applyEntry(entry) {
+          adapterCalls.push(entry.path);
+          return {
+            path: entry.path,
+            actionId: entry.actionId,
+            applied: true,
+            sideEffects: { filesDeleted: true },
+          };
+        },
+      }),
+      preApplyChangeDetector: async ({ entry }) => {
+        detectorCalls.push(entry.path);
+
+        return entry.path.includes('policyIntentMapper')
+          ? verifiedPreApplyChangeDetector({
+            statusId: 'blocked',
+            verified: false,
+            riskCount: 1,
+            risks: [{ riskId: 'worktree_path_changed' }],
+          })({ entry })
+          : verifiedPreApplyChangeDetector()({ entry });
+      },
+    });
+
+    expect(applyResult.statusId)
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+        .BLOCKED_BY_PRE_APPLY_RECHECK);
+    expect(detectorCalls).toEqual([
+      'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+      'server/src/services/policyIntentMapper.mjs',
+    ]);
+    expect(adapterCalls).toEqual([
+      'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+    ]);
+    expect(applyResult.applyBatch).toEqual(expect.objectContaining({
+      requestedCount: 2,
+      checkedCount: 2,
+      appliedCount: 1,
+      blockedEntry: {
+        path: 'server/src/services/policyIntentMapper.mjs',
+        actionId: 'replace_code_path',
+      },
+    }));
+    expect(applyResult.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+          .PRE_APPLY_CHANGE_DETECTED,
+        recheckRiskIds: ['worktree_path_changed'],
+      }),
+    ]));
+  });
+
+  test('fails closed when the final detector returns malformed verification evidence', async () => {
+    let applyCallCount = 0;
+    const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
+      removalReview: readyRemovalReview(),
+      executeApply: true,
+      operatorConfirmation: operatorConfirmation(),
+      applyAdapter: applyAdapter({
+        async applyEntry() {
+          applyCallCount += 1;
+          return { applied: true, sideEffects: { filesDeleted: true } };
+        },
+      }),
+      preApplyChangeDetector: async () => ({
+        statusId: 'verified',
+        verified: true,
+        validation: { ok: false },
+      }),
+    });
+
+    expect(applyResult.statusId)
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+        .BLOCKED_BY_PRE_APPLY_RECHECK);
+    expect(applyCallCount).toBe(0);
+    expect(applyResult.risks.map(risk => risk.riskId)).toContain(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.PRE_APPLY_CHANGE_DETECTED
     );
   });
 

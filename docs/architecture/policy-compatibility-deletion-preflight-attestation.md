@@ -120,7 +120,6 @@ Not implemented here:
 
 ## Next Step
 
-Proceed with **8R.16.4 Pre-Apply Change Detection And TOCTOU Boundary**. The
-controlled apply boundary must recheck the live checkout revision and approved
-path state immediately before it receives an entry, so a change after
-collection cannot be authorized by an otherwise valid gate.
+Task 8R.16.4 is implemented in
+[Policy Compatibility Deletion Pre-Apply Change Detection](policy-compatibility-deletion-pre-apply-change-detection.md).
+Proceed with **8R.16.5 Embedded-Runtime Evidence Escalation Rules**.

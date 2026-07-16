@@ -10,11 +10,15 @@ import {
   buildPolicyControlledCompatibilityPathRemoval,
 } from './policyControlledCompatibilityPathRemoval.mjs';
 import {
+  POLICY_COMPATIBILITY_DELETION_PRE_APPLY_CHANGE_DETECTOR_STATUS_IDS,
+  verifyPolicyCompatibilityDeletionPreApplyChange,
+} from './policyCompatibilityDeletionPreApplyChangeDetector.mjs';
+import {
   validatePolicyControlledCompatibilityPathRemovalReviewArtifact,
 } from './policyControlledCompatibilityPathRemovalReviewArtifact.mjs';
 
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_VERSION =
-  'policy.controlled_compatibility_path_removal_apply.v2';
+  'policy.controlled_compatibility_path_removal_apply.v3';
 
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS = Object.freeze({
   APPLIED: 'applied',
@@ -22,6 +26,7 @@ const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS = Object.fre
   BLOCKED_BY_REVIEW_INTEGRITY: 'blocked_by_review_integrity',
   BLOCKED_BY_CONFIRMATION: 'blocked_by_confirmation',
   BLOCKED_BY_ADAPTER: 'blocked_by_adapter',
+  BLOCKED_BY_PRE_APPLY_RECHECK: 'blocked_by_pre_apply_recheck',
   BLOCKED_BY_APPLY_RESULT: 'blocked_by_apply_result',
 });
 
@@ -39,10 +44,13 @@ const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS = Object.freez
   OPERATOR_CONFIRMATION_ACTOR_MISSING: 'operator_confirmation_actor_missing',
   APPLY_ADAPTER_MISSING: 'apply_adapter_missing',
   APPLY_ADAPTER_FAILED: 'apply_adapter_failed',
+  PRE_APPLY_CHANGE_DETECTED: 'pre_apply_change_detected',
+  PRE_APPLY_RECHECK_FAILED: 'pre_apply_recheck_failed',
   APPLY_RESULT_COUNT_MISMATCH: 'apply_result_count_mismatch',
   APPLY_RESULT_NOT_APPLIED: 'apply_result_not_applied',
   APPLY_RESULT_PATH_MISMATCH: 'apply_result_path_mismatch',
   APPLY_RESULT_ACTION_MISMATCH: 'apply_result_action_mismatch',
+  EXECUTION_POLICY_MISMATCH: 'execution_policy_mismatch',
   UNEXPECTED_SIDE_EFFECT: 'unexpected_side_effect',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
   UNKNOWN_STATUS: 'unknown_status',
@@ -111,6 +119,7 @@ function evaluateReviewExecutionContext(review = {}) {
     return {
       executionPlanArtifact,
       executionGate,
+      preflightEvidenceArtifact: {},
       risks,
     };
   }
@@ -177,6 +186,7 @@ function evaluateReviewExecutionContext(review = {}) {
   return {
     executionPlanArtifact,
     executionGate,
+    preflightEvidenceArtifact: revalidatedGate.preflightEvidenceArtifact,
     risks,
   };
 }
@@ -211,6 +221,7 @@ function evaluateRemovalReview(removalReview) {
     : {
       executionPlanArtifact: {},
       executionGate: {},
+      preflightEvidenceArtifact: {},
       risks: [],
     };
   risks.push(...executionContext.risks);
@@ -288,11 +299,75 @@ function buildApplyResult({
   };
 }
 
-async function applyEntries({ entries = [], applyAdapter }) {
+function summarizePreApplyVerification(entry = {}, verification = {}) {
+  return {
+    path: normalizePath(entry.path),
+    statusId: verification.statusId || null,
+    verified: verification.verified === true,
+    riskIds: asArray(verification.risks)
+      .map(risk => risk?.riskId)
+      .filter(Boolean),
+  };
+}
+
+async function applyEntries({
+  entries = [],
+  applyAdapter,
+  preflightEvidenceArtifact,
+  preApplyChangeDetector = verifyPolicyCompatibilityDeletionPreApplyChange,
+  repoRoot,
+}) {
   const results = [];
   const risks = [];
+  const preApplyVerifications = [];
+  const entriesSubmittedToAdapter = [];
+  let blockedEntry = null;
 
   for (const entry of entries) {
+    let verification;
+
+    try {
+      verification = await preApplyChangeDetector({
+        entry,
+        preflightEvidenceArtifact,
+        repoRoot,
+      });
+    } catch (_error) {
+      verification = null;
+    }
+
+    const verificationSummary = summarizePreApplyVerification(entry, verification);
+    preApplyVerifications.push(verificationSummary);
+
+    if (
+      verification?.statusId !==
+        POLICY_COMPATIBILITY_DELETION_PRE_APPLY_CHANGE_DETECTOR_STATUS_IDS.VERIFIED ||
+      verification?.verified !== true ||
+      verification?.validation?.ok !== true
+    ) {
+      blockedEntry = { path: normalizePath(entry.path), actionId: entry.actionId || null };
+      risks.push(buildRisk(
+        verification
+          ? POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+            .PRE_APPLY_CHANGE_DETECTED
+          : POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
+            .PRE_APPLY_RECHECK_FAILED,
+        verification
+          ? 'Controlled compatibility path removal stopped because the approved checkout state changed before the adapter received an entry.'
+          : 'Controlled compatibility path removal stopped because the final pre-apply checkout recheck did not return valid evidence.',
+        {
+          path: blockedEntry.path,
+          actionId: blockedEntry.actionId,
+          recheckStatusId: verification?.statusId || null,
+          recheckRiskIds: verificationSummary.riskIds,
+        }
+      ));
+
+      break;
+    }
+
+    entriesSubmittedToAdapter.push(entry);
+
     try {
       const result = await applyAdapter.applyEntry(entry);
       results.push(buildApplyResult({ entry, result }));
@@ -310,6 +385,9 @@ async function applyEntries({ entries = [], applyAdapter }) {
   }
 
   return {
+    blockedEntry,
+    entriesSubmittedToAdapter,
+    preApplyVerifications,
     results,
     risks,
   };
@@ -414,7 +492,7 @@ function evaluateSideEffects(sideEffects = {}) {
   if (sideEffects.gitCommandsRun === true) {
     risks.push(buildRisk(
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.UNEXPECTED_SIDE_EFFECT,
-      'Controlled compatibility path removal apply must not run Git commands inside the service.',
+      'Controlled compatibility path removal apply must not run Git mutation commands inside the service.',
       { sideEffect: 'gitCommandsRun' }
     ));
   }
@@ -436,6 +514,14 @@ function determineStatusId(risks = []) {
   ].includes(risk.riskId))) {
     return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
       .BLOCKED_BY_REVIEW_INTEGRITY;
+  }
+
+  if (risks.some(risk => [
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.PRE_APPLY_CHANGE_DETECTED,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.PRE_APPLY_RECHECK_FAILED,
+  ].includes(risk.riskId))) {
+    return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+      .BLOCKED_BY_PRE_APPLY_RECHECK;
   }
 
   if (risks.some(risk => [
@@ -479,6 +565,8 @@ async function applyPolicyControlledCompatibilityPathRemoval({
   executeApply = false,
   operatorConfirmation = {},
   applyAdapter = null,
+  preApplyChangeDetector = verifyPolicyCompatibilityDeletionPreApplyChange,
+  repoRoot = undefined,
 } = {}) {
   const reviewEvaluation = evaluateRemovalReview(removalReview);
   const removalEntries = asArray(reviewEvaluation.review.removalBatch?.entries);
@@ -494,14 +582,24 @@ async function applyPolicyControlledCompatibilityPathRemoval({
     ? await applyEntries({
       entries: removalEntries,
       applyAdapter,
+      preflightEvidenceArtifact:
+        reviewEvaluation.executionContext.preflightEvidenceArtifact,
+      preApplyChangeDetector,
+      repoRoot,
     })
-    : { results: [], risks: [] };
+    : {
+      blockedEntry: null,
+      entriesSubmittedToAdapter: [],
+      preApplyVerifications: [],
+      results: [],
+      risks: [],
+    };
   const sideEffects = summarizeSideEffects(applyAttempt.results);
   const risks = [
     ...preApplyRisks,
     ...applyAttempt.risks,
     ...evaluateApplyResults({
-      entries: preApplyRisks.length === 0 ? removalEntries : [],
+      entries: preApplyRisks.length === 0 ? applyAttempt.entriesSubmittedToAdapter : [],
       results: applyAttempt.results,
     }),
     ...evaluateSideEffects(sideEffects),
@@ -531,8 +629,11 @@ async function applyPolicyControlledCompatibilityPathRemoval({
     },
     applyBatch: {
       requestedCount: removalEntries.length,
+      checkedCount: applyAttempt.preApplyVerifications.length,
+      blockedEntry: applyAttempt.blockedEntry,
       appliedCount: applyAttempt.results.filter(result => result.applied === true).length,
       entries: removalEntries,
+      preApplyVerifications: applyAttempt.preApplyVerifications,
       results: applyAttempt.results,
     },
     riskCount: risks.length,
@@ -546,7 +647,9 @@ async function applyPolicyControlledCompatibilityPathRemoval({
       requireOperatorConfirmation: true,
       requireApplyAdapter: true,
       requireResultParity: true,
-      allowGitCommandsInsideService: false,
+      requirePreApplyChangeDetection: true,
+      allowReadOnlyGitVerification: true,
+      allowGitMutationCommandsInsideService: false,
       allowStorageMutation: false,
     },
     nextStep: {
@@ -578,6 +681,27 @@ function validatePolicyControlledCompatibilityPathRemovalApply(applyResult = {})
     issues.push(buildRisk(
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.RISK_COUNT_MISMATCH,
       'Controlled compatibility path removal apply risk count must match risk list length.'
+    ));
+  }
+
+  const executionPolicy = asObject(applyResult.executionPolicy);
+
+  if (
+    executionPolicy.requireReadyRemovalReview !== true ||
+    executionPolicy.requireReviewArtifactIntegrity !== true ||
+    executionPolicy.requireRevalidatedExecutionGate !== true ||
+    executionPolicy.requireExplicitExecuteApply !== true ||
+    executionPolicy.requireOperatorConfirmation !== true ||
+    executionPolicy.requireApplyAdapter !== true ||
+    executionPolicy.requireResultParity !== true ||
+    executionPolicy.requirePreApplyChangeDetection !== true ||
+    executionPolicy.allowReadOnlyGitVerification !== true ||
+    executionPolicy.allowGitMutationCommandsInsideService !== false ||
+    executionPolicy.allowStorageMutation !== false
+  ) {
+    issues.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.EXECUTION_POLICY_MISMATCH,
+      'Controlled compatibility path removal apply must retain its final read-only pre-apply verification policy.'
     ));
   }
 

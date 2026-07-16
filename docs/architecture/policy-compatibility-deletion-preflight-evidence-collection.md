@@ -168,4 +168,6 @@ Not implemented here:
 
 The collector-to-gate boundary is implemented in
 [Policy Compatibility Deletion Preflight Attestation](policy-compatibility-deletion-preflight-attestation.md).
-Proceed with **8R.16.4 Pre-Apply Change Detection And TOCTOU Boundary**.
+The final controlled-apply recheck is implemented in
+[Policy Compatibility Deletion Pre-Apply Change Detection](policy-compatibility-deletion-pre-apply-change-detection.md).
+Proceed with **8R.16.5 Embedded-Runtime Evidence Escalation Rules**.

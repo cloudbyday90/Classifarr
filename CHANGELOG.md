@@ -26,6 +26,14 @@ unchanged operator or runtime outcome.
   recovery proof, approval, rollback, and support decisions remain separately
   attributable human gate requirements.
 
+- **Compatibility Deletion Apply-Time Integrity Check** - controlled
+  compatibility cleanup now rechecks every approved path immediately before it
+  reaches the removal adapter. Revision drift, altered or missing files,
+  symlinks, non-regular paths, invalid `HEAD` entries, and content changes block
+  the affected entry without invoking the adapter; the apply result retains
+  bounded verification evidence and clearly reports a stopped batch, including
+  any earlier narrow entries that already applied.
+
 - **Native Policy Engine Authority** - converted policies now classify from
   persisted native intent rather than retained legacy presets or
   `custom_signals`. Native purpose establishes eligibility before supporting

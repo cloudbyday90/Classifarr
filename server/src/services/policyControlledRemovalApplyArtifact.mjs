@@ -4,7 +4,7 @@ import {
 } from './policyControlledCompatibilityPathRemovalApply.mjs';
 
 const POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_VERSION =
-  'policy.controlled_removal_apply_artifact.v1';
+  'policy.controlled_removal_apply_artifact.v2';
 
 const POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS = Object.freeze({
   APPLIED: 'applied',
@@ -17,6 +17,7 @@ const POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS = Object.freeze({
   SIDE_EFFECT_REPORTED: 'side_effect_reported',
   APPLIED_FLAG_MISMATCH: 'applied_flag_mismatch',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
+  EXECUTION_POLICY_MISMATCH: 'execution_policy_mismatch',
   UNKNOWN_STATUS: 'unknown_status',
 });
 
@@ -131,6 +132,8 @@ async function buildPolicyControlledRemovalApplyArtifact({
   input = {},
   applyAdapter = null,
   generatedAt = null,
+  preApplyChangeDetector = undefined,
+  repoRoot = undefined,
   sideEffects = {},
 } = {}) {
   const evidence = asObject(input);
@@ -140,6 +143,8 @@ async function buildPolicyControlledRemovalApplyArtifact({
     executeApply: evidence.executeApply,
     operatorConfirmation,
     applyAdapter,
+    preApplyChangeDetector,
+    repoRoot,
   });
   const combinedSideEffects = summarizeSideEffects(applyResult, sideEffects);
   const risks = buildApplyArtifactRisks({
@@ -156,6 +161,7 @@ async function buildPolicyControlledRemovalApplyArtifact({
     applyResult,
     applySummary: {
       requestedCount: applyResult.applyBatch?.requestedCount ?? 0,
+      checkedCount: applyResult.applyBatch?.checkedCount ?? 0,
       appliedCount: applyResult.applyBatch?.appliedCount ?? 0,
       resultCount: asArray(applyResult.applyBatch?.results).length,
     },
@@ -167,9 +173,11 @@ async function buildPolicyControlledRemovalApplyArtifact({
       requireExplicitExecuteApply: true,
       requireOperatorConfirmation: true,
       requireApplyAdapter: true,
+      requirePreApplyChangeDetection: true,
       allowArchive: false,
       allowStorageMutation: false,
-      allowGitCommandsInsideArtifact: false,
+      allowReadOnlyGitVerification: true,
+      allowGitMutationCommandsInsideArtifact: false,
     },
     nextStep: {
       stepId: 'post_removal_runtime_verification',
@@ -214,6 +222,25 @@ function validatePolicyControlledRemovalApplyArtifact(artifact = {}) {
     ));
   }
 
+  const executionPolicy = asObject(artifact.executionPolicy);
+
+  if (
+    executionPolicy.requireReadyRemovalReview !== true ||
+    executionPolicy.requireExplicitExecuteApply !== true ||
+    executionPolicy.requireOperatorConfirmation !== true ||
+    executionPolicy.requireApplyAdapter !== true ||
+    executionPolicy.requirePreApplyChangeDetection !== true ||
+    executionPolicy.allowArchive !== false ||
+    executionPolicy.allowStorageMutation !== false ||
+    executionPolicy.allowReadOnlyGitVerification !== true ||
+    executionPolicy.allowGitMutationCommandsInsideArtifact !== false
+  ) {
+    issues.push(buildRisk(
+      POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.EXECUTION_POLICY_MISMATCH,
+      'Controlled removal apply artifact must retain its final read-only pre-apply verification policy.'
+    ));
+  }
+
   if (artifact.sideEffects?.filesArchived === true) {
     issues.push(buildRisk(
       POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
@@ -233,7 +260,7 @@ function validatePolicyControlledRemovalApplyArtifact(artifact = {}) {
   if (artifact.sideEffects?.gitCommandsRun === true) {
     issues.push(buildRisk(
       POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
-      'Controlled removal apply artifact must not run Git commands.',
+      'Controlled removal apply artifact must not run Git mutation commands.',
       { sideEffect: 'gitCommandsRun' }
     ));
   }
