@@ -176,6 +176,41 @@ describe('policyPostUpgradeApplyGate', () => {
     }));
   });
 
+  test('stops a final apply after the authority row lock when a reconciliation guard becomes active', async () => {
+    const client = createApplyClient();
+    const dbClient = { withTransaction: jest.fn(async work => work(client)) };
+    const policyWriteGuard = jest.fn().mockResolvedValue({
+      allowed: false,
+      reasonId: 'rollback_reconciliation_hold',
+    });
+
+    const result = await applyPolicyPostUpgradeApplyGate({
+      dbClient,
+      dryRun: readyDryRun(new Date().toISOString()),
+      policies: [policy()],
+      now: '2026-07-15T15:00:00.000Z',
+      policyWriteGuard,
+    });
+
+    expect(policyWriteGuard).toHaveBeenCalledWith(expect.objectContaining({
+      client,
+      policyId: 14,
+    }));
+    expect(result).toEqual(expect.objectContaining({
+      statusId: POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.APPLIED,
+      appliedPolicyCount: 0,
+      results: [expect.objectContaining({
+        policyId: 14,
+        skippedByReconciliationGuard: true,
+        guardReasonId: 'rollback_reconciliation_hold',
+      })],
+    }));
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_intents'),
+      expect.anything(),
+    );
+  });
+
   test('records the reconciliation actor source without treating it as an operator action', async () => {
     const client = createApplyClient();
     const dbClient = {

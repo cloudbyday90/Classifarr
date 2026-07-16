@@ -23,6 +23,9 @@ import {
 import {
   nativeIntentReconciliationStateService as defaultStateService,
 } from './nativeIntentReconciliationStateService.mjs';
+import {
+  nativeIntentReconciliationLifecycleService as defaultLifecycleService,
+} from './nativeIntentReconciliationLifecycleService.mjs';
 
 const NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE = 100;
 const logger = createLogger('NativeIntentReconciliationExecutionService');
@@ -98,10 +101,24 @@ function mergeOutcomeOverrides(...overrideLists) {
   return [...byPolicyId.values()].sort((left, right) => left.policyId - right.policyId);
 }
 
+function buildLifecycleDeferredApplyGate(eligibility = {}) {
+  return {
+    statusId: 'deferred_by_reconciliation_lifecycle_guard',
+    applied: false,
+    appliedPolicyCount: 0,
+    alreadyConvertedCount: 0,
+    results: [],
+    operatorErrorIds: [eligibility.reasonId || 'restore_validation_failed'],
+    failureCategory: eligibility.reasonId || 'restore_validation_failed',
+    rawPayloadExposed: false,
+  };
+}
+
 export class NativeIntentReconciliationExecutionService {
   constructor({
     dbClient = defaultDb,
     stateService = defaultStateService,
+    lifecycleService = defaultLifecycleService,
     loggerInstance = logger,
     now = () => new Date(),
     loadCandidateInputs = loadPolicyPostUpgradeCandidateInputs,
@@ -111,6 +128,7 @@ export class NativeIntentReconciliationExecutionService {
   } = {}) {
     this.dbClient = dbClient;
     this.stateService = stateService;
+    this.lifecycleService = lifecycleService;
     this.logger = loggerInstance;
     this.now = now;
     this.loadCandidateInputs = loadCandidateInputs;
@@ -128,11 +146,36 @@ export class NativeIntentReconciliationExecutionService {
     executionDeadlineAt = null,
   } = {}) {
     const evaluatedAt = normalizeTimestamp(now);
+    const executionEligibility = await this.lifecycleService.getExecutionEligibility({ dbClient });
+    if (!executionEligibility.allowed) {
+      const applyGate = buildLifecycleDeferredApplyGate(executionEligibility);
+      return {
+        ...applyGate,
+        reconciliationCandidates: [],
+        reconciliationOutcomeOverrides: [],
+        reconciliationSteps: [],
+        reconciliationSelection: {
+          selectedPolicyCount: 0,
+          deferredPolicyCount: 0,
+          heldPolicyCount: 0,
+          quarantinedPolicyCount: 0,
+          discoveredPolicyCount: 0,
+          rawPayloadExposed: false,
+        },
+        reconciliationLifecycle: executionEligibility,
+        reconciliationState: {
+          statusId: 'unchanged',
+          upsertedCount: 0,
+          deletedCount: 0,
+          rawPayloadExposed: false,
+        },
+      };
+    }
     const { policies, activeIntentIntegrityReport } = await this.loadCandidateInputs({
       dbClient,
       maxPolicies: NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE,
       unconvertedOnly: true,
-      excludeRevertedPolicies: true,
+      excludeRevertedPolicies: false,
       prioritizeReconciliationEligibility: true,
     });
     const candidateReport = this.buildCandidateReport({
@@ -143,8 +186,12 @@ export class NativeIntentReconciliationExecutionService {
     const safeCandidates = asArray(candidateReport.candidates)
       .map(toSafeCandidate)
       .filter(Boolean);
-    const plan = await this.stateService.plan({
+    const lifecyclePlan = await this.lifecycleService.partitionCandidates({
       candidates: safeCandidates,
+      dbClient,
+    });
+    const plan = await this.stateService.plan({
+      candidates: lifecyclePlan.eligibleCandidates,
       maxPolicies,
       evaluatedAt,
       dbClient,
@@ -168,6 +215,10 @@ export class NativeIntentReconciliationExecutionService {
       now: evaluatedAt,
       actorId,
       executionDeadlineAt,
+      policyWriteGuard: ({ client, policyId }) => this.lifecycleService.assertPolicyWriteEligible({
+        client,
+        policyId,
+      }),
     });
     const conversionSteps = toSafeConversionSteps(
       dryRun.conversionWorkflow,
@@ -199,10 +250,12 @@ export class NativeIntentReconciliationExecutionService {
     return {
       ...applyGate,
       reconciliationCandidates: mergeCandidates(
+        lifecyclePlan.heldCandidates,
         plan.ledgerCandidates,
         plan.selectedCandidates,
       ),
       reconciliationOutcomeOverrides: mergeOutcomeOverrides(
+        lifecyclePlan.outcomeOverrides,
         plan.outcomeOverrides,
         resolved.outcomeOverrides,
       ),
@@ -210,10 +263,12 @@ export class NativeIntentReconciliationExecutionService {
       reconciliationSelection: {
         selectedPolicyCount: plan.counts.selectedPolicyCount,
         deferredPolicyCount: plan.counts.deferredPolicyCount,
+        heldPolicyCount: lifecyclePlan.heldCandidates.length,
         quarantinedPolicyCount: plan.counts.quarantinedPolicyCount || 0,
         discoveredPolicyCount: safeCandidates.length,
         rawPayloadExposed: false,
       },
+      reconciliationLifecycle: executionEligibility,
       reconciliationState: statePersistence,
     };
   }

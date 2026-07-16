@@ -26,9 +26,10 @@ unchanged operator or runtime outcome.
 - **Bounded Native Intent Reconciliation** - Classifarr now schedules safe,
   server-owned native-intent conversion after application readiness and every
   ten minutes. A database advisory lock permits only one replica to run; each
-  run is capped by policy count and time, excludes already-native and reverted
-  policies, reuses transactional authority safeguards, and records a distinct
-  reconciliation actor without exposing raw policy payloads.
+  run is capped by policy count and time, excludes already-native policies and
+  respects active rollback holds, reuses transactional authority safeguards,
+  and records a distinct reconciliation actor without exposing raw policy
+  payloads.
 - **Native Intent Reconciliation Ledger** - automatic native-intent conversion
   now retains bounded, post-commit run and per-policy outcome evidence using
   safe state IDs, timestamps, policy references, and candidate fingerprints.
@@ -41,6 +42,13 @@ unchanged operator or runtime outcome.
   technical failures retry with bounded backoff, while unsupported policies
   remain visible without starving safe conversions. Routing and profile
   readiness remain separate from conversion eligibility.
+- **Rollback And Restore Reconciliation Safety** - a successful native-intent
+  rollback now creates a durable reconciliation hold in the same transaction,
+  preventing automatic reconversion until an administrator explicitly approves
+  re-entry. Backup restore closes reconciliation until schema and native
+  authority validation pass, preserves safe rollback history, and recalculates
+  retry scheduling from restored current state rather than resuming imported
+  work.
 - **Native Conversion And Automation Readiness Separation** - valid policies
   can now convert to native intent even when routing or profile freshness still
   needs work. Those automation blockers are reported separately, and unmapped

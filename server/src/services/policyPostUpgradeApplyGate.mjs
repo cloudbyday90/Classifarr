@@ -704,7 +704,15 @@ async function configureExecutionDeadline(client, deadlineAt) {
   );
 }
 
-async function applyReadyStep({ client, policy, step, auditContext, appliedAt, targetVersion }) {
+async function applyReadyStep({
+  client,
+  policy,
+  step,
+  auditContext,
+  appliedAt,
+  targetVersion,
+  policyWriteGuard = null,
+}) {
   const lockedPolicy = await lockPolicyNativeIntentAuthority(client, {
     policyId: policy.id,
     libraryId: policy.library_id,
@@ -713,6 +721,26 @@ async function applyReadyStep({ client, policy, step, auditContext, appliedAt, t
     const error = new Error(`Policy authority is unavailable for post-upgrade apply: ${policy.id}`);
     error.operatorErrorId = POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS.POLICY_AUTHORITY_UNAVAILABLE;
     throw error;
+  }
+
+  if (typeof policyWriteGuard === 'function') {
+    const guardResult = await policyWriteGuard({
+      client,
+      policyId: Number(policy.id),
+      auditContext,
+    });
+    if (guardResult?.allowed === false) {
+      return {
+        policyId: policy.id,
+        alreadyConverted: false,
+        skippedByReconciliationGuard: true,
+        guardReasonId: typeof guardResult.reasonId === 'string'
+          ? guardResult.reasonId
+          : 'rollback_reconciliation_hold',
+        rulesInserted: 0,
+        templateApplicationsInserted: 0,
+      };
+    }
   }
 
   const existingIntentId = await queryAlreadyConvertedIntent(client, policy.id, targetVersion);
@@ -808,6 +836,7 @@ async function applyPolicyPostUpgradeApplyGate({
   actorId = null,
   targetVersion = DEFAULT_TARGET_VERSION,
   executionDeadlineAt = null,
+  policyWriteGuard = null,
 } = {}) {
   const appliedAt = normalizeTimestamp(now);
   const gate = buildPolicyPostUpgradeApplyGate({
@@ -880,6 +909,7 @@ async function applyPolicyPostUpgradeApplyGate({
           auditContext,
           appliedAt,
           targetVersion,
+          policyWriteGuard,
         }));
       }
 
@@ -890,13 +920,21 @@ async function applyPolicyPostUpgradeApplyGate({
       ...gate,
       statusId: POLICY_POST_UPGRADE_APPLY_GATE_STATUS_IDS.APPLIED,
       applied: true,
-      appliedPolicyCount: results.filter(result => result.alreadyConverted !== true).length,
+      appliedPolicyCount: results.filter(result => (
+        result.alreadyConverted !== true && result.skippedByReconciliationGuard !== true
+      )).length,
       alreadyConvertedCount: results.filter(result => result.alreadyConverted === true).length,
       results,
       sideEffects: {
-        rollbackSnapshotsWritten: results.some(result => result.alreadyConverted !== true),
-        nativeRowsInserted: results.some(result => result.alreadyConverted !== true),
-        migrationEventsWritten: results.some(result => result.alreadyConverted !== true),
+        rollbackSnapshotsWritten: results.some(result => (
+          result.alreadyConverted !== true && result.skippedByReconciliationGuard !== true
+        )),
+        nativeRowsInserted: results.some(result => (
+          result.alreadyConverted !== true && result.skippedByReconciliationGuard !== true
+        )),
+        migrationEventsWritten: results.some(result => (
+          result.alreadyConverted !== true && result.skippedByReconciliationGuard !== true
+        )),
         legacyPathsDeleted: false,
         policyStorageMutated: false,
       },

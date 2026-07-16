@@ -15,6 +15,7 @@ import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const queryMock = jest.fn();
 const withTransactionMock = jest.fn(async work => work({ query: queryMock }));
 const applyPolicyNativeIntentReversionMock = jest.fn();
+const approvePolicyReentryMock = jest.fn();
 
 jest.unstable_mockModule('../config/database.mjs', () => ({
   query: queryMock,
@@ -38,6 +39,12 @@ jest.unstable_mockModule('../services/policyNativeIntentReversionService.mjs', (
     FAILED_ROLLED_BACK: 'failed_rolled_back',
   },
   applyPolicyNativeIntentReversion: applyPolicyNativeIntentReversionMock,
+}));
+
+jest.unstable_mockModule('../services/nativeIntentReconciliationLifecycleService.mjs', () => ({
+  nativeIntentReconciliationLifecycleService: {
+    approvePolicyReentry: approvePolicyReentryMock,
+  },
 }));
 
 const { router: policiesRouter } = await import('../routes/policies.mjs');
@@ -71,8 +78,15 @@ describe('Policy native intent reversion route', () => {
     queryMock.mockReset();
     withTransactionMock.mockReset();
     applyPolicyNativeIntentReversionMock.mockReset();
+    approvePolicyReentryMock.mockReset();
     withTransactionMock.mockImplementation(async work => work({ query: queryMock }));
     applyPolicyNativeIntentReversionMock.mockResolvedValue(successfulResult());
+    approvePolicyReentryMock.mockResolvedValue({
+      approved: true,
+      policyId: 44,
+      reasonId: 'reconciliation_reentry_approved',
+      rawPayloadExposed: false,
+    });
   });
 
   test('derives the operator authority on the server and returns a bounded success', async () => {
@@ -149,5 +163,39 @@ describe('Policy native intent reversion route', () => {
 
     expect(response.body.code).toBe('POLICY_NATIVE_INTENT_REVERSION_UNAVAILABLE');
     expect(JSON.stringify(response.body)).not.toContain('internal persistence detail');
+  });
+
+  test('derives re-entry authority on the server and does not trust client actor fields', async () => {
+    const response = await request(createApp())
+      .post('/api/policies/44/native-intent-reconciliation/reentry')
+      .send({
+        reason_code: 'operator_reviewed',
+        actor_source_id: 'maintainer_migration_tool',
+        actor_id: 999,
+      })
+      .expect(200);
+
+    expect(approvePolicyReentryMock).toHaveBeenCalledWith(expect.objectContaining({
+      policyId: '44',
+      action: {
+        actorSourceId: 'manual_operator',
+        actorId: 7,
+        reasonCode: 'operator_reviewed',
+      },
+    }));
+    expect(response.body).toEqual(expect.objectContaining({
+      approved: true,
+      policyId: 44,
+    }));
+  });
+
+  test('does not release a reconciliation hold for a non-administrator', async () => {
+    const response = await request(createApp({ id: 7, role: 'operator' }))
+      .post('/api/policies/44/native-intent-reconciliation/reentry')
+      .send({ reason_code: 'operator_reviewed' })
+      .expect(403);
+
+    expect(response.body.error).toBe('Admin access required');
+    expect(approvePolicyReentryMock).not.toHaveBeenCalled();
   });
 });

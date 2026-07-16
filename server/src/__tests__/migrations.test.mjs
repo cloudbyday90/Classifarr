@@ -310,11 +310,19 @@ describe('Schema snapshot freshness', () => {
             __dirname,
             '../../../database/migrations/20260715_140000_add_native_intent_reconciliation_state.sql'
         );
+        const reconciliationLifecycleMigrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260715_150000_add_native_intent_reconciliation_lifecycle_guards.sql'
+        );
         const migrationSql = fs.readFileSync(migrationPath, 'utf8');
         const integrityMigrationSql = fs.readFileSync(integrityMigrationPath, 'utf8');
         const retentionMigrationSql = fs.readFileSync(retentionMigrationPath, 'utf8');
         const reconciliationStateMigrationSql = fs.readFileSync(
             reconciliationStateMigrationPath,
+            'utf8'
+        );
+        const reconciliationLifecycleMigrationSql = fs.readFileSync(
+            reconciliationLifecycleMigrationPath,
             'utf8'
         );
         const policyIntents = getCreateTableBlock(schemaSql, 'policy_intents');
@@ -344,6 +352,14 @@ describe('Schema snapshot freshness', () => {
         const reconciliationStates = getCreateTableBlock(
             schemaSql,
             'policy_native_intent_reconciliation_states'
+        );
+        const reconciliationHolds = getCreateTableBlock(
+            schemaSql,
+            'policy_native_intent_reconciliation_holds'
+        );
+        const reconciliationRestoreGates = getCreateTableBlock(
+            schemaSql,
+            'policy_native_intent_reconciliation_restore_gates'
         );
 
         [
@@ -396,6 +412,12 @@ describe('Schema snapshot freshness', () => {
         expect(reconciliationStates).toContain('policy_native_intent_reconciliation_states_outcome_chk');
         expect(reconciliationStates).toContain('policy_native_intent_reconciliation_states_retry_state_chk');
         expect(reconciliationStates).toContain("'requires_maintenance'::character varying");
+        expect(reconciliationHolds).toContain('source_event_id bigint');
+        expect(reconciliationHolds).toContain('policy_native_intent_reconciliation_holds_release_shape_chk');
+        expect(reconciliationRestoreGates).toContain('gate_id smallint');
+        expect(reconciliationRestoreGates).toContain(
+            'policy_native_intent_reconciliation_restore_gates_state_chk'
+        );
         expect(integrityMigrationSql).toContain('LOCK TABLE policy_intents IN SHARE ROW EXCLUSIVE MODE');
         expect(integrityMigrationSql).toContain('active_intent_integrity_repaired');
         expect(integrityMigrationSql).toContain('CREATE UNIQUE INDEX idx_policy_intents_one_active_policy');
@@ -407,6 +429,12 @@ describe('Schema snapshot freshness', () => {
         expect(reconciliationStateMigrationSql).toContain(
             'CREATE INDEX IF NOT EXISTS idx_policy_native_intent_reconciliation_states_retry'
         );
+        expect(reconciliationLifecycleMigrationSql).toContain(
+            'CREATE TABLE IF NOT EXISTS policy_native_intent_reconciliation_holds'
+        );
+        expect(reconciliationLifecycleMigrationSql).toContain(
+            'CREATE TABLE IF NOT EXISTS policy_native_intent_reconciliation_restore_gates'
+        );
         expect(schemaSql).toContain('CREATE UNIQUE INDEX idx_policy_intents_one_active_policy');
         expect(schemaSql).not.toContain('CREATE UNIQUE INDEX idx_policy_intents_active_version');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_rules_values_gin');
@@ -417,6 +445,7 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_outcomes_policy');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_states_retry');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_states_outcome');
+        expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_holds_active');
     });
 
     test('current.sql includes the library rebuild rollback execution and replacement gates', () => {

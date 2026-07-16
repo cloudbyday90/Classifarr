@@ -5276,9 +5276,10 @@ Implementation outcome:
   bounded fingerprint-stable backoff. Execution-budget pressure also backs off,
   but never consumes or resets the technical-failure limit; only three matching
   technical failures escalate to policy-local `requires_maintenance`.
-- Backup, restore, generated schema, and ledger outcomes preserve the compact
-  state. Routing and profile freshness remain automation-readiness signals and
-  are excluded from conversion retry eligibility.
+- Backup retains compact state as historical evidence, but restore now discards
+  it as live scheduling control and derives a new state from current authority.
+  Routing and profile freshness remain automation-readiness signals and are
+  excluded from conversion retry eligibility.
 - Design and outcome record:
   [Native Intent Reconciliation Eligibility](native-intent-reconciliation-eligibility.md).
 
@@ -5305,11 +5306,32 @@ Tasks:
 
 Acceptance criteria:
 
-- A successful reversion remains reverted for its defined hold period.
+- A successful reversion remains reverted until explicit, attributable
+  administrator re-entry.
 - Restore cannot trigger conversion while source IDs, authority, or schema state
   are still being reconciled.
 - New native policies never receive an unnecessary rollback snapshot or
   conversion event.
+
+Implementation outcome:
+
+- `20260715_150000_add_native_intent_reconciliation_lifecycle_guards.sql`
+  adds one policy-local reversion hold and one singleton restore gate. Both
+  store only stable IDs, references, and timestamps; neither stores legacy
+  policy data or backup payloads.
+- Native-intent reversion persists its `rollback_applied` event and active hold
+  in one transaction. Reconciliation filters held policies before planning and
+  rechecks both the global restore gate and policy hold after acquiring the
+  existing authority lock, so discovery cannot race a later reversion.
+- Backup restore closes reconciliation before writes, restores history and
+  holds, discards retry scheduling state, validates schema and native authority
+  after commit, and only then reopens reconciliation. Any validation failure
+  leaves the gate closed for maintenance.
+- A protected administrator re-entry endpoint releases a hold only after the
+  server derives the authenticated actor, records a bounded audit event, and
+  confirms no active native authority exists.
+- Design and outcome record:
+  [Native Intent Reconciliation Lifecycle Guard](native-intent-reconciliation-lifecycle-guard.md).
 
 ##### 8R.3.2.5 Operational Circuit Breaker And Emergency Stop
 
@@ -5525,10 +5547,10 @@ Implementation status:
   ordinary policy reads and unrelated saves are blocked.
 - Post-window retention requires bulky payload deletion and keeps only minimal
   audit metadata needed for support/compliance.
-- Automatic reconciliation already excludes policies with a persisted
-  `rollback_applied` event. Task 8R.3.2.4 will define the explicit,
-  server-verified restore and re-entry conditions required before a reverted
-  policy may ever become an automatic candidate again.
+- Automatic reconciliation uses a durable, policy-local active hold rather
+  than a historical-event filter. The hold is written with `rollback_applied`,
+  restored or rehydrated from older backups, and released only through the
+  explicit server-verified administrator re-entry path.
 - Validation rejects missing restore sections, missing actor/reason data,
   unbounded snapshots, raw payload exposure, permanent alternate storage,
   ordinary read/write revert, missing retention policy, bulky payload retention

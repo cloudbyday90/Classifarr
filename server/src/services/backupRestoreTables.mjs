@@ -190,9 +190,8 @@ const POLICY_NATIVE_INTENT_RECONCILIATION_OUTCOME_ALLOWED_COLUMNS = [
   'retry_not_before', 'evaluated_at', 'created_at',
 ];
 
-const POLICY_NATIVE_INTENT_RECONCILIATION_STATE_ALLOWED_COLUMNS = [
-  'candidate_fingerprint', 'candidate_status_id', 'outcome_state', 'reason_id',
-  'retry_not_before', 'failure_count', 'evaluated_at', 'created_at', 'updated_at',
+const POLICY_NATIVE_INTENT_RECONCILIATION_HOLD_ALLOWED_COLUMNS = [
+  'hold_state', 'reason_id', 'held_at', 'released_at', 'release_reason_id', 'updated_at',
 ];
 
 function normalizeJsonbValue(value) {
@@ -333,6 +332,11 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     reconciliationRunsRestored: 0,
     reconciliationOutcomesRestored: 0,
     reconciliationStatesRestored: 0,
+    reconciliationStatesDiscarded: Array.isArray(nativeStorage.policyNativeIntentReconciliationStates)
+      ? nativeStorage.policyNativeIntentReconciliationStates.length
+      : 0,
+    reconciliationHoldsRestored: 0,
+    reconciliationHoldsRehydrated: 0,
   };
 
   stats.intentRulesRestored = await insertNativeChildRows({
@@ -373,6 +377,8 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     allowedColumns: POLICY_INTENT_TEMPLATE_APPLICATION_ALLOWED_COLUMNS,
   });
 
+  const migrationEventIdMap = new Map();
+  const rollbackEventsByPolicyId = new Map();
   for (const event of nativeStorage.policyIntentMigrationEvents || []) {
     const newPolicyId = policyIdMap.get(event.policy_id);
     if (!newPolicyId) continue;
@@ -386,13 +392,67 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     if (keys.length === 0) continue;
 
     const placeholders = keys.map((_, index) => `$${index + 3}`).join(', ');
-    await client.query(
+    const result = await client.query(
       `INSERT INTO policy_intent_migration_events (intent_id, policy_id, ${keys.join(', ')})
        VALUES ($1, $2, ${placeholders})
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT DO NOTHING
+       RETURNING id`,
       [newIntentId, newPolicyId, ...values]
     );
+    const restoredEventId = result.rows[0]?.id ?? null;
+    if (restoredEventId && event.id != null) {
+      migrationEventIdMap.set(event.id, restoredEventId);
+    }
+    if (event.event_type === 'rollback_applied' && restoredEventId) {
+      rollbackEventsByPolicyId.set(newPolicyId, restoredEventId);
+    }
     stats.migrationEventsRestored += 1;
+  }
+
+  const restoredHoldPolicyIds = new Set();
+  for (const hold of nativeStorage.policyNativeIntentReconciliationHolds || []) {
+    const restoredPolicyId = policyIdMap.get(hold.policy_id);
+    const sourceEventId = migrationEventIdMap.get(hold.source_event_id);
+    const releasedEventId = hold.released_event_id == null
+      ? null
+      : migrationEventIdMap.get(hold.released_event_id);
+    if (!restoredPolicyId || !sourceEventId) continue;
+    if (hold.hold_state === 'released' && !releasedEventId) continue;
+
+    const { keys, values } = buildAllowedColumnValues(
+      hold,
+      POLICY_NATIVE_INTENT_RECONCILIATION_HOLD_ALLOWED_COLUMNS,
+    );
+    const columnNames = ['policy_id', 'source_event_id', ...keys];
+    const parameters = [restoredPolicyId, sourceEventId, ...values];
+    if (releasedEventId) {
+      columnNames.push('released_event_id');
+      parameters.push(releasedEventId);
+    }
+    const placeholders = parameters.map((_, index) => `$${index + 1}`).join(', ');
+    await client.query(
+      `INSERT INTO policy_native_intent_reconciliation_holds (${columnNames.join(', ')})
+       VALUES (${placeholders})
+       ON CONFLICT (policy_id) DO NOTHING`,
+      parameters,
+    );
+    restoredHoldPolicyIds.add(restoredPolicyId);
+    stats.reconciliationHoldsRestored += 1;
+  }
+
+  // Older backups predate the holds table. A rollback event still represents a
+  // deliberate operator decision, so rehydrate its active hold fail-closed.
+  for (const [restoredPolicyId, sourceEventId] of rollbackEventsByPolicyId) {
+    if (restoredHoldPolicyIds.has(restoredPolicyId)) continue;
+    await client.query(
+      `INSERT INTO policy_native_intent_reconciliation_holds (
+         policy_id, source_event_id, hold_state, reason_id, held_at, updated_at
+       )
+       VALUES ($1, $2, 'active', 'rollback_applied', NOW(), NOW())
+       ON CONFLICT (policy_id) DO NOTHING`,
+      [restoredPolicyId, sourceEventId],
+    );
+    stats.reconciliationHoldsRehydrated += 1;
   }
 
   for (const snapshot of nativeStorage.policyIntentRollbackSnapshots || []) {
@@ -481,34 +541,6 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
       [restoredRunId, restoredPolicyId, ...values],
     );
     stats.reconciliationOutcomesRestored += 1;
-  }
-
-  for (const state of nativeStorage.policyNativeIntentReconciliationStates || []) {
-    const restoredPolicyId = policyIdMap.get(state.policy_id);
-    if (!restoredPolicyId) continue;
-
-    const { keys, values } = buildAllowedColumnValues(
-      state,
-      POLICY_NATIVE_INTENT_RECONCILIATION_STATE_ALLOWED_COLUMNS,
-    );
-    if (keys.length === 0) continue;
-
-    const placeholders = keys.map((_, index) => `$${index + 2}`).join(', ');
-    await client.query(
-      `INSERT INTO policy_native_intent_reconciliation_states (policy_id, ${keys.join(', ')})
-       VALUES ($1, ${placeholders})
-       ON CONFLICT (policy_id) DO UPDATE
-       SET candidate_fingerprint = EXCLUDED.candidate_fingerprint,
-           candidate_status_id = EXCLUDED.candidate_status_id,
-           outcome_state = EXCLUDED.outcome_state,
-           reason_id = EXCLUDED.reason_id,
-           retry_not_before = EXCLUDED.retry_not_before,
-           failure_count = EXCLUDED.failure_count,
-           evaluated_at = EXCLUDED.evaluated_at,
-           updated_at = EXCLUDED.updated_at`,
-      [restoredPolicyId, ...values],
-    );
-    stats.reconciliationStatesRestored += 1;
   }
 
   return stats;

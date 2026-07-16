@@ -3,6 +3,9 @@ import { classificationEvidenceService } from './classificationEvidenceService.m
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import { generateApiKey } from './apiKeyService.mjs';
 import {
+  resetNativeIntentReconciliationSchedulingState,
+} from './nativeIntentReconciliationLifecyclePersistence.mjs';
+import {
   restoreConfidenceSettings,
   restoreMediaServers,
   restoreRadarrConfigs,
@@ -29,8 +32,10 @@ import {
 const logger = createLogger('BackupRestore');
 
 export async function clearExistingConfig(client) {
+  await client.query('DELETE FROM policy_native_intent_reconciliation_states');
   await client.query('DELETE FROM policy_native_intent_reconciliation_outcomes');
   await client.query('DELETE FROM policy_native_intent_reconciliation_runs');
+  await client.query('DELETE FROM policy_native_intent_reconciliation_holds');
   await client.query('DELETE FROM policy_intent_validation_status');
   await client.query('DELETE FROM policy_library_rebuild_execution_gates');
   await client.query('DELETE FROM policy_intent_rollback_snapshots');
@@ -84,9 +89,13 @@ export async function restoreAllTables(client, backupData, mode) {
         backupData.data.policyNativeIntentReconciliationOutcomes,
       policyNativeIntentReconciliationStates:
         backupData.data.policyNativeIntentReconciliationStates,
+      policyNativeIntentReconciliationHolds:
+        backupData.data.policyNativeIntentReconciliationHolds,
     },
     { policyIdMap, libraryIdMap }
   );
+  const reconciliationSchedulingStatesDiscarded =
+    await resetNativeIntentReconciliationSchedulingState({ client });
   await restoreLibraryCustomRules(client, backupData.data.libraryCustomRules, libraryIdMap);
   await restoreLabelPresets(client, backupData.data.labelPresets);
   await restoreScheduledTasks(client, backupData.data.scheduledTasks, libraryIdMap);
@@ -128,6 +137,13 @@ export async function restoreAllTables(client, backupData, mode) {
         nativePolicyIntentStats.reconciliationOutcomesRestored,
       policyNativeIntentReconciliationStatesRestored:
         nativePolicyIntentStats.reconciliationStatesRestored,
+      policyNativeIntentReconciliationStatesDiscarded:
+        nativePolicyIntentStats.reconciliationStatesDiscarded +
+        reconciliationSchedulingStatesDiscarded,
+      policyNativeIntentReconciliationHoldsRestored:
+        nativePolicyIntentStats.reconciliationHoldsRestored,
+      policyNativeIntentReconciliationHoldsRehydrated:
+        nativePolicyIntentStats.reconciliationHoldsRehydrated,
       rulesRestored: backupData.data.libraryCustomRules?.length || 0,
       patternsRestored: backupData.data.learningPatterns?.length || 0,
       classificationEvidenceRestored: backupData.data.classificationEvidence?.length || 0

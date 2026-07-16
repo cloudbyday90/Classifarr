@@ -33,6 +33,7 @@ const NATIVE_INTENT_RECONCILIATION_REASON_IDS = Object.freeze({
   POLICY_INPUT_MISSING: 'policy_input_missing',
   CONVERSION_ACTION_INVALID: 'conversion_action_invalid',
   EXECUTION_BUDGET_EXHAUSTED: 'execution_budget_exhausted',
+  ROLLBACK_RECONCILIATION_HOLD: 'rollback_reconciliation_hold',
   APPLY_FAILED_ROLLED_BACK: 'apply_failed_rolled_back',
   SELECTED_CANDIDATE_NOT_APPLIED: 'selected_candidate_not_applied',
   RETRY_BACKOFF_ACTIVE: 'retry_backoff_active',
@@ -418,6 +419,17 @@ function buildNativeIntentReconciliationStateOutcome({
   const appliedResult = asArray(applyGate.results).find(result => (
     normalizePositiveInteger(result?.policyId) === normalizedCandidate.policyId
   ));
+  if (appliedResult?.skippedByReconciliationGuard === true) {
+    return buildTerminalDisposition({
+      candidate: normalizedCandidate,
+      outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.BLOCKED_CURRENT_STATE,
+      reasonId: normalizeSafeId(
+        appliedResult.guardReasonId,
+        NATIVE_INTENT_RECONCILIATION_REASON_IDS.ROLLBACK_RECONCILIATION_HOLD,
+      ),
+      evaluatedAt,
+    });
+  }
   if (appliedResult) {
     return {
       policyId: normalizedCandidate.policyId,

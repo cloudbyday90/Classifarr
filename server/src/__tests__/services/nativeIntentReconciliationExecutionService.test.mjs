@@ -15,6 +15,37 @@ import {
 } from '../../services/nativeIntentReconciliationExecutionService.mjs';
 
 describe('NativeIntentReconciliationExecutionService', () => {
+  test('stops before candidate discovery when a restore gate is not ready', async () => {
+    const lifecycleService = {
+      getExecutionEligibility: jest.fn().mockResolvedValue({
+        allowed: false,
+        gateState: 'restore_in_progress',
+        reasonId: 'restore_in_progress',
+      }),
+    };
+    const loadCandidateInputs = jest.fn();
+    const service = new NativeIntentReconciliationExecutionService({
+      dbClient: {},
+      lifecycleService,
+      loadCandidateInputs,
+      loggerInstance: { error: jest.fn() },
+    });
+
+    const result = await service.run({ dbClient: {} });
+
+    expect(loadCandidateInputs).not.toHaveBeenCalled();
+    expect(result).toEqual(expect.objectContaining({
+      statusId: 'deferred_by_reconciliation_lifecycle_guard',
+      reconciliationLifecycle: expect.objectContaining({
+        gateState: 'restore_in_progress',
+      }),
+      reconciliationSelection: expect.objectContaining({
+        discoveredPolicyCount: 0,
+        heldPolicyCount: 0,
+      }),
+    }));
+  });
+
   test('scans a bounded window, selects only due candidates, and keeps compact ledger input', async () => {
     const selectedCandidate = {
       policyId: 11,
@@ -68,9 +99,23 @@ describe('NativeIntentReconciliationExecutionService', () => {
       statusId: 'applied',
       results: [{ policyId: 11, alreadyConverted: false }],
     });
+    const lifecycleService = {
+      getExecutionEligibility: jest.fn().mockResolvedValue({
+        allowed: true,
+        gateState: 'ready',
+        reasonId: 'restore_verified',
+      }),
+      partitionCandidates: jest.fn().mockResolvedValue({
+        eligibleCandidates: [selectedCandidate],
+        heldCandidates: [],
+        outcomeOverrides: [],
+      }),
+      assertPolicyWriteEligible: jest.fn().mockResolvedValue({ allowed: true }),
+    };
     const service = new NativeIntentReconciliationExecutionService({
       dbClient: {},
       stateService,
+      lifecycleService,
       loggerInstance: { error: jest.fn() },
       loadCandidateInputs,
       buildCandidateReport,
@@ -88,7 +133,7 @@ describe('NativeIntentReconciliationExecutionService', () => {
     expect(loadCandidateInputs).toHaveBeenCalledWith(expect.objectContaining({
       maxPolicies: NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE,
       unconvertedOnly: true,
-      excludeRevertedPolicies: true,
+      excludeRevertedPolicies: false,
       prioritizeReconciliationEligibility: true,
     }));
     expect(stateService.plan).toHaveBeenCalledWith(expect.objectContaining({
@@ -106,9 +151,75 @@ describe('NativeIntentReconciliationExecutionService', () => {
     expect(result.reconciliationSelection).toEqual(expect.objectContaining({
       selectedPolicyCount: 1,
       deferredPolicyCount: 1,
+      heldPolicyCount: 0,
       quarantinedPolicyCount: 1,
       rawPayloadExposed: false,
     }));
     expect(JSON.stringify(result)).not.toContain('must not escape');
+  });
+
+  test('keeps a held policy out of planning and passes a final write guard to apply', async () => {
+    const heldCandidate = { policyId: 11, statusId: 'ready_to_convert', canConvert: true };
+    const eligibleCandidate = { policyId: 12, statusId: 'ready_to_convert', canConvert: true };
+    const lifecycleService = {
+      getExecutionEligibility: jest.fn().mockResolvedValue({ allowed: true, gateState: 'ready' }),
+      partitionCandidates: jest.fn().mockResolvedValue({
+        eligibleCandidates: [eligibleCandidate],
+        heldCandidates: [heldCandidate],
+        outcomeOverrides: [{
+          policyId: 11,
+          outcomeState: 'blocked_current_state',
+          reasonId: 'rollback_reconciliation_hold',
+          retryNotBefore: null,
+        }],
+      }),
+      assertPolicyWriteEligible: jest.fn().mockResolvedValue({ allowed: true }),
+    };
+    const stateService = {
+      plan: jest.fn().mockResolvedValue({
+        selectedCandidates: [eligibleCandidate],
+        selectedPolicyIds: [12],
+        ledgerCandidates: [eligibleCandidate],
+        outcomeOverrides: [],
+        persistedStates: [],
+        counts: { selectedPolicyCount: 1, deferredPolicyCount: 0, quarantinedPolicyCount: 0 },
+      }),
+      persist: jest.fn().mockResolvedValue({ statusId: 'persisted' }),
+      resolveApplyOutcomes: jest.fn().mockReturnValue({
+        outcomeOverrides: [],
+        stateUpserts: [],
+        stateDeletes: [],
+      }),
+    };
+    const applyGate = jest.fn().mockResolvedValue({ statusId: 'applied', results: [] });
+    const service = new NativeIntentReconciliationExecutionService({
+      dbClient: {},
+      lifecycleService,
+      stateService,
+      loggerInstance: { error: jest.fn() },
+      loadCandidateInputs: jest.fn().mockResolvedValue({
+        policies: [{ id: 11 }, { id: 12 }],
+        activeIntentIntegrityReport: {},
+      }),
+      buildCandidateReport: jest.fn().mockReturnValue({
+        candidates: [{ policyId: 11 }, { policyId: 12 }],
+      }),
+      buildDryRun: jest.fn().mockReturnValue({ conversionWorkflow: { steps: [] } }),
+      applyGate,
+    });
+
+    const result = await service.run({
+      dbClient: { withTransaction: jest.fn() },
+      now: '2026-07-15T15:00:00.000Z',
+    });
+
+    expect(stateService.plan).toHaveBeenCalledWith(expect.objectContaining({
+      candidates: [eligibleCandidate],
+    }));
+    expect(applyGate).toHaveBeenCalledWith(expect.objectContaining({
+      policyWriteGuard: expect.any(Function),
+    }));
+    expect(result.reconciliationCandidates.map(candidate => candidate.policyId)).toEqual([11, 12]);
+    expect(result.reconciliationSelection).toEqual(expect.objectContaining({ heldPolicyCount: 1 }));
   });
 });

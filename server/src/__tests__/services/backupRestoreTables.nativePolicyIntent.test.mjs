@@ -9,6 +9,9 @@ function createClient() {
       if (typeof sql === 'string' && sql.includes('INSERT INTO policy_intents')) {
         return { rows: [{ id: 501 }], rowCount: 1 };
       }
+      if (typeof sql === 'string' && sql.includes('INSERT INTO policy_intent_migration_events')) {
+        return { rows: [{ id: 601 }], rowCount: 1 };
+      }
       if (typeof sql === 'string' && sql.includes('SELECT id')) {
         return { rows: [{ id: 501 }], rowCount: 1 };
       }
@@ -146,7 +149,10 @@ describe('backupRestoreTables native policy intent restore', () => {
       validationStatusesRestored: 1,
       reconciliationRunsRestored: 1,
       reconciliationOutcomesRestored: 1,
-      reconciliationStatesRestored: 1,
+      reconciliationStatesRestored: 0,
+      reconciliationStatesDiscarded: 1,
+      reconciliationHoldsRestored: 0,
+      reconciliationHoldsRehydrated: 0,
     });
 
     expect(client.query).toHaveBeenCalledWith(
@@ -177,9 +183,9 @@ describe('backupRestoreTables native policy intent restore', () => {
       expect.stringContaining('INSERT INTO policy_native_intent_reconciliation_outcomes'),
       expect.arrayContaining([expect.any(Number), 110])
     );
-    expect(client.query).toHaveBeenCalledWith(
+    expect(client.query).not.toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO policy_native_intent_reconciliation_states'),
-      expect.arrayContaining([110, `sha256:${'b'.repeat(64)}`, 'system_failure'])
+      expect.anything(),
     );
   });
 
@@ -219,6 +225,89 @@ describe('backupRestoreTables native policy intent restore', () => {
     expect(result.intentsRestored).toBe(0);
     expect(result.intentRulesRestored).toBe(0);
     expect(client.query).not.toHaveBeenCalled();
+  });
+
+  test('restores explicit rollback holds and rehydrates a hold from legacy rollback events', async () => {
+    const client = createClient();
+    const result = await restoreNativePolicyIntentStorage(
+      client,
+      {
+        policyIntents: [{
+          id: 30,
+          policy_id: 10,
+          library_id: 20,
+          schema_version: 1,
+          intent_version: 1,
+          active: true,
+          source: 'native_intent',
+          inference_state: 'inferred',
+          validation_status: 'valid',
+        }],
+        policyIntentMigrationEvents: [{
+          id: 34,
+          intent_id: 30,
+          policy_id: 10,
+          event_type: 'rollback_applied',
+          actor_type: 'operator',
+          reason_code: 'operator_requested_reversion',
+        }],
+        policyNativeIntentReconciliationHolds: [{
+          policy_id: 10,
+          source_event_id: 34,
+          hold_state: 'active',
+          reason_id: 'rollback_applied',
+          held_at: '2026-07-15T12:00:00.000Z',
+        }],
+      },
+      {
+        policyIdMap: new Map([[10, 110]]),
+        libraryIdMap: new Map([[20, 220]]),
+      },
+    );
+
+    expect(result).toEqual(expect.objectContaining({
+      reconciliationHoldsRestored: 1,
+      reconciliationHoldsRehydrated: 0,
+    }));
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_native_intent_reconciliation_holds'),
+      expect.arrayContaining([110, 601, 'active', 'rollback_applied']),
+    );
+
+    const rehydratedClient = createClient();
+    const rehydrated = await restoreNativePolicyIntentStorage(
+      rehydratedClient,
+      {
+        policyIntents: [{
+          id: 30,
+          policy_id: 10,
+          library_id: 20,
+          schema_version: 1,
+          intent_version: 1,
+          active: true,
+          source: 'native_intent',
+          inference_state: 'inferred',
+          validation_status: 'valid',
+        }],
+        policyIntentMigrationEvents: [{
+          id: 34,
+          intent_id: 30,
+          policy_id: 10,
+          event_type: 'rollback_applied',
+          actor_type: 'operator',
+          reason_code: 'operator_requested_reversion',
+        }],
+      },
+      {
+        policyIdMap: new Map([[10, 110]]),
+        libraryIdMap: new Map([[20, 220]]),
+      },
+    );
+
+    expect(rehydrated).toEqual(expect.objectContaining({
+      reconciliationHoldsRestored: 0,
+      reconciliationHoldsRehydrated: 1,
+    }));
   });
 
   test('restores an expired redacted rollback marker without restoring its original payload', async () => {

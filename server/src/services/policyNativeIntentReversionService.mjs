@@ -30,6 +30,9 @@ import {
   markRollbackSnapshotRestored,
   reactivatePreviousNativeIntentForReversion,
 } from './policyNativeIntentReversionPersistence.mjs';
+import {
+  nativeIntentReconciliationLifecycleService,
+} from './nativeIntentReconciliationLifecycleService.mjs';
 
 
 async function applyPolicyNativeIntentReversion({
@@ -213,6 +216,16 @@ async function applyPolicyNativeIntentReversion({
       if (!eventId) {
         throw new Error('Native authority reversion event did not return an identifier.');
       }
+
+      // This is intentionally part of the same transaction as the reversion.
+      // A committed rollback must never leave a window for reconciliation to
+      // recreate native authority before the hold becomes visible.
+      await nativeIntentReconciliationLifecycleService.recordReversionHold({
+        client,
+        policyId: Number(policy.id),
+        sourceEventId: Number(eventId),
+        heldAt: restoredAt,
+      });
 
       return buildPolicyNativeIntentReversionResult({
         statusId: target.targetId === POLICY_NATIVE_INTENT_REVERSION_TARGET_IDS.PREVIOUS_NATIVE_INTENT

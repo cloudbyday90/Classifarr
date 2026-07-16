@@ -189,4 +189,25 @@ describe('nativeIntentReconciliationStateContract', () => {
       retryNotBefore: null,
     }));
   });
+
+  test('records a final transactional rollback hold as a non-retryable current-state blocker', () => {
+    const outcome = buildNativeIntentReconciliationStateOutcome({
+      candidate: readyCandidate(42),
+      applyGate: {
+        statusId: 'applied',
+        results: [{
+          policyId: 42,
+          skippedByReconciliationGuard: true,
+          guardReasonId: 'rollback_reconciliation_hold',
+        }],
+      },
+      evaluatedAt: '2026-07-15T12:00:00.000Z',
+    });
+
+    expect(outcome).toEqual(expect.objectContaining({
+      outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.BLOCKED_CURRENT_STATE,
+      reasonId: 'rollback_reconciliation_hold',
+      retryNotBefore: null,
+    }));
+  });
 });

@@ -135,9 +135,12 @@ State-write failure after a committed conversion is logged as the bounded
 `state_write` category and cannot relabel the conversion. The durable ledger
 records the corresponding safe outcome override after the apply result.
 
-Backups include state rows and restore them only after policy-ID mapping. A
-restore does not resume an in-progress run: the next scheduler pass evaluates
-the live candidate and fingerprint again.
+Backups may retain state rows for support evidence, but restore deliberately
+does not reinstate them as live scheduling controls. It discards imported and
+existing state rows after policy restoration, then a later scheduler pass
+derives eligibility from live authority and a new candidate fingerprint. The
+separate lifecycle guard keeps reconciliation closed until restore validation
+passes.
 
 ## Security And Edge Cases
 
@@ -148,7 +151,7 @@ the live candidate and fingerprint again.
 | Busy scheduler incorrectly quarantines healthy work | Execution-budget deferral backs off without incrementing or resetting technical failure count. |
 | Database serialization exposes internals | Apply gate reports only `transient_database`; exception text is omitted from results, state, and ledger. |
 | Repeated write failure thrashes conversion | Matching candidate state uses capped exponential backoff and promotes only technical failures after three attempts. |
-| Backup maps a state to the wrong policy | Restore maps each state through the restored policy ID and upserts by that mapped primary key. |
+| Backup maps an old retry to the wrong policy | Restore discards scheduling state and recalculates it from current restored authority. |
 | A state update falsely changes conversion outcome | State is a scheduling control plane; native authority and migration events remain transactionally authoritative. |
 
 ## Verification
@@ -167,5 +170,5 @@ the live candidate and fingerprint again.
 
 Automatic native-intent conversion now retries only current, eligible work and
 keeps unsupported or repeatedly failing policies visible without allowing them
-to starve unrelated ready policies. The next component is Phase 8R.3.2.4:
-reversion, restore, and new-policy interaction guards.
+to starve unrelated ready policies. Lifecycle guards now keep rollback and
+restore decisions outside this retry control plane.

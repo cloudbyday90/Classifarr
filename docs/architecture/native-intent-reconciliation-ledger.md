@@ -164,6 +164,6 @@ re-evaluates current policy state and fingerprint.
 
 Classifarr can explain whether an automatic reconciliation evaluation applied,
 deferred, blocked, requires maintenance, or rolled back a candidate without
-retaining raw legacy policy data. Current retry and quarantine semantics are
-implemented separately; the next component is Phase 8R.3.2.4: reversion,
-restore, and new-policy interaction guards.
+retaining raw legacy policy data. Retry, quarantine, and lifecycle guards are
+implemented separately, leaving the ledger as bounded support evidence rather
+than policy or scheduling authority.

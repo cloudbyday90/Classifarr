@@ -113,6 +113,10 @@ function createClient({
         return { rows: [{ id: 502 }], rowCount: 1 };
       }
 
+      if (statement.includes('INSERT INTO policy_native_intent_reconciliation_holds')) {
+        return { rows: [{ policy_id: 44 }], rowCount: 1 };
+      }
+
       return { rows: [], rowCount: 1 };
     }),
   };
@@ -169,6 +173,10 @@ describe('policyNativeIntentReversionService', () => {
     expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining("'rollback_applied'"),
       expect.arrayContaining([101, 44, 'operator', 7, 1, null, 'operator_requested_reversion'])
+    );
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_native_intent_reconciliation_holds'),
+      [44, 502, 'rollback_applied', NOW],
     );
     expect(client.query).not.toHaveBeenCalledWith(
       expect.stringContaining('UPDATE library_policies'),

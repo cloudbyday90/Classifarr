@@ -52,10 +52,40 @@ const db = mockDatabase;
 const classificationEvidenceService = mockClassificationEvidenceService;
 const classificationEvidenceRepository = mockClassificationEvidenceRepository;
 const { backupService } = await import('../services/backupService.mjs');
+const reconciliationLifecycle = {
+    beginBackupRestore: jest.fn(),
+    verifyRestoredDatabase: jest.fn(),
+    completeBackupRestore: jest.fn(),
+    failBackupRestore: jest.fn(),
+};
 
 describe('BackupService evidence integration', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        jest.restoreAllMocks();
+        db.query.mockReset();
+        db.pool.connect.mockReset();
+        db.withTransaction.mockClear();
+        classificationEvidenceService.listLegacyPatterns.mockReset();
+        classificationEvidenceService.purgeAllLegacyPatterns.mockReset();
+        classificationEvidenceService.restoreLegacyPattern.mockReset();
+        classificationEvidenceRepository.listAll.mockReset();
+        classificationEvidenceRepository.purgeAll.mockReset();
+        classificationEvidenceRepository.upsertEvidence.mockReset();
+        reconciliationLifecycle.beginBackupRestore.mockReset();
+        reconciliationLifecycle.verifyRestoredDatabase.mockReset();
+        reconciliationLifecycle.completeBackupRestore.mockReset();
+        reconciliationLifecycle.failBackupRestore.mockReset();
+        backupService.reconciliationLifecycle = reconciliationLifecycle;
+        reconciliationLifecycle.beginBackupRestore.mockResolvedValue({
+            started: true,
+            restoreToken: 'test-restore-token',
+        });
+        reconciliationLifecycle.verifyRestoredDatabase.mockResolvedValue({
+            verified: true,
+            reasonId: 'restore_verified',
+        });
+        reconciliationLifecycle.completeBackupRestore.mockResolvedValue({ completed: true });
+        reconciliationLifecycle.failBackupRestore.mockResolvedValue({ failed: true });
     });
 
     test('collectBackupData uses the evidence service for learned pattern export', async () => {
@@ -106,6 +136,17 @@ describe('BackupService evidence integration', () => {
 
         await backupService.restoreBackup('phase1.json', { mode: 'replace' });
 
+        expect(reconciliationLifecycle.beginBackupRestore).toHaveBeenCalledWith(expect.objectContaining({
+            dbClient: expect.objectContaining({ withTransaction: expect.any(Function) }),
+        }));
+        expect(reconciliationLifecycle.verifyRestoredDatabase).toHaveBeenCalledWith(expect.objectContaining({
+            dbClient: expect.objectContaining({ withTransaction: expect.any(Function) }),
+        }));
+        expect(reconciliationLifecycle.completeBackupRestore).toHaveBeenCalledWith(expect.objectContaining({
+            dbClient: expect.objectContaining({ withTransaction: expect.any(Function) }),
+            restoreToken: 'test-restore-token',
+        }));
+
         expect(classificationEvidenceService.purgeAllLegacyPatterns).toHaveBeenCalledWith({
             client,
             actor: 'backup_restore',
@@ -122,6 +163,31 @@ describe('BackupService evidence integration', () => {
         });
         expect(client.query).toHaveBeenCalledWith('COMMIT');
         expect(client.release).toHaveBeenCalled();
+    });
+
+    test('keeps reconciliation closed when post-restore authority verification fails', async () => {
+        const client = {
+            query: jest.fn().mockResolvedValue({ rows: [{ id: 1 }], rowCount: 1 }),
+            release: jest.fn(),
+        };
+        db.pool.connect.mockResolvedValue(client);
+        jest.spyOn(backupService, 'readBackup').mockResolvedValue({ version: '2.0', data: {} });
+        reconciliationLifecycle.verifyRestoredDatabase.mockResolvedValue({
+            verified: false,
+            reasonId: 'restore_validation_failed',
+        });
+        reconciliationLifecycle.completeBackupRestore.mockResolvedValue({
+            completed: false,
+            reasonId: 'restore_validation_failed',
+        });
+
+        await expect(backupService.restoreBackup('invalid-authority.json', { mode: 'merge' }))
+            .rejects.toThrow('native policy authority validation did not pass');
+
+        expect(reconciliationLifecycle.failBackupRestore).toHaveBeenCalledWith(expect.objectContaining({
+            dbClient: expect.objectContaining({ withTransaction: expect.any(Function) }),
+            restoreToken: 'test-restore-token',
+        }));
     });
 
     test('restoreBackup restores webhook secret_key and regenerates a valid-format admin API key', async () => {
