@@ -577,6 +577,29 @@ describe('SchedulerService', () => {
             await recurringRun;
         });
 
+        it('schedules one fresh lock-protected initial run after scheduler reinitialization', async () => {
+            jest.useFakeTimers();
+            mockDb.withSessionAdvisoryLock.mockImplementation(async (_key, handler) => {
+                await handler();
+                return true;
+            });
+            mockNativeIntentReconciliationService.run.mockResolvedValue({ statusId: 'evaluated' });
+
+            expect(scheduler.startNativeIntentReconciliation()).toBe(true);
+            scheduler.resetState();
+            expect(scheduler.startNativeIntentReconciliation()).toBe(true);
+
+            await jest.advanceTimersByTimeAsync(90_000);
+
+            expect(mockNodeCron.schedule).toHaveBeenCalledTimes(2);
+            expect(mockDb.withSessionAdvisoryLock).toHaveBeenCalledTimes(1);
+            expect(mockDb.withSessionAdvisoryLock).toHaveBeenCalledWith(
+                2008,
+                expect.any(Function),
+            );
+            expect(mockNativeIntentReconciliationService.run).toHaveBeenCalledTimes(1);
+        });
+
         it('cancels a pending initial reconciliation run during scheduler reset', async () => {
             jest.useFakeTimers();
             mockDb.withSessionAdvisoryLock.mockImplementation(async (_key, handler) => {

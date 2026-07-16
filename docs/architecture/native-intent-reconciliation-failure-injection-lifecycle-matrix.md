@@ -4,10 +4,12 @@
 
 In progress as Task 8R.3.2.7 of the policy-builder intent model roadmap.
 
-The first matrix slice, implemented on 2026-07-16, proves that a recurring
+The first two matrix slices, implemented on 2026-07-16, prove that a recurring
 native-intent reconciliation run and the delayed startup run cannot execute the
-same conversion concurrently. The remaining matrix work is deliberately kept
-as separate, focused test slices rather than one broad mock-heavy test.
+same conversion concurrently, and that a fresh scheduler and reconciliation
+state service recover safely after process reinitialization. The remaining
+matrix work is deliberately kept as separate, focused test slices rather than
+one broad mock-heavy test.
 
 ## Decision
 
@@ -97,6 +99,11 @@ restore a client preview, selection, confirmation, or apply path.
   the native reconciliation advisory lock, the delayed startup task fires
   while it is held, and the delayed task is skipped. The reconciliation service
   runs exactly once and the lock skip is logged.
+- Added restart-continuity tests proving scheduler reset cancels the old initial
+  timer and a reinitialized scheduler creates exactly one fresh, lock-protected
+  run. A freshly constructed state service reloads persisted retry state from
+  the database, defers the candidate until its retry time, and selects it once
+  that time has expired.
 - Confirmed existing focused tests already cover candidate fingerprint changes,
   retry backoff, mixed candidate batches, execution-budget deferral, authority
   locking, serialization failure, rollback guards, control disablement,
@@ -107,8 +114,6 @@ restore a client preview, selection, confirmation, or apply path.
 
 ## Remaining Matrix Slices
 
-- Process-restart continuity for pending initial execution and persisted retry
-  state.
 - Database failure after rollback-snapshot creation using a transaction-aware
   failure injection that proves rollback evidence remains truthful.
 - Docker-backed integration proving a ready legacy policy converts through the

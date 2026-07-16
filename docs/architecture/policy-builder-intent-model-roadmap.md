@@ -5444,13 +5444,15 @@ Acceptance criteria:
 Intent: prove the reconciler behaves safely across the operational states that
 manual dialog testing cannot cover.
 
-Progress: the scheduler collision slice is complete. It proves that a recurring
-reconciliation run holding the native-intent advisory lock causes the delayed
-startup run to skip, rather than duplicate conversion. The design and outcome
-record is [Native Intent Reconciliation Failure-Injection And Lifecycle
-Matrix](native-intent-reconciliation-failure-injection-lifecycle-matrix.md).
-This task remains in progress until the remaining process-restart,
-transaction-failure, and real-database scheduler coverage is complete.
+Progress: scheduler collision and restart-continuity slices are complete. They
+prove that a recurring reconciliation run holding the native-intent advisory
+lock causes the delayed startup run to skip, rather than duplicate conversion;
+and that scheduler reinitialization creates one fresh initial run while a fresh
+state service reloads persisted retry backoff before selecting a candidate. The
+design and outcome record is [Native Intent Reconciliation Failure-Injection
+And Lifecycle Matrix](native-intent-reconciliation-failure-injection-lifecycle-matrix.md).
+This task remains in progress until the remaining transaction-failure and
+real-database scheduler coverage is complete.
 
 Tasks:
 

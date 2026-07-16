@@ -12,6 +12,9 @@ import { jest } from '@jest/globals';
 import {
   NativeIntentReconciliationStateService,
 } from '../../services/nativeIntentReconciliationStateService.mjs';
+import {
+  normalizeCandidate,
+} from '../../services/nativeIntentReconciliationStateContract.mjs';
 
 describe('NativeIntentReconciliationStateService', () => {
   test('plans from compact candidates and persists only stable state fields', async () => {
@@ -89,6 +92,63 @@ describe('NativeIntentReconciliationStateService', () => {
     expect(runDb.withTransaction).toHaveBeenCalled();
     expect(defaultDb.query).not.toHaveBeenCalled();
     expect(defaultDb.withTransaction).not.toHaveBeenCalled();
+  });
+
+  test('honors a persisted retry backoff after a fresh service instance restarts', async () => {
+    const candidate = {
+      policyId: 12,
+      statusId: 'ready_to_convert',
+      canConvert: true,
+      reasonIds: ['ready_to_convert'],
+      intentContract: {
+        schemaVersion: 1,
+        source: 'legacy_inference',
+        inferenceState: 'complete',
+        valid: true,
+        errorCount: 0,
+        warningCount: 0,
+        unsupportedSignalCount: 0,
+      },
+    };
+    const retryState = {
+      policy_id: 12,
+      candidate_fingerprint: normalizeCandidate(candidate).candidateFingerprint,
+      candidate_status_id: 'ready_to_convert',
+      outcome_state: 'system_failure',
+      reason_id: 'apply_failed_rolled_back',
+      retry_not_before: '2026-07-16T12:10:00.000Z',
+      failure_count: 1,
+      evaluated_at: '2026-07-16T12:00:00.000Z',
+    };
+    const loadStates = jest.fn().mockResolvedValue([retryState]);
+    const restartedDb = { query: jest.fn() };
+    const restartedService = new NativeIntentReconciliationStateService({
+      db: restartedDb,
+      loadStates,
+      loggerInstance: { info: jest.fn() },
+    });
+
+    const duringBackoff = await restartedService.plan({
+      candidates: [candidate],
+      maxPolicies: 1,
+      evaluatedAt: '2026-07-16T12:05:00.000Z',
+      dbClient: restartedDb,
+    });
+    const afterBackoff = await restartedService.plan({
+      candidates: [candidate],
+      maxPolicies: 1,
+      evaluatedAt: '2026-07-16T12:11:00.000Z',
+      dbClient: restartedDb,
+    });
+
+    expect(loadStates).toHaveBeenCalledTimes(2);
+    expect(loadStates).toHaveBeenCalledWith(expect.objectContaining({
+      policyIds: [12],
+    }));
+    expect(duringBackoff.selectedPolicyIds).toEqual([]);
+    expect(duringBackoff.deferredPolicyIds).toEqual([12]);
+    expect(afterBackoff.selectedPolicyIds).toEqual([12]);
+    expect(afterBackoff.deferredPolicyIds).toEqual([]);
   });
 
   test('clears current retry state after an idempotent successful conversion', () => {
