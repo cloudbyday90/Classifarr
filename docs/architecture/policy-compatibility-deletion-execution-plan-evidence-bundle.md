@@ -196,6 +196,11 @@ privileged database access that can read the required policy inventory; later
 approval and controlled file-application steps remain separate, named-actor
 operations.
 
+For embedded PostgreSQL deployments, use the provenance-bound helper described
+in [Policy Compatibility Deletion Evidence Maintenance Runner](policy-compatibility-deletion-evidence-maintenance-runner.md).
+It reaches only the existing loopback listener through a constrained ephemeral
+container and does not broaden the production application boundary.
+
 ## Next Step
 
 Proceed with the existing **Compatibility Path Deletion Execution Gate**. It

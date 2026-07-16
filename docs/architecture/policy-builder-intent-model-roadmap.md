@@ -6326,6 +6326,18 @@ Implementation status:
   resource on every branch. Focused tests cover malformed input, blocked
   readiness, loader and output failures, and cleanup failure without a live
   database.
+- **8R.15a.2 Provenance-Bound Embedded Maintenance Runner** - completed a
+  noninteractive, read-only collector for embedded PostgreSQL deployments.
+  It requires a clean reviewed checkout, a running explicitly named container,
+  and a full OCI image revision matching the checkout before it starts a
+  short-lived helper. The helper shares only the target network namespace,
+  receives no Docker socket or application data, mounts source read-only, can
+  write only a new `.tmp` evidence output, drops capabilities, prevents
+  privilege escalation, and sets PostgreSQL default transactions read-only.
+  Unknown, mutable, mismatched, or local images without revision provenance
+  block before database contact. Ready evidence still requires the existing
+  execution-plan and named-actor execution gate. The design and outcome record
+  is [Policy Compatibility Deletion Evidence Maintenance Runner](policy-compatibility-deletion-evidence-maintenance-runner.md).
 
 ### 8R.16 Compatibility Path Deletion Execution Gate
 

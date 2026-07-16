@@ -229,6 +229,12 @@ unchanged operator or runtime outcome.
   command now validates its public input before collection, returns stable
   collected, blocked, or input/output outcomes, redacts dependency failures,
   and reliably closes database resources without changing deletion behavior.
+- **Provenance-Bound Embedded Evidence Collection** - embedded-database
+  deployments can now collect current compatibility-deletion evidence through a
+  noninteractive, revision-matched, read-only helper. The helper has no Docker
+  socket or application-data mount, writes only its requested temporary
+  evidence output, and blocks before database contact when checkout or image
+  provenance is unsafe. Approval and removal remain separate controlled steps.
 - **Evidence-Bound Compatibility Deletion Gate** - controlled compatibility
   removal now requires a current, fingerprint-valid execution-plan artifact and
   timestamped preflight evidence bound to that exact artifact. Stale, detached,
