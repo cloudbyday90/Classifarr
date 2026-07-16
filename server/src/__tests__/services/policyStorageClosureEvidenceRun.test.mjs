@@ -116,7 +116,7 @@ describe('policyStorageClosureEvidenceRun', () => {
     }));
   });
 
-  test('requires discrete authority, semantic eligibility, reversion, and retention components', () => {
+  test('requires discrete authority, initial-establishment, reversion, and retention components', () => {
     const components = new Map(POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
       .map(component => [component.componentId, component]));
 
@@ -138,6 +138,28 @@ describe('policyStorageClosureEvidenceRun', () => {
         testPaths: expect.arrayContaining([
           'server/src/__tests__/services/policyNativeIntentAuthorityEligibility.test.mjs',
           'server/src/__tests__/integration/policyEngine.test.mjs',
+        ]),
+      })
+    );
+    expect(components.get('initial_native_intent_establishment')).toEqual(
+      expect.objectContaining({
+        label: 'Initial Native Intent Establishment',
+        designDocPaths: expect.arrayContaining([
+          'docs/architecture/native-policy-initial-establishment-triage.md',
+          'docs/architecture/native-policy-initial-establishment-transition.md',
+          'docs/architecture/native-policy-initial-establishment-readiness.md',
+        ]),
+        contractPaths: expect.arrayContaining([
+          'server/src/services/policyIntentMigrationCandidateReport.mjs',
+          'server/src/services/policyInitialIntentEstablishmentService.mjs',
+          'server/src/services/policyInitialIntentEstablishmentReadinessService.mjs',
+          'database/migrations/20260716_050000_add_policy_initial_intent_establishments.sql',
+          'database/schema/current.sql',
+        ]),
+        testPaths: expect.arrayContaining([
+          'server/src/__tests__/services/policyInitialIntentEstablishmentService.test.mjs',
+          'server/src/__tests__/services/policyInitialIntentEstablishmentReadinessService.test.mjs',
+          'server/src/__tests__/integration/policy-initial-intent-establishment-readiness.test.mjs',
         ]),
       })
     );

@@ -5587,7 +5587,7 @@ Implementation status:
   constraints. The design and outcome record is [Policy Native Intent Semantic
   Authority Integrity](policy-native-intent-semantic-authority-integrity.md).
 
-##### 8R.3.2.10 Initial Policy Establishment Triage
+##### 8R.3.2.10 Initial Native Intent Establishment
 
 Intent: distinguish a destination with no legacy policy configuration from a
 legacy policy that cannot safely convert, without treating observed library
@@ -5637,6 +5637,13 @@ Implementation status:
   routing configuration, observed library data, metadata, RAG, or AI output.
   The design and outcome record is [Native Policy Initial-Establishment
   Readiness](native-policy-initial-establishment-readiness.md).
+- Task 8R.3.2.10.4 is implemented as a closure-evidence boundary. It requires
+  the read-only triage, the explicit transactional first-establishment path,
+  and the read-only readiness/recovery model together with their migration,
+  current schema, route, service, and focused-test evidence. Conversion
+  workflow evidence cannot stand in for the distinct first-authority boundary.
+  The design and outcome record is [Initial Native Intent Establishment Closure
+  Evidence](policy-initial-establishment-closure-evidence.md).
 - **Initial-establishment triage is complete.** Select subsequent work from
   the remaining 8R runtime-authority and production-cutover acceptance
   criteria; do not add a routine editor around first establishment.
@@ -7936,6 +7943,10 @@ Implement Phase 8R in this order:
      active native authority is ambiguous.
 3. **8R.3 Explicit Conversion Workflow**
    Converts selected policies with validation and rollback snapshots.
+   - **Initial Native Intent Establishment** handles a destination with no
+     legacy configuration through read-only triage, one explicit
+     administrator-declared transaction, and bounded readiness/recovery
+     evidence; it never derives authority from library observations or AI.
 4. **8R.4 Native Runtime Read Path**
    Makes converted policies run from native intent.
    - **Runtime Authority Selection Integrity** makes duplicate active native

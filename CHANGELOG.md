@@ -35,6 +35,11 @@ unchanged operator or runtime outcome.
   idempotency material, actors, rollback payloads, routing paths, library
   observations, metadata, RAG, or AI output, and it cannot start automation.
 
+- **First Native-Intent Establishment Assurance** - storage closure evidence
+  now independently requires initial-establishment triage, the explicit
+  transactional authority transition, and bounded readiness/recovery proof.
+  Legacy-conversion evidence cannot mask a missing first-authority safeguard.
+
 - **Initial Native Policy Establishment Triage** - reconciliation now separates
   destinations with no legacy preset configuration from malformed or
   purpose-less legacy policies. Empty destinations are recorded as bounded

@@ -154,6 +154,10 @@ Implemented:
 - Updated the closure validation command set to include the renamed storage
   closure current audit, its fingerprint/replay integrity suite, and closure
   requirement audit suites.
+- Updated the fixed focused and Markdown validation manifests to require the
+  initial-establishment triage, transaction, readiness/recovery, route,
+  integration, and closure-evidence records independently from legacy
+  conversion coverage.
 - Added the current-closure artifact-integrity design record to the fixed
   markdown validation manifest.
 - Added v2 fingerprint and pure replay services. The completion checkpoint and

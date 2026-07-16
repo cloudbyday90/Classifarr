@@ -62,6 +62,11 @@ describe('policyStorageClosureValidationEvidence', () => {
       .toContain('policyControlledCompatibilityRemovalBatchArtifact');
     expect(evidence.focused.command).toContain('policyActiveIntentIntegrity');
     expect(evidence.focused.command).toContain('policyCandidateAuthorityEligibility');
+    expect(evidence.focused.command).toContain('policyIntentMigrationCandidateReport');
+    expect(evidence.focused.command).toContain('nativeIntentReconciliationStateContract');
+    expect(evidence.focused.command).toContain('policyInitialIntentEstablishment');
+    expect(evidence.focused.command).toContain('policies-initial-intent-establishment');
+    expect(evidence.focused.command).toContain('policy-initial-intent-establishment-readiness');
     expect(evidence.focused.command).toContain('policyNativeIntentAuthority');
     expect(evidence.focused.command).toContain('policyNativeIntentReversion');
     expect(evidence.focused.command).toContain('policyRollbackSnapshotRetention');
@@ -80,6 +85,14 @@ describe('policyStorageClosureValidationEvidence', () => {
       .toContain('policy-storage-current-closure-audit-artifact-integrity.md');
     expect(evidence.markdown.command)
       .toContain('policy-storage-completion-status-audit.md');
+    expect(evidence.markdown.command)
+      .toContain('native-policy-initial-establishment-triage.md');
+    expect(evidence.markdown.command)
+      .toContain('native-policy-initial-establishment-transition.md');
+    expect(evidence.markdown.command)
+      .toContain('native-policy-initial-establishment-readiness.md');
+    expect(evidence.markdown.command)
+      .toContain('policy-initial-establishment-closure-evidence.md');
     expect(evidence.markdown.command)
       .toContain('policy-compatibility-deletion-execution-plan-artifact.md');
     expect(evidence.markdown.command)

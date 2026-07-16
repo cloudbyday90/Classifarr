@@ -74,6 +74,10 @@ const POLICY_STORAGE_COMPLETION_COMPONENTS = Object.freeze([
     label: 'Explicit Conversion Workflow',
   },
   {
+    componentId: 'initial_native_intent_establishment',
+    label: 'Initial Native Intent Establishment',
+  },
+  {
     componentId: 'native_runtime_read_path',
     label: 'Native Runtime Read Path',
   },
