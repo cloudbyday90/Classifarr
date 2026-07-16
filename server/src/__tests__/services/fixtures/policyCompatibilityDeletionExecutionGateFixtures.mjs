@@ -27,9 +27,14 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_VERSION,
 } from '../../../services/policyCompatibilityDeletionExecutionPlanEvidenceBundle.mjs';
+import {
+  buildPolicyCompatibilityDeletionPreflightEvidenceArtifact,
+} from '../../../services/policyCompatibilityDeletionPreflightEvidenceArtifact.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME =
   '2026-07-14T20:00:00.000Z';
+const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_SOURCE_REVISION =
+  '0123456789abcdef0123456789abcdef01234567';
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -96,7 +101,41 @@ function buildReadyExecutionPlanArtifact({
   };
 }
 
-function buildReadyExecutionGatePreflightEvidence({
+function buildReadyExecutionGatePreflightEvidenceArtifact({
+  executionPlanArtifact,
+  observedAt = POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+  overrides = {},
+} = {}) {
+  const value = asObject(overrides);
+  const manifestEntries = Array.isArray(executionPlanArtifact?.executionPlan?.manifest?.entries)
+    ? executionPlanArtifact.executionPlan.manifest.entries
+    : [];
+
+  return buildPolicyCompatibilityDeletionPreflightEvidenceArtifact({
+    artifactObservation: {
+      artifactPath: '.artifacts/execution-plan-artifact.json',
+      statusId: 'observed',
+      ...asObject(value.artifactObservation),
+    },
+    checkoutObservation: {
+      clean: true,
+      sourceRevision: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_SOURCE_REVISION,
+      statusId: 'observed',
+      ...asObject(value.checkoutObservation),
+    },
+    executionPlanArtifact,
+    generatedAt: observedAt,
+    manifestObservations: value.manifestObservations || manifestEntries.map((entry, index) => ({
+      index,
+      path: entry.path,
+      statusId: 'observed',
+    })),
+    now: observedAt,
+    sideEffects: value.sideEffects,
+  });
+}
+
+function buildReadyExecutionGateOperatorEvidence({
   executionPlanArtifact,
   observedAt = POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
   overrides = {},
@@ -105,11 +144,6 @@ function buildReadyExecutionGatePreflightEvidence({
   const base = {
     executionPlanArtifactFingerprint:
       executionPlanArtifact?.artifactFingerprint?.fingerprint || null,
-    worktree: {
-      clean: true,
-      observedAt,
-      checkedBy: 'policy-maintainer',
-    },
     recovery: {
       backupRestoreVerified: true,
       verifiedAt: observedAt,
@@ -126,26 +160,21 @@ function buildReadyExecutionGatePreflightEvidence({
       confirmedAt: observedAt,
       confirmedBy: 'policy-maintainer',
     },
-    manifest: {
-      matchesExecutionPlan: true,
-      verifiedAt: observedAt,
-      verifiedBy: 'policy-maintainer',
-    },
   };
 
   return {
     ...base,
     ...value,
-    worktree: { ...base.worktree, ...asObject(value.worktree) },
     recovery: { ...base.recovery, ...asObject(value.recovery) },
     approval: { ...base.approval, ...asObject(value.approval) },
     stances: { ...base.stances, ...asObject(value.stances) },
-    manifest: { ...base.manifest, ...asObject(value.manifest) },
   };
 }
 
 export {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
-  buildReadyExecutionGatePreflightEvidence,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_SOURCE_REVISION,
+  buildReadyExecutionGateOperatorEvidence,
+  buildReadyExecutionGatePreflightEvidenceArtifact,
   buildReadyExecutionPlanArtifact,
 };

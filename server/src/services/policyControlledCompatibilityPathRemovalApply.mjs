@@ -117,7 +117,8 @@ function evaluateReviewExecutionContext(review = {}) {
 
   const revalidatedGate = buildPolicyCompatibilityDeletionExecutionGate({
     executionPlanArtifact,
-    preflightEvidence: executionGate.preflightEvidence,
+    operatorEvidence: executionGate.operatorEvidence,
+    preflightEvidenceArtifact: executionGate.preflightEvidenceArtifact,
     generatedAt: executionGate.generatedAt,
     now: executionGate.generatedAt,
   });
@@ -132,7 +133,7 @@ function evaluateReviewExecutionContext(review = {}) {
     risks.push(buildRisk(
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
         .REVIEW_EXECUTION_GATE_REVALIDATION_FAILED,
-      'Controlled compatibility path removal apply requires preflight evidence that still rebuilds a ready execution gate.',
+      'Controlled compatibility path removal apply requires collector and operator evidence that still rebuild a ready execution gate.',
       { statusId: revalidatedGate.statusId || null }
     ));
   }

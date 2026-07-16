@@ -24,7 +24,8 @@ import {
 } from '../../services/policyCompatibilityDeletionExecutionGate.mjs';
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
-  buildReadyExecutionGatePreflightEvidence,
+  buildReadyExecutionGateOperatorEvidence,
+  buildReadyExecutionGatePreflightEvidenceArtifact,
   buildReadyExecutionPlanArtifact,
 } from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 import {
@@ -185,14 +186,19 @@ function readyExecutionPlanArtifact(executionPlan = readyExecutionPlan()) {
 }
 
 function readyGate(executionPlanArtifact, {
-  preflightOverrides = {},
+  operatorEvidenceOverrides = {},
+  preflightEvidenceArtifactOverrides = {},
   ...overrides
 } = {}) {
   return buildPolicyCompatibilityDeletionExecutionGate({
     executionPlanArtifact,
-    preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+    operatorEvidence: buildReadyExecutionGateOperatorEvidence({
       executionPlanArtifact,
-      overrides: preflightOverrides,
+      overrides: operatorEvidenceOverrides,
+    }),
+    preflightEvidenceArtifact: buildReadyExecutionGatePreflightEvidenceArtifact({
+      executionPlanArtifact,
+      overrides: preflightEvidenceArtifactOverrides,
     }),
     generatedAt: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
     now: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,

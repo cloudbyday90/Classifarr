@@ -18,13 +18,13 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
-- **Compatibility Deletion Preflight Evidence Collection** - added a
-  non-destructive command that independently records the reviewed checkout,
-  approved execution-plan fingerprint, manifest-path continuity, and current
-  runtime-evidence reference before compatibility cleanup. Dirty checkouts,
-  stale or malformed artifacts, unsafe or missing manifest paths, output-path
-  escapes, and caller-controlled timestamps fail closed; recovery proof and
-  human approval remain separate final gate requirements.
+- **Compatibility Deletion Evidence Attestation** - compatibility cleanup now
+  independently collects and then revalidates the reviewed checkout, approved
+  execution-plan fingerprint, manifest-path continuity, and runtime-evidence
+  reference before batch assembly. Dirty, stale, altered, cross-plan,
+  post-observation, duplicate, unsafe, or missing evidence fails closed;
+  recovery proof, approval, rollback, and support decisions remain separately
+  attributable human gate requirements.
 
 - **Native Policy Engine Authority** - converted policies now classify from
   persisted native intent rather than retained legacy presets or

@@ -58,7 +58,8 @@ function buildGateFromInput({
 
   return buildPolicyCompatibilityDeletionExecutionGate({
     executionPlanArtifact,
-    preflightEvidence: evidence.preflightEvidence,
+    operatorEvidence: evidence.operatorEvidence,
+    preflightEvidenceArtifact: evidence.preflightEvidenceArtifact,
     generatedAt,
     now,
   });

@@ -18,7 +18,7 @@
 
 import {
   DEFAULT_MAX_EXECUTION_ARTIFACT_AGE_MS,
-} from './policyCompatibilityDeletionExecutionGate.mjs';
+} from './policyCompatibilityDeletionExecutionGateShared.mjs';
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION,

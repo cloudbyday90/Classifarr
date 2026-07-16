@@ -32,9 +32,25 @@ import {
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
+import {
+  POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS,
+  evaluatePolicyCompatibilityDeletionPreflightAttestation,
+} from './policyCompatibilityDeletionPreflightAttestation.mjs';
+import {
+  DEFAULT_MAX_EXECUTION_ARTIFACT_AGE_MS,
+  MAX_ARTIFACT_EVIDENCE_DELAY_MS,
+  MAX_FUTURE_TIMESTAMP_SKEW_MS,
+  asArray,
+  asObject,
+  buildRisk,
+  normalizeFingerprint,
+  normalizeMaximumAge,
+  parseTimestamp,
+  resolveTimestamp,
+} from './policyCompatibilityDeletionExecutionGateShared.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_VERSION =
-  'policy.compatibility_deletion_execution_gate.v2';
+  'policy.compatibility_deletion_execution_gate.v3';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS = Object.freeze({
   READY_FOR_CONTROLLED_DELETION: 'ready_for_controlled_deletion',
@@ -57,11 +73,13 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS = Object.freeze({
     'execution_plan_artifact_timestamp_stale',
   EXECUTION_PLAN_ARTIFACT_EVIDENCE_MISMATCH:
     'execution_plan_artifact_evidence_mismatch',
-  PREFLIGHT_EVIDENCE_MISSING: 'preflight_evidence_missing',
-  PREFLIGHT_ARTIFACT_FINGERPRINT_MISSING:
-    'preflight_artifact_fingerprint_missing',
-  PREFLIGHT_ARTIFACT_FINGERPRINT_MISMATCH:
-    'preflight_artifact_fingerprint_mismatch',
+  OPERATOR_EVIDENCE_MISSING: 'operator_evidence_missing',
+  OPERATOR_EVIDENCE_ARTIFACT_FINGERPRINT_MISSING:
+    'operator_evidence_artifact_fingerprint_missing',
+  OPERATOR_EVIDENCE_ARTIFACT_FINGERPRINT_MISMATCH:
+    'operator_evidence_artifact_fingerprint_mismatch',
+  OPERATOR_EVIDENCE_MACHINE_CLAIMS_UNSUPPORTED:
+    'operator_evidence_machine_claims_unsupported',
   PREFLIGHT_TIMESTAMP_MISSING: 'preflight_timestamp_missing',
   PREFLIGHT_TIMESTAMP_INVALID: 'preflight_timestamp_invalid',
   PREFLIGHT_TIMESTAMP_STALE: 'preflight_timestamp_stale',
@@ -72,6 +90,7 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS = Object.freeze({
   EXECUTION_GATE_TIMESTAMP_INVALID: 'execution_gate_timestamp_invalid',
   EXECUTION_GATE_EVIDENCE_RISK_MISMATCH: 'execution_gate_evidence_risk_mismatch',
   EXECUTION_GATE_STATUS_MISMATCH: 'execution_gate_status_mismatch',
+  PREFLIGHT_ATTESTATION_MISMATCH: 'preflight_attestation_mismatch',
   EXECUTION_POLICY_MISMATCH: 'execution_policy_mismatch',
   NEXT_STEP_MISMATCH: 'next_step_mismatch',
   WORKTREE_NOT_CLEAN: 'worktree_not_clean',
@@ -85,57 +104,6 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS = Object.freeze({
   ALLOW_STATE_MISMATCH: 'allow_state_mismatch',
   UNKNOWN_STATUS: 'unknown_status',
 });
-
-const DEFAULT_MAX_EXECUTION_ARTIFACT_AGE_MS = 5 * 60 * 1000;
-const MAX_ARTIFACT_EVIDENCE_DELAY_MS = 30 * 1000;
-const MAX_FUTURE_TIMESTAMP_SKEW_MS = 1000;
-
-function asArray(value) {
-  return Array.isArray(value) ? value : [];
-}
-
-function asObject(value) {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-}
-
-function buildRisk(riskId, message, metadata = {}) {
-  return { riskId, message, ...metadata };
-}
-
-function parseTimestamp(value) {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return { value: value.toISOString(), timestampMs: value.getTime() };
-  }
-
-  if (typeof value !== 'string' || !value.trim()) return null;
-
-  const timestampMs = Date.parse(value);
-  if (Number.isNaN(timestampMs)) return null;
-
-  return { value: value.trim(), timestampMs };
-}
-
-function resolveTimestamp(value) {
-  return parseTimestamp(value) || { value: new Date().toISOString(), timestampMs: Date.now() };
-}
-
-function normalizeFingerprint(value) {
-  return typeof value === 'string' ? value.trim().toLowerCase() : '';
-}
-
-function normalizeMaximumAge(value) {
-  const normalized = Number(value);
-
-  if (
-    Number.isInteger(normalized) &&
-    normalized > 0 &&
-    normalized <= DEFAULT_MAX_EXECUTION_ARTIFACT_AGE_MS
-  ) {
-    return normalized;
-  }
-
-  return DEFAULT_MAX_EXECUTION_ARTIFACT_AGE_MS;
-}
 
 function evaluateExecutionPlanArtifact({ executionPlanArtifact, now, maxEvidenceAgeMs }) {
   const artifact = executionPlanArtifact || buildPolicyCompatibilityDeletionExecutionPlanArtifact();
@@ -313,36 +281,36 @@ function evaluateTimestampedPreflightRecord({
   return risks;
 }
 
-function evaluatePreflightEvidence({
-  preflightEvidence,
+function evaluateOperatorEvidence({
+  operatorEvidence,
   artifactFingerprint,
   artifactTimestamp,
   evaluationTime,
   maximumAgeMs,
 }) {
-  const value = asObject(preflightEvidence);
+  const value = asObject(operatorEvidence);
   const risks = [];
   const expectedFingerprint = normalizeFingerprint(artifactFingerprint?.fingerprint);
   const providedFingerprint = normalizeFingerprint(value.executionPlanArtifactFingerprint);
 
   if (Object.keys(value).length === 0) {
     return [buildRisk(
-      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.PREFLIGHT_EVIDENCE_MISSING,
-      'Compatibility path deletion requires timestamped preflight evidence bound to the current execution-plan artifact.'
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.OPERATOR_EVIDENCE_MISSING,
+      'Compatibility path deletion requires separate timestamped recovery, approval, and stance evidence.'
     )];
   }
 
   if (!providedFingerprint) {
     risks.push(buildRisk(
       POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
-        .PREFLIGHT_ARTIFACT_FINGERPRINT_MISSING,
-      'Compatibility path deletion preflight evidence must identify the execution-plan artifact it verifies.'
+        .OPERATOR_EVIDENCE_ARTIFACT_FINGERPRINT_MISSING,
+      'Compatibility path deletion operator evidence must identify the execution-plan artifact it supports.'
     ));
   } else if (!expectedFingerprint || providedFingerprint !== expectedFingerprint) {
     risks.push(buildRisk(
       POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
-        .PREFLIGHT_ARTIFACT_FINGERPRINT_MISMATCH,
-      'Compatibility path deletion preflight evidence must match the exact current execution-plan artifact.',
+        .OPERATOR_EVIDENCE_ARTIFACT_FINGERPRINT_MISMATCH,
+      'Compatibility path deletion operator evidence must match the exact current execution-plan artifact.',
       {
         expectedArtifactFingerprint: expectedFingerprint || null,
         providedArtifactFingerprint: providedFingerprint,
@@ -350,13 +318,19 @@ function evaluatePreflightEvidence({
     ));
   }
 
+  if (
+    Object.hasOwn(value, 'worktree') ||
+    Object.hasOwn(value, 'manifest') ||
+    Object.hasOwn(value, 'preflightEvidenceArtifact')
+  ) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+        .OPERATOR_EVIDENCE_MACHINE_CLAIMS_UNSUPPORTED,
+      'Compatibility path deletion derives checkout and manifest facts only from the preflight evidence artifact.'
+    ));
+  }
+
   const recordDefinitions = [
-    {
-      scope: 'worktree', value: value.worktree, timestampField: 'observedAt', actorField: 'checkedBy',
-      condition: record => record.clean === true,
-      riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.WORKTREE_NOT_CLEAN,
-      message: 'Compatibility path deletion requires a clean worktree immediately before execution.',
-    },
     {
       scope: 'recovery', value: value.recovery, timestampField: 'verifiedAt', actorField: 'verifiedBy',
       condition: record => record.backupRestoreVerified === true,
@@ -380,12 +354,6 @@ function evaluatePreflightEvidence({
       condition: record => record.supportStanceFinal === true,
       riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.SUPPORT_STANCE_NOT_FINAL,
       message: 'Compatibility path deletion requires a final support stance for converted native policies.',
-    },
-    {
-      scope: 'manifest', value: value.manifest, timestampField: 'verifiedAt', actorField: 'verifiedBy',
-      condition: record => record.matchesExecutionPlan === true,
-      riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.MANIFEST_NOT_CURRENT,
-      message: 'Compatibility path deletion manifest must match the bound current execution-plan artifact.',
     },
   ];
   const checkedScopes = new Set();
@@ -417,11 +385,14 @@ function evaluatePreflightEvidence({
 function determineStatusId(risks = []) {
   const riskIds = new Set(risks.map(risk => risk.riskId));
   const preflightRiskIds = new Set([
-    POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.PREFLIGHT_EVIDENCE_MISSING,
+    ...Object.values(POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS),
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.OPERATOR_EVIDENCE_MISSING,
     POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
-      .PREFLIGHT_ARTIFACT_FINGERPRINT_MISSING,
+      .OPERATOR_EVIDENCE_ARTIFACT_FINGERPRINT_MISSING,
     POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
-      .PREFLIGHT_ARTIFACT_FINGERPRINT_MISMATCH,
+      .OPERATOR_EVIDENCE_ARTIFACT_FINGERPRINT_MISMATCH,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+      .OPERATOR_EVIDENCE_MACHINE_CLAIMS_UNSUPPORTED,
     POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.PREFLIGHT_TIMESTAMP_MISSING,
     POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.PREFLIGHT_TIMESTAMP_INVALID,
     POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.PREFLIGHT_TIMESTAMP_STALE,
@@ -448,11 +419,10 @@ function determineStatusId(risks = []) {
     return POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
       .BLOCKED_BY_EXECUTION_ARTIFACT;
   }
-  if (risks.some(risk => preflightRiskIds.has(risk.riskId))) {
-    return POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
-      .BLOCKED_BY_PREFLIGHT_EVIDENCE;
-  }
-  if (riskIds.has(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.WORKTREE_NOT_CLEAN)) {
+  if (
+    riskIds.has(POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS.CHECKOUT_NOT_CLEAN) ||
+    riskIds.has(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.WORKTREE_NOT_CLEAN)
+  ) {
     return POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS.BLOCKED_BY_WORKTREE;
   }
   if (riskIds.has(
@@ -470,25 +440,29 @@ function determineStatusId(risks = []) {
   )) {
     return POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS.BLOCKED_BY_APPROVAL;
   }
-  if (riskIds.has(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.MANIFEST_NOT_CURRENT)) {
+  if (
+    riskIds.has(POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS.MANIFEST_INVALID) ||
+    riskIds.has(POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS.MANIFEST_ORDER_MISMATCH) ||
+    riskIds.has(POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS.MANIFEST_DUPLICATE_PATH) ||
+    riskIds.has(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.MANIFEST_NOT_CURRENT)
+  ) {
     return POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
       .BLOCKED_BY_MANIFEST_VERIFICATION;
+  }
+  if (risks.some(risk => preflightRiskIds.has(risk.riskId))) {
+    return POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
+      .BLOCKED_BY_PREFLIGHT_EVIDENCE;
   }
 
   return POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
     .READY_FOR_CONTROLLED_DELETION;
 }
 
-function summarizePreflightEvidence(preflightEvidence = {}) {
-  const value = asObject(preflightEvidence);
+function summarizeOperatorEvidence(operatorEvidence = {}) {
+  const value = asObject(operatorEvidence);
 
   return {
     executionPlanArtifactFingerprint: value.executionPlanArtifactFingerprint || null,
-    worktree: {
-      clean: value.worktree?.clean === true,
-      observedAt: value.worktree?.observedAt || null,
-      checkedBy: value.worktree?.checkedBy || null,
-    },
     recovery: {
       backupRestoreVerified: value.recovery?.backupRestoreVerified === true,
       verifiedAt: value.recovery?.verifiedAt || null,
@@ -504,11 +478,6 @@ function summarizePreflightEvidence(preflightEvidence = {}) {
       supportStanceFinal: value.stances?.supportStanceFinal === true,
       confirmedAt: value.stances?.confirmedAt || null,
       confirmedBy: value.stances?.confirmedBy || null,
-    },
-    manifest: {
-      matchesExecutionPlan: value.manifest?.matchesExecutionPlan === true,
-      verifiedAt: value.manifest?.verifiedAt || null,
-      verifiedBy: value.manifest?.verifiedBy || null,
     },
   };
 }
@@ -531,6 +500,10 @@ function riskIdCountsMatch(left = {}, right = {}) {
   return [...riskIds].every(riskId => left[riskId] === right[riskId]);
 }
 
+function valuesMatch(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 function evaluateSerializedGateEvidence(gate = {}) {
   const gateTimestamp = parseTimestamp(gate.generatedAt);
 
@@ -548,10 +521,17 @@ function evaluateSerializedGateEvidence(gate = {}) {
     now: gateTimestamp.value,
     maxEvidenceAgeMs: maximumAgeMs,
   });
+  const preflightAttestation = evaluatePolicyCompatibilityDeletionPreflightAttestation({
+    executionPlanArtifact: artifactEvaluation.artifact,
+    preflightEvidenceArtifact: gate.preflightEvidenceArtifact,
+    now: gateTimestamp.value,
+    maxEvidenceAgeMs: maximumAgeMs,
+  });
   const risks = [
     ...artifactEvaluation.risks,
-    ...evaluatePreflightEvidence({
-      preflightEvidence: gate.preflightEvidence,
+    ...preflightAttestation.risks,
+    ...evaluateOperatorEvidence({
+      operatorEvidence: gate.operatorEvidence,
       artifactFingerprint: artifactEvaluation.artifact.artifactFingerprint,
       artifactTimestamp: artifactEvaluation.artifactTimestamp,
       evaluationTime: artifactEvaluation.evaluationTime,
@@ -561,6 +541,7 @@ function evaluateSerializedGateEvidence(gate = {}) {
 
   return {
     gateTimestamp,
+    preflightAttestation,
     risks,
     statusId: determineStatusId(risks),
   };
@@ -568,7 +549,8 @@ function evaluateSerializedGateEvidence(gate = {}) {
 
 function buildPolicyCompatibilityDeletionExecutionGate({
   executionPlanArtifact = null,
-  preflightEvidence = null,
+  operatorEvidence = null,
+  preflightEvidenceArtifact = null,
   generatedAt = null,
   now = null,
   maxEvidenceAgeMs = null,
@@ -578,10 +560,17 @@ function buildPolicyCompatibilityDeletionExecutionGate({
     now: now || generatedAt,
     maxEvidenceAgeMs,
   });
+  const preflightAttestation = evaluatePolicyCompatibilityDeletionPreflightAttestation({
+    executionPlanArtifact: artifactEvaluation.artifact,
+    preflightEvidenceArtifact,
+    now: artifactEvaluation.evaluationTime.value,
+    maxEvidenceAgeMs: artifactEvaluation.maximumAgeMs,
+  });
   const risks = [
     ...artifactEvaluation.risks,
-    ...evaluatePreflightEvidence({
-      preflightEvidence,
+    ...preflightAttestation.risks,
+    ...evaluateOperatorEvidence({
+      operatorEvidence,
       artifactFingerprint: artifactEvaluation.artifact.artifactFingerprint,
       artifactTimestamp: artifactEvaluation.artifactTimestamp,
       evaluationTime: artifactEvaluation.evaluationTime,
@@ -605,7 +594,9 @@ function buildPolicyCompatibilityDeletionExecutionGate({
       artifactFingerprint:
         artifactEvaluation.artifact.artifactFingerprint?.fingerprint || null,
     },
-    preflightEvidence: summarizePreflightEvidence(preflightEvidence),
+    preflightEvidenceArtifact: asObject(preflightEvidenceArtifact),
+    preflightAttestation,
+    operatorEvidence: summarizeOperatorEvidence(operatorEvidence),
     riskCount: risks.length,
     risks,
     executionPolicy: {
@@ -613,7 +604,7 @@ function buildPolicyCompatibilityDeletionExecutionGate({
       requireSeparateControlledDeletionStep: true,
       requireBoundExecutionPlanArtifact: true,
       requireFreshExecutionEvidence: true,
-      requireTimestampedPreflightEvidence: true,
+      requireCollectedPreflightAttestation: true,
       requireCleanWorktree: true,
       requireFreshBackupRestoreEvidence: true,
       requireOperatorApproval: true,
@@ -706,6 +697,13 @@ function validatePolicyCompatibilityDeletionExecutionGate(gate = {}) {
         }
       ));
     }
+
+    if (!valuesMatch(gate.preflightAttestation, serializedEvidence.preflightAttestation)) {
+      issues.push(buildRisk(
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.PREFLIGHT_ATTESTATION_MISMATCH,
+        'Compatibility path deletion execution gate must retain the preflight attestation derived from its embedded collector artifact.'
+      ));
+    }
   }
 
   const executionPolicy = asObject(gate.executionPolicy);
@@ -715,7 +713,7 @@ function validatePolicyCompatibilityDeletionExecutionGate(gate = {}) {
     executionPolicy.requireSeparateControlledDeletionStep !== true ||
     executionPolicy.requireBoundExecutionPlanArtifact !== true ||
     executionPolicy.requireFreshExecutionEvidence !== true ||
-    executionPolicy.requireTimestampedPreflightEvidence !== true ||
+    executionPolicy.requireCollectedPreflightAttestation !== true ||
     executionPolicy.requireCleanWorktree !== true ||
     executionPolicy.requireFreshBackupRestoreEvidence !== true ||
     executionPolicy.requireOperatorApproval !== true ||

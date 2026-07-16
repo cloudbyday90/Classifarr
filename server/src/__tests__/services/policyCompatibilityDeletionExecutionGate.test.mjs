@@ -27,9 +27,16 @@ import {
 } from '../../services/policyCompatibilityDeletionExecutionGate.mjs';
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
-  buildReadyExecutionGatePreflightEvidence,
+  buildReadyExecutionGateOperatorEvidence,
+  buildReadyExecutionGatePreflightEvidenceArtifact,
   buildReadyExecutionPlanArtifact,
 } from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
+import {
+  POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS,
+} from '../../services/policyCompatibilityDeletionPreflightAttestation.mjs';
+import {
+  buildPolicyCompatibilityDeletionPreflightEvidenceArtifactFingerprint,
+} from '../../services/policyCompatibilityDeletionPreflightEvidenceArtifactFingerprint.mjs';
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
@@ -177,7 +184,8 @@ function readyExecutionPlan(overrides = {}) {
 function readyGate({
   executionPlan = readyExecutionPlan(),
   executionPlanArtifact = null,
-  preflightEvidence = null,
+  operatorEvidence = null,
+  preflightEvidenceArtifact = null,
   ...overrides
 } = {}) {
   const artifact = executionPlanArtifact || buildReadyExecutionPlanArtifact({
@@ -186,9 +194,13 @@ function readyGate({
 
   return buildPolicyCompatibilityDeletionExecutionGate({
     executionPlanArtifact: artifact,
-    preflightEvidence: preflightEvidence || buildReadyExecutionGatePreflightEvidence({
+    operatorEvidence: operatorEvidence || buildReadyExecutionGateOperatorEvidence({
       executionPlanArtifact: artifact,
     }),
+    preflightEvidenceArtifact: preflightEvidenceArtifact ||
+      buildReadyExecutionGatePreflightEvidenceArtifact({
+      executionPlanArtifact: artifact,
+      }),
     generatedAt: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
     now: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
     ...overrides,
@@ -196,7 +208,7 @@ function readyGate({
 }
 
 describe('policyCompatibilityDeletionExecutionGate', () => {
-  test('allows a separate controlled deletion step only with a current bound artifact and preflight evidence', () => {
+  test('allows a separate controlled deletion step only with current collected and operator evidence', () => {
     const gate = readyGate();
 
     expect(gate.statusId)
@@ -210,17 +222,22 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
       readyForExecutionGate: true,
       manifestEntryCount: 18,
     }));
-    expect(gate.preflightEvidence).toEqual(expect.objectContaining({
+    expect(gate.preflightAttestation).toEqual(expect.objectContaining({
       executionPlanArtifactFingerprint:
         gate.executionPlanArtifact.artifactFingerprint.fingerprint,
-      worktree: expect.objectContaining({ clean: true }),
+      preflightEvidenceArtifactFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      checkout: expect.objectContaining({ clean: true }),
+      manifest: expect.objectContaining({ statusId: 'observed' }),
+    }));
+    expect(gate.operatorEvidence).toEqual(expect.objectContaining({
+      executionPlanArtifactFingerprint:
+        gate.executionPlanArtifact.artifactFingerprint.fingerprint,
       recovery: expect.objectContaining({ backupRestoreVerified: true }),
       approval: expect.objectContaining({ approved: true, approvedBy: 'policy-maintainer' }),
       stances: expect.objectContaining({
         rollbackStanceFinal: true,
         supportStanceFinal: true,
       }),
-      manifest: expect.objectContaining({ matchesExecutionPlan: true }),
     }));
     expect(gate.executionPolicy).toEqual(expect.objectContaining({
       executeDeletionNow: false,
@@ -295,7 +312,7 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
     ]));
   });
 
-  test('blocks stale execution-plan evidence and stale preflight checks', () => {
+  test('blocks stale execution-plan evidence and mismatched collected evidence', () => {
     const artifact = buildReadyExecutionPlanArtifact({
       executionPlan: readyExecutionPlan(),
       generatedAt: '2026-07-14T19:54:59.999Z',
@@ -314,36 +331,41 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
       }),
     ]));
 
-    const currentArtifact = buildReadyExecutionPlanArtifact({
-      executionPlan: readyExecutionPlan(),
-    });
-    const stalePreflightGate = readyGate({
+    const currentArtifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
+    const preflightEvidenceArtifact = buildReadyExecutionGatePreflightEvidenceArtifact({
       executionPlanArtifact: currentArtifact,
-      preflightEvidence: buildReadyExecutionGatePreflightEvidence({
-        executionPlanArtifact: currentArtifact,
-        observedAt: '2026-07-14T19:54:59.999Z',
-      }),
+    });
+    preflightEvidenceArtifact.checkout.observedAt = '2026-07-14T19:59:59.999Z';
+    preflightEvidenceArtifact.artifactFingerprint =
+      buildPolicyCompatibilityDeletionPreflightEvidenceArtifactFingerprint({
+        artifact: preflightEvidenceArtifact,
+      });
+    const mismatchedPreflightGate = readyGate({
+      executionPlanArtifact: currentArtifact,
+      preflightEvidenceArtifact,
     });
 
-    expect(stalePreflightGate.statusId)
+    expect(mismatchedPreflightGate.statusId)
       .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
         .BLOCKED_BY_PREFLIGHT_EVIDENCE);
-    expect(stalePreflightGate.risks).toEqual(expect.arrayContaining([
+    expect(mismatchedPreflightGate.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.PREFLIGHT_TIMESTAMP_STALE,
+        riskId: POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS
+          .CHECKOUT_TIMESTAMP_MISMATCH,
       }),
     ]));
   });
 
-  test('blocks preflight evidence that is not bound to the exact execution-plan artifact', () => {
+  test('blocks collected evidence that is bound to another execution-plan artifact', () => {
     const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
+    const differentArtifact = buildReadyExecutionPlanArtifact({
+      executionPlan: readyExecutionPlan(),
+      generatedAt: '2026-07-14T20:00:00.001Z',
+    });
     const gate = readyGate({
       executionPlanArtifact: artifact,
-      preflightEvidence: buildReadyExecutionGatePreflightEvidence({
-        executionPlanArtifact: artifact,
-        overrides: {
-          executionPlanArtifactFingerprint: 'a'.repeat(64),
-        },
+      preflightEvidenceArtifact: buildReadyExecutionGatePreflightEvidenceArtifact({
+        executionPlanArtifact: differentArtifact,
       }),
     });
 
@@ -352,8 +374,8 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
         .BLOCKED_BY_PREFLIGHT_EVIDENCE);
     expect(gate.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
-          .PREFLIGHT_ARTIFACT_FINGERPRINT_MISMATCH,
+        riskId: POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS
+          .EXECUTION_PLAN_FINGERPRINT_MISMATCH,
       }),
     ]));
   });
@@ -362,9 +384,9 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
     const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
     const gate = readyGate({
       executionPlanArtifact: artifact,
-      preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+      preflightEvidenceArtifact: buildReadyExecutionGatePreflightEvidenceArtifact({
         executionPlanArtifact: artifact,
-        overrides: { worktree: { clean: false } },
+        overrides: { checkoutObservation: { clean: false } },
       }),
     });
 
@@ -373,7 +395,7 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
         .BLOCKED_BY_WORKTREE);
     expect(gate.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.WORKTREE_NOT_CLEAN,
+        riskId: POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS.CHECKOUT_NOT_CLEAN,
       }),
     ]));
   });
@@ -382,7 +404,7 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
     const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
     const gate = readyGate({
       executionPlanArtifact: artifact,
-      preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+      operatorEvidence: buildReadyExecutionGateOperatorEvidence({
         executionPlanArtifact: artifact,
         overrides: { recovery: { backupRestoreVerified: false } },
       }),
@@ -400,7 +422,7 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
     const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
     const gate = readyGate({
       executionPlanArtifact: artifact,
-      preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+      operatorEvidence: buildReadyExecutionGateOperatorEvidence({
         executionPlanArtifact: artifact,
         overrides: {
           approval: { approved: false },
@@ -422,13 +444,19 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
     ]));
   });
 
-  test('blocks when the manifest cannot be verified against the bound artifact', () => {
+  test('blocks when collected manifest observations do not preserve approved ordering', () => {
     const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
     const gate = readyGate({
       executionPlanArtifact: artifact,
-      preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+      preflightEvidenceArtifact: buildReadyExecutionGatePreflightEvidenceArtifact({
         executionPlanArtifact: artifact,
-        overrides: { manifest: { matchesExecutionPlan: false } },
+        overrides: {
+          manifestObservations: artifact.executionPlan.manifest.entries.map((entry, index) => ({
+            index,
+            path: index === 0 ? 'server/src/services/incorrect.mjs' : entry.path,
+            statusId: 'observed',
+          })),
+        },
       }),
     });
 
@@ -436,7 +464,72 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
       .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
         .BLOCKED_BY_MANIFEST_VERIFICATION);
     expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
-      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.MANIFEST_NOT_CURRENT,
+      POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS.MANIFEST_ORDER_MISMATCH,
+    ]));
+  });
+
+  test('rejects machine claims supplied through operator evidence', () => {
+    const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
+    const gate = readyGate({
+      executionPlanArtifact: artifact,
+      operatorEvidence: buildReadyExecutionGateOperatorEvidence({
+        executionPlanArtifact: artifact,
+        overrides: {
+          manifest: { current: true },
+          worktree: { clean: true },
+        },
+      }),
+    });
+
+    expect(gate.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
+        .BLOCKED_BY_PREFLIGHT_EVIDENCE);
+    expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+        .OPERATOR_EVIDENCE_MACHINE_CLAIMS_UNSUPPORTED,
+    ]));
+  });
+
+  test('rejects an altered collector artifact before it can authorize a removal batch', () => {
+    const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
+    const preflightEvidenceArtifact = buildReadyExecutionGatePreflightEvidenceArtifact({
+      executionPlanArtifact: artifact,
+    });
+    preflightEvidenceArtifact.checkout.sourceRevision = 'f'.repeat(40);
+
+    const gate = readyGate({ executionPlanArtifact: artifact, preflightEvidenceArtifact });
+
+    expect(gate.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
+        .BLOCKED_BY_PREFLIGHT_EVIDENCE);
+    expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
+      POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS
+        .PREFLIGHT_ARTIFACT_INVALID,
+    ]));
+  });
+
+  test('rejects duplicate manifest observations even when every entry appears observed', () => {
+    const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
+    const duplicatePath = artifact.executionPlan.manifest.entries[0].path;
+    const gate = readyGate({
+      executionPlanArtifact: artifact,
+      preflightEvidenceArtifact: buildReadyExecutionGatePreflightEvidenceArtifact({
+        executionPlanArtifact: artifact,
+        overrides: {
+          manifestObservations: artifact.executionPlan.manifest.entries.map((entry, index) => ({
+            index,
+            path: index === 1 ? duplicatePath : entry.path,
+            statusId: 'observed',
+          })),
+        },
+      }),
+    });
+
+    expect(gate.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
+        .BLOCKED_BY_MANIFEST_VERIFICATION);
+    expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
+      POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS.MANIFEST_DUPLICATE_PATH,
     ]));
   });
 
@@ -459,14 +552,14 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
     ]));
   });
 
-  test('rejects a serialized gate whose preflight evidence no longer derives its ready state', () => {
+  test('rejects a serialized gate whose operator evidence no longer derives its ready state', () => {
     const gate = readyGate();
     const validation = validatePolicyCompatibilityDeletionExecutionGate({
       ...gate,
-      preflightEvidence: {
-        ...gate.preflightEvidence,
+      operatorEvidence: {
+        ...gate.operatorEvidence,
         approval: {
-          ...gate.preflightEvidence.approval,
+          ...gate.operatorEvidence.approval,
           approved: false,
         },
       },
@@ -484,6 +577,25 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
         expectedStatusId:
           POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS.BLOCKED_BY_APPROVAL,
       }),
+    ]));
+  });
+
+  test('rejects a serialized gate whose retained preflight attestation was altered', () => {
+    const gate = readyGate();
+    const validation = validatePolicyCompatibilityDeletionExecutionGate({
+      ...gate,
+      preflightAttestation: {
+        ...gate.preflightAttestation,
+        checkout: {
+          ...gate.preflightAttestation.checkout,
+          clean: false,
+        },
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.PREFLIGHT_ATTESTATION_MISMATCH,
     ]));
   });
 

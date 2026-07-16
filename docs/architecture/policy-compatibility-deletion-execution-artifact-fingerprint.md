@@ -4,9 +4,9 @@
 
 The execution-plan artifact fingerprint binds a versioned compatibility-deletion
 plan, its readiness evidence, manifest, replacement evidence, and side-effect
-claims into one deterministic SHA-256 value. A preflight record must name that
-exact value before the execution gate can permit a later controlled removal
-step.
+claims into one deterministic SHA-256 value. A collector artifact must name
+that exact value before the execution gate can permit a later controlled
+removal step.
 
 The component is local, deterministic, and side-effect-free. It neither reads
 the repository nor deletes files, writes storage, or invokes Git.
@@ -67,30 +67,36 @@ Cons:
 
 - downstream tools must use the current artifact contract.
 
-### Bind Preflight Evidence To The Fingerprint
+### Bind Collector Evidence And Operator Decisions Separately
 
-The execution gate must compare the preflight fingerprint with the recomputed
-artifact fingerprint before trusting worktree, recovery, approval, stance, or
-manifest checks.
+The execution gate must compare the collector fingerprint with the recomputed
+artifact fingerprint before deriving checkout or manifest checks. It must bind
+recovery, approval, and stances separately as operator evidence; a collector
+artifact cannot supply those human decisions.
 
 Pros:
 
-- prevents detached or stale checks from authorizing a different plan,
+- prevents detached or stale collector output from authorizing a different
+  plan,
+- prevents machine evidence from substituting for human approval or recovery,
 - makes the final gate auditable,
 - removes the raw-boolean readiness bypass.
 
 Cons:
 
-- operators must regenerate preflight evidence after plan changes.
+- operators must regenerate collector evidence after plan changes.
 
 ## Final Recommendation Stack
 
 1. Build a v2 execution-plan artifact from current evidence.
 2. Compute and persist its deterministic SHA-256 fingerprint.
-3. Collect timestamped preflight evidence that names that fingerprint.
-4. Recompute and validate the fingerprint in the execution gate.
-5. Reject stale, detached, malformed, or mismatched evidence before any later
-   removal component is considered.
+3. Collect a fingerprinted preflight evidence artifact that names that
+   fingerprint and records only machine-observed facts.
+4. Bind separately timestamped operator evidence for recovery, approval, and
+   final stances to the same fingerprint.
+5. Recompute and validate both artifact bindings in the execution gate.
+6. Reject stale, detached, malformed, altered, duplicate, or mismatched
+   evidence before any later removal component is considered.
 
 ## Implementation Outcome
 
@@ -100,7 +106,7 @@ Implemented:
   stable, bounded SHA-256 projection and validates digest and provenance.
 - Execution-plan artifacts now use v2 and carry an `artifactFingerprint`.
 - The execution gate and controlled batch artifact require the fingerprinted
-  artifact plus matching timestamped preflight evidence.
+  plan artifact, a matching collector artifact, and separate operator evidence.
 - Focused tests cover canonical ordering, manifest mutation, malformed digest,
   and provenance mismatch.
 

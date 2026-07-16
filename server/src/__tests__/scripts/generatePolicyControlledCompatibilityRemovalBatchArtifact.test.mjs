@@ -44,7 +44,8 @@ import {
 } from '../../services/policyControlledRemovalApplyArtifact.mjs';
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
-  buildReadyExecutionGatePreflightEvidence,
+  buildReadyExecutionGateOperatorEvidence,
+  buildReadyExecutionGatePreflightEvidenceArtifact,
   buildReadyExecutionPlanArtifact,
 } from '../services/fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 
@@ -106,7 +107,10 @@ function readyExecutionPlanArtifact(overrides = {}) {
 
 function readyInput({ executionPlanArtifact, overrides = {} } = {}) {
   return {
-    preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+    operatorEvidence: buildReadyExecutionGateOperatorEvidence({
+      executionPlanArtifact,
+    }),
+    preflightEvidenceArtifact: buildReadyExecutionGatePreflightEvidenceArtifact({
       executionPlanArtifact,
     }),
     selectedPaths: [MANIFEST_PATH],
@@ -240,17 +244,17 @@ describe('generate-policy-controlled-compatibility-removal-batch-artifact', () =
 
   test('does not write batch output when preflight evidence binds a different artifact', () => {
     const executionPlanArtifact = readyExecutionPlanArtifact();
+    const differentExecutionPlanArtifact = readyExecutionPlanArtifact({
+      generatedAt: '2026-07-14T20:00:00.001Z',
+    });
     const result = runGenerator({
       fixtureRoot,
       executionPlanArtifact,
       input: readyInput({
         executionPlanArtifact,
         overrides: {
-          preflightEvidence: buildReadyExecutionGatePreflightEvidence({
-            executionPlanArtifact,
-            overrides: {
-              executionPlanArtifactFingerprint: 'a'.repeat(64),
-            },
+          preflightEvidenceArtifact: buildReadyExecutionGatePreflightEvidenceArtifact({
+            executionPlanArtifact: differentExecutionPlanArtifact,
           }),
         },
       }),

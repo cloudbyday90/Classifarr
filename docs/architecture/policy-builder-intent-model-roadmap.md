@@ -6428,10 +6428,9 @@ Implementation status:
   `server/src/services/policyCompatibilityDeletionExecutionGate.mjs`.
 - The focused execution-gate test suite lives in
   `server/src/__tests__/services/policyCompatibilityDeletionExecutionGate.test.mjs`.
-- Task 8R.16.1 is implemented. The v2 gate verifies a fingerprint-valid
-  execution-plan artifact, evidence-bundle coherence, and preflight records
-  bound to the exact artifact fingerprint. The controlled batch artifact now
-  consumes the same contract and cannot reconstruct trust from raw booleans.
+- Task 8R.16.1 established the initial execution-plan gate boundary. It is now
+  superseded by the v3 collector-to-gate contract below; no mixed legacy
+  preflight input remains in the current gate or controlled-batch path.
 - Serialized execution-gate output is revalidated against its retained artifact
   and preflight evidence. A modified ready claim, execution policy, or handoff
   cannot remain valid merely because its outer envelope is well-formed.
@@ -6449,8 +6448,17 @@ Implementation status:
   fingerprint, manifest-path continuity, and retained runtime-evidence
   reference. It emits only `observed`, `missing`, `stale`, or `invalid` states,
   rejects unsafe paths and caller-controlled time, and does not contact Docker,
-  PostgreSQL, or the production application. The design and outcome record is
-  [Policy Compatibility Deletion Preflight Evidence Collection](policy-compatibility-deletion-preflight-evidence-collection.md).
+   PostgreSQL, or the production application. The design and outcome record is
+   [Policy Compatibility Deletion Preflight Evidence Collection](policy-compatibility-deletion-preflight-evidence-collection.md).
+- Task 8R.16.3 is implemented. The v3 execution gate consumes a complete
+  collector artifact and independently revalidates its fingerprint, source
+  revision, timestamps, plan binding, manifest ordering, duplicate paths,
+  runtime-evidence reference, and side-effect state. It derives machine facts
+  only from that artifact and accepts separately bound operator evidence only
+  for recovery, approval, and final stances. Cross-plan, stale, altered,
+  duplicate, post-observation, and machine-claim substitution cases block
+  before a controlled removal batch can be assembled. The design and outcome
+  record is [Policy Compatibility Deletion Preflight Attestation](policy-compatibility-deletion-preflight-attestation.md).
 
 ### 8R.17 Controlled Compatibility Path Removal
 

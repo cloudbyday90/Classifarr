@@ -24,7 +24,8 @@ import {
 } from '../../services/policyCompatibilityDeletionExecutionGate.mjs';
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
-  buildReadyExecutionGatePreflightEvidence,
+  buildReadyExecutionGateOperatorEvidence,
+  buildReadyExecutionGatePreflightEvidenceArtifact,
   buildReadyExecutionPlanArtifact,
 } from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 import {
@@ -182,14 +183,19 @@ function readyExecutionPlanArtifact(executionPlan = readyExecutionPlan()) {
 }
 
 function readyGate(executionPlanArtifact, {
-  preflightOverrides = {},
+  operatorEvidenceOverrides = {},
+  preflightEvidenceArtifactOverrides = {},
   ...overrides
 } = {}) {
   return buildPolicyCompatibilityDeletionExecutionGate({
     executionPlanArtifact,
-    preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+    operatorEvidence: buildReadyExecutionGateOperatorEvidence({
       executionPlanArtifact,
-      overrides: preflightOverrides,
+      overrides: operatorEvidenceOverrides,
+    }),
+    preflightEvidenceArtifact: buildReadyExecutionGatePreflightEvidenceArtifact({
+      executionPlanArtifact,
+      overrides: preflightEvidenceArtifactOverrides,
     }),
     generatedAt: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
     now: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
@@ -296,8 +302,8 @@ describe('policyControlledCompatibilityPathRemoval', () => {
     const removal = readyRemoval({
       executionPlanArtifact,
       executionGate: readyGate(executionPlanArtifact, {
-        preflightOverrides: {
-          worktree: { clean: false },
+        preflightEvidenceArtifactOverrides: {
+          checkoutObservation: { clean: false },
         },
       }),
     });
@@ -457,11 +463,11 @@ describe('policyControlledCompatibilityPathRemoval', () => {
         ...removal.executionContext,
         executionGate: {
           ...removal.executionContext.executionGate,
-          preflightEvidence: {
-            ...removal.executionContext.executionGate.preflightEvidence,
-            worktree: {
-              ...removal.executionContext.executionGate.preflightEvidence.worktree,
-              clean: false,
+          operatorEvidence: {
+            ...removal.executionContext.executionGate.operatorEvidence,
+            approval: {
+              ...removal.executionContext.executionGate.operatorEvidence.approval,
+              approved: false,
             },
           },
         },

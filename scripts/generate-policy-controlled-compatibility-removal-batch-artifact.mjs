@@ -82,7 +82,7 @@ function usage() {
     '',
     'Options:',
     '  --execution-plan-artifact <json> Required v2 execution-plan artifact JSON.',
-    '  --input <json>             Required input with bound preflightEvidence and removal review data.',
+    '  --input <json>             Required input with a collected preflight artifact, operator evidence, and removal review data.',
     '  --output <json>            Write nested removal-batch JSON to this path.',
     '  --artifact-output <json>   Write wrapper artifact JSON to this path.',
     '  --allow-blocked            Allow writing blocked removal-batch output.',

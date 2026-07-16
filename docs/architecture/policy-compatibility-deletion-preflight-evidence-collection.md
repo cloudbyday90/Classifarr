@@ -92,11 +92,10 @@ Cons:
 1. Generate a current fingerprint-valid execution-plan artifact through the
    existing evidence and plan workflow.
 2. Run the preflight collector from the reviewed checkout.
-3. Retain its `.tmp` observation artifact with the human-provided recovery,
-   stance, and approval records required by the existing execution gate.
-4. In the next task, make the gate consume the collector artifact only as a
-   bound source for worktree and manifest facts; never as an authority for
-   recovery or human approval.
+3. Retain its `.tmp` observation artifact with separate human-provided
+   recovery, stance, and approval records.
+4. The execution gate revalidates the artifact as a bound source for worktree
+   and manifest facts; it never treats it as recovery or human approval.
 5. Keep controlled deletion in its separate reviewed apply boundary.
 
 ## Contract
@@ -159,7 +158,7 @@ Implemented:
 
 Not implemented here:
 
-- no execution-gate interface change;
+- no execution-gate decision or approval authority;
 - no conversion of collected evidence into recovery, final stance, or operator
   approval records;
 - no embedded database or runtime probe;
@@ -167,9 +166,6 @@ Not implemented here:
 
 ## Next Step
 
-Proceed with **8R.16.3 Collector-To-Gate Attestation Integration**. It should
-make a gate consumer revalidate the collected artifact against the supplied
-execution-plan artifact and derive only the worktree and manifest records from
-it. It must reject stale, cross-artifact, altered, or post-observation checkout
-evidence while preserving separately supplied human recovery, stance, and
-approval records.
+The collector-to-gate boundary is implemented in
+[Policy Compatibility Deletion Preflight Attestation](policy-compatibility-deletion-preflight-attestation.md).
+Proceed with **8R.16.4 Pre-Apply Change Detection And TOCTOU Boundary**.

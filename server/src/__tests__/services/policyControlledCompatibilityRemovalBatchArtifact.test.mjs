@@ -13,7 +13,8 @@ import {
 } from '../../services/policyControlledCompatibilityRemovalBatchArtifact.mjs';
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
-  buildReadyExecutionGatePreflightEvidence,
+  buildReadyExecutionGateOperatorEvidence,
+  buildReadyExecutionGatePreflightEvidenceArtifact,
   buildReadyExecutionPlanArtifact,
 } from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 
@@ -61,7 +62,10 @@ function readyExecutionPlanArtifact(overrides = {}) {
 
 function readyInput({ executionPlanArtifact, overrides = {} } = {}) {
   return {
-    preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+    operatorEvidence: buildReadyExecutionGateOperatorEvidence({
+      executionPlanArtifact,
+    }),
+    preflightEvidenceArtifact: buildReadyExecutionGatePreflightEvidenceArtifact({
       executionPlanArtifact,
     }),
     selectedPaths: [MANIFEST_PATH],
@@ -118,7 +122,7 @@ describe('policyControlledCompatibilityRemovalBatchArtifact', () => {
       input: readyInput({
         executionPlanArtifact,
         overrides: {
-          preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+          operatorEvidence: buildReadyExecutionGateOperatorEvidence({
             executionPlanArtifact,
             overrides: { approval: { approved: false, approvedBy: null } },
           }),

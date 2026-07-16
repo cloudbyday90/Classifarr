@@ -4,8 +4,8 @@
 
 The controlled compatibility removal batch artifact creates a machine-readable,
 reviewable batch from a ready, fingerprinted compatibility deletion
-execution-plan artifact, bound preflight evidence, selected approved manifest
-paths, and reviewer metadata.
+execution-plan artifact, a revalidated collector artifact, separately bound
+operator evidence, selected approved manifest paths, and reviewer metadata.
 
 This component prepares a bounded batch for a later apply step. It does not
 delete files, archive files, remove routes, remove tests, mutate storage, write
@@ -50,24 +50,27 @@ Sources:
 
 ## Recommendations
 
-### Consume A Bound Execution-Plan Artifact And Preflight Evidence
+### Consume A Bound Execution Plan, Collector Artifact, And Operator Evidence
 
 The generator should require the generated v2 compatibility deletion
-execution-plan artifact and timestamped preflight evidence bound to its exact
-fingerprint before producing a review batch. It must not translate
-caller-supplied readiness booleans into trusted gate evidence.
+execution-plan artifact, a fingerprint-valid collector artifact bound to its
+exact fingerprint, and separately timestamped operator evidence before
+producing a review batch. It must not translate caller-supplied readiness,
+worktree, or manifest booleans into trusted gate evidence.
 
 Pros:
 
 - prevents ad hoc path removal,
-- prevents stale or detached preflight evidence from being accepted,
-- preserves clean-worktree and recovery evidence boundaries,
+- prevents stale, altered, duplicate, or detached collector evidence from
+  being accepted,
+- preserves the separation between machine observations and recovery/approval
+  evidence,
 - keeps operator approval close to the removal batch.
 
 Cons:
 
-- operators or CI must preserve the execution-plan artifact and preflight
-  evidence together.
+- operators or CI must preserve the execution-plan artifact, collector
+  artifact, and operator evidence together.
 
 ### Select Only Approved Manifest Paths
 
@@ -145,19 +148,20 @@ Use this stack for controlled compatibility removal batch generation:
 
 1. Require a ready, fingerprint-valid compatibility deletion execution-plan
    artifact JSON file.
-2. Require a timestamped `preflightEvidence` object that binds worktree,
-   backup/restore, operator approval, final rollback/support stance, and
-   manifest verification to that artifact fingerprint.
-3. Build the compatibility deletion execution gate through
+2. Require a fingerprint-valid `preflightEvidenceArtifact` that binds only
+   checkout, manifest, and runtime-reference observations to that artifact.
+3. Require separately timestamped `operatorEvidence` that binds backup/restore,
+   operator approval, and final rollback/support stances to that artifact.
+4. Build the compatibility deletion execution gate through
    `policyCompatibilityDeletionExecutionGate.mjs`.
-4. Build the reviewed removal batch through
+5. Build the reviewed removal batch through
    `policyControlledCompatibilityPathRemoval.mjs`.
-5. Refuse ready output unless both gate and batch validate.
-6. Write the nested removal-batch JSON for controlled apply tooling.
-7. Optionally write the wrapper artifact for audit trails.
-8. Verify the public exporter preserves review integrity and refuses blocked
+6. Refuse ready output unless both gate and batch validate.
+7. Write the nested removal-batch JSON for controlled apply tooling.
+8. Optionally write the wrapper artifact for audit trails.
+9. Verify the public exporter preserves review integrity and refuses blocked
    output unless diagnostic export is explicitly enabled.
-9. Expose durable controlled compatibility removal batch service, script,
+10. Expose durable controlled compatibility removal batch service, script,
    runner, version, test, and documentation names.
 
 ## Implementation Outcome
@@ -173,7 +177,8 @@ Implemented:
 - Added the root runner `npm run policy:controlled-compatibility-removal-batch`.
 - Replaced the phase-coded payload version with
   `policy.controlled_compatibility_removal_batch_artifact.v2`, which requires a
-  fingerprint-valid execution-plan artifact and bound preflight evidence.
+  fingerprint-valid execution-plan artifact, revalidated collector artifact,
+  and separately bound operator evidence.
 - Updated storage-closure validation and requirement-audit evidence references
   to require the durable controlled compatibility removal batch contract.
 - Preserved execution-plan gating, execution-gate gating, manifest-bound path
@@ -183,7 +188,7 @@ Implemented:
   `server/src/__tests__/scripts/generatePolicyControlledCompatibilityRemovalBatchArtifact.test.mjs`.
   It proves the public command preserves the review artifact and execution
   context into controlled-apply confirmation checks, writes no output for a
-  fingerprint-mismatched preflight by default, and writes a bounded blocked
+  cross-plan collector artifact by default, and writes a bounded blocked
   diagnostic only with `--allow-blocked`.
 
 Example:

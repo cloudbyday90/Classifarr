@@ -40,7 +40,8 @@ import {
 } from '../../services/policyControlledRemovalApplyArtifact.mjs';
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
-  buildReadyExecutionGatePreflightEvidence,
+  buildReadyExecutionGateOperatorEvidence,
+  buildReadyExecutionGatePreflightEvidenceArtifact,
   buildReadyExecutionPlanArtifact,
 } from '../services/fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 
@@ -103,7 +104,10 @@ function buildReadyRemovalBatch({ selectedPath = TARGET_PATH } = {}) {
   });
   const executionGate = buildPolicyCompatibilityDeletionExecutionGate({
     executionPlanArtifact,
-    preflightEvidence: buildReadyExecutionGatePreflightEvidence({
+    operatorEvidence: buildReadyExecutionGateOperatorEvidence({
+      executionPlanArtifact,
+    }),
+    preflightEvidenceArtifact: buildReadyExecutionGatePreflightEvidenceArtifact({
       executionPlanArtifact,
     }),
     generatedAt: GENERATED_AT,
