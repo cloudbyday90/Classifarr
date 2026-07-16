@@ -17,7 +17,7 @@
  */
 
 const POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_ARTIFACT_VERSION =
-  'policy.compatibility_deletion_preflight_evidence_artifact.v1';
+  'policy.compatibility_deletion_preflight_evidence_artifact.v2';
 
 const POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_STATUS_IDS = Object.freeze({
   OBSERVED: 'observed',
@@ -46,6 +46,7 @@ const POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS = Object.freeze(
   RUNTIME_EVIDENCE_MISSING: 'runtime_evidence_missing',
   RUNTIME_EVIDENCE_INVALID: 'runtime_evidence_invalid',
   RUNTIME_EVIDENCE_STALE: 'runtime_evidence_stale',
+  RUNTIME_EVIDENCE_ESCALATION_MISMATCH: 'runtime_evidence_escalation_mismatch',
   SIDE_EFFECT_REPORTED: 'side_effect_reported',
 });
 

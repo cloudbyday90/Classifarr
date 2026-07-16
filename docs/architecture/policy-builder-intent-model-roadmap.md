@@ -6467,6 +6467,15 @@ Implementation status:
   blocks the entry and stops the remaining batch; bounded verification summaries
   distinguish that state from adapter or result failure. The design and outcome
   record is [Policy Compatibility Deletion Pre-Apply Change Detection](policy-compatibility-deletion-pre-apply-change-detection.md).
+- Task 8R.16.5 is implemented. The preflight artifact now carries a
+  fingerprint-bound runtime-evidence escalation decision. It requires the
+  existing provenance-bound, read-only embedded maintenance runner only when
+  the artifact, checkout, and manifest are otherwise observed but the retained
+  runtime-evidence reference is missing or stale. Invalid evidence, unsafe
+  preflight state, unavailable containment, image-provenance failure, or an
+  unavailable runtime query remains blocked and cannot fall back to a host,
+  mutable-tag, or caller-provided runtime claim. The design and outcome record
+  is [Policy Compatibility Deletion Runtime Evidence Escalation](policy-compatibility-deletion-runtime-evidence-escalation.md).
 
 ### 8R.17 Controlled Compatibility Path Removal
 

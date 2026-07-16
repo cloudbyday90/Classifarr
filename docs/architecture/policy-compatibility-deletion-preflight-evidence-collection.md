@@ -155,6 +155,11 @@ Implemented:
 - Focused tests cover current observation, missing artifact, stale evidence,
   dirty checkout, unsafe or missing manifest paths, output escapes, and
   unsupported caller-controlled time.
+- Runtime-evidence escalation now distinguishes a current retained reference
+  from a safe missing/stale case that needs the existing provenance-bound
+  embedded maintenance runner. Invalid runtime evidence or any unsafe
+  artifact, checkout, or manifest state remains blocked rather than triggering
+  a probe.
 
 Not implemented here:
 
@@ -170,4 +175,5 @@ The collector-to-gate boundary is implemented in
 [Policy Compatibility Deletion Preflight Attestation](policy-compatibility-deletion-preflight-attestation.md).
 The final controlled-apply recheck is implemented in
 [Policy Compatibility Deletion Pre-Apply Change Detection](policy-compatibility-deletion-pre-apply-change-detection.md).
-Proceed with **8R.16.5 Embedded-Runtime Evidence Escalation Rules**.
+The limited embedded-runtime escalation rules are implemented in
+[Policy Compatibility Deletion Runtime Evidence Escalation](policy-compatibility-deletion-runtime-evidence-escalation.md).

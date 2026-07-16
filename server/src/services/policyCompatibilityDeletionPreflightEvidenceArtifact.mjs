@@ -29,6 +29,9 @@ import {
   evaluateRuntimeEvidenceReference,
 } from './policyCompatibilityDeletionPreflightEvidenceArtifactObservations.mjs';
 import {
+  buildPolicyCompatibilityDeletionRuntimeEvidenceEscalation,
+} from './policyCompatibilityDeletionRuntimeEvidenceEscalation.mjs';
+import {
   MAX_MANIFEST_ENTRY_COUNT,
   OBSERVATION_STATUS_IDS,
   POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_ARTIFACT_VERSION,
@@ -68,6 +71,15 @@ function buildSideEffectRisks(sideEffects = {}) {
   ));
 }
 
+function buildRuntimeEvidenceEscalation({ artifact, checkout, manifest, runtimeEvidence }) {
+  return buildPolicyCompatibilityDeletionRuntimeEvidenceEscalation({
+    artifactStatusId: artifact.statusId,
+    checkoutStatusId: checkout.statusId,
+    manifestStatusId: manifest.statusId,
+    runtimeEvidenceStatusId: runtimeEvidence.statusId,
+  });
+}
+
 function determineArtifactStatus({
   artifact,
   checkout,
@@ -105,6 +117,12 @@ function buildPolicyCompatibilityDeletionPreflightEvidenceArtifact({
     manifestObservations,
   });
   const runtimeEvidence = evaluateRuntimeEvidenceReference({ artifact, evaluationTime });
+  const runtimeEvidenceEscalation = buildRuntimeEvidenceEscalation({
+    artifact: artifactEvaluation,
+    checkout,
+    manifest,
+    runtimeEvidence,
+  });
   const observedSideEffects = buildSideEffectState(sideEffects);
   const sideEffectRisks = buildSideEffectRisks(sideEffects);
   const risks = [
@@ -136,14 +154,22 @@ function buildPolicyCompatibilityDeletionPreflightEvidenceArtifact({
     },
     manifest,
     runtimeEvidence,
+    runtimeEvidenceEscalation,
     riskCount: risks.length,
     risks,
     sideEffects: observedSideEffects,
     nextStep: {
-      stepId: 'complete_compatibility_deletion_execution_gate',
-      label: 'Complete Compatibility Deletion Execution Gate',
-      reason:
-        'Machine-verifiable checkout, artifact, manifest, and runtime-evidence observations are retained. Recovery proof, final stances, and operator approval remain separate execution-gate evidence.',
+      stepId: runtimeEvidenceEscalation.nextStep.stepId,
+      label: runtimeEvidenceEscalation.runtimeProbeRequired
+        ? 'Collect Provenance-Bound Runtime Evidence'
+        : runtimeEvidenceEscalation.statusId === 'blocked'
+          ? 'Repair Compatibility Deletion Preflight'
+          : 'Complete Compatibility Deletion Execution Gate',
+      reason: runtimeEvidenceEscalation.runtimeProbeRequired
+        ? 'The otherwise valid preflight artifact needs current embedded runtime evidence from the provenance-bound read-only maintenance runner.'
+        : runtimeEvidenceEscalation.statusId === 'blocked'
+          ? 'The preflight artifact has an invalid or incomplete non-runtime observation. Repair that evidence before any runtime probe is considered.'
+          : 'Machine-verifiable checkout, artifact, manifest, and runtime-evidence observations are retained. Recovery proof, final stances, and operator approval remain separate execution-gate evidence.',
     },
   };
   const artifactWithFingerprint = {
@@ -198,6 +224,22 @@ function validatePolicyCompatibilityDeletionPreflightEvidenceArtifact(artifact =
   const sideEffectReported = asArray(artifact.risks).some(risk => (
     risk?.riskId === POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS.SIDE_EFFECT_REPORTED
   ));
+  const expectedRuntimeEvidenceEscalation = buildRuntimeEvidenceEscalation({
+    artifact: { statusId: normalizeStatusId(artifact.executionPlanArtifact?.statusId) },
+    checkout: { statusId: normalizeStatusId(artifact.checkout?.statusId) },
+    manifest: { statusId: normalizeStatusId(artifact.manifest?.statusId) },
+    runtimeEvidence: { statusId: normalizeStatusId(artifact.runtimeEvidence?.statusId) },
+  });
+  if (
+    JSON.stringify(artifact.runtimeEvidenceEscalation) !==
+    JSON.stringify(expectedRuntimeEvidenceEscalation)
+  ) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS
+        .RUNTIME_EVIDENCE_ESCALATION_MISMATCH,
+      'Preflight evidence runtime escalation must match the retained artifact, checkout, manifest, and runtime-evidence observation states.'
+    ));
+  }
   const derivedStatusId = determineArtifactStatus({
     artifact: { statusId: normalizeStatusId(artifact.executionPlanArtifact?.statusId) },
     checkout: { statusId: normalizeStatusId(artifact.checkout?.statusId) },

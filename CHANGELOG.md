@@ -18,6 +18,15 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Contained Runtime Evidence Escalation** - compatibility cleanup now
+  distinguishes current retained runtime evidence from the narrow safe case
+  that requires a fresh embedded probe. Only an otherwise-valid preflight with
+  missing or stale runtime evidence can request the existing
+  provenance-bound, read-only maintenance runner; invalid evidence, unsafe
+  checkout or manifest state, image-provenance failures, containment failures,
+  and runtime-query failures remain blocked without trusting host or
+  caller-provided runtime claims.
+
 - **Compatibility Deletion Evidence Attestation** - compatibility cleanup now
   independently collects and then revalidates the reviewed checkout, approved
   execution-plan fingerprint, manifest-path continuity, and runtime-evidence

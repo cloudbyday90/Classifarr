@@ -30,9 +30,13 @@ import {
 const SOURCE_REVISION = '0123456789abcdef0123456789abcdef01234567';
 const MANIFEST_PATH = 'server/src/services/legacyCompatibilityBridge.mjs';
 
-function buildReadyArtifact({ generatedAt = POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME } = {}) {
+function buildReadyArtifact({
+  generatedAt = POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+  overrides = {},
+} = {}) {
   return buildReadyExecutionPlanArtifact({
     generatedAt,
+    overrides,
     executionPlan: {
       statusId: 'ready_for_execution_gate',
       readyForExecutionGate: true,
@@ -99,6 +103,10 @@ describe('policyCompatibilityDeletionPreflightEvidenceArtifact', () => {
       runtimeEvidence: expect.objectContaining({
         statusId: 'observed',
       }),
+      runtimeEvidenceEscalation: expect.objectContaining({
+        statusId: 'retained_runtime_evidence_sufficient',
+        runtimeProbeRequired: false,
+      }),
       sideEffects: {
         appEndpointInvoked: false,
         databaseRead: false,
@@ -149,6 +157,27 @@ describe('policyCompatibilityDeletionPreflightEvidenceArtifact', () => {
           .RUNTIME_EVIDENCE_STALE,
       }),
     ]));
+  });
+
+  test('requires a contained runtime probe only when otherwise-valid retained evidence is stale', () => {
+    const artifact = buildObservedEvidence({
+      executionPlanArtifact: buildReadyArtifact({
+        overrides: {
+          evidenceBundle: {
+            generatedAt: '2026-07-14T19:54:59.999Z',
+          },
+        },
+      }),
+    });
+
+    expect(artifact.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_STATUS_IDS.STALE);
+    expect(artifact.runtimeEvidenceEscalation).toEqual(expect.objectContaining({
+      statusId: 'embedded_runtime_probe_required',
+      runtimeProbeRequired: true,
+      nextStep: { stepId: 'collect_provenance_bound_runtime_evidence' },
+    }));
+    expect(artifact.nextStep.stepId).toBe('collect_provenance_bound_runtime_evidence');
   });
 
   test('fails closed when a manifest path is unsafe, missing, or no longer tracked', () => {
@@ -256,6 +285,28 @@ describe('policyCompatibilityDeletionPreflightEvidenceArtifact', () => {
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS.STATUS_MISMATCH,
+      }),
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS
+          .PREFLIGHT_ARTIFACT_FINGERPRINT_INVALID,
+      }),
+    ]));
+  });
+
+  test('rejects a serialized runtime escalation that no longer matches retained observations', () => {
+    const artifact = buildObservedEvidence();
+    artifact.runtimeEvidenceEscalation = {
+      ...artifact.runtimeEvidenceEscalation,
+      runtimeProbeRequired: true,
+    };
+
+    const validation = validatePolicyCompatibilityDeletionPreflightEvidenceArtifact(artifact);
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS
+          .RUNTIME_EVIDENCE_ESCALATION_MISMATCH,
       }),
       expect.objectContaining({
         riskId: POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS
