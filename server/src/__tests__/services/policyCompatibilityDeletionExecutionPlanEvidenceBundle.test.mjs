@@ -9,6 +9,9 @@ import {
   buildPolicyCompatibilityDeletionCurrentInventory,
 } from '../../services/policyCompatibilityDeletionCurrentInventory.mjs';
 import {
+  buildPolicyCompatibilityDeletionReconciliationStateInventory,
+} from '../../services/policyCompatibilityDeletionReconciliationStateInventory.mjs';
+import {
   DEFAULT_MAX_EVIDENCE_AGE_MS,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS,
@@ -107,6 +110,11 @@ function readyInputs({ generatedAt = COLLECTION_TIME } = {}) {
       policyRows: [authoritativePolicy()],
       generatedAt,
     }),
+    reconciliationStateInventory:
+      buildPolicyCompatibilityDeletionReconciliationStateInventory({
+        requiresMaintenanceStateCount: 0,
+        generatedAt,
+      }),
     cutoverVerification: buildPolicyNativeRuntimeCutoverVerification({
       convertedPolicy: nativePolicy(),
       unconvertedPolicy: policy({ id: 15 }),
@@ -120,6 +128,7 @@ function readyInputs({ generatedAt = COLLECTION_TIME } = {}) {
       supportStanceId:
         POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
       unconvertedPolicyCount: 0,
+      requiresMaintenanceStateCount: 0,
       generatedAt,
     }),
   };
@@ -151,6 +160,10 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
         generatedAt: COLLECTION_TIME,
         statusId: POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_STATUS_IDS
           .ALL_ENABLED_POLICIES_NATIVE,
+      }),
+      reconciliationStateInventory: expect.objectContaining({
+        generatedAt: COLLECTION_TIME,
+        requiresMaintenanceStateCount: 0,
       }),
       cutoverVerification: expect.objectContaining({ generatedAt: COLLECTION_TIME }),
       deletionGatePlan: expect.objectContaining({ generatedAt: COLLECTION_TIME }),
@@ -207,7 +220,7 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
     expect(bundle.risks.filter(risk => (
       risk.riskId === POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
         .EVIDENCE_TIMESTAMP_STALE
-    ))).toHaveLength(3);
+    ))).toHaveLength(4);
     expect(bundle.freshness.maximumEvidenceAgeMs).toBe(DEFAULT_MAX_EVIDENCE_AGE_MS);
   });
 
@@ -236,9 +249,43 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
     ]));
   });
 
+  test('blocks a requires-maintenance count that diverges from current reconciliation state', () => {
+    const inputs = readyInputs();
+    inputs.deletionGatePlan.requiresMaintenanceStateCount = 1;
+
+    const bundle = buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
+      ...inputs,
+      backupRestoreVerified: true,
+      rollbackSupportVerified: true,
+      supportDiagnosticsVerified: true,
+      deletionManifestApproved: true,
+      generatedAt: COLLECTION_TIME,
+      now: COLLECTION_TIME,
+    });
+
+    expect(bundle.statusId).toBe(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS
+        .BLOCKED_BY_RECONCILIATION_STATE_INVENTORY
+    );
+    expect(bundle.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+          .RECONCILIATION_STATE_GATE_COUNT_MISMATCH,
+      }),
+    ]));
+  });
+
   test('collects the live enabled-policy inventory and derives gate counts from it', async () => {
+    const transactionClient = {
+      query: jest.fn(async query => ({
+        rows: query.includes('WHERE policy.enabled = TRUE')
+          ? [authoritativePolicy()]
+          : [{ requires_maintenance_state_count: 0 }],
+      })),
+    };
     const dbClient = {
-      query: jest.fn(async () => ({ rows: [authoritativePolicy()] })),
+      query: jest.fn(),
+      withTransaction: jest.fn(async callback => callback(transactionClient)),
     };
 
     const bundle = await loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClient, {
@@ -255,12 +302,64 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
       now: COLLECTION_TIME,
     });
 
-    expect(dbClient.query).toHaveBeenCalledWith(expect.stringContaining('WHERE policy.enabled = TRUE'));
+    expect(transactionClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE policy.enabled = TRUE')
+    );
     expect(bundle.statusId)
       .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS.READY);
     expect(bundle.deletionGatePlan.unconvertedPolicyCount)
       .toBe(bundle.evidence.currentPolicyInventory.unconvertedPolicyCount);
+    expect(bundle.deletionGatePlan.requiresMaintenanceStateCount)
+      .toBe(bundle.evidence.reconciliationStateInventory.requiresMaintenanceStateCount);
     expect(bundle.generatedAt).toBe(COLLECTION_TIME);
+  });
+
+  test('requires transaction-owned database access for a bound evidence snapshot', async () => {
+    await expect(loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
+      query: jest.fn(),
+    })).rejects.toThrow('query(text) and withTransaction(fn)');
+  });
+
+  test('collects both database inventories in one read-only repeatable-read transaction', async () => {
+    const transactionClient = {
+      query: jest.fn(async query => {
+        if (query === 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY') {
+          return { rows: [] };
+        }
+
+        return {
+          rows: query.includes('WHERE policy.enabled = TRUE')
+            ? [authoritativePolicy()]
+            : [{ requires_maintenance_state_count: 0 }],
+        };
+      }),
+    };
+    const dbClient = {
+      query: jest.fn(),
+      withTransaction: jest.fn(async callback => callback(transactionClient)),
+    };
+
+    const bundle = await loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClient, {
+      convertedPolicy: nativePolicy(),
+      unconvertedPolicy: policy({ id: 15 }),
+      rollbackAvailable: true,
+      coverage: buildCompleteCoverage(),
+      supportStanceId:
+        POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
+      backupRestoreVerified: true,
+      rollbackSupportVerified: true,
+      supportDiagnosticsVerified: true,
+      deletionManifestApproved: true,
+      now: COLLECTION_TIME,
+    });
+
+    expect(dbClient.withTransaction).toHaveBeenCalledTimes(1);
+    expect(transactionClient.query).toHaveBeenNthCalledWith(
+      1,
+      'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY'
+    );
+    expect(dbClient.query).not.toHaveBeenCalled();
+    expect(bundle.readyForExecutionPlan).toBe(true);
   });
 
   test('rejects mutated bundle invariants and reported side effects', () => {

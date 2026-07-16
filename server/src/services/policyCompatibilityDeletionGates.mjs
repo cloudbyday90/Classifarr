@@ -31,6 +31,7 @@ const POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS = Object.freeze({
 
 const POLICY_COMPATIBILITY_DELETION_STATUS_IDS = Object.freeze({
   BLOCKED_BY_UNCONVERTED_POLICIES: 'blocked_by_unconverted_policies',
+  BLOCKED_BY_REQUIRES_MAINTENANCE_STATES: 'blocked_by_requires_maintenance_states',
   BLOCKED_BY_SUPPORT_STANCE: 'blocked_by_support_stance',
   BLOCKED_BY_MISSING_COVERAGE: 'blocked_by_missing_coverage',
   READY_TO_DELETE: 'ready_to_delete',
@@ -41,6 +42,7 @@ const POLICY_COMPATIBILITY_DELETION_RISK_IDS = Object.freeze({
   MISSING_COVERAGE_REQUIREMENT: 'missing_coverage_requirement',
   MISSING_COMPATIBILITY_INVENTORY: 'missing_compatibility_inventory',
   DELETE_WITH_UNCONVERTED_POLICIES: 'delete_with_unconverted_policies',
+  DELETE_WITH_REQUIRES_MAINTENANCE_STATES: 'delete_with_requires_maintenance_states',
   DELETE_WITHOUT_SUPPORT_STANCE: 'delete_without_support_stance',
   DELETE_WITHOUT_COVERAGE: 'delete_without_coverage',
   PRESERVE_REPLACED_CODE_PERMANENTLY: 'preserve_replaced_code_permanently',
@@ -53,6 +55,7 @@ const POLICY_COMPATIBILITY_DELETION_REASON_IDS = Object.freeze({
   DELETION_CATEGORIES_DEFINED: 'deletion_categories_defined',
   COVERAGE_REQUIREMENTS_DEFINED: 'coverage_requirements_defined',
   UNCONVERTED_POLICIES_TRACKED: 'unconverted_policies_tracked',
+  REQUIRES_MAINTENANCE_STATES_TRACKED: 'requires_maintenance_states_tracked',
   SUPPORT_STANCE_REQUIRED: 'support_stance_required',
   DELETION_BLOCKED_UNTIL_GATES_PASS: 'deletion_blocked_until_gates_pass',
   DELETE_REPLACED_CODE_NOT_HIDE: 'delete_replaced_code_not_hide',
@@ -163,7 +166,7 @@ function isExplicitSupportStance(supportStanceId) {
   ].includes(supportStanceId);
 }
 
-function normalizeUnconvertedPolicyCount(value) {
+function normalizeNonNegativeCount(value) {
   if (value === null || value === undefined) return null;
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return null;
@@ -204,11 +207,16 @@ function buildReason(reasonId, message) {
 
 function determineDeletionStatus({
   unconvertedPolicyCount,
+  requiresMaintenanceStateCount,
   supportStanceId,
   missingCoverageIds,
 }) {
   if (unconvertedPolicyCount === null || unconvertedPolicyCount > 0) {
     return POLICY_COMPATIBILITY_DELETION_STATUS_IDS.BLOCKED_BY_UNCONVERTED_POLICIES;
+  }
+
+  if (requiresMaintenanceStateCount === null || requiresMaintenanceStateCount > 0) {
+    return POLICY_COMPATIBILITY_DELETION_STATUS_IDS.BLOCKED_BY_REQUIRES_MAINTENANCE_STATES;
   }
 
   if (!isExplicitSupportStance(supportStanceId)) {
@@ -222,7 +230,12 @@ function determineDeletionStatus({
   return POLICY_COMPATIBILITY_DELETION_STATUS_IDS.READY_TO_DELETE;
 }
 
-function buildBlockers({ unconvertedPolicyCount, supportStanceId, missingCoverageIds }) {
+function buildBlockers({
+  unconvertedPolicyCount,
+  requiresMaintenanceStateCount,
+  supportStanceId,
+  missingCoverageIds,
+}) {
   const blockers = [];
 
   if (unconvertedPolicyCount === null) {
@@ -235,6 +248,19 @@ function buildBlockers({ unconvertedPolicyCount, supportStanceId, missingCoverag
       blockerId: 'unconverted_policies_remaining',
       count: unconvertedPolicyCount,
       message: 'Deletion is blocked while unconverted policies remain.',
+    });
+  }
+
+  if (requiresMaintenanceStateCount === null) {
+    blockers.push({
+      blockerId: 'requires_maintenance_state_count_unknown',
+      message: 'Deletion requires a measured count of unresolved requires-maintenance reconciliation states.',
+    });
+  } else if (requiresMaintenanceStateCount > 0) {
+    blockers.push({
+      blockerId: 'requires_maintenance_states_remaining',
+      count: requiresMaintenanceStateCount,
+      message: 'Deletion is blocked while unresolved requires-maintenance reconciliation states remain.',
     });
   }
 
@@ -262,16 +288,20 @@ function buildPolicyCompatibilityDeletionGates({
   compatibilityDeletionGates = listLegacyCompatibilityDeletionGates(),
   coverage = {},
   unconvertedPolicyCount = null,
+  requiresMaintenanceStateCount = null,
   supportStanceId = POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.BLOCK_DELETION,
   generatedAt = null,
 } = {}) {
   const normalizedUnconvertedPolicyCount =
-    normalizeUnconvertedPolicyCount(unconvertedPolicyCount);
+    normalizeNonNegativeCount(unconvertedPolicyCount);
+  const normalizedRequiresMaintenanceStateCount =
+    normalizeNonNegativeCount(requiresMaintenanceStateCount);
   const categories = buildDeletionCategories(compatibilityModules);
   const coverageRequirements = normalizeCoverageRequirements(coverage);
   const missingCoverageIds = getMissingCoverageIds(coverageRequirements);
   const statusId = determineDeletionStatus({
     unconvertedPolicyCount: normalizedUnconvertedPolicyCount,
+    requiresMaintenanceStateCount: normalizedRequiresMaintenanceStateCount,
     supportStanceId,
     missingCoverageIds,
   });
@@ -285,11 +315,13 @@ function buildPolicyCompatibilityDeletionGates({
     readyToDelete,
     supportStanceId,
     unconvertedPolicyCount: normalizedUnconvertedPolicyCount,
+    requiresMaintenanceStateCount: normalizedRequiresMaintenanceStateCount,
     categories,
     coverageRequirements,
     compatibilityDeletionGates: asArray(compatibilityDeletionGates),
     blockers: buildBlockers({
       unconvertedPolicyCount: normalizedUnconvertedPolicyCount,
+      requiresMaintenanceStateCount: normalizedRequiresMaintenanceStateCount,
       supportStanceId,
       missingCoverageIds,
     }),
@@ -299,6 +331,7 @@ function buildPolicyCompatibilityDeletionGates({
       allowPermanentDualModel: false,
       requireExplicitSupportStance: true,
       requireZeroUnconvertedPolicies: true,
+      requireZeroRequiresMaintenanceStates: true,
     },
     sideEffects: {
       filesDeleted: false,
@@ -323,6 +356,10 @@ function buildPolicyCompatibilityDeletionGates({
       buildReason(
         POLICY_COMPATIBILITY_DELETION_REASON_IDS.UNCONVERTED_POLICIES_TRACKED,
         'Deletion readiness tracks remaining unconverted policies.'
+      ),
+      buildReason(
+        POLICY_COMPATIBILITY_DELETION_REASON_IDS.REQUIRES_MAINTENANCE_STATES_TRACKED,
+        'Deletion readiness tracks unresolved requires-maintenance reconciliation states independently of support acknowledgement.'
       ),
       buildReason(
         POLICY_COMPATIBILITY_DELETION_REASON_IDS.SUPPORT_STANCE_REQUIRED,
@@ -400,6 +437,17 @@ function validatePolicyCompatibilityDeletionGates(plan = {}) {
     });
   }
 
+  if (
+    plan.readyToDelete === true &&
+    normalizeNonNegativeCount(plan.requiresMaintenanceStateCount) !== 0
+  ) {
+    issues.push({
+      riskId:
+        POLICY_COMPATIBILITY_DELETION_RISK_IDS.DELETE_WITH_REQUIRES_MAINTENANCE_STATES,
+      message: 'Compatibility code cannot be deleted until every requires-maintenance reconciliation state is resolved.',
+    });
+  }
+
   if (plan.readyToDelete === true && !isExplicitSupportStance(plan.supportStanceId)) {
     issues.push({
       riskId: POLICY_COMPATIBILITY_DELETION_RISK_IDS.DELETE_WITHOUT_SUPPORT_STANCE,
@@ -460,6 +508,7 @@ function buildPolicyCompatibilityDeletionGatesAudit(
     readyToDelete: plan.readyToDelete === true,
     supportStanceId: plan.supportStanceId || null,
     unconvertedPolicyCount: plan.unconvertedPolicyCount ?? null,
+    requiresMaintenanceStateCount: plan.requiresMaintenanceStateCount ?? null,
     categoryCount: asArray(plan.categories).length,
     coverageRequirementCount: asArray(plan.coverageRequirements).length,
     missingCoverageIds: getMissingCoverageIds(plan.coverageRequirements),

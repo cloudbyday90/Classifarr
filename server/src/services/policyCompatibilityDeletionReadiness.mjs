@@ -10,6 +10,10 @@ import {
   POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_STATUS_IDS,
   POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_VERSION,
 } from './policyCompatibilityDeletionCurrentInventory.mjs';
+import {
+  POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_STATUS_IDS,
+  POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_VERSION,
+} from './policyCompatibilityDeletionReconciliationStateInventory.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_READINESS_VERSION =
   'policy.compatibility_deletion_readiness.v1';
@@ -18,6 +22,7 @@ const POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS = Object.freeze({
   READY_FOR_DELETION_EXECUTION_PLAN: 'ready_for_deletion_execution_plan',
   BLOCKED_BY_RUNTIME_CUTOVER: 'blocked_by_runtime_cutover',
   BLOCKED_BY_CURRENT_POLICY_INVENTORY: 'blocked_by_current_policy_inventory',
+  BLOCKED_BY_RECONCILIATION_STATE_INVENTORY: 'blocked_by_reconciliation_state_inventory',
   BLOCKED_BY_DELETION_GATES: 'blocked_by_deletion_gates',
   BLOCKED_BY_RESIDUAL_COMPATIBILITY_REFERENCES: 'blocked_by_residual_compatibility_references',
   BLOCKED_BY_SAFETY_CONFIRMATION: 'blocked_by_safety_confirmation',
@@ -29,6 +34,10 @@ const POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS = Object.freeze({
   CURRENT_POLICY_INVENTORY_MISSING: 'current_policy_inventory_missing',
   CURRENT_POLICY_INVENTORY_NOT_READY: 'current_policy_inventory_not_ready',
   CURRENT_POLICY_INVENTORY_VALIDATION_FAILED: 'current_policy_inventory_validation_failed',
+  RECONCILIATION_STATE_INVENTORY_MISSING: 'reconciliation_state_inventory_missing',
+  RECONCILIATION_STATE_INVENTORY_NOT_READY: 'reconciliation_state_inventory_not_ready',
+  RECONCILIATION_STATE_INVENTORY_VALIDATION_FAILED: 'reconciliation_state_inventory_validation_failed',
+  RECONCILIATION_STATE_GATE_COUNT_MISMATCH: 'reconciliation_state_gate_count_mismatch',
   DELETION_GATES_NOT_READY: 'deletion_gates_not_ready',
   DELETION_GATES_VALIDATION_FAILED: 'deletion_gates_validation_failed',
   RESIDUAL_COMPATIBILITY_REFERENCE: 'residual_compatibility_reference',
@@ -101,6 +110,52 @@ function evaluateCurrentPolicyInventory(currentPolicyInventory) {
   }
 
   return { currentPolicyInventory: inventory, risks };
+}
+
+function evaluateReconciliationStateInventory(reconciliationStateInventory) {
+  const inventory = reconciliationStateInventory &&
+    typeof reconciliationStateInventory === 'object'
+    ? reconciliationStateInventory
+    : null;
+  const risks = [];
+
+  if (!inventory) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .RECONCILIATION_STATE_INVENTORY_MISSING,
+      'Compatibility deletion readiness requires a current read-only count of unresolved requires-maintenance reconciliation states.'
+    ));
+    return { reconciliationStateInventory: null, risks };
+  }
+
+  if (
+    inventory.version !== POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_VERSION ||
+    inventory.statusId !== POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_STATUS_IDS
+      .NO_REQUIRES_MAINTENANCE_STATES ||
+    inventory.hasNoRequiresMaintenanceStates !== true
+  ) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .RECONCILIATION_STATE_INVENTORY_NOT_READY,
+      'Compatibility deletion readiness requires zero unresolved requires-maintenance reconciliation states.',
+      {
+        version: inventory.version || null,
+        statusId: inventory.statusId || null,
+        requiresMaintenanceStateCount: inventory.requiresMaintenanceStateCount ?? null,
+      }
+    ));
+  }
+
+  if (inventory.validation?.ok !== true) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .RECONCILIATION_STATE_INVENTORY_VALIDATION_FAILED,
+      'Reconciliation-state inventory must validate before compatibility deletion readiness can pass.',
+      { issueCount: inventory.validation?.issueCount ?? null }
+    ));
+  }
+
+  return { reconciliationStateInventory: inventory, risks };
 }
 
 function normalizeResidualReferences(references = []) {
@@ -177,6 +232,28 @@ function evaluateDeletionGates(deletionGatePlan) {
   };
 }
 
+function evaluateReconciliationStateGateBinding({
+  reconciliationStateInventory,
+  deletionGatePlan,
+}) {
+  const inventoryCount = reconciliationStateInventory?.requiresMaintenanceStateCount;
+  const gateCount = deletionGatePlan?.requiresMaintenanceStateCount;
+
+  if (inventoryCount === gateCount) {
+    return [];
+  }
+
+  return [buildRisk(
+    POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+      .RECONCILIATION_STATE_GATE_COUNT_MISMATCH,
+    'Compatibility deletion gates must use the current measured requires-maintenance reconciliation-state count.',
+    {
+      inventoryRequiresMaintenanceStateCount: inventoryCount ?? null,
+      deletionGateRequiresMaintenanceStateCount: gateCount ?? null,
+    }
+  )];
+}
+
 function evaluateResidualReferences(residualCompatibilityReferences = []) {
   const references = normalizeResidualReferences(residualCompatibilityReferences);
 
@@ -239,6 +316,20 @@ function determineStatusId(risks = []) {
   }
 
   if (risks.some(risk => [
+    POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+      .RECONCILIATION_STATE_INVENTORY_MISSING,
+    POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+      .RECONCILIATION_STATE_INVENTORY_NOT_READY,
+    POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+      .RECONCILIATION_STATE_INVENTORY_VALIDATION_FAILED,
+    POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+      .RECONCILIATION_STATE_GATE_COUNT_MISMATCH,
+  ].includes(risk.riskId))) {
+    return POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS
+      .BLOCKED_BY_RECONCILIATION_STATE_INVENTORY;
+  }
+
+  if (risks.some(risk => [
     POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.CUTOVER_NOT_READY,
     POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.CUTOVER_VALIDATION_FAILED,
   ].includes(risk.riskId))) {
@@ -275,6 +366,7 @@ function determineStatusId(risks = []) {
 
 function buildPolicyCompatibilityDeletionReadiness({
   currentPolicyInventory = null,
+  reconciliationStateInventory = null,
   cutoverVerification = null,
   deletionGatePlan = null,
   residualCompatibilityReferences = [],
@@ -284,6 +376,9 @@ function buildPolicyCompatibilityDeletionReadiness({
   deletionManifestApproved = false,
 } = {}) {
   const inventory = evaluateCurrentPolicyInventory(currentPolicyInventory);
+  const reconciliationState = evaluateReconciliationStateInventory(
+    reconciliationStateInventory
+  );
   const cutover = evaluateCutover(cutoverVerification);
   const deletionGates = evaluateDeletionGates(deletionGatePlan);
   const residual = evaluateResidualReferences(residualCompatibilityReferences);
@@ -295,8 +390,13 @@ function buildPolicyCompatibilityDeletionReadiness({
   });
   const risks = [
     ...inventory.risks,
+    ...reconciliationState.risks,
     ...cutover.risks,
     ...deletionGates.risks,
+    ...evaluateReconciliationStateGateBinding({
+      reconciliationStateInventory: reconciliationState.reconciliationStateInventory,
+      deletionGatePlan: deletionGates.deletionGatePlan,
+    }),
     ...residual.risks,
     ...safetyRisks,
   ];
@@ -316,6 +416,21 @@ function buildPolicyCompatibilityDeletionReadiness({
           inventory.currentPolicyInventory.policyCounts?.unconvertedPolicyCount ?? null,
       }
       : null,
+    reconciliationStateInventory: reconciliationState.reconciliationStateInventory
+      ? {
+        version: reconciliationState.reconciliationStateInventory.version || null,
+        generatedAt: reconciliationState.reconciliationStateInventory.generatedAt || null,
+        statusId: reconciliationState.reconciliationStateInventory.statusId || null,
+        hasNoRequiresMaintenanceStates:
+          reconciliationState.reconciliationStateInventory
+            .hasNoRequiresMaintenanceStates === true,
+        validationOk:
+          reconciliationState.reconciliationStateInventory.validation?.ok === true,
+        requiresMaintenanceStateCount:
+          reconciliationState.reconciliationStateInventory
+            .requiresMaintenanceStateCount ?? null,
+      }
+      : null,
     cutover: {
       generatedAt: cutover.cutoverVerification.generatedAt || null,
       statusId: cutover.cutoverVerification.statusId || null,
@@ -328,6 +443,8 @@ function buildPolicyCompatibilityDeletionReadiness({
       readyToDelete: deletionGates.deletionGatePlan.readyToDelete === true,
       validationOk: deletionGates.deletionGatePlan.validation?.ok === true,
       blockerCount: asArray(deletionGates.deletionGatePlan.blockers).length,
+      requiresMaintenanceStateCount:
+        deletionGates.deletionGatePlan.requiresMaintenanceStateCount ?? null,
     },
     residualCompatibilityReferences: residual.residualCompatibilityReferences,
     safetyConfirmations: {
@@ -344,6 +461,7 @@ function buildPolicyCompatibilityDeletionReadiness({
       requireRollbackOrPostWindowSupport: true,
       requireNoResidualCompatibilityReferences: true,
       requireSupportDiagnostics: true,
+      requireZeroRequiresMaintenanceStates: true,
     },
     sideEffects: {
       filesDeleted: false,

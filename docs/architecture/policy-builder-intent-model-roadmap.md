@@ -5426,10 +5426,18 @@ Implementation status:
   repeated systemic failure can notify; durable lifecycle records deduplicate
   notices across replicas and restarts. The design and outcome record is
   [Native Intent Reconciliation Status And Alerting](native-intent-reconciliation-status-alerting.md).
-- Next task: **8R.3.2.6.3 Compatibility Deletion Resolution Gate**. Require
-  zero unconverted policies and zero unresolved `requires_maintenance` states
-  before compatibility storage removal. An acknowledgement, support note, or
-  alert lifecycle transition must not satisfy the gate.
+- Task 8R.3.2.6.3 is implemented as a server-owned compatibility deletion
+  resolution gate. It counts only current `requires_maintenance`
+  reconciliation states, fails closed on missing or invalid evidence, and
+  requires the count to be zero alongside zero unconverted policies. The
+  inventory, gate, readiness report, and execution-plan bundle bind the same
+  count in one read-only repeatable-read observation window. Support notes,
+  acknowledgements, and alert transitions cannot clear it. The design and
+  outcome record is [Compatibility Deletion Resolution Gate](policy-compatibility-deletion-resolution-gate.md).
+- Next task: **8R.3.2.6.4 Retire Manual Apply Endpoint And Confirmation
+  Dialog**. Remove the legacy interactive conversion path only after the
+  reconciler, read-only status surface, and deletion-resolution gate meet their
+  production verification requirements.
 
 ##### 8R.3.2.6.1 Sanitized Failure Attribution And Failed-Run Evidence
 

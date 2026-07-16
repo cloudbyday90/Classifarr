@@ -66,6 +66,12 @@ unchanged operator or runtime outcome.
   persistently deduplicates in-app alerts for an open circuit, prolonged
   unresolved inventory, or repeated systemic failures without restoring a
   manual conversion workflow.
+- **Compatibility Deletion Resolution Gate** - compatibility cleanup now
+  requires independently measured zero unconverted enabled policies and zero
+  current `requires_maintenance` reconciliation states. The server collects
+  both inventories in a read-only consistent snapshot where supported; missing,
+  stale, malformed, or mismatched evidence blocks deletion planning. Support
+  acknowledgements and alert lifecycle state cannot bypass unresolved work.
 - **Native Conversion And Automation Readiness Separation** - valid policies
   can now convert to native intent even when routing or profile freshness still
   needs work. Those automation blockers are reported separately, and unmapped

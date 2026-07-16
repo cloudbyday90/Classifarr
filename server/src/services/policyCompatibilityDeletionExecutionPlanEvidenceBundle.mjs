@@ -27,6 +27,11 @@ import {
   loadPolicyCompatibilityDeletionCurrentInventory,
 } from './policyCompatibilityDeletionCurrentInventory.mjs';
 import {
+  POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_STATUS_IDS,
+  POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_VERSION,
+  loadPolicyCompatibilityDeletionReconciliationStateInventory,
+} from './policyCompatibilityDeletionReconciliationStateInventory.mjs';
+import {
   POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS,
   POLICY_COMPATIBILITY_DELETION_READINESS_VERSION,
   buildPolicyCompatibilityDeletionReadiness,
@@ -43,6 +48,7 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_VERSION =
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS = Object.freeze({
   READY: 'ready',
   BLOCKED_BY_CURRENT_POLICY_INVENTORY: 'blocked_by_current_policy_inventory',
+  BLOCKED_BY_RECONCILIATION_STATE_INVENTORY: 'blocked_by_reconciliation_state_inventory',
   BLOCKED_BY_RUNTIME_CUTOVER: 'blocked_by_runtime_cutover',
   BLOCKED_BY_DELETION_GATES: 'blocked_by_deletion_gates',
   BLOCKED_BY_READINESS: 'blocked_by_readiness',
@@ -52,6 +58,7 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS = 
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS = Object.freeze({
   CURRENT_POLICY_INVENTORY_NOT_READY: 'current_policy_inventory_not_ready',
+  RECONCILIATION_STATE_INVENTORY_NOT_READY: 'reconciliation_state_inventory_not_ready',
   RUNTIME_CUTOVER_NOT_READY: 'runtime_cutover_not_ready',
   DELETION_GATES_NOT_READY: 'deletion_gates_not_ready',
   READINESS_NOT_READY: 'readiness_not_ready',
@@ -61,7 +68,10 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS = Ob
   EVIDENCE_TIMESTAMP_FUTURE: 'evidence_timestamp_future',
   EVIDENCE_TIMESTAMP_MISMATCH: 'evidence_timestamp_mismatch',
   INVENTORY_GATE_COUNT_MISMATCH: 'inventory_gate_count_mismatch',
+  RECONCILIATION_STATE_GATE_COUNT_MISMATCH: 'reconciliation_state_gate_count_mismatch',
   READINESS_INVENTORY_MISMATCH: 'readiness_inventory_mismatch',
+  READINESS_RECONCILIATION_STATE_INVENTORY_MISMATCH:
+    'readiness_reconciliation_state_inventory_mismatch',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
   READY_STATE_MISMATCH: 'ready_state_mismatch',
   UNKNOWN_STATUS: 'unknown_status',
@@ -138,6 +148,7 @@ function buildEvidenceSummary(evidence = {}) {
     validationOk: value.validation?.ok === true,
     unconvertedPolicyCount:
       value.policyCounts?.unconvertedPolicyCount ?? value.unconvertedPolicyCount ?? null,
+    requiresMaintenanceStateCount: value.requiresMaintenanceStateCount ?? null,
   };
 }
 
@@ -145,6 +156,7 @@ function buildTimestampRisks({
   generatedAt,
   now,
   currentPolicyInventory,
+  reconciliationStateInventory,
   cutoverVerification,
   deletionGatePlan,
   maxEvidenceAgeMs,
@@ -154,6 +166,7 @@ function buildTimestampRisks({
   const evaluationTimestamp = resolveTimestamp(now);
   const evidenceEntries = [
     ['currentPolicyInventory', currentPolicyInventory],
+    ['reconciliationStateInventory', reconciliationStateInventory],
     ['cutoverVerification', cutoverVerification],
     ['deletionGatePlan', deletionGatePlan],
   ];
@@ -235,12 +248,14 @@ function buildTimestampRisks({
 
 function buildSourceRisks({
   currentPolicyInventory,
+  reconciliationStateInventory,
   cutoverVerification,
   deletionGatePlan,
   deletionReadiness,
 }) {
   const risks = [];
   const inventory = asObject(currentPolicyInventory);
+  const reconciliationState = asObject(reconciliationStateInventory);
   const cutover = asObject(cutoverVerification);
   const gates = asObject(deletionGatePlan);
   const readiness = asObject(deletionReadiness);
@@ -265,6 +280,27 @@ function buildSourceRisks({
   }
 
   if (
+    reconciliationState.version !==
+      POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_VERSION ||
+    reconciliationState.statusId !==
+      POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_STATUS_IDS
+        .NO_REQUIRES_MAINTENANCE_STATES ||
+    reconciliationState.hasNoRequiresMaintenanceStates !== true ||
+    reconciliationState.validation?.ok !== true
+  ) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+        .RECONCILIATION_STATE_INVENTORY_NOT_READY,
+      'Execution planning requires current validated evidence that no unresolved requires-maintenance reconciliation states remain.',
+      {
+        statusId: reconciliationState.statusId || null,
+        requiresMaintenanceStateCount:
+          reconciliationState.requiresMaintenanceStateCount ?? null,
+      }
+    ));
+  }
+
+  if (
     cutover.version !== POLICY_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION ||
     cutover.statusId !==
       POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.READY_FOR_CUTOVER_MONITORING ||
@@ -279,6 +315,23 @@ function buildSourceRisks({
   }
 
   if (
+    gates.requiresMaintenanceStateCount !==
+      reconciliationState.requiresMaintenanceStateCount
+  ) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+        .RECONCILIATION_STATE_GATE_COUNT_MISMATCH,
+      'Compatibility deletion gates must use the current unresolved requires-maintenance reconciliation-state count.',
+      {
+        inventoryRequiresMaintenanceStateCount:
+          reconciliationState.requiresMaintenanceStateCount ?? null,
+        deletionGateRequiresMaintenanceStateCount:
+          gates.requiresMaintenanceStateCount ?? null,
+      }
+    ));
+  }
+
+  if (
     gates.version !== POLICY_COMPATIBILITY_DELETION_GATES_VERSION ||
     gates.statusId !== POLICY_COMPATIBILITY_DELETION_STATUS_IDS.READY_TO_DELETE ||
     gates.readyToDelete !== true ||
@@ -289,6 +342,24 @@ function buildSourceRisks({
         .DELETION_GATES_NOT_READY,
       'Execution planning requires current valid compatibility-deletion gates.',
       { statusId: gates.statusId || null }
+    ));
+  }
+
+  if (
+    readiness.reconciliationStateInventory?.generatedAt !==
+      reconciliationState.generatedAt ||
+    readiness.reconciliationStateInventory?.requiresMaintenanceStateCount !==
+      reconciliationState.requiresMaintenanceStateCount
+  ) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+        .READINESS_RECONCILIATION_STATE_INVENTORY_MISMATCH,
+      'Deletion readiness must describe the same reconciliation-state inventory as its evidence bundle.',
+      {
+        inventoryGeneratedAt: reconciliationState.generatedAt || null,
+        readinessInventoryGeneratedAt:
+          readiness.reconciliationStateInventory?.generatedAt || null,
+      }
     ));
   }
 
@@ -359,6 +430,20 @@ function determineStatusId(risks = []) {
 
   if (riskIds.has(
     POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+      .RECONCILIATION_STATE_INVENTORY_NOT_READY
+  ) || riskIds.has(
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+      .RECONCILIATION_STATE_GATE_COUNT_MISMATCH
+  ) || riskIds.has(
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+      .READINESS_RECONCILIATION_STATE_INVENTORY_MISMATCH
+  )) {
+    return POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS
+      .BLOCKED_BY_RECONCILIATION_STATE_INVENTORY;
+  }
+
+  if (riskIds.has(
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
       .EVIDENCE_TIMESTAMP_STALE
   ) || riskIds.has(
     POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
@@ -414,6 +499,7 @@ function determineStatusId(risks = []) {
 
 function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
   currentPolicyInventory = null,
+  reconciliationStateInventory = null,
   cutoverVerification = null,
   deletionGatePlan = null,
   residualCompatibilityReferences = [],
@@ -435,6 +521,7 @@ function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
   const maximumEvidenceAgeMs = normalizeMaximumEvidenceAge(maxEvidenceAgeMs);
   const readiness = buildPolicyCompatibilityDeletionReadiness({
     currentPolicyInventory,
+    reconciliationStateInventory,
     cutoverVerification,
     deletionGatePlan,
     residualCompatibilityReferences,
@@ -448,12 +535,14 @@ function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
       generatedAt: generatedTimestamp.value,
       now,
       currentPolicyInventory,
+      reconciliationStateInventory,
       cutoverVerification,
       deletionGatePlan,
       maxEvidenceAgeMs: maximumEvidenceAgeMs,
     }),
     ...buildSourceRisks({
       currentPolicyInventory,
+      reconciliationStateInventory,
       cutoverVerification,
       deletionGatePlan,
       deletionReadiness: readiness,
@@ -471,6 +560,7 @@ function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
     },
     evidence: {
       currentPolicyInventory: buildEvidenceSummary(currentPolicyInventory),
+      reconciliationStateInventory: buildEvidenceSummary(reconciliationStateInventory),
       cutoverVerification: buildEvidenceSummary(cutoverVerification),
       deletionGatePlan: buildEvidenceSummary(deletionGatePlan),
     },
@@ -480,7 +570,9 @@ function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
     risks,
     collectionPolicy: {
       collectsCurrentPolicyInventory: true,
+      collectsReconciliationStateInventory: true,
       constructsCutoverAndDeletionGatesInOneWindow: true,
+      usesReadOnlyRepeatableReadSnapshot: true,
       requiresBoundedEvidenceFreshness: true,
       writesDatabase: false,
       deletesData: false,
@@ -499,7 +591,7 @@ function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
         ? 'Compatibility Path Deletion Execution Plan'
         : 'Refresh Compatibility Deletion Evidence',
       reason: risks.length === 0
-        ? 'Current inventory, runtime cutover, deletion gates, and readiness agree in one bounded evidence window.'
+        ? 'Current policy and reconciliation-state inventories, runtime cutover, deletion gates, and readiness agree in one bounded evidence window.'
         : 'Compatibility deletion planning requires a current, consistent, valid evidence bundle.',
     },
   };
@@ -514,6 +606,7 @@ function validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle(bundle =
   const issues = [];
   const evidence = asObject(bundle.evidence);
   const inventory = asObject(evidence.currentPolicyInventory);
+  const reconciliationStateInventory = asObject(evidence.reconciliationStateInventory);
   const cutover = asObject(evidence.cutoverVerification);
   const gateEvidence = asObject(evidence.deletionGatePlan);
   const gates = asObject(bundle.deletionGatePlan);
@@ -560,6 +653,17 @@ function validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle(bundle =
         POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
           .CURRENT_POLICY_INVENTORY_NOT_READY,
       label: 'Current policy inventory',
+    },
+    {
+      evidence: reconciliationStateInventory,
+      version: POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_VERSION,
+      statusId:
+        POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_STATUS_IDS
+          .NO_REQUIRES_MAINTENANCE_STATES,
+      riskId:
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+          .RECONCILIATION_STATE_INVENTORY_NOT_READY,
+      label: 'Reconciliation-state inventory',
     },
     {
       evidence: cutover,
@@ -630,6 +734,19 @@ function validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle(bundle =
     ));
   }
 
+  if (
+    gates.requiresMaintenanceStateCount !==
+      reconciliationStateInventory.requiresMaintenanceStateCount ||
+    readiness.reconciliationStateInventory?.requiresMaintenanceStateCount !==
+      reconciliationStateInventory.requiresMaintenanceStateCount
+  ) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+        .RECONCILIATION_STATE_GATE_COUNT_MISMATCH,
+      'Execution-plan evidence bundle must preserve the measured requires-maintenance reconciliation-state count across gates and readiness.'
+    ));
+  }
+
   Object.entries(asObject(bundle.sideEffects)).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
@@ -670,9 +787,32 @@ async function loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClie
   const collectionTimestamp = generatedAt === null
     ? resolveTimestamp(now).value
     : suppliedGeneratedTimestamp?.value || String(generatedAt || '');
-  const currentPolicyInventory = await loadPolicyCompatibilityDeletionCurrentInventory(dbClient, {
-    generatedAt: collectionTimestamp,
+  if (
+    !dbClient ||
+    typeof dbClient.query !== 'function' ||
+    typeof dbClient.withTransaction !== 'function'
+  ) {
+    throw new TypeError(
+      'A database client with query(text) and withTransaction(fn) is required.'
+    );
+  }
+
+  const collectInventories = async client => {
+    const currentPolicyInventory = await loadPolicyCompatibilityDeletionCurrentInventory(client, {
+      generatedAt: collectionTimestamp,
+    });
+    const reconciliationStateInventory =
+      await loadPolicyCompatibilityDeletionReconciliationStateInventory(client, {
+        generatedAt: collectionTimestamp,
+      });
+
+    return { currentPolicyInventory, reconciliationStateInventory };
+  };
+  const inventories = await dbClient.withTransaction(async client => {
+    await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    return collectInventories(client);
   });
+  const { currentPolicyInventory, reconciliationStateInventory } = inventories;
   const cutoverVerification = buildPolicyNativeRuntimeCutoverVerification({
     convertedPolicy,
     unconvertedPolicy,
@@ -687,12 +827,15 @@ async function loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClie
     coverage,
     unconvertedPolicyCount:
       currentPolicyInventory.policyCounts?.unconvertedPolicyCount ?? null,
+    requiresMaintenanceStateCount:
+      reconciliationStateInventory.requiresMaintenanceStateCount ?? null,
     supportStanceId,
     generatedAt: collectionTimestamp,
   });
 
   return buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
     currentPolicyInventory,
+    reconciliationStateInventory,
     cutoverVerification,
     deletionGatePlan,
     residualCompatibilityReferences,

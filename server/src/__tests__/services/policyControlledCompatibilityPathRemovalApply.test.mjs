@@ -14,6 +14,9 @@ import {
   buildPolicyCompatibilityDeletionCurrentInventory,
 } from '../../services/policyCompatibilityDeletionCurrentInventory.mjs';
 import {
+  buildPolicyCompatibilityDeletionReconciliationStateInventory,
+} from '../../services/policyCompatibilityDeletionReconciliationStateInventory.mjs';
+import {
   buildPolicyCompatibilityDeletionExecutionPlan,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
@@ -122,6 +125,7 @@ function readyDeletionGates() {
     supportStanceId:
       POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
     unconvertedPolicyCount: 0,
+    requiresMaintenanceStateCount: 0,
   });
 }
 
@@ -137,9 +141,16 @@ function readyCurrentPolicyInventory() {
   });
 }
 
+function readyReconciliationStateInventory() {
+  return buildPolicyCompatibilityDeletionReconciliationStateInventory({
+    requiresMaintenanceStateCount: 0,
+  });
+}
+
 function readyReadiness() {
   return buildPolicyCompatibilityDeletionReadiness({
     currentPolicyInventory: readyCurrentPolicyInventory(),
+    reconciliationStateInventory: readyReconciliationStateInventory(),
     cutoverVerification: readyCutover(),
     deletionGatePlan: readyDeletionGates(),
     backupRestoreVerified: true,

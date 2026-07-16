@@ -66,6 +66,7 @@ describe('policyCompatibilityDeletionGates', () => {
     const plan = buildPolicyCompatibilityDeletionGates({
       coverage: buildCompleteCoverage(),
       unconvertedPolicyCount: 0,
+      requiresMaintenanceStateCount: 0,
     });
 
     expect(plan.statusId)
@@ -85,6 +86,8 @@ describe('policyCompatibilityDeletionGates', () => {
       supportStanceId:
         POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
       unconvertedPolicyCount: 0,
+      requiresMaintenanceStateCount: 0,
+      requiresMaintenanceStateCount: 0,
     });
 
     expect(plan.statusId)
@@ -100,6 +103,7 @@ describe('policyCompatibilityDeletionGates', () => {
       supportStanceId:
         POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
       unconvertedPolicyCount: 0,
+      requiresMaintenanceStateCount: 0,
     });
 
     expect(plan.statusId).toBe(POLICY_COMPATIBILITY_DELETION_STATUS_IDS.READY_TO_DELETE);
@@ -153,9 +157,10 @@ describe('policyCompatibilityDeletionGates', () => {
     const audit = buildPolicyCompatibilityDeletionGatesAudit(
       buildPolicyCompatibilityDeletionGates({
         coverage: buildCompleteCoverage(),
-        supportStanceId:
-          POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.SUPPORTED_TIME_BOUND,
-        unconvertedPolicyCount: 0,
+      supportStanceId:
+        POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.SUPPORTED_TIME_BOUND,
+      unconvertedPolicyCount: 0,
+      requiresMaintenanceStateCount: 0,
       })
     );
 
@@ -171,5 +176,40 @@ describe('policyCompatibilityDeletionGates', () => {
       }),
     }));
     expect(audit.nextPhase).toBeUndefined();
+  });
+
+  test('requires a measured zero requires-maintenance count regardless of support stance', () => {
+    const blocked = buildPolicyCompatibilityDeletionGates({
+      coverage: buildCompleteCoverage(),
+      supportStanceId:
+        POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
+      unconvertedPolicyCount: 0,
+      requiresMaintenanceStateCount: 1,
+    });
+    const unknown = buildPolicyCompatibilityDeletionGates({
+      coverage: buildCompleteCoverage(),
+      supportStanceId:
+        POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
+      unconvertedPolicyCount: 0,
+    });
+
+    expect(blocked.statusId).toBe(
+      POLICY_COMPATIBILITY_DELETION_STATUS_IDS.BLOCKED_BY_REQUIRES_MAINTENANCE_STATES
+    );
+    expect(blocked.readyToDelete).toBe(false);
+    expect(blocked.blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        blockerId: 'requires_maintenance_states_remaining',
+        count: 1,
+      }),
+    ]));
+    expect(unknown.statusId).toBe(
+      POLICY_COMPATIBILITY_DELETION_STATUS_IDS.BLOCKED_BY_REQUIRES_MAINTENANCE_STATES
+    );
+    expect(unknown.blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        blockerId: 'requires_maintenance_state_count_unknown',
+      }),
+    ]));
   });
 });

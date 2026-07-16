@@ -15,6 +15,9 @@ import {
 import {
   buildPolicyCompatibilityDeletionCurrentInventory,
 } from '../../services/policyCompatibilityDeletionCurrentInventory.mjs';
+import {
+  buildPolicyCompatibilityDeletionReconciliationStateInventory,
+} from '../../services/policyCompatibilityDeletionReconciliationStateInventory.mjs';
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
@@ -101,6 +104,13 @@ function readyDeletionGates() {
     supportStanceId:
       POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
     unconvertedPolicyCount: 0,
+    requiresMaintenanceStateCount: 0,
+  });
+}
+
+function readyReconciliationStateInventory() {
+  return buildPolicyCompatibilityDeletionReconciliationStateInventory({
+    requiresMaintenanceStateCount: 0,
   });
 }
 
@@ -119,6 +129,7 @@ function readyCurrentPolicyInventory() {
 function readyReadiness(overrides = {}) {
   return buildPolicyCompatibilityDeletionReadiness({
     currentPolicyInventory: readyCurrentPolicyInventory(),
+    reconciliationStateInventory: readyReconciliationStateInventory(),
     cutoverVerification: readyCutover(),
     deletionGatePlan: readyDeletionGates(),
     backupRestoreVerified: true,
@@ -214,6 +225,7 @@ describe('policyCompatibilityDeletionReadiness', () => {
         supportStanceId:
           POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
         unconvertedPolicyCount: 2,
+        requiresMaintenanceStateCount: 0,
       }),
     });
 
@@ -223,6 +235,33 @@ describe('policyCompatibilityDeletionReadiness', () => {
     expect(readiness.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.DELETION_GATES_NOT_READY,
+      }),
+    ]));
+  });
+
+  test('blocks readiness while a requires-maintenance reconciliation state remains', () => {
+    const readiness = readyReadiness({
+      reconciliationStateInventory:
+        buildPolicyCompatibilityDeletionReconciliationStateInventory({
+          requiresMaintenanceStateCount: 1,
+        }),
+      deletionGatePlan: buildPolicyCompatibilityDeletionGates({
+        coverage: buildCompleteCoverage(),
+        supportStanceId:
+          POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
+        unconvertedPolicyCount: 0,
+        requiresMaintenanceStateCount: 1,
+      }),
+    });
+
+    expect(readiness.statusId).toBe(
+      POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS
+        .BLOCKED_BY_RECONCILIATION_STATE_INVENTORY
+    );
+    expect(readiness.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+          .RECONCILIATION_STATE_INVENTORY_NOT_READY,
       }),
     ]));
   });
@@ -251,6 +290,7 @@ describe('policyCompatibilityDeletionReadiness', () => {
   test('blocks readiness until backup, rollback, diagnostics, and manifest confirmations pass', () => {
     const readiness = buildPolicyCompatibilityDeletionReadiness({
       currentPolicyInventory: readyCurrentPolicyInventory(),
+      reconciliationStateInventory: readyReconciliationStateInventory(),
       cutoverVerification: readyCutover(),
       deletionGatePlan: readyDeletionGates(),
       backupRestoreVerified: false,

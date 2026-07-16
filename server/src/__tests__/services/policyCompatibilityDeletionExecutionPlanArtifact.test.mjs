@@ -7,6 +7,10 @@ import {
   POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_VERSION,
 } from '../../services/policyCompatibilityDeletionCurrentInventory.mjs';
 import {
+  POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_STATUS_IDS,
+  POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_VERSION,
+} from '../../services/policyCompatibilityDeletionReconciliationStateInventory.mjs';
+import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS,
   buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle,
 } from '../../services/policyCompatibilityDeletionExecutionPlanEvidenceBundle.mjs';
@@ -45,6 +49,17 @@ function readyEvidenceBundle() {
         ok: true,
       },
     },
+    reconciliationStateInventory: {
+      version:
+        POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_VERSION,
+      generatedAt: COLLECTION_TIME,
+      statusId:
+        POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_STATUS_IDS
+          .NO_REQUIRES_MAINTENANCE_STATES,
+      hasNoRequiresMaintenanceStates: true,
+      requiresMaintenanceStateCount: 0,
+      validation: { ok: true },
+    },
     cutoverVerification: {
       version: POLICY_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION,
       generatedAt: COLLECTION_TIME,
@@ -60,6 +75,7 @@ function readyEvidenceBundle() {
       statusId: 'ready_to_delete',
       readyToDelete: true,
       unconvertedPolicyCount: 0,
+      requiresMaintenanceStateCount: 0,
       categories: [{
         categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI,
         paths: [MANIFEST_PATH],
