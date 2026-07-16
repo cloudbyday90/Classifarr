@@ -31,6 +31,10 @@ const reconciliationStatus = {
   latestRun: {
     completedAt: '2026-07-16T02:00:00.000Z',
     reasonId: 'eligible_candidates_converted',
+    runtime: {
+      appVersion: '0.47.5-c.beta',
+      buildRevision: 'a0b1c2d3e4f5678901234567890abcdef1234567',
+    },
     counts: {
       convertedCount: 2,
       deferredCount: 1,
@@ -71,6 +75,7 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
     expect(wrapper.text()).toContain('Current blocker groups')
     expect(wrapper.text()).toContain('Rollback Hold Active')
     expect(wrapper.text()).toContain('Automatic reconciliation remains the only normal conversion path')
+    expect(wrapper.text()).toContain('App 0.47.5-c.beta | revision a0b1c2d3e4f5678901234567890abcdef1234567')
     expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(0)
     expect(wrapper.text()).not.toContain('Confirm native intent conversion')
     expect(wrapper.text()).not.toContain('Review conversion')
@@ -102,5 +107,19 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
     expect(wrapper.text()).toContain('Control unavailable')
     expect(wrapper.text()).toContain('Unavailable')
     expect(wrapper.text()).not.toContain('AutomationEnabled')
+  })
+
+  it('labels pre-provenance reconciliation rows as historical without hiding status', async () => {
+    apiMock.getNativeIntentReconciliationStatus.mockResolvedValue({
+      ...reconciliationStatus,
+      latestRun: {
+        ...reconciliationStatus.latestRun,
+        runtime: { appVersion: 'unknown', buildRevision: null },
+      },
+    })
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Unknown (historical run)')
   })
 })

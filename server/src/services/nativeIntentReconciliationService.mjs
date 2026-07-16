@@ -34,6 +34,10 @@ import {
 import {
   buildNativeIntentReconciliationAlertFailureAttribution,
 } from './nativeIntentReconciliationAlertFailureAttribution.mjs';
+import {
+  getNativeIntentReconciliationRuntimeProvenance,
+  normalizeNativeIntentReconciliationRuntimeProvenance,
+} from './nativeIntentReconciliationRuntimeProvenance.mjs';
 
 const NATIVE_INTENT_RECONCILIATION_VERSION = 'native_intent_reconciliation.v1';
 const NATIVE_INTENT_RECONCILIATION_BATCH_SIZE = 10;
@@ -73,6 +77,14 @@ function normalizeLedgerResult(value) {
   };
 }
 
+function resolveRuntimeProvenance(provider) {
+  try {
+    return normalizeNativeIntentReconciliationRuntimeProvenance(provider());
+  } catch {
+    return normalizeNativeIntentReconciliationRuntimeProvenance();
+  }
+}
+
 function buildResult({
   applyGate = {},
   startedAt,
@@ -80,6 +92,7 @@ function buildResult({
   failed = false,
   control = null,
   correlationId,
+  runtimeProvenance,
 } = {}) {
   const readyPolicyIds = asArray(applyGate.readyPolicyIds);
 
@@ -90,6 +103,7 @@ function buildResult({
     startedAt,
     deadlineAt,
     completedAt: new Date().toISOString(),
+    runtime: normalizeNativeIntentReconciliationRuntimeProvenance(runtimeProvenance),
     scope: {
       currentStateOnly: true,
       unconvertedOnly: true,
@@ -150,6 +164,7 @@ class NativeIntentReconciliationService {
     controlService = defaultControlService,
     alertService = defaultAlertService,
     now = () => new Date(),
+    runtimeProvenanceProvider = getNativeIntentReconciliationRuntimeProvenance,
     loggerInstance = logger,
   } = {}) {
     this.dbClient = dbClient;
@@ -158,6 +173,7 @@ class NativeIntentReconciliationService {
     this.controlService = controlService;
     this.alertService = alertService;
     this.now = now;
+    this.runtimeProvenanceProvider = runtimeProvenanceProvider;
     this.logger = loggerInstance;
   }
 
@@ -191,6 +207,7 @@ class NativeIntentReconciliationService {
   async run() {
     const startedAt = normalizeTimestamp(this.now());
     const correlationId = randomUUID();
+    const runtimeProvenance = resolveRuntimeProvenance(this.runtimeProvenanceProvider);
     const deadlineAt = new Date(
       new Date(startedAt).getTime() + NATIVE_INTENT_RECONCILIATION_MAX_ELAPSED_MS,
     ).toISOString();
@@ -210,6 +227,7 @@ class NativeIntentReconciliationService {
           deadlineAt,
           control: controlEligibility.control,
           correlationId,
+          runtimeProvenance,
         });
         this.logger.info('Native intent reconciliation deferred by operational control', {
           statusId: result.statusId,
@@ -237,6 +255,7 @@ class NativeIntentReconciliationService {
         deadlineAt,
         control: controlEligibility.control,
         correlationId,
+        runtimeProvenance,
       });
 
       try {
@@ -267,6 +286,7 @@ class NativeIntentReconciliationService {
           startedAt,
           finishedAt: result.completedAt,
           runKey: correlationId,
+          runtimeProvenance,
         }));
       } catch {
         result.ledger = {
@@ -289,6 +309,7 @@ class NativeIntentReconciliationService {
         operatorErrorIds: result.operatorErrorIds,
         ledgerStatusId: result.ledger.statusId,
         correlationId,
+        runtime: result.runtime,
       });
 
       return this.evaluateAlerts(result);
@@ -323,6 +344,7 @@ class NativeIntentReconciliationService {
         failed: true,
         control,
         correlationId,
+        runtimeProvenance,
       });
 
       try {
@@ -331,6 +353,7 @@ class NativeIntentReconciliationService {
           startedAt,
           finishedAt: result.completedAt,
           runKey: correlationId,
+          runtimeProvenance,
         }));
       } catch {
         result.ledger = {
@@ -348,6 +371,7 @@ class NativeIntentReconciliationService {
         failureCategory: failure.categoryId,
         systemFailureCategory: failure.systemFailureCategory,
         ledgerStatusId: result.ledger.statusId,
+        runtime: result.runtime,
         rawPayloadExposed: false,
       }, { persistStack: false });
 

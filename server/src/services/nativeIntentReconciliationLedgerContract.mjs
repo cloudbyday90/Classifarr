@@ -9,6 +9,9 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto';
+import {
+  normalizeNativeIntentReconciliationRuntimeProvenance,
+} from './nativeIntentReconciliationRuntimeProvenance.mjs';
 
 const NATIVE_INTENT_RECONCILIATION_LEDGER_VERSION = 'native_intent_reconciliation.ledger.v1';
 const NATIVE_INTENT_RECONCILIATION_OUTCOME_RETENTION_DAYS = 30;
@@ -351,6 +354,7 @@ function buildNativeIntentReconciliationLedgerRecord({
   startedAt = new Date(),
   finishedAt = new Date(),
   runKey = randomUUID(),
+  runtimeProvenance,
 } = {}) {
   const normalizedStartedAt = normalizeTimestamp(startedAt);
   const normalizedFinishedAt = normalizeFinishedAt(finishedAt, normalizedStartedAt);
@@ -376,6 +380,7 @@ function buildNativeIntentReconciliationLedgerRecord({
     run: {
       runKey,
       reconcilerVersion: NATIVE_INTENT_RECONCILIATION_LEDGER_VERSION,
+      runtime: normalizeNativeIntentReconciliationRuntimeProvenance(runtimeProvenance),
       runState: determineRunState(sourceStatusId),
       sourceStatusId,
       reasonId: runReasonId,

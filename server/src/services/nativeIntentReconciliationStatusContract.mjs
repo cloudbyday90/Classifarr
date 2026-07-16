@@ -10,6 +10,9 @@ import {
   NATIVE_INTENT_RECONCILIATION_CIRCUIT_STATE_IDS,
   NATIVE_INTENT_RECONCILIATION_RECOVERY_REQUIREMENT_IDS,
 } from './nativeIntentReconciliationControlContract.mjs';
+import {
+  normalizeNativeIntentReconciliationRuntimeProvenance,
+} from './nativeIntentReconciliationRuntimeProvenance.mjs';
 
 const NATIVE_INTENT_RECONCILIATION_STATUS_VERSION = 'native_intent_reconciliation.status.v1';
 const MAX_NATIVE_INTENT_RECONCILIATION_STATUS_COUNT = 1_000_000;
@@ -95,6 +98,10 @@ function normalizeLatestRun(value) {
     statusId,
     reasonId,
     completedAt,
+    runtime: normalizeNativeIntentReconciliationRuntimeProvenance({
+      appVersion: source.runtime_app_version ?? source.runtime?.appVersion,
+      buildRevision: source.runtime_build_revision ?? source.runtime?.buildRevision,
+    }),
     counts: {
       candidateCount: normalizeCount(source.candidate_count ?? source.candidateCount),
       convertedCount: normalizeCount(source.converted_count ?? source.convertedCount),

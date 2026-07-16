@@ -29,6 +29,8 @@ function buildStatus(overrides = {}) {
       source_status_id: 'no_candidates',
       reason_id: 'no_candidates',
       finished_at: '2026-07-16T00:50:00.000Z',
+      runtime_app_version: '0.47.5-c.beta',
+      runtime_build_revision: 'a0b1c2d3e4f5678901234567890abcdef1234567',
       candidate_count: 0,
     },
     inventory: {},
@@ -65,6 +67,11 @@ describe('Native intent reconciliation status contract', () => {
       expect.objectContaining({ outcomeState: 'blocked_current_state', reasonId: 'operator_review_required' }),
     ]);
     expect(JSON.stringify(status)).not.toContain('do_not_return');
+    expect(status.latestRun.runtime).toEqual({
+      appVersion: '0.47.5-c.beta',
+      buildRevision: 'a0b1c2d3e4f5678901234567890abcdef1234567',
+      rawPayloadExposed: false,
+    });
   });
 
   test('reports an unavailable control and an open circuit without inventing a successful run', () => {
@@ -84,5 +91,40 @@ describe('Native intent reconciliation status contract', () => {
     expect(unavailable.statusId).toBe(NATIVE_INTENT_RECONCILIATION_STATUS_IDS.CONTROL_UNAVAILABLE);
     expect(unavailable.latestRun).toBeNull();
     expect(open.statusId).toBe(NATIVE_INTENT_RECONCILIATION_STATUS_IDS.CIRCUIT_OPEN);
+  });
+
+  test('uses unknown provenance for historical rows and rejects malformed runtime fields', () => {
+    const historical = buildStatus({
+      latestRun: {
+        run_key: RUN_KEY,
+        run_state: 'evaluated',
+        source_status_id: 'no_candidates',
+        reason_id: 'no_candidates',
+        finished_at: '2026-07-16T00:50:00.000Z',
+      },
+    });
+    const malformed = buildStatus({
+      latestRun: {
+        run_key: RUN_KEY,
+        run_state: 'failed',
+        source_status_id: 'failed',
+        reason_id: 'system_failure',
+        finished_at: '2026-07-16T00:50:00.000Z',
+        runtime_app_version: '0.47.5\nDATABASE_PASSWORD=must-not-escape',
+        runtime_build_revision: 'latest',
+      },
+    });
+
+    expect(historical.latestRun.runtime).toEqual({
+      appVersion: 'unknown',
+      buildRevision: null,
+      rawPayloadExposed: false,
+    });
+    expect(malformed.latestRun.runtime).toEqual({
+      appVersion: 'unknown',
+      buildRevision: null,
+      rawPayloadExposed: false,
+    });
+    expect(JSON.stringify(malformed)).not.toContain('must-not-escape');
   });
 });

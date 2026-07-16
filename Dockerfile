@@ -43,17 +43,20 @@ FROM node:24.15.0-alpine3.23 AS production
 # - avx: build only AVX-optimized variant
 # - avx2: build only AVX2-optimized variant
 ARG PGVECTOR_BUILD=multi
+ARG VCS_REF=unknown
 # Best practice for portability: OPTFLAGS="" (pgvector docs recommend this to avoid illegal instruction)
 ARG PGVECTOR_GENERIC_OPTFLAGS=""
 # AVX-optimized build (kept conservative to avoid AVX2-only requirements)
 ARG PGVECTOR_AVX_OPTFLAGS="-mavx"
 ARG PGVECTOR_AVX2_OPTFLAGS="-mavx2"
 ENV CLASSIFARR_PGVECTOR_BUILD=$PGVECTOR_BUILD
+ENV CLASSIFARR_BUILD_REVISION=$VCS_REF
 
 # Labels for OCI compliance
 LABEL org.opencontainers.image.title="Classifarr"
 LABEL org.opencontainers.image.description="AI-powered media classification for the *arr ecosystem"
 LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.revision="${VCS_REF}"
 LABEL org.opencontainers.image.vendor="cloudbyday90"
 LABEL org.opencontainers.image.source="https://github.com/cloudbyday90/Classifarr"
 LABEL org.opencontainers.image.licenses="GPL-3.0"

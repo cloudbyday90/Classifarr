@@ -318,6 +318,10 @@ describe('Schema snapshot freshness', () => {
             __dirname,
             '../../../database/migrations/20260715_160000_add_native_intent_reconciliation_control.sql'
         );
+        const reconciliationRuntimeProvenanceMigrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260716_030000_add_native_intent_reconciliation_runtime_provenance.sql'
+        );
         const migrationSql = fs.readFileSync(migrationPath, 'utf8');
         const integrityMigrationSql = fs.readFileSync(integrityMigrationPath, 'utf8');
         const retentionMigrationSql = fs.readFileSync(retentionMigrationPath, 'utf8');
@@ -331,6 +335,10 @@ describe('Schema snapshot freshness', () => {
         );
         const reconciliationControlMigrationSql = fs.readFileSync(
             reconciliationControlMigrationPath,
+            'utf8'
+        );
+        const reconciliationRuntimeProvenanceMigrationSql = fs.readFileSync(
+            reconciliationRuntimeProvenanceMigrationPath,
             'utf8'
         );
         const policyIntents = getCreateTableBlock(schemaSql, 'policy_intents');
@@ -413,6 +421,12 @@ describe('Schema snapshot freshness', () => {
         expect(reconciliationRuns).toContain('run_key uuid NOT NULL');
         expect(reconciliationRuns).toContain('policy_native_intent_reconciliation_runs_state_chk');
         expect(reconciliationRuns).toContain('candidate_count integer DEFAULT 0');
+        expect(reconciliationRuns).toMatch(
+            /runtime_app_version character varying\(80\) DEFAULT 'unknown'::character varying(?: CONSTRAINT \S+)? NOT NULL/
+        );
+        expect(reconciliationRuns).toContain('runtime_build_revision character varying(64)');
+        expect(reconciliationRuns).toContain('policy_native_intent_reconcile_runs_app_version_chk');
+        expect(reconciliationRuns).toContain('policy_native_intent_reconcile_runs_build_revision_chk');
         expect(reconciliationRuns).toContain('candidate_count_not_null');
         expect(reconciliationRuns).toContain('policy_native_intent_reconciliation_runs_count_total_chk');
         expect(reconciliationOutcomes).toContain('candidate_fingerprint character varying(71)');
@@ -462,6 +476,12 @@ describe('Schema snapshot freshness', () => {
         );
         expect(reconciliationControlMigrationSql).toContain(
             "VALUES (1, TRUE, 'closed', 'none')"
+        );
+        expect(reconciliationRuntimeProvenanceMigrationSql).toContain(
+            'ADD COLUMN runtime_app_version VARCHAR(80) NOT NULL DEFAULT \'unknown\''
+        );
+        expect(reconciliationRuntimeProvenanceMigrationSql).toContain(
+            'policy_native_intent_reconcile_runs_build_revision_chk'
         );
         expect(reconciliationControls).toContain(
             "automation_enabled boolean DEFAULT true"

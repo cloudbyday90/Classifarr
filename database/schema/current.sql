@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-16T02:25:36.032Z
--- Latest Migration: 20260716_020000_add_native_intent_reconciliation_alert_states.sql
+-- Generated: 2026-07-16T15:38:20.899Z
+-- Latest Migration: 20260716_030000_add_native_intent_reconciliation_runtime_provenance.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4346,6 +4346,10 @@ CREATE TABLE public.policy_native_intent_reconciliation_runs (
     blocked_count integer DEFAULT 0 NOT NULL,
     failed_count integer DEFAULT 0 NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    runtime_app_version character varying(80) DEFAULT 'unknown'::character varying CONSTRAINT policy_native_intent_reconciliatio_runtime_app_version_not_null NOT NULL,
+    runtime_build_revision character varying(64),
+    CONSTRAINT policy_native_intent_reconcile_runs_app_version_chk CHECK (((runtime_app_version)::text ~ '^[0-9A-Za-z][0-9A-Za-z._+-]{0,79}$'::text)),
+    CONSTRAINT policy_native_intent_reconcile_runs_build_revision_chk CHECK (((runtime_build_revision IS NULL) OR ((runtime_build_revision)::text ~ '^[a-f0-9]{7,64}$'::text))),
     CONSTRAINT policy_native_intent_reconciliation_runs_count_total_chk CHECK ((candidate_count = ((((converted_count + already_native_count) + deferred_count) + blocked_count) + failed_count))),
     CONSTRAINT policy_native_intent_reconciliation_runs_counts_chk CHECK (((candidate_count >= 0) AND (converted_count >= 0) AND (already_native_count >= 0) AND (deferred_count >= 0) AND (blocked_count >= 0) AND (failed_count >= 0))),
     CONSTRAINT policy_native_intent_reconciliation_runs_finished_after_started CHECK ((finished_at >= started_at)),
@@ -12283,6 +12287,7 @@ FROM unnest(ARRAY[
     '20260715_140000_add_native_intent_reconciliation_state.sql',
     '20260715_150000_add_native_intent_reconciliation_lifecycle_guards.sql',
     '20260715_160000_add_native_intent_reconciliation_control.sql',
-    '20260716_020000_add_native_intent_reconciliation_alert_states.sql'
+    '20260716_020000_add_native_intent_reconciliation_alert_states.sql',
+    '20260716_030000_add_native_intent_reconciliation_runtime_provenance.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

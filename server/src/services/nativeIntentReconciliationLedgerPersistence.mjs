@@ -17,6 +17,8 @@ async function insertNativeIntentReconciliationRun({ client, run }) {
     `INSERT INTO policy_native_intent_reconciliation_runs (
        run_key,
        reconciler_version,
+       runtime_app_version,
+       runtime_build_revision,
        run_state,
        source_status_id,
        reason_id,
@@ -29,11 +31,13 @@ async function insertNativeIntentReconciliationRun({ client, run }) {
        blocked_count,
        failed_count
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
      RETURNING id`,
     [
       run.runKey,
       run.reconcilerVersion,
+      run.runtime.appVersion,
+      run.runtime.buildRevision,
       run.runState,
       run.sourceStatusId,
       run.reasonId,

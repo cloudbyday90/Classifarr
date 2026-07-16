@@ -172,6 +172,24 @@ describe('nativeIntentReconciliationLedgerContract', () => {
     expect(record.outcomes).toEqual([]);
   });
 
+  test('retains only bounded runtime provenance with each reconciliation run', () => {
+    const record = buildNativeIntentReconciliationLedgerRecord({
+      runtimeProvenance: {
+        appVersion: '0.47.5-c.beta',
+        buildRevision: 'A0B1C2D3E4F5678901234567890ABCDEF1234567',
+        imageTag: 'latest',
+      },
+      applyGate: { statusId: 'evaluated', reconciliationCandidates: [] },
+    });
+
+    expect(record.run.runtime).toEqual({
+      appVersion: '0.47.5-c.beta',
+      buildRevision: 'a0b1c2d3e4f5678901234567890abcdef1234567',
+      rawPayloadExposed: false,
+    });
+    expect(record.run.runtime).not.toHaveProperty('imageTag');
+  });
+
   test('uses a safe execution override for a terminal maintenance disposition', () => {
     const record = buildNativeIntentReconciliationLedgerRecord({
       applyGate: {

@@ -11,18 +11,23 @@ Current execution focus:
    declaring the storage refactor complete. The audit must track authority
    repair, candidate eligibility, runtime authority selection, reversion, and
    retention independently rather than treating them as one broad component.
-2. **8R.5.2 Rollback Snapshot Retention Cleanup**: completed as bounded,
+2. **8R.3.2.8 Runtime Provenance And Failed-Run Recovery**: completed as
+   bounded release-version and immutable-revision evidence on the scheduler
+   result, reconciliation ledger, and read-only administrator status. It makes
+   stale deployment triage possible without exposing container internals,
+   mutable tags, raw environment values, or a manual recovery path.
+3. **8R.5.2 Rollback Snapshot Retention Cleanup**: completed as bounded,
    transactionally locked payload redaction with minimal audit retention. Its
    migration, fresh-install schema, scheduler, restore behavior, and focused
    tests are now required closure evidence.
-3. **Compatibility-Removal Evidence Regeneration**: regenerate the durable
+4. **Compatibility-Removal Evidence Regeneration**: regenerate the durable
    compatibility-removal completion artifact from a current execution plan,
    checkout path state, operational reference scan, and fresh validation, then
    rerun the current-closure and requirement audits. The regeneration path
    rejects predecessor plan contracts and does not manufacture deletion
    approval. It can therefore report incomplete readiness rather than turning a
    historical partial manifest into current closure proof.
-4. Return to **6R.5 Operator Workflow Rebuild** only after the engine inputs
+5. Return to **6R.5 Operator Workflow Rebuild** only after the engine inputs
    and native-authority invariants are reliable. It must replace the current
    manual builder rather than add another layer of controls to it.
 
@@ -5489,6 +5494,48 @@ Acceptance criteria:
   non-authoritative for routing and policy learning.
 - Tests prove no client interaction is required for an eligible policy.
 - Tests prove failure paths preserve legacy behavior and rollback evidence.
+
+##### 8R.3.2.8 Runtime Provenance And Failed-Run Recovery
+
+Intent: make a failed or evaluated reconciliation run attributable to the
+bounded application build that produced it, so support can distinguish a
+running stale image from a current-source regression without exposing
+deployment internals.
+
+Tasks:
+
+- Define one server-owned runtime-provenance contract with a release-version
+  allowlist and an optional immutable Git-revision allowlist.
+- Persist the normalized version/revision with each reconciliation ledger run;
+  historical rows must remain readable as explicit unknown provenance.
+- Return the same safe record from the read-only reconciliation status endpoint
+  and show it on the existing administrator status page without a new action.
+- Inject the Git revision into release images at CI build time without granting
+  the application Docker-socket access or relying on mutable tags.
+- Test malformed environment/database values, ledger parameterization,
+  historical rows, and fresh-install schema generation.
+
+Acceptance criteria:
+
+- A failed run can identify its app version and, for release builds, Git
+  revision without recording a raw image tag, container ID, environment value,
+  exception, stack, or policy payload.
+- Status remains read-only and normal reconciliation remains scheduler-owned.
+- A missing or invalid revision cannot prevent reconciliation, persist an
+  unsafe string, or cause a status-read failure.
+
+Implementation status:
+
+- Implemented by `nativeIntentReconciliationRuntimeProvenance.mjs`, the
+  reconciliation ledger and status contracts, migration
+  `20260716_030000_add_native_intent_reconciliation_runtime_provenance.sql`,
+  and the existing status view.
+- Release builds pass `github.sha` as `VCS_REF`; the production image exposes
+  only the bounded value as `CLASSIFARR_BUILD_REVISION` and OCI revision
+  metadata. Local builds remain safely attributable to the package version and
+  `unknown` revision.
+- The design and outcome record is [Native Intent Reconciliation Runtime
+  Provenance](native-intent-reconciliation-runtime-provenance.md).
 
 ### 8R.4 Native Runtime Read Path
 

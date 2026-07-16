@@ -91,6 +91,12 @@ unchanged operator or runtime outcome.
   truthful failed-run ledger record when storage is available. Structured logs
   no longer substitute a logger-generated stack for the original failure, and
   do not persist raw exception text, stacks, credentials, or legacy payloads.
+- **Native Reconciliation Runtime Provenance** - each persisted reconciliation
+  run now records a validated application version and optional immutable build
+  revision, surfaced on the existing read-only administrator status page.
+  Historical rows remain explicitly unknown; mutable image tags, container
+  identifiers, Docker access, raw environment values, and manual recovery
+  controls are not introduced.
 - **Native Intent Reconciliation Status And Alerts** - administrators can now
   read a bounded, read-only reconciliation status with safe run correlation,
   automation control, unresolved-state, and blocker evidence. Classifarr

@@ -154,6 +154,14 @@
                 {{ deferredOrBlockedCount }}
               </dd>
             </div>
+            <div>
+              <dt class="text-xs uppercase tracking-wide text-gray-400">
+                Runtime
+              </dt>
+              <dd class="mt-1 break-all text-sm text-white">
+                {{ formatRuntime(status.latestRun.runtime) }}
+              </dd>
+            </div>
           </dl>
         </template>
         <p
@@ -309,6 +317,14 @@ function formatTimestamp(value) {
   if (!value) return 'Not scheduled'
   const timestamp = new Date(value)
   return Number.isNaN(timestamp.getTime()) ? 'Unavailable' : timestamp.toLocaleString()
+}
+
+function formatRuntime(runtime) {
+  const appVersion = typeof runtime?.appVersion === 'string' ? runtime.appVersion : ''
+  const buildRevision = typeof runtime?.buildRevision === 'string' ? runtime.buildRevision : ''
+
+  if (!appVersion || appVersion === 'unknown') return 'Unknown (historical run)'
+  return buildRevision ? `App ${appVersion} | revision ${buildRevision}` : `App ${appVersion}`
 }
 
 onMounted(loadStatus)

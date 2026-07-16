@@ -35,6 +35,11 @@ describe('NativeIntentReconciliationLedgerService', () => {
         run: {
           runKey: 'a9cf9f4a-61e3-4ca7-8fe6-b810efff7c1c',
           reconcilerVersion: 'native_intent_reconciliation.ledger.v1',
+          runtime: {
+            appVersion: '0.47.5-c.beta',
+            buildRevision: 'a0b1c2d3e4f5678901234567890abcdef1234567',
+            rawPayloadExposed: false,
+          },
           runState: 'applied',
           sourceStatusId: 'applied',
           reasonId: 'conversion_applied',
@@ -62,6 +67,10 @@ describe('NativeIntentReconciliationLedgerService', () => {
     const result = await service.record({
       applyGate: { statusId: 'applied' },
       startedAt: '2026-07-15T12:00:00.000Z',
+      runtimeProvenance: {
+        appVersion: '0.47.5-c.beta',
+        buildRevision: 'a0b1c2d3e4f5678901234567890abcdef1234567',
+      },
     });
 
     expect(db.withTransaction).toHaveBeenCalledTimes(1);
@@ -70,7 +79,15 @@ describe('NativeIntentReconciliationLedgerService', () => {
       runId: 70,
       rawPayloadExposed: false,
       counts: { candidateCount: 1, convertedCount: 1 },
+      runtime: {
+        appVersion: '0.47.5-c.beta',
+        buildRevision: 'a0b1c2d3e4f5678901234567890abcdef1234567',
+      },
     });
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('runtime_build_revision'),
+      expect.arrayContaining(['0.47.5-c.beta', 'a0b1c2d3e4f5678901234567890abcdef1234567']),
+    );
     expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO policy_native_intent_reconciliation_outcomes'),
       expect.not.arrayContaining([expect.stringContaining('must not be persisted')]),

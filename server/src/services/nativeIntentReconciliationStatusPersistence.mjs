@@ -17,6 +17,7 @@ function firstRow(value) {
 export async function loadNativeIntentReconciliationLatestRun({ db }) {
   const result = await db.query(
     `SELECT run_key, run_state, source_status_id, reason_id, finished_at,
+            runtime_app_version, runtime_build_revision,
             candidate_count, converted_count, already_native_count,
             deferred_count, blocked_count, failed_count
      FROM policy_native_intent_reconciliation_runs

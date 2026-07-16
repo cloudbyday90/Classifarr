@@ -79,6 +79,10 @@ describe('NativeIntentReconciliationService', () => {
       controlService: readyControlService(),
       alertService: quietAlertService(),
       now: () => new Date('2026-07-15T12:00:00.000Z'),
+      runtimeProvenanceProvider: () => ({
+        appVersion: '0.47.5-c.beta',
+        buildRevision: 'a0b1c2d3e4f5678901234567890abcdef1234567',
+      }),
       loggerInstance: logger,
     });
 
@@ -108,6 +112,11 @@ describe('NativeIntentReconciliationService', () => {
         appliedPolicyCount: 2,
         alreadyConvertedCount: 0,
       },
+      runtime: {
+        appVersion: '0.47.5-c.beta',
+        buildRevision: 'a0b1c2d3e4f5678901234567890abcdef1234567',
+        rawPayloadExposed: false,
+      },
     }));
     expect(result).not.toHaveProperty('results');
     expect(JSON.stringify(result)).not.toContain('must not escape');
@@ -115,6 +124,11 @@ describe('NativeIntentReconciliationService', () => {
       applyGate: expect.objectContaining({ statusId: 'applied' }),
       startedAt: '2026-07-15T12:00:00.000Z',
       finishedAt: expect.any(String),
+      runtimeProvenance: {
+        appVersion: '0.47.5-c.beta',
+        buildRevision: 'a0b1c2d3e4f5678901234567890abcdef1234567',
+        rawPayloadExposed: false,
+      },
     }));
     expect(logger.info).toHaveBeenCalledWith(
       'Native intent reconciliation completed',
