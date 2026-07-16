@@ -233,7 +233,7 @@ function determineRunState(sourceStatusId) {
   if (sourceStatusId === 'deferred_by_execution_budget') {
     return NATIVE_INTENT_RECONCILIATION_RUN_STATES.DEFERRED;
   }
-  if (sourceStatusId === 'failed_rolled_back') {
+  if (sourceStatusId === 'failed_rolled_back' || sourceStatusId === 'failed') {
     return NATIVE_INTENT_RECONCILIATION_RUN_STATES.FAILED;
   }
   return NATIVE_INTENT_RECONCILIATION_RUN_STATES.EVALUATED;
@@ -319,7 +319,10 @@ function countOutcomes(outcomes = []) {
 }
 
 function resolveRunReasonId({ sourceStatusId, applyGate, candidateCount }) {
-  if (candidateCount === 0 && sourceStatusId !== 'failed_rolled_back') {
+  if (
+    candidateCount === 0 &&
+    !['failed_rolled_back', 'failed'].includes(sourceStatusId)
+  ) {
     return NATIVE_INTENT_RECONCILIATION_LEDGER_REASON_IDS.NO_CANDIDATES;
   }
   if (sourceStatusId === 'applied') {
@@ -330,6 +333,12 @@ function resolveRunReasonId({ sourceStatusId, applyGate, candidateCount }) {
   }
   if (sourceStatusId === 'failed_rolled_back') {
     return NATIVE_INTENT_RECONCILIATION_LEDGER_REASON_IDS.APPLY_FAILED_ROLLED_BACK;
+  }
+  if (sourceStatusId === 'failed') {
+    return primaryOperatorErrorId(
+      applyGate,
+      NATIVE_INTENT_RECONCILIATION_LEDGER_REASON_IDS.SYSTEM_FAILURE,
+    );
   }
   return primaryOperatorErrorId(
     applyGate,

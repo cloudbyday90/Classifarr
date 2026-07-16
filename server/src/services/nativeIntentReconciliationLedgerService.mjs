@@ -34,7 +34,7 @@ export class NativeIntentReconciliationLedgerService {
     this.buildRecord = buildRecord;
   }
 
-  async record({ applyGate, startedAt, finishedAt = this.now() } = {}) {
+  async record({ applyGate, startedAt, finishedAt = this.now(), runKey } = {}) {
     if (typeof this.db?.withTransaction !== 'function') {
       throw new TypeError('Native intent reconciliation ledger requires a transaction boundary.');
     }
@@ -43,6 +43,7 @@ export class NativeIntentReconciliationLedgerService {
       applyGate,
       startedAt,
       finishedAt: normalizeTimestamp(finishedAt),
+      runKey,
     });
 
     const persisted = await this.db.withTransaction(async client => {

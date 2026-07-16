@@ -46,7 +46,7 @@ export function setDb(db) {
  * @param {string} moduleName
  * @param {string} message
  * @param {object | null} data
- * @param {{ req?: object, error?: Error, skipDbPersist?: boolean }} options
+ * @param {{ req?: object, error?: Error, skipDbPersist?: boolean, persistStack?: boolean }} options
  * @returns {Promise<string | null>}
  */
 export async function persistToDb(level, moduleName, message, data, options = {}) {
@@ -58,7 +58,9 @@ export async function persistToDb(level, moduleName, message, data, options = {}
     const sanitizedData = sanitizeData(data);
     const systemContext = getSystemContext();
     const requestContext = options.req ? getRequestContext(options.req) : null;
-    const stack = upstreamError?.stack ?? (level === 'ERROR' ? new Error().stack : null);
+    const stack = options.persistStack === false
+      ? null
+      : (upstreamError?.stack ?? (level === 'ERROR' ? new Error().stack : null));
 
     const result = await db.query(
       `INSERT INTO error_log (level, module, message, stack_trace, request_context, system_context, metadata)
@@ -104,7 +106,7 @@ export class LoggerShim {
    *
    * @param {string} message
    * @param {object | null} [data]
-   * @param {{ req?: object, error?: Error, skipDbPersist?: boolean }} [options]
+   * @param {{ req?: object, error?: Error, skipDbPersist?: boolean, persistStack?: boolean }} [options]
    * @returns {Promise<string | null>} errorId from DB, or null
    */
   async error(message, data, options = {}) {

@@ -55,6 +55,11 @@ unchanged operator or runtime outcome.
   automatic recovery uses a read-only health probe before a later scheduled
   conversion pass, while policy-local blockers and normal policy operations
   continue independently.
+- **Sanitized Reconciliation Failure Attribution** - automatic conversion
+  failures now retain a correlated, bounded stage/reason/category and a
+  truthful failed-run ledger record when storage is available. Structured logs
+  no longer substitute a logger-generated stack for the original failure, and
+  do not persist raw exception text, stacks, credentials, or legacy payloads.
 - **Native Conversion And Automation Readiness Separation** - valid policies
   can now convert to native intent even when routing or profile freshness still
   needs work. Those automation blockers are reported separately, and unmapped

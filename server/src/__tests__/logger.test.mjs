@@ -276,6 +276,22 @@ describe('Logger (pino-backed)', () => {
       const params = mockDb.query.mock.calls[0][1];
       expect(params[0]).toBe('WARN');
     });
+
+    test('can persist a structured error without a synthetic stack trace', async () => {
+      mockDb.query.mockResolvedValueOnce({ rows: [{ error_id: 'no-stack-1' }] });
+
+      await logger.error('Structured reconciliation failure', {
+        correlationId: '7f212160-8c73-4b0c-82a1-cce7dba60902',
+        failureStageId: 'candidate_input_load',
+      }, { persistStack: false });
+
+      const params = mockDb.query.mock.calls[0][1];
+      expect(params[3]).toBeNull();
+      expect(params[6]).toEqual({
+        correlationId: '7f212160-8c73-4b0c-82a1-cce7dba60902',
+        failureStageId: 'candidate_input_load',
+      });
+    });
   });
 
   describe('cleanupOldLogs', () => {

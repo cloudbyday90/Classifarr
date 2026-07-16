@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { randomUUID } from 'node:crypto';
 import * as database from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
@@ -22,6 +23,11 @@ import {
 import {
   nativeIntentReconciliationControlService as defaultControlService,
 } from './nativeIntentReconciliationControlService.mjs';
+import {
+  buildNativeIntentReconciliationFailureAttribution,
+  NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS,
+  runNativeIntentReconciliationStage,
+} from './nativeIntentReconciliationFailureAttribution.mjs';
 
 const NATIVE_INTENT_RECONCILIATION_VERSION = 'native_intent_reconciliation.v1';
 const NATIVE_INTENT_RECONCILIATION_BATCH_SIZE = 10;
@@ -61,11 +67,19 @@ function normalizeLedgerResult(value) {
   };
 }
 
-function buildResult({ applyGate = {}, startedAt, deadlineAt, failed = false, control = null } = {}) {
+function buildResult({
+  applyGate = {},
+  startedAt,
+  deadlineAt,
+  failed = false,
+  control = null,
+  correlationId,
+} = {}) {
   const readyPolicyIds = asArray(applyGate.readyPolicyIds);
 
   return {
     version: NATIVE_INTENT_RECONCILIATION_VERSION,
+    correlationId,
     statusId: failed ? 'failed' : (applyGate.statusId || 'unknown'),
     startedAt,
     deadlineAt,
@@ -84,9 +98,28 @@ function buildResult({ applyGate = {}, startedAt, deadlineAt, failed = false, co
     },
     applied: applyGate.applied === true,
     operatorErrorIds: failed
-      ? ['native_intent_reconciliation_failed']
+      ? (normalizeOperatorErrorIds(applyGate.operatorErrorIds).length > 0
+        ? normalizeOperatorErrorIds(applyGate.operatorErrorIds)
+        : ['native_intent_reconciliation_failed'])
       : normalizeOperatorErrorIds(applyGate.operatorErrorIds),
+    ...(applyGate.reconciliationFailure
+      ? { failure: applyGate.reconciliationFailure }
+      : {}),
     ...(control ? { control } : {}),
+  };
+}
+
+function buildFailedApplyGate({ failure }) {
+  return {
+    statusId: 'failed',
+    applied: false,
+    appliedPolicyCount: 0,
+    alreadyConvertedCount: 0,
+    readyPolicyIds: [],
+    operatorErrorIds: [failure.reasonId],
+    reconciliationCandidates: [],
+    reconciliationOutcomeOverrides: [],
+    reconciliationFailure: failure,
   };
 }
 
@@ -122,14 +155,18 @@ class NativeIntentReconciliationService {
 
   async run() {
     const startedAt = normalizeTimestamp(this.now());
+    const correlationId = randomUUID();
     const deadlineAt = new Date(
       new Date(startedAt).getTime() + NATIVE_INTENT_RECONCILIATION_MAX_ELAPSED_MS,
     ).toISOString();
 
     try {
-      const controlEligibility = await this.controlService.getExecutionEligibility({
-        dbClient: this.dbClient,
-        now: startedAt,
+      const controlEligibility = await runNativeIntentReconciliationStage({
+        stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.CONTROL_ELIGIBILITY,
+        execute: () => this.controlService.getExecutionEligibility({
+          dbClient: this.dbClient,
+          now: startedAt,
+        }),
       });
       if (!controlEligibility.allowed) {
         const result = buildResult({
@@ -137,6 +174,7 @@ class NativeIntentReconciliationService {
           startedAt,
           deadlineAt,
           control: controlEligibility.control,
+          correlationId,
         });
         this.logger.info('Native intent reconciliation deferred by operational control', {
           statusId: result.statusId,
@@ -151,6 +189,7 @@ class NativeIntentReconciliationService {
         maxPolicies: NATIVE_INTENT_RECONCILIATION_BATCH_SIZE,
         now: startedAt,
         executionDeadlineAt: deadlineAt,
+        correlationId,
         action: {
           actorSourceId: POLICY_CONVERSION_ACTOR_SOURCE_IDS.NATIVE_INTENT_RECONCILIATION,
           reasonCode: 'native_intent_reconciliation',
@@ -162,6 +201,7 @@ class NativeIntentReconciliationService {
         startedAt,
         deadlineAt,
         control: controlEligibility.control,
+        correlationId,
       });
 
       try {
@@ -179,9 +219,11 @@ class NativeIntentReconciliationService {
           rawPayloadExposed: false,
         };
         this.logger.error('Native intent reconciliation control write failed', {
+          correlationId,
           statusId: result.statusId,
           failureCategory: 'control_state',
-        });
+          rawPayloadExposed: false,
+        }, { persistStack: false });
       }
 
       try {
@@ -189,6 +231,7 @@ class NativeIntentReconciliationService {
           applyGate,
           startedAt,
           finishedAt: result.completedAt,
+          runKey: correlationId,
         }));
       } catch {
         result.ledger = {
@@ -197,9 +240,11 @@ class NativeIntentReconciliationService {
           rawPayloadExposed: false,
         };
         this.logger.error('Native intent reconciliation ledger write failed', {
+          correlationId,
           statusId: result.statusId,
           failureCategory: 'ledger_write',
-        });
+          rawPayloadExposed: false,
+        }, { persistStack: false });
       }
 
       this.logger.info('Native intent reconciliation completed', {
@@ -208,10 +253,12 @@ class NativeIntentReconciliationService {
         counts: result.counts,
         operatorErrorIds: result.operatorErrorIds,
         ledgerStatusId: result.ledger.statusId,
+        correlationId,
       });
 
       return result;
     } catch (error) {
+      const failure = buildNativeIntentReconciliationFailureAttribution(error);
       let control = null;
       try {
         const controlOutcome = await this.controlService.recordExecutionError({
@@ -226,17 +273,48 @@ class NativeIntentReconciliationService {
           rawPayloadExposed: false,
         };
         this.logger.error('Native intent reconciliation control failure recording failed', {
+          correlationId,
           statusId: 'failed',
           failureCategory: 'control_state',
-        });
+          rawPayloadExposed: false,
+        }, { persistStack: false });
       }
 
-      const result = buildResult({ startedAt, deadlineAt, failed: true, control });
-
-      this.logger.error('Native intent reconciliation failed', {
-        statusId: result.statusId,
-        failureCategory: 'execution',
+      const failedApplyGate = buildFailedApplyGate({ failure });
+      const result = buildResult({
+        applyGate: failedApplyGate,
+        startedAt,
+        deadlineAt,
+        failed: true,
+        control,
+        correlationId,
       });
+
+      try {
+        result.ledger = normalizeLedgerResult(await this.ledgerService.record({
+          applyGate: failedApplyGate,
+          startedAt,
+          finishedAt: result.completedAt,
+          runKey: correlationId,
+        }));
+      } catch {
+        result.ledger = {
+          statusId: 'failed',
+          reasonId: 'ledger_write_failed',
+          rawPayloadExposed: false,
+        };
+      }
+
+      await this.logger.error('Native intent reconciliation failed', {
+        correlationId,
+        statusId: result.statusId,
+        failureStageId: failure.stageId,
+        failureReasonId: failure.reasonId,
+        failureCategory: failure.categoryId,
+        systemFailureCategory: failure.systemFailureCategory,
+        ledgerStatusId: result.ledger.statusId,
+        rawPayloadExposed: false,
+      }, { persistStack: false });
 
       return result;
     }

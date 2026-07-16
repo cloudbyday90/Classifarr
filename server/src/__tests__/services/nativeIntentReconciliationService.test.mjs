@@ -106,11 +106,19 @@ describe('NativeIntentReconciliationService', () => {
     );
   });
 
-  test('returns a sanitized failure result when the conversion gate throws', async () => {
+  test('records a sanitized, correlated failed run when the conversion gate throws', async () => {
     const logger = { info: jest.fn(), error: jest.fn() };
-    const ledgerService = { record: jest.fn() };
+    const ledgerService = {
+      record: jest.fn().mockResolvedValue({
+        statusId: 'persisted',
+        runId: 45,
+        rawPayloadExposed: false,
+      }),
+    };
+    const failure = new Error('database password should not be exposed');
+    failure.code = '42P01';
     const service = new NativeIntentReconciliationService({
-      runApplyGate: jest.fn().mockRejectedValue(new Error('database password should not be exposed')),
+      runApplyGate: jest.fn().mockRejectedValue(failure),
       ledgerService,
       controlService: readyControlService(),
       now: () => new Date('2026-07-15T12:00:00.000Z'),
@@ -122,14 +130,68 @@ describe('NativeIntentReconciliationService', () => {
     expect(result).toEqual(expect.objectContaining({
       statusId: 'failed',
       applied: false,
-      operatorErrorIds: ['native_intent_reconciliation_failed'],
+      operatorErrorIds: ['reconciliation_execution_orchestration_failed'],
+      correlationId: expect.stringMatching(/^[0-9a-f-]{36}$/u),
+      failure: {
+        stageId: 'execution_orchestration',
+        reasonId: 'reconciliation_execution_orchestration_failed',
+        categoryId: 'schema_incompatible',
+        systemFailureCategory: 'schema_incompatible',
+        rawPayloadExposed: false,
+      },
+      ledger: expect.objectContaining({ statusId: 'persisted', runId: 45 }),
     }));
     expect(JSON.stringify(result)).not.toContain('password');
     expect(logger.error).toHaveBeenCalledWith(
       'Native intent reconciliation failed',
-      { statusId: 'failed', failureCategory: 'execution' },
+      expect.objectContaining({
+        correlationId: result.correlationId,
+        statusId: 'failed',
+        failureStageId: 'execution_orchestration',
+        failureReasonId: 'reconciliation_execution_orchestration_failed',
+        failureCategory: 'schema_incompatible',
+        ledgerStatusId: 'persisted',
+        rawPayloadExposed: false,
+      }),
+      { persistStack: false },
     );
-    expect(ledgerService.record).not.toHaveBeenCalled();
+    expect(ledgerService.record).toHaveBeenCalledWith(expect.objectContaining({
+      applyGate: expect.objectContaining({
+        statusId: 'failed',
+        operatorErrorIds: ['reconciliation_execution_orchestration_failed'],
+      }),
+      runKey: result.correlationId,
+    }));
+  });
+
+  test('attributes operational-control failure before the execution gate starts', async () => {
+    const logger = { info: jest.fn(), error: jest.fn() };
+    const controlService = readyControlService();
+    const failure = new Error('connection password must not escape');
+    failure.code = 'ETIMEDOUT';
+    controlService.getExecutionEligibility.mockRejectedValue(failure);
+    const runApplyGate = jest.fn();
+    const service = new NativeIntentReconciliationService({
+      runApplyGate,
+      controlService,
+      ledgerService: { record: jest.fn().mockResolvedValue({ statusId: 'persisted' }) },
+      now: () => new Date('2026-07-15T12:00:00.000Z'),
+      loggerInstance: logger,
+    });
+
+    const result = await service.run();
+
+    expect(runApplyGate).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      statusId: 'failed',
+      failure: {
+        stageId: 'control_eligibility',
+        reasonId: 'reconciliation_control_eligibility_failed',
+        categoryId: 'transient_database',
+        systemFailureCategory: 'transient_database',
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('password');
   });
 
   test('does not re-label a committed conversion as failed when the ledger write fails', async () => {
@@ -163,7 +225,12 @@ describe('NativeIntentReconciliationService', () => {
     expect(JSON.stringify(result)).not.toContain('sensitive storage details');
     expect(logger.error).toHaveBeenCalledWith(
       'Native intent reconciliation ledger write failed',
-      { statusId: 'applied', failureCategory: 'ledger_write' },
+      expect.objectContaining({
+        statusId: 'applied',
+        failureCategory: 'ledger_write',
+        rawPayloadExposed: false,
+      }),
+      { persistStack: false },
     );
   });
 
@@ -199,7 +266,12 @@ describe('NativeIntentReconciliationService', () => {
     expect(JSON.stringify(result)).not.toContain('storage details');
     expect(logger.error).toHaveBeenCalledWith(
       'Native intent reconciliation control write failed',
-      { statusId: 'applied', failureCategory: 'control_state' },
+      expect.objectContaining({
+        statusId: 'applied',
+        failureCategory: 'control_state',
+        rawPayloadExposed: false,
+      }),
+      { persistStack: false },
     );
   });
 

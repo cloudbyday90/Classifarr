@@ -5411,6 +5411,46 @@ Acceptance criteria:
 - Compatibility deletion cannot proceed because a blocked policy was merely
   acknowledged instead of resolved.
 
+Implementation status:
+
+- Task 8R.3.2.6.1 is implemented as bounded failure attribution and failed-run
+  evidence. Every outer reconciliation abort now has one correlation ID, a
+  safe execution stage/reason/category, a failed ledger header where storage is
+  available, and a structured log record with no synthetic or raw stack trace.
+  The design and outcome record is
+  [Native Intent Reconciliation Failure Attribution](native-intent-reconciliation-failure-attribution.md).
+- Next task: **8R.3.2.6.2 Read-Only Reconciliation Status Contract And Alert
+  Evaluation**. It will expose last-run/state/blocker data without restoring a
+  manual conversion dialog, then define rate-limited circuit, unresolved
+  inventory, and repeated-system-failure alert evaluation.
+
+##### 8R.3.2.6.1 Sanitized Failure Attribution And Failed-Run Evidence
+
+Intent: make automatic reconciliation failures diagnostically useful without
+turning exception text, stacks, or legacy payloads into persistent support
+data.
+
+Tasks:
+
+- Attribute each throw-capable reconciliation boundary with a fixed stage ID.
+- Derive only bounded failure category/reason IDs from the existing system
+  error classifier; do not persist arbitrary error codes, messages, stacks, or
+  causes.
+- Bind public result, structured log record, and failed ledger header to a
+  server-generated UUID correlation ID.
+- Ensure an aborted run is persisted as `failed`, not `evaluated` with
+  `no_candidates`, when its ledger write can complete.
+- Suppress synthetic logger stacks for these structured operational events.
+
+Acceptance criteria:
+
+- An operator can correlate a failure to one safe stage/reason/category without
+  seeing raw policy or infrastructure details.
+- A failed run has a truthful ledger state even when no candidate outcome was
+  available.
+- Repeated known systemic categories retain circuit-breaker behavior; unknown
+  errors remain observable but cannot open the circuit by themselves.
+
 ##### 8R.3.2.7 Failure-Injection And Lifecycle Test Matrix
 
 Intent: prove the reconciler behaves safely across the operational states that

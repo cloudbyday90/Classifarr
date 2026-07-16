@@ -131,6 +131,27 @@ describe('nativeIntentReconciliationLedgerContract', () => {
     });
   });
 
+  test('records an aborted execution as failed even when it has no candidate outcomes', () => {
+    const record = buildNativeIntentReconciliationLedgerRecord({
+      startedAt: '2026-07-15T12:00:00.000Z',
+      finishedAt: '2026-07-15T12:00:01.000Z',
+      applyGate: {
+        statusId: 'failed',
+        operatorErrorIds: ['reconciliation_candidate_input_load_failed'],
+        reconciliationCandidates: [],
+      },
+    });
+
+    expect(record.run).toMatchObject({
+      runState: NATIVE_INTENT_RECONCILIATION_RUN_STATES.FAILED,
+      sourceStatusId: 'failed',
+      reasonId: 'reconciliation_candidate_input_load_failed',
+      candidateCount: 0,
+      failedCount: 0,
+    });
+    expect(record.outcomes).toEqual([]);
+  });
+
   test('uses a safe execution override for a terminal maintenance disposition', () => {
     const record = buildNativeIntentReconciliationLedgerRecord({
       applyGate: {

@@ -46,6 +46,32 @@ describe('NativeIntentReconciliationExecutionService', () => {
     }));
   });
 
+  test('attributes candidate loading failures without exposing source error details', async () => {
+    const sourceFailure = new Error('postgres://operator:password@internal must not escape');
+    sourceFailure.code = '42P01';
+    const service = new NativeIntentReconciliationExecutionService({
+      dbClient: {},
+      lifecycleService: {
+        getExecutionEligibility: jest.fn().mockResolvedValue({ allowed: true }),
+      },
+      loadCandidateInputs: jest.fn().mockRejectedValue(sourceFailure),
+      loggerInstance: { error: jest.fn() },
+    });
+
+    await expect(service.run({ dbClient: {} })).rejects.toMatchObject({
+      name: 'NativeIntentReconciliationExecutionStageError',
+      code: '42P01',
+      nativeIntentReconciliationFailureStageId: 'candidate_input_load',
+    });
+
+    try {
+      await service.run({ dbClient: {} });
+    } catch (error) {
+      expect(error.message).toBe('Native intent reconciliation execution stage failed');
+      expect(error.message).not.toContain('password');
+    }
+  });
+
   test('scans a bounded window, selects only due candidates, and keeps compact ledger input', async () => {
     const selectedCandidate = {
       policyId: 11,

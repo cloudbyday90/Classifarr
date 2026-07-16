@@ -26,6 +26,11 @@ import {
 import {
   nativeIntentReconciliationLifecycleService as defaultLifecycleService,
 } from './nativeIntentReconciliationLifecycleService.mjs';
+import {
+  NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS,
+  buildNativeIntentReconciliationFailureAttribution,
+  runNativeIntentReconciliationStage,
+} from './nativeIntentReconciliationFailureAttribution.mjs';
 
 const NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE = 100;
 const logger = createLogger('NativeIntentReconciliationExecutionService');
@@ -143,10 +148,14 @@ export class NativeIntentReconciliationExecutionService {
     now = this.now(),
     actorId = null,
     action = null,
+    correlationId = null,
     executionDeadlineAt = null,
   } = {}) {
     const evaluatedAt = normalizeTimestamp(now);
-    const executionEligibility = await this.lifecycleService.getExecutionEligibility({ dbClient });
+    const executionEligibility = await runNativeIntentReconciliationStage({
+      stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.LIFECYCLE_ELIGIBILITY,
+      execute: () => this.lifecycleService.getExecutionEligibility({ dbClient }),
+    });
     if (!executionEligibility.allowed) {
       const applyGate = buildLifecycleDeferredApplyGate(executionEligibility);
       return {
@@ -171,53 +180,74 @@ export class NativeIntentReconciliationExecutionService {
         },
       };
     }
-    const { policies, activeIntentIntegrityReport } = await this.loadCandidateInputs({
-      dbClient,
-      maxPolicies: NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE,
-      unconvertedOnly: true,
-      excludeRevertedPolicies: false,
-      prioritizeReconciliationEligibility: true,
+    const { policies, activeIntentIntegrityReport } = await runNativeIntentReconciliationStage({
+      stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.CANDIDATE_INPUT_LOAD,
+      execute: () => this.loadCandidateInputs({
+        dbClient,
+        maxPolicies: NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE,
+        unconvertedOnly: true,
+        excludeRevertedPolicies: false,
+        prioritizeReconciliationEligibility: true,
+      }),
     });
-    const candidateReport = this.buildCandidateReport({
-      policies,
-      maxPolicies: NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE,
-      activeIntentIntegrityReport,
+    const candidateReport = await runNativeIntentReconciliationStage({
+      stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.CANDIDATE_REPORT_BUILD,
+      execute: () => this.buildCandidateReport({
+        policies,
+        maxPolicies: NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE,
+        activeIntentIntegrityReport,
+      }),
     });
     const safeCandidates = asArray(candidateReport.candidates)
       .map(toSafeCandidate)
       .filter(Boolean);
-    const lifecyclePlan = await this.lifecycleService.partitionCandidates({
-      candidates: safeCandidates,
-      dbClient,
+    const lifecyclePlan = await runNativeIntentReconciliationStage({
+      stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.LIFECYCLE_PARTITION,
+      execute: () => this.lifecycleService.partitionCandidates({
+        candidates: safeCandidates,
+        dbClient,
+      }),
     });
-    const plan = await this.stateService.plan({
-      candidates: lifecyclePlan.eligibleCandidates,
-      maxPolicies,
-      evaluatedAt,
-      dbClient,
+    const plan = await runNativeIntentReconciliationStage({
+      stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.STATE_PLAN,
+      execute: () => this.stateService.plan({
+        candidates: lifecyclePlan.eligibleCandidates,
+        maxPolicies,
+        evaluatedAt,
+        dbClient,
+      }),
     });
 
-    await this.stateService.persist({ ...plan, dbClient });
-
-    const dryRun = this.buildDryRun({
-      policies,
-      candidateReport,
-      maxPolicies: NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE,
-      selectedPolicyIds: plan.selectedPolicyIds,
-      activeIntentIntegrityReport,
-      action,
-      now: evaluatedAt,
+    await runNativeIntentReconciliationStage({
+      stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.STATE_INITIAL_PERSIST,
+      execute: () => this.stateService.persist({ ...plan, dbClient }),
     });
-    const applyGate = await this.applyGate({
-      dbClient,
-      dryRun,
-      policies,
-      now: evaluatedAt,
-      actorId,
-      executionDeadlineAt,
-      policyWriteGuard: ({ client, policyId }) => this.lifecycleService.assertPolicyWriteEligible({
-        client,
-        policyId,
+
+    const dryRun = await runNativeIntentReconciliationStage({
+      stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.DRY_RUN_BUILD,
+      execute: () => this.buildDryRun({
+        policies,
+        candidateReport,
+        maxPolicies: NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE,
+        selectedPolicyIds: plan.selectedPolicyIds,
+        activeIntentIntegrityReport,
+        action,
+        now: evaluatedAt,
+      }),
+    });
+    const applyGate = await runNativeIntentReconciliationStage({
+      stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.CONVERSION_APPLY,
+      execute: () => this.applyGate({
+        dbClient,
+        dryRun,
+        policies,
+        now: evaluatedAt,
+        actorId,
+        executionDeadlineAt,
+        policyWriteGuard: ({ client, policyId }) => this.lifecycleService.assertPolicyWriteEligible({
+          client,
+          policyId,
+        }),
       }),
     });
     const conversionSteps = toSafeConversionSteps(
@@ -234,17 +264,26 @@ export class NativeIntentReconciliationExecutionService {
     let statePersistence = null;
 
     try {
-      statePersistence = await this.stateService.persist({ ...resolved, dbClient });
-    } catch {
+      statePersistence = await runNativeIntentReconciliationStage({
+        stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.STATE_OUTCOME_PERSIST,
+        execute: () => this.stateService.persist({ ...resolved, dbClient }),
+      });
+    } catch (error) {
+      const failure = buildNativeIntentReconciliationFailureAttribution(error);
       statePersistence = {
         statusId: 'failed',
-        reasonId: 'state_write_failed',
+        reasonId: failure.reasonId,
+        failure: failure,
         rawPayloadExposed: false,
       };
       this.logger.error('Native intent reconciliation state write failed after apply', {
         statusId: applyGate.statusId || 'unknown',
-        failureCategory: 'state_write',
-      });
+        correlationId,
+        failureStageId: failure.stageId,
+        failureReasonId: failure.reasonId,
+        failureCategory: failure.categoryId,
+        rawPayloadExposed: false,
+      }, { persistStack: false });
     }
 
     return {
