@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import {
   ARTIFACT_INVENTORY_BUCKETS,
   buildPolicyStorageClosureCurrentEvidenceRun,
@@ -26,6 +28,11 @@ const ALL_MAPPED_PATHS = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
     ...component.contractPaths,
     ...component.testPaths,
   ]);
+
+const POLICY_BUILDER_ROADMAP_URL = new URL(
+  '../../../../docs/architecture/policy-builder-intent-model-roadmap.md',
+  import.meta.url
+);
 
 function completeRoadmapContent() {
   const componentSections = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
@@ -98,6 +105,17 @@ describe('policyStorageClosureCurrentEvidenceCollector', () => {
       componentSequenceIds: ['native_schema_contract', 'migration_candidate_report'],
       implementationStatusComponentIds: ['native_schema_contract', 'migration_candidate_report'],
     });
+  });
+
+  test('keeps the checked-in roadmap aligned with every durable closure component', () => {
+    const evidence = extractRoadmapEvidence({
+      roadmapContent: readFileSync(POLICY_BUILDER_ROADMAP_URL, 'utf8'),
+    });
+    const componentIds = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
+      .map(component => component.componentId);
+
+    expect(evidence.componentSequenceIds).toEqual(componentIds);
+    expect(evidence.implementationStatusComponentIds).toEqual(componentIds);
   });
 
   test('emits durable IDs when historic roadmap labels remain in documentation', () => {

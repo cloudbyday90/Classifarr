@@ -4971,7 +4971,7 @@ Implementation status:
 - Policies without an authority conflict keep the existing candidate result
   shape and the report remains side-effect-free.
 
-### 8R.3 Controlled Conversion Workflow
+### 8R.3 Explicit Conversion Workflow
 
 Intent: convert policies only when a scheduler-owned or controlled maintenance
 process has a clear, auditable action.
