@@ -7869,6 +7869,11 @@ Implement Phase 8R in this order:
    Defines durable storage around the final model.
    - **Active Native Intent Integrity Correction** repairs and enforces the
      one-active-intent database invariant before authority can be trusted.
+   - **Semantic Native Authority Eligibility And Empty-Intent Recovery**
+     requires that a sole active header is a complete native intent with a
+     purpose rule before it can replace compatibility behavior; exact empty
+     placeholders are deactivated and all other invalid active forms block
+     safely.
 2. **8R.2 Migration Candidate Report**
    Makes readiness visible before mutation.
    - **Candidate Authority Eligibility** blocks conversion readiness when the
@@ -8008,6 +8013,10 @@ Completion state:
   closure itself remains blocked until compatibility-removal evidence is
   regenerated from a current approved execution plan and the live deletion
   readiness gates pass.
+- The closure catalog independently requires semantic native-authority
+  eligibility and empty-intent recovery. A structural active-header repair
+  alone cannot satisfy closure evidence because it does not prove that the
+  header is complete enough to own runtime behavior.
 - The storage closure validation generator is shell-free on direct Node and
   Windows invocations; its current evidence includes focused, lint, Markdown,
   unit, and integration validation.

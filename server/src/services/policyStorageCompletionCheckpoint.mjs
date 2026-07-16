@@ -58,6 +58,10 @@ const POLICY_STORAGE_COMPLETION_COMPONENTS = Object.freeze([
     label: 'Active Native Intent Integrity Correction',
   },
   {
+    componentId: 'semantic_native_authority_eligibility',
+    label: 'Semantic Native Authority Eligibility And Empty-Intent Recovery',
+  },
+  {
     componentId: 'migration_candidate_report',
     label: 'Migration Candidate Report',
   },

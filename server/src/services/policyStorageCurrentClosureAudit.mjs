@@ -470,6 +470,8 @@ async function buildPolicyStorageCurrentClosureAudit({
   fileExists,
   readTextFile,
 } = {}) {
+  // Use one boundary timestamp so the emitted artifact can be rebuilt exactly.
+  const resolvedGeneratedAt = normalizeGeneratedAt(generatedAt);
   const currentEvidence = await buildPolicyStorageClosureCurrentEvidenceRun({
     cwd,
     completionAuditArtifact,
@@ -483,7 +485,7 @@ async function buildPolicyStorageCurrentClosureAudit({
     currentEvidence,
     completionAuditArtifact,
     validationEvidence,
-    generatedAt,
+    generatedAt: resolvedGeneratedAt,
     sideEffects,
   });
 }

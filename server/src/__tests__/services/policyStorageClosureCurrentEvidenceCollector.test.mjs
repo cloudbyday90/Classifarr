@@ -95,15 +95,25 @@ describe('policyStorageClosureCurrentEvidenceCollector', () => {
       roadmapContent: `
 ### Native Schema Contract
 ### Migration Candidate Report
+##### Semantic Native Authority Eligibility And Empty-Intent Recovery
 
 1. **Native Schema Contract**
 2. **Migration Candidate Report**
+   - **Semantic Native Authority Eligibility And Empty-Intent Recovery**
 `,
     });
 
     expect(evidence).toEqual({
-      componentSequenceIds: ['native_schema_contract', 'migration_candidate_report'],
-      implementationStatusComponentIds: ['native_schema_contract', 'migration_candidate_report'],
+      componentSequenceIds: [
+        'native_schema_contract',
+        'semantic_native_authority_eligibility',
+        'migration_candidate_report',
+      ],
+      implementationStatusComponentIds: [
+        'native_schema_contract',
+        'semantic_native_authority_eligibility',
+        'migration_candidate_report',
+      ],
     });
   });
 

@@ -72,9 +72,10 @@ async function completeCheckpoint(overrides = {}) {
 }
 
 describe('policyStorageCompletionCheckpoint', () => {
-  test('includes each discrete native-authority and retention component in the checkpoint', () => {
+  test('includes each discrete native-authority, semantic eligibility, and retention component in the checkpoint', () => {
     expect(COMPONENT_IDS).toEqual(expect.arrayContaining([
       'active_native_intent_integrity_correction',
+      'semantic_native_authority_eligibility',
       'candidate_authority_eligibility',
       'runtime_authority_selection_integrity',
       'transactional_native_authority_reversion',

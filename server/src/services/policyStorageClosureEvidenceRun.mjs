@@ -55,6 +55,29 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     ],
   },
   {
+    componentId: 'semantic_native_authority_eligibility',
+    label: 'Semantic Native Authority Eligibility And Empty-Intent Recovery',
+    designDocPaths: [
+      'docs/architecture/policy-native-intent-semantic-authority-integrity.md',
+    ],
+    contractPaths: [
+      'server/src/services/policyNativeIntentAuthorityEligibility.mjs',
+      'server/src/services/policyNativeIntentAuthority.mjs',
+      'server/src/services/policyNativePolicyReadService.mjs',
+      'server/src/services/policyPostUpgradeApplyGate.mjs',
+      'database/migrations/20260716_040000_enforce_semantic_native_intent_authority.sql',
+      'database/schema/current.sql',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyNativeIntentAuthorityEligibility.test.mjs',
+      'server/src/__tests__/services/policyNativeIntentAuthority.test.mjs',
+      'server/src/__tests__/services/policyNativePolicyReadService.test.mjs',
+      'server/src/__tests__/services/policyPostUpgradeApplyGate.test.mjs',
+      'server/src/__tests__/integration/policyEngine.test.mjs',
+      'server/src/__tests__/migrations.test.mjs',
+    ],
+  },
+  {
     componentId: 'migration_candidate_report',
     label: 'Migration Candidate Report',
     designDocPaths: [

@@ -93,13 +93,16 @@ Cons:
 2. Bind the complete artifact projection using a versioned SHA-256 fingerprint.
 3. Validate the audit version, structural invariants, and fingerprint before
    replay.
-4. Rebuild the pure evidence run, checkpoint artifact, final readout, and
+4. Establish one timestamp at the current-closure boundary and reuse it for
+   the checkpoint and final readout, including when the caller leaves it
+   unspecified.
+5. Rebuild the pure evidence run, checkpoint artifact, final readout, and
    current-closure audit from retained inputs without filesystem or command
    access.
-5. Require exact deterministic agreement before the storage closure requirement
+6. Require exact deterministic agreement before the storage closure requirement
    audit uses the replayed audit.
-6. Reject missing, legacy, malformed, altered, or non-replayable artifacts.
-7. Add a signed envelope or a trusted CI-attestation boundary only if artifacts
+7. Reject missing, legacy, malformed, altered, or non-replayable artifacts.
+8. Add a signed envelope or a trusted CI-attestation boundary only if artifacts
    must be accepted from an untrusted host or operator; an unsigned hash alone
    is not an authenticity control.
 
@@ -113,7 +116,8 @@ Implemented:
   reconstructs the pure closure chain from retained inputs, and rejects replay
   mismatches.
 - `policyStorageCurrentClosureAudit.mjs` now retains its closure inputs,
-  emits the fingerprint, and exposes a pure from-evidence builder for replay.
+  emits the fingerprint, establishes one boundary timestamp for every nested
+  artifact, and exposes a pure from-evidence builder for replay.
 - `policyStorageClosureRequirementAudit.mjs` now accepts only a
   fingerprint-valid, replay-verified current-closure audit artifact.
 - Focused tests cover valid replay, stale fingerprints, refingerprinted derived

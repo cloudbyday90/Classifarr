@@ -116,7 +116,7 @@ describe('policyStorageClosureEvidenceRun', () => {
     }));
   });
 
-  test('requires discrete authority, reversion, and retention components', () => {
+  test('requires discrete authority, semantic eligibility, reversion, and retention components', () => {
     const components = new Map(POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP
       .map(component => [component.componentId, component]));
 
@@ -125,6 +125,19 @@ describe('policyStorageClosureEvidenceRun', () => {
         label: 'Active Native Intent Integrity Correction',
         contractPaths: expect.arrayContaining([
           'database/migrations/20260713_150000_enforce_single_active_policy_intent.sql',
+        ]),
+      })
+    );
+    expect(components.get('semantic_native_authority_eligibility')).toEqual(
+      expect.objectContaining({
+        label: 'Semantic Native Authority Eligibility And Empty-Intent Recovery',
+        contractPaths: expect.arrayContaining([
+          'server/src/services/policyNativeIntentAuthorityEligibility.mjs',
+          'database/migrations/20260716_040000_enforce_semantic_native_intent_authority.sql',
+        ]),
+        testPaths: expect.arrayContaining([
+          'server/src/__tests__/services/policyNativeIntentAuthorityEligibility.test.mjs',
+          'server/src/__tests__/integration/policyEngine.test.mjs',
         ]),
       })
     );

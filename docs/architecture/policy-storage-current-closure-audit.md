@@ -161,12 +161,14 @@ Use this stack for the policy storage current closure audit:
 8. Build the policy storage final closure readout.
 9. Retain normalized closure inputs and bind the full current-closure artifact
    with a SHA-256 fingerprint.
-10. Require exact replay before the final requirement audit consumes the
+10. Establish one generated-at timestamp at the current-closure boundary and
+    pass it to the nested checkpoint and final readout artifacts.
+11. Require exact replay before the final requirement audit consumes the
     artifact status.
-11. Emit complete only when all three layers complete.
-12. Reject file writes, storage mutation, command execution, Git commands, and
+12. Emit complete only when all three layers complete.
+13. Reject file writes, storage mutation, command execution, Git commands, and
     manifest writes.
-13. Verify the public command against an isolated mapped checkout and require
+14. Verify the public command against an isolated mapped checkout and require
     one coherent audit, checkpoint, and final-readout artifact chain.
 
 ## Implementation Outcome
@@ -193,6 +195,10 @@ Implemented:
 - Current closure audit v3 retains normalized replay inputs and emits a
   fingerprint that binds the full closure decision, including current evidence,
   completion evidence, validation evidence, status, risks, and side effects.
+- The current-closure boundary now establishes one timestamp for the audit,
+  checkpoint, and final readout when a caller does not provide one. A normal
+  command invocation therefore produces a replayable artifact rather than
+  nested timestamps that diverge by milliseconds.
 - The downstream requirement audit validates that fingerprint and rebuilds the
   pure closure chain before it accepts the current-closure status. Altered,
   refingerprinted-but-inconsistent, or non-replayable artifacts block closure.

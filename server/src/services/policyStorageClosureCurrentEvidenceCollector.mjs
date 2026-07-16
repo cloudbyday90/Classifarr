@@ -32,7 +32,7 @@ const ROADMAP_ENTRY_TYPES = Object.freeze({
 });
 
 const ROADMAP_ENTRY_PATTERNS = Object.freeze({
-  [ROADMAP_ENTRY_TYPES.IMPLEMENTATION_STATUS]: /^#{3,4}\s+/,
+  [ROADMAP_ENTRY_TYPES.IMPLEMENTATION_STATUS]: /^#{3,5}\s+/,
   [ROADMAP_ENTRY_TYPES.SEQUENCE]: /^(?:\d+\.\s+|\s*-\s+)\*\*/,
 });
 

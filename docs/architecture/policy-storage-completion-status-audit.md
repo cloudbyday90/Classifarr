@@ -10,8 +10,8 @@ The existing storage closure chain treated several independently risky native
 authority changes as broad parent components. In particular, it could prove the
 rollback window and reversion workflow while omitting the later rollback-payload
 retention cleanup. It also did not require discrete evidence for active-intent
-integrity repair, candidate authority eligibility, or runtime authority conflict
-handling.
+integrity repair, semantic authority eligibility, candidate authority
+eligibility, or runtime authority conflict handling.
 
 That result was not strong enough to support a full storage-closure claim. A
 closure audit must fail when a separate durable contract, migration, runtime
@@ -36,9 +36,10 @@ has otherwise complete evidence.
 ## Recommendations
 
 1. **Treat independently deployable safeguards as separate closure components.**
-   Active-intent integrity, candidate eligibility, runtime authority selection,
-   transactional reversion, and expired-payload retention each have a distinct
-   failure mode and must not be inferred from a parent component.
+   Active-intent integrity, semantic authority eligibility, candidate
+   eligibility, runtime authority selection, transactional reversion, and
+   expired-payload retention each have a distinct failure mode and must not be
+   inferred from a parent component.
 2. **Map each component to concrete evidence.** The closure catalog requires
    exact documentation, source or migration, and focused-test paths. Retention
    also requires its fresh-install schema and scheduler wiring.
@@ -47,8 +48,9 @@ has otherwise complete evidence.
    does not prove an implemented outcome. Nested work-sequence items make the
    subcomponents explicit without renumbering the broader plan.
 4. **Keep closure validation focused and reproducible.** The focused gate now
-   exercises the individual authority and retention suites, migration coverage,
-   and backup/restore coverage in addition to the closure-contract tests.
+   exercises the individual authority, semantic eligibility, and retention
+   suites, migration coverage, and backup/restore coverage in addition to the
+   closure-contract tests.
 5. **Do not use this correction as a closure declaration.** It strengthens the
    audit input. The current checkout still needs a newly generated current
    evidence run, a current-version compatibility-removal artifact, and a
@@ -78,7 +80,8 @@ Cons:
 ## Final Recommendation Stack
 
 1. `policyStorageClosureEvidenceRun.mjs` owns the full component-to-artifact
-   map, including the five discrete authority and retention safeguards.
+   map, including the discrete authority, semantic eligibility, and retention
+   safeguards.
 2. `policyStorageCompletionCheckpoint.mjs` requires the same component IDs
    before it can return complete.
 3. `policyStorageClosureCurrentEvidenceCollector.mjs` recognizes both Phase 8R
@@ -107,10 +110,11 @@ validation pipeline, then rerun the current-closure and requirement audits.
 ## Outcome
 
 The Phase 8R closure audit now requires evidence for all currently defined
-native-authority hardening subcomponents, including rollback snapshot retention.
-It can no longer report completion solely because the broader rollback window
-and reversion component exists, or because a predecessor compatibility-removal
-artifact was complete before the current evidence scope existed. The current
-audit correctly blocks on that predecessor artifact. Regenerating the durable
-completion artifact is the remaining evidence task before a new closure result
-can be evaluated.
+native-authority hardening subcomponents, including semantic authority
+eligibility, empty-intent recovery, and rollback snapshot retention. It can no
+longer report completion solely because a structural active-header repair or the
+broader rollback window and reversion component exists, or because a predecessor
+compatibility-removal artifact was complete before the current evidence scope
+existed. The current audit correctly blocks on that predecessor artifact.
+Regenerating the durable completion artifact is the remaining evidence task
+before a new closure result can be evaluated.

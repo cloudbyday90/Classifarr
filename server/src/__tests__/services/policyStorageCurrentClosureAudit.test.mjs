@@ -12,6 +12,9 @@ import {
   validatePolicyStorageCurrentClosureAudit,
 } from '../../services/policyStorageCurrentClosureAudit.mjs';
 import {
+  validatePolicyStorageCurrentClosureAuditIntegrity,
+} from '../../services/policyStorageCurrentClosureAuditIntegrity.mjs';
+import {
   buildPolicyStorageClosureValidationEvidenceFixture,
 } from './policyStorageClosureValidationEvidenceFixture.mjs';
 
@@ -104,6 +107,17 @@ describe('policyStorageCurrentClosureAudit', () => {
       stepId: 'policy_storage_current_closure_complete',
       label: 'Policy Storage Current Closure Complete',
     }));
+  });
+
+  test('uses one generated timestamp when no timestamp is supplied so replay remains exact', async () => {
+    const audit = await completeAudit({ generatedAt: null });
+    const integrity = await validatePolicyStorageCurrentClosureAuditIntegrity({
+      currentClosureAudit: audit,
+    });
+
+    expect(audit.checkpointArtifact.generatedAt).toBe(audit.generatedAt);
+    expect(audit.finalReadout.generatedAt).toBe(audit.generatedAt);
+    expect(integrity.ok).toBe(true);
   });
 
   test('blocks on current evidence when a mapped repository artifact is missing', async () => {

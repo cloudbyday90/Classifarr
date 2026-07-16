@@ -23,7 +23,9 @@ unchanged operator or runtime outcome.
   native source, completed inference, safe validation, and a persisted purpose
   rule. Historical empty placeholders are deactivated with bounded audit
   evidence; incomplete active rows fall back to compatibility behavior or block
-  unsafe conversion rather than suppressing the existing policy.
+  unsafe conversion rather than suppressing the existing policy. Storage
+  closure evidence now requires this semantic safeguard independently from the
+  structural active-header invariant.
 
 - **Contained Runtime Evidence Escalation** - compatibility cleanup now
   distinguishes current retained runtime evidence from the narrow safe case
@@ -319,7 +321,9 @@ unchanged operator or runtime outcome.
 - **Replay-Verified Current Closure Audits** - final storage closure now
   requires a fingerprint-valid current-state audit with retained normalized
   evidence and deterministic replay. Altered, stale, or non-replayable closure
-  summaries cannot satisfy the final requirement audit.
+  summaries cannot satisfy the final requirement audit. Default-generated
+  audits now share one boundary timestamp with nested checkpoint and readout
+  artifacts, preserving replay validity.
 - **Replay-Verified Closure Validation Evidence** - storage closure validation
   now retains bounded normalized command results under a fixed catalog and
   binds the derived result with SHA-256. Checkpoint and current-closure
