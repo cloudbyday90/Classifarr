@@ -225,6 +225,10 @@ unchanged operator or runtime outcome.
   authority, runtime cutover, deletion gates, and readiness to a bounded
   observation window. Stale, mismatched, invalid, or count-divergent evidence
   cannot be combined into a ready deletion plan.
+- **Hardened Compatibility Evidence Collection** - the execution-plan evidence
+  command now validates its public input before collection, returns stable
+  collected, blocked, or input/output outcomes, redacts dependency failures,
+  and reliably closes database resources without changing deletion behavior.
 - **Evidence-Bound Compatibility Deletion Gate** - controlled compatibility
   removal now requires a current, fingerprint-valid execution-plan artifact and
   timestamped preflight evidence bound to that exact artifact. Stale, detached,

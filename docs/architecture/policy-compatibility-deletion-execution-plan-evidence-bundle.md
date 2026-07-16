@@ -28,6 +28,14 @@ route, remove a test, or run a Git command.
   expectations and recommends rejecting unrecognized parameters. The bundle
   follows the same fail-closed principle: an unknown contract version, invalid
   timestamp, stale evidence, or divergent source count blocks planning.
+- OWASP's input-validation guidance recommends allowlist validation before a
+  request reaches processing logic. The public collector therefore rejects
+  malformed arguments and non-object JSON before invoking its database-backed
+  evidence loader.
+- Node.js recommends assigning `process.exitCode` instead of forcing process
+  termination when output still needs to flush. The command returns one
+  explicit outcome to its entry point, which assigns the exit code after all
+  cleanup is complete.
 
 Sources:
 
@@ -37,6 +45,10 @@ Sources:
   <https://csrc.nist.gov/CSRC/media/Projects/risk-management/800-53%20Downloads/800-53r5/SP_800-53_v5_1-derived-OSCAL.pdf>
 - SLSA, Verifying Artifacts:
   <https://slsa.dev/spec/v1.2/verifying-artifacts>
+- OWASP Cheat Sheet Series, Input Validation:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html>
+- Node.js API, Process exit behavior:
+  <https://nodejs.org/api/process.html>
 
 ## Recommendations
 
@@ -92,6 +104,29 @@ Cons:
 - existing manual artifact input files must add an evidence bundle,
 - a bundle that is intentionally blocked can produce only diagnostic output.
 
+### Keep The Public CLI Boundary Small And Injectable
+
+The command entry point should only bind production dependencies. A separate
+ES module validates arguments, reads and writes the requested JSON, invokes an
+injected loader, assigns an outcome, and always closes its injected resource.
+It reports only bounded public errors, never raw file paths, database URLs, or
+loader exception text.
+
+Pros:
+
+- permits unit coverage of malformed input, blocked readiness, output failure,
+  and cleanup without connecting to a production database,
+- keeps the database-backed service as the single evidence authority,
+- gives automation a stable exit contract: `0` for collected output, `1` for
+  blocked readiness or collection failure, and `2` for invalid input or output
+  handling.
+
+Cons:
+
+- introduces one small runner module beside the command entry point,
+- bounded errors require an operator to consult controlled logs or rerun with
+  validated input when a dependency fails.
+
 ## Final Recommendation Stack
 
 1. `policyCompatibilityDeletionCurrentInventory.mjs` reads enabled-policy
@@ -105,7 +140,11 @@ Cons:
    observation window.
 5. `policyCompatibilityDeletionExecutionPlanArtifact.mjs` consumes the ready
    bundle and creates only the reviewable execution-plan artifact.
-6. A later execution gate must still verify fresh backup/restore evidence,
+6. `policyCompatibilityDeletionExecutionPlanEvidenceBundleRunner.mjs` owns the
+   public command boundary, strict input validation, bounded error surface,
+   resource cleanup, and stable exit outcomes without changing evidence
+   collection semantics.
+7. A later execution gate must still verify fresh backup/restore evidence,
    worktree state, and final operator approval before any deletion can occur.
 
 ## Implementation Outcome
@@ -122,10 +161,16 @@ Implemented:
 - Added `npm run policy:compatibility-deletion-execution-plan-evidence` to
   generate the evidence bundle from current database state and explicit
   cutover/gate/safety input.
+- Split the command's public execution boundary into an injected ESM runner.
+  It rejects unsupported or incomplete arguments, requires a JSON object,
+  removes caller-controlled `now` values, emits bounded errors, closes the
+  database resource on every outcome, and preserves `--require-ready` as the
+  explicit non-zero readiness check.
 - Updated the execution-plan artifact to require a ready, valid evidence bundle
   and to construct its plan only from the bundle's readiness and gate output.
 - Added focused coverage for ready, stale, mismatched, count-divergent,
-  loader-derived, validation, and artifact-missing-bundle cases.
+  loader-derived, validation, artifact-missing-bundle, malformed-input,
+  bounded-error, output-failure, blocked-readiness, and cleanup-failure cases.
 
 Not implemented in this component:
 
