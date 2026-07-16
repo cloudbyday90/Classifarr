@@ -18,11 +18,11 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
-- **Native Intent Conversion Foundation** - administrators can preview and use
-  the temporary recovery path to convert current, eligible policies to native
-  intent. The server recomputes eligibility at apply time, preserves
-  transactional rollback protection, and verifies post-conversion native runtime
-  reads and rollback availability.
+- **Read-Only Native Intent Reconciliation** - retired the interactive native
+  intent preview, selection, confirmation, and apply workflow. Administrators
+  now have a bounded reconciliation-status view while scheduler-owned
+  reconciliation remains the only normal conversion path; protected recovery,
+  rollback, and re-entry controls remain separate.
 - **Bounded Native Intent Reconciliation** - Classifarr now schedules safe,
   server-owned native-intent conversion after application readiness and every
   ten minutes. A database advisory lock permits only one replica to run; each

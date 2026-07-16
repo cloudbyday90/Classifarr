@@ -4971,10 +4971,10 @@ Implementation status:
 - Policies without an authority conflict keep the existing candidate result
   shape and the report remains side-effect-free.
 
-### 8R.3 Explicit Conversion Workflow
+### 8R.3 Controlled Conversion Workflow
 
-Intent: convert policies only when the operator or post-upgrade process has a
-clear, auditable action.
+Intent: convert policies only when a scheduler-owned or controlled maintenance
+process has a clear, auditable action.
 
 Tasks:
 
@@ -4983,7 +4983,7 @@ Tasks:
 - Require Phase 7R migration verification for behavior-sensitive policies.
 - Create a rollback snapshot before conversion.
 - Record actor/source:
-  - manual operator action,
+  - native intent reconciliation,
   - post-upgrade apply mode,
   - test fixture,
   - maintainer migration tool.
@@ -5005,72 +5005,39 @@ Implementation status:
   accepts selected policy IDs, an approved actor/source, a policy intent
   migration candidate report, optional migration verifier output, and rollback snapshot
   options.
-- Conversion planning is allowed only for manual operator actions,
-  post-upgrade apply mode, test fixtures, or maintainer migration tooling; it is
-  rejected for ordinary policy reads and unrelated saves.
+- Conversion planning is allowed only for native reconciliation, post-upgrade
+  apply mode, test fixtures, or maintainer migration tooling; it is rejected
+  for ordinary policy reads, unrelated saves, and manual operator conversion.
 - Ready conversion steps must have a ready candidate, server validation,
   rollback snapshot plan, migration event plan, native intent record plan,
   deterministic idempotency key, and legacy behavior retained until commit.
 - Behavior-sensitive policies must have passing or accepted migration verifier
   output before the workflow can mark them ready.
-- The administrator-only operator action now exposes a read-only current
-  preview and a selected-policy apply endpoint. Apply requires a server-derived
-  administrator identity, exact confirmation, bounded unique policy IDs, a
-  fresh candidate report, and a fresh conversion plan. It records manual
-  conversion events with `actor_type = operator` and remains the temporary
-  recovery path until automatic reconciliation replaces normal conversion.
-- The dedicated administrator maintenance surface is documented in
-  [Policy Native Intent Conversion Maintenance UI](policy-native-intent-conversion-maintenance-ui.md).
-  It shows only the bounded server preview, permits selection of ready
-  candidates, requires the same exact confirmation in a native modal dialog,
-  and keeps conversion separate from policy authoring and automation setup.
-- The manual maintenance surface is transitional. Task 8R.3.2 replaces its
-  conversion controls with automatic reconciliation once the reconciler is
-  verified; the retained surface becomes read-only conversion status and
-  blocked-reason visibility.
+- The interactive preview, selection, confirmation, and apply surface was
+  removed. The reconciler is the normal conversion actor, while the retained
+  administrator route reports bounded, read-only reconciliation status and
+  blocker reasons. Recovery, rollback, and re-entry stay separately protected.
 - Runtime output now uses the durable `policy.intent_conversion_workflow.v1`
   contract, `policy-intent:convert` idempotency keys, and
   `nextStep.stepId = native_runtime_read_path`, leaving roadmap phase IDs as
   planning metadata only.
 
-#### 8R.3.1 Administrator Conversion Maintenance Surface
+#### 8R.3.1 Retired Administrator Conversion Maintenance Surface
 
-Intent: give an administrator one focused place to review and explicitly
-confirm native intent conversion without placing migration controls in routine
-policy authoring or automation setup.
-
-Tasks:
-
-- Expose the bounded server candidate preview on a dedicated maintenance route.
-- Render conversion eligibility and automation readiness as separate states.
-- Permit selection only for current ready-to-convert policies and bound a batch
-  to the server's maximum selection count.
-- Require the existing exact conversion phrase in an accessible native modal
-  dialog before calling the apply route.
-- Refresh the server preview after a successful conversion; never trust cached
-  client eligibility at apply time.
-
-Acceptance criteria:
-
-- Ordinary policy editing cannot invoke conversion.
-- Review-required policies remain visible but cannot be selected.
-- The confirmation clearly states selected scope and that conversion does not
-  configure routing or automate a library.
-- The UI sends only policy IDs and the confirmation; server authorization and
-  current-state eligibility remain mandatory.
+Intent: record the removed transition path so it is not restored as product
+behavior. It is not a compatibility route, endpoint, client API, service, or
+dialog.
 
 Implementation status:
 
-- Implemented at `/policies/native-intent-migration` and linked from the
-  policy list as `Native intent maintenance`.
-- The screen consumes only the operator-safe candidate report, keeps native
-  conversion and automation readiness distinct, and caps interactive selection
-  at twenty-five policies.
-- `PolicyNativeIntentConversionConfirmDialog.vue` uses a native modal dialog
-  with a labeled exact-phrase field, a cancel path, and selected-policy review.
-- Focused client API, composable, dialog, view, and route tests cover the
-  boundary; the production Compose image resolves the dedicated route while the
-  apply API remains authentication protected.
+- Retired by Task 8R.3.2.6.4 after automatic reconciliation, status, alerting,
+  and compatibility-deletion resolution gates were verified.
+- The former `/policies/native-intent-migration` route, preview/apply endpoints,
+  candidate-selection composable, confirmation dialog, mutation limiter, and
+  manual conversion service are deleted rather than hidden or redirected.
+- The successor is `/policies/native-intent-reconciliation`, an
+  administrator-only read-only status route. It exposes bounded scheduler,
+  control, unresolved-inventory, and blocker-reason evidence only.
 
 #### 8R.3.2 Automatic Native Intent Conversion Reconciliation
 
@@ -5434,10 +5401,16 @@ Implementation status:
   count in one read-only repeatable-read observation window. Support notes,
   acknowledgements, and alert transitions cannot clear it. The design and
   outcome record is [Compatibility Deletion Resolution Gate](policy-compatibility-deletion-resolution-gate.md).
-- Next task: **8R.3.2.6.4 Retire Manual Apply Endpoint And Confirmation
-  Dialog**. Remove the legacy interactive conversion path only after the
-  reconciler, read-only status surface, and deletion-resolution gate meet their
-  production verification requirements.
+- Task 8R.3.2.6.4 is implemented. The legacy manual preview/apply endpoint,
+  selection flow, confirmation dialog, related mutation limiter, and
+  manual-conversion authority were removed. The client now exposes only the
+  administrator read-only `/policies/native-intent-reconciliation` status
+  surface; the scheduler is the normal conversion path and protected recovery
+  lifecycle actions remain separate. The design and outcome record is
+  [Native Intent Manual Apply Retirement](native-intent-manual-apply-retirement.md).
+- Next task: **8R.3.2.7 Failure-Injection And Lifecycle Test Matrix**. Prove
+  automatic conversion remains idempotent, bounded, recoverable, and fully
+  independent of client conversion controls.
 
 ##### 8R.3.2.6.1 Sanitized Failure Attribution And Failed-Run Evidence
 
@@ -6006,8 +5979,8 @@ Tasks:
 
 Acceptance criteria:
 
-- Dry-run uses the same Phase 8R candidate and explicit workflow contracts as
-  manual conversion planning.
+- Dry-run uses the same Phase 8R candidate and controlled reconciliation
+  workflow contracts as scheduler-owned conversion.
 - Dry-run performs no policy, native storage, migration event, rollback
   snapshot, or legacy deletion side effects.
 - No-policy and no-ready-candidate states report clearly without forcing an

@@ -42,11 +42,6 @@ const POLICY_POST_UPGRADE_APPLY_GATE_OPERATOR_ERROR_IDS = Object.freeze({
 });
 
 const APPLY_AUDIT_CONTEXT_BY_ACTOR_SOURCE_ID = Object.freeze({
-  [POLICY_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR]: {
-    actorType: 'operator',
-    defaultReasonCode: 'operator_native_intent_conversion',
-    summaryPrefix: 'Policy native intent conversion',
-  },
   [POLICY_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY]: {
     actorType: 'post_upgrade',
     defaultReasonCode: 'policy_post_upgrade_apply',
@@ -93,13 +88,6 @@ function buildApplyAuditContext({ dryRun = {}, actorId = null } = {}) {
   const normalizedActorId = normalizePositiveInteger(actorId ?? action.actorId);
 
   if (!actorConfig) {
-    return null;
-  }
-
-  if (
-    actorSourceId === POLICY_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR &&
-    !normalizedActorId
-  ) {
     return null;
   }
 

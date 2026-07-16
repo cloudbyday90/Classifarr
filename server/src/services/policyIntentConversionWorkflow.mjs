@@ -64,7 +64,6 @@ const POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS = Object.freeze({
 });
 
 const ALLOWED_ACTOR_SOURCE_IDS = Object.freeze([
-  POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
   POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.POST_UPGRADE_APPLY,
   POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.NATIVE_INTENT_RECONCILIATION,
   POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.TEST_FIXTURE,
@@ -206,7 +205,7 @@ function buildConversionStep({
     statusId = POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_ACTOR_SOURCE;
     reasons.push(buildReason(
       POLICY_INTENT_CONVERSION_REASON_IDS.ORDINARY_READ_WRITE_BLOCKED,
-      'Conversion can only run from an explicit operator, native reconciliation, post-upgrade, fixture, or maintainer migration action.',
+      'Conversion can only run from post-upgrade, native reconciliation, fixture, or maintainer migration execution.',
       'blocker'
     ));
   } else if (!selected) {
@@ -260,7 +259,7 @@ function buildConversionStep({
     reasons.push(
       buildReason(
         POLICY_INTENT_CONVERSION_REASON_IDS.SELECTED_FOR_CONVERSION,
-        'Policy was selected by an explicit conversion action.'
+        'Policy was selected by a controlled conversion execution.'
       ),
       buildReason(
         POLICY_INTENT_CONVERSION_REASON_IDS.CANDIDATE_READY,
@@ -284,7 +283,7 @@ function buildConversionStep({
       ),
       buildReason(
         POLICY_INTENT_CONVERSION_REASON_IDS.MIGRATION_EVENT_PLANNED,
-        'Migration event is planned for the explicit conversion action.'
+        'Migration event is planned for the controlled conversion execution.'
       ),
       buildReason(
         POLICY_INTENT_CONVERSION_REASON_IDS.NATIVE_RECORDS_PLANNED,

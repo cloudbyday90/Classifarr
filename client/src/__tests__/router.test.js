@@ -106,13 +106,14 @@ describe('router auth/setup guard', () => {
     expect(apiMock.getMe).toHaveBeenCalledTimes(1)
   })
 
-  it('allows authenticated administrators to reach native intent maintenance', async () => {
+  it('allows authenticated administrators to reach native intent reconciliation status', async () => {
     const router = await loadRouter()
 
-    await router.push('/policies/native-intent-migration')
+    await router.push('/policies/native-intent-reconciliation')
     await flushPromises()
 
-    expect(router.currentRoute.value.name).toBe('PolicyNativeIntentMigration')
+    expect(router.currentRoute.value.name).toBe('PolicyNativeIntentReconciliation')
+    expect(router.resolve('/policies/native-intent-migration').matched).toHaveLength(0)
   })
 
   it('logs setup-status failures and still allows navigation', async () => {

@@ -18,10 +18,10 @@
         </p>
       </div>
       <RouterLink
-        to="/policies/native-intent-migration"
+        to="/policies/native-intent-reconciliation"
         class="rounded border border-gray-600 px-4 py-2 text-sm font-medium text-gray-200 hover:border-primary hover:text-white"
       >
-        Native intent maintenance
+        Native intent status
       </RouterLink>
     </div>
 

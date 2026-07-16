@@ -5,18 +5,19 @@
 Implemented as the durable side-effect-free workflow plan for converting legacy
 policy projections into native policy intent storage.
 
-This component does not write native records. It verifies that a conversion is
-explicitly requested, authorized by an approved actor source, backed by a ready
-candidate report, guarded by rollback planning, and safe to hand off to the
-native runtime read path.
+This component does not write native records. It verifies that a controlled
+conversion execution is authorized by an approved actor source, backed by a
+ready candidate report, guarded by rollback planning, and safe to hand off to
+the native runtime read path.
 
 ## Problem
 
 Native policy intent conversion must not happen from ordinary policy reads,
 unrelated policy saves, or implicit compatibility projection. Conversion changes
-policy storage semantics, so Classifarr needs an explicit action boundary before
-any later SQL writer can insert native rows, write migration events, or disable
-legacy paths.
+policy storage semantics, so Classifarr needs a server-owned execution boundary
+before any later SQL writer can insert native rows, write migration events, or
+disable legacy paths. Normal conversion is scheduler-owned; a user does not
+select policies or confirm a conversion batch in the client.
 
 The old module name tied this durable product role to a temporary roadmap phase.
 The canonical module is now:
@@ -46,10 +47,11 @@ The canonical module is now:
 
 ## Recommendations
 
-1. **Keep conversion explicit.**
-   Conversion must require a selected policy set and an approved actor source:
-   manual operator, post-upgrade apply, test fixture, or maintainer migration
-   tooling.
+1. **Keep conversion controlled.**
+   Conversion must require a scheduler- or maintenance-selected policy set and
+   an approved actor source: native reconciliation, post-upgrade apply, test
+   fixture, or maintainer migration tooling. A manual operator is not an
+   approved conversion source.
 
 2. **Keep the workflow side-effect-free.**
    This component should only plan conversion. It must not insert native rows,
@@ -103,8 +105,8 @@ Cons:
   `server/src/services/policyPostUpgradeDryRun.mjs`
 - Apply-gate consumer:
   `server/src/services/policyPostUpgradeApplyGate.mjs`
-- Administrator apply boundary:
-  `server/src/services/policyNativeIntentConversionOperatorAction.mjs`
+- Scheduler-owned conversion consumer:
+  `server/src/services/nativeIntentReconciliationService.mjs`
 - Storage-closure evidence:
   `server/src/services/policyStorageClosureEvidenceRun.mjs`
 
@@ -120,7 +122,7 @@ Implemented:
 - Replaced the workflow-local `nextPhase` handoff with
   `nextStep.stepId = native_runtime_read_path`.
 - Replaced the conversion idempotency prefix with `policy-intent:convert`.
-- Preserved approved actor source enforcement, ready-candidate checks,
+- Preserved controlled actor-source enforcement, ready-candidate checks,
   rollback planning, verifier gating, native record planning, migration event
   planning, idempotency validation, legacy behavior retention, and side-effect
   rejection.
@@ -128,7 +130,8 @@ Implemented:
 ## Security Outcome
 
 - No persistent writes or provider calls were added.
-- Ordinary read and unrelated save actor sources remain blocked.
+- Ordinary read, unrelated save, and manual-operator conversion actor sources
+  remain blocked.
 - Rollback payloads remain redacted in the plan.
 - Side effects are explicitly rejected by validation.
 - Future native storage writes remain gated behind a separate explicit
@@ -136,7 +139,8 @@ Implemented:
 
 ## Next Step
 
-Use the administrator-only conversion preview and apply action documented in
-[Policy Native Intent Conversion Operator Action](policy-native-intent-conversion-operator-action.md)
-to convert selected current candidates. Then verify native runtime behavior
-before compatibility-path removal work begins.
+Use the scheduler-owned reconciler and read-only
+[Native Intent Manual Apply Retirement](native-intent-manual-apply-retirement.md)
+status surface to observe controlled conversion. Recovery, rollback, and
+re-entry remain protected lifecycle actions and are not normal conversion
+paths.

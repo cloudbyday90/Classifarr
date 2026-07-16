@@ -16,7 +16,7 @@ const ragSettingsChunkRoots = [
 
 const policyChunkRoots = [
   '/src/views/PolicyList.vue',
-  '/src/views/PolicyNativeIntentMigration.vue',
+  '/src/views/PolicyNativeIntentReconciliation.vue',
   '/src/views/PresetsManager.vue',
   '/src/views/PolicyStatsDashboard.vue',
   '/src/views/TuningSuggestionsDashboard.vue',

@@ -39,8 +39,7 @@ import {
   updatePolicy,
   deletePolicy,
   getPresetSuggestions,
-  getNativeIntentConversionPreview,
-  applyNativeIntentConversion,
+  getNativeIntentReconciliationStatus,
 } from '../../api/policiesApi'
 
 describe('policiesApi', () => {
@@ -86,23 +85,11 @@ describe('policiesApi', () => {
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/presets/suggest/7')
   })
 
-  it('getNativeIntentConversionPreview calls the bounded maintenance endpoint', async () => {
-    mockGetDataRequest.mockResolvedValueOnce({ candidateReport: { candidates: [] } })
+  it('getNativeIntentReconciliationStatus calls the read-only status endpoint', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ statusId: 'ready' })
 
-    await getNativeIntentConversionPreview()
+    await getNativeIntentReconciliationStatus()
 
-    expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/native-intent-conversions/preview')
-  })
-
-  it('applyNativeIntentConversion sends only the selected IDs and confirmation', async () => {
-    const data = {
-      policy_ids: [7, 12],
-      confirmation: 'CONVERT_NATIVE_INTENT',
-    }
-    mockPost.mockResolvedValueOnce({ data: { statusId: 'applied' } })
-
-    await applyNativeIntentConversion(data)
-
-    expect(mockPost).toHaveBeenCalledWith('/policies/native-intent-conversions/apply', data)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/native-intent-reconciliation/status')
   })
 })

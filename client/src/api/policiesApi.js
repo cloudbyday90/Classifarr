@@ -42,12 +42,8 @@ export function getPresetSuggestions(libraryId) {
   return getDataRequest(`/policies/presets/suggest/${libraryId}`)
 }
 
-export function getNativeIntentConversionPreview() {
-  return getDataRequest('/policies/native-intent-conversions/preview')
-}
-
-export function applyNativeIntentConversion(data) {
-  return apiClient.post('/policies/native-intent-conversions/apply', data)
+export function getNativeIntentReconciliationStatus() {
+  return getDataRequest('/policies/native-intent-reconciliation/status')
 }
 
 const policiesApi = {
@@ -57,8 +53,7 @@ const policiesApi = {
   updatePolicy,
   deletePolicy,
   getPresetSuggestions,
-  getNativeIntentConversionPreview,
-  applyNativeIntentConversion,
+  getNativeIntentReconciliationStatus,
 }
 
 export default policiesApi

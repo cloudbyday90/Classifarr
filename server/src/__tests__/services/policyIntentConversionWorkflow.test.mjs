@@ -71,8 +71,7 @@ describe('policyIntentConversionWorkflow', () => {
       candidateReport: readyReport(),
       selectedPolicyIds: [14],
       action: {
-        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
-        actorId: 3,
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.NATIVE_INTENT_RECONCILIATION,
       },
       targetVersion: 2,
       now: '2026-06-01T00:00:00.000Z',
@@ -98,7 +97,7 @@ describe('policyIntentConversionWorkflow', () => {
     expect(step.migrationEvent).toEqual(expect.objectContaining({
       planned: true,
       tableId: POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENT_MIGRATION_EVENTS,
-      actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
+      actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.NATIVE_INTENT_RECONCILIATION,
     }));
     expect(step.nativeRecords.map(record => record.tableId)).toEqual(expect.arrayContaining([
       POLICY_NATIVE_SCHEMA_TABLE_IDS.POLICY_INTENTS,
@@ -156,6 +155,25 @@ describe('policyIntentConversionWorkflow', () => {
     expect(saveWorkflow.validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.ORDINARY_READ_OR_SAVE_CONVERSION,
+      }),
+    ]));
+  });
+
+  test('blocks a manual operator actor so normal conversion remains scheduler-owned', () => {
+    const workflow = buildPolicyIntentConversionWorkflow({
+      candidateReport: readyReport(),
+      selectedPolicyIds: [14],
+      action: {
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
+        actorId: 3,
+      },
+    });
+
+    expect(workflow.steps[0].statusId)
+      .toBe(POLICY_INTENT_CONVERSION_STEP_STATUS_IDS.BLOCKED_BY_ACTOR_SOURCE);
+    expect(workflow.validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_INTENT_CONVERSION_AUDIT_RISK_IDS.UNKNOWN_ACTOR_SOURCE,
       }),
     ]));
   });
@@ -247,7 +265,7 @@ describe('policyIntentConversionWorkflow', () => {
       candidateReport: readyReport(),
       selectedPolicyIds: [14],
       action: {
-        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.NATIVE_INTENT_RECONCILIATION,
       },
     });
     const weakened = {
@@ -307,7 +325,7 @@ describe('policyIntentConversionWorkflow', () => {
       candidateReport: readyReport(),
       selectedPolicyIds: [14],
       action: {
-        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.MANUAL_OPERATOR,
+        actorSourceId: POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.NATIVE_INTENT_RECONCILIATION,
       },
     });
     const audit = buildPolicyIntentConversionWorkflowAudit(workflow);

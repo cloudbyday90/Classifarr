@@ -33,7 +33,7 @@ const Statistics = () => import('@/views/Statistics.vue')
 const Settings = () => import('@/views/Settings.vue')
 const System = () => import('@/views/System.vue')
 const PolicyList = () => import('@/views/PolicyList.vue')
-const PolicyNativeIntentMigration = () => import('@/views/PolicyNativeIntentMigration.vue')
+const PolicyNativeIntentReconciliation = () => import('@/views/PolicyNativeIntentReconciliation.vue')
 const PresetsManager = () => import('@/views/PresetsManager.vue')
 const TuningSuggestionsDashboard = () => import('@/views/TuningSuggestionsDashboard.vue')
 const Evidence = () => import('@/views/Evidence.vue')
@@ -165,10 +165,10 @@ const router = createRouter({
           component: PolicyList,
         },
         {
-          path: '/policies/native-intent-migration',
-          name: 'PolicyNativeIntentMigration',
+          path: '/policies/native-intent-reconciliation',
+          name: 'PolicyNativeIntentReconciliation',
           meta: { routeMode: 'admin-maintenance' },
-          component: PolicyNativeIntentMigration,
+          component: PolicyNativeIntentReconciliation,
         },
         {
           path: '/presets',
