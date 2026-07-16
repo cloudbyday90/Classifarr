@@ -30,6 +30,10 @@ unchanged operator or runtime outcome.
   respects active rollback holds, reuses transactional authority safeguards,
   and records a distinct reconciliation actor without exposing raw policy
   payloads.
+- **Native Reconciliation Scheduler Collision Assurance** - added failure
+  injection coverage proving a delayed startup reconciliation skips when a
+  recurring run already holds the shared advisory lock, so overlapping
+  scheduler invocations cannot duplicate conversion work.
 - **Native Intent Reconciliation Ledger** - automatic native-intent conversion
   now retains bounded, post-commit run and per-policy outcome evidence using
   safe state IDs, timestamps, policy references, and candidate fingerprints.

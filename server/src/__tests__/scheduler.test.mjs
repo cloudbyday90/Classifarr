@@ -526,6 +526,57 @@ describe('SchedulerService', () => {
             expect(mockNativeIntentReconciliationService.run).toHaveBeenCalledTimes(2);
         });
 
+        it('runs reconciliation only once when the recurring and delayed-start invocations contend for its lock', async () => {
+            jest.useFakeTimers();
+            let releaseFirstRun;
+            let lockHeld = false;
+            const firstRun = new Promise(resolve => {
+                releaseFirstRun = resolve;
+            });
+            mockDb.withSessionAdvisoryLock.mockImplementation(async (_key, handler) => {
+                if (lockHeld) return false;
+
+                lockHeld = true;
+                try {
+                    await handler();
+                    return true;
+                } finally {
+                    lockHeld = false;
+                }
+            });
+            mockNativeIntentReconciliationService.run.mockReturnValue(firstRun);
+
+            scheduler.startNativeIntentReconciliation();
+            const cronHandler = mockNodeCron.schedule.mock.calls.at(-1)[1];
+            const recurringRun = cronHandler();
+            await Promise.resolve();
+            await Promise.resolve();
+
+            expect(mockNativeIntentReconciliationService.run).toHaveBeenCalledTimes(1);
+
+            await jest.advanceTimersByTimeAsync(90_000);
+
+            expect(mockDb.withSessionAdvisoryLock).toHaveBeenCalledTimes(2);
+            expect(mockDb.withSessionAdvisoryLock).toHaveBeenNthCalledWith(
+                1,
+                2008,
+                expect.any(Function),
+            );
+            expect(mockDb.withSessionAdvisoryLock).toHaveBeenNthCalledWith(
+                2,
+                2008,
+                expect.any(Function),
+            );
+            expect(mockNativeIntentReconciliationService.run).toHaveBeenCalledTimes(1);
+            expect(logger.debug).toHaveBeenCalledWith(
+                expect.stringContaining('native-intent-reconciliation'),
+                expect.objectContaining({ lockKey: 2008 }),
+            );
+
+            releaseFirstRun();
+            await recurringRun;
+        });
+
         it('cancels a pending initial reconciliation run during scheduler reset', async () => {
             jest.useFakeTimers();
             mockDb.withSessionAdvisoryLock.mockImplementation(async (_key, handler) => {
