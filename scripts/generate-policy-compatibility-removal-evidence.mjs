@@ -113,7 +113,7 @@ function usage() {
     '  --review-artifact-fingerprint <sha256>     Required applied removal-review artifact fingerprint.',
     '  --validation-evidence <json>               Required current validation-evidence JSON.',
     '  --output <json>                            Write evidence-regeneration JSON to this path.',
-    '  --completion-audit-artifact-output <json>  Write the nested completion-audit artifact JSON.',
+    '  --completion-audit-artifact-output <json>  Write the nested completion-audit artifact JSON when the full evidence chain is present.',
     '  --allow-blocked                            Allow writing blocked diagnostic output, including missing-input readiness diagnostics.',
     '  --require-complete                         Exit non-zero unless the evidence is complete.',
     '  --generated-at <iso>                       Optional generatedAt timestamp for stable tests.',
@@ -257,10 +257,12 @@ async function main() {
 
   try {
     writeJsonFile(options.outputPath, evidence);
-    writeJsonFile(
-      options.completionAuditArtifactOutputPath,
-      evidence.completionAuditArtifact
-    );
+    if (evidence.completionAuditArtifact !== null) {
+      writeJsonFile(
+        options.completionAuditArtifactOutputPath,
+        evidence.completionAuditArtifact
+      );
+    }
   } catch (err) {
     console.error(`Could not write compatibility-removal evidence JSON: ${err.message}`);
     process.exit(2);

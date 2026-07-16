@@ -343,6 +343,10 @@ describe('generate-policy-compatibility-removal-evidence', () => {
       expect.objectContaining({ riskId: 'review_artifact_fingerprint_missing' }),
       expect.objectContaining({ riskId: 'validation_evidence_missing' }),
     ]));
+    expect(evidence.riskCount).toBe(4);
+    expect(evidence.completionAuditArtifact).toBeNull();
+    expect(evidence.validation).toEqual(expect.objectContaining({ ok: true }));
+    expect(fs.existsSync(diagnosticResult.artifactOutputPath)).toBe(false);
     expect(evidence.sideEffects).toEqual(expect.objectContaining({
       filesDeleted: false,
       filesArchived: false,

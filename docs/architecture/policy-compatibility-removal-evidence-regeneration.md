@@ -144,11 +144,13 @@ Implemented:
   authorization.
 - Explicit diagnostic mode now handles the realistic pre-approval state where
   a current execution plan, authorization artifact, review fingerprint, or
-  validation artifact has not yet been created. It emits only a blocked record
-  with boolean input-presence flags and stable missing-evidence risk IDs. The
-  record is non-authoritative, performs no side effects, and cannot satisfy a
-  closure gate. Default mode still exits before writing output; unreadable
-  explicitly supplied JSON remains a command error.
+  validation artifact has not yet been created. It short-circuits before
+  planning, source scanning, or completion-audit construction and emits only
+  the exact missing categories with boolean input-presence flags. The compact
+  record is non-authoritative, performs no side effects, validates only as a
+  diagnostic, and cannot satisfy a closure gate. It does not write a nested
+  completion-audit artifact. Default mode still exits before writing output;
+  unreadable explicitly supplied JSON remains a command error.
 
 Example:
 
@@ -177,15 +179,14 @@ To capture the current readiness state before a new approved chain exists:
 ```bash
 npm run --silent policy:compatibility-removal-evidence -- \
   --allow-blocked \
-  --output .tmp/policy-storage/compatibility-removal-evidence.json \
-  --completion-audit-artifact-output \
-    .tmp/policy-storage/compatibility-removal-completion-artifact.json
+  --output .tmp/policy-storage/compatibility-removal-evidence.json
 ```
 
 This command intentionally exits `1` and writes only a blocked diagnostic. It
 does not create an execution plan, authorization, review fingerprint, or
-validation claim. Supply an explicit path only when that artifact actually
-exists; a supplied path that cannot be read exits `2` and writes no output.
+validation claim or nested completion-audit artifact. Supply an explicit path
+only when that artifact actually exists; a supplied path that cannot be read
+exits `2` and writes no output.
 
 ## Next Step
 

@@ -17,6 +17,7 @@ const POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_VERSION =
 
 const POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS = Object.freeze({
   ARTIFACT_VALIDATION_FAILED: 'artifact_validation_failed',
+  DIAGNOSTIC_SHAPE_INVALID: 'diagnostic_shape_invalid',
   EXECUTION_PLAN_ARTIFACT_MISSING: 'execution_plan_artifact_missing',
   EXECUTION_PLAN_ARTIFACT_INVALID: 'execution_plan_artifact_invalid',
   NEXT_BATCH_AUTHORIZATION_ARTIFACT_MISSING:
@@ -28,6 +29,11 @@ const POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS = Object.freez
   UNKNOWN_STATUS: 'unknown_status',
   VALIDATION_EVIDENCE_MISSING: 'validation_evidence_missing',
 });
+
+const POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_DIAGNOSTIC_CATEGORY_IDS =
+  Object.freeze({
+    MISSING_REQUIRED_EVIDENCE: 'missing_required_evidence',
+  });
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -100,16 +106,8 @@ function buildCurrentFinalImportScan({
   };
 }
 
-function buildEvidenceRisks({
-  completionAuditArtifact = {},
-  executionPlanSource = {},
-  inputEvidence = {},
-  referenceScan = {},
-} = {}) {
-  const risks = [
-    ...asArray(completionAuditArtifact.audit?.risks),
-    ...asArray(completionAuditArtifact.risks),
-  ];
+function buildMissingInputEvidenceRisks(inputEvidence = {}) {
+  const risks = [];
 
   if (inputEvidence.executionPlanArtifactProvided !== true) {
     risks.push(buildRisk(
@@ -142,6 +140,85 @@ function buildEvidenceRisks({
       'Compatibility removal evidence regeneration requires current validation evidence before closure can be evaluated.'
     ));
   }
+
+  return risks;
+}
+
+function hasMissingRequiredEvidence(inputEvidence = {}) {
+  return buildMissingInputEvidenceRisks(inputEvidence).length > 0;
+}
+
+function buildEmptyPathState() {
+  return {
+    totalCount: 0,
+    existingCount: 0,
+    removedCount: 0,
+    manifestPaths: [],
+    existingPaths: [],
+    removedPaths: [],
+  };
+}
+
+function buildMissingRequiredEvidenceDiagnostic({
+  inputEvidence = {},
+  generatedAt = null,
+} = {}) {
+  const risks = buildMissingInputEvidenceRisks(inputEvidence);
+  const evidence = {
+    version: POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_VERSION,
+    generatedAt: generatedAt || new Date().toISOString(),
+    statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS.BLOCKED,
+    complete: false,
+    diagnostic: {
+      categoryId:
+        POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_DIAGNOSTIC_CATEGORY_IDS
+          .MISSING_REQUIRED_EVIDENCE,
+      authoritative: false,
+      completionAuditArtifactGenerated: false,
+    },
+    inputEvidence,
+    executionPlan: summarizeExecutionPlan(),
+    pathState: buildEmptyPathState(),
+    finalImportScan: {
+      completed: false,
+      checkedPaths: [],
+      references: [],
+    },
+    completionAuditArtifact: null,
+    riskCount: risks.length,
+    risks,
+    sideEffects: {
+      filesDeleted: false,
+      filesArchived: false,
+      routesRemoved: false,
+      testsRemoved: false,
+      storageChanged: false,
+      manifestWritten: false,
+      gitCommandsRun: false,
+    },
+    nextStep: {
+      stepId: 'policy_compatibility_deletion_readiness',
+      label: 'Policy Compatibility Deletion Readiness',
+      reason:
+        'Compatibility-removal evidence needs the missing approval-chain inputs before closure can be evaluated.',
+    },
+  };
+
+  return {
+    ...evidence,
+    validation: validatePolicyCompatibilityRemovalEvidenceRegeneration(evidence),
+  };
+}
+
+function buildEvidenceRisks({
+  completionAuditArtifact = {},
+  executionPlanSource = {},
+  referenceScan = {},
+} = {}) {
+  const risks = [
+    ...asArray(completionAuditArtifact.audit?.risks),
+    ...asArray(completionAuditArtifact.risks),
+  ];
 
   if (executionPlanSource.ok !== true) {
     risks.push(buildRisk(
@@ -201,6 +278,14 @@ async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
     reviewArtifactFingerprint,
     validationEvidence,
   });
+
+  if (hasMissingRequiredEvidence(inputEvidence)) {
+    return buildMissingRequiredEvidenceDiagnostic({
+      inputEvidence,
+      generatedAt,
+    });
+  }
+
   const boundedValidationEvidence = summarizeValidationEvidence(validationEvidence);
   const executionPlanSource = resolvePolicyStorageClosureExecutionPlanSource({
     executionPlanArtifact,
@@ -228,7 +313,6 @@ async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
   const risks = buildEvidenceRisks({
     completionAuditArtifact,
     executionPlanSource,
-    inputEvidence,
     referenceScan: asObject(referenceScan),
   });
   const statusId = completionAuditArtifact.statusId;
@@ -280,6 +364,7 @@ async function buildPolicyCompatibilityRemovalEvidenceRegeneration({
 
 function validatePolicyCompatibilityRemovalEvidenceRegeneration(evidence = {}) {
   const issues = [];
+  const diagnostic = asObject(evidence.diagnostic);
 
   if (!Object.values(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS)
     .includes(evidence.statusId)) {
@@ -297,7 +382,36 @@ function validatePolicyCompatibilityRemovalEvidenceRegeneration(evidence = {}) {
     ));
   }
 
-  if (evidence.completionAuditArtifact?.validation?.ok !== true) {
+  const isMissingRequiredEvidenceDiagnostic =
+    diagnostic.categoryId ===
+    POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_DIAGNOSTIC_CATEGORY_IDS
+      .MISSING_REQUIRED_EVIDENCE;
+
+  if (isMissingRequiredEvidenceDiagnostic) {
+    const expectedRiskIds = buildMissingInputEvidenceRisks(evidence.inputEvidence)
+      .map(risk => risk.riskId)
+      .sort();
+    const receivedRiskIds = asArray(evidence.risks)
+      .map(risk => risk?.riskId)
+      .sort();
+
+    if (
+      evidence.statusId !==
+        POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS.BLOCKED ||
+      evidence.complete !== false ||
+      diagnostic.authoritative !== false ||
+      diagnostic.completionAuditArtifactGenerated !== false ||
+      evidence.completionAuditArtifact !== null ||
+      expectedRiskIds.length === 0 ||
+      JSON.stringify(receivedRiskIds) !== JSON.stringify(expectedRiskIds)
+    ) {
+      issues.push(buildRisk(
+        POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+          .DIAGNOSTIC_SHAPE_INVALID,
+        'Missing-evidence diagnostics must remain bounded, non-authoritative, and free of completion-audit output.'
+      ));
+    }
+  } else if (evidence.completionAuditArtifact?.validation?.ok !== true) {
     issues.push(buildRisk(
       POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
         .ARTIFACT_VALIDATION_FAILED,
@@ -324,6 +438,7 @@ function validatePolicyCompatibilityRemovalEvidenceRegeneration(evidence = {}) {
 }
 
 export {
+  POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_DIAGNOSTIC_CATEGORY_IDS,
   POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS,
   POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_VERSION,
   buildPolicyCompatibilityRemovalEvidenceRegeneration,

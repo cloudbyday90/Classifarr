@@ -7814,9 +7814,10 @@ Tasks:
     current execution plan, next-batch authorization artifact, applied review
     fingerprint, or validation evidence is absent.
   - Completed: explicit `--allow-blocked` collection now emits a bounded,
-    non-authoritative blocked record that identifies only the missing evidence
-    categories. It never manufactures approval, accepts unreadable supplied
-    JSON, or permits the record to satisfy current-closure gates.
+    non-authoritative blocked record containing exactly the missing evidence
+    categories. It skips source scanning and completion-audit construction,
+    writes no nested completion-audit artifact, never manufactures approval,
+    rejects unreadable supplied JSON, and cannot satisfy current-closure gates.
 - Require the current compatibility-deletion execution-plan artifact and bind
   its fingerprint through authorization, completion evidence, and replay.
 - Derive manifest path state from the current checkout.
@@ -7858,8 +7859,9 @@ Implementation status:
   blocked output requires explicit diagnostic allowance and cannot silently
   become current-closure authority.
 - Task 8R.36.2 is implemented. Missing current evidence can now be observed
-  safely before plan approval exists, while malformed supplied inputs remain a
-  hard command failure and the diagnostic output remains unusable as approval.
+  safely before plan approval exists through a compact, non-authoritative
+  diagnostic that cannot become nested closure input; malformed supplied inputs
+  remain a hard command failure.
 
 ## Phase 8R Work Sequence
 

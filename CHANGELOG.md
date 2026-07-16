@@ -18,6 +18,13 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Bounded Compatibility-Removal Readiness Diagnostics** - when the approved
+  compatibility-removal evidence chain has not yet been created, Classifarr now
+  emits only the missing approval categories in an explicit diagnostic run. The
+  read-only report cannot act as closure authority and does not write a nested
+  completion-audit artifact, preventing incomplete readiness checks from
+  looking like deletion approval.
+
 - **Semantic Native Intent Authority** - native intent now replaces
   compatibility behavior only when its active header is fully materialized:
   native source, completed inference, safe validation, and a persisted purpose

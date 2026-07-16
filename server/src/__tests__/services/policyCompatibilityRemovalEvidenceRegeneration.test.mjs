@@ -2,9 +2,11 @@ import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS,
 } from '../../services/policyCompatibilityRemovalCompletionAuditArtifact.mjs';
 import {
+  POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_DIAGNOSTIC_CATEGORY_IDS,
   POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS,
   POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_VERSION,
   buildPolicyCompatibilityRemovalEvidenceRegeneration,
+  validatePolicyCompatibilityRemovalEvidenceRegeneration,
 } from '../../services/policyCompatibilityRemovalEvidenceRegeneration.mjs';
 import {
   EVIDENCE_REGENERATION_MANIFEST_PATHS,
@@ -17,6 +19,63 @@ import {
 } from './fixtures/policyCompatibilityRemovalEvidenceRegenerationFixtures.mjs';
 
 describe('policyCompatibilityRemovalEvidenceRegeneration', () => {
+  test('emits only missing approval-chain categories before a closure chain exists', async () => {
+    const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
+      fileExists: () => {
+        throw new Error('Missing-input diagnostics must not inspect repository paths.');
+      },
+    });
+
+    expect(evidence).toEqual(expect.objectContaining({
+      statusId: POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_ARTIFACT_STATUS_IDS.BLOCKED,
+      complete: false,
+      diagnostic: {
+        categoryId:
+          POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_DIAGNOSTIC_CATEGORY_IDS
+            .MISSING_REQUIRED_EVIDENCE,
+        authoritative: false,
+        completionAuditArtifactGenerated: false,
+      },
+      completionAuditArtifact: null,
+      validation: expect.objectContaining({ ok: true }),
+    }));
+    expect(evidence.risks.map(risk => risk.riskId)).toEqual([
+      POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+        .EXECUTION_PLAN_ARTIFACT_MISSING,
+      POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+        .NEXT_BATCH_AUTHORIZATION_ARTIFACT_MISSING,
+      POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+        .REVIEW_ARTIFACT_FINGERPRINT_MISSING,
+      POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+        .VALIDATION_EVIDENCE_MISSING,
+    ]);
+  });
+
+  test('rejects a forged missing-evidence diagnostic with no missing categories', async () => {
+    const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration();
+    const validation = validatePolicyCompatibilityRemovalEvidenceRegeneration({
+      ...evidence,
+      inputEvidence: {
+        executionPlanArtifactProvided: true,
+        nextBatchAuthorizationArtifactProvided: true,
+        reviewArtifactFingerprintProvided: true,
+        validationEvidenceProvided: true,
+      },
+      riskCount: 0,
+      risks: [],
+    });
+
+    expect(validation).toEqual(expect.objectContaining({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_COMPATIBILITY_REMOVAL_EVIDENCE_REGENERATION_RISK_IDS
+            .DIAGNOSTIC_SHAPE_INVALID,
+        }),
+      ]),
+    }));
+  });
+
   test('regenerates a complete current artifact from a current plan and repository state', async () => {
     const plan = buildEvidenceRegenerationExecutionPlan();
     const executionPlanArtifact =
