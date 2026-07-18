@@ -108,21 +108,34 @@ function usage() {
   ].join('\n');
 }
 
+function writeOutput(stream, value) {
+  return new Promise((resolve, reject) => {
+    stream.write(`${value}\n`, err => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
 async function main() {
   let options;
 
   try {
     options = parseArgs(process.argv.slice(2));
   } catch (err) {
-    console.error(err.message);
-    console.error('');
-    console.error(usage());
-    process.exit(2);
+    await writeOutput(process.stderr, err.message);
+    await writeOutput(process.stderr, '');
+    await writeOutput(process.stderr, usage());
+    return 2;
   }
 
   if (options.help) {
-    console.log(usage());
-    return;
+    await writeOutput(process.stdout, usage());
+    return 0;
   }
 
   const cwd = path.resolve(process.cwd(), options.cwd);
@@ -143,8 +156,8 @@ async function main() {
       required: true,
     });
   } catch (err) {
-    console.error(err.message);
-    process.exit(2);
+    await writeOutput(process.stderr, err.message);
+    return 2;
   }
 
   const audit = await buildPolicyStorageCurrentClosureAudit({
@@ -155,17 +168,17 @@ async function main() {
   });
 
   if (audit.statusId !== 'complete' && options.allowBlocked !== true) {
-    console.error(
+    await writeOutput(process.stderr,
       'Policy storage current closure audit is blocked; pass --allow-blocked to write diagnostic output.'
     );
-    console.error(JSON.stringify({
+    await writeOutput(process.stderr, JSON.stringify({
       statusId: audit.statusId,
       riskCount: audit.riskCount,
       risks: audit.risks,
       summary: audit.summary,
       finalReadout: audit.finalReadout.operatorSummary,
     }, null, 2));
-    process.exit(1);
+    return 1;
   }
 
   try {
@@ -185,20 +198,26 @@ async function main() {
       value: audit.finalReadout,
     });
   } catch (err) {
-    console.error(`Could not write policy storage current closure audit JSON: ${err.message}`);
-    process.exit(2);
+    await writeOutput(
+      process.stderr,
+      `Could not write policy storage current closure audit JSON: ${err.message}`
+    );
+    return 2;
   }
 
-  console.log(JSON.stringify(audit, null, 2));
+  await writeOutput(process.stdout, JSON.stringify(audit, null, 2));
 
-  if (options.requireComplete && audit.complete !== true) {
-    process.exit(1);
-  }
-
-  process.exit(audit.statusId === 'complete' ? 0 : 1);
+  return audit.statusId === 'complete' && (
+    options.requireComplete !== true || audit.complete === true
+  ) ? 0 : 1;
 }
 
-main().catch(err => {
-  console.error(`Could not run policy storage current closure audit: ${err.message}`);
-  process.exit(2);
+main().then(exitCode => {
+  process.exitCode = exitCode;
+}).catch(async err => {
+  process.exitCode = 2;
+  await writeOutput(
+    process.stderr,
+    `Could not run policy storage current closure audit: ${err.message}`
+  );
 });

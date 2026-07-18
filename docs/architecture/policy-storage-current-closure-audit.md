@@ -215,6 +215,12 @@ Use this stack for the policy storage current closure audit:
     one coherent audit, checkpoint, and final-readout artifact chain.
 15. Resolve all relative input and output artifacts from the selected `--cwd`
     checkout.
+16. Treat the CLI result as a machine contract: emit exactly one complete JSON
+    document on stdout, send diagnostics to stderr, and set `process.exitCode`
+    rather than forcing process termination before asynchronous output drains.
+17. Resolve imported test files using the syntax of the inspected path. A
+    Windows path must retain Windows path semantics when evaluated on a POSIX
+    CI runner, and vice versa.
 
 ## Implementation Outcome
 
@@ -264,6 +270,14 @@ Implemented:
   paths now resolve from the selected `--cwd` checkout. Cross-directory public
   coverage proves the shell caller cannot mix another checkout's artifacts or
   receive the selected checkout's outputs.
+- The public CLI now waits for its JSON result to be written and then sets an
+  exit code for Node's normal shutdown. Large audit artifacts can no longer be
+  truncated when stdout is a Linux pipe, while blocked and operational
+  diagnostics remain on stderr.
+- Static-import mock-boundary assessment now chooses POSIX or Windows path
+  semantics from the file being inspected rather than from the CI host. The
+  quality gate therefore yields the same candidate assessment for either
+  checkout path syntax.
 
 Example:
 

@@ -794,6 +794,10 @@ unchanged operator or runtime outcome.
 
 ### Fixed
 
+- **Cross-Platform Audit Reliability** - policy storage closure audits now
+  finish writing their structured JSON before exiting, and static-import
+  quality checks preserve the inspected Windows or POSIX path semantics on any
+  CI host. Large audit artifacts no longer truncate on Linux runners.
 - **Server Dependency Quality Gates** - restored CI validation by removing
   unused server exports and obsolete service singletons, moving root-script
   CLI lifecycle helpers into the root script boundary, and separating complete

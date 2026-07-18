@@ -16,11 +16,22 @@ function hasMockSetup(source) {
   return MOCK_SETUP_RE.test(source);
 }
 
+function resolveLocalStaticImportPath(filePath, specifier) {
+  // A repository audit can inspect a Windows checkout while running on Linux CI.
+  // Select the path rules from the input path, not from the runner operating system.
+  const pathApi = path.win32.isAbsolute(filePath) ? path.win32 : path;
+  const resolvedPath = pathApi.resolve(pathApi.dirname(filePath), specifier);
+
+  return pathApi === path.win32 && path.sep === '/'
+    ? resolvedPath.replaceAll('\\', '/')
+    : resolvedPath;
+}
+
 function getLocalStaticImportPaths(source, filePath) {
   return [...source.matchAll(STATIC_IMPORT_SPECIFIER_RE)]
     .map(match => match[2])
     .filter(specifier => specifier.startsWith('.'))
-    .map(specifier => path.resolve(path.dirname(filePath), specifier));
+    .map(specifier => resolveLocalStaticImportPath(filePath, specifier));
 }
 
 function hasImportedMockSetup({
