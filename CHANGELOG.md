@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Isolated ESM Integration Imports** - the static-import quality gate now
+  recognizes integration suites that must load services after the shared Jest
+  database facade is registered. This preserves Testcontainers isolation and
+  continues to flag unnecessary dynamic test imports without depending on a
+  developer's local application configuration.
+
 - **Reconciliation Scheduler Overlap Guard** - native-intent reconciliation now
   skips an overlapping recurring callback within one application process before
   it opens a database session, while retaining PostgreSQL advisory locks as the

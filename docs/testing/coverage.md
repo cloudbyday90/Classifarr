@@ -46,6 +46,25 @@ Integration log interpretation:
   some of them are the evidence that negative-path integration coverage is
   executing as intended.
 
+### ESM Mock Ordering In Integration Tests
+
+Some database-backed integration suites import live services only after the
+shared `integration/setup.mjs` helper has registered its Jest ESM database
+facade. This is deliberate: Jest requires dynamic `import()` after an ESM mock
+registration, while static imports evaluate before that registration can take
+effect. The facade targets a fresh Testcontainers PostgreSQL database for the
+test run; it does not use a developer's Classifarr database, media server, or
+Docker Compose configuration.
+
+This follows the [Jest ESM mocking guidance](https://jestjs.io/docs/ecmascript-modules),
+which requires loading mocked ESM modules after mock registration, and Node's
+[ESM module behavior](https://nodejs.org/api/esm.html).
+
+`npm run esm:check-static-imports` recognizes this local imported mock boundary
+and continues to flag dynamic imports that have no direct or imported mock
+setup. Do not replace the required dynamic imports in such suites with static
+imports merely to satisfy the guardrail.
+
 ## Coverage Thresholds
 
 **Server Jest thresholds (enforced in `server/jest.config.mjs`):**

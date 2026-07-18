@@ -18,6 +18,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { requiresDynamicImportForMockOrder } from './lib/staticImportCandidateAssessment.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DEFAULT_SCAN_DIRS = [
@@ -25,12 +26,7 @@ const DEFAULT_SCAN_DIRS = [
   path.join(ROOT, 'client', 'src', '__tests__'),
 ];
 
-const MOCK_SETUP_RE = /\b(?:jest\.unstable_mockModule|jest\.mock|vi\.mock)\s*\(/;
 const DYNAMIC_IMPORT_RE = /\bawait\s+import\s*\(\s*['"][^'"]+['"]\s*\)/;
-const BASELINE_KEYS = new Set([
-  "server/src/__tests__/logging/logConfig.test.mjs|const { LOG_CONFIG } = await import('../../utils/logging/logConfig.mjs');",
-  "server/src/__tests__/logging/logConfig.test.mjs|const { SENSITIVE_FIELD_PATHS } = await import('../../utils/logging/logConfig.mjs');",
-]);
 
 function collectFiles(dir, results = []) {
   if (!fs.existsSync(dir)) return results;
@@ -54,7 +50,9 @@ function toRepoPath(filePath) {
 
 function findCandidates(filePath) {
   const source = fs.readFileSync(filePath, 'utf8');
-  if (!DYNAMIC_IMPORT_RE.test(source) || MOCK_SETUP_RE.test(source)) return [];
+  if (!DYNAMIC_IMPORT_RE.test(source) || requiresDynamicImportForMockOrder({ source, filePath })) {
+    return [];
+  }
 
   return source
     .split('\n')
@@ -67,21 +65,16 @@ function findCandidates(filePath) {
     }));
 }
 
-function candidateKey(candidate) {
-  return `${candidate.file}|${candidate.snippet}`;
-}
-
 const candidates = DEFAULT_SCAN_DIRS
   .flatMap((dir) => collectFiles(dir))
   .flatMap((filePath) => findCandidates(filePath));
-const newCandidates = candidates.filter((candidate) => !BASELINE_KEYS.has(candidateKey(candidate)));
 
 if (process.argv.includes('--check')) {
-  if (newCandidates.length === 0) {
-    console.log(`Static import candidate check passed (${candidates.length} baseline item${candidates.length === 1 ? '' : 's'}).`);
+  if (candidates.length === 0) {
+    console.log('Static import candidate check passed.');
   } else {
-    console.error(`Found ${newCandidates.length} new static import candidate${newCandidates.length === 1 ? '' : 's'}:`);
-    for (const candidate of newCandidates) {
+    console.error(`Found ${candidates.length} static import candidate${candidates.length === 1 ? '' : 's'}:`);
+    for (const candidate of candidates) {
       console.error(`  ${candidate.file}:${candidate.lineNumber} ${candidate.snippet}`);
     }
     process.exitCode = 1;
@@ -91,9 +84,8 @@ if (process.argv.includes('--check')) {
 } else if (candidates.length === 0) {
   console.log('No static import candidates found.');
 } else {
-  console.log(`Static import candidates (${candidates.length}; ${newCandidates.length} new):`);
+  console.log(`Static import candidates (${candidates.length}):`);
   for (const candidate of candidates) {
-    const label = BASELINE_KEYS.has(candidateKey(candidate)) ? 'baseline' : 'new';
-    console.log(`  [${label}] ${candidate.file}:${candidate.lineNumber} ${candidate.snippet}`);
+    console.log(`  ${candidate.file}:${candidate.lineNumber} ${candidate.snippet}`);
   }
 }
