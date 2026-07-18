@@ -20,6 +20,14 @@ import os from 'node:os';
 import { sanitizeData } from './sanitize.mjs';
 
 /**
+ * @param {unknown} value
+ * @returns {value is Record<string, unknown>}
+ */
+function isRecord(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
  * Builds a snapshot of system-level context at the moment of the log call.
  * Intended for inclusion in persisted error_log rows (system_context column).
  *
@@ -46,12 +54,12 @@ export function getSystemContext() {
  * Sensitive header values are redacted via sanitizeData.
  *
  * @param {import('express').Request | null | undefined} req
- * @returns {object | null}
+ * @returns {Record<string, unknown> | null}
  */
 export function getRequestContext(req) {
   if (!req) return null;
 
-  return sanitizeData({
+  const context = sanitizeData({
     method: req.method,
     url: req.url,
     path: req.path,
@@ -65,6 +73,8 @@ export function getRequestContext(req) {
     ip: req.ip ?? req.socket?.remoteAddress,
     userId: req.user?.id,
   });
+
+  return isRecord(context) ? context : null;
 }
 
 /**
@@ -72,14 +82,14 @@ export function getRequestContext(req) {
  * Handles both native Error objects and plain objects with a `.stack` string
  * (e.g., errors that have been JSON-serialised and re-hydrated).
  *
- * @param {object | null | undefined} data
+ * @param {unknown} data
  * @param {{ error?: unknown }} options
  * @returns {Error | null}
  */
 export function extractError(data, options = {}) {
   if (options?.error instanceof Error) return options.error;
 
-  if (!data || typeof data !== 'object') return null;
+  if (!isRecord(data)) return null;
 
   for (const candidate of [data.error, data.err, data.exception, data.cause]) {
     if (candidate instanceof Error) return candidate;
@@ -87,9 +97,11 @@ export function extractError(data, options = {}) {
 
   // Plain object with a .stack string — re-hydrate as an Error for stack_trace persistence.
   const maybe = data.error;
-  if (maybe && typeof maybe === 'object' && typeof maybe.stack === 'string') {
-    const e = new Error(maybe.message || 'Upstream error');
-    e.name = maybe.name || e.name;
+  if (isRecord(maybe) && typeof maybe.stack === 'string') {
+    const e = new Error(typeof maybe.message === 'string' ? maybe.message : 'Upstream error');
+    if (typeof maybe.name === 'string') {
+      e.name = maybe.name;
+    }
     e.stack = maybe.stack;
     return e;
   }
