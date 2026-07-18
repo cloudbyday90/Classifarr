@@ -20,7 +20,7 @@ checkpoint artifact, and the storage final closure readout.
   traceable integrity evidence. The cutover updates code, tests, docs, runners,
   and roadmap references together.
 - OWASP Logging Cheat Sheet recommends consistent event attributes and avoiding
-  ambiguous records. The audit now emits `policy.storage_current_closure_audit.v3`
+  ambiguous records. The audit emits `policy.storage_current_closure_audit.v3`
   and `nextStep` semantics instead of phase-specific runtime identifiers.
 - Git `mv` documents explicit index-aware file moves. The implementation uses
   repository moves and stale-reference sweeps so old filenames do not remain as
@@ -111,7 +111,9 @@ Implemented:
 - Renamed the CLI script to `run-policy-storage-current-closure-audit.mjs`.
 - Renamed the design doc to `policy-storage-current-closure-audit.md`.
 - Exposed `npm run policy:storage-current-closure-audit`.
-- Replaced the payload version with `policy.storage_current_closure_audit.v3`.
+- The current audit payload remains `policy.storage_current_closure_audit.v3`;
+  its nested evidence-run contract identifies the repository and active-installation
+  scopes independently.
 - Added retained closure inputs, a bounded SHA-256 fingerprint, and pure
   deterministic replay verification before downstream closure consumption.
 - Replaced phase-coded builder, validator, status, and risk exports with

@@ -2,12 +2,12 @@
 
 ## Intent
 
-Policy storage closure needs a durable evidence runner that proves the current
-repository still satisfies the storage-closure checkpoint. The runner consumes
-bounded repository evidence, a fingerprint-valid compatibility-removal
-completion-audit artifact,
-validation evidence, roadmap coverage, and changelog coverage, then delegates
-the completion decision to the policy storage completion checkpoint.
+Policy storage closure needs a durable evidence runner that distinguishes two
+bounded decisions. `implementationReadiness` proves that the current repository
+has the required source evidence. `instanceCutover` reports whether the active
+installation has completed its fingerprint-valid compatibility-removal audit.
+The runner composes both only for final storage closure; a blocked local
+cutover must not be reported as incomplete repository implementation.
 
 This component is a local and CI tooling boundary. It is not runtime
 classification logic, does not mutate policy storage, and does not execute
@@ -93,6 +93,22 @@ Cons:
 
 - older ad hoc evidence JSON must be regenerated with durable component IDs.
 
+### Separate Repository And Installation Scopes
+
+The closure output must expose repository implementation readiness separately
+from active-installation cutover readiness. Only the latter may depend on
+database state, and only the combined final-closure result may require both.
+
+Pros:
+
+- CI and release readiness remain environment-agnostic,
+- local deletion safety remains fail-closed,
+- blocked output identifies the scope that needs attention.
+
+Cons:
+
+- consumers need to read two explicit readiness fields.
+
 ### Reject Side Effects
 
 The evidence run should not write files, mutate storage, run commands, execute
@@ -116,12 +132,16 @@ Cons:
    file reads and current-state evidence collection.
 3. Use `run-policy-storage-closure-evidence.mjs` as the CLI wrapper.
 4. Expose `npm run policy:storage-closure-evidence`.
-5. Emit `policy.storage_closure_evidence_run.v1` and
-   `policy.storage_closure_current_evidence_collector.v1`.
+5. Emit `policy.storage_closure_evidence_run.v2` and
+   `policy.storage_closure_current_evidence_collector.v2` so consumers can
+   distinguish repository implementation readiness from active-installation
+   cutover readiness.
 6. Emit `componentId` and semantic `nextStep` output rather than delivery
    identifiers.
 7. Require durable component IDs at every evidence input boundary.
 8. Keep validation command execution outside this runner.
+9. Keep repository implementation readiness separate from active-installation
+   cutover readiness.
 
 ## Implementation Outcome
 
@@ -144,6 +164,11 @@ Implemented:
 - Preserved artifact inventory, roadmap, changelog, completion-audit artifact,
   validation evidence, checkpoint composition, side-effect rejection, and
   complete/blocked status behavior.
+- Added a repository-scoped `implementationReadiness` projection that does not
+  consume completion-audit or database evidence.
+- Added an active-installation `instanceCutover` projection for the existing
+  compatibility-removal completion-audit state. It remains required for final
+  storage closure and cannot authorize a deletion by itself.
 
 Example:
 

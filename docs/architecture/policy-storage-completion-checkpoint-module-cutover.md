@@ -10,8 +10,8 @@ The durable production names are:
 
 - `policyStorageCompletionCheckpoint.mjs`
 - `policyStorageCompletionCheckpointArtifact.mjs`
-- `policy.storage_completion_checkpoint.v3`
-- `policy.storage_completion_checkpoint_artifact.v3`
+- `policy.storage_completion_checkpoint.v4`
+- `policy.storage_completion_checkpoint_artifact.v5`
 - `npm run policy:storage-completion-checkpoint`
 
 ## Official-Source Research

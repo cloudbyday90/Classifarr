@@ -363,6 +363,19 @@ describe('policyStorageClosureEvidenceRun', () => {
         riskId: 'final_removal_audit_not_complete',
       }),
     ]));
+    expect(removalAuditBlocked.implementationReadiness).toEqual(expect.objectContaining({
+      scope: 'repository',
+      statusId: 'ready',
+      ready: true,
+      riskCount: 0,
+      validationOk: true,
+    }));
+    expect(removalAuditBlocked.instanceCutover).toEqual(expect.objectContaining({
+      scope: 'active_installation',
+      requiredForStorageClosure: true,
+      ready: false,
+      riskCount: 1,
+    }));
   });
 
   test('blocks when validation or changelog evidence fails checkpoint', async () => {
@@ -419,6 +432,8 @@ describe('policyStorageClosureEvidenceRun', () => {
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.RISK_COUNT_MISMATCH,
       POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.SIDE_EFFECT_PERFORMED,
+      POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.IMPLEMENTATION_READINESS_SCOPE_INVALID,
+      POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.INSTANCE_CUTOVER_SCOPE_INVALID,
     ]));
   });
 });

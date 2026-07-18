@@ -227,6 +227,12 @@ describe('policyStorageCompletionCheckpoint', () => {
     expect(altered.risks.map(risk => risk.riskId)).not.toContain(
       POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FINAL_REMOVAL_AUDIT_NOT_COMPLETE
     );
+    expect(checkpoint.implementationReadiness).toEqual(expect.objectContaining({
+      statusId: 'ready',
+      ready: true,
+      riskCount: 0,
+      validationOk: true,
+    }));
   });
 
   test('blocks when focused, lint, markdown, or full validation evidence is missing or failed', async () => {

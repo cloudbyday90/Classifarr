@@ -10,7 +10,7 @@ import {
 } from './policyStorageReleaseNoteCoverage.mjs';
 
 const POLICY_STORAGE_CLOSURE_CURRENT_EVIDENCE_COLLECTOR_VERSION =
-  'policy.storage_closure_current_evidence_collector.v1';
+  'policy.storage_closure_current_evidence_collector.v2';
 
 const DEFAULT_POLICY_STORAGE_CLOSURE_ROADMAP_PATH =
   'docs/architecture/policy-builder-intent-model-roadmap.md';

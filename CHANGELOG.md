@@ -584,6 +584,11 @@ unchanged operator or runtime outcome.
   records, completion checkpoints, final readouts, and requirement audits so
   storage readiness is proved from live repository and schema artifacts rather
   than narrative alone.
+- **Environment-Agnostic Storage Readiness** - storage evidence now reports
+  repository implementation readiness separately from an active installation's
+  compatibility-removal cutover state. Local policy inventory can still block
+  destructive removal, but it can no longer make a complete source
+  implementation appear unfinished.
 - **Compatibility-Removal Controls** - added bounded deletion plans, execution
   gates, selected-batch manifests, post-removal verification, and next-batch
   authorization so retirement of replaced compatibility paths remains explicit

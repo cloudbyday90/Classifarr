@@ -5,11 +5,12 @@ import {
   validatePolicyCompatibilityRemovalCompletionAuditArtifactIntegrity,
 } from './policyCompatibilityRemovalCompletionAuditArtifactIntegrity.mjs';
 import {
-  validatePolicyStorageClosureValidationEvidenceIntegrity,
-} from './policyStorageClosureValidationEvidenceIntegrity.mjs';
+  POLICY_STORAGE_IMPLEMENTATION_READINESS_RISK_IDS,
+  buildPolicyStorageImplementationReadiness,
+} from './policyStorageImplementationReadiness.mjs';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_VERSION =
-  'policy.storage_completion_checkpoint.v3';
+  'policy.storage_completion_checkpoint.v4';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -21,13 +22,7 @@ const POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS = Object.freeze({
 });
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS = Object.freeze({
-  MISSING_COMPONENT_EVIDENCE: 'missing_component_evidence',
-  COMPONENT_NOT_IMPLEMENTED: 'component_not_implemented',
-  COMPONENT_MISSING_DESIGN_DOC: 'component_missing_design_doc',
-  COMPONENT_MISSING_CONTRACT_EVIDENCE: 'component_missing_contract_evidence',
-  COMPONENT_MISSING_TEST_EVIDENCE: 'component_missing_test_evidence',
-  ROADMAP_SEQUENCE_INCOMPLETE: 'roadmap_sequence_incomplete',
-  ROADMAP_IMPLEMENTATION_STATUS_INCOMPLETE: 'roadmap_implementation_status_incomplete',
+  ...POLICY_STORAGE_IMPLEMENTATION_READINESS_RISK_IDS,
   FINAL_REMOVAL_AUDIT_ARTIFACT_INTEGRITY_FAILED:
     'final_removal_audit_artifact_integrity_failed',
   FINAL_REMOVAL_AUDIT_NOT_COMPLETE: 'final_removal_audit_not_complete',
@@ -171,155 +166,11 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-function normalizeComponentId(value = '') {
-  return String(value || '').trim().toLowerCase();
-}
-
-function getEvidenceComponentId(component = {}) {
-  return normalizeComponentId(component.componentId);
-}
-
 function buildRisk(riskId, message, metadata = {}) {
   return {
     riskId,
     message,
     ...metadata,
-  };
-}
-
-function getComponentEvidenceByComponentId(componentEvidence = []) {
-  return new Map(asArray(componentEvidence)
-    .map(component => [getEvidenceComponentId(component), component]));
-}
-
-function evaluateComponentCoverage({
-  expectedComponents = POLICY_STORAGE_COMPLETION_COMPONENTS,
-  componentEvidence = [],
-} = {}) {
-  const risks = [];
-  const evidenceByComponentId = getComponentEvidenceByComponentId(componentEvidence);
-  const componentSummaries = expectedComponents.map(expected => {
-    const componentId = normalizeComponentId(expected.componentId);
-    const evidence = evidenceByComponentId.get(componentId);
-
-    if (!evidence) {
-      risks.push(buildRisk(
-        POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.MISSING_COMPONENT_EVIDENCE,
-        'Policy storage completion checkpoint requires evidence for every expected component.',
-        {
-          componentId,
-          label: expected.label,
-        }
-      ));
-
-      return {
-        componentId,
-        label: expected.label,
-        implemented: false,
-        designDocPresent: false,
-        contractEvidencePresent: false,
-        testEvidencePresent: false,
-        changelogEntryPresent: false,
-      };
-    }
-
-    if (evidence.implemented !== true) {
-      risks.push(buildRisk(
-        POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_NOT_IMPLEMENTED,
-        'Storage completion component evidence must mark the component as implemented.',
-        { componentId, label: expected.label }
-      ));
-    }
-
-    if (evidence.designDocPresent !== true) {
-      risks.push(buildRisk(
-        POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_MISSING_DESIGN_DOC,
-        'Storage completion component evidence must include a design/outcome document.',
-        { componentId, label: expected.label }
-      ));
-    }
-
-    if (evidence.contractEvidencePresent !== true) {
-      risks.push(buildRisk(
-        POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_MISSING_CONTRACT_EVIDENCE,
-        'Storage completion component evidence must include service, route, migration, or wiring contract evidence.',
-        { componentId, label: expected.label }
-      ));
-    }
-
-    if (evidence.testEvidencePresent !== true) {
-      risks.push(buildRisk(
-        POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_MISSING_TEST_EVIDENCE,
-        'Storage completion component evidence must include focused test evidence.',
-        { componentId, label: expected.label }
-      ));
-    }
-
-    return {
-      componentId,
-      label: evidence.label || expected.label,
-      implemented: evidence.implemented === true,
-      designDocPresent: evidence.designDocPresent === true,
-      contractEvidencePresent: evidence.contractEvidencePresent === true,
-      testEvidencePresent: evidence.testEvidencePresent === true,
-      changelogEntryPresent: evidence.changelogEntryPresent === true,
-    };
-  });
-
-  return {
-    expectedCount: expectedComponents.length,
-    providedCount: evidenceByComponentId.size,
-    implementedCount: componentSummaries.filter(component => component.implemented).length,
-    documentedCount:
-      componentSummaries.filter(component => component.designDocPresent).length,
-    contractEvidenceCount:
-      componentSummaries.filter(component => component.contractEvidencePresent).length,
-    testEvidenceCount:
-      componentSummaries.filter(component => component.testEvidencePresent).length,
-    components: componentSummaries,
-    risks,
-  };
-}
-
-function evaluateRoadmapEvidence({
-  roadmapEvidence = {},
-  expectedComponents = POLICY_STORAGE_COMPLETION_COMPONENTS,
-} = {}) {
-  const risks = [];
-  const sequenceComponentIds = asArray(roadmapEvidence.componentSequenceIds)
-    .map(normalizeComponentId);
-  const implementationStatusComponentIds = asArray(roadmapEvidence.implementationStatusComponentIds)
-    .map(normalizeComponentId);
-  const expectedComponentIds =
-    expectedComponents.map(component => normalizeComponentId(component.componentId));
-  const missingSequenceComponentIds =
-    expectedComponentIds.filter(componentId => !sequenceComponentIds.includes(componentId));
-  const missingImplementationStatusComponentIds =
-    expectedComponentIds
-      .filter(componentId => !implementationStatusComponentIds.includes(componentId));
-
-  if (missingSequenceComponentIds.length > 0) {
-    risks.push(buildRisk(
-      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.ROADMAP_SEQUENCE_INCOMPLETE,
-      'Policy storage roadmap work sequence must include every expected component.',
-      { missingComponentIds: missingSequenceComponentIds }
-    ));
-  }
-
-  if (missingImplementationStatusComponentIds.length > 0) {
-    risks.push(buildRisk(
-      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.ROADMAP_IMPLEMENTATION_STATUS_INCOMPLETE,
-      'Policy storage roadmap implementation status must include every expected component.',
-      { missingComponentIds: missingImplementationStatusComponentIds }
-    ));
-  }
-
-  return {
-    sequenceCount: sequenceComponentIds.length,
-    implementationStatusCount: implementationStatusComponentIds.length,
-    missingSequenceComponentIds,
-    missingImplementationStatusComponentIds,
-    risks,
   };
 }
 
@@ -375,101 +226,9 @@ async function evaluateFinalRemovalAudit(completionAuditArtifact = {}) {
   };
 }
 
-function evaluateValidationEvidence(validationEvidence = {}) {
-  const risks = [];
-  const checks = [
-    {
-      key: 'focused',
-      missingRiskId: POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FOCUSED_VALIDATION_MISSING,
-      failedRiskId: POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FOCUSED_VALIDATION_FAILED,
-      missingMessage:
-        'Policy storage completion checkpoint requires focused validation evidence.',
-      failedMessage: 'Policy storage focused validation failed.',
-    },
-    {
-      key: 'lint',
-      missingRiskId: POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.LINT_VALIDATION_MISSING,
-      failedRiskId: POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.LINT_VALIDATION_FAILED,
-      missingMessage: 'Policy storage completion checkpoint requires lint validation evidence.',
-      failedMessage: 'Policy storage lint validation failed.',
-    },
-    {
-      key: 'markdown',
-      missingRiskId: POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.MARKDOWN_VALIDATION_MISSING,
-      failedRiskId: POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.MARKDOWN_VALIDATION_FAILED,
-      missingMessage: 'Policy storage completion checkpoint requires markdown validation evidence.',
-      failedMessage: 'Policy storage markdown validation failed.',
-    },
-    {
-      key: 'full',
-      missingRiskId: POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FULL_VALIDATION_MISSING,
-      failedRiskId: POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.FULL_VALIDATION_FAILED,
-      missingMessage: 'Policy storage completion checkpoint requires full server validation evidence.',
-      failedMessage: 'Policy storage full validation failed.',
-    },
-  ];
-
-  checks.forEach(check => {
-    const evidence = validationEvidence[check.key];
-
-    if (!evidence) {
-      risks.push(buildRisk(check.missingRiskId, check.missingMessage));
-    } else if (evidence.passed !== true) {
-      risks.push(buildRisk(check.failedRiskId, check.failedMessage, {
-        command: evidence.command || null,
-        message: evidence.message || null,
-      }));
-    }
-  });
-
-  return risks;
-}
-
-function evaluateValidationEvidenceArtifact(validationIntegrity = {}) {
-  if (validationIntegrity.ok === true) {
-    return [];
-  }
-
-  return [buildRisk(
-    POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS
-      .VALIDATION_EVIDENCE_ARTIFACT_INTEGRITY_FAILED,
-    'Policy storage completion checkpoint requires fingerprint-valid, replay-verified validation evidence.',
-    {
-      issueCount: validationIntegrity.issueCount ?? null,
-      issueRiskIds: asArray(validationIntegrity.issues).map(issue => issue.riskId),
-    }
-  )];
-}
-
-function evaluateChangelogEvidence({
-  componentCoverage = {},
-  changelogEvidence = {},
-} = {}) {
-  const risks = [];
-  const coveredComponentIds = asArray(changelogEvidence.componentIds)
-    .map(normalizeComponentId);
-  const missingComponentIds = asArray(componentCoverage.components)
-    .filter(component => !coveredComponentIds.includes(component.componentId))
-    .map(component => component.componentId);
-
-  if (changelogEvidence.updated !== true || missingComponentIds.length > 0) {
-    risks.push(buildRisk(
-      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.CHANGELOG_ENTRY_MISSING,
-      'Policy storage completion checkpoint requires changelog coverage for every expected component.',
-      { missingComponentIds }
-    ));
-  }
-
-  return {
-    updated: changelogEvidence.updated === true,
-    coveredComponentIds,
-    missingComponentIds,
-    risks,
-  };
-}
-
 function determineStatusId(risks = []) {
   if (risks.some(risk => [
+    POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.MISSING_EXPECTED_COMPONENTS,
     POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.MISSING_COMPONENT_EVIDENCE,
     POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_NOT_IMPLEMENTED,
     POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_MISSING_DESIGN_DOC,
@@ -528,52 +287,36 @@ async function buildPolicyStorageCompletionCheckpoint({
   changelogEvidence = {},
   sideEffects = {},
 } = {}) {
-  const componentCoverage = evaluateComponentCoverage({
+  const implementationReadiness = buildPolicyStorageImplementationReadiness({
     expectedComponents,
     componentEvidence,
-  });
-  const roadmap = evaluateRoadmapEvidence({
     roadmapEvidence,
-    expectedComponents,
+    validationEvidence,
+    changelogEvidence,
+    sideEffects,
   });
   const finalRemoval = await evaluateFinalRemovalAudit(completionAuditArtifact);
-  const validationIntegrity =
-    validatePolicyStorageClosureValidationEvidenceIntegrity({ validationEvidence });
-  const verifiedValidationEvidence = validationIntegrity.ok
-    ? validationIntegrity.evidence
-    : validationEvidence;
-  const changelog = evaluateChangelogEvidence({
-    componentCoverage,
-    changelogEvidence,
-    expectedComponents,
-  });
   const risks = [
-    ...componentCoverage.risks,
-    ...roadmap.risks,
+    ...implementationReadiness.risks,
     ...finalRemoval.risks,
-    ...evaluateValidationEvidenceArtifact(validationIntegrity),
-    ...evaluateValidationEvidence(verifiedValidationEvidence),
-    ...changelog.risks,
   ];
   const checkpoint = {
     version: POLICY_STORAGE_COMPLETION_CHECKPOINT_VERSION,
     statusId: determineStatusId(risks),
     complete: risks.length === 0,
-    componentCoverage,
-    roadmapEvidence: roadmap,
+    implementationReadiness: {
+      statusId: implementationReadiness.statusId,
+      ready: implementationReadiness.ready,
+      riskCount: implementationReadiness.riskCount,
+      risks: implementationReadiness.risks,
+      validationOk: implementationReadiness.validation?.ok === true,
+    },
+    componentCoverage: implementationReadiness.componentCoverage,
+    roadmapEvidence: implementationReadiness.roadmapEvidence,
     finalRemovalAudit: finalRemoval,
-    validationEvidence: {
-      focused: verifiedValidationEvidence.focused || null,
-      lint: verifiedValidationEvidence.lint || null,
-      markdown: verifiedValidationEvidence.markdown || null,
-      full: verifiedValidationEvidence.full || null,
-    },
-    validationEvidenceIntegrity: {
-      ok: validationIntegrity.ok,
-      issueCount: validationIntegrity.issueCount,
-      artifactFingerprint: validationIntegrity.artifactFingerprint,
-    },
-    changelogEvidence: changelog,
+    validationEvidence: implementationReadiness.validationEvidence,
+    validationEvidenceIntegrity: implementationReadiness.validationEvidenceIntegrity,
+    changelogEvidence: implementationReadiness.changelogEvidence,
     riskCount: risks.length,
     risks,
     sideEffects: {
@@ -586,7 +329,7 @@ async function buildPolicyStorageCompletionCheckpoint({
       stepId: 'policy_storage_final_closure_readout',
       label: 'Policy Storage Final Closure Readout',
       reason:
-        'When the checkpoint is complete, storage migration has current evidence for roadmap coverage, contracts, tests, docs, changelog, validation, and removal-loop closure.',
+        'The source implementation and the active-installation compatibility-removal audit must both be complete before storage closure can pass.',
     },
   };
 

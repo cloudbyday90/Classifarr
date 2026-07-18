@@ -251,4 +251,31 @@ describe('policyStorageClosureCurrentEvidenceCollector', () => {
         'full_validation_missing',
       ]));
   });
+
+  test('keeps repository implementation readiness independent from a missing installation audit', async () => {
+    const result = await buildPolicyStorageClosureCurrentEvidenceRun({
+      cwd: '/repo',
+      fileExists: () => true,
+      readTextFile: filePath => (
+        filePath.endsWith('CHANGELOG.md')
+          ? completeChangelogContent()
+          : completeRoadmapContent()
+      ),
+      validationEvidence: completeValidationEvidence(),
+    });
+
+    expect(result.evidenceRun.statusId)
+      .toBe(POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.BLOCKED_BY_CHECKPOINT);
+    expect(result.evidenceRun.implementationReadiness).toEqual(expect.objectContaining({
+      scope: 'repository',
+      statusId: 'ready',
+      ready: true,
+      riskCount: 0,
+    }));
+    expect(result.evidenceRun.instanceCutover).toEqual(expect.objectContaining({
+      scope: 'active_installation',
+      requiredForStorageClosure: true,
+      ready: false,
+    }));
+  });
 });

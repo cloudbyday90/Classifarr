@@ -5,7 +5,7 @@ import {
 } from './policyStorageCompletionCheckpoint.mjs';
 
 const POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_VERSION =
-  'policy.storage_closure_evidence_run.v1';
+  'policy.storage_closure_evidence_run.v2';
 
 const POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -19,6 +19,8 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS = Object.freeze({
   CHECKPOINT_VALIDATION_FAILED: 'checkpoint_validation_failed',
   SIDE_EFFECT_PERFORMED: 'side_effect_performed',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
+  IMPLEMENTATION_READINESS_SCOPE_INVALID: 'implementation_readiness_scope_invalid',
+  INSTANCE_CUTOVER_SCOPE_INVALID: 'instance_cutover_scope_invalid',
   UNKNOWN_STATUS: 'unknown_status',
 });
 
@@ -457,9 +459,11 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity.md',
       'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity-boundary.md',
       'docs/architecture/policy-storage-final-closure-readout.md',
+      'docs/architecture/policy-storage-implementation-readiness.md',
     ],
     contractPaths: [
       'server/src/services/policyStorageCompletionCheckpoint.mjs',
+      'server/src/services/policyStorageImplementationReadiness.mjs',
       'server/src/services/policyStorageCompletionCheckpointArtifact.mjs',
       'server/src/services/policyStorageCompletionCheckpointArtifactFingerprint.mjs',
       'server/src/services/policyStorageCompletionCheckpointArtifactIntegrity.mjs',
@@ -469,6 +473,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     ],
     testPaths: [
       'server/src/__tests__/services/policyStorageCompletionCheckpoint.test.mjs',
+      'server/src/__tests__/services/policyStorageImplementationReadiness.test.mjs',
       'server/src/__tests__/services/policyStorageCompletionCheckpointArtifact.test.mjs',
       'server/src/__tests__/services/policyStorageCompletionCheckpointArtifactFingerprint.test.mjs',
       'server/src/__tests__/services/policyStorageCompletionCheckpointArtifactIntegrity.test.mjs',
@@ -619,6 +624,37 @@ function determineStatusId({ risks = [], checkpoint = {} } = {}) {
   return POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.COMPLETE;
 }
 
+function buildImplementationReadinessEvidence(checkpoint = {}) {
+  const readiness = checkpoint.implementationReadiness || {};
+
+  return {
+    scope: 'repository',
+    statusId: readiness.statusId || null,
+    ready: readiness.ready === true,
+    validationOk: readiness.validationOk === true,
+    riskCount: readiness.riskCount ?? null,
+    risks: asArray(readiness.risks),
+  };
+}
+
+function buildInstanceCutoverEvidence(checkpoint = {}) {
+  const finalRemovalAudit = checkpoint.finalRemovalAudit || {};
+
+  return {
+    scope: 'active_installation',
+    requiredForStorageClosure: true,
+    statusId: finalRemovalAudit.statusId || null,
+    ready:
+      finalRemovalAudit.complete === true &&
+      finalRemovalAudit.validationOk === true &&
+      finalRemovalAudit.integrityOk === true,
+    integrityOk: finalRemovalAudit.integrityOk === true,
+    validationOk: finalRemovalAudit.validationOk === true,
+    riskCount: asArray(finalRemovalAudit.risks).length,
+    risks: asArray(finalRemovalAudit.risks),
+  };
+}
+
 async function buildPolicyStorageClosureEvidenceRun({
   artifactInventory = {},
   componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
@@ -674,6 +710,9 @@ async function buildPolicyStorageClosureEvidenceRun({
     ));
   }
 
+  const implementationReadiness = buildImplementationReadinessEvidence(checkpoint);
+  const instanceCutover = buildInstanceCutoverEvidence(checkpoint);
+
   const evidenceRun = {
     version: POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_VERSION,
     statusId: determineStatusId({ risks, checkpoint }),
@@ -690,6 +729,8 @@ async function buildPolicyStorageClosureEvidenceRun({
         artifactInventoryEvaluation.componentsWithMissingArtifacts,
     },
     componentEvidence,
+    implementationReadiness,
+    instanceCutover,
     checkpoint: {
       statusId: checkpoint.statusId,
       complete: checkpoint.complete,
@@ -709,7 +750,7 @@ async function buildPolicyStorageClosureEvidenceRun({
       stepId: 'policy_storage_closure_evidence_complete',
       label: 'Policy Storage Closure Evidence Complete',
       reason:
-        'When the evidence run is complete, the current repository evidence satisfies the policy storage closure checkpoint.',
+        'Source implementation readiness and active-installation cutover completion are reported separately; both are required only for final storage closure.',
     },
   };
 
@@ -734,6 +775,23 @@ function validatePolicyStorageClosureEvidenceRun(evidenceRun = {}) {
     issues.push(buildRisk(
       POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.RISK_COUNT_MISMATCH,
       'Policy storage closure evidence run risk count must match risk list length.'
+    ));
+  }
+
+  if (evidenceRun.implementationReadiness?.scope !== 'repository') {
+    issues.push(buildRisk(
+      POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.IMPLEMENTATION_READINESS_SCOPE_INVALID,
+      'Policy storage closure implementation readiness must be repository-scoped.'
+    ));
+  }
+
+  if (
+    evidenceRun.instanceCutover?.scope !== 'active_installation' ||
+    evidenceRun.instanceCutover?.requiredForStorageClosure !== true
+  ) {
+    issues.push(buildRisk(
+      POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.INSTANCE_CUTOVER_SCOPE_INVALID,
+      'Policy storage closure instance cutover must be active-installation scoped and explicitly required for final closure.'
     ));
   }
 

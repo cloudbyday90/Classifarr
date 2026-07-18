@@ -8095,9 +8095,14 @@ Completion state:
 
 - All mapped Phase 8R component contracts have implementation, design,
   focused-test, roadmap, and Unreleased release-outcome evidence. Storage
-  closure itself remains blocked until compatibility-removal evidence is
-  regenerated from a current approved execution plan and the live deletion
-  readiness gates pass.
+  **implementation readiness** is therefore repository-scoped and independent
+  of any operator's database. Final storage closure remains separately blocked
+  until an individual installation's compatibility-removal evidence is
+  regenerated from a current approved execution plan and that installation's
+  deletion readiness gates pass.
+- Closure output must keep these scopes explicit as `implementationReadiness`
+  and `instanceCutover`. The first never reads an installation database; the
+  second never acts as a claim that source implementation work is incomplete.
 - The closure catalog independently requires semantic native-authority
   eligibility and empty-intent recovery. A structural active-header repair
   alone cannot satisfy closure evidence because it does not prove that the

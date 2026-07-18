@@ -11,7 +11,7 @@ import {
 } from './policyStorageCompletionCheckpointArtifactFingerprint.mjs';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_VERSION =
-  'policy.storage_completion_checkpoint_artifact.v4';
+  'policy.storage_completion_checkpoint_artifact.v5';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',

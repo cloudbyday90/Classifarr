@@ -3,18 +3,22 @@
 ## Intent
 
 The policy storage completion checkpoint is the final side-effect-free verifier
-for the native policy storage migration boundary. It consumes explicit evidence
-and decides whether the storage migration has enough current proof to proceed
-to final closure.
+for the native policy storage migration boundary. It composes two explicit
+decisions: repository-scoped implementation readiness and active-installation
+compatibility-removal completion. A blocked installation cutover does not mean
+the source implementation is incomplete, but both decisions must pass before
+final storage closure.
 
-The checkpoint requires evidence for:
+The repository-scoped implementation decision requires evidence for:
 
 - every expected storage migration component,
 - roadmap sequence and implementation-status coverage,
-- a fingerprint-valid, replay-verified compatibility-removal completion-audit
-  artifact,
 - focused, lint, markdown, and full validation,
 - changelog coverage for every expected component.
+
+The active-installation cutover decision separately requires a
+fingerprint-valid, replay-verified compatibility-removal completion-audit
+artifact.
 
 It does not inspect the filesystem, run commands, mutate storage, write files,
 or run Git. The checkpoint blocks completion when evidence is missing, stale,
@@ -81,20 +85,22 @@ Cons:
 
 - roadmap updates become required work, not optional notes.
 
-### Require Compatibility-Removal Completion Evidence
+### Keep Compatibility-Removal Completion Installation-Scoped
 
-Storage migration should not close unless the compatibility-removal loop has a
-complete and valid completion audit.
+Final storage closure should not pass unless the active installation's
+compatibility-removal loop has a complete and valid completion audit. That
+audit must not determine whether the checked-out source implementation is ready.
 
 Pros:
 
-- prevents closing while old compatibility inventory remains,
-- ties storage completion to the native-storage migration goal,
-- avoids permanent dual-model technical debt.
+- prevents closing a specific installation while old compatibility inventory
+  remains,
+- preserves a strict local deletion gate,
+- keeps CI and release readiness independent of any one operator's data.
 
 Cons:
 
-- requires carrying compatibility-removal evidence into the final checkpoint.
+- requires reporting two bounded readiness scopes.
 
 ### Require Focused And Broad Validation
 
@@ -120,12 +126,14 @@ Use this stack for the policy storage completion checkpoint:
    evidence for every component.
 3. Require roadmap sequence and implementation-status evidence for every
    expected component.
-4. Require a current fingerprint-valid completion-audit artifact that retains
-   and replays its authorization, manifest, and audit input evidence.
-5. Require focused, lint, markdown, and full validation evidence to pass.
-6. Reject file-write, storage, Git-command, or command-execution side effects
+4. Build repository implementation readiness without any database or
+   compatibility-removal completion-audit input.
+5. Require a current fingerprint-valid completion-audit artifact only for the
+   active-installation cutover decision.
+6. Require focused, lint, markdown, and full validation evidence to pass.
+7. Reject file-write, storage, Git-command, or command-execution side effects
    inside the checkpoint.
-7. Emit semantic `nextStep` evidence for the policy storage final closure
+8. Emit semantic `nextStep` evidence for the policy storage final closure
    readout.
 
 ## Implementation Outcome
@@ -154,6 +162,9 @@ Implemented:
   rather than a detached nested audit object. The checkpoint verifies the
   artifact fingerprint and deterministic audit replay before evaluating its
   completion status.
+- Added a dedicated source implementation-readiness evaluator. It has no
+  database or completion-audit dependency and is reported separately from the
+  active-installation cutover result.
 
 Not implemented in this component:
 
