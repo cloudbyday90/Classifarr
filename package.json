@@ -88,8 +88,8 @@
     "axios": "^1.18.1"
   },
   "devDependencies": {
-    "markdownlint-cli2": "^0.22.0",
-    "typescript": "^6.0.3"
+    "markdownlint-cli2": "^0.23.0",
+    "typescript": "^7.0.2"
   },
   "overrides": {
     "minimatch": "10.2.5",
