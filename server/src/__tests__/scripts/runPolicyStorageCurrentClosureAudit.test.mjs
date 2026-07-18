@@ -105,10 +105,12 @@ async function buildGeneratorInputs({
 
 function runGenerator({
   fixtureRoot,
+  callerRoot = fixtureRoot,
   completionAuditArtifact,
   validationEvidence,
   allowBlocked = false,
   requireComplete = false,
+  useRelativeArtifactPaths = false,
 } = {}) {
   const completionAuditArtifactPath = writeJson(
     fixtureRoot,
@@ -131,14 +133,17 @@ function runGenerator({
     '.artifacts',
     'final-closure-readout.json'
   );
+  const toArgumentPath = filePath => (
+    useRelativeArtifactPaths ? path.relative(fixtureRoot, filePath) : filePath
+  );
   const args = [
     GENERATOR_PATH,
     '--cwd', fixtureRoot,
-    '--completion-audit-artifact', completionAuditArtifactPath,
-    '--validation-evidence', validationEvidencePath,
-    '--output', outputPath,
-    '--checkpoint-artifact-output', checkpointArtifactOutputPath,
-    '--final-readout-output', finalReadoutOutputPath,
+    '--completion-audit-artifact', toArgumentPath(completionAuditArtifactPath),
+    '--validation-evidence', toArgumentPath(validationEvidencePath),
+    '--output', toArgumentPath(outputPath),
+    '--checkpoint-artifact-output', toArgumentPath(checkpointArtifactOutputPath),
+    '--final-readout-output', toArgumentPath(finalReadoutOutputPath),
     '--generated-at', GENERATED_AT,
   ];
 
@@ -150,7 +155,7 @@ function runGenerator({
   }
 
   const result = spawnSync(process.execPath, args, {
-    cwd: fixtureRoot,
+    cwd: callerRoot,
     encoding: 'utf8',
   });
 
@@ -165,13 +170,16 @@ function runGenerator({
 
 describe('run-policy-storage-current-closure-audit', () => {
   let fixtureRoot;
+  let callerRoot;
 
   beforeEach(() => {
     fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'classifarr-current-closure-'));
+    callerRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'classifarr-current-closure-caller-'));
   });
 
   afterEach(() => {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
+    fs.rmSync(callerRoot, { recursive: true, force: true });
   });
 
   test('exports one coherent current-evidence, checkpoint, and final-readout chain', async () => {
@@ -210,6 +218,32 @@ describe('run-policy-storage-current-closure-audit', () => {
       complete: true,
       checkpointArtifactIntegrity: expect.objectContaining({ ok: true }),
     }));
+  });
+
+  test('binds relative evidence inputs and outputs to --cwd instead of the caller', async () => {
+    writeFixtureRepository({ fixtureRoot });
+    const inputs = await buildGeneratorInputs();
+    const result = runGenerator({
+      fixtureRoot,
+      callerRoot,
+      useRelativeArtifactPaths: true,
+      requireComplete: true,
+      ...inputs,
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(fs.existsSync(result.outputPath)).toBe(true);
+    expect(fs.existsSync(result.checkpointArtifactOutputPath)).toBe(true);
+    expect(fs.existsSync(result.finalReadoutOutputPath)).toBe(true);
+    expect(fs.existsSync(path.join(callerRoot, '.artifacts', 'current-closure-audit.json')))
+      .toBe(false);
+    expect(fs.existsSync(
+      path.join(callerRoot, '.artifacts', 'completion-checkpoint-artifact.json')
+    )).toBe(false);
+    expect(fs.existsSync(path.join(callerRoot, '.artifacts', 'final-closure-readout.json')))
+      .toBe(false);
   });
 
   test('fails closed without output when supplied validation evidence is altered', async () => {

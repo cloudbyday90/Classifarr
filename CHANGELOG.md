@@ -69,6 +69,11 @@ unchanged operator or runtime outcome.
   validation. This prevents a caller directory from mixing another checkout's
   evidence into a current removal decision.
 
+- **Checkout-Bound Storage Closure Evidence** - policy storage closure and
+  current-closure commands now resolve every relative evidence input and audit
+  output from their selected checkout. This prevents a shell caller from
+  mixing artifacts from one repository with source evidence from another.
+
 - **Semantic Native Intent Authority** - native intent now replaces
   compatibility behavior only when its active header is fully materialized:
   native source, completed inference, safe validation, and a persisted purpose

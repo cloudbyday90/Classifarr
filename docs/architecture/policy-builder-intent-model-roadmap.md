@@ -7034,6 +7034,10 @@ Implementation status:
   `server/src/__tests__/services/policyStorageClosureEvidenceRun.test.mjs`.
 - The focused current-state collector test suite lives in
   `server/src/__tests__/services/policyStorageClosureCurrentEvidenceCollector.test.mjs`.
+- The public closure-evidence command resolves relative completion-audit and
+  validation artifacts from its selected `--cwd` checkout, preventing a caller
+  directory from mixing another checkout's evidence with the repository it
+  inventories.
 - Current implementation consumes explicit artifact inventory, converts mapped
   artifact coverage into checkpoint component evidence, composes the storage
   completion checkpoint, blocks incomplete evidence, and emits

@@ -30,6 +30,9 @@ policy storage closure validation evidence generator.
   The current evidence collector uses bounded repository file reads in a
   short-lived local/CI script; the pure evidence-run service accepts evidence as
   input and does not read files directly.
+- Node.js documents that `path.resolve(base, relativePath)` produces a
+  normalized absolute path from the supplied base. The public command therefore
+  uses its selected checkout as the only base for relative evidence artifacts.
 
 Sources:
 
@@ -41,6 +44,8 @@ Sources:
   <https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html>
 - Node.js file system API:
   <https://nodejs.org/api/fs.html>
+- Node.js path API:
+  <https://nodejs.org/api/path.html>
 
 ## Recommendations
 
@@ -109,6 +114,24 @@ Cons:
 
 - consumers need to read two explicit readiness fields.
 
+### Bind Relative Artifact Paths To The Selected Checkout
+
+The public evidence command must resolve relative completion-audit and
+validation-evidence paths from its explicit `--cwd` checkout, rather than from
+the shell that launched it.
+
+Pros:
+
+- prevents source files from one checkout being evaluated with artifacts from
+  another,
+- keeps portable CI and local invocations deterministic,
+- preserves absolute artifact paths as explicit operator input.
+
+Cons:
+
+- callers must use absolute paths when artifacts intentionally live outside
+  the selected checkout.
+
 ### Reject Side Effects
 
 The evidence run should not write files, mutate storage, run commands, execute
@@ -142,6 +165,7 @@ Cons:
 8. Keep validation command execution outside this runner.
 9. Keep repository implementation readiness separate from active-installation
    cutover readiness.
+10. Resolve each relative input artifact from the selected `--cwd` checkout.
 
 ## Implementation Outcome
 
@@ -169,6 +193,9 @@ Implemented:
 - Added an active-installation `instanceCutover` projection for the existing
   compatibility-removal completion-audit state. It remains required for final
   storage closure and cannot authorize a deletion by itself.
+- The public command now resolves relative completion-audit and validation
+  artifacts from `--cwd`, so a caller directory cannot mix another checkout's
+  evidence with the selected repository inventory.
 
 Example:
 

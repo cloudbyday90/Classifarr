@@ -9,10 +9,13 @@
  * (at your option) any later version.
  */
 
-import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
+import {
+  readPolicyStorageClosureArtifactJson,
+  writePolicyStorageClosureArtifactJson,
+} from './lib/policyStorageClosureArtifactFiles.mjs';
 import {
   buildPolicyStorageCurrentClosureAudit,
 } from '../server/src/services/policyStorageCurrentClosureAudit.mjs';
@@ -92,7 +95,7 @@ function usage() {
     'Usage: node scripts/run-policy-storage-current-closure-audit.mjs [options]',
     '',
     'Options:',
-    '  --cwd <path>                         Repository root. Defaults to process cwd.',
+    '  --cwd <path>                         Repository root and base for relative artifact paths. Defaults to process cwd.',
     '  --completion-audit-artifact <json>   Required compatibility-removal completion-audit artifact JSON.',
     '  --validation-evidence <json>         Required policy storage validation evidence JSON.',
     '  --output <json>                      Write full policy storage current closure audit JSON.',
@@ -103,34 +106,6 @@ function usage() {
     '  --generated-at <iso>                 Optional generatedAt timestamp for stable tests.',
     '  --help                               Print this help message.',
   ].join('\n');
-}
-
-function readJsonFile(filePath, label, { required = false } = {}) {
-  if (!filePath) {
-    if (required) {
-      throw new Error(`Missing required ${label} JSON path.`);
-    }
-
-    return {};
-  }
-
-  const resolvedPath = path.resolve(process.cwd(), filePath);
-
-  try {
-    return JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
-  } catch (err) {
-    throw new Error(`Could not read ${label} JSON at ${resolvedPath}: ${err.message}`);
-  }
-}
-
-function writeJsonFile(filePath, value) {
-  if (!filePath) {
-    return;
-  }
-
-  const resolvedPath = path.resolve(process.cwd(), filePath);
-  fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
-  fs.writeFileSync(resolvedPath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
 async function main() {
@@ -150,27 +125,30 @@ async function main() {
     return;
   }
 
+  const cwd = path.resolve(process.cwd(), options.cwd);
   let completionAuditArtifact;
   let validationEvidence;
 
   try {
-    completionAuditArtifact = readJsonFile(
-      options.completionAuditArtifactPath,
-      'completion audit artifact',
-      { required: true }
-    );
-    validationEvidence = readJsonFile(
-      options.validationEvidencePath,
-      'validation evidence',
-      { required: true }
-    );
+    completionAuditArtifact = readPolicyStorageClosureArtifactJson({
+      cwd,
+      filePath: options.completionAuditArtifactPath,
+      label: 'completion audit artifact',
+      required: true,
+    });
+    validationEvidence = readPolicyStorageClosureArtifactJson({
+      cwd,
+      filePath: options.validationEvidencePath,
+      label: 'validation evidence',
+      required: true,
+    });
   } catch (err) {
     console.error(err.message);
     process.exit(2);
   }
 
   const audit = await buildPolicyStorageCurrentClosureAudit({
-    cwd: path.resolve(process.cwd(), options.cwd),
+    cwd,
     completionAuditArtifact,
     validationEvidence,
     generatedAt: options.generatedAt,
@@ -191,9 +169,21 @@ async function main() {
   }
 
   try {
-    writeJsonFile(options.outputPath, audit);
-    writeJsonFile(options.checkpointArtifactOutputPath, audit.checkpointArtifact);
-    writeJsonFile(options.finalReadoutOutputPath, audit.finalReadout);
+    writePolicyStorageClosureArtifactJson({
+      cwd,
+      filePath: options.outputPath,
+      value: audit,
+    });
+    writePolicyStorageClosureArtifactJson({
+      cwd,
+      filePath: options.checkpointArtifactOutputPath,
+      value: audit.checkpointArtifact,
+    });
+    writePolicyStorageClosureArtifactJson({
+      cwd,
+      filePath: options.finalReadoutOutputPath,
+      value: audit.finalReadout,
+    });
   } catch (err) {
     console.error(`Could not write policy storage current closure audit JSON: ${err.message}`);
     process.exit(2);

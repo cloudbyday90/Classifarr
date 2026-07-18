@@ -39,6 +39,9 @@ write manifests, mutate storage, or infer missing removal evidence.
   semantic validation with allow-listed values. The public command accepts only
   explicit artifact paths and refuses altered validation evidence before it
   writes a completion claim.
+- Node.js documents that `path.resolve(base, relativePath)` uses the supplied
+  base for a relative path. The public command therefore binds all relative
+  evidence and generated artifacts to its selected checkout.
 - Git `mv` documents move handling as an explicit index operation. The module
   cutover keeps durable file names and references synchronized instead of
   leaving stale compatibility wrappers.
@@ -53,6 +56,8 @@ Sources:
   <https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html>
 - OWASP Input Validation Cheat Sheet:
   <https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html>
+- Node.js path API:
+  <https://nodejs.org/api/path.html>
 - Git `mv` documentation:
   <https://git-scm.com/docs/git-mv>
 
@@ -143,6 +148,23 @@ Cons:
 - requires temporary filesystem fixtures,
 - repeats some service-level coverage at the public command boundary.
 
+### Checkout-Bound Artifact Paths
+
+The public audit command must use its explicit `--cwd` both to read relative
+evidence artifacts and to write relative audit artifacts. The shell working
+directory is not audit authority.
+
+Pros:
+
+- prevents cross-checkout artifact mixing,
+- makes CI and local invocations deterministic,
+- preserves absolute paths as explicit operator choices.
+
+Cons:
+
+- a caller must use an absolute path to intentionally use an artifact outside
+  the selected checkout.
+
 ## Final Recommendation Stack
 
 Use this stack for the policy storage current closure audit:
@@ -170,6 +192,8 @@ Use this stack for the policy storage current closure audit:
     manifest writes.
 14. Verify the public command against an isolated mapped checkout and require
     one coherent audit, checkpoint, and final-readout artifact chain.
+15. Resolve all relative input and output artifacts from the selected `--cwd`
+    checkout.
 
 ## Implementation Outcome
 
@@ -208,6 +232,10 @@ Implemented:
   produces matching audit, checkpoint, and final-readout outputs; altered
   validation evidence writes nothing by default; and missing checkout evidence
   produces diagnostics only with explicit blocked-output allowance.
+- Relative completion-audit, validation, audit, checkpoint, and final-readout
+  paths now resolve from the selected `--cwd` checkout. Cross-directory public
+  coverage proves the shell caller cannot mix another checkout's artifacts or
+  receive the selected checkout's outputs.
 
 Example:
 
