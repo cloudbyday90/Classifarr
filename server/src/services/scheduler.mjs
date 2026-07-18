@@ -198,14 +198,17 @@ class SchedulerService {
      * @param {Function} handler - Task handler
      * @param {number|null} [lockKey=null] - Optional DB_ADVISORY_LOCKS key.
      */
-    schedule(name, cronExpression, handler, lockKey = null) {
+    schedule(name, cronExpression, handler, lockKey = null, scheduleOptions = {}) {
         if (this.tasks.has(name)) {
             this.tasks.get(name).stop();
         }
 
-        const task = cron.schedule(cronExpression, async () => {
+        const scheduledHandler = async () => {
             await this.runScheduledTask(name, handler, lockKey);
-        });
+        };
+        const task = Object.keys(scheduleOptions).length > 0
+            ? cron.schedule(cronExpression, scheduledHandler, scheduleOptions)
+            : cron.schedule(cronExpression, scheduledHandler);
 
         this.tasks.set(name, task);
         logger.info(`Scheduled task registered: ${name} (${cronExpression})`);
@@ -256,6 +259,7 @@ class SchedulerService {
             NATIVE_INTENT_RECONCILIATION_CRON,
             handler,
             DB_ADVISORY_LOCKS.NATIVE_INTENT_RECONCILIATION,
+            { noOverlap: true },
         );
         this.scheduleInitial(
             NATIVE_INTENT_RECONCILIATION_TASK_NAME,

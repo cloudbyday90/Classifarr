@@ -18,6 +18,11 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Reconciliation Scheduler Overlap Guard** - native-intent reconciliation now
+  skips an overlapping recurring callback within one application process before
+  it opens a database session, while retaining PostgreSQL advisory locks as the
+  cross-replica conversion authority.
+
 - **Explicit First Native-Intent Establishment** - an empty destination can now
   receive its first native policy authority only through an administrator's
   bounded declared-rule transition. The server rechecks that legacy preset and

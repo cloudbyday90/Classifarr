@@ -22,6 +22,10 @@ or mutate ordinary policy reads and saves.
 - [PostgreSQL administrative functions](https://www.postgresql.org/docs/current/functions-admin.html)
   documents advisory-lock functions and session scope. A runner crash or lost
   database session releases its lock, allowing a later schedule to resume.
+- [node-cron scheduling options](https://www.nodecron.com/) documents
+  `noOverlap` for skipping an in-process scheduled callback while its prior
+  callback is still running. It complements, but does not replace, the
+  PostgreSQL advisory lock used across application replicas.
 - [OWASP API6: Unrestricted Access to Sensitive Business Flows](https://owasp.org/API-Security/editions/2023/en/0xa6-unrestricted-access-to-sensitive-business-flows/)
   supports fixed server-side rate and execution limits for automated sensitive
   work. The scheduler has no request-controlled batch size or deadline.
@@ -35,7 +39,9 @@ or mutate ordinary policy reads and saves.
 - `nativeIntentReconciliationService.mjs` has a fixed batch size of ten and a
   twenty-second execution deadline.
 - `schedulerService` registers one ten-minute task and one non-blocking initial
-  opportunity ninety seconds after complete service initialization.
+  opportunity ninety seconds after complete service initialization. The
+  recurring task enables node-cron's `noOverlap` guard to avoid redundant
+  same-process callbacks before database coordination begins.
 - Advisory lock key `2008` makes only one application replica eligible to run
   each opportunity. The process that cannot acquire it does no work.
 - Candidate selection excludes policies with active native intent and policies
@@ -52,6 +58,7 @@ or mutate ordinary policy reads and saves.
 | Risk | Control |
 | --- | --- |
 | Two replicas process a batch | Session advisory lock plus existing per-policy authority locks. |
+| One replica overlaps its own recurring callbacks | node-cron `noOverlap` skips the redundant callback before it opens a database session. |
 | Startup blocks while maintenance runs | Initial work is delayed and never awaited during service initialization. |
 | A slow query exceeds the run budget | A transaction-local PostgreSQL statement timeout and deadline checks defer the run. |
 | A reversion is immediately undone | The automatic selector excludes `rollback_applied` policies. |
@@ -81,13 +88,39 @@ Pros: automatic, restart-safe, multi-replica safe, and keeps the proven writer.
 Cons: requires durable outcome/retry state before the manual maintenance surface
 can be removed.
 
+### Local Overlap Guard Plus Database Coordination
+
+Use node-cron's `noOverlap` only for the reconciliation schedule, alongside the
+existing PostgreSQL session advisory lock.
+
+Pros:
+
+- skips a redundant recurring callback in the same process before it uses a
+  database connection,
+- keeps scheduler pressure bounded when an unexpectedly slow run spans a cron
+  boundary,
+- leaves the existing cross-replica lock and transaction-level authority
+  controls unchanged.
+
+Cons:
+
+- `noOverlap` is process-local and cannot coordinate replicas by itself,
+- a skipped local callback is not durable work state and must not be interpreted
+  as a completed reconciliation run.
+
+Decision: selected as a narrow defense-in-depth guard. PostgreSQL session
+advisory locks remain the only cross-replica scheduler authority.
+
 ## Recommendation Stack
 
 1. Keep this bounded scheduler and existing transactional conversion writer.
-2. Keep the durable run and candidate-outcome ledger bounded and payload-free.
-3. Add retry/quarantine and explicit re-entry guards before deleting the manual
+2. Enable node-cron's process-local `noOverlap` guard for the recurring
+   reconciliation callback, but retain the database advisory lock for replica
+   coordination.
+3. Keep the durable run and candidate-outcome ledger bounded and payload-free.
+4. Add retry/quarantine and explicit re-entry guards before deleting the manual
    recovery path.
-4. Add circuit breaking and a read-only status projection before compatibility
+5. Add circuit breaking and a read-only status projection before compatibility
    storage deletion.
 
 ## Verification

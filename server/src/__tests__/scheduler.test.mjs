@@ -513,6 +513,7 @@ describe('SchedulerService', () => {
             expect(mockNodeCron.schedule).toHaveBeenCalledWith(
                 '*/10 * * * *',
                 expect.any(Function),
+                { noOverlap: true },
             );
 
             const cronHandler = mockNodeCron.schedule.mock.calls.at(-1)[1];

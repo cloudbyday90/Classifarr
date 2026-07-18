@@ -5157,9 +5157,10 @@ Implementation outcome:
   policies with a `rollback_applied` event, so ordinary recurring maintenance
   cannot immediately undo an intentional reversion.
 - `schedulerService` owns one ten-minute cron task plus one non-blocking,
-  ninety-second post-readiness opportunity. Both use the dedicated session
-  advisory lock key `2008`; duplicate registration, lock contention, and a
-  pending initial timer are all harmless.
+  ninety-second post-readiness opportunity. The recurring task uses node-cron's
+  local `noOverlap` guard, while both opportunities use the dedicated session
+  advisory lock key `2008` across replicas; duplicate registration, lock
+  contention, and a pending initial timer are all harmless.
 - Every automatic migration event has actor type `reconciler` and metadata
   source `native_intent_reconciliation`. The service returns and logs only
   bounded status, counts, and stable error IDs, never raw policy payloads.
