@@ -107,7 +107,7 @@ function usage() {
     'Usage: node scripts/generate-policy-compatibility-removal-evidence.mjs [options]',
     '',
     'Options:',
-    '  --cwd <path>                               Repository root. Defaults to process cwd.',
+    '  --cwd <path>                               Repository root and base for relative artifact paths. Defaults to process cwd.',
     '  --execution-plan-artifact <json>           Required ready fingerprint-valid compatibility deletion execution-plan artifact JSON.',
     '  --next-batch-authorization-artifact <json> Required fingerprint-valid next-batch authorization artifact JSON.',
     '  --review-artifact-fingerprint <sha256>     Required applied removal-review artifact fingerprint.',
@@ -121,12 +121,16 @@ function usage() {
   ].join('\n');
 }
 
-function readJsonFile(filePath, label) {
+function resolveArtifactPath(cwd, filePath) {
+  return path.resolve(cwd, filePath);
+}
+
+function readJsonFile(cwd, filePath, label) {
   if (!filePath) {
     return null;
   }
 
-  const resolvedPath = path.resolve(process.cwd(), filePath);
+  const resolvedPath = resolveArtifactPath(cwd, filePath);
 
   try {
     return JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
@@ -154,12 +158,12 @@ function getMissingRequiredInputs(options = {}) {
   return missing;
 }
 
-function writeJsonFile(filePath, value) {
+function writeJsonFile(cwd, filePath, value) {
   if (!filePath) {
     return;
   }
 
-  const resolvedPath = path.resolve(process.cwd(), filePath);
+  const resolvedPath = resolveArtifactPath(cwd, filePath);
   fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
   fs.writeFileSync(resolvedPath, `${JSON.stringify(value, null, 2)}\n`);
 }
@@ -203,14 +207,17 @@ async function main() {
 
   try {
     executionPlanArtifact = readJsonFile(
+      cwd,
       options.executionPlanArtifactPath,
       'execution-plan artifact'
     );
     nextBatchAuthorizationArtifact = readJsonFile(
+      cwd,
       options.nextBatchAuthorizationArtifactPath,
       'next-batch authorization artifact'
     );
     validationEvidence = readJsonFile(
+      cwd,
       options.validationEvidencePath,
       'validation evidence'
     );
@@ -256,9 +263,10 @@ async function main() {
   }
 
   try {
-    writeJsonFile(options.outputPath, evidence);
+    writeJsonFile(cwd, options.outputPath, evidence);
     if (evidence.completionAuditArtifact !== null) {
       writeJsonFile(
+        cwd,
         options.completionAuditArtifactOutputPath,
         evidence.completionAuditArtifact
       );

@@ -7879,6 +7879,13 @@ Tasks:
     categories. It skips source scanning and completion-audit construction,
     writes no nested completion-audit artifact, never manufactures approval,
     rejects unreadable supplied JSON, and cannot satisfy current-closure gates.
+- **8R.36.3 Checkout-Bound Artifact Resolution**
+  - Completed: relative evidence inputs and generated outputs resolve from the
+    explicit `--cwd` checkout, while absolute paths remain explicit operator
+    inputs.
+  - Completed: isolated public-command coverage proves a shell launched from
+    another directory cannot combine that caller's artifacts or outputs with
+    the selected checkout's source, path-state, and reference-scan evidence.
 - Require the current compatibility-deletion execution-plan artifact and bind
   its fingerprint through authorization, completion evidence, and replay.
 - Derive manifest path state from the current checkout.
@@ -7923,6 +7930,9 @@ Implementation status:
   safely before plan approval exists through a compact, non-authoritative
   diagnostic that cannot become nested closure input; malformed supplied inputs
   remain a hard command failure.
+- Task 8R.36.3 is implemented. Relative evidence paths are now bound to the
+  requested checkout, preventing cross-checkout artifact mixing during
+  regeneration while preserving explicit absolute-path support.
 
 ## Phase 8R Work Sequence
 

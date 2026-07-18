@@ -54,6 +54,12 @@ unchanged operator or runtime outcome.
   completion-audit artifact, preventing incomplete readiness checks from
   looking like deletion approval.
 
+- **Checkout-Bound Compatibility Evidence** - compatibility-removal evidence
+  generation now resolves relative input and output artifacts from the same
+  requested repository checkout used for path-state and source-reference
+  validation. This prevents a caller directory from mixing another checkout's
+  evidence into a current removal decision.
+
 - **Semantic Native Intent Authority** - native intent now replaces
   compatibility behavior only when its active header is fully materialized:
   native source, completed inference, safe validation, and a persisted purpose

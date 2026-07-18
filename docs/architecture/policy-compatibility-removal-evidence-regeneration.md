@@ -103,18 +103,21 @@ Cons:
 3. Derive the manifest and path state from the verified wrapper at generation
    time, and bind that wrapper fingerprint through authorization and completion
    audit evidence.
-4. Scan source roots for operational references, while treating only named
+4. Resolve every relative CLI input and output from the same `--cwd` checkout
+   that supplies manifest path state and source-reference evidence. Absolute
+   paths remain explicit operator inputs.
+5. Scan source roots for operational references, while treating only named
    control-plane manifest inventories as evidence rather than dependencies.
-5. Require completed source scanning plus focused and full validation evidence.
-6. Emit a current completion artifact even when it is incomplete, so downstream
+6. Require completed source scanning plus focused and full validation evidence.
+7. Emit a current completion artifact even when it is incomplete, so downstream
    gates report the real readiness blocker.
-7. Refuse blocked artifact writes by default; allow bounded diagnostic output
+8. Refuse blocked artifact writes by default; allow bounded diagnostic output
    only through an explicit operator flag.
-8. In that explicit diagnostic mode, report each absent evidence category as a
+9. In that explicit diagnostic mode, report each absent evidence category as a
    stable blocked risk. An unreadable explicitly supplied JSON path remains a
    command error, because it is not evidence absence.
-9. Do not synthesize deletion approval, run deletion actions, or alter storage.
-10. Pass only a complete, valid generated artifact to the storage closure gates.
+10. Do not synthesize deletion approval, run deletion actions, or alter storage.
+11. Pass only a complete, valid generated artifact to the storage closure gates.
 
 ## Implementation Outcome
 
@@ -151,6 +154,10 @@ Implemented:
   diagnostic, and cannot satisfy a closure gate. It does not write a nested
   completion-audit artifact. Default mode still exits before writing output;
   unreadable explicitly supplied JSON remains a command error.
+- Relative evidence input and output paths now resolve from the requested
+  `--cwd` checkout rather than the process caller directory. This keeps the
+  verified artifacts, source scan, path state, and generated record in one
+  checkout boundary while preserving explicit absolute-path support.
 
 Example:
 
@@ -165,6 +172,11 @@ npm run --silent policy:compatibility-removal-evidence -- \
   --completion-audit-artifact-output \
     .tmp/policy-storage/compatibility-removal-completion-artifact.json
 ```
+
+When `--cwd <repository-root>` is supplied, every relative artifact path in
+the command resolves from that repository root, not from the shell's current
+directory. This prevents a checkout scan from being combined with artifacts or
+outputs from a different caller directory.
 
 Use `--require-complete` only when a complete result is an explicit release
 gate. Without it, a valid remaining-inventory record is still written for

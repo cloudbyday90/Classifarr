@@ -70,12 +70,14 @@ async function buildGeneratorInputs({
 
 function runGenerator({
   fixtureRoot,
+  callerRoot = fixtureRoot,
   executionPlanArtifact,
   nextBatchAuthorizationArtifact,
   reviewArtifactFingerprint = EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
   validationEvidence,
   allowBlocked = false,
   requireComplete = false,
+  useRelativeArtifactPaths = false,
 } = {}) {
   const executionPlanArtifactPath = executionPlanArtifact === undefined
     ? null
@@ -104,25 +106,28 @@ function runGenerator({
     '.artifacts',
     'completion-audit-artifact.json'
   );
+  const toArgumentPath = filePath => (
+    useRelativeArtifactPaths ? path.relative(fixtureRoot, filePath) : filePath
+  );
   const args = [
     GENERATOR_PATH,
     '--cwd', fixtureRoot,
-    '--output', outputPath,
-    '--completion-audit-artifact-output', artifactOutputPath,
+    '--output', toArgumentPath(outputPath),
+    '--completion-audit-artifact-output', toArgumentPath(artifactOutputPath),
     '--generated-at', GENERATED_AT,
   ];
 
   if (executionPlanArtifactPath) {
-    args.push('--execution-plan-artifact', executionPlanArtifactPath);
+    args.push('--execution-plan-artifact', toArgumentPath(executionPlanArtifactPath));
   }
   if (authorizationArtifactPath) {
-    args.push('--next-batch-authorization-artifact', authorizationArtifactPath);
+    args.push('--next-batch-authorization-artifact', toArgumentPath(authorizationArtifactPath));
   }
   if (reviewArtifactFingerprint !== '') {
     args.push('--review-artifact-fingerprint', reviewArtifactFingerprint);
   }
   if (validationEvidencePath) {
-    args.push('--validation-evidence', validationEvidencePath);
+    args.push('--validation-evidence', toArgumentPath(validationEvidencePath));
   }
 
   if (allowBlocked) {
@@ -133,7 +138,7 @@ function runGenerator({
   }
 
   const result = spawnSync(process.execPath, args, {
-    cwd: fixtureRoot,
+    cwd: callerRoot,
     encoding: 'utf8',
   });
 
@@ -156,9 +161,11 @@ function writeOperationalReference(rootPath, manifestPath) {
 
 describe('generate-policy-compatibility-removal-evidence', () => {
   let fixtureRoot;
+  let callerRoot;
 
   beforeEach(() => {
     fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'classifarr-evidence-regeneration-'));
+    callerRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'classifarr-evidence-regeneration-caller-'));
     [
       'client/src',
       'server/src',
@@ -171,6 +178,7 @@ describe('generate-policy-compatibility-removal-evidence', () => {
 
   afterEach(() => {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
+    fs.rmSync(callerRoot, { recursive: true, force: true });
   });
 
   test('exports one complete current evidence chain from coherent artifact inputs', async () => {
@@ -199,6 +207,27 @@ describe('generate-policy-compatibility-removal-evidence', () => {
       completed: true,
       references: [],
     }));
+  });
+
+  test('resolves relative artifacts from --cwd instead of the caller directory', async () => {
+    const inputs = await buildGeneratorInputs();
+    const result = runGenerator({
+      fixtureRoot,
+      callerRoot,
+      requireComplete: true,
+      useRelativeArtifactPaths: true,
+      ...inputs,
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(fs.existsSync(result.outputPath)).toBe(true);
+    expect(fs.existsSync(result.artifactOutputPath)).toBe(true);
+    expect(fs.existsSync(path.join(callerRoot, '.artifacts', 'evidence.json'))).toBe(false);
+    expect(fs.existsSync(
+      path.join(callerRoot, '.artifacts', 'completion-audit-artifact.json')
+    )).toBe(false);
   });
 
   test('keeps current remaining inventory observable while require-complete fails', async () => {
