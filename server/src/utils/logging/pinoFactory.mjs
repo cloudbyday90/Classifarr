@@ -96,7 +96,7 @@ export function buildTransport(config = LOG_CONFIG) {
  * transport entirely and write synchronously to stdout so that Jest can
  * capture output without flakiness.
  *
- * @param {object} [config] - Defaults to LOG_CONFIG.
+ * @param {typeof LOG_CONFIG} [config] - Defaults to LOG_CONFIG.
  * @returns {import('pino').Logger}
  */
 export function createRootLogger(config = LOG_CONFIG) {
