@@ -25,6 +25,7 @@ const NATIVE_INTENT_RECONCILIATION_REASON_IDS = Object.freeze({
   SERVER_CONTRACT_VALIDATION_FAILED: 'server_contract_validation_failed',
   UNSUPPORTED_LEGACY_SHAPE: 'unsupported_legacy_shape',
   PARTIAL_LEGACY_INFERENCE: 'partial_inference_requires_review',
+  AWAITING_LIBRARY_PROFILE: 'awaiting_library_profile',
   REQUIRES_INITIAL_POLICY_ESTABLISHMENT: 'requires_initial_policy_establishment',
   NO_CONVERTIBLE_INTENT: 'no_convertible_intent',
   OPERATOR_REVIEW_REQUIRED: 'operator_review_required',
@@ -40,7 +41,6 @@ const NATIVE_INTENT_RECONCILIATION_REASON_IDS = Object.freeze({
   APPLY_FAILED_ROLLED_BACK: 'apply_failed_rolled_back',
   SELECTED_CANDIDATE_NOT_APPLIED: 'selected_candidate_not_applied',
   RETRY_BACKOFF_ACTIVE: 'retry_backoff_active',
-  TECHNICAL_RETRY_LIMIT_REACHED: 'technical_retry_limit_reached',
 });
 
 const TERMINAL_OUTCOME_STATES = new Set([
@@ -176,6 +176,13 @@ function classifyCandidateDisposition(candidate = {}) {
         outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.REQUIRES_MAINTENANCE,
         reasonId: NATIVE_INTENT_RECONCILIATION_REASON_IDS.PARTIAL_LEGACY_INFERENCE,
       };
+    case 'awaiting_library_profile':
+      return {
+        candidate: normalized,
+        eligibility: 'deferred_retry',
+        outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.DEFERRED_RETRY,
+        reasonId: NATIVE_INTENT_RECONCILIATION_REASON_IDS.AWAITING_LIBRARY_PROFILE,
+      };
     case 'requires_initial_policy_establishment':
       return {
         candidate: normalized,
@@ -263,22 +270,6 @@ function buildRetryDisposition({
     : 0;
   const failureCount = incrementFailureCount ? previousFailureCount + 1 : previousFailureCount;
   const normalizedEvaluatedAt = normalizeTimestamp(evaluatedAt);
-
-  if (
-    incrementFailureCount &&
-    failureCount >= NATIVE_INTENT_RECONCILIATION_MAX_RETRY_ATTEMPTS
-  ) {
-    return {
-      policyId: normalizedCandidate.policyId,
-      candidateFingerprint: normalizedCandidate.candidateFingerprint,
-      candidateStatusId: normalizedCandidate.statusId,
-      outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.REQUIRES_MAINTENANCE,
-      reasonId: NATIVE_INTENT_RECONCILIATION_REASON_IDS.TECHNICAL_RETRY_LIMIT_REACHED,
-      retryNotBefore: null,
-      failureCount,
-      evaluatedAt: normalizedEvaluatedAt,
-    };
-  }
 
   const maximumDelayMs = Math.min(
     NATIVE_INTENT_RECONCILIATION_RETRY_MAX_MS,
@@ -382,12 +373,30 @@ function buildNativeIntentReconciliationCandidatePlan({
       return;
     }
 
-    const desiredState = buildTerminalDisposition({
-      candidate,
-      outcomeState: disposition.outcomeState,
-      reasonId: disposition.reasonId,
-      evaluatedAt: normalizedEvaluatedAt,
-    });
+    if (isSameCandidateState(candidate, previousState) && isRetryBackoffActive(previousState, normalizedEvaluatedAt)) {
+      deferredPolicyIds.push(candidate.policyId);
+      return;
+    }
+
+    if (previousState && !isSameCandidateState(candidate, previousState)) {
+      stateDeletes.push(candidate.policyId);
+    }
+
+    const desiredState = disposition.eligibility === 'deferred_retry'
+      ? buildRetryDisposition({
+        candidate,
+        previousState,
+        outcomeState: disposition.outcomeState,
+        reasonId: disposition.reasonId,
+        evaluatedAt: normalizedEvaluatedAt,
+        incrementFailureCount: false,
+      })
+      : buildTerminalDisposition({
+        candidate,
+        outcomeState: disposition.outcomeState,
+        reasonId: disposition.reasonId,
+        evaluatedAt: normalizedEvaluatedAt,
+      });
     if (!desiredState) return;
 
     if (!statesEqual(desiredState, previousState)) {
@@ -397,7 +406,7 @@ function buildNativeIntentReconciliationCandidatePlan({
         policyId: desiredState.policyId,
         outcomeState: desiredState.outcomeState,
         reasonId: desiredState.reasonId,
-        retryNotBefore: null,
+        retryNotBefore: desiredState.retryNotBefore,
       });
     }
   });

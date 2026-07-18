@@ -36,38 +36,14 @@ unchanged operator or runtime outcome.
   it opens a database session, while retaining PostgreSQL advisory locks as the
   cross-replica conversion authority.
 
-- **Explicit First Native-Intent Establishment** - an empty destination can now
-  receive its first native policy authority only through an administrator's
-  bounded declared-rule transition. The server rechecks that legacy preset and
-  override configuration is still empty under transaction locks, records an
-  idempotent authority event and reversible compatibility snapshot, copies
-  routing configuration without triggering automation, and rejects library
-  observations, metadata, RAG, AI output, and client-supplied actor or
-  provenance fields as policy authority.
-
-- **First Native-Intent Readiness And Recovery** - administrators can now read
-  whether first establishment is available, why it is blocked, and whether a
-  recorded first authority remains recoverable or was reverted. The bounded,
-  read-only surface exposes only attachment counts, native-history counts,
-  stable recovery IDs, and revalidated declared-rule groups; it never exposes
-  idempotency material, actors, rollback payloads, routing paths, library
-  observations, metadata, RAG, or AI output, and it cannot start automation.
-
-- **First Native-Intent Establishment Assurance** - storage closure evidence
-  now independently requires initial-establishment triage, the explicit
-  transactional authority transition, and bounded readiness/recovery proof.
-  Legacy-conversion evidence cannot mask a missing first-authority safeguard.
-  Successful establishment also clears only its matching terminal maintenance
-  marker in the same transaction, while reconciliation state persistence
-  rejects or clears a delayed stale snapshot once semantic native authority is
-  current.
-
-- **Initial Native Policy Establishment Triage** - reconciliation now separates
-  destinations with no legacy preset configuration from malformed or
-  purpose-less legacy policies. Empty destinations are recorded as bounded
-  initial-establishment maintenance and are never selected for conversion;
-  observed library contents, metadata, and AI output remain unable to create
-  durable policy intent.
+- **Automatic Native Policy Initialization** - existing destinations without
+  legacy presets now establish a bounded baseline from their current connected
+  media-server profile during scheduler-owned reconciliation. The generated
+  baseline preserves existing review thresholds and routing configuration but
+  adds no hard limits, avoid rules, learning writes, external provider calls,
+  or user-specific naming assumptions. Missing, stale, or insufficient
+  profiles are regenerated and retried automatically rather than becoming a
+  terminal manual-maintenance state.
 
 - **Bounded Compatibility-Removal Readiness Diagnostics** - when the approved
   compatibility-removal evidence chain has not yet been created, Classifarr now

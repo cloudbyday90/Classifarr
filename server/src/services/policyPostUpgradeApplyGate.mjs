@@ -1,8 +1,10 @@
-import { buildPolicyIntentContract } from './policyIntentContract.mjs';
 import {
   POLICY_INTENT_INFERENCE_STATES,
   POLICY_INTENT_SOURCES,
 } from './policyIntentSchema.mjs';
+import {
+  buildPolicyNativeIntentConversionContract,
+} from './policyNativeIntentConversionContract.mjs';
 import {
   buildNativeIntentAuthoritySqlPredicate,
   buildNativeIntentMaterializationEligibility,
@@ -751,7 +753,8 @@ async function applyReadyStep({
     };
   }
 
-  const contract = buildPolicyIntentContract(policy);
+  const contractResolution = buildPolicyNativeIntentConversionContract({ policy, now: appliedAt });
+  const contract = contractResolution.contract;
   const materializationEligibility = buildNativeIntentMaterializationEligibility(contract);
   if (contract.validation?.valid !== true) {
     const error = new Error(`Policy ${policy.id} failed native intent validation during apply.`);
@@ -787,6 +790,12 @@ async function applyReadyStep({
       idempotencyKey: step.idempotencyKey,
       conversionSource: contract.source,
       conversionInferenceState: contract.inference_state,
+      conversionMode: contractResolution.mode,
+      ...(contractResolution.initialization ? {
+        initializationStatusId: contractResolution.initialization.statusId,
+        initializationProfileFingerprint:
+          contractResolution.initialization.profile?.profileFingerprint ?? null,
+      } : {}),
     },
     actorSourceId: auditContext.actorSourceId,
     targetVersion,

@@ -218,7 +218,7 @@ describe('policyIntentMigrationCandidateReport', () => {
       .toBe(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION);
   });
 
-  test('distinguishes empty legacy policy configuration from an unconvertible legacy shape', () => {
+  test('defers empty legacy policy configuration for automatic library-profile establishment', () => {
     const report = buildPolicyIntentMigrationCandidateReport({
       policies: [policy({
         id: 81,
@@ -246,7 +246,7 @@ describe('policyIntentMigrationCandidateReport', () => {
     });
 
     expect(report.candidates[0]).toEqual(expect.objectContaining({
-      statusId: POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.REQUIRES_INITIAL_POLICY_ESTABLISHMENT,
+      statusId: POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.AWAITING_LIBRARY_PROFILE,
       canConvert: false,
       legacyConfiguration: {
         statusId: POLICY_INTENT_MIGRATION_LEGACY_CONFIGURATION_STATUS_IDS.EMPTY,
@@ -255,8 +255,8 @@ describe('policyIntentMigrationCandidateReport', () => {
     }));
     expect(report.candidates[0].reasons).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        reasonId: POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.REQUIRES_INITIAL_POLICY_ESTABLISHMENT,
-        message: expect.stringContaining('not promoted to durable intent'),
+        reasonId: POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.LIBRARY_PROFILE_INITIALIZATION_DEFERRED,
+        message: expect.stringContaining('retry automatically'),
       }),
     ]));
     expect(report.validation.ok).toBe(true);
@@ -304,7 +304,7 @@ describe('policyIntentMigrationCandidateReport', () => {
     ]));
   });
 
-  test('rejects a downgraded or unexplained initial-establishment candidate', () => {
+  test('rejects an initial-establishment candidate that does not wait for profile evidence', () => {
     const report = buildPolicyIntentMigrationCandidateReport({
       policies: [policy({ id: 83, presets: [] })],
     });
@@ -313,10 +313,7 @@ describe('policyIntentMigrationCandidateReport', () => {
       candidates: report.candidates.map(candidate => ({
         ...candidate,
         statusId: POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.NO_CONVERTIBLE_INTENT,
-        reasons: candidate.reasons.filter(reason =>
-          reason.reasonId !==
-          POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.REQUIRES_INITIAL_POLICY_ESTABLISHMENT
-        ),
+        reasons: candidate.reasons,
       })),
     };
 
@@ -325,7 +322,7 @@ describe('policyIntentMigrationCandidateReport', () => {
     expect(validation.ok).toBe(false);
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.INITIAL_ESTABLISHMENT_NOT_EXPLICIT,
+        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.INITIALIZATION_STATUS_MISMATCH,
       }),
     ]));
   });

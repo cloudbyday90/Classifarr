@@ -23,11 +23,15 @@ export const ALL_RATINGS = [
 ];
 
 export class LibraryProfileService {
+    constructor({ dbClient = db } = {}) {
+        this.db = dbClient;
+    }
+
     async generateProfile(libraryId) {
         logger.info('Generating library profile', { libraryId });
 
         try {
-            const itemsResult = await db.query(`
+            const itemsResult = await this.db.query(`
                 SELECT 
                     msi.content_rating,
                     msi.genres,
@@ -58,7 +62,7 @@ export class LibraryProfileService {
                 i.metadata?.omdb || i.metadata?.tmdb
             ).length;
 
-            await db.query(`
+            await this.db.query(`
                 INSERT INTO library_profiles (
                     library_id, rating_distribution, genre_distribution, 
                     studio_distribution, keyword_distribution,
@@ -118,7 +122,7 @@ export class LibraryProfileService {
     }
 
     async generateAllProfiles() {
-        const libraries = await db.query(`
+        const libraries = await this.db.query(`
             SELECT l.id, l.name, COUNT(msi.id) as item_count
             FROM libraries l
             LEFT JOIN media_server_items msi ON l.id = msi.library_id
@@ -156,7 +160,7 @@ export class LibraryProfileService {
     }
 
     async getProfile(libraryId) {
-        const result = await db.query(
+        const result = await this.db.query(
             `SELECT lp.*, l.media_type
              FROM library_profiles lp
              LEFT JOIN libraries l ON l.id = lp.library_id
@@ -221,7 +225,7 @@ export class LibraryProfileService {
 
     async getSettingValue(key, defaultValue) {
         try {
-            const result = await db.query(
+            const result = await this.db.query(
                 'SELECT value FROM settings WHERE key = $1',
                 [key]
             );
@@ -252,23 +256,23 @@ export class LibraryProfileService {
     }
 
     async getCertificationDistribution(libraryId) {
-        return _getCertificationDistribution(db, logger, libraryId);
+        return _getCertificationDistribution(this.db, logger, libraryId);
     }
 
     async getGenreDistribution(libraryId) {
-        return _getGenreDistribution(db, logger, libraryId);
+        return _getGenreDistribution(this.db, logger, libraryId);
     }
 
     async getStudioDistribution(libraryId) {
-        return _getStudioDistribution(db, logger, libraryId);
+        return _getStudioDistribution(this.db, logger, libraryId);
     }
 
     async getLanguageDistribution(libraryId) {
-        return _getLanguageDistribution(db, logger, libraryId);
+        return _getLanguageDistribution(this.db, logger, libraryId);
     }
 
     async getTotalItems(libraryId) {
-        return _getTotalItems(db, logger, libraryId);
+        return _getTotalItems(this.db, logger, libraryId);
     }
 
     formatForPrompt(stats) {
@@ -291,8 +295,8 @@ export class LibraryProfileService {
     }
 }
 
-export function createLibraryProfileService() {
-    return new LibraryProfileService();
+export function createLibraryProfileService({ dbClient = db } = {}) {
+    return new LibraryProfileService({ dbClient });
 }
 
 export const libraryProfileService = createLibraryProfileService();

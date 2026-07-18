@@ -1,8 +1,10 @@
 import {
-  buildPolicyIntentContract,
   POLICY_INTENT_INFERENCE_STATES,
   POLICY_INTENT_SOURCES,
 } from './policyIntentContract.mjs';
+import {
+  buildPolicyNativeIntentConversionContract,
+} from './policyNativeIntentConversionContract.mjs';
 import {
   POLICY_NATIVE_INTENT_MATERIALIZATION_STATE_IDS,
   buildNativeIntentMaterializationEligibility,
@@ -18,6 +20,7 @@ const POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS = Object.freeze({
   READY_TO_CONVERT: 'ready_to_convert',
   NEEDS_OPERATOR_REVIEW: 'needs_operator_review',
   PARTIAL_LEGACY_INFERENCE: 'partial_legacy_inference',
+  AWAITING_LIBRARY_PROFILE: 'awaiting_library_profile',
   REQUIRES_INITIAL_POLICY_ESTABLISHMENT: 'requires_initial_policy_establishment',
   NO_CONVERTIBLE_INTENT: 'no_convertible_intent',
   UNSUPPORTED_LEGACY_SHAPE: 'unsupported_legacy_shape',
@@ -38,6 +41,8 @@ const POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS = Object.freeze({
   UNSUPPORTED_SIGNAL_TYPE: 'unsupported_signal_type',
   UNSUPPORTED_SIGNAL_KEYS: 'unsupported_signal_keys',
   PARTIAL_INFERENCE_REQUIRES_REVIEW: 'partial_inference_requires_review',
+  LIBRARY_PROFILE_INITIAL_INTENT_READY: 'library_profile_initial_intent_ready',
+  LIBRARY_PROFILE_INITIALIZATION_DEFERRED: 'library_profile_initialization_deferred',
   REQUIRES_INITIAL_POLICY_ESTABLISHMENT: 'requires_initial_policy_establishment',
   NO_CONVERTIBLE_INTENT: 'no_convertible_intent',
   ACTIVE_INTENT_AUTHORITY_CONFLICT: 'active_intent_authority_conflict',
@@ -86,8 +91,8 @@ const POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS = Object.freeze({
   ACTIVE_AUTHORITY_BLOCKER_MISSING_DETAILS: 'active_authority_blocker_missing_details',
   ACTIVE_AUTHORITY_REASON_MISSING: 'active_authority_reason_missing',
   LEGACY_CONFIGURATION_SUMMARY_INVALID: 'legacy_configuration_summary_invalid',
-  INITIAL_ESTABLISHMENT_NOT_EXPLICIT: 'initial_establishment_not_explicit',
-  INITIAL_ESTABLISHMENT_REASON_MISSING: 'initial_establishment_reason_missing',
+  INITIALIZATION_SUMMARY_INVALID: 'initialization_summary_invalid',
+  INITIALIZATION_STATUS_MISMATCH: 'initialization_status_mismatch',
 });
 
 const STATUS_IDS = Object.freeze(Object.values(POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS));
@@ -328,7 +333,7 @@ function chooseStatus({
   contract,
   authorityEligibility,
   materializationEligibility,
-  legacyConfiguration,
+  initialization,
   reasons,
 }) {
   if (authorityEligibility?.eligible === false) {
@@ -345,11 +350,8 @@ function chooseStatus({
     return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.BLOCKED_BY_SERVER_CONTRACT_VALIDATION;
   }
 
-  if (
-    legacyConfiguration.statusId === POLICY_INTENT_MIGRATION_LEGACY_CONFIGURATION_STATUS_IDS.EMPTY &&
-    materializationEligibility.stateId === POLICY_NATIVE_INTENT_MATERIALIZATION_STATE_IDS.EMPTY_CONTRACT
-  ) {
-    return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.REQUIRES_INITIAL_POLICY_ESTABLISHMENT;
+  if (initialization && initialization.ready !== true) {
+    return POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.AWAITING_LIBRARY_PROFILE;
   }
 
   if ([
@@ -375,7 +377,11 @@ function buildPolicyCandidate(policy = {}, options = {}) {
   const maxUnsupportedSignals = options.maxUnsupportedSignals ?? MAX_UNSUPPORTED_SIGNALS_DEFAULT;
   const maintainerMode = options.maintainerMode === true;
   const includeRawLegacyJson = options.includeRawLegacyJson === true && maintainerMode;
-  const contract = options.intentContract || policy.intentContract || buildPolicyIntentContract(policy);
+  const contractResolution = options.contractResolution || buildPolicyNativeIntentConversionContract({
+    policy,
+    now: options.now,
+  });
+  const contract = options.intentContract || policy.intentContract || contractResolution.contract;
   const routingTarget = buildRoutingTarget(policy);
   const profileFreshness = buildProfileFreshness(policy);
   const automationReadiness = buildAutomationReadiness({
@@ -387,7 +393,11 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     activeIntentIntegrityReport: options.activeIntentIntegrityReport,
   });
   const materializationEligibility = buildNativeIntentMaterializationEligibility(contract);
-  const legacyConfiguration = buildLegacyConfigurationSummary(policy, contract);
+  const legacyConfiguration = buildLegacyConfigurationSummary(
+    policy,
+    contractResolution.legacyContract,
+  );
+  const initialization = contractResolution.initialization;
   const unsupportedSignals = sanitizeUnsupportedSignals(
     contract.unsupported_signals,
     maxUnsupportedSignals
@@ -433,15 +443,19 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     ));
   }
 
-  if (
-    legacyConfiguration.statusId === POLICY_INTENT_MIGRATION_LEGACY_CONFIGURATION_STATUS_IDS.EMPTY &&
-    materializationEligibility.stateId === POLICY_NATIVE_INTENT_MATERIALIZATION_STATE_IDS.EMPTY_CONTRACT
-  ) {
+  if (initialization?.ready === true) {
     reasons.push(buildReason(
-      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.REQUIRES_INITIAL_POLICY_ESTABLISHMENT,
-      'No legacy preset configuration exists to convert. Initial native policy intent must be established through an explicit authority path; library observations are not promoted to durable intent.',
-      'blocker',
-      { attachedPresetCount: legacyConfiguration.attachedPresetCount }
+      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.LIBRARY_PROFILE_INITIAL_INTENT_READY,
+      'A current connected-library profile established the initial native policy baseline without adding hard limits, avoid rules, or learning writes.',
+      'info',
+      { initializationStatusId: initialization.statusId }
+    ));
+  } else if (initialization) {
+    reasons.push(buildReason(
+      POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.LIBRARY_PROFILE_INITIALIZATION_DEFERRED,
+      'Initial native policy establishment is waiting for current connected-library profile evidence and will retry automatically.',
+      'info',
+      { initializationStatusId: initialization.statusId }
     ));
   } else if ([
     POLICY_NATIVE_INTENT_MATERIALIZATION_STATE_IDS.EMPTY_CONTRACT,
@@ -491,7 +505,7 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     contract,
     authorityEligibility,
     materializationEligibility,
-    legacyConfiguration,
+    initialization,
     reasons,
   });
 
@@ -509,7 +523,10 @@ function buildPolicyCandidate(policy = {}, options = {}) {
     libraryName: policy.library_name ?? null,
     statusId,
     canConvert: statusId === POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT,
-    requiresOperatorReview: statusId !== POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT,
+    requiresOperatorReview: ![
+      POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.READY_TO_CONVERT,
+      POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.AWAITING_LIBRARY_PROFILE,
+    ].includes(statusId),
     intentContract: {
       schemaVersion: contract.schema_version,
       source: contract.source,
@@ -521,6 +538,15 @@ function buildPolicyCandidate(policy = {}, options = {}) {
       materializationStateId: materializationEligibility.stateId,
     },
     legacyConfiguration,
+    ...(initialization ? {
+      initialization: {
+        mode: initialization.mode,
+        sourceId: initialization.sourceId,
+        statusId: initialization.statusId,
+        ready: initialization.ready === true,
+        profile: initialization.profile,
+      },
+    } : {}),
     unsupportedSignals,
     routingTarget,
     profileFreshness,
@@ -688,52 +714,41 @@ function validatePolicyIntentMigrationCandidateReport(report = {}) {
       });
     }
 
-    const requiresInitialEstablishment =
-      candidate.statusId ===
-      POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.REQUIRES_INITIAL_POLICY_ESTABLISHMENT;
-    if (
-      requiresInitialEstablishment &&
-      (
-        legacyConfiguration.statusId !== POLICY_INTENT_MIGRATION_LEGACY_CONFIGURATION_STATUS_IDS.EMPTY ||
-        attachedPresetCount !== 0
-      )
-    ) {
-      issues.push({
-        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.INITIAL_ESTABLISHMENT_NOT_EXPLICIT,
-        policyId: candidate.policyId ?? null,
-        message: 'Initial-establishment status requires an explicitly empty legacy configuration.',
-      });
-    }
-
-    if (
-      requiresInitialEstablishment &&
-      !asArray(candidate.reasons).some(reason =>
-        reason.reasonId ===
-        POLICY_INTENT_MIGRATION_CANDIDATE_REASON_IDS.REQUIRES_INITIAL_POLICY_ESTABLISHMENT
-      )
-    ) {
-      issues.push({
-        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.INITIAL_ESTABLISHMENT_REASON_MISSING,
-        policyId: candidate.policyId ?? null,
-        message: 'Initial-establishment status requires its dedicated reason.',
-      });
-    }
-
-    if (
+    const initialization = asObject(candidate.initialization);
+    const hasEmptyLegacyConfiguration =
       legacyConfiguration.statusId === POLICY_INTENT_MIGRATION_LEGACY_CONFIGURATION_STATUS_IDS.EMPTY &&
-      attachedPresetCount === 0 &&
-      candidate.intentContract?.materializationStateId ===
-        POLICY_NATIVE_INTENT_MATERIALIZATION_STATE_IDS.EMPTY_CONTRACT &&
-      candidate.intentContract?.valid === true &&
-      candidate.authorityEligibility?.stateId !==
-        POLICY_CANDIDATE_AUTHORITY_ELIGIBILITY_STATE_IDS.ACTIVE_INTENT_AUTHORITY_CONFLICT &&
-      !requiresInitialEstablishment
-    ) {
-      issues.push({
-        riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.INITIAL_ESTABLISHMENT_NOT_EXPLICIT,
-        policyId: candidate.policyId ?? null,
-        message: 'An empty legacy configuration must be classified as initial policy establishment.',
-      });
+      attachedPresetCount === 0;
+    if (hasEmptyLegacyConfiguration) {
+      const validInitialization =
+        initialization.mode === 'library_profile_initialization' &&
+        initialization.sourceId === 'media_server_library_profile' &&
+        typeof initialization.ready === 'boolean' &&
+        typeof initialization.statusId === 'string' &&
+        asObject(initialization.profile).profileFingerprint?.startsWith('sha256:');
+      if (!validInitialization) {
+        issues.push({
+          riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.INITIALIZATION_SUMMARY_INVALID,
+          policyId: candidate.policyId ?? null,
+          message: 'An empty legacy configuration must expose a bounded library-profile initialization summary.',
+        });
+      }
+
+      const awaitingProfile = candidate.statusId ===
+        POLICY_INTENT_MIGRATION_CANDIDATE_STATUS_IDS.AWAITING_LIBRARY_PROFILE;
+      if (initialization.ready === true && awaitingProfile) {
+        issues.push({
+          riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.INITIALIZATION_STATUS_MISMATCH,
+          policyId: candidate.policyId ?? null,
+          message: 'A ready library-profile initialization must not remain deferred.',
+        });
+      }
+      if (initialization.ready !== true && !awaitingProfile) {
+        issues.push({
+          riskId: POLICY_INTENT_MIGRATION_CANDIDATE_AUDIT_RISK_IDS.INITIALIZATION_STATUS_MISMATCH,
+          policyId: candidate.policyId ?? null,
+          message: 'A deferred library-profile initialization must wait for automatic profile refresh.',
+        });
+      }
     }
 
     if (

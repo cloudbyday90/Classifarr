@@ -124,7 +124,7 @@ describe('nativeIntentReconciliationStateContract', () => {
     expect(changedPlan.stateDeletes).toEqual([22]);
   });
 
-  test('uses bounded fingerprint-stable retry timing and promotes repeated technical failures to maintenance', () => {
+  test('uses bounded fingerprint-stable retry timing without terminally abandoning technical failures', () => {
     const candidate = readyCandidate(30);
     const first = buildNativeIntentReconciliationStateOutcome({
       candidate,
@@ -153,22 +153,22 @@ describe('nativeIntentReconciliationStateContract', () => {
     );
     expect(second).toMatchObject({ failureCount: 2 });
     expect(third).toEqual(expect.objectContaining({
-      outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.REQUIRES_MAINTENANCE,
-      reasonId: NATIVE_INTENT_RECONCILIATION_REASON_IDS.TECHNICAL_RETRY_LIMIT_REACHED,
+      outcomeState: NATIVE_INTENT_RECONCILIATION_OUTCOME_STATES.SYSTEM_FAILURE,
+      reasonId: 'transient_database',
       failureCount: 3,
-      retryNotBefore: null,
+      retryNotBefore: expect.any(String),
     }));
 
-    const quarantinedPlan = buildNativeIntentReconciliationCandidatePlan({
+    const retryPlan = buildNativeIntentReconciliationCandidatePlan({
       candidates: [candidate],
       persistedStates: [third],
       maxPolicies: 1,
       evaluatedAt: '2026-07-15T13:00:00.000Z',
     });
 
-    expect(quarantinedPlan.selectedPolicyIds).toEqual([]);
-    expect(quarantinedPlan.quarantinedPolicyIds).toEqual([30]);
-    expect(quarantinedPlan.counts.quarantinedPolicyCount).toBe(1);
+    expect(retryPlan.selectedPolicyIds).toEqual([30]);
+    expect(retryPlan.quarantinedPolicyIds).toEqual([]);
+    expect(retryPlan.counts.quarantinedPolicyCount).toBe(0);
   });
 
   test('backs off an exhausted execution budget without consuming technical retry allowance', () => {

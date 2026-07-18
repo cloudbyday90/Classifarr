@@ -248,6 +248,111 @@ describe('NativeIntentReconciliationExecutionService', () => {
     expect(JSON.stringify(result)).not.toContain('must not escape');
   });
 
+  test('refreshes missing library profiles and re-evaluates conversion automatically', async () => {
+    const readyCandidate = {
+      policyId: 18,
+      statusId: 'ready_to_convert',
+      canConvert: true,
+      reasons: [{ reasonId: 'library_profile_initial_intent_ready' }],
+      intentContract: { valid: true, source: 'native_intent', inferenceState: 'inferred' },
+    };
+    const stateService = {
+      plan: jest.fn().mockResolvedValue({
+        selectedCandidates: [{
+          policyId: 18,
+          statusId: 'ready_to_convert',
+          canConvert: true,
+          reasonIds: ['library_profile_initial_intent_ready'],
+        }],
+        selectedPolicyIds: [18],
+        ledgerCandidates: [],
+        outcomeOverrides: [],
+        stateUpserts: [],
+        stateDeletes: [],
+        persistedStates: [],
+        deferredPolicyIds: [],
+        counts: {
+          selectedPolicyCount: 1,
+          deferredPolicyCount: 0,
+          quarantinedPolicyCount: 0,
+        },
+      }),
+      persist: jest.fn().mockResolvedValue({ statusId: 'persisted' }),
+      resolveApplyOutcomes: jest.fn().mockReturnValue({
+        outcomes: [], outcomeOverrides: [], stateUpserts: [], stateDeletes: [],
+      }),
+    };
+    const inputs = {
+      policies: [{ id: 18, library_id: 9 }],
+      activeIntentIntegrityReport: {},
+    };
+    const loadCandidateInputs = jest.fn()
+      .mockResolvedValueOnce(inputs)
+      .mockResolvedValueOnce(inputs);
+    const buildCandidateReport = jest.fn()
+      .mockReturnValueOnce({
+        candidates: [{
+          policyId: 18,
+          statusId: 'awaiting_library_profile',
+          canConvert: false,
+          reasons: [{ reasonId: 'library_profile_initialization_deferred' }],
+          initialization: { statusId: 'profile_missing', ready: false },
+        }],
+      })
+      .mockReturnValueOnce({ candidates: [readyCandidate] });
+    const lifecycleService = {
+      getExecutionEligibility: jest.fn().mockResolvedValue({ allowed: true }),
+      partitionCandidates: jest.fn().mockResolvedValue({
+        eligibleCandidates: [{
+          policyId: 18,
+          statusId: 'ready_to_convert',
+          canConvert: true,
+          reasonIds: ['library_profile_initial_intent_ready'],
+        }],
+        heldCandidates: [],
+        outcomeOverrides: [],
+      }),
+      assertPolicyWriteEligible: jest.fn().mockResolvedValue({ allowed: true }),
+    };
+    const profileService = { generateProfile: jest.fn().mockResolvedValue({ itemCount: 3 }) };
+    const buildDryRun = jest.fn().mockReturnValue({
+      conversionWorkflow: { steps: [{ policyId: 18, statusId: 'ready_to_apply', reasons: [] }] },
+    });
+    const applyGate = jest.fn().mockResolvedValue({
+      statusId: 'applied', results: [{ policyId: 18, alreadyConverted: false }],
+    });
+    const service = new NativeIntentReconciliationExecutionService({
+      dbClient: {},
+      stateService,
+      lifecycleService,
+      loadCandidateInputs,
+      buildCandidateReport,
+      profileService,
+      buildDryRun,
+      applyGate,
+      loggerInstance: { error: jest.fn(), info: jest.fn() },
+    });
+
+    const result = await service.run({ dbClient: { withTransaction: jest.fn() } });
+
+    expect(profileService.generateProfile).toHaveBeenCalledWith(9);
+    expect(loadCandidateInputs).toHaveBeenCalledTimes(2);
+    expect(buildCandidateReport).toHaveBeenCalledTimes(2);
+    expect(buildDryRun).toHaveBeenCalledWith(expect.objectContaining({
+      selectedPolicyIds: [18],
+      action: expect.objectContaining({ actorSourceId: 'native_intent_reconciliation' }),
+    }));
+    expect(result.reconciliationSelection).toEqual(expect.objectContaining({
+      selectedPolicyCount: 1,
+      profileRefresh: {
+        attemptedCount: 1,
+        generatedCount: 1,
+        emptyCount: 0,
+        failedCount: 0,
+      },
+    }));
+  });
+
   test('keeps a held policy out of planning and passes a final write guard to apply', async () => {
     const heldCandidate = { policyId: 11, statusId: 'ready_to_convert', canConvert: true };
     const eligibleCandidate = { policyId: 12, statusId: 'ready_to_convert', canConvert: true };

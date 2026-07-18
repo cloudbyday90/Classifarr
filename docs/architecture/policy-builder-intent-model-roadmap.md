@@ -5593,74 +5593,62 @@ Implementation status:
   constraints. The design and outcome record is [Policy Native Intent Semantic
   Authority Integrity](policy-native-intent-semantic-authority-integrity.md).
 
-##### 8R.3.2.10 Initial Native Intent Establishment
+##### 8R.3.2.10 Initial Native Intent Establishment (Automatic Library-Profile Baseline)
 
-Intent: distinguish a destination with no legacy policy configuration from a
-legacy policy that cannot safely convert, without treating observed library
-contents as durable policy authority.
+Intent: complete the native-storage cutover for destinations with no legacy
+preset configuration by deriving a bounded initial baseline from the connected
+media-server library, the product's source of truth. This is automatic
+conversion maintenance, not a policy-builder form, an AI inference, or a
+learning write.
 
 Tasks:
 
-- Classify a zero-preset, empty compatibility contract as
-  `requires_initial_policy_establishment` only after authority and validation
-  blockers have been evaluated.
-- Preserve malformed, partial, purpose-less configured, and unsafe legacy
-  policies in their existing conversion-maintenance categories.
-- Persist the dedicated status as bounded `requires_maintenance` evidence and
-  keep it out of the ready conversion batch.
-- Expose only an attachment-count summary and stable IDs; do not include
-  profile distributions, library items, raw presets, prompts, or AI output.
-- Require candidate-report audit coverage so an empty configuration cannot be
-  silently downgraded into an ordinary conversion status.
+- Resolve every conversion candidate through one shared contract resolver.
+  Preset-backed policies keep the legacy conversion contract; zero-preset,
+  empty contracts use a current library-profile initialization contract.
+- Derive only advisory identity and helpful evidence from normalized profile
+  distributions. Preserve review settings and routing data, but never invent
+  hard limits, avoid rules, policy-learning data, or external-provider input.
+- Require a current profile with media items and observed genre identity before
+  conversion. A missing, stale, or insufficient profile causes a bounded,
+  automatic profile regeneration attempt and a retryable deferred state.
+- Re-evaluate candidates after regeneration in the same bounded reconciliation
+  run. Reuse existing transaction locks, rollback snapshots, migration events,
+  idempotency, and semantic-authority validation for the write.
+- Keep reports, state rows, logs, and migration metadata bounded: use status
+  IDs, counts, and a profile fingerprint only; never publish profile labels,
+  item data, paths, prompts, AI output, or raw policy payloads.
+- Keep persistent technical failures retryable with capped backoff. They may
+  alert operators, but must not become a terminal maintenance marker that
+  requires someone to restart conversion manually.
 
 Acceptance criteria:
 
-- An empty policy is never selected or written by automatic conversion.
-- A policy with attached legacy configuration but no materializable purpose is
-  not mislabeled as initial establishment.
-- Library observations, metadata, and AI output cannot establish native intent
-  through reconciliation triage alone.
-- Existing status/reason storage constraints accept the bounded identifier
-  without a schema migration.
+- A current non-empty media-server library with no legacy policy presets gains
+  exactly one active native intent without a dialog, route call, or operator
+  action.
+- Repeated reconciliation is idempotent and clears a stale terminal candidate
+  marker when the recomputed profile-backed candidate fingerprint changes.
+- A missing, stale, empty, or insufficient profile neither writes native
+  intent nor changes routing, but self-recovers after profile generation or a
+  future library sync supplies adequate evidence.
+- The baseline has no hard-limit or avoid rules, makes no learning write, and
+  never depends on names, local paths, metadata providers, RAG, or AI output.
+- A profile-backed write remains protected by the same authority lock,
+  transaction, rollback, and validation safeguards as preset conversion.
 
 Implementation status:
 
-- Task 8R.3.2.10.1 is implemented as server-owned, read-only candidate triage
-  and reconciliation-state mapping. The design and outcome record is
-  [Native Policy Initial-Establishment Triage](native-policy-initial-establishment-triage.md).
-- Task 8R.3.2.10.2 is implemented as an admin-only, server-owned initial
-  establishment transition. It accepts a strict declared-rule DTO, derives
-  the authority and actor server-side, locks and revalidates empty legacy
-  state, records one durable idempotent transition with rollback evidence, and
-  never starts classification, learning, or external routing. The design and
-  outcome record is [Native Policy Initial-Establishment
-  Transition](native-policy-initial-establishment-transition.md).
-- Task 8R.3.2.10.3 is implemented as an admin-only, side-effect-free
-  readiness and recovery read model. It reports only server-owned eligibility,
-  attachment counts, native-history counts, non-secret idempotency/reversion
-  state, stable recovery identifiers, and revalidated declared-rule groups. It
-  never returns an idempotency key, fingerprint, actor, snapshot payload,
-  routing configuration, observed library data, metadata, RAG, or AI output.
-  The design and outcome record is [Native Policy Initial-Establishment
-  Readiness](native-policy-initial-establishment-readiness.md).
-- Task 8R.3.2.10.4 is implemented as a closure-evidence boundary. It requires
-  the read-only triage, the explicit transactional first-establishment path,
-  and the read-only readiness/recovery model together with their migration,
-  current schema, route, service, and focused-test evidence. Conversion
-  workflow evidence cannot stand in for the distinct first-authority boundary.
-  The design and outcome record is [Initial Native Intent Establishment Closure
-  Evidence](policy-initial-establishment-closure-evidence.md).
-- Task 8R.3.2.10.5 is implemented as transactional reconciliation-state
-  finalization. A successful first establishment clears only its matching
-  `requires_initial_policy_establishment` terminal marker in the same
-  transaction, and reconciliation persistence rechecks semantic native
-  authority before and after writing state so an in-flight snapshot cannot
-  recreate a false maintenance blocker. The design and outcome record is
-  [Initial Establishment Reconciliation-State
-  Finalization](policy-initial-establishment-reconciliation-state-finalization.md).
-- **Initial-establishment triage is complete.** Select subsequent work from
-  the remaining 8R runtime-authority and production-cutover acceptance
-  criteria; do not add a routine editor around first establishment.
+- Task 8R.3.2.10.1 is implemented as a shared profile-backed initial-contract
+  resolver used by both candidate discovery and the transaction-gated apply
+  writer. It prevents the discovery/apply handoff from reintroducing the old
+  empty-contract branch.
+- Task 8R.3.2.10.2 is implemented as automatic profile recovery and retryable
+  reconciliation state. The reconciler regenerates only deferred connected
+  library profiles, reloads candidates once, and retries bounded technical
+  failures with capped exponential backoff rather than terminal maintenance.
+- The design and outcome record is [Automatic Library-Profile Native Policy
+  Initialization](policy-library-profile-automatic-initialization.md).
 
 ### 8R.4 Native Runtime Read Path
 
@@ -7978,10 +7966,12 @@ Implement Phase 8R in this order:
      active native authority is ambiguous.
 3. **8R.3 Explicit Conversion Workflow**
    Converts selected policies with validation and rollback snapshots.
-   - **Initial Native Intent Establishment** handles a destination with no
-     legacy configuration through read-only triage, one explicit
-     administrator-declared transaction, and bounded readiness/recovery
-     evidence; it never derives authority from library observations or AI.
+   - **Initial Native Intent Establishment** automatically initializes a
+     destination with no legacy configuration from a current connected
+     library profile. It derives only bounded advisory identity and helpful
+     evidence, never hard limits, avoid rules, learning state, AI output, or
+     external-provider input; stale or missing profiles are regenerated and
+     retried safely.
 4. **8R.4 Native Runtime Read Path**
    Makes converted policies run from native intent.
    - **Runtime Authority Selection Integrity** makes duplicate active native

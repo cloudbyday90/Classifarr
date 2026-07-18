@@ -70,10 +70,18 @@ function parseJsonValue(value, fallback) {
 
 function normalizePolicyRow(row = {}) {
   const presets = parseJsonValue(row.presets, []);
+  const libraryProfile = {
+    item_count: row.profile_item_count ?? null,
+    genre_distribution: parseJsonValue(row.profile_genre_distribution, {}),
+    studio_distribution: parseJsonValue(row.profile_studio_distribution, {}),
+    last_generated_at: row.profile_last_generated_at ?? null,
+    media_type: row.library_media_type ?? null,
+  };
 
   return {
     ...row,
     presets: asArray(presets),
+    libraryProfile,
     routingTarget: {
       arr_type: row.arr_type ?? null,
       arr_config_id: row.arr_config_id ?? null,
@@ -88,9 +96,11 @@ function normalizePolicyRow(row = {}) {
       quality_profile_id: row.arr_quality_profile_id ?? null,
     },
     profileFreshness: {
-      state: row.profile_freshness_state || 'fresh_or_unknown',
+      state: row.profile_freshness_state || (
+        row.profile_last_generated_at ? 'current' : 'missing'
+      ),
       stale: row.profile_stale === true,
-      lastObservedAt: row.profile_last_observed_at ?? null,
+      lastObservedAt: row.profile_last_generated_at ?? null,
     },
   };
 }
@@ -151,9 +161,23 @@ async function loadPolicyPostUpgradePolicies({
       lam.arr_root_folder_id,
       lam.arr_root_folder_path,
       lam.quality_profile_id AS arr_quality_profile_id,
+      profile.item_count AS profile_item_count,
+      profile.genre_distribution AS profile_genre_distribution,
+      profile.studio_distribution AS profile_studio_distribution,
+      profile.last_generated_at AS profile_last_generated_at,
+      CASE
+        WHEN profile.library_id IS NULL THEN 'missing'
+        WHEN profile.last_generated_at < NOW() - INTERVAL '7 days' THEN 'stale'
+        ELSE 'current'
+      END AS profile_freshness_state,
+      CASE
+        WHEN profile.last_generated_at < NOW() - INTERVAL '7 days' THEN TRUE
+        ELSE FALSE
+      END AS profile_stale,
       COALESCE(pa.presets, '[]'::jsonb) AS presets
     FROM library_policies lp
     LEFT JOIN libraries l ON l.id = lp.library_id
+    LEFT JOIN library_profiles profile ON profile.library_id = lp.library_id
     LEFT JOIN LATERAL (
       SELECT
         mapping.arr_type,

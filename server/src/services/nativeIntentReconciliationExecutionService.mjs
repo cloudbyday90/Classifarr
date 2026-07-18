@@ -31,6 +31,8 @@ import {
   buildNativeIntentReconciliationFailureAttribution,
   runNativeIntentReconciliationStage,
 } from './nativeIntentReconciliationFailureAttribution.mjs';
+import { createLibraryProfileService } from './libraryProfileService.mjs';
+import { POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS } from './policyIntentConversionWorkflow.mjs';
 
 const NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE = 100;
 const logger = createLogger('NativeIntentReconciliationExecutionService');
@@ -71,7 +73,55 @@ function toSafeCandidate(candidate = {}) {
         activeIntentCount: candidate.authorityEligibility.activeIntentCount,
       }
       : undefined,
+    initialization: candidate.initialization
+      ? {
+        mode: candidate.initialization.mode,
+        sourceId: candidate.initialization.sourceId,
+        statusId: candidate.initialization.statusId,
+        ready: candidate.initialization.ready === true,
+      }
+      : undefined,
   };
+}
+
+function getProfileRefreshLibraryIds({ candidates = [], policies = [] } = {}) {
+  const libraryIdByPolicyId = new Map(asArray(policies)
+    .map(policy => [Number(policy?.id), Number(policy?.library_id)])
+    .filter(([policyId, libraryId]) => (
+      Number.isInteger(policyId) && policyId > 0 && Number.isInteger(libraryId) && libraryId > 0
+    )));
+
+  return [...new Set(asArray(candidates)
+    .filter(candidate => candidate?.statusId === 'awaiting_library_profile')
+    .map(candidate => libraryIdByPolicyId.get(Number(candidate?.policyId)))
+    .filter(libraryId => Number.isInteger(libraryId) && libraryId > 0))];
+}
+
+async function refreshDeferredLibraryProfiles({ profileService, libraryIds = [], loggerInstance }) {
+  if (!profileService || typeof profileService.generateProfile !== 'function' || libraryIds.length === 0) {
+    return { attemptedCount: 0, generatedCount: 0, emptyCount: 0, failedCount: 0 };
+  }
+
+  const results = await Promise.all(libraryIds.map(async libraryId => {
+    try {
+      const profile = await profileService.generateProfile(libraryId);
+      return profile ? 'generated' : 'empty';
+    } catch {
+      return 'failed';
+    }
+  }));
+  const summary = {
+    attemptedCount: libraryIds.length,
+    generatedCount: results.filter(result => result === 'generated').length,
+    emptyCount: results.filter(result => result === 'empty').length,
+    failedCount: results.filter(result => result === 'failed').length,
+  };
+
+  loggerInstance.info('Reconciler refreshed deferred library profiles', {
+    ...summary,
+    rawPayloadExposed: false,
+  });
+  return summary;
 }
 
 function toSafeConversionSteps(workflow, selectedPolicyIds = []) {
@@ -144,6 +194,7 @@ export class NativeIntentReconciliationExecutionService {
     buildCandidateReport = buildPolicyIntentMigrationCandidateReport,
     buildDryRun = buildPolicyPostUpgradeDryRun,
     applyGate = applyPolicyPostUpgradeApplyGate,
+    profileService = null,
   } = {}) {
     this.dbClient = dbClient;
     this.stateService = stateService;
@@ -154,6 +205,7 @@ export class NativeIntentReconciliationExecutionService {
     this.buildCandidateReport = buildCandidateReport;
     this.buildDryRun = buildDryRun;
     this.applyGate = applyGate;
+    this.profileService = profileService || createLibraryProfileService({ dbClient });
   }
 
   async run({
@@ -194,7 +246,7 @@ export class NativeIntentReconciliationExecutionService {
         },
       };
     }
-    const { policies, activeIntentIntegrityReport } = await runNativeIntentReconciliationStage({
+    let { policies, activeIntentIntegrityReport } = await runNativeIntentReconciliationStage({
       stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.CANDIDATE_INPUT_LOAD,
       execute: () => this.loadCandidateInputs({
         dbClient,
@@ -204,7 +256,7 @@ export class NativeIntentReconciliationExecutionService {
         prioritizeReconciliationEligibility: true,
       }),
     });
-    const candidateReport = await runNativeIntentReconciliationStage({
+    let candidateReport = await runNativeIntentReconciliationStage({
       stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.CANDIDATE_REPORT_BUILD,
       execute: () => this.buildCandidateReport({
         policies,
@@ -212,6 +264,35 @@ export class NativeIntentReconciliationExecutionService {
         activeIntentIntegrityReport,
       }),
     });
+    const profileRefreshLibraryIds = getProfileRefreshLibraryIds({
+      candidates: candidateReport.candidates,
+      policies,
+    });
+    const profileRefresh = await refreshDeferredLibraryProfiles({
+      profileService: this.profileService,
+      libraryIds: profileRefreshLibraryIds,
+      loggerInstance: this.logger,
+    });
+    if (profileRefresh.attemptedCount > 0) {
+      ({ policies, activeIntentIntegrityReport } = await runNativeIntentReconciliationStage({
+        stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.CANDIDATE_INPUT_LOAD,
+        execute: () => this.loadCandidateInputs({
+          dbClient,
+          maxPolicies: NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE,
+          unconvertedOnly: true,
+          excludeRevertedPolicies: false,
+          prioritizeReconciliationEligibility: true,
+        }),
+      }));
+      candidateReport = await runNativeIntentReconciliationStage({
+        stageId: NATIVE_INTENT_RECONCILIATION_FAILURE_STAGE_IDS.CANDIDATE_REPORT_BUILD,
+        execute: () => this.buildCandidateReport({
+          policies,
+          maxPolicies: NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE,
+          activeIntentIntegrityReport,
+        }),
+      });
+    }
     const safeCandidates = asArray(candidateReport.candidates)
       .map(toSafeCandidate)
       .filter(Boolean);
@@ -266,7 +347,12 @@ export class NativeIntentReconciliationExecutionService {
         maxPolicies: NATIVE_INTENT_RECONCILIATION_CANDIDATE_SCAN_SIZE,
         selectedPolicyIds: plan.selectedPolicyIds,
         activeIntentIntegrityReport,
-        action,
+        action: {
+          ...(action || {}),
+          actorSourceId: action?.actorSourceId ||
+            POLICY_INTENT_CONVERSION_ACTOR_SOURCE_IDS.NATIVE_INTENT_RECONCILIATION,
+          reasonCode: action?.reasonCode || 'native_intent_reconciliation',
+        },
         now: evaluatedAt,
       }),
     });
@@ -340,6 +426,7 @@ export class NativeIntentReconciliationExecutionService {
         heldPolicyCount: lifecyclePlan.heldCandidates.length,
         quarantinedPolicyCount: plan.counts.quarantinedPolicyCount || 0,
         discoveredPolicyCount: safeCandidates.length,
+        profileRefresh,
         rawPayloadExposed: false,
       },
       reconciliationLifecycle: executionEligibility,
