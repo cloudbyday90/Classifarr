@@ -18,7 +18,7 @@
 
 import * as db from '../server/src/config/database.mjs';
 import { createLogger } from '../server/src/utils/logger.mjs';
-import { closeDatabasePool, failCli, shouldRunCli } from '../server/src/utils/cliRuntime.mjs';
+import { closeDatabasePool, failCli, shouldRunCli } from './lib/cliRuntime.mjs';
 
 const logger = createLogger('reset_data');
 

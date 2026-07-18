@@ -11,19 +11,11 @@ import path from 'node:path';
 import process from 'node:process';
 
 import * as db from '../server/src/config/database.mjs';
-import { runCliMain, shouldRunCli } from '../server/src/utils/cliRuntime.mjs';
+import { closeDatabasePool, runCliMain, shouldRunCli } from './lib/cliRuntime.mjs';
 
 const DEFAULT_REPORTS_DIR = path.resolve('.tmp/reports');
 const REPORT_FILE_PREFIX = 'ai-policy-sweep-';
 const REPORT_FILE_SUFFIX = '.json';
-
-async function closeDatabasePool(databaseModule) {
-  const pool = databaseModule?.pool;
-  if (!pool || typeof pool.end !== 'function') {
-    return;
-  }
-  await pool.end();
-}
 
 function toPositiveInt(value) {
   const parsed = Number.parseInt(value, 10);

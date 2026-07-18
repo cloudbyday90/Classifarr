@@ -30,7 +30,7 @@ export {
   findMalformedKeys,
   verify,
 } from '../server/src/services/classificationEvidenceMigrationVerificationService.mjs';
-import { closeDatabasePool, runCliMain, shouldRunCli } from '../server/src/utils/cliRuntime.mjs';
+import { closeDatabasePool, runCliMain, shouldRunCli } from './lib/cliRuntime.mjs';
 
 async function main() {
   const verbose = process.argv.includes('--verbose');

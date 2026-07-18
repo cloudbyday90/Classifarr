@@ -303,13 +303,10 @@ function createPolicyEvidenceHandoffVerifier({
   };
 }
 
-const policyEvidenceHandoffVerifier = createPolicyEvidenceHandoffVerifier();
-
 export {
   POLICY_EVIDENCE_HANDOFF_VERIFIER_RISK_IDS,
   POLICY_EVIDENCE_HANDOFF_VERIFIER_STATUS_IDS,
   POLICY_EVIDENCE_HANDOFF_VERIFIER_VERSION,
   buildPolicyEvidenceHandoffAudit,
   createPolicyEvidenceHandoffVerifier,
-  policyEvidenceHandoffVerifier,
 };

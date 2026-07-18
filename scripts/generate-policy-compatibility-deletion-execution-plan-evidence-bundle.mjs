@@ -26,7 +26,7 @@ import {
 import {
   closeDatabasePool,
   shouldRunCli,
-} from '../server/src/utils/cliRuntime.mjs';
+} from './lib/cliRuntime.mjs';
 import {
   runPolicyCompatibilityDeletionExecutionPlanEvidenceBundleCli,
 } from './lib/policyCompatibilityDeletionExecutionPlanEvidenceBundleRunner.mjs';

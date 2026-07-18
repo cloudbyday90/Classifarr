@@ -144,8 +144,3 @@ export function buildNativeIntentReconciliationAlertEvaluation({
       evaluatedAt: normalizedEvaluatedAt,
     }));
 }
-
-export function getNativeIntentReconciliationAlertDefinition(alertTypeId) {
-  const definition = ALERT_DEFINITIONS[alertTypeId];
-  return definition ? { ...definition } : null;
-}

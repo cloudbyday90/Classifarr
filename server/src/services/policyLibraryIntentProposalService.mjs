@@ -423,13 +423,10 @@ function buildPolicyLibraryIntentProposalAudit(result = {}) {
   };
 }
 
-const policyLibraryIntentProposalService = createPolicyLibraryIntentProposalService();
-
 export {
   POLICY_LIBRARY_INTENT_PROPOSAL_RISK_IDS,
   POLICY_LIBRARY_INTENT_PROPOSAL_STATUS_IDS,
   POLICY_LIBRARY_INTENT_PROPOSAL_VERSION,
   buildPolicyLibraryIntentProposalAudit,
   createPolicyLibraryIntentProposalService,
-  policyLibraryIntentProposalService,
 };

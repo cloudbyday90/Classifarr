@@ -19,9 +19,6 @@ import {
   buildNativeHardLimitRuleFromStrictConstraintDescriptor,
 } from './policyStrictConstraintDescriptor.mjs';
 
-const POLICY_LIBRARY_REBUILD_REPLACEMENT_CONTRACT_VERSION =
-  'policy.library_rebuild_replacement_contract.v1';
-
 const POLICY_LIBRARY_REBUILD_REPLACEMENT_CONTRACT_RISK_IDS = Object.freeze({
   INVALID_PROPOSAL: 'invalid_proposal',
   MISSING_TYPED_PURPOSE: 'missing_typed_purpose',
@@ -277,6 +274,5 @@ function buildPolicyLibraryRebuildReplacementContract({ proposal = {}, policy = 
 
 export {
   POLICY_LIBRARY_REBUILD_REPLACEMENT_CONTRACT_RISK_IDS,
-  POLICY_LIBRARY_REBUILD_REPLACEMENT_CONTRACT_VERSION,
   buildPolicyLibraryRebuildReplacementContract,
 };

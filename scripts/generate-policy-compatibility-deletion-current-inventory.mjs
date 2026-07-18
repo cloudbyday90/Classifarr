@@ -29,7 +29,7 @@ import {
   closeDatabasePool,
   runCliMain,
   shouldRunCli,
-} from '../server/src/utils/cliRuntime.mjs';
+} from './lib/cliRuntime.mjs';
 
 function parseArgs(argv = []) {
   const options = {

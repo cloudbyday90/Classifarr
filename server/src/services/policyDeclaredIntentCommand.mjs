@@ -429,8 +429,6 @@ function buildPolicyDeclaredIntentCommandAudit(result = {}) {
   };
 }
 
-const policyDeclaredIntentCommandService = createPolicyDeclaredIntentCommandService();
-
 export {
   POLICY_DECLARED_INTENT_COMMAND_RISK_IDS,
   POLICY_DECLARED_INTENT_COMMAND_STATUS_IDS,
@@ -439,5 +437,4 @@ export {
   POLICY_DECLARED_INTENT_FIELD_IDS,
   buildPolicyDeclaredIntentCommandAudit,
   createPolicyDeclaredIntentCommandService,
-  policyDeclaredIntentCommandService,
 };

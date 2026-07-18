@@ -278,8 +278,6 @@ function createPolicyIntentProposalRegistry({
   };
 }
 
-const policyIntentProposalRegistry = createPolicyIntentProposalRegistry();
-
 export {
   DEFAULT_MAXIMUM_ENTRIES,
   DEFAULT_MAXIMUM_ENTRIES_PER_ACTOR,
@@ -289,5 +287,4 @@ export {
   POLICY_INTENT_PROPOSAL_REGISTRY_VERSION,
   buildPolicyIntentProposalRegistryAudit,
   createPolicyIntentProposalRegistry,
-  policyIntentProposalRegistry,
 };

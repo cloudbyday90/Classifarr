@@ -192,5 +192,3 @@ export class WebSearchProviderCalibrationPreviewService {
     });
   }
 }
-
-export const webSearchProviderCalibrationPreviewService = new WebSearchProviderCalibrationPreviewService();

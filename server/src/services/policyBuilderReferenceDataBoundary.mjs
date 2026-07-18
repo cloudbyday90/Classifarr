@@ -29,14 +29,6 @@ const REFERENCE_DATA_AUTHORITY_IDS = Object.freeze({
   NON_AUTHORITY_DISPLAY: 'non_authority_display',
 });
 
-const REFERENCE_DATA_RISK_IDS = Object.freeze({
-  OPTION_EVIDENCE_CONFUSION: 'option_evidence_confusion',
-  CLIENT_READINESS_INFERENCE: 'client_readiness_inference',
-  PROVIDER_PAYLOAD_LEAK: 'provider_payload_leak',
-  MIGRATION_STATE_CONFUSION: 'migration_state_confusion',
-  ROUTING_STATUS_MISSING: 'routing_status_missing',
-});
-
 const REFERENCE_DATA_OPTION_SOURCE_IDS = Object.freeze({
   LIBRARY_PROFILE: 'library_profile',
   PRESET_REFERENCE: 'preset_reference',
@@ -419,7 +411,6 @@ export {
   REFERENCE_DATA_AUTHORITY_IDS,
   REFERENCE_DATA_CATEGORY_IDS,
   REFERENCE_DATA_OPTION_SOURCE_IDS,
-  REFERENCE_DATA_RISK_IDS,
   REFERENCE_DATA_SOURCE_IDS,
   buildReferenceDataBoundaryAudit,
   buildReferenceDataOptionAudit,

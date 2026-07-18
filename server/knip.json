@@ -1,7 +1,13 @@
 {
   "$schema": "https://raw.githubusercontent.com/webpro-nl/knip/main/schema.json",
-  "entry": ["src/scripts/**/*.mjs"],
-  "project": ["src/**/*.mjs!", "scripts/**/*.mjs"],
+  "entry": [
+    "src/index.mjs!",
+    "src/scripts/**/*.mjs"
+  ],
+  "project": [
+    "src/**/*.mjs!",
+    "scripts/**/*.mjs"
+  ],
   "rules": {
     "files": "error",
     "dependencies": "error",

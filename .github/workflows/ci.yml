@@ -67,7 +67,7 @@ jobs:
           cd server
           npm run lint:knip
 
-      - name: Check server production code (knip --production)
+      - name: Check server production dependency declarations (knip --production)
         run: |
           cd server
           npm run lint:knip:production

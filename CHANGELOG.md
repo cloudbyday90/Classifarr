@@ -794,6 +794,10 @@ unchanged operator or runtime outcome.
 
 ### Fixed
 
+- **Server Dependency Quality Gates** - restored CI validation by removing
+  unused server exports and obsolete service singletons, moving root-script
+  CLI lifecycle helpers into the root script boundary, and separating complete
+  source reachability checks from production dependency checks.
 - **Native Intent Conversion Rate Limit** - conversion previews no longer
   consume the protected apply-attempt budget. Administrators can inspect or
   refresh eligibility without blocking a confirmed conversion, while the

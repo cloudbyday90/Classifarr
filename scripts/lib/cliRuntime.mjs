@@ -20,6 +20,13 @@ export function shouldRunCli(importMeta) {
   return importMeta.main === true;
 }
 
+export async function closeDatabasePool(databaseModule = {}) {
+  const pool = databaseModule?.pool;
+  if (pool && typeof pool.end === 'function') {
+    await pool.end();
+  }
+}
+
 export function failCli() {
   process.exitCode = 1;
 }

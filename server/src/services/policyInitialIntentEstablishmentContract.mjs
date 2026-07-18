@@ -50,19 +50,6 @@ const POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS = Object.freeze({
 });
 
 const IDENTITY_CAPABLE_SIGNAL_TYPES = new Set(['genres', 'keywords', 'studios', 'media_type']);
-const VALUES_KEYS = Object.freeze([
-  'require_all',
-  'require_any',
-  'include',
-  'prefer',
-  'exclude',
-  'mode',
-  'max',
-  'min',
-  'min_minutes',
-  'max_minutes',
-]);
-
 const scalarValueSchema = z.union([
   z.string().trim().min(1).max(120),
   z.number().finite().min(-100000).max(100000),
@@ -322,12 +309,10 @@ function buildInitialIntentRequestFingerprint(request = {}) {
 }
 
 export {
-  MAX_REQUEST_BYTES as POLICY_INITIAL_INTENT_ESTABLISHMENT_MAX_REQUEST_BYTES,
   POLICY_INITIAL_INTENT_AUTHORITY_SOURCE_ID,
   POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS,
   POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS,
   POLICY_INITIAL_INTENT_ESTABLISHMENT_VERSION,
-  VALUES_KEYS as POLICY_INITIAL_INTENT_ESTABLISHMENT_VALUE_KEYS,
   buildInitialIntentRequestFingerprint,
   buildInitialPolicyIntentContract,
   validatePolicyInitialDeclaredIntent,
