@@ -5109,9 +5109,10 @@ Acceptance criteria:
 
 Implementation status:
 
-- Task 8R.3.2.1 is implemented. The current manual administrator surface
-  remains a temporary recovery path until the reconciler status replacement has
-  passed the remaining acceptance criteria.
+- Task 8R.3.2.1 is implemented. Automatic reconciliation is the conversion
+  actor, and the former manual administrator surface was retired by Task
+  8R.3.2.6.4 after read-only status, alerting, lifecycle, and deletion-safety
+  acceptance criteria passed.
 - Design and outcome records:
   [Policy Native Intent Conversion Reconciler](policy-native-intent-conversion-reconciler.md)
   and [Native Intent Reconciliation Scheduler](native-intent-reconciliation-scheduler.md).
