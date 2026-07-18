@@ -198,6 +198,37 @@ describe('policyStorageFinalClosureReadout', () => {
     }
   );
 
+  test('separates repository readiness from pending active-installation cutover', async () => {
+    const output = await readout({
+      checkpointArtifact: await checkpointArtifact({
+        completionAuditArtifact: await buildCompletionAuditArtifactFixture({
+          appliedPaths: [MANIFEST_PATHS[0]],
+        }),
+      }),
+    });
+
+    expect(output.statusId)
+      .toBe(POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS.BLOCKED_BY_REMOVAL_AUDIT);
+    expect(output.implementationReadiness).toEqual(expect.objectContaining({
+      scope: 'repository',
+      ready: true,
+    }));
+    expect(output.instanceCutover).toEqual(expect.objectContaining({
+      scope: 'active_installation',
+      ready: false,
+      requiredForStorageClosure: true,
+    }));
+    expect(output.operatorSummary).toEqual(expect.objectContaining({
+      decision: 'implementation_ready_instance_cutover_pending',
+      nextAction:
+        'Complete the active-installation compatibility-removal evidence and controlled cutover workflow.',
+    }));
+    expect(output.nextStep).toEqual(expect.objectContaining({
+      stepId: 'policy_storage_instance_cutover',
+      label: 'Active Installation Cutover',
+    }));
+  });
+
   test('rejects a tampered checkpoint artifact even when its top-level completion fields appear valid', async () => {
     const artifact = await checkpointArtifact();
     artifact.checkpointSummary.componentImplementedCount = 0;

@@ -32,7 +32,11 @@ Current execution focus:
    rejects predecessor plan contracts and does not manufacture deletion
    approval. It can therefore report incomplete readiness rather than turning a
    historical partial manifest into current closure proof.
-6. Return to **6R.5 Operator Workflow Rebuild** only after the engine inputs
+6. **Closure Scope Separation**: completed as explicit repository
+   `implementationReadiness` and active-installation `instanceCutover` results
+   across closure evidence. A pending installation cutover cannot downgrade the
+   source implementation conclusion or bypass deletion safety.
+7. Return to **6R.5 Operator Workflow Rebuild** only after the engine inputs
    and native-authority invariants are reliable. It must replace the current
    manual builder rather than add another layer of controls to it.
 
@@ -7775,10 +7779,15 @@ Implementation status:
   `npm run policy:storage-current-closure-audit`.
 - The focused policy storage current closure audit test suite lives in
   `server/src/__tests__/services/policyStorageCurrentClosureAudit.test.mjs`.
-- Current closure audit v3 retains the normalized evidence needed to reproduce
+- Current closure audit v4 retains the normalized evidence needed to reproduce
   the closure decision, emits a SHA-256 fingerprint, and blocks the final
   requirement audit unless artifact verification and deterministic replay
   agree.
+- Current closure output now preserves repository `implementationReadiness`
+  separately from active-installation `instanceCutover`, with a dedicated
+  cutover next step when source implementation is ready. The contract and
+  outcome are documented in
+  [Policy Storage Closure Scope Separation](policy-storage-closure-scope-separation.md).
 - Current implementation reads mapped repository evidence and emits complete or
   blocked closure audits without writing files, mutating storage, running
   commands, or running Git.
@@ -8110,6 +8119,10 @@ Completion state:
 - Closure output must keep these scopes explicit as `implementationReadiness`
   and `instanceCutover`. The first never reads an installation database; the
   second never acts as a claim that source implementation work is incomplete.
+- The current closure audit v4 and final readout now publish those scope
+  summaries at their top-level decision boundary. Their fingerprints bind the
+  scope states and readiness booleans before a downstream requirement audit can
+  rely on them.
 - The closure catalog independently requires semantic native-authority
   eligibility and empty-intent recovery. A structural active-header repair
   alone cannot satisfy closure evidence because it does not prove that the

@@ -7,6 +7,11 @@ import {
 import {
   validatePolicyStorageCompletionCheckpointArtifactIntegrity,
 } from './policyStorageCompletionCheckpointArtifactIntegrity.mjs';
+import {
+  buildPolicyStorageClosureScopes,
+  isPolicyStorageImplementationReady,
+  isPolicyStorageInstanceCutoverReady,
+} from './policyStorageClosureScopes.mjs';
 
 const POLICY_STORAGE_FINAL_CLOSURE_READOUT_VERSION =
   'policy.storage_final_closure_readout.v1';
@@ -259,6 +264,8 @@ function determineStatusId({
 function buildOperatorSummary({
   statusId,
   checkpointArtifact = {},
+  implementationReadiness = {},
+  instanceCutover = {},
   risks = [],
 } = {}) {
   const normalized = normalizeCheckpointArtifact(checkpointArtifact);
@@ -272,6 +279,22 @@ function buildOperatorSummary({
       message:
         'Policy storage closure evidence is complete. Native storage migration, compatibility removal, validation, roadmap, and changelog proof are aligned.',
       nextAction: 'Policy storage closure can be treated as complete.',
+    };
+  }
+
+  if (
+    isPolicyStorageImplementationReady({ implementationReadiness, instanceCutover }) &&
+    !isPolicyStorageInstanceCutoverReady({ implementationReadiness, instanceCutover })
+  ) {
+    return {
+      decision: 'implementation_ready_instance_cutover_pending',
+      message:
+        'Repository implementation readiness is complete. Active-installation cutover evidence remains pending and does not change repository readiness.',
+      nextAction:
+        'Complete the active-installation compatibility-removal evidence and controlled cutover workflow.',
+      artifactRiskCount: artifactRisks.length,
+      checkpointRiskCount: checkpointRisks.length,
+      readoutRiskCount: risks.length,
     };
   }
 
@@ -310,6 +333,27 @@ function buildNextAction(statusId) {
   }
 }
 
+function buildNextStep({ implementationReadiness = {}, instanceCutover = {} } = {}) {
+  if (
+    isPolicyStorageImplementationReady({ implementationReadiness, instanceCutover }) &&
+    !isPolicyStorageInstanceCutoverReady({ implementationReadiness, instanceCutover })
+  ) {
+    return {
+      stepId: 'policy_storage_instance_cutover',
+      label: 'Active Installation Cutover',
+      reason:
+        'Repository implementation readiness is complete; final storage closure remains scoped to active-installation cutover evidence.',
+    };
+  }
+
+  return {
+    stepId: 'policy_storage_closure_complete',
+    label: 'Policy Storage Closure Complete',
+    reason:
+      'The final closure readout is the operator-facing completion decision for policy storage migration closure.',
+  };
+}
+
 async function buildPolicyStorageFinalClosureReadout({
   checkpointArtifact = {},
   generatedAt = null,
@@ -323,6 +367,13 @@ async function buildPolicyStorageFinalClosureReadout({
     ? checkpointArtifactIntegrity.artifact
     : checkpointArtifact;
   const normalized = normalizeCheckpointArtifact(verifiedCheckpointArtifact);
+  const {
+    implementationReadiness,
+    instanceCutover,
+  } = buildPolicyStorageClosureScopes({
+    implementationReadiness: normalized.checkpoint.implementationReadiness,
+    finalRemovalAudit: normalized.checkpoint.finalRemovalAudit,
+  });
   const combinedSideEffects = summarizeSideEffects(
     normalized.artifact,
     sideEffects
@@ -346,8 +397,12 @@ async function buildPolicyStorageFinalClosureReadout({
     operatorSummary: buildOperatorSummary({
       statusId,
       checkpointArtifact: verifiedCheckpointArtifact,
+      implementationReadiness,
+      instanceCutover,
       risks,
     }),
+    implementationReadiness,
+    instanceCutover,
     checkpointArtifactSummary: {
       statusId: normalized.artifactStatusId,
       complete: normalized.artifactComplete,
@@ -383,18 +438,14 @@ async function buildPolicyStorageFinalClosureReadout({
       requireReplayedCheckpointArtifact: true,
       requireCompleteCheckpointArtifact: true,
       requireCompleteNestedCheckpoint: true,
+      separateImplementationReadinessAndInstanceCutover: true,
       allowFileWrites: false,
       allowStorageMutation: false,
       allowGitCommandsInsideReadout: false,
       allowCommandExecutionInsideService: false,
       allowManifestWrite: false,
     },
-    nextStep: {
-      stepId: 'policy_storage_closure_complete',
-      label: 'Policy Storage Closure Complete',
-      reason:
-        'The final closure readout is the operator-facing completion decision for policy storage migration closure.',
-    },
+    nextStep: buildNextStep({ implementationReadiness, instanceCutover }),
   };
 
   return {

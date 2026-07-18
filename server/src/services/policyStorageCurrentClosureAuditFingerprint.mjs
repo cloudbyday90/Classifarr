@@ -11,7 +11,7 @@
 import { createHash } from 'node:crypto';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_FINGERPRINT_VERSION =
-  'policy.storage_current_closure_audit_fingerprint.v1';
+  'policy.storage_current_closure_audit_fingerprint.v2';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_FINGERPRINT_RISK_IDS = Object.freeze({
   MISSING_AUDIT: 'missing_audit',
@@ -68,6 +68,8 @@ function buildPolicyStorageCurrentClosureAuditProjection(audit = {}) {
       complete: value.complete === true,
       closureInput: stableValue(asObject(value.closureInput)),
       currentEvidence: stableValue(asObject(value.currentEvidence)),
+      implementationReadiness: stableValue(asObject(value.implementationReadiness)),
+      instanceCutover: stableValue(asObject(value.instanceCutover)),
       checkpointArtifact: stableValue(asObject(value.checkpointArtifact)),
       finalReadout: stableValue(asObject(value.finalReadout)),
       summary: stableValue(asObject(value.summary)),
@@ -100,6 +102,14 @@ function buildPolicyStorageCurrentClosureAuditFingerprint({ audit = {} } = {}) {
         null,
       evidenceRunStatusId:
         projection.audit.currentEvidence.evidenceRun?.statusId || null,
+      implementationReadinessStatusId:
+        projection.audit.implementationReadiness.statusId || null,
+      implementationReadinessReady:
+        projection.audit.implementationReadiness.ready === true,
+      instanceCutoverStatusId:
+        projection.audit.instanceCutover.statusId || null,
+      instanceCutoverReady:
+        projection.audit.instanceCutover.ready === true,
       checkpointArtifactStatusId:
         projection.audit.checkpointArtifact.statusId || null,
       finalReadoutStatusId: projection.audit.finalReadout.statusId || null,
@@ -172,6 +182,13 @@ function validatePolicyStorageCurrentClosureAuditFingerprint({
     provenance.completionAuditArtifactFingerprint !==
       expected.provenance.completionAuditArtifactFingerprint ||
     provenance.evidenceRunStatusId !== expected.provenance.evidenceRunStatusId ||
+    provenance.implementationReadinessStatusId !==
+      expected.provenance.implementationReadinessStatusId ||
+    provenance.implementationReadinessReady !==
+      expected.provenance.implementationReadinessReady ||
+    provenance.instanceCutoverStatusId !==
+      expected.provenance.instanceCutoverStatusId ||
+    provenance.instanceCutoverReady !== expected.provenance.instanceCutoverReady ||
     provenance.checkpointArtifactStatusId !==
       expected.provenance.checkpointArtifactStatusId ||
     provenance.finalReadoutStatusId !== expected.provenance.finalReadoutStatusId

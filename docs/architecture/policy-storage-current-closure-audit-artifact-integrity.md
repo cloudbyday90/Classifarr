@@ -87,7 +87,7 @@ Cons:
 
 ## Final Recommendation Stack
 
-1. Emit `policy.storage_current_closure_audit.v3` only with retained normalized
+1. Emit `policy.storage_current_closure_audit.v4` only with retained normalized
    current-state evidence, completion-audit artifact, validation evidence, and
    side-effect input.
 2. Bind the complete artifact projection using a versioned SHA-256 fingerprint.
@@ -112,7 +112,7 @@ Implemented:
 
 - `policyStorageCurrentClosureAuditFingerprint.mjs` produces and validates the
   SHA-256 projection and bounded provenance.
-- `policyStorageCurrentClosureAuditIntegrity.mjs` verifies a v3 artifact,
+- `policyStorageCurrentClosureAuditIntegrity.mjs` verifies a v4 artifact,
   reconstructs the pure closure chain from retained inputs, and rejects replay
   mismatches.
 - `policyStorageCurrentClosureAudit.mjs` now retains its closure inputs,

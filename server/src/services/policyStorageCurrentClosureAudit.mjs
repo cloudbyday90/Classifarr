@@ -22,13 +22,18 @@ import {
 import {
   validatePolicyStorageClosureValidationEvidenceIntegrity,
 } from './policyStorageClosureValidationEvidenceIntegrity.mjs';
+import {
+  isPolicyStorageImplementationReady,
+  isPolicyStorageInstanceCutoverReady,
+} from './policyStorageClosureScopes.mjs';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION =
-  'policy.storage_current_closure_audit.v3';
+  'policy.storage_current_closure_audit.v4';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
   BLOCKED_BY_CURRENT_EVIDENCE: 'blocked_by_current_evidence',
+  BLOCKED_BY_INSTANCE_CUTOVER: 'blocked_by_instance_cutover',
   BLOCKED_BY_CHECKPOINT_ARTIFACT: 'blocked_by_checkpoint_artifact',
   BLOCKED_BY_FINAL_READOUT: 'blocked_by_final_readout',
   BLOCKED_BY_SIDE_EFFECTS: 'blocked_by_side_effects',
@@ -309,6 +314,20 @@ function determineStatusId({
   }
 
   if (
+    isPolicyStorageImplementationReady({
+      implementationReadiness: currentEvidenceRun.implementationReadiness,
+      instanceCutover: currentEvidenceRun.instanceCutover,
+    }) &&
+    !isPolicyStorageInstanceCutoverReady({
+      implementationReadiness: currentEvidenceRun.implementationReadiness,
+      instanceCutover: currentEvidenceRun.instanceCutover,
+    })
+  ) {
+    return POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
+      .BLOCKED_BY_INSTANCE_CUTOVER;
+  }
+
+  if (
     currentEvidenceRun.statusId !==
       POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.COMPLETE ||
     currentEvidenceRun.complete !== true
@@ -336,6 +355,27 @@ function determineStatusId({
 
   return POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
     .BLOCKED_BY_CHECKPOINT_ARTIFACT;
+}
+
+function buildNextStep({ implementationReadiness = {}, instanceCutover = {} } = {}) {
+  if (
+    isPolicyStorageImplementationReady({ implementationReadiness, instanceCutover }) &&
+    !isPolicyStorageInstanceCutoverReady({ implementationReadiness, instanceCutover })
+  ) {
+    return {
+      stepId: 'policy_storage_instance_cutover',
+      label: 'Active Installation Cutover',
+      reason:
+        'Repository implementation readiness is complete; final storage closure remains scoped to active-installation cutover evidence.',
+    };
+  }
+
+  return {
+    stepId: 'policy_storage_current_closure_complete',
+    label: 'Policy Storage Current Closure Complete',
+    reason:
+      'A complete policy storage current closure audit proves the current checkout satisfies the policy storage closure chain.',
+  };
 }
 
 async function buildPolicyStorageCurrentClosureAuditFromEvidence({
@@ -384,6 +424,10 @@ async function buildPolicyStorageCurrentClosureAuditFromEvidence({
     finalReadout,
     sideEffects: combinedSideEffects,
   });
+  const implementationReadiness =
+    normalizedCurrentEvidence.evidenceRun?.implementationReadiness || {};
+  const instanceCutover =
+    normalizedCurrentEvidence.evidenceRun?.instanceCutover || {};
   const audit = {
     version: POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION,
     generatedAt: normalizeGeneratedAt(generatedAt),
@@ -399,6 +443,8 @@ async function buildPolicyStorageCurrentClosureAuditFromEvidence({
       changelogEvidence: normalizedCurrentEvidence.changelogEvidence,
       evidenceRun: normalizedCurrentEvidence.evidenceRun,
     },
+    implementationReadiness,
+    instanceCutover,
     closureInput: buildClosureInput({
       currentEvidence: normalizedCurrentEvidence,
       completionAuditArtifact,
@@ -419,6 +465,8 @@ async function buildPolicyStorageCurrentClosureAuditFromEvidence({
       validationEvidenceComplete: hasValidationEvidence(validationEvidence),
       validationEvidenceArtifactFingerprint:
         validationEvidence.artifactFingerprint?.fingerprint || null,
+      implementationReadinessReady: implementationReadiness.ready === true,
+      instanceCutoverReady: instanceCutover.ready === true,
     },
     riskCount: risks.length,
     risks,
@@ -435,18 +483,14 @@ async function buildPolicyStorageCurrentClosureAuditFromEvidence({
       requireCurrentArtifactInventory: true,
       retainClosureInputs: true,
       emitArtifactFingerprint: true,
+      separateImplementationReadinessAndInstanceCutover: true,
       allowFileWrites: false,
       allowStorageMutation: false,
       allowGitCommandsInsideAudit: false,
       allowCommandExecutionInsideService: false,
       allowManifestWrite: false,
     },
-    nextStep: {
-      stepId: 'policy_storage_current_closure_complete',
-      label: 'Policy Storage Current Closure Complete',
-      reason:
-        'A complete policy storage current closure audit proves the current checkout satisfies the policy storage closure chain.',
-    },
+    nextStep: buildNextStep({ implementationReadiness, instanceCutover }),
   };
 
   const auditWithFingerprint = {

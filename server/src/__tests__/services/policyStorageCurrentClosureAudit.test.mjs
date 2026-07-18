@@ -99,6 +99,16 @@ describe('policyStorageCurrentClosureAudit', () => {
       finalReadoutComplete: true,
       missingCurrentArtifactCount: 0,
       validationEvidenceComplete: true,
+      implementationReadinessReady: true,
+      instanceCutoverReady: true,
+    }));
+    expect(audit.implementationReadiness).toEqual(expect.objectContaining({
+      scope: 'repository',
+      ready: true,
+    }));
+    expect(audit.instanceCutover).toEqual(expect.objectContaining({
+      scope: 'active_installation',
+      ready: true,
     }));
     expect(audit.sideEffects.filesRead).toBe(true);
     expect(audit.sideEffects.filesWritten).toBe(false);
@@ -183,7 +193,19 @@ describe('policyStorageCurrentClosureAudit', () => {
 
     expect(audit.statusId)
       .toBe(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
-        .BLOCKED_BY_CURRENT_EVIDENCE);
+        .BLOCKED_BY_INSTANCE_CUTOVER);
+    expect(audit.implementationReadiness).toEqual(expect.objectContaining({
+      scope: 'repository',
+      ready: true,
+    }));
+    expect(audit.instanceCutover).toEqual(expect.objectContaining({
+      scope: 'active_installation',
+      ready: false,
+    }));
+    expect(audit.nextStep).toEqual(expect.objectContaining({
+      stepId: 'policy_storage_instance_cutover',
+      label: 'Active Installation Cutover',
+    }));
     expect(audit.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
       POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_RISK_IDS
         .COMPLETION_AUDIT_ARTIFACT_NOT_COMPLETE,
@@ -204,7 +226,7 @@ describe('policyStorageCurrentClosureAudit', () => {
 
     expect(audit.statusId)
       .toBe(POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS
-        .BLOCKED_BY_CURRENT_EVIDENCE);
+        .BLOCKED_BY_INSTANCE_CUTOVER);
     expect(audit.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:

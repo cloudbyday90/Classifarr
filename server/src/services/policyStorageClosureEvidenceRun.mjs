@@ -3,6 +3,9 @@ import {
   POLICY_STORAGE_COMPLETION_COMPONENTS,
   buildPolicyStorageCompletionCheckpoint,
 } from './policyStorageCompletionCheckpoint.mjs';
+import {
+  buildPolicyStorageClosureScopes,
+} from './policyStorageClosureScopes.mjs';
 
 const POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_VERSION =
   'policy.storage_closure_evidence_run.v2';
@@ -624,37 +627,6 @@ function determineStatusId({ risks = [], checkpoint = {} } = {}) {
   return POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.COMPLETE;
 }
 
-function buildImplementationReadinessEvidence(checkpoint = {}) {
-  const readiness = checkpoint.implementationReadiness || {};
-
-  return {
-    scope: 'repository',
-    statusId: readiness.statusId || null,
-    ready: readiness.ready === true,
-    validationOk: readiness.validationOk === true,
-    riskCount: readiness.riskCount ?? null,
-    risks: asArray(readiness.risks),
-  };
-}
-
-function buildInstanceCutoverEvidence(checkpoint = {}) {
-  const finalRemovalAudit = checkpoint.finalRemovalAudit || {};
-
-  return {
-    scope: 'active_installation',
-    requiredForStorageClosure: true,
-    statusId: finalRemovalAudit.statusId || null,
-    ready:
-      finalRemovalAudit.complete === true &&
-      finalRemovalAudit.validationOk === true &&
-      finalRemovalAudit.integrityOk === true,
-    integrityOk: finalRemovalAudit.integrityOk === true,
-    validationOk: finalRemovalAudit.validationOk === true,
-    riskCount: asArray(finalRemovalAudit.risks).length,
-    risks: asArray(finalRemovalAudit.risks),
-  };
-}
-
 async function buildPolicyStorageClosureEvidenceRun({
   artifactInventory = {},
   componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
@@ -710,8 +682,13 @@ async function buildPolicyStorageClosureEvidenceRun({
     ));
   }
 
-  const implementationReadiness = buildImplementationReadinessEvidence(checkpoint);
-  const instanceCutover = buildInstanceCutoverEvidence(checkpoint);
+  const {
+    implementationReadiness,
+    instanceCutover,
+  } = buildPolicyStorageClosureScopes({
+    implementationReadiness: checkpoint.implementationReadiness,
+    finalRemovalAudit: checkpoint.finalRemovalAudit,
+  });
 
   const evidenceRun = {
     version: POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_VERSION,

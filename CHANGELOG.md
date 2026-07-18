@@ -18,6 +18,13 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Repository And Installation Closure Separation** - policy storage closure
+  evidence now reports repository implementation readiness independently from
+  an active installation's compatibility-removal cutover. Pending instance
+  evidence remains fail-closed for deletion and final closure, but cannot make
+  the source implementation appear incomplete or depend on local media-server
+  configuration.
+
 - **Isolated ESM Integration Imports** - the static-import quality gate now
   recognizes integration suites that must load services after the shared Jest
   database facade is registered. This preserves Testcontainers isolation and

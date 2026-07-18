@@ -17,6 +17,11 @@ treated as complete right now? If not, it reports the blocking category:
 - artifact validation,
 - side effects.
 
+It also exposes repository `implementationReadiness` and active-installation
+`instanceCutover` as separate bounded summaries. A ready repository with a
+pending installation cutover remains blocked for final closure, but is not
+reported as an incomplete product implementation.
+
 The service does not collect evidence, run commands, write files, write
 manifests, mutate storage, or run Git. It only classifies a supplied
 machine-readable checkpoint artifact into a stable completion decision.
@@ -92,6 +97,23 @@ Cons:
 
 - callers must understand the bounded status IDs.
 
+### Publish Repository And Installation Scope Separately
+
+The readout should return replayed repository implementation and
+active-installation cutover states independently. When only cutover is pending,
+the operator summary and next step must say so without exposing installation
+configuration or relaxing final closure.
+
+Pros:
+
+- distinguishes release readiness from per-installation progress,
+- keeps final closure fail-closed,
+- gives a precise next action without database or media-server details.
+
+Cons:
+
+- consumers must not treat repository readiness as deletion authorization.
+
 ### Reject Side Effects
 
 The readout should not write files, run commands, mutate storage, or run Git.
@@ -123,6 +145,8 @@ Use this stack for policy storage final closure readout:
 8. Emit a stable operator summary with the final decision and next action.
 9. Emit semantic `nextStep.stepId = policy_storage_closure_complete` when
    storage closure evidence is complete.
+10. Emit `policy_storage_instance_cutover` when repository implementation is
+    ready but active-installation cutover remains incomplete.
 
 ## Implementation Outcome
 
@@ -147,6 +171,8 @@ Implemented:
   wrapper evidence now fails closed with artifact-validation status.
 - Added public CLI verification for complete artifacts, tamper rejection with
   no output by default, and explicitly allowed blocked diagnostics.
+- Added explicit repository implementation and active-installation cutover
+  summaries, with a dedicated pending-cutover operator decision and next step.
 
 Example:
 

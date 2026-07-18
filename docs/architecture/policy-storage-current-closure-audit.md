@@ -20,6 +20,10 @@ It then builds:
 - a policy storage final closure readout,
 - a fingerprinted, replay-verifiable policy storage current closure audit JSON.
 
+The audit reports repository implementation readiness and active-installation
+cutover as separate top-level scope summaries. Only the latter depends on one
+installation's controlled compatibility-removal evidence.
+
 The service reads repository files but does not run tests, run Git, write files,
 write manifests, mutate storage, or infer missing removal evidence.
 
@@ -110,6 +114,23 @@ Pros:
 Cons:
 
 - stale or missing JSON artifacts block closure until regenerated.
+
+### Separate Repository Readiness From Installation Cutover
+
+The audit should report a ready repository independently from an installation
+whose cutover evidence remains incomplete. Final closure still requires both
+scopes, but a pending installation cutover must not be described as a missing
+source implementation.
+
+Pros:
+
+- keeps source validation configuration-agnostic,
+- preserves strict active-installation deletion gates,
+- gives a precise, actionable next step.
+
+Cons:
+
+- closure consumers must distinguish readiness from final completion.
 
 ### Bind And Replay The Current Closure Artifact
 
@@ -216,9 +237,16 @@ Implemented:
 - The audit now passes the full completion-audit artifact through the current
   evidence run and checkpoint artifact. It never unwraps a detached nested
   audit object.
-- Current closure audit v3 retains normalized replay inputs and emits a
+- Current closure audit v4 retains normalized replay inputs and emits a
   fingerprint that binds the full closure decision, including current evidence,
   completion evidence, validation evidence, status, risks, and side effects.
+- Repository `implementationReadiness` and active-installation `instanceCutover`
+  are now explicit, fingerprint-bound summaries. When only installation
+  evidence is pending, the audit returns `blocked_by_instance_cutover` and the
+  `policy_storage_instance_cutover` next step rather than a generic source
+  evidence failure.
+- The detailed scope contract is documented in
+  [Policy Storage Closure Scope Separation](policy-storage-closure-scope-separation.md).
 - The current-closure boundary now establishes one timestamp for the audit,
   checkpoint, and final readout when a caller does not provide one. A normal
   command invocation therefore produces a replayable artifact rather than
