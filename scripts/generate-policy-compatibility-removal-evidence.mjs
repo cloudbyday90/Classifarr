@@ -17,6 +17,9 @@ import {
   scanPolicyStorageClosureReferences,
 } from './lib/policyStorageClosureReferenceScanner.mjs';
 import {
+  collectPolicyCompatibilityRemovalReferenceScan,
+} from './lib/policyCompatibilityRemovalEvidenceReferenceScan.mjs';
+import {
   buildPolicyCompatibilityRemovalEvidenceRegeneration,
 } from '../server/src/services/policyCompatibilityRemovalEvidenceRegeneration.mjs';
 import {
@@ -226,19 +229,19 @@ async function main() {
     process.exit(2);
   }
 
-  const executionPlanSource = resolvePolicyStorageClosureExecutionPlanSource({
+  const referenceScan = collectPolicyCompatibilityRemovalReferenceScan({
+    missingRequiredInputs,
+    cwd,
     executionPlanArtifact,
+    resolveExecutionPlanSource: resolvePolicyStorageClosureExecutionPlanSource,
+    scanReferences: scanPolicyStorageClosureReferences,
   });
-  const manifestPaths = executionPlanSource.manifestPaths;
   const evidence = await buildPolicyCompatibilityRemovalEvidenceRegeneration({
     executionPlanArtifact,
     nextBatchAuthorizationArtifact,
     reviewArtifactFingerprint: options.reviewArtifactFingerprint,
     validationEvidence,
-    referenceScan: scanPolicyStorageClosureReferences({
-      cwd,
-      manifestPaths,
-    }),
+    referenceScan,
     fileExists: repositoryPath => fileExistsAtRepositoryPath(cwd, repositoryPath),
     generatedAt: options.generatedAt,
   });

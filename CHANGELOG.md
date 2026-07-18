@@ -60,8 +60,8 @@ unchanged operator or runtime outcome.
   compatibility-removal evidence chain has not yet been created, Classifarr now
   emits only the missing approval categories in an explicit diagnostic run. The
   read-only report cannot act as closure authority and does not write a nested
-  completion-audit artifact, preventing incomplete readiness checks from
-  looking like deletion approval.
+  completion-audit artifact, resolve a deletion plan, or scan a checkout,
+  preventing incomplete readiness checks from looking like deletion approval.
 
 - **Checkout-Bound Compatibility Evidence** - compatibility-removal evidence
   generation now resolves relative input and output artifacts from the same

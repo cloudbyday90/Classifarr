@@ -148,12 +148,14 @@ Implemented:
 - Explicit diagnostic mode now handles the realistic pre-approval state where
   a current execution plan, authorization artifact, review fingerprint, or
   validation artifact has not yet been created. It short-circuits before
-  planning, source scanning, or completion-audit construction and emits only
-  the exact missing categories with boolean input-presence flags. The compact
-  record is non-authoritative, performs no side effects, validates only as a
-  diagnostic, and cannot satisfy a closure gate. It does not write a nested
-  completion-audit artifact. Default mode still exits before writing output;
-  unreadable explicitly supplied JSON remains a command error.
+  planning, source scanning, or completion-audit construction. The public
+  command enforces that boundary before it resolves the execution-plan wrapper
+  or walks a checkout. It emits only the exact missing categories with boolean
+  input-presence flags. The compact record is non-authoritative, performs no
+  side effects, validates only as a diagnostic, and cannot satisfy a closure
+  gate. It does not write a nested completion-audit artifact. Default mode
+  still exits before writing output; unreadable explicitly supplied JSON
+  remains a command error.
 - Relative evidence input and output paths now resolve from the requested
   `--cwd` checkout rather than the process caller directory. This keeps the
   verified artifacts, source scan, path state, and generated record in one
