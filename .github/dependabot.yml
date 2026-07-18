@@ -45,6 +45,11 @@ updates:
       - "npm"
       - "client"
     open-pull-requests-limit: 10
+    # vue-tsc relies on the TypeScript compiler API, which TypeScript 7 does not
+    # expose yet. Keep this scoped to the incompatible major line.
+    ignore:
+      - dependency-name: "typescript"
+        versions: ["7.x"]
     groups:
       client-runtime:
         dependency-type: "production"
