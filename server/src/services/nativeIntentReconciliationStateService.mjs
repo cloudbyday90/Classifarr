@@ -57,6 +57,29 @@ function buildStateMap(states = []) {
     .map(state => [state.policyId, state]));
 }
 
+function normalizeStateWriteResult(value) {
+  if (value && typeof value === 'object') {
+    const upsertedCount = Number(value.upsertedCount);
+    const deletedCount = Number(value.deletedCount);
+    if (Number.isInteger(upsertedCount) && upsertedCount >= 0 &&
+      Number.isInteger(deletedCount) && deletedCount >= 0) {
+      return {
+        upsertedCount,
+        deletedCount,
+        skippedAuthoritative: value.statusId === 'skipped_authoritative',
+      };
+    }
+  }
+
+  // Preserve the injected persistence seam used by existing callers and tests.
+  // The default persistence adapter always returns an explicit count object.
+  return {
+    upsertedCount: 1,
+    deletedCount: 0,
+    skippedAuthoritative: false,
+  };
+}
+
 function buildPersistedOutcome({ outcome, existingState }) {
   if (!outcome || outcome.clearState === true) return null;
 
@@ -139,17 +162,28 @@ export class NativeIntentReconciliationStateService {
     }
 
     const result = await dbClient.withTransaction(async client => {
+      let upsertedCount = 0;
+      let deletedCount = 0;
+      let skippedAuthoritativeCount = 0;
       for (const state of upserts) {
-        await this.upsertState({ client, state });
+        const writeResult = normalizeStateWriteResult(await this.upsertState({ client, state }));
+        upsertedCount += writeResult.upsertedCount;
+        deletedCount += writeResult.deletedCount;
+        if (writeResult.skippedAuthoritative) skippedAuthoritativeCount += 1;
       }
-      const deletedCount = await this.deleteStates({ client, policyIds: deletes });
-      return { deletedCount };
+      const requestedDeletedCount = await this.deleteStates({ client, policyIds: deletes });
+      return {
+        upsertedCount,
+        deletedCount: deletedCount + requestedDeletedCount,
+        skippedAuthoritativeCount,
+      };
     });
 
     return {
       statusId: 'persisted',
-      upsertedCount: upserts.length,
+      upsertedCount: result.upsertedCount,
       deletedCount: result.deletedCount,
+      skippedAuthoritativeCount: result.skippedAuthoritativeCount,
       rawPayloadExposed: false,
     };
   }

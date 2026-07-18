@@ -18,6 +18,7 @@ import {
   validatePolicyInitialIntentEstablishmentRequest,
 } from './policyInitialIntentEstablishmentContract.mjs';
 import {
+  clearInitialEstablishmentReconciliationState,
   completeInitialEstablishment,
   insertInitialIntentMigrationEvent,
   insertInitialIntentRollbackSnapshot,
@@ -58,6 +59,7 @@ function buildResult({
   applied = false,
   replayed = false,
   routingConfigured = false,
+  reconciliationStateCleared = false,
   ruleCount = 0,
   riskId = null,
   message = null,
@@ -82,6 +84,7 @@ function buildResult({
       nativeAuthorityCreated: applied,
       rollbackSnapshotCreated: applied,
       routingConfigurationCopied: applied && routingConfigured,
+      reconciliationStateCleared: applied && reconciliationStateCleared,
       automatedRoutingStarted: false,
       legacyRowsChanged: false,
     },
@@ -359,6 +362,10 @@ async function applyPolicyInitialIntentEstablishment({
       if (!migrationEventId || !rollbackSnapshotId || !completedId) {
         throw new Error('Initial native intent establishment audit record was incomplete.');
       }
+      const clearedReconciliationPolicyId = await clearInitialEstablishmentReconciliationState({
+        client,
+        policyId: policy.id,
+      });
 
       return buildResult({
         statusId: POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.ESTABLISHED,
@@ -369,6 +376,7 @@ async function applyPolicyInitialIntentEstablishment({
         rollbackSnapshotId: Number(rollbackSnapshotId),
         applied: true,
         routingConfigured,
+        reconciliationStateCleared: Number(clearedReconciliationPolicyId) === Number(policy.id),
         ruleCount: rulesInserted,
       });
     });

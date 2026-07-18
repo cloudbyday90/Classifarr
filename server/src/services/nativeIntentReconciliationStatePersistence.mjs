@@ -8,6 +8,10 @@
  * (at your option) any later version.
  */
 
+import {
+  buildNativeIntentAuthoritySqlPredicate,
+} from './policyNativeIntentAuthorityEligibility.mjs';
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -41,7 +45,10 @@ async function loadNativeIntentReconciliationStates({ db, policyIds }) {
 }
 
 async function upsertNativeIntentReconciliationState({ client, state }) {
-  await client.query(
+  const authorityPredicate = buildNativeIntentAuthoritySqlPredicate({
+    intentAlias: 'active_intent',
+  });
+  const upserted = await client.query(
     `INSERT INTO policy_native_intent_reconciliation_states (
        policy_id,
        candidate_fingerprint,
@@ -52,7 +59,13 @@ async function upsertNativeIntentReconciliationState({ client, state }) {
        failure_count,
        evaluated_at
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     SELECT $1, $2, $3, $4, $5, $6, $7, $8
+     WHERE NOT EXISTS (
+       SELECT 1
+       FROM policy_intents active_intent
+       WHERE active_intent.policy_id = $1
+         AND ${authorityPredicate}
+     )
      ON CONFLICT (policy_id) DO UPDATE
      SET candidate_fingerprint = EXCLUDED.candidate_fingerprint,
          candidate_status_id = EXCLUDED.candidate_status_id,
@@ -61,7 +74,14 @@ async function upsertNativeIntentReconciliationState({ client, state }) {
          retry_not_before = EXCLUDED.retry_not_before,
          failure_count = EXCLUDED.failure_count,
          evaluated_at = EXCLUDED.evaluated_at,
-         updated_at = NOW()`,
+         updated_at = NOW()
+     WHERE NOT EXISTS (
+       SELECT 1
+       FROM policy_intents active_intent
+       WHERE active_intent.policy_id = EXCLUDED.policy_id
+         AND ${authorityPredicate}
+     )
+     RETURNING policy_id`,
     [
       state.policyId,
       state.candidateFingerprint,
@@ -73,6 +93,34 @@ async function upsertNativeIntentReconciliationState({ client, state }) {
       state.evaluatedAt,
     ],
   );
+
+  // A candidate snapshot can become stale while its reconciliation batch is
+  // waiting on a first-establishment transaction. Recheck after the upsert so
+  // that a post-commit snapshot cannot recreate a maintenance marker.
+  const cleared = await client.query(
+    `DELETE FROM policy_native_intent_reconciliation_states state
+     WHERE state.policy_id = $1
+       AND EXISTS (
+         SELECT 1
+         FROM policy_intents active_intent
+         WHERE active_intent.policy_id = state.policy_id
+           AND ${authorityPredicate}
+       )
+     RETURNING state.policy_id`,
+    [state.policyId],
+  );
+
+  const upsertedCount = asArray(upserted?.rows).length;
+  const deletedCount = asArray(cleared?.rows).length;
+
+  return {
+    statusId: deletedCount > 0
+      ? 'cleared_authoritative'
+      : (upsertedCount > 0 ? 'upserted' : 'skipped_authoritative'),
+    upsertedCount,
+    deletedCount,
+    rawPayloadExposed: false,
+  };
 }
 
 async function deleteNativeIntentReconciliationStates({ client, policyIds }) {

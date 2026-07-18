@@ -5644,6 +5644,14 @@ Implementation status:
   workflow evidence cannot stand in for the distinct first-authority boundary.
   The design and outcome record is [Initial Native Intent Establishment Closure
   Evidence](policy-initial-establishment-closure-evidence.md).
+- Task 8R.3.2.10.5 is implemented as transactional reconciliation-state
+  finalization. A successful first establishment clears only its matching
+  `requires_initial_policy_establishment` terminal marker in the same
+  transaction, and reconciliation persistence rechecks semantic native
+  authority before and after writing state so an in-flight snapshot cannot
+  recreate a false maintenance blocker. The design and outcome record is
+  [Initial Establishment Reconciliation-State
+  Finalization](policy-initial-establishment-reconciliation-state-finalization.md).
 - **Initial-establishment triage is complete.** Select subsequent work from
   the remaining 8R runtime-authority and production-cutover acceptance
   criteria; do not add a routine editor around first establishment.

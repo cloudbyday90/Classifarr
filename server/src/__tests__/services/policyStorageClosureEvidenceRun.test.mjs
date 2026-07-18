@@ -148,9 +148,12 @@ describe('policyStorageClosureEvidenceRun', () => {
           'docs/architecture/native-policy-initial-establishment-triage.md',
           'docs/architecture/native-policy-initial-establishment-transition.md',
           'docs/architecture/native-policy-initial-establishment-readiness.md',
+          'docs/architecture/policy-initial-establishment-reconciliation-state-finalization.md',
         ]),
         contractPaths: expect.arrayContaining([
           'server/src/services/policyIntentMigrationCandidateReport.mjs',
+          'server/src/services/nativeIntentReconciliationStatePersistence.mjs',
+          'server/src/services/nativeIntentReconciliationStateService.mjs',
           'server/src/services/policyInitialIntentEstablishmentService.mjs',
           'server/src/services/policyInitialIntentEstablishmentReadinessService.mjs',
           'database/migrations/20260716_050000_add_policy_initial_intent_establishments.sql',
@@ -158,8 +161,11 @@ describe('policyStorageClosureEvidenceRun', () => {
         ]),
         testPaths: expect.arrayContaining([
           'server/src/__tests__/services/policyInitialIntentEstablishmentService.test.mjs',
+          'server/src/__tests__/services/nativeIntentReconciliationStatePersistence.test.mjs',
+          'server/src/__tests__/services/nativeIntentReconciliationStateService.test.mjs',
           'server/src/__tests__/services/policyInitialIntentEstablishmentReadinessService.test.mjs',
           'server/src/__tests__/integration/policy-initial-intent-establishment-readiness.test.mjs',
+          'server/src/__tests__/integration/native-intent-reconciliation-state-persistence.test.mjs',
         ]),
       })
     );

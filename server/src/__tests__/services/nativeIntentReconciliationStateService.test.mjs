@@ -94,6 +94,36 @@ describe('NativeIntentReconciliationStateService', () => {
     expect(defaultDb.withTransaction).not.toHaveBeenCalled();
   });
 
+  test('reports a state write skipped because a concurrent transition made native authority current', async () => {
+    const client = { query: jest.fn().mockResolvedValue({ rows: [] }) };
+    const db = {
+      withTransaction: jest.fn(async callback => callback(client)),
+    };
+    const service = new NativeIntentReconciliationStateService({
+      db,
+      upsertState: jest.fn().mockResolvedValue({
+        statusId: 'skipped_authoritative',
+        upsertedCount: 0,
+        deletedCount: 0,
+        rawPayloadExposed: false,
+      }),
+      deleteStates: jest.fn().mockResolvedValue(0),
+      loggerInstance: { info: jest.fn() },
+    });
+
+    const result = await service.persist({
+      stateUpserts: [{ policyId: 10 }],
+      dbClient: db,
+    });
+
+    expect(result).toMatchObject({
+      statusId: 'persisted',
+      upsertedCount: 0,
+      deletedCount: 0,
+      skippedAuthoritativeCount: 1,
+    });
+  });
+
   test('honors a persisted retry backoff after a fresh service instance restarts', async () => {
     const candidate = {
       policyId: 12,

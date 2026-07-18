@@ -52,6 +52,7 @@ function createClient({
     quality_profile_id: 2,
   },
   reserveId = 51,
+  initialEstablishmentReconciliationState = null,
   failStatement = null,
 } = {}) {
   return {
@@ -96,6 +97,12 @@ function createClient({
       }
       if (statement.includes('UPDATE policy_initial_intent_establishments')) {
         return { rows: [{ id: reserveId }], rowCount: 1 };
+      }
+      if (statement.includes('DELETE FROM policy_native_intent_reconciliation_states')) {
+        return {
+          rows: initialEstablishmentReconciliationState ? [initialEstablishmentReconciliationState] : [],
+          rowCount: initialEstablishmentReconciliationState ? 1 : 0,
+        };
       }
 
       return { rows: [], rowCount: 1 };
@@ -148,6 +155,28 @@ describe('policyInitialIntentEstablishmentService', () => {
     expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO policy_intent_rollback_snapshots'),
       expect.arrayContaining([101, 44])
+    );
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining("candidate_status_id = 'requires_initial_policy_establishment'"),
+      [44]
+    );
+  });
+
+  test('reports a matching initial-establishment reconciliation marker as cleared', async () => {
+    const client = createClient({
+      initialEstablishmentReconciliationState: { policy_id: 44 },
+    });
+    const dbClient = { withTransaction: async work => work(client) };
+
+    const result = await applyPolicyInitialIntentEstablishment({
+      dbClient,
+      ...serviceRequest(),
+    });
+
+    expect(result.sideEffects.reconciliationStateCleared).toBe(true);
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining("reason_id = 'requires_initial_policy_establishment'"),
+      [44]
     );
   });
 
@@ -208,6 +237,10 @@ describe('policyInitialIntentEstablishmentService', () => {
       expect.stringContaining('INSERT INTO policy_intents'),
       expect.anything()
     );
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('DELETE FROM policy_native_intent_reconciliation_states'),
+      expect.anything()
+    );
   });
 
   test('rolls back the entire transition when a late persistence write fails', async () => {
@@ -226,5 +259,18 @@ describe('policyInitialIntentEstablishmentService', () => {
     expect(result.validation.issues[0].riskId)
       .toBe(POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS.TRANSACTION_FAILED);
     expect(JSON.stringify(result)).not.toContain('persistence failure');
+  });
+
+  test('rolls back establishment when reconciliation-state finalization fails', async () => {
+    const client = createClient({
+      failStatement: 'DELETE FROM policy_native_intent_reconciliation_states',
+    });
+    const dbClient = { withTransaction: jest.fn(async work => work(client)) };
+
+    const result = await applyPolicyInitialIntentEstablishment({ dbClient, ...serviceRequest() });
+
+    expect(result.statusId).toBe(POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.FAILED_ROLLED_BACK);
+    expect(result.validation.issues[0].riskId)
+      .toBe(POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS.TRANSACTION_FAILED);
   });
 });

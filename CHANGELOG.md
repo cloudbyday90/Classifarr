@@ -39,6 +39,10 @@ unchanged operator or runtime outcome.
   now independently requires initial-establishment triage, the explicit
   transactional authority transition, and bounded readiness/recovery proof.
   Legacy-conversion evidence cannot mask a missing first-authority safeguard.
+  Successful establishment also clears only its matching terminal maintenance
+  marker in the same transaction, while reconciliation state persistence
+  rejects or clears a delayed stale snapshot once semantic native authority is
+  current.
 
 - **Initial Native Policy Establishment Triage** - reconciliation now separates
   destinations with no legacy preset configuration from malformed or

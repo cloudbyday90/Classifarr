@@ -418,7 +418,22 @@ async function completeInitialEstablishment({
   return firstRow(result)?.id ?? null;
 }
 
+async function clearInitialEstablishmentReconciliationState({ client, policyId }) {
+  const result = await client.query(
+    `DELETE FROM policy_native_intent_reconciliation_states
+     WHERE policy_id = $1
+       AND candidate_status_id = 'requires_initial_policy_establishment'
+       AND outcome_state = 'requires_maintenance'
+       AND reason_id = 'requires_initial_policy_establishment'
+     RETURNING policy_id`,
+    [policyId]
+  );
+
+  return firstRow(result)?.policy_id ?? null;
+}
+
 export {
+  clearInitialEstablishmentReconciliationState,
   completeInitialEstablishment,
   insertInitialIntentMigrationEvent,
   insertInitialIntentRollbackSnapshot,
