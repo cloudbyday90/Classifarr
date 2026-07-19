@@ -107,5 +107,7 @@ This component does not add rollback of an already applied path, filesystem
 deletion mechanics, Git mutation, database mutation, or automatic retry. A
 later component may decide whether a verified, fresh reviewed batch can be
 created after a blocker is resolved; it must not reuse a failed apply batch.
-Task 8R.19.2 owns verification eligibility for a partial applied prefix and
-must not allow it to authorize another removal batch or completion audit.
+The implemented partial-apply verifier owns verification eligibility for a
+partial applied prefix and does not allow it to authorize another removal batch
+or completion audit. See
+[Policy Post-Removal Partial-Apply Verification Eligibility](policy-post-removal-partial-apply-verification-eligibility.md).

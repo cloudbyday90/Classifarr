@@ -23,6 +23,12 @@ The component consumes bounded evidence:
 Additional compatibility removal batches remain blocked until this verifier
 passes.
 
+When an apply stops after a bounded prefix, the verifier may produce a separate
+`verified_partial_apply` result. It verifies only the paths that actually
+applied, requires explicit halted-entry and review/gate provenance, and is
+never authorization-eligible. See
+[partial-apply verification eligibility](policy-post-removal-partial-apply-verification-eligibility.md).
+
 ## Official-Source Research
 
 - Git `grep` documents searching tracked files, the index, or tree objects for
@@ -141,7 +147,7 @@ Use this stack for post-removal runtime verification:
 Implemented:
 
 - Renamed the verifier to `policyPostRemovalRuntimeVerification.mjs`.
-- Updated the contract version to `policy.post_removal_runtime_verification.v1`.
+- Updated the contract version to `policy.post_removal_runtime_verification.v3`.
 - Renamed exports to:
   - `POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS`,
   - `POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS`,
@@ -154,6 +160,11 @@ Implemented:
 - Updated the verifier to consume only validated runtime evidence artifacts and
   block missing, altered, or cross-batch supplied evidence with bounded
   diagnostics before verification can pass.
+- Added a modular partial-apply eligibility evaluator. It accepts only a
+  contiguous valid prefix with known halt status, bounded stopped entry, intact
+  review/gate fingerprints, and exact applied-path evidence scope. Its
+  `verified_partial_apply` result is non-authorizing and routes only to blocker
+  resolution.
 - Added focused tests for verified output, apply blocker, import/reference
   blocker, runtime blocker, validation blocker, side-effect blocker, and mutated
   output validation.

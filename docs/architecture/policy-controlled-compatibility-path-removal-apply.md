@@ -198,8 +198,8 @@ Use this stack for controlled compatibility path removal apply:
    storage mutation, or Git-mutation side effect; do not submit later entries.
 6. Emit the halted entry, fixed halt reason, and only the evidence for entries
    already applied.
-7. Add a bounded partial-apply verifier before permitting runtime verification
-   after partial success; route zero-removal outcomes to blocker resolution.
+7. Use the bounded partial-apply verifier after partial success; route
+   zero-removal outcomes and verified partial prefixes to blocker resolution.
 
 ## Implementation Outcome
 
@@ -249,11 +249,11 @@ Not implemented in this component:
 - no Git mutation command execution,
 - no database mutation,
 - no automatic route rewiring,
-- no partial-apply runtime-verification eligibility (reserved for Task 8R.19.2).
+- no automatic retry or authorization of a later batch from partial evidence.
 
 ## Next Step
 
-Proceed with **8R.19.2 Partial-Apply Runtime Verification Eligibility**. It
-must verify only the exact prefix that applied after a halted batch while
-retaining the completed-batch contract and forbidding next-batch authorization
-or completion from partial evidence.
+The partial-apply verifier now verifies only the exact prefix that applied after
+a halted batch while retaining the completed-batch contract and forbidding
+next-batch authorization or completion from partial evidence. See
+[Policy Post-Removal Partial-Apply Verification Eligibility](policy-post-removal-partial-apply-verification-eligibility.md).

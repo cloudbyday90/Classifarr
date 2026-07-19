@@ -86,7 +86,7 @@ function usage() {
     '  --output <json>           Write nested verification JSON to this path.',
     '  --runtime-evidence-output <json>  Write fingerprinted runtime evidence JSON for next-batch authorization.',
     '  --artifact-output <json>  Write wrapper artifact JSON to this path.',
-    '  --allow-blocked           Allow writing blocked verification output.',
+    '  --allow-blocked           Allow writing non-authorizing or blocked verification output.',
     '  --generated-at <iso>      Optional generatedAt timestamp for stable tests.',
     '  --help                    Print this help message.',
   ].join('\n');
@@ -160,7 +160,9 @@ async function main() {
 
   if (artifact.verified !== true && options.allowBlocked !== true) {
     console.error(
-      'Post-removal runtime verification artifact is blocked; pass --allow-blocked to write diagnostic output.'
+      artifact.partialApplyVerified === true
+        ? 'Post-removal runtime verification verified only a partial apply; it cannot authorize another batch or completion audit. Pass --allow-blocked to write diagnostic output.'
+        : 'Post-removal runtime verification artifact is blocked; pass --allow-blocked to write diagnostic output.'
     );
     console.error(JSON.stringify({
       statusId: artifact.statusId,

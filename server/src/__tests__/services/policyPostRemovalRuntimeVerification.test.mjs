@@ -2,6 +2,9 @@ import {
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
 } from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
 import {
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
+} from '../../services/policyControlledCompatibilityPathRemoval.mjs';
+import {
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS,
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS,
   buildPolicyPostRemovalRuntimeVerification,
@@ -12,6 +15,23 @@ import {
 } from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
 
 const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
+const EXECUTION_PLAN_ARTIFACT_FINGERPRINT = 'b'.repeat(64);
+const EXECUTION_GATE_ARTIFACT_FINGERPRINT = 'c'.repeat(64);
+
+const PARTIAL_APPLY_ENTRIES = [
+  {
+    path: 'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+    actionId: 'delete_file',
+  },
+  {
+    path: 'server/src/services/policyIntentImpactPreview.mjs',
+    actionId: 'delete_file',
+  },
+  {
+    path: 'server/src/services/policyIntentMapper.mjs',
+    actionId: 'delete_file',
+  },
+];
 
 function applyEvidence(overrides = {}) {
   return {
@@ -39,6 +59,42 @@ function applyEvidence(overrides = {}) {
           applied: true,
         },
       ],
+    },
+    ...overrides,
+  };
+}
+
+function partialApplyEvidence(overrides = {}) {
+  return {
+    statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+      .BLOCKED_BY_ADAPTER,
+    applied: false,
+    validation: {
+      ok: true,
+      issueCount: 0,
+      issues: [],
+    },
+    removalReview: {
+      statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+        .READY_FOR_REMOVAL_REVIEW,
+      validationOk: true,
+      readyForRemovalReview: true,
+      selectedCount: PARTIAL_APPLY_ENTRIES.length,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      executionPlanArtifactFingerprint: EXECUTION_PLAN_ARTIFACT_FINGERPRINT,
+      executionGateArtifactFingerprint: EXECUTION_GATE_ARTIFACT_FINGERPRINT,
+    },
+    applyBatch: {
+      requestedCount: PARTIAL_APPLY_ENTRIES.length,
+      checkedCount: 2,
+      blockedEntry: PARTIAL_APPLY_ENTRIES[1],
+      haltReasonId: 'adapter_failure',
+      appliedCount: 1,
+      entries: PARTIAL_APPLY_ENTRIES,
+      results: [{
+        ...PARTIAL_APPLY_ENTRIES[0],
+        applied: true,
+      }],
     },
     ...overrides,
   };
@@ -163,6 +219,93 @@ describe('policyPostRemovalRuntimeVerification', () => {
       POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_NOT_COMPLETE,
       POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS.APPLY_VALIDATION_FAILED,
     ]));
+  });
+
+  test('verifies a bounded partial applied prefix without authorizing another batch', async () => {
+    const appliedPath = PARTIAL_APPLY_ENTRIES[0].path;
+    const verification = await verified({
+      applyEvidence: partialApplyEvidence(),
+      importScan: importScan({ checkedPaths: [appliedPath] }),
+      runtimeChecks: [{
+        checkId: 'policy-builder-imports',
+        passed: true,
+        checkedPaths: [appliedPath],
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      }],
+      validationEvidence: validationEvidence({
+        focused: {
+          command: 'focused partial validation',
+          passed: true,
+          checkedPaths: [appliedPath],
+          reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        },
+        full: {
+          command: 'full partial validation',
+          passed: true,
+          checkedPaths: [appliedPath],
+          reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        },
+      }),
+    });
+
+    expect(verification.statusId)
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
+        .VERIFIED_PARTIAL_APPLY);
+    expect(verification.verified).toBe(false);
+    expect(verification.partialApplyVerified).toBe(true);
+    expect(verification.validation.ok).toBe(true);
+    expect(verification.verificationScope).toEqual(expect.objectContaining({
+      modeId: 'partial_apply',
+      partialApply: true,
+      authorizationEligible: false,
+      appliedPathCount: 1,
+    }));
+    expect(verification.applyEvidence.appliedPaths).toEqual([appliedPath]);
+    expect(verification.nextStep).toEqual(expect.objectContaining({
+      stepId: 'resolve_removal_apply_blocker',
+      label: 'Resolve Removal Apply Blocker',
+    }));
+  });
+
+  test('blocks partial verification when supplied evidence reaches beyond the applied prefix', async () => {
+    const appliedPath = PARTIAL_APPLY_ENTRIES[0].path;
+    const verification = await verified({
+      applyEvidence: partialApplyEvidence(),
+      importScan: importScan({
+        checkedPaths: [
+          appliedPath,
+          PARTIAL_APPLY_ENTRIES[1].path,
+        ],
+      }),
+      runtimeChecks: [{
+        checkId: 'policy-builder-imports',
+        passed: true,
+        checkedPaths: [appliedPath],
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      }],
+      validationEvidence: validationEvidence({
+        focused: {
+          command: 'focused partial validation',
+          passed: true,
+          checkedPaths: [appliedPath],
+          reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        },
+        full: {
+          command: 'full partial validation',
+          passed: true,
+          checkedPaths: [appliedPath],
+          reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        },
+      }),
+    });
+
+    expect(verification.statusId)
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
+        .BLOCKED_BY_VALIDATION);
+    expect(verification.risks.map(risk => risk.riskId)).toContain(
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_RISK_IDS
+        .PARTIAL_EVIDENCE_SCOPE_MISMATCH
+    );
   });
 
   test('blocks missing, altered, or cross-batch evidence before evaluating runtime checks', async () => {

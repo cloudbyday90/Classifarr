@@ -16,6 +16,9 @@ import {
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
 } from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
 import {
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
+} from '../../services/policyControlledCompatibilityPathRemoval.mjs';
+import {
   buildPolicyPostRemovalRuntimeEvidenceArtifact,
 } from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
 import {
@@ -154,6 +157,71 @@ function runtimeEvidenceArtifact({
       },
     },
     ...overrides,
+  });
+}
+
+function partialRuntimeEvidenceArtifact() {
+  const appliedPath = MANIFEST_PATHS[0];
+
+  return buildPolicyPostRemovalRuntimeEvidenceArtifact({
+    applyEvidence: {
+      statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+        .BLOCKED_BY_ADAPTER,
+      applied: false,
+      validation: { ok: true, issueCount: 0, issues: [] },
+      removalReview: {
+        statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+          .READY_FOR_REMOVAL_REVIEW,
+        validationOk: true,
+        readyForRemovalReview: true,
+        selectedCount: MANIFEST_PATHS.length,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        executionPlanArtifactFingerprint: 'b'.repeat(64),
+        executionGateArtifactFingerprint: 'c'.repeat(64),
+      },
+      applyBatch: {
+        requestedCount: MANIFEST_PATHS.length,
+        checkedCount: 2,
+        blockedEntry: {
+          path: MANIFEST_PATHS[1],
+          actionId: 'delete_file',
+        },
+        haltReasonId: 'adapter_failure',
+        appliedCount: 1,
+        entries: MANIFEST_PATHS.map(path => ({ path, actionId: 'delete_file' })),
+        results: [{
+          path: appliedPath,
+          actionId: 'delete_file',
+          applied: true,
+        }],
+      },
+    },
+    importScan: {
+      completed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      checkedPaths: [appliedPath],
+      references: [],
+    },
+    runtimeChecks: [{
+      checkId: 'partial-prefix-runtime-check',
+      passed: true,
+      checkedPaths: [appliedPath],
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    }],
+    validationEvidence: {
+      focused: {
+        command: 'focused partial validation',
+        passed: true,
+        checkedPaths: [appliedPath],
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+      full: {
+        command: 'full partial validation',
+        passed: true,
+        checkedPaths: [appliedPath],
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+    },
   });
 }
 
@@ -313,6 +381,22 @@ describe('policyNextCompatibilityRemovalBatchAuthorization', () => {
       POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
         .POST_REMOVAL_NOT_VERIFIED,
     ]));
+  });
+
+  test('never authorizes another batch from a verified partial apply prefix', async () => {
+    const authorization = await readyAuthorization({
+      runtimeEvidenceArtifact: partialRuntimeEvidenceArtifact(),
+    });
+
+    expect(authorization.statusId)
+      .toBe(POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+        .BLOCKED_BY_POST_REMOVAL_VERIFICATION);
+    expect(authorization.readyForNextBatch).toBe(false);
+    expect(authorization.authorizedBatch.authorizedCount).toBe(0);
+    expect(authorization.risks.map(risk => risk.riskId)).toContain(
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+        .POST_REMOVAL_NOT_VERIFIED
+    );
   });
 
   test('blocks when the execution plan is not ready or has no manifest entries', async () => {

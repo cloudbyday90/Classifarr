@@ -2,6 +2,9 @@ import {
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
 } from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
 import {
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
+} from '../../services/policyControlledCompatibilityPathRemoval.mjs';
+import {
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS,
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS,
   buildPolicyPostRemovalRuntimeVerificationArtifact,
@@ -9,6 +12,23 @@ import {
 } from '../../services/policyPostRemovalRuntimeVerificationArtifact.mjs';
 
 const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
+const EXECUTION_PLAN_ARTIFACT_FINGERPRINT = 'b'.repeat(64);
+const EXECUTION_GATE_ARTIFACT_FINGERPRINT = 'c'.repeat(64);
+
+const PARTIAL_APPLY_ENTRIES = [
+  {
+    path: 'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+    actionId: 'delete_file',
+  },
+  {
+    path: 'server/src/services/policyIntentImpactPreview.mjs',
+    actionId: 'delete_file',
+  },
+  {
+    path: 'server/src/services/policyIntentMapper.mjs',
+    actionId: 'delete_file',
+  },
+];
 
 function applyEvidence(overrides = {}) {
   return {
@@ -36,6 +56,35 @@ function applyEvidence(overrides = {}) {
           applied: true,
         },
       ],
+    },
+    ...overrides,
+  };
+}
+
+function partialApplyEvidence(overrides = {}) {
+  return {
+    statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+      .BLOCKED_BY_ADAPTER,
+    applied: false,
+    validation: { ok: true, issueCount: 0, issues: [] },
+    removalReview: {
+      statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+        .READY_FOR_REMOVAL_REVIEW,
+      validationOk: true,
+      readyForRemovalReview: true,
+      selectedCount: PARTIAL_APPLY_ENTRIES.length,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      executionPlanArtifactFingerprint: EXECUTION_PLAN_ARTIFACT_FINGERPRINT,
+      executionGateArtifactFingerprint: EXECUTION_GATE_ARTIFACT_FINGERPRINT,
+    },
+    applyBatch: {
+      requestedCount: PARTIAL_APPLY_ENTRIES.length,
+      checkedCount: 2,
+      blockedEntry: PARTIAL_APPLY_ENTRIES[1],
+      haltReasonId: 'adapter_failure',
+      appliedCount: 1,
+      entries: PARTIAL_APPLY_ENTRIES,
+      results: [{ ...PARTIAL_APPLY_ENTRIES[0], applied: true }],
     },
     ...overrides,
   };
@@ -138,6 +187,52 @@ describe('policyPostRemovalRuntimeVerificationArtifact', () => {
       }),
     ]));
     expect(artifact.verification.statusId).toBe('blocked_by_import_references');
+  });
+
+  test('retains a verified partial prefix only for blocker resolution', async () => {
+    const appliedPath = PARTIAL_APPLY_ENTRIES[0].path;
+    const artifact = await buildPolicyPostRemovalRuntimeVerificationArtifact({
+      applyEvidence: partialApplyEvidence(),
+      input: verificationInput({
+        importScan: {
+          completed: true,
+          reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+          checkedPaths: [appliedPath],
+          references: [],
+        },
+        runtimeChecks: [{
+          checkId: 'partial-prefix-runtime-check',
+          passed: true,
+          checkedPaths: [appliedPath],
+          reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        }],
+        validationEvidence: {
+          focused: {
+            command: 'focused partial validation',
+            passed: true,
+            checkedPaths: [appliedPath],
+            reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+          },
+          full: {
+            command: 'full partial validation',
+            passed: true,
+            checkedPaths: [appliedPath],
+            reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+          },
+        },
+      }),
+    });
+
+    expect(artifact.statusId)
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS
+        .PARTIAL_APPLY_VERIFIED);
+    expect(artifact.verified).toBe(false);
+    expect(artifact.partialApplyVerified).toBe(true);
+    expect(artifact.validation.ok).toBe(true);
+    expect(artifact.nextStep).toEqual(expect.objectContaining({
+      stepId: 'resolve_removal_apply_blocker',
+      label: 'Resolve Removal Apply Blocker',
+    }));
   });
 
   test('blocks when runtime checks fail', async () => {

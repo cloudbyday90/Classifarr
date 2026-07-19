@@ -26,6 +26,9 @@ import {
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
 } from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
 import {
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
+} from '../../services/policyControlledCompatibilityPathRemoval.mjs';
+import {
   POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS,
 } from '../../services/policyPostRemovalRuntimeVerificationArtifact.mjs';
 
@@ -37,6 +40,8 @@ const GENERATOR_PATH = fileURLToPath(
 );
 const GENERATED_AT = '2026-07-15T15:10:00.000Z';
 const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
+const EXECUTION_PLAN_ARTIFACT_FINGERPRINT = 'b'.repeat(64);
+const EXECUTION_GATE_ARTIFACT_FINGERPRINT = 'c'.repeat(64);
 const REMOVED_PATHS = Object.freeze([
   'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
   'server/src/services/policyIntentImpactPreview.mjs',
@@ -68,6 +73,78 @@ function applyResult(overrides = {}) {
         actionId: 'delete_file',
         applied: true,
       })),
+    },
+    ...overrides,
+  };
+}
+
+function partialApplyResult(overrides = {}) {
+  const entries = [
+    { path: REMOVED_PATHS[0], actionId: 'delete_file' },
+    { path: REMOVED_PATHS[1], actionId: 'delete_file' },
+    {
+      path: 'server/src/services/policyIntentMapper.mjs',
+      actionId: 'delete_file',
+    },
+  ];
+
+  return {
+    statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+      .BLOCKED_BY_ADAPTER,
+    applied: false,
+    validation: { ok: true, issueCount: 0, issues: [] },
+    removalReview: {
+      statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+        .READY_FOR_REMOVAL_REVIEW,
+      validationOk: true,
+      readyForRemovalReview: true,
+      selectedCount: entries.length,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      executionPlanArtifactFingerprint: EXECUTION_PLAN_ARTIFACT_FINGERPRINT,
+      executionGateArtifactFingerprint: EXECUTION_GATE_ARTIFACT_FINGERPRINT,
+    },
+    applyBatch: {
+      requestedCount: entries.length,
+      checkedCount: 2,
+      blockedEntry: entries[1],
+      haltReasonId: 'adapter_failure',
+      appliedCount: 1,
+      entries,
+      results: [{ ...entries[0], applied: true }],
+    },
+    ...overrides,
+  };
+}
+
+function partialVerificationInput(overrides = {}) {
+  const appliedPath = REMOVED_PATHS[0];
+
+  return {
+    importScan: {
+      completed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      checkedPaths: [appliedPath],
+      references: [],
+    },
+    runtimeChecks: [{
+      checkId: 'partial-prefix-runtime-check',
+      passed: true,
+      checkedPaths: [appliedPath],
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    }],
+    validationEvidence: {
+      focused: {
+        command: 'focused partial validation',
+        passed: true,
+        checkedPaths: [appliedPath],
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+      full: {
+        command: 'full partial validation',
+        passed: true,
+        checkedPaths: [appliedPath],
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
     },
     ...overrides,
   };
@@ -243,6 +320,37 @@ describe('generate-policy-post-removal-verification', () => {
       storageChanged: false,
       gitCommandsRun: false,
     });
+  });
+
+  test('writes a verified partial prefix only as an explicit non-authorizing diagnostic', () => {
+    const withoutDiagnosticAllowance = runGenerator({
+      fixtureRoot,
+      applyEvidence: partialApplyResult(),
+      input: partialVerificationInput(),
+    });
+
+    expect(withoutDiagnosticAllowance.status).toBe(1);
+    expect(withoutDiagnosticAllowance.stderr).toContain('verified only a partial apply');
+    expect(withoutDiagnosticAllowance.stderr).toContain('cannot authorize another batch');
+    expect(fs.existsSync(withoutDiagnosticAllowance.outputPath)).toBe(false);
+
+    const withDiagnosticAllowance = runGenerator({
+      fixtureRoot,
+      applyEvidence: partialApplyResult(),
+      input: partialVerificationInput(),
+      allowBlocked: true,
+    });
+    const artifact = JSON.parse(
+      fs.readFileSync(withDiagnosticAllowance.artifactOutputPath, 'utf8')
+    );
+
+    expect(withDiagnosticAllowance.status).toBe(1);
+    expect(artifact.statusId)
+      .toBe(POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS
+        .PARTIAL_APPLY_VERIFIED);
+    expect(artifact.verified).toBe(false);
+    expect(artifact.partialApplyVerified).toBe(true);
+    expect(artifact.nextStep.stepId).toBe('resolve_removal_apply_blocker');
   });
 
   test('fails closed when verification evidence is bound to another removal review', () => {

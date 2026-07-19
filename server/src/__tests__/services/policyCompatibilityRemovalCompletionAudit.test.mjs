@@ -6,6 +6,9 @@ import {
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
 } from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
 import {
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS,
+} from '../../services/policyControlledCompatibilityPathRemoval.mjs';
+import {
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS,
   POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS,
   buildPolicyCompatibilityRemovalCompletionAudit,
@@ -106,6 +109,71 @@ function runtimeEvidenceArtifact(appliedPaths = MANIFEST_PATHS) {
       full: {
         command: 'full validation',
         passed: true,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+    },
+  });
+}
+
+function partialRuntimeEvidenceArtifact() {
+  const appliedPath = MANIFEST_PATHS[0];
+
+  return buildPolicyPostRemovalRuntimeEvidenceArtifact({
+    applyEvidence: {
+      statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
+        .BLOCKED_BY_ADAPTER,
+      applied: false,
+      validation: { ok: true, issueCount: 0, issues: [] },
+      removalReview: {
+        statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+          .READY_FOR_REMOVAL_REVIEW,
+        validationOk: true,
+        readyForRemovalReview: true,
+        selectedCount: MANIFEST_PATHS.length,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        executionPlanArtifactFingerprint: 'b'.repeat(64),
+        executionGateArtifactFingerprint: 'c'.repeat(64),
+      },
+      applyBatch: {
+        requestedCount: MANIFEST_PATHS.length,
+        checkedCount: 2,
+        appliedCount: 1,
+        haltReasonId: 'adapter_failure',
+        blockedEntry: {
+          path: MANIFEST_PATHS[1],
+          actionId: 'delete_file',
+        },
+        entries: MANIFEST_PATHS.map(path => ({ path, actionId: 'delete_file' })),
+        results: [{
+          path: appliedPath,
+          actionId: 'delete_file',
+          applied: true,
+        }],
+      },
+    },
+    importScan: {
+      completed: true,
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      checkedPaths: [appliedPath],
+      references: [],
+    },
+    runtimeChecks: [{
+      checkId: 'partial-prefix-runtime-check',
+      passed: true,
+      checkedPaths: [appliedPath],
+      reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+    }],
+    validationEvidence: {
+      focused: {
+        command: 'focused partial validation',
+        passed: true,
+        checkedPaths: [appliedPath],
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+      full: {
+        command: 'full partial validation',
+        passed: true,
+        checkedPaths: [appliedPath],
         reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       },
     },
@@ -237,6 +305,40 @@ describe('policyCompatibilityRemovalCompletionAudit', () => {
     expect(audit.risks.map(risk => risk.riskId)).toContain(
       POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
         .AUTHORIZATION_NOT_COMPLETE
+    );
+  });
+
+  test('never completes from a verified partial-apply prefix', async () => {
+    const plan = executionPlan();
+    const source = buildNextBatchAuthorizationPathStateSource({
+      executionPlan: plan,
+      existingPaths: MANIFEST_PATHS.slice(1),
+    });
+    const authorizationArtifact =
+      await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+        runtimeEvidenceArtifact: partialRuntimeEvidenceArtifact(),
+        ...source,
+        input: {
+          requestedPaths: [MANIFEST_PATHS[1]],
+          maxBatchSize: 3,
+          authorizationReason: 'Continue the reviewed compatibility removal loop.',
+          authorizedBy: 'policy-maintainer',
+          reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        },
+        generatedAt: '2026-07-14T10:00:00.000Z',
+      });
+    const audit = await completeAudit({
+      executionPlan: plan,
+      nextBatchAuthorizationArtifact: authorizationArtifact,
+    });
+
+    expect(audit.statusId)
+      .toBe(POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_STATUS_IDS
+        .BLOCKED_BY_AUTHORIZATION_ARTIFACT);
+    expect(audit.complete).toBe(false);
+    expect(audit.risks.map(risk => risk.riskId)).toContain(
+      POLICY_COMPATIBILITY_REMOVAL_COMPLETION_AUDIT_RISK_IDS
+        .AUTHORIZATION_ARTIFACT_NOT_AUTHORIZABLE
     );
   });
 

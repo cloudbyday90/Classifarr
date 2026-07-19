@@ -11,8 +11,9 @@ machine-readable verification artifact from:
 - focused and full validation evidence.
 
 This component does not remove files, scan source itself, mutate storage, or run
-Git. It turns explicit evidence into a verification artifact that can authorize
-only the next bounded compatibility-removal batch.
+Git. It turns explicit evidence into a verification artifact. Only a completed
+verified apply can authorize the next bounded compatibility-removal batch; a
+verified partial prefix is retained solely for blocker resolution.
 
 Before verification, the exporter builds one SHA-256 runtime-evidence artifact.
 It binds every supplied scan, runtime check, and validation result to the
@@ -134,7 +135,9 @@ Use this stack for post-removal runtime verification artifact export:
 6. Reject storage mutation and Git-command side effects.
 7. Bind supplied evidence to the exact applied removal-review fingerprint and
    reject altered or cross-batch evidence before runtime verification succeeds.
-8. Write the standalone runtime evidence artifact for next-batch authorization.
+8. Write the standalone runtime evidence artifact. Only a completed verified
+   apply may feed next-batch authorization; retain a verified partial prefix
+   solely as a bounded blocker-resolution diagnostic.
 9. Write nested verification JSON and optionally a wrapper artifact for audit
    trails.
 10. Verify the public artifact chain preserves apply provenance and fails
@@ -149,7 +152,7 @@ Implemented:
 - Renamed the generator to `generate-policy-post-removal-verification.mjs`.
 - Renamed the root npm script to `policy:post-removal-verification`.
 - Updated the contract version to
-  `policy.post_removal_runtime_verification_artifact.v1`.
+  `policy.post_removal_runtime_verification_artifact.v2`.
 - Renamed exports to:
   - `POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS`,
   - `POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS`,
@@ -165,6 +168,10 @@ Implemented:
   - blocked runtime check evidence,
   - forbidden side-effect rejection,
   - artifact validation invariants.
+- Added a `partial_apply_verified` artifact state for an exactly scoped,
+  fingerprint-bound applied prefix. It remains non-authorizing, emits only the
+  blocker-resolution next step, and requires `--allow-blocked` for public
+  diagnostic output.
 - Added `generatePolicyPostRemovalVerification.test.mjs` to verify the public
   command writes coherent verification, runtime-evidence, and wrapper outputs
   only for a reviewed applied-removal result with complete evidence. The test

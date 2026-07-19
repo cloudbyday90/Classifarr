@@ -7,10 +7,11 @@ import {
 } from './policyPostRemovalRuntimeEvidenceArtifact.mjs';
 
 const POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_VERSION =
-  'policy.post_removal_runtime_verification_artifact.v1';
+  'policy.post_removal_runtime_verification_artifact.v2';
 
 const POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS = Object.freeze({
   VERIFIED: 'verified',
+  PARTIAL_APPLY_VERIFIED: 'partial_apply_verified',
   BLOCKED: 'blocked',
 });
 
@@ -59,21 +60,28 @@ function buildArtifactRisks({
   sideEffects = {},
 } = {}) {
   const risks = [];
+  const hasVerifiedPartialApply = verification.statusId ===
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS
+      .VERIFIED_PARTIAL_APPLY &&
+    verification.partialApplyVerified === true &&
+    verification.verificationScope?.authorizationEligible === false;
 
   if (
     verification.statusId !==
       POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED ||
     verification.verified !== true
   ) {
-    risks.push(buildRisk(
-      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS
-        .VERIFICATION_NOT_VERIFIED,
-      'Post-removal runtime verification artifact requires verified runtime evidence.',
-      {
-        statusId: verification.statusId || null,
-        verificationRiskCount: verification.riskCount ?? null,
-      }
-    ));
+    if (!hasVerifiedPartialApply) {
+      risks.push(buildRisk(
+        POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS
+          .VERIFICATION_NOT_VERIFIED,
+        'Post-removal runtime verification artifact requires verified runtime evidence.',
+        {
+          statusId: verification.statusId || null,
+          verificationRiskCount: verification.riskCount ?? null,
+        }
+      ));
+    }
   }
 
   if (verification.validation?.ok !== true) {
@@ -106,10 +114,19 @@ function buildArtifactRisks({
   return risks;
 }
 
-function determineArtifactStatusId(risks = []) {
-  return risks.length === 0
-    ? POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.VERIFIED
-    : POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.BLOCKED;
+function determineArtifactStatusId({
+  risks = [],
+  verification = {},
+} = {}) {
+  if (risks.length > 0) {
+    return POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.BLOCKED;
+  }
+
+  return verification.statusId ===
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_STATUS_IDS.VERIFIED_PARTIAL_APPLY
+    ? POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS
+      .PARTIAL_APPLY_VERIFIED
+    : POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.VERIFIED;
 }
 
 async function buildPolicyPostRemovalRuntimeVerificationArtifact({
@@ -134,11 +151,17 @@ async function buildPolicyPostRemovalRuntimeVerificationArtifact({
     verification,
     sideEffects: combinedSideEffects,
   });
+  const statusId = determineArtifactStatusId({ risks, verification });
+  const partialApplyVerified = statusId ===
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS
+      .PARTIAL_APPLY_VERIFIED;
   const artifact = {
     version: POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_VERSION,
     generatedAt: normalizeGeneratedAt(generatedAt),
-    statusId: determineArtifactStatusId(risks),
-    verified: risks.length === 0,
+    statusId,
+    verified: statusId ===
+      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.VERIFIED,
+    partialApplyVerified,
     verification,
     runtimeEvidenceArtifact,
     applyEvidence: verification.applyEvidence,
@@ -159,15 +182,24 @@ async function buildPolicyPostRemovalRuntimeVerificationArtifact({
       requireFocusedValidation: true,
       requireFullValidation: true,
       requireRuntimeEvidenceArtifactIntegrity: true,
+      allowPartialApplyVerification: true,
+      allowNextBatchAuthorizationAfterPartialApply: false,
       allowStorageMutation: false,
       allowGitCommandsInsideArtifact: false,
     },
-    nextStep: {
-      stepId: 'next_compatibility_removal_batch_authorization',
-      label: 'Next Compatibility Removal Batch Authorization',
-      reason:
-        'Verified post-removal runtime evidence can authorize only the next bounded compatibility removal batch.',
-    },
+    nextStep: partialApplyVerified
+      ? {
+        stepId: 'resolve_removal_apply_blocker',
+        label: 'Resolve Removal Apply Blocker',
+        reason:
+          'The bounded applied prefix passed runtime verification, but the stopped entry must be resolved before another removal batch or completion audit.',
+      }
+      : {
+        stepId: 'next_compatibility_removal_batch_authorization',
+        label: 'Next Compatibility Removal Batch Authorization',
+        reason:
+          'Verified post-removal runtime evidence can authorize only the next bounded compatibility removal batch.',
+      },
   };
 
   return {
@@ -194,10 +226,20 @@ function validatePolicyPostRemovalRuntimeVerificationArtifact(artifact = {}) {
     ));
   }
 
+  const isVerified = artifact.statusId ===
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.VERIFIED;
+  const isPartialApplyVerified = artifact.statusId ===
+    POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS
+      .PARTIAL_APPLY_VERIFIED;
+
   if (
-    artifact.statusId ===
-      POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_STATUS_IDS.VERIFIED &&
-    artifact.verified !== true
+    (isVerified && artifact.verified !== true) ||
+    (isPartialApplyVerified && (
+      artifact.verified === true ||
+      artifact.partialApplyVerified !== true ||
+      artifact.verification?.verificationScope?.authorizationEligible !== false ||
+      artifact.nextStep?.stepId !== 'resolve_removal_apply_blocker'
+    ))
   ) {
     issues.push(buildRisk(
       POLICY_POST_REMOVAL_RUNTIME_VERIFICATION_ARTIFACT_RISK_IDS

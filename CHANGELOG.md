@@ -119,6 +119,13 @@ unchanged operator or runtime outcome.
   a batch is rejected before apply, its bounded upstream review reason remains
   available to diagnostics.
 
+- **Bounded Partial Removal Verification** - a stopped compatibility-removal
+  batch can now verify only the exact prefix that already applied when its halt
+  reason, stopped entry, review/gate provenance, and import/runtime/validation
+  evidence agree. Partial verification is explicitly non-authorizing: it routes
+  to blocker resolution and cannot start another removal batch or completion
+  audit.
+
 - **Native Policy Engine Authority** - converted policies now classify from
   persisted native intent rather than retained legacy presets or
   `custom_signals`. Native purpose establishes eligibility before supporting

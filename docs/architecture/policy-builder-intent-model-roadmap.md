@@ -6739,16 +6739,18 @@ Tasks:
   - Completed: preserves side-effect-free evidence evaluation and bounded
     diagnostics.
 - **8R.19.2 Partial-Apply Runtime Verification Eligibility**
-  - Pending: permit runtime verification of a bounded, valid applied prefix
-    only after a controlled apply stops after a later entry.
-  - Require a known halt reason, a bounded stopped entry, at least one valid
-    applied result, intact review and gate evidence, and import/runtime/validation
-    evidence covering only the paths that actually applied.
-  - Preserve the completed-batch pathway unchanged. A verified partial apply
-    must direct the operator to resolve the blocker and must never authorize a
-    next removal batch or completion audit.
-- Consume completed controlled-removal apply evidence.
-- Require apply evidence to be valid and complete.
+  - Completed: permits runtime verification of a bounded, valid applied prefix
+    only after a controlled apply stops at the immediately following entry.
+  - Completed: requires a known halt reason with a matching apply status, a
+    contiguous canonical applied prefix, bounded stopped entry, intact ready
+    review and execution-gate fingerprints, and exact applied-path scope for
+    partial import, runtime, focused-validation, and full-validation evidence.
+  - Completed: emits `verified_partial_apply` only as a non-authorizing state;
+    it directs blocker resolution and is rejected by next-batch authorization
+    and completion-audit paths. The completed-batch pathway remains unchanged.
+- Consume complete controlled-removal apply evidence or a bounded eligible
+  partial prefix.
+- Require apply evidence to be valid and structurally attributable.
 - Require import/reference scan evidence for every applied removal path.
 - Block if any removed path is still referenced.
 - Require focused runtime/import checks to pass.
@@ -6758,8 +6760,8 @@ Tasks:
 
 Acceptance criteria:
 
-- Verification is blocked unless controlled-removal apply evidence is applied and
-  valid.
+- Verification is blocked unless controlled-removal apply evidence is complete
+  and valid, or proves the bounded eligible partial prefix.
 - Missing import scan evidence blocks verification.
 - Any lingering reference to a removed path blocks verification.
 - Missing or failed runtime checks block verification.
@@ -6771,12 +6773,16 @@ Implementation status:
 
 - Post-removal runtime verification is documented in
   [Policy Post-Removal Runtime Verification](policy-post-removal-runtime-verification.md).
+- Partial-apply verification eligibility is documented in
+  [Policy Post-Removal Partial-Apply Verification Eligibility](policy-post-removal-partial-apply-verification-eligibility.md).
 - Review-bound runtime evidence is documented in
   [Policy Post-Removal Runtime Evidence Integrity](policy-post-removal-runtime-evidence-integrity.md).
 - The durable module naming cutover is documented in
   [Policy Post-Removal Runtime Verification Module Cutover](policy-post-removal-runtime-verification-module-cutover.md).
 - The verifier contract lives in
   `server/src/services/policyPostRemovalRuntimeVerification.mjs`.
+- Partial apply eligibility is isolated in
+  `server/src/services/policyPostRemovalApplyEligibility.mjs`.
 - The focused verifier test suite lives in
   `server/src/__tests__/services/policyPostRemovalRuntimeVerification.test.mjs`.
 - The runtime-evidence artifact contract lives in
@@ -6787,9 +6793,9 @@ Implementation status:
   evidence artifact before it consumes apply, import scan, runtime check, and
   focused/full validation evidence; it blocks lingering references or failed
   checks, rejects storage/Git side effects, and emits semantic `nextStep`
-  evidence for next-batch authorization. It deliberately accepts only completed
-  apply evidence today; Task 8R.19.2 is required before a contained partial
-  apply can be verified without permitting another removal batch.
+  evidence. A verified partial prefix is explicitly non-authorizing and routes
+  only to blocker resolution; only a completed verified apply can continue to
+  next-batch authorization.
 
 ### 8R.20 Next Compatibility Removal Batch Authorization
 
