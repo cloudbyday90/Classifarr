@@ -59,6 +59,16 @@ describe('policyAuthoringWorkflowInventory', () => {
     ]);
   });
 
+  test('keeps the persisted-id experience switch as non-authoritative shell coordination', () => {
+    expect(classifyPolicyAuthoringWorkflowSurface('client/src/utils/policyBuilderExperienceMode.js'))
+      .toEqual(expect.objectContaining({
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.WORKFLOW_SHELL,
+        normalAuthoringAllowed: true,
+        migrationSupportOnly: false,
+      }));
+  });
+
   test('keeps the library-first workflow shell and read adapter in the normal workflow role', () => {
     [
       'client/src/components/policies/PolicyBuilderWorkflowShell.vue',

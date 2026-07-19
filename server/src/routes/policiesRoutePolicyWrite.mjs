@@ -269,6 +269,8 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
       });
     }
 
+    res.location(`/api/policies/${policy.policy.id}`);
+
     return sendData(
       res,
       policy.nativeIntentEstablishment

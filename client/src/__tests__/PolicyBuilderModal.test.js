@@ -342,6 +342,89 @@ describe('PolicyBuilderModal.vue', () => {
     });
   });
 
+  it('keeps native creation open for a persisted server-owned policy handoff', async () => {
+    const workflowRead = buildOperatorWorkflowRead();
+    workflowRead.observedProfile.selectableSuggestions = [{
+      candidateId: 'genre:Science Fiction:purpose',
+      value: 'Science Fiction',
+      label: 'Science Fiction',
+      signalType: 'genres',
+      operator: 'require_any',
+      questionId: 'what_belongs_here',
+      sourceId: 'suggested_from_observed_profile',
+      explanation: 'Science Fiction appears in 18 items in the current library.',
+      evidenceCount: 18,
+      requiresExplicitAcceptance: true,
+      canAutoDeclare: false,
+    }];
+    const submitPolicy = vi.fn().mockResolvedValue({
+      data: {
+        id: 91,
+        name: 'Sci-Fi Movies Policy',
+        library_name: 'Sci-Fi Movies',
+        native_intent_establishment: {
+          statusId: 'initial_intent_established',
+          intentId: 501,
+          routingConfigured: false,
+          ruleCount: 1,
+        },
+      },
+    });
+
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/operator-workflow/libraries/1') return Promise.resolve({ data: workflowRead });
+      if (url === '/policies/91') {
+        return Promise.resolve({
+          data: {
+            id: 91,
+            name: 'Sci-Fi Movies Policy',
+            library_name: 'Sci-Fi Movies',
+            policy_intent_contract: {
+              source: 'native_intent',
+              purpose: [{ signal_type: 'genres' }],
+              hard_limits: [],
+              helpful_hints: [],
+              avoid: [],
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        submitPolicy,
+      },
+      attachTo: document.body,
+    });
+
+    await flushPromises();
+    wrapper.vm.applyObservedSuggestionCommandPlan(buildObservedSuggestionCommandPlan({
+      commandId: 'add_signal_value',
+      candidates: workflowRead.observedProfile.selectableSuggestions,
+    }));
+    await wrapper.vm.save();
+    await flushPromises();
+
+    expect(submitPolicy).toHaveBeenCalledTimes(1);
+    expect(api.get).toHaveBeenCalledWith('/policies/91', undefined);
+    expect(document.body.textContent).toContain('Policy created');
+    expect(document.body.textContent).toContain('Declared destination intent');
+    expect(document.body.textContent).toContain('Routing setup still needed');
+    expect(document.body.textContent).not.toContain('Policy Intent Builder');
+    expect(document.activeElement?.id).toBe('policy-native-create-handoff-title');
+
+    await Array.from(document.body.querySelectorAll('button'))
+      .find(button => button.textContent.includes('Done'))
+      .click();
+
+    expect(wrapper.emitted('close')).toHaveLength(1);
+  });
+
   it('refreshes insufficient native evidence and reloads the bounded workflow before showing candidates', async () => {
     const workflowRead = buildOperatorWorkflowRead();
     workflowRead.observedProfile = {

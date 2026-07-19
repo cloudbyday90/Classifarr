@@ -13,96 +13,108 @@
     class="max-w-6xl"
   >
     <div class="space-y-6">
-      <div id="policy-builder-library-context">
-        <PolicyBuilderLibraryContext
-          :library="currentLibrary"
-          :profile="libraryProfile"
-          :genre-summary="libraryProfileGenreSummary"
-          :freshness="libraryProfileFreshness"
-          :refresh-result="libraryProfileRefreshResult"
-          :loading="libraryProfileLoading"
-          :refreshing="libraryProfileRefreshing"
-          :can-refresh="Boolean(form.library_id)"
-          :show-refresh-action="experienceMode.isLegacyEdit"
-          @refresh-profile="refreshActiveLibraryProfile"
-        />
-      </div>
-
-      <PolicyBuilderWorkflowShell
-        :workflow-read="operatorWorkflowRead"
-        :loading="operatorWorkflowLoading"
-        :error="operatorWorkflowError"
-        :refresh-result="libraryProfileRefreshResult"
-        :refreshing="libraryProfileRefreshing"
-        :accepted-candidates="acceptedObservedCandidates"
-        :selection-enabled="experienceMode.isNativeCreate"
-        @draft-command-plan="applyObservedSuggestionCommandPlan"
-        @refresh-profile="refreshActiveLibraryProfile"
-        @reload-workflow="reloadActiveLibraryWorkflow"
+      <PolicyNativeCreateHandoff
+        v-if="nativeCreateHandoff"
+        ref="nativeCreateHandoffRef"
+        :handoff="nativeCreateHandoff"
+        @done="defer"
       />
 
-      <template v-if="experienceMode.isLegacyEdit">
-        <PolicyPresetMigrationNotice
-          v-if="presetMigrationNotice"
-          :notice="presetMigrationNotice"
-          @dismiss="dismissPresetMigrationNotice"
+      <template v-else>
+        <div id="policy-builder-library-context">
+          <PolicyBuilderLibraryContext
+            :library="currentLibrary"
+            :profile="libraryProfile"
+            :genre-summary="libraryProfileGenreSummary"
+            :freshness="libraryProfileFreshness"
+            :refresh-result="libraryProfileRefreshResult"
+            :loading="libraryProfileLoading"
+            :refreshing="libraryProfileRefreshing"
+            :can-refresh="Boolean(form.library_id)"
+            :show-refresh-action="experienceMode.isLegacyEdit"
+            @refresh-profile="refreshActiveLibraryProfile"
+          />
+        </div>
+
+        <PolicyBuilderWorkflowShell
+          :workflow-read="operatorWorkflowRead"
+          :loading="operatorWorkflowLoading"
+          :error="operatorWorkflowError"
+          :refresh-result="libraryProfileRefreshResult"
+          :refreshing="libraryProfileRefreshing"
+          :accepted-candidates="acceptedObservedCandidates"
+          :selection-enabled="experienceMode.isNativeCreate"
+          @draft-command-plan="applyObservedSuggestionCommandPlan"
+          @refresh-profile="refreshActiveLibraryProfile"
+          @reload-workflow="reloadActiveLibraryWorkflow"
         />
 
-        <PolicyIntentSummaryCard :summary="intentSummary" />
+        <template v-if="experienceMode.isLegacyEdit">
+          <PolicyPresetMigrationNotice
+            v-if="presetMigrationNotice"
+            :notice="presetMigrationNotice"
+            @dismiss="dismissPresetMigrationNotice"
+          />
 
-        <div id="policy-builder-intent-editor">
-          <PolicyIntentEditor
+          <PolicyIntentSummaryCard :summary="intentSummary" />
+
+          <div id="policy-builder-intent-editor">
+            <PolicyIntentEditor
+              :selected-presets="selectedPresets"
+              :all-presets="allPresets"
+              :intent-draft="intentDraft"
+              :available-genres="availableGenres"
+              :available-genre-options="availableGenreOptions"
+              :available-ratings="availableRatings"
+              @draft-add-signal="addIntentSignal"
+              @draft-remove-signal-value="removeIntentSignalValue"
+              @draft-set-signal-config="setIntentSignalConfig"
+              @draft-clear-signal-config="clearIntentSignalConfig"
+            />
+          </div>
+
+          <PolicyStarterTemplateAccelerator
+            v-model:search-query="searchQuery"
+            v-model:selected-category="selectedCategory"
+            :suggested-presets="suggestedPresets"
+            :available-presets="filteredAvailablePresets"
             :selected-presets="selectedPresets"
             :all-presets="allPresets"
-            :intent-draft="intentDraft"
-            :available-genres="availableGenres"
-            :available-genre-options="availableGenreOptions"
+            :category-tabs="categoryTabs"
+            :expanded-preset-ids="expandedPresetIds"
             :available-ratings="availableRatings"
-            @draft-add-signal="addIntentSignal"
-            @draft-remove-signal-value="removeIntentSignalValue"
-            @draft-set-signal-config="setIntentSignalConfig"
-            @draft-clear-signal-config="clearIntentSignalConfig"
+            :available-genres="availableGenres"
+            :combined-signals="combinedSignals"
+            :get-preset-usage-count="getPresetUsageCount"
+            :format-usage-label="formatUsageLabel"
+            @add-all-suggested="addAllSuggested"
+            @toggle-preset="togglePresetSelection"
+            @toggle-preset-customize="togglePresetCustomize"
+            @remove-preset="removePreset"
+            @update-preset-weight="setPresetWeight"
+            @add-custom-signal="addCustomSignal"
+            @remove-custom-signal="removeCustomSignal"
+            @set-signal-removal="setSignalRemoval"
+            @set-signal-strict="setPresetSignalStrict"
           />
-        </div>
 
-        <PolicyStarterTemplateAccelerator
-          v-model:search-query="searchQuery"
-          v-model:selected-category="selectedCategory"
-          :suggested-presets="suggestedPresets"
-          :available-presets="filteredAvailablePresets"
-          :selected-presets="selectedPresets"
-          :all-presets="allPresets"
-          :category-tabs="categoryTabs"
-          :expanded-preset-ids="expandedPresetIds"
-          :available-ratings="availableRatings"
-          :available-genres="availableGenres"
-          :combined-signals="combinedSignals"
-          :get-preset-usage-count="getPresetUsageCount"
-          :format-usage-label="formatUsageLabel"
-          @add-all-suggested="addAllSuggested"
-          @toggle-preset="togglePresetSelection"
-          @toggle-preset-customize="togglePresetCustomize"
-          @remove-preset="removePreset"
-          @update-preset-weight="setPresetWeight"
-          @add-custom-signal="addCustomSignal"
-          @remove-custom-signal="removeCustomSignal"
-          @set-signal-removal="setSignalRemoval"
-          @set-signal-strict="setPresetSignalStrict"
-        />
+          <div class="border-t border-gray-700 my-4" />
 
-        <div class="border-t border-gray-700 my-4" />
-
-        <div id="policy-builder-advanced-settings">
-          <PolicyBuilderAdvancedSettings
-            :form="form"
-            :total-weight="totalWeight"
-            @update-field="setFormField"
-          />
-        </div>
+          <div id="policy-builder-advanced-settings">
+            <PolicyBuilderAdvancedSettings
+              :form="form"
+              :total-weight="totalWeight"
+              @update-field="setFormField"
+            />
+          </div>
+        </template>
       </template>
     </div>
 
-    <template #footer>
+    <template
+      v-if="!nativeCreateHandoff"
+      #footer
+    >
       <PolicyBuilderFooterActions
         :boundary="saveBoundary"
         :saving="saving"
@@ -115,11 +127,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, toRef } from 'vue'
+import { computed, nextTick, onMounted, ref, toRef } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
 import PolicyBuilderFooterActions from '@/components/policies/PolicyBuilderFooterActions.vue'
 import PolicyBuilderWorkflowShell from '@/components/policies/PolicyBuilderWorkflowShell.vue'
+import PolicyNativeCreateHandoff from '@/components/policies/PolicyNativeCreateHandoff.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
@@ -130,6 +143,7 @@ import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderRef
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 import { usePolicyOperatorWorkflow } from '@/composables/usePolicyOperatorWorkflow'
 import { usePolicyObservedSuggestionDraft } from '@/composables/usePolicyObservedSuggestionDraft'
+import { usePolicyNativeCreateHandoff } from '@/composables/usePolicyNativeCreateHandoff'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRoutingReadiness'
 import { buildPolicyBuilderExperienceMode } from '@/utils/policyBuilderExperienceMode'
@@ -165,6 +179,7 @@ const emit = defineEmits({
 const toast = useToast()
 const saving = ref(false)
 const saveError = ref('')
+const nativeCreateHandoffRef = ref(null)
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -172,6 +187,8 @@ const isOpen = computed({
 })
 
 const modalTitle = computed(() => {
+  if (nativeCreateHandoff.value) return 'Policy created'
+
   const libraryName = currentLibrary.value?.name || 'New'
   return `${libraryName} Policy`
 })
@@ -267,6 +284,11 @@ const {
 })
 
 const experienceMode = computed(() => buildPolicyBuilderExperienceMode(props.policy))
+
+const {
+  handoff: nativeCreateHandoff,
+  establishHandoff: establishNativeCreateHandoff,
+} = usePolicyNativeCreateHandoff()
 
 const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({
   form: form.value,
@@ -379,10 +401,16 @@ const save = async () => {
   saving.value = true
 
   try {
+    let response
     if (props.submitPolicy) {
-      await props.submitPolicy(policyData)
+      response = await props.submitPolicy(policyData)
     } else {
       emit('save', policyData)
+    }
+
+    if (experienceMode.value.isNativeCreate && await establishNativeCreateHandoff(response)) {
+      await nextTick()
+      nativeCreateHandoffRef.value?.focus()
     }
   } catch (error) {
     const message = error?.response?.data?.error || error?.message || 'Failed to save policy'

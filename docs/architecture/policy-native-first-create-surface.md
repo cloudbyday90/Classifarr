@@ -100,6 +100,10 @@ Recommendation stack:
 
 ## Follow-Up
 
-The next 6R.5 task is to define the smallest native follow-up action for
-libraries with insufficient observed profile evidence, so a missing profile can
-be refreshed or deferred without revealing a legacy manual-builder fallback.
+Native creation now also concludes with a server-owned saved-policy handoff.
+The modal confirms the persisted declared authority and routing state before an
+operator closes it. See [Policy Native Create Handoff](policy-native-create-handoff.md).
+
+The next 6R.5 decision is whether observed library evidence needs durable
+provenance after creation, rather than treating setup observations as transient
+inputs to the declared-intent authority.

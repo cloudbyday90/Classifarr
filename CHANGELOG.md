@@ -39,6 +39,13 @@ unchanged operator or runtime outcome.
   then reloads the server-owned workflow before values can be accepted; unsafe
   evidence can be deferred without reopening legacy authoring controls.
 
+- **Native Policy Create Confirmation** - after a native policy is created,
+  Classifarr keeps the outcome visible while it confirms the persisted declared
+  intent and routing state. The handoff uses the server response and an
+  authorized policy reread rather than unsaved browser state, and it remains
+  clear that the policy was saved even when detailed reread data is temporarily
+  unavailable.
+
 - **Library-First Policy Workflow Shell** - replaced the policy builder's
   setup-card grid and standalone routing diagnostic with the five
   destination-first questions, current library observations, and one

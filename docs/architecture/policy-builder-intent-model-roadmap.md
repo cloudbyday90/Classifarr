@@ -3822,6 +3822,12 @@ Implementation status:
   reread, and remain safe to defer. It does not reopen legacy templates or raw
   authoring controls. Its design record is [Policy Native Evidence
   Recovery](policy-native-evidence-recovery.md).
+- Successful native creation now remains visible through a compact handoff that
+  reads the persisted policy before displaying declared-intent counts and
+  routing state. It uses the successful create receipt when that follow-up read
+  is unavailable, never rebuilds policy authority from the browser draft, and
+  does not claim transient observed suggestions are persisted provenance. Its
+  design record is [Policy Native Create Handoff](policy-native-create-handoff.md).
 - Retired diagnostic panels no longer have a component, accessibility, readiness,
   or workflow exemption. Readiness rejects their identifiers instead of routing
   them to an alternate authoring branch; the outcome is documented in

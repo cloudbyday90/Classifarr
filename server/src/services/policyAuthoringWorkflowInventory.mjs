@@ -106,6 +106,16 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     matches: filePath => filePath.endsWith('/PolicyBuilderModal.vue'),
   },
   {
+    id: 'policy_builder_experience_mode',
+    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.WORKFLOW_SHELL,
+    normalAuthoringAllowed: true,
+    migrationSupportOnly: false,
+    riskIds: [],
+    notes: 'Experience mode only selects the new-policy or existing-policy shell from a persisted identifier; it does not evaluate destination evidence or decide automation.',
+    matches: filePath => filePath.endsWith('/policyBuilderExperienceMode.js'),
+  },
+  {
     id: 'destination_context_surface',
     decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DESTINATION_CONTEXT,

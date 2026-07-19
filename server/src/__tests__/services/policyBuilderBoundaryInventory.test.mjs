@@ -109,6 +109,17 @@ describe('policyBuilderBoundaryInventory', () => {
       }));
   });
 
+  test('keeps the persisted-id experience switch as non-authoritative UI orchestration', () => {
+    expect(classifyPolicyBuilderClientPath('client/src/utils/policyBuilderExperienceMode.js'))
+      .toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
+        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
+        actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
+        clientEngineAuthorityAllowed: false,
+        engineCutlineDecisionRequired: false,
+      }));
+  });
+
   test('does not retain deleted preview diagnostics in current boundary rules', () => {
     expect(listPolicyBuilderBoundaryRules().map(rule => rule.id))
       .not.toContain('policy_preview_diagnostics');

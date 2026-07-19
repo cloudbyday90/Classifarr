@@ -939,6 +939,7 @@ describe('Policies routes coverage', () => {
         .expect(201);
 
       expect(db.withTransaction).toHaveBeenCalledTimes(1);
+      expect(res.headers.location).toBe('/api/policies/78');
       expect(res.body.native_intent_establishment).toEqual({
         statusId: 'initial_intent_established',
         intentId: 601,

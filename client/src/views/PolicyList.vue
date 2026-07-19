@@ -201,6 +201,8 @@ const editPolicy = async (policy) => {
 
 const savePolicy = async (policyData) => {
   let response
+  const nativeCreate = !editingPolicy.value && policyData?.native_intent_establishment !== undefined
+
   if (editingPolicy.value) {
     response = await api.updatePolicy(editingPolicy.value.id, policyData)
   } else {
@@ -212,7 +214,11 @@ const savePolicy = async (policyData) => {
   )
 
   await fetchPolicies()
-  closeModal()
+  if (!nativeCreate) {
+    closeModal()
+  }
+
+  return response
 }
 
 const confirmReset = async (policy) => {

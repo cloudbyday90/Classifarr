@@ -122,6 +122,17 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     matches: (filePath) => filePath.endsWith('/PolicyBuilderModal.vue'),
   },
   {
+    id: 'policy_builder_experience_mode',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
+    clientEngineAuthorityAllowed: false,
+    engineCutlineDecisionRequired: false,
+    riskIds: [],
+    notes: 'Experience mode only selects the new-policy or existing-policy shell from a persisted identifier; it cannot infer intent, evaluate evidence, or decide automation.',
+    matches: (filePath) => filePath.endsWith('/policyBuilderExperienceMode.js'),
+  },
+  {
     id: 'policy_intent_editor',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
