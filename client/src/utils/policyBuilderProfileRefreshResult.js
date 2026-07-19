@@ -9,6 +9,7 @@
 const DISTRIBUTION_KEYS = [
   ['genre_distribution', 'genre'],
   ['rating_distribution', 'rating'],
+  ['studio_distribution', 'studio'],
   ['keyword_distribution', 'keyword'],
 ]
 
@@ -66,7 +67,7 @@ export function buildPolicyBuilderProfileRefreshResult({
       status: 'success_empty',
       tone: 'warning',
       label: 'Profile refreshed',
-      message: 'No usable genre, rating, or keyword signals were found. Sync and enrich the library before relying on library-derived suggestions.',
+      message: 'No usable genre, rating, studio, or keyword signals were found. Sync and enrich the library before relying on library-derived suggestions.',
     }
   }
 

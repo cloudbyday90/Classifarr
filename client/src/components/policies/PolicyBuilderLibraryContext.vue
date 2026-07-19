@@ -30,6 +30,7 @@
           Uses the connected media server library as the source of truth.
         </p>
         <button
+          v-if="showRefreshAction"
           type="button"
           class="rounded border border-gray-600 px-2 py-1 text-xs text-gray-300 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
           :disabled="!canRefresh || loading || refreshing"
@@ -124,6 +125,10 @@ const props = defineProps({
   canRefresh: {
     type: Boolean,
     default: false,
+  },
+  showRefreshAction: {
+    type: Boolean,
+    default: true,
   },
   refreshResult: {
     type: Object,

@@ -23,6 +23,7 @@
           :loading="libraryProfileLoading"
           :refreshing="libraryProfileRefreshing"
           :can-refresh="Boolean(form.library_id)"
+          :show-refresh-action="experienceMode.isLegacyEdit"
           @refresh-profile="refreshActiveLibraryProfile"
         />
       </div>
@@ -31,9 +32,13 @@
         :workflow-read="operatorWorkflowRead"
         :loading="operatorWorkflowLoading"
         :error="operatorWorkflowError"
+        :refresh-result="libraryProfileRefreshResult"
+        :refreshing="libraryProfileRefreshing"
         :accepted-candidates="acceptedObservedCandidates"
         :selection-enabled="experienceMode.isNativeCreate"
         @draft-command-plan="applyObservedSuggestionCommandPlan"
+        @refresh-profile="refreshActiveLibraryProfile"
+        @reload-workflow="reloadActiveLibraryWorkflow"
       />
 
       <template v-if="experienceMode.isLegacyEdit">
@@ -194,6 +199,7 @@ const {
   formatUsageLabel,
   loadInitialData,
   loadLibraryContext,
+  loadLibraryProfile,
   dismissPresetMigrationNotice,
   watchSuggestedPresets,
   watchLibraryProfile,
@@ -295,6 +301,11 @@ const refreshActiveLibraryProfile = async () => {
   if (refreshed) {
     await loadOperatorWorkflow(form.value.library_id)
   }
+}
+
+const reloadActiveLibraryWorkflow = async () => {
+  await loadLibraryProfile(form.value.library_id)
+  await loadOperatorWorkflow(form.value.library_id)
 }
 
 const addAllSuggested = () => {

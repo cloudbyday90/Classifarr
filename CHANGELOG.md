@@ -33,6 +33,12 @@ unchanged operator or runtime outcome.
   requires declared destination meaning, while incomplete routing remains a
   clear non-blocking follow-up before automatic application can occur.
 
+- **Bounded Native Evidence Recovery** - new-policy creation now keeps stale,
+  missing, empty, and failed library-profile evidence out of destination
+  selection. Classifarr offers one explicit profile refresh or evidence reread,
+  then reloads the server-owned workflow before values can be accepted; unsafe
+  evidence can be deferred without reopening legacy authoring controls.
+
 - **Library-First Policy Workflow Shell** - replaced the policy builder's
   setup-card grid and standalone routing diagnostic with the five
   destination-first questions, current library observations, and one

@@ -102,7 +102,49 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     })
 
     expect(wrapper.text()).toContain('Profile unavailable')
-    expect(wrapper.text()).toContain('Refresh the profile above before relying on observed suggestions.')
+    expect(wrapper.text()).toContain('A current library profile is not available yet.')
+  })
+
+  it('keeps native observed values unavailable until a stale profile is refreshed', async () => {
+    const workflowRead = buildWorkflowRead()
+    workflowRead.observedProfile = {
+      available: true,
+      current: false,
+      suggestionCount: 2,
+      suggestions: [],
+      selectableSuggestions: [{
+        candidateId: 'genre:Animation:purpose',
+        value: 'Animation',
+      }],
+    }
+
+    const wrapper = mount(PolicyBuilderWorkflowShell, {
+      props: {
+        workflowRead,
+        selectionEnabled: true,
+      },
+    })
+
+    expect(wrapper.text()).toContain('Library evidence needs a refresh')
+    expect(wrapper.text()).not.toContain('What should define this destination?')
+
+    await wrapper.find('button').trigger('click')
+    expect(wrapper.emitted('refresh-profile')).toHaveLength(1)
+  })
+
+  it('offers a bounded workflow reload when native evidence cannot be read', async () => {
+    const wrapper = mount(PolicyBuilderWorkflowShell, {
+      props: {
+        error: 'Classifarr could not load the library workflow.',
+        selectionEnabled: true,
+      },
+    })
+
+    expect(wrapper.text()).toContain('Library evidence is unavailable')
+    expect(wrapper.text()).toContain('Try evidence check again')
+
+    await wrapper.findAll('button').at(-1).trigger('click')
+    expect(wrapper.emitted('reload-workflow')).toHaveLength(1)
   })
 
   it('keeps native policy creation focused on accepted library evidence', () => {

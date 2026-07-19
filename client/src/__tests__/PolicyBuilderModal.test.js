@@ -342,6 +342,75 @@ describe('PolicyBuilderModal.vue', () => {
     });
   });
 
+  it('refreshes insufficient native evidence and reloads the bounded workflow before showing candidates', async () => {
+    const workflowRead = buildOperatorWorkflowRead();
+    workflowRead.observedProfile = {
+      available: false,
+      current: false,
+      suggestionCount: 0,
+      suggestions: [],
+      selectableSuggestions: [],
+    };
+
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/operator-workflow/libraries/1') return Promise.resolve({ data: workflowRead });
+      if (url === '/libraries/1/profile') return Promise.resolve({ data: null });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+    api.refreshLibraryProfile.mockImplementation(async () => {
+      workflowRead.observedProfile = {
+        available: true,
+        current: true,
+        suggestionCount: 1,
+        suggestions: [{ key: 'genre:Science Fiction', label: 'Science Fiction', count: 18 }],
+        selectableSuggestions: [{
+          candidateId: 'genre:Science Fiction:purpose',
+          value: 'Science Fiction',
+          label: 'Science Fiction',
+          signalType: 'genres',
+          operator: 'require_any',
+          questionId: 'what_belongs_here',
+          sourceId: 'suggested_from_observed_profile',
+          explanation: 'Science Fiction appears in 18 items in the current library.',
+          evidenceCount: 18,
+          requiresExplicitAcceptance: true,
+          canAutoDeclare: false,
+        }],
+      };
+      return {
+        data: {
+          profile: {
+            genre_distribution: { 'Science Fiction': 18 },
+            last_generated_at: '2026-07-19T12:00:00.000Z',
+          },
+        },
+      };
+    });
+
+    mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+      },
+      attachTo: document.body,
+    });
+
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('A current library profile is needed');
+    expect(document.body.textContent).not.toContain('What should define this destination?');
+
+    const refreshButton = Array.from(document.body.querySelectorAll('button'))
+      .find(button => button.textContent.includes('Refresh library profile'));
+    expect(refreshButton).toBeTruthy();
+    refreshButton.click();
+    await flushPromises();
+
+    expect(api.refreshLibraryProfile).toHaveBeenCalledWith(1);
+    expect(document.body.textContent).toContain('What should define this destination?');
+  });
+
   it('awaits the parent save operation and shows an actionable save failure', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });

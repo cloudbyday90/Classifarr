@@ -72,6 +72,18 @@ describe('PolicyBuilderLibraryContext.vue', () => {
     expect(wrapper.emitted('refresh-profile')).toHaveLength(1)
   })
 
+  it('can leave native recovery actions to the focused workflow panel', () => {
+    const wrapper = mount(PolicyBuilderLibraryContext, {
+      props: {
+        library: { id: 14, name: 'Family' },
+        canRefresh: true,
+        showRefreshAction: false,
+      },
+    })
+
+    expect(wrapper.find('button').exists()).toBe(false)
+  })
+
   it('shows refreshing state and blocks duplicate refreshes', () => {
     const wrapper = mount(PolicyBuilderLibraryContext, {
       props: {

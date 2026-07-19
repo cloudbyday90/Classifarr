@@ -38,13 +38,21 @@
       Loading the current library workflow.
     </p>
 
-    <p
-      v-else-if="error"
-      class="rounded border border-amber-700/70 bg-amber-950/30 px-3 py-2 text-sm text-amber-100"
-      role="alert"
-    >
-      {{ error }}
-    </p>
+    <template v-else-if="error">
+      <p
+        class="rounded border border-amber-700/70 bg-amber-950/30 px-3 py-2 text-sm text-amber-100"
+        role="alert"
+      >
+        {{ error }}
+      </p>
+      <PolicyNativeEvidenceRecovery
+        v-if="selectionEnabled && nativeEvidenceRecovery.requiresAction"
+        :recovery="nativeEvidenceRecovery"
+        :refreshing="refreshing"
+        @refresh-profile="emit('refresh-profile')"
+        @reload-workflow="emit('reload-workflow')"
+      />
+    </template>
 
     <template v-else-if="workflowRead">
       <section
@@ -75,14 +83,14 @@
           v-if="!observedProfile.available"
           class="mt-3 text-sm text-gray-300"
         >
-          A current library profile is not available yet. Refresh the profile above before relying on observed suggestions.
+          A current library profile is not available yet.
         </p>
         <p
           v-else-if="observedSuggestions.length === 0"
           class="mt-3 text-sm text-gray-300"
         >
           {{ selectionEnabled
-            ? 'Classifarr has not found reusable library observations yet. Refresh the profile above before creating this policy.'
+            ? 'Classifarr has not found reusable library observations yet.'
             : 'Classifarr has not found reusable library observations yet. You can still describe the destination below.' }}
         </p>
         <ul
@@ -105,8 +113,16 @@
           </li>
         </ul>
 
+        <PolicyNativeEvidenceRecovery
+          v-if="selectionEnabled && nativeEvidenceRecovery.requiresAction"
+          :recovery="nativeEvidenceRecovery"
+          :refreshing="refreshing"
+          @refresh-profile="emit('refresh-profile')"
+          @reload-workflow="emit('reload-workflow')"
+        />
+
         <PolicyObservedSuggestionSelector
-          v-if="selectionEnabled"
+          v-if="selectionEnabled && nativeEvidenceRecovery.canSelectObservedCandidates"
           :accepted-candidates="acceptedCandidates"
           :candidates="selectableSuggestions"
           :library-name="libraryName"
@@ -185,7 +201,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import PolicyNativeEvidenceRecovery from './PolicyNativeEvidenceRecovery.vue'
 import PolicyObservedSuggestionSelector from './PolicyObservedSuggestionSelector.vue'
+import { buildPolicyNativeEvidenceRecovery } from '@/utils/policyNativeEvidenceRecovery'
 
 const props = defineProps({
   workflowRead: {
@@ -200,6 +218,14 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  refreshResult: {
+    type: Object,
+    default: null,
+  },
+  refreshing: {
+    type: Boolean,
+    default: false,
+  },
   acceptedCandidates: {
     type: Array,
     default: () => [],
@@ -212,6 +238,8 @@ const props = defineProps({
 
 const emit = defineEmits({
   'draft-command-plan': plan => Boolean(plan?.commands?.length),
+  'refresh-profile': () => true,
+  'reload-workflow': () => true,
 })
 
 const workflow = computed(() => props.workflowRead?.workflow || null)
@@ -226,6 +254,13 @@ const sections = computed(() => Array.isArray(workflow.value?.sections)
   ? workflow.value.sections
   : [])
 const libraryName = computed(() => props.workflowRead?.library?.name || 'this library')
+const nativeEvidenceRecovery = computed(() => buildPolicyNativeEvidenceRecovery({
+  selectionEnabled: props.selectionEnabled,
+  workflowRead: props.workflowRead,
+  loading: props.loading,
+  error: props.error,
+  refreshResult: props.refreshResult,
+}))
 
 const observedProfileLabel = computed(() => {
   if (!observedProfile.value.available) return 'Profile unavailable'

@@ -75,6 +75,14 @@ replay, parity, TMDB coverage, impact preview, or diagnostic panel. Refresh
 remains the existing explicit profile operation; after a successful refresh,
 the modal reloads this cached-workflow projection.
 
+For native creation, missing, stale, empty, and failed-refresh profile states
+now use one focused recovery panel. Candidate checkboxes remain hidden until a
+current display-only workflow read returns usable values. The panel can either
+trigger the existing authorized profile refresh or retry the display-only read;
+it does not retry a write automatically, expose a legacy authoring fallback,
+or render a raw backend error. The detailed decision is documented in
+[Policy Native Evidence Recovery](policy-native-evidence-recovery.md).
+
 ## Pros And Cons
 
 Pros:

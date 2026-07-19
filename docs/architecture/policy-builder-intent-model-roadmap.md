@@ -3816,6 +3816,12 @@ Implementation status:
   policies retain the compatibility editor until the migration-and-deletion
   cutover. Its design record is [Policy Native-First Create
   Surface](policy-native-first-create-surface.md).
+- Native creation now recovers insufficient profile evidence through one
+  bounded action: unavailable, stale, empty, and failed-refresh states hide
+  observed candidates, offer an explicit profile refresh or a display-only
+  reread, and remain safe to defer. It does not reopen legacy templates or raw
+  authoring controls. Its design record is [Policy Native Evidence
+  Recovery](policy-native-evidence-recovery.md).
 - Retired diagnostic panels no longer have a component, accessibility, readiness,
   or workflow exemption. Readiness rejects their identifiers instead of routing
   them to an alternate authoring branch; the outcome is documented in

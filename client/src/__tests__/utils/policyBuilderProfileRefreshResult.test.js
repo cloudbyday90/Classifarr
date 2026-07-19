@@ -19,12 +19,15 @@ describe('policyBuilderProfileRefreshResult', () => {
       rating_distribution: {
         G: 24,
       },
+      studio_distribution: {
+        Pixar: 8,
+      },
       keyword_distribution: {
         dragon: '3',
       },
     })).toEqual({
-      totalSignalCount: 3,
-      parts: ['1 genre', '1 rating', '1 keyword'],
+      totalSignalCount: 4,
+      parts: ['1 genre', '1 rating', '1 studio', '1 keyword'],
     })
   })
 
@@ -38,12 +41,15 @@ describe('policyBuilderProfileRefreshResult', () => {
         rating_distribution: {
           G: 24,
         },
+        studio_distribution: {
+          Pixar: 12,
+        },
       },
     })).toEqual({
       status: 'success',
       tone: 'success',
       label: 'Profile refreshed',
-      message: '2 genres, 1 rating available from the current library profile.',
+      message: '2 genres, 1 rating, 1 studio available from the current library profile.',
     })
   })
 
