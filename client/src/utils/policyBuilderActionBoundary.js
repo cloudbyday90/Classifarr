@@ -24,11 +24,17 @@ function formatPercent(value) {
   return `${Math.round(asNumber(value) * 100)}%`
 }
 
+function hasDeclaredNativePurpose(nativeIntentEstablishment) {
+  const purpose = nativeIntentEstablishment?.declared_intent?.purpose
+  return Array.isArray(purpose) && purpose.length > 0
+}
+
 function buildPolicyBuilderSaveBoundary({
   form = {},
   selectedPresets = [],
   totalWeight = 0,
   hasExistingPolicy = false,
+  nativeIntentEstablishment = null,
   routingReadiness = null,
 } = {}) {
   const selectedPresetCount = countSelectedPresets(selectedPresets)
@@ -47,6 +53,45 @@ function buildPolicyBuilderSaveBoundary({
       statusLabel: 'Choose a library before saving',
       statusMessage: 'Select the media-server library this policy should describe.',
       disabledReason: 'Choose a destination library before saving.',
+    }
+  }
+
+  if (!hasExistingPolicy) {
+    if (!hasDeclaredNativePurpose(nativeIntentEstablishment)) {
+      return {
+        canSave: false,
+        saveLabel,
+        deferLabel: 'Defer for now',
+        status: 'blocked',
+        tone: 'warning',
+        statusLabel: 'Choose destination meaning',
+        statusMessage: 'Accept at least one observed value that should define this destination before creating the policy.',
+        disabledReason: 'Accept one or more observed values that should define this destination.',
+      }
+    }
+
+    if (routingReadiness && !routingReadiness.canRoute) {
+      return {
+        canSave: true,
+        saveLabel,
+        deferLabel: 'Defer for now',
+        status: 'ready_with_warning',
+        tone: 'info',
+        statusLabel: 'Ready to create; routing still needs setup',
+        statusMessage: 'Classifarr can create this destination policy now. Configure routing before approved matches can apply automatically.',
+        disabledReason: '',
+      }
+    }
+
+    return {
+      canSave: true,
+      saveLabel,
+      deferLabel: 'Defer for now',
+      status: 'ready',
+      tone: 'success',
+      statusLabel: 'Ready to create',
+      statusMessage: 'This policy will use the values you explicitly accepted from the current library profile.',
+      disabledReason: '',
     }
   }
 

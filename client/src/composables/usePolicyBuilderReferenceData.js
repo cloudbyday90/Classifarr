@@ -258,6 +258,10 @@ export function usePolicyBuilderReferenceData({
     ])
   }
 
+  const loadLibraryContext = async () => {
+    await loadLibraries()
+  }
+
   const dismissPresetMigrationNotice = () => {
     if (presetMigrationNotice.value?.version) {
       storage?.setItem?.(
@@ -391,6 +395,7 @@ export function usePolicyBuilderReferenceData({
     refreshLibraryProfile,
     loadPresetMigrationNotice,
     loadInitialData,
+    loadLibraryContext,
     dismissPresetMigrationNotice,
     loadSuggestions,
     watchSuggestedPresets,

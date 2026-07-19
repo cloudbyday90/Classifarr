@@ -32,67 +32,69 @@
         :loading="operatorWorkflowLoading"
         :error="operatorWorkflowError"
         :accepted-candidates="acceptedObservedCandidates"
-        :selection-enabled="!Boolean(policy?.id)"
+        :selection-enabled="experienceMode.isNativeCreate"
         @draft-command-plan="applyObservedSuggestionCommandPlan"
       />
 
-      <PolicyPresetMigrationNotice
-        v-if="presetMigrationNotice"
-        :notice="presetMigrationNotice"
-        @dismiss="dismissPresetMigrationNotice"
-      />
+      <template v-if="experienceMode.isLegacyEdit">
+        <PolicyPresetMigrationNotice
+          v-if="presetMigrationNotice"
+          :notice="presetMigrationNotice"
+          @dismiss="dismissPresetMigrationNotice"
+        />
 
-      <PolicyIntentSummaryCard :summary="intentSummary" />
+        <PolicyIntentSummaryCard :summary="intentSummary" />
 
-      <div id="policy-builder-intent-editor">
-        <PolicyIntentEditor
+        <div id="policy-builder-intent-editor">
+          <PolicyIntentEditor
+            :selected-presets="selectedPresets"
+            :all-presets="allPresets"
+            :intent-draft="intentDraft"
+            :available-genres="availableGenres"
+            :available-genre-options="availableGenreOptions"
+            :available-ratings="availableRatings"
+            @draft-add-signal="addIntentSignal"
+            @draft-remove-signal-value="removeIntentSignalValue"
+            @draft-set-signal-config="setIntentSignalConfig"
+            @draft-clear-signal-config="clearIntentSignalConfig"
+          />
+        </div>
+
+        <PolicyStarterTemplateAccelerator
+          v-model:search-query="searchQuery"
+          v-model:selected-category="selectedCategory"
+          :suggested-presets="suggestedPresets"
+          :available-presets="filteredAvailablePresets"
           :selected-presets="selectedPresets"
           :all-presets="allPresets"
-          :intent-draft="intentDraft"
-          :available-genres="availableGenres"
-          :available-genre-options="availableGenreOptions"
+          :category-tabs="categoryTabs"
+          :expanded-preset-ids="expandedPresetIds"
           :available-ratings="availableRatings"
-          @draft-add-signal="addIntentSignal"
-          @draft-remove-signal-value="removeIntentSignalValue"
-          @draft-set-signal-config="setIntentSignalConfig"
-          @draft-clear-signal-config="clearIntentSignalConfig"
+          :available-genres="availableGenres"
+          :combined-signals="combinedSignals"
+          :get-preset-usage-count="getPresetUsageCount"
+          :format-usage-label="formatUsageLabel"
+          @add-all-suggested="addAllSuggested"
+          @toggle-preset="togglePresetSelection"
+          @toggle-preset-customize="togglePresetCustomize"
+          @remove-preset="removePreset"
+          @update-preset-weight="setPresetWeight"
+          @add-custom-signal="addCustomSignal"
+          @remove-custom-signal="removeCustomSignal"
+          @set-signal-removal="setSignalRemoval"
+          @set-signal-strict="setPresetSignalStrict"
         />
-      </div>
 
-      <PolicyStarterTemplateAccelerator
-        v-model:search-query="searchQuery"
-        v-model:selected-category="selectedCategory"
-        :suggested-presets="suggestedPresets"
-        :available-presets="filteredAvailablePresets"
-        :selected-presets="selectedPresets"
-        :all-presets="allPresets"
-        :category-tabs="categoryTabs"
-        :expanded-preset-ids="expandedPresetIds"
-        :available-ratings="availableRatings"
-        :available-genres="availableGenres"
-        :combined-signals="combinedSignals"
-        :get-preset-usage-count="getPresetUsageCount"
-        :format-usage-label="formatUsageLabel"
-        @add-all-suggested="addAllSuggested"
-        @toggle-preset="togglePresetSelection"
-        @toggle-preset-customize="togglePresetCustomize"
-        @remove-preset="removePreset"
-        @update-preset-weight="setPresetWeight"
-        @add-custom-signal="addCustomSignal"
-        @remove-custom-signal="removeCustomSignal"
-        @set-signal-removal="setSignalRemoval"
-        @set-signal-strict="setPresetSignalStrict"
-      />
+        <div class="border-t border-gray-700 my-4" />
 
-      <div class="border-t border-gray-700 my-4" />
-
-      <div id="policy-builder-advanced-settings">
-        <PolicyBuilderAdvancedSettings
-          :form="form"
-          :total-weight="totalWeight"
-          @update-field="setFormField"
-        />
-      </div>
+        <div id="policy-builder-advanced-settings">
+          <PolicyBuilderAdvancedSettings
+            :form="form"
+            :total-weight="totalWeight"
+            @update-field="setFormField"
+          />
+        </div>
+      </template>
     </div>
 
     <template #footer>
@@ -125,6 +127,7 @@ import { usePolicyOperatorWorkflow } from '@/composables/usePolicyOperatorWorkfl
 import { usePolicyObservedSuggestionDraft } from '@/composables/usePolicyObservedSuggestionDraft'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRoutingReadiness'
+import { buildPolicyBuilderExperienceMode } from '@/utils/policyBuilderExperienceMode'
 import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
 import { buildPolicyIntentSummary } from '@/utils/policyIntentSummary'
 import { useToast } from '@/stores/toast'
@@ -190,6 +193,7 @@ const {
   getPresetUsageCount,
   formatUsageLabel,
   loadInitialData,
+  loadLibraryContext,
   dismissPresetMigrationNotice,
   watchSuggestedPresets,
   watchLibraryProfile,
@@ -256,11 +260,14 @@ const {
   libraryId: computed(() => form.value.library_id),
 })
 
+const experienceMode = computed(() => buildPolicyBuilderExperienceMode(props.policy))
+
 const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({
   form: form.value,
   selectedPresets: selectedPresets.value,
   totalWeight: totalWeight.value,
-  hasExistingPolicy: Boolean(props.policy?.id),
+  hasExistingPolicy: experienceMode.value.isLegacyEdit,
+  nativeIntentEstablishment: nativeIntentEstablishment.value,
   routingReadiness: routingReadiness.value,
 }))
 
@@ -269,9 +276,17 @@ const filteredAvailablePresets = computed(() => {
   return getFilteredAvailablePresets(selectedPresets.value)
 })
 
-onMounted(loadInitialData)
+onMounted(() => {
+  if (experienceMode.value.isLegacyEdit) {
+    return loadInitialData()
+  }
 
-watchSuggestedPresets(computed(() => form.value.library_id))
+  return loadLibraryContext()
+})
+
+if (experienceMode.value.isLegacyEdit) {
+  watchSuggestedPresets(computed(() => form.value.library_id))
+}
 watchLibraryProfile(computed(() => form.value.library_id))
 watchOperatorWorkflow(computed(() => form.value.library_id))
 
@@ -337,7 +352,7 @@ const save = async () => {
   if (!saveBoundary.value.canSave || saving.value) return
 
   const policyData = buildSavePayload()
-  if (!props.policy?.id && nativeIntentEstablishment.value) {
+  if (experienceMode.value.isNativeCreate) {
     if (selectedPresets.value.length > 0) {
       const message = 'Remove starter templates before creating a native intent policy from observed library values.'
       saveError.value = message

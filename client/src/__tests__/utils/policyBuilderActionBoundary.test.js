@@ -22,7 +22,7 @@ describe('policyBuilderActionBoundary', () => {
     })
   })
 
-  it('allows saving without a starter template because templates are optional accelerators', () => {
+  it('requires declared native purpose before creating a policy', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
       selectedPresets: [],
@@ -30,19 +30,36 @@ describe('policyBuilderActionBoundary', () => {
     })
 
     expect(boundary).toMatchObject({
-      canSave: true,
-      status: 'ready',
-      statusLabel: 'Ready to save',
-      disabledReason: '',
+      canSave: false,
+      status: 'blocked',
+      statusLabel: 'Choose destination meaning',
+      disabledReason: 'Accept one or more observed values that should define this destination.',
     })
-    expect(boundary.statusMessage).toContain('Starter templates are optional accelerators.')
+    expect(boundary.statusMessage).toContain('Accept at least one observed value')
   })
 
-  it('requires weights to total 100 percent', () => {
+  it('does not apply legacy scoring-weight validation to native policy creation', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
-      selectedPresets: [{ id: 1 }],
       totalWeight: 0.85,
+      nativeIntentEstablishment: {
+        declared_intent: {
+          purpose: [{ signal_type: 'genres' }],
+        },
+      },
+    })
+
+    expect(boundary).toMatchObject({
+      canSave: true,
+      statusLabel: 'Ready to create',
+    })
+  })
+
+  it('requires weights to total 100 percent when editing a compatibility policy', () => {
+    const boundary = buildPolicyBuilderSaveBoundary({
+      form: { library_id: 1 },
+      totalWeight: 0.85,
+      hasExistingPolicy: true,
     })
 
     expect(boundary).toMatchObject({
@@ -55,8 +72,12 @@ describe('policyBuilderActionBoundary', () => {
   it('allows save with a non-blocking routing warning', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
-      selectedPresets: [{ id: 1 }],
       totalWeight: 1,
+      nativeIntentEstablishment: {
+        declared_intent: {
+          purpose: [{ signal_type: 'genres' }],
+        },
+      },
       routingReadiness: {
         canRoute: false,
       },
@@ -66,7 +87,7 @@ describe('policyBuilderActionBoundary', () => {
       canSave: true,
       status: 'ready_with_warning',
       tone: 'info',
-      statusLabel: 'Ready to save; routing still needs setup',
+      statusLabel: 'Ready to create; routing still needs setup',
       disabledReason: '',
     })
   })

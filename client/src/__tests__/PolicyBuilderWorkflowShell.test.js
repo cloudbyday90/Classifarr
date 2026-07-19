@@ -104,4 +104,35 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     expect(wrapper.text()).toContain('Profile unavailable')
     expect(wrapper.text()).toContain('Refresh the profile above before relying on observed suggestions.')
   })
+
+  it('keeps native policy creation focused on accepted library evidence', () => {
+    const workflowRead = buildWorkflowRead()
+    workflowRead.observedProfile.selectableSuggestions = [{
+      candidateId: 'genre:Animation:purpose',
+      value: 'Animation',
+      label: 'Animation',
+      signalType: 'genres',
+      operator: 'require_any',
+      questionId: 'what_belongs_here',
+      sourceId: 'suggested_from_observed_profile',
+      explanation: 'Animation appears in 48 items in the current library.',
+      evidenceCount: 48,
+      requiresExplicitAcceptance: true,
+      canAutoDeclare: false,
+    }]
+
+    const wrapper = mount(PolicyBuilderWorkflowShell, {
+      props: {
+        workflowRead,
+        selectionEnabled: true,
+      },
+    })
+
+    expect(wrapper.text()).toContain('Define this destination')
+    expect(wrapper.text()).toContain('What should define this destination?')
+    expect(wrapper.text()).toContain('Select all that apply')
+    expect(wrapper.findAll('article')).toHaveLength(0)
+    expect(wrapper.text()).not.toContain('Automation readiness:')
+    expect(wrapper.text()).toContain('Routing:')
+  })
 })

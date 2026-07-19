@@ -3809,6 +3809,13 @@ Implementation status:
   attachments, non-administrator calls, unsupported observed values, and
   partial writes. Its design record is [Policy Observed Suggestion Native
   Creation](policy-observed-suggestion-native-creation.md).
+- New policy creation now uses a dedicated native-first surface: it loads only
+  the library context, presents unchecked observed destination values, requires
+  explicit accepted purpose before creation, and omits legacy templates,
+  migration notices, raw preset controls, and scoring thresholds. Persisted
+  policies retain the compatibility editor until the migration-and-deletion
+  cutover. Its design record is [Policy Native-First Create
+  Surface](policy-native-first-create-surface.md).
 - Retired diagnostic panels no longer have a component, accessibility, readiness,
   or workflow exemption. Readiness rejects their identifiers instead of routing
   them to an alternate authoring branch; the outcome is documented in

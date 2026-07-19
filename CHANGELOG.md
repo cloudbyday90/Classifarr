@@ -25,6 +25,14 @@ unchanged operator or runtime outcome.
   routing state, and a rollback snapshot atomically without provider calls,
   quota consumption, learning, or media routing.
 
+- **Native-First Policy Creation** - creating a new policy now focuses on the
+  connected library and explicitly accepted observed destination values. Legacy
+  starter templates, raw preset controls, migration notices, and scoring
+  thresholds no longer load or appear on the new-policy path; they remain
+  available only while editing an existing compatibility policy. Creation
+  requires declared destination meaning, while incomplete routing remains a
+  clear non-blocking follow-up before automatic application can occur.
+
 - **Library-First Policy Workflow Shell** - replaced the policy builder's
   setup-card grid and standalone routing diagnostic with the five
   destination-first questions, current library observations, and one

@@ -175,6 +175,7 @@ describe('PolicyBuilderModal.vue', () => {
       props: {
         modelValue: true,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: []
@@ -204,6 +205,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: []
@@ -232,6 +234,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           profile_weight: 0.25,
@@ -304,6 +307,15 @@ describe('PolicyBuilderModal.vue', () => {
     });
 
     await flushPromises();
+
+    expect(document.body.textContent).toContain('Define this destination');
+    expect(document.body.textContent).toContain('What should define this destination?');
+    expect(document.body.textContent).not.toContain('Policy Intent Builder');
+    expect(document.body.textContent).not.toContain('Starter Template Accelerator');
+    expect(document.body.textContent).not.toContain('Advanced Settings');
+    expect(api.get).not.toHaveBeenCalledWith('/policies/presets/all');
+    expect(api.get).not.toHaveBeenCalledWith('/settings');
+    expect(api.get).not.toHaveBeenCalledWith('/policies/presets/suggest/1');
 
     wrapper.vm.applyObservedSuggestionCommandPlan(buildObservedSuggestionCommandPlan({
       commandId: 'add_signal_value',
@@ -389,6 +401,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: [
@@ -443,6 +456,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: [
@@ -477,6 +491,7 @@ describe('PolicyBuilderModal.vue', () => {
         showMigrationVerifierPanels: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: [
@@ -536,6 +551,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: [
@@ -583,6 +599,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: []
@@ -640,6 +657,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: []
@@ -706,6 +724,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: [
@@ -788,6 +807,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: [
@@ -860,6 +880,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           description: 'Existing description',
@@ -920,6 +941,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: [
@@ -980,6 +1002,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: [
@@ -1055,6 +1078,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: [
@@ -1141,6 +1165,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: [
@@ -1192,6 +1217,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: []
@@ -1233,6 +1259,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: []
@@ -1259,6 +1286,7 @@ describe('PolicyBuilderModal.vue', () => {
         modelValue: true,
         libraryId: 1,
         policy: {
+          id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
           presets: []

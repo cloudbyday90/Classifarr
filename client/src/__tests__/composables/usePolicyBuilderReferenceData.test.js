@@ -128,6 +128,22 @@ describe('usePolicyBuilderReferenceData composable', () => {
     expect(referenceData.presetMigrationNotice.value.summary).toContain('1 incompatible preset attachment was removed')
   })
 
+  it('loads only the library context for native policy creation', async () => {
+    const apiClient = createApiClient()
+    const presetsClient = createPresetsClient()
+    const referenceData = usePolicyBuilderReferenceData({
+      apiClient,
+      presetsClient,
+      storage: createStorage(),
+    })
+
+    await referenceData.loadLibraryContext()
+
+    expect(apiClient.getLibraries).toHaveBeenCalledOnce()
+    expect(apiClient.getGeneralSettings).not.toHaveBeenCalled()
+    expect(presetsClient.getAttachablePresets).not.toHaveBeenCalled()
+  })
+
   it('builds tabs, filters presets, and derives available intent options', async () => {
     const referenceData = usePolicyBuilderReferenceData({
       apiClient: createApiClient(),
