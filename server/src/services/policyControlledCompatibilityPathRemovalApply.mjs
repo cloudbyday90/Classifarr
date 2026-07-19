@@ -1,3 +1,21 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
@@ -18,7 +36,7 @@ import {
 } from './policyControlledCompatibilityPathRemovalReviewArtifact.mjs';
 
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_VERSION =
-  'policy.controlled_compatibility_path_removal_apply.v3';
+  'policy.controlled_compatibility_path_removal_apply.v4';
 
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS = Object.freeze({
   APPLIED: 'applied',
@@ -53,7 +71,14 @@ const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS = Object.freez
   EXECUTION_POLICY_MISMATCH: 'execution_policy_mismatch',
   UNEXPECTED_SIDE_EFFECT: 'unexpected_side_effect',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
+  HALT_REASON_INVALID: 'halt_reason_invalid',
   UNKNOWN_STATUS: 'unknown_status',
+});
+
+const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_HALT_REASON_IDS = Object.freeze({
+  PRE_APPLY_RECHECK_FAILED: 'pre_apply_recheck_failed',
+  ADAPTER_FAILURE: 'adapter_failure',
+  ADAPTER_RESULT_REJECTED: 'adapter_result_rejected',
 });
 
 function asArray(value) {
@@ -203,7 +228,12 @@ function evaluateRemovalReview(removalReview) {
     risks.push(buildRisk(
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.REMOVAL_BATCH_NOT_READY,
       'Controlled compatibility path removal apply requires a ready controlled removal batch.',
-      { statusId: review.statusId || null }
+      {
+        statusId: review.statusId || null,
+        reviewRiskIds: asArray(review.risks)
+          .map(risk => risk?.riskId)
+          .filter(Boolean),
+      }
     ));
   }
 
@@ -310,6 +340,13 @@ function summarizePreApplyVerification(entry = {}, verification = {}) {
   };
 }
 
+function hasRejectedApplyResult({ entry = {}, result = {} } = {}) {
+  return evaluateApplyResults({
+    entries: [entry],
+    results: [result],
+  }).length > 0 || evaluateSideEffects(result.sideEffects).length > 0;
+}
+
 async function applyEntries({
   entries = [],
   applyAdapter,
@@ -322,6 +359,7 @@ async function applyEntries({
   const preApplyVerifications = [];
   const entriesSubmittedToAdapter = [];
   let blockedEntry = null;
+  let haltReasonId = null;
 
   for (const entry of entries) {
     let verification;
@@ -346,6 +384,9 @@ async function applyEntries({
       verification?.validation?.ok !== true
     ) {
       blockedEntry = { path: normalizePath(entry.path), actionId: entry.actionId || null };
+      haltReasonId =
+        POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_HALT_REASON_IDS
+          .PRE_APPLY_RECHECK_FAILED;
       risks.push(buildRisk(
         verification
           ? POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
@@ -370,8 +411,20 @@ async function applyEntries({
 
     try {
       const result = await applyAdapter.applyEntry(entry);
-      results.push(buildApplyResult({ entry, result }));
+      const normalizedResult = buildApplyResult({ entry, result });
+      results.push(normalizedResult);
+
+      if (hasRejectedApplyResult({ entry, result: normalizedResult })) {
+        blockedEntry = { path: normalizePath(entry.path), actionId: entry.actionId || null };
+        haltReasonId =
+          POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_HALT_REASON_IDS
+            .ADAPTER_RESULT_REJECTED;
+        break;
+      }
     } catch (error) {
+      blockedEntry = { path: normalizePath(entry.path), actionId: entry.actionId || null };
+      haltReasonId =
+        POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_HALT_REASON_IDS.ADAPTER_FAILURE;
       risks.push(buildRisk(
         POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.APPLY_ADAPTER_FAILED,
         'Controlled compatibility path removal adapter failed for an entry.',
@@ -381,12 +434,14 @@ async function applyEntries({
           message: error?.message || 'unknown apply adapter failure',
         }
       ));
+      break;
     }
   }
 
   return {
     blockedEntry,
     entriesSubmittedToAdapter,
+    haltReasonId,
     preApplyVerifications,
     results,
     risks,
@@ -560,6 +615,65 @@ function determineStatusId(risks = []) {
   return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED;
 }
 
+function buildNextStep({ appliedCount = 0 } = {}) {
+  if (appliedCount > 0) {
+    return {
+      stepId: 'post_removal_runtime_verification',
+      label: 'Post-Removal Runtime Verification',
+      reason:
+        'Every applied compatibility path must receive runtime, import, and test verification before another removal batch is considered.',
+    };
+  }
+
+  return {
+    stepId: 'resolve_removal_apply_blocker',
+    label: 'Resolve Removal Apply Blocker',
+    reason:
+      'No reviewed compatibility path applied. Resolve the bounded blocker and create a fresh reviewed removal batch before trying again.',
+  };
+}
+
+function evaluateApplyBatchHalt(applyResult = {}) {
+  const risks = [];
+  const applyBatch = asObject(applyResult.applyBatch);
+  const haltReasonId = applyBatch.haltReasonId ?? null;
+  const hasBlockedEntry = Object.keys(asObject(applyBatch.blockedEntry)).length > 0;
+
+  if (
+    haltReasonId !== null &&
+    !Object.values(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_HALT_REASON_IDS)
+      .includes(haltReasonId)
+  ) {
+    risks.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.HALT_REASON_INVALID,
+      'Controlled compatibility path removal apply halt reason must be known.',
+      { haltReasonId }
+    ));
+  }
+
+  if (haltReasonId !== null && !hasBlockedEntry) {
+    risks.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.HALT_REASON_INVALID,
+      'Controlled compatibility path removal apply halt reason requires the bounded entry that stopped the batch.',
+      { haltReasonId }
+    ));
+  }
+
+  if (
+    applyResult.statusId ===
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED &&
+    haltReasonId !== null
+  ) {
+    risks.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.HALT_REASON_INVALID,
+      'An applied controlled compatibility path removal batch cannot report a halt reason.',
+      { haltReasonId }
+    ));
+  }
+
+  return risks;
+}
+
 async function applyPolicyControlledCompatibilityPathRemoval({
   removalReview = null,
   executeApply = false,
@@ -590,6 +704,7 @@ async function applyPolicyControlledCompatibilityPathRemoval({
     : {
       blockedEntry: null,
       entriesSubmittedToAdapter: [],
+      haltReasonId: null,
       preApplyVerifications: [],
       results: [],
       risks: [],
@@ -631,6 +746,7 @@ async function applyPolicyControlledCompatibilityPathRemoval({
       requestedCount: removalEntries.length,
       checkedCount: applyAttempt.preApplyVerifications.length,
       blockedEntry: applyAttempt.blockedEntry,
+      haltReasonId: applyAttempt.haltReasonId,
       appliedCount: applyAttempt.results.filter(result => result.applied === true).length,
       entries: removalEntries,
       preApplyVerifications: applyAttempt.preApplyVerifications,
@@ -648,16 +764,15 @@ async function applyPolicyControlledCompatibilityPathRemoval({
       requireApplyAdapter: true,
       requireResultParity: true,
       requirePreApplyChangeDetection: true,
+      stopAfterAdapterFailure: true,
+      stopAfterRejectedAdapterResult: true,
       allowReadOnlyGitVerification: true,
       allowGitMutationCommandsInsideService: false,
       allowStorageMutation: false,
     },
-    nextStep: {
-      stepId: 'post_removal_runtime_verification',
-      label: 'Post-Removal Runtime Verification',
-      reason:
-        'After a reviewed compatibility path removal batch is applied, runtime, import, and test validation must prove no active path was broken.',
-    },
+    nextStep: buildNextStep({
+      appliedCount: applyAttempt.results.filter(result => result.applied === true).length,
+    }),
   };
 
   return {
@@ -695,6 +810,8 @@ function validatePolicyControlledCompatibilityPathRemovalApply(applyResult = {})
     executionPolicy.requireApplyAdapter !== true ||
     executionPolicy.requireResultParity !== true ||
     executionPolicy.requirePreApplyChangeDetection !== true ||
+    executionPolicy.stopAfterAdapterFailure !== true ||
+    executionPolicy.stopAfterRejectedAdapterResult !== true ||
     executionPolicy.allowReadOnlyGitVerification !== true ||
     executionPolicy.allowGitMutationCommandsInsideService !== false ||
     executionPolicy.allowStorageMutation !== false
@@ -705,6 +822,7 @@ function validatePolicyControlledCompatibilityPathRemovalApply(applyResult = {})
     ));
   }
 
+  issues.push(...evaluateApplyBatchHalt(applyResult));
   issues.push(...evaluateSideEffects(applyResult.sideEffects || {}));
 
   return {
@@ -716,6 +834,7 @@ function validatePolicyControlledCompatibilityPathRemovalApply(applyResult = {})
 
 export {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_HALT_REASON_IDS,
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS,
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_VERSION,

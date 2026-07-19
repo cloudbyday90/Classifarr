@@ -8,6 +8,13 @@ compatibility path removal output, requires an explicit execute flag and
 operator confirmation, invokes only the injected adapter, and verifies that
 every apply result matches the reviewed manifest path and action.
 
+The batch fails closed after the first adapter exception, rejected result, or
+forbidden reported side effect. It records the stopped entry and a bounded halt
+reason, does not recheck or submit later entries, and preserves any earlier
+applied evidence for the existing post-removal verification boundary. When no
+path applied, it directs the caller to resolve the apply blocker instead of
+claiming runtime verification is ready.
+
 The service does not run Git mutation commands or mutate database storage. It
 uses fixed-argument, read-only Git verification immediately before each adapter
 call, allows only bounded removal side effects reported by the adapter, and
@@ -47,6 +54,13 @@ blocks that entry before the adapter receives it.
   exact mode, type, object ID, and path required to verify a regular blob.
 - Node.js `lstatSync()` exposes file and symlink metadata without following the
   final symlink, supporting a fail-closed path-type check at the apply boundary.
+- OWASP A10:2025 advises that exceptional conditions should fail closed rather
+  than attempting partial continuation. The adapter loop therefore stops on the
+  first rejected execution outcome instead of broadening a partially failed
+  batch.
+- OWASP's CI/CD guidance recommends explicit flow controls, least privilege,
+  artifact integrity validation, and visibility. The adapter boundary combines
+  those controls with bounded execution evidence.
 
 Sources:
 
@@ -63,6 +77,10 @@ Sources:
 - Git diff options: <https://git-scm.com/docs/diff-options>
 - Git ls-tree: <https://git-scm.com/docs/git-ls-tree>
 - Node.js file system API: <https://nodejs.org/api/fs.html>
+- OWASP Top 10:2025 A10, Mishandling of Exceptional Conditions:
+  <https://owasp.org/Top10/2025/A10_2025-Mishandling_of_Exceptional_Conditions/>
+- OWASP CI/CD Security Cheat Sheet:
+  <https://cheatsheetseries.owasp.org/cheatsheets/CI_CD_Security_Cheat_Sheet.html>
 
 ## Recommendations
 
@@ -147,6 +165,25 @@ Cons:
 - requires a real Git checkout at controlled apply time,
 - a later entry can block after a prior narrow entry has applied.
 
+### Contain Adapter Failures And Rejected Results
+
+Treat an adapter exception, `applied=false`, path/action mismatch, or forbidden
+reported side effect as a batch stop, not an invitation to continue to later
+entries. Emit the stopping path and a small fixed halt-reason vocabulary.
+
+Pros:
+
+- limits a failed batch to the smallest possible executed prefix,
+- prevents later removals after adapter behavior has become untrustworthy,
+- gives automation a deterministic next action for partial or zero-removal
+  outcomes.
+
+Cons:
+
+- an adapter fault requires a newly reviewed batch after remediation,
+- partial success still requires the existing runtime verification before any
+  later removal is considered.
+
 ## Final Recommendation Stack
 
 Use this stack for controlled compatibility path removal apply:
@@ -156,10 +193,12 @@ Use this stack for controlled compatibility path removal apply:
 3. Require explicit operator apply confirmation.
 4. Recheck each selected entry against the live checkout immediately before it
    reaches the injected `applyEntry(entry)` adapter.
-5. Reject mismatched paths, mismatched actions, incomplete results, archive
-   side effects, storage mutation, and Git-mutation side effects.
-6. Emit apply evidence and semantic `nextStep` for post-removal runtime
-   verification.
+5. Stop at the first adapter exception, rejected result, archive side effect,
+   storage mutation, or Git-mutation side effect; do not submit later entries.
+6. Emit the halted entry, fixed halt reason, and only the evidence for entries
+   already applied.
+7. Require post-removal runtime verification after any partial success; route
+   zero-removal outcomes to blocker resolution.
 
 ## Implementation Outcome
 
@@ -173,10 +212,11 @@ Implemented:
   - `POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_VERSION`,
   - `POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS`,
   - `POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS`,
+  - `POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_HALT_REASON_IDS`,
   - `applyPolicyControlledCompatibilityPathRemoval`,
   - `validatePolicyControlledCompatibilityPathRemovalApply`.
 - Updated the contract version to
-  `policy.controlled_compatibility_path_removal_apply.v3`.
+  `policy.controlled_compatibility_path_removal_apply.v4`.
 - Added a modular review-artifact fingerprint that binds the complete reviewed
   execution context and removal batch.
 - Revalidates the embedded execution gate from its recorded preflight evidence
@@ -189,6 +229,11 @@ Implemented:
 - Added a distinct `blocked_by_pre_apply_recheck` result with bounded per-entry
   verification summaries and stops a batch before a changed entry reaches the
   adapter.
+- Added fail-closed adapter containment. An adapter exception, invalid result,
+  or forbidden reported side effect stops the reviewed batch before another
+  entry is rechecked or submitted. Apply output includes a validated halt
+  reason and the next step distinguishes partial removal verification from
+  zero-removal blocker resolution.
 - Replaced runtime `nextPhase.phaseId` with semantic `nextStep.stepId`.
 - Preserved status IDs for applied output and blockers from removal batch,
   confirmation, adapter, and apply result evidence.
@@ -206,6 +251,7 @@ Not implemented in this component:
 
 ## Next Step
 
-Proceed with **8R.16.5 Embedded-Runtime Evidence Escalation Rules**. The
-runtime verifier must define when retained evidence is insufficient and when a
-provenance-bound, read-only embedded runtime probe is required.
+Proceed with **8R.19 Post-Removal Runtime Verification**. It must consume only
+the exact apply evidence from a successful reviewed batch, verify removed paths
+are no longer imported or required, and block another batch until focused
+runtime validation passes.

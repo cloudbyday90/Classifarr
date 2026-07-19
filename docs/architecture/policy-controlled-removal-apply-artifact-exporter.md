@@ -162,7 +162,10 @@ Implemented:
   - `POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_RISK_IDS`,
   - `buildPolicyControlledRemovalApplyArtifact`,
   - `validatePolicyControlledRemovalApplyArtifact`.
-- Updated the artifact version to `policy.controlled_removal_apply_artifact.v2`.
+- Updated the artifact version to `policy.controlled_removal_apply_artifact.v3`.
+- Propagates the apply boundary's bounded halt reason and semantic next step so
+  a zero-removal blocked apply is not presented as ready for runtime
+  verification.
 - Retains the controlled apply's pre-apply verification count and policy so the
   exported artifact distinguishes read-only Git verification from forbidden Git
   mutation.

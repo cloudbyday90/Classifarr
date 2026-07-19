@@ -6674,6 +6674,13 @@ Tasks:
   - Completed: revalidates that context before an adapter receives any entry.
   - Completed: rejects altered, missing, or mismatched artifact-and-gate
     context without calling the adapter.
+- **8R.18.2 Adapter Failure Containment**
+  - Completed: stops the reviewed batch after the first adapter exception,
+    rejected result, or forbidden reported side effect; later entries are not
+    rechecked or submitted after that point.
+  - Completed: records the bounded stopped entry and halt reason, preserves
+    earlier applied evidence, and requires post-removal verification only when
+    at least one reviewed path actually applied.
 - Consume a ready controlled compatibility path removal review batch.
 - Require `executeApply=true`.
 - Require explicit operator confirmation with confirming actor.
@@ -6689,6 +6696,8 @@ Acceptance criteria:
 - Apply is blocked without explicit execute flag and named confirmation actor.
 - Apply is blocked without an adapter.
 - Adapter failures are captured as bounded risks.
+- Adapter exceptions, rejected adapter results, and forbidden reported side
+  effects stop the batch before a later entry reaches the adapter.
 - Mismatched paths, mismatched actions, or `applied=false` results block apply.
 - Service does not run Git commands or mutate storage.
 - Apply output identifies bounded removal side effects and validates that
@@ -6709,8 +6718,9 @@ Implementation status:
 - Current implementation fingerprints and replays the complete reviewed
   artifact-and-gate context before an injected adapter receives any entry. It
   requires explicit confirmation, verifies result parity, rejects archive,
-  storage, and Git-command side effects, and emits a semantic `nextStep.stepId`
-  for post-removal runtime verification.
+  storage, and Git-command side effects, fails closed after the first
+  adapter-level anomaly, and emits a semantic `nextStep.stepId` that reflects
+  whether a runtime verification or blocker-resolution path is required.
 
 ### 8R.19 Post-Removal Runtime Verification
 

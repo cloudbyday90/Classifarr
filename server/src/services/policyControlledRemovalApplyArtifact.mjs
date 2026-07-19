@@ -4,7 +4,7 @@ import {
 } from './policyControlledCompatibilityPathRemovalApply.mjs';
 
 const POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_VERSION =
-  'policy.controlled_removal_apply_artifact.v2';
+  'policy.controlled_removal_apply_artifact.v3';
 
 const POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS = Object.freeze({
   APPLIED: 'applied',
@@ -164,6 +164,7 @@ async function buildPolicyControlledRemovalApplyArtifact({
       checkedCount: applyResult.applyBatch?.checkedCount ?? 0,
       appliedCount: applyResult.applyBatch?.appliedCount ?? 0,
       resultCount: asArray(applyResult.applyBatch?.results).length,
+      haltReasonId: applyResult.applyBatch?.haltReasonId ?? null,
     },
     riskCount: risks.length,
     risks,
@@ -174,16 +175,17 @@ async function buildPolicyControlledRemovalApplyArtifact({
       requireOperatorConfirmation: true,
       requireApplyAdapter: true,
       requirePreApplyChangeDetection: true,
+      requireFailureContainment: true,
       allowArchive: false,
       allowStorageMutation: false,
       allowReadOnlyGitVerification: true,
       allowGitMutationCommandsInsideArtifact: false,
     },
-    nextStep: {
-      stepId: 'post_removal_runtime_verification',
-      label: 'Post-Removal Runtime Verification',
+    nextStep: applyResult.nextStep || {
+      stepId: 'resolve_removal_apply_blocker',
+      label: 'Resolve Removal Apply Blocker',
       reason:
-        'Applied compatibility path removal must be followed by runtime, import, and test verification before additional batches are considered.',
+        'The controlled removal apply outcome did not provide a next step and must be resolved before another batch is considered.',
     },
   };
 
@@ -230,6 +232,7 @@ function validatePolicyControlledRemovalApplyArtifact(artifact = {}) {
     executionPolicy.requireOperatorConfirmation !== true ||
     executionPolicy.requireApplyAdapter !== true ||
     executionPolicy.requirePreApplyChangeDetection !== true ||
+    executionPolicy.requireFailureContainment !== true ||
     executionPolicy.allowArchive !== false ||
     executionPolicy.allowStorageMutation !== false ||
     executionPolicy.allowReadOnlyGitVerification !== true ||

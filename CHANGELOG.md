@@ -110,6 +110,15 @@ unchanged operator or runtime outcome.
   bounded verification evidence and clearly reports a stopped batch, including
   any earlier narrow entries that already applied.
 
+- **Fail-Closed Compatibility Removal Applies** - controlled compatibility
+  cleanup now stops immediately after the first adapter error, rejected result,
+  or forbidden reported side effect. Later approved paths are not rechecked or
+  submitted; the result identifies the stopped entry and halt reason, preserves
+  prior applied evidence for verification, and sends zero-removal failures to
+  blocker resolution instead of a misleading runtime-validation handoff. When
+  a batch is rejected before apply, its bounded upstream review reason remains
+  available to diagnostics.
+
 - **Native Policy Engine Authority** - converted policies now classify from
   persisted native intent rather than retained legacy presets or
   `custom_signals`. Native purpose establishes eligibility before supporting

@@ -35,6 +35,7 @@ import {
   buildPolicyControlledCompatibilityPathRemovalReviewArtifact,
 } from '../../services/policyControlledCompatibilityPathRemovalReviewArtifact.mjs';
 import {
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_HALT_REASON_IDS,
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS,
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,
   applyPolicyControlledCompatibilityPathRemoval,
@@ -303,6 +304,7 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
     expect(applyResult.applyBatch).toEqual(expect.objectContaining({
       requestedCount: 2,
       appliedCount: 2,
+      haltReasonId: null,
     }));
     expect(applyResult.applyBatch.results).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -478,12 +480,14 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
   });
 
   test('blocks when apply results do not match selected batch entries', async () => {
+    const adapterCalls = [];
     const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
       removalReview: readyRemovalReview(),
       executeApply: true,
       operatorConfirmation: operatorConfirmation(),
       applyAdapter: applyAdapter({
         async applyEntry(entry) {
+          adapterCalls.push(entry.path);
           return {
             path: `${entry.path}.wrong`,
             actionId: 'remove_test',
@@ -505,16 +509,45 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS
         .APPLY_RESULT_ACTION_MISMATCH,
     ]));
+    expect(adapterCalls).toEqual([
+      'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+    ]);
+    expect(applyResult.applyBatch).toEqual(expect.objectContaining({
+      checkedCount: 1,
+      appliedCount: 0,
+      haltReasonId:
+        POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_HALT_REASON_IDS
+          .ADAPTER_RESULT_REJECTED,
+    }));
+    expect(applyResult.nextStep.stepId).toBe('resolve_removal_apply_blocker');
   });
 
-  test('blocks adapter failures with bounded error details', async () => {
+  test('stops after an adapter failure and preserves earlier applied evidence', async () => {
+    const adapterCalls = [];
     const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
-      removalReview: readyRemovalReview(),
+      removalReview: readyRemovalReview({
+        selectedPaths: [
+          'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+          'client/src/components/policies/PolicyStarterTemplateDetails.vue',
+          'client/src/components/policies/PolicyCombinedSignalsSummary.vue',
+        ],
+      }),
       executeApply: true,
       operatorConfirmation: operatorConfirmation(),
       applyAdapter: applyAdapter({
         async applyEntry(entry) {
-          throw new Error(`cannot remove ${entry.path}`);
+          adapterCalls.push(entry.path);
+
+          if (entry.path.endsWith('PolicyStarterTemplateDetails.vue')) {
+            throw new Error(`cannot remove ${entry.path}`);
+          }
+
+          return {
+            path: entry.path,
+            actionId: entry.actionId,
+            applied: true,
+            sideEffects: { filesDeleted: true },
+          };
         },
       }),
       preApplyChangeDetector: verifiedPreApplyChangeDetector(),
@@ -529,15 +562,33 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
           POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.APPLY_ADAPTER_FAILED,
       }),
     ]));
+    expect(adapterCalls).toEqual([
+      'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+      'client/src/components/policies/PolicyStarterTemplateDetails.vue',
+    ]);
+    expect(applyResult.applyBatch).toEqual(expect.objectContaining({
+      requestedCount: 3,
+      checkedCount: 2,
+      appliedCount: 1,
+      blockedEntry: {
+        path: 'client/src/components/policies/PolicyStarterTemplateDetails.vue',
+        actionId: 'delete_file',
+      },
+      haltReasonId:
+        POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_HALT_REASON_IDS.ADAPTER_FAILURE,
+    }));
+    expect(applyResult.nextStep.stepId).toBe('post_removal_runtime_verification');
   });
 
   test('rejects archive, storage, or git side effects from apply results', async () => {
+    let applyCallCount = 0;
     const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
       removalReview: readyRemovalReview(),
       executeApply: true,
       operatorConfirmation: operatorConfirmation(),
       applyAdapter: applyAdapter({
         async applyEntry(entry) {
+          applyCallCount += 1;
           return {
             path: entry.path,
             actionId: entry.actionId,
@@ -560,6 +611,10 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
     expect(applyResult.validation.ok).toBe(false);
     expect(applyResult.risks.map(risk => risk.riskId)).toContain(
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.UNEXPECTED_SIDE_EFFECT
+    );
+    expect(applyCallCount).toBe(1);
+    expect(applyResult.applyBatch.haltReasonId).toBe(
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_HALT_REASON_IDS.ADAPTER_RESULT_REJECTED
     );
   });
 
@@ -656,6 +711,10 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
       statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
       riskCount: 99,
       risks: [],
+      applyBatch: {
+        haltReasonId: 'unexpected_halt_reason',
+        blockedEntry: null,
+      },
       sideEffects: {
         filesDeleted: true,
         filesArchived: true,
@@ -669,6 +728,7 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.RISK_COUNT_MISMATCH,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.HALT_REASON_INVALID,
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS.UNEXPECTED_SIDE_EFFECT,
     ]));
   });

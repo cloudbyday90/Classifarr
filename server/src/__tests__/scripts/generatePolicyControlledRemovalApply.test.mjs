@@ -323,7 +323,7 @@ describe('generate-policy-controlled-removal-apply', () => {
       expect(result.error).toBeUndefined();
       expect(result.status).toBe(1);
       expect(result.stdoutJson).toBeNull();
-      expect(result.stderr).toContain('path_escapes_repository');
+      expect(result.stderr).toContain('manifest_path_invalid');
       expect(fs.existsSync(outsidePath)).toBe(true);
       expect(fs.existsSync(result.outputPath)).toBe(false);
       expect(fs.existsSync(result.artifactOutputPath)).toBe(false);

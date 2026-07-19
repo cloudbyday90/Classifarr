@@ -297,6 +297,7 @@ describe('policyControlledRemovalApplyArtifact', () => {
       checkedCount: 1,
       appliedCount: 1,
       resultCount: 1,
+      haltReasonId: null,
     });
     expect(artifact.sideEffects).toEqual(expect.objectContaining({
       filesDeleted: true,
@@ -323,6 +324,10 @@ describe('policyControlledRemovalApplyArtifact', () => {
     expect(artifact.applied).toBe(false);
     expect(artifact.validation.ok).toBe(true);
     expect(artifact.applyResult.statusId).toBe('blocked_by_confirmation');
+    expect(artifact.nextStep).toEqual(expect.objectContaining({
+      stepId: 'resolve_removal_apply_blocker',
+      label: 'Resolve Removal Apply Blocker',
+    }));
     expect(artifact.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
