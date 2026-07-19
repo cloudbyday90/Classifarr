@@ -18,6 +18,13 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Semantic Compatibility Deletion Readiness Validation** - compatibility
+  removal planning now rejects serialized readiness reports whose native
+  authority, reconciliation state, runtime cutover, deletion gates, recovery
+  confirmations, derived status, or non-destructive execution handoff no
+  longer support a `ready` claim. Fresh source collection remains bounded by
+  the subsequent execution-plan evidence bundle.
+
 - **Repository And Installation Closure Separation** - policy storage closure
   evidence now reports repository implementation readiness independently from
   an active installation's compatibility-removal cutover. Pending instance

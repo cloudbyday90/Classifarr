@@ -150,19 +150,29 @@ describe('policyCompatibilityDeletionReadiness', () => {
     expect(readiness.readyForDeletionExecutionPlan).toBe(true);
     expect(readiness.validation.ok).toBe(true);
     expect(readiness.cutover).toEqual(expect.objectContaining({
+      version: 'policy.native_runtime_cutover_verification.v1',
       statusId: 'ready_for_cutover_monitoring',
       validationOk: true,
     }));
     expect(readiness.deletionGates).toEqual(expect.objectContaining({
+      version: 'policy.compatibility_deletion_gates.v1',
       statusId: 'ready_to_delete',
       readyToDelete: true,
       validationOk: true,
       blockerCount: 0,
+      unconvertedPolicyCount: 0,
     }));
     expect(readiness.currentPolicyInventory).toEqual(expect.objectContaining({
+      version: 'policy.compatibility_deletion_current_inventory.v1',
       statusId: 'all_enabled_policies_native',
       validationOk: true,
       unconvertedPolicyCount: 0,
+    }));
+    expect(readiness.reconciliationStateInventory).toEqual(expect.objectContaining({
+      version: 'policy.compatibility_deletion_reconciliation_state_inventory.v1',
+      statusId: 'no_requires_maintenance_states',
+      validationOk: true,
+      requiresMaintenanceStateCount: 0,
     }));
     expect(readiness.deletionPolicy).toEqual(expect.objectContaining({
       executeDeletionNow: false,
@@ -325,6 +335,78 @@ describe('policyCompatibilityDeletionReadiness', () => {
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.RISK_COUNT_MISMATCH,
       POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.SIDE_EFFECT_PERFORMED,
+    ]));
+  });
+
+  test('rejects a serialized ready report that contradicts retained evidence summaries', () => {
+    const readiness = readyReadiness();
+    const validation = validatePolicyCompatibilityDeletionReadiness({
+      ...readiness,
+      currentPolicyInventory: {
+        ...readiness.currentPolicyInventory,
+        validationOk: false,
+      },
+      reconciliationStateInventory: {
+        ...readiness.reconciliationStateInventory,
+        requiresMaintenanceStateCount: 1,
+      },
+      cutover: {
+        ...readiness.cutover,
+        riskCount: 1,
+      },
+      deletionGates: {
+        ...readiness.deletionGates,
+        blockerCount: 1,
+      },
+      residualCompatibilityReferences: [{ path: 'server/src/legacy.mjs' }],
+      safetyConfirmations: {
+        ...readiness.safetyConfirmations,
+        backupRestoreVerified: false,
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .READY_CURRENT_POLICY_INVENTORY_INVALID,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .READY_RECONCILIATION_STATE_INVENTORY_INVALID,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.READY_RUNTIME_CUTOVER_INVALID,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.READY_DELETION_GATES_INVALID,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .READY_RECONCILIATION_STATE_GATE_MISMATCH,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .READY_RESIDUAL_REFERENCES_INVALID,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .READY_SAFETY_CONFIRMATIONS_INVALID,
+    ]));
+  });
+
+  test('rejects an altered version, derived status, ready state, or non-destructive handoff', () => {
+    const readiness = readyReadiness();
+    const validation = validatePolicyCompatibilityDeletionReadiness({
+      ...readiness,
+      version: 'policy.compatibility_deletion_readiness.v0',
+      statusId: POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS
+        .BLOCKED_BY_SAFETY_CONFIRMATION,
+      readyForDeletionExecutionPlan: false,
+      deletionPolicy: {
+        ...readiness.deletionPolicy,
+        executeDeletionNow: true,
+      },
+      nextStep: {
+        ...readiness.nextStep,
+        stepId: 'delete_compatibility_paths',
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.VERSION_MISMATCH,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.DERIVED_STATUS_MISMATCH,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.READY_STATE_MISMATCH,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.DELETION_POLICY_MISMATCH,
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.NEXT_STEP_MISMATCH,
     ]));
   });
 });

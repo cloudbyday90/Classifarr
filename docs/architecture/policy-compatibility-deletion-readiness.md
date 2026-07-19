@@ -115,6 +115,29 @@ Cons:
 
 - actual deletion is intentionally delayed until the execution plan.
 
+### Revalidate Serialized Readiness Semantics
+
+Consumers must not trust a stored or caller-supplied `ready` claim. The
+readiness validator recomputes whether the retained summaries still prove
+native authority for every enabled policy, zero unresolved maintenance states,
+valid native runtime cutover and deletion gates, no residual references, all
+recovery/support confirmations, and the non-destructive execution-plan
+handoff. It rejects a mismatched contract version, status, ready flag, or
+execution policy.
+
+Pros:
+
+- prevents a changed JSON summary from becoming a deletion-planning authority,
+- keeps readiness reports safe when they cross command or artifact boundaries,
+- retains the separation between evaluation, planning, approval, and removal.
+
+Cons:
+
+- older serialized reports must be regenerated rather than interpreted as
+  current evidence,
+- a validator can prove only the bounded summaries it retains; Phase 8R.15
+  continues to own current evidence freshness and collection-window coherence.
+
 ## Final Recommendation Stack
 
 Use this stack:
@@ -126,8 +149,10 @@ Use this stack:
 3. `policyNativeRuntimeCutoverVerification.mjs` proves converted
    and unconverted runtime read behavior.
 4. `policyCompatibilityDeletionReadiness.mjs` composes all three
-   outputs with residual-reference and safety confirmations.
-5. A later component should create an execution manifest before any
+   outputs with residual-reference and safety confirmations, then revalidates
+   serialized summaries before they can claim readiness.
+5. A later component should create an execution manifest from a fresh,
+   coherent evidence bundle before any
    compatibility path is removed.
 
 ## Implementation Outcome
@@ -154,6 +179,12 @@ Implemented:
   read-only current inventory. Use
   `--require-all-enabled-policies-native` when the inventory is an explicit
   release gate.
+- Hardened serialized readiness validation. Ready reports now carry the
+  upstream cutover and deletion-gate contract versions and are rejected when
+  their retained source summaries, derived status, ready flag, recovery
+  confirmations, non-destructive policy, or execution-plan handoff disagree.
+  Freshness remains intentionally owned by the later execution-plan evidence
+  bundle, which collects the source evidence in one bounded observation window.
 
 Not implemented in this component:
 

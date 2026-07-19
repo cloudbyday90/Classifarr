@@ -1,8 +1,10 @@
 import {
+  POLICY_COMPATIBILITY_DELETION_GATES_VERSION,
   POLICY_COMPATIBILITY_DELETION_STATUS_IDS,
   buildPolicyCompatibilityDeletionGates,
 } from './policyCompatibilityDeletionGates.mjs';
 import {
+  POLICY_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION,
   POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS,
   buildPolicyNativeRuntimeCutoverVerification,
 } from './policyNativeRuntimeCutoverVerification.mjs';
@@ -48,6 +50,34 @@ const POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS = Object.freeze({
   SIDE_EFFECT_PERFORMED: 'side_effect_performed',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
   UNKNOWN_STATUS: 'unknown_status',
+  VERSION_MISMATCH: 'version_mismatch',
+  DERIVED_STATUS_MISMATCH: 'derived_status_mismatch',
+  READY_STATE_MISMATCH: 'ready_state_mismatch',
+  READY_CURRENT_POLICY_INVENTORY_INVALID: 'ready_current_policy_inventory_invalid',
+  READY_RECONCILIATION_STATE_INVENTORY_INVALID:
+    'ready_reconciliation_state_inventory_invalid',
+  READY_RUNTIME_CUTOVER_INVALID: 'ready_runtime_cutover_invalid',
+  READY_DELETION_GATES_INVALID: 'ready_deletion_gates_invalid',
+  READY_RECONCILIATION_STATE_GATE_MISMATCH:
+    'ready_reconciliation_state_gate_mismatch',
+  READY_RESIDUAL_REFERENCES_INVALID: 'ready_residual_references_invalid',
+  READY_SAFETY_CONFIRMATIONS_INVALID: 'ready_safety_confirmations_invalid',
+  DELETION_POLICY_MISMATCH: 'deletion_policy_mismatch',
+  NEXT_STEP_MISMATCH: 'next_step_mismatch',
+});
+
+const REQUIRED_DELETION_POLICY = Object.freeze({
+  executeDeletionNow: false,
+  requireExecutionPlan: true,
+  requireRollbackOrPostWindowSupport: true,
+  requireNoResidualCompatibilityReferences: true,
+  requireSupportDiagnostics: true,
+  requireZeroRequiresMaintenanceStates: true,
+});
+
+const REQUIRED_NEXT_STEP = Object.freeze({
+  stepId: 'compatibility_deletion_execution_plan',
+  label: 'Compatibility Path Deletion Execution Plan',
 });
 
 function asArray(value) {
@@ -432,17 +462,21 @@ function buildPolicyCompatibilityDeletionReadiness({
       }
       : null,
     cutover: {
+      version: cutover.cutoverVerification.version || null,
       generatedAt: cutover.cutoverVerification.generatedAt || null,
       statusId: cutover.cutoverVerification.statusId || null,
       validationOk: cutover.cutoverVerification.validation?.ok === true,
       riskCount: cutover.cutoverVerification.riskCount ?? null,
     },
     deletionGates: {
+      version: deletionGates.deletionGatePlan.version || null,
       generatedAt: deletionGates.deletionGatePlan.generatedAt || null,
       statusId: deletionGates.deletionGatePlan.statusId || null,
       readyToDelete: deletionGates.deletionGatePlan.readyToDelete === true,
       validationOk: deletionGates.deletionGatePlan.validation?.ok === true,
       blockerCount: asArray(deletionGates.deletionGatePlan.blockers).length,
+      unconvertedPolicyCount:
+        deletionGates.deletionGatePlan.unconvertedPolicyCount ?? null,
       requiresMaintenanceStateCount:
         deletionGates.deletionGatePlan.requiresMaintenanceStateCount ?? null,
     },
@@ -455,14 +489,7 @@ function buildPolicyCompatibilityDeletionReadiness({
     },
     riskCount: risks.length,
     risks,
-    deletionPolicy: {
-      executeDeletionNow: false,
-      requireExecutionPlan: true,
-      requireRollbackOrPostWindowSupport: true,
-      requireNoResidualCompatibilityReferences: true,
-      requireSupportDiagnostics: true,
-      requireZeroRequiresMaintenanceStates: true,
-    },
+    deletionPolicy: { ...REQUIRED_DELETION_POLICY },
     sideEffects: {
       filesDeleted: false,
       filesArchived: false,
@@ -472,8 +499,7 @@ function buildPolicyCompatibilityDeletionReadiness({
       deletionManifestWritten: false,
     },
     nextStep: {
-      stepId: 'compatibility_deletion_execution_plan',
-      label: 'Compatibility Path Deletion Execution Plan',
+      ...REQUIRED_NEXT_STEP,
       reason:
         'Deletion readiness can now be evaluated; the next step is an explicit execution manifest before any compatibility path is removed.',
     },
@@ -485,30 +511,195 @@ function buildPolicyCompatibilityDeletionReadiness({
   };
 }
 
+function isReadyCurrentPolicyInventorySummary(inventory = {}) {
+  return inventory?.version === POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_VERSION &&
+    inventory.statusId === POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_STATUS_IDS
+      .ALL_ENABLED_POLICIES_NATIVE &&
+    inventory.allEnabledPoliciesNative === true &&
+    inventory.validationOk === true &&
+    inventory.unconvertedPolicyCount === 0;
+}
+
+function isReadyReconciliationStateInventorySummary(inventory = {}) {
+  return inventory?.version ===
+    POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_VERSION &&
+    inventory.statusId ===
+      POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_STATUS_IDS
+        .NO_REQUIRES_MAINTENANCE_STATES &&
+    inventory.hasNoRequiresMaintenanceStates === true &&
+    inventory.validationOk === true &&
+    inventory.requiresMaintenanceStateCount === 0;
+}
+
+function isReadyCutoverSummary(cutover = {}) {
+  return cutover?.version === POLICY_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION &&
+    cutover.statusId === POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS
+    .READY_FOR_CUTOVER_MONITORING &&
+    cutover.validationOk === true &&
+    (cutover.riskCount === null || cutover.riskCount === 0);
+}
+
+function isReadyDeletionGateSummary(deletionGates = {}) {
+  return deletionGates?.version === POLICY_COMPATIBILITY_DELETION_GATES_VERSION &&
+    deletionGates.statusId === POLICY_COMPATIBILITY_DELETION_STATUS_IDS
+    .READY_TO_DELETE &&
+    deletionGates.readyToDelete === true &&
+    deletionGates.validationOk === true &&
+    deletionGates.blockerCount === 0 &&
+    deletionGates.unconvertedPolicyCount === 0 &&
+    deletionGates.requiresMaintenanceStateCount === 0;
+}
+
+function validateReadyEvidenceSummaries(readiness, issues) {
+  const isReadyClaim = readiness.statusId ===
+    POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS.READY_FOR_DELETION_EXECUTION_PLAN ||
+    readiness.readyForDeletionExecutionPlan === true;
+
+  if (!isReadyClaim) return;
+
+  if (!isReadyCurrentPolicyInventorySummary(readiness.currentPolicyInventory)) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .READY_CURRENT_POLICY_INVENTORY_INVALID,
+      'A ready compatibility deletion report requires one validated active native intent for every enabled policy.'
+    ));
+  }
+
+  if (!isReadyReconciliationStateInventorySummary(readiness.reconciliationStateInventory)) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .READY_RECONCILIATION_STATE_INVENTORY_INVALID,
+      'A ready compatibility deletion report requires zero unresolved requires-maintenance reconciliation states.'
+    ));
+  }
+
+  if (!isReadyCutoverSummary(readiness.cutover)) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.READY_RUNTIME_CUTOVER_INVALID,
+      'A ready compatibility deletion report requires a validated native runtime cutover with no risks.'
+    ));
+  }
+
+  if (!isReadyDeletionGateSummary(readiness.deletionGates)) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.READY_DELETION_GATES_INVALID,
+      'A ready compatibility deletion report requires validated ready compatibility deletion gates.'
+    ));
+  }
+
+  if (
+    readiness.reconciliationStateInventory?.requiresMaintenanceStateCount !==
+    readiness.deletionGates?.requiresMaintenanceStateCount
+  ) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .READY_RECONCILIATION_STATE_GATE_MISMATCH,
+      'A ready compatibility deletion report must bind deletion gates to the same reconciliation-state count.'
+    ));
+  }
+
+  if (
+    !Array.isArray(readiness.residualCompatibilityReferences) ||
+    readiness.residualCompatibilityReferences.length !== 0
+  ) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.READY_RESIDUAL_REFERENCES_INVALID,
+      'A ready compatibility deletion report cannot retain residual compatibility references.'
+    ));
+  }
+
+  const safety = readiness.safetyConfirmations || {};
+  if (
+    safety.backupRestoreVerified !== true ||
+    safety.rollbackSupportVerified !== true ||
+    safety.supportDiagnosticsVerified !== true ||
+    safety.deletionManifestApproved !== true
+  ) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .READY_SAFETY_CONFIRMATIONS_INVALID,
+      'A ready compatibility deletion report requires verified recovery, support, and manifest confirmations.'
+    ));
+  }
+}
+
+function validateImmutableReadinessPolicy(readiness, issues) {
+  Object.entries(REQUIRED_DELETION_POLICY).forEach(([key, expected]) => {
+    if (readiness.deletionPolicy?.[key] !== expected) {
+      issues.push(buildRisk(
+        POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.DELETION_POLICY_MISMATCH,
+        'Compatibility deletion readiness must retain its non-destructive execution policy.',
+        { key, expected, actual: readiness.deletionPolicy?.[key] ?? null }
+      ));
+    }
+  });
+
+  if (
+    readiness.nextStep?.stepId !== REQUIRED_NEXT_STEP.stepId ||
+    readiness.nextStep?.label !== REQUIRED_NEXT_STEP.label
+  ) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.NEXT_STEP_MISMATCH,
+      'Compatibility deletion readiness can advance only to the execution-plan step.'
+    ));
+  }
+}
+
 function validatePolicyCompatibilityDeletionReadiness(readiness = {}) {
   const issues = [];
 
+  if (readiness.version !== POLICY_COMPATIBILITY_DELETION_READINESS_VERSION) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.VERSION_MISMATCH,
+      'Compatibility path deletion readiness must use the current contract version.',
+      { expected: POLICY_COMPATIBILITY_DELETION_READINESS_VERSION, actual: readiness.version || null }
+    ));
+  }
+
   if (!Object.values(POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS)
     .includes(readiness.statusId)) {
-    issues.push({
-      riskId: POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.UNKNOWN_STATUS,
-      message: 'Compatibility path deletion readiness status must be known.',
-    });
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.UNKNOWN_STATUS,
+      'Compatibility path deletion readiness status must be known.'
+    ));
   }
 
   if (readiness.riskCount !== asArray(readiness.risks).length) {
-    issues.push({
-      riskId: POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.RISK_COUNT_MISMATCH,
-      message: 'Compatibility path deletion readiness risk count must match risk list length.',
-    });
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.RISK_COUNT_MISMATCH,
+      'Compatibility path deletion readiness risk count must match risk list length.'
+    ));
   }
+
+  const derivedStatusId = determineStatusId(asArray(readiness.risks));
+  if (readiness.statusId !== derivedStatusId) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.DERIVED_STATUS_MISMATCH,
+      'Compatibility path deletion readiness status must be derived from its retained risks.',
+      { expected: derivedStatusId, actual: readiness.statusId || null }
+    ));
+  }
+
+  const expectedReady = asArray(readiness.risks).length === 0 &&
+    derivedStatusId ===
+      POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS.READY_FOR_DELETION_EXECUTION_PLAN;
+  if (readiness.readyForDeletionExecutionPlan !== expectedReady) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.READY_STATE_MISMATCH,
+      'Compatibility path deletion readiness must derive its ready state from the retained risks.',
+      { expected: expectedReady, actual: readiness.readyForDeletionExecutionPlan === true }
+    ));
+  }
+
+  validateReadyEvidenceSummaries(readiness, issues);
+  validateImmutableReadinessPolicy(readiness, issues);
 
   Object.entries(readiness.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
-      issues.push({
-        riskId: POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.SIDE_EFFECT_PERFORMED,
-        message: `Compatibility path deletion readiness cannot perform side effect "${key}".`,
-      });
+      issues.push(buildRisk(
+        POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.SIDE_EFFECT_PERFORMED,
+        `Compatibility path deletion readiness cannot perform side effect "${key}".`
+      ));
     }
   });
 

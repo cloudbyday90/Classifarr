@@ -6380,6 +6380,13 @@ Implementation status:
   per enabled policy; caller-supplied zero conversion counts cannot bypass the
   gate. The design and command are documented in
   [Policy Compatibility Deletion Current Inventory](policy-compatibility-deletion-current-inventory.md).
+- **8R.14b Readiness Semantic Revalidation** - hardened the serialized
+  deletion-readiness contract so a ready claim is accepted only when its
+  retained native-authority, reconciliation-state, runtime-cutover,
+  deletion-gate, residual-reference, recovery, support, and non-destructive
+  handoff summaries still agree. Source freshness remains owned by the
+  bounded Phase 8R.15 evidence bundle rather than a caller-supplied readiness
+  report.
 
 ### 8R.15 Compatibility Path Deletion Execution Plan
 
