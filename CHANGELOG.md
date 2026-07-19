@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Canonical Compatibility Removal Selection** - compatibility-removal review
+  batches now accept only unique canonical repository-relative manifest and
+  selected paths, and require meaningful replacement evidence for every chosen
+  entry. Malformed, traversal, alias, duplicate, and empty-evidence inputs
+  fail closed before a later apply adapter can receive them.
+
 - **Semantic Compatibility Deletion Readiness Validation** - compatibility
   removal planning now rejects serialized readiness reports whose native
   authority, reconciliation state, runtime cutover, deletion gates, recovery

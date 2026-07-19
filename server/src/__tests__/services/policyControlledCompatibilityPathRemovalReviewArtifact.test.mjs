@@ -27,7 +27,7 @@ const FINGERPRINT = 'a'.repeat(64);
 
 function removalReview(overrides = {}) {
   return {
-    version: 'policy.controlled_compatibility_path_removal.v2',
+    version: 'policy.controlled_compatibility_path_removal.v3',
     statusId: 'ready_for_removal_review',
     readyForRemovalReview: true,
     riskCount: 0,

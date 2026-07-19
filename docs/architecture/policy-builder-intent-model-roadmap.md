@@ -6612,6 +6612,14 @@ Tasks:
     by the gate.
   - Completed: rejects a ready gate when it is paired with a different plan or
     manifest.
+- **8R.17.2 Manifest And Selection Safety**
+  - Completed: requires exact canonical repository-relative paths for both the
+    approved manifest and selected review batch, rejecting duplicates, aliases,
+    and traversal forms.
+  - Completed: requires selected entries to retain meaningful replacement
+    evidence rather than a truthy empty object.
+  - Completed: keeps this validation side-effect-free and binds its result into
+    the existing removal review artifact.
 - Consume approved compatibility deletion manifest entries.
 - Consume compatibility deletion execution-gate output.
 - Require selected paths to exist in the approved manifest.
@@ -6640,12 +6648,16 @@ Implementation status:
   [Policy Controlled Compatibility Path Removal Module Cutover](policy-controlled-compatibility-path-removal-module-cutover.md).
 - The removal-batch contract lives in
   `server/src/services/policyControlledCompatibilityPathRemoval.mjs`.
+- The canonical manifest and selection boundary lives in
+  `server/src/services/policyControlledCompatibilityPathRemovalSelection.mjs`.
 - The focused removal-batch test suite lives in
   `server/src/__tests__/services/policyControlledCompatibilityPathRemoval.test.mjs`.
 - Current implementation builds a side-effect-free removal review batch only
   from the fingerprint-valid execution-plan artifact whose fingerprint matches
-  the execution gate's embedded artifact. It emits a semantic `nextStep.stepId`
-  and defers destructive application to the controlled apply boundary because
+  the execution gate's embedded artifact. It rejects malformed or duplicate
+  manifest paths, noncanonical or duplicate selection input, and empty
+  replacement-evidence claims before it emits a semantic `nextStep.stepId` and
+  defers destructive application to the controlled apply boundary because
   candidate paths still have live imports.
 
 ### 8R.18 Controlled Compatibility Path Removal Apply

@@ -122,6 +122,24 @@ Cons:
 
 - full cleanup requires multiple batches.
 
+### Require Canonical Selection And Meaningful Replacement Evidence
+
+The review boundary validates every manifest and selected path as an exact,
+canonical repository-relative path, rejects duplicates, and requires a selected
+entry to contain meaningful replacement evidence instead of only a truthy
+object.
+
+Pros:
+
+- preserves an exact manifest allowlist for the later adapter,
+- rejects path aliases, traversal, and ambiguous batch scope before review,
+- prevents empty replacement-evidence claims from becoming removable entries.
+
+Cons:
+
+- callers must submit canonical manifest paths,
+- malformed historical artifacts require correction before review.
+
 ## Final Recommendation Stack
 
 Use this stack for controlled compatibility path removal:
@@ -130,9 +148,11 @@ Use this stack for controlled compatibility path removal:
    source.
 2. Require a ready execution gate whose embedded artifact has the same
    fingerprint.
-3. Select a small artifact-manifest-backed batch with a review reason and
+3. Require canonical, unique manifest and selected paths plus meaningful
+   replacement evidence for every selected entry.
+4. Select a small artifact-manifest-backed batch with a review reason and
    reviewer.
-4. Emit a side-effect-free removal batch and semantic `nextStep` for the apply
+5. Emit a side-effect-free removal batch and semantic `nextStep` for the apply
    boundary.
 
 ## Implementation Outcome
@@ -150,7 +170,7 @@ Implemented:
   - `buildPolicyControlledCompatibilityPathRemoval`,
   - `validatePolicyControlledCompatibilityPathRemoval`.
 - Updated the contract version to
-  `policy.controlled_compatibility_path_removal.v2`.
+  `policy.controlled_compatibility_path_removal.v3`.
 - Replaced independent raw execution-plan and execution-gate inputs with the
   evidence-bound `executionPlanArtifact` plus gate pair.
 - Validates the selected artifact fingerprint, the gate's embedded artifact,
@@ -162,6 +182,11 @@ Implemented:
 - Added bounded risks for missing, invalid, and mismatched gate artifacts while
   preserving risks for empty selections, unknown paths, too-broad batches,
   missing review metadata, stale risk counts, and forbidden side effects.
+- Added a modular selection-policy service that rejects malformed or duplicate
+  manifest paths, noncanonical or duplicate selected paths, and empty
+  replacement-evidence objects before a review artifact is ready.
+- Documented the decision in [Policy Controlled Compatibility Path Removal
+  Selection Safety](policy-controlled-compatibility-path-removal-selection-safety.md).
 
 Not implemented in this component:
 

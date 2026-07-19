@@ -1,3 +1,13 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION,
@@ -13,9 +23,13 @@ import {
   buildPolicyControlledCompatibilityPathRemovalReviewArtifact,
   validatePolicyControlledCompatibilityPathRemovalReviewArtifact,
 } from './policyControlledCompatibilityPathRemovalReviewArtifact.mjs';
+import {
+  POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_SELECTION_RISK_IDS,
+  evaluatePolicyControlledCompatibilityPathRemovalSelection,
+} from './policyControlledCompatibilityPathRemovalSelection.mjs';
 
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_VERSION =
-  'policy.controlled_compatibility_path_removal.v2';
+  'policy.controlled_compatibility_path_removal.v3';
 
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS = Object.freeze({
   READY_FOR_REMOVAL_REVIEW: 'ready_for_removal_review',
@@ -38,9 +52,7 @@ const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS = Object.freeze({
   EXECUTION_GATE_ARTIFACT_MISMATCH: 'execution_gate_artifact_mismatch',
   REVIEW_ARTIFACT_INVALID: 'review_artifact_invalid',
   NO_PATHS_SELECTED: 'no_paths_selected',
-  SELECTED_PATH_NOT_IN_MANIFEST: 'selected_path_not_in_manifest',
-  SELECTED_ENTRY_NOT_READY: 'selected_entry_not_ready',
-  REMOVAL_SCOPE_TOO_BROAD: 'removal_scope_too_broad',
+  ...POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_SELECTION_RISK_IDS,
   MISSING_REVIEW_REASON: 'missing_review_reason',
   MISSING_REVIEWER: 'missing_reviewer',
   SIDE_EFFECT_PERFORMED: 'side_effect_performed',
@@ -56,10 +68,6 @@ function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
 
-function normalizePath(value = '') {
-  return String(value || '').replace(/\\/g, '/').trim();
-}
-
 function normalizeFingerprint(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
@@ -70,10 +78,6 @@ function buildRisk(riskId, message, metadata = {}) {
     message,
     ...metadata,
   };
-}
-
-function uniqueNormalizedPaths(paths = []) {
-  return [...new Set(asArray(paths).map(normalizePath).filter(Boolean))];
 }
 
 function evaluateExecutionPlanArtifact(executionPlanArtifact) {
@@ -201,72 +205,17 @@ function evaluateExecutionGate({ executionGate, executionPlanArtifact }) {
   };
 }
 
-function buildSelectedEntries({
-  manifestEntries = [],
-  selectedPaths = [],
-}) {
-  const entryByPath = new Map(
-    manifestEntries.map(entry => [normalizePath(entry.path), entry])
-  );
-  const normalizedPaths = uniqueNormalizedPaths(selectedPaths);
-
-  return {
-    normalizedPaths,
-    entries: normalizedPaths
-      .map(path => entryByPath.get(path))
-      .filter(Boolean),
-    missingPaths: normalizedPaths.filter(path => !entryByPath.has(path)),
-  };
-}
-
-function evaluateSelection({
-  selectedEntries = [],
-  selectedPaths = [],
-  missingPaths = [],
-  maxBatchSize,
-}) {
+function evaluateSelection(selection = {}) {
   const risks = [];
 
-  if (selectedPaths.length === 0) {
+  if (selection.requestedPathCount === 0) {
     risks.push(buildRisk(
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.NO_PATHS_SELECTED,
       'Controlled compatibility path removal requires at least one selected manifest path.'
     ));
   }
 
-  missingPaths.forEach(path => {
-    risks.push(buildRisk(
-      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_PATH_NOT_IN_MANIFEST,
-      'Controlled compatibility path removal can only target paths from the approved manifest.',
-      { path }
-    ));
-  });
-
-  selectedEntries.forEach(entry => {
-    if (entry.ready !== true) {
-      risks.push(buildRisk(
-        POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_ENTRY_NOT_READY,
-        'Selected compatibility path removal entries must include replacement evidence.',
-        {
-          path: entry.path,
-          categoryId: entry.categoryId,
-        }
-      ));
-    }
-  });
-
-  if (selectedPaths.length > maxBatchSize) {
-    risks.push(buildRisk(
-      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.REMOVAL_SCOPE_TOO_BROAD,
-      'Controlled compatibility path removal requires a narrow, reviewable batch.',
-      {
-        selectedCount: selectedPaths.length,
-        maxBatchSize,
-      }
-    ));
-  }
-
-  return risks;
+  return [...risks, ...asArray(selection.risks)];
 }
 
 function evaluateReviewMetadata({
@@ -299,6 +248,8 @@ function determineStatusId(risks = []) {
       .EXECUTION_PLAN_ARTIFACT_VALIDATION_FAILED,
     POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS
       .EXECUTION_PLAN_ARTIFACT_FINGERPRINT_INVALID,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MANIFEST_PATH_INVALID,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MANIFEST_PATH_DUPLICATE,
   ].includes(risk.riskId))) {
     return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
       .BLOCKED_BY_EXECUTION_ARTIFACT;
@@ -317,8 +268,12 @@ function determineStatusId(risks = []) {
 
   if (risks.some(risk => [
     POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.NO_PATHS_SELECTED,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_PATH_INVALID,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_PATH_DUPLICATE,
     POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_PATH_NOT_IN_MANIFEST,
     POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_ENTRY_NOT_READY,
+    POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS
+      .SELECTED_ENTRY_REPLACEMENT_EVIDENCE_INVALID,
   ].includes(risk.riskId))) {
     return POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SELECTION;
   }
@@ -363,22 +318,18 @@ function buildPolicyControlledCompatibilityPathRemoval({
     executionGate,
     executionPlanArtifact: artifactEvaluation.artifact,
   });
-  const selected = buildSelectedEntries({
-    manifestEntries: artifactEvaluation.artifact.executionPlan?.manifest?.entries,
-    selectedPaths,
-  });
   const boundedMaxBatchSize = Number.isFinite(Number(maxBatchSize))
     ? Math.max(1, Number(maxBatchSize))
     : 3;
+  const selection = evaluatePolicyControlledCompatibilityPathRemovalSelection({
+    manifestEntries: artifactEvaluation.artifact.executionPlan?.manifest?.entries,
+    selectedPaths,
+    maxBatchSize: boundedMaxBatchSize,
+  });
   const risks = [
     ...artifactEvaluation.risks,
     ...gateEvaluation.risks,
-    ...evaluateSelection({
-      selectedEntries: selected.entries,
-      selectedPaths: selected.normalizedPaths,
-      missingPaths: selected.missingPaths,
-      maxBatchSize: boundedMaxBatchSize,
-    }),
+    ...evaluateSelection(selection),
     ...evaluateReviewMetadata({
       removalReason,
       reviewedBy,
@@ -410,13 +361,13 @@ function buildPolicyControlledCompatibilityPathRemoval({
       executionGate: gateEvaluation.gate,
     },
     removalBatch: {
-      selectedCount: selected.entries.length,
-      requestedPathCount: selected.normalizedPaths.length,
+      selectedCount: selection.selectedEntries.length,
+      requestedPathCount: selection.requestedPathCount,
       maxBatchSize: boundedMaxBatchSize,
       removalReason: removalReason || null,
       reviewedBy: reviewedBy || null,
-      missingPaths: selected.missingPaths,
-      entries: buildRemovalBatchEntries(selected.entries),
+      missingPaths: selection.missingPaths,
+      entries: buildRemovalBatchEntries(selection.selectedEntries),
     },
     riskCount: risks.length,
     risks,
@@ -427,6 +378,8 @@ function buildPolicyControlledCompatibilityPathRemoval({
       requireSmallBatch: true,
       requireApprovedManifestPath: true,
       requireGateArtifactCohesion: true,
+      requireCanonicalManifestAndSelectionPaths: true,
+      requireMeaningfulReplacementEvidence: true,
     },
     sideEffects: {
       filesDeleted: false,

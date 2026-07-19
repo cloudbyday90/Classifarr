@@ -400,6 +400,93 @@ describe('policyControlledCompatibilityPathRemoval', () => {
       .toEqual(['client/src/components/policies/UnknownCompatibilityPath.vue']);
   });
 
+  test('blocks noncanonical and duplicate selected paths instead of normalizing them silently', () => {
+    const selectedPath = 'client/src/components/policies/PolicyStarterTemplateMechanics.vue';
+    const duplicate = readyRemoval({
+      selectedPaths: [selectedPath, selectedPath],
+    });
+    const noncanonical = readyRemoval({
+      selectedPaths: [selectedPath.replaceAll('/', '\\')],
+    });
+
+    expect(duplicate.statusId)
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SELECTION);
+    expect(duplicate.removalBatch.requestedPathCount).toBe(2);
+    expect(duplicate.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_PATH_DUPLICATE,
+        path: selectedPath,
+      }),
+    ]));
+    expect(noncanonical.statusId)
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SELECTION);
+    expect(noncanonical.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.SELECTED_PATH_INVALID,
+      }),
+    ]));
+  });
+
+  test('blocks selected entries with empty replacement-evidence objects', () => {
+    const executionPlan = readyExecutionPlan();
+    const selectedPath = executionPlan.manifest.entries[0].path;
+    const executionPlanArtifact = readyExecutionPlanArtifact({
+      ...executionPlan,
+      manifest: {
+        ...executionPlan.manifest,
+        entries: executionPlan.manifest.entries.map(entry => entry.path === selectedPath
+          ? { ...entry, replacementEvidence: {}, ready: true }
+          : entry),
+      },
+    });
+    const removal = readyRemoval({
+      executionPlanArtifact,
+      executionGate: readyGate(executionPlanArtifact),
+      selectedPaths: [selectedPath],
+    });
+
+    expect(removal.statusId)
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS.BLOCKED_BY_SELECTION);
+    expect(removal.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS
+          .SELECTED_ENTRY_REPLACEMENT_EVIDENCE_INVALID,
+        path: selectedPath,
+      }),
+    ]));
+  });
+
+  test('blocks duplicate or unsafe paths in an otherwise fingerprint-valid manifest', () => {
+    const executionPlan = readyExecutionPlan();
+    const manifestEntry = executionPlan.manifest.entries[0];
+    const executionPlanArtifact = readyExecutionPlanArtifact({
+      ...executionPlan,
+      manifest: {
+        ...executionPlan.manifest,
+        entries: [
+          ...executionPlan.manifest.entries,
+          { ...manifestEntry },
+          {
+            ...manifestEntry,
+            path: '../outside-the-repository.mjs',
+          },
+        ],
+      },
+    });
+    const removal = readyRemoval({
+      executionPlanArtifact,
+      executionGate: readyGate(executionPlanArtifact),
+    });
+
+    expect(removal.statusId)
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+        .BLOCKED_BY_EXECUTION_ARTIFACT);
+    expect(removal.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MANIFEST_PATH_DUPLICATE,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MANIFEST_PATH_INVALID,
+    ]));
+  });
+
   test('blocks removal batches that are broader than the configured scope', () => {
     const removal = readyRemoval({
       maxBatchSize: 2,
