@@ -91,6 +91,24 @@ describe('policyBuilderBoundaryInventory', () => {
     ]));
   });
 
+  test('keeps the library-first workflow read adapter and shell non-authoritative', () => {
+    expect(classifyPolicyBuilderClientPath('client/src/composables/usePolicyOperatorWorkflow.js'))
+      .toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REFERENCE_DATA_ADAPTER,
+        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_REFERENCE_ADAPTER,
+        actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.SPLIT_REFERENCE_AND_EVIDENCE,
+        clientEngineAuthorityAllowed: false,
+      }));
+
+    expect(classifyPolicyBuilderClientPath('client/src/components/policies/PolicyBuilderWorkflowShell.vue'))
+      .toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.PRESENTATION_ONLY,
+        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_PRESENTATION,
+        actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_PRESENTATION,
+        clientEngineAuthorityAllowed: false,
+      }));
+  });
+
   test('does not retain deleted preview diagnostics in current boundary rules', () => {
     expect(listPolicyBuilderBoundaryRules().map(rule => rule.id))
       .not.toContain('policy_preview_diagnostics');

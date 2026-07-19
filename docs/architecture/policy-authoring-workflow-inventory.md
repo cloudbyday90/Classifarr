@@ -85,28 +85,34 @@ Cons:
 - `server/src/services/policyAuthoringWorkflowCompletionAudit.mjs`
   - records the durable workflow inventory artifact in the policy-authoring
     completion gate.
+- `client/src/components/policies/PolicyBuilderWorkflowShell.vue`
+  - renders the server-owned library-first workflow projection without client
+    authority over policy persistence, automation, or routing.
+- `client/src/composables/usePolicyOperatorWorkflow.js`
+  - validates the versioned display-only read contract and discards stale
+    library responses before they reach the workflow shell.
 
 ## Current Inventory Summary
 
-The live client tree currently classifies 93 policy-builder paths:
+The live client tree currently classifies 101 policy-builder paths:
 
 | Decision | Count | Meaning |
 | --- | ---: | --- |
-| Keep | 22 | Useful as-is for destination-first authoring or implementation support. |
-| Rewrite | 59 | Concept survives, but current shape is tied to old modal, templates, tests, or migration support. |
-| Replace | 6 | Product need remains, but current UI or mechanic is the wrong model. |
-| Delete | 6 | Normal workflow should not keep these surfaces; move to verifier/maintainer flow or remove. |
+| Keep | 26 | Useful as-is for destination-first authoring or implementation support. |
+| Rewrite | 65 | Concept survives, but current shape is tied to old modal, templates, tests, or migration support. |
+| Replace | 10 | Product need remains, but current UI or mechanic is the wrong model. |
 
 Role split:
 
 | Role | Count |
 | --- | ---: |
-| Normal authoring path | 25 paths |
-| Migration/support-only path | 68 paths |
+| Normal authoring path | 35 paths |
+| Migration/support-only path | 66 paths |
 
 Normal authoring can include:
 
 - workflow shell responsibilities,
+- the server-owned library-first workflow read and display shell,
 - destination and observed-library context,
 - declared-intent editor and leaf controls,
 - destination/reference-data helpers,

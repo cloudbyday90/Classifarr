@@ -91,6 +91,52 @@ describe('PolicyBuilderModal.vue', () => {
     }
   ];
 
+  const buildOperatorWorkflowRead = () => ({
+    version: 'policy.operator_workflow_read.v1',
+    library: {
+      id: 1,
+      name: 'Sci-Fi Movies',
+    },
+    observedProfile: {
+      available: true,
+      current: true,
+      suggestionCount: 2,
+      suggestions: [
+        { key: 'genre:Science Fiction', label: 'Science Fiction', count: 18 },
+        { key: 'genre:Adventure', label: 'Adventure', count: 12 },
+      ],
+    },
+    workflow: {
+      title: 'Destination setup',
+      summary: 'Review what belongs here, what should not, when to ask, and whether confirmed matches can route.',
+      readiness: {
+        ready: false,
+        nextAction: { label: 'Connect a routing target' },
+      },
+      sections: [
+        ['what_belongs_here', 'What belongs here'],
+        ['what_should_not_go_here', 'What should not go here'],
+        ['what_helps_but_should_not_decide_alone', 'What helps but should not decide alone'],
+        ['when_should_classifarr_ask', 'When should Classifarr ask'],
+        ['can_this_route', 'Can this route'],
+      ].map(([sectionId, heading]) => ({
+        sectionId,
+        heading,
+        plainQuestion: `${heading}?`,
+        helperText: 'Server-owned workflow guidance.',
+        statusId: 'needs_action',
+        editable: sectionId !== 'can_this_route',
+        readiness: {},
+      })),
+    },
+    authority: {
+      displayProjection: true,
+      automationDecision: false,
+      policyPersistence: false,
+      routingExecution: false,
+    },
+  });
+
   async function openStarterTemplateAccelerator() {
     const templateMechanicsButton = Array.from(document.body.querySelectorAll('button'))
       .find(button => button.textContent.includes('Starter Template Accelerator'));
@@ -262,7 +308,7 @@ describe('PolicyBuilderModal.vue', () => {
 
     expect(submitPolicy).toHaveBeenCalledTimes(1);
     expect(wrapper.emitted('save')).toBeFalsy();
-    expect(document.body.querySelector('[role="alert"]')?.textContent)
+    expect(document.body.querySelector('#policy-builder-save-error')?.textContent)
       .toContain('The policy intent draft is invalid.');
     expect(mockToast.error).toHaveBeenCalledWith(
       'The policy intent draft is invalid.',
@@ -361,6 +407,7 @@ describe('PolicyBuilderModal.vue', () => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
       if (url === '/settings') return Promise.resolve({ data: {} });
+      if (url === '/policies/operator-workflow/libraries/1') return Promise.resolve({ data: buildOperatorWorkflowRead() });
       return Promise.resolve({ data: { suggestions: [] } });
     });
 
@@ -382,23 +429,19 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    expect(document.body.textContent).toContain('Policy Setup');
-    expect(document.body.textContent).toContain('What already belongs here?');
-    expect(document.body.textContent).toContain('Set destination rules');
-    expect(document.body.textContent).toContain('Needs rules');
-    expect(document.body.textContent).toContain('Default checks');
-    expect(document.body.textContent).toContain('Needs setup');
-    expect(document.body.textContent).toContain('Recommended next action:');
-    expect(document.body.querySelector('a[href="#policy-builder-library-context"]')).toBeTruthy();
-    const destinationAction = document.body.querySelector('a[href="#policy-builder-destination-rules"]');
-    expect(destinationAction).toBeTruthy();
-    expect(destinationAction?.getAttribute('aria-current')).toBe('step');
-    expect(destinationAction?.getAttribute('aria-describedby')).toContain('policy-builder-setup-next-action');
-    expect(document.body.querySelector('a[href="#policy-builder-review-behavior"]')).toBeTruthy();
-    expect(document.body.querySelector('a[href="#policy-builder-routing-readiness"]')).toBeTruthy();
-    expect(document.body.textContent).toContain('Routing Readiness');
+    expect(document.body.textContent).toContain('Policy setup');
+    expect(document.body.textContent).toContain('What Classifarr sees in Sci-Fi Movies');
+    expect(document.body.textContent).toMatch(/Science Fiction\s*18\s*currently here/);
+    expect(document.body.textContent).toContain('What belongs here');
+    expect(document.body.textContent).toContain('What should not go here');
+    expect(document.body.textContent).toContain('What helps but should not decide alone');
+    expect(document.body.textContent).toContain('When should Classifarr ask');
+    expect(document.body.textContent).toContain('Can this route');
     expect(document.body.textContent).toContain('Connect a routing target');
-    expect(document.body.textContent).toContain('Sci-Fi Movies needs a mapped Radarr destination');
+    expect(document.body.textContent).not.toContain('Policy Setup');
+    expect(document.body.textContent).not.toContain('What already belongs here?');
+    expect(document.body.textContent).not.toContain('Set destination rules');
+    expect(document.body.textContent).not.toContain('Routing Readiness');
     expect(document.body.textContent).not.toContain('Intent Impact Preview');
     expect(document.body.textContent).not.toContain('Representative Replay Preview');
     expect(document.body.textContent).not.toContain('Preview Impact');

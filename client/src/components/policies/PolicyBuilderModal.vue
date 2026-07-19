@@ -27,11 +27,11 @@
         />
       </div>
 
-      <PolicyBuilderSetupCards :cards="setupCards" />
-
-      <div id="policy-builder-routing-readiness">
-        <PolicyBuilderRoutingReadinessCard :readiness="routingReadiness" />
-      </div>
+      <PolicyBuilderWorkflowShell
+        :workflow-read="operatorWorkflowRead"
+        :loading="operatorWorkflowLoading"
+        :error="operatorWorkflowError"
+      />
 
       <PolicyPresetMigrationNotice
         v-if="presetMigrationNotice"
@@ -109,19 +109,18 @@ import { computed, onMounted, ref, toRef } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
 import PolicyBuilderFooterActions from '@/components/policies/PolicyBuilderFooterActions.vue'
+import PolicyBuilderWorkflowShell from '@/components/policies/PolicyBuilderWorkflowShell.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
-import PolicyBuilderRoutingReadinessCard from '@/components/policies/PolicyBuilderRoutingReadinessCard.vue'
-import PolicyBuilderSetupCards from '@/components/policies/PolicyBuilderSetupCards.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicyStarterTemplateAccelerator from '@/components/policies/PolicyStarterTemplateAccelerator.vue'
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
+import { usePolicyOperatorWorkflow } from '@/composables/usePolicyOperatorWorkflow'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRoutingReadiness'
-import { buildPolicyBuilderSetupCardViewModels } from '@/utils/policyBuilderSetupCards'
 import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
 import { buildPolicyIntentSummary } from '@/utils/policyIntentSummary'
 import { useToast } from '@/stores/toast'
@@ -237,16 +236,13 @@ const routingReadiness = computed(() => buildPolicyBuilderRoutingReadiness({
   form: form.value,
 }))
 
-const setupCards = computed(() => buildPolicyBuilderSetupCardViewModels({
-  library: currentLibrary.value,
-  form: form.value,
-  intentSummary: intentSummary.value,
-  libraryProfileGenreSummary: libraryProfileGenreSummary.value,
-  libraryProfileFreshness: libraryProfileFreshness.value,
-  libraryProfileLoading: libraryProfileLoading.value,
-  routingReadiness: routingReadiness.value,
-  selectedPresets: selectedPresets.value,
-}))
+const {
+  workflowRead: operatorWorkflowRead,
+  loading: operatorWorkflowLoading,
+  error: operatorWorkflowError,
+  loadWorkflow: loadOperatorWorkflow,
+  watchWorkflow: watchOperatorWorkflow,
+} = usePolicyOperatorWorkflow()
 
 const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({
   form: form.value,
@@ -265,9 +261,13 @@ onMounted(loadInitialData)
 
 watchSuggestedPresets(computed(() => form.value.library_id))
 watchLibraryProfile(computed(() => form.value.library_id))
+watchOperatorWorkflow(computed(() => form.value.library_id))
 
-const refreshActiveLibraryProfile = () => {
-  refreshLibraryProfile(form.value.library_id)
+const refreshActiveLibraryProfile = async () => {
+  const refreshed = await refreshLibraryProfile(form.value.library_id)
+  if (refreshed) {
+    await loadOperatorWorkflow(form.value.library_id)
+  }
 }
 
 const addAllSuggested = () => {

@@ -47,11 +47,11 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
     ]);
 
     expect(listPolicyAuthoringClientWorkflowComponents().map(record => record.id)).toEqual([
-      'policy_authoring_setup_cards',
+      'policy_authoring_library_first_workflow_shell',
       'policy_authoring_destination_sections',
       'policy_authoring_review_triggers',
-      'policy_authoring_routing_readiness',
-      'policy_authoring_setup_card_progress',
+      'policy_authoring_workflow_readiness',
+      'policy_authoring_workflow_read_boundary',
       'policy_authoring_save_defer_action_boundary',
       'policy_authoring_starter_template_accelerator',
       'policy_authoring_accessibility_decision_load_audit',

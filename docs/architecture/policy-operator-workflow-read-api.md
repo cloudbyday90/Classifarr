@@ -126,6 +126,12 @@ Cons:
   `server/src/__tests__/policies-operator-workflow-read-routes.test.mjs`
 - Client API test:
   `client/src/__tests__/api/policiesApi.test.js`
+- Client workflow shell:
+  `client/src/components/policies/PolicyBuilderWorkflowShell.vue`
+- Client request boundary:
+  `client/src/composables/usePolicyOperatorWorkflow.js`
+- Client adoption design record:
+  [Policy Builder Library-First Workflow Shell](policy-builder-library-first-workflow-shell.md)
 
 ## Security Outcome
 

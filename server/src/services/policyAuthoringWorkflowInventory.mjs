@@ -39,7 +39,7 @@ const POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS = Object.freeze({
 });
 
 const POLICY_AUTHORING_BUILDER_MATCHER =
-  /(PolicyBuilder|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent)/;
+  /(PolicyBuilder|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
 
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -68,6 +68,19 @@ function basename(filePath) {
 }
 
 const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
+  {
+    id: 'library_first_workflow_shell',
+    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.WORKFLOW_SHELL,
+    normalAuthoringAllowed: true,
+    migrationSupportOnly: false,
+    riskIds: [],
+    notes: 'The server-owned library-first workflow shell renders bounded observations and readiness without client policy, automation, or routing authority.',
+    matches: filePath => hasAnySegment(filePath, [
+      '/PolicyBuilderWorkflowShell.vue',
+      '/usePolicyOperatorWorkflow.js',
+    ]),
+  },
   {
     id: 'presentation_tests',
     decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,

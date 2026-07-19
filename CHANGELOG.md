@@ -18,6 +18,13 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Library-First Policy Workflow Shell** - replaced the policy builder's
+  setup-card grid and standalone routing diagnostic with the five
+  destination-first questions, current library observations, and one
+  server-owned automation-readiness outcome. Observations remain unselected
+  until an explicit policy-intent action, and the display cannot issue media,
+  provider, quota, write, learning, or routing operations.
+
 - **Library-First Policy Workflow Read API** - added a read-only server
   projection for the five destination-first policy questions. It safely exposes
   cached library-profile suggestions and stored routing readiness without live

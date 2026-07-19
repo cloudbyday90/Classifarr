@@ -78,9 +78,22 @@ function basename(filePath) {
   return filePath.split('/').pop() || filePath;
 }
 
-const POLICY_BUILDER_MODULE_MATCHER = /(PolicyBuilder|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|PolicyCombined|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent)/;
+const POLICY_BUILDER_MODULE_MATCHER = /(PolicyBuilder|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|PolicyCombined|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
 
 const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
+  {
+    id: 'policy_operator_workflow_read_adapter',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REFERENCE_DATA_ADAPTER,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_REFERENCE_ADAPTER,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.SPLIT_REFERENCE_AND_EVIDENCE,
+    clientEngineAuthorityAllowed: false,
+    engineCutlineDecisionRequired: false,
+    riskIds: [
+      POLICY_BUILDER_BOUNDARY_RISK_IDS.OBSERVED_EVIDENCE_ADAPTER,
+    ],
+    notes: 'The operator workflow composable may load and validate the server-owned display projection, but cannot persist policy intent, route media, or decide automation.',
+    matches: (filePath) => filePath.endsWith('/usePolicyOperatorWorkflow.js'),
+  },
   {
     id: 'policy_builder_tests',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.TEST_BOUNDARY,
@@ -250,6 +263,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
         '/PolicyBuilderFooterActions.vue',
         '/PolicyBuilderRoutingReadinessCard.vue',
         '/PolicyBuilderSetupCards.vue',
+        '/PolicyBuilderWorkflowShell.vue',
         '/PolicyIntentActionButton.vue',
         '/PolicyIntentCertificationControl.vue',
         '/PolicyIntentChip.vue',

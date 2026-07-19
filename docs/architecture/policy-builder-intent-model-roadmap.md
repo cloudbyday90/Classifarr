@@ -3793,6 +3793,14 @@ Implementation status:
   observed values as explicitly accepted suggestions, and cannot refresh media,
   call providers, consume quota, persist policy state, learn, or route. Its
   design record is [Policy Operator Workflow Read API](policy-operator-workflow-read-api.md).
+- The policy-builder entry path now renders that projection through
+  `PolicyBuilderWorkflowShell.vue` and its bounded request composable. It
+  replaces the local setup-card grid and standalone routing-readiness panel
+  with the five destination-first questions, current-library suggestions, and
+  server-owned readiness next action. The shell is display-only: it validates
+  the response authority, drops stale library requests, and leaves observed
+  values unselected until typed draft commands are introduced. Its design
+  record is [Policy Builder Library-First Workflow Shell](policy-builder-library-first-workflow-shell.md).
 - Retired diagnostic panels no longer have a component, accessibility, readiness,
   or workflow exemption. Readiness rejects their identifiers instead of routing
   them to an alternate authoring branch; the outcome is documented in

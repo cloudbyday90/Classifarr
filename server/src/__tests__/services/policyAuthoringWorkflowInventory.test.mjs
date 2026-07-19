@@ -59,6 +59,20 @@ describe('policyAuthoringWorkflowInventory', () => {
     ]);
   });
 
+  test('keeps the library-first workflow shell and read adapter in the normal workflow role', () => {
+    [
+      'client/src/components/policies/PolicyBuilderWorkflowShell.vue',
+      'client/src/composables/usePolicyOperatorWorkflow.js',
+    ].forEach((filePath) => {
+      expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.WORKFLOW_SHELL,
+        normalAuthoringAllowed: true,
+        migrationSupportOnly: false,
+      }));
+    });
+  });
+
   test('keeps destination context in the normal authoring path', () => {
     [
       'client/src/components/policies/PolicyBuilderLibraryContext.vue',

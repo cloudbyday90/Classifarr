@@ -103,11 +103,11 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
 
 const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
   {
-    id: 'policy_authoring_setup_cards',
-    label: 'Policy authoring setup cards',
-    docPath: 'docs/architecture/policy-authoring-setup-cards.md',
-    testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
-    evidence: 'Renders four setup cards after library context without restoring retired diagnostic panels.',
+    id: 'policy_authoring_library_first_workflow_shell',
+    label: 'Policy authoring library-first workflow shell',
+    docPath: 'docs/architecture/policy-builder-library-first-workflow-shell.md',
+    testPath: 'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',
+    evidence: 'Renders the server-owned five-question workflow and observed library suggestions without automatic acceptance or diagnostic controls.',
   },
   {
     id: 'policy_authoring_destination_sections',
@@ -124,18 +124,18 @@ const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
     evidence: 'Adds Ask When Unsure review triggers through typed draft serialization.',
   },
   {
-    id: 'policy_authoring_routing_readiness',
-    label: 'Policy authoring routing readiness',
-    docPath: 'docs/architecture/policy-authoring-routing-readiness.md',
-    testPath: 'client/src/__tests__/PolicyBuilderRoutingReadinessCard.test.js',
-    evidence: 'Projects selected-library routing context without executing routing or saving policy intent.',
+    id: 'policy_authoring_workflow_readiness',
+    label: 'Policy authoring workflow readiness',
+    docPath: 'docs/architecture/policy-builder-library-first-workflow-shell.md',
+    testPath: 'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',
+    evidence: 'Renders server-owned readiness and its next action without executing routing or saving policy intent.',
   },
   {
-    id: 'policy_authoring_setup_card_progress',
-    label: 'Policy authoring setup card progress',
-    docPath: 'docs/architecture/policy-authoring-setup-card-progress.md',
-    testPath: 'client/src/__tests__/PolicyBuilderSetupCards.test.js',
-    evidence: 'Derives setup progress from existing modal projections without new API calls or diagnostics.',
+    id: 'policy_authoring_workflow_read_boundary',
+    label: 'Policy authoring workflow read boundary',
+    docPath: 'docs/architecture/policy-builder-library-first-workflow-shell.md',
+    testPath: 'client/src/__tests__/composables/usePolicyOperatorWorkflow.test.js',
+    evidence: 'Loads only versioned display-only workflow responses and drops stale library requests.',
   },
   {
     id: 'policy_authoring_save_defer_action_boundary',
@@ -192,9 +192,9 @@ const POLICY_AUTHORING_NORMAL_WORKFLOW_RULES = Object.freeze([
   {
     id: 'one_recommended_next_action',
     label: 'Readiness exposes one recommended next action',
-    docPath: 'docs/architecture/policy-authoring-readiness.md',
-    testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
-    evidence: 'Setup cards expose one current step with supporting status and completion context.',
+    docPath: 'docs/architecture/policy-builder-library-first-workflow-shell.md',
+    testPath: 'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',
+    evidence: 'The server-owned workflow exposes automation readiness and one next action without duplicated local diagnostics.',
   },
   {
     id: 'retired_diagnostics_absent',
