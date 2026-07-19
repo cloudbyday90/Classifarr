@@ -26,6 +26,10 @@ export function getPolicies() {
   return getDataRequest('/policies')
 }
 
+export function getPolicyOperatorWorkflow(libraryId) {
+  return getDataRequest(`/policies/operator-workflow/libraries/${libraryId}`)
+}
+
 export function createPolicy(data) {
   return apiClient.post('/policies', data)
 }
@@ -49,6 +53,7 @@ export function getNativeIntentReconciliationStatus() {
 const policiesApi = {
   getPolicy,
   getPolicies,
+  getPolicyOperatorWorkflow,
   createPolicy,
   updatePolicy,
   deletePolicy,

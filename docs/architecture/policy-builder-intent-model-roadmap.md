@@ -3787,6 +3787,12 @@ Implementation status:
   `server/src/services/policyOperatorWorkflow.mjs`.
 - The focused operator-workflow test suite lives in
   `server/src/__tests__/services/policyOperatorWorkflow.test.mjs`.
+- The Phase 6R.5 library-first read API now exposes a display-only five-section
+  workflow at `GET /api/policies/operator-workflow/libraries/:libraryId`. It
+  reads cached profile evidence and stored routing mapping only, returns
+  observed values as explicitly accepted suggestions, and cannot refresh media,
+  call providers, consume quota, persist policy state, learn, or route. Its
+  design record is [Policy Operator Workflow Read API](policy-operator-workflow-read-api.md).
 - Retired diagnostic panels no longer have a component, accessibility, readiness,
   or workflow exemption. Readiness rejects their identifiers instead of routing
   them to an alternate authoring branch; the outcome is documented in

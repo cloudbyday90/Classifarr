@@ -35,6 +35,7 @@ vi.mock('../../api/core', () => ({
 import {
   getPolicy,
   getPolicies,
+  getPolicyOperatorWorkflow,
   createPolicy,
   updatePolicy,
   deletePolicy,
@@ -57,6 +58,14 @@ describe('policiesApi', () => {
     mockGetDataRequest.mockResolvedValueOnce([])
     await getPolicies()
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies')
+  })
+
+  it('getPolicyOperatorWorkflow calls the read-only library workflow endpoint', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ statusId: 'ready' })
+
+    await getPolicyOperatorWorkflow(7)
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/operator-workflow/libraries/7')
   })
 
   it('createPolicy calls POST with data', async () => {

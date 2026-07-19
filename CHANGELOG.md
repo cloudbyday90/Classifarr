@@ -16,6 +16,14 @@ unchanged operator or runtime outcome.
 
 ### Added
 
+#### Policy Authoring
+
+- **Library-First Policy Workflow Read API** - added a read-only server
+  projection for the five destination-first policy questions. It safely exposes
+  cached library-profile suggestions and stored routing readiness without live
+  media or provider calls, quota reads, policy writes, learning, or routing;
+  observed values remain unselected until a later explicit intent action.
+
 #### Platform Integrity
 
 - **Canonical Compatibility Removal Selection** - compatibility-removal review

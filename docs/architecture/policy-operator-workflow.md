@@ -5,9 +5,10 @@
 Implemented as the durable server-owned policy operator workflow projection.
 
 This document defines the product workflow projection that the policy builder
-should render. It does not replace the Vue modal yet, persist policy, execute
-routing, run provider checks, run replay, or expose migration verifier
-diagnostics in the normal operator flow.
+should render. The read-only library workflow endpoint now exposes its
+display-only five-section projection for the Vue rebuild. It does not replace
+the Vue modal yet, persist policy, execute routing, run provider checks, run
+replay, or expose migration verifier diagnostics in the normal operator flow.
 
 The pure projection remains available for focused tests and internal
 composition, but runtime and rebuild callers should use the bounded workflow
@@ -146,7 +147,8 @@ Pros:
 Cons:
 
 - This contract does not yet remove existing Vue panels.
-- It does not add a new endpoint for the projection.
+- The current read endpoint is intentionally display-only; typed draft commands
+  still need to accept or remove observed suggestions before policy persistence.
 - It does not persist native policy intent.
 - It does not decide which old replay/provider services are migration verifiers
   versus deletion targets.
@@ -169,6 +171,10 @@ Cons:
   `buildPolicyOperatorWorkflowFromBoundedReadiness`
 - Test module:
   `server/src/__tests__/services/policyOperatorWorkflow.test.mjs`
+- Read-only library workflow endpoint:
+  `GET /api/policies/operator-workflow/libraries/:libraryId`
+- Read API design record:
+  `docs/architecture/policy-operator-workflow-read-api.md`
 - Documentation:
   `docs/architecture/policy-operator-workflow.md`
 - Quality gate documentation:
