@@ -57,8 +57,8 @@ Pros:
 
 - bounds the affected work to the reviewed prefix already attempted,
 - preserves a precise halted entry and reason for diagnostics,
-- keeps partial success on the existing verification path and zero-success on
-  explicit blocker resolution.
+- preserves partial-success evidence for the dedicated verification task and
+  routes zero-success to explicit blocker resolution.
 
 Cons:
 
@@ -76,8 +76,9 @@ Cons:
    path/action, or reports an archive, storage, or Git mutation effect.
 4. Return a fixed halt reason and bounded stopped entry.
 5. Preserve only the actual applied prefix as evidence.
-6. Require post-removal runtime verification for partial success and blocker
-   resolution when no path applied.
+6. Add a dedicated partial-apply verifier before permitting runtime
+   verification for partial success; use blocker resolution when no path
+   applied.
 
 ## Implementation Outcome
 
@@ -106,3 +107,5 @@ This component does not add rollback of an already applied path, filesystem
 deletion mechanics, Git mutation, database mutation, or automatic retry. A
 later component may decide whether a verified, fresh reviewed batch can be
 created after a blocker is resolved; it must not reuse a failed apply batch.
+Task 8R.19.2 owns verification eligibility for a partial applied prefix and
+must not allow it to authorize another removal batch or completion audit.

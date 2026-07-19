@@ -11,9 +11,10 @@ every apply result matches the reviewed manifest path and action.
 The batch fails closed after the first adapter exception, rejected result, or
 forbidden reported side effect. It records the stopped entry and a bounded halt
 reason, does not recheck or submit later entries, and preserves any earlier
-applied evidence for the existing post-removal verification boundary. When no
+applied evidence for the dedicated partial-apply verification task. When no
 path applied, it directs the caller to resolve the apply blocker instead of
-claiming runtime verification is ready.
+claiming runtime verification is ready. Until that task exists, neither a
+partial nor a zero-removal batch can authorize another removal batch.
 
 The service does not run Git mutation commands or mutate database storage. It
 uses fixed-argument, read-only Git verification immediately before each adapter
@@ -197,8 +198,8 @@ Use this stack for controlled compatibility path removal apply:
    storage mutation, or Git-mutation side effect; do not submit later entries.
 6. Emit the halted entry, fixed halt reason, and only the evidence for entries
    already applied.
-7. Require post-removal runtime verification after any partial success; route
-   zero-removal outcomes to blocker resolution.
+7. Add a bounded partial-apply verifier before permitting runtime verification
+   after partial success; route zero-removal outcomes to blocker resolution.
 
 ## Implementation Outcome
 
@@ -247,11 +248,12 @@ Not implemented in this component:
 - no hardcoded filesystem deletion,
 - no Git mutation command execution,
 - no database mutation,
-- no automatic route rewiring.
+- no automatic route rewiring,
+- no partial-apply runtime-verification eligibility (reserved for Task 8R.19.2).
 
 ## Next Step
 
-Proceed with **8R.19 Post-Removal Runtime Verification**. It must consume only
-the exact apply evidence from a successful reviewed batch, verify removed paths
-are no longer imported or required, and block another batch until focused
-runtime validation passes.
+Proceed with **8R.19.2 Partial-Apply Runtime Verification Eligibility**. It
+must verify only the exact prefix that applied after a halted batch while
+retaining the completed-batch contract and forbidding next-batch authorization
+or completion from partial evidence.

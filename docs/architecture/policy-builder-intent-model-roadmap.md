@@ -6738,6 +6738,15 @@ Tasks:
     post-removal verification can pass.
   - Completed: preserves side-effect-free evidence evaluation and bounded
     diagnostics.
+- **8R.19.2 Partial-Apply Runtime Verification Eligibility**
+  - Pending: permit runtime verification of a bounded, valid applied prefix
+    only after a controlled apply stops after a later entry.
+  - Require a known halt reason, a bounded stopped entry, at least one valid
+    applied result, intact review and gate evidence, and import/runtime/validation
+    evidence covering only the paths that actually applied.
+  - Preserve the completed-batch pathway unchanged. A verified partial apply
+    must direct the operator to resolve the blocker and must never authorize a
+    next removal batch or completion audit.
 - Consume completed controlled-removal apply evidence.
 - Require apply evidence to be valid and complete.
 - Require import/reference scan evidence for every applied removal path.
@@ -6778,7 +6787,9 @@ Implementation status:
   evidence artifact before it consumes apply, import scan, runtime check, and
   focused/full validation evidence; it blocks lingering references or failed
   checks, rejects storage/Git side effects, and emits semantic `nextStep`
-  evidence for next-batch authorization.
+  evidence for next-batch authorization. It deliberately accepts only completed
+  apply evidence today; Task 8R.19.2 is required before a contained partial
+  apply can be verified without permitting another removal batch.
 
 ### 8R.20 Next Compatibility Removal Batch Authorization
 
