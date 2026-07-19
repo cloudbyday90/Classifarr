@@ -100,6 +100,14 @@
             </span>
           </li>
         </ul>
+
+        <PolicyObservedSuggestionSelector
+          v-if="selectionEnabled"
+          :accepted-candidates="acceptedCandidates"
+          :candidates="selectableSuggestions"
+          :library-name="libraryName"
+          @draft-command-plan="emit('draft-command-plan', $event)"
+        />
       </section>
 
       <ol class="grid gap-3 lg:grid-cols-2">
@@ -161,6 +169,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import PolicyObservedSuggestionSelector from './PolicyObservedSuggestionSelector.vue'
 
 const props = defineProps({
   workflowRead: {
@@ -175,12 +184,27 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  acceptedCandidates: {
+    type: Array,
+    default: () => [],
+  },
+  selectionEnabled: {
+    type: Boolean,
+    default: false,
+  },
+})
+
+const emit = defineEmits({
+  'draft-command-plan': plan => Boolean(plan?.commands?.length),
 })
 
 const workflow = computed(() => props.workflowRead?.workflow || null)
 const observedProfile = computed(() => props.workflowRead?.observedProfile || {})
 const observedSuggestions = computed(() => Array.isArray(observedProfile.value.suggestions)
   ? observedProfile.value.suggestions
+  : [])
+const selectableSuggestions = computed(() => Array.isArray(observedProfile.value.selectableSuggestions)
+  ? observedProfile.value.selectableSuggestions
   : [])
 const sections = computed(() => Array.isArray(workflow.value?.sections)
   ? workflow.value.sections

@@ -7,6 +7,7 @@ import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const queryMock = jest.fn();
 const withTransactionMock = jest.fn(async work => work({ query: queryMock }));
 const applyPolicyInitialIntentEstablishmentMock = jest.fn();
+const applyPolicyInitialIntentEstablishmentInTransactionMock = jest.fn();
 
 jest.unstable_mockModule('../config/database.mjs', () => ({
   query: queryMock,
@@ -27,6 +28,8 @@ jest.unstable_mockModule('../services/policyInitialIntentEstablishmentService.mj
     BLOCKED_BY_TRANSACTION_BOUNDARY: 'initial_intent_establishment_transaction_required',
     FAILED_ROLLED_BACK: 'initial_intent_establishment_failed_rolled_back',
   },
+  applyPolicyInitialIntentEstablishmentInTransaction:
+    applyPolicyInitialIntentEstablishmentInTransactionMock,
   applyPolicyInitialIntentEstablishment: applyPolicyInitialIntentEstablishmentMock,
 }));
 
@@ -64,6 +67,7 @@ describe('Policy initial intent establishment route', () => {
     queryMock.mockReset();
     withTransactionMock.mockReset();
     applyPolicyInitialIntentEstablishmentMock.mockReset();
+    applyPolicyInitialIntentEstablishmentInTransactionMock.mockReset();
     withTransactionMock.mockImplementation(async work => work({ query: queryMock }));
     applyPolicyInitialIntentEstablishmentMock.mockResolvedValue(successfulResult());
   });

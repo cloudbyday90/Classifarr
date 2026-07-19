@@ -66,6 +66,15 @@ describe('policyOperatorWorkflowReadService', () => {
             requiresExplicitAcceptance: true,
           }),
         ]),
+        selectableSuggestions: expect.arrayContaining([
+          expect.objectContaining({
+            value: 'Animation',
+            sourceId: 'suggested_from_observed_profile',
+            signalType: 'genres',
+            requiresExplicitAcceptance: true,
+            canAutoDeclare: false,
+          }),
+        ]),
       }),
       workflow: expect.objectContaining({
         sectionOrder: [
@@ -135,6 +144,7 @@ describe('policyOperatorWorkflowReadService', () => {
       itemCount: null,
       suggestionCount: 0,
       suggestions: [],
+      selectableSuggestions: [],
     });
     expect(result.rawPayloadExposed).toBe(false);
     expect(buildPolicyOperatorWorkflowReadAudit(result).ok).toBe(true);

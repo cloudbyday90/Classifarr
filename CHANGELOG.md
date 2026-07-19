@@ -18,6 +18,13 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Observed Library Values Create Native Intent** - new policies can now use
+  explicitly accepted genre, studio, and keyword observations from their
+  connected library as native purpose rules. Suggestions remain unchecked until
+  accepted, and policy creation establishes native authority, audit history,
+  routing state, and a rollback snapshot atomically without provider calls,
+  quota consumption, learning, or media routing.
+
 - **Library-First Policy Workflow Shell** - replaced the policy builder's
   setup-card grid and standalone routing diagnostic with the five
   destination-first questions, current library observations, and one

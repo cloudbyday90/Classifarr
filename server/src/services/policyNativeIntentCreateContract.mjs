@@ -1,0 +1,90 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
+ */
+
+import {
+  validatePolicyInitialDeclaredIntent,
+  validatePolicyInitialIntentEstablishmentRequest,
+} from './policyInitialIntentEstablishmentContract.mjs';
+
+const NATIVE_INTENT_ESTABLISHMENT_FIELD = 'native_intent_establishment';
+
+export class PolicyNativeIntentCreateRequestError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'PolicyNativeIntentCreateRequestError';
+    this.code = 'POLICY_NATIVE_INTENT_CREATE_REQUEST_INVALID';
+  }
+}
+
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+}
+
+function normalizePositiveInteger(value) {
+  const numericValue = Number(value);
+  return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null;
+}
+
+function buildNativeIntentCreateRequest({
+  payload = {},
+  actorId,
+  idempotencyKey,
+  legacyPresetCount = 0,
+} = {}) {
+  if (payload?.[NATIVE_INTENT_ESTABLISHMENT_FIELD] === undefined) {
+    return null;
+  }
+
+  if (Number(legacyPresetCount) > 0) {
+    throw new PolicyNativeIntentCreateRequestError(
+      'Native intent creation cannot be combined with legacy preset attachments.'
+    );
+  }
+
+  if (!normalizePositiveInteger(actorId)) {
+    throw new PolicyNativeIntentCreateRequestError(
+      'Native intent creation requires a verified administrator identity.'
+    );
+  }
+
+  const nativeIntentEstablishment = asObject(payload[NATIVE_INTENT_ESTABLISHMENT_FIELD]);
+  if (!nativeIntentEstablishment) {
+    throw new PolicyNativeIntentCreateRequestError(
+      'native_intent_establishment must be an object containing declared_intent.'
+    );
+  }
+
+  const keys = Object.keys(nativeIntentEstablishment);
+  if (keys.length !== 1 || keys[0] !== 'declared_intent') {
+    throw new PolicyNativeIntentCreateRequestError(
+      'native_intent_establishment accepts only declared_intent.'
+    );
+  }
+
+  const declaredIntentValidation = validatePolicyInitialDeclaredIntent(
+    nativeIntentEstablishment.declared_intent
+  );
+  if (!declaredIntentValidation.ok) {
+    throw new PolicyNativeIntentCreateRequestError(
+      'native_intent_establishment.declared_intent is invalid.'
+    );
+  }
+
+  const request = validatePolicyInitialIntentEstablishmentRequest({
+    schema_version: 1,
+    idempotency_key: idempotencyKey,
+    declared_intent: declaredIntentValidation.declaredIntent,
+  });
+
+  return request;
+}
+
+export {
+  NATIVE_INTENT_ESTABLISHMENT_FIELD,
+  buildNativeIntentCreateRequest,
+};

@@ -3,6 +3,7 @@ import { jest } from '@jest/globals';
 import {
   POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS,
   POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS,
+  applyPolicyInitialIntentEstablishmentInTransaction,
   applyPolicyInitialIntentEstablishment,
 } from '../../services/policyInitialIntentEstablishmentService.mjs';
 import {
@@ -159,6 +160,21 @@ describe('policyInitialIntentEstablishmentService', () => {
     expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining("candidate_status_id = 'requires_initial_policy_establishment'"),
       [44]
+    );
+  });
+
+  test('uses a caller-owned transaction without opening a nested transaction', async () => {
+    const client = createClient();
+
+    const result = await applyPolicyInitialIntentEstablishmentInTransaction({
+      client,
+      ...serviceRequest(),
+    });
+
+    expect(result.statusId).toBe(POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.ESTABLISHED);
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_intents'),
+      expect.any(Array)
     );
   });
 

@@ -18,9 +18,11 @@ import {
   buildPolicyOperatorWorkflow,
   buildPolicyOperatorWorkflowAudit,
 } from './policyOperatorWorkflow.mjs';
+import {
+  buildPolicyObservedSuggestionProjection,
+} from './policyObservedSuggestionCandidates.mjs';
 
 const POLICY_OPERATOR_WORKFLOW_READ_VERSION = 'policy.operator_workflow_read.v1';
-const MAX_OBSERVED_SUGGESTIONS = 20;
 const MAX_LABEL_LENGTH = 160;
 
 const POLICY_OPERATOR_WORKFLOW_READ_STATUS_IDS = Object.freeze({
@@ -84,42 +86,6 @@ function normalizeRouting(routing = {}) {
   };
 }
 
-function getSuggestionKind(key = '') {
-  const [kind] = normalizeString(key).split(':', 1);
-  return kind || 'observed_signal';
-}
-
-function buildObservedSuggestions(profileHandoff = {}) {
-  const candidates = asArray(
-    profileHandoff?.profileEvidence?.libraryProfile?.compatibilityCandidates
-  );
-
-  return candidates
-    .map(candidate => {
-      const source = asObject(candidate);
-      const key = normalizeString(source.key);
-      const label = normalizeString(source.label);
-      if (!key || !label) return null;
-
-      const count = Number(source.count);
-      const confidence = Number(source.confidence);
-
-      return {
-        key,
-        label,
-        kind: getSuggestionKind(key),
-        count: Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : null,
-        confidence: Number.isFinite(confidence)
-          ? Math.max(0, Math.min(confidence, 1))
-          : null,
-        sourceId: 'observed_in_library',
-        requiresExplicitAcceptance: true,
-      };
-    })
-    .filter(Boolean)
-    .slice(0, MAX_OBSERVED_SUGGESTIONS);
-}
-
 function buildProfileState(profileHandoff = {}) {
   if (profileHandoff?.ok !== true) {
     return {
@@ -172,7 +138,7 @@ function buildReadResult({
   statusId,
 } = {}) {
   const workflow = buildWorkflow({ profileHandoff, routing });
-  const observedSuggestions = buildObservedSuggestions(profileHandoff);
+  const observedSuggestionProjection = buildPolicyObservedSuggestionProjection(profileHandoff);
 
   return {
     version: POLICY_OPERATOR_WORKFLOW_READ_VERSION,
@@ -183,8 +149,9 @@ function buildReadResult({
       itemCount: Number.isInteger(Number(profileHandoff?.profileEvidence?.summary?.itemCount))
         ? Number(profileHandoff.profileEvidence.summary.itemCount)
         : null,
-      suggestionCount: observedSuggestions.length,
-      suggestions: observedSuggestions,
+      suggestionCount: observedSuggestionProjection.observations.length,
+      suggestions: observedSuggestionProjection.observations,
+      selectableSuggestions: observedSuggestionProjection.selectableSuggestions,
     },
     workflow,
     authority: {
@@ -203,6 +170,7 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
   const issues = [];
   const library = normalizeLibrary(source.library);
   const observedSuggestions = asArray(source.observedProfile?.suggestions);
+  const selectableSuggestions = asArray(source.observedProfile?.selectableSuggestions);
   const sideEffects = asObject(source.sideEffects);
   const workflowAudit = buildPolicyOperatorWorkflowAudit(source.workflow);
 
@@ -231,6 +199,21 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
     issues.push({
       riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.OBSERVED_VALUE_AUTO_DECLARED,
       message: 'Observed library values must remain suggestions until explicitly accepted.',
+    });
+  }
+
+  if (selectableSuggestions.some(suggestion => (
+    suggestion?.sourceId !== 'suggested_from_observed_profile' ||
+    suggestion?.requiresExplicitAcceptance !== true ||
+    suggestion?.canAutoDeclare !== false ||
+    !suggestion?.candidateId ||
+    !suggestion?.signalType ||
+    !suggestion?.operator ||
+    !suggestion?.explanation
+  ))) {
+    issues.push({
+      riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.OBSERVED_VALUE_AUTO_DECLARED,
+      message: 'Selectable observed suggestions must remain explicitly accepted, bounded draft candidates.',
     });
   }
 

@@ -132,8 +132,7 @@ function hasLegacyConfiguration(configuration = {}) {
   return Number(configuration.presetCount) > 0 || Number(configuration.overrideCount) > 0;
 }
 
-async function applyPolicyInitialIntentEstablishment({
-  dbClient,
+function preparePolicyInitialIntentEstablishment({
   policyId,
   actorId,
   request,
@@ -144,13 +143,16 @@ async function applyPolicyInitialIntentEstablishment({
   const normalizedActorId = normalizePositiveInteger(actorId);
 
   if (!normalizedActorId) {
-    return buildResult({
+    return {
+      context: null,
+      result: buildResult({
       statusId: POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.BLOCKED_BY_REQUEST,
       policyId: normalizedPolicyId,
       establishedAt,
       riskId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS.ACTOR_REQUIRED,
       message: 'Initial native intent establishment requires a verified administrator identity.',
-    });
+      }),
+    };
   }
 
   let validatedRequest;
@@ -161,40 +163,53 @@ async function applyPolicyInitialIntentEstablishment({
       ? error.message
       : 'Initial native intent establishment request is invalid.';
 
-    return buildResult({
+    return {
+      context: null,
+      result: buildResult({
       statusId: POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.BLOCKED_BY_REQUEST,
       policyId: normalizedPolicyId,
       establishedAt,
       riskId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS.DECLARED_INTENT_INVALID,
       message,
-    });
+      }),
+    };
   }
 
   if (!normalizedPolicyId) {
-    return buildResult({
+    return {
+      context: null,
+      result: buildResult({
       statusId: POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.BLOCKED_BY_REQUEST,
       policyId: null,
       establishedAt,
       riskId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS.POLICY_NOT_FOUND,
       message: 'Initial native intent establishment requires a positive policy identifier.',
-    });
+      }),
+    };
   }
 
-  if (typeof dbClient?.withTransaction !== 'function') {
-    return buildResult({
-      statusId: POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.BLOCKED_BY_TRANSACTION_BOUNDARY,
-      policyId: normalizedPolicyId,
+  return {
+    context: {
       establishedAt,
-      riskId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS.TRANSACTION_BOUNDARY_REQUIRED,
-      message: 'Initial native intent establishment requires an atomic database transaction.',
-    });
-  }
+      normalizedActorId,
+      normalizedPolicyId,
+      requestFingerprint: buildInitialIntentRequestFingerprint(validatedRequest),
+      validatedRequest,
+    },
+    result: null,
+  };
+}
 
-  const requestFingerprint = buildInitialIntentRequestFingerprint(validatedRequest);
+async function establishPolicyInitialIntentWithClient({ client, context }) {
+  const {
+    establishedAt,
+    normalizedActorId,
+    normalizedPolicyId,
+    requestFingerprint,
+    validatedRequest,
+  } = context;
 
-  try {
-    return await dbClient.withTransaction(async client => {
-      const policy = await lockPolicyForInitialIntentEstablishment(client, normalizedPolicyId);
+  const policy = await lockPolicyForInitialIntentEstablishment(client, normalizedPolicyId);
       if (!policy) {
         return buildResult({
           statusId: POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.BLOCKED_BY_AUTHORITY,
@@ -379,12 +394,80 @@ async function applyPolicyInitialIntentEstablishment({
         reconciliationStateCleared: Number(clearedReconciliationPolicyId) === Number(policy.id),
         ruleCount: rulesInserted,
       });
+}
+
+async function applyPolicyInitialIntentEstablishmentInTransaction({
+  client,
+  policyId,
+  actorId,
+  request,
+  now = new Date(),
+} = {}) {
+  const prepared = preparePolicyInitialIntentEstablishment({
+    policyId,
+    actorId,
+    request,
+    now,
+  });
+
+  if (prepared.result) {
+    return prepared.result;
+  }
+
+  if (typeof client?.query !== 'function') {
+    return buildResult({
+      statusId: POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.BLOCKED_BY_TRANSACTION_BOUNDARY,
+      policyId: prepared.context.normalizedPolicyId,
+      establishedAt: prepared.context.establishedAt,
+      riskId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS.TRANSACTION_BOUNDARY_REQUIRED,
+      message: 'Initial native intent establishment requires an atomic database transaction.',
     });
+  }
+
+  return establishPolicyInitialIntentWithClient({
+    client,
+    context: prepared.context,
+  });
+}
+
+async function applyPolicyInitialIntentEstablishment({
+  dbClient,
+  policyId,
+  actorId,
+  request,
+  now = new Date(),
+} = {}) {
+  const prepared = preparePolicyInitialIntentEstablishment({
+    policyId,
+    actorId,
+    request,
+    now,
+  });
+
+  if (prepared.result) {
+    return prepared.result;
+  }
+
+  if (typeof dbClient?.withTransaction !== 'function') {
+    return buildResult({
+      statusId: POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.BLOCKED_BY_TRANSACTION_BOUNDARY,
+      policyId: prepared.context.normalizedPolicyId,
+      establishedAt: prepared.context.establishedAt,
+      riskId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS.TRANSACTION_BOUNDARY_REQUIRED,
+      message: 'Initial native intent establishment requires an atomic database transaction.',
+    });
+  }
+
+  try {
+    return await dbClient.withTransaction(client => establishPolicyInitialIntentWithClient({
+      client,
+      context: prepared.context,
+    }));
   } catch {
     return buildResult({
       statusId: POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.FAILED_ROLLED_BACK,
-      policyId: normalizedPolicyId,
-      establishedAt,
+      policyId: prepared.context.normalizedPolicyId,
+      establishedAt: prepared.context.establishedAt,
       riskId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS.TRANSACTION_FAILED,
       message: 'Initial native intent establishment failed and the transaction was rolled back.',
     });
@@ -395,5 +478,6 @@ export {
   POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS,
   POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS,
   POLICY_INITIAL_INTENT_ESTABLISHMENT_VERSION,
+  applyPolicyInitialIntentEstablishmentInTransaction,
   applyPolicyInitialIntentEstablishment,
 };

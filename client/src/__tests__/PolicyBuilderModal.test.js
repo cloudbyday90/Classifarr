@@ -21,6 +21,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import PolicyBuilderModal from '../components/policies/PolicyBuilderModal.vue';
 import api from '../api';
 import { getDataRequest } from '../api/core';
+import { buildObservedSuggestionCommandPlan } from '@/utils/policyObservedSuggestionDraft';
 
 const mockToast = vi.hoisted(() => ({
   success: vi.fn(),
@@ -267,6 +268,65 @@ describe('PolicyBuilderModal.vue', () => {
       pattern_weight: 0.15,
       rag_weight: 0.15,
       history_weight: 0.10
+    });
+  });
+
+  it('creates a native intent establishment payload only after observed values are explicitly accepted', async () => {
+    const workflowRead = buildOperatorWorkflowRead();
+    workflowRead.observedProfile.selectableSuggestions = [{
+      candidateId: 'genre:Science Fiction:purpose',
+      value: 'Science Fiction',
+      label: 'Science Fiction',
+      signalType: 'genres',
+      operator: 'require_any',
+      questionId: 'what_belongs_here',
+      sourceId: 'suggested_from_observed_profile',
+      explanation: 'Science Fiction appears in 18 items in the current library.',
+      evidenceCount: 18,
+      requiresExplicitAcceptance: true,
+      canAutoDeclare: false,
+    }];
+
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      if (url === '/policies/operator-workflow/libraries/1') return Promise.resolve({ data: workflowRead });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+      },
+      attachTo: document.body,
+    });
+
+    await flushPromises();
+
+    wrapper.vm.applyObservedSuggestionCommandPlan(buildObservedSuggestionCommandPlan({
+      commandId: 'add_signal_value',
+      candidates: workflowRead.observedProfile.selectableSuggestions,
+    }));
+    await flushPromises();
+    await wrapper.vm.save();
+
+    expect(wrapper.emitted('save')[0][0]).toMatchObject({
+      library_id: 1,
+      presets: [],
+      native_intent_establishment: {
+        declared_intent: {
+          purpose: [{
+            signal_type: 'genres',
+            operator: 'require_any',
+            values: { require_any: ['Science Fiction'] },
+          }],
+          hard_limits: [],
+          helpful_hints: [],
+          avoid: [],
+        },
+      },
     });
   });
 

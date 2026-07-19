@@ -31,6 +31,9 @@
         :workflow-read="operatorWorkflowRead"
         :loading="operatorWorkflowLoading"
         :error="operatorWorkflowError"
+        :accepted-candidates="acceptedObservedCandidates"
+        :selection-enabled="!Boolean(policy?.id)"
+        @draft-command-plan="applyObservedSuggestionCommandPlan"
       />
 
       <PolicyPresetMigrationNotice
@@ -119,6 +122,7 @@ import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderC
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 import { usePolicyOperatorWorkflow } from '@/composables/usePolicyOperatorWorkflow'
+import { usePolicyObservedSuggestionDraft } from '@/composables/usePolicyObservedSuggestionDraft'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRoutingReadiness'
 import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
@@ -244,6 +248,14 @@ const {
   watchWorkflow: watchOperatorWorkflow,
 } = usePolicyOperatorWorkflow()
 
+const {
+  acceptedCandidates: acceptedObservedCandidates,
+  nativeIntentEstablishment,
+  applyCommandPlan: applyObservedSuggestionCommandPlan,
+} = usePolicyObservedSuggestionDraft({
+  libraryId: computed(() => form.value.library_id),
+})
+
 const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({
   form: form.value,
   selectedPresets: selectedPresets.value,
@@ -325,6 +337,18 @@ const save = async () => {
   if (!saveBoundary.value.canSave || saving.value) return
 
   const policyData = buildSavePayload()
+  if (!props.policy?.id && nativeIntentEstablishment.value) {
+    if (selectedPresets.value.length > 0) {
+      const message = 'Remove starter templates before creating a native intent policy from observed library values.'
+      saveError.value = message
+      toast.error(message, 'Unable to save policy')
+      return
+    }
+
+    delete policyData.policyIntentDraft
+    policyData.native_intent_establishment = nativeIntentEstablishment.value
+  }
+
   saveError.value = ''
   saving.value = true
 

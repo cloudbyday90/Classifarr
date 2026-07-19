@@ -3,7 +3,9 @@
 ## Status
 
 Implemented as the first client-adoption component for the server-owned
-library-first workflow.
+library-first workflow. New policies can now explicitly accept bounded
+observed-library candidates through the shell; the native create boundary
+persists that accepted intent atomically.
 
 The normal policy-builder entry path now renders a display-only destination
 summary from `GET /api/policies/operator-workflow/libraries/:libraryId` before
@@ -62,11 +64,16 @@ already-saved policy rule.
    supporting signals, when to ask, and routing readiness.
 4. The server-owned automation readiness next action.
 
-The shell does not render a selection control, save button, live refresh, Arr
-request, provider call, quota check, replay, parity, TMDB coverage, impact
-preview, or diagnostic panel. Refresh remains the existing explicit profile
-operation; after a successful refresh, the modal reloads this cached-workflow
-projection.
+For a new policy only, the shell renders a native grouped checkbox selector for
+bounded observed genres, studios, and keywords. The selector emits typed draft
+commands; it does not persist, learn, route, call a provider, consume quota,
+or preselect any value. The atomic native create path is documented in
+[Policy Observed Suggestion Native Creation](policy-observed-suggestion-native-creation.md).
+
+The shell does not render a live Arr request, provider call, quota check,
+replay, parity, TMDB coverage, impact preview, or diagnostic panel. Refresh
+remains the existing explicit profile operation; after a successful refresh,
+the modal reloads this cached-workflow projection.
 
 ## Pros And Cons
 
@@ -85,8 +92,8 @@ Cons:
 - The retained compatibility editor, template accelerator, and advanced
   settings are still visible later in the modal until their individual
   replacement/deletion tasks complete.
-- Observed suggestions are not actionable in this component. A later typed
-  draft-command component must make accept, remove, and add actions explicit.
+- Operators must explicitly accept observed candidates before they become a
+  native purpose draft; evidence remains deliberately non-authoritative.
 - The shell does not yet merge saved native intent with the read projection.
 
 ## Final Recommendation Stack
@@ -95,7 +102,7 @@ Cons:
    library-first summary.
 2. Use the workflow shell for display, accessibility, and stale-request
    protection only.
-3. Add native grouped multi-select controls through typed draft commands next.
+3. Keep native grouped multi-select controls on typed draft commands.
 4. Replace the retained compatibility editor only after those command paths
    save and round-trip safely.
 5. Delete the old template and advanced-control surfaces only through the

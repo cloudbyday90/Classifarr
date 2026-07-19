@@ -110,6 +110,12 @@ describe('Policies routes coverage', () => {
     db.withTransaction.mockImplementation(async (fn) => fn({ query: db.query }));
     app = express();
     app.use(express.json());
+    app.use((req, _res, next) => {
+      if (req.get('x-test-native-admin') === 'true') {
+        req.user = { id: 7, role: 'admin' };
+      }
+      next();
+    });
     app.use('/api/policies', policiesRouter);
     app.use(errorHandler);
   });
@@ -849,6 +855,100 @@ describe('Policies routes coverage', () => {
           }),
         ],
       }));
+    });
+
+    test('creates native intent atomically from explicit observed-library acceptance', async () => {
+      const createdPolicy = {
+        id: 78,
+        library_id: 4,
+        name: 'Animation Policy',
+        auto_classify_threshold: 85,
+        prompt_threshold: 60,
+        require_ai_validation: true,
+        trust_patterns: true,
+        trust_rag: true,
+        trust_history: true,
+        combination_mode: 'best_match',
+      };
+
+      db.query.mockImplementation(async (sql) => {
+        const statement = String(sql);
+        if (statement.includes('INSERT INTO library_policies')) {
+          return { rows: [createdPolicy], rowCount: 1 };
+        }
+        if (statement.includes('FROM library_policies')) {
+          return { rows: [createdPolicy], rowCount: 1 };
+        }
+        if (
+          statement.includes('SELECT')
+          && statement.includes('policy_initial_intent_establishments')
+          && statement.includes('idempotency_key')
+        ) {
+          return { rows: [], rowCount: 0 };
+        }
+        if (statement.includes('FROM policy_initial_intent_establishments')) {
+          return { rows: [], rowCount: 0 };
+        }
+        if (statement.includes('FROM policy_presets') || statement.includes('FROM policy_overrides')) {
+          return { rows: [], rowCount: 0 };
+        }
+        if (statement.includes('FROM policy_intents')) {
+          return { rows: [], rowCount: 0 };
+        }
+        if (statement.includes('INSERT INTO policy_initial_intent_establishments')) {
+          return { rows: [{ id: 501 }], rowCount: 1 };
+        }
+        if (statement.includes('FROM library_arr_mappings')) {
+          return { rows: [], rowCount: 0 };
+        }
+        if (statement.includes('INSERT INTO policy_intents')) {
+          return { rows: [{ id: 601 }], rowCount: 1 };
+        }
+        if (statement.includes('INSERT INTO policy_intent_migration_events')) {
+          return { rows: [{ id: 701 }], rowCount: 1 };
+        }
+        if (statement.includes('INSERT INTO policy_intent_rollback_snapshots')) {
+          return { rows: [{ id: 801 }], rowCount: 1 };
+        }
+        if (statement.includes('UPDATE policy_initial_intent_establishments')) {
+          return { rows: [{ id: 501 }], rowCount: 1 };
+        }
+
+        return { rows: [], rowCount: 1 };
+      });
+
+      const res = await request(app)
+        .post('/api/policies')
+        .set('x-test-native-admin', 'true')
+        .send({
+          library_id: 4,
+          name: 'Animation Policy',
+          native_intent_establishment: {
+            declared_intent: {
+              purpose: [{
+                signal_type: 'genres',
+                operator: 'require_any',
+                values: { require_any: ['Animation'] },
+              }],
+              hard_limits: [],
+              helpful_hints: [],
+              avoid: [],
+            },
+          },
+        })
+        .expect(201);
+
+      expect(db.withTransaction).toHaveBeenCalledTimes(1);
+      expect(res.body.native_intent_establishment).toEqual({
+        statusId: 'initial_intent_established',
+        intentId: 601,
+        routingConfigured: false,
+        ruleCount: 1,
+      });
+      expect(db.query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO policy_intents'),
+        expect.any(Array)
+      );
     });
 
     test('reports valid native intent draft preflight without persisting draft content on create', async () => {
