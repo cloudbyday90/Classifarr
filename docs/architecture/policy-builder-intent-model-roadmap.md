@@ -5860,6 +5860,10 @@ Implementation status:
   caps ambiguous counts at two without carrying row IDs.
 - `policyNativePolicyReadService.mjs` now uses `LIMIT 2`; it only loads rules,
   templates, and validation for exactly one active native row.
+- The runtime policy query now derives compatibility-preset loading from the
+  centralized runtime read decision. A single non-authoritative row receives
+  the documented compatibility recovery data, while valid native authority and
+  duplicate authority conflicts continue to suppress legacy presets.
 - `policyIntentRuntimeReadPath.mjs` emits
   `native_intent_authority_conflict` instead of selecting an arbitrary row or
   falling back to legacy signals. The conflict response keeps the stable

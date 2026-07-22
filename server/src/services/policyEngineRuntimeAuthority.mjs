@@ -51,6 +51,11 @@ export function hasAttachedNativePolicyIntent(policy = {}) {
   return hasAttachedNativeIntent(policy);
 }
 
+export function requiresLegacyPolicyPresetsForRuntime(policy = {}) {
+  return buildPolicyIntentRuntimeReadPath({ policy }).sourceId ===
+    POLICY_RUNTIME_READ_SOURCE_IDS.COMPATIBILITY_BRIDGE;
+}
+
 export function withPolicyEngineRuntimeAuthority(policy = {}) {
   const readPath = buildPolicyIntentRuntimeReadPath({ policy });
   const projection = {

@@ -135,6 +135,12 @@ unchanged operator or runtime outcome.
   closure evidence now requires this semantic safeguard independently from the
   structural active-header invariant.
 
+- **Native Runtime Compatibility Recovery Integrity** - a single malformed
+  active native-intent row now receives the preserved compatibility presets its
+  runtime path declares authoritative. Valid native authority and duplicate
+  native-authority conflicts still suppress legacy signals, so ambiguity cannot
+  resume legacy scoring.
+
 - **Contained Runtime Evidence Escalation** - compatibility cleanup now
   distinguishes current retained runtime evidence from the narrow safe case
   that requires a fresh embedded probe. Only an otherwise-valid preflight with

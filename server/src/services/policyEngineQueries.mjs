@@ -5,7 +5,7 @@ import {
     attachActiveNativeIntentsForPolicies,
 } from './policyNativePolicyReadService.mjs';
 import {
-    hasAttachedNativePolicyIntent,
+    requiresLegacyPolicyPresetsForRuntime,
     withPolicyEngineRuntimeAuthority,
 } from './policyEngineRuntimeAuthority.mjs';
 
@@ -128,19 +128,21 @@ export async function getActivePolicies() {
             dbClient: db,
             policies: result.rows,
         });
-        const compatibilityPolicyIds = policiesWithNativeIntent
-            .filter((policy) => !hasAttachedNativePolicyIntent(policy))
-            .map((policy) => policy.id);
-        const legacyPresetsByPolicyId = await loadLegacyPresetsByPolicyId(compatibilityPolicyIds);
+        const compatibilityPolicyIds = new Set(
+            policiesWithNativeIntent
+                .filter(requiresLegacyPolicyPresetsForRuntime)
+                .map((policy) => policy.id)
+        );
+        const legacyPresetsByPolicyId = await loadLegacyPresetsByPolicyId([...compatibilityPolicyIds]);
         const policies = policiesWithNativeIntent.map((policy) => {
-            if (hasAttachedNativePolicyIntent(policy)) {
-                return withPolicyEngineRuntimeAuthority(policy);
-            }
+            const policyForRuntime = compatibilityPolicyIds.has(policy.id)
+                ? {
+                    ...policy,
+                    presets: legacyPresetsByPolicyId.get(policy.id) || [],
+                }
+                : policy;
 
-            return withPolicyEngineRuntimeAuthority({
-                ...policy,
-                presets: legacyPresetsByPolicyId.get(policy.id) || [],
-            });
+            return withPolicyEngineRuntimeAuthority(policyForRuntime);
         });
 
         logger.debug('Retrieved active policies', { count: policies.length });

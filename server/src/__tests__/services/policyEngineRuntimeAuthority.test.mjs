@@ -11,6 +11,7 @@
 import {
   hasAttachedNativePolicyIntent,
   isNativePolicyRuntimeAuthority,
+  requiresLegacyPolicyPresetsForRuntime,
   withPolicyEngineRuntimeAuthority,
 } from '../../services/policyEngineRuntimeAuthority.mjs';
 
@@ -92,6 +93,30 @@ describe('policyEngineRuntimeAuthority', () => {
       statusId: 'native_intent_authority_conflict',
       validationOk: false,
     }));
+  });
+
+  test('loads compatibility presets only for a single non-authoritative native row', () => {
+    expect(requiresLegacyPolicyPresetsForRuntime({
+      id: 14,
+      library_id: 4,
+      native_intent_authority: {
+        stateId: 'single_non_authoritative_active_intent',
+        activeIntentCount: 1,
+        authoritative: false,
+        integrityStatusId: 'empty_active_intent',
+      },
+    })).toBe(true);
+
+    expect(requiresLegacyPolicyPresetsForRuntime(nativePolicy())).toBe(false);
+    expect(requiresLegacyPolicyPresetsForRuntime({
+      id: 14,
+      library_id: 4,
+      native_intent_authority: {
+        stateId: 'ambiguous_active_native_intents',
+        activeIntentCount: 2,
+        authoritative: false,
+      },
+    })).toBe(false);
   });
 
   test('keeps unconverted policies on the compatibility branch', () => {
