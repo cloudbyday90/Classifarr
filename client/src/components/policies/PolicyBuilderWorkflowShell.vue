@@ -12,22 +12,10 @@
     aria-labelledby="policy-builder-workflow-title"
     :aria-busy="loading"
   >
-    <header>
-      <p class="text-xs font-semibold uppercase tracking-wide text-primary">
-        Policy setup
-      </p>
-      <h4
-        id="policy-builder-workflow-title"
-        class="mt-1 text-lg font-semibold text-white"
-      >
-        {{ selectionEnabled ? 'Define this destination' : workflow?.title || 'Destination setup' }}
-      </h4>
-      <p class="mt-1 max-w-3xl text-sm text-gray-300">
-        {{ selectionEnabled
-          ? 'Classifarr starts with what is already in this library. Accept only the observed values that should define future matches.'
-          : workflow?.summary || 'Use the connected library to understand this destination before adding policy details.' }}
-      </p>
-    </header>
+    <DestinationContextCard
+      :title="destinationTitle"
+      :summary="destinationSummary"
+    />
 
     <p
       v-if="loading"
@@ -55,64 +43,12 @@
     </template>
 
     <template v-else-if="workflowRead">
-      <section
-        class="rounded-lg border border-gray-700 bg-background-light p-3"
-        aria-labelledby="policy-builder-observed-profile-title"
-      >
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h5
-              id="policy-builder-observed-profile-title"
-              class="text-sm font-semibold text-white"
-            >
-              What Classifarr sees in {{ libraryName }}
-            </h5>
-            <p class="mt-1 text-xs text-gray-400">
-              Current library observations make the next choices easier. They are suggestions, not policy rules, until you explicitly accept them.
-            </p>
-          </div>
-          <span
-            class="w-fit rounded-full border px-2 py-1 text-xs font-medium"
-            :class="observedProfileClass"
-          >
-            {{ observedProfileLabel }}
-          </span>
-        </div>
-
-        <p
-          v-if="!observedProfile.available"
-          class="mt-3 text-sm text-gray-300"
-        >
-          A current library profile is not available yet.
-        </p>
-        <p
-          v-else-if="observedSuggestions.length === 0"
-          class="mt-3 text-sm text-gray-300"
-        >
-          {{ selectionEnabled
-            ? 'Classifarr has not found reusable library observations yet.'
-            : 'Classifarr has not found reusable library observations yet. You can still describe the destination below.' }}
-        </p>
-        <ul
-          v-else-if="!selectionEnabled"
-          class="mt-3 flex flex-wrap gap-2"
-          aria-label="Observed library suggestions"
-        >
-          <li
-            v-for="suggestion in observedSuggestions"
-            :key="suggestion.key"
-            class="rounded border border-gray-700 bg-background px-2 py-1 text-xs text-gray-200"
-          >
-            <span class="font-medium">{{ suggestion.label }}</span>
-            <span
-              v-if="suggestion.count !== null"
-              class="ml-1 text-gray-400"
-            >
-              {{ suggestion.count }} currently here
-            </span>
-          </li>
-        </ul>
-      </section>
+      <ObservedProfileSummary
+        :library-name="libraryName"
+        :observed-profile="observedProfile"
+        :suggestions="observedSuggestions"
+        :selection-enabled="selectionEnabled"
+      />
 
       <PolicyBuilderDestinationQuestions
         :sections="sections"
@@ -130,24 +66,21 @@
         @empty-state-action="emit('empty-state-action', $event)"
       />
 
-      <p
-        v-if="!selectionEnabled && workflow.readiness?.nextAction?.label"
-        class="rounded border px-3 py-2 text-sm"
-        :class="workflow.readiness.ready ? 'border-green-800/70 bg-green-950/30 text-green-100' : 'border-amber-700/70 bg-amber-950/30 text-amber-100'"
-        role="status"
-        aria-live="polite"
-      >
-        <span class="font-semibold">Automation readiness:</span>
-        {{ workflow.readiness.nextAction.label }}
-      </p>
+      <ReadinessNextActionCard
+        v-if="!selectionEnabled"
+        :readiness="workflow.readiness"
+      />
     </template>
   </section>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import DestinationContextCard from './DestinationContextCard.vue'
+import ObservedProfileSummary from './ObservedProfileSummary.vue'
 import PolicyBuilderDestinationQuestions from './PolicyBuilderDestinationQuestions.vue'
 import PolicyNativeEvidenceRecovery from './PolicyNativeEvidenceRecovery.vue'
+import ReadinessNextActionCard from './ReadinessNextActionCard.vue'
 import { buildPolicyNativeEvidenceRecovery } from '@/utils/policyNativeEvidenceRecovery'
 
 const props = defineProps({
@@ -207,6 +140,14 @@ const emptyStates = computed(() => Array.isArray(props.workflowRead?.emptyStateP
   ? props.workflowRead.emptyStateProjection.states
   : [])
 const libraryName = computed(() => props.workflowRead?.library?.name || 'this library')
+const destinationTitle = computed(() => (
+  props.selectionEnabled ? 'Define this destination' : workflow.value?.title || 'Destination setup'
+))
+const destinationSummary = computed(() => (
+  props.selectionEnabled
+    ? 'Classifarr starts with what is already in this library. Accept only the observed values that should define future matches.'
+    : workflow.value?.summary || 'Use the connected library to understand this destination before adding policy details.'
+))
 const nativeEvidenceRecovery = computed(() => buildPolicyNativeEvidenceRecovery({
   selectionEnabled: props.selectionEnabled,
   workflowRead: props.workflowRead,
@@ -214,21 +155,5 @@ const nativeEvidenceRecovery = computed(() => buildPolicyNativeEvidenceRecovery(
   error: props.error,
   refreshResult: props.refreshResult,
 }))
-
-const observedProfileLabel = computed(() => {
-  if (!observedProfile.value.available) return 'Profile unavailable'
-  if (!observedProfile.value.current) return 'Profile needs refresh'
-
-  const count = Number(observedProfile.value.suggestionCount) || 0
-  return `${count} observed ${count === 1 ? 'signal' : 'signals'}`
-})
-
-const observedProfileClass = computed(() => {
-  if (!observedProfile.value.available || !observedProfile.value.current) {
-    return 'border-amber-700/70 bg-amber-950/30 text-amber-200'
-  }
-
-  return 'border-green-800/70 bg-green-950/30 text-green-200'
-})
 
 </script>

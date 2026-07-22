@@ -39,7 +39,7 @@ const POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS = Object.freeze({
 });
 
 const POLICY_AUTHORING_BUILDER_MATCHER =
-  /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
+  /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|DestinationContext|ObservedProfile|ReadinessNextAction|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
 
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -91,6 +91,16 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     riskIds: [],
     notes: 'Destination empty-state notices render server-owned next actions and emit only bounded operator events; they do not infer intent or execute media routing.',
     matches: filePath => filePath.endsWith('/PolicyDestinationEmptyStateNotice.vue'),
+  },
+  {
+    id: 'readiness_next_action_card',
+    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.READINESS_NEXT_ACTION,
+    normalAuthoringAllowed: true,
+    migrationSupportOnly: false,
+    riskIds: [],
+    notes: 'The readiness card renders one server-owned next action without diagnostics or client automation authority.',
+    matches: filePath => filePath.endsWith('/ReadinessNextActionCard.vue'),
   },
   {
     id: 'library_sync_recovery_orchestration',
@@ -145,6 +155,8 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     riskIds: [],
     notes: 'Destination context belongs in the normal path because the media server library is the source of observed application.',
     matches: filePath => hasAnySegment(filePath, [
+      '/DestinationContextCard.vue',
+      '/ObservedProfileSummary.vue',
       '/PolicyBuilderLibraryContext.vue',
       '/policyBuilderLibraryGenreOptions.js',
       '/policyBuilderProfileFreshness.js',

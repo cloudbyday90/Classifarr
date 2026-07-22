@@ -2320,11 +2320,19 @@ Implementation status:
 - Option source semantics, typed-command interaction rules, explicit observed
   evidence acceptance, disabled-state explanations, and component-level
   accessibility requirements are pinned before Vue screen rebuild work starts.
+- The workflow shell now composes `DestinationContextCard`,
+  `ObservedProfileSummary`, and `ReadinessNextActionCard` instead of owning
+  generic context and readiness markup. The cards render server-owned display
+  values only; they add no policy, routing, provider, quota, learning, or media
+  authority. See
+  [Policy Authoring Workflow Component Extraction](policy-authoring-workflow-component-extraction.md).
+- The workflow and boundary inventories classify the new components and their
+  tests with no unclassified policy-authoring paths.
 
-Next implementation task: replace the workflow shell's generic context and
-notice composition with `DestinationContextCard`, `ObservedProfileSummary`, and
-`ReadinessNextActionCard`, beginning the client-side component replacement
-without changing the policy-authoring contract.
+Next implementation task: introduce `IntentSignalPicker` for the `What belongs
+here?` destination question. It must consume the normalized option-selection
+contract, distinguish observed evidence from common options, and emit only typed
+draft commands.
 
 ### 3R.4 Evidence-Backed Option Selection
 

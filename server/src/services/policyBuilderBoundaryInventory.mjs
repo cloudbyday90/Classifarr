@@ -78,7 +78,7 @@ function basename(filePath) {
   return filePath.split('/').pop() || filePath;
 }
 
-const POLICY_BUILDER_MODULE_MATCHER = /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|PolicyCombined|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
+const POLICY_BUILDER_MODULE_MATCHER = /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|PolicyCombined|DestinationContext|ObservedProfile|ReadinessNextAction|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
 
 const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
@@ -281,6 +281,8 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     notes: 'These components should render props and emit explicit events without owning evidence, learning, or migration decisions.',
     matches: (filePath) => filePath.includes('/components/policies/') &&
       hasAnySegment(filePath, [
+        '/DestinationContextCard.vue',
+        '/ObservedProfileSummary.vue',
         '/PolicyBuilderLibraryContext.vue',
         '/PolicyBuilderFooterActions.vue',
         '/PolicyBuilderRoutingReadinessCard.vue',
@@ -288,6 +290,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
         '/PolicyBuilderDestinationQuestions.vue',
         '/PolicyBuilderWorkflowShell.vue',
         '/PolicyDestinationEmptyStateNotice.vue',
+        '/ReadinessNextActionCard.vue',
         '/PolicyIntentActionButton.vue',
         '/PolicyIntentCertificationControl.vue',
         '/PolicyIntentChip.vue',

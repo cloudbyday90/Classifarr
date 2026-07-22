@@ -60,6 +60,13 @@ unchanged operator or runtime outcome.
   until an explicit policy-intent action, and the display cannot issue media,
   provider, quota, write, learning, or routing operations.
 
+- **Composable Policy Workflow Context** - policy setup, observed library
+  evidence, and the automation-readiness next action now render through
+  dedicated presentation components. The workflow continues to consume only
+  server-owned display values, preserves read-only evidence until explicit
+  acceptance, and does not add client policy, routing, provider, quota,
+  learning, or media authority.
+
 - **Ordered Native Destination Questions** - new-policy creation now presents
   the complete server-owned destination workflow in one accessible sequence.
   Accepted observed values and evidence recovery appear only under `What

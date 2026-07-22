@@ -88,6 +88,11 @@ Cons:
 - `client/src/components/policies/PolicyBuilderWorkflowShell.vue`
   - renders the server-owned library-first workflow projection without client
     authority over policy persistence, automation, or routing.
+- `client/src/components/policies/DestinationContextCard.vue`,
+  `client/src/components/policies/ObservedProfileSummary.vue`, and
+  `client/src/components/policies/ReadinessNextActionCard.vue`
+  - render destination context, read-only observed evidence, and one
+    server-owned readiness next action without client engine authority.
 - `client/src/components/policies/PolicyBuilderDestinationQuestions.vue` and
   `client/src/components/policies/PolicyDestinationEmptyStateNotice.vue`
   - render the ordered questions and server-owned empty-state actions without
@@ -101,20 +106,20 @@ Cons:
 
 ## Current Inventory Summary
 
-The live client tree currently classifies 108 policy-builder paths:
+The live client tree currently classifies 114 policy-builder paths:
 
 | Decision | Count | Meaning |
 | --- | ---: | --- |
-| Keep | 30 | Useful as-is for destination-first authoring or implementation support. |
-| Rewrite | 68 | Concept survives, but current shape is tied to old modal, templates, tests, or migration support. |
+| Keep | 33 | Useful as-is for destination-first authoring or implementation support. |
+| Rewrite | 71 | Concept survives, but current shape is tied to old modal, templates, tests, or migration support. |
 | Replace | 10 | Product need remains, but current UI or mechanic is the wrong model. |
 
 Role split:
 
 | Role | Count |
 | --- | ---: |
-| Normal authoring path | 39 paths |
-| Migration/support-only path | 69 paths |
+| Normal authoring path | 42 paths |
+| Migration/support-only path | 72 paths |
 
 Normal authoring can include:
 

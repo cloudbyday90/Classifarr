@@ -119,6 +119,7 @@ audit record, and standing architecture document.
 
 ## Next Step
 
-Continue with evidence-backed option selection. That component should consume
-the durable component-system vocabulary while removing its own phase-coded
-module and helper names.
+Introduce `IntentSignalPicker` for `What belongs here?`. It should consume the
+normalized option-selection contract, group observed evidence separately from
+common choices, and emit typed draft commands without mutating a compatibility
+bridge payload.

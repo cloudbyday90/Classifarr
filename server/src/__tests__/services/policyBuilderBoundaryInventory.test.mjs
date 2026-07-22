@@ -133,6 +133,18 @@ describe('policyBuilderBoundaryInventory', () => {
         actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_PRESENTATION,
         clientEngineAuthorityAllowed: false,
       }));
+
+    [
+      'client/src/components/policies/DestinationContextCard.vue',
+      'client/src/components/policies/ObservedProfileSummary.vue',
+      'client/src/components/policies/ReadinessNextActionCard.vue',
+    ].forEach((filePath) => {
+      expect(classifyPolicyBuilderClientPath(filePath)).toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.PRESENTATION_ONLY,
+        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_PRESENTATION,
+        clientEngineAuthorityAllowed: false,
+      }));
+    });
   });
 
   test('keeps the persisted-id experience switch as non-authoritative UI orchestration', () => {
