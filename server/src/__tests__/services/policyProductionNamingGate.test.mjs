@@ -41,6 +41,7 @@ describe('policyProductionNamingGate', () => {
     expect(gate.statusId).toBe(POLICY_PRODUCTION_NAMING_GATE_STATUS_IDS.COMPLETE);
     expect(gate.complete).toBe(true);
     expect(gate.riskCount).toBe(0);
+    expect(gate.nextAction.id).toBe('continue_next_product_domain_component');
     expect(gate.sideEffects).toEqual({
       filesRead: true,
       filesWritten: false,

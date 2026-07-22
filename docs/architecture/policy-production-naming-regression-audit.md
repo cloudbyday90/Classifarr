@@ -101,7 +101,8 @@ batches should reduce these values and then lower the baseline.
 
 ## Next Step
 
-Keep the zero-debt baseline enforced as functional components evolve. Any new
-temporary production name must be replaced before the component is completed;
-historical documentation and test/migration evidence remain separately
+Keep the zero-debt baseline enforced as functional components evolve. When a
+valid rename candidate exists, complete its mechanical durable-name cutover.
+When the candidate count is zero, continue to the next product-domain component
+instead; historical documentation and test/migration evidence remain separately
 classified.

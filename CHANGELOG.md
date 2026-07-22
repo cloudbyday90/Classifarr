@@ -68,6 +68,12 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Durable Naming Gate Matcher Integrity** - the production naming gate now
+  checks both artifact paths and contents for mixed-case or future roadmap
+  markers while excluding valid local-model and certification identifiers. A
+  zero-debt audit now proceeds to the next product component instead of
+  requesting an unnecessary rename batch.
+
 - **Canonical Compatibility Removal Selection** - compatibility-removal review
   batches now accept only unique canonical repository-relative manifest and
   selected paths, and require meaningful replacement evidence for every chosen

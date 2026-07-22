@@ -8436,6 +8436,10 @@ Implementation status:
 - The current gate reports zero production references, zero rename candidates,
   and zero obsolete migration-tooling references. The generated inventory is
   the authoritative current count; historical totals in this roadmap are not.
+- The gate scans both artifact paths and contents, recognizes mixed-case
+  `phase` and bounded numeric roadmap markers, and excludes unrelated model
+  and certification identifiers. A zero-debt audit advances to the next
+  product-domain component rather than requesting an unnecessary rename batch.
 
 ### 9R.1 Production Naming Inventory And Ownership Map
 

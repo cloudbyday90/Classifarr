@@ -52,6 +52,33 @@ describe('policyProductionNamingRegressionAudit', () => {
       renameCandidateDelta: 0,
       obsoleteToolingDelta: 0,
     });
+    expect(audit.nextAction.id).toBe('continue_next_product_domain_component');
+  });
+
+  test('recommends a durable module cutover only when valid rename candidates remain', () => {
+    const audit = buildPolicyProductionNamingRegressionAudit({
+      inventory: buildInventory({
+        summary: {
+          productionReferenceCount: 1,
+          renameCandidateCount: 1,
+          obsoleteToolingCount: 0,
+        },
+        inventory: {
+          validation: {
+            ok: true,
+            riskCount: 0,
+            risks: [],
+          },
+        },
+      }),
+      baseline: {
+        maxProductionReferenceCount: 1,
+        maxRenameCandidateCount: 1,
+        maxObsoleteToolingCount: 0,
+      },
+    });
+
+    expect(audit.ok).toBe(true);
     expect(audit.nextAction.id).toBe('continue_durable_module_cutover');
   });
 

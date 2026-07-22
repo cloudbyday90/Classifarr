@@ -216,6 +216,10 @@ history reason is documented.
 - The current July 11, 2026 inventory and regression-audit baseline supersedes
   earlier historical count snapshots in this record. Historical values explain
   prior cutovers but are not evidence of current naming debt.
+- The matcher now scans both artifact paths and contents, normalizes mixed-case
+  `phase` markers, detects bounded numeric roadmap markers, and excludes
+  unrelated model and certification identifiers. Its design and outcome are
+  recorded in [Policy Production Naming Matcher Hardening](policy-production-naming-matcher-hardening.md).
 - The first isolated deconstruction batch renamed the policy-authoring
   readiness checklist, its focused test, exports, component records, and
   current architecture paths without a compatibility alias:

@@ -156,18 +156,25 @@ function buildPolicyProductionNamingRegressionAudit(options = {}) {
         obsoleteToolingCount - baseline.maxObsoleteToolingCount,
     },
     risks,
-    nextAction: risks.length === 0
+    nextAction: risks.length > 0
       ? {
+          id: 'reduce_or_classify_new_temporary_references',
+          label: 'Reduce or classify new temporary references',
+          reason:
+            'New or unbounded temporary production references must be removed, renamed, or explicitly gated.',
+        }
+      : renameCandidateCount > 0
+        ? {
           id: 'continue_durable_module_cutover',
           label: 'Continue durable module cutover',
           reason:
             'Temporary production naming debt did not increase beyond the approved baseline.',
         }
-      : {
-          id: 'reduce_or_classify_new_temporary_references',
-          label: 'Reduce or classify new temporary references',
+        : {
+          id: 'continue_next_product_domain_component',
+          label: 'Continue next product-domain component',
           reason:
-            'New or unbounded temporary production references must be removed, renamed, or explicitly gated.',
+            'The production naming gate found no current rename candidates, so no mechanical naming cutover is required.',
         },
   };
 }

@@ -35,24 +35,8 @@ const PRODUCTION_NAMING_RISK_IDS = Object.freeze({
   SIDE_EFFECT_REPORTED: 'side_effect_reported',
 });
 
-const PHASE_TOKENS = Object.freeze([
-  'phase',
-  'Phase',
-  'PHASE',
-]);
-
-const PHASE_CODE_TOKENS = Object.freeze([
-  '0R',
-  '1R',
-  '2R',
-  '3R',
-  '5R',
-  '6R',
-  '7R',
-  '8R',
-  '9R',
-  'R6',
-]);
+const HISTORIC_PHASE_CODE_PATTERN = /\d+r/gi;
+const HISTORIC_REVERSED_PHASE_CODE_PATTERN = /R6/g;
 
 const HISTORIC_TOKEN_SCANNER_PATHS = Object.freeze([
   'scripts/lib/policyProductionNamingInventory.mjs',
@@ -139,28 +123,37 @@ function isIdentifierChar(char) {
   );
 }
 
-function includesTokenWithIdentifierBoundary(line, token) {
-  let startIndex = line.indexOf(token);
+function findPhaseTokens(line) {
+  const candidate = normalizeString(line);
+  const tokens = new Set();
 
-  while (startIndex !== -1) {
-    const previousChar = startIndex > 0 ? line[startIndex - 1] : '';
-    const nextChar = line[startIndex + token.length] || '';
-
-    if (!isIdentifierChar(previousChar) && !isIdentifierChar(nextChar)) {
-      return true;
-    }
-
-    startIndex = line.indexOf(token, startIndex + token.length);
+  if (candidate.toLowerCase().includes('phase')) {
+    tokens.add('phase');
   }
 
-  return false;
-}
+  for (const match of candidate.matchAll(HISTORIC_PHASE_CODE_PATTERN)) {
+    const token = match[0];
+    const startIndex = match.index || 0;
+    const previousChar = startIndex > 0 ? candidate[startIndex - 1] : '';
+    const nextChar = candidate[startIndex + token.length] || '';
 
-function findPhaseTokens(line) {
-  return [
-    ...PHASE_TOKENS.filter(token => line.includes(token)),
-    ...PHASE_CODE_TOKENS.filter(token => includesTokenWithIdentifierBoundary(line, token)),
-  ];
+    if (!isIdentifierChar(previousChar) && !isIdentifierChar(nextChar)) {
+      tokens.add(token.toUpperCase());
+    }
+  }
+
+  for (const match of candidate.matchAll(HISTORIC_REVERSED_PHASE_CODE_PATTERN)) {
+    const token = match[0];
+    const startIndex = match.index || 0;
+    const previousChar = startIndex > 0 ? candidate[startIndex - 1] : '';
+    const nextChar = candidate[startIndex + token.length] || '';
+
+    if (!isIdentifierChar(previousChar) && !isIdentifierChar(nextChar)) {
+      tokens.add(token);
+    }
+  }
+
+  return [...tokens];
 }
 
 function classifyPath(repoPath) {
@@ -278,7 +271,7 @@ function determineDecision({ categoryId, repoPath, excerpt }) {
   return '';
 }
 
-function buildInventoryReference({ repoPath, line, lineNumber }) {
+function buildInventoryReference({ repoPath, line, lineNumber, matchSource }) {
   const categoryId = classifyPath(repoPath);
   const excerpt = normalizeString(line).slice(0, 220);
   const decisionId = determineDecision({ categoryId, repoPath, excerpt });
@@ -287,6 +280,7 @@ function buildInventoryReference({ repoPath, line, lineNumber }) {
   return {
     repoPath,
     lineNumber,
+    matchSource,
     categoryId,
     decisionId,
     durableTarget,
@@ -302,7 +296,16 @@ function buildInventoryReference({ repoPath, line, lineNumber }) {
 function extractInventoryReferences(files = []) {
   return asArray(files).flatMap(file => {
     const repoPath = normalizeRepoPath(file.path);
-    return normalizeString(file.content)
+    const pathTokens = findPhaseTokens(repoPath);
+    const pathReference = pathTokens.length > 0
+      ? [buildInventoryReference({
+        repoPath,
+        line: repoPath,
+        lineNumber: null,
+        matchSource: 'path',
+      })]
+      : [];
+    const contentReferences = normalizeString(file.content)
       .split('\n')
       .flatMap((line, index) => {
         const tokens = findPhaseTokens(line);
@@ -315,8 +318,11 @@ function extractInventoryReferences(files = []) {
           repoPath,
           line,
           lineNumber: index + 1,
+          matchSource: 'content',
         })];
       });
+
+    return [...pathReference, ...contentReferences];
   });
 }
 

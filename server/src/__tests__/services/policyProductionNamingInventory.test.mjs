@@ -177,7 +177,61 @@ describe('policyProductionNamingInventory', () => {
     expect(references[0]).toEqual(expect.objectContaining({
       lineNumber: 2,
       tokens: expect.arrayContaining(['phase']),
+      matchSource: 'content',
     }));
+  });
+
+  test('detects mixed-case and future roadmap markers in artifact paths and content', () => {
+    const inventory = buildPolicyProductionNamingInventory({
+      files: [
+        {
+          path: 'server/src/services/policyBuilderpHaSe10Runtime.mjs',
+          content: 'export const stableRuntimeName = true;',
+        },
+        {
+          path: 'server/src/services/policyIntentInference.mjs',
+          content: [
+            "const historicMarker = '12r';",
+            'const pass2Result = true;',
+            "const localModel = 'deepseek-r1:8b';",
+            "const certification = 'R18+';",
+          ].join('\n'),
+        },
+      ],
+    });
+
+    expect(inventory.references).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        repoPath: 'server/src/services/policyBuilderpHaSe10Runtime.mjs',
+        lineNumber: null,
+        matchSource: 'path',
+        tokens: expect.arrayContaining(['phase']),
+        categoryId: PRODUCTION_NAMING_CATEGORY_IDS.PRODUCTION,
+        decisionId: PRODUCTION_NAMING_DECISION_IDS.RENAME_IN_PRODUCTION_CODE,
+      }),
+      expect.objectContaining({
+        repoPath: 'server/src/services/policyIntentInference.mjs',
+        lineNumber: 1,
+        matchSource: 'content',
+        tokens: expect.arrayContaining(['12R']),
+        categoryId: PRODUCTION_NAMING_CATEGORY_IDS.PRODUCTION,
+        decisionId: PRODUCTION_NAMING_DECISION_IDS.RENAME_IN_PRODUCTION_CODE,
+      }),
+    ]));
+    expect(inventory.references).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        repoPath: 'server/src/services/policyIntentInference.mjs',
+        lineNumber: 2,
+      }),
+      expect.objectContaining({
+        repoPath: 'server/src/services/policyIntentInference.mjs',
+        lineNumber: 3,
+      }),
+      expect.objectContaining({
+        repoPath: 'server/src/services/policyIntentInference.mjs',
+        lineNumber: 4,
+      }),
+    ]));
   });
 
   test('rejects unclassified references, production keeps without adapter gates, missing durable targets, and side effects', () => {

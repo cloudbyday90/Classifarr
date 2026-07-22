@@ -47,10 +47,12 @@ evidence, deleted with obsolete tooling, or temporarily adapter-gated.
    `policyIntentInference`, `runtimeAutomationDecision`,
    `nativePolicyIntentStorage`, or `classificationProgressStageService`.
 
-4. **Avoid false positives from numbered runtime passes.**
-   Numeric markers such as `2R` are detected only with identifier boundaries so
-   ordinary runtime names like `pass2Result` are not treated as roadmap phase
-   debt.
+4. **Use a narrow historic-marker grammar.**
+   The inventory scans repository-relative artifact paths and text contents,
+   normalizes `phase` in any letter case, and detects bounded `<number>R`
+   markers. It does not treat generic `r<number>` values as roadmap debt, so
+   ordinary model names such as `deepseek-r1` and certification values such as
+   `R18` remain valid product data.
 
 5. **Treat scripts/package commands explicitly.**
    Current phase-coded migration artifact exporters and package commands are
@@ -92,15 +94,15 @@ Cons:
 ## Current Repository Outcome
 
 The current repository inventory validates with no unclassified references.
-After storage-closure reference scanner hardening,
+After naming matcher hardening,
 `npm run policy:production-naming-gate`
 reported:
 
-- total temporary naming references: 1,869,
+- total temporary naming references: 2,091,
 - production references: 0,
 - rename candidates: 0,
-- docs/history references: 1,665,
-- test or migration evidence references: 204,
+- docs/history references: 1,854,
+- test or migration evidence references: 237,
 - obsolete migration tooling references: 0.
 
 The counts must fall or remain unchanged as the durable naming cutover replaces
