@@ -60,6 +60,13 @@ unchanged operator or runtime outcome.
   until an explicit policy-intent action, and the display cannot issue media,
   provider, quota, write, learning, or routing operations.
 
+- **Ordered Native Destination Questions** - new-policy creation now presents
+  the complete server-owned destination workflow in one accessible sequence.
+  Accepted observed values and evidence recovery appear only under `What
+  belongs here?`, while other policy questions show bounded next actions until
+  their dedicated controls are available; no hidden policy rule, media route,
+  or legacy builder action is introduced.
+
 - **Library-First Policy Workflow Read API** - added a read-only server
   projection for the five destination-first policy questions. It safely exposes
   cached library-profile suggestions and stored routing readiness without live

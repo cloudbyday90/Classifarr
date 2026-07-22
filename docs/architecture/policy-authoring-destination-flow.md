@@ -136,7 +136,13 @@ The durable destination-flow cutover:
   vocabulary,
 - moved completion-audit evidence to this durable architecture document.
 
+The native new-policy UI now renders this projection as the ordered question
+flow documented in [Policy Authoring Destination Question Flow](policy-authoring-destination-question-flow.md).
+Observed-value acceptance stays inside `What belongs here?`; the remaining
+questions remain visible with server-owned next actions until their dedicated
+bounded controls exist.
+
 ## Next Step
 
-Cut over the component-system contract to durable policy-authoring naming
-because it is the next direct consumer of the destination-flow vocabulary.
+Map new, sparse, and unmapped library states to one resolving action per
+destination question, without surfacing legacy policy mechanics.

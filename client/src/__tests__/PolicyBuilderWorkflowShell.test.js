@@ -47,7 +47,9 @@ function buildWorkflowRead() {
         helperText: `Helper ${index + 1}`,
         statusId: index === 0 ? 'complete' : index === 1 ? 'optional' : 'needs_action',
         editable: sectionId !== 'can_this_route',
-        readiness: {},
+        readiness: sectionId === 'can_this_route'
+          ? { nextAction: { label: 'Connect a routing target' } }
+          : {},
       })),
     },
   }
@@ -173,8 +175,13 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     expect(wrapper.text()).toContain('Define this destination')
     expect(wrapper.text()).toContain('What should define this destination?')
     expect(wrapper.text()).toContain('Select all that apply')
-    expect(wrapper.findAll('article')).toHaveLength(0)
+    expect(wrapper.findAll('article')).toHaveLength(5)
+    expect(wrapper.find('[aria-label="Destination policy questions"]').exists()).toBe(true)
+    const belongsHereArticle = wrapper.find('#policy-builder-workflow-what_belongs_here-title').element.closest('article')
+    const routingArticle = wrapper.find('#policy-builder-workflow-can_this_route-title').element.closest('article')
+    expect(belongsHereArticle?.textContent).toContain('What should define this destination?')
+    expect(routingArticle?.textContent).toContain('Connect a routing target')
     expect(wrapper.text()).not.toContain('Automation readiness:')
-    expect(wrapper.text()).toContain('Routing:')
+    expect(wrapper.text()).not.toContain('Routing:')
   })
 })

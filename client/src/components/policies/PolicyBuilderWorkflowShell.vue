@@ -112,88 +112,30 @@
             </span>
           </li>
         </ul>
-
-        <PolicyNativeEvidenceRecovery
-          v-if="selectionEnabled && nativeEvidenceRecovery.requiresAction"
-          :recovery="nativeEvidenceRecovery"
-          :refreshing="refreshing"
-          @refresh-profile="emit('refresh-profile')"
-          @reload-workflow="emit('reload-workflow')"
-        />
-
-        <PolicyObservedSuggestionSelector
-          v-if="selectionEnabled && nativeEvidenceRecovery.canSelectObservedCandidates"
-          :accepted-candidates="acceptedCandidates"
-          :candidates="selectableSuggestions"
-          :library-name="libraryName"
-          @draft-command-plan="emit('draft-command-plan', $event)"
-        />
       </section>
 
-      <template v-if="!selectionEnabled">
-        <ol class="grid gap-3 lg:grid-cols-2">
-          <li
-            v-for="section in sections"
-            :key="section.sectionId"
-            class="rounded-lg border border-gray-700 bg-background-light p-3"
-          >
-            <article :aria-labelledby="sectionHeadingId(section.sectionId)">
-              <div class="flex flex-wrap items-start justify-between gap-2">
-                <h5
-                  :id="sectionHeadingId(section.sectionId)"
-                  class="text-sm font-semibold text-white"
-                >
-                  {{ section.heading }}
-                </h5>
-                <span
-                  class="rounded-full border px-2 py-0.5 text-[11px] font-medium"
-                  :class="sectionStatusClass(section.statusId)"
-                >
-                  {{ sectionStatusLabel(section.statusId) }}
-                </span>
-              </div>
-              <p class="mt-2 text-sm text-gray-100">
-                {{ section.plainQuestion }}
-              </p>
-              <p class="mt-1 text-xs text-gray-400">
-                {{ section.helperText }}
-              </p>
-              <p
-                v-if="section.readiness?.nextAction?.label"
-                class="mt-3 rounded border border-gray-700 bg-background px-2 py-1 text-xs text-gray-300"
-              >
-                Next: {{ section.readiness.nextAction.label }}
-              </p>
-              <p
-                v-else-if="section.editable"
-                class="mt-3 text-xs text-gray-400"
-              >
-                Policy changes remain explicit and are made in the policy details below.
-              </p>
-            </article>
-          </li>
-        </ol>
-
-        <p
-          v-if="workflow.readiness?.nextAction?.label"
-          class="rounded border px-3 py-2 text-sm"
-          :class="workflow.readiness.ready ? 'border-green-800/70 bg-green-950/30 text-green-100' : 'border-amber-700/70 bg-amber-950/30 text-amber-100'"
-          role="status"
-          aria-live="polite"
-        >
-          <span class="font-semibold">Automation readiness:</span>
-          {{ workflow.readiness.nextAction.label }}
-        </p>
-      </template>
+      <PolicyBuilderDestinationQuestions
+        :sections="sections"
+        :selection-enabled="selectionEnabled"
+        :native-evidence-recovery="nativeEvidenceRecovery"
+        :refreshing="refreshing"
+        :accepted-candidates="acceptedCandidates"
+        :selectable-suggestions="selectableSuggestions"
+        :library-name="libraryName"
+        @draft-command-plan="emit('draft-command-plan', $event)"
+        @refresh-profile="emit('refresh-profile')"
+        @reload-workflow="emit('reload-workflow')"
+      />
 
       <p
-        v-else-if="workflow.readiness?.nextAction?.label"
-        class="rounded border border-blue-800/70 bg-blue-950/30 px-3 py-2 text-sm text-blue-100"
+        v-if="!selectionEnabled && workflow.readiness?.nextAction?.label"
+        class="rounded border px-3 py-2 text-sm"
+        :class="workflow.readiness.ready ? 'border-green-800/70 bg-green-950/30 text-green-100' : 'border-amber-700/70 bg-amber-950/30 text-amber-100'"
         role="status"
         aria-live="polite"
       >
-        <span class="font-semibold">Routing:</span>
-        {{ workflow.readiness.nextAction.label }}. This does not prevent creation; it must be completed before approved matches can route automatically.
+        <span class="font-semibold">Automation readiness:</span>
+        {{ workflow.readiness.nextAction.label }}
       </p>
     </template>
   </section>
@@ -201,8 +143,8 @@
 
 <script setup>
 import { computed } from 'vue'
+import PolicyBuilderDestinationQuestions from './PolicyBuilderDestinationQuestions.vue'
 import PolicyNativeEvidenceRecovery from './PolicyNativeEvidenceRecovery.vue'
-import PolicyObservedSuggestionSelector from './PolicyObservedSuggestionSelector.vue'
 import { buildPolicyNativeEvidenceRecovery } from '@/utils/policyNativeEvidenceRecovery'
 
 const props = defineProps({
@@ -278,23 +220,4 @@ const observedProfileClass = computed(() => {
   return 'border-green-800/70 bg-green-950/30 text-green-200'
 })
 
-const sectionHeadingId = sectionId => `policy-builder-workflow-${sectionId}-title`
-
-const sectionStatusLabel = (statusId) => {
-  if (statusId === 'complete') return 'Ready'
-  if (statusId === 'optional') return 'Optional'
-  return 'Needs attention'
-}
-
-const sectionStatusClass = (statusId) => {
-  if (statusId === 'complete') {
-    return 'border-green-800/70 bg-green-950/30 text-green-200'
-  }
-
-  if (statusId === 'optional') {
-    return 'border-blue-800/70 bg-blue-950/30 text-blue-200'
-  }
-
-  return 'border-amber-700/70 bg-amber-950/30 text-amber-200'
-}
 </script>

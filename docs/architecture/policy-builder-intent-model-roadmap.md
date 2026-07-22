@@ -2233,6 +2233,12 @@ Implementation status:
   limits, confirm routing readiness, and save or defer.
 - Starter templates are allowed only after destination context is visible, and
   new/sparse/unmapped libraries each map to one operator next action.
+- Native new-policy creation now renders all five server-owned destination
+  questions in their semantic order. Observed-value acceptance and evidence
+  recovery are scoped to `What belongs here?`; routing readiness is shown in
+  `Can this route?`, and unimplemented question controls are presented as
+  bounded guidance rather than non-functional actions. See
+  [Policy Authoring Destination Question Flow](policy-authoring-destination-question-flow.md).
 
 ### 3R.3 UI Component System And Interaction Reset
 
