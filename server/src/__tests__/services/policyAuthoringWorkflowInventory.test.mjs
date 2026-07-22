@@ -72,6 +72,7 @@ describe('policyAuthoringWorkflowInventory', () => {
   test('keeps the library-first workflow shell and read adapter in the normal workflow role', () => {
     [
       'client/src/components/policies/PolicyBuilderWorkflowShell.vue',
+      'client/src/components/policies/PolicyBuilderDestinationQuestions.vue',
       'client/src/composables/usePolicyOperatorWorkflow.js',
     ].forEach((filePath) => {
       expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({
@@ -88,6 +89,7 @@ describe('policyAuthoringWorkflowInventory', () => {
       'client/src/components/policies/PolicyBuilderLibraryContext.vue',
       'client/src/utils/policyBuilderLibraryGenreOptions.js',
       'client/src/composables/usePolicyBuilderReferenceData.js',
+      'client/src/composables/usePolicyBuilderLibrarySync.js',
     ].forEach((filePath) => {
       expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({
         decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
@@ -95,6 +97,17 @@ describe('policyAuthoringWorkflowInventory', () => {
         normalAuthoringAllowed: true,
       }));
     });
+  });
+
+  test('keeps destination empty-state notices as bounded readiness actions', () => {
+    expect(classifyPolicyAuthoringWorkflowSurface(
+      'client/src/components/policies/PolicyDestinationEmptyStateNotice.vue'
+    )).toEqual(expect.objectContaining({
+      decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+      roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.READINESS_NEXT_ACTION,
+      normalAuthoringAllowed: true,
+      migrationSupportOnly: false,
+    }));
   });
 
   test('keeps leaf intent controls while rewriting old editor grouping', () => {

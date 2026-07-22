@@ -122,9 +122,12 @@
         :accepted-candidates="acceptedCandidates"
         :selectable-suggestions="selectableSuggestions"
         :library-name="libraryName"
+        :empty-states="emptyStates"
+        :empty-state-action-busy="emptyStateActionBusy"
         @draft-command-plan="emit('draft-command-plan', $event)"
         @refresh-profile="emit('refresh-profile')"
         @reload-workflow="emit('reload-workflow')"
+        @empty-state-action="emit('empty-state-action', $event)"
       />
 
       <p
@@ -176,12 +179,17 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  emptyStateActionBusy: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits({
   'draft-command-plan': plan => Boolean(plan?.commands?.length),
   'refresh-profile': () => true,
   'reload-workflow': () => true,
+  'empty-state-action': emptyState => Boolean(emptyState?.stateId && emptyState?.nextAction?.actionId),
 })
 
 const workflow = computed(() => props.workflowRead?.workflow || null)
@@ -194,6 +202,9 @@ const selectableSuggestions = computed(() => Array.isArray(observedProfile.value
   : [])
 const sections = computed(() => Array.isArray(workflow.value?.sections)
   ? workflow.value.sections
+  : [])
+const emptyStates = computed(() => Array.isArray(props.workflowRead?.emptyStateProjection?.states)
+  ? props.workflowRead.emptyStateProjection.states
   : [])
 const libraryName = computed(() => props.workflowRead?.library?.name || 'this library')
 const nativeEvidenceRecovery = computed(() => buildPolicyNativeEvidenceRecovery({

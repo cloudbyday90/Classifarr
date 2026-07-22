@@ -2239,6 +2239,13 @@ Implementation status:
   `Can this route?`, and unimplemented question controls are presented as
   bounded guidance rather than non-functional actions. See
   [Policy Authoring Destination Question Flow](policy-authoring-destination-question-flow.md).
+- The workflow read now projects new, sparse, and unmapped destination states
+  from bounded stored data. A missing persisted profile offers the existing
+  explicit `sync -> profile refresh -> workflow reread` action; a sparse valid
+  profile remains guidance rather than guessed intent or a dead button; and an
+  unmapped destination opens the existing library mapping screen. Profile-load
+  and evidence-boundary failures remain recovery states, not false new-library
+  claims. See [Policy Authoring Empty-State Mapping](policy-authoring-empty-state-mapping.md).
 
 ### 3R.3 UI Component System And Interaction Reset
 
@@ -2313,6 +2320,11 @@ Implementation status:
 - Option source semantics, typed-command interaction rules, explicit observed
   evidence acceptance, disabled-state explanations, and component-level
   accessibility requirements are pinned before Vue screen rebuild work starts.
+
+Next implementation task: replace the workflow shell's generic context and
+notice composition with `DestinationContextCard`, `ObservedProfileSummary`, and
+`ReadinessNextActionCard`, beginning the client-side component replacement
+without changing the policy-authoring contract.
 
 ### 3R.4 Evidence-Backed Option Selection
 

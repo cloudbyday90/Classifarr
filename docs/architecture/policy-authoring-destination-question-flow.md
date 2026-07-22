@@ -118,8 +118,10 @@ inside `What belongs here?`, and routing readiness appears within `Can this
 route?`. The old native-only routing message is removed, so the modal no longer
 shows an abbreviated workflow that hides the rest of the policy model.
 
-## Next Step
+## Follow-up
 
-Complete the remaining destination-flow empty-state work by mapping new,
-sparse, and unmapped library responses to a single resolving action in the
-appropriate question card.
+The destination-flow empty states are now implemented in
+[Policy Authoring Empty-State Mapping](policy-authoring-empty-state-mapping.md).
+The next task is Phase 3R.3 component replacement: extract the workflow
+shell's generic library context, observed-profile display, and readiness notice
+into the documented product-vocabulary components.

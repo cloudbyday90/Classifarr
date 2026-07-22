@@ -39,7 +39,7 @@ const POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS = Object.freeze({
 });
 
 const POLICY_AUTHORING_BUILDER_MATCHER =
-  /(PolicyBuilder|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
+  /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
 
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -78,8 +78,29 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     notes: 'The server-owned library-first workflow shell renders bounded observations and readiness without client policy, automation, or routing authority.',
     matches: filePath => hasAnySegment(filePath, [
       '/PolicyBuilderWorkflowShell.vue',
+      '/PolicyBuilderDestinationQuestions.vue',
       '/usePolicyOperatorWorkflow.js',
     ]),
+  },
+  {
+    id: 'destination_empty_state_notice',
+    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.READINESS_NEXT_ACTION,
+    normalAuthoringAllowed: true,
+    migrationSupportOnly: false,
+    riskIds: [],
+    notes: 'Destination empty-state notices render server-owned next actions and emit only bounded operator events; they do not infer intent or execute media routing.',
+    matches: filePath => filePath.endsWith('/PolicyDestinationEmptyStateNotice.vue'),
+  },
+  {
+    id: 'library_sync_recovery_orchestration',
+    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DESTINATION_CONTEXT,
+    normalAuthoringAllowed: true,
+    migrationSupportOnly: false,
+    riskIds: [],
+    notes: 'The library-sync recovery composable coordinates an explicit authenticated sync and profile refresh without deriving intent, readiness, or routing decisions.',
+    matches: filePath => filePath.endsWith('/usePolicyBuilderLibrarySync.js'),
   },
   {
     id: 'presentation_tests',

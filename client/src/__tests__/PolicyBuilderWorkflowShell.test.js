@@ -107,6 +107,53 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     expect(wrapper.text()).toContain('A current library profile is not available yet.')
   })
 
+  it('puts bounded empty-state actions in their owning destination question', async () => {
+    const workflowRead = buildWorkflowRead()
+    workflowRead.emptyStateProjection = {
+      version: 'policy.operator_workflow_empty_state.v1',
+      states: [
+        {
+          stateId: 'new_library',
+          sectionId: 'what_belongs_here',
+          label: 'New library',
+          description: 'No observed profile is available yet.',
+          nextAction: {
+            actionId: 'sync_media_server_library',
+            label: 'Sync library now',
+            targetId: 'policy-builder-library-context',
+            mode: 'sync_library',
+          },
+        },
+        {
+          stateId: 'unmapped_library',
+          sectionId: 'can_this_route',
+          label: 'Unmapped library',
+          description: 'This destination cannot route until it is mapped to an Arr root folder.',
+          nextAction: {
+            actionId: 'map_routing_destination',
+            label: 'Open library mapping',
+            targetId: 'library-arr-mapping',
+            mode: 'open_library_mapping',
+          },
+        },
+      ],
+    }
+
+    const wrapper = mount(PolicyBuilderWorkflowShell, {
+      props: { workflowRead, selectionEnabled: true },
+    })
+
+    const belongsHereArticle = wrapper.find('#policy-builder-workflow-what_belongs_here-title').element.closest('article')
+    const routingArticle = wrapper.find('#policy-builder-workflow-can_this_route-title').element.closest('article')
+    expect(belongsHereArticle?.textContent).toContain('Sync library now')
+    expect(routingArticle?.textContent).toContain('Open library mapping')
+
+    await wrapper.findAll('button').find(button => button.text() === 'Sync library now').trigger('click')
+    expect(wrapper.emitted('empty-state-action')?.[0]?.[0]).toEqual(
+      workflowRead.emptyStateProjection.states[0]
+    )
+  })
+
   it('keeps native observed values unavailable until a stale profile is refreshed', async () => {
     const workflowRead = buildWorkflowRead()
     workflowRead.observedProfile = {

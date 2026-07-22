@@ -67,6 +67,13 @@ unchanged operator or runtime outcome.
   their dedicated controls are available; no hidden policy rule, media route,
   or legacy builder action is introduced.
 
+- **Actionable Destination Empty States** - new-policy creation now distinguishes
+  a missing library profile from a profile-read failure, guides a new library
+  through the existing sync-and-profile-refresh sequence, opens unmapped
+  libraries in their existing mapping screen, and keeps sparse evidence as
+  explicit guidance rather than guessed policy intent or a non-functional
+  control.
+
 - **Library-First Policy Workflow Read API** - added a read-only server
   projection for the five destination-first policy questions. It safely exposes
   cached library-profile suggestions and stored routing readiness without live

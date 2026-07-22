@@ -39,6 +39,14 @@
           {{ section.helperText }}
         </p>
 
+        <PolicyDestinationEmptyStateNotice
+          v-for="emptyState in emptyStatesFor(section.sectionId)"
+          :key="emptyState.stateId"
+          :empty-state="emptyState"
+          :busy="emptyStateActionBusy"
+          @next-action="emit('empty-state-action', $event)"
+        />
+
         <PolicyNativeEvidenceRecovery
           v-if="showsObservedEvidenceActions(section) && nativeEvidenceRecovery.requiresAction"
           :recovery="nativeEvidenceRecovery"
@@ -79,6 +87,7 @@
 </template>
 
 <script setup>
+import PolicyDestinationEmptyStateNotice from './PolicyDestinationEmptyStateNotice.vue'
 import PolicyNativeEvidenceRecovery from './PolicyNativeEvidenceRecovery.vue'
 import PolicyObservedSuggestionSelector from './PolicyObservedSuggestionSelector.vue'
 
@@ -111,18 +120,31 @@ const props = defineProps({
     type: String,
     default: 'this library',
   },
+  emptyStates: {
+    type: Array,
+    default: () => [],
+  },
+  emptyStateActionBusy: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits({
   'draft-command-plan': plan => Boolean(plan?.commands?.length),
   'refresh-profile': () => true,
   'reload-workflow': () => true,
+  'empty-state-action': emptyState => Boolean(emptyState?.stateId && emptyState?.nextAction?.actionId),
 })
 
 const sectionHeadingId = sectionId => `policy-builder-workflow-${sectionId}-title`
 
 const showsObservedEvidenceActions = section => (
   props.selectionEnabled && section?.sectionId === 'what_belongs_here'
+)
+
+const emptyStatesFor = sectionId => props.emptyStates.filter(
+  emptyState => emptyState?.sectionId === sectionId
 )
 
 const sectionStatusLabel = (statusId) => {

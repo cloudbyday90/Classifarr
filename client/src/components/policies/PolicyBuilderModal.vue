@@ -44,9 +44,11 @@
           :refreshing="libraryProfileRefreshing"
           :accepted-candidates="acceptedObservedCandidates"
           :selection-enabled="experienceMode.isNativeCreate"
+          :empty-state-action-busy="librarySyncing || libraryProfileRefreshing"
           @draft-command-plan="applyObservedSuggestionCommandPlan"
           @refresh-profile="refreshActiveLibraryProfile"
           @reload-workflow="reloadActiveLibraryWorkflow"
+          @empty-state-action="handleEmptyStateAction"
         />
 
         <template v-if="experienceMode.isLegacyEdit">
@@ -128,6 +130,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref, toRef } from 'vue'
+import { useRouter } from 'vue-router'
 import Modal from '@/components/common/Modal.vue'
 import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
 import PolicyBuilderFooterActions from '@/components/policies/PolicyBuilderFooterActions.vue'
@@ -140,6 +143,7 @@ import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigra
 import PolicyStarterTemplateAccelerator from '@/components/policies/PolicyStarterTemplateAccelerator.vue'
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
+import { usePolicyBuilderLibrarySync } from '@/composables/usePolicyBuilderLibrarySync'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 import { usePolicyOperatorWorkflow } from '@/composables/usePolicyOperatorWorkflow'
 import { usePolicyObservedSuggestionDraft } from '@/composables/usePolicyObservedSuggestionDraft'
@@ -177,6 +181,7 @@ const emit = defineEmits({
 })
 
 const toast = useToast()
+const router = useRouter()
 const saving = ref(false)
 const saveError = ref('')
 const nativeCreateHandoffRef = ref(null)
@@ -322,6 +327,35 @@ const refreshActiveLibraryProfile = async () => {
   const refreshed = await refreshLibraryProfile(form.value.library_id)
   if (refreshed) {
     await loadOperatorWorkflow(form.value.library_id)
+  }
+}
+
+const {
+  syncing: librarySyncing,
+  syncAndRefreshProfile,
+} = usePolicyBuilderLibrarySync({ refreshProfile: refreshLibraryProfile })
+
+const handleEmptyStateAction = async (emptyState) => {
+  const actionId = emptyState?.nextAction?.actionId
+
+  if (actionId === 'sync_media_server_library') {
+    const synced = await syncAndRefreshProfile(form.value.library_id)
+    if (!synced) {
+      toast.error('Classifarr could not sync this library and refresh its profile.')
+      return
+    }
+
+    await loadOperatorWorkflow(form.value.library_id)
+    toast.success('Library sync and profile refresh completed.')
+    return
+  }
+
+  if (actionId === 'map_routing_destination') {
+    const libraryId = Number(form.value.library_id)
+    if (!Number.isInteger(libraryId) || libraryId <= 0) return
+
+    isOpen.value = false
+    await router.push({ name: 'LibraryDetail', params: { id: libraryId } })
   }
 }
 

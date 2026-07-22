@@ -21,6 +21,10 @@ import {
 import {
   buildPolicyObservedSuggestionProjection,
 } from './policyObservedSuggestionCandidates.mjs';
+import {
+  buildPolicyOperatorWorkflowEmptyStateAudit,
+  buildPolicyOperatorWorkflowEmptyStateProjection,
+} from './policyOperatorWorkflowEmptyState.mjs';
 
 const POLICY_OPERATOR_WORKFLOW_READ_VERSION = 'policy.operator_workflow_read.v1';
 const MAX_LABEL_LENGTH = 160;
@@ -39,6 +43,7 @@ const POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS = Object.freeze({
   OBSERVED_VALUE_AUTO_DECLARED: 'observed_value_auto_declared',
   UNSAFE_SIDE_EFFECT: 'unsafe_side_effect',
   RAW_PAYLOAD_EXPOSED: 'raw_payload_exposed',
+  INVALID_EMPTY_STATE_PROJECTION: 'invalid_empty_state_projection',
 });
 
 function asObject(value) {
@@ -139,20 +144,28 @@ function buildReadResult({
 } = {}) {
   const workflow = buildWorkflow({ profileHandoff, routing });
   const observedSuggestionProjection = buildPolicyObservedSuggestionProjection(profileHandoff);
+  const observedProfile = {
+    ...buildProfileState(profileHandoff),
+    itemCount: Number.isInteger(Number(profileHandoff?.profileEvidence?.summary?.itemCount))
+      ? Number(profileHandoff.profileEvidence.summary.itemCount)
+      : null,
+    suggestionCount: observedSuggestionProjection.observations.length,
+    suggestions: observedSuggestionProjection.observations,
+    selectableSuggestions: observedSuggestionProjection.selectableSuggestions,
+  };
+  const emptyStateProjection = buildPolicyOperatorWorkflowEmptyStateProjection({
+    library,
+    profileHandoff,
+    observedProfile,
+    routing,
+  });
 
   return {
     version: POLICY_OPERATOR_WORKFLOW_READ_VERSION,
     statusId,
     library,
-    observedProfile: {
-      ...buildProfileState(profileHandoff),
-      itemCount: Number.isInteger(Number(profileHandoff?.profileEvidence?.summary?.itemCount))
-        ? Number(profileHandoff.profileEvidence.summary.itemCount)
-        : null,
-      suggestionCount: observedSuggestionProjection.observations.length,
-      suggestions: observedSuggestionProjection.observations,
-      selectableSuggestions: observedSuggestionProjection.selectableSuggestions,
-    },
+    observedProfile,
+    emptyStateProjection,
     workflow,
     authority: {
       displayProjection: true,
@@ -173,6 +186,7 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
   const selectableSuggestions = asArray(source.observedProfile?.selectableSuggestions);
   const sideEffects = asObject(source.sideEffects);
   const workflowAudit = buildPolicyOperatorWorkflowAudit(source.workflow);
+  const emptyStateAudit = buildPolicyOperatorWorkflowEmptyStateAudit(source.emptyStateProjection);
 
   if (source.version !== POLICY_OPERATOR_WORKFLOW_READ_VERSION) {
     issues.push({
@@ -192,6 +206,13 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
     issues.push({
       riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_WORKFLOW,
       message: 'Operator workflow reads require a valid server-owned workflow projection.',
+    });
+  }
+
+  if (!emptyStateAudit.ok) {
+    issues.push({
+      riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_EMPTY_STATE_PROJECTION,
+      message: 'Operator workflow reads require valid bounded empty-state actions.',
     });
   }
 

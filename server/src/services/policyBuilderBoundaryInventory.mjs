@@ -78,7 +78,7 @@ function basename(filePath) {
   return filePath.split('/').pop() || filePath;
 }
 
-const POLICY_BUILDER_MODULE_MATCHER = /(PolicyBuilder|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|PolicyCombined|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
+const POLICY_BUILDER_MODULE_MATCHER = /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|PolicyCombined|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
 
 const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
@@ -93,6 +93,17 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ],
     notes: 'The operator workflow composable may load and validate the server-owned display projection, but cannot persist policy intent, route media, or decide automation.',
     matches: (filePath) => filePath.endsWith('/usePolicyOperatorWorkflow.js'),
+  },
+  {
+    id: 'policy_library_sync_recovery_orchestration',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
+    clientEngineAuthorityAllowed: false,
+    engineCutlineDecisionRequired: false,
+    riskIds: [],
+    notes: 'The library-sync recovery composable coordinates explicit authenticated recovery and a profile reread. It cannot infer intent, decide automation, or route media.',
+    matches: (filePath) => filePath.endsWith('/usePolicyBuilderLibrarySync.js'),
   },
   {
     id: 'policy_builder_tests',
@@ -274,7 +285,9 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
         '/PolicyBuilderFooterActions.vue',
         '/PolicyBuilderRoutingReadinessCard.vue',
         '/PolicyBuilderSetupCards.vue',
+        '/PolicyBuilderDestinationQuestions.vue',
         '/PolicyBuilderWorkflowShell.vue',
+        '/PolicyDestinationEmptyStateNotice.vue',
         '/PolicyIntentActionButton.vue',
         '/PolicyIntentCertificationControl.vue',
         '/PolicyIntentChip.vue',
