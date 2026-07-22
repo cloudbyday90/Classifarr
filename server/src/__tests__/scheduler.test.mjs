@@ -51,6 +51,7 @@ const mockSchedulerRetentionService = {
     runErrorLogCleanup: jest.fn(),
     runWebSearchProviderRetentionCleanup: jest.fn(),
     runPolicyRollbackSnapshotRetentionCleanup: jest.fn(),
+    runPolicyObservedEvidenceProvenanceRetentionCleanup: jest.fn(),
     runNativeIntentReconciliationLedgerRetentionCleanup: jest.fn(),
 };
 
@@ -134,6 +135,7 @@ describe('SchedulerService', () => {
         mockSchedulerRetentionService.runErrorLogCleanup.mockReset();
         mockSchedulerRetentionService.runWebSearchProviderRetentionCleanup.mockReset();
         mockSchedulerRetentionService.runPolicyRollbackSnapshotRetentionCleanup.mockReset();
+        mockSchedulerRetentionService.runPolicyObservedEvidenceProvenanceRetentionCleanup.mockReset();
         mockSchedulerRetentionService.runNativeIntentReconciliationLedgerRetentionCleanup.mockReset();
         mockClassificationMaintenanceService.cleanupStaleAwaitingDecisions.mockReset();
         mockRatingNormalizationQueueService.queueDailyBackfill.mockReset();
@@ -186,6 +188,17 @@ describe('SchedulerService', () => {
             await expect(scheduler.runPolicyRollbackSnapshotRetentionCleanup()).resolves.toBeUndefined();
 
             expect(mockSchedulerRetentionService.runPolicyRollbackSnapshotRetentionCleanup).toHaveBeenCalledTimes(1);
+        });
+
+        it('runPolicyObservedEvidenceProvenanceRetentionCleanup delegates to SchedulerRetentionService', async () => {
+            mockSchedulerRetentionService.runPolicyObservedEvidenceProvenanceRetentionCleanup
+                .mockResolvedValueOnce(undefined);
+
+            await expect(scheduler.runPolicyObservedEvidenceProvenanceRetentionCleanup())
+                .resolves.toBeUndefined();
+
+            expect(mockSchedulerRetentionService.runPolicyObservedEvidenceProvenanceRetentionCleanup)
+                .toHaveBeenCalledTimes(1);
         });
 
         it('runNativeIntentReconciliationLedgerRetentionCleanup delegates to SchedulerRetentionService', async () => {

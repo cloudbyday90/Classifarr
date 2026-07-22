@@ -73,6 +73,10 @@ const POLICY_STORAGE_COMPLETION_COMPONENTS = Object.freeze([
     label: 'Initial Native Intent Establishment',
   },
   {
+    componentId: 'observed_evidence_establishment_provenance',
+    label: 'Observed Evidence Establishment Provenance',
+  },
+  {
     componentId: 'native_runtime_read_path',
     label: 'Native Runtime Read Path',
   },

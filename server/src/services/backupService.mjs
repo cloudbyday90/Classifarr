@@ -93,6 +93,7 @@ export class BackupService {
         policyIntentRollbackSnapshots,
         policyIntentValidationStatus,
         policyInitialIntentEstablishments,
+        policyObservedEvidenceProvenanceSnapshots,
         policyNativeIntentReconciliationRuns,
         policyNativeIntentReconciliationOutcomes,
         policyNativeIntentReconciliationStates,
@@ -125,6 +126,7 @@ export class BackupService {
         db.query('SELECT * FROM policy_intent_rollback_snapshots ORDER BY id'),
         db.query('SELECT * FROM policy_intent_validation_status ORDER BY id'),
         db.query('SELECT * FROM policy_initial_intent_establishments ORDER BY id'),
+        db.query('SELECT * FROM policy_observed_evidence_provenance_snapshots ORDER BY id'),
         db.query('SELECT * FROM policy_native_intent_reconciliation_runs ORDER BY id'),
         db.query('SELECT * FROM policy_native_intent_reconciliation_outcomes ORDER BY id'),
         db.query('SELECT * FROM policy_native_intent_reconciliation_states ORDER BY policy_id'),
@@ -162,6 +164,8 @@ export class BackupService {
           policyIntentRollbackSnapshots: policyIntentRollbackSnapshots.rows,
           policyIntentValidationStatus: policyIntentValidationStatus.rows,
           policyInitialIntentEstablishments: policyInitialIntentEstablishments.rows,
+          policyObservedEvidenceProvenanceSnapshots:
+            policyObservedEvidenceProvenanceSnapshots.rows,
           policyNativeIntentReconciliationRuns: policyNativeIntentReconciliationRuns.rows,
           policyNativeIntentReconciliationOutcomes: policyNativeIntentReconciliationOutcomes.rows,
           policyNativeIntentReconciliationStates: policyNativeIntentReconciliationStates.rows,
@@ -193,6 +197,8 @@ export class BackupService {
           policyIntentRollbackSnapshotsCount: policyIntentRollbackSnapshots.rows.length,
           policyIntentValidationStatusCount: policyIntentValidationStatus.rows.length,
           policyInitialIntentEstablishmentsCount: policyInitialIntentEstablishments.rows.length,
+          policyObservedEvidenceProvenanceSnapshotsCount:
+            policyObservedEvidenceProvenanceSnapshots.rows.length,
           policyNativeIntentReconciliationRunsCount: policyNativeIntentReconciliationRuns.rows.length,
           policyNativeIntentReconciliationOutcomesCount: policyNativeIntentReconciliationOutcomes.rows.length,
           policyNativeIntentReconciliationStatesCount: policyNativeIntentReconciliationStates.rows.length,

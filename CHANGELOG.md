@@ -46,6 +46,13 @@ unchanged operator or runtime outcome.
   clear that the policy was saved even when detailed reread data is temporarily
   unavailable.
 
+- **Bounded Native Establishment Provenance** - native policy creation now
+  retains one small, server-generated record of the cached library-profile
+  context available at establishment. The record is explicitly not policy
+  authority, cannot affect routing or learning, avoids media-item and path
+  data, is retained for the 14-day recovery window, and is then redacted to a
+  minimal audit marker.
+
 - **Library-First Policy Workflow Shell** - replaced the policy builder's
   setup-card grid and standalone routing diagnostic with the five
   destination-first questions, current library observations, and one

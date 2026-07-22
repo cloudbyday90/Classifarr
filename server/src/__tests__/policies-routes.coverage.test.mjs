@@ -904,6 +904,12 @@ describe('Policies routes coverage', () => {
         if (statement.includes('INSERT INTO policy_intents')) {
           return { rows: [{ id: 601 }], rowCount: 1 };
         }
+        if (statement.includes('FROM library_profiles')) {
+          return { rows: [], rowCount: 0 };
+        }
+        if (statement.includes('INSERT INTO policy_observed_evidence_provenance_snapshots')) {
+          return { rows: [{ id: 651 }], rowCount: 1 };
+        }
         if (statement.includes('INSERT INTO policy_intent_migration_events')) {
           return { rows: [{ id: 701 }], rowCount: 1 };
         }

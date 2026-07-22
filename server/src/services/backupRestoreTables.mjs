@@ -183,6 +183,16 @@ const POLICY_INITIAL_INTENT_ESTABLISHMENT_ALLOWED_COLUMNS = [
   'state', 'established_at', 'created_at', 'updated_at',
 ];
 
+const POLICY_OBSERVED_EVIDENCE_PROVENANCE_SNAPSHOT_ALLOWED_COLUMNS = [
+  'snapshot_version', 'source_id', 'capture_state', 'capture_reason_id',
+  'profile_freshness_state', 'source_profile_generated_at',
+  'source_profile_updated_at', 'evidence_fingerprint', 'snapshot_payload',
+  'payload_redacted', 'redacted_at', 'expires_at', 'created_at',
+];
+const POLICY_OBSERVED_EVIDENCE_PROVENANCE_SNAPSHOT_JSONB_COLUMNS = new Set([
+  'snapshot_payload',
+]);
+
 const POLICY_NATIVE_INTENT_RECONCILIATION_RUN_ALLOWED_COLUMNS = [
   'reconciler_version', 'run_state', 'source_status_id', 'reason_id',
   'started_at', 'finished_at', 'candidate_count', 'converted_count',
@@ -335,6 +345,7 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     rollbackSnapshotsRestored: 0,
     validationStatusesRestored: 0,
     initialIntentEstablishmentsRestored: 0,
+    observedEvidenceProvenanceSnapshotsRestored: 0,
     reconciliationRunsRestored: 0,
     reconciliationOutcomesRestored: 0,
     reconciliationStatesRestored: 0,
@@ -498,6 +509,7 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     jsonbColumns: POLICY_INTENT_VALIDATION_STATUS_JSONB_COLUMNS,
   });
 
+  const establishmentIdMap = new Map();
   for (const establishment of nativeStorage.policyInitialIntentEstablishments || []) {
     const newPolicyId = policyIdMap.get(establishment.policy_id);
     const newLibraryId = libraryIdMap.get(establishment.library_id);
@@ -515,7 +527,7 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     if (keys.length === 0) continue;
 
     const placeholders = keys.map((_, index) => `$${index + 6}`).join(', ');
-    await client.query(
+    const result = await client.query(
       `INSERT INTO policy_initial_intent_establishments (
          policy_id,
          library_id,
@@ -525,7 +537,8 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
          ${keys.join(', ')}
        )
        VALUES ($1, $2, $3, $4, $5, ${placeholders})
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT DO NOTHING
+       RETURNING id`,
       [
         newPolicyId,
         newLibraryId,
@@ -535,7 +548,57 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
         ...values,
       ]
     );
+    let restoredEstablishmentId = result.rows[0]?.id ?? null;
+    if (!restoredEstablishmentId) {
+      const existing = await client.query(
+        `SELECT id
+         FROM policy_initial_intent_establishments
+         WHERE policy_id = $1
+         LIMIT 1`,
+        [newPolicyId]
+      );
+      restoredEstablishmentId = existing.rows[0]?.id ?? null;
+    }
+    if (restoredEstablishmentId && establishment.id !== undefined && establishment.id !== null) {
+      establishmentIdMap.set(establishment.id, restoredEstablishmentId);
+    }
     stats.initialIntentEstablishmentsRestored += 1;
+  }
+
+  for (const snapshot of nativeStorage.policyObservedEvidenceProvenanceSnapshots || []) {
+    const newEstablishmentId = establishmentIdMap.get(snapshot.establishment_id);
+    const newPolicyId = policyIdMap.get(snapshot.policy_id);
+    const newLibraryId = libraryIdMap.get(snapshot.library_id);
+    const newIntentId = intentIdMap.get(snapshot.intent_id);
+    if (!newEstablishmentId || !newPolicyId || !newLibraryId || !newIntentId) continue;
+
+    const { keys, values } = buildAllowedColumnValues(
+      snapshot,
+      POLICY_OBSERVED_EVIDENCE_PROVENANCE_SNAPSHOT_ALLOWED_COLUMNS,
+      POLICY_OBSERVED_EVIDENCE_PROVENANCE_SNAPSHOT_JSONB_COLUMNS,
+    );
+    if (keys.length === 0) continue;
+
+    const placeholders = keys.map((_, index) => `$${index + 5}`).join(', ');
+    await client.query(
+      `INSERT INTO policy_observed_evidence_provenance_snapshots (
+         establishment_id,
+         policy_id,
+         library_id,
+         intent_id,
+         ${keys.join(', ')}
+       )
+       VALUES ($1, $2, $3, $4, ${placeholders})
+       ON CONFLICT (establishment_id) DO NOTHING`,
+      [
+        newEstablishmentId,
+        newPolicyId,
+        newLibraryId,
+        newIntentId,
+        ...values,
+      ]
+    );
+    stats.observedEvidenceProvenanceSnapshotsRestored += 1;
   }
 
   const reconciliationRunIdMap = new Map();

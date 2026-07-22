@@ -3828,6 +3828,14 @@ Implementation status:
   is unavailable, never rebuilds policy authority from the browser draft, and
   does not claim transient observed suggestions are persisted provenance. Its
   design record is [Policy Native Create Handoff](policy-native-create-handoff.md).
+- Initial native establishment now retains one bounded, server-generated
+  observed-library-profile provenance snapshot in the same transaction. It is
+  explicitly non-authoritative, cannot change policy intent, routing, learning,
+  or media actions, and records safe unavailable or rejected states when a
+  stored profile cannot supply bounded evidence. The payload is redacted after
+  the aligned 14-day recovery window while retaining only a minimal audit
+  marker. Its design record is [Policy Observed Evidence
+  Provenance](policy-observed-evidence-provenance.md).
 - Retired diagnostic panels no longer have a component, accessibility, readiness,
   or workflow exemption. Readiness rejects their identifiers instead of routing
   them to an alternate authoring branch; the outcome is documented in
@@ -5690,6 +5698,51 @@ Implementation status:
   failures with capped exponential backoff rather than terminal maintenance.
 - The design and outcome record is [Automatic Library-Profile Native Policy
   Initialization](policy-library-profile-automatic-initialization.md).
+
+##### 8R.3.2.11 Observed Evidence Establishment Provenance
+
+Intent: retain only the bounded library-profile context available when native
+authority is established, without turning observed evidence into a second
+policy model or a source of routing and learning authority.
+
+Tasks:
+
+- Capture one server-generated bounded snapshot per initial establishment in
+  the same transaction as the native intent, rules, routing record, migration
+  event, rollback snapshot, and establishment audit record.
+- Record only safe profile projection, freshness, source, capture state,
+  timestamps, and deterministic digest data. Do not retain media items, paths,
+  provider output, prompts, browser draft state, credentials, or secrets.
+- Preserve safe `profile_unavailable` and `profile_rejected` snapshots without
+  blocking authority derived from explicit operator intent.
+- Redact the payload after the aligned rollback recovery window in a
+  transactionally locked, one-way cleanup. Retain only minimal marker metadata
+  and a digest.
+- Include the bounded record in backup, restore, schema validation, scheduler,
+  and storage-closure evidence. Restored redacted markers must remain redacted.
+
+Acceptance criteria:
+
+- The provenance snapshot cannot define, modify, or reactivate policy intent,
+  routing, learning, provider calls, quota use, or media actions.
+- A provenance persistence failure rolls back the entire initial establishment.
+- Retention cannot expose or recreate the original observed evidence payload.
+- Fresh-install and upgraded-install schema snapshots contain the same guarded
+  provenance table and indexes.
+
+Implementation status:
+
+- A bounded server-owned provenance contract now captures a stored
+  library-profile projection with explicit `observed_evidence` authority
+  vocabulary, a SHA-256 correlation digest, and no durable authority fields.
+- The initial-establishment transaction writes one linked snapshot. Missing or
+  rejected stored profiles produce safe markers, while an insert failure rolls
+  back all staged native establishment writes.
+- A daily advisory-lock cleanup redacts expired payloads after fourteen days;
+  the database trigger permits only that one-way transition. Backup/restore,
+  schema, scheduler, and closure coverage include the record. The design and
+  outcome record is [Policy Observed Evidence
+  Provenance](policy-observed-evidence-provenance.md).
 
 ### 8R.4 Native Runtime Read Path
 
@@ -8059,6 +8112,10 @@ Implement Phase 8R in this order:
      evidence, never hard limits, avoid rules, learning state, AI output, or
      external-provider input; stale or missing profiles are regenerated and
      retried safely.
+   - **Observed Evidence Establishment Provenance** retains one bounded,
+     non-authoritative stored-profile snapshot for an initial establishment,
+     redacts its payload after the recovery window, and preserves only a
+     minimal audit marker thereafter.
 4. **8R.4 Native Runtime Read Path**
    Makes converted policies run from native intent.
    - **Runtime Authority Selection Integrity** makes duplicate active native

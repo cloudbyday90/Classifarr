@@ -169,6 +169,23 @@ describe('policyStorageClosureEvidenceRun', () => {
         ]),
       })
     );
+    expect(components.get('observed_evidence_establishment_provenance')).toEqual(
+      expect.objectContaining({
+        label: 'Observed Evidence Establishment Provenance',
+        designDocPaths: ['docs/architecture/policy-observed-evidence-provenance.md'],
+        contractPaths: expect.arrayContaining([
+          'server/src/services/policyObservedEvidenceProvenanceContract.mjs',
+          'server/src/services/policyObservedEvidenceProvenanceRetentionService.mjs',
+          'database/migrations/20260722_120000_add_policy_observed_evidence_provenance.sql',
+          'database/schema/current.sql',
+        ]),
+        testPaths: expect.arrayContaining([
+          'server/src/__tests__/services/policyObservedEvidenceProvenanceContract.test.mjs',
+          'server/src/__tests__/services/policyObservedEvidenceProvenanceRetentionService.test.mjs',
+          'server/src/__tests__/services/backupRestoreTables.nativePolicyIntent.test.mjs',
+        ]),
+      })
+    );
     expect(components.get('transactional_native_authority_reversion')).toEqual(
       expect.objectContaining({
         contractPaths: expect.arrayContaining([

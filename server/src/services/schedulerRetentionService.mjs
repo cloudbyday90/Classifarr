@@ -21,6 +21,9 @@ import {
     policyRollbackSnapshotRetentionService as defaultPolicyRollbackSnapshotRetentionService,
 } from './policyRollbackSnapshotRetentionService.mjs';
 import {
+    policyObservedEvidenceProvenanceRetentionService as defaultPolicyObservedEvidenceProvenanceRetentionService,
+} from './policyObservedEvidenceProvenanceRetentionService.mjs';
+import {
     nativeIntentReconciliationLedgerRetentionService as defaultNativeIntentReconciliationLedgerRetentionService,
 } from './nativeIntentReconciliationLedgerRetentionService.mjs';
 
@@ -37,6 +40,9 @@ export class SchedulerRetentionService {
             || defaultWebSearchProviderHealthRetentionService;
         this.policyRollbackSnapshotRetentionService = deps.policyRollbackSnapshotRetentionService
             || defaultPolicyRollbackSnapshotRetentionService;
+        this.policyObservedEvidenceProvenanceRetentionService =
+            deps.policyObservedEvidenceProvenanceRetentionService
+            || defaultPolicyObservedEvidenceProvenanceRetentionService;
         this.nativeIntentReconciliationLedgerRetentionService =
             deps.nativeIntentReconciliationLedgerRetentionService
             || defaultNativeIntentReconciliationLedgerRetentionService;
@@ -136,6 +142,10 @@ export class SchedulerRetentionService {
 
     async runPolicyRollbackSnapshotRetentionCleanup() {
         return this.policyRollbackSnapshotRetentionService.cleanup();
+    }
+
+    async runPolicyObservedEvidenceProvenanceRetentionCleanup() {
+        return this.policyObservedEvidenceProvenanceRetentionService.cleanup();
     }
 
     async runNativeIntentReconciliationLedgerRetentionCleanup() {

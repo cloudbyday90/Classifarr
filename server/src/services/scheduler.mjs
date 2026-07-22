@@ -108,6 +108,9 @@ class SchedulerService {
         // Daily cleanup of web-search provider cache and usage rows (3:14 AM)
         this.schedule('web-search-provider-retention-cleanup', '14 3 * * *', () => this.runWebSearchProviderRetentionCleanup());
 
+        // Daily redaction of expired observed evidence provenance payloads (3:15 AM)
+        this.schedule('policy-observed-evidence-provenance-retention-cleanup', '15 3 * * *', () => this.runPolicyObservedEvidenceProvenanceRetentionCleanup());
+
         // Daily pruning of bounded native-intent reconciliation ledger rows (3:16 AM)
         this.schedule('native-intent-reconciliation-ledger-retention-cleanup', '16 3 * * *', () => this.runNativeIntentReconciliationLedgerRetentionCleanup());
 
@@ -169,6 +172,14 @@ class SchedulerService {
      */
     async runPolicyRollbackSnapshotRetentionCleanup() {
         return schedulerRetentionService.runPolicyRollbackSnapshotRetentionCleanup();
+    }
+
+    /**
+     * Daily redaction of expired observed library evidence retained only for
+     * initial native-intent establishment provenance.
+     */
+    async runPolicyObservedEvidenceProvenanceRetentionCleanup() {
+        return schedulerRetentionService.runPolicyObservedEvidenceProvenanceRetentionCleanup();
     }
 
     /**

@@ -46,6 +46,12 @@ describe('SchedulerRetentionService', () => {
                     statusId: 'completed',
                 }),
             },
+            policyObservedEvidenceProvenanceRetentionService: {
+                cleanup: jest.fn().mockResolvedValue({
+                    redactedSnapshotCount: 0,
+                    statusId: 'completed',
+                }),
+            },
             nativeIntentReconciliationLedgerRetentionService: {
                 cleanup: jest.fn().mockResolvedValue({
                     outcomeDeletedCount: 0,
@@ -210,6 +216,19 @@ describe('SchedulerRetentionService', () => {
                 statusId: 'completed',
             });
             expect(service.policyRollbackSnapshotRetentionService.cleanup).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('runPolicyObservedEvidenceProvenanceRetentionCleanup', () => {
+        it('delegates expired observed evidence provenance redaction to the retention service', async () => {
+            const result = await service.runPolicyObservedEvidenceProvenanceRetentionCleanup();
+
+            expect(result).toEqual({
+                redactedSnapshotCount: 0,
+                statusId: 'completed',
+            });
+            expect(service.policyObservedEvidenceProvenanceRetentionService.cleanup)
+                .toHaveBeenCalledTimes(1);
         });
     });
 

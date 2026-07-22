@@ -78,6 +78,7 @@ describe('policyStorageCompletionCheckpoint', () => {
       'semantic_native_authority_eligibility',
       'candidate_authority_eligibility',
       'initial_native_intent_establishment',
+      'observed_evidence_establishment_provenance',
       'runtime_authority_selection_integrity',
       'transactional_native_authority_reversion',
       'rollback_snapshot_retention_cleanup',

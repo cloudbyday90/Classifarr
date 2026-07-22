@@ -12,6 +12,15 @@ function createClient() {
       if (typeof sql === 'string' && sql.includes('INSERT INTO policy_intent_migration_events')) {
         return { rows: [{ id: 601 }], rowCount: 1 };
       }
+      if (typeof sql === 'string' && sql.includes('INSERT INTO policy_intent_rollback_snapshots')) {
+        return { rows: [{ id: 651 }], rowCount: 1 };
+      }
+      if (typeof sql === 'string' && sql.includes('INSERT INTO policy_initial_intent_establishments')) {
+        return { rows: [{ id: 701 }], rowCount: 1 };
+      }
+      if (typeof sql === 'string' && sql.includes('INSERT INTO policy_observed_evidence_provenance_snapshots')) {
+        return { rows: [{ id: 751 }], rowCount: 1 };
+      }
       if (typeof sql === 'string' && sql.includes('SELECT id')) {
         return { rows: [{ id: 501 }], rowCount: 1 };
       }
@@ -98,6 +107,39 @@ describe('backupRestoreTables native policy intent restore', () => {
           errors: [],
           warnings: [],
         }],
+        policyInitialIntentEstablishments: [{
+          id: 39,
+          policy_id: 10,
+          library_id: 20,
+          intent_id: 30,
+          migration_event_id: 34,
+          rollback_snapshot_id: 35,
+          idempotency_key: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
+          request_fingerprint: 'a'.repeat(64),
+          authority_source_id: 'operator_declared_intent',
+          accepted_by: 7,
+          state: 'established',
+          established_at: '2026-07-15T00:00:00.000Z',
+        }],
+        policyObservedEvidenceProvenanceSnapshots: [{
+          id: 40,
+          establishment_id: 39,
+          policy_id: 10,
+          library_id: 20,
+          intent_id: 30,
+          snapshot_version: 1,
+          source_id: 'stored_library_profile',
+          capture_state: 'captured',
+          capture_reason_id: 'stored_profile_captured',
+          profile_freshness_state: 'current',
+          evidence_fingerprint: 'b'.repeat(64),
+          snapshot_payload: {
+            classification: 'observed_context_not_policy_authority',
+            evidence: { available: true },
+          },
+          payload_redacted: false,
+          expires_at: '2026-08-05T00:00:00.000Z',
+        }],
         policyNativeIntentReconciliationRuns: [{
           id: 37,
           run_key: 'a9cf9f4a-61e3-4ca7-8fe6-b810efff7c1c',
@@ -146,7 +188,8 @@ describe('backupRestoreTables native policy intent restore', () => {
       templateApplicationsRestored: 1,
       migrationEventsRestored: 1,
       rollbackSnapshotsRestored: 1,
-      initialIntentEstablishmentsRestored: 0,
+      initialIntentEstablishmentsRestored: 1,
+      observedEvidenceProvenanceSnapshotsRestored: 1,
       validationStatusesRestored: 1,
       reconciliationRunsRestored: 1,
       reconciliationOutcomesRestored: 1,
@@ -175,6 +218,10 @@ describe('backupRestoreTables native policy intent restore', () => {
     expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO policy_intent_rollback_snapshots'),
       expect.arrayContaining([501, 110])
+    );
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_observed_evidence_provenance_snapshots'),
+      expect.arrayContaining([701, 110, 220, 501])
     );
     expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO policy_native_intent_reconciliation_runs'),

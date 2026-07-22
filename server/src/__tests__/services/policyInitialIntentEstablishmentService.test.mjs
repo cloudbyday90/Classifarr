@@ -54,6 +54,8 @@ function createClient({
   },
   reserveId = 51,
   initialEstablishmentReconciliationState = null,
+  storedLibraryProfile = null,
+  observedEvidenceProvenanceSnapshotId = 401,
   failStatement = null,
 } = {}) {
   return {
@@ -89,6 +91,20 @@ function createClient({
       }
       if (statement.includes('INSERT INTO policy_intents')) {
         return { rows: [{ id: 101 }], rowCount: 1 };
+      }
+      if (statement.includes('FROM library_profiles')) {
+        return {
+          rows: storedLibraryProfile ? [storedLibraryProfile] : [],
+          rowCount: storedLibraryProfile ? 1 : 0,
+        };
+      }
+      if (statement.includes('INSERT INTO policy_observed_evidence_provenance_snapshots')) {
+        return {
+          rows: observedEvidenceProvenanceSnapshotId
+            ? [{ id: observedEvidenceProvenanceSnapshotId }]
+            : [],
+          rowCount: observedEvidenceProvenanceSnapshotId ? 1 : 0,
+        };
       }
       if (statement.includes('INSERT INTO policy_intent_migration_events')) {
         return { rows: [{ id: 201 }], rowCount: 1 };
@@ -156,6 +172,10 @@ describe('policyInitialIntentEstablishmentService', () => {
     expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO policy_intent_rollback_snapshots'),
       expect.arrayContaining([101, 44])
+    );
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_observed_evidence_provenance_snapshots'),
+      expect.arrayContaining([51, 44, 6, 101])
     );
     expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining("candidate_status_id = 'requires_initial_policy_establishment'"),
@@ -275,6 +295,23 @@ describe('policyInitialIntentEstablishmentService', () => {
     expect(result.validation.issues[0].riskId)
       .toBe(POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS.TRANSACTION_FAILED);
     expect(JSON.stringify(result)).not.toContain('persistence failure');
+  });
+
+  test('rolls back the initial establishment when provenance persistence fails', async () => {
+    const client = createClient({
+      failStatement: 'INSERT INTO policy_observed_evidence_provenance_snapshots',
+    });
+    const dbClient = { withTransaction: jest.fn(async work => work(client)) };
+
+    const result = await applyPolicyInitialIntentEstablishment({ dbClient, ...serviceRequest() });
+
+    expect(result.statusId).toBe(POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.FAILED_ROLLED_BACK);
+    expect(result.validation.issues[0].riskId)
+      .toBe(POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS.TRANSACTION_FAILED);
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_intent_rollback_snapshots'),
+      expect.anything()
+    );
   });
 
   test('rolls back establishment when reconciliation-state finalization fails', async () => {

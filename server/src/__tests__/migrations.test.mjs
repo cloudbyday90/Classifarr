@@ -322,6 +322,10 @@ describe('Schema snapshot freshness', () => {
             __dirname,
             '../../../database/migrations/20260716_030000_add_native_intent_reconciliation_runtime_provenance.sql'
         );
+        const observedEvidenceProvenanceMigrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260722_120000_add_policy_observed_evidence_provenance.sql'
+        );
         const migrationSql = fs.readFileSync(migrationPath, 'utf8');
         const integrityMigrationSql = fs.readFileSync(integrityMigrationPath, 'utf8');
         const retentionMigrationSql = fs.readFileSync(retentionMigrationPath, 'utf8');
@@ -341,6 +345,10 @@ describe('Schema snapshot freshness', () => {
             reconciliationRuntimeProvenanceMigrationPath,
             'utf8'
         );
+        const observedEvidenceProvenanceMigrationSql = fs.readFileSync(
+            observedEvidenceProvenanceMigrationPath,
+            'utf8'
+        );
         const policyIntents = getCreateTableBlock(schemaSql, 'policy_intents');
         const policyIntentRules = getCreateTableBlock(schemaSql, 'policy_intent_rules');
         const policyIntentRoutingTargets = getCreateTableBlock(schemaSql, 'policy_intent_routing_targets');
@@ -356,6 +364,10 @@ describe('Schema snapshot freshness', () => {
         const policyIntentValidationStatus = getCreateTableBlock(
             schemaSql,
             'policy_intent_validation_status'
+        );
+        const observedEvidenceProvenanceSnapshots = getCreateTableBlock(
+            schemaSql,
+            'policy_observed_evidence_provenance_snapshots'
         );
         const reconciliationRuns = getCreateTableBlock(
             schemaSql,
@@ -418,6 +430,18 @@ describe('Schema snapshot freshness', () => {
         expect(policyIntentRollbackSnapshots).toContain('policy_intent_rollback_snapshots_window_chk');
         expect(policyIntentValidationStatus).toContain('errors jsonb DEFAULT \'[]\'::jsonb NOT NULL');
         expect(policyIntentValidationStatus).toContain('warnings jsonb DEFAULT \'[]\'::jsonb NOT NULL');
+        expect(observedEvidenceProvenanceSnapshots).toMatch(
+            /establishment_id bigint(?: CONSTRAINT \S+)? NOT NULL/
+        );
+        expect(observedEvidenceProvenanceSnapshots).toMatch(
+            /snapshot_payload jsonb DEFAULT '\{\}'::jsonb(?: CONSTRAINT \S+)? NOT NULL/
+        );
+        expect(observedEvidenceProvenanceSnapshots).toMatch(
+            /payload_redacted boolean DEFAULT false(?: CONSTRAINT \S+)? NOT NULL/
+        );
+        expect(observedEvidenceProvenanceSnapshots).toContain(
+            'policy_observed_evidence_provenance_capture_pair_chk'
+        );
         expect(reconciliationRuns).toContain('run_key uuid NOT NULL');
         expect(reconciliationRuns).toContain('policy_native_intent_reconciliation_runs_state_chk');
         expect(reconciliationRuns).toContain('candidate_count integer DEFAULT 0');
@@ -483,6 +507,15 @@ describe('Schema snapshot freshness', () => {
         expect(reconciliationRuntimeProvenanceMigrationSql).toContain(
             'policy_native_intent_reconcile_runs_build_revision_chk'
         );
+        expect(observedEvidenceProvenanceMigrationSql).toContain(
+            'CREATE TABLE IF NOT EXISTS policy_observed_evidence_provenance_snapshots'
+        );
+        expect(observedEvidenceProvenanceMigrationSql).toContain(
+            'idx_policy_observed_evidence_provenance_expiry'
+        );
+        expect(observedEvidenceProvenanceMigrationSql).toContain(
+            'guard_policy_observed_evidence_provenance_snapshot_update'
+        );
         expect(reconciliationControls).toContain(
             "automation_enabled boolean DEFAULT true"
         );
@@ -516,6 +549,7 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_migration_events_state');
         expect(schemaSql).toContain("'rollback_snapshot_payload_redacted'");
         expect(schemaSql).toContain('CREATE INDEX idx_policy_intent_validation_status_lookup');
+        expect(schemaSql).toContain('CREATE INDEX idx_policy_observed_evidence_provenance_expiry');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_runs_finished');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_outcomes_policy');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_native_intent_reconciliation_states_retry');

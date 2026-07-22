@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-16T22:16:21.848Z
--- Latest Migration: 20260716_050000_add_policy_initial_intent_establishments.sql
+-- Generated: 2026-07-22T12:27:31.181Z
+-- Latest Migration: 20260722_120000_add_policy_observed_evidence_provenance.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -173,6 +173,47 @@ CREATE FUNCTION public.extract_jsonb_name_text(arr jsonb) RETURNS text
     FROM jsonb_array_elements(
         CASE WHEN arr IS NOT NULL AND jsonb_typeof(arr) = 'array' THEN arr ELSE '[]'::jsonb END
     ) AS elem
+$$;
+
+
+--
+-- Name: guard_policy_observed_evidence_provenance_snapshot_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_policy_observed_evidence_provenance_snapshot_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NEW.establishment_id IS DISTINCT FROM OLD.establishment_id
+       OR NEW.policy_id IS DISTINCT FROM OLD.policy_id
+       OR NEW.library_id IS DISTINCT FROM OLD.library_id
+       OR NEW.intent_id IS DISTINCT FROM OLD.intent_id
+       OR NEW.snapshot_version IS DISTINCT FROM OLD.snapshot_version
+       OR NEW.source_id IS DISTINCT FROM OLD.source_id
+       OR NEW.capture_state IS DISTINCT FROM OLD.capture_state
+       OR NEW.capture_reason_id IS DISTINCT FROM OLD.capture_reason_id
+       OR NEW.profile_freshness_state IS DISTINCT FROM OLD.profile_freshness_state
+       OR NEW.source_profile_generated_at IS DISTINCT FROM OLD.source_profile_generated_at
+       OR NEW.source_profile_updated_at IS DISTINCT FROM OLD.source_profile_updated_at
+       OR NEW.evidence_fingerprint IS DISTINCT FROM OLD.evidence_fingerprint
+       OR NEW.expires_at IS DISTINCT FROM OLD.expires_at
+       OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+        RAISE EXCEPTION 'Observed evidence provenance metadata is immutable';
+    END IF;
+
+    IF OLD.payload_redacted = TRUE THEN
+        RAISE EXCEPTION 'Observed evidence provenance payload is already redacted';
+    END IF;
+
+    IF NEW.payload_redacted IS DISTINCT FROM TRUE
+       OR NEW.redacted_at IS NULL
+       OR jsonb_typeof(NEW.snapshot_payload) <> 'object'
+       OR NOT (NEW.snapshot_payload ? 'retention_marker') THEN
+        RAISE EXCEPTION 'Observed evidence provenance snapshots may only transition to a retention marker';
+    END IF;
+
+    RETURN NEW;
+END;
 $$;
 
 
@@ -4490,6 +4531,60 @@ CREATE TABLE public.policy_native_intent_reconciliation_states (
 
 
 --
+-- Name: policy_observed_evidence_provenance_snapshots; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_observed_evidence_provenance_snapshots (
+    id bigint NOT NULL,
+    establishment_id bigint CONSTRAINT policy_observed_evidence_provenance_s_establishment_id_not_null NOT NULL,
+    policy_id integer CONSTRAINT policy_observed_evidence_provenance_snapshot_policy_id_not_null NOT NULL,
+    library_id integer CONSTRAINT policy_observed_evidence_provenance_snapsho_library_id_not_null NOT NULL,
+    intent_id bigint CONSTRAINT policy_observed_evidence_provenance_snapshot_intent_id_not_null NOT NULL,
+    snapshot_version integer DEFAULT 1 CONSTRAINT policy_observed_evidence_provenance_s_snapshot_version_not_null NOT NULL,
+    source_id character varying(64) CONSTRAINT policy_observed_evidence_provenance_snapshot_source_id_not_null NOT NULL,
+    capture_state character varying(32) CONSTRAINT policy_observed_evidence_provenance_snap_capture_state_not_null NOT NULL,
+    capture_reason_id character varying(64) CONSTRAINT policy_observed_evidence_provenance__capture_reason_id_not_null NOT NULL,
+    profile_freshness_state character varying(32) CONSTRAINT policy_observed_evidence_prove_profile_freshness_state_not_null NOT NULL,
+    source_profile_generated_at timestamp with time zone,
+    source_profile_updated_at timestamp with time zone,
+    evidence_fingerprint character(64) CONSTRAINT policy_observed_evidence_provenan_evidence_fingerprint_not_null NOT NULL,
+    snapshot_payload jsonb DEFAULT '{}'::jsonb CONSTRAINT policy_observed_evidence_provenance_s_snapshot_payload_not_null NOT NULL,
+    payload_redacted boolean DEFAULT false CONSTRAINT policy_observed_evidence_provenance_s_payload_redacted_not_null NOT NULL,
+    redacted_at timestamp with time zone,
+    expires_at timestamp with time zone CONSTRAINT policy_observed_evidence_provenance_snapsho_expires_at_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT policy_observed_evidence_provenance_snapsho_created_at_not_null NOT NULL,
+    CONSTRAINT policy_observed_evidence_provenance_capture_pair_chk CHECK (((((capture_state)::text = 'captured'::text) AND ((capture_reason_id)::text = 'stored_profile_captured'::text)) OR (((capture_state)::text = 'profile_unavailable'::text) AND ((capture_reason_id)::text = 'stored_profile_missing'::text)) OR (((capture_state)::text = 'profile_rejected'::text) AND ((capture_reason_id)::text = 'stored_profile_rejected'::text)))),
+    CONSTRAINT policy_observed_evidence_provenance_capture_reason_chk CHECK (((capture_reason_id)::text = ANY (ARRAY[('stored_profile_captured'::character varying)::text, ('stored_profile_missing'::character varying)::text, ('stored_profile_rejected'::character varying)::text]))),
+    CONSTRAINT policy_observed_evidence_provenance_capture_state_chk CHECK (((capture_state)::text = ANY (ARRAY[('captured'::character varying)::text, ('profile_unavailable'::character varying)::text, ('profile_rejected'::character varying)::text]))),
+    CONSTRAINT policy_observed_evidence_provenance_fingerprint_shape_chk CHECK ((evidence_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_observed_evidence_provenance_freshness_chk CHECK (((profile_freshness_state)::text = ANY (ARRAY[('current'::character varying)::text, ('stale'::character varying)::text, ('unavailable'::character varying)::text]))),
+    CONSTRAINT policy_observed_evidence_provenance_payload_shape_chk CHECK (((jsonb_typeof(snapshot_payload) = 'object'::text) AND (octet_length((snapshot_payload)::text) <= 16384))),
+    CONSTRAINT policy_observed_evidence_provenance_redaction_shape_chk CHECK ((((payload_redacted = false) AND (redacted_at IS NULL)) OR ((payload_redacted = true) AND (redacted_at IS NOT NULL)))),
+    CONSTRAINT policy_observed_evidence_provenance_snapshot_version_chk CHECK ((snapshot_version = 1)),
+    CONSTRAINT policy_observed_evidence_provenance_source_chk CHECK (((source_id)::text = 'stored_library_profile'::text))
+);
+
+
+--
+-- Name: policy_observed_evidence_provenance_snapshots_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_observed_evidence_provenance_snapshots_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_observed_evidence_provenance_snapshots_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_observed_evidence_provenance_snapshots_id_seq OWNED BY public.policy_observed_evidence_provenance_snapshots.id;
+
+
+--
 -- Name: policy_overlap_metrics_snapshots; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6432,6 +6527,13 @@ ALTER TABLE ONLY public.policy_native_intent_reconciliation_runs ALTER COLUMN id
 
 
 --
+-- Name: policy_observed_evidence_provenance_snapshots id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_observed_evidence_provenance_snapshots ALTER COLUMN id SET DEFAULT nextval('public.policy_observed_evidence_provenance_snapshots_id_seq'::regclass);
+
+
+--
 -- Name: policy_overlap_metrics_snapshots id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7531,6 +7633,22 @@ ALTER TABLE ONLY public.policy_native_intent_reconciliation_runs
 
 ALTER TABLE ONLY public.policy_native_intent_reconciliation_states
     ADD CONSTRAINT policy_native_intent_reconciliation_states_pkey PRIMARY KEY (policy_id);
+
+
+--
+-- Name: policy_observed_evidence_provenance_snapshots policy_observed_evidence_provenance_establishment_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_observed_evidence_provenance_snapshots
+    ADD CONSTRAINT policy_observed_evidence_provenance_establishment_unique UNIQUE (establishment_id);
+
+
+--
+-- Name: policy_observed_evidence_provenance_snapshots policy_observed_evidence_provenance_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_observed_evidence_provenance_snapshots
+    ADD CONSTRAINT policy_observed_evidence_provenance_snapshots_pkey PRIMARY KEY (id);
 
 
 --
@@ -9022,6 +9140,20 @@ CREATE INDEX idx_policy_native_intent_reconciliation_states_retry ON public.poli
 
 
 --
+-- Name: idx_policy_observed_evidence_provenance_expiry; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_observed_evidence_provenance_expiry ON public.policy_observed_evidence_provenance_snapshots USING btree (expires_at, id) WHERE (payload_redacted = false);
+
+
+--
+-- Name: idx_policy_observed_evidence_provenance_policy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_observed_evidence_provenance_policy ON public.policy_observed_evidence_provenance_snapshots USING btree (policy_id, created_at DESC, id DESC);
+
+
+--
 -- Name: idx_policy_overlap_metrics_snapshots_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9565,6 +9697,13 @@ CREATE CONSTRAINT TRIGGER policy_intent_rules_active_purpose_rule_chk AFTER INSE
 --
 
 CREATE CONSTRAINT TRIGGER policy_intents_active_purpose_rule_chk AFTER INSERT OR UPDATE OF active, source, inference_state, validation_status ON public.policy_intents DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.enforce_policy_intent_active_purpose_rule();
+
+
+--
+-- Name: policy_observed_evidence_provenance_snapshots policy_observed_evidence_provenance_snapshot_update_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER policy_observed_evidence_provenance_snapshot_update_guard BEFORE UPDATE ON public.policy_observed_evidence_provenance_snapshots FOR EACH ROW EXECUTE FUNCTION public.guard_policy_observed_evidence_provenance_snapshot_update();
 
 
 --
@@ -10362,6 +10501,38 @@ ALTER TABLE ONLY public.policy_native_intent_reconciliation_outcomes
 
 ALTER TABLE ONLY public.policy_native_intent_reconciliation_states
     ADD CONSTRAINT policy_native_intent_reconciliation_states_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_observed_evidence_provenance_snapshots policy_observed_evidence_provenance_snaps_establishment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_observed_evidence_provenance_snapshots
+    ADD CONSTRAINT policy_observed_evidence_provenance_snaps_establishment_id_fkey FOREIGN KEY (establishment_id) REFERENCES public.policy_initial_intent_establishments(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_observed_evidence_provenance_snapshots policy_observed_evidence_provenance_snapshots_intent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_observed_evidence_provenance_snapshots
+    ADD CONSTRAINT policy_observed_evidence_provenance_snapshots_intent_id_fkey FOREIGN KEY (intent_id) REFERENCES public.policy_intents(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_observed_evidence_provenance_snapshots policy_observed_evidence_provenance_snapshots_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_observed_evidence_provenance_snapshots
+    ADD CONSTRAINT policy_observed_evidence_provenance_snapshots_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_observed_evidence_provenance_snapshots policy_observed_evidence_provenance_snapshots_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_observed_evidence_provenance_snapshots
+    ADD CONSTRAINT policy_observed_evidence_provenance_snapshots_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
 
 
 --
@@ -12492,6 +12663,7 @@ FROM unnest(ARRAY[
     '20260716_020000_add_native_intent_reconciliation_alert_states.sql',
     '20260716_030000_add_native_intent_reconciliation_runtime_provenance.sql',
     '20260716_040000_enforce_semantic_native_intent_authority.sql',
-    '20260716_050000_add_policy_initial_intent_establishments.sql'
+    '20260716_050000_add_policy_initial_intent_establishments.sql',
+    '20260722_120000_add_policy_observed_evidence_provenance.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

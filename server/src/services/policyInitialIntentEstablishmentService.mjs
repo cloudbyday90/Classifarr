@@ -18,6 +18,13 @@ import {
   validatePolicyInitialIntentEstablishmentRequest,
 } from './policyInitialIntentEstablishmentContract.mjs';
 import {
+  buildObservedEvidenceProvenanceSnapshot,
+} from './policyObservedEvidenceProvenanceContract.mjs';
+import {
+  insertObservedEvidenceProvenanceSnapshot,
+  readStoredLibraryProfileForProvenance,
+} from './policyObservedEvidenceProvenancePersistence.mjs';
+import {
   clearInitialEstablishmentReconciliationState,
   completeInitialEstablishment,
   insertInitialIntentMigrationEvent,
@@ -342,6 +349,29 @@ async function establishPolicyInitialIntentWithClient({ client, context }) {
       });
       if (!intentId) {
         throw new Error('Initial native intent header did not return an identifier.');
+      }
+
+      // This captures only the already-stored, bounded library observation. It
+      // cannot alter the operator-declared native authority created above.
+      const storedLibraryProfile = await readStoredLibraryProfileForProvenance({
+        client,
+        libraryId: policy.library_id,
+      });
+      const observedEvidenceProvenance = buildObservedEvidenceProvenanceSnapshot({
+        profile: storedLibraryProfile,
+        now: establishedAt,
+      });
+      const observedEvidenceProvenanceSnapshotId =
+        await insertObservedEvidenceProvenanceSnapshot({
+          client,
+          establishmentId: reservationId,
+          policyId: policy.id,
+          libraryId: policy.library_id,
+          intentId,
+          provenance: observedEvidenceProvenance,
+        });
+      if (!observedEvidenceProvenanceSnapshotId) {
+        throw new Error('Observed evidence provenance snapshot did not return an identifier.');
       }
 
       const rulesInserted = await insertInitialIntentRules({ client, intentId, contract });
