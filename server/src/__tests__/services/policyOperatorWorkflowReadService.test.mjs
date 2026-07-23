@@ -67,6 +67,9 @@ describe('policyOperatorWorkflowReadService', () => {
           expect.objectContaining({
             label: 'Animation',
             sourceId: 'observed_in_library',
+            sourceLabel: 'Already in this library',
+            selectionStateId: 'read_only_evidence',
+            readOnlyEvidence: true,
             requiresExplicitAcceptance: true,
           }),
         ]),
@@ -74,6 +77,11 @@ describe('policyOperatorWorkflowReadService', () => {
           expect.objectContaining({
             value: 'Animation',
             sourceId: 'suggested_from_observed_profile',
+            sourceLabel: 'Suggested from this library',
+            selectionStateId: 'selectable_suggestion',
+            selectable: true,
+            readOnlyEvidence: false,
+            commandId: 'add_signal_value',
             signalType: 'genres',
             requiresExplicitAcceptance: true,
             canAutoDeclare: false,

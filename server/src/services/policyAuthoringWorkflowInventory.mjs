@@ -39,7 +39,7 @@ const POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS = Object.freeze({
 });
 
 const POLICY_AUTHORING_BUILDER_MATCHER =
-  /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|DestinationContext|ObservedProfile|ReadinessNextAction|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
+  /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|DestinationContext|ObservedProfile|ReadinessNextAction|IntentSignal|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
 
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -199,6 +199,7 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
       '/PolicyIntentOptionActionGroup.vue',
       '/PolicyIntentOptionSelect.vue',
       '/PolicyIntentSecondaryActionButton.vue',
+      '/IntentSignalPicker.vue',
       '/policyIntentCertificationControl.js',
       '/policyIntentControlView.js',
       '/policyIntentGenreControl.js',
@@ -273,6 +274,19 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     notes: 'Migration notices may remain as support affordances, but they must not shape the normal destination-first authoring path.',
     matches: filePath => hasAnySegment(filePath, [
       '/PolicyPresetMigrationNotice.vue',
+    ]),
+  },
+  {
+    id: 'intent_signal_draft_boundary',
+    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DECLARED_INTENT_EDITING,
+    normalAuthoringAllowed: true,
+    migrationSupportOnly: false,
+    riskIds: [],
+    notes: 'Intent-signal draft state applies explicitly accepted, typed commands to a transient declared-intent projection without inferring evidence or serializing legacy payloads.',
+    matches: filePath => hasAnySegment(filePath, [
+      '/policyIntentSignalDraft.js',
+      '/usePolicyIntentSignalDraft.js',
     ]),
   },
   {

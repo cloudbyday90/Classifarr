@@ -102,8 +102,9 @@ Cons:
   - renders the ordered question list, scoped evidence recovery, explicit
     observed-value acceptance, and bounded guidance for non-interactive
     questions.
-- `client/src/components/policies/PolicyObservedSuggestionSelector.vue`
-  - continues to emit only typed add/remove command plans; it has no direct
+- `client/src/components/policies/IntentSignalPicker.vue`
+  - separates read-only library observations from source-labelled intent-signal
+    options and emits only typed add/remove command plans; it has no direct
     persistence or routing capability.
 - `client/src/__tests__/PolicyBuilderWorkflowShell.test.js`
   - verifies native creation renders every question, scopes acceptance to

@@ -225,12 +225,18 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
 
   if (selectableSuggestions.some(suggestion => (
     suggestion?.sourceId !== 'suggested_from_observed_profile' ||
+    suggestion?.sourceLabel !== 'Suggested from this library' ||
+    suggestion?.selectionStateId !== 'selectable_suggestion' ||
+    suggestion?.selectable !== true ||
+    suggestion?.readOnlyEvidence !== false ||
+    suggestion?.commandId !== 'add_signal_value' ||
     suggestion?.requiresExplicitAcceptance !== true ||
     suggestion?.canAutoDeclare !== false ||
     !suggestion?.candidateId ||
     !suggestion?.signalType ||
     !suggestion?.operator ||
-    !suggestion?.explanation
+    !suggestion?.explanation ||
+    !Number.isFinite(Number(suggestion?.evidence?.count))
   ))) {
     issues.push({
       riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.OBSERVED_VALUE_AUTO_DECLARED,

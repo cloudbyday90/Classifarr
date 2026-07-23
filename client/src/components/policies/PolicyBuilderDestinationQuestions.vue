@@ -55,10 +55,11 @@
           @reload-workflow="emit('reload-workflow')"
         />
 
-        <PolicyObservedSuggestionSelector
+        <IntentSignalPicker
           v-if="showsObservedEvidenceActions(section) && nativeEvidenceRecovery.canSelectObservedCandidates"
-          :accepted-candidates="acceptedCandidates"
-          :candidates="selectableSuggestions"
+          :accepted-signals="acceptedSignals"
+          :observed-evidence="observedEvidence"
+          :options="intentSignalOptions"
           :library-name="libraryName"
           @draft-command-plan="emit('draft-command-plan', $event)"
         />
@@ -89,7 +90,7 @@
 <script setup>
 import PolicyDestinationEmptyStateNotice from './PolicyDestinationEmptyStateNotice.vue'
 import PolicyNativeEvidenceRecovery from './PolicyNativeEvidenceRecovery.vue'
-import PolicyObservedSuggestionSelector from './PolicyObservedSuggestionSelector.vue'
+import IntentSignalPicker from './IntentSignalPicker.vue'
 
 const props = defineProps({
   sections: {
@@ -108,11 +109,15 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  acceptedCandidates: {
+  acceptedSignals: {
     type: Array,
     default: () => [],
   },
-  selectableSuggestions: {
+  observedEvidence: {
+    type: Array,
+    default: () => [],
+  },
+  intentSignalOptions: {
     type: Array,
     default: () => [],
   },

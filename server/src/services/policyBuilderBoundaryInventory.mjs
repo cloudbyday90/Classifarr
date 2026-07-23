@@ -78,7 +78,7 @@ function basename(filePath) {
   return filePath.split('/').pop() || filePath;
 }
 
-const POLICY_BUILDER_MODULE_MATCHER = /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|PolicyCombined|DestinationContext|ObservedProfile|ReadinessNextAction|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
+const POLICY_BUILDER_MODULE_MATCHER = /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|PolicyCombined|DestinationContext|ObservedProfile|ReadinessNextAction|IntentSignal|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
 
 const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
@@ -194,6 +194,20 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ]),
   },
   {
+    id: 'policy_intent_signal_draft_state',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DRAFT_STATE,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_DRAFT_PROJECTION,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.EXTRACT_DRAFT_BOUNDARY,
+    clientEngineAuthorityAllowed: false,
+    engineCutlineDecisionRequired: false,
+    riskIds: [],
+    notes: 'Intent-signal draft state applies explicitly accepted server-authored commands to transient client state. It cannot infer evidence, persist policy intent, or route media.',
+    matches: (filePath) => hasAnySegment(filePath, [
+      '/policyIntentSignalDraft.js',
+      '/usePolicyIntentSignalDraft.js',
+    ]),
+  },
+  {
     id: 'policy_legacy_bridge_modules',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.LEGACY_COMPATIBILITY_BRIDGE,
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_COMPATIBILITY_BRIDGE,
@@ -282,6 +296,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     matches: (filePath) => filePath.includes('/components/policies/') &&
       hasAnySegment(filePath, [
         '/DestinationContextCard.vue',
+        '/IntentSignalPicker.vue',
         '/ObservedProfileSummary.vue',
         '/PolicyBuilderLibraryContext.vue',
         '/PolicyBuilderFooterActions.vue',

@@ -2329,10 +2329,25 @@ Implementation status:
 - The workflow and boundary inventories classify the new components and their
   tests with no unclassified policy-authoring paths.
 
-Next implementation task: introduce `IntentSignalPicker` for the `What belongs
-here?` destination question. It must consume the normalized option-selection
-contract, distinguish observed evidence from common options, and emit only typed
-draft commands.
+Implementation record:
+
+- `IntentSignalPicker` is now the native-creation control for `What belongs
+  here?`. It consumes server-normalized library evidence and selectable
+  suggestions, separates read-only observations from proposed destination
+  signals, supports explicit multi-select, and emits typed local-draft commands
+  only. See [Policy Authoring Intent Signal
+  Picker](policy-authoring-intent-signal-picker.md).
+- The prior observed-suggestion selector and draft wrapper were removed rather
+  than retained as parallel UI controls. The product path now uses
+  `IntentSignalPicker`, `usePolicyIntentSignalDraft`, and
+  `policyIntentSignalDraft` naming.
+
+Next implementation task: **3R.4 Task 3R.4.2, Server-Owned Intent-Signal Option
+Projection**. Compose observed evidence, profile suggestions, starter-template
+suggestions, common values, custom values, and disabled states behind one
+server-owned normalized projection. Keep source labels, disabled reasons,
+evidence guards, and broad-genre admission on the server; the picker remains a
+presentation and typed-draft-command boundary.
 
 ### 3R.4 Evidence-Backed Option Selection
 

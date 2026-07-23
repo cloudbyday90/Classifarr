@@ -42,10 +42,10 @@
           :error="operatorWorkflowError"
           :refresh-result="libraryProfileRefreshResult"
           :refreshing="libraryProfileRefreshing"
-          :accepted-candidates="acceptedObservedCandidates"
+          :accepted-signals="acceptedIntentSignals"
           :selection-enabled="experienceMode.isNativeCreate"
           :empty-state-action-busy="librarySyncing || libraryProfileRefreshing"
-          @draft-command-plan="applyObservedSuggestionCommandPlan"
+          @draft-command-plan="applyIntentSignalCommandPlan"
           @refresh-profile="refreshActiveLibraryProfile"
           @reload-workflow="reloadActiveLibraryWorkflow"
           @empty-state-action="handleEmptyStateAction"
@@ -146,7 +146,7 @@ import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderRef
 import { usePolicyBuilderLibrarySync } from '@/composables/usePolicyBuilderLibrarySync'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 import { usePolicyOperatorWorkflow } from '@/composables/usePolicyOperatorWorkflow'
-import { usePolicyObservedSuggestionDraft } from '@/composables/usePolicyObservedSuggestionDraft'
+import { usePolicyIntentSignalDraft } from '@/composables/usePolicyIntentSignalDraft'
 import { usePolicyNativeCreateHandoff } from '@/composables/usePolicyNativeCreateHandoff'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRoutingReadiness'
@@ -281,10 +281,10 @@ const {
 } = usePolicyOperatorWorkflow()
 
 const {
-  acceptedCandidates: acceptedObservedCandidates,
+  acceptedSignals: acceptedIntentSignals,
   nativeIntentEstablishment,
-  applyCommandPlan: applyObservedSuggestionCommandPlan,
-} = usePolicyObservedSuggestionDraft({
+  applyCommandPlan: applyIntentSignalCommandPlan,
+} = usePolicyIntentSignalDraft({
   libraryId: computed(() => form.value.library_id),
 })
 

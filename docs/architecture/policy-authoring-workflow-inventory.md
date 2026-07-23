@@ -97,6 +97,14 @@ Cons:
   `client/src/components/policies/PolicyDestinationEmptyStateNotice.vue`
   - render the ordered questions and server-owned empty-state actions without
     classifying evidence, persisting intent, or routing media.
+- `client/src/components/policies/IntentSignalPicker.vue`,
+  `client/src/composables/usePolicyIntentSignalDraft.js`, and
+  `client/src/utils/policyIntentSignalDraft.js`
+  - separate read-only observed evidence from explicit operator acceptance,
+  - apply only typed server-authored intent-signal commands to transient draft
+    state,
+  - remain in the normal declared-intent path without legacy-payload or
+    automation authority.
 - `client/src/composables/usePolicyOperatorWorkflow.js`
   - validates the versioned display-only read contract and discards stale
     library responses before they reach the workflow shell.
@@ -106,20 +114,20 @@ Cons:
 
 ## Current Inventory Summary
 
-The live client tree currently classifies 114 policy-builder paths:
+The live client tree currently classifies 119 policy-builder paths:
 
 | Decision | Count | Meaning |
 | --- | ---: | --- |
-| Keep | 33 | Useful as-is for destination-first authoring or implementation support. |
-| Rewrite | 71 | Concept survives, but current shape is tied to old modal, templates, tests, or migration support. |
+| Keep | 36 | Useful as-is for destination-first authoring or implementation support. |
+| Rewrite | 73 | Concept survives, but current shape is tied to old modal, templates, tests, or migration support. |
 | Replace | 10 | Product need remains, but current UI or mechanic is the wrong model. |
 
 Role split:
 
 | Role | Count |
 | --- | ---: |
-| Normal authoring path | 42 paths |
-| Migration/support-only path | 72 paths |
+| Normal authoring path | 45 paths |
+| Migration/support-only path | 74 paths |
 
 Normal authoring can include:
 
@@ -137,7 +145,7 @@ Normal authoring must exclude:
 - replay and impact preview panels,
 - provider readiness and TMDB coverage diagnostics,
 - migration notices,
-- draft bridge internals,
+- legacy draft bridge internals,
 - presentation tests.
 
 ## Outcome
@@ -154,7 +162,8 @@ The durable workflow inventory cutover:
 
 ## Next Step
 
-Continue cutting over the remaining policy-authoring workflow components that
-still use phase-coded production names. The next specific component should be
-the destination-first flow contract because it directly consumes the workflow
-inventory role vocabulary.
+Implement the server-owned intent-signal option projection. It must compose
+observed evidence, profile suggestions, starter-template suggestions, common
+values, and custom values into one normalized contract with source labels,
+disabled reasons, evidence, and a broad-genre guard. The picker must remain a
+presentation and typed-command boundary.

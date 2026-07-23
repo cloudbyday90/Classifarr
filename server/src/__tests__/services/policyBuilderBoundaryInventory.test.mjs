@@ -80,6 +80,21 @@ describe('policyBuilderBoundaryInventory', () => {
       }));
   });
 
+  test('classifies accepted intent-signal state as a native draft projection', () => {
+    [
+      'client/src/utils/policyIntentSignalDraft.js',
+      'client/src/composables/usePolicyIntentSignalDraft.js',
+    ].forEach((filePath) => {
+      expect(classifyPolicyBuilderClientPath(filePath)).toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DRAFT_STATE,
+        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_DRAFT_PROJECTION,
+        actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.EXTRACT_DRAFT_BOUNDARY,
+        clientEngineAuthorityAllowed: false,
+        engineCutlineDecisionRequired: false,
+      }));
+    });
+  });
+
   test('classifies reference adapters as option and observed-evidence adapters', () => {
     const record = classifyPolicyBuilderClientPath('client/src/composables/usePolicyBuilderReferenceData.js');
 

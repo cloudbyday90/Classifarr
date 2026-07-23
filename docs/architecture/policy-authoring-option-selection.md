@@ -118,4 +118,7 @@ audit record, and standing architecture document.
 
 ## Next Step
 
-Cut over hard-limit and avoid UX to durable policy-authoring constraint names.
+Build the server-owned intent-signal option projection that can compose observed
+evidence, profile suggestions, starter-template suggestions, common values,
+custom values, and disabled states through this contract without letting the
+client infer source behavior.

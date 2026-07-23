@@ -55,8 +55,9 @@
         :selection-enabled="selectionEnabled"
         :native-evidence-recovery="nativeEvidenceRecovery"
         :refreshing="refreshing"
-        :accepted-candidates="acceptedCandidates"
-        :selectable-suggestions="selectableSuggestions"
+        :accepted-signals="acceptedSignals"
+        :observed-evidence="observedEvidence"
+        :intent-signal-options="intentSignalOptions"
         :library-name="libraryName"
         :empty-states="emptyStates"
         :empty-state-action-busy="emptyStateActionBusy"
@@ -104,7 +105,7 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  acceptedCandidates: {
+  acceptedSignals: {
     type: Array,
     default: () => [],
   },
@@ -130,7 +131,10 @@ const observedProfile = computed(() => props.workflowRead?.observedProfile || {}
 const observedSuggestions = computed(() => Array.isArray(observedProfile.value.suggestions)
   ? observedProfile.value.suggestions
   : [])
-const selectableSuggestions = computed(() => Array.isArray(observedProfile.value.selectableSuggestions)
+const observedEvidence = computed(() => Array.isArray(observedProfile.value.suggestions)
+  ? observedProfile.value.suggestions
+  : [])
+const intentSignalOptions = computed(() => Array.isArray(observedProfile.value.selectableSuggestions)
   ? observedProfile.value.selectableSuggestions
   : [])
 const sections = computed(() => Array.isArray(workflow.value?.sections)

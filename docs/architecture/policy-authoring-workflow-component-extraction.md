@@ -115,7 +115,7 @@ conditional readiness status, and ownership boundaries.
 
 ## Next Step
 
-Implement `IntentSignalPicker` for the `What belongs here?` destination
-question. It should consume the existing normalized option-selection contract,
-separate observed evidence from common options, and emit only typed draft
-commands.
+Extend the server-owned option projection behind `IntentSignalPicker` to supply
+the supported source groups through the normalized option-selection contract.
+The picker already separates read-only observed evidence, selectable options,
+and disabled options while emitting typed draft commands only.

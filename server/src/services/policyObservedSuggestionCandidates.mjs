@@ -66,15 +66,34 @@ function toObservedSuggestion(candidate = {}) {
   const label = normalizeString(source.label);
   if (!key || !label) return null;
 
-  return {
+  const observedSuggestion = {
     key,
     label,
     kind: getSuggestionKind(key),
     count: normalizeCount(source.count),
     confidence: normalizeConfidence(source.confidence),
     sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.OBSERVED_IN_LIBRARY,
+    questionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
+    value: label,
+    explanation: buildObservedSuggestionExplanation({
+      label,
+      count: normalizeCount(source.count),
+    }),
+    evidenceCount: normalizeCount(source.count) ?? 0,
     requiresExplicitAcceptance: true,
   };
+
+  const validation = validatePolicyAuthoringOptionCandidate(observedSuggestion);
+  return validation.valid
+    ? {
+        ...observedSuggestion,
+        ...validation.normalizedCandidate,
+        key,
+        kind: observedSuggestion.kind,
+        count: observedSuggestion.count,
+        confidence: observedSuggestion.confidence,
+      }
+    : null;
 }
 
 function buildObservedSuggestionExplanation({ label, count }) {
@@ -111,8 +130,12 @@ function toSelectableObservedSuggestion(suggestion = {}) {
   const validation = validatePolicyAuthoringOptionCandidate(candidate);
   return validation.valid && validation.normalizedCandidate.selectable
     ? {
-        ...candidate,
-        evidence: validation.normalizedCandidate.evidence,
+        ...validation.normalizedCandidate,
+        candidateId: candidate.candidateId,
+        signalType: candidate.signalType,
+        operator: candidate.operator,
+        evidenceCount: candidate.evidenceCount,
+        confidence: candidate.confidence,
       }
     : null;
 }

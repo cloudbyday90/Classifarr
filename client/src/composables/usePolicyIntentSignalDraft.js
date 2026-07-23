@@ -8,15 +8,15 @@
 
 import { computed, ref, unref, watch } from 'vue'
 import {
-  applyObservedSuggestionCommandPlan,
-  buildDeclaredIntentFromObservedSuggestions,
-} from '@/utils/policyObservedSuggestionDraft'
+  applyIntentSignalCommandPlan,
+  buildDeclaredIntentFromIntentSignals,
+} from '@/utils/policyIntentSignalDraft'
 
-export function usePolicyObservedSuggestionDraft({ libraryId } = {}) {
-  const acceptedCandidates = ref([])
+export function usePolicyIntentSignalDraft({ libraryId } = {}) {
+  const acceptedSignals = ref([])
 
   const declaredIntent = computed(() => (
-    buildDeclaredIntentFromObservedSuggestions(acceptedCandidates.value)
+    buildDeclaredIntentFromIntentSignals(acceptedSignals.value)
   ))
 
   const nativeIntentEstablishment = computed(() => {
@@ -28,17 +28,17 @@ export function usePolicyObservedSuggestionDraft({ libraryId } = {}) {
   })
 
   const applyCommandPlan = (commandPlan) => {
-    const nextCandidates = applyObservedSuggestionCommandPlan(
-      acceptedCandidates.value,
+    const nextSignals = applyIntentSignalCommandPlan(
+      acceptedSignals.value,
       commandPlan
     )
-    const changed = JSON.stringify(nextCandidates) !== JSON.stringify(acceptedCandidates.value)
-    acceptedCandidates.value = nextCandidates
+    const changed = JSON.stringify(nextSignals) !== JSON.stringify(acceptedSignals.value)
+    acceptedSignals.value = nextSignals
     return changed
   }
 
   const reset = () => {
-    acceptedCandidates.value = []
+    acceptedSignals.value = []
   }
 
   if (libraryId) {
@@ -46,7 +46,7 @@ export function usePolicyObservedSuggestionDraft({ libraryId } = {}) {
   }
 
   return {
-    acceptedCandidates,
+    acceptedSignals,
     declaredIntent,
     nativeIntentEstablishment,
     applyCommandPlan,

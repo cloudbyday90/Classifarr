@@ -206,8 +206,13 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
       operator: 'require_any',
       questionId: 'what_belongs_here',
       sourceId: 'suggested_from_observed_profile',
+      sourceLabel: 'Suggested from this library',
+      selectionStateId: 'selectable_suggestion',
+      selectable: true,
+      readOnlyEvidence: false,
+      commandId: 'add_signal_value',
       explanation: 'Animation appears in 48 items in the current library.',
-      evidenceCount: 48,
+      evidence: { count: 48, confidence: 0.84 },
       requiresExplicitAcceptance: true,
       canAutoDeclare: false,
     }]
@@ -221,7 +226,7 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
 
     expect(wrapper.text()).toContain('Define this destination')
     expect(wrapper.text()).toContain('What should define this destination?')
-    expect(wrapper.text()).toContain('Select all that apply')
+    expect(wrapper.text()).toContain('Add declared destination signals')
     expect(wrapper.findAll('article')).toHaveLength(5)
     expect(wrapper.find('[aria-label="Destination policy questions"]').exists()).toBe(true)
     const belongsHereArticle = wrapper.find('#policy-builder-workflow-what_belongs_here-title').element.closest('article')

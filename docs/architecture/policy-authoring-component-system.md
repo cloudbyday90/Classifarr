@@ -119,7 +119,7 @@ audit record, and standing architecture document.
 
 ## Next Step
 
-Introduce `IntentSignalPicker` for `What belongs here?`. It should consume the
-normalized option-selection contract, group observed evidence separately from
-common choices, and emit typed draft commands without mutating a compatibility
-bridge payload.
+Build the server-owned option projection behind `IntentSignalPicker` so all
+supported sources can use the existing normalized contract. Keep source
+composition, disabled-state reasons, and broad-genre evidence guards on the
+server; the picker must continue to render and emit typed draft commands only.

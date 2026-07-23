@@ -21,7 +21,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import PolicyBuilderModal from '../components/policies/PolicyBuilderModal.vue';
 import api from '../api';
 import { getDataRequest } from '../api/core';
-import { buildObservedSuggestionCommandPlan } from '@/utils/policyObservedSuggestionDraft';
+import { buildIntentSignalCommandPlan } from '@/utils/policyIntentSignalDraft';
 
 const mockToast = vi.hoisted(() => ({
   success: vi.fn(),
@@ -284,8 +284,13 @@ describe('PolicyBuilderModal.vue', () => {
       operator: 'require_any',
       questionId: 'what_belongs_here',
       sourceId: 'suggested_from_observed_profile',
+      sourceLabel: 'Suggested from this library',
+      selectionStateId: 'selectable_suggestion',
+      selectable: true,
+      readOnlyEvidence: false,
+      commandId: 'add_signal_value',
       explanation: 'Science Fiction appears in 18 items in the current library.',
-      evidenceCount: 18,
+      evidence: { count: 18, confidence: 0.8 },
       requiresExplicitAcceptance: true,
       canAutoDeclare: false,
     }];
@@ -317,7 +322,7 @@ describe('PolicyBuilderModal.vue', () => {
     expect(api.get).not.toHaveBeenCalledWith('/settings');
     expect(api.get).not.toHaveBeenCalledWith('/policies/presets/suggest/1');
 
-    wrapper.vm.applyObservedSuggestionCommandPlan(buildObservedSuggestionCommandPlan({
+    wrapper.vm.applyIntentSignalCommandPlan(buildIntentSignalCommandPlan({
       commandId: 'add_signal_value',
       candidates: workflowRead.observedProfile.selectableSuggestions,
     }));
@@ -352,8 +357,13 @@ describe('PolicyBuilderModal.vue', () => {
       operator: 'require_any',
       questionId: 'what_belongs_here',
       sourceId: 'suggested_from_observed_profile',
+      sourceLabel: 'Suggested from this library',
+      selectionStateId: 'selectable_suggestion',
+      selectable: true,
+      readOnlyEvidence: false,
+      commandId: 'add_signal_value',
       explanation: 'Science Fiction appears in 18 items in the current library.',
-      evidenceCount: 18,
+      evidence: { count: 18, confidence: 0.8 },
       requiresExplicitAcceptance: true,
       canAutoDeclare: false,
     }];
@@ -403,7 +413,7 @@ describe('PolicyBuilderModal.vue', () => {
     });
 
     await flushPromises();
-    wrapper.vm.applyObservedSuggestionCommandPlan(buildObservedSuggestionCommandPlan({
+    wrapper.vm.applyIntentSignalCommandPlan(buildIntentSignalCommandPlan({
       commandId: 'add_signal_value',
       candidates: workflowRead.observedProfile.selectableSuggestions,
     }));
@@ -455,8 +465,13 @@ describe('PolicyBuilderModal.vue', () => {
           operator: 'require_any',
           questionId: 'what_belongs_here',
           sourceId: 'suggested_from_observed_profile',
+          sourceLabel: 'Suggested from this library',
+          selectionStateId: 'selectable_suggestion',
+          selectable: true,
+          readOnlyEvidence: false,
+          commandId: 'add_signal_value',
           explanation: 'Science Fiction appears in 18 items in the current library.',
-          evidenceCount: 18,
+          evidence: { count: 18, confidence: 0.8 },
           requiresExplicitAcceptance: true,
           canAutoDeclare: false,
         }],

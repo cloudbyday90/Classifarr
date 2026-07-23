@@ -18,12 +18,15 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
-- **Observed Library Values Create Native Intent** - new policies can now use
-  explicitly accepted genre, studio, and keyword observations from their
-  connected library as native purpose rules. Suggestions remain unchecked until
-  accepted, and policy creation establishes native authority, audit history,
-  routing state, and a rollback snapshot atomically without provider calls,
-  quota consumption, learning, or media routing.
+- **Evidence-Backed Destination Signals** - new policies now distinguish
+  read-only values already observed in the connected library from the proposed
+  signals that can define future matches. Operators can select several supported
+  genre, studio, or keyword suggestions at once; every option carries a
+  server-owned source, state, explanation, and bounded evidence record, and no
+  observation becomes intent until explicitly accepted. Policy creation still
+  establishes native authority, audit history, routing state, and a rollback
+  snapshot atomically without provider calls, quota consumption, learning, or
+  media routing.
 
 - **Native-First Policy Creation** - creating a new policy now focuses on the
   connected library and explicitly accepted observed destination values. Legacy

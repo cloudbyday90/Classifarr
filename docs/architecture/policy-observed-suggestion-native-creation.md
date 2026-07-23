@@ -50,15 +50,15 @@ Ratings remain visible observations but cannot become a purpose rule through
 this control. This prevents an incidental content rating from defining the
 destination.
 
-### Accessible Operator Boundary
+### Accessible Intent-Signal Boundary
 
-`PolicyObservedSuggestionSelector.vue` renders the bounded candidates as
-unchecked native checkboxes inside one labelled fieldset. It provides a short
-evidence count and explanation for each candidate, emits an explicit typed
-`add_signal_value` plan after the operator chooses "Use selected values", and
-emits a typed `remove_signal_value` plan for accepted values.
+`IntentSignalPicker.vue` renders normalized library evidence and source-labelled
+intent-signal options as separate structures. Read-only evidence stays in its
+own labelled region. Eligible suggestions use unchecked native checkboxes inside
+one labelled fieldset, show their source, evidence count, and explanation, and
+emit explicit typed `add_signal_value` or `remove_signal_value` plans.
 
-`policyObservedSuggestionDraft.js` validates every command candidate again,
+`policyIntentSignalDraft.js` validates every command candidate again,
 deduplicates it, and produces native `purpose` rules grouped by signal type.
 No observation is preselected, persisted, learned, routed, or sent to a
 provider as part of this interaction.
@@ -127,7 +127,7 @@ Cons:
 - `server/src/__tests__/services/policyNativeIntentCreateContract.test.mjs`
 - `server/src/__tests__/services/policyInitialIntentEstablishmentService.test.mjs`
 - `server/src/__tests__/policies-routes.coverage.test.mjs`
-- `client/src/__tests__/utils/policyObservedSuggestionDraft.test.js`
-- `client/src/__tests__/PolicyObservedSuggestionSelector.test.js`
+- `client/src/__tests__/utils/policyIntentSignalDraft.test.js`
+- `client/src/__tests__/IntentSignalPicker.test.js`
 - `client/src/__tests__/PolicyBuilderWorkflowShell.test.js`
 - `client/src/__tests__/PolicyBuilderModal.test.js`
