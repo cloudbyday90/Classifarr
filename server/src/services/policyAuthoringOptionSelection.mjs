@@ -56,6 +56,11 @@ const BROAD_IDENTITY_GENRES = new Set([
   'thriller',
 ]);
 
+const BROAD_IDENTITY_GENRE_ALIASES = new Map([
+  ['sci-fi', 'science fiction'],
+  ['science-fiction', 'science fiction'],
+]);
+
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
     return value;
@@ -195,7 +200,8 @@ function getPolicyAuthoringOptionSelectionSourceBehavior(sourceId) {
 }
 
 function isBroadIdentityGenre(value) {
-  return BROAD_IDENTITY_GENRES.has(toCleanString(value).toLowerCase());
+  const normalizedValue = toCleanString(value).toLowerCase();
+  return BROAD_IDENTITY_GENRES.has(BROAD_IDENTITY_GENRE_ALIASES.get(normalizedValue) || normalizedValue);
 }
 
 function normalizePolicyAuthoringOptionCandidate(candidate = {}) {
@@ -314,6 +320,7 @@ function validatePolicyAuthoringOptionCandidate(candidate = {}) {
     [
       POLICY_AUTHORING_OPTION_SOURCE_IDS.COMMON_STATIC_OPTION,
       POLICY_AUTHORING_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM,
+      POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_STARTER_TEMPLATE,
     ].includes(normalizedCandidate.sourceId)
   ) {
     return {

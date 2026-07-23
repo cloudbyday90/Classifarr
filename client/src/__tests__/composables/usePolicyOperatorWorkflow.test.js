@@ -12,7 +12,7 @@ import { usePolicyOperatorWorkflow } from '@/composables/usePolicyOperatorWorkfl
 
 function buildWorkflowRead(libraryId = 7) {
   return {
-    version: 'policy.operator_workflow_read.v1',
+    version: 'policy.operator_workflow_read.v2',
     library: {
       id: libraryId,
       name: 'Movies',

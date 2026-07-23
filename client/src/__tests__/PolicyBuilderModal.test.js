@@ -93,7 +93,7 @@ describe('PolicyBuilderModal.vue', () => {
   ];
 
   const buildOperatorWorkflowRead = () => ({
-    version: 'policy.operator_workflow_read.v1',
+    version: 'policy.operator_workflow_read.v2',
     library: {
       id: 1,
       name: 'Sci-Fi Movies',
@@ -106,6 +106,10 @@ describe('PolicyBuilderModal.vue', () => {
         { key: 'genre:Science Fiction', label: 'Science Fiction', count: 18 },
         { key: 'genre:Adventure', label: 'Adventure', count: 12 },
       ],
+      intentSignalProjection: {
+        observedEvidence: [],
+        options: [],
+      },
     },
     workflow: {
       title: 'Destination setup',
@@ -276,7 +280,7 @@ describe('PolicyBuilderModal.vue', () => {
 
   it('creates a native intent establishment payload only after observed values are explicitly accepted', async () => {
     const workflowRead = buildOperatorWorkflowRead();
-    workflowRead.observedProfile.selectableSuggestions = [{
+    workflowRead.observedProfile.intentSignalProjection = { options: [{
       candidateId: 'genre:Science Fiction:purpose',
       value: 'Science Fiction',
       label: 'Science Fiction',
@@ -293,7 +297,7 @@ describe('PolicyBuilderModal.vue', () => {
       evidence: { count: 18, confidence: 0.8 },
       requiresExplicitAcceptance: true,
       canAutoDeclare: false,
-    }];
+    }] };
 
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
@@ -324,7 +328,7 @@ describe('PolicyBuilderModal.vue', () => {
 
     wrapper.vm.applyIntentSignalCommandPlan(buildIntentSignalCommandPlan({
       commandId: 'add_signal_value',
-      candidates: workflowRead.observedProfile.selectableSuggestions,
+      candidates: workflowRead.observedProfile.intentSignalProjection.options,
     }));
     await flushPromises();
     await wrapper.vm.save();
@@ -349,7 +353,7 @@ describe('PolicyBuilderModal.vue', () => {
 
   it('keeps native creation open for a persisted server-owned policy handoff', async () => {
     const workflowRead = buildOperatorWorkflowRead();
-    workflowRead.observedProfile.selectableSuggestions = [{
+    workflowRead.observedProfile.intentSignalProjection = { options: [{
       candidateId: 'genre:Science Fiction:purpose',
       value: 'Science Fiction',
       label: 'Science Fiction',
@@ -366,7 +370,7 @@ describe('PolicyBuilderModal.vue', () => {
       evidence: { count: 18, confidence: 0.8 },
       requiresExplicitAcceptance: true,
       canAutoDeclare: false,
-    }];
+    }] };
     const submitPolicy = vi.fn().mockResolvedValue({
       data: {
         id: 91,
@@ -415,7 +419,7 @@ describe('PolicyBuilderModal.vue', () => {
     await flushPromises();
     wrapper.vm.applyIntentSignalCommandPlan(buildIntentSignalCommandPlan({
       commandId: 'add_signal_value',
-      candidates: workflowRead.observedProfile.selectableSuggestions,
+      candidates: workflowRead.observedProfile.intentSignalProjection.options,
     }));
     await wrapper.vm.save();
     await flushPromises();
@@ -442,7 +446,7 @@ describe('PolicyBuilderModal.vue', () => {
       current: false,
       suggestionCount: 0,
       suggestions: [],
-      selectableSuggestions: [],
+      intentSignalProjection: { options: [] },
     };
 
     api.get.mockImplementation((url) => {
@@ -457,7 +461,7 @@ describe('PolicyBuilderModal.vue', () => {
         current: true,
         suggestionCount: 1,
         suggestions: [{ key: 'genre:Science Fiction', label: 'Science Fiction', count: 18 }],
-        selectableSuggestions: [{
+        intentSignalProjection: { options: [{
           candidateId: 'genre:Science Fiction:purpose',
           value: 'Science Fiction',
           label: 'Science Fiction',
@@ -474,7 +478,7 @@ describe('PolicyBuilderModal.vue', () => {
           evidence: { count: 18, confidence: 0.8 },
           requiresExplicitAcceptance: true,
           canAutoDeclare: false,
-        }],
+        }] },
       };
       return {
         data: {

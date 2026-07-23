@@ -6,8 +6,9 @@ import {
   registerPolicyOperatorWorkflowReadRoutes,
 } from '../routes/policiesRouteOperatorWorkflowRead.mjs';
 
-function createApp({ rows = [], mappingRows = [], workflowResult = {} } = {}) {
+function createApp({ rows = [], mappingRows = [], workflowResult = {}, presets = [] } = {}) {
   const getWorkflow = jest.fn().mockResolvedValue(workflowResult);
+  const listPresets = jest.fn().mockResolvedValue(presets);
   const db = {
     query: jest.fn()
       .mockResolvedValueOnce({ rows })
@@ -18,12 +19,13 @@ function createApp({ rows = [], mappingRows = [], workflowResult = {} } = {}) {
 
   registerPolicyOperatorWorkflowReadRoutes(router, {
     db,
+    listPresets,
     operatorWorkflowReadService: { getWorkflow },
   });
   app.use('/api/policies', router);
   app.use(errorHandler);
 
-  return { app, db, getWorkflow };
+  return { app, db, getWorkflow, listPresets };
 }
 
 describe('policy operator workflow read routes', () => {
@@ -52,7 +54,38 @@ describe('policy operator workflow read routes', () => {
         routeReady: true,
         targetName: 'radarr library mapping',
       },
+      intentSignalSources: { starterTemplateSuggestions: [] },
     });
+  });
+
+  test('projects matching starter-template values as bounded workflow input without attaching a template', async () => {
+    const { app, getWorkflow, listPresets } = createApp({
+      rows: [{ id: 6, name: 'Holiday Movies', media_type: 'movie' }],
+      presets: [{
+        id: 44,
+        key: 'holiday',
+        name: 'Holiday',
+        signals: { keywords: { require_any: ['Christmas'] } },
+      }],
+    });
+
+    await request(app)
+      .get('/api/policies/operator-workflow/libraries/6')
+      .expect(200);
+
+    expect(listPresets).toHaveBeenCalledWith({ includeCustom: true, orderBy: 'policy' });
+    expect(getWorkflow).toHaveBeenCalledWith(expect.objectContaining({
+      intentSignalSources: {
+        starterTemplateSuggestions: [{
+          templateId: '44',
+          templateName: 'Holiday',
+          signalType: 'keywords',
+          value: 'Christmas',
+          label: 'Christmas',
+          explanation: 'Suggested by the optional Holiday starter template.',
+        }],
+      },
+    }));
   });
 
   test('keeps unmapped libraries read-only and reports invalid or missing libraries safely', async () => {
@@ -71,6 +104,7 @@ describe('policy operator workflow read routes', () => {
         routeReady: false,
         targetName: null,
       },
+      intentSignalSources: { starterTemplateSuggestions: [] },
     }));
 
     const invalid = createApp();

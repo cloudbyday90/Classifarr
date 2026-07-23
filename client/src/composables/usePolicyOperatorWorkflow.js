@@ -24,7 +24,7 @@ function isDisplayOnlyWorkflowRead(value, expectedLibraryId) {
   return Boolean(
     value &&
     typeof value === 'object' &&
-    value.version === 'policy.operator_workflow_read.v1' &&
+    value.version === 'policy.operator_workflow_read.v2' &&
     responseLibraryId === expectedLibraryId &&
     Array.isArray(value.workflow?.sections) &&
     value.authority?.displayProjection === true &&

@@ -29,14 +29,12 @@ export function createPoliciesRouter({
   const sharedDeps = {
     db,
     logger,
+    listPresets,
     normalizeSignalConfig,
     describePresetRuntimeSemantics,
   };
 
-  registerPresetRoutes(router, {
-    ...sharedDeps,
-    listPresets,
-  });
+  registerPresetRoutes(router, sharedDeps);
 
   registerPolicyCrudRoutes(router, {
     ...sharedDeps,

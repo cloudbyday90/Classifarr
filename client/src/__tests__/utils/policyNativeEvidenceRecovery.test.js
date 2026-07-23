@@ -18,7 +18,9 @@ function buildWorkflowRead(overrides = {}) {
     observedProfile: {
       available: true,
       current: true,
-      selectableSuggestions: [{ candidateId: 'genre:Animation:purpose' }],
+      intentSignalProjection: {
+        options: [{ candidateId: 'genre:Animation:purpose', selectable: true }],
+      },
       ...overrides,
     },
   }
@@ -49,7 +51,7 @@ describe('policyNativeEvidenceRecovery', () => {
   it.each([
     ['missing', { available: false, current: false }, POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.PROFILE_UNAVAILABLE],
     ['stale', { available: true, current: false }, POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.PROFILE_NEEDS_REFRESH],
-    ['empty', { available: true, current: true, selectableSuggestions: [] }, POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.NO_USABLE_CANDIDATES],
+    ['empty', { available: true, current: true, intentSignalProjection: { options: [] } }, POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.NO_USABLE_CANDIDATES],
   ])('requires a profile refresh for %s evidence', (_name, observedProfile, statusId) => {
     expect(buildPolicyNativeEvidenceRecovery({
       selectionEnabled: true,

@@ -161,10 +161,10 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
       current: false,
       suggestionCount: 2,
       suggestions: [],
-      selectableSuggestions: [{
+      intentSignalProjection: { options: [{
         candidateId: 'genre:Animation:purpose',
         value: 'Animation',
-      }],
+      }] },
     }
 
     const wrapper = mount(PolicyBuilderWorkflowShell, {
@@ -198,7 +198,9 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
 
   it('keeps native policy creation focused on accepted library evidence', () => {
     const workflowRead = buildWorkflowRead()
-    workflowRead.observedProfile.selectableSuggestions = [{
+    workflowRead.observedProfile.intentSignalProjection = {
+      observedEvidence: workflowRead.observedProfile.suggestions,
+      options: [{
       candidateId: 'genre:Animation:purpose',
       value: 'Animation',
       label: 'Animation',
@@ -215,7 +217,8 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
       evidence: { count: 48, confidence: 0.84 },
       requiresExplicitAcceptance: true,
       canAutoDeclare: false,
-    }]
+      }],
+    }
 
     const wrapper = mount(PolicyBuilderWorkflowShell, {
       props: {

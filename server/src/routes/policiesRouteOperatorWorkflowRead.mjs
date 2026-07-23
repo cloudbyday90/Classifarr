@@ -14,6 +14,10 @@ import { sendData } from '../utils/responseHelpers.mjs';
 import {
   policyOperatorWorkflowReadService,
 } from '../services/policyOperatorWorkflowReadService.mjs';
+import {
+  buildPolicyStarterTemplateIntentSignalSuggestions,
+  buildPolicyStarterTemplateSuggestions,
+} from '../services/policyStarterTemplateSuggestions.mjs';
 
 function normalizeLibraryId(value) {
   const libraryId = Number(value);
@@ -36,6 +40,8 @@ function toRouting(mapping = {}) {
 
 export function registerPolicyOperatorWorkflowReadRoutes(router, {
   db,
+  listPresets,
+  logger,
   operatorWorkflowReadService = policyOperatorWorkflowReadService,
 } = {}) {
   router.get('/operator-workflow/libraries/:libraryId', asyncHandler(async (req, res) => {
@@ -61,9 +67,25 @@ export function registerPolicyOperatorWorkflowReadRoutes(router, {
       LIMIT 1
     `, [libraryId]);
 
+    let starterTemplateSuggestions = [];
+    if (typeof listPresets === 'function') {
+      try {
+        const presets = await listPresets({ includeCustom: true, orderBy: 'policy' });
+        starterTemplateSuggestions = buildPolicyStarterTemplateIntentSignalSuggestions({
+          suggestions: buildPolicyStarterTemplateSuggestions({ library, presets }),
+        });
+      } catch (error) {
+        logger?.warn('Policy starter-template suggestions were unavailable for workflow read', {
+          libraryId,
+          error: error.message,
+        });
+      }
+    }
+
     const result = await operatorWorkflowReadService.getWorkflow({
       library,
       routing: toRouting(mappingResult.rows?.[0]),
+      intentSignalSources: { starterTemplateSuggestions },
     });
 
     return sendData(res, result);

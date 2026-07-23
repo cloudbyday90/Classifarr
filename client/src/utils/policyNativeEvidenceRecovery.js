@@ -118,7 +118,10 @@ export function buildPolicyNativeEvidenceRecovery({
     })
   }
 
-  if (asArray(observedProfile.selectableSuggestions).length === 0) {
+  const selectableOptions = asArray(observedProfile.intentSignalProjection?.options)
+    .filter(option => option?.selectable === true)
+
+  if (selectableOptions.length === 0) {
     return buildRecovery({
       statusId: POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.NO_USABLE_CANDIDATES,
       heading: 'No destination values are ready yet',

@@ -32,11 +32,14 @@ explicitly add a suggestion before it enters the local draft.
 
 ### Server-Owned Option Contract
 
-`policyObservedSuggestionCandidates.mjs` now preserves normalized option fields
-from `policyAuthoringOptionSelection.mjs` on both observations and selectable
-suggestions. The workflow read therefore carries source labels, selection state,
-selectability, read-only status, typed command ID, explanation, and bounded
-evidence data instead of requiring the client to infer those rules.
+`policyIntentSignalOptionProjection.mjs` composes normalized observed evidence,
+observed-profile candidates, optional matching starter-template candidates,
+future common/custom candidates, and disabled states through
+`policyAuthoringOptionSelection.mjs`. The workflow read therefore carries source
+labels, selection state, selectability, read-only status, typed command ID,
+explanation, and bounded evidence data instead of requiring the client to infer
+those rules. See [Policy Intent-Signal Option
+Projection](policy-intent-signal-option-projection.md).
 
 ### Source Separation
 
@@ -47,10 +50,11 @@ not yet emitted for native creation, so common options, template suggestions,
 custom values, already-declared values, and conflicts do not visually collapse
 into observed evidence.
 
-Only current-library suggestions that satisfy the normalized native draft
-contract can be selected in this first slice. Ratings and unsupported values
-remain evidence, not purpose rules. A disabled source remains visible only with
-a server-provided reason.
+Only server-projected candidates that satisfy the normalized native draft
+contract can be selected. Observed-profile candidates take precedence over a
+duplicate starter-template/common/custom candidate. Ratings and unsupported
+values remain evidence, not purpose rules. A disabled source remains visible
+only with a server-provided reason.
 
 ### Typed Local Draft Commands
 
@@ -73,8 +77,9 @@ Pros:
 Cons:
 
 - Each usable value carries more structured metadata than a generic dropdown.
-- The initial native-create slice intentionally exposes only server-projected
-  observed suggestions; common and custom option providers remain future work.
+- Common and custom sources remain empty until a server-owned registry or custom
+  input command supplies bounded candidates; the picker never creates a generic
+  source list itself.
 
 ### Client-Side Command Validation
 
@@ -105,6 +110,8 @@ Cons:
 ## Verification
 
 - `server/src/__tests__/services/policyObservedSuggestionCandidates.test.mjs`
+- `server/src/__tests__/services/policyIntentSignalOptionProjection.test.mjs`
+- `server/src/__tests__/services/policyStarterTemplateSuggestions.test.mjs`
 - `server/src/__tests__/services/policyOperatorWorkflowReadService.test.mjs`
 - `client/src/__tests__/IntentSignalPicker.test.js`
 - `client/src/__tests__/utils/policyIntentSignalDraft.test.js`
@@ -116,4 +123,5 @@ Cons:
 The normal new-policy path now has a dedicated intent-signal control that shows
 what is evidence, what is selectable, and what has become a local declared
 signal. The browser remains non-authoritative: it cannot auto-declare intent,
-write policy storage, route media, or reinterpret library evidence.
+write policy storage, route media, reinterpret library evidence, or infer
+option-source behavior.

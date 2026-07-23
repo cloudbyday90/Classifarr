@@ -14,13 +14,13 @@ import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
 import { requireValidId } from './routeHelpers.mjs';
 import {
-  tokenizeSuggestionText,
-  compactSuggestionText,
-  countTokenOverlap,
   annotatePresetAttachment,
   isLegacyIncompatibleAttachment,
   fetchPolicyPresetAttachments,
 } from './policiesRouteHelpers.mjs';
+import {
+  buildPolicyStarterTemplateSuggestions,
+} from '../services/policyStarterTemplateSuggestions.mjs';
 import {
   POLICY_LEGACY_WRITE_OPERATION_IDS,
 } from '../services/policyLegacyWriteBoundary.mjs';
@@ -89,96 +89,16 @@ export function registerPresetRoutes(router, { db, listPresets, normalizeSignalC
     }
 
     const library = libraryResult.rows[0];
-    const libraryName = library.name.toLowerCase();
-    const tokens = tokenizeSuggestionText(libraryName);
-    const compactLibraryName = compactSuggestionText(libraryName);
-
-    logger.debug('Library name tokens for matching', { libraryId, libraryName, tokens });
 
     const presetRows = await listPresets({
       includeCustom: true,
       orderBy: 'policy',
     });
 
-    const suggestions = presetRows.map((preset) => {
-      let score = 0;
-      const suggestionReasons = [];
-
-      const presetKey = preset.key.toLowerCase();
-      const presetName = preset.name.toLowerCase();
-      const presetDesc = (preset.description || '').toLowerCase();
-      const presetCategory = (preset.category || '').toLowerCase();
-      const presetKeyTokens = tokenizeSuggestionText(presetKey);
-      const presetNameTokens = tokenizeSuggestionText(presetName);
-      const presetDescTokens = tokenizeSuggestionText(presetDesc);
-      const presetCategoryTokens = tokenizeSuggestionText(presetCategory);
-      const compactPresetKey = compactSuggestionText(presetKey);
-      const compactPresetName = compactSuggestionText(presetName);
-
-      const keyMatchCount = countTokenOverlap(tokens, presetKeyTokens);
-      if (keyMatchCount > 0) {
-        score += Math.min(40, keyMatchCount * 40);
-        suggestionReasons.push('key_token_match');
-      }
-
-      const nameMatchCount = countTokenOverlap(tokens, presetNameTokens);
-      if (nameMatchCount > 0) {
-        score += Math.min(30, nameMatchCount * 15);
-        suggestionReasons.push('name_token_match');
-      }
-
-      if (
-        (compactPresetKey.length >= 4 && compactLibraryName.includes(compactPresetKey))
-        || (compactPresetName.length >= 4 && compactLibraryName.includes(compactPresetName))
-      ) {
-        score += 25;
-        suggestionReasons.push('phrase_match');
-      }
-
-      const signals = preset.signals || {};
-      const genreSignals = signals.genres || {};
-      const requireGenres = genreSignals.require_any || [];
-      const preferGenres = genreSignals.prefer || [];
-
-      const allGenres = [...requireGenres, ...preferGenres]
-        .flatMap((genre) => tokenizeSuggestionText(genre));
-      const genreMatchCount = countTokenOverlap(tokens, allGenres);
-      if (genreMatchCount > 0) {
-        score += Math.min(20, genreMatchCount * 10);
-        suggestionReasons.push('genre_token_match');
-      }
-
-      const descMatchCount = countTokenOverlap(tokens, presetDescTokens);
-      if (descMatchCount > 0) {
-        score += Math.min(10, descMatchCount * 5);
-        suggestionReasons.push('description_token_match');
-      }
-
-      const categoryMatchCount = countTokenOverlap(tokens, presetCategoryTokens);
-      if (categoryMatchCount > 0) {
-        score += 10;
-        suggestionReasons.push('category_token_match');
-      }
-
-      const suggestionWarnings = [];
-      if (signals.language?.require_any?.length > 0 || signals.media_type?.include?.length > 0) {
-        suggestionWarnings.push('runtime_semantics_review_recommended');
-      }
-
-      return {
-        ...preset,
-        suggestion_score: score,
-        suggestion_reasons: suggestionReasons,
-        suggestion_warnings: suggestionWarnings,
-        match_score: score,
-        match_reasons: suggestionReasons,
-      };
+    const topSuggestions = buildPolicyStarterTemplateSuggestions({
+      library,
+      presets: presetRows,
     });
-
-    const topSuggestions = suggestions
-      .filter((suggestion) => suggestion.suggestion_score > 0)
-      .sort((left, right) => right.suggestion_score - left.suggestion_score)
-      .slice(0, 8);
 
     logger.info('Preset suggestions generated', {
       libraryId,

@@ -44,8 +44,8 @@ Applied guidance:
    declared value, and unavailable conflicting value.
 4. Require explanations for suggested and custom selectable options.
 5. Require disabled reasons for already-declared and conflicting choices.
-6. Reject broad destination-identity genres from common/static or custom
-   sources unless supporting evidence exists.
+6. Reject broad destination-identity genres from starter-template, common/static,
+   or custom sources unless supporting evidence exists.
 7. Emit typed draft commands for multi-select adds; never mutate raw bridge
    payloads from an option picker.
 
@@ -109,16 +109,19 @@ Cons:
     boundaries, and summary output.
 - `server/src/services/policyAuthoringWorkflowCompletionAudit.mjs`
   - Tracks this contract as `policy_authoring_option_selection`.
+- [Policy Intent-Signal Option Projection](policy-intent-signal-option-projection.md)
+  - Defines the versioned server display projection that composes these source
+    states without delegating source behavior to the browser.
 
 ## Outcome
 
 The option-selection contract now uses durable policy-authoring names in the
 service file, focused test, exported constants, exported helpers, completion
-audit record, and standing architecture document.
+audit record, standing architecture document, and the server-owned option
+projection.
 
 ## Next Step
 
-Build the server-owned intent-signal option projection that can compose observed
-evidence, profile suggestions, starter-template suggestions, common values,
-custom values, and disabled states through this contract without letting the
-client infer source behavior.
+Add the server-validated custom intent-signal entry command. It must feed its
+normalized candidate back through the projection before the browser can create a
+typed draft command.

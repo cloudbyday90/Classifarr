@@ -22,11 +22,15 @@ import {
   buildPolicyObservedSuggestionProjection,
 } from './policyObservedSuggestionCandidates.mjs';
 import {
+  buildPolicyIntentSignalOptionProjection,
+  buildPolicyIntentSignalOptionProjectionAudit,
+} from './policyIntentSignalOptionProjection.mjs';
+import {
   buildPolicyOperatorWorkflowEmptyStateAudit,
   buildPolicyOperatorWorkflowEmptyStateProjection,
 } from './policyOperatorWorkflowEmptyState.mjs';
 
-const POLICY_OPERATOR_WORKFLOW_READ_VERSION = 'policy.operator_workflow_read.v1';
+const POLICY_OPERATOR_WORKFLOW_READ_VERSION = 'policy.operator_workflow_read.v2';
 const MAX_LABEL_LENGTH = 160;
 
 const POLICY_OPERATOR_WORKFLOW_READ_STATUS_IDS = Object.freeze({
@@ -44,6 +48,7 @@ const POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS = Object.freeze({
   UNSAFE_SIDE_EFFECT: 'unsafe_side_effect',
   RAW_PAYLOAD_EXPOSED: 'raw_payload_exposed',
   INVALID_EMPTY_STATE_PROJECTION: 'invalid_empty_state_projection',
+  INVALID_INTENT_SIGNAL_OPTION_PROJECTION: 'invalid_intent_signal_option_projection',
 });
 
 function asObject(value) {
@@ -141,17 +146,26 @@ function buildReadResult({
   profileHandoff,
   routing,
   statusId,
+  intentSignalSources,
 } = {}) {
   const workflow = buildWorkflow({ profileHandoff, routing });
   const observedSuggestionProjection = buildPolicyObservedSuggestionProjection(profileHandoff);
+  const intentSignalProjection = buildPolicyIntentSignalOptionProjection({
+    observedProjection: observedSuggestionProjection,
+    starterTemplateSuggestions: asArray(intentSignalSources?.starterTemplateSuggestions),
+    commonOptions: asArray(intentSignalSources?.commonOptions),
+    customValueCandidates: asArray(intentSignalSources?.customValueCandidates),
+    declaredSignals: asArray(intentSignalSources?.declaredSignals),
+    conflictingSignals: asArray(intentSignalSources?.conflictingSignals),
+  });
   const observedProfile = {
     ...buildProfileState(profileHandoff),
     itemCount: Number.isInteger(Number(profileHandoff?.profileEvidence?.summary?.itemCount))
       ? Number(profileHandoff.profileEvidence.summary.itemCount)
       : null,
-    suggestionCount: observedSuggestionProjection.observations.length,
-    suggestions: observedSuggestionProjection.observations,
-    selectableSuggestions: observedSuggestionProjection.selectableSuggestions,
+    suggestionCount: intentSignalProjection.observedEvidence.length,
+    suggestions: intentSignalProjection.observedEvidence,
+    intentSignalProjection,
   };
   const emptyStateProjection = buildPolicyOperatorWorkflowEmptyStateProjection({
     library,
@@ -183,7 +197,9 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
   const issues = [];
   const library = normalizeLibrary(source.library);
   const observedSuggestions = asArray(source.observedProfile?.suggestions);
-  const selectableSuggestions = asArray(source.observedProfile?.selectableSuggestions);
+  const intentSignalProjectionAudit = buildPolicyIntentSignalOptionProjectionAudit(
+    source.observedProfile?.intentSignalProjection,
+  );
   const sideEffects = asObject(source.sideEffects);
   const workflowAudit = buildPolicyOperatorWorkflowAudit(source.workflow);
   const emptyStateAudit = buildPolicyOperatorWorkflowEmptyStateAudit(source.emptyStateProjection);
@@ -223,24 +239,10 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
     });
   }
 
-  if (selectableSuggestions.some(suggestion => (
-    suggestion?.sourceId !== 'suggested_from_observed_profile' ||
-    suggestion?.sourceLabel !== 'Suggested from this library' ||
-    suggestion?.selectionStateId !== 'selectable_suggestion' ||
-    suggestion?.selectable !== true ||
-    suggestion?.readOnlyEvidence !== false ||
-    suggestion?.commandId !== 'add_signal_value' ||
-    suggestion?.requiresExplicitAcceptance !== true ||
-    suggestion?.canAutoDeclare !== false ||
-    !suggestion?.candidateId ||
-    !suggestion?.signalType ||
-    !suggestion?.operator ||
-    !suggestion?.explanation ||
-    !Number.isFinite(Number(suggestion?.evidence?.count))
-  ))) {
+  if (!intentSignalProjectionAudit.ok) {
     issues.push({
-      riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.OBSERVED_VALUE_AUTO_DECLARED,
-      message: 'Selectable observed suggestions must remain explicitly accepted, bounded draft candidates.',
+      riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_INTENT_SIGNAL_OPTION_PROJECTION,
+      message: 'Intent-signal options must remain bounded, source-owned, and explicitly accepted.',
     });
   }
 
@@ -287,7 +289,7 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
 function createPolicyOperatorWorkflowReadService({
   loadProfileEvidence = loadPolicyLibraryProfileEvidence,
 } = {}) {
-  async function getWorkflow({ library, routing = {} } = {}) {
+  async function getWorkflow({ library, routing = {}, intentSignalSources = {} } = {}) {
     const normalizedLibrary = normalizeLibrary(library);
     if (normalizedLibrary.id === null || !normalizedLibrary.name) {
       return buildReadResult({
@@ -295,6 +297,7 @@ function createPolicyOperatorWorkflowReadService({
         profileHandoff: null,
         routing: normalizeRouting(routing),
         statusId: POLICY_OPERATOR_WORKFLOW_READ_STATUS_IDS.INVALID_LIBRARY,
+        intentSignalSources,
       });
     }
 
@@ -311,6 +314,7 @@ function createPolicyOperatorWorkflowReadService({
       profileHandoff,
       routing: normalizeRouting(routing),
       statusId: profileState.statusId,
+      intentSignalSources,
     });
   }
 

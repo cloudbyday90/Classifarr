@@ -61,6 +61,34 @@ describe('policyIntentSignalDraft', () => {
     }))
   })
 
+  it('accepts server-projected starter-template and common candidates without inferring source behavior', () => {
+    const plan = buildIntentSignalCommandPlan({
+      commandId: 'add_signal_value',
+      candidates: [
+        candidate({
+          candidateId: 'template:holiday:keyword:christmas',
+          value: 'Christmas',
+          label: 'Christmas',
+          sourceId: 'suggested_from_starter_template',
+          sourceLabel: 'Suggested by starter template',
+          signalType: 'keywords',
+          explanation: 'Suggested by the optional Holiday starter template.',
+          evidence: { count: 0, confidence: null },
+        }),
+        candidate({
+          candidateId: 'common:mystery',
+          value: 'Mystery',
+          sourceId: 'common_static_option',
+          sourceLabel: 'Common options',
+          explanation: 'Mystery is a common option. Confirm it reflects this destination before adding it.',
+          evidence: { count: 0, confidence: null },
+        }),
+      ],
+    })
+
+    expect(plan.commands.map(command => command.candidate.value)).toEqual(['Christmas', 'Mystery'])
+  })
+
   it('adds and removes accepted signals only through typed command plans', () => {
     const added = applyIntentSignalCommandPlan([], buildIntentSignalCommandPlan({
       commandId: 'add_signal_value',

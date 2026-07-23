@@ -2341,13 +2341,18 @@ Implementation record:
   than retained as parallel UI controls. The product path now uses
   `IntentSignalPicker`, `usePolicyIntentSignalDraft`, and
   `policyIntentSignalDraft` naming.
+- The workflow read now publishes a versioned server-owned intent-signal option
+  projection. It composes bounded observed evidence, observed-profile options,
+  optional matching starter-template suggestions, future common/custom sources,
+  and disabled states without exposing raw profile/template payloads or letting
+  the client infer source behavior. See [Policy Intent-Signal Option
+  Projection](policy-intent-signal-option-projection.md).
 
-Next implementation task: **3R.4 Task 3R.4.2, Server-Owned Intent-Signal Option
-Projection**. Compose observed evidence, profile suggestions, starter-template
-suggestions, common values, custom values, and disabled states behind one
-server-owned normalized projection. Keep source labels, disabled reasons,
-evidence guards, and broad-genre admission on the server; the picker remains a
-presentation and typed-draft-command boundary.
+Next implementation task: **3R.4 Task 3R.4.3, Server-Validated Custom
+Intent-Signal Entry**. Add one bounded server endpoint that normalizes an
+operator-provided supported signal, applies the same source/explanation and
+broad-identity evidence guards, and returns the candidate through the
+intent-signal projection before the local draft can accept it.
 
 ### 3R.4 Evidence-Backed Option Selection
 

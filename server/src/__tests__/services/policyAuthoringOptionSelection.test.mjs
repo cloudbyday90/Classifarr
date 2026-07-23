@@ -119,12 +119,22 @@ describe('policyAuthoringOptionSelection', () => {
     }));
   });
 
-  test('rejects broad static identity genres without supporting evidence', () => {
+  test('rejects broad non-observed identity genres without supporting evidence', () => {
     expect(isBroadIdentityGenre('Animation')).toBe(true);
+    expect(isBroadIdentityGenre('Sci-Fi')).toBe(true);
     expect(validatePolicyAuthoringOptionCandidate({
       value: 'Animation',
       sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.COMMON_STATIC_OPTION,
       questionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
+    })).toEqual(expect.objectContaining({
+      valid: false,
+      riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.BROAD_GENRE_WITHOUT_SUPPORTING_EVIDENCE,
+    }));
+    expect(validatePolicyAuthoringOptionCandidate({
+      value: 'Animation',
+      sourceId: POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_STARTER_TEMPLATE,
+      questionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
+      explanation: 'Suggested by an optional starter template.',
     })).toEqual(expect.objectContaining({
       valid: false,
       riskId: POLICY_AUTHORING_OPTION_SELECTION_RISK_IDS.BROAD_GENRE_WITHOUT_SUPPORTING_EVIDENCE,

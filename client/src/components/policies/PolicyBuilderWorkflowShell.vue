@@ -128,14 +128,15 @@ const emit = defineEmits({
 
 const workflow = computed(() => props.workflowRead?.workflow || null)
 const observedProfile = computed(() => props.workflowRead?.observedProfile || {})
+const intentSignalProjection = computed(() => observedProfile.value.intentSignalProjection || {})
 const observedSuggestions = computed(() => Array.isArray(observedProfile.value.suggestions)
   ? observedProfile.value.suggestions
   : [])
-const observedEvidence = computed(() => Array.isArray(observedProfile.value.suggestions)
-  ? observedProfile.value.suggestions
+const observedEvidence = computed(() => Array.isArray(intentSignalProjection.value.observedEvidence)
+  ? intentSignalProjection.value.observedEvidence
   : [])
-const intentSignalOptions = computed(() => Array.isArray(observedProfile.value.selectableSuggestions)
-  ? observedProfile.value.selectableSuggestions
+const intentSignalOptions = computed(() => Array.isArray(intentSignalProjection.value.options)
+  ? intentSignalProjection.value.options
   : [])
 const sections = computed(() => Array.isArray(workflow.value?.sections)
   ? workflow.value.sections

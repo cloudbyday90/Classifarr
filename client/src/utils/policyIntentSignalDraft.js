@@ -9,7 +9,6 @@
 export const POLICY_INTENT_SIGNAL_COMMAND_PLAN_VERSION = 'policy.intent_signal_command_plan.v1'
 
 const INTENT_SIGNAL_PICKER_COMPONENT_ID = 'intent_signal_picker'
-const SELECTABLE_SOURCE_ID = 'suggested_from_observed_profile'
 const PURPOSE_QUESTION_ID = 'what_belongs_here'
 const SELECTABLE_SUGGESTION_STATE_ID = 'selectable_suggestion'
 const SUPPORTED_PURPOSE_SIGNAL_TYPES = new Set(['genres', 'keywords', 'studios'])
@@ -104,7 +103,6 @@ function normalizeIntentSignalCandidate(candidate = {}) {
 
   if (
     !option
-    || option.sourceId !== SELECTABLE_SOURCE_ID
     || option.selectionStateId !== SELECTABLE_SUGGESTION_STATE_ID
     || option.selectable !== true
     || option.requiresExplicitAcceptance !== true

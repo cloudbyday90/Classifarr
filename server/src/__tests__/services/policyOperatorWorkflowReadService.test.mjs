@@ -73,7 +73,10 @@ describe('policyOperatorWorkflowReadService', () => {
             requiresExplicitAcceptance: true,
           }),
         ]),
-        selectableSuggestions: expect.arrayContaining([
+        intentSignalProjection: expect.objectContaining({
+          version: 'policy.intent_signal_option_projection.v1',
+          rawPayloadExposed: false,
+          options: expect.arrayContaining([
           expect.objectContaining({
             value: 'Animation',
             sourceId: 'suggested_from_observed_profile',
@@ -86,7 +89,8 @@ describe('policyOperatorWorkflowReadService', () => {
             requiresExplicitAcceptance: true,
             canAutoDeclare: false,
           }),
-        ]),
+          ]),
+        }),
       }),
       emptyStateProjection: {
         version: POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_VERSION,
@@ -160,7 +164,10 @@ describe('policyOperatorWorkflowReadService', () => {
       itemCount: null,
       suggestionCount: 0,
       suggestions: [],
-      selectableSuggestions: [],
+      intentSignalProjection: expect.objectContaining({
+        observedEvidence: [],
+        options: [],
+      }),
     });
     expect(result.rawPayloadExposed).toBe(false);
     expect(buildPolicyOperatorWorkflowReadAudit(result).ok).toBe(true);
