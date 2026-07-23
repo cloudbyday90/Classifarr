@@ -9,6 +9,7 @@
  */
 
 import {
+  POLICY_AUTHORING_CONSTRAINT_COMMAND_IDS,
   POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS,
   getPolicyAuthoringConstraintControlRecord,
 } from './policyAuthoringConstraints.mjs';
@@ -61,6 +62,7 @@ const CONTROL_PROPERTY_IDS = new Set([
   'label',
   'questionId',
   'description',
+  'draftCommandId',
   'decisionEffectId',
   'requiresExplicitOperatorAction',
   'observedAbsenceBehaviorId',
@@ -123,6 +125,7 @@ function buildPolicyConstraintDecisionControl(controlId) {
     label: source.visibleLabel,
     questionId: source.questionId,
     description: source.operatorCopy,
+    draftCommandId: source.commandId,
     decisionEffectId: definition.decisionEffectId,
     requiresExplicitOperatorAction: source.requiresExplicitOperatorAction,
     observedAbsenceBehaviorId: definition.observedAbsenceBehaviorId,
@@ -222,6 +225,7 @@ function buildPolicyConstraintDecisionModelAudit(model = {}) {
       control.label !== expected.label ||
       control.questionId !== expected.questionId ||
       control.description !== expected.description ||
+      control.draftCommandId !== expected.draftCommandId ||
       control.requiresExplicitOperatorAction !== expected.requiresExplicitOperatorAction ||
       control.canBlockAutomaticApplication !== expected.canBlockAutomaticApplication
     ) {
@@ -229,6 +233,14 @@ function buildPolicyConstraintDecisionModelAudit(model = {}) {
         riskId: POLICY_CONSTRAINT_DECISION_MODEL_RISK_IDS.INVALID_CONTROL_SHAPE,
         controlId,
         message: 'Constraint decision control metadata must remain server-owned and exact.',
+      });
+    }
+
+    if (!Object.values(POLICY_AUTHORING_CONSTRAINT_COMMAND_IDS).includes(control.draftCommandId)) {
+      issues.push({
+        riskId: POLICY_CONSTRAINT_DECISION_MODEL_RISK_IDS.INVALID_CONTROL_SHAPE,
+        controlId,
+        message: 'Constraint decision controls must retain an approved typed draft command.',
       });
     }
 

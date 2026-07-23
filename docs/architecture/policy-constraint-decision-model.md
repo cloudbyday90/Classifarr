@@ -18,9 +18,10 @@ shown in the native policy builder:
 `policy.constraint_decision_model.v1` is emitted in the display-only operator
 workflow read. It does not carry selected values, observed examples, candidate
 metadata, raw profiles, browser-derived semantics, policy writes, routing,
-runtime decisions, provider calls, or quota reads. The next task owns the
-separate typed draft-command boundary; a later task may add controls that use
-that boundary.
+runtime decisions, provider calls, or quota reads. Each control also carries a
+bounded `draftCommandId` so a client adapter can forward the server-approved
+typed command without deriving it from a visible label. A later task may add
+controls that use the separate typed draft-command boundary.
 
 ## Official Guidance Reviewed
 
@@ -93,7 +94,8 @@ Cons:
   vocabulary for controls, explicit-action requirements, sources, and
   certification semantics.
 - `server/src/services/policyConstraintDecisionModel.mjs` derives and audits
-  the immutable `policy.constraint_decision_model.v1` display projection.
+  the immutable `policy.constraint_decision_model.v1` display projection and
+  each control's approved typed draft-command identifier.
 - `server/src/services/policyOperatorWorkflowReadService.mjs` publishes the
   audited projection with no write, automation, routing, or runtime authority.
 - `server/src/__tests__/services/policyConstraintDecisionModel.test.mjs` pins
@@ -118,7 +120,7 @@ observed-absence behavior are explicit server-owned data.
 
 ## Next Step
 
-Implement the constraint draft-command adapter. It must accept only a
-server-derived decision control and a bounded explicit operator choice, then
-produce transient typed draft commands without writing policy storage or
-introducing constraint UI.
+Implement the minimal constraint control surface. It must consume the server
+projection and [Policy Constraint Draft-Command
+Adapter](policy-constraint-draft-command-adapter.md), preserve blocker versus
+advisory meaning, and remain local-only until native constraint storage exists.

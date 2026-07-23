@@ -106,7 +106,11 @@ Cons:
   - Tracks this contract as `policy_authoring_constraints`.
 - [Policy Constraint Decision Model](policy-constraint-decision-model.md)
   - Publishes the immutable server-owned display projection used by the native
-    workflow before constraint controls are introduced.
+    workflow and its approved typed draft-command identifiers.
+- [Policy Constraint Draft-Command Adapter](policy-constraint-draft-command-adapter.md)
+  - Resolves one explicit operator selection against the server projection and
+    retains only a transient typed command without compatibility serialization
+    or any persistence, routing, learning, provider, or quota side effect.
 
 ## Outcome
 
@@ -116,7 +120,6 @@ record, and standing architecture document.
 
 ## Next Step
 
-Implement the constraint draft-command adapter. It must turn an explicit
-operator choice backed by the server decision model into a transient typed
-draft command without writing policy storage or exposing raw compatibility
-payloads.
+Implement the minimal accessible constraint control surface. It must use the
+server decision model and draft-command adapter without exposing raw
+compatibility payloads or writing policy storage.

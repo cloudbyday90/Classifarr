@@ -18,6 +18,7 @@ import {
 } from '../../services/policyConstraintDecisionModel.mjs';
 import {
   POLICY_AUTHORING_CERTIFICATION_SEMANTIC_IDS,
+  POLICY_AUTHORING_CONSTRAINT_COMMAND_IDS,
   POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS,
 } from '../../services/policyAuthoringConstraints.mjs';
 
@@ -42,6 +43,7 @@ describe('policyConstraintDecisionModel', () => {
       controls: [
         expect.objectContaining({
           controlId: POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS.HARD_LIMIT,
+          draftCommandId: POLICY_AUTHORING_CONSTRAINT_COMMAND_IDS.SET_HARD_LIMIT,
           decisionEffectId: POLICY_CONSTRAINT_DECISION_EFFECT_IDS.BLOCK_AUTOMATIC_APPLICATION,
           requiresExplicitOperatorAction: true,
           observedAbsenceBehaviorId:
@@ -52,6 +54,7 @@ describe('policyConstraintDecisionModel', () => {
         }),
         expect.objectContaining({
           controlId: POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS.AVOID,
+          draftCommandId: POLICY_AUTHORING_CONSTRAINT_COMMAND_IDS.ADD_AVOID_VALUE,
           decisionEffectId: POLICY_CONSTRAINT_DECISION_EFFECT_IDS.REDUCE_CONFIDENCE,
           requiresExplicitOperatorAction: true,
           observedAbsenceBehaviorId:
@@ -61,6 +64,7 @@ describe('policyConstraintDecisionModel', () => {
         }),
         expect.objectContaining({
           controlId: POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS.REVIEW_WARNING,
+          draftCommandId: POLICY_AUTHORING_CONSTRAINT_COMMAND_IDS.ADD_REVIEW_WARNING,
           decisionEffectId: POLICY_CONSTRAINT_DECISION_EFFECT_IDS.REQUEST_REVIEW,
           requiresExplicitOperatorAction: false,
           observedAbsenceBehaviorId:
@@ -85,6 +89,7 @@ describe('policyConstraintDecisionModel', () => {
       control => control.controlId === POLICY_AUTHORING_CONSTRAINT_CONTROL_IDS.AVOID,
     );
     avoid.decisionEffectId = POLICY_CONSTRAINT_DECISION_EFFECT_IDS.BLOCK_AUTOMATIC_APPLICATION;
+    avoid.draftCommandId = POLICY_AUTHORING_CONSTRAINT_COMMAND_IDS.SET_HARD_LIMIT;
     avoid.canBlockAutomaticApplication = true;
 
     expect(buildPolicyConstraintDecisionModelAudit(model).issues).toEqual(

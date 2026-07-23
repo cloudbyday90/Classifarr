@@ -26,6 +26,14 @@ unchanged operator or runtime outcome.
   projection contains no selected values, raw evidence, persistence authority,
   runtime decision, routing execution, provider activity, or quota usage.
 
+- **Typed Constraint Draft Commands** - explicit constraint choices can now be
+  resolved against the server-owned decision model into bounded transient draft
+  commands. The browser forwards the server-approved command identifier instead
+  of deriving behavior from a visible label; the local state clears when the
+  selected library changes. This adds no constraint UI yet and cannot write a
+  policy, mutate compatibility payloads, route media, create learning, call a
+  provider, or consume quota.
+
 - **Evidence-Backed Destination Signals** - new policies now distinguish
   read-only values already observed in the connected library from the proposed
   signals that can define future matches. Operators can select several supported

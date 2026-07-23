@@ -291,6 +291,19 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     ]),
   },
   {
+    id: 'constraint_draft_command_boundary',
+    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DECLARED_INTENT_EDITING,
+    normalAuthoringAllowed: true,
+    migrationSupportOnly: false,
+    riskIds: [],
+    notes: 'Constraint draft state resolves only explicit operator choices against the server-owned decision model, then keeps typed commands transient without persistence, routing, learning, or compatibility serialization.',
+    matches: filePath => hasAnySegment(filePath, [
+      '/policyIntentConstraintDraft.js',
+      '/usePolicyIntentConstraintDraft.js',
+    ]),
+  },
+  {
     id: 'draft_and_bridge_utilities',
     decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,

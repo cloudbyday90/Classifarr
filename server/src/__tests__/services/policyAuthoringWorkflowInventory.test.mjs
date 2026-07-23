@@ -225,6 +225,20 @@ describe('policyAuthoringWorkflowInventory', () => {
     });
   });
 
+  test('keeps explicit constraint draft commands in the normal declared-intent path', () => {
+    [
+      'client/src/utils/policyIntentConstraintDraft.js',
+      'client/src/composables/usePolicyIntentConstraintDraft.js',
+    ].forEach((filePath) => {
+      expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DECLARED_INTENT_EDITING,
+        normalAuthoringAllowed: true,
+        migrationSupportOnly: false,
+      }));
+    });
+  });
+
   test('validates the normal authoring path excludes diagnostics, provider readiness, raw weights, templates, and tests', () => {
     const policyBuilderPaths = collectClientFiles(clientSrcRoot)
       .filter(isPolicyAuthoringBuilderPath);

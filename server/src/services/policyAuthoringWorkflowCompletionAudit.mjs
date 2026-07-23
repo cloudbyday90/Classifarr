@@ -173,6 +173,13 @@ const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
     evidence: 'Proves retired impact and replay browser panels cannot be restored through the former modal visibility prop.',
   },
+  {
+    id: 'policy_authoring_constraint_draft_command_boundary',
+    label: 'Policy authoring constraint draft-command boundary',
+    docPath: 'docs/architecture/policy-constraint-draft-command-adapter.md',
+    testPath: 'client/src/__tests__/utils/policyIntentConstraintDraft.test.js',
+    evidence: 'Accepts only an explicit operator selection resolved from the server-owned constraint decision model and retains a transient typed command with no persistence, routing, learning, provider, or quota side effect.',
+  },
 ]);
 
 const POLICY_AUTHORING_NORMAL_WORKFLOW_RULES = Object.freeze([

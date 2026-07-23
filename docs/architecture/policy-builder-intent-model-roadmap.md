@@ -2366,11 +2366,17 @@ provider activity. Observed absence cannot declare a hard limit or avoid rule;
 it can only map to a review warning. See [Policy Constraint Decision
 Model](policy-constraint-decision-model.md).
 
-Next implementation task: **3R.5 Task 3R.5.2, Constraint Draft-Command
-Adapter**. Add a typed local-draft boundary that accepts only an explicit
-operator choice derived from the server constraint decision model. It must
-produce no persistence, routing, learning, provider, or quota side effect and
-must not expose constraint UI yet.
+**3R.5 Task 3R.5.2, Constraint Draft-Command Adapter** is complete. It accepts
+only a bounded, explicitly confirmed operator selection resolved from the
+server-owned decision model and retains an immutable typed command in local
+draft state. It performs no persistence, routing, learning, provider, quota,
+media-server, or compatibility-bridge operation. See [Policy Constraint
+Draft-Command Adapter](policy-constraint-draft-command-adapter.md).
+
+Next implementation task: **3R.5 Task 3R.5.3, Constraint Control Surface**.
+Introduce the minimal accessible hard-limit, avoid, and review-warning controls
+that use the server projection and local adapter without adding persistence or
+automation authority.
 
 ### 3R.4 Evidence-Backed Option Selection
 
@@ -2449,6 +2455,19 @@ Implementation status:
   workflow read as `policy.constraint_decision_model.v1`. It has three bounded
   outcomes and no values or execution authority, so future controls cannot
   derive hard-limit or avoid behavior in the browser.
+- **3R.5.2 Constraint Draft-Command Adapter** is complete. The server-owned
+  projection now carries an approved typed command identifier for each
+  constraint control. A local-only adapter accepts one bounded, explicitly
+  confirmed operator choice, revalidates the display-only projection, and keeps
+  an immutable typed command in transient state. It performs no policy write,
+  routing, learning, provider, quota, media-server, or compatibility-bridge
+  operation. See [Policy Constraint Draft-Command
+  Adapter](policy-constraint-draft-command-adapter.md).
+
+Next implementation task: **3R.5 Task 3R.5.3, Constraint Control Surface**.
+Introduce the minimal accessible hard-limit, avoid, and review-warning controls
+that use the server projection and local adapter without adding persistence or
+automation authority.
 
 ### 3R.6 Readiness And Next Action Surface
 
