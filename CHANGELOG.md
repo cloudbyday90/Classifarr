@@ -18,6 +18,14 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Server-Owned Constraint Decisions** - the native policy workflow now
+  publishes a bounded, display-only decision model that keeps hard limits,
+  avoid values, and review warnings semantically distinct. Hard limits can
+  block automatic application only after explicit operator action; avoid values
+  only lower confidence; observed absence can only lead to review warnings. The
+  projection contains no selected values, raw evidence, persistence authority,
+  runtime decision, routing execution, provider activity, or quota usage.
+
 - **Evidence-Backed Destination Signals** - new policies now distinguish
   read-only values already observed in the connected library from the proposed
   signals that can define future matches. Operators can select several supported

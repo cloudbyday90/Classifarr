@@ -68,6 +68,14 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Separates hard limits, avoid values, review warnings, certification semantics, and explicit operator-action requirements.',
   },
   {
+    id: 'policy_constraint_decision_model',
+    label: 'Policy constraint decision model',
+    docPath: 'docs/architecture/policy-constraint-decision-model.md',
+    servicePath: 'server/src/services/policyConstraintDecisionModel.mjs',
+    testPath: 'server/src/__tests__/services/policyConstraintDecisionModel.test.mjs',
+    evidence: 'Publishes the display-only, server-owned hard-limit, avoid, and review-warning decision effects for the native workflow.',
+  },
+  {
     id: 'policy_authoring_readiness',
     label: 'Policy authoring readiness',
     docPath: 'docs/architecture/policy-authoring-readiness.md',

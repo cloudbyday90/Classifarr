@@ -29,6 +29,10 @@ import {
   buildPolicyOperatorWorkflowEmptyStateAudit,
   buildPolicyOperatorWorkflowEmptyStateProjection,
 } from './policyOperatorWorkflowEmptyState.mjs';
+import {
+  buildPolicyConstraintDecisionModelAudit,
+  policyConstraintDecisionModel,
+} from './policyConstraintDecisionModel.mjs';
 
 const POLICY_OPERATOR_WORKFLOW_READ_VERSION = 'policy.operator_workflow_read.v2';
 const MAX_LABEL_LENGTH = 160;
@@ -49,6 +53,7 @@ const POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS = Object.freeze({
   RAW_PAYLOAD_EXPOSED: 'raw_payload_exposed',
   INVALID_EMPTY_STATE_PROJECTION: 'invalid_empty_state_projection',
   INVALID_INTENT_SIGNAL_OPTION_PROJECTION: 'invalid_intent_signal_option_projection',
+  INVALID_CONSTRAINT_DECISION_MODEL: 'invalid_constraint_decision_model',
 });
 
 function asObject(value) {
@@ -180,6 +185,7 @@ function buildReadResult({
     library,
     observedProfile,
     emptyStateProjection,
+    constraintDecisionModel: policyConstraintDecisionModel,
     workflow,
     authority: {
       displayProjection: true,
@@ -203,6 +209,9 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
   const sideEffects = asObject(source.sideEffects);
   const workflowAudit = buildPolicyOperatorWorkflowAudit(source.workflow);
   const emptyStateAudit = buildPolicyOperatorWorkflowEmptyStateAudit(source.emptyStateProjection);
+  const constraintDecisionModelAudit = buildPolicyConstraintDecisionModelAudit(
+    source.constraintDecisionModel,
+  );
 
   if (source.version !== POLICY_OPERATOR_WORKFLOW_READ_VERSION) {
     issues.push({
@@ -243,6 +252,13 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
     issues.push({
       riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_INTENT_SIGNAL_OPTION_PROJECTION,
       message: 'Intent-signal options must remain bounded, source-owned, and explicitly accepted.',
+    });
+  }
+
+  if (!constraintDecisionModelAudit.ok) {
+    issues.push({
+      riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_CONSTRAINT_DECISION_MODEL,
+      message: 'Constraint decisions must remain a valid server-owned display projection.',
     });
   }
 

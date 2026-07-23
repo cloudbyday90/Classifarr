@@ -2357,11 +2357,20 @@ Implementation record:
   created. See [Policy Intent-Signal Custom
   Entry](policy-intent-signal-custom-entry.md).
 
-Next implementation task: **3R.5 Task 3R.5.1, Hard-Limit And Avoid Decision
-Model**. Define and implement one server-owned typed representation that
-separates explicit hard blockers, confidence-lowering avoid signals, and
-non-blocking review warnings before the policy builder exposes constraint
-controls.
+**3R.5 Task 3R.5.1, Hard-Limit And Avoid Decision Model** is complete. The
+display-only workflow read now publishes one audited, immutable server-owned
+constraint projection. It separates automatic-application blockers,
+confidence-lowering avoid behavior, and review warnings; it forbids raw values,
+browser-derived semantics, policy persistence, runtime decisions, routing, and
+provider activity. Observed absence cannot declare a hard limit or avoid rule;
+it can only map to a review warning. See [Policy Constraint Decision
+Model](policy-constraint-decision-model.md).
+
+Next implementation task: **3R.5 Task 3R.5.2, Constraint Draft-Command
+Adapter**. Add a typed local-draft boundary that accepts only an explicit
+operator choice derived from the server constraint decision model. It must
+produce no persistence, routing, learning, provider, or quota side effect and
+must not expose constraint UI yet.
 
 ### 3R.4 Evidence-Backed Option Selection
 
@@ -2436,6 +2445,10 @@ Implementation status:
   draft commands; observed absence can create only review warnings.
 - Certification controls now separate max allowed rating from avoid rating so
   future UI work cannot conflate blocker and advisory behavior.
+- **3R.5.1 Constraint Decision Model** is now published in the display-only
+  workflow read as `policy.constraint_decision_model.v1`. It has three bounded
+  outcomes and no values or execution authority, so future controls cannot
+  derive hard-limit or avoid behavior in the browser.
 
 ### 3R.6 Readiness And Next Action Surface
 

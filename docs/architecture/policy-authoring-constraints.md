@@ -10,9 +10,11 @@ actions. The contract keeps blocking behavior separate from advisory evidence
 and removes roadmap-phase wording from production module names and exported
 symbols.
 
-This is a server-side contract checkpoint, not a new scoring surface. Future UI
-controls should consume this model so constraints remain simple, explicit, and
-testable.
+This is the canonical constraint vocabulary, not a new scoring surface. The
+native workflow now consumes it through the separate [Policy Constraint
+Decision Model](policy-constraint-decision-model.md); future UI controls must
+use the decision model and typed draft boundary rather than recreate semantics
+in the browser.
 
 ## Official Guidance Reviewed
 
@@ -102,6 +104,9 @@ Cons:
     boundaries, and fail-closed validation.
 - `server/src/services/policyAuthoringWorkflowCompletionAudit.mjs`
   - Tracks this contract as `policy_authoring_constraints`.
+- [Policy Constraint Decision Model](policy-constraint-decision-model.md)
+  - Publishes the immutable server-owned display projection used by the native
+    workflow before constraint controls are introduced.
 
 ## Outcome
 
@@ -111,5 +116,7 @@ record, and standing architecture document.
 
 ## Next Step
 
-Cut over readiness and next-action surface to durable policy-authoring
-readiness naming.
+Implement the constraint draft-command adapter. It must turn an explicit
+operator choice backed by the server decision model into a transient typed
+draft command without writing policy storage or exposing raw compatibility
+payloads.

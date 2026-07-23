@@ -12,6 +12,10 @@ import {
   POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_ACTION_MODE_IDS,
   POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_VERSION,
 } from '../../services/policyOperatorWorkflowEmptyState.mjs';
+import {
+  POLICY_CONSTRAINT_DECISION_EFFECT_IDS,
+  POLICY_CONSTRAINT_DECISION_MODEL_VERSION,
+} from '../../services/policyConstraintDecisionModel.mjs';
 
 const NOW = Date.parse('2026-07-19T12:00:00.000Z');
 
@@ -96,6 +100,27 @@ describe('policyOperatorWorkflowReadService', () => {
         version: POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_VERSION,
         states: [],
       },
+      constraintDecisionModel: expect.objectContaining({
+        version: POLICY_CONSTRAINT_DECISION_MODEL_VERSION,
+        rawPayloadExposed: false,
+        controls: expect.arrayContaining([
+          expect.objectContaining({
+            controlId: 'hard_limit',
+            decisionEffectId: POLICY_CONSTRAINT_DECISION_EFFECT_IDS.BLOCK_AUTOMATIC_APPLICATION,
+            requiresExplicitOperatorAction: true,
+          }),
+          expect.objectContaining({
+            controlId: 'avoid',
+            decisionEffectId: POLICY_CONSTRAINT_DECISION_EFFECT_IDS.REDUCE_CONFIDENCE,
+            requiresExplicitOperatorAction: true,
+          }),
+          expect.objectContaining({
+            controlId: 'review_warning',
+            decisionEffectId: POLICY_CONSTRAINT_DECISION_EFFECT_IDS.REQUEST_REVIEW,
+            requiresExplicitOperatorAction: false,
+          }),
+        ]),
+      }),
       workflow: expect.objectContaining({
         sectionOrder: [
           'what_belongs_here',
@@ -262,6 +287,11 @@ describe('policyOperatorWorkflowReadService', () => {
     expect(loadProfileEvidence).not.toHaveBeenCalled();
 
     result.observedProfile.suggestions = [{ requiresExplicitAcceptance: false }];
+    result.constraintDecisionModel = JSON.parse(JSON.stringify(result.constraintDecisionModel));
+    result.constraintDecisionModel.controls[1] = {
+      ...result.constraintDecisionModel.controls[1],
+      canBlockAutomaticApplication: true,
+    };
     result.sideEffects.providerQuotaRead = true;
     result.rawPayloadExposed = true;
 
@@ -269,6 +299,7 @@ describe('policyOperatorWorkflowReadService', () => {
       expect.arrayContaining([
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_LIBRARY,
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.OBSERVED_VALUE_AUTO_DECLARED,
+        POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_CONSTRAINT_DECISION_MODEL,
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.UNSAFE_SIDE_EFFECT,
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
       ])
