@@ -70,6 +70,14 @@ describe('policyIntentSignalOptionProjection', () => {
         routingExecution: false,
         canAutoDeclareIntent: false,
       },
+      customEntryInput: expect.objectContaining({
+        enabled: true,
+        signalTypes: expect.arrayContaining([
+          { id: 'genres', label: 'Genre' },
+          { id: 'keywords', label: 'Keyword' },
+          { id: 'studios', label: 'Studio' },
+        ]),
+      }),
       observedEvidence: [expect.objectContaining({
         sourceId: 'observed_in_library',
         readOnlyEvidence: true,
@@ -165,6 +173,35 @@ describe('policyIntentSignalOptionProjection', () => {
         evidence: { count: 48, confidence: 0.84 },
       }),
     ]);
+  });
+
+  test('keeps a just-submitted custom candidate within the bounded projection', () => {
+    const projection = buildPolicyIntentSignalOptionProjection({
+      observedProjection: {
+        selectableSuggestions: Array.from({ length: 20 }, (_value, index) => ({
+          signalType: 'keywords',
+          value: `Observed ${index}`,
+          explanation: `Observed value ${index} is supported by the library.`,
+        })),
+      },
+      starterTemplateSuggestions: Array.from({ length: 24 }, (_value, index) => ({
+        signalType: 'keywords',
+        value: `Template ${index}`,
+        explanation: `Template suggestion ${index}.`,
+      })),
+      customValueCandidates: [{
+        signalType: 'keywords',
+        value: 'Specific custom value',
+        explanation: 'The operator provided a destination-specific value.',
+      }],
+    });
+
+    expect(projection.options).toHaveLength(32);
+    expect(projection.options[0]).toEqual(expect.objectContaining({
+      value: 'Specific custom value',
+      sourceId: 'operator_added_custom',
+      selectable: true,
+    }));
   });
 
   test('fails closed for malformed source candidates and detects authority tampering', () => {

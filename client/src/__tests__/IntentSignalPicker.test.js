@@ -117,4 +117,29 @@ describe('IntentSignalPicker.vue', () => {
       }),
     ]])
   })
+
+  it('forwards a custom value only for server validation before it can be selected', async () => {
+    const wrapper = mount(IntentSignalPicker, {
+      props: {
+        customEntryInput: {
+          enabled: true,
+          signalTypes: [{ id: 'studios', label: 'Studio' }],
+          valueMaximumLength: 160,
+          explanationMaximumLength: 320,
+          requiresExplanation: true,
+        },
+      },
+    })
+
+    await wrapper.get('input[type="text"]').setValue('Studio Ghibli')
+    await wrapper.get('textarea').setValue('This library is intended for films from this studio.')
+    await wrapper.get('form').trigger('submit.prevent')
+
+    expect(wrapper.emitted('validate-custom-signal')).toEqual([[{
+      signalType: 'studios',
+      value: 'Studio Ghibli',
+      explanation: 'This library is intended for films from this studio.',
+    }]])
+    expect(wrapper.emitted('draft-command-plan')).toBeUndefined()
+  })
 })

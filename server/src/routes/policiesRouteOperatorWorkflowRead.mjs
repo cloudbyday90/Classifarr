@@ -9,34 +9,16 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { NotFoundError, ValidationError } from '../utils/appError.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import {
   policyOperatorWorkflowReadService,
 } from '../services/policyOperatorWorkflowReadService.mjs';
 import {
-  buildPolicyStarterTemplateIntentSignalSuggestions,
-  buildPolicyStarterTemplateSuggestions,
-} from '../services/policyStarterTemplateSuggestions.mjs';
-
-function normalizeLibraryId(value) {
-  const libraryId = Number(value);
-  return Number.isInteger(libraryId) && libraryId > 0 ? libraryId : null;
-}
-
-function toRouting(mapping = {}) {
-  const rootFolderPath = typeof mapping.arr_root_folder_path === 'string'
-    ? mapping.arr_root_folder_path.trim()
-    : '';
-  const arrType = typeof mapping.arr_type === 'string' ? mapping.arr_type.trim() : '';
-  const configured = Boolean(mapping.arr_config_id && rootFolderPath && arrType);
-
-  return {
-    configured,
-    routeReady: configured,
-    targetName: configured ? `${arrType} library mapping` : null,
-  };
-}
+  loadPolicyOperatorWorkflowRouteContext,
+  loadPolicyOperatorWorkflowStarterTemplateSuggestions,
+  normalizePolicyOperatorWorkflowLibraryId,
+} from './policyOperatorWorkflowRouteContext.mjs';
 
 export function registerPolicyOperatorWorkflowReadRoutes(router, {
   db,
@@ -45,46 +27,21 @@ export function registerPolicyOperatorWorkflowReadRoutes(router, {
   operatorWorkflowReadService = policyOperatorWorkflowReadService,
 } = {}) {
   router.get('/operator-workflow/libraries/:libraryId', asyncHandler(async (req, res) => {
-    const libraryId = normalizeLibraryId(req.params.libraryId);
+    const libraryId = normalizePolicyOperatorWorkflowLibraryId(req.params.libraryId);
     if (libraryId === null) {
       throw new ValidationError('libraryId must be a positive integer');
     }
 
-    const libraryResult = await db.query(`
-      SELECT id, name, media_type
-      FROM libraries
-      WHERE id = $1
-    `, [libraryId]);
-    const library = libraryResult.rows?.[0] || null;
-    if (!library) {
-      throw new NotFoundError('Library not found');
-    }
-
-    const mappingResult = await db.query(`
-      SELECT arr_type, arr_config_id, arr_root_folder_path
-      FROM library_arr_mappings
-      WHERE library_id = $1
-      LIMIT 1
-    `, [libraryId]);
-
-    let starterTemplateSuggestions = [];
-    if (typeof listPresets === 'function') {
-      try {
-        const presets = await listPresets({ includeCustom: true, orderBy: 'policy' });
-        starterTemplateSuggestions = buildPolicyStarterTemplateIntentSignalSuggestions({
-          suggestions: buildPolicyStarterTemplateSuggestions({ library, presets }),
-        });
-      } catch (error) {
-        logger?.warn('Policy starter-template suggestions were unavailable for workflow read', {
-          libraryId,
-          error: error.message,
-        });
-      }
-    }
+    const { library, routing } = await loadPolicyOperatorWorkflowRouteContext({ db, libraryId });
+    const starterTemplateSuggestions = await loadPolicyOperatorWorkflowStarterTemplateSuggestions({
+      library,
+      listPresets,
+      logger,
+    });
 
     const result = await operatorWorkflowReadService.getWorkflow({
       library,
-      routing: toRouting(mappingResult.rows?.[0]),
+      routing,
       intentSignalSources: { starterTemplateSuggestions },
     });
 

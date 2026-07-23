@@ -22,7 +22,7 @@
       :id="descriptionId"
       class="mt-1 text-xs text-gray-300"
     >
-      {{ libraryName }} shows how this destination is used today. Select only the suggested values that should define future matches.
+      {{ libraryName }} shows how this destination is used today. Select only the suggested values that should define future matches. Add a specific value only when the library does not provide one.
     </p>
 
     <section
@@ -128,11 +128,19 @@
     </fieldset>
 
     <p
-      v-else-if="acceptedSignalList.length === 0"
+      v-else-if="acceptedSignalList.length === 0 && !customEntryEnabled"
       class="mt-3 text-xs text-gray-400"
     >
       No additional library-backed values are available to add.
     </p>
+
+    <PolicyIntentCustomSignalEntry
+      :input-contract="customEntryInput"
+      :busy="customEntryBusy"
+      :error="customEntryError"
+      :message="customEntryMessage"
+      @validate-custom-signal="emit('validate-custom-signal', $event)"
+    />
 
     <section
       v-if="acceptedSignalList.length > 0"
@@ -172,6 +180,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import Button from '@/components/common/Button.vue'
+import PolicyIntentCustomSignalEntry from './PolicyIntentCustomSignalEntry.vue'
 import {
   buildIntentSignalCommandPlan,
   normalizeIntentSignalCandidates,
@@ -195,10 +204,27 @@ const props = defineProps({
     type: String,
     default: 'This library',
   },
+  customEntryInput: {
+    type: Object,
+    default: null,
+  },
+  customEntryBusy: {
+    type: Boolean,
+    default: false,
+  },
+  customEntryError: {
+    type: String,
+    default: '',
+  },
+  customEntryMessage: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits({
   'draft-command-plan': plan => Boolean(plan?.commands?.length),
+  'validate-custom-signal': payload => Boolean(payload?.signalType && payload?.value && payload?.explanation),
 })
 
 const selectedOptionIds = ref([])
@@ -209,6 +235,7 @@ const observedEvidenceList = computed(() => normalizeIntentSignalPickerOptions(p
   .filter(option => option.readOnlyEvidence))
 const normalizedOptions = computed(() => normalizeIntentSignalPickerOptions(props.options))
 const acceptedSignalList = computed(() => normalizeIntentSignalCandidates(props.acceptedSignals))
+const customEntryEnabled = computed(() => props.customEntryInput?.enabled === true)
 const acceptedSignalIds = computed(() => new Set(
   acceptedSignalList.value.map(signal => signal.candidateId)
 ))
@@ -246,7 +273,8 @@ const availableOptionGroups = computed(() => {
 const showPicker = computed(() => (
   observedEvidenceList.value.length > 0 ||
   availableOptionGroups.value.length > 0 ||
-  acceptedSignalList.value.length > 0
+  acceptedSignalList.value.length > 0 ||
+  customEntryEnabled.value
 ))
 
 const selectionStatus = computed(() => {

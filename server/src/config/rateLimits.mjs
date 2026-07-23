@@ -81,6 +81,16 @@ export const logsLimiterConfig = {
   legacyHeaders: false,
 };
 
+/** Policy custom intent-signal validation (per IP, per 15 minutes). */
+export const policyIntentSignalCustomEntryLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many custom intent-signal validations, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'test',
+};
+
 /** Settings — SSL connectivity test (per IP, per hour). */
 export const sslTestLimiterConfig = {
   windowMs: 60 * 60 * 1000,

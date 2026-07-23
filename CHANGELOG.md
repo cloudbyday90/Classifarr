@@ -26,9 +26,14 @@ unchanged operator or runtime outcome.
   matching starter-template provenance, and disabled reasons. Broad generic
   identity values remain unavailable without supporting evidence, raw
   template/profile records are not exposed, and no observation becomes intent
-  until explicitly accepted. Policy creation still establishes native authority,
-  audit history, routing state, and a rollback snapshot atomically without
-  provider calls, quota consumption, learning, or media routing.
+  until explicitly accepted. For sparse libraries, an optional custom-value
+  fallback now validates only supported genres, keywords, or studios with an
+  operator explanation on the server, returns the candidate through the same
+  bounded projection, and still requires explicit selection. It cannot write
+  policy state, create learning, route media, or consume provider quota. Policy
+  creation still establishes native authority, audit history, routing state,
+  and a rollback snapshot atomically without provider calls, quota consumption,
+  learning, or media routing.
 
 - **Native-First Policy Creation** - creating a new policy now focuses on the
   connected library and explicitly accepted observed destination values. Legacy

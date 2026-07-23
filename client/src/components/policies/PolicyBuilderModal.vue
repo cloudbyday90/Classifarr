@@ -45,7 +45,11 @@
           :accepted-signals="acceptedIntentSignals"
           :selection-enabled="experienceMode.isNativeCreate"
           :empty-state-action-busy="librarySyncing || libraryProfileRefreshing"
+          :custom-entry-busy="customIntentSignalValidationLoading"
+          :custom-entry-error="customIntentSignalValidationError"
+          :custom-entry-message="customIntentSignalValidationMessage"
           @draft-command-plan="applyIntentSignalCommandPlan"
+          @validate-custom-signal="validateActiveCustomIntentSignal"
           @refresh-profile="refreshActiveLibraryProfile"
           @reload-workflow="reloadActiveLibraryWorkflow"
           @empty-state-action="handleEmptyStateAction"
@@ -278,6 +282,10 @@ const {
   error: operatorWorkflowError,
   loadWorkflow: loadOperatorWorkflow,
   watchWorkflow: watchOperatorWorkflow,
+  customIntentSignalValidationLoading,
+  customIntentSignalValidationError,
+  customIntentSignalValidationMessage,
+  validateCustomIntentSignal,
 } = usePolicyOperatorWorkflow()
 
 const {
@@ -362,6 +370,10 @@ const handleEmptyStateAction = async (emptyState) => {
 const reloadActiveLibraryWorkflow = async () => {
   await loadLibraryProfile(form.value.library_id)
   await loadOperatorWorkflow(form.value.library_id)
+}
+
+const validateActiveCustomIntentSignal = async (payload) => {
+  await validateCustomIntentSignal(form.value.library_id, payload)
 }
 
 const addAllSuggested = () => {

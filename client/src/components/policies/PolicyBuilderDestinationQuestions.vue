@@ -56,12 +56,17 @@
         />
 
         <IntentSignalPicker
-          v-if="showsObservedEvidenceActions(section) && nativeEvidenceRecovery.canSelectObservedCandidates"
+          v-if="showsIntentSignalPicker(section)"
           :accepted-signals="acceptedSignals"
           :observed-evidence="observedEvidence"
           :options="intentSignalOptions"
           :library-name="libraryName"
+          :custom-entry-input="customEntryInput"
+          :custom-entry-busy="customEntryBusy"
+          :custom-entry-error="customEntryError"
+          :custom-entry-message="customEntryMessage"
           @draft-command-plan="emit('draft-command-plan', $event)"
+          @validate-custom-signal="emit('validate-custom-signal', $event)"
         />
 
         <p
@@ -121,6 +126,22 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  customEntryInput: {
+    type: Object,
+    default: null,
+  },
+  customEntryBusy: {
+    type: Boolean,
+    default: false,
+  },
+  customEntryError: {
+    type: String,
+    default: '',
+  },
+  customEntryMessage: {
+    type: String,
+    default: '',
+  },
   libraryName: {
     type: String,
     default: 'this library',
@@ -137,6 +158,7 @@ const props = defineProps({
 
 const emit = defineEmits({
   'draft-command-plan': plan => Boolean(plan?.commands?.length),
+  'validate-custom-signal': payload => Boolean(payload?.signalType && payload?.value && payload?.explanation),
   'refresh-profile': () => true,
   'reload-workflow': () => true,
   'empty-state-action': emptyState => Boolean(emptyState?.stateId && emptyState?.nextAction?.actionId),
@@ -146,6 +168,13 @@ const sectionHeadingId = sectionId => `policy-builder-workflow-${sectionId}-titl
 
 const showsObservedEvidenceActions = section => (
   props.selectionEnabled && section?.sectionId === 'what_belongs_here'
+)
+
+const showsIntentSignalPicker = section => (
+  showsObservedEvidenceActions(section) && (
+    props.nativeEvidenceRecovery?.canSelectObservedCandidates ||
+    props.customEntryInput?.enabled === true
+  )
 )
 
 const emptyStatesFor = sectionId => props.emptyStates.filter(

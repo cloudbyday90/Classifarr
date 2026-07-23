@@ -36,6 +36,7 @@ import {
   getPolicy,
   getPolicies,
   getPolicyOperatorWorkflow,
+  validatePolicyOperatorWorkflowCustomIntentSignal,
   createPolicy,
   updatePolicy,
   deletePolicy,
@@ -66,6 +67,22 @@ describe('policiesApi', () => {
     await getPolicyOperatorWorkflow(7)
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/operator-workflow/libraries/7')
+  })
+
+  it('validatePolicyOperatorWorkflowCustomIntentSignal posts only the explicit custom-entry payload', async () => {
+    const payload = {
+      signalType: 'studios',
+      value: 'Studio Ghibli',
+      explanation: 'This library is intended for films from this studio.',
+    }
+    mockPost.mockResolvedValueOnce({ data: { version: 'policy.operator_workflow_read.v2' } })
+
+    await validatePolicyOperatorWorkflowCustomIntentSignal(7, payload)
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/policies/operator-workflow/libraries/7/intent-signals/custom',
+      payload
+    )
   })
 
   it('createPolicy calls POST with data', async () => {

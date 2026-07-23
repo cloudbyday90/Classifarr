@@ -30,6 +30,10 @@ export function getPolicyOperatorWorkflow(libraryId) {
   return getDataRequest(`/policies/operator-workflow/libraries/${libraryId}`)
 }
 
+export function validatePolicyOperatorWorkflowCustomIntentSignal(libraryId, payload) {
+  return apiClient.post(`/policies/operator-workflow/libraries/${libraryId}/intent-signals/custom`, payload)
+}
+
 export function createPolicy(data) {
   return apiClient.post('/policies', data)
 }
@@ -54,6 +58,7 @@ const policiesApi = {
   getPolicy,
   getPolicies,
   getPolicyOperatorWorkflow,
+  validatePolicyOperatorWorkflowCustomIntentSignal,
   createPolicy,
   updatePolicy,
   deletePolicy,

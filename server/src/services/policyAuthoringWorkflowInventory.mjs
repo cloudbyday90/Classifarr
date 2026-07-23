@@ -195,6 +195,7 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
       '/PolicyIntentActionButton.vue',
       '/PolicyIntentCertificationControl.vue',
       '/PolicyIntentChip.vue',
+      '/PolicyIntentCustomSignalEntry.vue',
       '/PolicyIntentGenreControl.vue',
       '/PolicyIntentOptionActionGroup.vue',
       '/PolicyIntentOptionSelect.vue',

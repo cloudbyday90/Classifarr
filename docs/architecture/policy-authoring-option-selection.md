@@ -122,6 +122,7 @@ projection.
 
 ## Next Step
 
-Add the server-validated custom intent-signal entry command. It must feed its
-normalized candidate back through the projection before the browser can create a
+Implement the hard-limit and avoid decision model. It must distinguish an
+explicit routing/classification blocker from a confidence-lowering avoid signal
+and a non-blocking review warning before any constraint control can write a
 typed draft command.

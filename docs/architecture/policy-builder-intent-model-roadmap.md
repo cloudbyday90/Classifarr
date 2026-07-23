@@ -2347,12 +2347,21 @@ Implementation record:
   and disabled states without exposing raw profile/template payloads or letting
   the client infer source behavior. See [Policy Intent-Signal Option
   Projection](policy-intent-signal-option-projection.md).
+- **3R.4.3 Server-Validated Custom Intent-Signal Entry** is complete. The
+  optional sparse-library fallback accepts only a bounded `genres`, `keywords`,
+  or `studios` value plus explanation; the server canonicalizes and validates
+  it, reprojects it with the same broad-identity guard, and returns only the
+  display-only workflow contract. The value never writes policy state, creates
+  learning, routes media, or consumes a provider quota. The operator must still
+  explicitly select the returned option before a typed local draft command is
+  created. See [Policy Intent-Signal Custom
+  Entry](policy-intent-signal-custom-entry.md).
 
-Next implementation task: **3R.4 Task 3R.4.3, Server-Validated Custom
-Intent-Signal Entry**. Add one bounded server endpoint that normalizes an
-operator-provided supported signal, applies the same source/explanation and
-broad-identity evidence guards, and returns the candidate through the
-intent-signal projection before the local draft can accept it.
+Next implementation task: **3R.5 Task 3R.5.1, Hard-Limit And Avoid Decision
+Model**. Define and implement one server-owned typed representation that
+separates explicit hard blockers, confidence-lowering avoid signals, and
+non-blocking review warnings before the policy builder exposes constraint
+controls.
 
 ### 3R.4 Evidence-Backed Option Selection
 

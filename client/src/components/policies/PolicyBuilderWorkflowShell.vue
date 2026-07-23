@@ -59,9 +59,14 @@
         :observed-evidence="observedEvidence"
         :intent-signal-options="intentSignalOptions"
         :library-name="libraryName"
+        :custom-entry-input="customEntryInput"
+        :custom-entry-busy="customEntryBusy"
+        :custom-entry-error="customEntryError"
+        :custom-entry-message="customEntryMessage"
         :empty-states="emptyStates"
         :empty-state-action-busy="emptyStateActionBusy"
         @draft-command-plan="emit('draft-command-plan', $event)"
+        @validate-custom-signal="emit('validate-custom-signal', $event)"
         @refresh-profile="emit('refresh-profile')"
         @reload-workflow="emit('reload-workflow')"
         @empty-state-action="emit('empty-state-action', $event)"
@@ -117,10 +122,23 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  customEntryBusy: {
+    type: Boolean,
+    default: false,
+  },
+  customEntryError: {
+    type: String,
+    default: '',
+  },
+  customEntryMessage: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits({
   'draft-command-plan': plan => Boolean(plan?.commands?.length),
+  'validate-custom-signal': payload => Boolean(payload?.signalType && payload?.value && payload?.explanation),
   'refresh-profile': () => true,
   'reload-workflow': () => true,
   'empty-state-action': emptyState => Boolean(emptyState?.stateId && emptyState?.nextAction?.actionId),
@@ -138,6 +156,7 @@ const observedEvidence = computed(() => Array.isArray(intentSignalProjection.val
 const intentSignalOptions = computed(() => Array.isArray(intentSignalProjection.value.options)
   ? intentSignalProjection.value.options
   : [])
+const customEntryInput = computed(() => intentSignalProjection.value.customEntryInput || null)
 const sections = computed(() => Array.isArray(workflow.value?.sections)
   ? workflow.value.sections
   : [])

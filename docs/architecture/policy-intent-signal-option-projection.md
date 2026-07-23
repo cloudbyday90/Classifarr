@@ -13,7 +13,7 @@ one explicit projection that can represent:
 - suggestions derived from the observed profile;
 - optional, matching starter-template suggestions;
 - common options when a server-owned provider supplies them;
-- validated operator-provided custom values when a server-owned provider
+- validated operator-provided custom values after a bounded server command
   supplies them;
 - already-declared values; and
 - values unavailable because they conflict with current intent or fail the
@@ -61,8 +61,15 @@ June 2026:
 6. Treat starter templates as secondary optional provenance. Matching a
    template may suggest a scalar value, but it never attaches or persists that
    template.
-7. Do not fabricate common or custom values in the read path. Those sources are
-   emitted only when a later server-owned provider validates bounded input.
+7. Do not fabricate common or custom values in the read path. Custom values are
+   emitted only after the custom-entry command validates bounded input and
+   returns it through this projection.
+8. Publish only the server-owned custom-entry input contract needed to render
+   the optional fallback form. Keep its allowed types, field bounds, and
+   explanation requirement out of browser-owned policy logic.
+9. Pin a just-validated custom candidate within the bounded option list so a
+   valid value cannot disappear before the operator can explicitly select or
+   understand its unavailable state.
 
 ## Pros And Cons
 
@@ -107,6 +114,10 @@ Cons:
 - `server/src/services/policyStarterTemplateSuggestions.mjs` owns reusable
   library/template matching and safely projects only supported `require_any`
   scalar values for optional provenance.
+- `server/src/services/policyIntentSignalCustomEntry.mjs` owns the allowlisted
+  custom-entry request contract, Unicode canonicalization, field bounds, and
+  candidate construction. See [Policy Intent-Signal Custom
+  Entry](policy-intent-signal-custom-entry.md).
 - `server/src/services/policyAuthoringOptionSelection.mjs` remains the
   validator for source/state behavior and now guards broad starter-template
   genres in addition to common/custom values.
@@ -139,12 +150,14 @@ Native policy creation now receives one audited, display-only intent-signal
 projection. The normal path remains library-first: observed values are the
 highest-priority candidate source, template suggestions are optional and
 non-persistent, and generic/custom sources cannot become destination identity
-until a server-owned validation path supplies them.
+until a server-owned validation path supplies them. The projection now also
+publishes the minimal custom-entry contract and retains a freshly validated
+custom candidate in the bounded response, including a disabled result when the
+broad-identity evidence guard does not permit selection.
 
 ## Next Step
 
-Implement a server-validated custom intent-signal entry command. It must accept
-only bounded supported types, normalize and explain the operator value,
-reevaluate the broad-identity guard against current library evidence, and return
-the resulting candidate through this projection before it can reach the local
-draft.
+Implement the hard-limit and avoid decision model. It must keep explicitly
+blocking constraints separate from confidence-lowering avoid signals and from
+review warnings, with one server-owned representation that later UI controls
+and policy creation can safely consume.

@@ -22,6 +22,18 @@ function buildWorkflowRead(libraryId = 7) {
       current: true,
       suggestionCount: 1,
       suggestions: [],
+      intentSignalProjection: {
+        version: 'policy.intent_signal_option_projection.v1',
+        observedEvidence: [],
+        options: [],
+        customEntryInput: {
+          enabled: true,
+          signalTypes: [{ id: 'studios', label: 'Studio' }],
+          valueMaximumLength: 160,
+          explanationMaximumLength: 320,
+          requiresExplanation: true,
+        },
+      },
     },
     workflow: {
       sections: [],
@@ -118,5 +130,65 @@ describe('usePolicyOperatorWorkflow', () => {
 
     expect(workflow.workflowRead.value.library.id).toBe(8)
     stopWatching()
+  })
+
+  it('accepts a server-validated custom signal only through the display-only workflow projection', async () => {
+    const customWorkflowRead = buildWorkflowRead()
+    customWorkflowRead.observedProfile.intentSignalProjection.options = [{
+      candidateId: 'intent-signal:operator-added-custom:studios:studio-ghibli',
+      sourceId: 'operator_added_custom',
+      sourceLabel: 'Custom value',
+      signalType: 'studios',
+      value: 'Studio Ghibli',
+      label: 'Studio Ghibli',
+      questionId: 'what_belongs_here',
+      selectionStateId: 'selectable_custom_value',
+      selectable: true,
+      readOnlyEvidence: false,
+      requiresExplicitAcceptance: true,
+      canAutoDeclare: false,
+      explanation: 'This library is intended for films from this studio.',
+      evidence: { count: 0, confidence: null },
+      operator: 'require_any',
+      commandId: 'add_signal_value',
+    }]
+    const loadWorkflowRequest = vi.fn().mockResolvedValue(buildWorkflowRead())
+    const validateCustomIntentSignalRequest = vi.fn().mockResolvedValue({ data: customWorkflowRead })
+    const workflow = usePolicyOperatorWorkflow({
+      loadWorkflowRequest,
+      validateCustomIntentSignalRequest,
+    })
+    const payload = {
+      signalType: 'studios',
+      value: 'Studio Ghibli',
+      explanation: 'This library is intended for films from this studio.',
+    }
+
+    await workflow.loadWorkflow(7)
+    await expect(workflow.validateCustomIntentSignal(7, payload)).resolves.toBe(true)
+
+    expect(validateCustomIntentSignalRequest).toHaveBeenCalledWith(7, payload)
+    expect(workflow.workflowRead.value).toEqual(customWorkflowRead)
+    expect(workflow.customIntentSignalValidationMessage.value).toContain('Review it below')
+    expect(workflow.customIntentSignalValidationError.value).toBe('')
+  })
+
+  it('fails closed when custom validation returns a workflow for another library', async () => {
+    const loadWorkflowRequest = vi.fn().mockResolvedValue(buildWorkflowRead(7))
+    const validateCustomIntentSignalRequest = vi.fn().mockResolvedValue({ data: buildWorkflowRead(8) })
+    const workflow = usePolicyOperatorWorkflow({
+      loadWorkflowRequest,
+      validateCustomIntentSignalRequest,
+    })
+
+    await workflow.loadWorkflow(7)
+    await expect(workflow.validateCustomIntentSignal(7, {
+      signalType: 'keywords',
+      value: 'Holiday',
+      explanation: 'This library is intended for holiday films.',
+    })).resolves.toBe(false)
+
+    expect(workflow.workflowRead.value).toEqual(buildWorkflowRead(7))
+    expect(workflow.customIntentSignalValidationError.value).toContain('could not validate')
   })
 })

@@ -19,13 +19,16 @@ import {
   getPolicyAuthoringOptionSelectionSourceBehavior,
   validatePolicyAuthoringOptionCandidate,
 } from './policyAuthoringOptionSelection.mjs';
+import {
+  getPolicyIntentSignalCustomEntryInputContract,
+  isPolicyIntentSignalCustomEntryInputContract,
+  isPolicyIntentSignalCustomEntrySignalType,
+} from './policyIntentSignalCustomEntry.mjs';
 
 const POLICY_INTENT_SIGNAL_OPTION_PROJECTION_VERSION = 'policy.intent_signal_option_projection.v1';
 const MAX_PROJECTED_OPTIONS = 32;
 const MAX_PROJECTED_OBSERVED_EVIDENCE = 20;
 const MAX_VALUE_LENGTH = 160;
-const SUPPORTED_SIGNAL_TYPES = new Set(['genres', 'keywords', 'studios']);
-
 const OPTION_SOURCE_ORDER = Object.freeze([
   POLICY_AUTHORING_OPTION_SOURCE_IDS.OBSERVED_IN_LIBRARY,
   POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_OBSERVED_PROFILE,
@@ -38,8 +41,8 @@ const OPTION_SOURCE_ORDER = Object.freeze([
 
 const SOURCE_PRIORITY = Object.freeze({
   [POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_OBSERVED_PROFILE]: 400,
+  [POLICY_AUTHORING_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM]: 350,
   [POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_STARTER_TEMPLATE]: 300,
-  [POLICY_AUTHORING_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM]: 200,
   [POLICY_AUTHORING_OPTION_SOURCE_IDS.COMMON_STATIC_OPTION]: 100,
 });
 
@@ -64,7 +67,7 @@ function normalizeString(value, maximumLength = MAX_VALUE_LENGTH) {
 
 function normalizeSignalType(value) {
   const signalType = normalizeString(value, 40).toLowerCase();
-  return SUPPORTED_SIGNAL_TYPES.has(signalType) ? signalType : '';
+  return isPolicyIntentSignalCustomEntrySignalType(signalType) ? signalType : '';
 }
 
 function normalizeEvidence(value = {}) {
@@ -300,6 +303,27 @@ function selectPreferredOptions(candidates = []) {
   return Array.from(preferred.values());
 }
 
+function prioritizeOptionsByCandidateKeys(options = [], candidateKeys = new Set()) {
+  if (candidateKeys.size === 0) return options;
+
+  const prioritized = [];
+  const remaining = [];
+  const addedKeys = new Set();
+
+  options.forEach((option) => {
+    const key = getCandidateKey(option);
+    if (key && candidateKeys.has(key) && !addedKeys.has(key)) {
+      prioritized.push(option);
+      addedKeys.add(key);
+      return;
+    }
+
+    remaining.push(option);
+  });
+
+  return [...prioritized, ...remaining];
+}
+
 function buildPolicyIntentSignalOptionProjection({
   observedProjection = {},
   starterTemplateSuggestions = [],
@@ -309,6 +333,9 @@ function buildPolicyIntentSignalOptionProjection({
   conflictingSignals = [],
 } = {}) {
   const observedSuggestionCandidates = asArray(observedProjection.selectableSuggestions);
+  const customCandidateKeys = new Set(
+    asArray(customValueCandidates).map(getCandidateKey).filter(Boolean),
+  );
   const observedEvidenceByCandidateKey = buildObservedEvidenceByCandidateKey(observedSuggestionCandidates);
   const observedEvidence = asArray(observedProjection.observations)
     .map(toObservedEvidence)
@@ -331,6 +358,10 @@ function buildPolicyIntentSignalOptionProjection({
       candidate,
       POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_OBSERVED_PROFILE,
     )),
+    ...asArray(customValueCandidates).map(candidate => toGuardedSelectableOption(
+      addObservedSupportingEvidence(candidate, observedEvidenceByCandidateKey),
+      POLICY_AUTHORING_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM,
+    )),
     ...asArray(starterTemplateSuggestions).map(candidate => toGuardedSelectableOption(
       addObservedSupportingEvidence(candidate, observedEvidenceByCandidateKey),
       POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_STARTER_TEMPLATE,
@@ -338,10 +369,6 @@ function buildPolicyIntentSignalOptionProjection({
     ...asArray(commonOptions).map(candidate => toGuardedSelectableOption(
       addObservedSupportingEvidence(candidate, observedEvidenceByCandidateKey),
       POLICY_AUTHORING_OPTION_SOURCE_IDS.COMMON_STATIC_OPTION,
-    )),
-    ...asArray(customValueCandidates).map(candidate => toGuardedSelectableOption(
-      addObservedSupportingEvidence(candidate, observedEvidenceByCandidateKey),
-      POLICY_AUTHORING_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM,
     )),
   ];
   const guardedDisabledOptions = selectDisabledOptions(guardedCandidates
@@ -352,7 +379,11 @@ function buildPolicyIntentSignalOptionProjection({
     .map(result => result.option)
     .filter(Boolean)
     .filter(option => !blockedKeys.has(getCandidateKey(option))));
-  const options = [...disabledOptions, ...guardedDisabledOptions, ...selectableOptions]
+  const options = prioritizeOptionsByCandidateKeys([
+    ...selectableOptions,
+    ...guardedDisabledOptions,
+    ...disabledOptions,
+  ], customCandidateKeys)
     .slice(0, MAX_PROJECTED_OPTIONS);
 
   return {
@@ -360,6 +391,7 @@ function buildPolicyIntentSignalOptionProjection({
     observedEvidence,
     options,
     sourceSummaries: OPTION_SOURCE_ORDER.map(sourceId => buildSourceSummary(sourceId, options, observedEvidence)),
+    customEntryInput: getPolicyIntentSignalCustomEntryInputContract(),
     authority: {
       displayProjection: true,
       policyPersistence: false,
@@ -407,6 +439,10 @@ function buildPolicyIntentSignalOptionProjectionAudit(projection = {}) {
 
   if (asArray(source.sourceSummaries).length !== OPTION_SOURCE_ORDER.length) {
     issues.push('invalid_source_summaries');
+  }
+
+  if (!isPolicyIntentSignalCustomEntryInputContract(source.customEntryInput)) {
+    issues.push('invalid_custom_entry_input');
   }
 
   return {

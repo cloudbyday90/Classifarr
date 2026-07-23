@@ -123,12 +123,16 @@ describe('policyAuthoringWorkflowInventory', () => {
   });
 
   test('keeps leaf intent controls while rewriting old editor grouping', () => {
-    expect(classifyPolicyAuthoringWorkflowSurface('client/src/components/policies/PolicyIntentGenreControl.vue'))
-      .toEqual(expect.objectContaining({
+    [
+      'client/src/components/policies/PolicyIntentCustomSignalEntry.vue',
+      'client/src/components/policies/PolicyIntentGenreControl.vue',
+    ].forEach((filePath) => {
+      expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({
         decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
         roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DECLARED_INTENT_EDITING,
         normalAuthoringAllowed: true,
       }));
+    });
 
     expect(classifyPolicyAuthoringWorkflowSurface('client/src/components/policies/PolicyIntentEditor.vue'))
       .toEqual(expect.objectContaining({
