@@ -112,13 +112,11 @@ Cons:
 ## Outcome
 
 The native workflow now has a small, typed, local-only constraint command
-boundary. It is ready for a minimal accessible constraint control surface, but
-no constraint selection is exposed or persisted yet.
+boundary. [Policy Constraint Control Surface](policy-constraint-control-surface.md)
+uses it to stage explicit selections without persistence.
 
 ## Next Step
 
-Implement **3R.5 Task 3R.5.3, Constraint Control Surface**: introduce the
-minimal accessible hard-limit, avoid, and review-warning controls that consume
-the server projection and this adapter, preserve the distinction between a
-blocker and an advisory, and remain local-only until the native write contract
-exists.
+Implement **3R.5 Task 3R.5.4, Constraint Value Eligibility Projection**:
+publish server-owned, bounded values before any constraint draft can become a
+native policy write.

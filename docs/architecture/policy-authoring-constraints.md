@@ -111,6 +111,10 @@ Cons:
   - Resolves one explicit operator selection against the server projection and
     retains only a transient typed command without compatibility serialization
     or any persistence, routing, learning, provider, or quota side effect.
+- [Policy Constraint Control Surface](policy-constraint-control-surface.md)
+  - Presents the three controls with native form semantics, clear blocker versus
+    advisory behavior, value-tied confirmation, and visible local-only draft
+    state. It does not join a policy write payload.
 
 ## Outcome
 
@@ -120,6 +124,7 @@ record, and standing architecture document.
 
 ## Next Step
 
-Implement the minimal accessible constraint control surface. It must use the
-server decision model and draft-command adapter without exposing raw
-compatibility payloads or writing policy storage.
+Implement the server-owned constraint value eligibility projection. It must
+publish bounded rating and review-warning choices for a future native write,
+fail closed when no safe value source exists, and keep free-form UI values out
+of persistence and runtime evaluation.

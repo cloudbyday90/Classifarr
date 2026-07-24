@@ -23,6 +23,60 @@ import api from '../api';
 import { getDataRequest } from '../api/core';
 import { buildIntentSignalCommandPlan } from '@/utils/policyIntentSignalDraft';
 
+const buildConstraintDecisionModel = () => ({
+  version: 'policy.constraint_decision_model.v1',
+  authority: {
+    displayProjection: true,
+    automationDecision: false,
+    policyPersistence: false,
+    routingExecution: false,
+    runtimeDecision: false,
+    clientCanInferConstraintMeaning: false,
+  },
+  controls: [
+    {
+      controlId: 'hard_limit',
+      intentId: 'blocking_constraint',
+      label: 'Hard limit',
+      questionId: 'what_should_not_go_here',
+      description: 'Blocks items that violate this destination boundary.',
+      draftCommandId: 'set_hard_limit',
+      decisionEffectId: 'block_automatic_application',
+      requiresExplicitOperatorAction: true,
+      observedAbsenceBehaviorId: 'not_a_declaration_source',
+      certificationSemanticId: 'max_allowed_rating',
+      canBlockAutomaticApplication: true,
+    },
+    {
+      controlId: 'avoid',
+      intentId: 'advisory_avoid',
+      label: 'Avoid',
+      questionId: 'what_should_not_go_here',
+      description: 'Lowers confidence or asks for review without becoming a hard block by default.',
+      draftCommandId: 'add_avoid_value',
+      decisionEffectId: 'reduce_confidence',
+      requiresExplicitOperatorAction: true,
+      observedAbsenceBehaviorId: 'not_a_declaration_source',
+      certificationSemanticId: 'avoid_rating',
+      canBlockAutomaticApplication: false,
+    },
+    {
+      controlId: 'review_warning',
+      intentId: 'non_blocking_warning',
+      label: 'Review warning',
+      questionId: 'when_should_classifarr_ask',
+      description: 'Asks the operator when evidence is weak or missing.',
+      draftCommandId: 'add_review_warning',
+      decisionEffectId: 'request_review',
+      requiresExplicitOperatorAction: false,
+      observedAbsenceBehaviorId: 'review_warning_only',
+      certificationSemanticId: null,
+      canBlockAutomaticApplication: false,
+    },
+  ],
+  rawPayloadExposed: false,
+});
+
 const mockToast = vi.hoisted(() => ({
   success: vi.fn(),
   error: vi.fn(),
@@ -349,6 +403,82 @@ describe('PolicyBuilderModal.vue', () => {
         },
       },
     });
+  });
+
+  it('keeps staged constraint commands out of the native policy-create payload', async () => {
+    const workflowRead = buildOperatorWorkflowRead();
+    workflowRead.constraintDecisionModel = buildConstraintDecisionModel();
+    workflowRead.observedProfile.intentSignalProjection = { options: [{
+      candidateId: 'genre:Science Fiction:purpose',
+      value: 'Science Fiction',
+      label: 'Science Fiction',
+      signalType: 'genres',
+      operator: 'require_any',
+      questionId: 'what_belongs_here',
+      sourceId: 'suggested_from_observed_profile',
+      sourceLabel: 'Suggested from this library',
+      selectionStateId: 'selectable_suggestion',
+      selectable: true,
+      readOnlyEvidence: false,
+      commandId: 'add_signal_value',
+      explanation: 'Science Fiction appears in 18 items in the current library.',
+      evidence: { count: 18, confidence: 0.8 },
+      requiresExplicitAcceptance: true,
+      canAutoDeclare: false,
+    }] };
+
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/operator-workflow/libraries/1') return Promise.resolve({ data: workflowRead });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+      },
+      attachTo: document.body,
+    });
+
+    await flushPromises();
+
+    const hardLimitValue = document.body.querySelector('#policy-intent-constraint-hard_limit-value');
+    const hardLimitConfirmation = document.body.querySelector('#policy-intent-constraint-hard_limit-confirmation');
+    const hardLimitButton = Array.from(document.body.querySelectorAll('button'))
+      .find(button => button.textContent.trim() === 'Stage hard limit');
+
+    expect(hardLimitValue).toBeTruthy();
+    expect(hardLimitConfirmation).toBeTruthy();
+    expect(hardLimitButton).toBeTruthy();
+
+    hardLimitValue.value = 'PG-13';
+    hardLimitValue.dispatchEvent(new Event('input'));
+    hardLimitConfirmation.checked = true;
+    hardLimitConfirmation.dispatchEvent(new Event('change'));
+    await flushPromises();
+    hardLimitButton.click();
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('1 local constraint is staged and not saved');
+
+    wrapper.vm.applyIntentSignalCommandPlan(buildIntentSignalCommandPlan({
+      commandId: 'add_signal_value',
+      candidates: workflowRead.observedProfile.intentSignalProjection.options,
+    }));
+    await wrapper.vm.save();
+
+    expect(wrapper.emitted('save')?.[0]?.[0]).toMatchObject({
+      library_id: 1,
+      native_intent_establishment: {
+        declared_intent: {
+          hard_limits: [],
+          avoid: [],
+        },
+      },
+    });
+    expect(wrapper.emitted('save')?.[0]?.[0]).not.toHaveProperty('constraint_draft_commands');
+    expect(wrapper.emitted('save')?.[0]?.[0]).not.toHaveProperty('policyIntentConstraintDraft');
   });
 
   it('keeps native creation open for a persisted server-owned policy handoff', async () => {

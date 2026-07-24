@@ -72,6 +72,14 @@
         @empty-state-action="emit('empty-state-action', $event)"
       />
 
+      <PolicyIntentConstraintControlSurface
+        v-if="selectionEnabled && constraintDecisionModel"
+        :constraint-decision-model="constraintDecisionModel"
+        :constraint-draft-commands="constraintDraftCommands"
+        @draft-command-plan="emit('constraint-draft-command-plan', $event)"
+        @clear-constraint-draft="emit('clear-constraint-draft')"
+      />
+
       <ReadinessNextActionCard
         v-if="!selectionEnabled"
         :readiness="workflow.readiness"
@@ -86,6 +94,7 @@ import DestinationContextCard from './DestinationContextCard.vue'
 import ObservedProfileSummary from './ObservedProfileSummary.vue'
 import PolicyBuilderDestinationQuestions from './PolicyBuilderDestinationQuestions.vue'
 import PolicyNativeEvidenceRecovery from './PolicyNativeEvidenceRecovery.vue'
+import PolicyIntentConstraintControlSurface from './PolicyIntentConstraintControlSurface.vue'
 import ReadinessNextActionCard from './ReadinessNextActionCard.vue'
 import { buildPolicyNativeEvidenceRecovery } from '@/utils/policyNativeEvidenceRecovery'
 
@@ -114,6 +123,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  constraintDraftCommands: {
+    type: Array,
+    default: () => [],
+  },
   selectionEnabled: {
     type: Boolean,
     default: false,
@@ -138,6 +151,8 @@ const props = defineProps({
 
 const emit = defineEmits({
   'draft-command-plan': plan => Boolean(plan?.commands?.length),
+  'constraint-draft-command-plan': plan => Boolean(plan?.commands?.length),
+  'clear-constraint-draft': () => true,
   'validate-custom-signal': payload => Boolean(payload?.signalType && payload?.value && payload?.explanation),
   'refresh-profile': () => true,
   'reload-workflow': () => true,
@@ -147,6 +162,7 @@ const emit = defineEmits({
 const workflow = computed(() => props.workflowRead?.workflow || null)
 const observedProfile = computed(() => props.workflowRead?.observedProfile || {})
 const intentSignalProjection = computed(() => observedProfile.value.intentSignalProjection || {})
+const constraintDecisionModel = computed(() => props.workflowRead?.constraintDecisionModel || null)
 const observedSuggestions = computed(() => Array.isArray(observedProfile.value.suggestions)
   ? observedProfile.value.suggestions
   : [])

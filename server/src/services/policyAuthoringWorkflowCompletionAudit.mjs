@@ -180,6 +180,13 @@ const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
     testPath: 'client/src/__tests__/utils/policyIntentConstraintDraft.test.js',
     evidence: 'Accepts only an explicit operator selection resolved from the server-owned constraint decision model and retains a transient typed command with no persistence, routing, learning, provider, or quota side effect.',
   },
+  {
+    id: 'policy_authoring_constraint_control_surface',
+    label: 'Policy authoring constraint control surface',
+    docPath: 'docs/architecture/policy-constraint-control-surface.md',
+    testPath: 'client/src/__tests__/PolicyIntentConstraintControlSurface.test.js',
+    evidence: 'Renders accessible, explicit hard-limit, avoid, and review-warning controls from the server-owned decision model while retaining typed commands locally and excluding them from native policy creation.',
+  },
 ]);
 
 const POLICY_AUTHORING_NORMAL_WORKFLOW_RULES = Object.freeze([
@@ -201,8 +208,8 @@ const POLICY_AUTHORING_NORMAL_WORKFLOW_RULES = Object.freeze([
     id: 'hard_limits_explicit',
     label: 'Hard limits require explicit operator action',
     docPath: 'docs/architecture/policy-authoring-constraints.md',
-    testPath: 'client/src/__tests__/PolicyIntentCertificationControl.test.js',
-    evidence: 'Blockers are separate from avoid hints and require explicit declared intent.',
+    testPath: 'client/src/__tests__/PolicyIntentConstraintControlSurface.test.js',
+    evidence: 'The native constraint surface marks blockers separately from advisory controls and requires a value-tied explicit confirmation before staging hard limits or avoid values.',
   },
   {
     id: 'one_recommended_next_action',

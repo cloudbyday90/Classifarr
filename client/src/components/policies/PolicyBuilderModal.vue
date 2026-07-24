@@ -43,12 +43,15 @@
           :refresh-result="libraryProfileRefreshResult"
           :refreshing="libraryProfileRefreshing"
           :accepted-signals="acceptedIntentSignals"
+          :constraint-draft-commands="constraintDraftCommands"
           :selection-enabled="experienceMode.isNativeCreate"
           :empty-state-action-busy="librarySyncing || libraryProfileRefreshing"
           :custom-entry-busy="customIntentSignalValidationLoading"
           :custom-entry-error="customIntentSignalValidationError"
           :custom-entry-message="customIntentSignalValidationMessage"
           @draft-command-plan="applyIntentSignalCommandPlan"
+          @constraint-draft-command-plan="applyConstraintDraftCommandPlan"
+          @clear-constraint-draft="resetConstraintDraft"
           @validate-custom-signal="validateActiveCustomIntentSignal"
           @refresh-profile="refreshActiveLibraryProfile"
           @reload-workflow="reloadActiveLibraryWorkflow"
@@ -151,6 +154,7 @@ import { usePolicyBuilderLibrarySync } from '@/composables/usePolicyBuilderLibra
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 import { usePolicyOperatorWorkflow } from '@/composables/usePolicyOperatorWorkflow'
 import { usePolicyIntentSignalDraft } from '@/composables/usePolicyIntentSignalDraft'
+import { usePolicyIntentConstraintDraft } from '@/composables/usePolicyIntentConstraintDraft'
 import { usePolicyNativeCreateHandoff } from '@/composables/usePolicyNativeCreateHandoff'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRoutingReadiness'
@@ -293,6 +297,14 @@ const {
   nativeIntentEstablishment,
   applyCommandPlan: applyIntentSignalCommandPlan,
 } = usePolicyIntentSignalDraft({
+  libraryId: computed(() => form.value.library_id),
+})
+
+const {
+  constraintDraftCommands,
+  applyCommandPlan: applyConstraintDraftCommandPlan,
+  reset: resetConstraintDraft,
+} = usePolicyIntentConstraintDraft({
   libraryId: computed(() => form.value.library_id),
 })
 

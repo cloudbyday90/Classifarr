@@ -24,7 +24,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       ok: true,
       issueCount: 0,
       checkedServerContractCount: 10,
-      checkedClientWorkflowComponentCount: 10,
+      checkedClientWorkflowComponentCount: 11,
       checkedNormalWorkflowRuleCount: 5,
       checkedNormalPathExclusionCount: 4,
       nextStep: expect.objectContaining({
@@ -58,6 +58,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_authoring_accessibility_decision_load_audit',
       'policy_authoring_presentation_test_reset',
       'policy_authoring_constraint_draft_command_boundary',
+      'policy_authoring_constraint_control_surface',
     ]);
   });
 

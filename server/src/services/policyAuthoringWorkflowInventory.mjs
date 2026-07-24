@@ -304,6 +304,19 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     ]),
   },
   {
+    id: 'constraint_control_surface',
+    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DECLARED_INTENT_EDITING,
+    normalAuthoringAllowed: true,
+    migrationSupportOnly: false,
+    riskIds: [],
+    notes: 'Constraint controls render the server-owned distinction between a blocker and advisory behavior, then emit only local typed draft plans without persistence, routing, learning, provider, quota, or compatibility authority.',
+    matches: filePath => hasAnySegment(filePath, [
+      '/PolicyIntentConstraintControlSurface.vue',
+      '/policyIntentConstraintControlSurface.js',
+    ]),
+  },
+  {
     id: 'draft_and_bridge_utilities',
     decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,

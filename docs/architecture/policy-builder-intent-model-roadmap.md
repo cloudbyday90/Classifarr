@@ -2373,10 +2373,17 @@ draft state. It performs no persistence, routing, learning, provider, quota,
 media-server, or compatibility-bridge operation. See [Policy Constraint
 Draft-Command Adapter](policy-constraint-draft-command-adapter.md).
 
-Next implementation task: **3R.5 Task 3R.5.3, Constraint Control Surface**.
-Introduce the minimal accessible hard-limit, avoid, and review-warning controls
-that use the server projection and local adapter without adding persistence or
-automation authority.
+**3R.5 Task 3R.5.3, Constraint Control Surface** is complete. Native policy
+setup now renders labelled, keyboard-operable hard-limit, avoid, and
+review-warning controls from the server-owned decision model. It visibly
+separates blocker and advisory consequences, resets confirmation when an
+explicit hard-limit or avoid value changes, retains typed commands only in the
+active library's local draft, and excludes them from the native create payload.
+See [Policy Constraint Control Surface](policy-constraint-control-surface.md).
+
+Next implementation task: **3R.5 Task 3R.5.4, Constraint Value Eligibility
+Projection**. Publish server-owned bounded values for a future native constraint
+write; until then, local draft values cannot become policy or runtime state.
 
 ### 3R.4 Evidence-Backed Option Selection
 
@@ -2463,11 +2470,16 @@ Implementation status:
   routing, learning, provider, quota, media-server, or compatibility-bridge
   operation. See [Policy Constraint Draft-Command
   Adapter](policy-constraint-draft-command-adapter.md).
+- **3R.5.3 Constraint Control Surface** is complete. The native destination
+  flow now exposes labelled native controls for hard limits, avoid values, and
+  review warnings. Each control stages only the existing typed local command;
+  hard-limit and avoid values require confirmation tied to the current value,
+  and staged commands are visibly unsaved and absent from the create payload.
+  See [Policy Constraint Control Surface](policy-constraint-control-surface.md).
 
-Next implementation task: **3R.5 Task 3R.5.3, Constraint Control Surface**.
-Introduce the minimal accessible hard-limit, avoid, and review-warning controls
-that use the server projection and local adapter without adding persistence or
-automation authority.
+Next implementation task: **3R.5 Task 3R.5.4, Constraint Value Eligibility
+Projection**. Define the server-owned, bounded values eligible for native
+constraint persistence before any local draft can become policy state.
 
 ### 3R.6 Readiness And Next Action Surface
 

@@ -20,8 +20,9 @@ workflow read. It does not carry selected values, observed examples, candidate
 metadata, raw profiles, browser-derived semantics, policy writes, routing,
 runtime decisions, provider calls, or quota reads. Each control also carries a
 bounded `draftCommandId` so a client adapter can forward the server-approved
-typed command without deriving it from a visible label. A later task may add
-controls that use the separate typed draft-command boundary.
+typed command without deriving it from a visible label. The separate [Policy
+Constraint Control Surface](policy-constraint-control-surface.md) now consumes
+this projection while retaining selections in local draft state only.
 
 ## Official Guidance Reviewed
 
@@ -120,7 +121,7 @@ observed-absence behavior are explicit server-owned data.
 
 ## Next Step
 
-Implement the minimal constraint control surface. It must consume the server
-projection and [Policy Constraint Draft-Command
-Adapter](policy-constraint-draft-command-adapter.md), preserve blocker versus
-advisory meaning, and remain local-only until native constraint storage exists.
+Implement **3R.5 Task 3R.5.4, Constraint Value Eligibility Projection**. The
+server must provide the bounded values that are eligible for a later native
+constraint write, while the current control surface continues to keep draft
+values local-only.

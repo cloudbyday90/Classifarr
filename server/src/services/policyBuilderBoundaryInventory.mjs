@@ -222,6 +222,20 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ]),
   },
   {
+    id: 'policy_intent_constraint_control_surface',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DRAFT_STATE,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_DRAFT_PROJECTION,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.EXTRACT_DRAFT_BOUNDARY,
+    clientEngineAuthorityAllowed: false,
+    engineCutlineDecisionRequired: false,
+    riskIds: [],
+    notes: 'Constraint control presentation consumes the server-owned decision model and forwards explicit local draft plans. It cannot create policy storage, runtime decisions, routing, learning, provider, quota, or compatibility effects.',
+    matches: (filePath) => hasAnySegment(filePath, [
+      '/PolicyIntentConstraintControlSurface.vue',
+      '/policyIntentConstraintControlSurface.js',
+    ]),
+  },
+  {
     id: 'policy_legacy_bridge_modules',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.LEGACY_COMPATIBILITY_BRIDGE,
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_COMPATIBILITY_BRIDGE,
