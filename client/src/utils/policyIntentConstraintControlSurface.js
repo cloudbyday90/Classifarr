@@ -12,21 +12,26 @@ import {
   isApprovedConstraintDecisionModel,
   normalizeConstraintDraftCommands,
 } from '@/utils/policyIntentConstraintDraft'
+import {
+  getApprovedConstraintValueEligibilityControl,
+  isApprovedConstraintValue,
+  isApprovedConstraintValueEligibility,
+} from '@/utils/policyIntentConstraintValueEligibility'
 
 const CONTROL_PRESENTATION = Object.freeze({
   hard_limit: Object.freeze({
     valueLabel: 'Maximum allowed rating',
-    valuePlaceholder: 'For example, PG-13',
+    valueEmptyLabel: 'Choose a maximum rating...',
     actionLabel: 'Stage hard limit',
   }),
   avoid: Object.freeze({
     valueLabel: 'Rating to avoid',
-    valuePlaceholder: 'For example, R',
+    valueEmptyLabel: 'Choose a rating to avoid...',
     actionLabel: 'Stage avoid value',
   }),
   review_warning: Object.freeze({
     valueLabel: 'When should Classifarr ask?',
-    valuePlaceholder: 'For example, evidence conflicts',
+    valueEmptyLabel: 'Choose a review condition...',
     actionLabel: 'Stage review warning',
   }),
 })
@@ -34,6 +39,14 @@ const CONTROL_PRESENTATION = Object.freeze({
 const UNAVAILABLE_SURFACE = Object.freeze({
   available: false,
   message: 'Constraint controls are unavailable until Classifarr receives a valid workflow decision model.',
+  controls: Object.freeze([]),
+  stagedCommandCount: 0,
+  stagedCommands: Object.freeze([]),
+})
+
+const UNSUPPORTED_MEDIA_TYPE_SURFACE = Object.freeze({
+  available: false,
+  message: 'Constraint controls are unavailable because this library has no supported canonical rating family.',
   controls: Object.freeze([]),
   stagedCommandCount: 0,
   stagedCommands: Object.freeze([]),
@@ -51,7 +64,7 @@ function stagedCommandsForControl(commands, controlId) {
   return commands.filter(command => command.controlId === controlId)
 }
 
-function buildConstraintControl(control, commands) {
+function buildConstraintControl(control, eligibilityControl, commands) {
   const presentation = presentationForControl(control.controlId)
   if (!presentation) return null
 
@@ -66,24 +79,46 @@ function buildConstraintControl(control, commands) {
     canBlockAutomaticApplication: control.canBlockAutomaticApplication,
     requiresExplicitOperatorAction: control.requiresExplicitOperatorAction,
     valueLabel: presentation.valueLabel,
-    valuePlaceholder: presentation.valuePlaceholder,
+    valueEmptyLabel: presentation.valueEmptyLabel,
     actionLabel: presentation.actionLabel,
     confirmationLabel: `I want to stage this ${control.label.toLowerCase()}.`,
+    options: Object.freeze(eligibilityControl.options.map(option => Object.freeze({ ...option }))),
     stagedValues: Object.freeze(stagedValues),
   })
 }
 
 export function buildPolicyIntentConstraintControlSurface({
   constraintDecisionModel,
+  constraintValueEligibility,
   constraintDraftCommands = [],
 } = {}) {
-  if (!isApprovedConstraintDecisionModel(constraintDecisionModel)) {
+  if (
+    !isApprovedConstraintDecisionModel(constraintDecisionModel) ||
+    !isApprovedConstraintValueEligibility(constraintValueEligibility)
+  ) {
     return UNAVAILABLE_SURFACE
   }
 
+  if (constraintValueEligibility.statusId !== 'ready') {
+    return UNSUPPORTED_MEDIA_TYPE_SURFACE
+  }
+
   const stagedCommands = normalizeConstraintDraftCommands(constraintDraftCommands)
+    .filter(command => isApprovedConstraintValue({
+      projection: constraintValueEligibility,
+      controlId: command.controlId,
+      value: command.values[0],
+    }))
   const controls = asArray(constraintDecisionModel.controls)
-    .map(control => buildConstraintControl(control, stagedCommands))
+    .map((control) => {
+      const eligibilityControl = getApprovedConstraintValueEligibilityControl(
+        constraintValueEligibility,
+        control.controlId
+      )
+      return eligibilityControl
+        ? buildConstraintControl(control, eligibilityControl, stagedCommands)
+        : null
+    })
     .filter(Boolean)
 
   if (controls.length !== 3) {

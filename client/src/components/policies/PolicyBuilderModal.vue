@@ -292,6 +292,10 @@ const {
   validateCustomIntentSignal,
 } = usePolicyOperatorWorkflow()
 
+const constraintValueEligibility = computed(() => (
+  operatorWorkflowRead.value?.constraintValueEligibility || null
+))
+
 const {
   acceptedSignals: acceptedIntentSignals,
   nativeIntentEstablishment,
@@ -306,6 +310,7 @@ const {
   reset: resetConstraintDraft,
 } = usePolicyIntentConstraintDraft({
   libraryId: computed(() => form.value.library_id),
+  constraintValueEligibility,
 })
 
 const experienceMode = computed(() => buildPolicyBuilderExperienceMode(props.policy))

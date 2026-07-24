@@ -69,6 +69,61 @@ function constraintDecisionModel(overrides = {}) {
   }
 }
 
+function constraintValueEligibility(overrides = {}) {
+  const ratingOptions = ['G', 'PG', 'PG-13', 'R', 'NC-17']
+    .map(value => ({ value, label: value, description: null }))
+
+  return {
+    version: 'policy.constraint_value_eligibility.v1',
+    statusId: 'ready',
+    libraryMediaTypeFamilyId: 'movie',
+    authority: {
+      displayProjection: true,
+      serverOwnedAllowlist: true,
+      policyPersistence: false,
+      routingExecution: false,
+      runtimeDecision: false,
+      clientMayAddValues: false,
+    },
+    controls: [
+      {
+        controlId: 'hard_limit',
+        valueKindId: 'certification',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ratingOptions,
+      },
+      {
+        controlId: 'avoid',
+        valueKindId: 'certification',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ratingOptions,
+      },
+      {
+        controlId: 'review_warning',
+        valueKindId: 'review_trigger',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: [
+          {
+            value: 'evidence_missing',
+            label: 'Evidence is missing',
+            description: 'Ask when Classifarr does not have enough evidence to automate safely.',
+          },
+          {
+            value: 'evidence_conflicting',
+            label: 'Evidence conflicts',
+            description: 'Ask when strong signals point to different destinations.',
+          },
+        ],
+      },
+    ],
+    rawPayloadExposed: false,
+    ...overrides,
+  }
+}
+
 function findButton(wrapper, label) {
   return wrapper.findAll('button').find(button => button.text() === label)
 }
@@ -76,7 +131,10 @@ function findButton(wrapper, label) {
 describe('PolicyIntentConstraintControlSurface.vue', () => {
   it('requires an explicit confirmation before staging a blocking hard limit', async () => {
     const wrapper = mount(PolicyIntentConstraintControlSurface, {
-      props: { constraintDecisionModel: constraintDecisionModel() },
+      props: {
+        constraintDecisionModel: constraintDecisionModel(),
+        constraintValueEligibility: constraintValueEligibility(),
+      },
     })
 
     const hardLimitButton = findButton(wrapper, 'Stage hard limit')
@@ -103,18 +161,21 @@ describe('PolicyIntentConstraintControlSurface.vue', () => {
 
   it('stages an advisory review warning without presenting it as a blocker', async () => {
     const wrapper = mount(PolicyIntentConstraintControlSurface, {
-      props: { constraintDecisionModel: constraintDecisionModel() },
+      props: {
+        constraintDecisionModel: constraintDecisionModel(),
+        constraintValueEligibility: constraintValueEligibility(),
+      },
     })
 
     expect(wrapper.text()).toContain('This is advisory')
-    await wrapper.find('#policy-intent-constraint-review_warning-value').setValue('Evidence conflicts')
+    await wrapper.find('#policy-intent-constraint-review_warning-value').setValue('evidence_conflicting')
     await findButton(wrapper, 'Stage review warning').trigger('click')
 
     expect(wrapper.emitted('draft-command-plan')?.[0]?.[0]).toMatchObject({
       commands: [{
         commandId: 'add_review_warning',
         controlId: 'review_warning',
-        values: ['Evidence conflicts'],
+        values: ['evidence_conflicting'],
         decisionEffectId: 'request_review',
       }],
     })
@@ -124,6 +185,7 @@ describe('PolicyIntentConstraintControlSurface.vue', () => {
     const wrapper = mount(PolicyIntentConstraintControlSurface, {
       props: {
         constraintDecisionModel: constraintDecisionModel(),
+        constraintValueEligibility: constraintValueEligibility(),
         constraintDraftCommands: [{
           commandId: 'add_avoid_value',
           controlId: 'avoid',
@@ -150,10 +212,28 @@ describe('PolicyIntentConstraintControlSurface.vue', () => {
     const wrapper = mount(PolicyIntentConstraintControlSurface, {
       props: {
         constraintDecisionModel: constraintDecisionModel({ rawPayloadExposed: true }),
+        constraintValueEligibility: constraintValueEligibility(),
       },
     })
 
     expect(wrapper.find('[role="alert"]').text()).toContain('unavailable')
-    expect(wrapper.findAll('input')).toHaveLength(0)
+    expect(wrapper.findAll('select')).toHaveLength(0)
+  })
+
+  it('renders only the server-projected values and rejects a missing eligibility projection', () => {
+    const wrapper = mount(PolicyIntentConstraintControlSurface, {
+      props: {
+        constraintDecisionModel: constraintDecisionModel(),
+        constraintValueEligibility: constraintValueEligibility(),
+      },
+    })
+
+    expect(wrapper.find('#policy-intent-constraint-hard_limit-value').text()).toContain('PG-13')
+    expect(wrapper.find('#policy-intent-constraint-hard_limit-value').text()).not.toContain('TV-14')
+
+    const unavailable = mount(PolicyIntentConstraintControlSurface, {
+      props: { constraintDecisionModel: constraintDecisionModel() },
+    })
+    expect(unavailable.find('[role="alert"]').text()).toContain('unavailable')
   })
 })

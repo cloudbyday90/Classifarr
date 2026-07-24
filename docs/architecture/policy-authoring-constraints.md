@@ -113,8 +113,11 @@ Cons:
     or any persistence, routing, learning, provider, or quota side effect.
 - [Policy Constraint Control Surface](policy-constraint-control-surface.md)
   - Presents the three controls with native form semantics, clear blocker versus
-    advisory behavior, value-tied confirmation, and visible local-only draft
-    state. It does not join a policy write payload.
+  advisory behavior, value-tied confirmation, and visible local-only draft
+  state. It does not join a policy write payload.
+- [Policy Constraint Value Eligibility](policy-constraint-value-eligibility.md)
+  - Publishes the canonical, media-type-aware server allowlist used by native
+    constraint selects. Unsupported media types expose no free-text fallback.
 
 ## Outcome
 
@@ -124,7 +127,6 @@ record, and standing architecture document.
 
 ## Next Step
 
-Implement the server-owned constraint value eligibility projection. It must
-publish bounded rating and review-warning choices for a future native write,
-fail closed when no safe value source exists, and keep free-form UI values out
-of persistence and runtime evaluation.
+Implement **3R.5 Task 3R.5.5, Authorized Native Constraint Write Admission**.
+It must rederive the active library's constraint decision and value eligibility
+on the server before it can accept a typed local command for future persistence.

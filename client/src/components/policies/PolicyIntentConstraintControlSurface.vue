@@ -69,17 +69,24 @@
           >
             {{ control.valueLabel }}
           </label>
-          <input
+          <select
             :id="valueInputId(control.controlId)"
             :value="draftValues[control.controlId] || ''"
-            type="text"
-            maxlength="120"
-            autocomplete="off"
             class="w-full rounded-sm border border-gray-700 bg-background px-2 py-1 text-sm text-white"
-            :placeholder="control.valuePlaceholder"
             :aria-describedby="`${controlDescriptionId(control.controlId)} policy-intent-constraint-controls-status`"
-            @input="setDraftValue(control.controlId, $event.target.value)"
+            @change="setDraftValue(control.controlId, $event.target.value)"
           >
+            <option value="">
+              {{ control.valueEmptyLabel }}
+            </option>
+            <option
+              v-for="option in control.options"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </select>
           <p
             :id="controlDescriptionId(control.controlId)"
             class="text-[11px] text-gray-500"
@@ -149,17 +156,24 @@
         >
           {{ control.valueLabel }}
         </label>
-        <input
+        <select
           :id="valueInputId(control.controlId)"
           :value="draftValues[control.controlId] || ''"
-          type="text"
-          maxlength="120"
-          autocomplete="off"
           class="w-full rounded-sm border border-gray-700 bg-background px-2 py-1 text-sm text-white"
-          :placeholder="control.valuePlaceholder"
           :aria-describedby="`${controlDescriptionId(control.controlId)} policy-intent-constraint-controls-status`"
-          @input="setDraftValue(control.controlId, $event.target.value)"
+          @change="setDraftValue(control.controlId, $event.target.value)"
         >
+          <option value="">
+            {{ control.valueEmptyLabel }}
+          </option>
+          <option
+            v-for="option in control.options"
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
         <p
           :id="controlDescriptionId(control.controlId)"
           class="text-[11px] text-gray-500"
@@ -220,6 +234,10 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  constraintValueEligibility: {
+    type: Object,
+    default: null,
+  },
   constraintDraftCommands: {
     type: Array,
     default: () => [],
@@ -236,6 +254,7 @@ const confirmations = reactive({})
 
 const surface = computed(() => buildPolicyIntentConstraintControlSurface({
   constraintDecisionModel: props.constraintDecisionModel,
+  constraintValueEligibility: props.constraintValueEligibility,
   constraintDraftCommands: props.constraintDraftCommands,
 }))
 
@@ -269,7 +288,7 @@ function canStage(control) {
 
 function stageActionLabel(control) {
   if (!draftValues[control.controlId]?.trim()) {
-    return `${control.actionLabel}: enter a value first.`
+    return `${control.actionLabel}: choose an approved value first.`
   }
 
   if (control.requiresExplicitOperatorAction && confirmations[control.controlId] !== true) {
@@ -284,6 +303,7 @@ function stageControl(control) {
 
   const plan = buildPolicyIntentConstraintCommandPlan({
     constraintDecisionModel: props.constraintDecisionModel,
+    constraintValueEligibility: props.constraintValueEligibility,
     selection: {
       controlId: control.controlId,
       value: draftValues[control.controlId],

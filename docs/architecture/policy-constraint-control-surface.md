@@ -14,11 +14,12 @@ destination flow:
   confirmation; and
 - `review_warning` stages a non-blocking condition for later review behavior.
 
-`PolicyIntentConstraintControlSurface.vue` receives only the audited
-`policy.constraint_decision_model.v1` display projection and existing local
-constraint commands. It calls the typed draft-command adapter for each operator
-action, then the parent retains the resulting command in memory for the active
-library.
+`PolicyIntentConstraintControlSurface.vue` receives the audited
+`policy.constraint_decision_model.v1` semantics, the separate server-owned
+`policy.constraint_value_eligibility.v1` allowlist, and existing local
+constraint commands. It renders native selects from the allowlist, calls the
+typed draft-command adapter for each operator action, then the parent retains
+the resulting command in memory for the active library.
 
 The component is available only in native destination setup. Its state is
 explicitly labelled as local and unsaved. It does not add a field to the policy
@@ -49,7 +50,7 @@ June 2026:
 
 ## Recommendations
 
-1. Use native `fieldset`, `legend`, `label`, `input`, checkbox, and button
+1. Use native `fieldset`, `legend`, `label`, `select`, checkbox, and button
    elements instead of custom ARIA widgets for these form controls.
 2. State the consequence beside each control: a hard limit can block automatic
    application, while avoid and review warning remain advisory.
@@ -93,13 +94,18 @@ Cons:
 
 - An operator must wait for the next authorized storage task before a staged
   constraint can become policy state.
-- Free-form draft values are intentionally not eligible for runtime use.
+- Free-form values are intentionally unavailable; only server-projected options
+  may be staged.
 
 ## Final Recommendation Stack
 
 - `server/src/services/policyConstraintDecisionModel.mjs` remains the source of
   the three approved control meanings and command IDs.
-- `client/src/utils/policyIntentConstraintDraft.js` validates the projection
+- `server/src/services/policyConstraintValueEligibility.mjs` publishes the
+  media-type-aware values that the controls may render.
+- `client/src/utils/policyIntentConstraintValueEligibility.js` validates the
+  server-owned allowlist before the UI exposes it.
+- `client/src/utils/policyIntentConstraintDraft.js` validates both projections
   and produces immutable local typed plans.
 - `client/src/utils/policyIntentConstraintControlSurface.js` derives only UI
   presentation and staged-value state from validated commands.
@@ -130,9 +136,6 @@ state or create a bypass around server authorization.
 
 ## Next Step
 
-Implement **3R.5 Task 3R.5.4, Constraint Value Eligibility Projection**.
-The server must publish the bounded, destination-appropriate values that a
-future native write may accept for rating and review-warning controls. The
-projection must fail closed when it cannot source a value safely, and the UI
-must replace free-form staging with those approved options before persistence
-is introduced.
+Implement **3R.5 Task 3R.5.5, Authorized Native Constraint Write Admission**.
+The server must rederive control semantics and value eligibility before it can
+admit a typed local command for a future native constraint write.

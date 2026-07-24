@@ -69,12 +69,64 @@ function constraintDecisionModel() {
   }
 }
 
+function constraintValueEligibility() {
+  const ratingOptions = ['G', 'PG', 'PG-13', 'R', 'NC-17']
+    .map(value => ({ value, label: value, description: null }))
+
+  return {
+    version: 'policy.constraint_value_eligibility.v1',
+    statusId: 'ready',
+    libraryMediaTypeFamilyId: 'movie',
+    authority: {
+      displayProjection: true,
+      serverOwnedAllowlist: true,
+      policyPersistence: false,
+      routingExecution: false,
+      runtimeDecision: false,
+      clientMayAddValues: false,
+    },
+    controls: [
+      {
+        controlId: 'hard_limit',
+        valueKindId: 'certification',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ratingOptions,
+      },
+      {
+        controlId: 'avoid',
+        valueKindId: 'certification',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ratingOptions,
+      },
+      {
+        controlId: 'review_warning',
+        valueKindId: 'review_trigger',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: [{
+          value: 'evidence_missing',
+          label: 'Evidence is missing',
+          description: null,
+        }],
+      },
+    ],
+    rawPayloadExposed: false,
+  }
+}
+
 describe('usePolicyIntentConstraintDraft', () => {
   it('stores only transient commands and clears them when the destination library changes', async () => {
     const libraryId = ref(4)
-    const draft = usePolicyIntentConstraintDraft({ libraryId })
+    const eligibility = ref(constraintValueEligibility())
+    const draft = usePolicyIntentConstraintDraft({
+      libraryId,
+      constraintValueEligibility: eligibility,
+    })
     const plan = buildPolicyIntentConstraintCommandPlan({
       constraintDecisionModel: constraintDecisionModel(),
+      constraintValueEligibility: eligibility.value,
       selection: {
         controlId: 'hard_limit',
         value: 'PG-13',

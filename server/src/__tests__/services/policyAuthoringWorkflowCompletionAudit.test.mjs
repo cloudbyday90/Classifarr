@@ -23,7 +23,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
-      checkedServerContractCount: 10,
+      checkedServerContractCount: 11,
       checkedClientWorkflowComponentCount: 11,
       checkedNormalWorkflowRuleCount: 5,
       checkedNormalPathExclusionCount: 4,
@@ -41,6 +41,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_authoring_option_selection',
       'policy_authoring_constraints',
       'policy_constraint_decision_model',
+      'policy_constraint_value_eligibility',
       'policy_authoring_readiness',
       'policy_authoring_starter_templates',
       'policy_authoring_accessibility',

@@ -33,8 +33,12 @@ import {
   buildPolicyConstraintDecisionModelAudit,
   policyConstraintDecisionModel,
 } from './policyConstraintDecisionModel.mjs';
+import {
+  buildPolicyConstraintValueEligibility,
+  buildPolicyConstraintValueEligibilityAudit,
+} from './policyConstraintValueEligibility.mjs';
 
-const POLICY_OPERATOR_WORKFLOW_READ_VERSION = 'policy.operator_workflow_read.v2';
+const POLICY_OPERATOR_WORKFLOW_READ_VERSION = 'policy.operator_workflow_read.v3';
 const MAX_LABEL_LENGTH = 160;
 
 const POLICY_OPERATOR_WORKFLOW_READ_STATUS_IDS = Object.freeze({
@@ -54,6 +58,7 @@ const POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS = Object.freeze({
   INVALID_EMPTY_STATE_PROJECTION: 'invalid_empty_state_projection',
   INVALID_INTENT_SIGNAL_OPTION_PROJECTION: 'invalid_intent_signal_option_projection',
   INVALID_CONSTRAINT_DECISION_MODEL: 'invalid_constraint_decision_model',
+  INVALID_CONSTRAINT_VALUE_ELIGIBILITY: 'invalid_constraint_value_eligibility',
 });
 
 function asObject(value) {
@@ -186,6 +191,7 @@ function buildReadResult({
     observedProfile,
     emptyStateProjection,
     constraintDecisionModel: policyConstraintDecisionModel,
+    constraintValueEligibility: buildPolicyConstraintValueEligibility({ library }),
     workflow,
     authority: {
       displayProjection: true,
@@ -211,6 +217,10 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
   const emptyStateAudit = buildPolicyOperatorWorkflowEmptyStateAudit(source.emptyStateProjection);
   const constraintDecisionModelAudit = buildPolicyConstraintDecisionModelAudit(
     source.constraintDecisionModel,
+  );
+  const constraintValueEligibilityAudit = buildPolicyConstraintValueEligibilityAudit(
+    source.constraintValueEligibility,
+    { library },
   );
 
   if (source.version !== POLICY_OPERATOR_WORKFLOW_READ_VERSION) {
@@ -259,6 +269,13 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
     issues.push({
       riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_CONSTRAINT_DECISION_MODEL,
       message: 'Constraint decisions must remain a valid server-owned display projection.',
+    });
+  }
+
+  if (!constraintValueEligibilityAudit.ok) {
+    issues.push({
+      riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_CONSTRAINT_VALUE_ELIGIBILITY,
+      message: 'Constraint values must remain a valid server-owned eligibility projection.',
     });
   }
 

@@ -77,6 +77,53 @@ const buildConstraintDecisionModel = () => ({
   rawPayloadExposed: false,
 });
 
+const buildConstraintValueEligibility = () => {
+  const ratingOptions = ['G', 'PG', 'PG-13', 'R', 'NC-17']
+    .map(value => ({ value, label: value, description: null }));
+
+  return {
+    version: 'policy.constraint_value_eligibility.v1',
+    statusId: 'ready',
+    libraryMediaTypeFamilyId: 'movie',
+    authority: {
+      displayProjection: true,
+      serverOwnedAllowlist: true,
+      policyPersistence: false,
+      routingExecution: false,
+      runtimeDecision: false,
+      clientMayAddValues: false,
+    },
+    controls: [
+      {
+        controlId: 'hard_limit',
+        valueKindId: 'certification',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ratingOptions,
+      },
+      {
+        controlId: 'avoid',
+        valueKindId: 'certification',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ratingOptions,
+      },
+      {
+        controlId: 'review_warning',
+        valueKindId: 'review_trigger',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: [{
+          value: 'evidence_missing',
+          label: 'Evidence is missing',
+          description: null,
+        }],
+      },
+    ],
+    rawPayloadExposed: false,
+  };
+};
+
 const mockToast = vi.hoisted(() => ({
   success: vi.fn(),
   error: vi.fn(),
@@ -147,7 +194,7 @@ describe('PolicyBuilderModal.vue', () => {
   ];
 
   const buildOperatorWorkflowRead = () => ({
-    version: 'policy.operator_workflow_read.v2',
+    version: 'policy.operator_workflow_read.v3',
     library: {
       id: 1,
       name: 'Sci-Fi Movies',
@@ -188,6 +235,7 @@ describe('PolicyBuilderModal.vue', () => {
         readiness: {},
       })),
     },
+    constraintValueEligibility: buildConstraintValueEligibility(),
     authority: {
       displayProjection: true,
       automationDecision: false,
@@ -453,7 +501,7 @@ describe('PolicyBuilderModal.vue', () => {
     expect(hardLimitButton).toBeTruthy();
 
     hardLimitValue.value = 'PG-13';
-    hardLimitValue.dispatchEvent(new Event('input'));
+    hardLimitValue.dispatchEvent(new Event('change'));
     hardLimitConfirmation.checked = true;
     hardLimitConfirmation.dispatchEvent(new Event('change'));
     await flushPromises();

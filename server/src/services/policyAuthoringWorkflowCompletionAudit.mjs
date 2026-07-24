@@ -76,6 +76,14 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Publishes the display-only, server-owned hard-limit, avoid, and review-warning decision effects for the native workflow.',
   },
   {
+    id: 'policy_constraint_value_eligibility',
+    label: 'Policy constraint value eligibility',
+    docPath: 'docs/architecture/policy-constraint-value-eligibility.md',
+    servicePath: 'server/src/services/policyConstraintValueEligibility.mjs',
+    testPath: 'server/src/__tests__/services/policyConstraintValueEligibility.test.mjs',
+    evidence: 'Publishes the display-only, media-type-aware canonical allowlist used by native constraint controls while rejecting free-text and unsupported library media types.',
+  },
+  {
     id: 'policy_authoring_readiness',
     label: 'Policy authoring readiness',
     docPath: 'docs/architecture/policy-authoring-readiness.md',
@@ -185,7 +193,7 @@ const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
     label: 'Policy authoring constraint control surface',
     docPath: 'docs/architecture/policy-constraint-control-surface.md',
     testPath: 'client/src/__tests__/PolicyIntentConstraintControlSurface.test.js',
-    evidence: 'Renders accessible, explicit hard-limit, avoid, and review-warning controls from the server-owned decision model while retaining typed commands locally and excluding them from native policy creation.',
+    evidence: 'Renders accessible, explicit hard-limit, avoid, and review-warning controls from server-owned decision and value-eligibility projections while retaining typed commands locally and excluding them from native policy creation.',
   },
 ]);
 

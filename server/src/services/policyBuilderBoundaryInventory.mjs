@@ -222,6 +222,19 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ]),
   },
   {
+    id: 'policy_intent_constraint_value_eligibility',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DRAFT_STATE,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_DRAFT_PROJECTION,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.EXTRACT_DRAFT_BOUNDARY,
+    clientEngineAuthorityAllowed: false,
+    engineCutlineDecisionRequired: false,
+    riskIds: [],
+    notes: 'Constraint value eligibility validates the server-owned canonical value allowlist used by the client draft and display surfaces. It cannot create values, persist policy intent, make runtime decisions, or route media.',
+    matches: (filePath) => hasAnySegment(filePath, [
+      '/policyIntentConstraintValueEligibility.js',
+    ]),
+  },
+  {
     id: 'policy_intent_constraint_control_surface',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DRAFT_STATE,
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_DRAFT_PROJECTION,
@@ -229,7 +242,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     clientEngineAuthorityAllowed: false,
     engineCutlineDecisionRequired: false,
     riskIds: [],
-    notes: 'Constraint control presentation consumes the server-owned decision model and forwards explicit local draft plans. It cannot create policy storage, runtime decisions, routing, learning, provider, quota, or compatibility effects.',
+    notes: 'Constraint control presentation consumes the server-owned decision model and eligibility allowlist, then forwards explicit local draft plans. It cannot create policy storage, runtime decisions, routing, learning, provider, quota, or compatibility effects.',
     matches: (filePath) => hasAnySegment(filePath, [
       '/PolicyIntentConstraintControlSurface.vue',
       '/policyIntentConstraintControlSurface.js',

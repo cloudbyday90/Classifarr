@@ -8,6 +8,12 @@
  * (at your option) any later version.
  */
 
+import {
+  getApprovedConstraintValueEligibilityControl,
+  isApprovedConstraintValue,
+  isApprovedConstraintValueEligibility,
+} from '@/utils/policyIntentConstraintValueEligibility'
+
 export const POLICY_INTENT_CONSTRAINT_COMMAND_PLAN_VERSION =
   'policy.intent_constraint_command_plan.v1'
 
@@ -28,6 +34,16 @@ const EXPECTED_DRAFT_COMMAND_IDS = new Set([
   'add_avoid_value',
   'add_review_warning',
 ])
+const EXPECTED_COMMAND_ID_BY_CONTROL_ID = Object.freeze({
+  hard_limit: 'set_hard_limit',
+  avoid: 'add_avoid_value',
+  review_warning: 'add_review_warning',
+})
+const EXPECTED_CERTIFICATION_SEMANTIC_BY_CONTROL_ID = Object.freeze({
+  hard_limit: 'max_allowed_rating',
+  avoid: 'avoid_rating',
+  review_warning: null,
+})
 
 const MODEL_PROPERTY_IDS = new Set([
   'version',
@@ -217,6 +233,9 @@ function normalizeConstraintDraftCommand(command = {}) {
     !controlId ||
     !intentId ||
     !decisionEffectId ||
+    !EXPECTED_CONTROL_IDS.has(controlId) ||
+    commandId !== EXPECTED_COMMAND_ID_BY_CONTROL_ID[controlId] ||
+    certificationSemanticId !== EXPECTED_CERTIFICATION_SEMANTIC_BY_CONTROL_ID[controlId] ||
     (command.certificationSemanticId !== null && !certificationSemanticId) ||
     values.length !== 1 ||
     command.sourceId !== OPERATOR_DECLARED_SOURCE_ID ||
@@ -255,8 +274,17 @@ function normalizeConstraintDraftCommands(commands = []) {
   return Array.from(uniqueCommands.values()).slice(0, MAX_CONSTRAINT_DRAFT_COMMANDS)
 }
 
-function buildPolicyIntentConstraintCommandPlan({ constraintDecisionModel, selection } = {}) {
-  if (!isApprovedConstraintDecisionModel(constraintDecisionModel)) return null
+function buildPolicyIntentConstraintCommandPlan({
+  constraintDecisionModel,
+  constraintValueEligibility,
+  selection,
+} = {}) {
+  if (
+    !isApprovedConstraintDecisionModel(constraintDecisionModel) ||
+    !isApprovedConstraintValueEligibility(constraintValueEligibility)
+  ) {
+    return null
+  }
 
   const normalizedSelection = normalizeOperatorSelection(selection)
   if (!normalizedSelection) return null
@@ -264,7 +292,21 @@ function buildPolicyIntentConstraintCommandPlan({ constraintDecisionModel, selec
   const control = constraintDecisionModel.controls.find(candidate => (
     normalizeText(candidate.controlId, 80) === normalizedSelection.controlId
   ))
-  if (!control) return null
+  const eligibilityControl = getApprovedConstraintValueEligibilityControl(
+    constraintValueEligibility,
+    normalizedSelection.controlId
+  )
+  if (
+    !control ||
+    !eligibilityControl ||
+    !isApprovedConstraintValue({
+      projection: constraintValueEligibility,
+      controlId: normalizedSelection.controlId,
+      value: normalizedSelection.value,
+    })
+  ) {
+    return null
+  }
 
   const command = normalizeConstraintDraftCommand({
     commandId: control.draftCommandId,
@@ -288,8 +330,12 @@ function buildPolicyIntentConstraintCommandPlan({ constraintDecisionModel, selec
   })
 }
 
-function isPolicyIntentConstraintCommandPlan(commandPlan = {}) {
+function isPolicyIntentConstraintCommandPlan(
+  commandPlan = {},
+  { constraintValueEligibility } = {}
+) {
   if (
+    !isApprovedConstraintValueEligibility(constraintValueEligibility) ||
     !hasOnlyProperties(commandPlan, COMMAND_PLAN_PROPERTY_IDS) ||
     commandPlan.version !== POLICY_INTENT_CONSTRAINT_COMMAND_PLAN_VERSION ||
     commandPlan.componentId !== CONSTRAINT_DRAFT_COMPONENT_ID ||
@@ -300,17 +346,38 @@ function isPolicyIntentConstraintCommandPlan(commandPlan = {}) {
   }
 
   const commands = normalizeConstraintDraftCommands(commandPlan.commands)
-  return commands.length === 1 && asArray(commandPlan.commands).length === 1
+  return commands.length === 1 &&
+    asArray(commandPlan.commands).length === 1 &&
+    commands.every(command => isApprovedConstraintValue({
+      projection: constraintValueEligibility,
+      controlId: command.controlId,
+      value: command.values[0],
+    }))
 }
 
-function applyPolicyIntentConstraintCommandPlan(currentCommands = [], commandPlan = {}) {
+function applyPolicyIntentConstraintCommandPlan(
+  currentCommands = [],
+  commandPlan = {},
+  { constraintValueEligibility } = {}
+) {
   const normalizedCurrentCommands = normalizeConstraintDraftCommands(currentCommands)
-  if (!isPolicyIntentConstraintCommandPlan(commandPlan)) return normalizedCurrentCommands
+    .filter(command => isApprovedConstraintValue({
+      projection: constraintValueEligibility,
+      controlId: command.controlId,
+      value: command.values[0],
+    }))
+  if (!isPolicyIntentConstraintCommandPlan(commandPlan, { constraintValueEligibility })) {
+    return normalizedCurrentCommands
+  }
 
   return normalizeConstraintDraftCommands([
     ...normalizedCurrentCommands,
     ...commandPlan.commands,
-  ])
+  ]).filter(command => isApprovedConstraintValue({
+    projection: constraintValueEligibility,
+    controlId: command.controlId,
+    value: command.values[0],
+  }))
 }
 
 export {

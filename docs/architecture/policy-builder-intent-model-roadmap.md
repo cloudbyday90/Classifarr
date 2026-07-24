@@ -2381,9 +2381,21 @@ explicit hard-limit or avoid value changes, retains typed commands only in the
 active library's local draft, and excludes them from the native create payload.
 See [Policy Constraint Control Surface](policy-constraint-control-surface.md).
 
-Next implementation task: **3R.5 Task 3R.5.4, Constraint Value Eligibility
-Projection**. Publish server-owned bounded values for a future native constraint
-write; until then, local draft values cannot become policy or runtime state.
+**3R.5 Task 3R.5.4, Constraint Value Eligibility Projection** is complete.
+The display-only workflow read now publishes the audited,
+media-type-aware `policy.constraint_value_eligibility.v1` projection. Native
+constraint controls render only its canonical rating and review-warning values;
+unknown media types expose no free-text fallback. The client validates the
+projection and retains only eligible values in transient local commands. This
+adds no persistence, routing, runtime, learning, provider, quota, or
+media-server authority. See [Policy Constraint Value
+Eligibility](policy-constraint-value-eligibility.md).
+
+Next implementation task: **3R.5 Task 3R.5.5, Authorized Native Constraint
+Write Admission**. Define the server-only DTO and admission service that
+rederives the active library's decision and eligibility projections before it
+accepts any typed local constraint command. It must remain separate from
+storage migration and runtime enforcement.
 
 ### 3R.4 Evidence-Backed Option Selection
 
@@ -2476,10 +2488,21 @@ Implementation status:
   hard-limit and avoid values require confirmation tied to the current value,
   and staged commands are visibly unsaved and absent from the create payload.
   See [Policy Constraint Control Surface](policy-constraint-control-surface.md).
+- **3R.5.4 Constraint Value Eligibility Projection** is complete. The server
+  publishes an audited `policy.constraint_value_eligibility.v1` allowlist for
+  each supported library media type, using existing runtime certification order
+  and bounded review-warning reasons. Native controls now use only labelled
+  selects from that allowlist, while unsupported media types fail closed with
+  no controls. The local command adapter revalidates each staged value and
+  remains excluded from persistence, routing, runtime, learning, provider, and
+  quota paths. See [Policy Constraint Value
+  Eligibility](policy-constraint-value-eligibility.md).
 
-Next implementation task: **3R.5 Task 3R.5.4, Constraint Value Eligibility
-Projection**. Define the server-owned, bounded values eligible for native
-constraint persistence before any local draft can become policy state.
+Next implementation task: **3R.5 Task 3R.5.5, Authorized Native Constraint
+Write Admission**. Add a server-only command DTO and admission boundary that
+rederives the library's decision and eligibility projections before a future
+write can receive a constraint command. Do not combine this task with storage
+migration or runtime enforcement.
 
 ### 3R.6 Readiness And Next Action Surface
 

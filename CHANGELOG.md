@@ -27,15 +27,15 @@ unchanged operator or runtime outcome.
   runtime decision, routing execution, provider activity, or quota usage.
 
 - **Typed Constraint Draft Commands** - explicit constraint choices can now be
-  resolved against the server-owned decision model into bounded transient draft
-  commands. The browser forwards the server-approved command identifier instead
-  of deriving behavior from a visible label; the local state clears when the
-  selected library changes. Native policy setup now provides accessible hard
-  limit, avoid, and review-warning controls that clearly distinguish blockers
-  from advisory behavior and require a value-tied confirmation before staging
-  a hard limit or avoid value. Staged constraints remain visibly unsaved and
-  cannot write a policy, mutate compatibility payloads, route media, create
-  learning, call a provider, or consume quota.
+  resolved against server-owned decision semantics and a canonical per-library
+  value allowlist into bounded transient draft commands. Native setup now uses
+  accessible labelled selects for hard limits, avoid values, and review
+  warnings; it does not accept free-form values, and unsupported library media
+  types fail closed without controls. The browser forwards the server-approved
+  command identifier instead of deriving behavior from a visible label; the
+  local state clears when the selected library changes. Staged constraints
+  remain visibly unsaved and cannot write a policy, mutate compatibility
+  payloads, route media, create learning, call a provider, or consume quota.
 
 - **Evidence-Backed Destination Signals** - new policies now distinguish
   read-only values already observed in the connected library from the proposed

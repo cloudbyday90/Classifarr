@@ -50,8 +50,9 @@ June 2026:
    confidence, and request review.
 2. Make every effect, certification semantic, explicit-action requirement, and
    observed-absence behavior server-owned and audited.
-3. Never return constraint values, raw evidence, candidate details, or a client
-   instruction to persist or execute a decision in this read projection.
+3. Keep value allowlists separate from the decision model in
+   `policy.constraint_value_eligibility.v1`; never return raw evidence,
+   candidate details, or a client instruction to persist or execute a decision.
 4. Fail closed when a projection changes an advisory avoid into a blocker,
    lets observed absence declare a hard/avoid constraint, conflates rating
    semantics, or exposes unapproved fields.
@@ -121,7 +122,7 @@ observed-absence behavior are explicit server-owned data.
 
 ## Next Step
 
-Implement **3R.5 Task 3R.5.4, Constraint Value Eligibility Projection**. The
-server must provide the bounded values that are eligible for a later native
-constraint write, while the current control surface continues to keep draft
-values local-only.
+See [Policy Constraint Value Eligibility](policy-constraint-value-eligibility.md)
+for the implemented allowlist boundary. Next, implement **3R.5 Task 3R.5.5,
+Authorized Native Constraint Write Admission** so a future write endpoint
+rederives both projections rather than trusting browser state.

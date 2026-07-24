@@ -75,7 +75,7 @@ describe('policiesApi', () => {
       value: 'Studio Ghibli',
       explanation: 'This library is intended for films from this studio.',
     }
-    mockPost.mockResolvedValueOnce({ data: { version: 'policy.operator_workflow_read.v2' } })
+    mockPost.mockResolvedValueOnce({ data: { version: 'policy.operator_workflow_read.v3' } })
 
     await validatePolicyOperatorWorkflowCustomIntentSignal(7, payload)
 

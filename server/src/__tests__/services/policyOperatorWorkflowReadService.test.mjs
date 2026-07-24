@@ -16,6 +16,9 @@ import {
   POLICY_CONSTRAINT_DECISION_EFFECT_IDS,
   POLICY_CONSTRAINT_DECISION_MODEL_VERSION,
 } from '../../services/policyConstraintDecisionModel.mjs';
+import {
+  POLICY_CONSTRAINT_VALUE_ELIGIBILITY_VERSION,
+} from '../../services/policyConstraintValueEligibility.mjs';
 
 const NOW = Date.parse('2026-07-19T12:00:00.000Z');
 
@@ -118,6 +121,21 @@ describe('policyOperatorWorkflowReadService', () => {
             controlId: 'review_warning',
             decisionEffectId: POLICY_CONSTRAINT_DECISION_EFFECT_IDS.REQUEST_REVIEW,
             requiresExplicitOperatorAction: false,
+          }),
+        ]),
+      }),
+      constraintValueEligibility: expect.objectContaining({
+        version: POLICY_CONSTRAINT_VALUE_ELIGIBILITY_VERSION,
+        statusId: 'ready',
+        libraryMediaTypeFamilyId: 'movie',
+        rawPayloadExposed: false,
+        controls: expect.arrayContaining([
+          expect.objectContaining({
+            controlId: 'hard_limit',
+            allowsFreeText: false,
+            options: expect.arrayContaining([
+              expect.objectContaining({ value: 'PG-13' }),
+            ]),
           }),
         ]),
       }),
@@ -292,6 +310,8 @@ describe('policyOperatorWorkflowReadService', () => {
       ...result.constraintDecisionModel.controls[1],
       canBlockAutomaticApplication: true,
     };
+    result.constraintValueEligibility = JSON.parse(JSON.stringify(result.constraintValueEligibility));
+    result.constraintValueEligibility.statusId = 'ready';
     result.sideEffects.providerQuotaRead = true;
     result.rawPayloadExposed = true;
 
@@ -300,6 +320,7 @@ describe('policyOperatorWorkflowReadService', () => {
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_LIBRARY,
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.OBSERVED_VALUE_AUTO_DECLARED,
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_CONSTRAINT_DECISION_MODEL,
+        POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_CONSTRAINT_VALUE_ELIGIBILITY,
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.UNSAFE_SIDE_EFFECT,
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
       ])

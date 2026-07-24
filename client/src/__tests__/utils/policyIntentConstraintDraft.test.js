@@ -73,10 +73,53 @@ function constraintDecisionModel(overrides = {}) {
   }
 }
 
+function constraintValueEligibility(overrides = {}) {
+  return {
+    version: 'policy.constraint_value_eligibility.v1',
+    statusId: 'ready',
+    libraryMediaTypeFamilyId: 'movie',
+    authority: {
+      displayProjection: true,
+      serverOwnedAllowlist: true,
+      policyPersistence: false,
+      routingExecution: false,
+      runtimeDecision: false,
+      clientMayAddValues: false,
+    },
+    controls: [
+      {
+        controlId: 'hard_limit',
+        valueKindId: 'certification',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ['G', 'PG', 'PG-13', 'R', 'NC-17'].map(value => ({ value, label: value, description: null })),
+      },
+      {
+        controlId: 'avoid',
+        valueKindId: 'certification',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ['G', 'PG', 'PG-13', 'R', 'NC-17'].map(value => ({ value, label: value, description: null })),
+      },
+      {
+        controlId: 'review_warning',
+        valueKindId: 'review_trigger',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ['evidence_missing', 'evidence_conflicting', 'profile_stale', 'routing_not_ready']
+          .map(value => ({ value, label: value, description: null })),
+      },
+    ],
+    rawPayloadExposed: false,
+    ...overrides,
+  }
+}
+
 describe('policyIntentConstraintDraft', () => {
   it('creates one transient typed command from an explicit selection and the server decision model', () => {
     const plan = buildPolicyIntentConstraintCommandPlan({
       constraintDecisionModel: constraintDecisionModel(),
+      constraintValueEligibility: constraintValueEligibility(),
       selection: {
         controlId: 'hard_limit',
         value: ' PG-13 ',
@@ -104,13 +147,17 @@ describe('policyIntentConstraintDraft', () => {
       ],
     })
     expect(Object.isFrozen(plan)).toBe(true)
-    expect(isPolicyIntentConstraintCommandPlan(plan)).toBe(true)
+    expect(isPolicyIntentConstraintCommandPlan(plan, {
+      constraintValueEligibility: constraintValueEligibility(),
+    })).toBe(true)
   })
 
   it('uses the server-projected avoid and review meanings without turning them into a blocker', () => {
     const model = constraintDecisionModel()
+    const eligibility = constraintValueEligibility()
     const avoidPlan = buildPolicyIntentConstraintCommandPlan({
       constraintDecisionModel: model,
+      constraintValueEligibility: eligibility,
       selection: {
         controlId: 'avoid',
         value: 'R',
@@ -119,6 +166,7 @@ describe('policyIntentConstraintDraft', () => {
     })
     const reviewPlan = buildPolicyIntentConstraintCommandPlan({
       constraintDecisionModel: model,
+      constraintValueEligibility: eligibility,
       selection: {
         controlId: 'review_warning',
         value: 'evidence_missing',
@@ -140,12 +188,14 @@ describe('policyIntentConstraintDraft', () => {
 
   it('fails closed for malformed server projections, unconfirmed selections, and unapproved selection fields', () => {
     const model = constraintDecisionModel()
+    const eligibility = constraintValueEligibility()
     const malformedModel = constraintDecisionModel({ rawPayloadExposed: true })
 
     expect(isApprovedConstraintDecisionModel(model)).toBe(true)
     expect(isApprovedConstraintDecisionModel(malformedModel)).toBe(false)
     expect(buildPolicyIntentConstraintCommandPlan({
       constraintDecisionModel: malformedModel,
+      constraintValueEligibility: eligibility,
       selection: {
         controlId: 'hard_limit',
         value: 'PG-13',
@@ -154,6 +204,7 @@ describe('policyIntentConstraintDraft', () => {
     })).toBeNull()
     expect(buildPolicyIntentConstraintCommandPlan({
       constraintDecisionModel: model,
+      constraintValueEligibility: eligibility,
       selection: {
         controlId: 'hard_limit',
         value: 'PG-13',
@@ -162,6 +213,7 @@ describe('policyIntentConstraintDraft', () => {
     })).toBeNull()
     expect(buildPolicyIntentConstraintCommandPlan({
       constraintDecisionModel: model,
+      constraintValueEligibility: eligibility,
       selection: {
         controlId: 'hard_limit',
         value: 'PG-13',
@@ -171,6 +223,7 @@ describe('policyIntentConstraintDraft', () => {
     })).toBeNull()
     expect(buildPolicyIntentConstraintCommandPlan({
       constraintDecisionModel: model,
+      constraintValueEligibility: eligibility,
       selection: {
         controlId: 'hard_limit',
         value: 'PG-13\nR',
@@ -182,6 +235,7 @@ describe('policyIntentConstraintDraft', () => {
   it('keeps command state local and rejects injected persistence, routing, and compatibility fields', () => {
     const plan = buildPolicyIntentConstraintCommandPlan({
       constraintDecisionModel: constraintDecisionModel(),
+      constraintValueEligibility: constraintValueEligibility(),
       selection: {
         controlId: 'avoid',
         value: 'R',
@@ -193,13 +247,20 @@ describe('policyIntentConstraintDraft', () => {
       policyId: 3,
     }
 
-    const commands = applyPolicyIntentConstraintCommandPlan([], plan)
+    const eligibility = constraintValueEligibility()
+    const commands = applyPolicyIntentConstraintCommandPlan([], plan, {
+      constraintValueEligibility: eligibility,
+    })
 
     expect(commands).toEqual(plan.commands)
     expect(commands[0]).not.toHaveProperty('policyId')
     expect(commands[0]).not.toHaveProperty('routeNow')
     expect(commands[0]).not.toHaveProperty('customSignals')
-    expect(applyPolicyIntentConstraintCommandPlan([], injectedPlan)).toEqual([])
-    expect(applyPolicyIntentConstraintCommandPlan(commands, plan)).toEqual(commands)
+    expect(applyPolicyIntentConstraintCommandPlan([], injectedPlan, {
+      constraintValueEligibility: eligibility,
+    })).toEqual([])
+    expect(applyPolicyIntentConstraintCommandPlan(commands, plan, {
+      constraintValueEligibility: eligibility,
+    })).toEqual(commands)
   })
 })

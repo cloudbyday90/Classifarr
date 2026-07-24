@@ -13,7 +13,10 @@ import {
   applyPolicyIntentConstraintCommandPlan,
 } from '@/utils/policyIntentConstraintDraft'
 
-export function usePolicyIntentConstraintDraft({ libraryId } = {}) {
+export function usePolicyIntentConstraintDraft({
+  libraryId,
+  constraintValueEligibility,
+} = {}) {
   const constraintDraftCommands = ref([])
 
   const hasConstraintDraftCommands = computed(() => constraintDraftCommands.value.length > 0)
@@ -21,7 +24,8 @@ export function usePolicyIntentConstraintDraft({ libraryId } = {}) {
   const applyCommandPlan = (commandPlan) => {
     const nextCommands = applyPolicyIntentConstraintCommandPlan(
       constraintDraftCommands.value,
-      commandPlan
+      commandPlan,
+      { constraintValueEligibility: unref(constraintValueEligibility) }
     )
     const changed = JSON.stringify(nextCommands) !== JSON.stringify(constraintDraftCommands.value)
     constraintDraftCommands.value = nextCommands

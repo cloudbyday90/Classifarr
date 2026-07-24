@@ -75,6 +75,7 @@
       <PolicyIntentConstraintControlSurface
         v-if="selectionEnabled && constraintDecisionModel"
         :constraint-decision-model="constraintDecisionModel"
+        :constraint-value-eligibility="constraintValueEligibility"
         :constraint-draft-commands="constraintDraftCommands"
         @draft-command-plan="emit('constraint-draft-command-plan', $event)"
         @clear-constraint-draft="emit('clear-constraint-draft')"
@@ -163,6 +164,7 @@ const workflow = computed(() => props.workflowRead?.workflow || null)
 const observedProfile = computed(() => props.workflowRead?.observedProfile || {})
 const intentSignalProjection = computed(() => observedProfile.value.intentSignalProjection || {})
 const constraintDecisionModel = computed(() => props.workflowRead?.constraintDecisionModel || null)
+const constraintValueEligibility = computed(() => props.workflowRead?.constraintValueEligibility || null)
 const observedSuggestions = computed(() => Array.isArray(observedProfile.value.suggestions)
   ? observedProfile.value.suggestions
   : [])

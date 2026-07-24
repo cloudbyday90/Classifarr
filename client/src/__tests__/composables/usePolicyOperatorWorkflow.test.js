@@ -10,9 +10,56 @@ import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { usePolicyOperatorWorkflow } from '@/composables/usePolicyOperatorWorkflow'
 
+function buildConstraintValueEligibility() {
+  const ratingOptions = ['G', 'PG', 'PG-13', 'R', 'NC-17']
+    .map(value => ({ value, label: value, description: null }))
+
+  return {
+    version: 'policy.constraint_value_eligibility.v1',
+    statusId: 'ready',
+    libraryMediaTypeFamilyId: 'movie',
+    authority: {
+      displayProjection: true,
+      serverOwnedAllowlist: true,
+      policyPersistence: false,
+      routingExecution: false,
+      runtimeDecision: false,
+      clientMayAddValues: false,
+    },
+    controls: [
+      {
+        controlId: 'hard_limit',
+        valueKindId: 'certification',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ratingOptions,
+      },
+      {
+        controlId: 'avoid',
+        valueKindId: 'certification',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ratingOptions,
+      },
+      {
+        controlId: 'review_warning',
+        valueKindId: 'review_trigger',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: [{
+          value: 'evidence_missing',
+          label: 'Evidence is missing',
+          description: null,
+        }],
+      },
+    ],
+    rawPayloadExposed: false,
+  }
+}
+
 function buildWorkflowRead(libraryId = 7) {
   return {
-    version: 'policy.operator_workflow_read.v2',
+    version: 'policy.operator_workflow_read.v3',
     library: {
       id: libraryId,
       name: 'Movies',
@@ -38,6 +85,7 @@ function buildWorkflowRead(libraryId = 7) {
     workflow: {
       sections: [],
     },
+    constraintValueEligibility: buildConstraintValueEligibility(),
     authority: {
       displayProjection: true,
       automationDecision: false,

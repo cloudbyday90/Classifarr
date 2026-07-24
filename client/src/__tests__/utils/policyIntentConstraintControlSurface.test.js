@@ -69,10 +69,56 @@ function constraintDecisionModel(overrides = {}) {
   }
 }
 
+function constraintValueEligibility(overrides = {}) {
+  const ratingOptions = ['G', 'PG', 'PG-13', 'R', 'NC-17']
+    .map(value => ({ value, label: value, description: null }))
+
+  return {
+    version: 'policy.constraint_value_eligibility.v1',
+    statusId: 'ready',
+    libraryMediaTypeFamilyId: 'movie',
+    authority: {
+      displayProjection: true,
+      serverOwnedAllowlist: true,
+      policyPersistence: false,
+      routingExecution: false,
+      runtimeDecision: false,
+      clientMayAddValues: false,
+    },
+    controls: [
+      {
+        controlId: 'hard_limit',
+        valueKindId: 'certification',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ratingOptions,
+      },
+      {
+        controlId: 'avoid',
+        valueKindId: 'certification',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ratingOptions,
+      },
+      {
+        controlId: 'review_warning',
+        valueKindId: 'review_trigger',
+        selectionModeId: 'single',
+        allowsFreeText: false,
+        options: ['evidence_missing', 'evidence_conflicting', 'profile_stale', 'routing_not_ready']
+          .map(value => ({ value, label: value, description: null })),
+      },
+    ],
+    rawPayloadExposed: false,
+    ...overrides,
+  }
+}
+
 describe('policyIntentConstraintControlSurface', () => {
   it('keeps the server-owned blocking and advisory meanings distinct in the display projection', () => {
     const surface = buildPolicyIntentConstraintControlSurface({
       constraintDecisionModel: constraintDecisionModel(),
+      constraintValueEligibility: constraintValueEligibility(),
     })
 
     expect(surface).toMatchObject({
@@ -104,8 +150,10 @@ describe('policyIntentConstraintControlSurface', () => {
 
   it('shows only validated local commands as staged values', () => {
     const model = constraintDecisionModel()
+    const eligibility = constraintValueEligibility()
     const plan = buildPolicyIntentConstraintCommandPlan({
       constraintDecisionModel: model,
+      constraintValueEligibility: eligibility,
       selection: {
         controlId: 'hard_limit',
         value: 'PG-13',
@@ -115,6 +163,7 @@ describe('policyIntentConstraintControlSurface', () => {
 
     const surface = buildPolicyIntentConstraintControlSurface({
       constraintDecisionModel: model,
+      constraintValueEligibility: eligibility,
       constraintDraftCommands: plan.commands,
     })
 
@@ -126,10 +175,31 @@ describe('policyIntentConstraintControlSurface', () => {
   it('fails closed when the server decision model is invalid', () => {
     expect(buildPolicyIntentConstraintControlSurface({
       constraintDecisionModel: constraintDecisionModel({ rawPayloadExposed: true }),
+      constraintValueEligibility: constraintValueEligibility(),
     })).toMatchObject({
       available: false,
       controls: [],
       stagedCommandCount: 0,
+    })
+  })
+
+  it('fails closed when the value eligibility projection is malformed or unavailable', () => {
+    expect(buildPolicyIntentConstraintControlSurface({
+      constraintDecisionModel: constraintDecisionModel(),
+      constraintValueEligibility: constraintValueEligibility({ rawPayloadExposed: true }),
+    })).toMatchObject({ available: false, controls: [] })
+
+    expect(buildPolicyIntentConstraintControlSurface({
+      constraintDecisionModel: constraintDecisionModel(),
+      constraintValueEligibility: {
+        ...constraintValueEligibility(),
+        statusId: 'unsupported_library_media_type',
+        libraryMediaTypeFamilyId: null,
+        controls: [],
+      },
+    })).toMatchObject({
+      available: false,
+      message: expect.stringContaining('no supported canonical rating family'),
     })
   })
 })

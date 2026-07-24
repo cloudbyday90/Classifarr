@@ -99,6 +99,7 @@ describe('policyBuilderBoundaryInventory', () => {
     [
       'client/src/utils/policyIntentConstraintDraft.js',
       'client/src/composables/usePolicyIntentConstraintDraft.js',
+      'client/src/utils/policyIntentConstraintValueEligibility.js',
       'client/src/utils/policyIntentConstraintControlSurface.js',
       'client/src/components/policies/PolicyIntentConstraintControlSurface.vue',
     ].forEach((filePath) => {

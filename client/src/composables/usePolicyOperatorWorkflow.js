@@ -13,6 +13,9 @@ import {
   getPolicyOperatorWorkflow,
   validatePolicyOperatorWorkflowCustomIntentSignal,
 } from '@/api/policiesApi'
+import {
+  isApprovedConstraintValueEligibility,
+} from '@/utils/policyIntentConstraintValueEligibility'
 
 const WORKFLOW_LOAD_ERROR = 'Classifarr could not load the library workflow. You can still review the connected library details.'
 const CUSTOM_INTENT_SIGNAL_VALIDATION_ERROR = 'Classifarr could not validate that custom destination value.'
@@ -28,13 +31,14 @@ function isDisplayOnlyWorkflowRead(value, expectedLibraryId) {
   return Boolean(
     value &&
     typeof value === 'object' &&
-    value.version === 'policy.operator_workflow_read.v2' &&
+    value.version === 'policy.operator_workflow_read.v3' &&
     responseLibraryId === expectedLibraryId &&
     Array.isArray(value.workflow?.sections) &&
     value.authority?.displayProjection === true &&
     value.authority?.automationDecision === false &&
     value.authority?.policyPersistence === false &&
-    value.authority?.routingExecution === false
+    value.authority?.routingExecution === false &&
+    isApprovedConstraintValueEligibility(value.constraintValueEligibility)
   )
 }
 

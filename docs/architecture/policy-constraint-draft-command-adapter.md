@@ -7,7 +7,8 @@ constraint decision model and future constraint controls.
 
 The constraint draft-command adapter turns one explicit operator choice into
 one bounded local command only after resolving that choice against
-`policy.constraint_decision_model.v1`.
+`policy.constraint_decision_model.v1` and the matching
+`policy.constraint_value_eligibility.v1` allowlist.
 
 It deliberately does not add a policy-builder control, select a value from the
 library, write policy storage, invoke a provider, consume quota, create a
@@ -42,7 +43,8 @@ June 2026:
    do not derive commands from visible labels or browser-only mappings.
 2. Accept only a plain, explicit `{ controlId, value, explicitOperatorAction }`
    selection. Reject unknown fields, absent confirmation, control characters,
-   empty text, and oversize values.
+   empty text, oversize values, and values absent from the active server-owned
+   eligibility allowlist.
 3. Validate the received decision projection's version, display-only authority,
    raw-payload boundary, exact control vocabulary, and typed command vocabulary
    before producing a local command.
@@ -95,8 +97,11 @@ Cons:
   vocabulary for constraint controls and server-side validation.
 - `server/src/services/policyConstraintDecisionModel.mjs` exposes the audited
   `draftCommandId` with each display-only control.
-- `client/src/utils/policyIntentConstraintDraft.js` validates the bounded
-  projection and explicit selection, then creates immutable typed local plans.
+- `server/src/services/policyConstraintValueEligibility.mjs` publishes the
+  canonical, per-library value allowlist.
+- `client/src/utils/policyIntentConstraintDraft.js` validates both bounded
+  projections and the explicit selection, then creates immutable typed local
+  plans.
 - `client/src/composables/usePolicyIntentConstraintDraft.js` owns transient
   command state and clears it when the selected library changes.
 - The adapter cannot call APIs or emit persistence, routing, learning, provider,
@@ -117,6 +122,6 @@ uses it to stage explicit selections without persistence.
 
 ## Next Step
 
-Implement **3R.5 Task 3R.5.4, Constraint Value Eligibility Projection**:
-publish server-owned, bounded values before any constraint draft can become a
-native policy write.
+Implement **3R.5 Task 3R.5.5, Authorized Native Constraint Write Admission**:
+revalidate both server-owned projections at a future write boundary before a
+constraint draft can become policy state.
