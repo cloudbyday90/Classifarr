@@ -84,6 +84,7 @@ describe('policy constraint admission routes', () => {
       authority: expect.objectContaining({ policyPersistence: false }),
       sideEffects: expect.objectContaining({ policyStorageMutated: false }),
     }));
+    expect(response.body).not.toHaveProperty('nextStep');
     expect(logger.info).toHaveBeenCalledWith('Admitted policy constraint command without persistence', {
       libraryId: 6,
       controlId: 'hard_limit',

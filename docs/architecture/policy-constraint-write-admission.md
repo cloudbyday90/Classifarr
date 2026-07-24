@@ -21,7 +21,8 @@ For every request, the server independently rebuilds:
 The submitted command must match both server-derived projections exactly. The
 admission result exposes only the server-normalized command and a bounded
 library media-type family. It does not expose raw request input, cached profile
-evidence, media paths, provider data, or a reusable authorization credential.
+evidence, media paths, provider data, a reusable authorization credential, or
+a normal-workflow next action.
 
 This component does not write native or legacy policy storage, mutate learning,
 evaluate runtime policy, route media, read a provider quota, or call a media
@@ -35,6 +36,10 @@ The protected endpoint is:
 
 No current client authoring flow calls this endpoint. The local draft remains
 transient until native constraint storage is designed and implemented.
+
+Admission is deliberately excluded from the six-state policy-authoring
+readiness contract. It does not add a readiness state, issue, action, or UI
+message because it has not persisted or changed policy intent.
 
 ## Official Guidance Reviewed
 
@@ -79,6 +84,9 @@ June 2026:
 6. Require the eventual storage service to perform the same checks within its
    write transaction. Admission is an interface boundary, not a bypass for
    workflow ordering or a time-of-check/time-of-use guard.
+7. Do not expose a normal-workflow next action from admission. Readiness must
+   remain based on observed examples, declared intent, routing, hard limits,
+   and profile freshness; a preflight result is not one of those inputs.
 
 ## Pros And Cons
 
@@ -140,6 +148,8 @@ Cons:
 - A future native constraint storage service must recompute admission in the
   same transaction that persists its own native record. It must not accept an
   earlier admission response as a write credential.
+- The admission response intentionally has no `nextStep` field. Its contract
+  audit rejects any attempt to add a normal-workflow handoff.
 
 ## Verification
 
@@ -163,7 +173,6 @@ runtime behavior, or manual operator task.
 
 ## Next Step
 
-Evaluate the existing six-state readiness contract against the new
-constraint-admission state, then expose only one product-language next action
-in the normal workflow. Any storage work remains separate until that readiness
-handoff is explicitly defined.
+Design native constraint persistence as a separate transactional boundary. It
+must repeat admission against current state, persist atomically, and only then
+allow normal readiness to recompute from durable policy intent.

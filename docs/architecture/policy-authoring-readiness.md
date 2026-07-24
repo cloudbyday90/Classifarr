@@ -10,7 +10,9 @@ one question: "What do I do next?"
 This contract defines visible readiness states, issue-to-action mapping, and
 destination workflow links. Retired preview, provider, metadata, scoring, and
 parity diagnostics are rejected rather than modeled as an alternate readiness
-surface.
+surface. A non-persistent native constraint-admission result is also excluded:
+it has neither changed declared intent nor created a condition that readiness
+can resolve.
 
 ## Current Best-Practice Inputs
 
@@ -53,6 +55,9 @@ The applied guidance:
    the full issue list for secondary display.
 5. Reject all diagnostic identifiers from readiness, including identifiers from
    retired preview, provider, metadata, scoring, and parity panels.
+6. Do not add a readiness state or next action for constraint admission. A
+   later storage transaction may change durable intent; admission alone may
+   not.
 
 ## Pros And Cons
 
@@ -96,7 +101,8 @@ readiness issue
 ```
 
 Everything else, including retired replay, provider, metadata, scoring, parity,
-and impact details, is invalid authoring input.
+impact details, and non-persistent constraint admission is invalid authoring
+input.
 
 ## Implementation
 
@@ -114,6 +120,8 @@ The implementation provides:
   - checks highest-priority issue selection,
   - checks ready-state save action,
   - rejects retired diagnostic identifiers from normal readiness.
+- [Policy Constraint Admission Readiness Handoff](policy-constraint-admission-readiness-handoff.md)
+  - records why constraint admission has no normal readiness state or action.
 
 ## Checklist Result
 
@@ -128,5 +136,6 @@ The implementation provides:
 
 ## Next Step
 
-Cut over the starter-template role reset contract to durable policy-authoring
-names so templates remain optional accelerators after destination context.
+Keep native constraint persistence separate. Only a successfully committed
+transaction may cause the server to recompute normal readiness from changed
+durable intent.

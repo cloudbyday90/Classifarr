@@ -39,6 +39,7 @@ const POLICY_CONSTRAINT_WRITE_ADMISSION_RISK_IDS = Object.freeze({
   COMMAND_VALUE_NOT_ELIGIBLE: 'command_value_not_eligible',
   INVALID_ADMISSION_RESULT: 'invalid_admission_result',
   UNSAFE_SIDE_EFFECT: 'unsafe_side_effect',
+  NORMAL_WORKFLOW_HANDOFF_EXPOSED: 'normal_workflow_handoff_exposed',
 });
 
 const MAX_REQUEST_BYTES = 8 * 1024;
@@ -200,13 +201,6 @@ function buildPolicyConstraintWriteAdmissionResult({
     authority: buildPolicyConstraintWriteAdmissionAuthority(),
     sideEffects: buildPolicyConstraintWriteAdmissionSideEffects(),
     rawPayloadExposed: false,
-    nextStep: ok
-      ? {
-        stepId: 'native_constraint_storage',
-        label: 'Native Constraint Storage',
-        reason: 'This command is admitted for a future storage boundary, which must revalidate it in its own transaction.',
-      }
-      : null,
   };
 }
 

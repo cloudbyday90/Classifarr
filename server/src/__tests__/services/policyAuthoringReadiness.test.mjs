@@ -41,6 +41,19 @@ describe('policyAuthoringReadiness', () => {
       }));
   });
 
+  test('does not turn non-persistent constraint admission into readiness', () => {
+    const stateIds = Object.values(POLICY_AUTHORING_READINESS_STATE_IDS);
+    const issueIds = Object.values(POLICY_AUTHORING_READINESS_ISSUE_IDS);
+    const actionIds = Object.values(POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS);
+
+    expect(stateIds).not.toContain('constraint_admitted');
+    expect(stateIds).not.toContain('ready_to_persist');
+    expect(issueIds).not.toContain('constraint_admitted');
+    expect(issueIds).not.toContain('native_constraint_storage');
+    expect(actionIds).not.toContain('persist_native_constraint');
+    expect(actionIds).not.toContain('native_constraint_storage');
+  });
+
   test('maps each readiness issue to exactly one next action and resolving component', () => {
     for (const issue of listPolicyAuthoringReadinessIssueRecords()) {
       expect(validatePolicyAuthoringReadinessIssue(issue.issueId)).toEqual(expect.objectContaining({

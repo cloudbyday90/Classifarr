@@ -45,7 +45,9 @@ unchanged operator or runtime outcome.
   approval token. The current result is non-persistent: it cannot change a
   policy, compatibility payload, runtime decision, learning record, route,
   provider, quota, or media server, and a later storage transaction must
-  revalidate the command again.
+  revalidate the command again. Admission responses also expose no normal
+  workflow next action, so a preflight cannot create a seventh readiness state
+  or imply that a policy write occurred.
 
 - **Evidence-Backed Destination Signals** - new policies now distinguish
   read-only values already observed in the connected library from the proposed

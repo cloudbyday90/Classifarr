@@ -90,8 +90,8 @@ describe('policyConstraintWriteAdmission', () => {
         providerQuotaRead: false,
       },
       rawPayloadExposed: false,
-      nextStep: expect.objectContaining({ stepId: 'native_constraint_storage' }),
     }));
+    expect(result).not.toHaveProperty('nextStep');
     expect(buildPolicyConstraintWriteAdmissionAudit(result)).toEqual({
       ok: true,
       issueCount: 0,
@@ -110,9 +110,9 @@ describe('policyConstraintWriteAdmission', () => {
       ok: false,
       statusId: POLICY_CONSTRAINT_WRITE_ADMISSION_STATUS_IDS.COMMAND_NOT_ELIGIBLE,
       admittedCommand: null,
-      nextStep: null,
       rawPayloadExposed: false,
     }));
+    expect(result).not.toHaveProperty('nextStep');
     expect(result.issues).toEqual([expect.objectContaining({
       riskId: POLICY_CONSTRAINT_WRITE_ADMISSION_RISK_IDS.COMMAND_SEMANTICS_MISMATCH,
     })]);
@@ -206,13 +206,18 @@ describe('policyConstraintWriteAdmission', () => {
     tampered.sideEffects.policyStorageMutated = true;
     tampered.ok = false;
     tampered.statusId = POLICY_CONSTRAINT_WRITE_ADMISSION_STATUS_IDS.COMMAND_NOT_ELIGIBLE;
-    tampered.nextStep = null;
+    tampered.nextStep = {
+      stepId: 'native_constraint_storage',
+    };
 
     const audit = buildPolicyConstraintWriteAdmissionAudit(tampered);
     expect(audit.ok).toBe(false);
     expect(audit.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: POLICY_CONSTRAINT_WRITE_ADMISSION_RISK_IDS.UNSAFE_SIDE_EFFECT,
+      }),
+      expect.objectContaining({
+        riskId: POLICY_CONSTRAINT_WRITE_ADMISSION_RISK_IDS.NORMAL_WORKFLOW_HANDOFF_EXPOSED,
       }),
       expect.objectContaining({
         riskId: POLICY_CONSTRAINT_WRITE_ADMISSION_RISK_IDS.INVALID_ADMISSION_RESULT,

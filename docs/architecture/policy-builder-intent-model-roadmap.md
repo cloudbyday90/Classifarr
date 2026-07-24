@@ -2552,6 +2552,11 @@ Implementation status:
   step/component.
 - The readiness projection selects the highest-priority issue while preserving
   the full issue list for secondary display.
+- **3R.6.1 Constraint Admission Readiness Handoff** is complete. A successful
+  non-persistent constraint admission cannot add a readiness state, issue, or
+  next action. Its response has no normal-workflow handoff field, and the
+  admission audit rejects one if introduced. See [Policy Constraint Admission
+  Readiness Handoff](policy-constraint-admission-readiness-handoff.md).
 - Impact/replay browser panels and their client API facade are removed.
   Provider readiness, TMDB live preview, scoring details, and parity delta
   remain server-side migration-verifier or deletion material outside the normal

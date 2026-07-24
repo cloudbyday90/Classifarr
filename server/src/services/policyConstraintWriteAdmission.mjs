@@ -247,6 +247,13 @@ function buildPolicyConstraintWriteAdmissionAudit(result = {}) {
     ));
   }
 
+  if (Object.prototype.hasOwnProperty.call(source, 'nextStep')) {
+    issues.push(buildPolicyConstraintWriteAdmissionIssue(
+      POLICY_CONSTRAINT_WRITE_ADMISSION_RISK_IDS.NORMAL_WORKFLOW_HANDOFF_EXPOSED,
+      'Constraint write admission must not expose a normal-workflow next action.',
+    ));
+  }
+
   if (source.ok === true) {
     const command = asObject(source.admittedCommand);
     const resultLibrary = asObject(source.library);
@@ -273,18 +280,17 @@ function buildPolicyConstraintWriteAdmissionAudit(result = {}) {
         projection: auditValueEligibility,
         controlId: command.controlId,
         value: command.values[0],
-      }) ||
-      source.nextStep?.stepId !== 'native_constraint_storage'
+      })
     ) {
       issues.push(buildPolicyConstraintWriteAdmissionIssue(
         POLICY_CONSTRAINT_WRITE_ADMISSION_RISK_IDS.INVALID_ADMISSION_RESULT,
-        'Admitted constraint commands require one normalized command and a storage-only next step.',
+        'Admitted constraint commands require one normalized command with no storage authority.',
       ));
     }
-  } else if (source.admittedCommand !== null || source.nextStep !== null) {
+  } else if (source.admittedCommand !== null) {
     issues.push(buildPolicyConstraintWriteAdmissionIssue(
       POLICY_CONSTRAINT_WRITE_ADMISSION_RISK_IDS.INVALID_ADMISSION_RESULT,
-      'Rejected constraint admissions cannot expose an admitted command or next step.',
+      'Rejected constraint admissions cannot expose an admitted command.',
     ));
   }
 
