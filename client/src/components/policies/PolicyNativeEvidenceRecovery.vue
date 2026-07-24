@@ -22,7 +22,10 @@
     >
       {{ recovery.heading }}
     </h6>
-    <p class="mt-1 text-sm">
+    <p
+      id="policy-native-evidence-recovery-message"
+      class="mt-1 text-sm"
+    >
       {{ recovery.message }}
     </p>
     <Button
@@ -31,9 +34,10 @@
       size="sm"
       variant="outline-solid"
       :disabled="refreshing"
+      aria-describedby="policy-native-evidence-recovery-message"
       @click="emitRecoveryAction"
     >
-      {{ refreshing ? 'Refreshing library profile...' : recovery.actionLabel }}
+      {{ recoveryActionLabel }}
     </Button>
   </section>
 </template>
@@ -78,14 +82,18 @@ const recoveryClass = computed(() => (
     : 'border-amber-700/70 bg-amber-950/30 text-amber-100'
 ))
 
+const recoveryActionLabel = computed(() => (
+  props.refreshing
+    ? props.recovery?.busyLabel || 'Working on library evidence...'
+    : props.recovery?.actionLabel || ''
+))
+
 const emitRecoveryAction = () => {
   if (props.refreshing) return
 
   if (props.recovery?.actionId === POLICY_NATIVE_EVIDENCE_RECOVERY_ACTION_IDS.REFRESH_PROFILE) {
     emit('refresh-profile')
-  }
-
-  if (props.recovery?.actionId === POLICY_NATIVE_EVIDENCE_RECOVERY_ACTION_IDS.RELOAD_WORKFLOW) {
+  } else if (props.recovery?.actionId === POLICY_NATIVE_EVIDENCE_RECOVERY_ACTION_IDS.RELOAD_WORKFLOW) {
     emit('reload-workflow')
   }
 }

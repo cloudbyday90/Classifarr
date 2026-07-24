@@ -18,6 +18,11 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Clear Evidence Recovery Actions** - native policy creation now keeps
+  profile refresh and evidence-check recovery actions distinct while busy, and
+  each action is programmatically associated with its visible explanation.
+  Recovery remains bounded to one server-approved action per evidence state.
+
 - **Focused Destination Question Guidance** - destination questions no longer
   repeat generic projected readiness instructions in every card. Card-scoped
   evidence and routing recovery actions remain available where they apply,

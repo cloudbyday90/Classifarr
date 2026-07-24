@@ -2658,6 +2658,9 @@ Implementation status:
   labels. Explicit recovery actions remain in their owning card, while generic
   compatibility-edit readiness remains workflow-level:
   [Policy Authoring Destination Question Action Hierarchy](policy-authoring-destination-question-action-hierarchy.md).
+- Native evidence recovery now uses a projection-owned busy label for each
+  bounded action and describes the action with its visible recovery message:
+  [Policy Native Evidence Recovery Action Resolution](policy-native-evidence-recovery-action-resolution.md).
 
 ### 3R.9 Presentation Test Reset
 

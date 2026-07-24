@@ -21,6 +21,7 @@ function buildRecovery(overrides = {}) {
     message: 'Refresh the library profile before creating this policy.',
     actionId: POLICY_NATIVE_EVIDENCE_RECOVERY_ACTION_IDS.REFRESH_PROFILE,
     actionLabel: 'Refresh library profile',
+    busyLabel: 'Refreshing library profile...',
     requiresAction: true,
     tone: 'warning',
     ...overrides,
@@ -34,6 +35,8 @@ describe('PolicyNativeEvidenceRecovery.vue', () => {
     })
 
     expect(wrapper.find('[role="status"]').text()).toContain('A current library profile is needed')
+    expect(wrapper.find('button').attributes('aria-describedby'))
+      .toBe('policy-native-evidence-recovery-message')
     await wrapper.find('button').trigger('click')
 
     expect(wrapper.emitted('refresh-profile')).toHaveLength(1)
@@ -63,5 +66,28 @@ describe('PolicyNativeEvidenceRecovery.vue', () => {
 
     expect(wrapper.text()).toContain('Refreshing library profile...')
     expect(wrapper.find('button').attributes('disabled')).toBeDefined()
+  })
+
+  it('uses workflow-specific busy copy and emits only the bounded reload action', async () => {
+    const wrapper = mount(PolicyNativeEvidenceRecovery, {
+      props: {
+        recovery: buildRecovery({
+          statusId: POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.WORKFLOW_UNAVAILABLE,
+          heading: 'Library evidence is unavailable',
+          message: 'Check the evidence again before creating this policy.',
+          actionId: POLICY_NATIVE_EVIDENCE_RECOVERY_ACTION_IDS.RELOAD_WORKFLOW,
+          actionLabel: 'Try evidence check again',
+          busyLabel: 'Checking library evidence...',
+        }),
+      },
+    })
+
+    await wrapper.find('button').trigger('click')
+    expect(wrapper.emitted('reload-workflow')).toHaveLength(1)
+    expect(wrapper.emitted('refresh-profile')).toBeUndefined()
+
+    await wrapper.setProps({ refreshing: true })
+    expect(wrapper.text()).toContain('Checking library evidence...')
+    expect(wrapper.text()).not.toContain('Refreshing library profile...')
   })
 })

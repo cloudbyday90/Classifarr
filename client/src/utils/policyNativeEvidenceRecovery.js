@@ -26,12 +26,25 @@ function asArray(value) {
   return Array.isArray(value) ? value : []
 }
 
+function getRecoveryBusyLabel(actionId) {
+  if (actionId === POLICY_NATIVE_EVIDENCE_RECOVERY_ACTION_IDS.REFRESH_PROFILE) {
+    return 'Refreshing library profile...'
+  }
+
+  if (actionId === POLICY_NATIVE_EVIDENCE_RECOVERY_ACTION_IDS.RELOAD_WORKFLOW) {
+    return 'Checking library evidence...'
+  }
+
+  return ''
+}
+
 function buildRecovery({
   statusId,
   heading,
   message,
   actionId = null,
   actionLabel = '',
+  busyLabel = '',
   tone = 'warning',
 } = {}) {
   return {
@@ -40,6 +53,7 @@ function buildRecovery({
     message,
     actionId,
     actionLabel,
+    busyLabel: busyLabel || getRecoveryBusyLabel(actionId),
     tone,
     requiresAction: Boolean(actionId),
     canSelectObservedCandidates: statusId === POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.READY,

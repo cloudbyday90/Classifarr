@@ -64,6 +64,9 @@ Official sources reviewed as of June 2026:
    Do not rely on a hover-only title tooltip or add a duplicate warning panel.
 9. When generic workflow readiness is shown, show it once. Destination cards
    retain only their own explicit recovery controls and context guidance.
+10. Give each evidence-recovery action state-owned busy copy and associate the
+    action with its visible explanation. Do not infer a generic operation from
+    a shared loading flag.
 
 ## Pros And Cons
 
@@ -101,6 +104,8 @@ Official sources reviewed as of June 2026:
   `client/src/components/policies/PolicyBuilderFooterActions.vue`
 - Destination-question action hierarchy:
   `client/src/components/policies/PolicyBuilderDestinationQuestions.vue`
+- Native evidence recovery:
+  `client/src/components/policies/PolicyNativeEvidenceRecovery.vue`
 - Unit coverage:
   `client/src/__tests__/utils/policyBuilderSetupCards.test.js`
   `client/src/__tests__/PolicyBuilderSetupCards.test.js`
@@ -124,6 +129,8 @@ The policy-builder setup card surface now:
   it without relying on a title tooltip or duplicate advisory panel,
 - keeps generic readiness guidance at the workflow level while destination
   cards retain only local recovery actions and contextual guidance,
+- gives each native evidence-recovery action state-owned busy feedback and a
+  programmatic description without adding a second action,
 - keeps save, defer, routing, and starter-template behavior unchanged.
 
 ## Follow-Up

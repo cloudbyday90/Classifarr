@@ -44,6 +44,7 @@ describe('policyNativeEvidenceRecovery', () => {
     })).toMatchObject({
       statusId: POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.WORKFLOW_UNAVAILABLE,
       actionId: POLICY_NATIVE_EVIDENCE_RECOVERY_ACTION_IDS.RELOAD_WORKFLOW,
+      busyLabel: 'Checking library evidence...',
       canSelectObservedCandidates: false,
     })
   })
@@ -59,6 +60,7 @@ describe('policyNativeEvidenceRecovery', () => {
     })).toMatchObject({
       statusId,
       actionId: POLICY_NATIVE_EVIDENCE_RECOVERY_ACTION_IDS.REFRESH_PROFILE,
+      busyLabel: 'Refreshing library profile...',
       canSelectObservedCandidates: false,
     })
   })
@@ -76,6 +78,7 @@ describe('policyNativeEvidenceRecovery', () => {
     expect(recovery).toMatchObject({
       statusId: POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.REFRESH_FAILED,
       actionId: POLICY_NATIVE_EVIDENCE_RECOVERY_ACTION_IDS.REFRESH_PROFILE,
+      busyLabel: 'Refreshing library profile...',
     })
     expect(recovery.message).not.toContain('stack trace')
   })
