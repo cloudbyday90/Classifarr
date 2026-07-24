@@ -33,7 +33,7 @@ function toPolicyOperatorWorkflowRouting(mapping = {}) {
   };
 }
 
-async function loadPolicyOperatorWorkflowRouteContext({ db, libraryId } = {}) {
+async function loadPolicyOperatorWorkflowLibrary({ db, libraryId } = {}) {
   const libraryResult = await db.query(`
     SELECT id, name, media_type
     FROM libraries
@@ -43,6 +43,12 @@ async function loadPolicyOperatorWorkflowRouteContext({ db, libraryId } = {}) {
   if (!library) {
     throw new NotFoundError('Library not found');
   }
+
+  return library;
+}
+
+async function loadPolicyOperatorWorkflowRouteContext({ db, libraryId } = {}) {
+  const library = await loadPolicyOperatorWorkflowLibrary({ db, libraryId });
 
   const mappingResult = await db.query(`
     SELECT arr_type, arr_config_id, arr_root_folder_path
@@ -79,6 +85,7 @@ async function loadPolicyOperatorWorkflowStarterTemplateSuggestions({
 }
 
 export {
+  loadPolicyOperatorWorkflowLibrary,
   loadPolicyOperatorWorkflowRouteContext,
   loadPolicyOperatorWorkflowStarterTemplateSuggestions,
   normalizePolicyOperatorWorkflowLibraryId,

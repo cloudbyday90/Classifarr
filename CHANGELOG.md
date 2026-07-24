@@ -37,6 +37,16 @@ unchanged operator or runtime outcome.
   remain visibly unsaved and cannot write a policy, mutate compatibility
   payloads, route media, create learning, call a provider, or consume quota.
 
+- **Server-Side Constraint Admission** - future native constraint storage now
+  has a protected, rate-limited admission boundary that independently rebuilds
+  the active library's decision semantics and canonical value allowlist before
+  it accepts one typed local command. The DTO rejects extra client fields and
+  cannot supply a library, actor, projection, write target, or reusable
+  approval token. The current result is non-persistent: it cannot change a
+  policy, compatibility payload, runtime decision, learning record, route,
+  provider, quota, or media server, and a later storage transaction must
+  revalidate the command again.
+
 - **Evidence-Backed Destination Signals** - new policies now distinguish
   read-only values already observed in the connected library from the proposed
   signals that can define future matches. Operators can select several supported

@@ -2391,11 +2391,17 @@ adds no persistence, routing, runtime, learning, provider, quota, or
 media-server authority. See [Policy Constraint Value
 Eligibility](policy-constraint-value-eligibility.md).
 
-Next implementation task: **3R.5 Task 3R.5.5, Authorized Native Constraint
-Write Admission**. Define the server-only DTO and admission service that
-rederives the active library's decision and eligibility projections before it
-accepts any typed local constraint command. It must remain separate from
-storage migration and runtime enforcement.
+**3R.5 Task 3R.5.5, Authorized Native Constraint Write Admission** is
+complete. A protected, rate-limited server route now accepts only a strict
+versioned typed-command DTO, derives the target library solely from the route,
+and derives the administrator solely from the authenticated session. Its
+admission service rebuilds and audits the decision and eligibility projections
+before returning only a server-normalized admitted command. Rejections do not
+read malformed request state, log submitted values, mutate policy storage,
+route media, evaluate runtime behavior, create learning, call providers, or
+read quota. Admission is explicitly not a reusable storage credential: a
+future writer must repeat it within its own transaction. See [Policy Constraint
+Write Admission](policy-constraint-write-admission.md).
 
 ### 3R.4 Evidence-Backed Option Selection
 
@@ -2498,11 +2504,14 @@ Implementation status:
   quota paths. See [Policy Constraint Value
   Eligibility](policy-constraint-value-eligibility.md).
 
-Next implementation task: **3R.5 Task 3R.5.5, Authorized Native Constraint
-Write Admission**. Add a server-only command DTO and admission boundary that
-rederives the library's decision and eligibility projections before a future
-write can receive a constraint command. Do not combine this task with storage
-migration or runtime enforcement.
+**3R.5.5 Authorized Native Constraint Write Admission** is complete. The
+server accepts the typed local command only through a strict DTO, reloads the
+route-selected library, rebuilds and audits decision and eligibility state,
+requires an authenticated administrator, and returns a server-normalized
+non-persistent admission result. It is no substitute for a future transactional
+storage gate and adds no runtime, routing, learning, provider, quota, or
+media-server authority. See [Policy Constraint Write
+Admission](policy-constraint-write-admission.md).
 
 ### 3R.6 Readiness And Next Action Surface
 

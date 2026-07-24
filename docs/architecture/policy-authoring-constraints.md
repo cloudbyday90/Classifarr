@@ -127,6 +127,7 @@ record, and standing architecture document.
 
 ## Next Step
 
-Implement **3R.5 Task 3R.5.5, Authorized Native Constraint Write Admission**.
-It must rederive the active library's constraint decision and value eligibility
-on the server before it can accept a typed local command for future persistence.
+[Policy Constraint Write Admission](policy-constraint-write-admission.md) now
+rederives the active library's constraint decision and value eligibility before
+it admits a typed local command for a future writer. Native storage and runtime
+enforcement remain deliberately separate work.

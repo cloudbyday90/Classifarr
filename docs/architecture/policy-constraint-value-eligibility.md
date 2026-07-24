@@ -129,8 +129,7 @@ state.
 
 ## Next Step
 
-Implement **3R.5 Task 3R.5.5, Authorized Native Constraint Write Admission**.
-Define a server-only request DTO and admission service that rederives the
-decision and value-eligibility projections from the active library before it
-accepts any typed local constraint command. The task must remain separate from
-storage migration and runtime enforcement.
+Evaluate the existing readiness contract against the new non-persistent
+constraint-admission boundary. The normal workflow should surface one
+product-language next action without exposing storage, runtime, provider, or
+diagnostic implementation detail.

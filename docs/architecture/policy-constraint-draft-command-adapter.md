@@ -53,8 +53,11 @@ June 2026:
 5. Treat client validation as UX and containment only. A future persistence
    endpoint must rederive control semantics and validate the command again on
    the server.
-6. Keep the adapter separate from the compatibility bridge until native
-   constraint storage and its policy-write authorization are implemented.
+6. Keep the adapter separate from the compatibility bridge. Native constraint
+   storage remains a later transaction-owned capability, even though the
+   server now validates future write candidates through the separate
+   [Policy Constraint Write Admission](policy-constraint-write-admission.md)
+   boundary.
 
 ## Pros And Cons
 
@@ -122,6 +125,6 @@ uses it to stage explicit selections without persistence.
 
 ## Next Step
 
-Implement **3R.5 Task 3R.5.5, Authorized Native Constraint Write Admission**:
-revalidate both server-owned projections at a future write boundary before a
-constraint draft can become policy state.
+Keep local commands transient until a separately designed native storage
+transaction can recompute and consume an admitted command. The normal workflow
+next focuses on readiness and one clear action, not on exposing this boundary.
