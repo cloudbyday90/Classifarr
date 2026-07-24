@@ -6,7 +6,8 @@ Status: implemented as durable policy-authoring accessibility and decision-load 
 
 This design applies the durable
 [Policy Authoring Accessibility](policy-authoring-accessibility.md) contract to
-the current Vue setup-card workflow.
+the current Vue authoring workflow, including setup cards and the save/defer
+footer.
 
 The change keeps all four setup cards visible, but only one card is marked as
 the recommended next action. Secondary setup links remain available, and action
@@ -58,6 +59,9 @@ Official sources reviewed as of June 2026:
    - when no starter template is selected, destination-rule and review-behavior
      setup links point to the intent editor empty state instead of invisible
      preset-backed sections.
+8. When save is unavailable, expose the required correction in the existing
+   save-status message and associate the disabled action with that message.
+   Do not rely on a hover-only title tooltip or add a duplicate warning panel.
 
 ## Pros And Cons
 
@@ -91,6 +95,8 @@ Official sources reviewed as of June 2026:
   `client/src/components/policies/PolicyIntentEditor.vue`
 - Modal context wiring:
   `client/src/components/policies/PolicyBuilderModal.vue`
+- Save/defer feedback:
+  `client/src/components/policies/PolicyBuilderFooterActions.vue`
 - Unit coverage:
   `client/src/__tests__/utils/policyBuilderSetupCards.test.js`
   `client/src/__tests__/PolicyBuilderSetupCards.test.js`
@@ -109,6 +115,9 @@ The policy-builder setup card surface now:
 - styles secondary actions as lower-emphasis links,
 - routes no-template destination-rule and review-behavior actions to the intent
   editor empty state instead of missing anchors,
+- renders the blocked save correction as the existing footer status message's
+  single **Next** instruction and associates the disabled primary action with
+  it without relying on a title tooltip or duplicate advisory panel,
 - keeps save, defer, routing, and starter-template behavior unchanged.
 
 ## Follow-Up

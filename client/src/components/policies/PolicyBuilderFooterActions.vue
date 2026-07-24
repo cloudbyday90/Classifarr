@@ -16,6 +16,14 @@
         {{ boundary.statusLabel }}:
       </span>
       {{ boundary.statusMessage }}
+      <span
+        v-if="blockedReason"
+        id="policy-builder-save-blocked-reason"
+        class="mt-1 block font-medium"
+      >
+        <span class="font-semibold">Next:</span>
+        {{ blockedReason }}
+      </span>
     </p>
     <p
       v-if="saveError"
@@ -38,8 +46,7 @@
       <Button
         variant="primary"
         :disabled="!boundary.canSave || saving"
-        :title="boundary.canSave ? '' : boundary.disabledReason"
-        :aria-describedby="saveError ? 'policy-builder-save-status policy-builder-save-error' : 'policy-builder-save-status'"
+        :aria-describedby="saveDescriptionIds"
         @click="emit('save')"
       >
         {{ saving ? 'Saving policy...' : boundary.saveLabel }}
@@ -83,4 +90,13 @@ const statusClass = computed(() => {
 
   return 'border-amber-700/70 bg-amber-950/30 text-amber-200'
 })
+
+const blockedReason = computed(() => (
+  props.boundary.canSave === false ? props.boundary.disabledReason : ''
+))
+
+const saveDescriptionIds = computed(() => [
+  'policy-builder-save-status',
+  props.saveError ? 'policy-builder-save-error' : null,
+].filter(Boolean).join(' '))
 </script>

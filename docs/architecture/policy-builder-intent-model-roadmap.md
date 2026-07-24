@@ -2650,6 +2650,10 @@ Implementation status:
   action.
 - Multi-select, chip removal, disabled reason, destructive confirmation, and
   readiness next-action requirements are pinned as executable audit rules.
+- The save/defer footer now renders a blocked save's exact next correction in
+  its single status message and describes the unavailable primary action with
+  that message; it does not depend on a title tooltip or duplicate warning
+  panel.
 
 ### 3R.9 Presentation Test Reset
 

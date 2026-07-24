@@ -34,7 +34,9 @@ describe('PolicyBuilderFooterActions.vue', () => {
 
     expect(deferButton.exists()).toBe(true)
     expect(saveButton.attributes('disabled')).toBeDefined()
-    expect(saveButton.attributes('title')).toBe('Choose a destination library before saving.')
+    expect(saveButton.attributes('title')).toBeUndefined()
+    expect(wrapper.find('#policy-builder-save-blocked-reason').text())
+      .toContain('Choose a destination library before saving.')
     expect(saveButton.attributes('aria-describedby')).toBe('policy-builder-save-status')
 
     await deferButton.trigger('click')
@@ -61,6 +63,8 @@ describe('PolicyBuilderFooterActions.vue', () => {
       .find(button => button.text().includes('Save Policy'))
 
     expect(saveButton.attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('#policy-builder-save-blocked-reason').exists()).toBe(false)
+    expect(saveButton.attributes('aria-describedby')).toBe('policy-builder-save-status')
     await saveButton.trigger('click')
 
     expect(wrapper.emitted('save')).toEqual([[]])

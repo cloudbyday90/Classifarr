@@ -53,7 +53,8 @@ Official sources reviewed as of June 2026:
 4. Treat incomplete routing as a non-blocking save warning, not a save blocker.
 5. Rename cancel to **Defer for now** to match the policy-authoring workflow
    language without inventing draft persistence.
-6. Expose disabled reasons in visible status text and button title text.
+6. Expose disabled reasons in visible status text and associate the unavailable
+   action with that programmatic description. Do not rely on a title tooltip.
 7. Preserve modal public events: defer emits the existing close event, save
    emits the existing save payload.
 
@@ -95,6 +96,11 @@ The policy-builder modal footer now renders:
 - a polite status message explaining save readiness,
 - a **Defer for now** action that closes without saving,
 - a save/create button with an accessible disabled reason when save is blocked.
+
+When save is blocked, the footer presents the boundary's exact required
+correction as the status message's **Next** instruction. The disabled primary
+action references that instruction, so the reason is available without hover
+or a duplicate warning panel.
 
 The save boundary reports these states:
 

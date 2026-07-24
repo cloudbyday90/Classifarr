@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Accessible Save Block Feedback** - when policy creation or saving is
+  unavailable, the footer now presents the exact required correction as its
+  visible next step and associates the disabled primary action with that
+  status. Operators no longer need a hover tooltip to understand what must be
+  corrected, and no duplicate warning panel is added.
+
 - **Bounded Starter Template Selection** - existing compatibility-policy
   editing now keeps starter templates as an optional, accessible selection
   accelerator only. Removed raw template-detail editors, combined-signal
