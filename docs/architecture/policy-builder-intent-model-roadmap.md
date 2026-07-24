@@ -2654,6 +2654,10 @@ Implementation status:
   its single status message and describes the unavailable primary action with
   that message; it does not depend on a title tooltip or duplicate warning
   panel.
+- Destination-question cards no longer repeat generic projected readiness
+  labels. Explicit recovery actions remain in their owning card, while generic
+  compatibility-edit readiness remains workflow-level:
+  [Policy Authoring Destination Question Action Hierarchy](policy-authoring-destination-question-action-hierarchy.md).
 
 ### 3R.9 Presentation Test Reset
 

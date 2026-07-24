@@ -48,7 +48,7 @@
         />
 
         <PolicyNativeEvidenceRecovery
-          v-if="showsObservedEvidenceActions(section) && nativeEvidenceRecovery.requiresAction"
+          v-if="showsObservedEvidenceActions(section) && nativeEvidenceRecovery?.requiresAction"
           :recovery="nativeEvidenceRecovery"
           :refreshing="refreshing"
           @refresh-profile="emit('refresh-profile')"
@@ -70,13 +70,7 @@
         />
 
         <p
-          v-if="section.readiness?.nextAction?.label"
-          class="mt-3 rounded border border-gray-700 bg-background px-2 py-1 text-xs text-gray-300"
-        >
-          Next: {{ section.readiness.nextAction.label }}
-        </p>
-        <p
-          v-else-if="section.editable && !selectionEnabled"
+          v-if="section.editable && !selectionEnabled"
           class="mt-3 text-xs text-gray-400"
         >
           Policy changes remain explicit and are made in the policy details below.

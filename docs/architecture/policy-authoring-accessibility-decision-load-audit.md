@@ -62,6 +62,8 @@ Official sources reviewed as of June 2026:
 8. When save is unavailable, expose the required correction in the existing
    save-status message and associate the disabled action with that message.
    Do not rely on a hover-only title tooltip or add a duplicate warning panel.
+9. When generic workflow readiness is shown, show it once. Destination cards
+   retain only their own explicit recovery controls and context guidance.
 
 ## Pros And Cons
 
@@ -97,6 +99,8 @@ Official sources reviewed as of June 2026:
   `client/src/components/policies/PolicyBuilderModal.vue`
 - Save/defer feedback:
   `client/src/components/policies/PolicyBuilderFooterActions.vue`
+- Destination-question action hierarchy:
+  `client/src/components/policies/PolicyBuilderDestinationQuestions.vue`
 - Unit coverage:
   `client/src/__tests__/utils/policyBuilderSetupCards.test.js`
   `client/src/__tests__/PolicyBuilderSetupCards.test.js`
@@ -118,6 +122,8 @@ The policy-builder setup card surface now:
 - renders the blocked save correction as the existing footer status message's
   single **Next** instruction and associates the disabled primary action with
   it without relying on a title tooltip or duplicate advisory panel,
+- keeps generic readiness guidance at the workflow level while destination
+  cards retain only local recovery actions and contextual guidance,
 - keeps save, defer, routing, and starter-template behavior unchanged.
 
 ## Follow-Up
