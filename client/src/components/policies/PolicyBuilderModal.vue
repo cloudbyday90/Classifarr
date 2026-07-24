@@ -88,23 +88,9 @@
             :suggested-presets="suggestedPresets"
             :available-presets="filteredAvailablePresets"
             :selected-presets="selectedPresets"
-            :all-presets="allPresets"
             :category-tabs="categoryTabs"
-            :expanded-preset-ids="expandedPresetIds"
-            :available-ratings="availableRatings"
-            :available-genres="availableGenres"
-            :combined-signals="combinedSignals"
-            :get-preset-usage-count="getPresetUsageCount"
-            :format-usage-label="formatUsageLabel"
             @add-all-suggested="addAllSuggested"
             @toggle-preset="togglePresetSelection"
-            @toggle-preset-customize="togglePresetCustomize"
-            @remove-preset="removePreset"
-            @update-preset-weight="setPresetWeight"
-            @add-custom-signal="addCustomSignal"
-            @remove-custom-signal="removeCustomSignal"
-            @set-signal-removal="setSignalRemoval"
-            @set-signal-strict="setPresetSignalStrict"
           />
 
           <div class="border-t border-gray-700 my-4" />
@@ -148,7 +134,6 @@ import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCa
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicyStarterTemplateAccelerator from '@/components/policies/PolicyStarterTemplateAccelerator.vue'
-import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderLibrarySync } from '@/composables/usePolicyBuilderLibrarySync'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
@@ -225,8 +210,6 @@ const {
   libraryProfileGenreSummary,
   libraryProfileFreshness,
   getFilteredAvailablePresets,
-  getPresetUsageCount,
-  formatUsageLabel,
   loadInitialData,
   loadLibraryContext,
   loadLibraryProfile,
@@ -240,35 +223,20 @@ const {
   form,
   selectedPresets,
   intentDraft,
-  expandedPresetIds,
   totalWeight,
   currentLibrary,
   togglePresetSelection,
   addAllSuggested: addPresetSuggestions,
-  removePreset,
-  togglePresetCustomize,
-  setPresetWeight,
   setFormField,
-  addCustomSignal: addDraftCustomSignal,
-  removeCustomSignal: removeDraftCustomSignal,
   addIntentSignal,
   removeIntentSignalValue,
   setIntentSignalConfig,
-  setIntentSignalMetadata,
-  setIntentSignalRemoval,
   clearIntentSignalConfig,
   buildSavePayload,
 } = usePolicyBuilderState({
   policy: toRef(props, 'policy'),
   libraryId: toRef(props, 'libraryId'),
   libraries,
-})
-
-const {
-  combinedSignals,
-} = usePolicyBuilderCombinedSignals({
-  selectedPresets,
-  allPresets,
 })
 
 const intentSummary = computed(() => buildPolicyIntentSummary(
@@ -395,49 +363,6 @@ const validateActiveCustomIntentSignal = async (payload) => {
 
 const addAllSuggested = () => {
   addPresetSuggestions(suggestedPresets.value)
-}
-
-const getSelectedPresetId = (preset) => preset?.preset_id ?? preset?.id ?? null
-
-const addCustomSignal = ({ preset, signalType, key, value }) => {
-  if (!key || !value) return
-
-  addDraftCustomSignal({
-    presetId: getSelectedPresetId(preset),
-    signalType,
-    key,
-    value,
-  })
-}
-
-const removeCustomSignal = ({ preset, signalType, key, value }) => {
-  removeDraftCustomSignal({
-    presetId: getSelectedPresetId(preset),
-    signalType,
-    key,
-    value,
-  })
-}
-
-const setPresetSignalStrict = ({ preset, signalType, strict, baseStrict = false }) => {
-  setIntentSignalMetadata({
-    presetId: getSelectedPresetId(preset),
-    signalType,
-    metadata: { strict },
-    baseMetadata: {
-      strict: baseStrict,
-    },
-  })
-}
-
-const setSignalRemoval = ({ preset, signalType, key, value, removed }) => {
-  setIntentSignalRemoval({
-    presetId: getSelectedPresetId(preset),
-    signalType,
-    key,
-    value,
-    removed,
-  })
 }
 
 const defer = () => {

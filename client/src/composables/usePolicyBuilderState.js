@@ -157,14 +157,11 @@ export function buildPolicySavePayload(formValue, selectedPresets, currentLibrar
 export function usePolicyBuilderState({ policy, libraryId, libraries }) {
   const form = ref(createDefaultPolicyForm(unref(libraryId)))
   const selectedPresets = ref([])
-  const expandedPresetIds = ref(new Set())
   const {
     intentDraft,
     addSignal: addIntentDraftSignal,
     removeSignalValue: removeIntentDraftSignalValue,
     setSignalConfig: setIntentDraftSignalConfig,
-    setSignalMetadata: setIntentDraftSignalMetadata,
-    setSignalRemoval: setIntentDraftSignalRemoval,
     clearSignalConfig: clearIntentDraftSignalConfig,
     buildSelectedPresetsFromDraft,
   } = usePolicyIntentDraft(selectedPresets)
@@ -192,7 +189,6 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
   const resetForm = () => {
     form.value = createDefaultPolicyForm(unref(libraryId))
     selectedPresets.value = []
-    expandedPresetIds.value = new Set()
   }
 
   const loadPolicy = (newPolicy) => {
@@ -223,7 +219,6 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
 
     if (index >= 0) {
       selectedPresets.value.splice(index, 1)
-      expandedPresetIds.value.delete(id)
       return
     }
 
@@ -243,46 +238,12 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     })
   }
 
-  const removePreset = (presetId) => {
-    const index = selectedPresets.value.findIndex(preset => preset.preset_id === presetId || preset.id === presetId)
-    if (index >= 0) {
-      selectedPresets.value.splice(index, 1)
-    }
-    expandedPresetIds.value.delete(presetId)
-  }
-
-  const togglePresetCustomize = (presetId) => {
-    if (expandedPresetIds.value.has(presetId)) {
-      expandedPresetIds.value.delete(presetId)
-    } else {
-      expandedPresetIds.value.add(presetId)
-    }
-    expandedPresetIds.value = new Set(expandedPresetIds.value)
-  }
-
-  const setPresetWeight = ({ presetId, weight }) => {
-    const preset = findSelectedPreset(presetId)
-    const numericWeight = Number(weight)
-    if (!preset || !Number.isFinite(numericWeight)) return false
-
-    preset.weight = Math.min(2, Math.max(0.1, numericWeight))
-    return true
-  }
-
   const setFormField = ({ field, value }) => {
     const normalizedValue = normalizePolicyFormField(field, value)
     if (normalizedValue === null) return false
 
     form.value[field] = normalizedValue
     return true
-  }
-
-  const getCustomSignalList = (preset, signalType, key) => {
-    return preset.customSignals?.[signalType]?.[key] || []
-  }
-
-  const findSelectedPreset = (presetId) => {
-    return selectedPresets.value.find(preset => preset.preset_id === presetId || preset.id === presetId) || null
   }
 
   const addIntentSignal = ({ presetId, signalType, key, value, extras = {} }) => {
@@ -293,28 +254,12 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     removeIntentDraftSignalValue({ presetId, signalType, key, value })
   }
 
-  const addCustomSignal = ({ presetId, signalType, key, value, extras = {} }) => {
-    return addIntentDraftSignal({ presetId, signalType, key, value, extras })
-  }
-
-  const removeCustomSignal = ({ presetId, signalType, key, value }) => {
-    return removeIntentDraftSignalValue({ presetId, signalType, key, value })
-  }
-
   const setIntentSignalConfig = ({ presetId, signalType, config, appendArrays = false }) => {
     setIntentDraftSignalConfig({ presetId, signalType, config, appendArrays })
   }
 
   const clearIntentSignalConfig = ({ presetId, signalType }) => {
     clearIntentDraftSignalConfig({ presetId, signalType })
-  }
-
-  const setIntentSignalMetadata = ({ presetId, signalType, metadata, baseMetadata = {} }) => {
-    setIntentDraftSignalMetadata({ presetId, signalType, metadata, baseMetadata })
-  }
-
-  const setIntentSignalRemoval = ({ presetId, signalType, key, value, removed = true }) => {
-    setIntentDraftSignalRemoval({ presetId, signalType, key, value, removed })
   }
 
   const buildSavePayload = () => {
@@ -325,7 +270,6 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     form,
     selectedPresets,
     intentDraft,
-    expandedPresetIds,
     totalWeight,
     currentLibrary,
     isValid,
@@ -334,19 +278,10 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     isPresetSelected,
     togglePresetSelection,
     addAllSuggested,
-    removePreset,
-    togglePresetCustomize,
-    setPresetWeight,
     setFormField,
-    getCustomSignalList,
-    findSelectedPreset,
-    addCustomSignal,
-    removeCustomSignal,
     addIntentSignal,
     removeIntentSignalValue,
     setIntentSignalConfig,
-    setIntentSignalMetadata,
-    setIntentSignalRemoval,
     clearIntentSignalConfig,
     cleanupCustomSignals,
     buildSavePayload,

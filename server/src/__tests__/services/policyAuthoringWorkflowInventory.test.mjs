@@ -146,9 +146,6 @@ describe('policyAuthoringWorkflowInventory', () => {
     [
       'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
       'client/src/components/policies/PolicyStarterTemplateBrowser.vue',
-      'client/src/components/policies/PolicyStarterTemplateDetails.vue',
-      'client/src/components/policies/PolicySelectedStarterTemplates.vue',
-      'client/src/composables/usePolicyBuilderTemplateSignals.js',
     ].forEach((filePath) => {
       const record = classifyPolicyAuthoringWorkflowSurface(filePath);
 
@@ -179,7 +176,7 @@ describe('policyAuthoringWorkflowInventory', () => {
       .not.toContain('preview_replay_diagnostics');
   });
 
-  test('replaces raw advanced scoring and combined-signal UI mechanics', () => {
+  test('replaces raw advanced scoring without retaining deleted combined-signal mechanics', () => {
     expect(classifyPolicyAuthoringWorkflowSurface('client/src/components/policies/PolicyBuilderAdvancedSettings.vue'))
       .toEqual(expect.objectContaining({
         decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REPLACE,
@@ -187,12 +184,8 @@ describe('policyAuthoringWorkflowInventory', () => {
         normalAuthoringAllowed: false,
       }));
 
-    expect(classifyPolicyAuthoringWorkflowSurface('client/src/composables/usePolicyBuilderCombinedSignals.js'))
-      .toEqual(expect.objectContaining({
-        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REPLACE,
-        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.FUTURE_SERVER_ENGINE_INPUT,
-        normalAuthoringAllowed: false,
-      }));
+    expect(listPolicyAuthoringWorkflowRules().map(rule => rule.id))
+      .not.toContain('combined_signal_and_engine_candidates');
   });
 
   test('keeps draft and bridge utilities as compatibility support, not normal product surfaces', () => {

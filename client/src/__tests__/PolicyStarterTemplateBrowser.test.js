@@ -32,30 +32,27 @@ const mountComponent = (overrides = {}) => mount(PolicyStarterTemplateBrowser, {
     suggestedPresets: [presets[0]],
     availablePresets: [presets[1]],
     selectedPresets: [],
-    allPresets: presets,
     categoryTabs: [
       { value: 'all', label: 'All', count: 2 },
       { value: 'custom', label: 'My Templates', count: 1 },
     ],
     selectedCategory: 'all',
     searchQuery: '',
-    getPresetUsageCount: preset => preset?.usage_count ?? 0,
-    formatUsageLabel: count => `Used in ${count} ${count === 1 ? 'policy' : 'policies'}`,
     ...overrides.props,
   },
 })
 
 describe('PolicyStarterTemplateBrowser.vue', () => {
-  it('renders suggested and available starter templates with usage labels', () => {
+  it('renders optional starter-template suggestions without internal ranking or usage mechanics', () => {
     const wrapper = mountComponent()
 
     expect(wrapper.text()).toContain('Suggested')
     expect(wrapper.text()).toContain('Animated Family')
-    expect(wrapper.text()).toContain('Suggestion score: 92')
+    expect(wrapper.text()).toContain('Animation and family signals')
     expect(wrapper.text()).toContain('Comedy')
     expect(wrapper.text()).toContain('Custom')
-    expect(wrapper.text()).toContain('Used in 2 policies')
-    expect(wrapper.text()).toContain('Used in 1 policy')
+    expect(wrapper.text()).not.toContain('Suggestion score:')
+    expect(wrapper.text()).not.toContain('Used in')
   })
 
   it('emits search, category, add-all, and template toggle events', async () => {
@@ -64,7 +61,7 @@ describe('PolicyStarterTemplateBrowser.vue', () => {
     await wrapper.find('input[type="search"]').setValue('family')
     await wrapper.findAll('button').find(button => button.text().includes('My Templates')).trigger('click')
     await wrapper.findAll('button').find(button => button.text().includes('+ Add All')).trigger('click')
-    await wrapper.findAll('.cursor-pointer')[0].trigger('click')
+    await wrapper.find('button[aria-label="Use Animated Family template suggestion"]').trigger('click')
 
     expect(wrapper.emitted('update:searchQuery')).toEqual([['family']])
     expect(wrapper.emitted('update:selectedCategory')).toEqual([['custom']])
@@ -82,5 +79,6 @@ describe('PolicyStarterTemplateBrowser.vue', () => {
 
     expect(wrapper.text()).toContain('No templates found matching your search')
     expect(wrapper.find('.bg-success').exists()).toBe(true)
+    expect(wrapper.find('button[aria-label="Remove Animated Family template suggestion"]').attributes('aria-pressed')).toBe('true')
   })
 })

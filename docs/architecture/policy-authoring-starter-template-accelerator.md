@@ -1,6 +1,6 @@
 # Policy Authoring Starter Template Accelerator
 
-Status: implemented as durable policy-authoring starter-template behavior.
+Status: implemented as bounded compatibility-only template selection.
 
 ## Scope
 
@@ -59,9 +59,12 @@ Official sources reviewed as of June 2026:
    - `aria-controls`,
    - disclosed region with an accessible label.
 6. Remove product warnings that say starter templates are required.
-7. Preserve existing starter-template events and legacy bridge payload behavior
-   when an operator does choose a template.
-8. Keep no-template editing conservative until native intent storage
+7. Limit the legacy accelerator to bounded template selection; do not expose
+   weights, raw `customSignals`, removal markers, strictness, runtime warnings,
+   ranking scores, or policy-usage counts.
+8. Preserve legacy serialization only behind the existing bridge when an
+   existing compatibility policy is saved.
+9. Keep no-template editing conservative until native intent storage
    replaces preset-backed draft targets.
 
 ## Pros And Cons
@@ -90,12 +93,12 @@ Official sources reviewed as of June 2026:
 - Save boundary:
   `client/src/utils/policyBuilderActionBoundary.js`
 - Optional accelerator disclosure:
-  `client/src/components/policies/PolicyStarterTemplateMechanics.vue`
+  `client/src/components/policies/PolicyStarterTemplateAccelerator.vue`
 - No-template copy cleanup:
   `client/src/components/policies/PolicyIntentEditor.vue`
   `client/src/utils/policyIntentSummary.js`
 - Unit coverage:
-  `client/src/__tests__/PolicyStarterTemplateMechanics.test.js`
+  `client/src/__tests__/PolicyStarterTemplateAccelerator.test.js`
   `client/src/__tests__/utils/policyBuilderActionBoundary.test.js`
   `client/src/__tests__/composables/usePolicyBuilderState.test.js`
   `client/src/__tests__/utils/policyIntentSummary.test.js`
@@ -112,16 +115,20 @@ The policy builder now:
 - generates a library-scoped policy name without requiring template names,
 - removes the old summary warning that said a starter template was required,
 - changes the empty editor state to explain templates as optional draft seeds,
-- collapses the template browser/details section by default,
+- collapses the optional template selector by default,
 - exposes the accelerator with `aria-expanded`, `aria-controls`, and a labeled
   region,
-- keeps template selection, customization, and compatibility payload behavior
-  intact after the operator opens the accelerator.
+- keeps only bounded template selection after the operator opens the
+  accelerator,
+- removes template customization, weights, raw custom-signal controls, removal
+  markers, strictness controls, runtime warnings, ranking scores, and usage
+  counts from the product path,
+- retains compatibility serialization behind the existing bridge rather than
+  presenting it to an operator.
 
 ## Follow-Up
 
 The next high-value item is **Policy Authoring Accessibility And Decision Load
-Audit**. Now that starter templates no longer block save or occupy the default
-path, the next design should audit the visible modal for repeated warnings,
-keyboard flow, disabled reasons, and places where advanced settings or summary
-copy still increase decision load.
+Audit**. Now that template selection is bounded and optional, audit the visible
+modal for repeated warnings, keyboard flow, disabled reasons, and places where
+advanced settings or summary copy still increase decision load.

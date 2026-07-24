@@ -45,10 +45,10 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
 
     expect(summary).toEqual({
       artifactCount: 6,
-      moduleRecordCount: 7,
+      moduleRecordCount: 4,
       deletionGateCount: 7,
       rawMutationOwnerIds: ['policy_intent_draft_bridge'],
-      productFacingRecordIds: ['starter_template_details'],
+      productFacingRecordIds: [],
       deleteAfterNativeStorageRecordIds: ['policy_intent_draft_bridge'],
     });
   });
@@ -59,7 +59,7 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
 
     expect(isLegacyCompatibilityBridgeOwner('client/src/composables/usePolicyIntentDraft.js')).toBe(false);
     expect(canMutateLegacyPayload('client/src/composables/usePolicyIntentDraft.js')).toBe(false);
-    expect(canMutateLegacyPayload('client/src/components/policies/PolicyStarterTemplateDetails.vue')).toBe(false);
+    expect(canMutateLegacyPayload('client/src/composables/usePolicyBuilderState.js')).toBe(false);
   });
 
   test('audits current compatibility modules and deletion gates as contained', () => {
@@ -178,38 +178,10 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
     });
   });
 
-  test('rejects product component raw legacy payload reads and writes', () => {
-    expect(validateLegacyCompatibilityTouchpoint({
-      path: 'client/src/components/policies/PolicyStarterTemplateDetails.vue',
-      artifactId: LEGACY_COMPATIBILITY_ARTIFACT_IDS.REMOVED_MARKERS,
-      operation: LEGACY_COMPATIBILITY_ACTION_IDS.READ_COMPATIBILITY_PAYLOAD,
-    })).toEqual({
-      valid: false,
-      riskId: LEGACY_COMPATIBILITY_RISK_IDS.PRODUCT_LANGUAGE_LEAK,
-      reason: 'Product components should consume product-language projections or route commands, not raw legacy payloads.',
-    });
-
-    expect(validateLegacyCompatibilityTouchpoint({
-      path: 'client/src/components/policies/PolicyStarterTemplateDetails.vue',
-      artifactId: LEGACY_COMPATIBILITY_ARTIFACT_IDS.REMOVED_MARKERS,
-      operation: LEGACY_COMPATIBILITY_ACTION_IDS.WRITE_RAW_PAYLOAD,
-    })).toEqual({
-      valid: false,
-      riskId: LEGACY_COMPATIBILITY_RISK_IDS.RAW_PAYLOAD_MUTATION,
-      reason: 'Raw legacy payload writes must stay inside the draft bridge serializer.',
-    });
-  });
-
-  test('allows product components to route draft commands instead of mutating payloads', () => {
-    expect(validateLegacyCompatibilityTouchpoint({
-      path: 'client/src/components/policies/PolicyStarterTemplateDetails.vue',
-      artifactId: LEGACY_COMPATIBILITY_ARTIFACT_IDS.STRICT_ADVISORY_METADATA,
-      operation: LEGACY_COMPATIBILITY_ACTION_IDS.ROUTE_THROUGH_DRAFT_COMMAND,
-    })).toEqual({
-      valid: true,
-      riskId: null,
-      reason: 'Legacy compatibility touchpoint stays within the declared boundary.',
-    });
+  test('does not retain product-facing template-detail compatibility ownership', () => {
+    expect(getLegacyCompatibilityModuleRecord(
+      'client/src/components/policies/PolicyStarterTemplateDetails.vue'
+    )).toBeNull();
   });
 
   test('keeps policy builder state as a bridge caller, not a raw mutation owner', () => {
@@ -256,8 +228,8 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
     });
 
     expect(validateLegacyCompatibilityTouchpoint({
-      path: 'client/src/composables/usePolicyBuilderCombinedSignals.js',
-      artifactId: LEGACY_COMPATIBILITY_ARTIFACT_IDS.PRESET_ATTACHMENTS,
+      path: 'client/src/composables/usePolicyBuilderState.js',
+      artifactId: LEGACY_COMPATIBILITY_ARTIFACT_IDS.REMOVED_MARKERS,
       operation: LEGACY_COMPATIBILITY_ACTION_IDS.PRESENT_ONLY,
     })).toEqual({
       valid: false,

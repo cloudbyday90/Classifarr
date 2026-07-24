@@ -258,20 +258,20 @@ function validateTestBoundaryRule(ruleId) {
       };
     }
     case TEST_BOUNDARY_RULE_IDS.LEGACY_PAYLOAD_MUTATION_STAYS_IN_BRIDGE: {
-      const productWrite = validateLegacyCompatibilityTouchpoint({
-        path: 'client/src/components/policies/PolicyStarterTemplateDetails.vue',
-        artifactId: LEGACY_COMPATIBILITY_ARTIFACT_IDS.REMOVED_MARKERS,
+      const stateWrite = validateLegacyCompatibilityTouchpoint({
+        path: 'client/src/composables/usePolicyBuilderState.js',
+        artifactId: LEGACY_COMPATIBILITY_ARTIFACT_IDS.CUSTOM_SIGNALS,
         operation: LEGACY_COMPATIBILITY_ACTION_IDS.WRITE_RAW_PAYLOAD,
       });
       return {
         valid: canMutateLegacyPayload('client/src/utils/policyIntentDraftBridge.js') === true
-          && canMutateLegacyPayload('client/src/components/policies/PolicyStarterTemplateDetails.vue') === false
-          && productWrite.valid === false
-          && productWrite.riskId === LEGACY_COMPATIBILITY_RISK_IDS.RAW_PAYLOAD_MUTATION,
+          && canMutateLegacyPayload('client/src/composables/usePolicyBuilderState.js') === false
+          && stateWrite.valid === false
+          && stateWrite.riskId === LEGACY_COMPATIBILITY_RISK_IDS.RAW_PAYLOAD_MUTATION,
         evidence: {
           bridgeCanMutate: canMutateLegacyPayload('client/src/utils/policyIntentDraftBridge.js'),
-          componentCanMutate: canMutateLegacyPayload('client/src/components/policies/PolicyStarterTemplateDetails.vue'),
-          productWrite,
+          stateCanMutate: canMutateLegacyPayload('client/src/composables/usePolicyBuilderState.js'),
+          stateWrite,
         },
       };
     }

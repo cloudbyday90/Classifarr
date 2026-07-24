@@ -269,7 +269,7 @@ describe('PolicyBuilderModal.vue', () => {
     document.body.innerHTML = '';
   });
 
-  it('shows usage count labels in available preset cards', async () => {
+  it('keeps template usage counts out of the policy-authoring surface', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
@@ -294,8 +294,8 @@ describe('PolicyBuilderModal.vue', () => {
     await flushPromises();
     await openStarterTemplateAccelerator();
 
-    expect(document.body.textContent).toContain('Used in 4 policies');
-    expect(document.body.textContent).toContain('Used in 1 policy');
+    expect(document.body.textContent).not.toContain('Used in 4 policies');
+    expect(document.body.textContent).not.toContain('Used in 1 policy');
   });
 
   it('shows My Presets when attachable custom presets exist', async () => {
@@ -872,7 +872,7 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).not.toContain('Preview Replay');
   });
 
-  it('uses preset usage map for suggested cards without usage_count payload', async () => {
+  it('shows suggested templates without ranking or usage mechanics', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
@@ -915,7 +915,8 @@ describe('PolicyBuilderModal.vue', () => {
 
     await openStarterTemplateAccelerator();
 
-    expect(document.body.textContent).toContain('Used in 4 policies');
+    expect(document.body.textContent).toContain('Sci-Fi');
+    expect(document.body.textContent).not.toContain('Used in 4 policies');
     expect(api.getPresetSuggestions).toHaveBeenCalledWith(1);
   });
 
@@ -965,7 +966,7 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).toContain('Family Remix');
   });
 
-  it('lets users mark language presets as strict and emits strict customSignals on save', async () => {
+  it('keeps raw template runtime mechanics out of the legacy accelerator', async () => {
     const languagePreset = {
       id: 3,
       name: 'Scandinavian',
@@ -1001,7 +1002,7 @@ describe('PolicyBuilderModal.vue', () => {
       return Promise.resolve({ data: [] });
     });
 
-    const wrapper = mount(PolicyBuilderModal, {
+    mount(PolicyBuilderModal, {
       props: {
         modelValue: true,
         libraryId: 1,
@@ -1018,30 +1019,11 @@ describe('PolicyBuilderModal.vue', () => {
     await flushPromises();
 
     await openStarterTemplateAccelerator();
-    expect(document.body.textContent).toContain('Review runtime behavior');
 
-    wrapper.vm.togglePresetSelection(languagePreset);
-    await flushPromises();
-    wrapper.vm.togglePresetCustomize(3);
-    await flushPromises();
-    wrapper.vm.setPresetSignalStrict({
-      preset: wrapper.vm.selectedPresets[0],
-      signalType: 'language',
-      strict: true
-    });
-    await flushPromises();
-    await wrapper.vm.save();
-
-    const emittedSave = wrapper.emitted('save');
-    expect(emittedSave).toBeTruthy();
-    expect(emittedSave[0][0].presets[0]).toMatchObject({
-      preset_id: 3,
-      customSignals: {
-        language: {
-          strict: true
-        }
-      }
-    });
+    expect(document.body.textContent).toContain('Scandinavian');
+    expect(document.body.textContent).not.toContain('Review runtime behavior');
+    expect(document.body.textContent).not.toContain('Close details');
+    expect(document.querySelector('input[type="number"]')).toBeNull();
   });
 
   it('shows the intent-first editor and saves intent edits as structured custom signals', async () => {
@@ -1093,7 +1075,8 @@ describe('PolicyBuilderModal.vue', () => {
 
     await openStarterTemplateAccelerator();
 
-    expect(document.body.textContent).toContain('Starter Templates (1)');
+    expect(document.body.textContent).toContain('Saving without a starter template is allowed.');
+    expect(document.body.textContent).not.toContain('Combined Signals');
 
     wrapper.vm.addIntentSignal({
       presetId: 1,
@@ -1319,173 +1302,6 @@ describe('PolicyBuilderModal.vue', () => {
         customSignals
       }
     ]);
-  });
-
-  it('saves removed base signal markers through the draft-backed modal API', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
-      if (url === '/policies/presets/all') {
-        return Promise.resolve({
-          data: [{
-            id: 1,
-            name: 'Starter',
-            icon: '📦',
-            category: 'genres',
-            description: 'Starter preset',
-            usage_count: 0,
-            source: 'builtin',
-            signals: {
-              genres: {
-                prefer: ['Comedy']
-              }
-            }
-          }]
-        });
-      }
-      if (url === '/settings') return Promise.resolve({ data: {} });
-      return Promise.resolve({ data: { suggestions: [] } });
-    });
-
-    const wrapper = mount(PolicyBuilderModal, {
-      props: {
-        modelValue: true,
-        libraryId: 1,
-        policy: {
-          id: 1,
-          library_id: 1,
-          name: 'Sci-Fi Movies Policy',
-          presets: [
-            {
-              id: 1,
-              preset_id: 1,
-              name: 'Starter',
-              icon: '📦',
-              weight: 1
-            }
-          ]
-        }
-      },
-      attachTo: document.body
-    });
-
-    await flushPromises();
-
-    wrapper.vm.setSignalRemoval({
-      preset: wrapper.vm.selectedPresets[0],
-      signalType: 'genres',
-      key: 'prefer',
-      value: 'Comedy',
-      removed: true
-    });
-    await flushPromises();
-    await wrapper.vm.save();
-
-    expect(wrapper.emitted('save')[0][0].presets[0].customSignals).toEqual({
-      removed: {
-        genres: {
-          prefer: ['Comedy']
-        }
-      }
-    });
-
-    wrapper.vm.setSignalRemoval({
-      preset: wrapper.vm.selectedPresets[0],
-      signalType: 'genres',
-      key: 'prefer',
-      value: 'Comedy',
-      removed: false
-    });
-    await flushPromises();
-    await wrapper.vm.save();
-
-    expect(wrapper.emitted('save')[1][0].presets[0].customSignals).toBeNull();
-  });
-
-  it('saves custom signal additions and removals through the draft-backed modal API', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
-      if (url === '/policies/presets/all') {
-        return Promise.resolve({
-          data: [{
-            id: 1,
-            name: 'Starter',
-            icon: '📦',
-            category: 'genres',
-            description: 'Starter preset',
-            usage_count: 0,
-            source: 'builtin',
-            signals: {}
-          }]
-        });
-      }
-      if (url === '/settings') return Promise.resolve({ data: {} });
-      return Promise.resolve({ data: { suggestions: [] } });
-    });
-
-    const wrapper = mount(PolicyBuilderModal, {
-      props: {
-        modelValue: true,
-        libraryId: 1,
-        policy: {
-          id: 1,
-          library_id: 1,
-          name: 'Sci-Fi Movies Policy',
-          presets: [
-            {
-              id: 1,
-              preset_id: 1,
-              name: 'Starter',
-              icon: '📦',
-              weight: 1
-            }
-          ]
-        }
-      },
-      attachTo: document.body
-    });
-
-    await flushPromises();
-
-    wrapper.vm.addCustomSignal({
-      preset: wrapper.vm.selectedPresets[0],
-      signalType: 'certifications',
-      key: 'include',
-      value: 'PG'
-    });
-    wrapper.vm.addCustomSignal({
-      preset: wrapper.vm.selectedPresets[0],
-      signalType: 'keywords',
-      key: 'require_any',
-      value: 'space opera'
-    });
-    await flushPromises();
-    await wrapper.vm.save();
-
-    expect(wrapper.emitted('save')[0][0].presets[0].customSignals).toEqual({
-      certifications: {
-        include: ['PG']
-      },
-      keywords: {
-        require_any: ['space opera']
-      }
-    });
-
-    wrapper.vm.removeCustomSignal({
-      preset: wrapper.vm.selectedPresets[0],
-      signalType: 'certifications',
-      key: 'include',
-      value: 'PG'
-    });
-    wrapper.vm.removeCustomSignal({
-      preset: wrapper.vm.selectedPresets[0],
-      signalType: 'keywords',
-      key: 'require_any',
-      value: 'space opera'
-    });
-    await flushPromises();
-    await wrapper.vm.save();
-
-    expect(wrapper.emitted('save')[1][0].presets[0].customSignals).toBeNull();
   });
 
   it('renders policy intent entries from the draft state boundary', async () => {

@@ -21,7 +21,7 @@ import {
 
 const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 const MANIFEST_PATHS = Object.freeze([
-  'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+  'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
   'server/src/services/policyIntentImpactPreview.mjs',
 ]);
 

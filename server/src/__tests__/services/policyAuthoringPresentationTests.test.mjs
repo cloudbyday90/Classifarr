@@ -19,8 +19,7 @@ describe('policyAuthoringPresentationTests', () => {
       'client/src/__tests__/PolicyBuilderModal.test.js',
       'client/src/__tests__/PolicyBuilderLibraryContext.test.js',
       'client/src/__tests__/PolicyStarterTemplateBrowser.test.js',
-      'client/src/__tests__/PolicyStarterTemplateDetails.test.js',
-      'client/src/__tests__/PolicyStarterTemplateMechanics.test.js',
+      'client/src/__tests__/PolicyStarterTemplateAccelerator.test.js',
       'client/src/__tests__/PolicyIntentGenreControl.test.js',
       'client/src/__tests__/PolicyIntentOptionSelect.test.js',
       'client/src/__tests__/PolicyIntentChip.test.js',
@@ -152,7 +151,6 @@ describe('policyAuthoringPresentationTests', () => {
       normalPathRecordCount: 9,
       draftBridgeOwnedRecordCount: 2,
       countsByCategory: expect.objectContaining({
-        [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE]: 1,
         [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE]: 2,
       }),
     }));

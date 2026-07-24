@@ -142,6 +142,20 @@ The implementation provides:
 | Provenance remains secondary | Yes; primary template provenance is rejected. |
 | Template internals leave normal UI | Yes; raw mechanics, weights, custom signals, removed markers, and strict/advisory metadata are bridge-only or delete-after-native-storage. |
 
+## 3R.7 Role-Reset Outcome
+
+The legacy-edit template accelerator is now a bounded selection surface only.
+It may show an optional, accessible template choice after destination context,
+but it no longer renders template-detail editors, combined-signal summaries,
+raw `customSignals`, weight controls, strictness or removal controls, runtime
+warnings, suggestion scores, or policy-usage counts. The deleted components
+and their unused presentation helper are not retained in the active
+compatibility inventory.
+
+Native authoring continues to accept server-owned `add_signal` suggestions.
+Existing compatibility policies preserve their legacy payload only through the
+draft bridge; the operator does not edit that representation directly.
+
 ## Next Step
 
 Cut over the accessibility and decision-load contract to durable

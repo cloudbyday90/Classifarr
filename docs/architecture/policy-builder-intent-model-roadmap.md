@@ -1477,8 +1477,10 @@ The earlier Phase 1 implementation extracted useful composables:
 
 - `usePolicyBuilderState.js`
 - `usePolicyBuilderReferenceData.js`
-- `usePolicyBuilderTemplateSignals.js`
-- `usePolicyBuilderCombinedSignals.js`
+
+`usePolicyBuilderTemplateSignals.js` and
+`usePolicyBuilderCombinedSignals.js` were removed by the 3R.7 template role
+reset because their only remaining callers exposed raw compatibility mechanics.
 
 Those boundaries were good for reducing modal size, but the re-imagined system
 needs stronger separation:
@@ -2603,6 +2605,14 @@ Implementation status:
 - Template mechanics, weights, raw custom signals, removed markers, and
   strict/advisory metadata are classified as bridge-only or
   delete-after-native-storage targets.
+- **3R.7 role reset is complete.** Existing compatibility-policy editing now
+  exposes only an optional, accessible template selector. The raw detail,
+  combined-signal, and template-signal presentation surfaces were deleted;
+  weights, raw `customSignals`, removals, strictness, runtime warnings,
+  rankings, and usage counts are no longer operator controls. Native creation
+  continues to use server-owned typed `add_signal` suggestions.
+- The implementation and outcome are documented in
+  [Policy Authoring Starter Template Role Reset](policy-authoring-starter-template-role-reset.md).
 
 ### 3R.8 Accessibility And Decision Load
 
@@ -9469,7 +9479,7 @@ Implementation status:
   against its owner, native-storage removal condition, all required deletion
   gates, and its declared deletion test.
 - Current results: zero delivery-term production matches, zero production
-  maintenance-parser imports, seven live compatibility readers, and zero
+  maintenance-parser imports, four live compatibility readers, and zero
   compatibility-boundary issues.
 - The audit removed the obsolete `PolicyStarterTemplateMechanics.vue` reader
   from the active compatibility registry after confirming its replacement had

@@ -3,6 +3,11 @@
 Status: in progress
 Scope: intent draft bridge, legacy-compatible save contract
 
+> Historical record: the raw template detail, selected-template, and
+> combined-signal surfaces described below were deleted by the 3R.7
+> starter-template role reset. Current behavior is documented in
+> [Policy Authoring Starter Template Role Reset](policy-authoring-starter-template-role-reset.md).
+
 ## Goal
 
 Phase 2 moves the policy builder toward an intent-first internal model without

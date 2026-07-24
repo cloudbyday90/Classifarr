@@ -196,17 +196,9 @@ describe('policyBuilderBoundaryInventory', () => {
       .not.toContain('policy_preview_diagnostics');
   });
 
-  test('classifies legacy combined-signal product surfaces for replacement', () => {
-    const record = classifyPolicyBuilderClientPath('client/src/components/policies/PolicyCombinedSignalsSummary.vue');
-
-    expect(record.category).toBe(POLICY_BUILDER_BOUNDARY_CATEGORIES.REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE);
-    expect(record.ownerId).toBe(POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE);
-    expect(record.actionId).toBe(POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE);
-    expect(record.engineCutlineDecisionRequired).toBe(true);
-    expect(record.riskIds).toEqual(expect.arrayContaining([
-      POLICY_BUILDER_BOUNDARY_RISK_IDS.LEGACY_PAYLOAD_TOUCHPOINT,
-      POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
-    ]));
+  test('does not retain deleted combined-signal product surfaces', () => {
+    expect(listPolicyBuilderBoundaryRules().map(rule => rule.id))
+      .not.toContain('policy_legacy_summary_surfaces');
   });
 
   test('classifies client-side readiness and section helpers as engine candidates', () => {

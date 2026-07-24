@@ -212,7 +212,7 @@ function readyRemovalBatch(overrides = {}) {
     executionPlanArtifact,
     executionGate: readyGate(executionPlanArtifact),
     selectedPaths: [
-      'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+      'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
     ],
     removalReason: 'First narrow removal review batch after native runtime parity.',
     reviewedBy: 'policy-maintainer',

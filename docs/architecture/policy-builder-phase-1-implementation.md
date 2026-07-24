@@ -1,7 +1,11 @@
 # Policy Builder Phase 1 Implementation
 
-Status: implemented. The form/save state, reference-data, advanced
-template-signal helper, and combined-signal presentation slices are implemented.
+Status: historical implementation record. The form/save and reference-data
+slices remain relevant; the advanced template-signal and combined-signal slices
+were deleted by the 3R.7 starter-template role reset.
+
+> Current behavior is documented in
+> [Policy Authoring Starter Template Role Reset](policy-authoring-starter-template-role-reset.md).
 
 ## Scope
 

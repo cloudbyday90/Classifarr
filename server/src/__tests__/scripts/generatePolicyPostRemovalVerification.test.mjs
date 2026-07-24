@@ -43,7 +43,7 @@ const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 const EXECUTION_PLAN_ARTIFACT_FINGERPRINT = 'b'.repeat(64);
 const EXECUTION_GATE_ARTIFACT_FINGERPRINT = 'c'.repeat(64);
 const REMOVED_PATHS = Object.freeze([
-  'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+  'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
   'server/src/services/policyIntentImpactPreview.mjs',
 ]);
 

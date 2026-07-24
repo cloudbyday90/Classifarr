@@ -34,17 +34,10 @@ function mountAccelerator(overrides = {}) {
       suggestedPresets: [presets[0]],
       availablePresets: [presets[1]],
       selectedPresets: [],
-      allPresets: presets,
       categoryTabs: [
         { value: 'all', label: 'All', count: 2 },
         { value: 'family', label: 'Family', count: 1 },
       ],
-      expandedPresetIds: new Set(),
-      availableRatings: ['PG'],
-      availableGenres: ['Family'],
-      combinedSignals: {},
-      getPresetUsageCount: preset => preset?.usage_count ?? 0,
-      formatUsageLabel: count => `Used in ${count} ${count === 1 ? 'policy' : 'policies'}`,
       ...overrides.props,
     },
   })
@@ -70,7 +63,7 @@ describe('PolicyStarterTemplateAccelerator.vue', () => {
     expect(wrapper.text()).toContain('Animated Family')
   })
 
-  it('collapses accelerator by default when starter templates are already selected', async () => {
+  it('keeps selected-template mechanics out of the expanded accelerator', async () => {
     const wrapper = mountAccelerator({
       props: {
         selectedPresets: [{
@@ -87,17 +80,20 @@ describe('PolicyStarterTemplateAccelerator.vue', () => {
     await wrapper.find('button').trigger('click')
 
     expect(wrapper.text()).toContain('Suggested')
-    expect(wrapper.text()).toContain('Starter Templates (1)')
+    expect(wrapper.text()).toContain('adjust the resulting intent there')
+    expect(wrapper.text()).not.toContain('Close details')
+    expect(wrapper.text()).not.toContain('Combined Signals')
+    expect(wrapper.find('input[type="number"]').exists()).toBe(false)
   })
 
-  it('passes browser and selected-template events through explicitly', async () => {
+  it('passes only bounded template-selection events through explicitly', async () => {
     const wrapper = mountAccelerator()
 
     await wrapper.find('button').trigger('click')
     await wrapper.find('input[type="search"]').setValue('family')
-    await wrapper.findAll('button').find(button => button.text().includes('Family')).trigger('click')
+    await wrapper.findAll('button').find(button => button.text().trim().startsWith('Family')).trigger('click')
     await wrapper.findAll('button').find(button => button.text().includes('+ Add All')).trigger('click')
-    await wrapper.findAll('.cursor-pointer')[0].trigger('click')
+    await wrapper.find('button[aria-label="Use Animated Family template suggestion"]').trigger('click')
 
     expect(wrapper.emitted('update:searchQuery')).toEqual([['family']])
     expect(wrapper.emitted('update:selectedCategory')).toEqual([['family']])

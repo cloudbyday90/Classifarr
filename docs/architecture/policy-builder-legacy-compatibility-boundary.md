@@ -98,9 +98,6 @@ Cons:
   - `client/src/utils/policyIntentDraftBridge.js`
   - `client/src/composables/usePolicyIntentDraft.js`
   - `client/src/composables/usePolicyBuilderState.js`
-  - `client/src/composables/usePolicyBuilderTemplateSignals.js`
-  - `client/src/composables/usePolicyBuilderCombinedSignals.js`
-  - `client/src/components/policies/PolicyStarterTemplateDetails.vue`
   - `server/src/services/policyIntentRequestValidator.mjs`
 - Roadmap:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
@@ -125,13 +122,10 @@ Current ownership rules:
 | `policyIntentDraftBridge.js` | Bridge serializer | Allowed |
 | `usePolicyIntentDraft.js` | Draft command router | Not allowed |
 | `usePolicyBuilderState.js` | Save payload coordinator and bridge caller | Not allowed |
-| `usePolicyBuilderTemplateSignals.js` | Template signal presentation helper | Not allowed |
-| `usePolicyBuilderCombinedSignals.js` | Read-only summary projection | Not allowed |
-| `PolicyStarterTemplateDetails.vue` | Product command and presentation component | Not allowed |
 | `policyIntentRequestValidator.mjs` | Server allow-list validation | Not allowed |
 
-The contract rejects product-component raw compatibility reads and writes.
-Product components may route commands, and the draft bridge remains the only
+No product component is an active compatibility reader. The template selector
+uses bounded selection events only, while the draft bridge remains the only
 declared raw legacy payload mutation owner.
 
 ## Hardening Outcome
@@ -167,9 +161,9 @@ backup/restore verification
 regression coverage
 ```
 
-`usePolicyBuilderCombinedSignals` is explicitly allowed to read `customSignals`
-as a read-only presentation projection. It is still not allowed to mutate raw
-legacy payloads.
+The prior template-detail, combined-signal, and template-signal presentation
+surfaces were deleted during the 3R.7 role reset. They are not retained as
+inactive compatibility records or product fallbacks.
 
 ## Follow-Up
 

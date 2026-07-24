@@ -165,8 +165,6 @@ describe('usePolicyBuilderReferenceData composable', () => {
       expect.objectContaining({ value: 'Family', source: 'preset_reference' }),
     ])
     expect(referenceData.availableRatings.value).toEqual(['G', 'PG', 'PG-13'])
-    expect(referenceData.getPresetUsageCount({ preset_id: 1 })).toBe(2)
-    expect(referenceData.formatUsageLabel(1)).toBe('Used in 1 policy')
 
     referenceData.selectedCategory.value = 'custom'
     expect(referenceData.getFilteredAvailablePresets([]).map(preset => preset.name)).toEqual(['Custom Comedy'])

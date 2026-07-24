@@ -25,13 +25,16 @@
         </button>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <div
+        <button
           v-for="preset in suggestedPresets"
           :key="'suggested-' + getPresetId(preset)"
-          class="flex items-center gap-3 p-3 rounded-lg border-l-4 cursor-pointer transition-all hover:bg-gray-800"
+          type="button"
+          class="flex w-full items-center gap-3 p-3 text-left rounded-lg border-l-4 cursor-pointer transition-all hover:bg-gray-800"
           :class="isPresetSelected(preset)
             ? 'bg-green-500/10 border-success'
             : 'bg-blue-500/10 border-primary'"
+          :aria-pressed="String(isPresetSelected(preset))"
+          :aria-label="getTemplateActionLabel(preset)"
           @click="emit('toggle-preset', preset)"
         >
           <div
@@ -52,7 +55,7 @@
               {{ preset.name }}
             </div>
             <div class="text-xs text-gray-400">
-              Suggestion score: {{ preset.suggestion_score ?? preset.match_score ?? 0 }}
+              {{ preset.description || 'Optional template suggestion' }}
             </div>
             <div
               v-if="preset.source === 'custom'"
@@ -60,17 +63,8 @@
             >
               My Preset
             </div>
-            <div
-              v-if="hasRuntimeSemanticsWarning(preset)"
-              class="text-[11px] text-amber-400"
-            >
-              Review runtime behavior
-            </div>
-            <div class="text-[11px] text-gray-500 truncate">
-              {{ formatUsageLabel(getPresetUsageCount(preset)) }}
-            </div>
           </div>
-        </div>
+        </button>
       </div>
     </div>
 
@@ -104,13 +98,16 @@
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
-      <div
+      <button
         v-for="preset in availablePresets"
         :key="getPresetId(preset)"
-        class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:bg-gray-800"
+        type="button"
+        class="flex w-full items-center gap-3 p-3 text-left rounded-lg border cursor-pointer transition-all hover:bg-gray-800"
         :class="isPresetSelected(preset)
           ? 'bg-green-500/10 border-success'
           : 'bg-background-light border-gray-700'"
+        :aria-pressed="String(isPresetSelected(preset))"
+        :aria-label="getTemplateActionLabel(preset)"
         @click="emit('toggle-preset', preset)"
       >
         <div
@@ -133,9 +130,6 @@
           <div class="text-xs text-gray-400 truncate">
             {{ preset.description || preset.category }}
           </div>
-          <div class="text-[11px] text-gray-500 truncate">
-            {{ formatUsageLabel(getPresetUsageCount(preset)) }}
-          </div>
         </div>
         <span
           v-if="preset.source === 'custom'"
@@ -143,7 +137,7 @@
         >
           Custom
         </span>
-      </div>
+      </button>
 
       <div
         v-if="availablePresets.length === 0"
@@ -157,7 +151,6 @@
 
 <script setup>
 import { computed } from 'vue'
-import { usePolicyBuilderTemplateSignals } from '@/composables/usePolicyBuilderTemplateSignals'
 
 const props = defineProps({
   suggestedPresets: {
@@ -169,10 +162,6 @@ const props = defineProps({
     default: () => [],
   },
   selectedPresets: {
-    type: Array,
-    default: () => [],
-  },
-  allPresets: {
     type: Array,
     default: () => [],
   },
@@ -188,14 +177,6 @@ const props = defineProps({
     type: String,
     default: '',
   },
-  getPresetUsageCount: {
-    type: Function,
-    default: () => 0,
-  },
-  formatUsageLabel: {
-    type: Function,
-    default: count => `Used in ${count} policies`,
-  },
 })
 
 const emit = defineEmits({
@@ -205,15 +186,14 @@ const emit = defineEmits({
   'update:searchQuery': query => typeof query === 'string',
 })
 
-const allPresetsRef = computed(() => props.allPresets)
-
-const {
-  hasRuntimeSemanticsWarning,
-} = usePolicyBuilderTemplateSignals({
-  allPresets: allPresetsRef,
-})
-
 const getPresetId = preset => preset?.preset_id ?? preset?.id ?? null
+
+const getTemplateActionLabel = preset => {
+  const name = preset?.name || 'starter template'
+  return isPresetSelected(preset)
+    ? `Remove ${name} template suggestion`
+    : `Use ${name} template suggestion`
+}
 
 const selectedPresetIds = computed(() => new Set(
   props.selectedPresets

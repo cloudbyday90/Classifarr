@@ -59,7 +59,7 @@ const GENERATOR_PATH = fileURLToPath(
 );
 const COLLECTION_TIME = '2026-07-15T12:00:00.000Z';
 const GENERATED_AT = '2026-07-15T12:01:00.000Z';
-const MANIFEST_PATH = 'client/src/components/policies/PolicyStarterTemplateMechanics.vue';
+const MANIFEST_PATH = 'client/src/components/policies/PolicyStarterTemplateAccelerator.vue';
 
 function writeJson(rootPath, fileName, value) {
   const filePath = path.join(rootPath, '.artifacts', fileName);

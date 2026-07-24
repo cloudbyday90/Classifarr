@@ -239,12 +239,8 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     ],
     notes: 'Templates can accelerate intent, but they must sit behind destination context and never define the normal model.',
     matches: filePath => hasAnySegment(filePath, [
-      '/PolicySelectedStarterTemplates.vue',
       '/PolicyStarterTemplateAccelerator.vue',
       '/PolicyStarterTemplateBrowser.vue',
-      '/PolicyStarterTemplateDetails.vue',
-      '/PolicyStarterTemplateMechanics.vue',
-      '/usePolicyBuilderTemplateSignals.js',
     ]),
   },
   {
@@ -345,21 +341,6 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
       '/policyIntentDraftView.js',
       '/policyIntentModel.js',
       '/policyIntentWritePreflight.js',
-    ]),
-  },
-  {
-    id: 'combined_signal_and_engine_candidates',
-    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REPLACE,
-    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.FUTURE_SERVER_ENGINE_INPUT,
-    normalAuthoringAllowed: false,
-    migrationSupportOnly: true,
-    riskIds: [
-      POLICY_AUTHORING_WORKFLOW_RISK_IDS.CLIENT_ENGINE_DECISION,
-      POLICY_AUTHORING_WORKFLOW_RISK_IDS.LEGACY_PAYLOAD_EXPOSURE,
-    ],
-    notes: 'Combined-signal and derived mechanics should feed future server contracts, not normal UI mechanics.',
-    matches: filePath => hasAnySegment(filePath, [
-      '/usePolicyBuilderCombinedSignals.js',
     ]),
   },
   {

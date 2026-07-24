@@ -255,13 +255,13 @@ describe('policyAuthoringLegacyBridgeBoundary', () => {
   test('allows raw legacy payload mutation only in the bridge module', () => {
     expect(canPolicyAuthoringPathMutateLegacyPayload('client/src/utils/policyIntentDraftBridge.js')).toBe(true);
     expect(canPolicyAuthoringPathMutateLegacyPayload('client/src/composables/usePolicyIntentDraft.js')).toBe(false);
-    expect(canPolicyAuthoringPathMutateLegacyPayload('client/src/components/policies/PolicyStarterTemplateDetails.vue')).toBe(false);
+    expect(canPolicyAuthoringPathMutateLegacyPayload('client/src/composables/usePolicyBuilderState.js')).toBe(false);
   });
 
-  test('rejects product component raw legacy writes through inherited compatibility boundary', () => {
+  test('rejects policy builder state raw legacy writes through inherited compatibility boundary', () => {
     expect(validatePolicyAuthoringLegacyBridgeTouchpoint({
-      path: 'client/src/components/policies/PolicyStarterTemplateDetails.vue',
-      artifactId: LEGACY_COMPATIBILITY_ARTIFACT_IDS.REMOVED_MARKERS,
+      path: 'client/src/composables/usePolicyBuilderState.js',
+      artifactId: LEGACY_COMPATIBILITY_ARTIFACT_IDS.CUSTOM_SIGNALS,
       operation: LEGACY_COMPATIBILITY_ACTION_IDS.WRITE_RAW_PAYLOAD,
     })).toEqual({
       valid: false,

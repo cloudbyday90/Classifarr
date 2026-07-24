@@ -142,22 +142,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     rationale: 'Protect starter-template browsing around optional post-destination acceleration.',
   },
   {
-    filePath: 'client/src/__tests__/PolicyStarterTemplateDetails.test.js',
+    filePath: 'client/src/__tests__/PolicyStarterTemplateAccelerator.test.js',
     categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
     normalPath: true,
     coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
     requiredBehaviorIds: [
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.STARTER_TEMPLATES_SECONDARY_TO_DESTINATION,
     ],
-    rationale: 'Template detail assertions should show approved product vocabulary, not raw mechanics.',
-  },
-  {
-    filePath: 'client/src/__tests__/PolicyStarterTemplateMechanics.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE,
-    normalPath: false,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
-    requiredBehaviorIds: [],
-    rationale: 'Raw template mechanics are bridge-only and should not remain a normal presentation surface.',
+    rationale: 'Accelerator assertions keep template selection optional, disclosed, and free of raw mechanics.',
   },
   {
     filePath: 'client/src/__tests__/PolicyIntentGenreControl.test.js',

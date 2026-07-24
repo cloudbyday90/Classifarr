@@ -17,7 +17,7 @@ const EXECUTION_GATE_ARTIFACT_FINGERPRINT = 'c'.repeat(64);
 
 const PARTIAL_APPLY_ENTRIES = [
   {
-    path: 'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+    path: 'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
     actionId: 'delete_file',
   },
   {
@@ -46,7 +46,7 @@ function applyEvidence(overrides = {}) {
       requestedCount: 2,
       results: [
         {
-          path: 'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+          path: 'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
           actionId: 'delete_file',
           applied: true,
         },
@@ -96,7 +96,7 @@ function verificationInput(overrides = {}) {
       completed: true,
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
       checkedPaths: [
-        'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+        'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
         'server/src/services/policyIntentImpactPreview.mjs',
       ],
       references: [],
@@ -164,7 +164,7 @@ describe('policyPostRemovalRuntimeVerificationArtifact', () => {
           completed: true,
           reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
           checkedPaths: [
-            'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+            'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
             'server/src/services/policyIntentImpactPreview.mjs',
           ],
           references: [{

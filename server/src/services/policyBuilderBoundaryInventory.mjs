@@ -260,27 +260,9 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ],
     notes: 'Legacy preset/custom-signal projection must stay isolated until native intent storage replaces it.',
     matches: (filePath) => hasAnySegment(filePath, [
-      '/usePolicyBuilderTemplateSignals.js',
-      '/usePolicyBuilderCombinedSignals.js',
       '/policyIntentDraftBridge.js',
       '/policyIntentDraftView.js',
       '/policyIntentModel.js',
-    ]),
-  },
-  {
-    id: 'policy_legacy_summary_surfaces',
-    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE,
-    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE,
-    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE,
-    clientEngineAuthorityAllowed: false,
-    engineCutlineDecisionRequired: true,
-    riskIds: [
-      POLICY_BUILDER_BOUNDARY_RISK_IDS.LEGACY_PAYLOAD_TOUCHPOINT,
-      POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
-    ],
-    notes: 'Legacy combined-signal summaries expose preset-era concepts in the product path and should be replaced by approved product-vocabulary surfaces.',
-    matches: (filePath) => hasAnySegment(filePath, [
-      '/PolicyCombinedSignalsSummary.vue',
     ]),
   },
   {
@@ -360,11 +342,8 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
         '/PolicyIntentSectionCard.vue',
         '/PolicyIntentSummaryCard.vue',
         '/PolicyPresetMigrationNotice.vue',
-        '/PolicySelectedStarterTemplates.vue',
         '/PolicyStarterTemplateAccelerator.vue',
         '/PolicyStarterTemplateBrowser.vue',
-        '/PolicyStarterTemplateDetails.vue',
-        '/PolicyStarterTemplateMechanics.vue',
       ]),
   },
   {

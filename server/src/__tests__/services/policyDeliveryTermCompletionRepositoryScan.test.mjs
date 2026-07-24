@@ -77,7 +77,7 @@ describe('policyDeliveryTermCompletionRepositoryScan', () => {
     expect(audit.summary).toEqual(expect.objectContaining({
       productionMatchCount: 0,
       maintenanceImportCount: 0,
-      compatibilityReaderCount: 7,
+      compatibilityReaderCount: 4,
     }));
   });
 });

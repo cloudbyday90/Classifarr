@@ -18,6 +18,13 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Bounded Starter Template Selection** - existing compatibility-policy
+  editing now keeps starter templates as an optional, accessible selection
+  accelerator only. Removed raw template-detail editors, combined-signal
+  summaries, weights, custom-signal/removal/strictness controls, runtime
+  warnings, ranking scores, and policy-usage counts from the operator path;
+  legacy payload preservation remains isolated in the compatibility bridge.
+
 - **Server-Owned Constraint Decisions** - the native policy workflow now
   publishes a bounded, display-only decision model that keeps hard limits,
   avoid values, and review warnings semantically distinct. Hard limits can

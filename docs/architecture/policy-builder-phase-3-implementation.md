@@ -3,6 +3,12 @@
 Status: checkpoint complete
 Scope: intent-first builder presentation, legacy-compatible save contract
 
+> Historical record: this prior presentation checkpoint was superseded for
+> starter templates by the 3R.7 role reset. `PolicyStarterTemplateMechanics`,
+> template detail, selected-template, and combined-signal components referenced
+> below are deleted, not active compatibility fallbacks. Current behavior is
+> documented in [Policy Authoring Starter Template Role Reset](policy-authoring-starter-template-role-reset.md).
+
 ## Goal
 
 Phase 3 makes the policy builder read as an intent-first workflow after the

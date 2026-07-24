@@ -29,7 +29,7 @@ import {
 } from '../../services/policyCompatibilityDeletionExecutionPlanArtifact.mjs';
 
 const MANIFEST_PATH =
-  'client/src/components/policies/PolicyStarterTemplateMechanics.vue';
+  'client/src/components/policies/PolicyStarterTemplateAccelerator.vue';
 
 const COLLECTION_TIME = '2026-07-14T20:00:00.000Z';
 

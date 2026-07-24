@@ -216,7 +216,7 @@ function readyRemovalReview(overrides = {}) {
     executionPlanArtifact,
     executionGate: readyGate(executionPlanArtifact),
     selectedPaths: [
-      'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+      'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
       'server/src/services/policyIntentMapper.mjs',
     ],
     removalReason: 'First narrow removal review batch after native runtime parity.',
@@ -308,7 +308,7 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
     }));
     expect(applyResult.applyBatch.results).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        path: 'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+        path: 'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
         applied: true,
       }),
       expect.objectContaining({
@@ -510,7 +510,7 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
         .APPLY_RESULT_ACTION_MISMATCH,
     ]));
     expect(adapterCalls).toEqual([
-      'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+      'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
     ]);
     expect(applyResult.applyBatch).toEqual(expect.objectContaining({
       checkedCount: 1,
@@ -527,9 +527,9 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
     const applyResult = await applyPolicyControlledCompatibilityPathRemoval({
       removalReview: readyRemovalReview({
         selectedPaths: [
-          'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
-          'client/src/components/policies/PolicyStarterTemplateDetails.vue',
-          'client/src/components/policies/PolicyCombinedSignalsSummary.vue',
+          'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
+          'client/src/components/policies/PolicyStarterTemplateBrowser.vue',
+          'client/src/components/policies/PolicyPresetMigrationNotice.vue',
         ],
       }),
       executeApply: true,
@@ -538,7 +538,7 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
         async applyEntry(entry) {
           adapterCalls.push(entry.path);
 
-          if (entry.path.endsWith('PolicyStarterTemplateDetails.vue')) {
+          if (entry.path.endsWith('PolicyStarterTemplateBrowser.vue')) {
             throw new Error(`cannot remove ${entry.path}`);
           }
 
@@ -563,15 +563,15 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
       }),
     ]));
     expect(adapterCalls).toEqual([
-      'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
-      'client/src/components/policies/PolicyStarterTemplateDetails.vue',
+      'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
+      'client/src/components/policies/PolicyStarterTemplateBrowser.vue',
     ]);
     expect(applyResult.applyBatch).toEqual(expect.objectContaining({
       requestedCount: 3,
       checkedCount: 2,
       appliedCount: 1,
       blockedEntry: {
-        path: 'client/src/components/policies/PolicyStarterTemplateDetails.vue',
+        path: 'client/src/components/policies/PolicyStarterTemplateBrowser.vue',
         actionId: 'delete_file',
       },
       haltReasonId:
@@ -654,11 +654,11 @@ describe('policyControlledCompatibilityPathRemovalApply', () => {
       .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS
         .BLOCKED_BY_PRE_APPLY_RECHECK);
     expect(detectorCalls).toEqual([
-      'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+      'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
       'server/src/services/policyIntentMapper.mjs',
     ]);
     expect(adapterCalls).toEqual([
-      'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+      'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
     ]);
     expect(applyResult.applyBatch).toEqual(expect.objectContaining({
       requestedCount: 2,

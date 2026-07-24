@@ -52,7 +52,7 @@ function removalReview(overrides = {}) {
       entries: [{
         categoryId: 'client_bridge_ui',
         actionId: 'delete_file',
-        path: 'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+        path: 'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
         deletionIntent: 'Remove bridge-only UI after native replacement.',
         replacementEvidence: { tests: ['PolicyBuilderLibraryContext.test.js'] },
       }],

@@ -19,7 +19,7 @@ import {
 } from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 
 const MANIFEST_PATH =
-  'client/src/components/policies/PolicyStarterTemplateMechanics.vue';
+  'client/src/components/policies/PolicyStarterTemplateAccelerator.vue';
 
 function executionPlan(overrides = {}) {
   return {

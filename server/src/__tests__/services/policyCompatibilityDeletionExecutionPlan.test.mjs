@@ -184,7 +184,7 @@ describe('policyCompatibilityDeletionExecutionPlan', () => {
       expect.objectContaining({
         categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI,
         actionId: POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
-        path: 'client/src/components/policies/PolicyStarterTemplateMechanics.vue',
+        path: 'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
         ready: true,
       }),
       expect.objectContaining({

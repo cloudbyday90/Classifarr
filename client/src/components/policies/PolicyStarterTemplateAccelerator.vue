@@ -42,8 +42,8 @@
       class="p-4 pt-0 space-y-4"
     >
       <p class="rounded-md border border-gray-700 bg-background px-3 py-2 text-xs text-gray-400">
-        Saving without a starter template is allowed. Templates are compatibility
-        accelerators for seeding draft values, not required policy authority.
+        Saving without a starter template is allowed. A selected template seeds
+        the declared intent shown above; adjust the resulting intent there.
       </p>
 
       <PolicyStarterTemplateBrowser
@@ -52,36 +52,11 @@
         :suggested-presets="suggestedPresets"
         :available-presets="availablePresets"
         :selected-presets="selectedPresets"
-        :all-presets="allPresets"
         :category-tabs="categoryTabs"
-        :get-preset-usage-count="getPresetUsageCount"
-        :format-usage-label="formatUsageLabel"
         @add-all-suggested="emit('add-all-suggested')"
         @toggle-preset="preset => emit('toggle-preset', preset)"
         @update:search-query="query => emit('update:searchQuery', query)"
         @update:selected-category="category => emit('update:selectedCategory', category)"
-      />
-
-      <div class="border-t border-gray-700" />
-
-      <PolicySelectedStarterTemplates
-        :selected-presets="selectedPresets"
-        :expanded-preset-ids="expandedPresetIds"
-        :all-presets="allPresets"
-        :available-ratings="availableRatings"
-        :available-genres="availableGenres"
-        @toggle-preset-customize="presetId => emit('toggle-preset-customize', presetId)"
-        @remove-preset="presetId => emit('remove-preset', presetId)"
-        @update-preset-weight="payload => emit('update-preset-weight', payload)"
-        @add-custom-signal="payload => emit('add-custom-signal', payload)"
-        @remove-custom-signal="payload => emit('remove-custom-signal', payload)"
-        @set-signal-removal="payload => emit('set-signal-removal', payload)"
-        @set-signal-strict="payload => emit('set-signal-strict', payload)"
-      />
-
-      <PolicyCombinedSignalsSummary
-        :preset-count="selectedPresets.length"
-        :combined-signals="combinedSignals"
       />
     </div>
   </section>
@@ -89,8 +64,6 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import PolicyCombinedSignalsSummary from '@/components/policies/PolicyCombinedSignalsSummary.vue'
-import PolicySelectedStarterTemplates from '@/components/policies/PolicySelectedStarterTemplates.vue'
 import PolicyStarterTemplateBrowser from '@/components/policies/PolicyStarterTemplateBrowser.vue'
 
 defineProps({
@@ -114,37 +87,9 @@ defineProps({
     type: Array,
     default: () => [],
   },
-  allPresets: {
-    type: Array,
-    default: () => [],
-  },
   categoryTabs: {
     type: Array,
     default: () => [],
-  },
-  expandedPresetIds: {
-    type: [Object, Array],
-    default: () => new Set(),
-  },
-  availableRatings: {
-    type: Array,
-    default: () => [],
-  },
-  availableGenres: {
-    type: Array,
-    default: () => [],
-  },
-  combinedSignals: {
-    type: Object,
-    default: () => ({}),
-  },
-  getPresetUsageCount: {
-    type: Function,
-    default: () => 0,
-  },
-  formatUsageLabel: {
-    type: Function,
-    default: count => `Used in ${count} policies`,
   },
 })
 
@@ -153,13 +98,6 @@ const emit = defineEmits({
   'update:selectedCategory': category => typeof category === 'string',
   'add-all-suggested': null,
   'toggle-preset': preset => Boolean(preset),
-  'toggle-preset-customize': presetId => presetId !== null && presetId !== undefined,
-  'remove-preset': presetId => presetId !== null && presetId !== undefined,
-  'update-preset-weight': payload => Boolean(payload),
-  'add-custom-signal': payload => Boolean(payload),
-  'remove-custom-signal': payload => Boolean(payload),
-  'set-signal-removal': payload => Boolean(payload),
-  'set-signal-strict': payload => Boolean(payload),
 })
 
 const showAccelerator = ref(false)
