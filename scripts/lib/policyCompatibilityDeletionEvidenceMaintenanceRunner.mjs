@@ -21,6 +21,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
+import {
+  buildPolicyCompatibilityDeletionEvidenceDiagnosticSummary,
+} from './policyCompatibilityDeletionEvidenceDiagnosticSummary.mjs';
+
 const CONTAINER_NAME_PATTERN = /^[a-z0-9][a-z0-9_.-]{0,127}$/iu;
 const CONTAINER_USER_PATTERN = /^\d+:\d+$/u;
 const IMAGE_ID_PATTERN = /^sha256:[a-f0-9]{64}$/u;
@@ -280,7 +284,17 @@ function buildDockerRunArguments({
 function readCollectedEvidence(outputPath, fileSystem = fs) {
   try {
     const value = JSON.parse(fileSystem.readFileSync(outputPath, 'utf8'));
-    return isObject(value) && typeof value.readyForExecutionPlan === 'boolean'
+    return isObject(value) &&
+      typeof value.readyForExecutionPlan === 'boolean' &&
+      typeof value.statusId === 'string' &&
+      isObject(value.validation) &&
+      typeof value.validation.ok === 'boolean' &&
+      Number.isInteger(value.riskCount) &&
+      value.riskCount >= 0 &&
+      Array.isArray(value.risks) &&
+      value.riskCount === value.risks.length &&
+      value.readyForExecutionPlan === (value.riskCount === 0) &&
+      (value.readyForExecutionPlan !== true || value.validation.ok === true)
       ? value
       : null;
   } catch (_error) {
@@ -291,12 +305,14 @@ function readCollectedEvidence(outputPath, fileSystem = fs) {
 function createOutcome({
   exitCode,
   statusId,
+  diagnostic = null,
   outputPath = null,
   sourceRevision = null,
 } = {}) {
   return {
     version: MAINTENANCE_RUNNER_VERSION,
     exitCode,
+    diagnostic,
     outputPath,
     sourceRevision,
     statusId,
@@ -507,10 +523,15 @@ async function runPolicyCompatibilityDeletionEvidenceMaintenance({
     });
   }
 
+  const diagnostic = buildPolicyCompatibilityDeletionEvidenceDiagnosticSummary(
+    evidenceBundle
+  );
+
   if (evidenceBundle.readyForExecutionPlan === true && dockerResult.status === 0) {
     return writeOutcome({
       outcome: createOutcome({
         exitCode: POLICY_COMPATIBILITY_DELETION_EVIDENCE_MAINTENANCE_EXIT_CODES.SUCCESS,
+        diagnostic,
         outputPath: toContainerPath(output.relativePath, pathModule),
         sourceRevision,
         statusId: POLICY_COMPATIBILITY_DELETION_EVIDENCE_MAINTENANCE_STATUS_IDS.READY,
@@ -523,6 +544,7 @@ async function runPolicyCompatibilityDeletionEvidenceMaintenance({
     return writeOutcome({
       outcome: createOutcome({
         exitCode: POLICY_COMPATIBILITY_DELETION_EVIDENCE_MAINTENANCE_EXIT_CODES.BLOCKED,
+        diagnostic,
         outputPath: toContainerPath(output.relativePath, pathModule),
         sourceRevision,
         statusId: POLICY_COMPATIBILITY_DELETION_EVIDENCE_MAINTENANCE_STATUS_IDS

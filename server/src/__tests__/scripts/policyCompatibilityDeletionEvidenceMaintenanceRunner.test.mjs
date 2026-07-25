@@ -120,6 +120,8 @@ describe('policyCompatibilityDeletionEvidenceMaintenanceRunner', () => {
           readyForExecutionPlan: true,
           statusId: 'ready',
           validation: { ok: true },
+          riskCount: 0,
+          risks: [],
         });
         return { status: 0, stdout: '' };
       },
@@ -239,6 +241,8 @@ describe('policyCompatibilityDeletionEvidenceMaintenanceRunner', () => {
           readyForExecutionPlan: false,
           statusId: 'blocked_by_evidence',
           validation: { ok: true },
+          riskCount: 1,
+          risks: [{}],
         });
         return { status: 1, stdout: '' };
       },
@@ -267,6 +271,8 @@ describe('policyCompatibilityDeletionEvidenceMaintenanceRunner', () => {
           readyForExecutionPlan: false,
           statusId: 'blocked_by_deletion_gates',
           validation: { ok: true },
+          riskCount: 1,
+          risks: [{}],
         });
         expect(args).not.toContain('--input');
         return { status: 1, stdout: '' };
@@ -299,6 +305,34 @@ describe('policyCompatibilityDeletionEvidenceMaintenanceRunner', () => {
 
     expect(outcome.exitCode)
       .toBe(POLICY_COMPATIBILITY_DELETION_EVIDENCE_MAINTENANCE_EXIT_CODES.FAILURE);
+    expect(outcome.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EVIDENCE_MAINTENANCE_STATUS_IDS.FAILED);
+    expect(stderr).toEqual([
+      'The maintenance runner did not produce a valid evidence bundle.',
+    ]);
+  });
+
+  test('rejects a ready helper result whose evidence validation failed', async () => {
+    const outputPath = path.join(fixtureRoot, '.tmp', 'invalid-evidence.json');
+    const commandRunner = createCommandRunner({
+      workspaceRoot: fixtureRoot,
+      dockerRun: () => {
+        writeJson(outputPath, {
+          readyForExecutionPlan: true,
+          statusId: 'ready',
+          validation: { ok: false },
+          riskCount: 0,
+          risks: [],
+        });
+        return { status: 1, stdout: '' };
+      },
+    });
+
+    const outcome = await runRunner({
+      commandRunner,
+      outputPath: '.tmp/invalid-evidence.json',
+    });
+
     expect(outcome.statusId)
       .toBe(POLICY_COMPATIBILITY_DELETION_EVIDENCE_MAINTENANCE_STATUS_IDS.FAILED);
     expect(stderr).toEqual([

@@ -157,6 +157,11 @@ Exit outcomes:
 | `1` | `blocked_by_worktree`, `blocked_by_image_provenance`, or `blocked_by_evidence` | Safe preconditions or readiness were not met. No approval or deletion occurred. |
 | `2` | `failed` | Input, environment verification, helper execution, or output validation failed. |
 
+When the helper returns valid evidence, the JSON outcome also includes a
+bounded `diagnostic` object. It separates `nativePolicyAutomation` from
+`compatibilityDeletionRelease`, reports only fixed blocker IDs, and names one
+next step. The object is a compact readout, not approval or execution evidence.
+
 ## Implementation Outcome
 
 Implemented:
@@ -176,6 +181,11 @@ Implemented:
 - An omitted input option invokes the evidence collector with a fixed empty
   envelope, producing a safe current-state diagnostic without a hand-created
   JSON file.
+- The outcome derives a fixed-ID installation readout only after helper
+  risk-count and ready-state checks agree. A claimed ready result must validate,
+  while a structurally coherent blocked result retains its expected validation
+  findings. The readout does not expose raw evidence or turn a release blocker
+  into a policy-automation block.
 - Focused tests for ready, blocked, dirty-checkout, failed-Git-status,
   provenance-mismatch, invalid-output, and inconsistent-helper outcomes.
 - A provenance-verified local Compose rebuild path that derives `VCS_REF` from

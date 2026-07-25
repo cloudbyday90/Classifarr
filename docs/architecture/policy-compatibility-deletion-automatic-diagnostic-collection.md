@@ -118,6 +118,10 @@ Implemented:
   command, keeps the helper result nonzero when blocked, writes only the
   requested temporary output, and continues to preserve the existing
   containment checks.
+- Maintenance outcomes now include a bounded installation readout that
+  distinguishes ready native policy automation from blocked compatibility-code
+  retirement prerequisites. Its design record is [Policy Compatibility Deletion
+  Installation Diagnostic Readout](policy-compatibility-deletion-installation-diagnostic-readout.md).
 
 Not implemented:
 

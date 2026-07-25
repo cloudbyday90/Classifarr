@@ -8375,6 +8375,14 @@ Tasks:
     residual-reference resolution, rollback support, support diagnostics, or
     manifest approval; reviewed input remains required for those release-level
     facts.
+- **8R.36.6 Installation Diagnostic Readout**
+  - Completed: maintenance output now separates ready native policy automation
+    from blocked compatibility-code retirement prerequisites using only fixed
+    blocker IDs and one next step.
+  - Completed: helper output must retain a coherent risk count and ready state
+    before the readout can consume it; a claimed ready result must validate,
+    while structurally coherent blocked evidence remains observable. Raw
+    evidence and backup details remain outside the public outcome.
 - Require the current compatibility-deletion execution-plan artifact and bind
   its fingerprint through authorization, completion evidence, and replay.
 - Derive manifest path state from the current checkout.
@@ -8433,6 +8441,12 @@ Implementation status:
   is present and cannot authorize code removal by omission. The design and
   outcome record is [Policy Compatibility Deletion Automatic Diagnostic
   Collection](policy-compatibility-deletion-automatic-diagnostic-collection.md).
+- Task 8R.36.6 is implemented. Installation maintenance output now identifies
+  whether native policy automation needs remediation or whether only
+  compatibility-code retirement release prerequisites remain. It retains no
+  raw evidence in the compact readout. The design and outcome record is [Policy
+  Compatibility Deletion Installation Diagnostic
+  Readout](policy-compatibility-deletion-installation-diagnostic-readout.md).
 
 ## Phase 8R Work Sequence
 

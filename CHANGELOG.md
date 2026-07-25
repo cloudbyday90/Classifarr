@@ -175,6 +175,12 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Actionable Compatibility-Deletion Readiness** - compatibility maintenance
+  outcomes now distinguish ready native policy automation from blocked
+  compatibility-code retirement release prerequisites. The bounded readout
+  reports only fixed blocker IDs and a next action, rejects invalid helper
+  evidence, and does not expose backup details or authorize removal.
+
 - **Automatic Compatibility-Deletion Diagnostics** - revision-matched local
   installations can now collect current, database-owned compatibility-deletion
   evidence without a hand-created JSON input file. The automatic result remains
