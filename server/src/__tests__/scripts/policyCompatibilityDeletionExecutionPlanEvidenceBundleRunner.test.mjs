@@ -108,14 +108,14 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundleRunner', () => {
     expect(closeDatabasePool).toHaveBeenCalledWith(database);
   });
 
-  test('removes caller-supplied recovery and support-gate claims before collection', () => {
+  test('removes caller-supplied recovery, backup, and support-gate claims before collection', () => {
     expect(buildExecutionEvidenceInput({
       rollbackAvailable: true,
       legacyDeletionBlocked: false,
       supportDiagnosticsSafe: false,
       supportStanceId: 'unsupported_after_window',
       backupRestoreVerified: true,
-    })).toEqual({ backupRestoreVerified: true });
+    })).toEqual({});
   });
 
   test('writes a blocked diagnostic but exits non-zero only when readiness is required', async () => {

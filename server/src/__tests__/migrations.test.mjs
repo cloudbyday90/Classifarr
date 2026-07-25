@@ -326,6 +326,10 @@ describe('Schema snapshot freshness', () => {
             __dirname,
             '../../../database/migrations/20260722_120000_add_policy_observed_evidence_provenance.sql'
         );
+        const backupRestoreVerificationMigrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260725_190000_add_policy_backup_restore_verifications.sql'
+        );
         const migrationSql = fs.readFileSync(migrationPath, 'utf8');
         const integrityMigrationSql = fs.readFileSync(integrityMigrationPath, 'utf8');
         const retentionMigrationSql = fs.readFileSync(retentionMigrationPath, 'utf8');
@@ -347,6 +351,10 @@ describe('Schema snapshot freshness', () => {
         );
         const observedEvidenceProvenanceMigrationSql = fs.readFileSync(
             observedEvidenceProvenanceMigrationPath,
+            'utf8'
+        );
+        const backupRestoreVerificationMigrationSql = fs.readFileSync(
+            backupRestoreVerificationMigrationPath,
             'utf8'
         );
         const policyIntents = getCreateTableBlock(schemaSql, 'policy_intents');
@@ -396,6 +404,10 @@ describe('Schema snapshot freshness', () => {
         const reconciliationControlEvents = getCreateTableBlock(
             schemaSql,
             'policy_native_intent_reconciliation_control_events'
+        );
+        const backupRestoreVerifications = getCreateTableBlock(
+            schemaSql,
+            'policy_backup_restore_verifications'
         );
 
         [
@@ -472,6 +484,21 @@ describe('Schema snapshot freshness', () => {
         expect(reconciliationRestoreGates).toContain(
             'policy_native_intent_reconciliation_restore_gates_state_chk'
         );
+        expect(backupRestoreVerifications).toMatch(
+            /verification_version smallint DEFAULT 1(?: CONSTRAINT \S+)? NOT NULL/
+        );
+        expect(backupRestoreVerifications).toContain(
+            'restore_mode character varying(16) NOT NULL'
+        );
+        expect(backupRestoreVerifications).toMatch(
+            /schema_parity_verified boolean(?: CONSTRAINT \S+)? NOT NULL/
+        );
+        expect(backupRestoreVerifications).toMatch(
+            /policy_library_mismatch_count integer(?: CONSTRAINT \S+)? NOT NULL/
+        );
+        expect(backupRestoreVerifications).toContain(
+            'policy_backup_restore_verifications_verified_shape_chk'
+        );
         expect(integrityMigrationSql).toContain('LOCK TABLE policy_intents IN SHARE ROW EXCLUSIVE MODE');
         expect(integrityMigrationSql).toContain('active_intent_integrity_repaired');
         expect(integrityMigrationSql).toContain('CREATE UNIQUE INDEX idx_policy_intents_one_active_policy');
@@ -509,6 +536,15 @@ describe('Schema snapshot freshness', () => {
         );
         expect(observedEvidenceProvenanceMigrationSql).toContain(
             'CREATE TABLE IF NOT EXISTS policy_observed_evidence_provenance_snapshots'
+        );
+        expect(backupRestoreVerificationMigrationSql).toContain(
+            'CREATE TABLE IF NOT EXISTS policy_backup_restore_verifications'
+        );
+        expect(backupRestoreVerificationMigrationSql).toContain(
+            'CREATE INDEX IF NOT EXISTS idx_policy_backup_restore_verifications_verified'
+        );
+        expect(backupRestoreVerificationMigrationSql).toContain(
+            'guard_policy_backup_restore_verification_mutation'
         );
         expect(observedEvidenceProvenanceMigrationSql).toContain(
             'idx_policy_observed_evidence_provenance_expiry'

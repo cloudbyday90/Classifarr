@@ -58,6 +58,7 @@ const reconciliationLifecycle = {
     completeBackupRestore: jest.fn(),
     failBackupRestore: jest.fn(),
 };
+const recordBackupRestoreVerification = jest.fn();
 
 describe('BackupService evidence integration', () => {
     beforeEach(() => {
@@ -75,17 +76,26 @@ describe('BackupService evidence integration', () => {
         reconciliationLifecycle.verifyRestoredDatabase.mockReset();
         reconciliationLifecycle.completeBackupRestore.mockReset();
         reconciliationLifecycle.failBackupRestore.mockReset();
+        recordBackupRestoreVerification.mockReset();
         backupService.reconciliationLifecycle = reconciliationLifecycle;
+        backupService.recordBackupRestoreVerification = recordBackupRestoreVerification;
         reconciliationLifecycle.beginBackupRestore.mockResolvedValue({
             started: true,
             restoreToken: 'test-restore-token',
         });
         reconciliationLifecycle.verifyRestoredDatabase.mockResolvedValue({
             verified: true,
+            schemaParity: true,
+            nativeAuthorityIntegrity: true,
+            policyLibraryMismatchCount: 0,
             reasonId: 'restore_verified',
         });
-        reconciliationLifecycle.completeBackupRestore.mockResolvedValue({ completed: true });
+        reconciliationLifecycle.completeBackupRestore.mockResolvedValue({
+            completed: true,
+            verifiedAt: '2026-07-25T12:00:00.000Z',
+        });
         reconciliationLifecycle.failBackupRestore.mockResolvedValue({ failed: true });
+        recordBackupRestoreVerification.mockResolvedValue({ id: 1 });
     });
 
     test('collectBackupData uses the evidence service for learned pattern export', async () => {
@@ -143,9 +153,21 @@ describe('BackupService evidence integration', () => {
             dbClient: expect.objectContaining({ withTransaction: expect.any(Function) }),
         }));
         expect(reconciliationLifecycle.completeBackupRestore).toHaveBeenCalledWith(expect.objectContaining({
-            dbClient: expect.objectContaining({ withTransaction: expect.any(Function) }),
+            dbClient: client,
             restoreToken: 'test-restore-token',
         }));
+        expect(recordBackupRestoreVerification).toHaveBeenCalledWith({
+            db: client,
+            restoreMode: 'replace',
+            backupVersion: '2.0',
+            verification: expect.objectContaining({
+                verified: true,
+                schemaParity: true,
+                nativeAuthorityIntegrity: true,
+                policyLibraryMismatchCount: 0,
+            }),
+            verifiedAt: '2026-07-25T12:00:00.000Z',
+        });
 
         expect(classificationEvidenceService.purgeAllLegacyPatterns).toHaveBeenCalledWith({
             client,
@@ -184,6 +206,27 @@ describe('BackupService evidence integration', () => {
         await expect(backupService.restoreBackup('invalid-authority.json', { mode: 'merge' }))
             .rejects.toThrow('native policy authority validation did not pass');
 
+        expect(reconciliationLifecycle.failBackupRestore).toHaveBeenCalledWith(expect.objectContaining({
+            dbClient: expect.objectContaining({ withTransaction: expect.any(Function) }),
+            restoreToken: 'test-restore-token',
+        }));
+    });
+
+    test('fails closed when validated restore evidence cannot be persisted', async () => {
+        const client = {
+            query: jest.fn().mockResolvedValue({ rows: [{ id: 1 }], rowCount: 1 }),
+            release: jest.fn(),
+        };
+        db.pool.connect.mockResolvedValue(client);
+        jest.spyOn(backupService, 'readBackup').mockResolvedValue({ version: '2.0', data: {} });
+        recordBackupRestoreVerification.mockRejectedValue(
+            new Error('verification evidence persistence failed')
+        );
+
+        await expect(backupService.restoreBackup('evidence-failure.json', { mode: 'merge' }))
+            .rejects.toThrow('verification evidence persistence failed');
+
+        expect(reconciliationLifecycle.completeBackupRestore).toHaveBeenCalled();
         expect(reconciliationLifecycle.failBackupRestore).toHaveBeenCalledWith(expect.objectContaining({
             dbClient: expect.objectContaining({ withTransaction: expect.any(Function) }),
             restoreToken: 'test-restore-token',

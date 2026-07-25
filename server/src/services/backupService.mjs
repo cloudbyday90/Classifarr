@@ -30,6 +30,9 @@ import { restoreAllTables } from './backupRestore.mjs';
 import {
   nativeIntentReconciliationLifecycleService,
 } from './nativeIntentReconciliationLifecycleService.mjs';
+import {
+  insertPolicyBackupRestoreVerification,
+} from './policyBackupRestoreVerificationPersistence.mjs';
 
 const logger = createLogger('BackupService');
 
@@ -43,10 +46,14 @@ export function isValidEncryptedBackupPassword(password) {
 }
 
 export class BackupService {
-  constructor({ reconciliationLifecycle = nativeIntentReconciliationLifecycleService } = {}) {
+  constructor({
+    reconciliationLifecycle = nativeIntentReconciliationLifecycleService,
+    recordBackupRestoreVerification = insertPolicyBackupRestoreVerification,
+  } = {}) {
     this.isValidEncryptedBackupPassword = isValidEncryptedBackupPassword;
     this.ENCRYPTED_BACKUP_PASSWORD_ERROR = ENCRYPTED_BACKUP_PASSWORD_ERROR;
     this.reconciliationLifecycle = reconciliationLifecycle;
+    this.recordBackupRestoreVerification = recordBackupRestoreVerification;
   }
 
   async ensureBackupDirectory() {
@@ -351,10 +358,22 @@ export class BackupService {
         const verification = await this.reconciliationLifecycle.verifyRestoredDatabase({
           dbClient: db,
         });
-        const completion = await this.reconciliationLifecycle.completeBackupRestore({
-          dbClient: db,
-          restoreToken: lifecycle.restoreToken,
-          verification,
+        const completion = await db.withTransaction(async client => {
+          const completedRestore = await this.reconciliationLifecycle.completeBackupRestore({
+            dbClient: client,
+            restoreToken: lifecycle.restoreToken,
+            verification,
+          });
+          if (!completedRestore.completed) return completedRestore;
+
+          await this.recordBackupRestoreVerification({
+            db: client,
+            restoreMode: mode,
+            backupVersion: backupData.version,
+            verification,
+            verifiedAt: completedRestore.verifiedAt,
+          });
+          return completedRestore;
         });
         if (!completion.completed) {
           throw new ValidationError(

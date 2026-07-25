@@ -16,6 +16,11 @@ import {
   POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_STATUS_IDS,
   POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_VERSION,
 } from './policyCompatibilityDeletionReconciliationStateInventory.mjs';
+import {
+  POLICY_BACKUP_RESTORE_VERIFICATION_EVIDENCE_VERSION,
+  POLICY_BACKUP_RESTORE_VERIFICATION_STATUS_IDS,
+  buildPolicyBackupRestoreVerificationEvidence,
+} from './policyBackupRestoreVerificationEvidence.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_READINESS_VERSION =
   'policy.compatibility_deletion_readiness.v1';
@@ -61,6 +66,7 @@ const POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS = Object.freeze({
   READY_RECONCILIATION_STATE_GATE_MISMATCH:
     'ready_reconciliation_state_gate_mismatch',
   READY_RESIDUAL_REFERENCES_INVALID: 'ready_residual_references_invalid',
+  READY_BACKUP_RESTORE_EVIDENCE_INVALID: 'ready_backup_restore_evidence_invalid',
   READY_SAFETY_CONFIRMATIONS_INVALID: 'ready_safety_confirmations_invalid',
   DELETION_POLICY_MISMATCH: 'deletion_policy_mismatch',
   NEXT_STEP_MISMATCH: 'next_step_mismatch',
@@ -298,17 +304,30 @@ function evaluateResidualReferences(residualCompatibilityReferences = []) {
 }
 
 function evaluateSafetyConfirmations({
-  backupRestoreVerified,
+  backupRestoreEvidence,
   rollbackSupportVerified,
   supportDiagnosticsVerified,
   deletionManifestApproved,
 }) {
   const risks = [];
+  const recoveryEvidence = backupRestoreEvidence &&
+    typeof backupRestoreEvidence === 'object'
+    ? backupRestoreEvidence
+    : buildPolicyBackupRestoreVerificationEvidence();
+  const backupRestoreVerified =
+    recoveryEvidence.version === POLICY_BACKUP_RESTORE_VERIFICATION_EVIDENCE_VERSION &&
+    recoveryEvidence.statusId === POLICY_BACKUP_RESTORE_VERIFICATION_STATUS_IDS.VERIFIED &&
+    recoveryEvidence.backupRestoreVerified === true &&
+    recoveryEvidence.validation?.ok === true;
 
-  if (backupRestoreVerified !== true) {
+  if (!backupRestoreVerified) {
     risks.push(buildRisk(
       POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.BACKUP_RESTORE_NOT_VERIFIED,
-      'Compatibility path deletion requires verified backup and restore coverage.'
+      'Compatibility path deletion requires current database-owned verified backup and restore evidence.',
+      {
+        version: recoveryEvidence.version || null,
+        statusId: recoveryEvidence.statusId || null,
+      }
     ));
   }
 
@@ -333,7 +352,11 @@ function evaluateSafetyConfirmations({
     ));
   }
 
-  return risks;
+  return {
+    backupRestoreEvidence: recoveryEvidence,
+    backupRestoreVerified,
+    risks,
+  };
 }
 
 function determineStatusId(risks = []) {
@@ -400,7 +423,7 @@ function buildPolicyCompatibilityDeletionReadiness({
   cutoverVerification = null,
   deletionGatePlan = null,
   residualCompatibilityReferences = [],
-  backupRestoreVerified = false,
+  backupRestoreEvidence = null,
   rollbackSupportVerified = false,
   supportDiagnosticsVerified = false,
   deletionManifestApproved = false,
@@ -412,8 +435,8 @@ function buildPolicyCompatibilityDeletionReadiness({
   const cutover = evaluateCutover(cutoverVerification);
   const deletionGates = evaluateDeletionGates(deletionGatePlan);
   const residual = evaluateResidualReferences(residualCompatibilityReferences);
-  const safetyRisks = evaluateSafetyConfirmations({
-    backupRestoreVerified,
+  const safety = evaluateSafetyConfirmations({
+    backupRestoreEvidence,
     rollbackSupportVerified,
     supportDiagnosticsVerified,
     deletionManifestApproved,
@@ -428,7 +451,7 @@ function buildPolicyCompatibilityDeletionReadiness({
       deletionGatePlan: deletionGates.deletionGatePlan,
     }),
     ...residual.risks,
-    ...safetyRisks,
+    ...safety.risks,
   ];
   const readiness = {
     version: POLICY_COMPATIBILITY_DELETION_READINESS_VERSION,
@@ -480,9 +503,18 @@ function buildPolicyCompatibilityDeletionReadiness({
       requiresMaintenanceStateCount:
         deletionGates.deletionGatePlan.requiresMaintenanceStateCount ?? null,
     },
+    backupRestoreEvidence: {
+      version: safety.backupRestoreEvidence.version || null,
+      generatedAt: safety.backupRestoreEvidence.generatedAt || null,
+      statusId: safety.backupRestoreEvidence.statusId || null,
+      backupRestoreVerified: safety.backupRestoreVerified,
+      validationOk: safety.backupRestoreEvidence.validation?.ok === true,
+      latestVerifiedAt:
+        safety.backupRestoreEvidence.verification?.latestVerifiedAt || null,
+    },
     residualCompatibilityReferences: residual.residualCompatibilityReferences,
     safetyConfirmations: {
-      backupRestoreVerified: backupRestoreVerified === true,
+      backupRestoreVerified: safety.backupRestoreVerified,
       rollbackSupportVerified: rollbackSupportVerified === true,
       supportDiagnosticsVerified: supportDiagnosticsVerified === true,
       deletionManifestApproved: deletionManifestApproved === true,
@@ -550,6 +582,14 @@ function isReadyDeletionGateSummary(deletionGates = {}) {
     deletionGates.requiresMaintenanceStateCount === 0;
 }
 
+function isReadyBackupRestoreEvidenceSummary(evidence = {}) {
+  return evidence?.version === POLICY_BACKUP_RESTORE_VERIFICATION_EVIDENCE_VERSION &&
+    evidence.statusId === POLICY_BACKUP_RESTORE_VERIFICATION_STATUS_IDS.VERIFIED &&
+    evidence.backupRestoreVerified === true &&
+    evidence.validationOk === true &&
+    typeof evidence.latestVerifiedAt === 'string' && evidence.latestVerifiedAt.length > 0;
+}
+
 function validateReadyEvidenceSummaries(readiness, issues) {
   const isReadyClaim = readiness.statusId ===
     POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS.READY_FOR_DELETION_EXECUTION_PLAN ||
@@ -595,6 +635,14 @@ function validateReadyEvidenceSummaries(readiness, issues) {
       POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
         .READY_RECONCILIATION_STATE_GATE_MISMATCH,
       'A ready compatibility deletion report must bind deletion gates to the same reconciliation-state count.'
+    ));
+  }
+
+  if (!isReadyBackupRestoreEvidenceSummary(readiness.backupRestoreEvidence)) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .READY_BACKUP_RESTORE_EVIDENCE_INVALID,
+      'A ready compatibility deletion report requires current validated database-owned backup restore evidence.'
     ));
   }
 

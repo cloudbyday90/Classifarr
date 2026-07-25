@@ -151,6 +151,7 @@ function buildExecutionEvidenceInput(input = {}) {
     'unconvertedPolicy',
     'unconvertedPolicies',
     'rollbackAvailable',
+    'backupRestoreVerified',
     'legacyDeletionBlocked',
     'supportDiagnosticsSafe',
     'supportStanceId',

@@ -123,6 +123,19 @@ Restore now:
   mechanism, which defaults to encrypted backup creation.
 - Restore stats are bounded counts, not raw policy payload logs.
 
+## Verified Restore Evidence
+
+Native storage recovery now also records a bounded, database-owned verification
+only after the restore passes schema and native-authority checks and the native
+restore gate is ready. It is intentionally separate from the backup payload and
+from route-level backup audit history: the record stores no filename, path,
+payload, credential, connection string, or policy data. Compatibility-path
+deletion readiness consumes only the fresh, gate-matched result, and routine
+classification remains automatic.
+
+The full design, alternatives, security boundary, and test outcome are in
+[Policy Backup/Restore Verification Evidence](policy-backup-restore-verification-evidence.md).
+
 ## Next Step
 
 Proceed to **Post-Upgrade Dry-Run Wiring**. That task should connect the

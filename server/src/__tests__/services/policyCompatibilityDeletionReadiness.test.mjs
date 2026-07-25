@@ -18,6 +18,11 @@ import {
 import {
   buildPolicyCompatibilityDeletionReconciliationStateInventory,
 } from '../../services/policyCompatibilityDeletionReconciliationStateInventory.mjs';
+import {
+  buildPolicyBackupRestoreVerificationEvidence,
+} from '../../services/policyBackupRestoreVerificationEvidence.mjs';
+
+const BACKUP_RESTORE_VERIFIED_AT = '2026-07-25T12:00:00.000Z';
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
@@ -126,13 +131,33 @@ function readyCurrentPolicyInventory() {
   });
 }
 
+function readyBackupRestoreEvidence(overrides = {}) {
+  return buildPolicyBackupRestoreVerificationEvidence({
+    record: {
+      verification_version: 1,
+      restore_mode: 'replace',
+      backup_version: '2.0',
+      verification_status: 'verified',
+      schema_parity_verified: true,
+      native_authority_verified: true,
+      policy_library_mismatch_count: 0,
+      verified_at: BACKUP_RESTORE_VERIFIED_AT,
+      restore_gate_state: 'ready',
+      restore_gate_reason_id: 'restore_verified',
+      restore_gate_verified_at: BACKUP_RESTORE_VERIFIED_AT,
+      ...overrides,
+    },
+    generatedAt: BACKUP_RESTORE_VERIFIED_AT,
+  });
+}
+
 function readyReadiness(overrides = {}) {
   return buildPolicyCompatibilityDeletionReadiness({
     currentPolicyInventory: readyCurrentPolicyInventory(),
     reconciliationStateInventory: readyReconciliationStateInventory(),
     cutoverVerification: readyCutover(),
     deletionGatePlan: readyDeletionGates(),
-    backupRestoreVerified: true,
+    backupRestoreEvidence: readyBackupRestoreEvidence(),
     rollbackSupportVerified: true,
     supportDiagnosticsVerified: true,
     deletionManifestApproved: true,
@@ -186,6 +211,22 @@ describe('policyCompatibilityDeletionReadiness', () => {
     expect(Object.values(readiness.sideEffects).some(Boolean)).toBe(false);
   });
 
+  test('does not accept a caller-supplied backup boolean without database-owned evidence', () => {
+    const readiness = readyReadiness({
+      backupRestoreEvidence: null,
+      backupRestoreVerified: true,
+    });
+
+    expect(readiness.readyForDeletionExecutionPlan).toBe(false);
+    expect(readiness.safetyConfirmations.backupRestoreVerified).toBe(false);
+    expect(readiness.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+          .BACKUP_RESTORE_NOT_VERIFIED,
+      }),
+    ]));
+  });
+
   test('blocks readiness when runtime cutover is not ready', () => {
     const readiness = readyReadiness({
       cutoverVerification: buildPolicyNativeRuntimeCutoverVerification({
@@ -211,7 +252,7 @@ describe('policyCompatibilityDeletionReadiness', () => {
     const readiness = buildPolicyCompatibilityDeletionReadiness({
       cutoverVerification: readyCutover(),
       deletionGatePlan: readyDeletionGates(),
-      backupRestoreVerified: true,
+      backupRestoreEvidence: readyBackupRestoreEvidence(),
       rollbackSupportVerified: true,
       supportDiagnosticsVerified: true,
       deletionManifestApproved: true,
@@ -303,7 +344,7 @@ describe('policyCompatibilityDeletionReadiness', () => {
       reconciliationStateInventory: readyReconciliationStateInventory(),
       cutoverVerification: readyCutover(),
       deletionGatePlan: readyDeletionGates(),
-      backupRestoreVerified: false,
+      backupRestoreEvidence: buildPolicyBackupRestoreVerificationEvidence(),
       rollbackSupportVerified: false,
       supportDiagnosticsVerified: false,
       deletionManifestApproved: false,

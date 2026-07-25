@@ -28,6 +28,9 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_VERSION,
 } from '../../../services/policyCompatibilityDeletionExecutionPlanEvidenceBundle.mjs';
 import {
+  buildPolicyBackupRestoreVerificationEvidence,
+} from '../../../services/policyBackupRestoreVerificationEvidence.mjs';
+import {
   buildPolicyCompatibilityDeletionPreflightEvidenceArtifact,
 } from '../../../services/policyCompatibilityDeletionPreflightEvidenceArtifact.mjs';
 
@@ -38,6 +41,27 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_SOURCE_REVISION =
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function buildReadyBackupRestoreVerificationEvidence({
+  generatedAt = POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+} = {}) {
+  return buildPolicyBackupRestoreVerificationEvidence({
+    generatedAt,
+    record: {
+      verification_version: 1,
+      restore_mode: 'replace',
+      backup_version: '2.0',
+      verification_status: 'verified',
+      schema_parity_verified: true,
+      native_authority_verified: true,
+      policy_library_mismatch_count: 0,
+      verified_at: generatedAt,
+      restore_gate_state: 'ready',
+      restore_gate_reason_id: 'restore_verified',
+      restore_gate_verified_at: generatedAt,
+    },
+  });
 }
 
 function buildReadyExecutionPlanArtifact({
@@ -174,6 +198,7 @@ function buildReadyExecutionGateOperatorEvidence({
 export {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_SOURCE_REVISION,
+  buildReadyBackupRestoreVerificationEvidence,
   buildReadyExecutionGateOperatorEvidence,
   buildReadyExecutionGatePreflightEvidenceArtifact,
   buildReadyExecutionPlanArtifact,

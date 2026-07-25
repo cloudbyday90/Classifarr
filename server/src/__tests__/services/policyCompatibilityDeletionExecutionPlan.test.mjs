@@ -11,6 +11,9 @@ import {
   buildPolicyCompatibilityDeletionReadiness,
 } from '../../services/policyCompatibilityDeletionReadiness.mjs';
 import {
+  buildPolicyBackupRestoreVerificationEvidence,
+} from '../../services/policyBackupRestoreVerificationEvidence.mjs';
+import {
   buildPolicyCompatibilityDeletionCurrentInventory,
 } from '../../services/policyCompatibilityDeletionCurrentInventory.mjs';
 import {
@@ -131,13 +134,34 @@ function readyReconciliationStateInventory() {
   });
 }
 
+function readyBackupRestoreEvidence() {
+  const verifiedAt = '2026-07-25T12:00:00.000Z';
+
+  return buildPolicyBackupRestoreVerificationEvidence({
+    generatedAt: verifiedAt,
+    record: {
+      verification_version: 1,
+      restore_mode: 'replace',
+      backup_version: '2.0',
+      verification_status: 'verified',
+      schema_parity_verified: true,
+      native_authority_verified: true,
+      policy_library_mismatch_count: 0,
+      verified_at: verifiedAt,
+      restore_gate_state: 'ready',
+      restore_gate_reason_id: 'restore_verified',
+      restore_gate_verified_at: verifiedAt,
+    },
+  });
+}
+
 function readyReadiness() {
   return buildPolicyCompatibilityDeletionReadiness({
     currentPolicyInventory: readyCurrentPolicyInventory(),
     reconciliationStateInventory: readyReconciliationStateInventory(),
     cutoverVerification: readyCutover(),
     deletionGatePlan: readyDeletionGates(),
-    backupRestoreVerified: true,
+    backupRestoreEvidence: readyBackupRestoreEvidence(),
     rollbackSupportVerified: true,
     supportDiagnosticsVerified: true,
     deletionManifestApproved: true,

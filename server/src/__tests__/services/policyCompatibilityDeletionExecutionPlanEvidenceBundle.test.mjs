@@ -22,6 +22,9 @@ import {
 import {
   buildPolicyNativeRuntimeCutoverVerification,
 } from '../../services/policyNativeRuntimeCutoverVerification.mjs';
+import {
+  buildPolicyBackupRestoreVerificationEvidence,
+} from '../../services/policyBackupRestoreVerificationEvidence.mjs';
 
 const COLLECTION_TIME = '2026-07-14T20:00:00.000Z';
 
@@ -121,6 +124,25 @@ function nativeIntentRow(overrides = {}) {
   };
 }
 
+function readyBackupRestoreEvidence({ generatedAt = COLLECTION_TIME } = {}) {
+  return buildPolicyBackupRestoreVerificationEvidence({
+    record: {
+      verification_version: 1,
+      restore_mode: 'replace',
+      backup_version: '2.0',
+      verification_status: 'verified',
+      schema_parity_verified: true,
+      native_authority_verified: true,
+      policy_library_mismatch_count: 0,
+      verified_at: generatedAt,
+      restore_gate_state: 'ready',
+      restore_gate_reason_id: 'restore_verified',
+      restore_gate_verified_at: generatedAt,
+    },
+    generatedAt,
+  });
+}
+
 function createLiveRuntimeEvidenceDbClient() {
   return {
     query: jest.fn(async query => {
@@ -136,6 +158,23 @@ function createLiveRuntimeEvidenceDbClient() {
             rollback_payload_redacted: false,
             rollback_restored_at: null,
             rollback_expires_at: '2026-08-01T12:00:00.000Z',
+          }],
+        };
+      }
+      if (query.includes('FROM policy_backup_restore_verifications verification')) {
+        return {
+          rows: [{
+            verification_version: 1,
+            restore_mode: 'replace',
+            backup_version: '2.0',
+            verification_status: 'verified',
+            schema_parity_verified: true,
+            native_authority_verified: true,
+            policy_library_mismatch_count: 0,
+            verified_at: COLLECTION_TIME,
+            restore_gate_state: 'ready',
+            restore_gate_reason_id: 'restore_verified',
+            restore_gate_verified_at: COLLECTION_TIME,
           }],
         };
       }
@@ -207,13 +246,13 @@ function readyInputs({ generatedAt = COLLECTION_TIME } = {}) {
       requiresMaintenanceStateCount: 0,
       generatedAt,
     }),
+    backupRestoreEvidence: readyBackupRestoreEvidence({ generatedAt }),
   };
 }
 
 function readyBundle(overrides = {}) {
   return buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
     ...readyInputs(),
-    backupRestoreVerified: true,
     rollbackSupportVerified: true,
     supportDiagnosticsVerified: true,
     deletionManifestApproved: true,
@@ -243,6 +282,10 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
       }),
       cutoverVerification: expect.objectContaining({ generatedAt: COLLECTION_TIME }),
       deletionGatePlan: expect.objectContaining({ generatedAt: COLLECTION_TIME }),
+      backupRestoreEvidence: expect.objectContaining({
+        generatedAt: COLLECTION_TIME,
+        backupRestoreVerified: true,
+      }),
     }));
     expect(bundle.deletionReadiness.currentPolicyInventory).toEqual(expect.objectContaining({
       generatedAt: COLLECTION_TIME,
@@ -258,7 +301,6 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
 
     const bundle = buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
       ...inputs,
-      backupRestoreVerified: true,
       rollbackSupportVerified: true,
       supportDiagnosticsVerified: true,
       deletionManifestApproved: true,
@@ -282,7 +324,6 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
     const staleTime = '2026-07-14T19:54:59.999Z';
     const bundle = buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
       ...readyInputs({ generatedAt: staleTime }),
-      backupRestoreVerified: true,
       rollbackSupportVerified: true,
       supportDiagnosticsVerified: true,
       deletionManifestApproved: true,
@@ -296,7 +337,7 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
     expect(bundle.risks.filter(risk => (
       risk.riskId === POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
         .EVIDENCE_TIMESTAMP_STALE
-    ))).toHaveLength(4);
+    ))).toHaveLength(5);
     expect(bundle.freshness.maximumEvidenceAgeMs).toBe(DEFAULT_MAX_EVIDENCE_AGE_MS);
   });
 
@@ -306,7 +347,6 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
 
     const bundle = buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
       ...inputs,
-      backupRestoreVerified: true,
       rollbackSupportVerified: true,
       supportDiagnosticsVerified: true,
       deletionManifestApproved: true,
@@ -331,7 +371,6 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
 
     const bundle = buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
       ...inputs,
-      backupRestoreVerified: true,
       rollbackSupportVerified: true,
       supportDiagnosticsVerified: true,
       deletionManifestApproved: true,
@@ -360,7 +399,6 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
 
     const bundle = await loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClient, {
       coverage: buildCompleteCoverage(),
-      backupRestoreVerified: true,
       rollbackSupportVerified: true,
       supportDiagnosticsVerified: true,
       deletionManifestApproved: true,
@@ -396,7 +434,6 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
 
     const bundle = await loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClient, {
       coverage: buildCompleteCoverage(),
-      backupRestoreVerified: true,
       rollbackSupportVerified: true,
       supportDiagnosticsVerified: true,
       deletionManifestApproved: true,
@@ -428,7 +465,7 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
       coverage: buildCompleteCoverage(),
       supportStanceId:
         POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
-      backupRestoreVerified: true,
+      backupRestoreVerified: false,
       rollbackSupportVerified: true,
       supportDiagnosticsVerified: true,
       deletionManifestApproved: true,

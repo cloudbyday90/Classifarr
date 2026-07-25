@@ -19,6 +19,9 @@ import {
   POLICY_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION,
 } from '../../services/policyNativeRuntimeCutoverVerification.mjs';
 import {
+  buildPolicyBackupRestoreVerificationEvidence,
+} from '../../services/policyBackupRestoreVerificationEvidence.mjs';
+import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from '../../services/policyCompatibilityDeletionExecutionPlan.mjs';
 import {
@@ -32,6 +35,25 @@ const MANIFEST_PATH =
   'client/src/components/policies/PolicyStarterTemplateAccelerator.vue';
 
 const COLLECTION_TIME = '2026-07-14T20:00:00.000Z';
+
+function readyBackupRestoreEvidence() {
+  return buildPolicyBackupRestoreVerificationEvidence({
+    generatedAt: COLLECTION_TIME,
+    record: {
+      verification_version: 1,
+      restore_mode: 'replace',
+      backup_version: '2.0',
+      verification_status: 'verified',
+      schema_parity_verified: true,
+      native_authority_verified: true,
+      policy_library_mismatch_count: 0,
+      verified_at: COLLECTION_TIME,
+      restore_gate_state: 'ready',
+      restore_gate_reason_id: 'restore_verified',
+      restore_gate_verified_at: COLLECTION_TIME,
+    },
+  });
+}
 
 function readyEvidenceBundle() {
   return buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
@@ -86,7 +108,7 @@ function readyEvidenceBundle() {
         ok: true,
       },
     },
-    backupRestoreVerified: true,
+    backupRestoreEvidence: readyBackupRestoreEvidence(),
     rollbackSupportVerified: true,
     supportDiagnosticsVerified: true,
     deletionManifestApproved: true,

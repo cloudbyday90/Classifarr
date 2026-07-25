@@ -230,6 +230,9 @@ export class NativeIntentReconciliationLifecycleService {
 
     return {
       verified: schemaParity && nativeAuthorityIntegrity,
+      schemaParity,
+      nativeAuthorityIntegrity,
+      policyLibraryMismatchCount,
       schemaStatusId: schemaParity ? 'schema_parity_verified' : 'schema_parity_missing',
       authorityStatusId: nativeAuthorityIntegrity
         ? 'native_authority_verified'
@@ -263,6 +266,9 @@ export class NativeIntentReconciliationLifecycleService {
     return {
       completed: Boolean(gate),
       reasonId: gate?.reason_id || NATIVE_INTENT_RECONCILIATION_LIFECYCLE_REASON_IDS.RESTORE_VALIDATION_FAILED,
+      verifiedAt: gate?.verified_at
+        ? normalizeTimestamp(gate.verified_at)
+        : normalizedFinishedAt,
       rawPayloadExposed: false,
     };
   }

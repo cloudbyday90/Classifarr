@@ -1006,6 +1006,12 @@ unchanged operator or runtime outcome.
   and support safety claims are ignored; output remains bounded and omits
   snapshot payloads, names, and paths while compatibility-code deletion stays
   fail-closed pending its separate release evidence.
+- **Database-Owned Backup/Restore Evidence** - compatibility-deletion
+  readiness now accepts recovery proof only from a fresh, validated restore
+  record that matches the current native restore gate. Successful restores
+  persist only bounded status facts; archive paths, filenames, payloads,
+  credentials, and caller-supplied recovery booleans cannot make deletion
+  readiness pass.
 - **Policy Authoring Model** - routine policy work now prioritizes destination
   meaning, observed library evidence, constraints, review behavior, and routing
   readiness. Scoring, provider state, metadata coverage, and migration analysis

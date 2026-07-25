@@ -100,7 +100,7 @@ Cons:
 
 Deletion readiness requires:
 
-- backup/restore verification,
+- database-owned backup/restore verification,
 - rollback support or an approved post-window stance,
 - bounded support diagnostics,
 - deletion manifest approval.
@@ -111,6 +111,10 @@ rollback snapshot in the database. That automated runtime evidence does not
 replace the backup/restore, release-support, or manifest evidence required
 before compatibility code could be removed. See
 [Policy Native Runtime Recovery Evidence](policy-native-runtime-recovery-evidence.md).
+Backup/restore readiness is no longer a caller-supplied boolean: it derives from
+the latest verified restore record, its currently ready restore gate, and its
+bounded freshness window. See
+[Policy Backup/Restore Verification Evidence](policy-backup-restore-verification-evidence.md).
 
 Pros:
 
@@ -158,10 +162,12 @@ Use this stack:
    snapshot payload.
 4. `policyNativeRuntimeCutoverVerification.mjs` proves converted
    and unconverted runtime read behavior using that recovery result.
-5. `policyCompatibilityDeletionReadiness.mjs` composes the prior evidence
+5. `policyBackupRestoreVerificationEvidence.mjs` proves that the current
+   installation has a fresh, validated restore without exposing backup data.
+6. `policyCompatibilityDeletionReadiness.mjs` composes the prior evidence
    outputs with residual-reference and safety confirmations, then revalidates
    serialized summaries before they can claim readiness.
-6. A later component should create an execution manifest from a fresh,
+7. A later component should create an execution manifest from a fresh,
    coherent evidence bundle before any
    compatibility path is removed.
 
@@ -195,6 +201,10 @@ Implemented:
   confirmations, non-destructive policy, or execution-plan handoff disagree.
   Freshness remains intentionally owned by the later execution-plan evidence
   bundle, which collects the source evidence in one bounded observation window.
+- Replaced the caller-supplied backup/restore confirmation with a bounded
+  database-owned verification summary. Missing, stale, invalid, or
+  restore-gate-disconnected evidence blocks readiness; no raw backup payload,
+  filename, or path is exposed.
 
 Not implemented in this component:
 

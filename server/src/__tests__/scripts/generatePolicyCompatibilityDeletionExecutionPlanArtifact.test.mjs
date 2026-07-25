@@ -48,6 +48,9 @@ import {
   POLICY_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION,
 } from '../../services/policyNativeRuntimeCutoverVerification.mjs';
 import {
+  buildPolicyBackupRestoreVerificationEvidence,
+} from '../../services/policyBackupRestoreVerificationEvidence.mjs';
+import {
   resolvePolicyStorageClosureExecutionPlanSource,
 } from '../../services/policyStorageClosureExecutionPlanSource.mjs';
 
@@ -60,6 +63,25 @@ const GENERATOR_PATH = fileURLToPath(
 const COLLECTION_TIME = '2026-07-15T12:00:00.000Z';
 const GENERATED_AT = '2026-07-15T12:01:00.000Z';
 const MANIFEST_PATH = 'client/src/components/policies/PolicyStarterTemplateAccelerator.vue';
+
+function readyBackupRestoreEvidence() {
+  return buildPolicyBackupRestoreVerificationEvidence({
+    generatedAt: COLLECTION_TIME,
+    record: {
+      verification_version: 1,
+      restore_mode: 'replace',
+      backup_version: '2.0',
+      verification_status: 'verified',
+      schema_parity_verified: true,
+      native_authority_verified: true,
+      policy_library_mismatch_count: 0,
+      verified_at: COLLECTION_TIME,
+      restore_gate_state: 'ready',
+      restore_gate_reason_id: 'restore_verified',
+      restore_gate_verified_at: COLLECTION_TIME,
+    },
+  });
+}
 
 function writeJson(rootPath, fileName, value) {
   const filePath = path.join(rootPath, '.artifacts', fileName);
@@ -113,7 +135,7 @@ function readyEvidenceBundle() {
       blockers: [],
       validation: { ok: true },
     },
-    backupRestoreVerified: true,
+    backupRestoreEvidence: readyBackupRestoreEvidence(),
     rollbackSupportVerified: true,
     supportDiagnosticsVerified: true,
     deletionManifestApproved: true,

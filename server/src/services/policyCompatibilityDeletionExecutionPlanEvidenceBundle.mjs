@@ -44,6 +44,11 @@ import {
 import {
   loadPolicyNativeRuntimeCutoverVerification,
 } from './policyNativeRuntimeCutoverEvidence.mjs';
+import {
+  POLICY_BACKUP_RESTORE_VERIFICATION_EVIDENCE_VERSION,
+  POLICY_BACKUP_RESTORE_VERIFICATION_STATUS_IDS,
+  loadPolicyBackupRestoreVerificationEvidence,
+} from './policyBackupRestoreVerificationEvidence.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_VERSION =
   'policy.compatibility_deletion_execution_plan_evidence_bundle.v1';
@@ -159,6 +164,19 @@ function buildEvidenceSummary(evidence = {}) {
   };
 }
 
+function buildBackupRestoreEvidenceSummary(evidence = {}) {
+  const value = asObject(evidence);
+
+  return {
+    version: value.version || null,
+    generatedAt: value.generatedAt || null,
+    statusId: value.statusId || null,
+    validationOk: value.validation?.ok === true,
+    backupRestoreVerified: value.backupRestoreVerified === true,
+    latestVerifiedAt: value.verification?.latestVerifiedAt || null,
+  };
+}
+
 function buildTimestampRisks({
   generatedAt,
   now,
@@ -166,6 +184,7 @@ function buildTimestampRisks({
   reconciliationStateInventory,
   cutoverVerification,
   deletionGatePlan,
+  backupRestoreEvidence,
   maxEvidenceAgeMs,
 }) {
   const risks = [];
@@ -176,6 +195,7 @@ function buildTimestampRisks({
     ['reconciliationStateInventory', reconciliationStateInventory],
     ['cutoverVerification', cutoverVerification],
     ['deletionGatePlan', deletionGatePlan],
+    ['backupRestoreEvidence', backupRestoreEvidence],
   ];
 
   if (!collectionTimestamp) {
@@ -258,6 +278,7 @@ function buildSourceRisks({
   reconciliationStateInventory,
   cutoverVerification,
   deletionGatePlan,
+  backupRestoreEvidence,
   deletionReadiness,
 }) {
   const risks = [];
@@ -265,6 +286,7 @@ function buildSourceRisks({
   const reconciliationState = asObject(reconciliationStateInventory);
   const cutover = asObject(cutoverVerification);
   const gates = asObject(deletionGatePlan);
+  const backupRestore = asObject(backupRestoreEvidence);
   const readiness = asObject(deletionReadiness);
 
   if (
@@ -287,6 +309,20 @@ function buildSourceRisks({
   }
 
   if (
+    backupRestore.version !== POLICY_BACKUP_RESTORE_VERIFICATION_EVIDENCE_VERSION ||
+    backupRestore.statusId !== POLICY_BACKUP_RESTORE_VERIFICATION_STATUS_IDS.VERIFIED ||
+    backupRestore.backupRestoreVerified !== true ||
+    backupRestore.validation?.ok !== true
+  ) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+        .READINESS_NOT_READY,
+      'Execution planning requires current valid database-owned backup restore verification evidence.',
+      { statusId: backupRestore.statusId || null }
+    ));
+  }
+
+  if (
     reconciliationState.version !==
       POLICY_COMPATIBILITY_DELETION_RECONCILIATION_STATE_INVENTORY_VERSION ||
     reconciliationState.statusId !==
@@ -304,6 +340,18 @@ function buildSourceRisks({
         requiresMaintenanceStateCount:
           reconciliationState.requiresMaintenanceStateCount ?? null,
       }
+    ));
+  }
+
+  if (
+    readiness.backupRestoreEvidence?.generatedAt !== backupRestore.generatedAt ||
+    readiness.backupRestoreEvidence?.latestVerifiedAt !==
+      backupRestore.verification?.latestVerifiedAt
+  ) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+        .READINESS_NOT_READY,
+      'Deletion readiness must describe the same backup restore evidence as its evidence bundle.'
     ));
   }
 
@@ -510,7 +558,7 @@ function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
   cutoverVerification = null,
   deletionGatePlan = null,
   residualCompatibilityReferences = [],
-  backupRestoreVerified = false,
+  backupRestoreEvidence = null,
   rollbackSupportVerified = false,
   supportDiagnosticsVerified = false,
   deletionManifestApproved = false,
@@ -532,7 +580,7 @@ function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
     cutoverVerification,
     deletionGatePlan,
     residualCompatibilityReferences,
-    backupRestoreVerified,
+    backupRestoreEvidence,
     rollbackSupportVerified,
     supportDiagnosticsVerified,
     deletionManifestApproved,
@@ -545,6 +593,7 @@ function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
       reconciliationStateInventory,
       cutoverVerification,
       deletionGatePlan,
+      backupRestoreEvidence,
       maxEvidenceAgeMs: maximumEvidenceAgeMs,
     }),
     ...buildSourceRisks({
@@ -552,6 +601,7 @@ function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
       reconciliationStateInventory,
       cutoverVerification,
       deletionGatePlan,
+      backupRestoreEvidence,
       deletionReadiness: readiness,
     }),
   ];
@@ -570,6 +620,7 @@ function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
       reconciliationStateInventory: buildEvidenceSummary(reconciliationStateInventory),
       cutoverVerification: buildEvidenceSummary(cutoverVerification),
       deletionGatePlan: buildEvidenceSummary(deletionGatePlan),
+      backupRestoreEvidence: buildBackupRestoreEvidenceSummary(backupRestoreEvidence),
     },
     deletionReadiness: readiness,
     deletionGatePlan: asObject(deletionGatePlan),
@@ -616,6 +667,7 @@ function validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle(bundle =
   const reconciliationStateInventory = asObject(evidence.reconciliationStateInventory);
   const cutover = asObject(evidence.cutoverVerification);
   const gateEvidence = asObject(evidence.deletionGatePlan);
+  const backupRestoreEvidence = asObject(evidence.backupRestoreEvidence);
   const gates = asObject(bundle.deletionGatePlan);
   const readiness = asObject(bundle.deletionReadiness);
 
@@ -690,6 +742,15 @@ function validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle(bundle =
         POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
           .DELETION_GATES_NOT_READY,
       label: 'Compatibility deletion gates',
+    },
+    {
+      evidence: backupRestoreEvidence,
+      version: POLICY_BACKUP_RESTORE_VERIFICATION_EVIDENCE_VERSION,
+      statusId: POLICY_BACKUP_RESTORE_VERIFICATION_STATUS_IDS.VERIFIED,
+      riskId:
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+          .READINESS_NOT_READY,
+      label: 'Backup restore verification evidence',
     },
   ];
 
@@ -776,7 +837,6 @@ async function loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClie
   compatibilityDeletionGates = undefined,
   coverage = {},
   residualCompatibilityReferences = [],
-  backupRestoreVerified = false,
   rollbackSupportVerified = false,
   supportDiagnosticsVerified = false,
   deletionManifestApproved = false,
@@ -809,11 +869,15 @@ async function loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClie
     const cutoverVerification = await loadPolicyNativeRuntimeCutoverVerification(client, {
       generatedAt: collectionTimestamp,
     });
+    const backupRestoreEvidence = await loadPolicyBackupRestoreVerificationEvidence(client, {
+      generatedAt: collectionTimestamp,
+    });
 
     return {
       currentPolicyInventory,
       reconciliationStateInventory,
       cutoverVerification,
+      backupRestoreEvidence,
     };
   };
   const inventories = await dbClient.withTransaction(async client => {
@@ -824,6 +888,7 @@ async function loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClie
     currentPolicyInventory,
     reconciliationStateInventory,
     cutoverVerification,
+    backupRestoreEvidence,
   } = inventories;
   const deletionGatePlan = buildPolicyCompatibilityDeletionGates({
     compatibilityModules,
@@ -843,7 +908,7 @@ async function loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClie
     cutoverVerification,
     deletionGatePlan,
     residualCompatibilityReferences,
-    backupRestoreVerified,
+    backupRestoreEvidence,
     rollbackSupportVerified,
     supportDiagnosticsVerified,
     deletionManifestApproved,

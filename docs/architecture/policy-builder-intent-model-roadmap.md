@@ -6780,6 +6780,13 @@ Implementation status:
   compatibility-code deletion remains separately fail-closed pending explicit
   release evidence. The design and implementation outcome are documented in
   [Policy Native Runtime Recovery Evidence](policy-native-runtime-recovery-evidence.md).
+- **8R.14d Database-Owned Backup/Restore Evidence** - compatibility deletion
+  readiness now derives recovery proof from an append-only, validated restore
+  record that must match the currently ready native restore gate and remain
+  within its renewal window. The record carries only bounded verification facts;
+  it never exposes an archive filename, path, payload, or credentials, and a
+  persistence failure closes the restore lifecycle. The design and outcome are
+  documented in [Policy Backup/Restore Verification Evidence](policy-backup-restore-verification-evidence.md).
 
 ### 8R.15 Compatibility Path Deletion Execution Plan
 

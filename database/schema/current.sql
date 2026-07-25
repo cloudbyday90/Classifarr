@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-22T12:27:31.181Z
--- Latest Migration: 20260722_120000_add_policy_observed_evidence_provenance.sql
+-- Generated: 2026-07-25T19:21:11.630Z
+-- Latest Migration: 20260725_190000_add_policy_backup_restore_verifications.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -173,6 +173,19 @@ CREATE FUNCTION public.extract_jsonb_name_text(arr jsonb) RETURNS text
     FROM jsonb_array_elements(
         CASE WHEN arr IS NOT NULL AND jsonb_typeof(arr) = 'array' THEN arr ELSE '[]'::jsonb END
     ) AS elem
+$$;
+
+
+--
+-- Name: guard_policy_backup_restore_verification_mutation(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_policy_backup_restore_verification_mutation() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RAISE EXCEPTION 'Backup restore verification evidence is append-only';
+END;
 $$;
 
 
@@ -3718,6 +3731,49 @@ ALTER SEQUENCE public.pattern_match_log_id_seq OWNED BY public.pattern_match_log
 
 
 --
+-- Name: policy_backup_restore_verifications; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_backup_restore_verifications (
+    id bigint NOT NULL,
+    verification_version smallint DEFAULT 1 CONSTRAINT policy_backup_restore_verificatio_verification_version_not_null NOT NULL,
+    restore_mode character varying(16) NOT NULL,
+    backup_version character varying(64) NOT NULL,
+    verification_status character varying(32) DEFAULT 'verified'::character varying CONSTRAINT policy_backup_restore_verification_verification_status_not_null NOT NULL,
+    schema_parity_verified boolean CONSTRAINT policy_backup_restore_verificat_schema_parity_verified_not_null NOT NULL,
+    native_authority_verified boolean CONSTRAINT policy_backup_restore_verifi_native_authority_verified_not_null NOT NULL,
+    policy_library_mismatch_count integer CONSTRAINT policy_backup_restore_verif_policy_library_mismatch_co_not_null NOT NULL,
+    verified_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_backup_restore_verifications_backup_version_chk CHECK (((char_length(btrim((backup_version)::text)) >= 1) AND (char_length(btrim((backup_version)::text)) <= 64))),
+    CONSTRAINT policy_backup_restore_verifications_mismatch_count_chk CHECK ((policy_library_mismatch_count = 0)),
+    CONSTRAINT policy_backup_restore_verifications_mode_chk CHECK (((restore_mode)::text = ANY (ARRAY[('replace'::character varying)::text, ('merge'::character varying)::text]))),
+    CONSTRAINT policy_backup_restore_verifications_status_chk CHECK (((verification_status)::text = 'verified'::text)),
+    CONSTRAINT policy_backup_restore_verifications_verified_shape_chk CHECK (((schema_parity_verified = true) AND (native_authority_verified = true) AND (policy_library_mismatch_count = 0))),
+    CONSTRAINT policy_backup_restore_verifications_version_chk CHECK ((verification_version = 1))
+);
+
+
+--
+-- Name: policy_backup_restore_verifications_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_backup_restore_verifications_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_backup_restore_verifications_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_backup_restore_verifications_id_seq OWNED BY public.policy_backup_restore_verifications.id;
+
+
+--
 -- Name: policy_change_log; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6422,6 +6478,13 @@ ALTER TABLE ONLY public.pattern_match_log ALTER COLUMN id SET DEFAULT nextval('p
 
 
 --
+-- Name: policy_backup_restore_verifications id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_backup_restore_verifications ALTER COLUMN id SET DEFAULT nextval('public.policy_backup_restore_verifications_id_seq'::regclass);
+
+
+--
 -- Name: policy_change_log id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7393,6 +7456,14 @@ ALTER TABLE ONLY public.pattern_analysis_config
 
 ALTER TABLE ONLY public.pattern_match_log
     ADD CONSTRAINT pattern_match_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_backup_restore_verifications policy_backup_restore_verifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_backup_restore_verifications
+    ADD CONSTRAINT policy_backup_restore_verifications_pkey PRIMARY KEY (id);
 
 
 --
@@ -8895,6 +8966,13 @@ CREATE INDEX idx_patterns_type_status ON public.discovered_patterns USING btree 
 
 
 --
+-- Name: idx_policy_backup_restore_verifications_verified; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_backup_restore_verifications_verified ON public.policy_backup_restore_verifications USING btree (verified_at DESC, id DESC);
+
+
+--
 -- Name: idx_policy_change_log_date; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9683,6 +9761,13 @@ CREATE TRIGGER classification_history_totals_sync_trigger AFTER INSERT OR DELETE
 --
 
 CREATE TRIGGER classification_search_text_trigger BEFORE INSERT OR UPDATE ON public.classification_history FOR EACH ROW EXECUTE FUNCTION public.update_classification_search_text();
+
+
+--
+-- Name: policy_backup_restore_verifications policy_backup_restore_verification_mutation_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER policy_backup_restore_verification_mutation_guard BEFORE DELETE OR UPDATE ON public.policy_backup_restore_verifications FOR EACH ROW EXECUTE FUNCTION public.guard_policy_backup_restore_verification_mutation();
 
 
 --
@@ -12664,6 +12749,7 @@ FROM unnest(ARRAY[
     '20260716_030000_add_native_intent_reconciliation_runtime_provenance.sql',
     '20260716_040000_enforce_semantic_native_intent_authority.sql',
     '20260716_050000_add_policy_initial_intent_establishments.sql',
-    '20260722_120000_add_policy_observed_evidence_provenance.sql'
+    '20260722_120000_add_policy_observed_evidence_provenance.sql',
+    '20260725_190000_add_policy_backup_restore_verifications.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

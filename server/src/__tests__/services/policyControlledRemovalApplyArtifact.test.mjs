@@ -24,6 +24,7 @@ import {
 } from '../../services/policyCompatibilityDeletionExecutionGate.mjs';
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+  buildReadyBackupRestoreVerificationEvidence,
   buildReadyExecutionGateOperatorEvidence,
   buildReadyExecutionGatePreflightEvidenceArtifact,
   buildReadyExecutionPlanArtifact,
@@ -151,7 +152,7 @@ function readyReadiness() {
     reconciliationStateInventory: readyReconciliationStateInventory(),
     cutoverVerification: readyCutover(),
     deletionGatePlan: readyDeletionGates(),
-    backupRestoreVerified: true,
+    backupRestoreEvidence: buildReadyBackupRestoreVerificationEvidence(),
     rollbackSupportVerified: true,
     supportDiagnosticsVerified: true,
     deletionManifestApproved: true,
