@@ -213,9 +213,10 @@ history reason is documented.
   `server/src/__tests__/services/policyProductionNamingRepositoryScan.test.mjs`.
 - The implementation outcome is documented in
   [Policy Builder Production Name Inventory](policy-builder-production-name-inventory.md).
-- The current July 11, 2026 inventory and regression-audit baseline supersedes
-  earlier historical count snapshots in this record. Historical values explain
-  prior cutovers but are not evidence of current naming debt.
+- The July 11, 2026 zero-debt regression baseline remains the ratchet for
+  production, rename-candidate, and obsolete-tooling counts. The July 25, 2026
+  inventory rerun remains at zero for all three values; historical count
+  snapshots explain prior cutovers but are not evidence of current naming debt.
 - The matcher now scans both artifact paths and contents, normalizes mixed-case
   `phase` markers, detects bounded numeric roadmap markers, and excludes
   unrelated model and certification identifiers. Its design and outcome are

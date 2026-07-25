@@ -93,15 +93,15 @@ Cons:
 
 ## Current Repository Outcome
 
-The current repository inventory validates with no unclassified references.
-After naming matcher hardening,
+The July 25, 2026 repository inventory validates with no unclassified
+references. After naming matcher hardening,
 `npm run policy:production-naming-gate`
 reported:
 
-- total temporary naming references: 2,091,
+- total temporary naming references: 2,126,
 - production references: 0,
 - rename candidates: 0,
-- docs/history references: 1,854,
+- docs/history references: 1,889,
 - test or migration evidence references: 237,
 - obsolete migration tooling references: 0.
 

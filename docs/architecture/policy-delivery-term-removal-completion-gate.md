@@ -37,8 +37,8 @@ Every reader in `policyBuilderLegacyCompatibilityBoundary.mjs` must declare:
 
 The completion scan confirms each declared reader source and deletion test
 exists. The registry audit confirms its owner, removal condition, and deletion
-gates. This found and removed one stale declaration for the already-deleted
-`PolicyStarterTemplateMechanics.vue` component; seven live readers remain.
+gates. This found and removed stale declarations for already-deleted
+compatibility components; four live readers remain.
 
 The resulting report contains only repository paths, line numbers, matcher IDs,
 and matched terms. It does not include source excerpts, credentials, request
@@ -50,7 +50,7 @@ The initial completion result is complete:
 
 - 0 production delivery-term matches;
 - 0 production imports of maintenance parsers;
-- 7 live compatibility readers; and
+- 4 live compatibility readers; and
 - 0 compatibility-boundary issues.
 
 ## Design Options

@@ -119,9 +119,9 @@ information in logs and diagnostic output.
 
 ## Outcome
 
-The initial run audited seven required surfaces and 1,003 files with zero
-temporary delivery-language findings. The audit is side-effect-free except for
-reading the bounded repository files, and it is enforced by CI.
+The July 25, 2026 rerun audited seven required surfaces and 1,149 files with
+zero temporary delivery-language findings. The audit is side-effect-free except
+for reading the bounded repository files, and it is enforced by CI.
 
 ## Sources
 

@@ -8770,9 +8770,10 @@ Implementation status:
   The inventory contract now emits the durable
   `nextStep.stepId = durable_domain_module_cutover` rather than a roadmap
   phase-shaped next action.
-- The July 11, 2026 baseline supersedes earlier historical count snapshots in
-  this roadmap. Those earlier counts document individual cutovers; only the
-  current generated inventory and regression audit define present debt.
+- The July 11, 2026 zero-debt ratchet remains the regression baseline. A July
+  25, 2026 rerun reports zero production references, zero rename candidates,
+  and zero obsolete tooling; earlier counts document individual cutovers, while
+  the current generated inventory and regression audit define present debt.
 - No temporary production names or rename candidates remain. Historical docs,
   tests, migration evidence, and maintenance scanners retain classified
   references; each future production change must preserve the zero-debt
@@ -9561,7 +9562,7 @@ Implementation status:
 - The audit has no write, storage, network, or process side effects. It reports
   only the surface, repository path, line number, matcher identifier, and
   matched temporary token; it never emits a source-line excerpt.
-- Current results: 7 required surfaces, 1,003 audited files, and 0 temporary
+- Current results: 7 required surfaces, 1,149 audited files, and 0 temporary
   delivery-language findings.
 
 ### 9R.6 Completion Gate For Delivery-Term Removal
