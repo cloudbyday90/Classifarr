@@ -7,86 +7,100 @@
 -->
 
 <template>
-  <ol
-    class="gap-3"
-    :class="selectionEnabled ? 'space-y-3' : 'grid lg:grid-cols-2'"
-    aria-label="Destination policy questions"
-  >
-    <li
-      v-for="section in sections"
-      :key="section.sectionId"
-      class="rounded-lg border border-gray-700 bg-background-light p-3"
+  <div>
+    <p
+      v-if="activeEmptyStateMessage"
+      id="policy-builder-empty-state-action-status"
+      class="mb-3 rounded border border-blue-800/70 bg-blue-950/30 px-3 py-2 text-sm text-blue-100"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
     >
-      <article :aria-labelledby="sectionHeadingId(section.sectionId)">
-        <div class="flex flex-wrap items-start justify-between gap-2">
-          <h5
-            :id="sectionHeadingId(section.sectionId)"
-            class="text-sm font-semibold text-white"
+      {{ activeEmptyStateMessage }}
+    </p>
+    <ol
+      class="gap-3"
+      :class="selectionEnabled ? 'space-y-3' : 'grid lg:grid-cols-2'"
+      aria-label="Destination policy questions"
+    >
+      <li
+        v-for="section in sections"
+        :key="section.sectionId"
+        class="rounded-lg border border-gray-700 bg-background-light p-3"
+      >
+        <article :aria-labelledby="sectionHeadingId(section.sectionId)">
+          <div class="flex flex-wrap items-start justify-between gap-2">
+            <h5
+              :id="sectionHeadingId(section.sectionId)"
+              class="text-sm font-semibold text-white"
+            >
+              {{ section.heading }}
+            </h5>
+            <span
+              class="rounded-full border px-2 py-0.5 text-[11px] font-medium"
+              :class="sectionStatusClass(section.statusId)"
+            >
+              {{ sectionStatusLabel(section.statusId) }}
+            </span>
+          </div>
+          <p class="mt-2 text-sm text-gray-100">
+            {{ section.plainQuestion }}
+          </p>
+          <p class="mt-1 text-xs text-gray-400">
+            {{ section.helperText }}
+          </p>
+
+          <PolicyDestinationEmptyStateNotice
+            v-for="emptyState in emptyStatesFor(section.sectionId)"
+            :key="emptyState.stateId"
+            :empty-state="emptyState"
+            :active-action-id="activeEmptyStateActionId"
+            :active-action-status-id="activeEmptyStateStatusId"
+            @next-action="emit('empty-state-action', $event)"
+          />
+
+          <PolicyNativeEvidenceRecovery
+            v-if="showsObservedEvidenceActions(section) && nativeEvidenceRecovery?.requiresAction"
+            :recovery="nativeEvidenceRecovery"
+            :refreshing="refreshing"
+            @refresh-profile="emit('refresh-profile')"
+            @reload-workflow="emit('reload-workflow')"
+          />
+
+          <IntentSignalPicker
+            v-if="showsIntentSignalPicker(section)"
+            :accepted-signals="acceptedSignals"
+            :observed-evidence="observedEvidence"
+            :options="intentSignalOptions"
+            :library-name="libraryName"
+            :custom-entry-input="customEntryInput"
+            :custom-entry-busy="customEntryBusy"
+            :custom-entry-error="customEntryError"
+            :custom-entry-message="customEntryMessage"
+            @draft-command-plan="emit('draft-command-plan', $event)"
+            @validate-custom-signal="emit('validate-custom-signal', $event)"
+          />
+
+          <p
+            v-if="section.editable && !selectionEnabled"
+            class="mt-3 text-xs text-gray-400"
           >
-            {{ section.heading }}
-          </h5>
-          <span
-            class="rounded-full border px-2 py-0.5 text-[11px] font-medium"
-            :class="sectionStatusClass(section.statusId)"
+            Policy changes remain explicit and are made in the policy details below.
+          </p>
+          <p
+            v-else-if="selectionEnabled && section.sectionId !== 'what_belongs_here'"
+            class="mt-3 text-xs text-gray-400"
           >
-            {{ sectionStatusLabel(section.statusId) }}
-          </span>
-        </div>
-        <p class="mt-2 text-sm text-gray-100">
-          {{ section.plainQuestion }}
-        </p>
-        <p class="mt-1 text-xs text-gray-400">
-          {{ section.helperText }}
-        </p>
-
-        <PolicyDestinationEmptyStateNotice
-          v-for="emptyState in emptyStatesFor(section.sectionId)"
-          :key="emptyState.stateId"
-          :empty-state="emptyState"
-          :busy="emptyStateActionBusy"
-          @next-action="emit('empty-state-action', $event)"
-        />
-
-        <PolicyNativeEvidenceRecovery
-          v-if="showsObservedEvidenceActions(section) && nativeEvidenceRecovery?.requiresAction"
-          :recovery="nativeEvidenceRecovery"
-          :refreshing="refreshing"
-          @refresh-profile="emit('refresh-profile')"
-          @reload-workflow="emit('reload-workflow')"
-        />
-
-        <IntentSignalPicker
-          v-if="showsIntentSignalPicker(section)"
-          :accepted-signals="acceptedSignals"
-          :observed-evidence="observedEvidence"
-          :options="intentSignalOptions"
-          :library-name="libraryName"
-          :custom-entry-input="customEntryInput"
-          :custom-entry-busy="customEntryBusy"
-          :custom-entry-error="customEntryError"
-          :custom-entry-message="customEntryMessage"
-          @draft-command-plan="emit('draft-command-plan', $event)"
-          @validate-custom-signal="emit('validate-custom-signal', $event)"
-        />
-
-        <p
-          v-if="section.editable && !selectionEnabled"
-          class="mt-3 text-xs text-gray-400"
-        >
-          Policy changes remain explicit and are made in the policy details below.
-        </p>
-        <p
-          v-else-if="selectionEnabled && section.sectionId !== 'what_belongs_here'"
-          class="mt-3 text-xs text-gray-400"
-        >
-          {{ nativeQuestionGuidance(section) }}
-        </p>
-      </article>
-    </li>
-  </ol>
+            {{ nativeQuestionGuidance(section) }}
+          </p>
+        </article>
+      </li>
+    </ol>
+  </div>
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import PolicyDestinationEmptyStateNotice from './PolicyDestinationEmptyStateNotice.vue'
 import PolicyNativeEvidenceRecovery from './PolicyNativeEvidenceRecovery.vue'
 import IntentSignalPicker from './IntentSignalPicker.vue'
@@ -144,9 +158,13 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  emptyStateActionBusy: {
-    type: Boolean,
-    default: false,
+  activeEmptyStateActionId: {
+    type: String,
+    default: '',
+  },
+  activeEmptyStateActionMessage: {
+    type: String,
+    default: '',
   },
 })
 
@@ -174,6 +192,18 @@ const showsIntentSignalPicker = section => (
 const emptyStatesFor = sectionId => props.emptyStates.filter(
   emptyState => emptyState?.sectionId === sectionId
 )
+const activeEmptyState = computed(() => props.emptyStates.find(
+  emptyState => emptyState?.nextAction?.actionId === props.activeEmptyStateActionId
+))
+const activeEmptyStateMessage = computed(() => (
+  props.activeEmptyStateActionMessage ||
+  activeEmptyState.value?.nextAction?.busyMessage ||
+  activeEmptyState.value?.nextAction?.busyLabel ||
+  ''
+))
+const activeEmptyStateStatusId = computed(() => (
+  activeEmptyStateMessage.value ? 'policy-builder-empty-state-action-status' : ''
+))
 
 const sectionStatusLabel = (statusId) => {
   if (statusId === 'complete') return 'Ready'

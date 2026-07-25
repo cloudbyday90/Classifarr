@@ -45,7 +45,8 @@
           :accepted-signals="acceptedIntentSignals"
           :constraint-draft-commands="constraintDraftCommands"
           :selection-enabled="experienceMode.isNativeCreate"
-          :empty-state-action-busy="librarySyncing || libraryProfileRefreshing"
+          :active-empty-state-action-id="emptyStateActionBusyId"
+          :active-empty-state-action-message="emptyStateActionBusyMessage"
           :custom-entry-busy="customIntentSignalValidationLoading"
           :custom-entry-error="customIntentSignalValidationError"
           :custom-entry-message="customIntentSignalValidationMessage"
@@ -178,6 +179,7 @@ const router = useRouter()
 const saving = ref(false)
 const saveError = ref('')
 const nativeCreateHandoffRef = ref(null)
+const activeEmptyStateActionId = ref('')
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -324,22 +326,38 @@ const refreshActiveLibraryProfile = async () => {
 }
 
 const {
-  syncing: librarySyncing,
   syncAndRefreshProfile,
 } = usePolicyBuilderLibrarySync({ refreshProfile: refreshLibraryProfile })
 
+const emptyStateActionBusyId = computed(() => (
+  activeEmptyStateActionId.value || (
+    libraryProfileRefreshing.value ? 'refresh_library_profile' : ''
+  )
+))
+const emptyStateActionBusyMessage = computed(() => (
+  !activeEmptyStateActionId.value && libraryProfileRefreshing.value
+    ? 'Classifarr is refreshing library evidence.'
+    : ''
+))
+
 const handleEmptyStateAction = async (emptyState) => {
   const actionId = emptyState?.nextAction?.actionId
+  if (!actionId || activeEmptyStateActionId.value) return
 
   if (actionId === 'sync_media_server_library') {
-    const synced = await syncAndRefreshProfile(form.value.library_id)
-    if (!synced) {
-      toast.error('Classifarr could not sync this library and refresh its profile.')
-      return
-    }
+    activeEmptyStateActionId.value = actionId
+    try {
+      const synced = await syncAndRefreshProfile(form.value.library_id)
+      if (!synced) {
+        toast.error('Classifarr could not sync this library and refresh its profile.')
+        return
+      }
 
-    await loadOperatorWorkflow(form.value.library_id)
-    toast.success('Library sync and profile refresh completed.')
+      await loadOperatorWorkflow(form.value.library_id)
+      toast.success('Library sync and profile refresh completed.')
+    } finally {
+      activeEmptyStateActionId.value = ''
+    }
     return
   }
 
@@ -347,8 +365,15 @@ const handleEmptyStateAction = async (emptyState) => {
     const libraryId = Number(form.value.library_id)
     if (!Number.isInteger(libraryId) || libraryId <= 0) return
 
-    isOpen.value = false
-    await router.push({ name: 'LibraryDetail', params: { id: libraryId } })
+    activeEmptyStateActionId.value = actionId
+    try {
+      await router.push({ name: 'LibraryDetail', params: { id: libraryId } })
+      isOpen.value = false
+    } catch {
+      toast.error('Classifarr could not open the library mapping.')
+    } finally {
+      activeEmptyStateActionId.value = ''
+    }
   }
 }
 

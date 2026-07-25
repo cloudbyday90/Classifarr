@@ -120,6 +120,8 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
           nextAction: {
             actionId: 'sync_media_server_library',
             label: 'Sync library now',
+            busyLabel: 'Syncing library...',
+            busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
             targetId: 'policy-builder-library-context',
             mode: 'sync_library',
           },
@@ -132,6 +134,8 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
           nextAction: {
             actionId: 'map_routing_destination',
             label: 'Open library mapping',
+            busyLabel: 'Opening library mapping...',
+            busyMessage: 'Classifarr is opening the library mapping page.',
             targetId: 'library-arr-mapping',
             mode: 'open_library_mapping',
           },
@@ -152,6 +156,55 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     expect(wrapper.emitted('empty-state-action')?.[0]?.[0]).toEqual(
       workflowRead.emptyStateProjection.states[0]
     )
+  })
+
+  it('forwards an empty-state action ID without relabeling other recovery actions', () => {
+    const workflowRead = buildWorkflowRead()
+    workflowRead.emptyStateProjection = {
+      version: 'policy.operator_workflow_empty_state.v1',
+      states: [
+        {
+          stateId: 'new_library',
+          sectionId: 'what_belongs_here',
+          label: 'New library',
+          description: 'No observed profile is available yet.',
+          nextAction: {
+            actionId: 'sync_media_server_library',
+            label: 'Sync library now',
+            busyLabel: 'Syncing library...',
+            busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
+            targetId: 'policy-builder-library-context',
+            mode: 'sync_library',
+          },
+        },
+        {
+          stateId: 'unmapped_library',
+          sectionId: 'can_this_route',
+          label: 'Unmapped library',
+          description: 'This destination cannot route until it is mapped.',
+          nextAction: {
+            actionId: 'map_routing_destination',
+            label: 'Open library mapping',
+            busyLabel: 'Opening library mapping...',
+            busyMessage: 'Classifarr is opening the library mapping page.',
+            targetId: 'library-arr-mapping',
+            mode: 'open_library_mapping',
+          },
+        },
+      ],
+    }
+
+    const wrapper = mount(PolicyBuilderWorkflowShell, {
+      props: {
+        workflowRead,
+        selectionEnabled: true,
+        activeEmptyStateActionId: 'sync_media_server_library',
+      },
+    })
+
+    expect(wrapper.text()).toContain('Syncing library...')
+    expect(wrapper.text()).toContain('Open library mapping')
+    expect(wrapper.text()).not.toContain('Opening library mapping...')
   })
 
   it('keeps native observed values unavailable until a stale profile is refreshed', async () => {

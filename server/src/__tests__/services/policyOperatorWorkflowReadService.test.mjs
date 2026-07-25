@@ -235,6 +235,8 @@ describe('policyOperatorWorkflowReadService', () => {
         nextAction: {
           actionId: 'sync_media_server_library',
           label: 'Sync library now',
+          busyLabel: 'Syncing library...',
+          busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
           targetId: 'policy-builder-library-context',
           mode: POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_ACTION_MODE_IDS.SYNC_LIBRARY,
         },
@@ -282,6 +284,8 @@ describe('policyOperatorWorkflowReadService', () => {
         sectionId: 'can_this_route',
         nextAction: expect.objectContaining({
           actionId: 'map_routing_destination',
+          busyLabel: 'Opening library mapping...',
+          busyMessage: 'Classifarr is opening the library mapping page.',
           mode: POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_ACTION_MODE_IDS.OPEN_LIBRARY_MAPPING,
         }),
       }),
@@ -291,6 +295,10 @@ describe('policyOperatorWorkflowReadService', () => {
       issueCount: 0,
       issues: [],
     });
+
+    const tampered = structuredClone(result);
+    tampered.emptyStateProjection.states[1].nextAction.busyLabel = 'Syncing library...';
+    expect(buildPolicyOperatorWorkflowReadAudit(tampered).ok).toBe(false);
   });
 
   test('does not attempt a profile read for an invalid library and detects unsafe display changes', async () => {

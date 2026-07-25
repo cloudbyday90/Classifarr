@@ -64,7 +64,8 @@
         :custom-entry-error="customEntryError"
         :custom-entry-message="customEntryMessage"
         :empty-states="emptyStates"
-        :empty-state-action-busy="emptyStateActionBusy"
+        :active-empty-state-action-id="activeEmptyStateActionId"
+        :active-empty-state-action-message="activeEmptyStateActionMessage"
         @draft-command-plan="emit('draft-command-plan', $event)"
         @validate-custom-signal="emit('validate-custom-signal', $event)"
         @refresh-profile="emit('refresh-profile')"
@@ -132,9 +133,13 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  emptyStateActionBusy: {
-    type: Boolean,
-    default: false,
+  activeEmptyStateActionId: {
+    type: String,
+    default: '',
+  },
+  activeEmptyStateActionMessage: {
+    type: String,
+    default: '',
   },
   customEntryBusy: {
     type: Boolean,

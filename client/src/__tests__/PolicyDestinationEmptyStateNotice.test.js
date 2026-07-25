@@ -18,6 +18,8 @@ function buildEmptyState(overrides = {}) {
     nextAction: {
       actionId: 'sync_media_server_library',
       label: 'Sync library now',
+      busyLabel: 'Syncing library...',
+      busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
       targetId: 'policy-builder-library-context',
       mode: 'sync_library',
     },
@@ -34,9 +36,55 @@ describe('PolicyDestinationEmptyStateNotice.vue', () => {
 
     expect(wrapper.text()).toContain('New library')
     expect(wrapper.text()).toContain('Sync library now')
+    expect(wrapper.text()).not.toContain('Next:')
+    expect(wrapper.get('button').attributes('aria-describedby'))
+      .toBe('policy-destination-empty-state-new_library-description')
 
     await wrapper.get('button').trigger('click')
     expect(wrapper.emitted('next-action')).toEqual([[emptyState]])
+  })
+
+  it('keeps progress feedback scoped to the action currently running', async () => {
+    const syncState = buildEmptyState()
+    const syncWrapper = mount(PolicyDestinationEmptyStateNotice, {
+      props: {
+        emptyState: syncState,
+        activeActionId: syncState.nextAction.actionId,
+        activeActionStatusId: 'policy-builder-empty-state-action-status',
+      },
+    })
+
+    expect(syncWrapper.get('button').text()).toBe('Syncing library...')
+    expect(syncWrapper.get('button').attributes('disabled')).toBeDefined()
+    expect(syncWrapper.get('button').attributes('aria-describedby'))
+      .toBe('policy-destination-empty-state-new_library-description policy-builder-empty-state-action-status')
+
+    await syncWrapper.get('button').trigger('click')
+    expect(syncWrapper.emitted('next-action')).toBeUndefined()
+
+    const mappingWrapper = mount(PolicyDestinationEmptyStateNotice, {
+      props: {
+        emptyState: buildEmptyState({
+          stateId: 'unmapped_library',
+          label: 'Unmapped library',
+          nextAction: {
+            actionId: 'map_routing_destination',
+            label: 'Open library mapping',
+            busyLabel: 'Opening library mapping...',
+            busyMessage: 'Classifarr is opening the library mapping page.',
+            targetId: 'library-arr-mapping',
+            mode: 'open_library_mapping',
+          },
+        }),
+        activeActionId: syncState.nextAction.actionId,
+        activeActionStatusId: 'policy-builder-empty-state-action-status',
+      },
+    })
+
+    expect(mappingWrapper.get('button').text()).toBe('Open library mapping')
+    expect(mappingWrapper.get('button').attributes('disabled')).toBeDefined()
+    expect(mappingWrapper.get('button').attributes('aria-describedby'))
+      .toBe('policy-destination-empty-state-unmapped_library-description policy-builder-empty-state-action-status')
   })
 
   it('keeps an unavailable declared-intent control as guidance instead of a dead button', () => {

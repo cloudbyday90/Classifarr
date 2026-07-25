@@ -67,6 +67,9 @@ Official sources reviewed as of June 2026:
 10. Give each evidence-recovery action state-owned busy copy and associate the
     action with its visible explanation. Do not infer a generic operation from
     a shared loading flag.
+11. Pass an active action identifier through empty-state recovery surfaces.
+    Render busy feedback only for that action, disable competing actions without
+    relabeling them, and reserve static `Next` text for guidance-only states.
 
 ## Pros And Cons
 
@@ -106,6 +109,8 @@ Official sources reviewed as of June 2026:
   `client/src/components/policies/PolicyBuilderDestinationQuestions.vue`
 - Native evidence recovery:
   `client/src/components/policies/PolicyNativeEvidenceRecovery.vue`
+- Destination empty-state recovery:
+  `client/src/components/policies/PolicyDestinationEmptyStateNotice.vue`
 - Unit coverage:
   `client/src/__tests__/utils/policyBuilderSetupCards.test.js`
   `client/src/__tests__/PolicyBuilderSetupCards.test.js`
@@ -131,6 +136,8 @@ The policy-builder setup card surface now:
   cards retain only local recovery actions and contextual guidance,
 - gives each native evidence-recovery action state-owned busy feedback and a
   programmatic description without adding a second action,
+- keeps destination empty-state progress scoped to the one action in flight,
+  with a polite status and no duplicate static next-action label,
 - keeps save, defer, routing, and starter-template behavior unchanged.
 
 ## Follow-Up

@@ -18,6 +18,11 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Scoped Empty-State Recovery Feedback** - library sync and routing-mapping
+  recovery now show progress only for the action in flight, retain distinct
+  server-approved busy copy, and keep competing recovery actions from being
+  mislabeled or triggered concurrently.
+
 - **Clear Evidence Recovery Actions** - native policy creation now keeps
   profile refresh and evidence-check recovery actions distinct while busy, and
   each action is programmatically associated with its visible explanation.

@@ -17,29 +17,33 @@
     >
       {{ emptyState.label }}
     </h6>
-    <p class="mt-1 text-xs text-amber-100">
+    <p
+      :id="descriptionId"
+      class="mt-1 text-xs text-amber-100"
+    >
       {{ emptyState.description }}
     </p>
-    <p class="mt-2 text-xs text-amber-100">
-      <span class="font-semibold">Next:</span>
-      {{ emptyState.nextAction.label }}
-    </p>
-    <p
-      v-if="isGuidanceOnly"
-      class="mt-2 text-xs text-amber-100"
-    >
-      Classifarr will not guess a destination from sparse evidence. The next declared-intent control is introduced separately from this read-only state.
-    </p>
-    <Button
-      v-else
-      class="mt-3"
-      size="sm"
-      variant="outline-solid"
-      :disabled="busy"
-      @click="emit('next-action', emptyState)"
-    >
-      {{ busy ? busyLabel : emptyState.nextAction.label }}
-    </Button>
+    <template v-if="isGuidanceOnly">
+      <p class="mt-2 text-xs text-amber-100">
+        <span class="font-semibold">Next:</span>
+        {{ nextAction.label }}
+      </p>
+      <p class="mt-2 text-xs text-amber-100">
+        Classifarr will not guess a destination from sparse evidence. The next declared-intent control is introduced separately from this read-only state.
+      </p>
+    </template>
+    <template v-else>
+      <Button
+        class="mt-3"
+        size="sm"
+        variant="outline-solid"
+        :disabled="actionDisabled"
+        :aria-describedby="actionDescriptionIds"
+        @click="emitNextAction"
+      >
+        {{ actionButtonLabel }}
+      </Button>
+    </template>
   </section>
 </template>
 
@@ -52,9 +56,13 @@ const props = defineProps({
     type: Object,
     required: true,
   },
-  busy: {
-    type: Boolean,
-    default: false,
+  activeActionId: {
+    type: String,
+    default: '',
+  },
+  activeActionStatusId: {
+    type: String,
+    default: '',
   },
 })
 
@@ -63,10 +71,25 @@ const emit = defineEmits({
 })
 
 const headingId = computed(() => `policy-destination-empty-state-${props.emptyState.stateId}-title`)
-const isGuidanceOnly = computed(() => props.emptyState?.nextAction?.mode === 'guidance')
-const busyLabel = computed(() => (
-  props.emptyState?.nextAction?.mode === 'sync_library'
-    ? 'Syncing library...'
-    : 'Opening library mapping...'
+const descriptionId = computed(() => `policy-destination-empty-state-${props.emptyState.stateId}-description`)
+const nextAction = computed(() => props.emptyState?.nextAction || {})
+const isGuidanceOnly = computed(() => nextAction.value.mode === 'guidance')
+const isActionBusy = computed(() => (
+  Boolean(props.activeActionId) && props.activeActionId === nextAction.value.actionId
 ))
+const actionDisabled = computed(() => Boolean(props.activeActionId))
+const actionButtonLabel = computed(() => (
+  isActionBusy.value
+    ? nextAction.value.busyLabel || nextAction.value.label || 'Working on library setup...'
+    : nextAction.value.label || ''
+))
+const actionDescriptionIds = computed(() => [
+  descriptionId.value,
+  actionDisabled.value ? props.activeActionStatusId : null,
+].filter(Boolean).join(' '))
+
+const emitNextAction = () => {
+  if (actionDisabled.value) return
+  emit('next-action', props.emptyState)
+}
 </script>

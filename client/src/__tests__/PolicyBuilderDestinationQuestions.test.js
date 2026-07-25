@@ -68,4 +68,50 @@ describe('PolicyBuilderDestinationQuestions.vue', () => {
     expect(routingArticle?.textContent).not.toContain('Connect a routing target')
     expect(wrapper.text()).not.toContain('Next:')
   })
+
+  it('shows progress only on the empty-state action that is in flight', () => {
+    const wrapper = mount(PolicyBuilderDestinationQuestions, {
+      props: {
+        sections: buildSections(),
+        emptyStates: [
+          {
+            stateId: 'new_library',
+            sectionId: 'what_belongs_here',
+            label: 'New library',
+            description: 'No observed profile is available yet.',
+            nextAction: {
+              actionId: 'sync_media_server_library',
+              label: 'Sync library now',
+              busyLabel: 'Syncing library...',
+              busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
+              targetId: 'policy-builder-library-context',
+              mode: 'sync_library',
+            },
+          },
+          {
+            stateId: 'unmapped_library',
+            sectionId: 'can_this_route',
+            label: 'Unmapped library',
+            description: 'This destination cannot route until it is mapped.',
+            nextAction: {
+              actionId: 'map_routing_destination',
+              label: 'Open library mapping',
+              busyLabel: 'Opening library mapping...',
+              busyMessage: 'Classifarr is opening the library mapping page.',
+              targetId: 'library-arr-mapping',
+              mode: 'open_library_mapping',
+            },
+          },
+        ],
+        activeEmptyStateActionId: 'sync_media_server_library',
+      },
+    })
+
+    const buttons = wrapper.findAll('button')
+    expect(buttons.find(button => button.text() === 'Syncing library...')?.attributes('disabled')).toBeDefined()
+    expect(buttons.find(button => button.text() === 'Open library mapping')?.attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[role="status"]').text())
+      .toContain('syncing this library and refreshing its profile')
+    expect(wrapper.text()).not.toContain('Opening library mapping...')
+  })
 })

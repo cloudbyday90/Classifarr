@@ -2661,6 +2661,10 @@ Implementation status:
 - Native evidence recovery now uses a projection-owned busy label for each
   bounded action and describes the action with its visible recovery message:
   [Policy Native Evidence Recovery Action Resolution](policy-native-evidence-recovery-action-resolution.md).
+- Destination empty-state recovery now uses an active action identifier,
+  projection-owned busy copy, and a polite progress status without repeating
+  an actionable card's next-action label:
+  [Policy Destination Empty-State Action Resolution](policy-destination-empty-state-action-resolution.md).
 
 ### 3R.9 Presentation Test Reset
 

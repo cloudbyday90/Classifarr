@@ -38,6 +38,8 @@ const EMPTY_STATE_PRESENTATION = Object.freeze({
   [POLICY_AUTHORING_DESTINATION_EMPTY_STATE_IDS.NEW_LIBRARY]: Object.freeze({
     sectionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
     actionLabel: 'Sync library now',
+    busyLabel: 'Syncing library...',
+    busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
     targetId: 'policy-builder-library-context',
     actionMode: POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_ACTION_MODE_IDS.SYNC_LIBRARY,
   }),
@@ -50,6 +52,8 @@ const EMPTY_STATE_PRESENTATION = Object.freeze({
   [POLICY_AUTHORING_DESTINATION_EMPTY_STATE_IDS.UNMAPPED_LIBRARY]: Object.freeze({
     sectionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.CAN_THIS_ROUTE,
     actionLabel: 'Open library mapping',
+    busyLabel: 'Opening library mapping...',
+    busyMessage: 'Classifarr is opening the library mapping page.',
     targetId: 'library-arr-mapping',
     actionMode: POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_ACTION_MODE_IDS.OPEN_LIBRARY_MAPPING,
   }),
@@ -88,6 +92,10 @@ function buildEmptyState(stateId) {
       label: presentation.actionLabel,
       targetId: presentation.targetId,
       mode: presentation.actionMode,
+      ...(presentation.busyLabel ? {
+        busyLabel: presentation.busyLabel,
+        busyMessage: presentation.busyMessage,
+      } : {}),
     },
   };
 }
@@ -179,7 +187,9 @@ function buildPolicyOperatorWorkflowEmptyStateAudit(projection = {}) {
       state.nextAction?.actionId !== contract.nextActionId ||
       state.nextAction?.label !== presentation.actionLabel ||
       state.nextAction?.targetId !== presentation.targetId ||
-      state.nextAction?.mode !== presentation.actionMode
+      state.nextAction?.mode !== presentation.actionMode ||
+      state.nextAction?.busyLabel !== presentation.busyLabel ||
+      state.nextAction?.busyMessage !== presentation.busyMessage
     ) {
       issues.push({
         riskId: POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_AUDIT_RISK_IDS.INVALID_NEXT_ACTION,

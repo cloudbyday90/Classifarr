@@ -34,11 +34,11 @@ The workflow read returns `policy.operator_workflow_empty_state.v1` alongside
 its existing display projection. Each state has one fixed question placement,
 one action identifier, one target, and an explicit action mode.
 
-| State | Detection | Question | Next action | Behavior |
-| --- | --- | --- | --- | --- |
-| New library | Persisted profile is specifically absent | What belongs here? | Sync library now | Run the existing authenticated library sync, generate a profile, then reread the workflow. |
-| Sparse library | A current, valid profile has no usable observed suggestions | What belongs here? | Add declared intent | Show bounded guidance only. Classifarr does not invent purpose or render a control that cannot persist safely. |
-| Unmapped library | The stored Arr mapping is absent or not route-ready | Can this route? | Open library mapping | Close the policy modal and open the existing library detail mapping workflow. No media is routed. |
+| State | Detection | Question | Next action | Active feedback | Behavior |
+| --- | --- | --- | --- | --- | --- |
+| New library | Persisted profile is specifically absent | What belongs here? | Sync library now | `Syncing library...`; a polite status explains that the profile is refreshing. | Run the existing authenticated library sync, generate a profile, then reread the workflow. |
+| Sparse library | A current, valid profile has no usable observed suggestions | What belongs here? | Add declared intent | No busy state because this is guidance, not an action. | Show bounded guidance only. Classifarr does not invent purpose or render a control that cannot persist safely. |
+| Unmapped library | The stored Arr mapping is absent or not route-ready | Can this route? | Open library mapping | `Opening library mapping...`; a polite status describes the navigation. | Open the existing library detail mapping workflow, then close the policy modal. No media is routed. |
 
 A profile load failure, invalid evidence, or blocked evidence boundary is not a
 new library. Those remain evidence-recovery outcomes so the operator is not
@@ -90,8 +90,9 @@ Cons:
 ## Final Recommendation Stack
 
 1. `server/src/services/policyOperatorWorkflowEmptyState.mjs` owns the
-   state-to-question and state-to-action mapping, plus an audit that rejects
-   unknown, duplicate, misrouted, altered, or diagnostic-bearing states.
+   state-to-question, state-to-action, busy-label, and busy-message mapping,
+   plus an audit that rejects unknown, duplicate, misrouted, altered, or
+   diagnostic-bearing states.
 2. `server/src/services/policyOperatorWorkflowReadService.mjs` appends that
    read-only projection after it builds bounded observed-profile data.
 3. `client/src/components/policies/PolicyDestinationEmptyStateNotice.vue`
@@ -99,8 +100,9 @@ Cons:
    records and does not persist or route media.
 4. `client/src/composables/usePolicyBuilderLibrarySync.js` performs the
    explicit `sync → profile refresh` sequence and returns a sanitized outcome.
-5. `client/src/components/policies/PolicyBuilderModal.vue` rereads the
-   workflow after a successful sync or opens the existing library mapping page.
+5. `client/src/components/policies/PolicyBuilderModal.vue` tracks one active
+   empty-state action ID, rereads the workflow after a successful sync, and
+   closes only after navigation to the existing library mapping page succeeds.
 
 ## Outcome
 
@@ -109,7 +111,10 @@ action in the question that explains the condition. New-library recovery is
 automatic only after the operator explicitly starts the existing library sync;
 it then rebuilds the profile and rereads server-owned context. Sparse evidence
 never becomes inferred identity, and unmapped destinations navigate to
-configuration rather than attempting a route.
+configuration rather than attempting a route. While an action is active, only
+that action receives its state-owned busy label. One workflow-level polite
+progress message explains the active operation to every temporarily disabled
+recovery action without mislabeling them.
 
 ## Next Step
 
