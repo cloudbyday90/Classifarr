@@ -995,6 +995,11 @@ unchanged operator or runtime outcome.
 
 ### Changed
 
+- **Installation-Derived Native Runtime Evidence** - compatibility-deletion
+  maintenance evidence now verifies every enabled policy's persisted native or
+  compatibility runtime read within one read-only repeatable-read snapshot.
+  Operator input can no longer manufacture converted or unconverted policy
+  samples, and the bounded report omits policy names and raw payloads.
 - **Policy Authoring Model** - routine policy work now prioritizes destination
   meaning, observed library evidence, constraints, review behavior, and routing
   readiness. Scoring, provider state, metadata coverage, and migration analysis

@@ -39,8 +39,10 @@ import {
 import {
   POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS,
   POLICY_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION,
-  buildPolicyNativeRuntimeCutoverVerification,
 } from './policyNativeRuntimeCutoverVerification.mjs';
+import {
+  loadPolicyNativeRuntimeCutoverVerification,
+} from './policyNativeRuntimeCutoverEvidence.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_VERSION =
   'policy.compatibility_deletion_execution_plan_evidence_bundle.v1';
@@ -149,6 +151,10 @@ function buildEvidenceSummary(evidence = {}) {
     unconvertedPolicyCount:
       value.policyCounts?.unconvertedPolicyCount ?? value.unconvertedPolicyCount ?? null,
     requiresMaintenanceStateCount: value.requiresMaintenanceStateCount ?? null,
+    convertedReadAssessedPolicyCount: value.convertedRead?.assessedPolicyCount ?? null,
+    convertedReadInvalidPolicyCount: value.convertedRead?.invalidPolicyCount ?? null,
+    unconvertedReadAssessedPolicyCount: value.unconvertedRead?.assessedPolicyCount ?? null,
+    unconvertedReadInvalidPolicyCount: value.unconvertedRead?.invalidPolicyCount ?? null,
   };
 }
 
@@ -765,8 +771,6 @@ function validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle(bundle =
 }
 
 async function loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClient, {
-  convertedPolicy = {},
-  unconvertedPolicy = {},
   rollbackAvailable = false,
   legacyDeletionBlocked = true,
   supportDiagnosticsSafe = true,
@@ -805,22 +809,28 @@ async function loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClie
       await loadPolicyCompatibilityDeletionReconciliationStateInventory(client, {
         generatedAt: collectionTimestamp,
       });
+    const cutoverVerification = await loadPolicyNativeRuntimeCutoverVerification(client, {
+      rollbackAvailable,
+      legacyDeletionBlocked,
+      supportDiagnosticsSafe,
+      generatedAt: collectionTimestamp,
+    });
 
-    return { currentPolicyInventory, reconciliationStateInventory };
+    return {
+      currentPolicyInventory,
+      reconciliationStateInventory,
+      cutoverVerification,
+    };
   };
   const inventories = await dbClient.withTransaction(async client => {
     await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
     return collectInventories(client);
   });
-  const { currentPolicyInventory, reconciliationStateInventory } = inventories;
-  const cutoverVerification = buildPolicyNativeRuntimeCutoverVerification({
-    convertedPolicy,
-    unconvertedPolicy,
-    rollbackAvailable,
-    legacyDeletionBlocked,
-    supportDiagnosticsSafe,
-    generatedAt: collectionTimestamp,
-  });
+  const {
+    currentPolicyInventory,
+    reconciliationStateInventory,
+    cutoverVerification,
+  } = inventories;
   const deletionGatePlan = buildPolicyCompatibilityDeletionGates({
     compatibilityModules,
     compatibilityDeletionGates,

@@ -6653,6 +6653,31 @@ Tasks:
 - Require rollback availability, deletion blocking, and bounded support
   diagnostics before treating cutover as ready.
 
+#### 8R.13.1 Current Runtime Read Evidence Collection
+
+Status: implemented.
+
+The execution-plan evidence bundle must derive cutover results from the current
+enabled-policy runtime read models, rather than accepting representative
+converted or unconverted policies from operator-maintained JSON. In one
+repeatable-read, read-only transaction it must:
+
+- load every enabled policy and its media-library context;
+- attach bounded active native-intent rows in batches;
+- classify converted authority from the persisted native authority state;
+- verify every converted read is active, valid, native, and independent of
+  legacy `customSignals`;
+- verify every remaining unconverted read continues through the compatibility
+  bridge; and
+- publish only counts, bounded source traces, statuses, and bounded policy-ID
+  samples for failed policies.
+
+The input boundary may still declare deletion gates and confirmations, but it
+must not determine the runtime read outcome. This makes the report portable
+across installations with different policy names, libraries, and conversion
+histories. The implementation and source research are recorded in
+[Policy Native Runtime Cutover Evidence](policy-native-runtime-cutover-evidence.md).
+
 Acceptance criteria:
 
 - Converted detailed policy reads return `source: native_intent`.

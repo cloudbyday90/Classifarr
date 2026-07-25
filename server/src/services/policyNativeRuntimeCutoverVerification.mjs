@@ -29,12 +29,22 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
 function buildRisk(riskId, message, metadata = {}) {
   return {
     riskId,
     message,
     ...metadata,
   };
+}
+
+function policyRiskMetadata(policy = {}) {
+  const policyId = Number(policy.id);
+
+  return Number.isInteger(policyId) && policyId > 0 ? { policyId } : {};
 }
 
 function evaluateConvertedRead(convertedPolicy) {
@@ -47,7 +57,7 @@ function evaluateConvertedRead(convertedPolicy) {
     risks.push(buildRisk(
       POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_POLICY_NOT_NATIVE,
       'Converted policy did not read from native intent.',
-      { sourceId: readPath.sourceId }
+      { ...policyRiskMetadata(convertedPolicy), sourceId: readPath.sourceId }
     ));
   }
 
@@ -58,7 +68,7 @@ function evaluateConvertedRead(convertedPolicy) {
     risks.push(buildRisk(
       POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_NATIVE_READ_INVALID,
       'Converted native read path is not active and valid.',
-      { statusId: readPath.statusId }
+      { ...policyRiskMetadata(convertedPolicy), statusId: readPath.statusId }
     ));
   }
 
@@ -75,11 +85,61 @@ function evaluateUnconvertedRead(unconvertedPolicy) {
     risks.push(buildRisk(
       POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.UNCONVERTED_POLICY_NOT_COMPATIBILITY,
       'Unconverted policy did not stay on compatibility bridge fallback.',
-      { sourceId: readPath.sourceId }
+      { ...policyRiskMetadata(unconvertedPolicy), sourceId: readPath.sourceId }
     ));
   }
 
   return { readPath, risks };
+}
+
+function normalizePolicyCollection(policies, fallbackPolicy) {
+  if (Array.isArray(policies)) {
+    return policies.filter(policy => Object.keys(asObject(policy)).length > 0);
+  }
+
+  return [asObject(fallbackPolicy)];
+}
+
+function buildReadAssessmentSummary(assessments = []) {
+  const normalizedAssessments = asArray(assessments);
+  const invalidAssessments = normalizedAssessments.filter(assessment => assessment.risks.length > 0);
+  const firstReadPath = normalizedAssessments[0]?.readPath;
+
+  if (!firstReadPath) {
+    return {
+      assessed: false,
+      sourceId: null,
+      statusId: null,
+      validationOk: null,
+      dependsOnCustomSignals: false,
+      trace: [],
+      assessedPolicyCount: 0,
+      invalidPolicyCount: 0,
+      sampleInvalidPolicyIds: [],
+    };
+  }
+
+  return {
+    assessed: true,
+    sourceId: firstReadPath.sourceId,
+    statusId: firstReadPath.statusId,
+    validationOk: firstReadPath.validation?.ok === true,
+    dependsOnCustomSignals: firstReadPath.dependsOnCustomSignals === true,
+    trace: firstReadPath.trace,
+    assessedPolicyCount: normalizedAssessments.length,
+    invalidPolicyCount: invalidAssessments.length,
+    sampleInvalidPolicyIds: invalidAssessments
+      .map(assessment => Number(assessment.policy?.id))
+      .filter(policyId => Number.isInteger(policyId) && policyId > 0)
+      .slice(0, 10),
+  };
+}
+
+function assessPolicyCollection(policies, evaluateRead) {
+  return policies.map(policy => ({
+    policy,
+    ...evaluateRead(policy),
+  }));
 }
 
 function determineStatusId(risks) {
@@ -115,16 +175,26 @@ function determineStatusId(risks) {
 function buildPolicyNativeRuntimeCutoverVerification({
   convertedPolicy = {},
   unconvertedPolicy = {},
+  convertedPolicies = undefined,
+  unconvertedPolicies = undefined,
   rollbackAvailable = false,
   legacyDeletionBlocked = true,
   supportDiagnosticsSafe = true,
   generatedAt = null,
 } = {}) {
-  const converted = evaluateConvertedRead(convertedPolicy);
-  const unconverted = evaluateUnconvertedRead(unconvertedPolicy);
+  const convertedAssessments = assessPolicyCollection(
+    normalizePolicyCollection(convertedPolicies, convertedPolicy),
+    evaluateConvertedRead
+  );
+  const unconvertedAssessments = assessPolicyCollection(
+    normalizePolicyCollection(unconvertedPolicies, unconvertedPolicy),
+    evaluateUnconvertedRead
+  );
+  const converted = buildReadAssessmentSummary(convertedAssessments);
+  const unconverted = buildReadAssessmentSummary(unconvertedAssessments);
   const risks = [
-    ...converted.risks,
-    ...unconverted.risks,
+    ...convertedAssessments.flatMap(assessment => assessment.risks),
+    ...unconvertedAssessments.flatMap(assessment => assessment.risks),
   ];
 
   if (rollbackAvailable !== true) {
@@ -152,20 +222,8 @@ function buildPolicyNativeRuntimeCutoverVerification({
     version: POLICY_NATIVE_RUNTIME_CUTOVER_VERIFICATION_VERSION,
     generatedAt: generatedAt || new Date().toISOString(),
     statusId: determineStatusId(risks),
-    convertedRead: {
-      sourceId: converted.readPath.sourceId,
-      statusId: converted.readPath.statusId,
-      validationOk: converted.readPath.validation?.ok === true,
-      dependsOnCustomSignals: converted.readPath.dependsOnCustomSignals === true,
-      trace: converted.readPath.trace,
-    },
-    unconvertedRead: {
-      sourceId: unconverted.readPath.sourceId,
-      statusId: unconverted.readPath.statusId,
-      validationOk: unconverted.readPath.validation?.ok === true,
-      dependsOnCustomSignals: unconverted.readPath.dependsOnCustomSignals === true,
-      trace: unconverted.readPath.trace,
-    },
+    convertedRead: converted,
+    unconvertedRead: unconverted,
     rollbackAvailable: rollbackAvailable === true,
     legacyDeletionBlocked: legacyDeletionBlocked === true,
     supportDiagnosticsSafe: supportDiagnosticsSafe === true,

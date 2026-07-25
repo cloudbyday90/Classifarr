@@ -74,6 +74,8 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundleRunner', () => {
     writeJson(fixtureRoot, 'input.json', {
       generatedAt: '2026-07-16T01:00:00.000Z',
       now: '2026-07-16T01:00:10.000Z',
+      convertedPolicy: { id: 14 },
+      unconvertedPolicies: [{ id: 15 }],
       deletionManifestApproved: true,
     });
     const evidenceBundle = {

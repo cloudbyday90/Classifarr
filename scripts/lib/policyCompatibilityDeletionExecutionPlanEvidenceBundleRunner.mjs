@@ -82,7 +82,7 @@ function usage() {
     'Usage: node scripts/generate-policy-compatibility-deletion-execution-plan-evidence-bundle.mjs [options]',
     '',
     'Options:',
-    '  --input <json>        Required cutover, gate, and safety input JSON. The current enabled-policy inventory is read from the database.',
+    '  --input <json>        Required gate and safety input JSON. Current policy inventory and native runtime reads are collected from the database.',
     '  --output <json>       Write the side-effect-free evidence bundle to this path.',
     '  --require-ready       Exit non-zero unless the current evidence bundle is ready for execution planning.',
     '  --generated-at <iso>  Optional collection timestamp for stable tests.',
@@ -145,8 +145,19 @@ function isJsonObject(value) {
 }
 
 function buildExecutionEvidenceInput(input = {}) {
+  const databaseOwnedEvidenceKeys = new Set([
+    'convertedPolicy',
+    'convertedPolicies',
+    'unconvertedPolicy',
+    'unconvertedPolicies',
+  ]);
+
   return Object.fromEntries(
-    Object.entries(input).filter(([key]) => key !== 'now' && key !== 'generatedAt')
+    Object.entries(input).filter(([key]) => (
+      key !== 'now' &&
+      key !== 'generatedAt' &&
+      !databaseOwnedEvidenceKeys.has(key)
+    ))
   );
 }
 

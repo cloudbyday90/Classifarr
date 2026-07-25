@@ -104,6 +104,70 @@ function authoritativePolicy(policyId = 14) {
   };
 }
 
+function nativeIntentRow(overrides = {}) {
+  return {
+    id: 501,
+    policy_id: 14,
+    library_id: 4,
+    schema_version: 1,
+    intent_version: 2,
+    active: true,
+    source: 'native_intent',
+    inference_state: 'inferred',
+    review_behavior: {},
+    validation_status: 'valid',
+    purpose_rule_count: 1,
+    ...overrides,
+  };
+}
+
+function createLiveRuntimeEvidenceDbClient() {
+  return {
+    query: jest.fn(async query => {
+      if (query === 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY') {
+        return { rows: [] };
+      }
+      if (query.includes('WITH active_intents')) {
+        return { rows: [authoritativePolicy()] };
+      }
+      if (query.includes('policy_native_intent_reconciliation_states')) {
+        return { rows: [{ requires_maintenance_state_count: 0 }] };
+      }
+      if (query.includes('FROM library_policies policy')) {
+        return { rows: [policy()] };
+      }
+      if (query.includes('ranked_active_intents')) {
+        return { rows: [nativeIntentRow()] };
+      }
+      if (query.includes('FROM policy_intent_rules')) {
+        return {
+          rows: [{
+            intent_id: 501,
+            intent_role: 'purpose',
+            collection: 'purpose',
+            signal_type: 'genres',
+            operator: 'require_any',
+            values: { require_any: ['Animation'] },
+            constraint_mode: 'advisory',
+            semantics: 'identity',
+            source: 'native_intent',
+            inference_state: 'inferred',
+            sort_order: 0,
+          }],
+        };
+      }
+      if (query.includes('FROM policy_intent_template_applications')) {
+        return { rows: [] };
+      }
+      if (query.includes('FROM policy_intent_validation_status')) {
+        return { rows: [{ intent_id: 501, status: 'valid', error_count: 0, warning_count: 0 }] };
+      }
+
+      throw new Error(`Unexpected query: ${query}`);
+    }),
+  };
+}
+
 function readyInputs({ generatedAt = COLLECTION_TIME } = {}) {
   return {
     currentPolicyInventory: buildPolicyCompatibilityDeletionCurrentInventory({
@@ -360,6 +424,45 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
     );
     expect(dbClient.query).not.toHaveBeenCalled();
     expect(bundle.readyForExecutionPlan).toBe(true);
+  });
+
+  test('derives runtime cutover evidence from the transaction snapshot instead of caller samples', async () => {
+    const transactionClient = createLiveRuntimeEvidenceDbClient();
+    const dbClient = {
+      query: jest.fn(),
+      withTransaction: jest.fn(async callback => callback(transactionClient)),
+    };
+
+    const bundle = await loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClient, {
+      convertedPolicy: policy({ id: 99 }),
+      unconvertedPolicy: policy({ id: 100 }),
+      rollbackAvailable: true,
+      coverage: buildCompleteCoverage(),
+      supportStanceId:
+        POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
+      backupRestoreVerified: true,
+      rollbackSupportVerified: true,
+      supportDiagnosticsVerified: true,
+      deletionManifestApproved: true,
+      now: COLLECTION_TIME,
+    });
+
+    expect(bundle.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS.READY);
+    expect(bundle.evidence.cutoverVerification).toEqual(expect.objectContaining({
+      convertedReadAssessedPolicyCount: 1,
+      convertedReadInvalidPolicyCount: 0,
+      unconvertedReadAssessedPolicyCount: 0,
+      unconvertedReadInvalidPolicyCount: 0,
+    }));
+    expect(transactionClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM library_policies policy')
+    );
+    expect(transactionClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('ranked_active_intents'),
+      [[14]]
+    );
+    expect(dbClient.query).not.toHaveBeenCalled();
   });
 
   test('rejects mutated bundle invariants and reported side effects', () => {

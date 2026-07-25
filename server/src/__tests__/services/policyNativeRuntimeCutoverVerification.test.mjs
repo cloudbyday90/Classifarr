@@ -115,6 +115,36 @@ describe('policyNativeRuntimeCutoverVerification', () => {
     ]));
   });
 
+  test('evaluates each supplied policy and does not synthesize an unconverted read', () => {
+    const verification = buildPolicyNativeRuntimeCutoverVerification({
+      convertedPolicies: [nativePolicy(), policy({ id: 16 })],
+      unconvertedPolicies: [],
+      rollbackAvailable: true,
+      legacyDeletionBlocked: true,
+      supportDiagnosticsSafe: true,
+    });
+
+    expect(verification.statusId)
+      .toBe(POLICY_NATIVE_RUNTIME_CUTOVER_STATUS_IDS.BLOCKED_BY_NATIVE_READ);
+    expect(verification.convertedRead).toEqual(expect.objectContaining({
+      assessed: true,
+      assessedPolicyCount: 2,
+      invalidPolicyCount: 1,
+      sampleInvalidPolicyIds: [16],
+    }));
+    expect(verification.unconvertedRead).toEqual(expect.objectContaining({
+      assessed: false,
+      assessedPolicyCount: 0,
+      sourceId: null,
+    }));
+    expect(verification.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_NATIVE_RUNTIME_CUTOVER_RISK_IDS.CONVERTED_POLICY_NOT_NATIVE,
+        policyId: 16,
+      }),
+    ]));
+  });
+
   test('blocks cutover when native authority is ambiguous', () => {
     const verification = buildPolicyNativeRuntimeCutoverVerification({
       convertedPolicy: nativePolicy({
