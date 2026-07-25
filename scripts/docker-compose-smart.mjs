@@ -21,6 +21,11 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import { resolve } from 'node:path';
 
+import {
+  LOCAL_DOCKER_BUILD_PROVENANCE_STATUS_IDS,
+  resolveVerifiedLocalDockerBuildProvenance,
+} from './lib/localDockerBuildProvenance.mjs';
+
 const VALID_BUILDS = new Set(['multi', 'generic', 'avx', 'avx2']);
 const COMPOSE_COMMANDS = new Set([
   'attach',
@@ -209,6 +214,19 @@ function injectBuildFlagForUp(args, commandIndex) {
   return nextArgs;
 }
 
+function commandBuildsImage(args, commandIndex) {
+  if (commandIndex === -1) {
+    return false;
+  }
+
+  const composeCommand = args[commandIndex];
+  if (composeCommand === 'build') {
+    return true;
+  }
+
+  return composeCommand === 'up' && !args.includes('--no-build');
+}
+
 function parseCliArgs(rawArgs) {
   const args = [...rawArgs];
   const dryRunIndex = args.indexOf('--dry-run');
@@ -218,11 +236,41 @@ function parseCliArgs(rawArgs) {
     args.splice(dryRunIndex, 1);
   }
 
-  return { args, dryRun };
+  const requireProvenanceIndex = args.indexOf('--require-provenance');
+  const requireProvenance = requireProvenanceIndex !== -1;
+
+  if (requireProvenance) {
+    args.splice(requireProvenanceIndex, 1);
+  }
+
+  return { args, dryRun, requireProvenance };
+}
+
+function resolveBuildProvenance({ commandBuilds, requireProvenance }) {
+  if (!commandBuilds) {
+    if (requireProvenance) {
+      throw new Error('--require-provenance requires a Compose build or up command.');
+    }
+    return null;
+  }
+
+  const provenance = resolveVerifiedLocalDockerBuildProvenance();
+  if (
+    requireProvenance &&
+    provenance.statusId !== LOCAL_DOCKER_BUILD_PROVENANCE_STATUS_IDS.VERIFIED
+  ) {
+    throw new Error(`Cannot build a provenance-verified image: ${provenance.message}`);
+  }
+
+  return provenance;
 }
 
 function main() {
-  const { args: rawComposeArgs, dryRun } = parseCliArgs(process.argv.slice(2));
+  const {
+    args: rawComposeArgs,
+    dryRun,
+    requireProvenance,
+  } = parseCliArgs(process.argv.slice(2));
   const composeArgs = rawComposeArgs.length > 0 ? rawComposeArgs : ['up', '-d'];
   const commandIndex = findComposeCommandIndex(composeArgs);
   const adjustedComposeArgs = injectBuildFlagForUp(composeArgs, commandIndex);
@@ -230,11 +278,29 @@ function main() {
   const cpu = detectCpuCapabilities();
   const buildOverride = resolveBuildOverride();
   const resolution = resolvePgvectorBuild(cpu, buildOverride);
+  let provenance;
+
+  try {
+    provenance = resolveBuildProvenance({
+      commandBuilds: commandBuildsImage(adjustedComposeArgs, commandIndex),
+      requireProvenance,
+    });
+  } catch (error) {
+    console.error(`[smart-compose] ${error.message}`);
+    process.exit(1);
+  }
 
   console.log(
     `[smart-compose] CPU detection: avx=${cpu.hasAvx ?? 'unknown'} avx2=${cpu.hasAvx2 ?? 'unknown'} source=${cpu.source}`
   );
   console.log(`[smart-compose] Using PGVECTOR_BUILD=${resolution.build} (${resolution.reason})`);
+  if (provenance?.revision) {
+    console.log(`[smart-compose] Using VCS_REF=${provenance.revision} (clean checkout)`);
+  } else if (provenance) {
+    console.warn(
+      `[smart-compose] VCS_REF=unknown: ${provenance.message} Maintenance evidence will refuse this image.`
+    );
+  }
   console.log(`[smart-compose] Running: docker compose ${adjustedComposeArgs.join(' ')}`);
 
   if (dryRun) {
@@ -245,7 +311,8 @@ function main() {
     stdio: 'inherit',
     env: {
       ...process.env,
-      PGVECTOR_BUILD: resolution.build
+      PGVECTOR_BUILD: resolution.build,
+      ...(provenance ? { VCS_REF: provenance.revision || 'unknown' } : {}),
     }
   });
 

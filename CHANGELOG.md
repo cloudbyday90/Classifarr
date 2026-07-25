@@ -519,6 +519,12 @@ unchanged operator or runtime outcome.
   socket or application-data mount, writes only its requested temporary
   evidence output, and blocks before database contact when checkout or image
   provenance is unsafe. Approval and removal remain separate controlled steps.
+- **Automatic Verified Local Evidence Builds** - smart local Compose builds now
+  derive their image revision from a clean Git checkout rather than requiring a
+  manual build argument. The new maintenance rebuild command rejects dirty or
+  unverifiable source before Docker work, rebuilds Classifarr without cache,
+  recreates it, and waits for health; ordinary dirty development builds remain
+  explicitly labeled unverified so evidence collection fails closed.
 - **Evidence-Bound Compatibility Deletion Gate** - controlled compatibility
   removal now requires a current, fingerprint-valid execution-plan artifact and
   timestamped preflight evidence bound to that exact artifact. Stale, detached,

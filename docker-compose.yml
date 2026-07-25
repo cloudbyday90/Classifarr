@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
       args:
         PGVECTOR_BUILD: ${PGVECTOR_BUILD:-multi}
+        VCS_REF: ${VCS_REF:-unknown}
     image: ghcr.io/cloudbyday90/classifarr:latest
     container_name: classifarr
     user: "1000:1000"

@@ -126,10 +126,13 @@ runner starts a helper or reaches the database. Build a reviewed local image
 with the exact checkout revision when maintenance evidence is needed:
 
 ```powershell
-$revision = git rev-parse HEAD
-docker compose build --build-arg "VCS_REF=$revision" classifarr
-docker compose up -d --no-deps classifarr
+npm run docker:smart:provenance-rebuild
 ```
+
+The command verifies the checkout before it asks Docker to build or recreate
+the service, builds without cache, and waits for the local health check. It
+never labels a dirty checkout with its nearest commit. See [Local Docker Build
+Provenance](local-docker-build-provenance.md) for the exact contract.
 
 Exit outcomes:
 
@@ -157,6 +160,8 @@ Implemented:
   statement-timeout settings.
 - Focused tests for ready, blocked, dirty-checkout, failed-Git-status,
   provenance-mismatch, invalid-output, and inconsistent-helper outcomes.
+- A provenance-verified local Compose rebuild path that derives `VCS_REF` from
+  a clean checkout before rebuilding and recreating the application service.
 
 Not implemented:
 
@@ -168,7 +173,7 @@ Not implemented:
 
 ## Next Step
 
-Proceed with **8R.16.2: Preflight Evidence Collection Boundary**. It should
-collect only machine-verifiable execution-gate preflight state, preserve the
-same provenance and read-only containment model, and leave backup/restore
-attestation plus named-actor approval as explicit, separate gate inputs.
+Run the maintenance command against a revision-matched local or release image.
+If its evidence bundle remains blocked, use the stable blocked categories to
+regenerate only the missing approved execution, authorization, review, or
+validation inputs; do not bypass those later gates.

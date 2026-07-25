@@ -164,6 +164,14 @@ For local source builds from this repo, prefer the smart wrapper so the pgvector
 npm run docker:smart:up
 ```
 
+When a clean local checkout must produce a provenance-verified image for
+maintenance evidence, use the noninteractive no-cache rebuild instead. It
+derives the image revision from Git, recreates Classifarr, and waits for health:
+
+```bash
+npm run docker:smart:provenance-rebuild
+```
+
 Open:
 
 - `http://localhost:21324`

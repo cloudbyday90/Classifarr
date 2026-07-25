@@ -8311,6 +8311,14 @@ Tasks:
   - Completed: isolated public-command coverage proves a shell launched from
     another directory cannot combine that caller's artifacts or outputs with
     the selected checkout's source, path-state, and reference-scan evidence.
+- **8R.36.4 Provenance-Verified Local Evidence Builds**
+  - Completed: smart Compose now derives `VCS_REF` only from a clean local
+    checkout for build-producing commands. Dirty or unverifiable source is
+    visibly labeled `unknown`, never mislabeled as the nearest commit.
+  - Completed: `docker:smart:provenance-rebuild` rejects unverifiable source
+    before Docker work, then performs a no-cache build, forced service
+    recreation, and health wait so the maintenance runner can verify the
+    running image automatically.
 - Require the current compatibility-deletion execution-plan artifact and bind
   its fingerprint through authorization, completion evidence, and replay.
 - Derive manifest path state from the current checkout.
@@ -8359,6 +8367,10 @@ Implementation status:
 - Task 8R.36.3 is implemented. Relative evidence paths are now bound to the
   requested checkout, preventing cross-checkout artifact mixing during
   regeneration while preserving explicit absolute-path support.
+- Task 8R.36.4 is implemented. The local smart Compose path now provides a
+  clean-checkout, revision-labeled image without manual build arguments. Its
+  strict maintenance command refuses dirty source before rebuilding, while the
+  evidence runner retains its exact label-to-checkout verification boundary.
 
 ## Phase 8R Work Sequence
 
