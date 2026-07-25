@@ -43,6 +43,9 @@ import {
   applyPolicyControlledCompatibilityPathRemoval,
   validatePolicyControlledCompatibilityPathRemovalApply,
 } from '../../services/policyControlledCompatibilityPathRemovalApply.mjs';
+import {
+  buildReadyPolicyCompatibilityDeletionReleasePrerequisiteEvidence,
+} from '../helpers/policyCompatibilityDeletionReleasePrerequisiteEvidence.mjs';
 
 function buildCompleteCoverage() {
   return Object.fromEntries(
@@ -152,15 +155,18 @@ function readyReconciliationStateInventory() {
 }
 
 function readyReadiness() {
-  return buildPolicyCompatibilityDeletionReadiness({
+  const evidence = {
     currentPolicyInventory: readyCurrentPolicyInventory(),
     reconciliationStateInventory: readyReconciliationStateInventory(),
     cutoverVerification: readyCutover(),
     deletionGatePlan: readyDeletionGates(),
     backupRestoreEvidence: buildReadyBackupRestoreVerificationEvidence(),
-    rollbackSupportVerified: true,
-    supportDiagnosticsVerified: true,
-    deletionManifestApproved: true,
+  };
+
+  return buildPolicyCompatibilityDeletionReadiness({
+    ...evidence,
+    releasePrerequisiteEvidence:
+      buildReadyPolicyCompatibilityDeletionReleasePrerequisiteEvidence(evidence),
   });
 }
 

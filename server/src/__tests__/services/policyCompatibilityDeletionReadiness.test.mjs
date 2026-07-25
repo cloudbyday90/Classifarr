@@ -13,6 +13,11 @@ import {
   validatePolicyCompatibilityDeletionReadiness,
 } from '../../services/policyCompatibilityDeletionReadiness.mjs';
 import {
+  buildReadyPolicyCompatibilityDeletionReleasePrerequisiteEvidence,
+} from '../helpers/policyCompatibilityDeletionReleasePrerequisiteEvidence.mjs';
+
+const RELEASE_PREREQUISITE_TIME = '2026-07-25T12:00:00.000Z';
+import {
   buildPolicyCompatibilityDeletionCurrentInventory,
 } from '../../services/policyCompatibilityDeletionCurrentInventory.mjs';
 import {
@@ -152,15 +157,21 @@ function readyBackupRestoreEvidence(overrides = {}) {
 }
 
 function readyReadiness(overrides = {}) {
-  return buildPolicyCompatibilityDeletionReadiness({
+  const evidence = {
     currentPolicyInventory: readyCurrentPolicyInventory(),
     reconciliationStateInventory: readyReconciliationStateInventory(),
     cutoverVerification: readyCutover(),
     deletionGatePlan: readyDeletionGates(),
     backupRestoreEvidence: readyBackupRestoreEvidence(),
-    rollbackSupportVerified: true,
-    supportDiagnosticsVerified: true,
-    deletionManifestApproved: true,
+  };
+
+  return buildPolicyCompatibilityDeletionReadiness({
+    ...evidence,
+    releasePrerequisiteEvidence:
+      buildReadyPolicyCompatibilityDeletionReleasePrerequisiteEvidence(evidence, {
+        generatedAt: RELEASE_PREREQUISITE_TIME,
+      }),
+    now: RELEASE_PREREQUISITE_TIME,
     ...overrides,
   });
 }
@@ -253,9 +264,6 @@ describe('policyCompatibilityDeletionReadiness', () => {
       cutoverVerification: readyCutover(),
       deletionGatePlan: readyDeletionGates(),
       backupRestoreEvidence: readyBackupRestoreEvidence(),
-      rollbackSupportVerified: true,
-      supportDiagnosticsVerified: true,
-      deletionManifestApproved: true,
     });
 
     expect(readiness.statusId)
@@ -345,9 +353,6 @@ describe('policyCompatibilityDeletionReadiness', () => {
       cutoverVerification: readyCutover(),
       deletionGatePlan: readyDeletionGates(),
       backupRestoreEvidence: buildPolicyBackupRestoreVerificationEvidence(),
-      rollbackSupportVerified: false,
-      supportDiagnosticsVerified: false,
-      deletionManifestApproved: false,
     });
 
     expect(readiness.statusId)

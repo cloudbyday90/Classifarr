@@ -324,14 +324,17 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     designDocPaths: [
       'docs/architecture/policy-compatibility-deletion-readiness.md',
       'docs/architecture/policy-compatibility-deletion-current-inventory.md',
+      'docs/architecture/policy-compatibility-deletion-release-prerequisite-evidence-contracts.md',
     ],
     contractPaths: [
       'server/src/services/policyCompatibilityDeletionReadiness.mjs',
+      'server/src/services/policyCompatibilityDeletionReleasePrerequisiteEvidence.mjs',
       'server/src/services/policyCompatibilityDeletionCurrentInventory.mjs',
       'scripts/generate-policy-compatibility-deletion-current-inventory.mjs',
     ],
     testPaths: [
       'server/src/__tests__/services/policyCompatibilityDeletionReadiness.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityDeletionReleasePrerequisiteEvidence.test.mjs',
       'server/src/__tests__/services/policyCompatibilityDeletionCurrentInventory.test.mjs',
     ],
   },
@@ -347,6 +350,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     contractPaths: [
       'server/src/services/policyCompatibilityDeletionExecutionPlan.mjs',
       'server/src/services/policyCompatibilityDeletionExecutionPlanEvidenceBundle.mjs',
+      'scripts/lib/policyCompatibilityDeletionExecutionPlanEvidenceBundleRunner.mjs',
       'server/src/services/policyCompatibilityDeletionExecutionPlanArtifact.mjs',
       'server/src/services/policyCompatibilityDeletionExecutionPlanArtifactFingerprint.mjs',
       'scripts/generate-policy-compatibility-deletion-execution-plan-evidence-bundle.mjs',
@@ -355,6 +359,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     testPaths: [
       'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlan.test.mjs',
       'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanEvidenceBundle.test.mjs',
+      'server/src/__tests__/scripts/policyCompatibilityDeletionExecutionPlanEvidenceBundleRunner.test.mjs',
       'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifact.test.mjs',
       'server/src/__tests__/services/policyCompatibilityDeletionExecutionPlanArtifactFingerprint.test.mjs',
     ],

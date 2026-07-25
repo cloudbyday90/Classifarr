@@ -82,9 +82,7 @@ describe('policyCompatibilityDeletionEvidenceMaintenanceRunner', () => {
     fixtureRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), 'classifarr-evidence-maintenance-runner-')
     );
-    writeJson(path.join(fixtureRoot, 'input.json'), {
-      deletionManifestApproved: true,
-    });
+    writeJson(path.join(fixtureRoot, 'input.json'), {});
     stderr = [];
     stdout = [];
   });

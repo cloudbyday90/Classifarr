@@ -53,6 +53,9 @@ import {
 import {
   resolvePolicyStorageClosureExecutionPlanSource,
 } from '../../services/policyStorageClosureExecutionPlanSource.mjs';
+import {
+  buildReadyPolicyCompatibilityDeletionReleasePrerequisiteEvidence,
+} from '../helpers/policyCompatibilityDeletionReleasePrerequisiteEvidence.mjs';
 
 const GENERATOR_PATH = fileURLToPath(
   new URL(
@@ -91,7 +94,7 @@ function writeJson(rootPath, fileName, value) {
 }
 
 function readyEvidenceBundle() {
-  return buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
+  const evidence = {
     currentPolicyInventory: {
       version: POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_VERSION,
       generatedAt: COLLECTION_TIME,
@@ -136,9 +139,14 @@ function readyEvidenceBundle() {
       validation: { ok: true },
     },
     backupRestoreEvidence: readyBackupRestoreEvidence(),
-    rollbackSupportVerified: true,
-    supportDiagnosticsVerified: true,
-    deletionManifestApproved: true,
+  };
+
+  return buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
+    ...evidence,
+    releasePrerequisiteEvidence:
+      buildReadyPolicyCompatibilityDeletionReleasePrerequisiteEvidence(evidence, {
+        generatedAt: COLLECTION_TIME,
+      }),
     generatedAt: COLLECTION_TIME,
     now: COLLECTION_TIME,
   });

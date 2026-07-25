@@ -25,6 +25,9 @@ import {
 import {
   buildPolicyBackupRestoreVerificationEvidence,
 } from '../../services/policyBackupRestoreVerificationEvidence.mjs';
+import {
+  buildReadyPolicyCompatibilityDeletionReleasePrerequisiteEvidence,
+} from '../helpers/policyCompatibilityDeletionReleasePrerequisiteEvidence.mjs';
 
 const COLLECTION_TIME = '2026-07-14T20:00:00.000Z';
 
@@ -251,11 +254,14 @@ function readyInputs({ generatedAt = COLLECTION_TIME } = {}) {
 }
 
 function readyBundle(overrides = {}) {
+  const inputs = readyInputs();
+
   return buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
-    ...readyInputs(),
-    rollbackSupportVerified: true,
-    supportDiagnosticsVerified: true,
-    deletionManifestApproved: true,
+    ...inputs,
+    releasePrerequisiteEvidence:
+      buildReadyPolicyCompatibilityDeletionReleasePrerequisiteEvidence(inputs, {
+        generatedAt: COLLECTION_TIME,
+      }),
     generatedAt: COLLECTION_TIME,
     now: COLLECTION_TIME,
     ...overrides,
@@ -295,15 +301,30 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
     expect(Object.values(bundle.sideEffects).some(Boolean)).toBe(false);
   });
 
+  test('keeps legacy release booleans fail-closed', () => {
+    const bundle = buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
+      ...readyInputs(),
+      rollbackSupportVerified: true,
+      supportDiagnosticsVerified: true,
+      deletionManifestApproved: true,
+      generatedAt: COLLECTION_TIME,
+      now: COLLECTION_TIME,
+    });
+
+    expect(bundle.readyForExecutionPlan).toBe(false);
+    expect(bundle.deletionReadiness.safetyConfirmations).toEqual(expect.objectContaining({
+      rollbackSupportVerified: false,
+      supportDiagnosticsVerified: false,
+      deletionManifestApproved: false,
+    }));
+  });
+
   test('blocks evidence that was collected outside one bounded observation window', () => {
     const inputs = readyInputs();
     inputs.deletionGatePlan.generatedAt = '2026-07-14T19:59:00.000Z';
 
     const bundle = buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
       ...inputs,
-      rollbackSupportVerified: true,
-      supportDiagnosticsVerified: true,
-      deletionManifestApproved: true,
       generatedAt: COLLECTION_TIME,
       now: COLLECTION_TIME,
     });
@@ -324,9 +345,6 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
     const staleTime = '2026-07-14T19:54:59.999Z';
     const bundle = buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
       ...readyInputs({ generatedAt: staleTime }),
-      rollbackSupportVerified: true,
-      supportDiagnosticsVerified: true,
-      deletionManifestApproved: true,
       generatedAt: staleTime,
       now: COLLECTION_TIME,
     });
@@ -347,9 +365,6 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
 
     const bundle = buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
       ...inputs,
-      rollbackSupportVerified: true,
-      supportDiagnosticsVerified: true,
-      deletionManifestApproved: true,
       generatedAt: COLLECTION_TIME,
       now: COLLECTION_TIME,
     });
@@ -371,9 +386,6 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
 
     const bundle = buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
       ...inputs,
-      rollbackSupportVerified: true,
-      supportDiagnosticsVerified: true,
-      deletionManifestApproved: true,
       generatedAt: COLLECTION_TIME,
       now: COLLECTION_TIME,
     });
@@ -399,9 +411,6 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
 
     const bundle = await loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClient, {
       coverage: buildCompleteCoverage(),
-      rollbackSupportVerified: true,
-      supportDiagnosticsVerified: true,
-      deletionManifestApproved: true,
       now: COLLECTION_TIME,
     });
 
@@ -434,9 +443,6 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
 
     const bundle = await loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClient, {
       coverage: buildCompleteCoverage(),
-      rollbackSupportVerified: true,
-      supportDiagnosticsVerified: true,
-      deletionManifestApproved: true,
       now: COLLECTION_TIME,
     });
 
@@ -466,9 +472,6 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
       supportStanceId:
         POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
       backupRestoreVerified: false,
-      rollbackSupportVerified: true,
-      supportDiagnosticsVerified: true,
-      deletionManifestApproved: true,
       now: COLLECTION_TIME,
     });
 
@@ -546,5 +549,28 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
       POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
         .SIDE_EFFECT_PERFORMED,
     ]));
+  });
+
+  test('rejects a ready bundle whose retained release-prerequisite contract is altered', () => {
+    const bundle = readyBundle();
+    const validation = validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
+      ...bundle,
+      evidence: {
+        ...bundle.evidence,
+        releasePrerequisiteEvidence: {
+          ...bundle.evidence.releasePrerequisiteEvidence,
+          contextFingerprint: {
+            ...bundle.evidence.releasePrerequisiteEvidence.contextFingerprint,
+            fingerprint: '0'.repeat(64),
+          },
+        },
+      },
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues.map(issue => issue.riskId)).toContain(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+        .RELEASE_PREREQUISITE_EVIDENCE_NOT_READY
+    );
   });
 });

@@ -175,6 +175,14 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Bound Release-Prerequisite Evidence** - compatibility-code retirement now
+  requires one fresh, versioned, subject-bound attestation contract tied to the
+  current deletion-readiness context. Legacy approval booleans and unsupported
+  CLI fields are rejected, while stale, malformed, mismatched, duplicated, or
+  unrecognized-subject-type evidence remains blocked. Backup/restore evidence
+  stays database-owned, and this release-only contract cannot alter routine
+  native policy automation or perform a destructive action.
+
 - **Actionable Compatibility-Deletion Readiness** - compatibility maintenance
   outcomes now distinguish ready native policy automation from blocked
   compatibility-code retirement release prerequisites. The bounded readout

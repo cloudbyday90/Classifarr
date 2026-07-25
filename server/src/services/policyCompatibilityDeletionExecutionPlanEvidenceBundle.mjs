@@ -49,6 +49,10 @@ import {
   POLICY_BACKUP_RESTORE_VERIFICATION_STATUS_IDS,
   loadPolicyBackupRestoreVerificationEvidence,
 } from './policyBackupRestoreVerificationEvidence.mjs';
+import {
+  buildPolicyCompatibilityDeletionReleasePrerequisiteContextFingerprint,
+  evaluatePolicyCompatibilityDeletionReleasePrerequisiteEvidence,
+} from './policyCompatibilityDeletionReleasePrerequisiteEvidence.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_VERSION =
   'policy.compatibility_deletion_execution_plan_evidence_bundle.v1';
@@ -80,6 +84,8 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS = Ob
   READINESS_INVENTORY_MISMATCH: 'readiness_inventory_mismatch',
   READINESS_RECONCILIATION_STATE_INVENTORY_MISMATCH:
     'readiness_reconciliation_state_inventory_mismatch',
+  RELEASE_PREREQUISITE_EVIDENCE_NOT_READY:
+    'release_prerequisite_evidence_not_ready',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
   READY_STATE_MISMATCH: 'ready_state_mismatch',
   UNKNOWN_STATUS: 'unknown_status',
@@ -174,6 +180,34 @@ function buildBackupRestoreEvidenceSummary(evidence = {}) {
     validationOk: value.validation?.ok === true,
     backupRestoreVerified: value.backupRestoreVerified === true,
     latestVerifiedAt: value.verification?.latestVerifiedAt || null,
+  };
+}
+
+function buildReleasePrerequisiteEvidenceSummary(evidence = {}) {
+  const value = asObject(evidence);
+  const contract = asObject(value.evidence);
+
+  return {
+    version: contract.version || null,
+    generatedAt: contract.generatedAt || null,
+    subject: contract.subject || null,
+    contextFingerprint: contract.contextFingerprint || null,
+    attestations: Array.isArray(contract.attestations) ? contract.attestations : [],
+    statusId: value.statusId || null,
+    ready: value.ready === true,
+    riskCount: Number.isInteger(value.riskCount) ? value.riskCount : null,
+  };
+}
+
+function buildReleasePrerequisiteEvidenceContract(evidence = {}) {
+  const value = asObject(evidence);
+
+  return {
+    version: value.version || null,
+    generatedAt: value.generatedAt || null,
+    subject: value.subject || null,
+    contextFingerprint: value.contextFingerprint || null,
+    attestations: Array.isArray(value.attestations) ? value.attestations : [],
   };
 }
 
@@ -559,9 +593,7 @@ function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
   deletionGatePlan = null,
   residualCompatibilityReferences = [],
   backupRestoreEvidence = null,
-  rollbackSupportVerified = false,
-  supportDiagnosticsVerified = false,
-  deletionManifestApproved = false,
+  releasePrerequisiteEvidence = null,
   generatedAt = null,
   now = null,
   maxEvidenceAgeMs = DEFAULT_MAX_EVIDENCE_AGE_MS,
@@ -581,9 +613,8 @@ function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
     deletionGatePlan,
     residualCompatibilityReferences,
     backupRestoreEvidence,
-    rollbackSupportVerified,
-    supportDiagnosticsVerified,
-    deletionManifestApproved,
+    releasePrerequisiteEvidence,
+    now: generatedTimestamp.value,
   });
   const risks = [
     ...buildTimestampRisks({
@@ -621,6 +652,9 @@ function buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
       cutoverVerification: buildEvidenceSummary(cutoverVerification),
       deletionGatePlan: buildEvidenceSummary(deletionGatePlan),
       backupRestoreEvidence: buildBackupRestoreEvidenceSummary(backupRestoreEvidence),
+      releasePrerequisiteEvidence: buildReleasePrerequisiteEvidenceSummary(
+        readiness.releasePrerequisiteEvidence
+      ),
     },
     deletionReadiness: readiness,
     deletionGatePlan: asObject(deletionGatePlan),
@@ -668,6 +702,7 @@ function validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle(bundle =
   const cutover = asObject(evidence.cutoverVerification);
   const gateEvidence = asObject(evidence.deletionGatePlan);
   const backupRestoreEvidence = asObject(evidence.backupRestoreEvidence);
+  const releasePrerequisiteEvidence = asObject(evidence.releasePrerequisiteEvidence);
   const gates = asObject(bundle.deletionGatePlan);
   const readiness = asObject(bundle.deletionReadiness);
 
@@ -790,6 +825,31 @@ function validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle(bundle =
     ));
   }
 
+  const releasePrerequisiteContextFingerprint =
+    buildPolicyCompatibilityDeletionReleasePrerequisiteContextFingerprint({
+      backupRestoreEvidence,
+      currentPolicyInventory: inventory,
+      cutoverVerification: cutover,
+      deletionGatePlan: gateEvidence,
+      reconciliationStateInventory,
+      residualCompatibilityReferences: readiness.residualCompatibilityReferences,
+    });
+  const releasePrerequisiteEvaluation =
+    evaluatePolicyCompatibilityDeletionReleasePrerequisiteEvidence({
+      evidence: buildReleasePrerequisiteEvidenceContract(releasePrerequisiteEvidence),
+      expectedContextFingerprint: releasePrerequisiteContextFingerprint,
+      maxEvidenceAgeMs: bundle.freshness?.maximumEvidenceAgeMs,
+      now: bundle.generatedAt,
+    });
+
+  if (!releasePrerequisiteEvaluation.ready) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_RISK_IDS
+        .RELEASE_PREREQUISITE_EVIDENCE_NOT_READY,
+      'Execution-plan evidence bundle must retain current, context-bound release-prerequisite evidence.'
+    ));
+  }
+
   if (
     gates.unconvertedPolicyCount !== inventory.unconvertedPolicyCount ||
     readiness.currentPolicyInventory?.unconvertedPolicyCount !==
@@ -837,9 +897,7 @@ async function loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClie
   compatibilityDeletionGates = undefined,
   coverage = {},
   residualCompatibilityReferences = [],
-  rollbackSupportVerified = false,
-  supportDiagnosticsVerified = false,
-  deletionManifestApproved = false,
+  releasePrerequisiteEvidence = null,
   generatedAt = null,
   now = null,
   maxEvidenceAgeMs = DEFAULT_MAX_EVIDENCE_AGE_MS,
@@ -909,9 +967,7 @@ async function loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClie
     deletionGatePlan,
     residualCompatibilityReferences,
     backupRestoreEvidence,
-    rollbackSupportVerified,
-    supportDiagnosticsVerified,
-    deletionManifestApproved,
+    releasePrerequisiteEvidence,
     generatedAt: collectionTimestamp,
     now,
     maxEvidenceAgeMs,

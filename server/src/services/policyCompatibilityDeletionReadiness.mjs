@@ -21,6 +21,10 @@ import {
   POLICY_BACKUP_RESTORE_VERIFICATION_STATUS_IDS,
   buildPolicyBackupRestoreVerificationEvidence,
 } from './policyBackupRestoreVerificationEvidence.mjs';
+import {
+  buildPolicyCompatibilityDeletionReleasePrerequisiteContextFingerprint,
+  evaluatePolicyCompatibilityDeletionReleasePrerequisiteEvidence,
+} from './policyCompatibilityDeletionReleasePrerequisiteEvidence.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_READINESS_VERSION =
   'policy.compatibility_deletion_readiness.v1';
@@ -67,6 +71,8 @@ const POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS = Object.freeze({
     'ready_reconciliation_state_gate_mismatch',
   READY_RESIDUAL_REFERENCES_INVALID: 'ready_residual_references_invalid',
   READY_BACKUP_RESTORE_EVIDENCE_INVALID: 'ready_backup_restore_evidence_invalid',
+  READY_RELEASE_PREREQUISITE_EVIDENCE_INVALID:
+    'ready_release_prerequisite_evidence_invalid',
   READY_SAFETY_CONFIRMATIONS_INVALID: 'ready_safety_confirmations_invalid',
   DELETION_POLICY_MISMATCH: 'deletion_policy_mismatch',
   NEXT_STEP_MISMATCH: 'next_step_mismatch',
@@ -305,9 +311,13 @@ function evaluateResidualReferences(residualCompatibilityReferences = []) {
 
 function evaluateSafetyConfirmations({
   backupRestoreEvidence,
-  rollbackSupportVerified,
-  supportDiagnosticsVerified,
-  deletionManifestApproved,
+  currentPolicyInventory,
+  cutoverVerification,
+  deletionGatePlan,
+  reconciliationStateInventory,
+  releasePrerequisiteEvidence,
+  residualCompatibilityReferences,
+  now,
 }) {
   const risks = [];
   const recoveryEvidence = backupRestoreEvidence &&
@@ -331,21 +341,37 @@ function evaluateSafetyConfirmations({
     ));
   }
 
-  if (rollbackSupportVerified !== true) {
+  const releasePrerequisiteContextFingerprint =
+    buildPolicyCompatibilityDeletionReleasePrerequisiteContextFingerprint({
+      backupRestoreEvidence: recoveryEvidence,
+      currentPolicyInventory,
+      cutoverVerification,
+      deletionGatePlan,
+      reconciliationStateInventory,
+      residualCompatibilityReferences,
+    });
+  const releasePrerequisiteEvaluation =
+    evaluatePolicyCompatibilityDeletionReleasePrerequisiteEvidence({
+      evidence: releasePrerequisiteEvidence,
+      expectedContextFingerprint: releasePrerequisiteContextFingerprint,
+      now,
+    });
+
+  if (releasePrerequisiteEvaluation.prerequisites.rollbackSupportVerified !== true) {
     risks.push(buildRisk(
       POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.ROLLBACK_SUPPORT_NOT_VERIFIED,
       'Compatibility path deletion requires verified rollback support or an approved post-window stance.'
     ));
   }
 
-  if (supportDiagnosticsVerified !== true) {
+  if (releasePrerequisiteEvaluation.prerequisites.supportDiagnosticsVerified !== true) {
     risks.push(buildRisk(
       POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.SUPPORT_DIAGNOSTICS_NOT_VERIFIED,
       'Compatibility path deletion requires bounded support diagnostics for converted native intent.'
     ));
   }
 
-  if (deletionManifestApproved !== true) {
+  if (releasePrerequisiteEvaluation.prerequisites.deletionManifestApproved !== true) {
     risks.push(buildRisk(
       POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS.DELETION_MANIFEST_NOT_APPROVED,
       'Compatibility path deletion requires an approved deletion manifest before execution planning.'
@@ -355,6 +381,8 @@ function evaluateSafetyConfirmations({
   return {
     backupRestoreEvidence: recoveryEvidence,
     backupRestoreVerified,
+    releasePrerequisiteContextFingerprint,
+    releasePrerequisiteEvaluation,
     risks,
   };
 }
@@ -424,9 +452,8 @@ function buildPolicyCompatibilityDeletionReadiness({
   deletionGatePlan = null,
   residualCompatibilityReferences = [],
   backupRestoreEvidence = null,
-  rollbackSupportVerified = false,
-  supportDiagnosticsVerified = false,
-  deletionManifestApproved = false,
+  releasePrerequisiteEvidence = null,
+  now = null,
 } = {}) {
   const inventory = evaluateCurrentPolicyInventory(currentPolicyInventory);
   const reconciliationState = evaluateReconciliationStateInventory(
@@ -437,9 +464,13 @@ function buildPolicyCompatibilityDeletionReadiness({
   const residual = evaluateResidualReferences(residualCompatibilityReferences);
   const safety = evaluateSafetyConfirmations({
     backupRestoreEvidence,
-    rollbackSupportVerified,
-    supportDiagnosticsVerified,
-    deletionManifestApproved,
+    currentPolicyInventory: inventory.currentPolicyInventory,
+    cutoverVerification: cutover.cutoverVerification,
+    deletionGatePlan: deletionGates.deletionGatePlan,
+    reconciliationStateInventory: reconciliationState.reconciliationStateInventory,
+    releasePrerequisiteEvidence,
+    residualCompatibilityReferences: residual.residualCompatibilityReferences,
+    now,
   });
   const risks = [
     ...inventory.risks,
@@ -513,11 +544,16 @@ function buildPolicyCompatibilityDeletionReadiness({
         safety.backupRestoreEvidence.verification?.latestVerifiedAt || null,
     },
     residualCompatibilityReferences: residual.residualCompatibilityReferences,
+    releasePrerequisiteContextFingerprint: safety.releasePrerequisiteContextFingerprint,
+    releasePrerequisiteEvidence: safety.releasePrerequisiteEvaluation,
     safetyConfirmations: {
       backupRestoreVerified: safety.backupRestoreVerified,
-      rollbackSupportVerified: rollbackSupportVerified === true,
-      supportDiagnosticsVerified: supportDiagnosticsVerified === true,
-      deletionManifestApproved: deletionManifestApproved === true,
+      rollbackSupportVerified:
+        safety.releasePrerequisiteEvaluation.prerequisites.rollbackSupportVerified,
+      supportDiagnosticsVerified:
+        safety.releasePrerequisiteEvaluation.prerequisites.supportDiagnosticsVerified,
+      deletionManifestApproved:
+        safety.releasePrerequisiteEvaluation.prerequisites.deletionManifestApproved,
     },
     riskCount: risks.length,
     risks,
@@ -590,6 +626,28 @@ function isReadyBackupRestoreEvidenceSummary(evidence = {}) {
     typeof evidence.latestVerifiedAt === 'string' && evidence.latestVerifiedAt.length > 0;
 }
 
+function isReadyReleasePrerequisiteEvidenceSummary(readiness = {}) {
+  const expectedContextFingerprint =
+    buildPolicyCompatibilityDeletionReleasePrerequisiteContextFingerprint({
+      backupRestoreEvidence: readiness.backupRestoreEvidence,
+      currentPolicyInventory: readiness.currentPolicyInventory,
+      cutoverVerification: readiness.cutover,
+      deletionGatePlan: readiness.deletionGates,
+      reconciliationStateInventory: readiness.reconciliationStateInventory,
+      residualCompatibilityReferences: readiness.residualCompatibilityReferences,
+    });
+  const evaluation = evaluatePolicyCompatibilityDeletionReleasePrerequisiteEvidence({
+    evidence: readiness.releasePrerequisiteEvidence?.evidence,
+    expectedContextFingerprint,
+    now: readiness.releasePrerequisiteEvidence?.generatedAt,
+  });
+
+  return readiness.releasePrerequisiteEvidence?.statusId === 'ready' &&
+    readiness.releasePrerequisiteEvidence?.ready === true &&
+    readiness.releasePrerequisiteEvidence?.riskCount === 0 &&
+    evaluation.ready === true;
+}
+
 function validateReadyEvidenceSummaries(readiness, issues) {
   const isReadyClaim = readiness.statusId ===
     POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS.READY_FOR_DELETION_EXECUTION_PLAN ||
@@ -643,6 +701,14 @@ function validateReadyEvidenceSummaries(readiness, issues) {
       POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
         .READY_BACKUP_RESTORE_EVIDENCE_INVALID,
       'A ready compatibility deletion report requires current validated database-owned backup restore evidence.'
+    ));
+  }
+
+  if (!isReadyReleasePrerequisiteEvidenceSummary(readiness)) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_READINESS_RISK_IDS
+        .READY_RELEASE_PREREQUISITE_EVIDENCE_INVALID,
+      'A ready compatibility deletion report requires current, context-bound release-prerequisite evidence.'
     ));
   }
 

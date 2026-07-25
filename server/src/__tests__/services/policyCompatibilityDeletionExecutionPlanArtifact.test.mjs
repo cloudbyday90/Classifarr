@@ -30,6 +30,9 @@ import {
   buildPolicyCompatibilityDeletionExecutionPlanArtifact,
   validatePolicyCompatibilityDeletionExecutionPlanArtifact,
 } from '../../services/policyCompatibilityDeletionExecutionPlanArtifact.mjs';
+import {
+  buildReadyPolicyCompatibilityDeletionReleasePrerequisiteEvidence,
+} from '../helpers/policyCompatibilityDeletionReleasePrerequisiteEvidence.mjs';
 
 const MANIFEST_PATH =
   'client/src/components/policies/PolicyStarterTemplateAccelerator.vue';
@@ -56,7 +59,7 @@ function readyBackupRestoreEvidence() {
 }
 
 function readyEvidenceBundle() {
-  return buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
+  const evidence = {
     currentPolicyInventory: {
       version: POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_VERSION,
       generatedAt: COLLECTION_TIME,
@@ -109,9 +112,14 @@ function readyEvidenceBundle() {
       },
     },
     backupRestoreEvidence: readyBackupRestoreEvidence(),
-    rollbackSupportVerified: true,
-    supportDiagnosticsVerified: true,
-    deletionManifestApproved: true,
+  };
+
+  return buildPolicyCompatibilityDeletionExecutionPlanEvidenceBundle({
+    ...evidence,
+    releasePrerequisiteEvidence:
+      buildReadyPolicyCompatibilityDeletionReleasePrerequisiteEvidence(evidence, {
+        generatedAt: COLLECTION_TIME,
+      }),
     generatedAt: COLLECTION_TIME,
     now: COLLECTION_TIME,
   });

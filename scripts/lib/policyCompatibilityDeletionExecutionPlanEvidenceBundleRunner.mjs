@@ -82,7 +82,7 @@ function usage() {
     'Usage: node scripts/generate-policy-compatibility-deletion-execution-plan-evidence-bundle.mjs [options]',
     '',
     'Options:',
-    '  --input <json>        Optional reviewed gate and safety input JSON. Omit for a fail-closed current-state diagnostic; current policy inventory and native runtime reads are collected from the database.',
+    '  --input <json>        Optional reviewed release-prerequisite evidence JSON. Omit for a fail-closed current-state diagnostic; current policy inventory and native runtime reads are collected from the database.',
     '  --output <json>       Write the side-effect-free evidence bundle to this path.',
     '  --require-ready       Exit non-zero unless the current evidence bundle is ready for execution planning.',
     '  --generated-at <iso>  Optional collection timestamp for stable tests.',
@@ -145,24 +145,22 @@ function isJsonObject(value) {
 }
 
 function buildExecutionEvidenceInput(input = {}) {
-  const databaseOwnedEvidenceKeys = new Set([
-    'convertedPolicy',
-    'convertedPolicies',
-    'unconvertedPolicy',
-    'unconvertedPolicies',
-    'rollbackAvailable',
-    'backupRestoreVerified',
-    'legacyDeletionBlocked',
-    'supportDiagnosticsSafe',
-    'supportStanceId',
+  const allowedKeys = new Set([
+    'compatibilityDeletionGates',
+    'compatibilityModules',
+    'coverage',
+    'maxEvidenceAgeMs',
+    'releasePrerequisiteEvidence',
+    'residualCompatibilityReferences',
   ]);
+  const unsupportedKeys = Object.keys(input).filter(key => !allowedKeys.has(key));
+
+  if (unsupportedKeys.length > 0) {
+    throw new Error('Execution-plan evidence input contains unsupported fields.');
+  }
 
   return Object.fromEntries(
-    Object.entries(input).filter(([key]) => (
-      key !== 'now' &&
-      key !== 'generatedAt' &&
-      !databaseOwnedEvidenceKeys.has(key)
-    ))
+    Object.entries(input).filter(([key]) => allowedKeys.has(key))
   );
 }
 
@@ -234,13 +232,20 @@ async function runPolicyCompatibilityDeletionExecutionPlanEvidenceBundleCli({
       let evidenceBundle;
       if (outcome.exitCode === POLICY_COMPATIBILITY_DELETION_EVIDENCE_CLI_EXIT_CODES.SUCCESS) {
         try {
+          const executionEvidenceInput = buildExecutionEvidenceInput(input);
           evidenceBundle = await loadEvidenceBundle(db, {
-            ...buildExecutionEvidenceInput(input),
-            generatedAt: options.generatedAt ?? input.generatedAt ?? null,
+            ...executionEvidenceInput,
+            generatedAt: options.generatedAt,
           });
-        } catch (_error) {
-          stderr('Could not generate compatibility deletion execution-plan evidence bundle.');
-          outcome.exitCode = POLICY_COMPATIBILITY_DELETION_EVIDENCE_CLI_EXIT_CODES.BLOCKED;
+        } catch (error) {
+          if (error.message === 'Execution-plan evidence input contains unsupported fields.') {
+            stderr(error.message);
+            outcome.exitCode = POLICY_COMPATIBILITY_DELETION_EVIDENCE_CLI_EXIT_CODES
+              .INPUT_OR_OUTPUT_ERROR;
+          } else {
+            stderr('Could not generate compatibility deletion execution-plan evidence bundle.');
+            outcome.exitCode = POLICY_COMPATIBILITY_DELETION_EVIDENCE_CLI_EXIT_CODES.BLOCKED;
+          }
         }
       }
 

@@ -71,13 +71,11 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundleRunner', () => {
     });
   }
 
-  test('collects one bundle through injected dependencies and strips caller timestamps', async () => {
+  test('collects one bundle through injected dependencies and preserves only allowlisted evidence', async () => {
     writeJson(fixtureRoot, 'input.json', {
-      generatedAt: '2026-07-16T01:00:00.000Z',
-      now: '2026-07-16T01:00:10.000Z',
-      convertedPolicy: { id: 14 },
-      unconvertedPolicies: [{ id: 15 }],
-      deletionManifestApproved: true,
+      releasePrerequisiteEvidence: {
+        version: 'policy.compatibility_deletion_release_prerequisite_evidence.v1',
+      },
     });
     const evidenceBundle = {
       readyForExecutionPlan: true,
@@ -98,7 +96,9 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundleRunner', () => {
       evidenceBundle,
     });
     expect(loadEvidenceBundle).toHaveBeenCalledWith(database, {
-      deletionManifestApproved: true,
+      releasePrerequisiteEvidence: {
+        version: 'policy.compatibility_deletion_release_prerequisite_evidence.v1',
+      },
       generatedAt: '2026-07-16T01:01:00.000Z',
     });
     expect(JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'output.json'), 'utf8')))
@@ -108,14 +108,15 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundleRunner', () => {
     expect(closeDatabasePool).toHaveBeenCalledWith(database);
   });
 
-  test('removes caller-supplied recovery, backup, and support-gate claims before collection', () => {
-    expect(buildExecutionEvidenceInput({
+  test('rejects caller-supplied recovery, backup, and legacy safety claims', () => {
+    expect(() => buildExecutionEvidenceInput({
       rollbackAvailable: true,
       legacyDeletionBlocked: false,
       supportDiagnosticsSafe: false,
       supportStanceId: 'unsupported_after_window',
       backupRestoreVerified: true,
-    })).toEqual({});
+      deletionManifestApproved: true,
+    })).toThrow('Execution-plan evidence input contains unsupported fields.');
   });
 
   test('collects a fail-closed diagnostic without a reviewed input file', async () => {
@@ -205,6 +206,24 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundleRunner', () => {
       'Could not read execution-plan evidence input JSON.',
       'Execution-plan evidence input must be a JSON object.',
     ]));
+    expect(loadEvidenceBundle).not.toHaveBeenCalled();
+  });
+
+  test('rejects a legacy boolean input before collecting evidence', async () => {
+    writeJson(fixtureRoot, 'legacy.json', {
+      deletionManifestApproved: true,
+    });
+
+    const outcome = await runCli({
+      argv: ['--input', 'legacy.json'],
+    });
+
+    expect(outcome).toEqual({
+      exitCode: POLICY_COMPATIBILITY_DELETION_EVIDENCE_CLI_EXIT_CODES
+        .INPUT_OR_OUTPUT_ERROR,
+      evidenceBundle: undefined,
+    });
+    expect(stderr).toContain('Execution-plan evidence input contains unsupported fields.');
     expect(loadEvidenceBundle).not.toHaveBeenCalled();
   });
 

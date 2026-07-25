@@ -8386,8 +8386,10 @@ Tasks:
 - **8R.36.7 Release-Prerequisite Evidence Contracts**
   - Replace the reviewed-input `rollbackSupportVerified`,
     `supportDiagnosticsVerified`, and `deletionManifestApproved` booleans with
-    small versioned evidence contracts bound to the current execution-plan
-    fingerprint and explicit subject.
+    small versioned evidence contracts bound to the current release-prerequisite
+    context fingerprint and explicit subject. The later execution-plan artifact
+    must retain that context through its existing fingerprint; pre-plan
+    readiness cannot bind to an artifact that does not yet exist.
   - Each contract must fail closed on an absent, malformed, stale, mismatched,
     or unknown subject; it must expose only fixed status and reason IDs to the
     maintenance readout and cannot perform a restore, support operation,
@@ -8461,10 +8463,15 @@ Implementation status:
   raw evidence in the compact readout. The design and outcome record is [Policy
   Compatibility Deletion Installation Diagnostic
   Readout](policy-compatibility-deletion-installation-diagnostic-readout.md).
-- Task 8R.36.7 is next. It will replace the remaining reviewed-input release
-  booleans with bounded evidence contracts before any compatibility-deletion
-  execution plan can become ready. It is intentionally separate from native
-  policy runtime automation and from the database-owned backup/restore record.
+- Task 8R.36.7 is implemented. Release planning now accepts one compact,
+  versioned attestation contract bound to a deterministic pre-plan context and
+  constrained release-review subject. Missing, legacy, stale, malformed,
+  mismatched, duplicate, or unrecognized-subject-type evidence blocks
+  readiness; the CLI rejects legacy fields instead of silently ignoring them.
+  Backup/restore remains database-owned, and native policy runtime automation
+  remains independent. The design and outcome record is [Policy Compatibility
+  Deletion Release-Prerequisite Evidence
+  Contracts](policy-compatibility-deletion-release-prerequisite-evidence-contracts.md).
 
 ## Phase 8R Work Sequence
 
