@@ -699,6 +699,68 @@ describe('ClarificationService', () => {
       expect(updateCall[0]).toContain('policy_question = NULL');
     });
 
+    test('keeps native runtime question answers outcome-only when a legacy caller requests learning', async () => {
+      const nativeQuestion = {
+        version: 'policy.runtime_question_persistence.v1',
+        question: 'Should this item be resolved here?',
+        options: [{
+          label: 'Resolve current item',
+          outcomeId: 'resolve_current_item',
+          library_id: 2,
+        }],
+        runtimeQuestion: {
+          contractVersion: 'policy.runtime_question_reduction.v1',
+        },
+        runtimeQuestionReductionPlan: {
+          version: 'policy.runtime_question_reduction.v1',
+        },
+        meta: {
+          runtime_question_persistence: {
+            destinationLibraryId: 2,
+          },
+        },
+      };
+      const mockClassification = {
+        id: 1,
+        title: 'Test Movie',
+        media_type: 'movie',
+        library_name: 'Movies',
+        policy_question: nativeQuestion,
+        metadata: JSON.stringify({
+          tmdb_id: 12345,
+          title: 'Test Movie',
+        }),
+      };
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
+          .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
+          .mockResolvedValueOnce({ rows: [{ context_version: null }] }) // Question context
+          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification
+          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
+        release: jest.fn(),
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      const result = await clarificationService.resolvePolicyQuestion(
+        1,
+        2,
+        'Resolve current item',
+        'test-user',
+        true,
+      );
+
+      expect(result).toEqual(expect.objectContaining({
+        success: true,
+        generatedPattern: null,
+      }));
+      expect(mockClient.query.mock.calls.some(([sql]) =>
+        typeof sql === 'string' && sql.includes('INSERT INTO classification_evidence')
+      )).toBe(false);
+    });
+
     test('should handle policy_question as string (legacy data)', async () => {
       const mockClassification = {
         id: 1,

@@ -32,6 +32,7 @@ import { classificationAuthoritativeSignalService } from './classificationAuthor
 import { classificationPolicyPathService } from './classificationPolicyPathService.mjs';
 import { classificationLegacySignalPathService } from './classificationLegacySignalPathService.mjs';
 import { policyNativeClassificationQuestionHandoffService } from './policyNativeClassificationQuestionHandoff.mjs';
+import { policyRuntimeQuestionPersistenceAdmissionService } from './policyRuntimeQuestionPersistenceAdmission.mjs';
 import { createClassificationService } from './classificationServiceCore.mjs';
 
 const { normalizePolicyDecisionThresholds } = policyThresholds;
@@ -71,5 +72,6 @@ export const classificationService = createClassificationService({
 		classificationPolicyPathService,
 		classificationLegacySignalPathService,
 		policyNativeClassificationQuestionHandoffService,
+		policyRuntimeQuestionPersistenceAdmissionService,
 	},
 });

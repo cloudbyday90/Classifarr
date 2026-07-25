@@ -432,6 +432,51 @@ describe('processClarificationResponse', () => {
         );
     });
 
+    test('uses the server-owned native destination for a do-not-learn runtime outcome', async () => {
+        db.query
+            .mockResolvedValueOnce({
+                rows: [{
+                    ...MOCK_CLASSIFICATION,
+                    status: 'awaiting_decision',
+                    library_id: null,
+                    policy_question: {
+                        version: 'policy.runtime_question_persistence.v1',
+                        options: [
+                            { label: 'Resolve current item', library_id: 10 },
+                            { label: 'Do not learn' },
+                        ],
+                        runtimeQuestion: {
+                            contractVersion: 'policy.runtime_question_reduction.v1',
+                        },
+                        runtimeQuestionReductionPlan: {
+                            version: 'policy.runtime_question_reduction.v1',
+                        },
+                        meta: {
+                            runtime_question_persistence: {
+                                destinationLibraryId: 10,
+                            },
+                        },
+                    },
+                }],
+            })
+            .mockResolvedValueOnce({ rows: [{ name: 'Movies' }] });
+        clarificationService.resolvePolicyQuestion.mockResolvedValueOnce({
+            shouldRoute: false,
+            alreadyResolved: false,
+        });
+
+        const interaction = makeInteraction();
+        await processClarificationResponse(100, 1, interaction);
+
+        expect(clarificationService.resolvePolicyQuestion).toHaveBeenCalledWith(
+            100,
+            10,
+            'Do not learn',
+            'testUser',
+            false,
+        );
+    });
+
     test('followUp (not reply) when classification is not found', async () => {
         db.query.mockResolvedValueOnce({ rows: [] });
 

@@ -100,6 +100,30 @@ describe('policyDiscordPendingAnswerLearning', () => {
     expect(JSON.stringify(result)).not.toContain('discord-user');
   });
 
+  test('prefers the normalized runtime question in a persistence envelope', () => {
+    const persistedQuestion = buildPersistedQuestionEnvelope();
+    const result = buildPolicyDiscordPendingAnswerLearning(validInput({
+      persistedQuestion: {
+        version: 'policy.runtime_question_persistence.v1',
+        question: 'Legacy-compatible display text',
+        runtimeQuestion: persistedQuestion.question,
+        runtimeQuestionReductionPlan: persistedQuestion.questionReductionPlan,
+      },
+    }));
+
+    expect(result).toMatchObject({
+      ok: true,
+      statusId: POLICY_DISCORD_PENDING_ANSWER_LEARNING_STATUS_IDS.OUTCOME_ONLY,
+      selectedAnswerOutcomeId: ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM,
+      questionProof: { valid: true },
+      decision: {
+        learning: {
+          canWriteLearning: false,
+        },
+      },
+    });
+  });
+
   test('keeps legacy persisted questions outcome-only because they have no validated fingerprint chain', () => {
     const result = buildPolicyDiscordPendingAnswerLearning(validInput({
       persistedQuestion: {

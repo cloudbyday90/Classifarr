@@ -91,7 +91,13 @@ function getPersistedQuestionEnvelope(value = {}) {
   const questionReductionPlan = asObject(
     persistedQuestion.questionReductionPlan || persistedQuestion.runtimeQuestionReductionPlan
   );
-  const question = asObject(persistedQuestion.question || persistedQuestion);
+  const runtimeQuestion = asObject(persistedQuestion.runtimeQuestion);
+  const embeddedQuestion = asObject(persistedQuestion.question);
+  const question = Object.keys(runtimeQuestion).length > 0
+    ? runtimeQuestion
+    : Object.keys(embeddedQuestion).length > 0
+      ? embeddedQuestion
+      : persistedQuestion;
 
   return {
     question,

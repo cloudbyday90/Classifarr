@@ -4,6 +4,7 @@ import { classificationOutcomeService } from './classificationOutcomeService.mjs
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptionLibraryIds } from './clarificationUtils.mjs';
+import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 
 const logger = createLogger('PolicyResolution');
 
@@ -101,6 +102,8 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
         }
 
         const policyQuestion = parsePolicyQuestion(classification.policy_question);
+        const allowLegacyRuleGeneration = generateRule === true &&
+            !isPolicyRuntimeQuestionPersistenceEnvelope(policyQuestion);
         if (policyQuestion) {
             const {
                 extractQuestionContext,
@@ -164,7 +167,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
         }, { client });
 
         let learnedPattern = null;
-        if (generateRule && metadata.tmdb_id) {
+        if (allowLegacyRuleGeneration && metadata.tmdb_id) {
 
             learnedPattern = await classificationEvidenceService.rememberExactMatch({
                 tmdbId: metadata.tmdb_id,

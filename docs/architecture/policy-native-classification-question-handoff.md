@@ -67,11 +67,14 @@ following rules:
 6. A legacy result, an unselected native candidate, an invalid native contract,
    or no selected library produces no plan. It remains outcome-only downstream.
 
-`classificationServiceCore.mjs` treats the handoff as supplemental. A handoff
-failure is logged and converted to `null`; classification persistence and Arr
-routing continue on their established path. A valid plan is returned with the
-bounded destination and routing outcome for the existing request/import
-admission adapter to validate again.
+`classificationServiceCore.mjs` treats a failed handoff as supplemental: it is
+logged and converted to `null`, so established classification persistence and
+Arr routing continue. A valid `create_operator_question` handoff is now also
+passed to the runtime persistence admission boundary before classification
+persistence. An admitted review plan becomes an existing pending item through
+that established persistence path and therefore stops automatic routing at the
+normal final-state gate. Non-question plans remain supplemental output for the
+request/import admission adapter to validate again.
 
 ## Recommendations
 
@@ -83,8 +86,8 @@ admission adapter to validate again.
    live media-server lookup.
 4. Validate the automation decision and question-reduction contracts before
    exposing the plan to any queue or learning component.
-5. Introduce a separate persistence admission component before a live runtime
-   question plan can create or replace a pending question.
+5. Use the runtime persistence admission component as the only path permitted
+   to materialize a native `create_operator_question` plan.
 
 ## Pros And Cons
 
@@ -102,8 +105,8 @@ Cons:
 - Legacy classifications intentionally remain outcome-only.
 - A missing stored profile defers automation until an existing refresh workflow
   provides current profile evidence.
-- The plan is not yet a direct authorization to persist or replace a pending
-  question; that requires a separate idempotent admission boundary.
+- A native review plan remains conditional: admission preserves an existing
+  question and rejects any altered, legacy, or side-effectful handoff.
 
 ## Final Recommendation Stack
 
@@ -111,12 +114,13 @@ Cons:
    policy runtime evaluator.
 2. `policyNativeClassificationQuestionHandoff.mjs` selects only the matching
    native runtime candidate and builds a bounded plan from persisted state.
-3. `classificationServiceCore.mjs` returns the plan as supplemental output and
-   preserves normal classification/routing behavior when the handoff fails.
+3. `policyRuntimeQuestionPersistenceAdmission.mjs` re-audits and reconstructs
+   a native review plan before it can become a pending question.
 4. `policyRequestImportDestinationAdmission.mjs` validates the plan again
    before it invokes the request-time reducer.
-5. A future idempotent runtime-question persistence admission must be the only
-   path permitted to materialize a `create_operator_question` plan.
+5. `classificationServiceCore.mjs` applies an admitted pending-question patch
+   before the existing classification persistence call and preserves normal
+   behavior when the handoff fails.
 
 ## Verification
 
@@ -127,7 +131,7 @@ supplemental handoff fails.
 
 ## Next Step
 
-Implement a **runtime question-plan persistence admission** component. It must
-accept only a freshly validated, selected-library native plan, create or update
-at most one idempotent pending question, reject legacy plans, and leave
-classification and routing outcomes unchanged.
+Implement the **native pending-question resolution presentation adapter**. It
+must expose normalized outcome actions in browser and Discord views without
+legacy duplicate controls, keep manual destination changes explicit, and never
+turn an item-level answer into durable learning by default.

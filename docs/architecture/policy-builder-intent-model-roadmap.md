@@ -4595,6 +4595,16 @@ Implementation status:
   Resolver failures now stop with a retry-safe response instead of using the
   former direct SQL and pattern-extraction fallback. Its design record is
   [Policy Discord Pending-Answer Learning Admission](policy-discord-pending-answer-learning-admission.md).
+- Valid native `create_operator_question` plans now pass through
+  `policyRuntimeQuestionPersistenceAdmission.mjs` immediately before the
+  existing classification persistence call. It re-audits the native handoff,
+  reconstructs the reduction plan, preserves existing questions, and applies a
+  canonical pending-question envelope only when the selected library remains
+  valid. The existing classification-history transaction and pending-item
+  notifications materialize the one pending record; automatic Arr routing
+  stops at the established non-final gate. Native browser and Discord answers
+  remain outcome-only even when a legacy caller requests rule generation. Its
+  design record is [Policy Runtime Question Persistence Admission](policy-runtime-question-persistence-admission.md).
 - Request-time learning decisions now preserve the upstream sanitized evidence
   fingerprint through the decision, bounded learning-guard context, and trace;
   validation rejects missing or mismatched fingerprint handoffs.

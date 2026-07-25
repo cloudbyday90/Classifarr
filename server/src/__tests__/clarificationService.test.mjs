@@ -172,6 +172,17 @@ describe('getQuestionOptionLibraryIds', () => {
         };
         expect(svc.getQuestionOptionLibraryIds(question)).toEqual([5]);
     });
+
+    test('does not constrain manual change for native runtime persistence envelopes', () => {
+        const question = {
+            version: 'policy.runtime_question_persistence.v1',
+            runtimeQuestion: { contractVersion: 'policy.runtime_question_reduction.v1' },
+            runtimeQuestionReductionPlan: { version: 'policy.runtime_question_reduction.v1' },
+            options: [{ library_id: 5 }],
+        };
+
+        expect(svc.getQuestionOptionLibraryIds(question)).toEqual([]);
+    });
 });
 
 describe('getTierFromPolicyThresholds', () => {

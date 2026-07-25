@@ -54,7 +54,7 @@ function buildValidRuntimeQuestionReductionPlan() {
   return plan;
 }
 
-function createService({ handoff } = {}) {
+function createService({ handoff, admission } = {}) {
   const logger = {
     debug: jest.fn(),
     error: jest.fn(),
@@ -113,6 +113,7 @@ function createService({ handoff } = {}) {
     policyNativeClassificationQuestionHandoffService: handoff || {
       build: jest.fn().mockResolvedValue({ plan: null }),
     },
+    policyRuntimeQuestionPersistenceAdmissionService: admission,
   });
 
   service.runDecisionTree = jest.fn().mockResolvedValue({
@@ -183,5 +184,61 @@ describe('classificationServiceCore native question-reduction handoff', () => {
     expect(result.success).toBe(true);
     expect(result.runtimeQuestionReductionPlan).toBeNull();
     expect(service.classificationRoutingService.routeToArr).toHaveBeenCalledTimes(1);
+  });
+
+  test('persists an admitted native question through the existing pending path and skips routing', async () => {
+    const runtimeQuestionReductionPlan = buildValidRuntimeQuestionReductionPlan();
+    const persistedQuestion = {
+      version: 'policy.runtime_question_persistence.v1',
+      question: 'Should this item be resolved here?',
+      options: [{ label: 'Resolve current item', library_id: 6 }],
+      runtimeQuestion: runtimeQuestionReductionPlan.question,
+      runtimeQuestionReductionPlan,
+    };
+    const admission = {
+      admit: jest.fn().mockReturnValue({
+        ok: true,
+        statusId: 'admitted',
+        reasonId: 'hard_limit_review_required',
+        classificationPatch: {
+          needs_clarification: true,
+          clarification: persistedQuestion,
+          policy_question: persistedQuestion,
+          pending_reason: 'Classifarr needs an operator decision.',
+        },
+        audit: { ok: true },
+      }),
+    };
+    const handoff = {
+      build: jest.fn().mockResolvedValue({ plan: runtimeQuestionReductionPlan }),
+    };
+    const service = createService({ handoff, admission });
+
+    const result = await service.classify({ media: { tmdbId: 10674 } });
+
+    expect(admission.admit).toHaveBeenCalledWith({
+      classificationResult: expect.objectContaining({
+        library: { id: 6, name: 'Animated Movies' },
+      }),
+      handoff: expect.objectContaining({ plan: runtimeQuestionReductionPlan }),
+    });
+    expect(service.classificationPersistenceService.logClassification).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        needs_clarification: true,
+        policy_question: persistedQuestion,
+      }),
+      expect.any(Number),
+    );
+    expect(service.classificationRoutingService.routeToArr).not.toHaveBeenCalled();
+    expect(result).toEqual(expect.objectContaining({
+      runtimeQuestionPersistence: {
+        statusId: 'admitted',
+        reasonId: 'hard_limit_review_required',
+      },
+      routingOutcome: expect.objectContaining({
+        reason: 'not_final',
+      }),
+    }));
   });
 });

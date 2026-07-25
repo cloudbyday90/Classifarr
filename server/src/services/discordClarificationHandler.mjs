@@ -14,6 +14,7 @@ import { clarificationService } from './clarificationService.mjs';
 import * as notificationBuilder from './discordNotificationBuilder.mjs';
 import { routeAfterClarification } from './discordPatternExtractionService.mjs';
 import { policyDiscordPendingAnswerLearningService } from './policyDiscordPendingAnswerLearning.mjs';
+import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 
 const logger = createLogger('discordClarificationHandler');
 
@@ -57,6 +58,14 @@ export async function processClarificationResponse(
 
         if (selectedOption.library_id) {
           libraryId = selectedOption.library_id;
+        } else if (isPolicyRuntimeQuestionPersistenceEnvelope(policyQuestion)) {
+          const destinationLibraryId = Number.parseInt(
+            policyQuestion.meta?.runtime_question_persistence?.destinationLibraryId,
+            10,
+          );
+          if (Number.isInteger(destinationLibraryId) && destinationLibraryId > 0) {
+            libraryId = destinationLibraryId;
+          }
         }
       }
     } else {

@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import { createLogger } from '../utils/logger.mjs';
+import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 
 const logger = createLogger('clarificationService');
 
@@ -47,7 +48,11 @@ export function parsePolicyQuestion(value) {
 }
 
 export function getQuestionOptionLibraryIds(question) {
-  if (!question || !Array.isArray(question.options)) {
+  if (
+    !question ||
+    isPolicyRuntimeQuestionPersistenceEnvelope(question) ||
+    !Array.isArray(question.options)
+  ) {
     return [];
   }
 

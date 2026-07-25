@@ -62,6 +62,7 @@ export class ClassificationService {
     classificationPolicyPathService,
     classificationLegacySignalPathService,
     policyNativeClassificationQuestionHandoffService,
+    policyRuntimeQuestionPersistenceAdmissionService,
   }) {
     this.db = db;
     this.tmdbService = tmdbService;
@@ -89,6 +90,8 @@ export class ClassificationService {
     this.classificationPolicyPathService = classificationPolicyPathService;
     this.classificationLegacySignalPathService = classificationLegacySignalPathService;
     this.policyNativeClassificationQuestionHandoffService = policyNativeClassificationQuestionHandoffService;
+    this.policyRuntimeQuestionPersistenceAdmissionService =
+      policyRuntimeQuestionPersistenceAdmissionService;
   }
 
   async _withCatch(label, fn) {
@@ -211,7 +214,7 @@ export class ClassificationService {
     };
   }
 
-  async buildRuntimeQuestionReductionPlan(result) {
+  async buildRuntimeQuestionHandoff(result) {
     if (typeof this.policyNativeClassificationQuestionHandoffService?.build !== 'function') {
       return null;
     }
@@ -233,9 +236,46 @@ export class ClassificationService {
         return null;
       }
 
-      return validation?.ok === true ? plan : null;
+      return validation?.ok === true ? handoff : null;
     } catch (error) {
       this.logger.warn('Native classification question handoff failed', {
+        error: error.message,
+        libraryId: result?.library?.id ?? result?.library?.library_id ?? null,
+      });
+      return null;
+    }
+  }
+
+  async buildRuntimeQuestionReductionPlan(result) {
+    const handoff = await this.buildRuntimeQuestionHandoff(result);
+    return handoff?.plan || null;
+  }
+
+  admitRuntimeQuestionPersistence(result, handoff) {
+    if (typeof this.policyRuntimeQuestionPersistenceAdmissionService?.admit !== 'function') {
+      return null;
+    }
+
+    try {
+      const admission = this.policyRuntimeQuestionPersistenceAdmissionService.admit({
+        classificationResult: result,
+        handoff,
+      });
+
+      if (admission?.audit?.ok !== true) {
+        this.logger.warn('Native runtime question persistence admission returned an invalid result', {
+          statusId: admission?.statusId || null,
+        });
+        return null;
+      }
+
+      if (admission.ok === true && admission.classificationPatch) {
+        Object.assign(result, admission.classificationPatch);
+      }
+
+      return admission;
+    } catch (error) {
+      this.logger.warn('Native runtime question persistence admission failed', {
         error: error.message,
         libraryId: result?.library?.id ?? result?.library?.library_id ?? null,
       });
@@ -333,6 +373,12 @@ export class ClassificationService {
       }
 
       const result = await this.runDecisionTree(metadata, media_type, taskId);
+      const runtimeQuestionHandoff = await this.buildRuntimeQuestionHandoff(result);
+      const runtimeQuestionReductionPlan = runtimeQuestionHandoff?.plan || null;
+      const runtimeQuestionPersistenceAdmission = this.admitRuntimeQuestionPersistence(
+        result,
+        runtimeQuestionHandoff,
+      );
 
       const classificationId = await this.logClassification(metadata, result, startTime);
       await this.rebindRetryLineage(classificationId, metadata);
@@ -357,8 +403,6 @@ export class ClassificationService {
       }
 
       const requireAllConfirmations = await this.clarificationService.isRequireAllConfirmationsEnabled();
-
-      const runtimeQuestionReductionPlan = await this.buildRuntimeQuestionReductionPlan(result);
 
       const routingOutcome = await this.routeClassificationResult(
         classificationId,
@@ -424,6 +468,12 @@ export class ClassificationService {
         destination: buildClassificationDestinationSummary(result),
         routingOutcome: buildClassificationRoutingSummary({ routingOutcome }),
         runtimeQuestionReductionPlan,
+        runtimeQuestionPersistence: runtimeQuestionPersistenceAdmission
+          ? {
+            statusId: runtimeQuestionPersistenceAdmission.statusId,
+            reasonId: runtimeQuestionPersistenceAdmission.reasonId,
+          }
+          : null,
         confidence: result.confidence,
         method: result.method,
         reason: result.reason,

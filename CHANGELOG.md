@@ -731,6 +731,12 @@ unchanged operator or runtime outcome.
   persisted library profile, and stored route mapping. Legacy, malformed, and
   mismatched results remain outcome-only; the handoff cannot use raw request,
   AI, provider, or media-path data, perform routing, or create learning.
+- **Native Pending-Question Admission** - native review plans now become
+  pending classifications only through the established classification
+  persistence and notification flow. Admission re-audits and re-derives the
+  plan, preserves existing questions, stops automatic routing until resolution,
+  and keeps browser and Discord answers outcome-only even when a legacy caller
+  requests rule generation.
 - **Question and Learning Controls** - added deterministic question reduction,
   permitted-action checks, answer-shape validation, and learning eligibility
   checks so automation asks only destination-relevant questions and manual
