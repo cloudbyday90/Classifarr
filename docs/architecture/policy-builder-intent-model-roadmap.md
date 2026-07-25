@@ -8383,6 +8383,20 @@ Tasks:
     before the readout can consume it; a claimed ready result must validate,
     while structurally coherent blocked evidence remains observable. Raw
     evidence and backup details remain outside the public outcome.
+- **8R.36.7 Release-Prerequisite Evidence Contracts**
+  - Replace the reviewed-input `rollbackSupportVerified`,
+    `supportDiagnosticsVerified`, and `deletionManifestApproved` booleans with
+    small versioned evidence contracts bound to the current execution-plan
+    fingerprint and explicit subject.
+  - Each contract must fail closed on an absent, malformed, stale, mismatched,
+    or unknown subject; it must expose only fixed status and reason IDs to the
+    maintenance readout and cannot perform a restore, support operation,
+    approval action, deletion, database write, source mutation, or Git
+    operation.
+  - Preserve the database-owned backup/restore verification as its own
+    existing evidence boundary. Do not reintroduce it as a caller boolean or
+    make routine native policy automation wait for compatibility-code removal
+    release evidence.
 - Require the current compatibility-deletion execution-plan artifact and bind
   its fingerprint through authorization, completion evidence, and replay.
 - Derive manifest path state from the current checkout.
@@ -8447,6 +8461,10 @@ Implementation status:
   raw evidence in the compact readout. The design and outcome record is [Policy
   Compatibility Deletion Installation Diagnostic
   Readout](policy-compatibility-deletion-installation-diagnostic-readout.md).
+- Task 8R.36.7 is next. It will replace the remaining reviewed-input release
+  booleans with bounded evidence contracts before any compatibility-deletion
+  execution plan can become ready. It is intentionally separate from native
+  policy runtime automation and from the database-owned backup/restore record.
 
 ## Phase 8R Work Sequence
 

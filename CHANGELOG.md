@@ -1078,6 +1078,13 @@ unchanged operator or runtime outcome.
 
 ### Security
 
+- **Resolved Workspace Dependency Alerts** - refreshed the root, client, and
+  server dependency graphs to remediate the reported Dependabot alerts and a
+  newly disclosed YAML parsing issue. Patched Markdown tooling, YAML parsing,
+  link detection, glob expansion, Engine.IO, and body parsing dependencies are
+  now pinned through their owning workspace lockfile and verified with clean
+  package-lock audits.
+
 - **Policy Authority Enforcement** - policy evidence, intent commands,
   readiness decisions, clarification answers, learning traces, and rebuild
   requests now accept only bounded plain data from declared, permitted sources.
