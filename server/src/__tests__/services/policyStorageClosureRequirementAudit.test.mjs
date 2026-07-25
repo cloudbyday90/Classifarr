@@ -1,3 +1,13 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 import {
   POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
   POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS,
@@ -59,17 +69,25 @@ function readTextFileFactory({
 }
 
 async function completeAudit(overrides = {}) {
-  const currentClosureAudit =
-    overrides.currentClosureAudit ||
-    await buildPolicyStorageCurrentClosureAuditFixture();
+  const {
+    currentClosureAudit: suppliedCurrentClosureAudit,
+    fileExists = () => true,
+    readTextFile = readTextFileFactory(),
+    ...remainingOverrides
+  } = overrides;
+  const currentClosureAudit = suppliedCurrentClosureAudit ||
+    await buildPolicyStorageCurrentClosureAuditFixture({
+      fileExists,
+      readTextFile,
+    });
 
   return buildPolicyStorageClosureRequirementAudit({
     cwd: '/repo',
     currentClosureAudit,
     generatedAt: '2026-06-25T18:00:00.000Z',
-    fileExists: () => true,
-    readTextFile: readTextFileFactory(),
-    ...overrides,
+    fileExists,
+    readTextFile,
+    ...remainingOverrides,
   });
 }
 
@@ -138,6 +156,34 @@ describe('policyStorageClosureRequirementAudit', () => {
     );
   });
 
+  test('blocks when the selected checkout content differs from retained current evidence', async () => {
+    const changedPath = 'policyStorageCompletionCheckpoint.mjs';
+    const baselineReadTextFile = readTextFileFactory();
+    const currentClosureAudit = await buildPolicyStorageCurrentClosureAuditFixture({
+      readTextFile: baselineReadTextFile,
+    });
+    const audit = await completeAudit({
+      currentClosureAudit,
+      readTextFile: filePath => (
+        filePath.replace(/\\/g, '/').endsWith(changedPath)
+          ? 'changed checkout content'
+          : baselineReadTextFile(filePath)
+      ),
+    });
+
+    expect(audit.statusId)
+      .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
+        .BLOCKED_BY_CURRENT_CLOSURE);
+    expect(audit.summary.currentCheckoutFingerprintMatchesAudit).toBe(false);
+    expect(audit.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
+            .CURRENT_CLOSURE_AUDIT_CHECKOUT_FINGERPRINT_MISMATCH,
+      }),
+    ]));
+  });
+
   test('blocks when a later closure component artifact is missing', async () => {
     const missingPath =
       'server/src/services/policyStorageCurrentClosureAudit.mjs';
@@ -191,10 +237,14 @@ describe('policyStorageClosureRequirementAudit', () => {
 
     expect(audit.statusId)
       .toBe(POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
-        .BLOCKED_BY_CHANGELOG);
-    expect(audit.changelogEvidence.missingComponentIds)
-      .toEqual(POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP
-        .map(component => component.componentId));
+        .BLOCKED_BY_CURRENT_CLOSURE);
+    expect(audit.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
+            .CURRENT_CLOSURE_AUDIT_NOT_COMPLETE,
+      }),
+    ]));
   });
 
   test('blocks on side effects other than repository file reads', async () => {

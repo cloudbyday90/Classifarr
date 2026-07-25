@@ -109,7 +109,8 @@ Implemented:
 - Renamed the service, test, CLI, and design doc to policy-storage closure
   requirement names.
 - Replaced payload versioning with
-  `policy.storage_closure_requirement_audit.v2`.
+  `policy.storage_closure_requirement_audit.v3`, including selected-checkout
+  closure-evidence fingerprint verification.
 - Replaced exported constants, builder, and validator names with durable
   policy-storage names.
 - Replaced final decision output with

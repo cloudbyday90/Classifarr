@@ -67,6 +67,8 @@ async function buildPolicyStorageCurrentClosureAuditFixture({
   validationEvidence,
   generatedAt = '2026-07-14T20:00:00.000Z',
   sideEffects = {},
+  fileExists = () => true,
+  readTextFile = readCurrentClosureFixtureText,
 } = {}) {
   return buildPolicyStorageCurrentClosureAudit({
     cwd: '/repo',
@@ -76,8 +78,8 @@ async function buildPolicyStorageCurrentClosureAuditFixture({
       validationEvidence || buildCurrentClosureValidationEvidence(),
     generatedAt,
     sideEffects,
-    fileExists: () => true,
-    readTextFile: readCurrentClosureFixtureText,
+    fileExists,
+    readTextFile,
   });
 }
 

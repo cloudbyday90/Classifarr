@@ -6,6 +6,9 @@ import {
   buildPolicyStorageClosureEvidenceRun,
 } from './policyStorageClosureEvidenceRun.mjs';
 import {
+  buildPolicyStorageClosureCurrentEvidenceFingerprint,
+} from './policyStorageClosureCurrentEvidenceFingerprint.mjs';
+import {
   extractPolicyStorageReleaseNoteCoverage,
 } from './policyStorageReleaseNoteCoverage.mjs';
 
@@ -299,6 +302,16 @@ async function buildPolicyStorageClosureCurrentEvidenceRun({
     changelogContent,
     componentArtifactMap,
   });
+  const currentEvidenceFingerprint =
+    buildPolicyStorageClosureCurrentEvidenceFingerprint({
+      cwd,
+      artifactPaths: getMappedArtifactPaths(componentArtifactMap),
+      roadmapPath,
+      roadmapContent,
+      changelogPath,
+      changelogContent,
+      readTextFile,
+    });
   const evidenceRun = await buildPolicyStorageClosureEvidenceRun({
     artifactInventory: artifactInventoryResult.artifactInventory,
     componentArtifactMap,
@@ -316,6 +329,7 @@ async function buildPolicyStorageClosureCurrentEvidenceRun({
     artifactInventory: artifactInventoryResult,
     roadmapEvidence,
     changelogEvidence,
+    currentEvidenceFingerprint,
     evidenceRun,
   };
 }

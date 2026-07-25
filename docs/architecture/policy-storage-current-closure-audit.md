@@ -18,7 +18,8 @@ It then builds:
 - the existing current evidence run,
 - a policy storage completion-checkpoint artifact,
 - a policy storage final closure readout,
-- a fingerprinted, replay-verifiable policy storage current closure audit JSON.
+- a fingerprinted, replay-verifiable policy storage current closure audit JSON
+  with a content-only fingerprint for the selected checkout's mapped evidence.
 
 The audit reports repository implementation readiness and active-installation
 cutover as separate top-level scope summaries. Only the latter depends on one
@@ -204,21 +205,24 @@ Use this stack for the policy storage current closure audit:
 8. Build the policy storage final closure readout.
 9. Retain normalized closure inputs and bind the full current-closure artifact
    with a SHA-256 fingerprint.
-10. Establish one generated-at timestamp at the current-closure boundary and
+10. Bind the selected checkout's mapped artifact, roadmap, and changelog
+    content with a separate SHA-256 fingerprint before requirement-audit use.
+11. Establish one generated-at timestamp at the current-closure boundary and
     pass it to the nested checkpoint and final readout artifacts.
-11. Require exact replay before the final requirement audit consumes the
+12. Require exact replay and a selected-checkout fingerprint match before the
+    final requirement audit consumes the
     artifact status.
-12. Emit complete only when all three layers complete.
-13. Reject file writes, storage mutation, command execution, Git commands, and
+13. Emit complete only when all three layers complete.
+14. Reject file writes, storage mutation, command execution, Git commands, and
     manifest writes.
-14. Verify the public command against an isolated mapped checkout and require
+15. Verify the public command against an isolated mapped checkout and require
     one coherent audit, checkpoint, and final-readout artifact chain.
-15. Resolve all relative input and output artifacts from the selected `--cwd`
+16. Resolve all relative input and output artifacts from the selected `--cwd`
     checkout.
-16. Treat the CLI result as a machine contract: emit exactly one complete JSON
+17. Treat the CLI result as a machine contract: emit exactly one complete JSON
     document on stdout, send diagnostics to stderr, and set `process.exitCode`
     rather than forcing process termination before asynchronous output drains.
-17. Resolve imported test files using the syntax of the inspected path. A
+18. Resolve imported test files using the syntax of the inspected path. A
     Windows path must retain Windows path semantics when evaluated on a POSIX
     CI runner, and vice versa.
 
@@ -260,6 +264,10 @@ Implemented:
 - The downstream requirement audit validates that fingerprint and rebuilds the
   pure closure chain before it accepts the current-closure status. Altered,
   refingerprinted-but-inconsistent, or non-replayable artifacts block closure.
+- Current closure audit v5 also retains a bounded SHA-256 digest of the mapped
+  source, documentation, test, roadmap, and changelog content. The requirement
+  audit v3 recomputes it from its selected checkout and blocks cross-checkout
+  or stale evidence before evaluating completion.
 - The detailed integrity contract and trust boundary are documented in
   [Policy Storage Current Closure Audit Artifact Integrity](policy-storage-current-closure-audit-artifact-integrity.md).
 - Added an isolated-checkout command test proving that complete mapped evidence

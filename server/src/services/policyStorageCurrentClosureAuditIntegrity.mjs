@@ -15,6 +15,9 @@ import {
   buildPolicyStorageClosureEvidenceRun,
 } from './policyStorageClosureEvidenceRun.mjs';
 import {
+  validatePolicyStorageClosureCurrentEvidenceFingerprint,
+} from './policyStorageClosureCurrentEvidenceFingerprint.mjs';
+import {
   POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION,
   buildPolicyStorageCurrentClosureAuditFromEvidence,
   validatePolicyStorageCurrentClosureAudit,
@@ -83,6 +86,9 @@ function hasReplayInputs(audit = {}) {
     hasOwnObject(artifactInventory, 'artifactInventory') &&
     hasOwnObject(currentEvidence, 'roadmapEvidence') &&
     hasOwnObject(currentEvidence, 'changelogEvidence') &&
+    validatePolicyStorageClosureCurrentEvidenceFingerprint({
+      currentEvidenceFingerprint: currentEvidence.currentEvidenceFingerprint,
+    }).ok === true &&
     hasOwnObject(closureInput, 'completionAuditArtifact') &&
     hasOwnObject(closureInput, 'validationEvidence') &&
     hasOwnObject(closureInput, 'sideEffects');
@@ -108,6 +114,7 @@ async function rebuildCurrentEvidence({ closureInput = {} } = {}) {
     artifactInventory,
     roadmapEvidence: currentEvidenceInput.roadmapEvidence,
     changelogEvidence: currentEvidenceInput.changelogEvidence,
+    currentEvidenceFingerprint: currentEvidenceInput.currentEvidenceFingerprint,
     evidenceRun,
   };
 }

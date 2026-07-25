@@ -157,7 +157,8 @@ Cons:
 1. Use `policyStorageClosureRequirementAudit.mjs` as the pure decision service.
 2. Use `run-policy-storage-closure-requirement-audit.mjs` as the CLI wrapper.
 3. Expose `npm run policy:storage-closure-requirement-audit`.
-4. Emit `policy.storage_closure_requirement_audit.v2`.
+4. Emit `policy.storage_closure_requirement_audit.v3` only after replayed
+   current-closure evidence has a matching selected-checkout content fingerprint.
 5. Use component-oriented payload fields:
    `componentId`, `componentCatalog`,
    `missingSequenceComponentIds`, `missingImplementationStatusComponentIds`,

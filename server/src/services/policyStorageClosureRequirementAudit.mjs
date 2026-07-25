@@ -5,6 +5,9 @@ import {
   POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP as POLICY_STORAGE_BASE_CLOSURE_REQUIREMENT_ARTIFACT_MAP,
 } from './policyStorageClosureEvidenceRun.mjs';
 import {
+  buildPolicyStorageClosureCurrentEvidenceFingerprint,
+} from './policyStorageClosureCurrentEvidenceFingerprint.mjs';
+import {
   POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS,
 } from './policyStorageCurrentClosureAudit.mjs';
 import {
@@ -21,7 +24,7 @@ import {
 } from './policyStorageReleaseNoteCoverage.mjs';
 
 const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_VERSION =
-  'policy.storage_closure_requirement_audit.v2';
+  'policy.storage_closure_requirement_audit.v3';
 
 const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -39,6 +42,8 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS = Object.freeze({
     'current_closure_audit_validation_failed',
   CURRENT_CLOSURE_AUDIT_ARTIFACT_INTEGRITY_FAILED:
     'current_closure_audit_artifact_integrity_failed',
+  CURRENT_CLOSURE_AUDIT_CHECKOUT_FINGERPRINT_MISMATCH:
+    'current_closure_audit_checkout_fingerprint_mismatch',
   COMPONENT_ARTIFACT_MISSING: 'component_artifact_missing',
   COMPONENT_DESIGN_DOC_MISSING: 'component_design_doc_missing',
   COMPONENT_CONTRACT_EVIDENCE_MISSING: 'component_contract_evidence_missing',
@@ -294,11 +299,13 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
       'server/src/services/policyStorageCurrentClosureAudit.mjs',
       'server/src/services/policyStorageCurrentClosureAuditFingerprint.mjs',
       'server/src/services/policyStorageCurrentClosureAuditIntegrity.mjs',
+      'server/src/services/policyStorageClosureCurrentEvidenceFingerprint.mjs',
       'scripts/run-policy-storage-current-closure-audit.mjs',
     ],
     testPaths: [
       'server/src/__tests__/services/policyStorageCurrentClosureAudit.test.mjs',
       'server/src/__tests__/services/policyStorageCurrentClosureAuditIntegrity.test.mjs',
+      'server/src/__tests__/services/policyStorageClosureCurrentEvidenceFingerprint.test.mjs',
       'server/src/__tests__/scripts/runPolicyStorageCurrentClosureAudit.test.mjs',
     ],
   },
@@ -501,9 +508,23 @@ function summarizeSideEffects(sideEffects = {}) {
   };
 }
 
+function fingerprintsMatch(left = {}, right = {}) {
+  return left?.version === right?.version &&
+    left?.algorithm === right?.algorithm &&
+    left?.fingerprint === right?.fingerprint &&
+    left?.statusId === right?.statusId &&
+    left?.complete === right?.complete &&
+    left?.artifactPathCount === right?.artifactPathCount &&
+    JSON.stringify(left?.missingArtifactPaths || []) ===
+      JSON.stringify(right?.missingArtifactPaths || []) &&
+    left?.roadmapPath === right?.roadmapPath &&
+    left?.changelogPath === right?.changelogPath;
+}
+
 function buildAuditRisks({
   currentClosureAudit = {},
   currentClosureAuditIntegrity = {},
+  currentCheckoutFingerprint = {},
   componentEvidence = {},
   roadmapEvidence = {},
   changelogEvidence = {},
@@ -529,6 +550,26 @@ function buildAuditRisks({
       {
         issueCount: integrity.issueCount ?? null,
         issueRiskIds: asArray(integrity.issues).map(issue => issue.riskId),
+      }
+    ));
+  }
+
+  if (
+    integrity.ok === true &&
+    !fingerprintsMatch(
+      integrity.audit?.currentEvidence?.currentEvidenceFingerprint,
+      currentCheckoutFingerprint
+    )
+  ) {
+    risks.push(buildRisk(
+      POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_RISK_IDS
+        .CURRENT_CLOSURE_AUDIT_CHECKOUT_FINGERPRINT_MISMATCH,
+      'Policy storage closure requirement audit requires current closure evidence from the selected checkout.',
+      {
+        artifactFingerprint:
+          integrity.audit?.currentEvidence?.currentEvidenceFingerprint?.fingerprint ||
+          null,
+        currentCheckoutFingerprint: currentCheckoutFingerprint.fingerprint || null,
       }
     ));
   }
@@ -676,6 +717,7 @@ function determineStatusId({
   risks = [],
   currentClosureAudit = {},
   currentClosureAuditIntegrity = {},
+  currentCheckoutFingerprint = {},
   componentEvidence = {},
   roadmapEvidence = {},
   changelogEvidence = {},
@@ -699,6 +741,14 @@ function determineStatusId({
     currentClosureAudit.complete !== true ||
     currentClosureAudit.validation?.ok !== true
   ) {
+    return POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
+      .BLOCKED_BY_CURRENT_CLOSURE;
+  }
+
+  if (!fingerprintsMatch(
+    currentClosureAuditIntegrity.audit?.currentEvidence?.currentEvidenceFingerprint,
+    currentCheckoutFingerprint
+  )) {
     return POLICY_STORAGE_CLOSURE_REQUIREMENT_AUDIT_STATUS_IDS
       .BLOCKED_BY_CURRENT_CLOSURE;
   }
@@ -760,6 +810,21 @@ async function buildPolicyStorageClosureRequirementAudit({
     repositoryPath: changelogPath,
     readTextFile,
   });
+  const currentCheckoutFingerprint =
+    buildPolicyStorageClosureCurrentEvidenceFingerprint({
+      cwd,
+      artifactPaths: POLICY_STORAGE_BASE_CLOSURE_REQUIREMENT_ARTIFACT_MAP
+        .flatMap(component => [
+          ...asArray(component.designDocPaths),
+          ...asArray(component.contractPaths),
+          ...asArray(component.testPaths),
+        ]),
+      roadmapPath,
+      roadmapContent,
+      changelogPath,
+      changelogContent,
+      readTextFile,
+    });
   const rawRoadmapEvidence = extractRoadmapComponentEvidence({
     roadmapContent,
     componentArtifactMap,
@@ -787,6 +852,7 @@ async function buildPolicyStorageClosureRequirementAudit({
   const risks = buildAuditRisks({
     currentClosureAudit,
     currentClosureAuditIntegrity,
+    currentCheckoutFingerprint,
     componentEvidence,
     roadmapEvidence,
     changelogEvidence,
@@ -796,6 +862,7 @@ async function buildPolicyStorageClosureRequirementAudit({
     risks,
     currentClosureAudit: verifiedCurrentClosureAudit,
     currentClosureAuditIntegrity,
+    currentCheckoutFingerprint,
     componentEvidence,
     roadmapEvidence,
     changelogEvidence,
@@ -824,6 +891,7 @@ async function buildPolicyStorageClosureRequirementAudit({
       integrityIssueCount: currentClosureAuditIntegrity.issueCount,
       riskCount: verifiedCurrentClosureAudit.riskCount ?? null,
     },
+    currentCheckoutFingerprint,
     artifactInventory: artifactInventoryResult,
     componentEvidence,
     roadmapEvidence,
@@ -833,6 +901,10 @@ async function buildPolicyStorageClosureRequirementAudit({
       currentClosureAuditValidationOk:
         verifiedCurrentClosureAudit.validation?.ok === true,
       currentClosureAuditIntegrityOk: currentClosureAuditIntegrity.ok === true,
+      currentCheckoutFingerprintMatchesAudit: fingerprintsMatch(
+        verifiedCurrentClosureAudit.currentEvidence?.currentEvidenceFingerprint,
+        currentCheckoutFingerprint
+      ),
       expectedComponentCount: componentEvidence.expectedCount,
       implementedComponentCount: componentEvidence.implementedCount,
       missingComponentArtifactCount: componentEvidence.missingArtifactCount,
@@ -850,6 +922,7 @@ async function buildPolicyStorageClosureRequirementAudit({
       requireCurrentClosureAudit: true,
       requireFingerprintValidCurrentClosureAudit: true,
       requireReplayedCurrentClosureAudit: true,
+      requireCurrentCheckoutFingerprintMatch: true,
       requireAllClosureComponentArtifacts: true,
       requireRoadmapSequenceCoverage: true,
       requireRoadmapImplementationStatusCoverage: true,

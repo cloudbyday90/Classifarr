@@ -80,4 +80,21 @@ describe('policyStorageCurrentClosureAuditIntegrity', () => {
         .CURRENT_CLOSURE_AUDIT_NOT_REPLAYABLE,
     ]));
   });
+
+  test('rejects a refingerprinted artifact without current checkout evidence', async () => {
+    const currentClosureAudit = await buildPolicyStorageCurrentClosureAuditFixture();
+    delete currentClosureAudit.closureInput.currentEvidence.currentEvidenceFingerprint;
+    currentClosureAudit.artifactFingerprint =
+      buildPolicyStorageCurrentClosureAuditFingerprint({ audit: currentClosureAudit });
+
+    const integrity = await validatePolicyStorageCurrentClosureAuditIntegrity({
+      currentClosureAudit,
+    });
+
+    expect(integrity.ok).toBe(false);
+    expect(integrity.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
+      POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_INTEGRITY_RISK_IDS
+        .CURRENT_CLOSURE_AUDIT_NOT_REPLAYABLE,
+    ]));
+  });
 });

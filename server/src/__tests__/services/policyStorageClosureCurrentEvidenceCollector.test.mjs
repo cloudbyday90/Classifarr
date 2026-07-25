@@ -1,3 +1,13 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 import { readFileSync } from 'node:fs';
 
 import {
@@ -227,6 +237,12 @@ describe('policyStorageClosureCurrentEvidenceCollector', () => {
       .toBe(POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.COMPLETE);
     expect(result.evidenceRun.complete).toBe(true);
     expect(result.artifactInventory.missingPathCount).toBe(0);
+    expect(result.currentEvidenceFingerprint).toEqual(expect.objectContaining({
+      algorithm: 'sha256',
+      complete: true,
+      artifactPathCount: new Set(ALL_MAPPED_PATHS).size,
+      fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    }));
   });
 
   test('blocks current evidence run when validation evidence is absent', async () => {

@@ -28,7 +28,7 @@ import {
 } from './policyStorageClosureScopes.mjs';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION =
-  'policy.storage_current_closure_audit.v4';
+  'policy.storage_current_closure_audit.v5';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -105,6 +105,7 @@ function buildClosureInput({
       artifactInventory: asObject(evidence.artifactInventory),
       roadmapEvidence: asObject(evidence.roadmapEvidence),
       changelogEvidence: asObject(evidence.changelogEvidence),
+      currentEvidenceFingerprint: asObject(evidence.currentEvidenceFingerprint),
     },
     completionAuditArtifact: asObject(completionAuditArtifact),
     validationEvidence: asObject(validationEvidence),
@@ -441,6 +442,7 @@ async function buildPolicyStorageCurrentClosureAuditFromEvidence({
       artifactInventory: normalizedCurrentEvidence.artifactInventory,
       roadmapEvidence: normalizedCurrentEvidence.roadmapEvidence,
       changelogEvidence: normalizedCurrentEvidence.changelogEvidence,
+      currentEvidenceFingerprint: normalizedCurrentEvidence.currentEvidenceFingerprint,
       evidenceRun: normalizedCurrentEvidence.evidenceRun,
     },
     implementationReadiness,

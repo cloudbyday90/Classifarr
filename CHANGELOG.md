@@ -175,6 +175,13 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Current Checkout Closure Evidence Integrity** - policy storage current
+  closure audits now bind the SHA-256 content digest of their mapped source,
+  documentation, test, roadmap, and changelog evidence. The final requirement
+  audit recomputes that bounded fingerprint for its selected checkout and
+  blocks stale or cross-checkout artifacts before accepting completion; it does
+  not run commands, Git, database operations, or writes.
+
 - **Durable Naming Gate Matcher Integrity** - the production naming gate now
   checks both artifact paths and contents for mixed-case or future roadmap
   markers while excluding valid local-model and certification identifiers. A

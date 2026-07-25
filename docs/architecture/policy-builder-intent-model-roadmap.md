@@ -7370,13 +7370,16 @@ Intent: normalize explicit current-state artifact evidence and run the Phase
 Tasks:
 
 - **8R.23.1 Current-State Closure Evidence Artifact Integrity**
-  - Emit a v2 current-closure audit that retains normalized closure inputs and
-    binds the complete artifact with a SHA-256 fingerprint.
+  - Emit a versioned current-closure audit that retains normalized closure
+    inputs, binds the complete artifact with a SHA-256 fingerprint, and records
+    a content-only fingerprint for the selected checkout's mapped artifacts,
+    roadmap, and changelog.
   - Require the final requirement audit to validate the fingerprint and
     deterministically replay the closure evidence run, checkpoint artifact,
     and final readout before it evaluates completion.
   - Reject missing, legacy, malformed, altered, or non-replayable current
-    closure artifacts without executing repository commands or mutations.
+    closure artifacts, including evidence from a different or changed checkout,
+    without executing repository commands or mutations.
 - Accept explicit artifact inventory grouped by service, route, migration,
   test, documentation, wiring, and other paths.
 - Provide a current-state evidence collector that reads the repository checkout
@@ -7432,6 +7435,11 @@ Implementation status:
   `server/src/__tests__/services/policyStorageClosureEvidenceRun.test.mjs`.
 - The focused current-state collector test suite lives in
   `server/src/__tests__/services/policyStorageClosureCurrentEvidenceCollector.test.mjs`.
+- Task 8R.23.1 is implemented. The current-evidence collector produces a
+  versioned, content-only SHA-256 fingerprint for the selected checkout's
+  mapped artifacts, roadmap, and changelog. The v5 current-closure audit
+  retains it, while the v3 requirement audit recomputes it from the selected
+  checkout and blocks altered or cross-checkout evidence before completion.
 - The public closure-evidence command resolves relative completion-audit and
   validation artifacts from its selected `--cwd` checkout, preventing a caller
   directory from mixing another checkout's evidence with the repository it
@@ -8519,10 +8527,10 @@ Completion state:
 - Closure output must keep these scopes explicit as `implementationReadiness`
   and `instanceCutover`. The first never reads an installation database; the
   second never acts as a claim that source implementation work is incomplete.
-- The current closure audit v4 and final readout now publish those scope
+- The current closure audit v5 and final readout now publish those scope
   summaries at their top-level decision boundary. Their fingerprints bind the
-  scope states and readiness booleans before a downstream requirement audit can
-  rely on them.
+  scope states, readiness booleans, and selected-checkout content evidence
+  before a downstream requirement audit can rely on them.
 - The closure catalog independently requires semantic native-authority
   eligibility and empty-intent recovery. A structural active-header repair
   alone cannot satisfy closure evidence because it does not prove that the
