@@ -63,8 +63,37 @@
           This question may be outdated because policy or library settings changed after it was generated. Retry Classification to refresh it before confirming.
         </p>
 
+        <NativePendingQuestionActions
+          v-if="nativePendingQuestionPresentation(item)"
+          :item="item"
+          :presentation="nativePendingQuestionPresentation(item)"
+          :is-action-busy="isActionBusy"
+          @resolve-option="emitNativeResolution(item, $event)"
+          @choose-alternative="$emit('toggle-change-mode', item.id)"
+          @retry-item="$emit('retry-item', item)"
+        />
+
         <div
-          v-if="binaryPolicyOptions(item)"
+          v-else-if="isNativePendingQuestion(item)"
+          class="native-pending-question-invalid"
+          role="status"
+        >
+          <p>
+            This native decision cannot be safely displayed. Retry Classification to refresh it from the current policy state.
+          </p>
+          <Button
+            variant="warning"
+            size="sm"
+            :disabled="isActionBusy(`retry-classification-${item.id}`)"
+            :loading="isActionBusy(`retry-classification-${item.id}`)"
+            @click="$emit('retry-item', item)"
+          >
+            Retry Classification
+          </Button>
+        </div>
+
+        <div
+          v-else-if="binaryPolicyOptions(item)"
           class="question-actions"
         >
           <Button
@@ -204,7 +233,7 @@
       </div>
 
       <div
-        v-if="!binaryPolicyOptions(item) && policyOptions(item).length > 0 && !changeMode[item.id]"
+        v-if="!isNativePendingQuestion(item) && !binaryPolicyOptions(item) && policyOptions(item).length > 0 && !changeMode[item.id]"
         class="action-item-options"
       >
         <Button
@@ -224,6 +253,7 @@
       class="action-queue-footer"
     >
       <Button
+        v-if="hasBulkConfirmableItems"
         variant="secondary"
         size="sm"
         :disabled="isActionBusy('confirm-all')"
@@ -273,6 +303,8 @@
 
 <script setup>
 import { Button } from '@/components/common'
+import NativePendingQuestionActions from './NativePendingQuestionActions.vue'
+import { computed } from 'vue'
 import {
   binaryPolicyOptions,
   isQueuedForRetry,
@@ -283,6 +315,10 @@ import {
   suggestedLibraryLabel,
   targetedRecheckLine,
 } from '@/utils/needsAttention'
+import {
+  buildNativePendingQuestionPresentation,
+  isNativePendingQuestion as hasNativePendingQuestion,
+} from '@/utils/nativePendingQuestionPresentation'
 
 const props = defineProps({
   changeMode: {
@@ -329,9 +365,25 @@ function emitResolveOption(item, option, selectedOptionLabel = null) {
   emit('resolve-option', { item, option, selectedOptionLabel })
 }
 
+function nativePendingQuestionPresentation(item) {
+  return buildNativePendingQuestionPresentation(policyQuestion(item))
+}
+
+function isNativePendingQuestion(item) {
+  return hasNativePendingQuestion(policyQuestion(item))
+}
+
+function emitNativeResolution(item, action) {
+  emitResolveOption(item, action.option, action.selectedOptionLabel)
+}
+
 function manualLibraryValue(itemId) {
   return props.manualLibraryByItemId?.[itemId] ?? ''
 }
+
+const hasBulkConfirmableItems = computed(() => props.items.some(
+  item => !isNativePendingQuestion(item) && Boolean(primaryPolicyOption(item)?.library_id),
+))
 </script>
 
 <style scoped>
@@ -413,6 +465,20 @@ function manualLibraryValue(itemId) {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.native-pending-question-invalid {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #92400e;
+  border-radius: 0.375rem;
+  background: rgba(146, 64, 14, 0.12);
+  color: #fef3c7;
+  font-size: 0.75rem;
+}
+
+.native-pending-question-invalid p {
+  margin-bottom: 0.75rem;
 }
 
 .action-item-fallback {

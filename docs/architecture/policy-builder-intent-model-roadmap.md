@@ -4605,6 +4605,15 @@ Implementation status:
   stops at the established non-final gate. Native browser and Discord answers
   remain outcome-only even when a legacy caller requests rule generation. Its
   design record is [Policy Runtime Question Persistence Admission](policy-runtime-question-persistence-admission.md).
+- Native pending-question presentation now has a bounded browser and Discord
+  adapter. The server validates the canonical envelope before it projects the
+  two allowed outcome buttons, while the Command Center renders only
+  `Resolve in <destination>`, `Resolve without learning`, an explicit alternate
+  destination path, and retry. Generic confirm and option-list controls are
+  not rendered for native envelopes, and bulk confirmation skips them. Discord
+  explains that alternate destinations must be chosen in Classifarr instead of
+  reusing the legacy correction workflow. The design record is [Policy Native
+  Pending-Question Presentation](policy-native-pending-question-presentation.md).
 - Request-time learning decisions now preserve the upstream sanitized evidence
   fingerprint through the decision, bounded learning-guard context, and trace;
   validation rejects missing or mismatched fingerprint handoffs.

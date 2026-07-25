@@ -20,6 +20,8 @@ import {
   getMediaTypeEmoji,
   safeParseJson,
 } from './discordNotificationBuilder.mjs';
+import { buildNativePendingQuestionPresentation } from './policyNativePendingQuestionPresentation.mjs';
+import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 
 const MAX_BUTTONS_PER_ROW = 5;
 const MAX_FIELD_VALUE_LENGTH = 1024;
@@ -50,6 +52,19 @@ function buildPendingDecisionComponents(classificationId, policyQuestion) {
     return [];
   }
 
+  const nativePresentation = buildNativePendingQuestionPresentation(question);
+  if (nativePresentation) {
+    const buttons = nativePresentation.actions.map(action => new ButtonBuilder()
+      .setCustomId(`ai_clarify_${classificationId}_${action.optionIndex}`)
+      .setLabel(truncateText(action.label, 80))
+      .setStyle(action.style === 'success' ? ButtonStyle.Success : ButtonStyle.Secondary));
+
+    return [new ActionRowBuilder().addComponents(buttons)];
+  }
+  if (isPolicyRuntimeQuestionPersistenceEnvelope(question)) {
+    return [];
+  }
+
   const buttons = options.slice(0, MAX_BUTTONS_PER_ROW).map((option, index) => {
     const label = typeof option?.label === 'string' && option.label.trim()
       ? option.label.trim()
@@ -74,9 +89,17 @@ function buildPendingDecisionEmbed(metadata = {}, result = {}) {
     : null;
   const reason = result.pending_reason || result.reason || 'Manual review required';
 
+  const question = normalizePolicyQuestion(result.policy_question || result.clarification);
+  const nativePresentation = buildNativePendingQuestionPresentation(question);
+  const hasInvalidNativePresentation = isPolicyRuntimeQuestionPersistenceEnvelope(question) && !nativePresentation;
+
   const embed = new EmbedBuilder()
     .setTitle(`${getMediaTypeEmoji(mediaType)} Pending classification: ${title} (${metadata.year || 'N/A'})`)
-    .setDescription('A classification needs an operator decision in Classifarr.')
+    .setDescription(nativePresentation
+      ? 'Choose how to resolve this item. These actions resolve only this item and do not update future policy learning.'
+      : hasInvalidNativePresentation
+        ? 'This native decision cannot be safely displayed. Retry Classification in Classifarr to refresh it from the current policy state.'
+        : 'A classification needs an operator decision in Classifarr.')
     .setColor(confidence === null ? 0xf59e0b : getColorForConfidence(confidence))
     .setTimestamp();
 
@@ -109,13 +132,27 @@ function buildPendingDecisionEmbed(metadata = {}, result = {}) {
     });
   }
 
-  const question = normalizePolicyQuestion(result.policy_question || result.clarification);
   if (question?.question) {
     fields.push({
       name: 'Question',
       value: truncateText(question.question, MAX_FIELD_VALUE_LENGTH),
       inline: false,
     });
+  }
+
+  if (nativePresentation) {
+    fields.push(
+      {
+        name: 'Suggested destination',
+        value: truncateText(nativePresentation.destination.libraryName, MAX_FIELD_VALUE_LENGTH),
+        inline: true,
+      },
+      {
+        name: 'Another destination',
+        value: 'Choose another destination in Classifarr. The Discord actions above resolve only the suggested destination.',
+        inline: false,
+      },
+    );
   }
 
   embed.addFields(fields);

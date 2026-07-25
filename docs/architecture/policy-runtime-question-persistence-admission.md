@@ -147,9 +147,16 @@ Focused tests cover admission, canonical envelope shape, unsafe-handoff
 rejection, existing-question preservation, routing suppression, no implicit
 learning, manual destination flexibility, and Discord outcome fallback.
 
+## Follow-Through
+
+The native pending-question resolution presentation adapter is now implemented
+in [Policy Native Pending-Question Presentation](policy-native-pending-question-presentation.md).
+Browser and Discord views render the two normalized outcomes without legacy
+duplicate controls; the browser exposes an explicit alternate-destination
+choice, and all native resolutions remain outcome-only.
+
 ## Next Step
 
-Implement a **native pending-question resolution presentation adapter** for the
-browser and Discord. It should render the two normalized outcome actions
-without legacy duplicate controls, make manual alternative destination choice
-explicit, and keep outcome resolution distinct from any future learning step.
+Implement a **native pending-resolution provenance adapter** that records the
+normalized selected outcome and any alternate destination separately from the
+eventual routing result before the learning guard evaluates it.

@@ -1,6 +1,19 @@
 /*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -83,6 +96,32 @@ const createLiveStats = () => ({
     retryQueue: { total: { pending: 2 } },
   },
   health: { ai: true, worker: true },
+})
+
+const createNativePendingQuestion = (overrides = {}) => ({
+  version: 'policy.runtime_question_persistence.v1',
+  question: 'Is TV Shows the right destination?',
+  runtimeQuestion: { contractVersion: 'policy.runtime_question_reduction.v1' },
+  runtimeQuestionReductionPlan: { version: 'policy.runtime_question_reduction.v1' },
+  options: [
+    {
+      label: 'Resolve current item',
+      outcomeId: 'resolve_current_item',
+      library_id: 10,
+      library_name: 'TV Shows',
+    },
+    {
+      label: 'Do not learn',
+      outcomeId: 'do_not_learn',
+    },
+  ],
+  meta: {
+    runtime_question_persistence: {
+      destinationLibraryId: 10,
+      destinationLibraryName: 'TV Shows',
+    },
+  },
+  ...overrides,
 })
 
 describe('CommandCenter action modules', () => {
@@ -215,6 +254,116 @@ describe('CommandCenter action modules', () => {
     const buttonLabels = wrapper.findAll('button').map((node) => node.text())
     expect(buttonLabels).toContain('Yes')
     expect(buttonLabels).toContain('No')
+  })
+
+  it('renders explicit native outcome actions without generic duplicate controls', async () => {
+    apiMock.getPendingClassifications.mockResolvedValueOnce({
+      items: [{
+        id: 203,
+        title: 'Native Review',
+        media_type: 'tv',
+        confidence: 55,
+        policy_question: createNativePendingQuestion(),
+      }],
+    })
+
+    const wrapper = await mountCommandCenter()
+    const buttonLabels = wrapper.findAll('button').map(node => node.text())
+
+    expect(buttonLabels).toEqual(expect.arrayContaining([
+      'Resolve in TV Shows',
+      'Resolve without learning',
+      'Choose another destination',
+      'Retry Classification',
+    ]))
+    expect(buttonLabels).not.toContain('Confirm')
+    expect(buttonLabels).not.toContain('Do not learn')
+  })
+
+  it('fails closed to retry when native presentation data is incomplete', async () => {
+    const malformedQuestion = createNativePendingQuestion({
+      options: [{
+        label: 'Resolve current item',
+        outcomeId: 'resolve_current_item',
+        library_id: 10,
+      }],
+    })
+    apiMock.getPendingClassifications.mockResolvedValueOnce({
+      items: [{
+        id: 206,
+        title: 'Malformed Native Review',
+        media_type: 'tv',
+        confidence: 55,
+        policy_question: malformedQuestion,
+      }],
+    })
+
+    const wrapper = await mountCommandCenter()
+    const buttonLabels = wrapper.findAll('button').map(node => node.text())
+
+    expect(wrapper.text()).toContain('cannot be safely displayed')
+    expect(buttonLabels).toContain('Retry Classification')
+    expect(buttonLabels).not.toContain('Confirm')
+    expect(buttonLabels).not.toContain('Resolve current item')
+  })
+
+  it('resolves native outcomes with the server-owned destination and no rule generation', async () => {
+    apiMock.getPendingClassifications.mockResolvedValueOnce({
+      items: [{
+        id: 204,
+        title: 'Native Outcome',
+        media_type: 'tv',
+        confidence: 55,
+        policy_question: createNativePendingQuestion(),
+      }],
+    })
+    apiMock.resolvePendingClassification.mockResolvedValueOnce({ data: { routed: true } })
+
+    const wrapper = await mountCommandCenter()
+    const resolveWithoutLearning = wrapper.findAll('button')
+      .find(node => node.text() === 'Resolve without learning')
+
+    await resolveWithoutLearning.trigger('click')
+    await flushPromises()
+
+    expect(apiMock.resolvePendingClassification).toHaveBeenCalledWith(204, {
+      library_id: 10,
+      selected_option: 'Do not learn',
+      resolved_by: 'admin',
+      generate_rule: false,
+    })
+  })
+
+  it('keeps a native alternate destination explicit and outcome-only', async () => {
+    apiMock.getPendingClassifications.mockResolvedValueOnce({
+      items: [{
+        id: 205,
+        title: 'Native Alternative',
+        media_type: 'tv',
+        confidence: 55,
+        policy_question: createNativePendingQuestion(),
+      }],
+    })
+    apiMock.resolvePendingClassification.mockResolvedValueOnce({ data: { routed: true } })
+
+    const wrapper = await mountCommandCenter()
+    const chooseAlternative = wrapper.findAll('button')
+      .find(node => node.text() === 'Choose another destination')
+    await chooseAlternative.trigger('click')
+    await flushPromises()
+
+    const select = wrapper.find('.change-select')
+    await select.setValue('10')
+    const resolveButton = wrapper.findAll('button').find(node => node.text() === 'Resolve')
+    await resolveButton.trigger('click')
+    await flushPromises()
+
+    expect(apiMock.resolvePendingClassification).toHaveBeenCalledWith(205, {
+      library_id: 10,
+      selected_option: 'Choose another destination',
+      resolved_by: 'admin',
+      generate_rule: false,
+    })
   })
 
   it('shows policy fallback copy when policy_question payload is missing', async () => {
@@ -402,6 +551,42 @@ describe('CommandCenter action modules', () => {
 
     expect(apiMock.resolvePendingClassification).toHaveBeenCalledTimes(2)
     expect(wrapper.text()).toContain('Resolved "Motorvalley" but routing did not complete (missing_tvdb_id).')
+  })
+
+  it('skips native pending questions when confirming all legacy questions', async () => {
+    apiMock.getPendingClassifications.mockResolvedValueOnce({
+      items: [
+        {
+          id: 207,
+          title: 'Legacy Review',
+          media_type: 'tv',
+          confidence: 55,
+          policy_question: {
+            question: 'Does this belong in TV Shows?',
+            options: [{ label: 'Yes', value: 'yes', library_id: 10 }],
+          },
+        },
+        {
+          id: 208,
+          title: 'Native Review',
+          media_type: 'tv',
+          confidence: 55,
+          policy_question: createNativePendingQuestion(),
+        },
+      ],
+    })
+    apiMock.resolvePendingClassification.mockResolvedValueOnce({ data: { routed: true } })
+
+    const wrapper = await mountCommandCenter()
+    const confirmAllButton = wrapper.findAll('button').find(node => node.text() === 'Confirm All')
+    await confirmAllButton.trigger('click')
+    await flushPromises()
+
+    expect(apiMock.resolvePendingClassification).toHaveBeenCalledTimes(1)
+    expect(apiMock.resolvePendingClassification).toHaveBeenCalledWith(207, expect.objectContaining({
+      generate_rule: true,
+    }))
+    expect(wrapper.text()).toContain('Confirm All skipped 1 native review item')
   })
 
   it('retries a single needs-attention classification', async () => {

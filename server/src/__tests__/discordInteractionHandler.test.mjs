@@ -2,8 +2,18 @@
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
- * This program is free software: licensed under GPL-3.0
- * See LICENSE file for details.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -442,8 +452,15 @@ describe('processClarificationResponse', () => {
                     policy_question: {
                         version: 'policy.runtime_question_persistence.v1',
                         options: [
-                            { label: 'Resolve current item', library_id: 10 },
-                            { label: 'Do not learn' },
+                            {
+                                label: 'Resolve current item',
+                                outcomeId: 'resolve_current_item',
+                                library_id: 10,
+                            },
+                            {
+                                label: 'Do not learn',
+                                outcomeId: 'do_not_learn',
+                            },
                         ],
                         runtimeQuestion: {
                             contractVersion: 'policy.runtime_question_reduction.v1',
@@ -454,6 +471,7 @@ describe('processClarificationResponse', () => {
                         meta: {
                             runtime_question_persistence: {
                                 destinationLibraryId: 10,
+                                destinationLibraryName: 'Movies',
                             },
                         },
                     },

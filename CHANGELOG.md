@@ -737,6 +737,11 @@ unchanged operator or runtime outcome.
   plan, preserves existing questions, stops automatic routing until resolution,
   and keeps browser and Discord answers outcome-only even when a legacy caller
   requests rule generation.
+- **Explicit Native Pending Decisions** - native review items now present only
+  their two outcome actions, an explicit browser alternate-destination choice,
+  and retry. The Command Center no longer renders generic duplicate controls or
+  bulk-confirms native reviews, and Discord uses matching action labels while
+  directing alternate destinations back to the authoritative web workflow.
 - **Question and Learning Controls** - added deterministic question reduction,
   permitted-action checks, answer-shape validation, and learning eligibility
   checks so automation asks only destination-relevant questions and manual

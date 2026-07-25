@@ -6,6 +6,10 @@
 import { ref } from 'vue'
 import api from '@/api'
 import { primaryPolicyOption } from '@/utils/needsAttention'
+import {
+  buildNativePendingQuestionPresentation,
+  isNativePendingQuestion,
+} from '@/utils/nativePendingQuestionPresentation'
 
 export function useNeedsAttentionActions({
   activeLibraries,
@@ -46,8 +50,30 @@ export function useNeedsAttentionActions({
     if (message) setActionError(message)
   }
 
+  function buildResolutionPayload(item, option, selectedOptionLabel, libraryId) {
+    const question = item?.policy_question && typeof item.policy_question === 'object'
+      ? item.policy_question
+      : null
+    const isNative = isNativePendingQuestion(question)
+
+    return {
+      library_id: libraryId,
+      selected_option: selectedOptionLabel || option?.label || option?.value || 'Confirm',
+      resolved_by: 'admin',
+      generate_rule: !isNative,
+    }
+  }
+
   async function resolveWithOption(item, option, selectedOptionLabel = null) {
-    const libraryId = Number(option?.library_id || 0)
+    const question = item?.policy_question
+    const nativePresentation = buildNativePendingQuestionPresentation(question)
+    if (isNativePendingQuestion(question) && !nativePresentation) {
+      setActionError(`Native review data for "${item.title}" cannot be safely resolved. Retry Classification to refresh it.`)
+      return
+    }
+    const libraryId = nativePresentation
+      ? nativePresentation.destination.libraryId
+      : Number(option?.library_id || 0)
     if (!libraryId) {
       toggleChangeMode(item.id)
       setActionError(`Library mapping is missing for "${item.title}". Choose a library with Change.`)
@@ -56,10 +82,7 @@ export function useNeedsAttentionActions({
 
     await runActionWithBusy(`resolve-${item.id}`, async () => {
       const response = await api.resolvePendingClassification(item.id, {
-        library_id: libraryId,
-        selected_option: selectedOptionLabel || option?.label || option?.value || 'Confirm',
-        resolved_by: 'admin',
-        generate_rule: true,
+        ...buildResolutionPayload(item, option, selectedOptionLabel, libraryId),
       })
       setRoutingOutcomeError(item.title, response)
       changeMode.value = { ...changeMode.value, [item.id]: false }
@@ -70,12 +93,20 @@ export function useNeedsAttentionActions({
     const libraryId = Number(manualLibraryByItemId.value[item.id] || 0)
     if (!libraryId) return
 
+    const nativePresentation = buildNativePendingQuestionPresentation(item?.policy_question)
+    if (isNativePendingQuestion(item?.policy_question) && !nativePresentation) {
+      setActionError(`Native review data for "${item.title}" cannot be safely resolved. Retry Classification to refresh it.`)
+      return
+    }
+
     await runActionWithBusy(`resolve-${item.id}`, async () => {
       const response = await api.resolvePendingClassification(item.id, {
-        library_id: libraryId,
-        selected_option: 'Manual selection',
-        resolved_by: 'admin',
-        generate_rule: true,
+        ...buildResolutionPayload(
+          item,
+          null,
+          nativePresentation?.alternativeDestination.selectedOptionLabel || 'Manual selection',
+          libraryId,
+        ),
       })
       setRoutingOutcomeError(item.title, response)
       changeMode.value = { ...changeMode.value, [item.id]: false }
@@ -85,22 +116,30 @@ export function useNeedsAttentionActions({
   async function confirmAllNeedsAttention() {
     await runActionWithBusy('confirm-all', async () => {
       const routingWarnings = []
+      const skippedNativeItems = []
 
       for (const item of needsAttentionItems.value) {
+        if (isNativePendingQuestion(item?.policy_question)) {
+          skippedNativeItems.push(item)
+          continue
+        }
         const option = primaryPolicyOption(item)
         if (!option?.library_id) continue
-        const response = await api.resolvePendingClassification(item.id, {
-          library_id: Number(option.library_id),
-          selected_option: option.label || option.value || 'Confirm',
-          resolved_by: 'admin',
-          generate_rule: true,
-        })
+        const response = await api.resolvePendingClassification(item.id, buildResolutionPayload(
+          item,
+          option,
+          option.label || option.value || 'Confirm',
+          Number(option.library_id),
+        ))
 
         const warning = getRoutingOutcomeMessage(item.title, response)
         if (warning) routingWarnings.push(warning)
       }
 
-      if (routingWarnings.length === 1) {
+      if (skippedNativeItems.length > 0) {
+        const message = `Confirm All skipped ${skippedNativeItems.length} native review ${skippedNativeItems.length === 1 ? 'item' : 'items'}; choose an explicit outcome for each item.`
+        setActionError(routingWarnings.length > 0 ? `${message} ${routingWarnings.join(' ')}` : message)
+      } else if (routingWarnings.length === 1) {
         setActionError(routingWarnings[0])
       } else if (routingWarnings.length > 1) {
         setActionError(`Confirm All completed, but routing did not finish for ${routingWarnings.length} items: ${routingWarnings.join(' ')}`)

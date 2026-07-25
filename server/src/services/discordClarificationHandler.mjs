@@ -14,6 +14,7 @@ import { clarificationService } from './clarificationService.mjs';
 import * as notificationBuilder from './discordNotificationBuilder.mjs';
 import { routeAfterClarification } from './discordPatternExtractionService.mjs';
 import { policyDiscordPendingAnswerLearningService } from './policyDiscordPendingAnswerLearning.mjs';
+import { buildNativePendingQuestionPresentation } from './policyNativePendingQuestionPresentation.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 
 const logger = createLogger('discordClarificationHandler');
@@ -52,20 +53,26 @@ export async function processClarificationResponse(
           ? notificationBuilder.safeParseJson(classification.policy_question)
           : classification.policy_question;
 
-      if (policyQuestion?.options && policyQuestion.options[optionIndex]) {
+      const nativePresentation = buildNativePendingQuestionPresentation(policyQuestion);
+      const nativeAction = nativePresentation?.actions.find(
+        action => action.optionIndex === optionIndex,
+      );
+
+      if (nativeAction) {
+        selectedLabel = nativeAction.selectedOptionLabel;
+        libraryId = nativePresentation.destination.libraryId;
+      } else if (isPolicyRuntimeQuestionPersistenceEnvelope(policyQuestion)) {
+        await interaction.followUp({
+          content: 'This native decision cannot be safely resolved. Retry Classification from the latest queue state.',
+          ephemeral: true,
+        });
+        return;
+      } else if (policyQuestion?.options && policyQuestion.options[optionIndex]) {
         const selectedOption = policyQuestion.options[optionIndex];
         selectedLabel = selectedOption.label;
 
         if (selectedOption.library_id) {
           libraryId = selectedOption.library_id;
-        } else if (isPolicyRuntimeQuestionPersistenceEnvelope(policyQuestion)) {
-          const destinationLibraryId = Number.parseInt(
-            policyQuestion.meta?.runtime_question_persistence?.destinationLibraryId,
-            10,
-          );
-          if (Number.isInteger(destinationLibraryId) && destinationLibraryId > 0) {
-            libraryId = destinationLibraryId;
-          }
         }
       }
     } else {

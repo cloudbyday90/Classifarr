@@ -1,6 +1,19 @@
 /*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 import { describe, expect, jest, test, beforeEach } from '@jest/globals';
@@ -101,6 +114,102 @@ describe('discordPendingNotification', () => {
         roles: ['123456789012345678'],
       },
     }));
+  });
+
+  test('renders native runtime question outcomes without legacy duplicate controls', async () => {
+    const send = jest.fn().mockResolvedValue({ id: 'discord-message-native' });
+    const client = {
+      channels: {
+        fetch: jest.fn().mockResolvedValue({ send }),
+      },
+    };
+
+    await sendPendingDecisionNotification(
+      { title: 'Animated Example', year: 2026, media_type: 'movie' },
+      {
+        classification_id: 90,
+        confidence: 65,
+        policy_question: {
+          version: 'policy.runtime_question_persistence.v1',
+          question: 'Is Animated Movies the right destination?',
+          runtimeQuestion: {
+            contractVersion: 'policy.runtime_question_reduction.v1',
+          },
+          runtimeQuestionReductionPlan: {
+            version: 'policy.runtime_question_reduction.v1',
+          },
+          options: [
+            {
+              label: 'Resolve current item',
+              outcomeId: 'resolve_current_item',
+              library_id: 6,
+            },
+            {
+              label: 'Do not learn',
+              outcomeId: 'do_not_learn',
+            },
+          ],
+          meta: {
+            runtime_question_persistence: {
+              destinationLibraryId: 6,
+              destinationLibraryName: 'Animated Movies',
+            },
+          },
+        },
+      },
+      {
+        client,
+        channelId: 'channel-1',
+        config: { enabled: true, notify_on_pending_items: true },
+        warnFn: jest.fn(),
+      },
+    );
+
+    const payload = send.mock.calls[0][0];
+    const buttons = payload.components[0].components.map(button => button.data);
+    const fields = payload.embeds[0].data.fields;
+
+    expect(buttons).toEqual([
+      expect.objectContaining({ custom_id: 'ai_clarify_90_0', label: 'Resolve in Animated Movies' }),
+      expect.objectContaining({ custom_id: 'ai_clarify_90_1', label: 'Resolve without learning' }),
+    ]);
+    expect(buttons.map(button => button.label)).not.toContain('Confirm');
+    expect(fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'Another destination', value: expect.stringContaining('Classifarr') }),
+    ]));
+  });
+
+  test('fails closed without generic buttons when a native envelope cannot be safely presented', async () => {
+    const send = jest.fn().mockResolvedValue({ id: 'discord-message-invalid-native' });
+    const client = {
+      channels: {
+        fetch: jest.fn().mockResolvedValue({ send }),
+      },
+    };
+
+    await sendPendingDecisionNotification(
+      { title: 'Invalid Native', media_type: 'movie' },
+      {
+        classification_id: 91,
+        policy_question: {
+          version: 'policy.runtime_question_persistence.v1',
+          runtimeQuestion: { contractVersion: 'policy.runtime_question_reduction.v1' },
+          runtimeQuestionReductionPlan: { version: 'policy.runtime_question_reduction.v1' },
+          options: [{ label: 'Resolve current item', outcomeId: 'resolve_current_item', library_id: 6 }],
+          meta: { runtime_question_persistence: { destinationLibraryId: 6 } },
+        },
+      },
+      {
+        client,
+        channelId: 'channel-1',
+        config: { enabled: true, notify_on_pending_items: true },
+        warnFn: jest.fn(),
+      },
+    );
+
+    const payload = send.mock.calls[0][0];
+    expect(payload.components).toEqual([]);
+    expect(payload.embeds[0].data.description).toContain('cannot be safely displayed');
   });
 
   test('skips when pending notifications are disabled', async () => {
