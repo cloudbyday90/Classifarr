@@ -650,6 +650,13 @@ unchanged operator or runtime outcome.
 
 #### Policy Evidence, Decisions, And Learning
 
+- **Guarded Discord Pending Answers** - Discord clarification answers now pass
+  through the authoritative resolver and a bounded learning-admission check.
+  Legacy, stale, or fingerprint-drifted questions resolve the current item only;
+  selected labels, interaction metadata, and responder details cannot create
+  exact-item memory or broad policy evidence. Resolver failures no longer use a
+  direct database or pattern-learning fallback.
+
 - **Guarded Manual-Correction Learning** - authenticated classification
   corrections now validate the server-owned destination and media type, record
   the correction outcome, and create exact-item memory only after a bounded

@@ -414,6 +414,13 @@ describe('processClarificationResponse', () => {
         const interaction = makeInteraction();
         await processClarificationResponse(100, 0, interaction);
 
+        expect(clarificationService.resolvePolicyQuestion).toHaveBeenCalledWith(
+            100,
+            10,
+            'Movies',
+            'testUser',
+            false,
+        );
         expect(classificationRoutingService.routeToArr).toHaveBeenCalledWith(
             expect.objectContaining({ title: 'Test Movie', media_type: 'movie' }),
             expect.objectContaining({
@@ -509,6 +516,32 @@ describe('processClarificationResponse', () => {
         );
         expect(interaction.followUp).not.toHaveBeenCalledWith(
             expect.objectContaining({ content: expect.stringContaining('Already processed') })
+        );
+        expect(interaction.editReply).not.toHaveBeenCalled();
+        expect(db.query).toHaveBeenCalledTimes(1);
+    });
+
+    test('does not fall back to a direct mutation when authoritative resolution fails unexpectedly', async () => {
+        db.query.mockResolvedValueOnce({
+            rows: [{
+                ...MOCK_CLASSIFICATION,
+                status: 'awaiting_decision',
+                library_id: 10,
+                policy_question: {
+                    options: [{ label: 'Movies', library_id: 10 }]
+                }
+            }]
+        });
+        clarificationService.resolvePolicyQuestion.mockRejectedValueOnce(new Error('Database unavailable'));
+
+        const interaction = makeInteraction();
+        await processClarificationResponse(100, 0, interaction);
+
+        expect(interaction.followUp).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content: expect.stringContaining('No changes were made'),
+                ephemeral: true,
+            })
         );
         expect(interaction.editReply).not.toHaveBeenCalled();
         expect(db.query).toHaveBeenCalledTimes(1);

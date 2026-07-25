@@ -12,7 +12,8 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
 import * as notificationBuilder from './discordNotificationBuilder.mjs';
-import { extractClarificationPatterns, routeAfterClarification } from './discordPatternExtractionService.mjs';
+import { routeAfterClarification } from './discordPatternExtractionService.mjs';
+import { policyDiscordPendingAnswerLearningService } from './policyDiscordPendingAnswerLearning.mjs';
 
 const logger = createLogger('discordClarificationHandler');
 
@@ -42,9 +43,10 @@ export async function processClarificationResponse(
     let selectedLabel = `Option ${optionIndex + 1}`;
     let libraryId = classification.library_id;
     let routingOutcome = { routed: false, reason: null, error: null };
+    let policyQuestion = null;
 
     if (classification.policy_question) {
-      const policyQuestion =
+      policyQuestion =
         typeof classification.policy_question === 'string'
           ? notificationBuilder.safeParseJson(classification.policy_question)
           : classification.policy_question;
@@ -83,7 +85,7 @@ export async function processClarificationResponse(
         libraryId,
         selectedLabel,
         interaction.user.username,
-        true,
+        false,
       );
 
       if (resolveResult.alreadyResolved) {
@@ -131,79 +133,15 @@ export async function processClarificationResponse(
       }
 
       logger.error(
-        'resolvePolicyQuestion failed, falling back to legacy handling:',
-        resolveError,
+        'resolvePolicyQuestion failed without applying a legacy fallback',
+        { classificationId, statusCode: resolveError?.statusCode || null },
+        { error: resolveError },
       );
-
-      let resolvedLibraryId = libraryId;
-      let resolvedLibraryName = null;
-
-      if (!resolvedLibraryId && selectedLabel) {
-        const normalizedLabel = selectedLabel
-          .replace(/\s*\(.*\)\s*$/, '')
-          .trim();
-        let libResult = await db.query(
-          'SELECT id, name FROM libraries WHERE LOWER(name) = LOWER($1) LIMIT 1',
-          [normalizedLabel],
-        );
-
-        if (libResult.rows.length === 0) {
-          libResult = await db.query(
-            'SELECT id, name FROM libraries WHERE name ILIKE $1 LIMIT 1',
-            [`%${normalizedLabel}%`],
-          );
-        }
-
-        if (libResult.rows.length > 0) {
-          resolvedLibraryId = libResult.rows[0].id;
-          resolvedLibraryName = libResult.rows[0].name;
-        }
-      }
-
-      if (resolvedLibraryId && !resolvedLibraryName) {
-        const libResult = await db.query(
-          'SELECT name FROM libraries WHERE id = $1',
-          [resolvedLibraryId],
-        );
-        resolvedLibraryName = libResult.rows[0]?.name || null;
-      }
-
-      const displayLibraryName = resolvedLibraryName || selectedLabel;
-
-      await db.query(
-        `UPDATE classification_history 
-         SET status = 'completed', 
-             clarification_status = 'resolved',
-             library_id = $2,
-             library_name = $3,
-             method = 'manual_classification',
-             confidence = 100,
-             reason = $4,
-             pending_reason = NULL,
-             clarification_response = $1
-         WHERE id = $5`,
-        [
-          JSON.stringify({
-            option_index: optionIndex,
-            label: selectedLabel,
-            answered_by: interaction.user.username,
-          }),
-          resolvedLibraryId,
-          displayLibraryName,
-          `Resolved by ${interaction.user.username}: ${selectedLabel}`,
-          classificationId,
-        ],
-      );
-
-      await extractClarificationPatterns(
-        classificationId,
-        resolvedLibraryId,
-        selectedLabel,
-      );
-      routingOutcome = await routeAfterClarification(classificationId);
-      if (resolvedLibraryId) {
-        libraryId = resolvedLibraryId;
-      }
+      await interaction.followUp({
+        content: 'Could not resolve this item. No changes were made; retry from the latest queue state.',
+        ephemeral: true,
+      });
+      return;
     }
 
     let libraryName = selectedLabel;
@@ -214,6 +152,28 @@ export async function processClarificationResponse(
       );
       libraryName = libResult.rows[0]?.name || selectedLabel;
     }
+
+    const learningResult = policyDiscordPendingAnswerLearningService.build({
+      classification: {
+        id: classification.id,
+      },
+      destination: {
+        libraryId,
+        libraryName,
+      },
+      persistedQuestion: policyQuestion || {},
+      selectedOptionIndex: optionIndex,
+      finalOutcomeRecorded: true,
+    });
+
+    logger.info('Discord pending answer evaluated for guarded learning', {
+      classificationId,
+      statusId: learningResult.statusId,
+      selectedAnswerOutcomeId: learningResult.selectedAnswerOutcomeId,
+      learningDecisionId: learningResult.decision.learning.decisionId,
+      learningTierId: learningResult.decision.learning.tierId,
+      reasonCodes: learningResult.reasonCodes,
+    });
 
     const routingStatusText = routingOutcome.routed
       ? `\u2705 Routed to ${libraryName}`
@@ -230,7 +190,7 @@ export async function processClarificationResponse(
             { name: 'Routing', value: routingStatusText, inline: false },
           )
           .setFooter({
-            text: `\u2705 Resolved by ${interaction.user.username} \u2022 Pattern saved for future`,
+            text: `\u2705 Resolved by ${interaction.user.username} \u2022 Resolution recorded`,
           }),
       ],
     });

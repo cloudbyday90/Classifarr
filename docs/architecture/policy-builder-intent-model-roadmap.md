@@ -4567,6 +4567,16 @@ Implementation status:
   admit it. The endpoint no longer accepts caller-controlled audit actors or
   reinforces broad metadata patterns from one correction. Its design record is
   [Policy Manual-Correction Learning Admission](policy-manual-correction-learning-admission.md).
+- Discord pending-item answers now resolve through the authoritative policy
+  resolver with legacy rule generation disabled. The runtime adapter in
+  `policyDiscordPendingAnswerLearning.mjs` validates the persisted normalized
+  question, its complete question-reduction fingerprint chain, and the selected
+  allowlisted outcome before it evaluates the learning guard. Legacy, stale, or
+  fingerprint-drifted questions remain outcome-only; Discord labels, identities,
+  and interaction metadata cannot create exact-item or broad policy evidence.
+  Resolver failures now stop with a retry-safe response instead of using the
+  former direct SQL and pattern-extraction fallback. Its design record is
+  [Policy Discord Pending-Answer Learning Admission](policy-discord-pending-answer-learning-admission.md).
 - Request-time learning decisions now preserve the upstream sanitized evidence
   fingerprint through the decision, bounded learning-guard context, and trace;
   validation rejects missing or mismatched fingerprint handoffs.
