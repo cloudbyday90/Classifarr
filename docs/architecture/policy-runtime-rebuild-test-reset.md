@@ -17,6 +17,7 @@ The reset must prove these behaviors:
 - missing Arr routing remains `classified_not_routed`, not a successful route,
 - stale questions cannot create durable learning,
 - request-time choices pass through the learning guard,
+- native pending selections and terminal route outcomes remain outcome-only,
 - rebuild proposals preserve explicit operator constraints,
 - replacement requires rollback snapshot coverage.
 
@@ -48,6 +49,9 @@ The reset must prove these behaviors:
 6. Verify each declared test artifact still resolves inside the repository,
    exists on disk, and statically imports the runtime contract it claims to
    protect so the reset cannot pass with stale paths or superficial coverage.
+7. Require focused ownership for native pending selection provenance, route
+   outcome normalization, and route outcome persistence; neither may become
+   policy learning evidence.
 
 ## Pros And Cons
 
@@ -85,6 +89,8 @@ Cons:
   - missing routing becomes `classified_not_routed`,
   - stale questions cannot learn,
   - request choices require guarded learning,
+  - native pending selection remains outcome-only,
+  - native pending route outcome remains outcome-only,
   - rebuild preserves explicit constraints,
   - rollback required before replacement.
 - Artifact availability validation:
@@ -96,6 +102,8 @@ Cons:
   - each mapped artifact must statically import its declared ESM service,
   - guarded-outcome projection and runtime-metrics input are independently
     represented rather than being implied by neighboring tests.
+  - native pending selection and route outcomes are independently represented,
+    including the route outcome persistence wrapper.
 - Next step: runtime contract completion audit before native intent storage.
 
 ## Implemented Files

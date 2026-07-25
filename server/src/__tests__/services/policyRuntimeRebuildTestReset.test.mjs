@@ -1,3 +1,13 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 import {
   POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS,
@@ -19,7 +29,7 @@ describe('policyRuntimeRebuildTestReset', () => {
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_EVIDENCE_PROJECTION]: 1,
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_AUTOMATION_DECISION]: 1,
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_QUESTION_CONTRACT]: 1,
-      [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD]: 2,
+      [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD]: 5,
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER]: 6,
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS]: 2,
     }));
@@ -34,8 +44,8 @@ describe('policyRuntimeRebuildTestReset', () => {
       }),
     ]));
     expect(reset.validation.ok).toBe(true);
-    expect(reset.summary.requiredContractCount).toBe(13);
-    expect(reset.summary.coveredRequiredContractCount).toBe(13);
+    expect(reset.summary.requiredContractCount).toBe(15);
+    expect(reset.summary.coveredRequiredContractCount).toBe(15);
   });
 
   test('rejects missing or repository-escaping reset artifact paths', () => {
@@ -77,6 +87,8 @@ describe('policyRuntimeRebuildTestReset', () => {
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REQUEST_CHOICES_REQUIRE_GUARD,
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REBUILD_PRESERVES_EXPLICIT_CONSTRAINTS,
       POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.NATIVE_PENDING_SELECTION_REMAINS_OUTCOME_ONLY,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.NATIVE_PENDING_ROUTE_OUTCOME_REMAINS_OUTCOME_ONLY,
     ].forEach(coverageId => {
       expect(coverageById.get(coverageId)).toEqual(expect.objectContaining({
         covered: true,
@@ -196,6 +208,38 @@ describe('policyRuntimeRebuildTestReset', () => {
     ]));
   });
 
+  test('rejects native pending adapter coverage that is removed from the reset manifest', () => {
+    const nativeContractIds = [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.NATIVE_PENDING_SELECTION,
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.NATIVE_PENDING_ROUTE_OUTCOME,
+    ];
+    const artifacts = listPolicyRuntimeRebuildTestResetArtifacts()
+      .filter(artifact => !artifact.contractIds.some(contractId =>
+        nativeContractIds.includes(contractId)
+      ));
+    const reset = buildPolicyRuntimeRebuildTestReset({ artifacts });
+
+    expect(reset.validation.ok).toBe(false);
+    expect(reset.validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.REQUIRED_CONTRACT_UNMAPPED,
+        contractId: POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.NATIVE_PENDING_SELECTION,
+      }),
+      expect.objectContaining({
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.REQUIRED_CONTRACT_UNMAPPED,
+        contractId: POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.NATIVE_PENDING_ROUTE_OUTCOME,
+      }),
+      expect.objectContaining({
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.REQUIRED_COVERAGE_UNMAPPED,
+        coverageId: POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.NATIVE_PENDING_SELECTION_REMAINS_OUTCOME_ONLY,
+      }),
+      expect.objectContaining({
+        riskId: POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS.REQUIRED_COVERAGE_UNMAPPED,
+        coverageId: POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.NATIVE_PENDING_ROUTE_OUTCOME_REMAINS_OUTCOME_ONLY,
+      }),
+    ]));
+  });
+
   test('rejects unknown decisions, coverage ids, missing replacement, and missing trace reasons', () => {
     const reset = buildPolicyRuntimeRebuildTestReset({
       artifacts: [
@@ -240,8 +284,8 @@ describe('policyRuntimeRebuildTestReset', () => {
       ok: true,
       issueCount: 0,
       artifactCount: reset.artifacts.length,
-      requiredContractCount: 13,
-      coveredRequiredContractCount: 13,
+      requiredContractCount: 15,
+      coveredRequiredContractCount: 15,
       nextStep: expect.objectContaining({
         stepId: 'completion_audit',
       }),

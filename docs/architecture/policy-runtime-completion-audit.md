@@ -21,6 +21,8 @@ The completion audit must prove:
 - the runtime/rebuild test reset proves complete focused ownership for every
   required runtime contract,
 - request-time learning is checked with a valid bounded question-proof sample,
+- native pending selection and route outcome adapters retain their design,
+  service, and focused-test inventory under request-time learning,
 - rollback evidence is persisted before replacement and never grants
   replacement authority on its own,
 - native replacement preserves explicit strict-rule semantics rather than
@@ -59,9 +61,11 @@ The completion audit must prove:
    a gate.
 5. Require the test-reset audit to report complete contract-to-test coverage;
    a generic passing status alone is not enough.
-6. Require policy-engine completion before runtime completion can advance to
+6. Require request-time learning to inventory the native pending selection and
+   route outcome supporting artifacts, including route persistence coverage.
+7. Require policy-engine completion before runtime completion can advance to
    native intent storage readiness.
-7. Keep the audit side-effect-free and focused on current repository evidence.
+8. Keep the audit side-effect-free and focused on current repository evidence.
 
 ## Pros And Cons
 
@@ -96,6 +100,8 @@ Cons:
   - automation decision contract,
   - runtime question reduction,
   - request-time learning,
+  - native pending selection provenance and native pending route outcomes as
+    required request-time supporting artifacts,
   - library-derived policy rebuild,
   - library rebuild acceptance transition,
   - migration verifier and rollback path,

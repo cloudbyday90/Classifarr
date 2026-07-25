@@ -20,6 +20,8 @@ const POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS = Object.freeze({
   REQUEST_CHOICES_REQUIRE_GUARD: 'request_choices_require_guard',
   REBUILD_PRESERVES_EXPLICIT_CONSTRAINTS: 'rebuild_preserves_explicit_constraints',
   ROLLBACK_REQUIRED_BEFORE_REPLACEMENT: 'rollback_required_before_replacement',
+  NATIVE_PENDING_SELECTION_REMAINS_OUTCOME_ONLY: 'native_pending_selection_remains_outcome_only',
+  NATIVE_PENDING_ROUTE_OUTCOME_REMAINS_OUTCOME_ONLY: 'native_pending_route_outcome_remains_outcome_only',
   RUNTIME_METRICS_SUPPRESS_DIAGNOSTICS: 'runtime_metrics_suppress_diagnostics',
   CLASSIFICATION_REGRESSION_REMAINS: 'classification_regression_remains',
 });
@@ -29,6 +31,8 @@ const POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS = Object.freeze({
   AUTOMATION_DECISION: 'automation_decision',
   RUNTIME_QUESTION_REDUCTION: 'runtime_question_reduction',
   REQUEST_TIME_LEARNING: 'request_time_learning',
+  NATIVE_PENDING_SELECTION: 'native_pending_selection',
+  NATIVE_PENDING_ROUTE_OUTCOME: 'native_pending_route_outcome',
   GUARDED_OUTCOME_PROJECTION: 'guarded_outcome_projection',
   LIBRARY_POLICY_REBUILD: 'library_policy_rebuild',
   LIBRARY_REBUILD_ACCEPTANCE_TRANSITION: 'library_rebuild_acceptance_transition',
@@ -71,6 +75,8 @@ const REQUIRED_COVERAGE_IDS = Object.freeze([
   POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REQUEST_CHOICES_REQUIRE_GUARD,
   POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REBUILD_PRESERVES_EXPLICIT_CONSTRAINTS,
   POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.ROLLBACK_REQUIRED_BEFORE_REPLACEMENT,
+  POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.NATIVE_PENDING_SELECTION_REMAINS_OUTCOME_ONLY,
+  POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.NATIVE_PENDING_ROUTE_OUTCOME_REMAINS_OUTCOME_ONLY,
 ]);
 
 const DECISION_IDS = Object.freeze(Object.values(POLICY_RUNTIME_TEST_RESET_DECISION_IDS));
@@ -81,6 +87,8 @@ const REQUIRED_CONTRACT_IDS = Object.freeze([
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.AUTOMATION_DECISION,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_QUESTION_REDUCTION,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.REQUEST_TIME_LEARNING,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.NATIVE_PENDING_SELECTION,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.NATIVE_PENDING_ROUTE_OUTCOME,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.GUARDED_OUTCOME_PROJECTION,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_POLICY_REBUILD,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_REBUILD_ACCEPTANCE_TRANSITION,
@@ -100,6 +108,12 @@ const CONTRACT_IMPORT_MARKERS = Object.freeze({
     '../../services/policyRuntimeQuestionReduction.mjs',
   [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.REQUEST_TIME_LEARNING]:
     '../../services/policyRequestTimeLearning.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.NATIVE_PENDING_SELECTION]:
+    '../../services/policyNativePendingResolutionProvenance.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.NATIVE_PENDING_ROUTE_OUTCOME]: [
+    '../../services/policyNativePendingRouteOutcome.mjs',
+    '../../services/policyNativePendingRouteOutcomePersistence.mjs',
+  ],
   [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.GUARDED_OUTCOME_PROJECTION]:
     '../../services/policyGuardedOutcomeProjection.mjs',
   [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.LIBRARY_POLICY_REBUILD]:
@@ -221,6 +235,62 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     deleteAfterMigration: false,
     normalWorkflowAllowed: true,
     traceReasons: ['request_learning_guard_rewrite'],
+  }),
+  Object.freeze({
+    path: 'server/src/__tests__/services/policyNativePendingResolutionProvenance.test.mjs',
+    owner: 'server',
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD,
+    coverageIds: [
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.REQUEST_CHOICES_REQUIRE_GUARD,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.NATIVE_PENDING_SELECTION_REMAINS_OUTCOME_ONLY,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.NATIVE_PENDING_SELECTION,
+    ],
+    replacement: 'Record a server-validated native destination selection as a bounded outcome without granting learning or routing authority.',
+    protectsAuthority: true,
+    distinguishesClassificationFromRouting: false,
+    preservesOldPreviewUi: false,
+    deleteAfterMigration: false,
+    normalWorkflowAllowed: true,
+    traceReasons: ['native_pending_selection_outcome_only'],
+  }),
+  Object.freeze({
+    path: 'server/src/__tests__/services/policyNativePendingRouteOutcome.test.mjs',
+    owner: 'server',
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD,
+    coverageIds: [
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.MISSING_ROUTING_CLASSIFIED_NOT_ROUTED,
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.NATIVE_PENDING_ROUTE_OUTCOME_REMAINS_OUTCOME_ONLY,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.NATIVE_PENDING_ROUTE_OUTCOME,
+    ],
+    replacement: 'Normalize only terminal native route outcomes after the routing adapter returns, without treating completion as a successful route or granting learning authority.',
+    protectsAuthority: true,
+    distinguishesClassificationFromRouting: true,
+    preservesOldPreviewUi: false,
+    deleteAfterMigration: false,
+    normalWorkflowAllowed: true,
+    traceReasons: ['native_pending_route_outcome_only'],
+  }),
+  Object.freeze({
+    path: 'server/src/__tests__/services/policyNativePendingRouteOutcomePersistence.test.mjs',
+    owner: 'server',
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD,
+    coverageIds: [
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.NATIVE_PENDING_ROUTE_OUTCOME_REMAINS_OUTCOME_ONLY,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.NATIVE_PENDING_ROUTE_OUTCOME,
+    ],
+    replacement: 'Persist an admitted native route outcome best-effort after routing without changing the observed route result or creating learning evidence.',
+    protectsAuthority: true,
+    distinguishesClassificationFromRouting: false,
+    preservesOldPreviewUi: false,
+    deleteAfterMigration: false,
+    normalWorkflowAllowed: true,
+    traceReasons: ['native_pending_route_persistence_outcome_only'],
   }),
   Object.freeze({
     path: 'server/src/__tests__/services/policyGuardedOutcomeProjection.test.mjs',
@@ -432,17 +502,19 @@ function resolveArtifactPath(artifactPath, repoRoot = DEFAULT_REPO_ROOT) {
   };
 }
 
-function sourceImportsContract(sourceContent, importMarker) {
-  if (!sourceContent || !importMarker) {
+function sourceImportsContract(sourceContent, importMarkers) {
+  if (!sourceContent || !importMarkers) {
     return false;
   }
 
-  return [
+  const markers = Array.isArray(importMarkers) ? importMarkers : [importMarkers];
+
+  return markers.some(importMarker => [
     `from '${importMarker}'`,
     `from "${importMarker}"`,
     `import '${importMarker}'`,
     `import "${importMarker}"`,
-  ].some(staticImportMarker => sourceContent.includes(staticImportMarker));
+  ].some(staticImportMarker => sourceContent.includes(staticImportMarker)));
 }
 
 function buildArtifactAvailability(artifacts, { repoRoot = DEFAULT_REPO_ROOT } = {}) {

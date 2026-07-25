@@ -69,6 +69,11 @@ const POLICY_RUNTIME_COMPLETION_COMPONENT_IDS = Object.freeze({
   RUNTIME_REBUILD_TEST_RESET: 'runtime_rebuild_test_reset',
 });
 
+const POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS = Object.freeze({
+  NATIVE_PENDING_SELECTION: 'native_pending_selection',
+  NATIVE_PENDING_ROUTE_OUTCOME: 'native_pending_route_outcome',
+});
+
 const POLICY_RUNTIME_COMPLETION_RISK_IDS = Object.freeze({
   MISSING_COMPONENT: 'missing_component',
   MISSING_RECORD_ID: 'missing_record_id',
@@ -78,6 +83,13 @@ const POLICY_RUNTIME_COMPLETION_RISK_IDS = Object.freeze({
   MISSING_SERVICE_PATH: 'missing_service_path',
   MISSING_TEST_PATH: 'missing_test_path',
   ARTIFACT_PATH_NOT_FOUND: 'artifact_path_not_found',
+  MISSING_SUPPORTING_ARTIFACT: 'missing_supporting_artifact',
+  DUPLICATE_SUPPORTING_ARTIFACT: 'duplicate_supporting_artifact',
+  MISSING_SUPPORTING_ARTIFACT_ID: 'missing_supporting_artifact_id',
+  MISSING_SUPPORTING_ARTIFACT_LABEL: 'missing_supporting_artifact_label',
+  MISSING_SUPPORTING_ARTIFACT_EVIDENCE: 'missing_supporting_artifact_evidence',
+  MISSING_SUPPORTING_ARTIFACT_PATH: 'missing_supporting_artifact_path',
+  SUPPORTING_ARTIFACT_PATH_NOT_FOUND: 'supporting_artifact_path_not_found',
   COMPONENT_AUDIT_FAILED: 'component_audit_failed',
   COMPONENT_AUDIT_MISSING: 'component_audit_missing',
   POLICY_ENGINE_COMPLETION_NOT_PASSING: 'policy_engine_completion_not_passing',
@@ -86,6 +98,39 @@ const POLICY_RUNTIME_COMPLETION_RISK_IDS = Object.freeze({
 });
 
 const REQUIRED_COMPONENT_IDS = Object.freeze(Object.values(POLICY_RUNTIME_COMPLETION_COMPONENT_IDS));
+
+const REQUEST_TIME_LEARNING_SUPPORTING_ARTIFACTS = Object.freeze([
+  Object.freeze({
+    id: POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.NATIVE_PENDING_SELECTION,
+    label: 'Native pending selection provenance',
+    evidence: 'Server-validated native selections produce bounded outcome-only provenance before resolution without granting learning or routing authority.',
+    docPaths: [
+      'docs/architecture/policy-native-pending-resolution-provenance.md',
+    ],
+    servicePaths: [
+      'server/src/services/policyNativePendingResolutionProvenance.mjs',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyNativePendingResolutionProvenance.test.mjs',
+    ],
+  }),
+  Object.freeze({
+    id: POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.NATIVE_PENDING_ROUTE_OUTCOME,
+    label: 'Native pending route outcome',
+    evidence: 'Browser and Discord record only admitted terminal native route outcomes after routing returns, without converting route results into learning evidence.',
+    docPaths: [
+      'docs/architecture/policy-native-pending-route-outcome.md',
+    ],
+    servicePaths: [
+      'server/src/services/policyNativePendingRouteOutcome.mjs',
+      'server/src/services/policyNativePendingRouteOutcomePersistence.mjs',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyNativePendingRouteOutcome.test.mjs',
+      'server/src/__tests__/services/policyNativePendingRouteOutcomePersistence.test.mjs',
+    ],
+  }),
+]);
 
 const POLICY_RUNTIME_COMPLETION_COMPONENT_RECORDS = Object.freeze([
   {
@@ -131,6 +176,10 @@ const POLICY_RUNTIME_COMPLETION_COMPONENT_RECORDS = Object.freeze([
     servicePath: 'server/src/services/policyRequestTimeLearning.mjs',
     testPath: 'server/src/__tests__/services/policyRequestTimeLearning.test.mjs',
     expectedNextStepId: 'library_policy_rebuild',
+    requiredSupportingArtifactIds: Object.values(
+      POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS
+    ),
+    supportingArtifacts: REQUEST_TIME_LEARNING_SUPPORTING_ARTIFACTS,
     evidence: 'Request and manual destination choices pass through the learning guard before any durable learning decision.',
   },
   {
@@ -286,6 +335,72 @@ function buildDefaultComponentAudits() {
   };
 }
 
+function validateSupportingArtifact(record = {}, {
+  componentId,
+  pathExists,
+} = {}) {
+  const issues = [];
+  const supportingArtifactId = record.id || null;
+
+  if (!supportingArtifactId) {
+    issues.push(buildIssue(
+      POLICY_RUNTIME_COMPLETION_RISK_IDS.MISSING_SUPPORTING_ARTIFACT_ID,
+      'Runtime supporting artifacts must have a stable id.',
+      { componentId }
+    ));
+  }
+
+  if (!record.label) {
+    issues.push(buildIssue(
+      POLICY_RUNTIME_COMPLETION_RISK_IDS.MISSING_SUPPORTING_ARTIFACT_LABEL,
+      'Runtime supporting artifacts must have a label.',
+      { componentId, supportingArtifactId }
+    ));
+  }
+
+  if (!record.evidence) {
+    issues.push(buildIssue(
+      POLICY_RUNTIME_COMPLETION_RISK_IDS.MISSING_SUPPORTING_ARTIFACT_EVIDENCE,
+      'Runtime supporting artifacts must describe their completion evidence.',
+      { componentId, supportingArtifactId }
+    ));
+  }
+
+  [
+    ['docPaths', 'documentation'],
+    ['servicePaths', 'service'],
+    ['testPaths', 'focused test'],
+  ].forEach(([fieldName, label]) => {
+    const paths = asArray(record[fieldName])
+      .filter(path => typeof path === 'string' && path.trim());
+
+    if (paths.length === 0) {
+      issues.push(buildIssue(
+        POLICY_RUNTIME_COMPLETION_RISK_IDS.MISSING_SUPPORTING_ARTIFACT_PATH,
+        `Runtime supporting artifact "${supportingArtifactId || 'unknown'}" must include at least one ${label} path.`,
+        { componentId, supportingArtifactId, fieldName }
+      ));
+      return;
+    }
+
+    paths.forEach(path => {
+      if (!pathExists(path)) {
+        issues.push(buildIssue(
+          POLICY_RUNTIME_COMPLETION_RISK_IDS.SUPPORTING_ARTIFACT_PATH_NOT_FOUND,
+          `Runtime supporting artifact does not exist: ${path}.`,
+          { componentId, supportingArtifactId, fieldName, path }
+        ));
+      }
+    });
+  });
+
+  return {
+    ok: issues.length === 0,
+    supportingArtifactId,
+    issues,
+  };
+}
+
 function validateCompletionRecord(record = {}, {
   pathExists = defaultPathExists,
 } = {}) {
@@ -341,9 +456,50 @@ function validateCompletionRecord(record = {}, {
     }
   });
 
+  const supportingArtifacts = asArray(record.supportingArtifacts);
+  const requiredSupportingArtifactIds = asArray(record.requiredSupportingArtifactIds);
+  const supportingArtifactIdCounts = supportingArtifacts.reduce((counts, artifact) => {
+    const id = artifact?.id || '';
+    counts.set(id, (counts.get(id) || 0) + 1);
+    return counts;
+  }, new Map());
+
+  requiredSupportingArtifactIds.forEach(supportingArtifactId => {
+    if (!supportingArtifacts.some(artifact => artifact?.id === supportingArtifactId)) {
+      issues.push(buildIssue(
+        POLICY_RUNTIME_COMPLETION_RISK_IDS.MISSING_SUPPORTING_ARTIFACT,
+        `Runtime completion record "${record.id || 'unknown'}" is missing supporting artifact "${supportingArtifactId}".`,
+        { componentId: record.id || null, supportingArtifactId }
+      ));
+    }
+  });
+
+  const supportingArtifactChecks = supportingArtifacts.map(artifact => {
+    const artifactValidation = validateSupportingArtifact(artifact, {
+      componentId: record.id || null,
+      pathExists,
+    });
+    const supportingArtifactId = artifactValidation.supportingArtifactId;
+
+    if (supportingArtifactId && supportingArtifactIdCounts.get(supportingArtifactId) > 1) {
+      artifactValidation.issues.push(buildIssue(
+        POLICY_RUNTIME_COMPLETION_RISK_IDS.DUPLICATE_SUPPORTING_ARTIFACT,
+        `Runtime completion record "${record.id || 'unknown'}" declares supporting artifact "${supportingArtifactId}" more than once.`,
+        { componentId: record.id || null, supportingArtifactId }
+      ));
+      artifactValidation.ok = false;
+    }
+
+    return artifactValidation;
+  });
+
+  supportingArtifactChecks.forEach(check => issues.push(...check.issues));
+
   return {
     ok: issues.length === 0,
     componentId: record.id || null,
+    requiredSupportingArtifactCount: requiredSupportingArtifactIds.length,
+    supportingArtifactChecks,
     issues,
   };
 }
@@ -453,6 +609,8 @@ function buildPolicyRuntimeCompletionAudit({
       recordOk: recordValidation.ok,
       auditOk,
       testContractCoverageOk,
+      requiredSupportingArtifactCount: recordValidation.requiredSupportingArtifactCount,
+      supportingArtifactChecks: recordValidation.supportingArtifactChecks,
       issueCount: componentAudit?.issueCount ?? null,
       expectedNextStepId: record.expectedNextStepId || null,
       actualNextStepId: nextStepId,
@@ -489,6 +647,7 @@ function buildPolicyRuntimeCompletionAudit({
 export {
   POLICY_RUNTIME_COMPLETION_COMPONENT_IDS,
   POLICY_RUNTIME_COMPLETION_RISK_IDS,
+  POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS,
   buildPolicyRuntimeCompletionAudit,
   listPolicyRuntimeCompletionComponents,
   validateCompletionRecord as validatePolicyRuntimeCompletionRecord,

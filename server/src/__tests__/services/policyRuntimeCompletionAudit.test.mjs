@@ -1,6 +1,17 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 import {
   POLICY_RUNTIME_COMPLETION_COMPONENT_IDS,
   POLICY_RUNTIME_COMPLETION_RISK_IDS,
+  POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS,
   buildPolicyRuntimeCompletionAudit,
   listPolicyRuntimeCompletionComponents,
   validatePolicyRuntimeCompletionRecord,
@@ -40,6 +51,23 @@ describe('policyRuntimeCompletionAudit', () => {
     expect(audit.componentChecks.every(check =>
       check.recordOk === true && check.auditOk === true && check.testContractCoverageOk === true
     )).toBe(true);
+    expect(audit.componentChecks.find(check =>
+      check.componentId === POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.REQUEST_TIME_LEARNING
+    )).toEqual(expect.objectContaining({
+      requiredSupportingArtifactCount: 2,
+      supportingArtifactChecks: expect.arrayContaining([
+        expect.objectContaining({
+          supportingArtifactId:
+            POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.NATIVE_PENDING_SELECTION,
+          ok: true,
+        }),
+        expect.objectContaining({
+          supportingArtifactId:
+            POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.NATIVE_PENDING_ROUTE_OUTCOME,
+          ok: true,
+        }),
+      ]),
+    }));
     expect(audit.componentChecks.map(check => check.actualNextStepId))
       .toEqual([
         'runtime_evidence_projection',
@@ -180,6 +208,82 @@ describe('policyRuntimeCompletionAudit', () => {
           riskId: POLICY_RUNTIME_COMPLETION_RISK_IDS.ARTIFACT_PATH_NOT_FOUND,
           fieldName: 'servicePath',
           path: 'server/src/services/missingRuntimeService.mjs',
+        }),
+      ]));
+  });
+
+  test('rejects missing request-time native pending supporting artifact inventory', () => {
+    const components = listPolicyRuntimeCompletionComponents().map(component =>
+      component.id === POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.REQUEST_TIME_LEARNING
+        ? {
+          ...component,
+          supportingArtifacts: component.supportingArtifacts.filter(artifact =>
+            artifact.id !== POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.NATIVE_PENDING_ROUTE_OUTCOME
+          ),
+        }
+        : component
+    );
+    const audit = buildPolicyRuntimeCompletionAudit({ components });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_RUNTIME_COMPLETION_RISK_IDS.MISSING_SUPPORTING_ARTIFACT,
+        componentId: POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.REQUEST_TIME_LEARNING,
+        supportingArtifactId:
+          POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.NATIVE_PENDING_ROUTE_OUTCOME,
+      }),
+    ]));
+  });
+
+  test('rejects missing native pending supporting artifact files', () => {
+    const requestTimeLearning = listPolicyRuntimeCompletionComponents()
+      .find(component =>
+        component.id === POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.REQUEST_TIME_LEARNING
+      );
+    const record = {
+      ...requestTimeLearning,
+      supportingArtifacts: requestTimeLearning.supportingArtifacts.map(artifact =>
+        artifact.id === POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.NATIVE_PENDING_ROUTE_OUTCOME
+          ? {
+            ...artifact,
+            servicePaths: ['server/src/services/missingNativePendingRouteOutcome.mjs'],
+          }
+          : artifact
+      ),
+    };
+
+    expect(validatePolicyRuntimeCompletionRecord(record).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_RUNTIME_COMPLETION_RISK_IDS.SUPPORTING_ARTIFACT_PATH_NOT_FOUND,
+          supportingArtifactId:
+            POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.NATIVE_PENDING_ROUTE_OUTCOME,
+          fieldName: 'servicePaths',
+          path: 'server/src/services/missingNativePendingRouteOutcome.mjs',
+        }),
+      ]));
+  });
+
+  test('rejects duplicate native pending supporting artifact identifiers', () => {
+    const requestTimeLearning = listPolicyRuntimeCompletionComponents()
+      .find(component =>
+        component.id === POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.REQUEST_TIME_LEARNING
+      );
+    const record = {
+      ...requestTimeLearning,
+      supportingArtifacts: [
+        ...requestTimeLearning.supportingArtifacts,
+        requestTimeLearning.supportingArtifacts[0],
+      ],
+    };
+
+    expect(validatePolicyRuntimeCompletionRecord(record).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_RUNTIME_COMPLETION_RISK_IDS.DUPLICATE_SUPPORTING_ARTIFACT,
+          supportingArtifactId:
+            POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.NATIVE_PENDING_SELECTION,
         }),
       ]));
   });

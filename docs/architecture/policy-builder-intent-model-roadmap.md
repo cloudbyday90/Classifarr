@@ -4608,9 +4608,12 @@ Implementation status:
   [Policy Native Pending-Route Outcome Adapter](policy-native-pending-route-outcome.md).
   Completion, transient failures, invalid metadata, and already-routed results
   remain separate operational states rather than policy evidence.
-- Next in Phase 7R is Completion Audit Task 7R.10.1: extend request-time
-  learning completion evidence and test-reset ownership to inventory the
-  native pending selection and route-outcome adapters before Phase 8R proceeds.
+- Phase 7R Completion Audit Task 7R.10.1 is complete. Request-time learning
+  now inventories native pending selection and route-outcome documentation,
+  services, and focused tests; the runtime/rebuild reset independently requires
+  their outcome-only coverage and static ESM contract ownership. Its design
+  record is [Policy Runtime Completion Native Pending Adapter
+  Coverage](policy-runtime-completion-native-pending-adapter-coverage.md).
 - Valid native `create_operator_question` plans now pass through
   `policyRuntimeQuestionPersistenceAdmission.mjs` immediately before the
   existing classification persistence call. It re-audits the native handoff,
@@ -5060,7 +5063,10 @@ Implementation record:
   and the expected semantic `nextStep` handoff before the native intent storage
   boundary can begin. It also requires the runtime/rebuild test reset to report
   complete focused ownership for every required runtime contract; a generic
-  passing reset status cannot bypass that proof. Its design record is
+  passing reset status cannot bypass that proof. Request-time learning also
+  inventories the native pending selection and route-outcome supporting
+  artifacts, including route persistence behavior, so their outcome-only
+  boundaries cannot silently drift. Its design record is
   [Policy Runtime Completion Audit Contract Coverage](policy-runtime-completion-audit-contract-coverage.md).
 - Runtime completion now also requires the policy-engine completion gate to
   pass with zero issues before native intent storage can begin. It retains only

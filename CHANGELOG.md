@@ -754,6 +754,11 @@ unchanged operator or runtime outcome.
   confirmed missing mapping. Completion and transient routing failures remain
   distinct operational states, and route outcomes cannot write policy evidence
   or queue profile refresh work.
+- **Native Pending Completion Coverage** - runtime completion and test-reset
+  audits now require documented, focused ESM ownership for native pending
+  selection, route outcome, and route outcome persistence boundaries. Missing
+  artifacts fail closed, while the audited transitions remain outcome-only and
+  cannot create learning or change routing behavior.
 - **Question and Learning Controls** - added deterministic question reduction,
   permitted-action checks, answer-shape validation, and learning eligibility
   checks so automation asks only destination-relevant questions and manual
