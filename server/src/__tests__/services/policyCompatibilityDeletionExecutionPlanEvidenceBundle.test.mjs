@@ -496,6 +496,35 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
     expect(dbClient.query).not.toHaveBeenCalled();
   });
 
+  test('keeps an omitted input envelope fail-closed after collecting current evidence', async () => {
+    const transactionClient = createLiveRuntimeEvidenceDbClient();
+    const dbClient = {
+      query: jest.fn(),
+      withTransaction: jest.fn(async callback => callback(transactionClient)),
+    };
+
+    const bundle = await loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClient, {
+      now: COLLECTION_TIME,
+    });
+
+    expect(bundle.readyForExecutionPlan).toBe(false);
+    expect(bundle.statusId).toBe(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS
+        .BLOCKED_BY_DELETION_GATES
+    );
+    expect(bundle.deletionGatePlan.supportStanceId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.BLOCK_DELETION);
+    expect(bundle.deletionReadiness.safetyConfirmations).toEqual(expect.objectContaining({
+      deletionManifestApproved: false,
+      rollbackSupportVerified: false,
+      supportDiagnosticsVerified: false,
+    }));
+    expect(transactionClient.query).toHaveBeenCalledWith(
+      'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY'
+    );
+    expect(dbClient.query).not.toHaveBeenCalled();
+  });
+
   test('rejects mutated bundle invariants and reported side effects', () => {
     const bundle = readyBundle();
     const validation = validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle({

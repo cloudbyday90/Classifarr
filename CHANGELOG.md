@@ -175,6 +175,13 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Automatic Compatibility-Deletion Diagnostics** - revision-matched local
+  installations can now collect current, database-owned compatibility-deletion
+  evidence without a hand-created JSON input file. The automatic result remains
+  fail-closed: it cannot invent coverage, support, residual-reference,
+  rollback, diagnostics, or approval evidence, and it cannot authorize or
+  perform removal.
+
 - **Current Checkout Closure Evidence Integrity** - policy storage current
   closure audits now bind the SHA-256 content digest of their mapped source,
   documentation, test, roadmap, and changelog evidence. The final requirement

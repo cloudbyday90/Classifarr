@@ -93,11 +93,15 @@ describe('policyCompatibilityDeletionEvidenceMaintenanceRunner', () => {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
   });
 
-  async function runRunner({ commandRunner, outputPath = '.tmp/evidence.json' } = {}) {
+  async function runRunner({
+    commandRunner,
+    inputPath = 'input.json',
+    outputPath = '.tmp/evidence.json',
+  } = {}) {
     return runPolicyCompatibilityDeletionEvidenceMaintenance({
       argv: [
         '--container', 'classifarr',
-        '--input', 'input.json',
+        ...(inputPath ? ['--input', inputPath] : []),
         '--output', outputPath,
       ],
       commandRunner,
@@ -252,6 +256,37 @@ describe('policyCompatibilityDeletionEvidenceMaintenanceRunner', () => {
         .BLOCKED_BY_EVIDENCE,
     }));
     expect(JSON.parse(fs.readFileSync(outputPath, 'utf8')).readyForExecutionPlan).toBe(false);
+  });
+
+  test('collects a bounded fail-closed diagnostic without an input artifact', async () => {
+    const outputPath = path.join(fixtureRoot, '.tmp', 'automatic-diagnostic.json');
+    const commandRunner = createCommandRunner({
+      workspaceRoot: fixtureRoot,
+      dockerRun: args => {
+        writeJson(outputPath, {
+          readyForExecutionPlan: false,
+          statusId: 'blocked_by_deletion_gates',
+          validation: { ok: true },
+        });
+        expect(args).not.toContain('--input');
+        return { status: 1, stdout: '' };
+      },
+    });
+
+    const outcome = await runRunner({
+      commandRunner,
+      inputPath: null,
+      outputPath: '.tmp/automatic-diagnostic.json',
+    });
+
+    expect(outcome).toEqual(expect.objectContaining({
+      exitCode: POLICY_COMPATIBILITY_DELETION_EVIDENCE_MAINTENANCE_EXIT_CODES.BLOCKED,
+      outputPath: '.tmp/automatic-diagnostic.json',
+      statusId: POLICY_COMPATIBILITY_DELETION_EVIDENCE_MAINTENANCE_STATUS_IDS
+        .BLOCKED_BY_EVIDENCE,
+    }));
+    expect(fs.existsSync(outputPath)).toBe(true);
+    expect(stderr).toEqual([]);
   });
 
   test('does not report a command failure as collected evidence', async () => {

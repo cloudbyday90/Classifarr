@@ -10,7 +10,8 @@ not exposed. Copying unreviewed source into the application container or
 mounting the Docker socket into the application would weaken both boundaries.
 
 This component introduces a noninteractive maintenance runner that creates only
-a current, read-only execution-plan evidence bundle. It never approves a
+a current, read-only execution-plan evidence bundle. It can collect a
+fail-closed current-state diagnostic without a prepared input file. It never approves a
 manifest, deletes a path, changes policy storage, runs an application endpoint,
 or bypasses the later execution gate.
 
@@ -84,7 +85,8 @@ Cons:
 
 - custom/local images without a full OCI revision label intentionally block,
 - requires Docker access from the maintenance host,
-- cannot and should not collect approval, backup/restore, or deletion evidence.
+- cannot and should not manufacture coverage, residual-reference resolution,
+  support confirmation, or deletion approval evidence.
 
 Decision: selected.
 
@@ -111,12 +113,25 @@ The public command is:
 ```powershell
 npm run policy:compatibility-deletion-maintenance-evidence -- `
   --container classifarr `
+  --output .tmp/policy-storage/current-execution-plan-evidence.json
+```
+
+The optional reviewed input can be added when later release evidence is
+available:
+
+```powershell
+npm run policy:compatibility-deletion-maintenance-evidence -- `
+  --container classifarr `
   --input .tmp/policy-storage/reviewed-evidence-input.json `
   --output .tmp/policy-storage/current-execution-plan-evidence.json
 ```
 
-Input and output must remain inside the reviewed checkout. Output must be a new
-`.json` file below `.tmp`. The command does not accept a free-form image,
+When omitted, input is a fixed empty envelope. The resulting artifact is an
+automatic, fail-closed diagnostic: it collects database-owned evidence but does
+not claim coverage, support stance, residual-reference resolution, rollback
+support, support diagnostics, or manifest approval. Input and output must
+remain inside the reviewed checkout when input is supplied. Output must be a
+new `.json` file below `.tmp`. The command does not accept a free-form image,
 database URL, shell command, source root, output directory, timestamp, or
 approval flag.
 
@@ -158,6 +173,9 @@ Implemented:
   as the helper's only writable repository path.
 - Read-only PostgreSQL defaults plus bounded pool, connection retry, and
   statement-timeout settings.
+- An omitted input option invokes the evidence collector with a fixed empty
+  envelope, producing a safe current-state diagnostic without a hand-created
+  JSON file.
 - Focused tests for ready, blocked, dirty-checkout, failed-Git-status,
   provenance-mismatch, invalid-output, and inconsistent-helper outcomes.
 - A provenance-verified local Compose rebuild path that derives `VCS_REF` from

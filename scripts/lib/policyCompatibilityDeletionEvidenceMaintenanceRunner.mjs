@@ -107,7 +107,7 @@ function usage() {
     '',
     'Options:',
     '  --container <name>  Required running Classifarr container name.',
-    '  --input <json>      Required evidence input JSON inside the reviewed checkout.',
+    '  --input <json>      Optional reviewed evidence input JSON inside the reviewed checkout.',
     '  --output <json>     Required new output JSON under .tmp in the reviewed checkout.',
     '  --help              Print this help message.',
   ].join('\n');
@@ -237,10 +237,9 @@ function buildDockerRunArguments({
   workspaceRoot,
   pathModule = path,
 }) {
-  const containerInputPath = path.posix.join(
-    '/app/source',
-    toContainerPath(inputRelativePath, pathModule)
-  );
+  const containerInputPath = inputRelativePath
+    ? path.posix.join('/app/source', toContainerPath(inputRelativePath, pathModule))
+    : null;
   const containerOutputPath = path.posix.join('/app/output', outputFileName);
 
   return [
@@ -272,7 +271,7 @@ function buildDockerRunArguments({
     imageId,
     'node',
     'scripts/generate-policy-compatibility-deletion-execution-plan-evidence-bundle.mjs',
-    '--input', containerInputPath,
+    ...(inputRelativePath ? ['--input', containerInputPath] : []),
     '--output', containerOutputPath,
     '--require-ready',
   ];
@@ -387,14 +386,16 @@ async function runPolicyCompatibilityDeletionEvidenceMaintenance({
       });
     }
 
-    input = resolveCheckedInputPath({
-      workspaceRoot,
-      inputPath: options.inputPath,
-      fileSystem,
-      pathModule,
-    });
+    input = options.inputPath
+      ? resolveCheckedInputPath({
+        workspaceRoot,
+        inputPath: options.inputPath,
+        fileSystem,
+        pathModule,
+      })
+      : null;
     output = resolveCheckedOutputPath({
-      workspaceRoot: input.workspaceRoot,
+      workspaceRoot: input?.workspaceRoot || workspaceRoot,
       outputPath: options.outputPath,
       fileSystem,
       pathModule,
@@ -487,10 +488,10 @@ async function runPolicyCompatibilityDeletionEvidenceMaintenance({
       containerName: options.containerName,
       containerUser,
       imageId,
-      inputRelativePath: input.relativePath,
+      inputRelativePath: input?.relativePath || null,
       outputDirectory: output.directoryPath,
       outputFileName: pathModule.basename(output.absolutePath),
-      workspaceRoot: input.workspaceRoot,
+      workspaceRoot: input?.workspaceRoot || workspaceRoot,
       pathModule,
     }),
     workspaceRoot

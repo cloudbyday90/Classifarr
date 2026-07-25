@@ -8367,6 +8367,14 @@ Tasks:
     before Docker work, then performs a no-cache build, forced service
     recreation, and health wait so the maintenance runner can verify the
     running image automatically.
+- **8R.36.5 Automatic Installation Evidence Diagnostics**
+  - Completed: the provenance-bound maintenance runner can collect its
+    current database-owned evidence with no prepared input JSON, producing a
+    bounded fail-closed diagnostic under `.tmp`.
+  - Completed: omitted input never manufactures coverage, support stance,
+    residual-reference resolution, rollback support, support diagnostics, or
+    manifest approval; reviewed input remains required for those release-level
+    facts.
 - Require the current compatibility-deletion execution-plan artifact and bind
   its fingerprint through authorization, completion evidence, and replay.
 - Derive manifest path state from the current checkout.
@@ -8419,6 +8427,12 @@ Implementation status:
   clean-checkout, revision-labeled image without manual build arguments. Its
   strict maintenance command refuses dirty source before rebuilding, while the
   evidence runner retains its exact label-to-checkout verification boundary.
+- Task 8R.36.5 is implemented. A revision-matched installation can now collect
+  its automatic current-state diagnostic without a hand-authored input file;
+  the diagnostic remains blocked until independently reviewed release evidence
+  is present and cannot authorize code removal by omission. The design and
+  outcome record is [Policy Compatibility Deletion Automatic Diagnostic
+  Collection](policy-compatibility-deletion-automatic-diagnostic-collection.md).
 
 ## Phase 8R Work Sequence
 

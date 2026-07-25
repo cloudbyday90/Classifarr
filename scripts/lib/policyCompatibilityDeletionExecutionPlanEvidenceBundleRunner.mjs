@@ -82,7 +82,7 @@ function usage() {
     'Usage: node scripts/generate-policy-compatibility-deletion-execution-plan-evidence-bundle.mjs [options]',
     '',
     'Options:',
-    '  --input <json>        Required gate and safety input JSON. Current policy inventory and native runtime reads are collected from the database.',
+    '  --input <json>        Optional reviewed gate and safety input JSON. Omit for a fail-closed current-state diagnostic; current policy inventory and native runtime reads are collected from the database.',
     '  --output <json>       Write the side-effect-free evidence bundle to this path.',
     '  --require-ready       Exit non-zero unless the current evidence bundle is ready for execution planning.',
     '  --generated-at <iso>  Optional collection timestamp for stable tests.',
@@ -212,7 +212,7 @@ async function runPolicyCompatibilityDeletionExecutionPlanEvidenceBundleCli({
       let input;
       try {
         input = readJsonFile(options.inputPath, 'execution-plan evidence input', {
-          required: true,
+          required: false,
           cwd,
           fileSystem,
           pathModule,

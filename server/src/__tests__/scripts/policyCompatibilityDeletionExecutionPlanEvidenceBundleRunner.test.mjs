@@ -118,6 +118,30 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundleRunner', () => {
     })).toEqual({});
   });
 
+  test('collects a fail-closed diagnostic without a reviewed input file', async () => {
+    const evidenceBundle = {
+      readyForExecutionPlan: false,
+      statusId: 'blocked_by_deletion_gates',
+    };
+    loadEvidenceBundle.mockResolvedValue(evidenceBundle);
+
+    const outcome = await runCli({
+      argv: ['--output', 'automatic-diagnostic.json', '--require-ready'],
+    });
+
+    expect(outcome).toEqual({
+      exitCode: POLICY_COMPATIBILITY_DELETION_EVIDENCE_CLI_EXIT_CODES.BLOCKED,
+      evidenceBundle,
+    });
+    expect(loadEvidenceBundle).toHaveBeenCalledWith(database, {
+      generatedAt: null,
+    });
+    expect(JSON.parse(
+      fs.readFileSync(path.join(fixtureRoot, 'automatic-diagnostic.json'), 'utf8')
+    )).toEqual(evidenceBundle);
+    expect(stderr).toEqual([]);
+  });
+
   test('writes a blocked diagnostic but exits non-zero only when readiness is required', async () => {
     const inputPath = writeJson(fixtureRoot, 'input.json', {});
     const evidenceBundle = {
