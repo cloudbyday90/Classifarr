@@ -31,6 +31,9 @@ import {
   buildPolicyBackupRestoreVerificationEvidence,
 } from '../../../services/policyBackupRestoreVerificationEvidence.mjs';
 import {
+  buildPolicyCompatibilityDeletionExecutionGateRecoveryEvidence,
+} from '../../../services/policyCompatibilityDeletionExecutionGateRecoveryEvidence.mjs';
+import {
   buildPolicyCompatibilityDeletionPreflightEvidenceArtifact,
 } from '../../../services/policyCompatibilityDeletionPreflightEvidenceArtifact.mjs';
 
@@ -159,6 +162,26 @@ function buildReadyExecutionGatePreflightEvidenceArtifact({
   });
 }
 
+function buildReadyExecutionGateRecoveryEvidence({
+  executionPlanArtifact,
+  observedAt = POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
+  backupRestoreVerificationEvidence = null,
+  overrides = {},
+} = {}) {
+  const value = asObject(overrides);
+
+  return buildPolicyCompatibilityDeletionExecutionGateRecoveryEvidence({
+    executionPlanArtifact,
+    backupRestoreVerificationEvidence:
+      backupRestoreVerificationEvidence || buildReadyBackupRestoreVerificationEvidence({
+        generatedAt: observedAt,
+      }),
+    generatedAt: observedAt,
+    now: observedAt,
+    ...value,
+  });
+}
+
 function buildReadyExecutionGateOperatorEvidence({
   executionPlanArtifact,
   observedAt = POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
@@ -168,11 +191,6 @@ function buildReadyExecutionGateOperatorEvidence({
   const base = {
     executionPlanArtifactFingerprint:
       executionPlanArtifact?.artifactFingerprint?.fingerprint || null,
-    recovery: {
-      backupRestoreVerified: true,
-      verifiedAt: observedAt,
-      verifiedBy: 'policy-maintainer',
-    },
     approval: {
       approved: true,
       approvedAt: observedAt,
@@ -189,7 +207,6 @@ function buildReadyExecutionGateOperatorEvidence({
   return {
     ...base,
     ...value,
-    recovery: { ...base.recovery, ...asObject(value.recovery) },
     approval: { ...base.approval, ...asObject(value.approval) },
     stances: { ...base.stances, ...asObject(value.stances) },
   };
@@ -201,5 +218,6 @@ export {
   buildReadyBackupRestoreVerificationEvidence,
   buildReadyExecutionGateOperatorEvidence,
   buildReadyExecutionGatePreflightEvidenceArtifact,
+  buildReadyExecutionGateRecoveryEvidence,
   buildReadyExecutionPlanArtifact,
 };

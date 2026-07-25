@@ -13,7 +13,7 @@ import {
 } from './policyControlledCompatibilityPathRemoval.mjs';
 
 const POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_VERSION =
-  'policy.controlled_compatibility_removal_batch_artifact.v2';
+  'policy.controlled_compatibility_removal_batch_artifact.v3';
 
 const POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS = Object.freeze({
   READY: 'ready',
@@ -27,10 +27,23 @@ const POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS = Object.f
   EXECUTION_GATE_VALIDATION_FAILED: 'execution_gate_validation_failed',
   REMOVAL_BATCH_NOT_READY: 'removal_batch_not_ready',
   REMOVAL_BATCH_VALIDATION_FAILED: 'removal_batch_validation_failed',
+  LEGACY_READINESS_INPUT_UNSUPPORTED: 'legacy_readiness_input_unsupported',
   SIDE_EFFECT_REPORTED: 'side_effect_reported',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
+  VERSION_MISMATCH: 'version_mismatch',
   UNKNOWN_STATUS: 'unknown_status',
 });
+
+const LEGACY_READINESS_INPUT_FIELDS = Object.freeze([
+  'worktreeClean',
+  'backupRestoreVerified',
+  'backupRestoreFresh',
+  'operatorApproval',
+  'rollbackStanceFinal',
+  'supportStanceFinal',
+  'manifestFresh',
+  'manifestMatchesCurrentPlan',
+]);
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -58,6 +71,7 @@ function buildGateFromInput({
 
   return buildPolicyCompatibilityDeletionExecutionGate({
     executionPlanArtifact,
+    recoveryEvidence: evidence.recoveryEvidence,
     operatorEvidence: evidence.operatorEvidence,
     preflightEvidenceArtifact: evidence.preflightEvidenceArtifact,
     generatedAt,
@@ -86,9 +100,21 @@ function buildArtifactRisks({
   executionPlanArtifact = {},
   executionGate = {},
   removalBatch = {},
+  input = {},
   sideEffects = {},
 } = {}) {
   const risks = [];
+  const legacyReadinessFields = LEGACY_READINESS_INPUT_FIELDS
+    .filter(fieldName => Object.hasOwn(asObject(input), fieldName));
+
+  if (legacyReadinessFields.length > 0) {
+    risks.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS
+        .LEGACY_READINESS_INPUT_UNSUPPORTED,
+      'Controlled compatibility removal batch input does not accept caller-supplied readiness fields; provide bounded evidence artifacts instead.',
+      { suppliedFields: legacyReadinessFields }
+    ));
+  }
 
   const executionPlanArtifactValidation =
     validatePolicyCompatibilityDeletionExecutionPlanArtifact(executionPlanArtifact);
@@ -203,6 +229,7 @@ function buildPolicyControlledCompatibilityRemovalBatchArtifact({
     executionPlanArtifact,
     executionGate,
     removalBatch,
+    input,
     sideEffects,
   });
   const artifact = {
@@ -233,6 +260,14 @@ function buildPolicyControlledCompatibilityRemovalBatchArtifact({
 
 function validatePolicyControlledCompatibilityRemovalBatchArtifact(artifact = {}) {
   const issues = [];
+
+  if (artifact.version !== POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_VERSION) {
+    issues.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.VERSION_MISMATCH,
+      'Controlled compatibility removal batch artifact version must be recognized.',
+      { version: artifact.version || null }
+    ));
+  }
 
   if (!Object.values(POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_STATUS_IDS)
     .includes(artifact.statusId)) {

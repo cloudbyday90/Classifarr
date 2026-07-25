@@ -30,6 +30,12 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_VERSION,
 } from './policyCompatibilityDeletionExecutionPlanEvidenceBundle.mjs';
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RECOVERY_EVIDENCE_STATUS_IDS,
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RECOVERY_EVIDENCE_VERSION,
+  buildPolicyCompatibilityDeletionExecutionGateRecoveryEvidence,
+  validatePolicyCompatibilityDeletionExecutionGateRecoveryEvidence,
+} from './policyCompatibilityDeletionExecutionGateRecoveryEvidence.mjs';
+import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS,
 } from './policyCompatibilityDeletionExecutionPlan.mjs';
 import {
@@ -50,7 +56,7 @@ import {
 } from './policyCompatibilityDeletionExecutionGateShared.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_VERSION =
-  'policy.compatibility_deletion_execution_gate.v3';
+  'policy.compatibility_deletion_execution_gate.v4';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS = Object.freeze({
   READY_FOR_CONTROLLED_DELETION: 'ready_for_controlled_deletion',
@@ -80,6 +86,7 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS = Object.freeze({
     'operator_evidence_artifact_fingerprint_mismatch',
   OPERATOR_EVIDENCE_MACHINE_CLAIMS_UNSUPPORTED:
     'operator_evidence_machine_claims_unsupported',
+  CALLER_READINESS_INPUT_UNSUPPORTED: 'caller_readiness_input_unsupported',
   PREFLIGHT_TIMESTAMP_MISSING: 'preflight_timestamp_missing',
   PREFLIGHT_TIMESTAMP_INVALID: 'preflight_timestamp_invalid',
   PREFLIGHT_TIMESTAMP_STALE: 'preflight_timestamp_stale',
@@ -95,6 +102,8 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS = Object.freeze({
   NEXT_STEP_MISMATCH: 'next_step_mismatch',
   WORKTREE_NOT_CLEAN: 'worktree_not_clean',
   BACKUP_RESTORE_NOT_VERIFIED: 'backup_restore_not_verified',
+  RECOVERY_EVIDENCE_ARTIFACT_FINGERPRINT_MISMATCH:
+    'recovery_evidence_artifact_fingerprint_mismatch',
   OPERATOR_APPROVAL_MISSING: 'operator_approval_missing',
   ROLLBACK_STANCE_NOT_FINAL: 'rollback_stance_not_final',
   SUPPORT_STANCE_NOT_FINAL: 'support_stance_not_final',
@@ -104,6 +113,17 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS = Object.freeze({
   ALLOW_STATE_MISMATCH: 'allow_state_mismatch',
   UNKNOWN_STATUS: 'unknown_status',
 });
+
+const LEGACY_CALLER_READINESS_FIELDS = Object.freeze([
+  'worktreeClean',
+  'backupRestoreVerified',
+  'backupRestoreFresh',
+  'operatorApproval',
+  'rollbackStanceFinal',
+  'supportStanceFinal',
+  'manifestFresh',
+  'manifestMatchesCurrentPlan',
+]);
 
 function evaluateExecutionPlanArtifact({ executionPlanArtifact, now, maxEvidenceAgeMs }) {
   const artifact = executionPlanArtifact || buildPolicyCompatibilityDeletionExecutionPlanArtifact();
@@ -296,7 +316,7 @@ function evaluateOperatorEvidence({
   if (Object.keys(value).length === 0) {
     return [buildRisk(
       POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.OPERATOR_EVIDENCE_MISSING,
-      'Compatibility path deletion requires separate timestamped recovery, approval, and stance evidence.'
+      'Compatibility path deletion requires separate timestamped operator approval and final stance evidence.'
     )];
   }
 
@@ -321,22 +341,19 @@ function evaluateOperatorEvidence({
   if (
     Object.hasOwn(value, 'worktree') ||
     Object.hasOwn(value, 'manifest') ||
-    Object.hasOwn(value, 'preflightEvidenceArtifact')
+    Object.hasOwn(value, 'preflightEvidenceArtifact') ||
+    Object.hasOwn(value, 'recovery') ||
+    Object.hasOwn(value, 'backupRestoreVerified') ||
+    Object.hasOwn(value, 'backupRestoreEvidence')
   ) {
     risks.push(buildRisk(
       POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
         .OPERATOR_EVIDENCE_MACHINE_CLAIMS_UNSUPPORTED,
-      'Compatibility path deletion derives checkout and manifest facts only from the preflight evidence artifact.'
+      'Compatibility path deletion derives machine facts from bounded evidence artifacts; operator evidence cannot assert checkout, manifest, or recovery state.'
     ));
   }
 
   const recordDefinitions = [
-    {
-      scope: 'recovery', value: value.recovery, timestampField: 'verifiedAt', actorField: 'verifiedBy',
-      condition: record => record.backupRestoreVerified === true,
-      riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.BACKUP_RESTORE_NOT_VERIFIED,
-      message: 'Compatibility path deletion requires verified and fresh backup/restore evidence.',
-    },
     {
       scope: 'approval', value: value.approval, timestampField: 'approvedAt', actorField: 'approvedBy',
       condition: record => record.approved === true,
@@ -382,6 +399,90 @@ function evaluateOperatorEvidence({
   return risks;
 }
 
+function evaluateRecoveryEvidence({
+  recoveryEvidence,
+  executionPlanArtifact,
+  artifactTimestamp,
+  evaluationTime,
+  maximumAgeMs,
+}) {
+  const value = asObject(recoveryEvidence);
+  const expectedArtifactFingerprint = normalizeFingerprint(
+    executionPlanArtifact?.artifactFingerprint?.fingerprint
+  );
+  const providedArtifactFingerprint = normalizeFingerprint(
+    value.executionPlanArtifactFingerprint
+  );
+  const expected = buildPolicyCompatibilityDeletionExecutionGateRecoveryEvidence({
+    executionPlanArtifact,
+    backupRestoreVerificationEvidence: value.backupRestoreVerificationEvidence,
+    generatedAt: value.generatedAt,
+    now: evaluationTime.value,
+    maxEvidenceAgeMs: maximumAgeMs,
+  });
+  const validation = validatePolicyCompatibilityDeletionExecutionGateRecoveryEvidence(value);
+  const outputMatchesEvaluation =
+    value.version === POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RECOVERY_EVIDENCE_VERSION &&
+    value.statusId === expected.statusId &&
+    value.ready === expected.ready &&
+    value.riskCount === expected.riskCount &&
+    JSON.stringify(asArray(value.risks)) === JSON.stringify(expected.risks) &&
+    value.validation?.ok === validation.ok;
+  const risks = [];
+
+  if (!expectedArtifactFingerprint || providedArtifactFingerprint !== expectedArtifactFingerprint) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+        .RECOVERY_EVIDENCE_ARTIFACT_FINGERPRINT_MISMATCH,
+      'Compatibility path deletion recovery evidence must match the exact current execution-plan artifact.',
+      {
+        expectedArtifactFingerprint: expectedArtifactFingerprint || null,
+        providedArtifactFingerprint: providedArtifactFingerprint || null,
+      }
+    ));
+  }
+
+  if (
+    !validation.ok ||
+    !outputMatchesEvaluation ||
+    expected.statusId !==
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RECOVERY_EVIDENCE_STATUS_IDS.READY ||
+    expected.ready !== true
+  ) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.BACKUP_RESTORE_NOT_VERIFIED,
+      'Compatibility path deletion requires fresh, fingerprint-bound database-owned backup/restore verification evidence.',
+      {
+        recoveryEvidenceStatusId: value.statusId || null,
+        expectedRecoveryEvidenceStatusId: expected.statusId,
+        validationIssueCount: validation.issueCount,
+        evaluationRiskCount: expected.riskCount,
+        observedAfterExecutionPlan:
+          artifactTimestamp && value.generatedAt
+            ? parseTimestamp(value.generatedAt)?.timestampMs >=
+              artifactTimestamp.timestampMs - MAX_FUTURE_TIMESTAMP_SKEW_MS
+            : false,
+      }
+    ));
+  }
+
+  return risks;
+}
+
+function evaluateLegacyCallerReadinessInput(input = {}) {
+  const suppliedFields = LEGACY_CALLER_READINESS_FIELDS
+    .filter(fieldName => Object.hasOwn(input, fieldName));
+
+  return suppliedFields.length === 0
+    ? []
+    : [buildRisk(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+        .CALLER_READINESS_INPUT_UNSUPPORTED,
+      'Compatibility path deletion does not accept caller-supplied readiness fields; provide bounded evidence artifacts and operator decisions instead.',
+      { suppliedFields }
+    )];
+}
+
 function determineStatusId(risks = []) {
   const riskIds = new Set(risks.map(risk => risk.riskId));
   const preflightRiskIds = new Set([
@@ -393,6 +494,8 @@ function determineStatusId(risks = []) {
       .OPERATOR_EVIDENCE_ARTIFACT_FINGERPRINT_MISMATCH,
     POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
       .OPERATOR_EVIDENCE_MACHINE_CLAIMS_UNSUPPORTED,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+      .CALLER_READINESS_INPUT_UNSUPPORTED,
     POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.PREFLIGHT_TIMESTAMP_MISSING,
     POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.PREFLIGHT_TIMESTAMP_INVALID,
     POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.PREFLIGHT_TIMESTAMP_STALE,
@@ -427,6 +530,9 @@ function determineStatusId(risks = []) {
   }
   if (riskIds.has(
     POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.BACKUP_RESTORE_NOT_VERIFIED
+  ) || riskIds.has(
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+      .RECOVERY_EVIDENCE_ARTIFACT_FINGERPRINT_MISMATCH
   )) {
     return POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
       .BLOCKED_BY_RECOVERY_EVIDENCE;
@@ -463,11 +569,6 @@ function summarizeOperatorEvidence(operatorEvidence = {}) {
 
   return {
     executionPlanArtifactFingerprint: value.executionPlanArtifactFingerprint || null,
-    recovery: {
-      backupRestoreVerified: value.recovery?.backupRestoreVerified === true,
-      verifiedAt: value.recovery?.verifiedAt || null,
-      verifiedBy: value.recovery?.verifiedBy || null,
-    },
     approval: {
       approved: value.approval?.approved === true,
       approvedAt: value.approval?.approvedAt || null,
@@ -530,6 +631,13 @@ function evaluateSerializedGateEvidence(gate = {}) {
   const risks = [
     ...artifactEvaluation.risks,
     ...preflightAttestation.risks,
+    ...evaluateRecoveryEvidence({
+      recoveryEvidence: gate.recoveryEvidence,
+      executionPlanArtifact: artifactEvaluation.artifact,
+      artifactTimestamp: artifactEvaluation.artifactTimestamp,
+      evaluationTime: artifactEvaluation.evaluationTime,
+      maximumAgeMs: artifactEvaluation.maximumAgeMs,
+    }),
     ...evaluateOperatorEvidence({
       operatorEvidence: gate.operatorEvidence,
       artifactFingerprint: artifactEvaluation.artifact.artifactFingerprint,
@@ -549,11 +657,13 @@ function evaluateSerializedGateEvidence(gate = {}) {
 
 function buildPolicyCompatibilityDeletionExecutionGate({
   executionPlanArtifact = null,
+  recoveryEvidence = null,
   operatorEvidence = null,
   preflightEvidenceArtifact = null,
   generatedAt = null,
   now = null,
   maxEvidenceAgeMs = null,
+  ...legacyCallerReadinessInput
 } = {}) {
   const artifactEvaluation = evaluateExecutionPlanArtifact({
     executionPlanArtifact,
@@ -569,6 +679,14 @@ function buildPolicyCompatibilityDeletionExecutionGate({
   const risks = [
     ...artifactEvaluation.risks,
     ...preflightAttestation.risks,
+    ...evaluateLegacyCallerReadinessInput(legacyCallerReadinessInput),
+    ...evaluateRecoveryEvidence({
+      recoveryEvidence,
+      executionPlanArtifact: artifactEvaluation.artifact,
+      artifactTimestamp: artifactEvaluation.artifactTimestamp,
+      evaluationTime: artifactEvaluation.evaluationTime,
+      maximumAgeMs: artifactEvaluation.maximumAgeMs,
+    }),
     ...evaluateOperatorEvidence({
       operatorEvidence,
       artifactFingerprint: artifactEvaluation.artifact.artifactFingerprint,
@@ -596,6 +714,7 @@ function buildPolicyCompatibilityDeletionExecutionGate({
     },
     preflightEvidenceArtifact: asObject(preflightEvidenceArtifact),
     preflightAttestation,
+    recoveryEvidence: asObject(recoveryEvidence),
     operatorEvidence: summarizeOperatorEvidence(operatorEvidence),
     riskCount: risks.length,
     risks,
@@ -607,6 +726,7 @@ function buildPolicyCompatibilityDeletionExecutionGate({
       requireCollectedPreflightAttestation: true,
       requireCleanWorktree: true,
       requireFreshBackupRestoreEvidence: true,
+      requireDatabaseOwnedBackupRestoreEvidence: true,
       requireOperatorApproval: true,
       requireManifestVerification: true,
       maxEvidenceAgeMs: artifactEvaluation.maximumAgeMs,
@@ -716,6 +836,7 @@ function validatePolicyCompatibilityDeletionExecutionGate(gate = {}) {
     executionPolicy.requireCollectedPreflightAttestation !== true ||
     executionPolicy.requireCleanWorktree !== true ||
     executionPolicy.requireFreshBackupRestoreEvidence !== true ||
+    executionPolicy.requireDatabaseOwnedBackupRestoreEvidence !== true ||
     executionPolicy.requireOperatorApproval !== true ||
     executionPolicy.requireManifestVerification !== true ||
     executionPolicy.maxEvidenceAgeMs !== normalizeMaximumAge(executionPolicy.maxEvidenceAgeMs)

@@ -15,6 +15,7 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
   buildReadyExecutionGateOperatorEvidence,
   buildReadyExecutionGatePreflightEvidenceArtifact,
+  buildReadyExecutionGateRecoveryEvidence,
   buildReadyExecutionPlanArtifact,
 } from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 
@@ -62,6 +63,9 @@ function readyExecutionPlanArtifact(overrides = {}) {
 
 function readyInput({ executionPlanArtifact, overrides = {} } = {}) {
   return {
+    recoveryEvidence: buildReadyExecutionGateRecoveryEvidence({
+      executionPlanArtifact,
+    }),
     operatorEvidence: buildReadyExecutionGateOperatorEvidence({
       executionPlanArtifact,
     }),
@@ -183,12 +187,14 @@ describe('policyControlledCompatibilityRemovalBatchArtifact', () => {
     const artifact = buildReadyBatchArtifact();
     const validation = validatePolicyControlledCompatibilityRemovalBatchArtifact({
       ...artifact,
+      version: 'unknown',
       statusId: 'unknown',
       riskCount: 99,
     });
 
     expect(validation.ok).toBe(false);
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
+      POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.VERSION_MISMATCH,
       POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.UNKNOWN_STATUS,
       POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS.RISK_COUNT_MISMATCH,
     ]));
@@ -216,6 +222,10 @@ describe('policyControlledCompatibilityRemovalBatchArtifact', () => {
       expect.objectContaining({
         riskId: POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS
           .EXECUTION_PLAN_ARTIFACT_NOT_READY,
+      }),
+      expect.objectContaining({
+        riskId: POLICY_CONTROLLED_COMPATIBILITY_REMOVAL_BATCH_ARTIFACT_RISK_IDS
+          .LEGACY_READINESS_INPUT_UNSUPPORTED,
       }),
     ]));
   });

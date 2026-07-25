@@ -14,8 +14,10 @@ The gate verifies:
   artifact timestamp,
 - a separately collected, fingerprint-valid preflight artifact binds checkout,
   manifest, and retained runtime-evidence observations to that exact plan,
-- separately supplied operator evidence records recovery, approval, and final
-  stances with fresh named-actor timestamps,
+- a separately supplied, fingerprint-valid recovery-evidence artifact binds
+  the database-owned backup/restore verification to that exact plan,
+- separately supplied operator evidence records only approval and final stances
+  with fresh named-actor timestamps,
 - machine observations and human decisions cannot substitute for one another.
 
 ## Official-Source Research
@@ -68,34 +70,38 @@ Cons:
 
 - deletion still requires a later execution step.
 
-### Separate Machine And Human Evidence
+### Separate Machine, Recovery, And Human Evidence
 
 Deletion should not proceed from raw booleans or a combined evidence object.
 The gate derives checkout and manifest continuity only from a full,
-fingerprint-valid collector artifact bound to the current plan. It accepts only
-recovery, approval, and stance records from separately bound operator evidence.
+fingerprint-valid collector artifact bound to the current plan. It accepts
+recovery only from a separate fingerprint-valid artifact containing the
+database-owned backup/restore verification result. It accepts only approval and
+stance records from separately bound operator evidence.
 
 Pros:
 
 - prevents a caller from presenting a clean-worktree or current-manifest claim
   without its collector provenance,
-- prevents a machine observation from becoming a recovery or approval claim,
+- prevents an operator assertion from becoming a recovery claim,
 - detects cross-plan, altered, duplicate, stale, and post-observation evidence.
 
 Cons:
 
 - the collector must be rerun whenever the plan or checkout changes.
 
-### Require Fresh Timestamped Operator Records With Named Actors
+### Require Fresh Recovery Observation And Named Operator Decisions
 
-The final gate requires fresh recovery, approval, and stance records collected
-after artifact generation. Every operator record names the actor who performed
-the check; machine observations come from the preflight artifact instead.
+The final gate requires a recovery artifact reread from the database after the
+execution-plan artifact is generated. It also requires fresh approval and
+stance records from named operators. Machine observations remain in the
+preflight artifact instead.
 
 Pros:
 
-- keeps recovery proof and approval immediately ahead of deletion,
-- makes missing or stale actors and timestamps fail closed,
+- keeps recovery proof and approval immediately ahead of deletion without
+  pretending the database verification has a human actor,
+- makes missing or stale operator actors and timestamps fail closed,
 - keeps human accountability explicit before compatibility paths disappear.
 
 Cons:
@@ -133,12 +139,15 @@ Use this stack:
 3. `policyCompatibilityDeletionPreflightAttestation.mjs` revalidates the
    collected artifact against the current execution plan and derives only its
    machine-observed facts.
-4. `policyCompatibilityDeletionExecutionGate.mjs` validates separately bound
-   recovery, approval, and stance records, then combines them with the derived
+4. `policyCompatibilityDeletionExecutionGateRecoveryEvidence.mjs` binds the
+   database-owned recovery verification to the execution-plan artifact with a
+   deterministic fingerprint.
+5. `policyCompatibilityDeletionExecutionGate.mjs` validates the recovery
+   artifact, separately bound approval and stance records, and the derived
    attestation without accepting caller-supplied machine claims.
-5. Every gate consumer revalidates that the serialized status, risks,
+6. Every gate consumer revalidates that the serialized status, risks,
    non-destructive policy, and next step still derive from retained evidence.
-4. A later controlled deletion component may consume a ready gate output, but
+7. A later controlled deletion component may consume a ready gate output, but
    only that later step should perform file removal.
 
 ## Implementation Outcome
@@ -146,7 +155,7 @@ Use this stack:
 Implemented:
 
 - Added `policyCompatibilityDeletionExecutionGate.mjs`.
-- Updated the contract to v3 with gate status IDs for:
+- Updated the contract to v4 with gate status IDs for:
   - ready for controlled deletion,
   - blocked by execution artifact,
   - blocked by preflight evidence,
@@ -155,10 +164,12 @@ Implemented:
   - blocked by approval,
   - blocked by manifest verification.
 - Requires a v2 fingerprint-valid execution-plan artifact, a full
-  fingerprint-valid preflight evidence artifact, and separately bound
-  timestamped operator evidence instead of raw readiness booleans.
-- Derives checkout and manifest state only from the collector artifact;
-  operator evidence containing worktree, manifest, or nested collector claims
+  fingerprint-valid preflight evidence artifact, a separately bound
+  database-owned recovery artifact, and timestamped operator approval/stance
+  evidence instead of raw readiness booleans.
+- Derives checkout and manifest state only from the collector artifact and
+  recovery state only from the database-owned recovery artifact; operator
+  evidence containing recovery, worktree, manifest, or nested collector claims
   is rejected.
 - Rejects stale, future, pre-artifact, cross-plan, altered, duplicate, or
   post-observation preflight evidence before batch assembly.
@@ -169,8 +180,8 @@ Implemented:
   worktree, recovery, approval, stance, manifest, and side-effect blockers.
 - The public `policy:controlled-compatibility-removal-batch` command is the
   intentional operator boundary for the gate. It consumes one v2
-  execution-plan artifact, a separately collected preflight artifact, and
-  bound operator evidence; it serializes the evaluated gate as `executionGate`
+  execution-plan artifact, a separately collected preflight artifact, a bound
+  recovery artifact, and bound operator evidence; it serializes the evaluated gate as `executionGate`
   inside its batch artifact and is covered by a public contract test. A second
   standalone gate writer would duplicate authority without providing a new
   workflow capability.

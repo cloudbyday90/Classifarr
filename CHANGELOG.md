@@ -530,6 +530,12 @@ unchanged operator or runtime outcome.
   timestamped preflight evidence bound to that exact artifact. Stale, detached,
   malformed, caller-asserted, or altered serialized readiness can no longer
   authorize deletion.
+- **Database-Bound Recovery Evidence** - compatibility deletion now binds the
+  existing persisted backup/restore verification result to the exact execution
+  plan through a fresh, fingerprinted recovery artifact. Recovery can no longer
+  be asserted by an operator boolean; only approval and final support/rollback
+  stances remain operator evidence, and controlled batch/apply replay validates
+  the same recovery artifact without performing a restore or deletion.
 - **Cohesive Compatibility-Removal Reviews** - reviewed removal batches now
   select paths only from one fingerprint-valid execution-plan artifact and
   reject a ready gate bound to any different or altered artifact manifest.

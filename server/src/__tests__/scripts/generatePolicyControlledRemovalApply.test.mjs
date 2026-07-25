@@ -42,6 +42,7 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
   buildReadyExecutionGateOperatorEvidence,
   buildReadyExecutionGatePreflightEvidenceArtifact,
+  buildReadyExecutionGateRecoveryEvidence,
   buildReadyExecutionPlanArtifact,
 } from '../services/fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 
@@ -107,6 +108,9 @@ function buildReadyRemovalBatch({
   });
   const executionGate = buildPolicyCompatibilityDeletionExecutionGate({
     executionPlanArtifact,
+    recoveryEvidence: buildReadyExecutionGateRecoveryEvidence({
+      executionPlanArtifact,
+    }),
     operatorEvidence: buildReadyExecutionGateOperatorEvidence({
       executionPlanArtifact,
     }),

@@ -27,6 +27,7 @@ import {
   buildReadyBackupRestoreVerificationEvidence,
   buildReadyExecutionGateOperatorEvidence,
   buildReadyExecutionGatePreflightEvidenceArtifact,
+  buildReadyExecutionGateRecoveryEvidence,
   buildReadyExecutionPlanArtifact,
 } from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 import {
@@ -191,12 +192,17 @@ function readyExecutionPlanArtifact(executionPlan = readyExecutionPlan()) {
 }
 
 function readyGate(executionPlanArtifact, {
+  recoveryEvidenceOverrides = {},
   operatorEvidenceOverrides = {},
   preflightEvidenceArtifactOverrides = {},
   ...overrides
 } = {}) {
   return buildPolicyCompatibilityDeletionExecutionGate({
     executionPlanArtifact,
+    recoveryEvidence: buildReadyExecutionGateRecoveryEvidence({
+      executionPlanArtifact,
+      overrides: recoveryEvidenceOverrides,
+    }),
     operatorEvidence: buildReadyExecutionGateOperatorEvidence({
       executionPlanArtifact,
       overrides: operatorEvidenceOverrides,

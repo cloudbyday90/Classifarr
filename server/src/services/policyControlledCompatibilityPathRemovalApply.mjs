@@ -151,6 +151,7 @@ function evaluateReviewExecutionContext(review = {}) {
 
   const revalidatedGate = buildPolicyCompatibilityDeletionExecutionGate({
     executionPlanArtifact,
+    recoveryEvidence: executionGate.recoveryEvidence,
     operatorEvidence: executionGate.operatorEvidence,
     preflightEvidenceArtifact: executionGate.preflightEvidenceArtifact,
     generatedAt: executionGate.generatedAt,

@@ -4,8 +4,9 @@
 
 The controlled compatibility removal batch artifact creates a machine-readable,
 reviewable batch from a ready, fingerprinted compatibility deletion
-execution-plan artifact, a revalidated collector artifact, separately bound
-operator evidence, selected approved manifest paths, and reviewer metadata.
+execution-plan artifact, a revalidated collector artifact, a separately bound
+database-owned recovery artifact, operator approval/stance evidence, selected
+approved manifest paths, and reviewer metadata.
 
 This component prepares a bounded batch for a later apply step. It does not
 delete files, archive files, remove routes, remove tests, mutate storage, write
@@ -50,11 +51,12 @@ Sources:
 
 ## Recommendations
 
-### Consume A Bound Execution Plan, Collector Artifact, And Operator Evidence
+### Consume A Bound Execution Plan, Collector Artifact, Recovery Artifact, And Operator Evidence
 
 The generator should require the generated v2 compatibility deletion
 execution-plan artifact, a fingerprint-valid collector artifact bound to its
-exact fingerprint, and separately timestamped operator evidence before
+exact fingerprint, a database-owned recovery artifact, and separately
+timestamped operator approval/stance evidence before
 producing a review batch. It must not translate caller-supplied readiness,
 worktree, or manifest booleans into trusted gate evidence.
 
@@ -63,8 +65,8 @@ Pros:
 - prevents ad hoc path removal,
 - prevents stale, altered, duplicate, or detached collector evidence from
   being accepted,
-- preserves the separation between machine observations and recovery/approval
-  evidence,
+- preserves the separation between machine observations, database recovery,
+  and human approval evidence,
 - keeps operator approval close to the removal batch.
 
 Cons:
@@ -150,18 +152,20 @@ Use this stack for controlled compatibility removal batch generation:
    artifact JSON file.
 2. Require a fingerprint-valid `preflightEvidenceArtifact` that binds only
    checkout, manifest, and runtime-reference observations to that artifact.
-3. Require separately timestamped `operatorEvidence` that binds backup/restore,
-   operator approval, and final rollback/support stances to that artifact.
-4. Build the compatibility deletion execution gate through
+3. Require fingerprint-valid `recoveryEvidence` that binds the existing
+   database-owned backup/restore verification to that artifact.
+4. Require separately timestamped `operatorEvidence` that contains only
+   operator approval and final rollback/support stances.
+5. Build the compatibility deletion execution gate through
    `policyCompatibilityDeletionExecutionGate.mjs`.
-5. Build the reviewed removal batch through
+6. Build the reviewed removal batch through
    `policyControlledCompatibilityPathRemoval.mjs`.
-6. Refuse ready output unless both gate and batch validate.
-7. Write the nested removal-batch JSON for controlled apply tooling.
-8. Optionally write the wrapper artifact for audit trails.
-9. Verify the public exporter preserves review integrity and refuses blocked
+7. Refuse ready output unless both gate and batch validate.
+8. Write the nested removal-batch JSON for controlled apply tooling.
+9. Optionally write the wrapper artifact for audit trails.
+10. Verify the public exporter preserves review integrity and refuses blocked
    output unless diagnostic export is explicitly enabled.
-10. Expose durable controlled compatibility removal batch service, script,
+11. Expose durable controlled compatibility removal batch service, script,
    runner, version, test, and documentation names.
 
 ## Implementation Outcome
@@ -176,9 +180,9 @@ Implemented:
   `server/src/__tests__/services/policyControlledCompatibilityRemovalBatchArtifact.test.mjs`.
 - Added the root runner `npm run policy:controlled-compatibility-removal-batch`.
 - Replaced the phase-coded payload version with
-  `policy.controlled_compatibility_removal_batch_artifact.v2`, which requires a
+  `policy.controlled_compatibility_removal_batch_artifact.v3`, which requires a
   fingerprint-valid execution-plan artifact, revalidated collector artifact,
-  and separately bound operator evidence.
+  database-owned recovery artifact, and separately bound operator evidence.
 - Updated storage-closure validation and requirement-audit evidence references
   to require the durable controlled compatibility removal batch contract.
 - Preserved execution-plan gating, execution-gate gating, manifest-bound path

@@ -30,6 +30,7 @@ import {
   buildReadyBackupRestoreVerificationEvidence,
   buildReadyExecutionGateOperatorEvidence,
   buildReadyExecutionGatePreflightEvidenceArtifact,
+  buildReadyExecutionGateRecoveryEvidence,
   buildReadyExecutionPlanArtifact,
 } from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 import {
@@ -185,6 +186,7 @@ function readyExecutionPlan(overrides = {}) {
 function readyGate({
   executionPlan = readyExecutionPlan(),
   executionPlanArtifact = null,
+  recoveryEvidence = null,
   operatorEvidence = null,
   preflightEvidenceArtifact = null,
   ...overrides
@@ -195,6 +197,9 @@ function readyGate({
 
   return buildPolicyCompatibilityDeletionExecutionGate({
     executionPlanArtifact: artifact,
+    recoveryEvidence: recoveryEvidence || buildReadyExecutionGateRecoveryEvidence({
+      executionPlanArtifact: artifact,
+    }),
     operatorEvidence: operatorEvidence || buildReadyExecutionGateOperatorEvidence({
       executionPlanArtifact: artifact,
     }),
@@ -233,11 +238,19 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
     expect(gate.operatorEvidence).toEqual(expect.objectContaining({
       executionPlanArtifactFingerprint:
         gate.executionPlanArtifact.artifactFingerprint.fingerprint,
-      recovery: expect.objectContaining({ backupRestoreVerified: true }),
       approval: expect.objectContaining({ approved: true, approvedBy: 'policy-maintainer' }),
       stances: expect.objectContaining({
         rollbackStanceFinal: true,
         supportStanceFinal: true,
+      }),
+    }));
+    expect(gate.recoveryEvidence).toEqual(expect.objectContaining({
+      statusId: 'ready',
+      executionPlanArtifactFingerprint:
+        gate.executionPlanArtifact.artifactFingerprint.fingerprint,
+      source: expect.objectContaining({
+        databaseOwned: true,
+        sourceId: 'policy_backup_restore_verifications',
       }),
     }));
     expect(gate.executionPolicy).toEqual(expect.objectContaining({
@@ -289,6 +302,10 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
       expect.objectContaining({
         riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
           .EXECUTION_PLAN_ARTIFACT_NOT_READY,
+      }),
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+          .CALLER_READINESS_INPUT_UNSUPPORTED,
       }),
     ]));
   });
@@ -401,13 +418,17 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
     ]));
   });
 
-  test('blocks when recovery evidence is not verified', () => {
+  test('blocks when database-owned recovery evidence is not verified', () => {
     const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
     const gate = readyGate({
       executionPlanArtifact: artifact,
-      operatorEvidence: buildReadyExecutionGateOperatorEvidence({
+      recoveryEvidence: buildReadyExecutionGateRecoveryEvidence({
         executionPlanArtifact: artifact,
-        overrides: { recovery: { backupRestoreVerified: false } },
+        backupRestoreVerificationEvidence: {
+          ...buildReadyBackupRestoreVerificationEvidence(),
+          statusId: 'blocked_by_restore_gate',
+          backupRestoreVerified: false,
+        },
       }),
     });
 
@@ -416,6 +437,29 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
         .BLOCKED_BY_RECOVERY_EVIDENCE);
     expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
       POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS.BACKUP_RESTORE_NOT_VERIFIED,
+    ]));
+  });
+
+  test('blocks recovery evidence bound to a different execution-plan artifact', () => {
+    const artifact = buildReadyExecutionPlanArtifact({ executionPlan: readyExecutionPlan() });
+    const differentArtifact = buildReadyExecutionPlanArtifact({
+      executionPlan: readyExecutionPlan({
+        supportStance: 'A different final support stance changes this approved plan.',
+      }),
+    });
+    const gate = readyGate({
+      executionPlanArtifact: artifact,
+      recoveryEvidence: buildReadyExecutionGateRecoveryEvidence({
+        executionPlanArtifact: differentArtifact,
+      }),
+    });
+
+    expect(gate.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
+        .BLOCKED_BY_RECOVERY_EVIDENCE);
+    expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS
+        .RECOVERY_EVIDENCE_ARTIFACT_FINGERPRINT_MISMATCH,
     ]));
   });
 
@@ -478,6 +522,7 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
         overrides: {
           manifest: { current: true },
           worktree: { clean: true },
+          recovery: { backupRestoreVerified: true },
         },
       }),
     });

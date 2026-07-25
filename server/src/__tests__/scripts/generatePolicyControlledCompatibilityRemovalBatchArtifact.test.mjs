@@ -46,6 +46,7 @@ import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
   buildReadyExecutionGateOperatorEvidence,
   buildReadyExecutionGatePreflightEvidenceArtifact,
+  buildReadyExecutionGateRecoveryEvidence,
   buildReadyExecutionPlanArtifact,
 } from '../services/fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
 
@@ -107,6 +108,9 @@ function readyExecutionPlanArtifact(overrides = {}) {
 
 function readyInput({ executionPlanArtifact, overrides = {} } = {}) {
   return {
+    recoveryEvidence: buildReadyExecutionGateRecoveryEvidence({
+      executionPlanArtifact,
+    }),
     operatorEvidence: buildReadyExecutionGateOperatorEvidence({
       executionPlanArtifact,
     }),

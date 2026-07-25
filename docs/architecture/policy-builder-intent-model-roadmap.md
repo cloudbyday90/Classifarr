@@ -6872,7 +6872,9 @@ Tasks:
   - Require timestamped preflight records bound to the exact artifact
     fingerprint for worktree, recovery, approval, final stances, and manifest
     verification.
-  - Reject stale, future, pre-artifact, malformed, or actorless records.
+  - Reject stale, future, pre-artifact, malformed, or actorless human decision
+    records. Database-owned recovery evidence is intentionally actorless and
+    must instead carry source and artifact provenance.
   - Remove caller-supplied readiness booleans from the execution-gate and
     controlled-batch input contracts.
 - **8R.16.2 Preflight Evidence Collection Boundary**
@@ -6948,9 +6950,13 @@ Implementation status:
   `server/src/services/policyCompatibilityDeletionExecutionGate.mjs`.
 - The focused execution-gate test suite lives in
   `server/src/__tests__/services/policyCompatibilityDeletionExecutionGate.test.mjs`.
-- Task 8R.16.1 established the initial execution-plan gate boundary. It is now
-  superseded by the v3 collector-to-gate contract below; no mixed legacy
-  preflight input remains in the current gate or controlled-batch path.
+- Task 8R.16.1 now uses the v4 execution-gate contract. A separately
+  fingerprint-valid recovery artifact binds the existing database-owned
+  backup/restore verification evidence to the exact execution-plan artifact;
+  recovery booleans and recovery records in the operator-evidence envelope are
+  rejected. The current gate and controlled-batch path retain no mixed legacy
+  readiness input. The design and outcome record is
+  [Policy Compatibility Deletion Recovery Evidence Binding](policy-compatibility-deletion-recovery-evidence-binding.md).
 - Serialized execution-gate output is revalidated against its retained artifact
   and preflight evidence. A modified ready claim, execution policy, or handoff
   cannot remain valid merely because its outer envelope is well-formed.
@@ -6970,12 +6976,13 @@ Implementation status:
   rejects unsafe paths and caller-controlled time, and does not contact Docker,
    PostgreSQL, or the production application. The design and outcome record is
    [Policy Compatibility Deletion Preflight Evidence Collection](policy-compatibility-deletion-preflight-evidence-collection.md).
-- Task 8R.16.3 is implemented. The v3 execution gate consumes a complete
+- Task 8R.16.3 is implemented. The v4 execution gate consumes a complete
   collector artifact and independently revalidates its fingerprint, source
   revision, timestamps, plan binding, manifest ordering, duplicate paths,
   runtime-evidence reference, and side-effect state. It derives machine facts
-  only from that artifact and accepts separately bound operator evidence only
-  for recovery, approval, and final stances. Cross-plan, stale, altered,
+  only from that artifact, accepts database-owned recovery evidence only from
+  its dedicated fingerprint-bound artifact, and accepts separately bound
+  operator evidence only for approval and final stances. Cross-plan, stale, altered,
   duplicate, post-observation, and machine-claim substitution cases block
   before a controlled removal batch can be assembled. The design and outcome
   record is [Policy Compatibility Deletion Preflight Attestation](policy-compatibility-deletion-preflight-attestation.md).
