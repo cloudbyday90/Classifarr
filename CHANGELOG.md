@@ -720,6 +720,11 @@ unchanged operator or runtime outcome.
   requests and manual decisions while keeping final classification success
   distinct from a successfully routed item. Learning evidence cannot become
   policy authority without the required outcome and provenance checks.
+- **Bounded Request/Import Route Outcomes** - request-origin classification
+  tasks now record successful Arr routes and missing mappings as outcome-only
+  admission results. Request payloads cannot imply a requester destination or
+  create policy evidence, and webhook history now retains the normalized routed
+  library name.
 - **Question and Learning Controls** - added deterministic question reduction,
   permitted-action checks, answer-shape validation, and learning eligibility
   checks so automation asks only destination-relevant questions and manual

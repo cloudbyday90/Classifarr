@@ -4558,8 +4558,19 @@ Implementation status:
 - Missing Arr mapping records a route-failure outcome and is explicitly blocked
   from becoming positive destination evidence.
 - Manual destination changes are marked auditable and reversible. Request,
-  import, Discord, and routing adapters remain side-effect free until their
-  dedicated runtime integrations deliberately wire persistence.
+  import, Discord, and routing adapters remain side-effect-free at the policy
+  boundary; none can directly mutate policy evidence, queue a profile refresh,
+  or perform provider, quota, or routing work.
+- Request/import classification tasks now use the bounded
+  `policyRequestImportDestinationAdmission.mjs` adapter after classification.
+  It records only successful Arr routes and missing Arr mappings in the
+  completed task result, never infers a requester destination choice, and
+  requires a valid native question-reduction plan before it can call the
+  request-time reducer. Legacy classification results without that plan remain
+  outcome-only through the learning guard. Its design record is
+  [Policy Request/Import Destination Admission](policy-request-import-destination-admission.md).
+- Queue webhook history now writes the normalized selected library name rather
+  than treating the legacy string result as an object.
 - The first live runtime adapter now handles authenticated manual classification
   corrections. It loads the corrected destination from the database, validates
   media-type compatibility, records the final outcome, and creates exact-item

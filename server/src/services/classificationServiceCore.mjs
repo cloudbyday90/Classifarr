@@ -7,6 +7,10 @@
  */
 
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
+import {
+  buildClassificationDestinationSummary,
+  buildClassificationRoutingSummary,
+} from './classificationResultOutcomeSummary.mjs';
 
 export function normalizeClassificationServiceConfig(config = {}) {
   const {
@@ -317,7 +321,12 @@ export class ClassificationService {
 
       const requireAllConfirmations = await this.clarificationService.isRequireAllConfirmationsEnabled();
 
-      await this.routeClassificationResult(classificationId, metadata, result, requireAllConfirmations);
+      const routingOutcome = await this.routeClassificationResult(
+        classificationId,
+        metadata,
+        result,
+        requireAllConfirmations
+      );
 
       if (this.discordBot.isInitialized) {
         try {
@@ -373,6 +382,8 @@ export class ClassificationService {
         success: true,
         classification_id: classificationId,
         library: result.library?.name,
+        destination: buildClassificationDestinationSummary(result),
+        routingOutcome: buildClassificationRoutingSummary({ routingOutcome }),
         confidence: result.confidence,
         method: result.method,
         reason: result.reason,

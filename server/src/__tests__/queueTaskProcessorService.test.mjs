@@ -172,6 +172,69 @@ describe('processClassificationTask', () => {
       expect.arrayContaining([99])
     );
   });
+
+  test('records a bounded request routing admission and writes the selected library name to the webhook log', async () => {
+    const requestDestinationAdmission = {
+      statusId: 'outcome_only',
+      audit: { ok: true },
+    };
+    const policyRequestImportDestinationAdmissionService = {
+      build: jest.fn().mockReturnValue(requestDestinationAdmission),
+    };
+    const classificationService = {
+      classify: jest.fn().mockResolvedValue({
+        classification_id: 87,
+        library: 'Movies',
+        destination: {
+          libraryId: 3,
+          libraryName: 'Movies',
+        },
+        routingOutcome: {
+          shouldRoute: true,
+          routeResult: {
+            attempted: true,
+            routed: true,
+            reason: 'routed',
+          },
+        },
+        bestMatch: null,
+      }),
+    };
+    const completeTask = jest.fn().mockResolvedValue();
+    const svc = makeSvc({
+      classificationService,
+      completeTask,
+      policyRequestImportDestinationAdmissionService,
+    });
+    const task = {
+      id: 'task1',
+      source: 'webhook',
+      payload: { title: 'Movie', itemId: null },
+      webhook_log_id: 99,
+      started_at: new Date().toISOString(),
+    };
+
+    await svc.processClassificationTask(task);
+
+    expect(policyRequestImportDestinationAdmissionService.build).toHaveBeenCalledWith({
+      task,
+      classification: expect.objectContaining({
+        classification_id: 87,
+        destination: {
+          libraryId: 3,
+          libraryName: 'Movies',
+        },
+      }),
+      questionReductionPlan: undefined,
+    });
+    expect(completeTask).toHaveBeenCalledWith('task1', expect.objectContaining({
+      requestDestinationAdmission,
+    }));
+    expect(svc.db.query).toHaveBeenCalledWith(
+      expect.stringContaining('webhook_log'),
+      expect.arrayContaining([99, 'Movies'])
+    );
+  });
 });
 
 describe('processRatingNormalization', () => {

@@ -10,6 +10,13 @@ import { queryWithTimeout as _sharedQueryWithTimeout } from '../utils/queryWithT
 import { processRatingNormalization as _processRatingNormalization } from './queueTaskProcessorRating.mjs';
 import { resolveSourceLibraryName as _resolveSourceLibraryName, processMetadataEnrichmentTask as _processMetadataEnrichmentTask } from './queueTaskProcessorEnrichment.mjs';
 import { rebuildImageIndexes as _rebuildImageIndexes } from './queueTaskProcessorIndexing.mjs';
+import {
+    buildClassificationDestinationSummary,
+} from './classificationResultOutcomeSummary.mjs';
+import {
+    POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_STATUS_IDS,
+    policyRequestImportDestinationAdmissionService,
+} from './policyRequestImportDestinationAdmission.mjs';
 
 function parseEnvMs(envValue, defaultValue) {
     const parsed = Number.parseInt(envValue || '', 10);
@@ -25,6 +32,8 @@ export class QueueTaskProcessorService {
         this.tmdbService = deps.tmdbService;
         this.completeTask = deps.completeTask || (async () => {});
         this.failTask = deps.failTask || (async () => {});
+        this.policyRequestImportDestinationAdmissionService =
+            deps.policyRequestImportDestinationAdmissionService || policyRequestImportDestinationAdmissionService;
         this.ratingNormalizer = deps.ratingNormalizer || ratingNormalizer;
         this.metadataEnrichment = deps.metadataEnrichment || metadataEnrichment;
         this.enrichmentItemStateService = deps.enrichmentItemStateService || new EnrichmentItemStateService({
@@ -102,7 +111,19 @@ export class QueueTaskProcessorService {
     async processClassificationTask(task) {
         const payload = parsePayload(task.payload);
         const result = await this.classificationService.classify({ ...payload, taskId: task.id });
-        await this.completeTask(task.id, result);
+        const requestDestinationAdmission = this.policyRequestImportDestinationAdmissionService.build({
+            task,
+            classification: result,
+            questionReductionPlan: result.runtimeQuestionReductionPlan,
+        });
+        const completedResult = requestDestinationAdmission.statusId ===
+            POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_STATUS_IDS.NOT_APPLICABLE
+            ? result
+            : {
+                ...result,
+                requestDestinationAdmission,
+            };
+        await this.completeTask(task.id, completedResult);
 
         if (payload.itemId && result.bestMatch) {
             const newMetadata = {
@@ -122,11 +143,12 @@ export class QueueTaskProcessorService {
         }
 
         if (task.webhook_log_id) {
+            const destination = buildClassificationDestinationSummary(result);
             await this.db.query(
                 `UPDATE webhook_log SET processing_status = 'completed', 
    routed_to_library = $2, processing_time_ms = EXTRACT(EPOCH FROM (NOW() - $3)) * 1000
    WHERE id = $1`,
-                [task.webhook_log_id, result.library?.name, task.started_at]
+                [task.webhook_log_id, destination.libraryName, task.started_at]
             );
         }
     }
