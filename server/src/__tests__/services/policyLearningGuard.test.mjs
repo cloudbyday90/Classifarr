@@ -1,3 +1,13 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 import {
   AUTHORITY_SOURCE_IDS,
 } from '../../services/policyAuthorityVocabulary.mjs';
@@ -95,6 +105,30 @@ describe('policyLearningGuard', () => {
       writesPerformed: false,
     }));
     expect(decision.profileRefresh.queue).toBe(false);
+  });
+
+  test('preserves an explicit unrecorded outcome so it cannot authorize learning', () => {
+    const decision = buildPolicyLearningDecision({
+      sourceId: POLICY_LEARNING_EVENT_SOURCE_IDS.MANUAL_CLASSIFICATION_CHANGE,
+      answerOutcomeId: ANSWER_OUTCOME_IDS.REMEMBER_EXACT_ITEM,
+      answer: {
+        label: 'Animated Movies',
+        destinationLibraryId: 6,
+        destinationLibraryName: 'Animated Movies',
+      },
+      candidate: {
+        key: 'tmdb:10674',
+        label: 'Mulan',
+        signalType: 'exact_item',
+        evidenceCount: 1,
+      },
+      finalOutcome: {
+        itemId: 10674,
+        recorded: false,
+      },
+    });
+
+    expect(decision.finalOutcome.recorded).toBe(false);
   });
 
   test('approves exact-item memory without changing destination profile evidence', () => {

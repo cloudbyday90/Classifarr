@@ -650,6 +650,13 @@ unchanged operator or runtime outcome.
 
 #### Policy Evidence, Decisions, And Learning
 
+- **Guarded Manual-Correction Learning** - authenticated classification
+  corrections now validate the server-owned destination and media type, record
+  the correction outcome, and create exact-item memory only after a bounded
+  learning admission passes. One correction can no longer reinforce broad
+  metadata patterns automatically; unavailable outcome persistence suppresses
+  learning without undoing the correction.
+
 - **Library Evidence Sources** - added bounded, read-only collection of cached
   library profiles, completed outcomes, manual corrections, resolved pending
   decisions, routing outcomes, and normalized metadata. Each source has a

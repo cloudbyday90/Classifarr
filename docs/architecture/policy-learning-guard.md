@@ -243,6 +243,10 @@ blocked_by_learning_audit
   intent evidence quality snapshots.
 - The learning boundary records a sanitized intent/evidence snapshot without
   learning from raw AI explanation text or provider diagnostics.
+- An explicit `finalOutcome.recorded: false` is preserved by the guard so a
+  persistence adapter cannot accidentally authorize learning after its outcome
+  write failed. The manual-correction adapter uses that boundary before it
+  considers an exact-item memory write.
 
 ## Next Step
 

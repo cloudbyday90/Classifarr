@@ -10,10 +10,41 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
+import {
+  policyManualCorrectionLearningService as defaultPolicyManualCorrectionLearningService,
+} from '../services/policyManualCorrectionLearning.mjs';
 
-export function registerCorrectionRoutes(router, { db, classificationOutcomeService, classificationEvidenceService, classificationEvidenceReinforcementService, PATTERN_SIGNAL_TYPES, reclassificationService, logger }) {
+function getCorrectionActor(req) {
+  const actor = req.user?.username || req.user?.email || req.user?.id || 'operator';
+  return String(actor).trim().slice(0, 100) || 'operator';
+}
+
+function normalizeMediaType(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function buildCorrectionLearningResponse(learningResult, exactItemMemoryRecorded) {
+  return {
+    version: learningResult.version,
+    status: learningResult.statusId,
+    decision_id: learningResult.decision.learning.decisionId,
+    tier_id: learningResult.decision.learning.tierId,
+    exact_item_memory_eligible: learningResult.exactItemMemory.eligible,
+    exact_item_memory_recorded: exactItemMemoryRecorded,
+    reason_codes: learningResult.exactItemMemory.reasonCodes,
+  };
+}
+
+export function registerCorrectionRoutes(router, {
+  db,
+  classificationOutcomeService,
+  classificationEvidenceService,
+  reclassificationService,
+  logger,
+  policyManualCorrectionLearningService = defaultPolicyManualCorrectionLearningService,
+}) {
   router.post('/corrections', asyncHandler(async (req, res) => {
-    const { classification_id, corrected_library_id, corrected_by } = req.body;
+    const { classification_id, corrected_library_id } = req.body;
 
     if (!classification_id || !corrected_library_id) {
       throw new ValidationError('classification_id and corrected_library_id are required');
@@ -29,6 +60,21 @@ export function registerCorrectionRoutes(router, { db, classificationOutcomeServ
     }
 
     const { library_id: original_library_id, tmdb_id, media_type, metadata } = classResult.rows[0];
+    const correctedLibraryLookup = await db.query(
+      'SELECT id, name, media_type FROM libraries WHERE id = $1',
+      [corrected_library_id]
+    );
+    const correctedLibrary = correctedLibraryLookup.rows[0];
+
+    if (!correctedLibrary) {
+      throw new NotFoundError('Corrected library not found');
+    }
+
+    if (normalizeMediaType(media_type) !== normalizeMediaType(correctedLibrary.media_type)) {
+      throw new ValidationError('Corrected library media type must match classification media type');
+    }
+
+    const correctedBy = getCorrectionActor(req);
 
     await db.query(
       `UPDATE classification_history 
@@ -44,53 +90,67 @@ export function registerCorrectionRoutes(router, { db, classificationOutcomeServ
        (classification_id, original_library_id, corrected_library_id, corrected_by)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [classification_id, original_library_id, corrected_library_id, corrected_by || 'user']
+      [classification_id, original_library_id, corrected_library_id, correctedBy]
     );
 
-    const correctedLibraryLookup = await db.query('SELECT name FROM libraries WHERE id = $1', [corrected_library_id]);
-    await classificationOutcomeService.recordOutcome(classification_id, {
+    const outcomeResult = await classificationOutcomeService.recordOutcome(classification_id, {
       type: 'corrected',
       source: 'api_correction',
-      actor: corrected_by || 'user',
+      actor: correctedBy,
       final_library_id: corrected_library_id,
-      final_library_name: correctedLibraryLookup.rows[0]?.name || null,
+      final_library_name: correctedLibrary.name,
     });
 
-    await classificationEvidenceService.rememberExactMatch({
-      tmdbId: tmdb_id,
-      mediaType: media_type || 'unknown',
-      libraryId: corrected_library_id,
-      payload: metadata,
-      payloadColumn: 'pattern_data',
-      conflictMode: 'do_nothing',
+    const learningResult = policyManualCorrectionLearningService.build({
+      classification: {
+        id: classification_id,
+        tmdbId: tmdb_id,
+        mediaType: media_type,
+      },
+      destination: {
+        libraryId: correctedLibrary.id,
+        libraryName: correctedLibrary.name,
+      },
+      finalOutcomeRecorded: outcomeResult.updated === true,
     });
 
-    setImmediate(async () => {
+    let exactItemMemoryRecorded = false;
+    if (learningResult.audit.ok && learningResult.exactItemMemory.eligible) {
       try {
-        const signalsResult = await db.query('SELECT signals_json FROM classification_history WHERE id = $1', [classification_id]);
-
-        if (signalsResult.rows.length > 0 && signalsResult.rows[0].signals_json) {
-          const signals = signalsResult.rows[0].signals_json;
-          const patternSignals = signals.filter((signal) => signal.type && PATTERN_SIGNAL_TYPES.includes(signal.type));
-
-          if (patternSignals.length > 0) {
-            await classificationEvidenceReinforcementService.reinforceOnCorrection(
-              classification_id,
-              patternSignals,
-              corrected_library_id,
-              { metadata, mediaType: media_type }
-            );
-          }
-        }
+        const evidence = await classificationEvidenceService.rememberExactMatch({
+          tmdbId: learningResult.exactItemMemory.tmdbId,
+          mediaType: learningResult.exactItemMemory.mediaType,
+          libraryId: learningResult.exactItemMemory.libraryId,
+          payload: metadata,
+          createdBy: correctedBy,
+          conflictMode: 'do_nothing',
+        });
+        exactItemMemoryRecorded = Boolean(evidence);
       } catch (error) {
-        logger.error('Pattern reinforcement failed for classification', {
+        logger.warn('Manual correction exact-item memory persistence failed', {
           classification_id,
           error: error.message,
         });
       }
+    }
+
+    logger.info('Manual correction learning admission evaluated', {
+      classification_id,
+      learning_status: learningResult.statusId,
+      learning_decision_id: learningResult.decision.learning.decisionId,
+      learning_tier_id: learningResult.decision.learning.tierId,
+      exact_item_memory_eligible: learningResult.exactItemMemory.eligible,
+      exact_item_memory_recorded: exactItemMemoryRecorded,
+      learning_reason_codes: learningResult.exactItemMemory.reasonCodes,
     });
 
-    res.json(correctionResult.rows[0]);
+    res.json({
+      ...correctionResult.rows[0],
+      policy_learning: buildCorrectionLearningResponse(
+        learningResult,
+        exactItemMemoryRecorded
+      ),
+    });
   }));
 
   router.post('/reclassify', asyncHandler(async (req, res) => {

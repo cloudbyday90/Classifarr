@@ -32,8 +32,6 @@ export function createClassificationRouter({
   classificationOutcomeService,
   clarificationService,
   classificationEvidenceService,
-  classificationEvidenceReinforcementService,
-  PATTERN_SIGNAL_TYPES,
   createLogger,
   requireReadWrite,
   STALE_AWAITING_DECISION_DAYS,
@@ -63,7 +61,13 @@ export function createClassificationRouter({
 
   registerHistoryRoutes(router, { db });
   registerSecondPassRoute(router, { db });
-  registerCorrectionRoutes(router, { db, classificationOutcomeService, classificationEvidenceService, classificationEvidenceReinforcementService, PATTERN_SIGNAL_TYPES, reclassificationService, logger });
+  registerCorrectionRoutes(router, {
+    db,
+    classificationOutcomeService,
+    classificationEvidenceService,
+    reclassificationService,
+    logger,
+  });
   registerPendingRoutes(router, { db, clarificationService, classificationService, STALE_AWAITING_DECISION_DAYS, logger });
 
   router.post('/retry', requireReadWrite, asyncHandler(async (req, res) => {

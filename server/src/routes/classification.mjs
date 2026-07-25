@@ -15,8 +15,6 @@ import { classificationRetryService } from '../services/classificationRetryServi
 import { classificationOutcomeService } from '../services/classificationOutcomeService.mjs';
 import { clarificationService } from '../services/clarificationService.mjs';
 import { classificationEvidenceService } from '../services/classificationEvidenceService.mjs';
-import { classificationEvidenceReinforcementService } from '../services/classificationEvidenceReinforcementService.mjs';
-import { PATTERN_SIGNAL_TYPES } from '../services/signalCollector.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { requireReadWrite } from '../middleware/apiKeyAuth.mjs';
 import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
@@ -31,8 +29,6 @@ export const router = createClassificationRouter({
   classificationOutcomeService,
   clarificationService,
   classificationEvidenceService,
-  classificationEvidenceReinforcementService,
-  PATTERN_SIGNAL_TYPES,
   createLogger,
   requireReadWrite,
   STALE_AWAITING_DECISION_DAYS,

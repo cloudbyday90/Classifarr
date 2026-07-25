@@ -1,3 +1,13 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import { createIntegrationDatabaseModuleMock, createIntegrationTestApp } from './setup.mjs';
@@ -155,7 +165,7 @@ describe('Classification Corrections Integration Tests', () => {
     }
 
     describe('POST /corrections', () => {
-        it('corrects a classification and records the correction', async () => {
+        it('corrects a classification with the authenticated actor and guarded exact-item memory', async () => {
             const cls = await seedClassification('CorrTest Movie 1', libraryA.id);
 
             const res = await request(app)
@@ -172,7 +182,14 @@ describe('Classification Corrections Integration Tests', () => {
                 classification_id: cls.id,
                 original_library_id: libraryA.id,
                 corrected_library_id: libraryC.id,
-                corrected_by: 'test_user',
+                corrected_by: 'corrections_test_user',
+                policy_learning: {
+                    status: 'ready',
+                    decision_id: 'candidate',
+                    tier_id: 'exact_item_memory',
+                    exact_item_memory_eligible: true,
+                    exact_item_memory_recorded: true,
+                },
             });
             expect(res.body.id).toBeDefined();
 
@@ -185,6 +202,29 @@ describe('Classification Corrections Integration Tests', () => {
             expect(corrections.rows).toHaveLength(1);
             expect(corrections.rows[0].original_library_id).toBe(libraryA.id);
             expect(corrections.rows[0].corrected_library_id).toBe(libraryC.id);
+        });
+
+        it('rejects a corrected library with a different media type', async () => {
+            const cls = await seedClassification('CorrTest Type Mismatch', libraryA.id, 'movie');
+
+            const res = await request(app)
+                .post('/api/classification/corrections')
+                .set(authHeaders())
+                .send({
+                    classification_id: cls.id,
+                    corrected_library_id: libraryB.id,
+                });
+
+            expect(res.status).toBe(400);
+
+            const history = await db.query(
+                'SELECT library_id, status FROM classification_history WHERE id = $1',
+                [cls.id]
+            );
+            expect(history.rows[0]).toMatchObject({
+                library_id: libraryA.id,
+                status: 'completed',
+            });
         });
 
         it('records outcome in classification metadata', async () => {

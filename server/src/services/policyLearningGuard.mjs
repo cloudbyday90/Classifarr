@@ -443,7 +443,8 @@ function buildPolicyLearningFinalOutcome({
   return buildPolicyFinalOutcome({
     sourceId,
     answerOutcomeId: answerOutcome?.id,
-    recorded: answerOutcome?.finalOutcome !== false || outcome.recorded === true,
+    recorded: outcome.recorded === true ||
+      (outcome.recorded !== false && answerOutcome?.finalOutcome !== false),
     itemId: outcome.itemId,
     destinationLibraryId: outcome.destinationLibraryId ?? answer.destinationLibraryId,
     destinationLibraryName: outcome.destinationLibraryName ?? answer.destinationLibraryName ?? answer.label,

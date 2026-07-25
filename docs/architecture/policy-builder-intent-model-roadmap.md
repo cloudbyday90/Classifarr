@@ -4557,9 +4557,16 @@ Implementation status:
   learning directly.
 - Missing Arr mapping records a route-failure outcome and is explicitly blocked
   from becoming positive destination evidence.
-- Manual destination changes are marked auditable and reversible, and all direct
-  side effects remain disabled until a later runtime integration slice
-  deliberately wires persistence.
+- Manual destination changes are marked auditable and reversible. Request,
+  import, Discord, and routing adapters remain side-effect free until their
+  dedicated runtime integrations deliberately wire persistence.
+- The first live runtime adapter now handles authenticated manual classification
+  corrections. It loads the corrected destination from the database, validates
+  media-type compatibility, records the final outcome, and creates exact-item
+  memory only when `policyManualCorrectionLearning.mjs` and the learning guard
+  admit it. The endpoint no longer accepts caller-controlled audit actors or
+  reinforces broad metadata patterns from one correction. Its design record is
+  [Policy Manual-Correction Learning Admission](policy-manual-correction-learning-admission.md).
 - Request-time learning decisions now preserve the upstream sanitized evidence
   fingerprint through the decision, bounded learning-guard context, and trace;
   validation rejects missing or mismatched fingerprint handoffs.
