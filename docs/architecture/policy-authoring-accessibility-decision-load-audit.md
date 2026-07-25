@@ -73,6 +73,14 @@ Official sources reviewed as of June 2026:
 12. Resolve one workflow-level live announcement by priority. Recovery cards
     remain visible, but must not compete with workflow loading, empty-state
     progress, completed refresh outcomes, or bounded error alerts.
+13. Keep recovery focus stable after an async rerender:
+    - contain keyboard focus in the modal and return it to the invoker on a
+      normal close;
+    - restore a completed action only when it remains the logical target;
+    - focus the current workflow result only when an update removed the active
+      action; and
+    - hand successful mapping navigation to the mapping section instead of the
+      closed modal's opener.
 
 ## Pros And Cons
 
@@ -117,6 +125,10 @@ Official sources reviewed as of June 2026:
 - Workflow status priority:
   `client/src/utils/policyBuilderWorkflowStatusPriority.js`
   and `client/src/components/policies/PolicyBuilderWorkflowStatusNotice.vue`
+- Keyboard recovery flow:
+  `client/src/composables/useModalFocusManagement.js`,
+  `client/src/composables/usePolicyRecoveryFocus.js`, and
+  `client/src/utils/routeFocusHandoff.js`
 - Unit coverage:
   `client/src/__tests__/utils/policyBuilderSetupCards.test.js`
   `client/src/__tests__/PolicyBuilderSetupCards.test.js`
@@ -147,6 +159,9 @@ The policy-builder setup card surface now:
 - resolves one workflow-level status or alert across loading, evidence
   recovery, empty-state actions, and refresh outcomes while retaining the
   local recovery card and action,
+- contains modal keyboard navigation, restores focus after ordinary modal
+  closes, keeps recovery completion from losing focus, and hands successful
+  library-mapping navigation to the mapping destination,
 - keeps save, defer, routing, and starter-template behavior unchanged.
 
 ## Follow-Up

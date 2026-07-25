@@ -22,6 +22,7 @@ import PolicyBuilderModal from '../components/policies/PolicyBuilderModal.vue';
 import api from '../api';
 import { getDataRequest } from '../api/core';
 import { buildIntentSignalCommandPlan } from '@/utils/policyIntentSignalDraft';
+import { consumeRouteFocusHandoff } from '@/utils/routeFocusHandoff';
 
 const buildConstraintDecisionModel = () => ({
   version: 'policy.constraint_decision_model.v1',
@@ -130,6 +131,16 @@ const mockToast = vi.hoisted(() => ({
   warning: vi.fn(),
   info: vi.fn(),
 }));
+
+const mockRouterPush = vi.hoisted(() => vi.fn());
+
+vi.mock('vue-router', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useRouter: () => ({ push: mockRouterPush }),
+  };
+});
 
 vi.mock('../api', () => ({
   default: {
@@ -259,6 +270,7 @@ describe('PolicyBuilderModal.vue', () => {
     mockToast.error.mockClear();
     mockToast.warning.mockClear();
     mockToast.info.mockClear();
+    mockRouterPush.mockResolvedValue(undefined);
     api.getLibraries.mockImplementation((...args) => api.get('/libraries', ...args).then((response) => response.data));
     api.getGeneralSettings.mockImplementation((...args) => api.get('/settings', ...args).then((response) => response.data));
     api.getPresetSuggestions.mockImplementation((libraryId) => api.get(`/policies/presets/suggest/${libraryId}`).then((response) => response.data));
@@ -267,6 +279,51 @@ describe('PolicyBuilderModal.vue', () => {
     getDataRequest.mockImplementation((url, config) => api.get(url, config).then((response) => response.data));
     window.localStorage.clear();
     document.body.innerHTML = '';
+  });
+
+  it('closes only after a confirmed mapping navigation and hands focus to the mapping target', async () => {
+    const workflowRead = buildOperatorWorkflowRead();
+    const mappingState = {
+      stateId: 'unmapped_library',
+      sectionId: 'can_this_route',
+      label: 'Library routing needs a mapping',
+      description: 'Connect this library to a routing target before automation can apply approved matches.',
+      nextAction: {
+        actionId: 'map_routing_destination',
+        label: 'Open library mapping',
+        busyLabel: 'Opening library mapping...',
+        mode: 'open_library_mapping',
+      },
+    };
+    workflowRead.emptyStateProjection = { states: [mappingState] };
+
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/operator-workflow/libraries/1') return Promise.resolve({ data: workflowRead });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+      },
+      attachTo: document.body,
+    });
+
+    await flushPromises();
+    await wrapper.vm.handleEmptyStateAction(mappingState);
+
+    expect(mockRouterPush).toHaveBeenCalledWith({
+      name: 'LibraryDetail',
+      params: { id: 1 },
+    });
+    expect(wrapper.emitted('update:modelValue')).toContainEqual([false]);
+    expect(wrapper.vm.restoreFocusAfterClose).toBe(false);
+    expect(consumeRouteFocusHandoff('LibraryDetail')).toEqual({
+      targetId: 'library-arr-mapping',
+      fallbackTargetId: 'library-detail-title',
+    });
   });
 
   it('keeps template usage counts out of the policy-authoring surface', async () => {

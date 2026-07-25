@@ -10,18 +10,20 @@
   <p
     v-if="status?.message"
     :id="status.id"
-    class="rounded border px-3 py-2 text-sm"
+    ref="statusElement"
+    class="rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-2 focus:ring-offset-background"
     :class="statusClass"
     :role="status.role"
     :aria-live="status.role === 'alert' ? 'assertive' : 'polite'"
     aria-atomic="true"
+    tabindex="-1"
   >
     {{ status.message }}
   </p>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   status: {
@@ -41,4 +43,12 @@ const statusClass = computed(() => {
 
   return 'border-blue-800/70 bg-blue-950/30 text-blue-100'
 })
+
+const statusElement = ref(null)
+
+const focus = () => {
+  statusElement.value?.focus?.({ preventScroll: true })
+}
+
+defineExpose({ focus })
 </script>

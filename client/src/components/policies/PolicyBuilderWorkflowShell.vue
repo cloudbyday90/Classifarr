@@ -17,7 +17,10 @@
       :summary="destinationSummary"
     />
 
-    <PolicyBuilderWorkflowStatusNotice :status="workflowStatus" />
+    <PolicyBuilderWorkflowStatusNotice
+      ref="workflowStatusNoticeRef"
+      :status="workflowStatus"
+    />
 
     <template v-if="error">
       <PolicyNativeEvidenceRecovery
@@ -79,7 +82,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import DestinationContextCard from './DestinationContextCard.vue'
 import ObservedProfileSummary from './ObservedProfileSummary.vue'
 import PolicyBuilderDestinationQuestions from './PolicyBuilderDestinationQuestions.vue'
@@ -214,5 +217,13 @@ const workflowStatus = computed(() => buildPolicyBuilderWorkflowStatus({
 const emptyStateActionStatusId = computed(() => (
   props.activeEmptyStateActionId ? workflowStatus.value?.id || '' : ''
 ))
+
+const workflowStatusNoticeRef = ref(null)
+
+const focusRecoveryStatus = () => {
+  workflowStatusNoticeRef.value?.focus?.()
+}
+
+defineExpose({ focusRecoveryStatus })
 
 </script>

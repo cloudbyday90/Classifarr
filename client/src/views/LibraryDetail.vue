@@ -15,7 +15,11 @@
       >
         ← Back
       </Button>
-      <h1 class="text-2xl font-bold">
+      <h1
+        id="library-detail-title"
+        class="rounded-sm text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-2 focus:ring-offset-background"
+        tabindex="-1"
+      >
         {{ library?.name || 'Library' }}
       </h1>
     </div>
@@ -129,7 +133,10 @@
       <!-- Radarr Settings for Movie Libraries -->
       <Card
         v-if="library.media_type === 'movie' && library.arr_id"
+        id="library-arr-mapping"
         title="Radarr Settings"
+        tabindex="-1"
+        class="focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-2 focus:ring-offset-background"
       >
         <div
           v-if="loadingArrOptions"
@@ -219,7 +226,10 @@
       <!-- Sonarr Settings for TV Libraries -->
       <Card
         v-if="library.media_type === 'tv' && library.arr_id"
+        id="library-arr-mapping"
         title="Sonarr Settings"
+        tabindex="-1"
+        class="focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-2 focus:ring-offset-background"
       >
         <div
           v-if="loadingArrOptions"
@@ -466,7 +476,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/stores/toast'
 import api from '@/api'
@@ -476,6 +486,7 @@ import Input from '@/components/common/Input.vue'
 import LibraryProfile from '@/components/library/LibraryProfile.vue'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
+import { consumeRouteFocusHandoff } from '@/utils/routeFocusHandoff'
 
 const route = useRoute()
 const router = useRouter()
@@ -485,6 +496,16 @@ const library = ref(null)
 const loading = ref(true)
 const saving = ref(false)
 const loadingArrOptions = ref(false)
+const routeFocusHandoff = consumeRouteFocusHandoff('LibraryDetail')
+
+const focusRouteHandoff = async () => {
+  if (!routeFocusHandoff) return
+
+  await nextTick()
+  const target = document.getElementById(routeFocusHandoff.targetId) ||
+    document.getElementById(routeFocusHandoff.fallbackTargetId)
+  target?.focus?.()
+}
 const savingArrSettings = ref(false)
 
 // ARR Options
@@ -593,6 +614,7 @@ onMounted(async () => {
     router.push('/libraries')
   } finally {
     loading.value = false
+    await focusRouteHandoff()
   }
 })
 

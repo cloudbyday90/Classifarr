@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Predictable Keyboard Recovery Flow** - policy-authoring modals now keep
+  keyboard focus contained and restore it after normal close. Library evidence
+  refresh, retry, and sync actions retain a logical focus target after their
+  async updates, while successful mapping actions move focus to the library
+  mapping section rather than returning to the closed builder.
+
 - **Single Workflow Status Priority** - policy authoring now announces one
   ordered progress or failure state across workflow loading, evidence recovery,
   library refresh, and empty-state setup while preserving each local recovery

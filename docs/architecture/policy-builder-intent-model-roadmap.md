@@ -2669,6 +2669,14 @@ Implementation status:
   progress, and completed refresh results now resolve to one ordered live
   announcement:
   [Policy Builder Workflow Status Priority](policy-builder-workflow-status-priority.md).
+- **3R.8.4 Keyboard Recovery-Flow Audit is complete.** The shared modal now
+  has dialog semantics, contained keyboard navigation, Escape support, and
+  normal focus restoration. Recovery rerenders preserve the action focus when
+  possible, fall back to the current workflow result only when that action is
+  removed, and send successful library-mapping navigation to the mapping
+  destination instead of returning to a closed modal opener. The design and
+  outcome are documented in
+  [Policy Builder Keyboard Recovery Flow](policy-builder-keyboard-recovery-flow.md).
 
 ### 3R.9 Presentation Test Reset
 

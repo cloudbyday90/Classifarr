@@ -10,6 +10,7 @@
   <Modal
     v-model="isOpen"
     :title="modalTitle"
+    :restore-focus="restoreFocusAfterClose"
     class="max-w-6xl"
   >
     <div class="space-y-6">
@@ -37,6 +38,7 @@
         </div>
 
         <PolicyBuilderWorkflowShell
+          ref="workflowShellRef"
           :workflow-read="operatorWorkflowRead"
           :loading="operatorWorkflowLoading"
           :error="operatorWorkflowError"
@@ -123,8 +125,8 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, toRef } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, ref, toRef, watch } from 'vue'
+import { isNavigationFailure, useRouter } from 'vue-router'
 import Modal from '@/components/common/Modal.vue'
 import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
 import PolicyBuilderFooterActions from '@/components/policies/PolicyBuilderFooterActions.vue'
@@ -142,11 +144,16 @@ import { usePolicyOperatorWorkflow } from '@/composables/usePolicyOperatorWorkfl
 import { usePolicyIntentSignalDraft } from '@/composables/usePolicyIntentSignalDraft'
 import { usePolicyIntentConstraintDraft } from '@/composables/usePolicyIntentConstraintDraft'
 import { usePolicyNativeCreateHandoff } from '@/composables/usePolicyNativeCreateHandoff'
+import { usePolicyRecoveryFocus } from '@/composables/usePolicyRecoveryFocus'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRoutingReadiness'
 import { buildPolicyBuilderExperienceMode } from '@/utils/policyBuilderExperienceMode'
 import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
 import { buildPolicyIntentSummary } from '@/utils/policyIntentSummary'
+import {
+  clearRouteFocusHandoff,
+  requestRouteFocusHandoff,
+} from '@/utils/routeFocusHandoff'
 import { useToast } from '@/stores/toast'
 
 const props = defineProps({
@@ -180,6 +187,8 @@ const saving = ref(false)
 const saveError = ref('')
 const nativeCreateHandoffRef = ref(null)
 const activeEmptyStateActionId = ref('')
+const workflowShellRef = ref(null)
+const restoreFocusAfterClose = ref(true)
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -318,10 +327,24 @@ if (experienceMode.value.isLegacyEdit) {
 watchLibraryProfile(computed(() => form.value.library_id))
 watchOperatorWorkflow(computed(() => form.value.library_id))
 
+watch(() => props.modelValue, isOpen => {
+  if (isOpen) restoreFocusAfterClose.value = true
+})
+
+const {
+  captureRecoveryFocus,
+  restoreRecoveryFocus,
+} = usePolicyRecoveryFocus({ workflowShellRef })
+
 const refreshActiveLibraryProfile = async () => {
-  const refreshed = await refreshLibraryProfile(form.value.library_id)
-  if (refreshed) {
-    await loadOperatorWorkflow(form.value.library_id)
+  const recoveryFocusTrigger = captureRecoveryFocus()
+  try {
+    const refreshed = await refreshLibraryProfile(form.value.library_id)
+    if (refreshed) {
+      await loadOperatorWorkflow(form.value.library_id)
+    }
+  } finally {
+    await restoreRecoveryFocus(recoveryFocusTrigger)
   }
 }
 
@@ -346,6 +369,7 @@ const handleEmptyStateAction = async (emptyState) => {
 
   if (actionId === 'sync_media_server_library') {
     activeEmptyStateActionId.value = actionId
+    const recoveryFocusTrigger = captureRecoveryFocus()
     try {
       const synced = await syncAndRefreshProfile(form.value.library_id)
       if (!synced) {
@@ -357,6 +381,7 @@ const handleEmptyStateAction = async (emptyState) => {
       toast.success('Library sync and profile refresh completed.')
     } finally {
       activeEmptyStateActionId.value = ''
+      await restoreRecoveryFocus(recoveryFocusTrigger)
     }
     return
   }
@@ -367,9 +392,26 @@ const handleEmptyStateAction = async (emptyState) => {
 
     activeEmptyStateActionId.value = actionId
     try {
-      await router.push({ name: 'LibraryDetail', params: { id: libraryId } })
+      requestRouteFocusHandoff({
+        routeName: 'LibraryDetail',
+        targetId: 'library-arr-mapping',
+        fallbackTargetId: 'library-detail-title',
+      })
+      const navigationFailure = await router.push({
+        name: 'LibraryDetail',
+        params: { id: libraryId },
+      })
+      const routeName = router.currentRoute?.value?.name
+      if (isNavigationFailure(navigationFailure) || (routeName && routeName !== 'LibraryDetail')) {
+        clearRouteFocusHandoff('LibraryDetail')
+        toast.error('Classifarr could not open the library mapping.')
+        return
+      }
+
+      restoreFocusAfterClose.value = false
       isOpen.value = false
     } catch {
+      clearRouteFocusHandoff('LibraryDetail')
       toast.error('Classifarr could not open the library mapping.')
     } finally {
       activeEmptyStateActionId.value = ''
@@ -378,8 +420,13 @@ const handleEmptyStateAction = async (emptyState) => {
 }
 
 const reloadActiveLibraryWorkflow = async () => {
-  await loadLibraryProfile(form.value.library_id)
-  await loadOperatorWorkflow(form.value.library_id)
+  const recoveryFocusTrigger = captureRecoveryFocus()
+  try {
+    await loadLibraryProfile(form.value.library_id)
+    await loadOperatorWorkflow(form.value.library_id)
+  } finally {
+    await restoreRecoveryFocus(recoveryFocusTrigger)
+  }
 }
 
 const validateActiveCustomIntentSignal = async (payload) => {
