@@ -725,6 +725,12 @@ unchanged operator or runtime outcome.
   admission results. Request payloads cannot imply a requester destination or
   create policy evidence, and webhook history now retains the normalized routed
   library name.
+- **Native Classification Decision Handoff** - authoritative native
+  classifications now supply a validated, side-effect-free runtime
+  question-reduction plan derived only from the selected native destination,
+  persisted library profile, and stored route mapping. Legacy, malformed, and
+  mismatched results remain outcome-only; the handoff cannot use raw request,
+  AI, provider, or media-path data, perform routing, or create learning.
 - **Question and Learning Controls** - added deterministic question reduction,
   permitted-action checks, answer-shape validation, and learning eligibility
   checks so automation asks only destination-relevant questions and manual

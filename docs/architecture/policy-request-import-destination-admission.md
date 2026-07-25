@@ -69,10 +69,12 @@ Other states, including a below-threshold classification and transport sources
 outside `webhook` and `manual`, are explicitly `not_applicable`.
 
 When a valid native question-reduction plan is supplied, the adapter invokes
-the request-time reducer. The current live classifier does not emit that plan,
-so existing request/import work remains outcome-only through a `do_not_learn`
-learning-guard decision. This is intentional: the adapter does not synthesize
-native evidence from a legacy result or library label.
+the request-time reducer. The live classifier now emits that plan only when the
+selected destination has a matching, validated native runtime candidate. The
+plan is built from declared native intent, persisted library-profile evidence,
+and stored routing configuration. Legacy, mismatched, and malformed results
+remain outcome-only through a `do_not_learn` learning-guard decision; the
+adapter still does not synthesize evidence from a legacy result or label.
 
 The queue stores the bounded admission result in the existing completed task
 payload after the classification path has already persisted the classification
@@ -112,8 +114,8 @@ Pros:
 
 Cons:
 
-- Existing request/import classifications remain outcome-only until the live
-  classifier emits a valid native decision/question-reduction handoff.
+- Legacy, mismatched, and malformed request/import classifications remain
+  outcome-only because they cannot supply authoritative native proof.
 - The completed task payload is an operational handoff record, not a new
   long-term policy evidence store.
 - This does not yet support an explicit requester-selected destination because
@@ -123,14 +125,17 @@ Cons:
 
 1. `classificationResultOutcomeSummary.mjs` normalizes the selected destination
    and excludes raw routing errors.
-2. `classificationServiceCore.mjs` returns that destination plus a bounded
-   routing summary after classification history/routing processing.
-3. `policyRequestImportDestinationAdmission.mjs` maps only terminal
+2. `policyNativeClassificationQuestionHandoff.mjs` creates a valid native plan
+   only from the selected candidate, persisted library profile, and stored
+   routing mapping.
+3. `classificationServiceCore.mjs` returns that plan with a bounded destination
+   and routing summary after classification history/routing processing.
+4. `policyRequestImportDestinationAdmission.mjs` maps only terminal
    request/import outcomes, evaluates the learning guard, and enforces
    outcome-only behavior unless valid native proof exists.
-4. `queueTaskProcessorService.mjs` stores the bounded result with task
+5. `queueTaskProcessorService.mjs` stores the bounded result with task
    completion and writes the normalized destination name to webhook history.
-5. `policyRequestTimeLearning.mjs` remains the sole request-time reducer when
+6. `policyRequestTimeLearning.mjs` remains the sole request-time reducer when
    a valid native question-reduction plan is available.
 
 ## Verification
@@ -141,8 +146,7 @@ persistence, and webhook library-name persistence.
 
 ## Next Step
 
-Implement the **Phase 7R.5 native classifier decision-to-question-reduction
-handoff**. The classification runtime must emit a validated,
-server-owned `policy.runtime_question_reduction.v1` plan alongside its bounded
-destination and routing outcome so this adapter can use the native
-request-time reducer automatically without inventing proof from legacy data.
+Implement the **runtime question-plan persistence admission** component. It
+must be the only component allowed to materialize an idempotent pending
+question from a freshly validated native plan, while legacy request/import
+outcomes remain outcome-only.

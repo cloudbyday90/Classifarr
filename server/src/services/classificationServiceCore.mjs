@@ -11,6 +11,9 @@ import {
   buildClassificationDestinationSummary,
   buildClassificationRoutingSummary,
 } from './classificationResultOutcomeSummary.mjs';
+import {
+  validatePolicyRuntimeQuestionReduction,
+} from './policyRuntimeQuestionReduction.mjs';
 
 export function normalizeClassificationServiceConfig(config = {}) {
   const {
@@ -58,6 +61,7 @@ export class ClassificationService {
     idleDetector,
     classificationPolicyPathService,
     classificationLegacySignalPathService,
+    policyNativeClassificationQuestionHandoffService,
   }) {
     this.db = db;
     this.tmdbService = tmdbService;
@@ -84,6 +88,7 @@ export class ClassificationService {
     this.idleDetector = idleDetector;
     this.classificationPolicyPathService = classificationPolicyPathService;
     this.classificationLegacySignalPathService = classificationLegacySignalPathService;
+    this.policyNativeClassificationQuestionHandoffService = policyNativeClassificationQuestionHandoffService;
   }
 
   async _withCatch(label, fn) {
@@ -206,6 +211,38 @@ export class ClassificationService {
     };
   }
 
+  async buildRuntimeQuestionReductionPlan(result) {
+    if (typeof this.policyNativeClassificationQuestionHandoffService?.build !== 'function') {
+      return null;
+    }
+
+    try {
+      const handoff = await this.policyNativeClassificationQuestionHandoffService.build({
+        classificationResult: result,
+      });
+      const plan = handoff?.plan;
+      const validation = plan
+        ? validatePolicyRuntimeQuestionReduction(plan)
+        : null;
+
+      if (plan && validation?.ok !== true) {
+        this.logger.warn('Native classification question handoff returned an invalid plan', {
+          libraryId: result?.library?.id ?? result?.library?.library_id ?? null,
+          issueCount: validation?.issueCount ?? null,
+        });
+        return null;
+      }
+
+      return validation?.ok === true ? plan : null;
+    } catch (error) {
+      this.logger.warn('Native classification question handoff failed', {
+        error: error.message,
+        libraryId: result?.library?.id ?? result?.library?.library_id ?? null,
+      });
+      return null;
+    }
+  }
+
   async classify(overseerrPayload) {
     const startTime = Date.now();
     return this._withCatch('Classification error', async () => {
@@ -321,6 +358,8 @@ export class ClassificationService {
 
       const requireAllConfirmations = await this.clarificationService.isRequireAllConfirmationsEnabled();
 
+      const runtimeQuestionReductionPlan = await this.buildRuntimeQuestionReductionPlan(result);
+
       const routingOutcome = await this.routeClassificationResult(
         classificationId,
         metadata,
@@ -384,6 +423,7 @@ export class ClassificationService {
         library: result.library?.name,
         destination: buildClassificationDestinationSummary(result),
         routingOutcome: buildClassificationRoutingSummary({ routingOutcome }),
+        runtimeQuestionReductionPlan,
         confidence: result.confidence,
         method: result.method,
         reason: result.reason,

@@ -31,6 +31,7 @@ import { classificationRagLoopService } from './classificationRagLoopService.mjs
 import { classificationAuthoritativeSignalService } from './classificationAuthoritativeSignalService.mjs';
 import { classificationPolicyPathService } from './classificationPolicyPathService.mjs';
 import { classificationLegacySignalPathService } from './classificationLegacySignalPathService.mjs';
+import { policyNativeClassificationQuestionHandoffService } from './policyNativeClassificationQuestionHandoff.mjs';
 import { createClassificationService } from './classificationServiceCore.mjs';
 
 const { normalizePolicyDecisionThresholds } = policyThresholds;
@@ -69,5 +70,6 @@ export const classificationService = createClassificationService({
 		idleDetector,
 		classificationPolicyPathService,
 		classificationLegacySignalPathService,
+		policyNativeClassificationQuestionHandoffService,
 	},
 });

@@ -4566,8 +4566,15 @@ Implementation status:
   It records only successful Arr routes and missing Arr mappings in the
   completed task result, never infers a requester destination choice, and
   requires a valid native question-reduction plan before it can call the
-  request-time reducer. Legacy classification results without that plan remain
-  outcome-only through the learning guard. Its design record is
+  request-time reducer. `policyNativeClassificationQuestionHandoff.mjs` now
+  supplies that plan only when the selected library matches a validated native
+  runtime candidate. It derives bounded structural evidence from declared
+  intent, the persisted library profile, and stored routing mapping; it cannot
+  read live media/provider state, consume quota, route, create a question, or
+  write learning. Legacy, malformed, and selected-library-mismatched results
+  remain outcome-only through the learning guard. Its design records are
+  [Policy Native Classification Question Handoff](policy-native-classification-question-handoff.md)
+  and
   [Policy Request/Import Destination Admission](policy-request-import-destination-admission.md).
 - Queue webhook history now writes the normalized selected library name rather
   than treating the legacy string result as an object.
