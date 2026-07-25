@@ -174,11 +174,11 @@ Focused server coverage verifies:
 - no direct side effect claim; and
 - resolver ordering: native provenance transition, then final resolution.
 
-## Next Step
+## Follow-Through
 
-Implement a **native pending-route outcome adapter**. It should use the actual
-result from the browser and Discord route adapters to append either
-`route_succeeded` or `route_failed_missing_mapping` as a third, outcome-only
-transition. It must not infer a route from classification completion, and it
-must use the existing request-time route-event contract rather than duplicate
-route-state rules.
+The native pending-route outcome adapter is now implemented in
+[Policy Native Pending-Route Outcome Adapter](policy-native-pending-route-outcome.md).
+Browser and Discord append a third, outcome-only transition only after their
+routing adapters return an actual successful route or a confirmed missing
+mapping. Completion remains distinct from routing, and transient failures do
+not become policy evidence.

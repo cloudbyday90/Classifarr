@@ -73,6 +73,7 @@ export async function extractClarificationPatterns(
 
 export async function routeAfterClarification(classificationId) {
   const outcome = {
+    attempted: false,
     routed: false,
     reason: null,
     error: null,
@@ -126,6 +127,7 @@ export async function routeAfterClarification(classificationId) {
       quality_profile_id: classification.quality_profile_id,
       name: classification.library_name,
     });
+    outcome.attempted = routeResult?.attempted === true;
 
     if (!routeResult?.routed) {
       outcome.reason = routeResult?.reason || 'route_skipped';

@@ -15,6 +15,7 @@ import * as notificationBuilder from './discordNotificationBuilder.mjs';
 import { routeAfterClarification } from './discordPatternExtractionService.mjs';
 import { buildNativePendingQuestionPresentation } from './policyNativePendingQuestionPresentation.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
+import { recordNativePendingRouteOutcome } from './policyNativePendingRouteOutcomePersistence.mjs';
 
 const logger = createLogger('discordClarificationHandler');
 
@@ -46,6 +47,7 @@ export async function processClarificationResponse(
     let routingOutcome = { routed: false, reason: null, error: null };
     let policyQuestion = null;
     let nativeResolutionProvenance = null;
+    let nativeRouteOutcomePersistence = null;
 
     if (classification.policy_question) {
       policyQuestion =
@@ -116,6 +118,13 @@ export async function processClarificationResponse(
         routingOutcome = await routeAfterClarification(classificationId);
       }
       nativeResolutionProvenance = resolveResult.nativeResolutionProvenance || null;
+      if (nativeResolutionProvenance) {
+        nativeRouteOutcomePersistence = await recordNativePendingRouteOutcome({
+          classificationId,
+          nativeResolutionProvenance,
+          routingOutcome,
+        });
+      }
     } catch (resolveError) {
       if (resolveError?.statusCode === 404) {
         await interaction.followUp({
@@ -171,12 +180,15 @@ export async function processClarificationResponse(
     }
 
     if (nativeResolutionProvenance) {
-      logger.info('Discord native pending resolution provenance recorded before routing', {
+      logger.info('Discord native pending resolution and route provenance evaluated', {
         classificationId,
         statusId: nativeResolutionProvenance.statusId,
         eventTypeId: nativeResolutionProvenance.selection?.eventTypeId || null,
         selectedOutcomeId: nativeResolutionProvenance.selection?.selectedOutcomeId || null,
         learningDecisionId: nativeResolutionProvenance.learningGuard?.decisionId || null,
+        routeOutcomePersisted: nativeRouteOutcomePersistence?.persisted === true,
+        routeOutcomeEventTypeId: nativeRouteOutcomePersistence?.routeOutcome?.eventTypeId || null,
+        routeOutcomeReason: nativeRouteOutcomePersistence?.reason || null,
         reasonCodes: nativeResolutionProvenance.reasonCodes || [],
       });
     }

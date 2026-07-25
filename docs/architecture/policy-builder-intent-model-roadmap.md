@@ -4597,6 +4597,20 @@ Implementation status:
   policy evidence. Malformed native selections fail retry-safe rather than using
   a legacy fallback. Its design record is [Policy Native Pending-Resolution
   Provenance](policy-native-pending-resolution-provenance.md).
+- Native pending route-result persistence now uses the shared
+  `policyNativePendingRouteOutcome.mjs` and
+  `policyNativePendingRouteOutcomePersistence.mjs` components in both browser
+  and Discord flows. They derive the destination from resolver provenance,
+  reuse the normalized request-time route event, and append only an actual
+  `route_succeeded` or a confirmed `route_failed_missing_mapping` transition.
+  The adapter and persistence wrapper remain outcome-only: no route result can
+  write policy evidence or queue profile refresh work. Its design record is
+  [Policy Native Pending-Route Outcome Adapter](policy-native-pending-route-outcome.md).
+  Completion, transient failures, invalid metadata, and already-routed results
+  remain separate operational states rather than policy evidence.
+- Next in Phase 7R is Completion Audit Task 7R.10.1: extend request-time
+  learning completion evidence and test-reset ownership to inventory the
+  native pending selection and route-outcome adapters before Phase 8R proceeds.
 - Valid native `create_operator_question` plans now pass through
   `policyRuntimeQuestionPersistenceAdmission.mjs` immediately before the
   existing classification persistence call. It re-audits the native handoff,

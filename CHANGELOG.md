@@ -749,6 +749,11 @@ unchanged operator or runtime outcome.
   keeps every current outcome guarded and outcome-only, rejects malformed native
   selections safely, and no longer maintains a duplicate Discord-only learning
   path.
+- **Auditable Native Pending Route Outcomes** - browser and Discord now append
+  a separate, guarded route transition only after an actual Arr success or a
+  confirmed missing mapping. Completion and transient routing failures remain
+  distinct operational states, and route outcomes cannot write policy evidence
+  or queue profile refresh work.
 - **Question and Learning Controls** - added deterministic question reduction,
   permitted-action checks, answer-shape validation, and learning eligibility
   checks so automation asks only destination-relevant questions and manual

@@ -15,6 +15,7 @@ import {
 } from './classificationRouteHelpers.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { ValidationError } from '../utils/appError.mjs';
+import { recordNativePendingRouteOutcome } from '../services/policyNativePendingRouteOutcomePersistence.mjs';
 
 export function registerPendingRoutes(router, { db, clarificationService, classificationService, STALE_AWAITING_DECISION_DAYS, logger }) {
   router.get('/pending', asyncHandler(async (_req, res) => {
@@ -97,37 +98,51 @@ export function registerPendingRoutes(router, { db, clarificationService, classi
           const row = classResult.rows[0];
           const parsedMeta = safeParseJsonObject(row.metadata, {});
 
-          if (row.arr_type) {
-            const routeResult = await classificationService.routeToArr(parsedMeta, {
-              id: row.library_id,
-              arr_type: row.arr_type,
-              arr_id: row.arr_id,
-              radarr_settings: row.radarr_settings,
-              sonarr_settings: row.sonarr_settings,
-              root_folder: row.root_folder,
-              quality_profile_id: row.quality_profile_id,
-              name: row.library_name,
+          const routeResult = await classificationService.routeToArr(parsedMeta, {
+            id: row.library_id,
+            arr_type: row.arr_type,
+            arr_id: row.arr_id,
+            radarr_settings: row.radarr_settings,
+            sonarr_settings: row.sonarr_settings,
+            root_folder: row.root_folder,
+            quality_profile_id: row.quality_profile_id,
+            name: row.library_name,
+          });
+
+          routingReason = routeResult?.reason || null;
+          if (result.nativeResolutionProvenance) {
+            const routeOutcomePersistence = await recordNativePendingRouteOutcome({
+              classificationId,
+              nativeResolutionProvenance: result.nativeResolutionProvenance,
+              routingOutcome: routeResult,
             });
-
-            routingReason = routeResult?.reason || null;
-            if (routeResult?.routed === true) {
-              await db.query('UPDATE classification_history SET status = $1 WHERE id = $2', ['routed', classificationId]);
-
-              wasRouted = true;
-              logger.info('Routed after resolution', {
+            if (routeOutcomePersistence.persisted !== true &&
+                routeOutcomePersistence.reason !== 'not_applicable') {
+              logger.warn('Native pending route result was not persisted', {
                 classificationId,
-                title: parsedMeta.title,
-                library: row.library_name,
-              });
-            } else {
-              routeError = routeResult?.error ? new Error(routeResult.error) : null;
-              logger.warn('Routing skipped after resolution', {
-                classificationId,
-                title: parsedMeta.title,
-                library: row.library_name,
-                reason: routingReason || 'unknown',
+                reason: routeOutcomePersistence.reason,
+                eventTypeId: routeOutcomePersistence.routeOutcome.eventTypeId,
               });
             }
+          }
+
+          if (routeResult?.routed === true) {
+            await db.query('UPDATE classification_history SET status = $1 WHERE id = $2', ['routed', classificationId]);
+
+            wasRouted = true;
+            logger.info('Routed after resolution', {
+              classificationId,
+              title: parsedMeta.title,
+              library: row.library_name,
+            });
+          } else {
+            routeError = routeResult?.error ? new Error(routeResult.error) : null;
+            logger.warn('Routing skipped after resolution', {
+              classificationId,
+              title: parsedMeta.title,
+              library: row.library_name,
+              reason: routingReason || 'unknown',
+            });
           }
         } else {
           logger.warn('No classification/library record found for routing after resolution', {

@@ -41,6 +41,9 @@ const mockClarificationService = {
 const mockAutoLearningService = { learnFromFeedback: jest.fn() };
 const mockClassificationOutcomeService = { recordOutcome: jest.fn().mockResolvedValue({ updated: true }) };
 const mockClassificationRoutingService = { routeToArr: jest.fn() };
+const mockNativePendingRouteOutcomePersistence = {
+    recordNativePendingRouteOutcome: jest.fn(),
+};
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
@@ -54,6 +57,10 @@ jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => (
 }));
 
 jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService }));
+
+jest.unstable_mockModule('../services/policyNativePendingRouteOutcomePersistence.mjs', () => ({
+    ...mockNativePendingRouteOutcomePersistence,
+}));
 const {
     handleInteraction,
     processVerification,
@@ -67,6 +74,7 @@ const clarificationService = mockClarificationService;
 const autoLearningService = mockAutoLearningService;
 const classificationOutcomeService = mockClassificationOutcomeService;
 const classificationRoutingService = mockClassificationRoutingService;
+const nativePendingRouteOutcomePersistence = mockNativePendingRouteOutcomePersistence;
 
 const MOCK_CLASSIFICATION = {
     id: 100,
@@ -105,11 +113,17 @@ beforeEach(() => {
     clarificationService.resolvePolicyQuestion.mockReset();
     clarificationService.recordResponse.mockReset();
     classificationRoutingService.routeToArr.mockReset();
+    nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockReset();
     db.query.mockResolvedValue({ rows: [], rowCount: 0 });
     autoLearningService.learnFromFeedback.mockResolvedValue({ learned: false, preferences: [] });
     clarificationService.resolvePolicyQuestion.mockResolvedValue({ shouldRoute: false });
     clarificationService.recordResponse.mockResolvedValue(undefined);
     classificationRoutingService.routeToArr.mockResolvedValue({ routed: true, reason: 'routed' });
+    nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockResolvedValue({
+        persisted: false,
+        reason: 'not_applicable',
+        routeOutcome: { eventTypeId: null },
+    });
 });
 
 describe('handleInteraction', () => {
@@ -439,6 +453,72 @@ describe('processClarificationResponse', () => {
                 arr_id: 22,
                 name: 'Movies'
             })
+        );
+    });
+
+    test('persists a native route result only after Discord routing returns', async () => {
+        db.query
+            .mockResolvedValueOnce({
+                rows: [{
+                    ...MOCK_CLASSIFICATION,
+                    status: 'awaiting_decision',
+                    policy_question: {
+                        options: [{ label: 'Movies', library_id: 10 }],
+                    },
+                }],
+            })
+            .mockResolvedValueOnce({
+                rows: [{
+                    ...MOCK_CLASSIFICATION,
+                    status: 'completed',
+                    library_id: 10,
+                    arr_type: 'radarr',
+                    arr_id: 22,
+                    library_name: 'Movies',
+                    radarr_settings: null,
+                    sonarr_settings: null,
+                    metadata: { title: 'Test Movie', tmdb_id: 1 },
+                }],
+            })
+            .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+            .mockResolvedValueOnce({ rows: [{ name: 'Movies' }] });
+        clarificationService.resolvePolicyQuestion.mockResolvedValueOnce({
+            shouldRoute: true,
+            alreadyResolved: false,
+            nativeResolutionProvenance: {
+                statusId: 'outcome_only',
+                selection: {
+                    selectedDestination: {
+                        libraryId: 10,
+                        libraryName: 'Movies',
+                    },
+                },
+            },
+        });
+        classificationRoutingService.routeToArr.mockResolvedValueOnce({
+            attempted: true,
+            routed: true,
+            reason: 'routed',
+            error: null,
+        });
+        nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockResolvedValueOnce({
+            persisted: true,
+            reason: null,
+            routeOutcome: { eventTypeId: 'route_succeeded' },
+        });
+
+        const interaction = makeInteraction();
+        await processClarificationResponse(100, 0, interaction);
+
+        expect(nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome).toHaveBeenCalledWith({
+            classificationId: 100,
+            nativeResolutionProvenance: expect.objectContaining({ statusId: 'outcome_only' }),
+            routingOutcome: expect.objectContaining({ routed: true, reason: 'routed' }),
+        });
+        expect(
+            classificationRoutingService.routeToArr.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mock.invocationCallOrder[0],
         );
     });
 

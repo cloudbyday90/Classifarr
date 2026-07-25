@@ -67,6 +67,10 @@ const mockLibraryProfileService = createServiceStubs();
 
 const mockClassificationRetryService = createServiceStubs(['retryClassifications']);
 
+const mockNativePendingRouteOutcomePersistence = createServiceStubs([
+  'recordNativePendingRouteOutcome',
+]);
+
 jest.unstable_mockModule('../utils/logger.mjs', () => mockLoggerModule);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
@@ -89,6 +93,10 @@ jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNa
 
 jest.unstable_mockModule('../services/classificationRetryService.mjs', () => createNamedMockModule('classificationRetryService', mockClassificationRetryService));
 
+jest.unstable_mockModule('../services/policyNativePendingRouteOutcomePersistence.mjs', () => (
+  mockNativePendingRouteOutcomePersistence
+));
+
 const { createClassificationRouter } = await import('../routes/classificationRouteShared.mjs');
 const { PATTERN_SIGNAL_TYPES } = await import('../services/signalCollector.mjs');
 const { requireReadWrite } = await import('../middleware/apiKeyAuth.mjs');
@@ -100,6 +108,7 @@ const classificationService = mockClassificationService;
 const clarificationService = mockClarificationService;
 const classificationRetryService = mockClassificationRetryService;
 const classificationOutcomeService = mockClassificationOutcomeService;
+const nativePendingRouteOutcomePersistence = mockNativePendingRouteOutcomePersistence;
 const classificationEvidenceReinforcementService = mockClassificationEvidenceReinforcementService;
 const { createLogger } = mockLoggerModule;
 
@@ -140,6 +149,12 @@ describe('Classification Routes - Pending Resolution', () => {
     jest.clearAllMocks();
     clarificationService.getPendingClassifications.mockReset();
     clarificationService.getPendingClassifications.mockResolvedValue([]);
+    nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockReset();
+    nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockResolvedValue({
+      persisted: false,
+      reason: 'not_applicable',
+      routeOutcome: { eventTypeId: null },
+    });
 
     // Reset default mock implementations
     db.query.mockImplementation(async (sql) => {
@@ -311,13 +326,79 @@ describe('Classification Routes - Pending Resolution', () => {
       expect(classificationService.routeToArr).toHaveBeenCalled();
     });
 
-    test('should not route when library lacks arr_type', async () => {
+    test('persists the native successful route after routing returns', async () => {
+      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+        success: true,
+        classificationId: 31,
+        libraryId: 30,
+        libraryName: 'Animated Movies',
+        shouldRoute: true,
+        nativeResolutionProvenance: {
+          statusId: 'outcome_only',
+          selection: {
+            selectedDestination: {
+              libraryId: 30,
+              libraryName: 'Animated Movies',
+            },
+          },
+        },
+      });
+
+      db.query
+        .mockResolvedValueOnce({ rows: [{ id: 30 }] })
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 31,
+            library_id: 30,
+            metadata: JSON.stringify({ tmdb_id: 11111, title: 'Test Movie' }),
+            arr_type: 'radarr',
+            arr_id: 1,
+            radarr_settings: null,
+            sonarr_settings: null,
+            library_name: 'Animated Movies',
+          }],
+        })
+        .mockResolvedValueOnce(createDbRowsResult());
+      classificationService.routeToArr.mockResolvedValue({
+        attempted: true,
+        routed: true,
+        reason: 'routed',
+        error: null,
+      });
+      nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockResolvedValue({
+        persisted: true,
+        reason: null,
+        routeOutcome: { eventTypeId: 'route_succeeded' },
+      });
+
+      const response = await request(app)
+        .post('/api/classification/pending/31/resolve')
+        .send({ library_id: 30, selected_option: 'Resolve current item' });
+
+      expect(response.status).toBe(200);
+      expect(nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome).toHaveBeenCalledWith({
+        classificationId: 31,
+        nativeResolutionProvenance: expect.objectContaining({ statusId: 'outcome_only' }),
+        routingOutcome: expect.objectContaining({ routed: true, reason: 'routed' }),
+      });
+    });
+
+    test('records a native missing mapping when library lacks arr_type', async () => {
       clarificationService.resolvePolicyQuestion.mockResolvedValue({
         success: true,
         classificationId: 3,
         libraryId: 30,
         libraryName: 'No Arr Library',
         shouldRoute: true,
+        nativeResolutionProvenance: {
+          statusId: 'outcome_only',
+          selection: {
+            selectedDestination: {
+              libraryId: 30,
+              libraryName: 'No Arr Library',
+            },
+          },
+        },
       });
 
       db.query
@@ -334,6 +415,17 @@ describe('Classification Routes - Pending Resolution', () => {
             library_name: 'No Arr Library'
           }]
         });
+      classificationService.routeToArr.mockResolvedValue({
+        attempted: false,
+        routed: false,
+        reason: 'no_mapping',
+        error: null,
+      });
+      nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockResolvedValue({
+        persisted: true,
+        reason: null,
+        routeOutcome: { eventTypeId: 'route_failed_missing_mapping' },
+      });
 
       const response = await request(app)
         .post('/api/classification/pending/3/resolve')
@@ -344,7 +436,13 @@ describe('Classification Routes - Pending Resolution', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.routed).toBe(false);
-      expect(classificationService.routeToArr).not.toHaveBeenCalled();
+      expect(classificationService.routeToArr).toHaveBeenCalled();
+      expect(nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome).toHaveBeenCalledWith(
+        expect.objectContaining({
+          classificationId: 3,
+          routingOutcome: expect.objectContaining({ reason: 'no_mapping' }),
+        }),
+      );
     });
 
     test('should attempt routing when arr_id is missing but arr_type exists', async () => {

@@ -1,3 +1,13 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 import { jest } from '@jest/globals';
 import { ClassificationOutcomeService } from '../services/classificationOutcomeService.mjs';
 
@@ -233,6 +243,73 @@ describe('ClassificationOutcomeService', () => {
           })
         ]
       })
+    );
+  });
+
+  test('updates an identical native pending-route transition without duplicating it', async () => {
+    const existingRoute = {
+      type: 'native_pending_route',
+      source: 'policy_request_time',
+      event_type_id: 'route_succeeded',
+      final_library_id: 9,
+      final_library_name: 'Animated Movies',
+      route_result: {
+        attempted: true,
+        succeeded: true,
+        missing_mapping: false,
+        reason_code: null,
+      },
+      recorded_at: '2026-07-25T10:00:00.000Z',
+      updated_at: '2026-07-25T10:00:00.000Z',
+      sequence: 1,
+    };
+    db.query
+      .mockResolvedValueOnce({
+        rows: [{
+          metadata: {
+            classification_details: {
+              outcome_link: existingRoute,
+              outcome_path: {
+                first_outcome: existingRoute,
+                latest_outcome: existingRoute,
+                transitions: [existingRoute],
+                first_type: 'native_pending_route',
+                latest_type: 'native_pending_route',
+                transition_count: 1,
+                has_multi_step: false,
+              },
+            },
+          },
+        }],
+      })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await service.recordOutcome(777, {
+      type: 'native_pending_route',
+      source: 'policy_request_time',
+      event_type_id: 'route_succeeded',
+      final_library_id: 9,
+      final_library_name: 'Animated Movies',
+      route_result: {
+        attempted: true,
+        succeeded: true,
+        missing_mapping: false,
+        reason_code: null,
+      },
+    });
+
+    const updatedMetadata = JSON.parse(db.query.mock.calls[1][1][1]);
+    expect(updatedMetadata.classification_details.outcome_path).toEqual(
+      expect.objectContaining({
+        transition_count: 1,
+        has_multi_step: false,
+        transitions: [expect.objectContaining({
+          type: 'native_pending_route',
+          source: 'policy_request_time',
+          final_library_id: 9,
+          sequence: 1,
+        })],
+      }),
     );
   });
 });
