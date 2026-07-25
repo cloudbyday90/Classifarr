@@ -49,6 +49,7 @@ describe('PolicyBuilderLibraryContext.vue', () => {
     expect(wrapper.text()).toContain('2 genres, 1 rating available from the current library profile.')
     expect(wrapper.text()).toContain('Already here:')
     expect(wrapper.text()).toContain('Family (42), Animation (45)')
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
   })
 
   it('falls back when the library is not available yet', () => {

@@ -18,6 +18,11 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Single Workflow Status Priority** - policy authoring now announces one
+  ordered progress or failure state across workflow loading, evidence recovery,
+  library refresh, and empty-state setup while preserving each local recovery
+  action and explanation.
+
 - **Scoped Empty-State Recovery Feedback** - library sync and routing-mapping
   recovery now show progress only for the action in flight, retain distinct
   server-approved busy copy, and keep competing recovery actions from being

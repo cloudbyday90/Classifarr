@@ -150,6 +150,21 @@ describe('policyBuilderBoundaryInventory', () => {
       }));
   });
 
+  test('keeps workflow status priority as display-only feedback', () => {
+    [
+      'client/src/components/policies/PolicyBuilderWorkflowStatusNotice.vue',
+      'client/src/utils/policyBuilderWorkflowStatusPriority.js',
+    ].forEach((filePath) => {
+      expect(classifyPolicyBuilderClientPath(filePath)).toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.PRESENTATION_ONLY,
+        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_PRESENTATION,
+        actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_PRESENTATION,
+        clientEngineAuthorityAllowed: false,
+        engineCutlineDecisionRequired: false,
+      }));
+    });
+  });
+
   test('keeps empty-state recovery orchestration separate from presentation', () => {
     expect(classifyPolicyBuilderClientPath('client/src/composables/usePolicyBuilderLibrarySync.js'))
       .toEqual(expect.objectContaining({

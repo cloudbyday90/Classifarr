@@ -17,32 +17,20 @@
       :summary="destinationSummary"
     />
 
-    <p
-      v-if="loading"
-      class="rounded border border-blue-800/70 bg-blue-950/30 px-3 py-2 text-sm text-blue-100"
-      role="status"
-      aria-live="polite"
-    >
-      Loading the current library workflow.
-    </p>
+    <PolicyBuilderWorkflowStatusNotice :status="workflowStatus" />
 
-    <template v-else-if="error">
-      <p
-        class="rounded border border-amber-700/70 bg-amber-950/30 px-3 py-2 text-sm text-amber-100"
-        role="alert"
-      >
-        {{ error }}
-      </p>
+    <template v-if="error">
       <PolicyNativeEvidenceRecovery
         v-if="selectionEnabled && nativeEvidenceRecovery.requiresAction"
         :recovery="nativeEvidenceRecovery"
         :refreshing="refreshing"
+        :announce="false"
         @refresh-profile="emit('refresh-profile')"
         @reload-workflow="emit('reload-workflow')"
       />
     </template>
 
-    <template v-else-if="workflowRead">
+    <template v-else-if="!loading && workflowRead">
       <ObservedProfileSummary
         :library-name="libraryName"
         :observed-profile="observedProfile"
@@ -65,7 +53,7 @@
         :custom-entry-message="customEntryMessage"
         :empty-states="emptyStates"
         :active-empty-state-action-id="activeEmptyStateActionId"
-        :active-empty-state-action-message="activeEmptyStateActionMessage"
+        :active-empty-state-status-id="emptyStateActionStatusId"
         @draft-command-plan="emit('draft-command-plan', $event)"
         @validate-custom-signal="emit('validate-custom-signal', $event)"
         @refresh-profile="emit('refresh-profile')"
@@ -96,9 +84,11 @@ import DestinationContextCard from './DestinationContextCard.vue'
 import ObservedProfileSummary from './ObservedProfileSummary.vue'
 import PolicyBuilderDestinationQuestions from './PolicyBuilderDestinationQuestions.vue'
 import PolicyNativeEvidenceRecovery from './PolicyNativeEvidenceRecovery.vue'
+import PolicyBuilderWorkflowStatusNotice from './PolicyBuilderWorkflowStatusNotice.vue'
 import PolicyIntentConstraintControlSurface from './PolicyIntentConstraintControlSurface.vue'
 import ReadinessNextActionCard from './ReadinessNextActionCard.vue'
 import { buildPolicyNativeEvidenceRecovery } from '@/utils/policyNativeEvidenceRecovery'
+import { buildPolicyBuilderWorkflowStatus } from '@/utils/policyBuilderWorkflowStatusPriority'
 
 const props = defineProps({
   workflowRead: {
@@ -202,5 +192,27 @@ const nativeEvidenceRecovery = computed(() => buildPolicyNativeEvidenceRecovery(
   error: props.error,
   refreshResult: props.refreshResult,
 }))
+const activeEmptyStateActionMessage = computed(() => {
+  const activeAction = emptyStates.value.find(
+    emptyState => emptyState?.nextAction?.actionId === props.activeEmptyStateActionId
+  )?.nextAction
+
+  return props.activeEmptyStateActionMessage ||
+    activeAction?.busyMessage ||
+    activeAction?.busyLabel ||
+    ''
+})
+const workflowStatus = computed(() => buildPolicyBuilderWorkflowStatus({
+  loading: props.loading,
+  error: props.error,
+  refreshing: props.refreshing,
+  activeEmptyStateActionId: props.activeEmptyStateActionId,
+  activeEmptyStateActionMessage: activeEmptyStateActionMessage.value,
+  nativeEvidenceRecovery: nativeEvidenceRecovery.value,
+  refreshResult: props.refreshResult,
+}))
+const emptyStateActionStatusId = computed(() => (
+  props.activeEmptyStateActionId ? workflowStatus.value?.id || '' : ''
+))
 
 </script>

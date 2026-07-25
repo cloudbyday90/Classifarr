@@ -13,7 +13,7 @@
     :class="recoveryClass"
     :role="announcementRole"
     :aria-live="announcementLive"
-    aria-atomic="true"
+    :aria-atomic="announce ? 'true' : null"
     aria-labelledby="policy-native-evidence-recovery-title"
   >
     <h6
@@ -59,6 +59,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  announce: {
+    type: Boolean,
+    default: true,
+  },
 })
 
 const emit = defineEmits({
@@ -66,14 +70,20 @@ const emit = defineEmits({
   'reload-workflow': () => true,
 })
 
-const announcementRole = computed(() => (
-  props.recovery?.statusId === POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.REFRESH_FAILED
+const announcementRole = computed(() => {
+  if (!props.announce) return null
+
+  return props.recovery?.statusId === POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.REFRESH_FAILED
     ? 'alert'
     : 'status'
-))
+})
 
 const announcementLive = computed(() => (
-  announcementRole.value === 'alert' ? 'assertive' : 'polite'
+  announcementRole.value === 'alert'
+    ? 'assertive'
+    : announcementRole.value === 'status'
+      ? 'polite'
+      : null
 ))
 
 const recoveryClass = computed(() => (

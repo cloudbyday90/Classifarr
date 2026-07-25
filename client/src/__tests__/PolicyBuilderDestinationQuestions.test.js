@@ -104,14 +104,16 @@ describe('PolicyBuilderDestinationQuestions.vue', () => {
           },
         ],
         activeEmptyStateActionId: 'sync_media_server_library',
+        activeEmptyStateStatusId: 'policy-builder-empty-state-action-status',
       },
     })
 
     const buttons = wrapper.findAll('button')
     expect(buttons.find(button => button.text() === 'Syncing library...')?.attributes('disabled')).toBeDefined()
     expect(buttons.find(button => button.text() === 'Open library mapping')?.attributes('disabled')).toBeDefined()
-    expect(wrapper.find('[role="status"]').text())
-      .toContain('syncing this library and refreshing its profile')
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
+    expect(buttons.find(button => button.text() === 'Syncing library...')?.attributes('aria-describedby'))
+      .toContain('policy-builder-empty-state-action-status')
     expect(wrapper.text()).not.toContain('Opening library mapping...')
   })
 })

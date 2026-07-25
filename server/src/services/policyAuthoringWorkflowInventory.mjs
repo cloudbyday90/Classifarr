@@ -79,6 +79,8 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     matches: filePath => hasAnySegment(filePath, [
       '/PolicyBuilderWorkflowShell.vue',
       '/PolicyBuilderDestinationQuestions.vue',
+      '/PolicyBuilderWorkflowStatusNotice.vue',
+      '/policyBuilderWorkflowStatusPriority.js',
       '/usePolicyOperatorWorkflow.js',
     ]),
   },

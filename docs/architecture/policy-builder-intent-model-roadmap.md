@@ -2665,6 +2665,10 @@ Implementation status:
   projection-owned busy copy, and a polite progress status without repeating
   an actionable card's next-action label:
   [Policy Destination Empty-State Action Resolution](policy-destination-empty-state-action-resolution.md).
+- Workflow loading, profile refresh, native evidence recovery, empty-state
+  progress, and completed refresh results now resolve to one ordered live
+  announcement:
+  [Policy Builder Workflow Status Priority](policy-builder-workflow-status-priority.md).
 
 ### 3R.9 Presentation Test Reset
 

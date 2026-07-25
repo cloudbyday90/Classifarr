@@ -308,6 +308,20 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ]),
   },
   {
+    id: 'policy_workflow_status_presentation',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.PRESENTATION_ONLY,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_PRESENTATION,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_PRESENTATION,
+    clientEngineAuthorityAllowed: false,
+    engineCutlineDecisionRequired: false,
+    riskIds: [],
+    notes: 'Workflow status priority only selects bounded display feedback. It cannot infer policy intent, persist data, route media, or decide automation.',
+    matches: (filePath) => hasAnySegment(filePath, [
+      '/PolicyBuilderWorkflowStatusNotice.vue',
+      '/policyBuilderWorkflowStatusPriority.js',
+    ]),
+  },
+  {
     id: 'policy_presentation_components',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.PRESENTATION_ONLY,
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_PRESENTATION,

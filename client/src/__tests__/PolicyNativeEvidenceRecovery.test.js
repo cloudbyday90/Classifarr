@@ -68,6 +68,19 @@ describe('PolicyNativeEvidenceRecovery.vue', () => {
     expect(wrapper.find('button').attributes('disabled')).toBeDefined()
   })
 
+  it('can remain visible without becoming a second live announcement', () => {
+    const wrapper = mount(PolicyNativeEvidenceRecovery, {
+      props: {
+        recovery: buildRecovery(),
+        announce: false,
+      },
+    })
+
+    expect(wrapper.text()).toContain('A current library profile is needed')
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
   it('uses workflow-specific busy copy and emits only the bounded reload action', async () => {
     const wrapper = mount(PolicyNativeEvidenceRecovery, {
       props: {

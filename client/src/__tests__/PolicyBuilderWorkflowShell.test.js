@@ -205,6 +205,108 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     expect(wrapper.text()).toContain('Syncing library...')
     expect(wrapper.text()).toContain('Open library mapping')
     expect(wrapper.text()).not.toContain('Opening library mapping...')
+    expect(wrapper.findAll('[role="status"]')).toHaveLength(1)
+    expect(wrapper.find('[role="status"]').text())
+      .toContain('syncing this library and refreshing its profile')
+  })
+
+  it('keeps a failed workflow load as the only assertive announcement', () => {
+    const wrapper = mount(PolicyBuilderWorkflowShell, {
+      props: {
+        error: 'Classifarr could not load the library workflow.',
+        selectionEnabled: true,
+      },
+    })
+
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(1)
+    expect(wrapper.findAll('[role="status"]')).toHaveLength(0)
+    expect(wrapper.text()).toContain('Try evidence check again')
+  })
+
+  it('describes disabled empty-state actions with an active profile-refresh status', () => {
+    const workflowRead = buildWorkflowRead()
+    workflowRead.emptyStateProjection = {
+      version: 'policy.operator_workflow_empty_state.v1',
+      states: [{
+        stateId: 'new_library',
+        sectionId: 'what_belongs_here',
+        label: 'New library',
+        description: 'No observed profile is available yet.',
+        nextAction: {
+          actionId: 'sync_media_server_library',
+          label: 'Sync library now',
+          busyLabel: 'Syncing library...',
+          busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
+          targetId: 'policy-builder-library-context',
+          mode: 'sync_library',
+        },
+      }],
+    }
+
+    const wrapper = mount(PolicyBuilderWorkflowShell, {
+      props: {
+        workflowRead,
+        activeEmptyStateActionId: 'refresh_library_profile',
+        refreshing: true,
+      },
+    })
+
+    expect(wrapper.find('[role="status"]').text()).toContain('refreshing library evidence')
+    expect(wrapper.find('button').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('button').attributes('aria-describedby'))
+      .toContain('policy-builder-library-profile-refresh-status')
+  })
+
+  it('announces a refresh failure once while keeping its recovery action visible', () => {
+    const workflowRead = buildWorkflowRead()
+    workflowRead.observedProfile = {
+      available: false,
+      current: false,
+      intentSignalProjection: { options: [] },
+    }
+
+    const wrapper = mount(PolicyBuilderWorkflowShell, {
+      props: {
+        workflowRead,
+        selectionEnabled: true,
+        refreshResult: {
+          status: 'error',
+          tone: 'warning',
+          label: 'Refresh failed',
+          message: 'The queue is unavailable.',
+        },
+      },
+    })
+
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(1)
+    expect(wrapper.findAll('[role="status"]')).toHaveLength(0)
+    expect(wrapper.find('[role="alert"]').text()).toContain('Library profile refresh did not complete')
+    expect(wrapper.text()).toContain('Refresh library profile')
+  })
+
+  it('announces a completed refresh only when current evidence needs no recovery', () => {
+    const workflowRead = buildWorkflowRead()
+    workflowRead.observedProfile.intentSignalProjection = {
+      options: [{ candidateId: 'genre:Animation:purpose', selectable: true }],
+    }
+
+    const wrapper = mount(PolicyBuilderWorkflowShell, {
+      props: {
+        workflowRead,
+        selectionEnabled: true,
+        refreshResult: {
+          status: 'success',
+          tone: 'success',
+          label: 'Profile refreshed',
+          message: '2 genres are available from the current library profile.',
+        },
+      },
+    })
+
+    expect(wrapper.findAll('[role="status"]')).toHaveLength(1)
+    expect(wrapper.find('[role="status"]').text())
+      .toContain('Profile refreshed: 2 genres are available')
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(0)
   })
 
   it('keeps native observed values unavailable until a stale profile is refreshed', async () => {

@@ -42,7 +42,6 @@
       <p
         class="mt-2 rounded border px-2 py-1 text-xs"
         :class="freshnessClass"
-        role="status"
       >
         <span class="font-medium">
           {{ freshness.label }}:
@@ -59,9 +58,6 @@
         v-if="refreshResult"
         class="mt-2 rounded border px-2 py-1 text-xs"
         :class="refreshResultClass"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
       >
         <span class="font-medium">
           {{ refreshResult.label }}:
