@@ -19,6 +19,25 @@ This contract does not rewrite client tests, change Vue rendering, change
 policy saves, change scoring or routing, alter database schema, call AI, call
 providers, or write to Arr.
 
+## Inventory Cutline
+
+The presentation-test inventory is deliberately bounded and machine-checked:
+
+- 30 direct policy-authoring, recovery, compatibility, and runtime-feedback
+  component tests are classified exactly once.
+- Four adjacent Phase 2R compatibility-bridge tests are retained as
+  bridge-owned coverage, not as native authoring presentation requirements.
+- The policy-list card test is explicitly excluded because it is a
+  policy-management surface, not an authoring or authoring-recovery surface.
+- Normal-path coverage can be owned only by `policy_authoring`. Compatibility
+  storage cleanup, draft bridge, and runtime verifier coverage must remain
+  outside that path.
+
+The audit fails for a missing, duplicate, or out-of-inventory classification,
+an invalid exclusion, or a bridge, compatibility, or verifier owner appearing
+on the normal authoring path. This turns the test reset into a maintained
+cutline rather than a one-time spreadsheet.
+
 ## Current Best-Practice Inputs
 
 Official sources reviewed as of June 2026:
@@ -47,6 +66,14 @@ Official sources reviewed as of June 2026:
   <https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html>
   - Product tests should protect labels and instructions that help users
     complete the workflow.
+- W3C WAI, Evaluating Web Accessibility Overview:
+  <https://www.w3.org/WAI/test-evaluate/>
+  - Accessibility should be evaluated early and throughout development; tools
+    help, but targeted human review remains necessary.
+- W3C WCAG 2.2, Focus Order:
+  <https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html>
+  - Tests should preserve a focus order that follows the workflow sequence and
+    relationships between controls.
 
 ## Recommendation Stack
 
@@ -73,6 +100,11 @@ Official sources reviewed as of June 2026:
    - `native_storage_cleanup`.
 4. Keep replay, impact, provider, metadata, scoring, parity, and raw-preset
    surfaces removed from authoring, not as normal policy-authoring behavior.
+5. Maintain one bounded inventory:
+   - classify every direct policy-authoring test once,
+   - explicitly name exclusions,
+   - keep compatibility, bridge, and verifier records out of the normal path,
+   - fail the contract when a new or renamed test has no classification.
 
 ## Pros And Cons
 
@@ -91,7 +123,8 @@ Official sources reviewed as of June 2026:
   every client test.
 - Existing client tests may still contain old layout assertions until follow-up
   client work applies this contract.
-- The classification plan must be maintained as files are renamed or deleted.
+- The bounded inventory must be updated when policy-authoring test files are
+  added, renamed, or deleted.
 
 ## Final Recommendation
 
@@ -111,6 +144,9 @@ The implementation provides:
 
 - `server/src/services/policyAuthoringPresentationTests.mjs`
   - classifies current policy-builder presentation tests,
+  - inventories all 30 direct authoring/recovery component tests and four
+    adjacent bridge tests,
+  - documents the policy-list card as outside authoring scope,
   - defines required policy-authoring presentation behaviors,
   - keeps draft bridge coverage owned by the draft bridge contract,
   - marks old impact, replay, and template-mechanics diagnostics for removal or
@@ -123,20 +159,24 @@ The implementation provides:
   - proves replay and impact preview tests are not normal-path tests,
   - proves draft bridge tests stay outside presentation ownership,
   - proves unknown files, unknown categories, unknown behaviors, missing
-    protected behaviors, and internal diagnostic wording fail the audit.
+    protected behaviors, incomplete inventory classifications, duplicate
+    records, invalid exclusions, and internal diagnostic wording fail the
+    audit.
 
 ## Checklist Result
 
 | Check | Result |
 | --- | --- |
-| Tests categorized | Yes; current policy-builder presentation and adjacent draft tests are classified. |
+| Tests categorized | Yes; all 30 direct policy-authoring tests and four adjacent bridge tests are classified, with the policy-list card explicitly excluded. |
 | Simplified workflow protected | Yes; required behavior records map to destination-first flow, evidence options, readiness, and accessibility. |
 | Product vocabulary preserved | Yes; normal presentation tests fail when internal diagnostic language appears. |
-| Draft/bridge duplication avoided | Yes; draft bridge tests are explicitly draft-bridge-owned. |
+| Draft/bridge duplication avoided | Yes; six compatibility-editor and bridge tests are explicitly draft-bridge-owned. |
 | Diagnostic panels removed from normal path | Yes; impact and replay preview tests are removal candidates, not normal-path assertions. |
+| Inventory drift detected | Yes; the audit fails for missing, duplicate, out-of-inventory, overlapping-exclusion, and invalid-exclusion records. |
 
 ## Next Step
 
-Continue the production naming cutover with the remaining Vue-facing
-policy-authoring workflow docs or move into the next runtime evidence-engine
-component once naming cleanup for active server contracts is stable.
+Apply the same cutline to each future Vue rewrite: add or update the test
+classification first, then change presentation assertions only around
+observable workflow behavior. The next engineering phase remains the policy
+evidence engine, which can now rely on a bounded authoring-test contract.

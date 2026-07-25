@@ -2715,6 +2715,11 @@ Implementation status:
   `server/src/services/policyAuthoringPresentationTests.mjs`.
 - Current policy-builder presentation tests are categorized as keep, protect,
   remove, or draft-bridge-owned coverage before client test updates continue.
+- The bounded presentation-test inventory now classifies all 30 direct
+  policy-authoring tests plus four adjacent bridge tests exactly once, names
+  the policy-list card as out of authoring scope, and fails on missing,
+  duplicate, out-of-inventory, invalid-exclusion, or non-authoring
+  normal-path coverage.
 - Required presentation behaviors now cover starter-template ordering,
   observed evidence versus declared intent, typed multi-select commands,
   accessible names and disabled reasons, explicit hard-limit action, readiness

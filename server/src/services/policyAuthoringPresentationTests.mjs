@@ -36,6 +36,13 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS = Object.freeze({
   MISSING_REMOVAL_RATIONALE: 'missing_removal_rationale',
   MISSING_REQUIRED_BEHAVIOR_COVERAGE: 'missing_required_behavior_coverage',
   INTERNAL_LANGUAGE_IN_PRODUCT_TEST: 'internal_language_in_product_test',
+  MISSING_INVENTORY_CLASSIFICATION: 'missing_inventory_classification',
+  CLASSIFICATION_OUTSIDE_INVENTORY: 'classification_outside_inventory',
+  DUPLICATE_INVENTORY_CLASSIFICATION: 'duplicate_inventory_classification',
+  INVALID_NORMAL_PATH_FLAG: 'invalid_normal_path_flag',
+  NON_AUTHORING_OWNER_IN_NORMAL_PATH: 'non_authoring_owner_in_normal_path',
+  INVALID_EXCLUSION: 'invalid_exclusion',
+  EXCLUDED_FILE_IS_CLASSIFIED: 'excluded_file_is_classified',
 });
 
 const INTERNAL_PRESENTATION_TEST_LANGUAGE = Object.freeze([
@@ -108,124 +115,403 @@ const REQUIRED_POLICY_AUTHORING_PRESENTATION_BEHAVIORS = deepFreeze([
   },
 ]);
 
-const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
+const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
+  'client/src/__tests__/PolicyBuilderAdvancedSettings.test.js',
+  'client/src/__tests__/PolicyBuilderDestinationQuestions.test.js',
+  'client/src/__tests__/PolicyBuilderFooterActions.test.js',
+  'client/src/__tests__/PolicyBuilderLibraryContext.test.js',
+  'client/src/__tests__/PolicyBuilderModal.test.js',
+  'client/src/__tests__/PolicyBuilderRoutingReadinessCard.test.js',
+  'client/src/__tests__/PolicyBuilderSetupCards.test.js',
+  'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',
+  'client/src/__tests__/PolicyDestinationEmptyStateNotice.test.js',
+  'client/src/__tests__/PolicyIntentActionButton.test.js',
+  'client/src/__tests__/PolicyIntentCertificationControl.test.js',
+  'client/src/__tests__/PolicyIntentChip.test.js',
+  'client/src/__tests__/PolicyIntentConstraintControlSurface.test.js',
+  'client/src/__tests__/PolicyIntentCustomSignalEntry.test.js',
+  'client/src/__tests__/PolicyIntentEditor.test.js',
+  'client/src/__tests__/PolicyIntentEditorParity.test.js',
+  'client/src/__tests__/PolicyIntentGenreControl.test.js',
+  'client/src/__tests__/PolicyIntentOptionActionGroup.test.js',
+  'client/src/__tests__/PolicyIntentOptionSelect.test.js',
+  'client/src/__tests__/PolicyIntentReadinessSummary.test.js',
+  'client/src/__tests__/PolicyIntentReviewTriggerControl.test.js',
+  'client/src/__tests__/PolicyIntentSecondaryActionButton.test.js',
+  'client/src/__tests__/PolicyIntentSectionCard.test.js',
+  'client/src/__tests__/PolicyIntentSummaryCard.test.js',
+  'client/src/__tests__/PolicyNativeCreateHandoff.test.js',
+  'client/src/__tests__/PolicyNativeEvidenceRecovery.test.js',
+  'client/src/__tests__/PolicyNativeIntentReconciliation.test.js',
+  'client/src/__tests__/PolicyPresetMigrationNotice.test.js',
+  'client/src/__tests__/PolicyStarterTemplateAccelerator.test.js',
+  'client/src/__tests__/PolicyStarterTemplateBrowser.test.js',
+  'client/src/__tests__/composables/usePolicyIntentDraft.test.js',
+  'client/src/__tests__/utils/policyIntentDraftBridge.test.js',
+  'client/src/__tests__/utils/policyIntentDraftView.test.js',
+  'client/src/__tests__/utils/policyIntentModel.test.js',
+]);
+
+const POLICY_AUTHORING_PRESENTATION_TEST_EXCLUSION_RECORDS = deepFreeze([
   {
-    filePath: 'client/src/__tests__/PolicyBuilderModal.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
-    normalPath: true,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
-    requiredBehaviorIds: [
+    filePath: 'client/src/__tests__/PolicyCard.test.js',
+    rationale: 'The policy list card is a policy-management surface, not policy authoring or an adjacent authoring recovery flow.',
+  },
+]);
+
+function presentationTestRecord(
+  filePath,
+  categoryId,
+  normalPath,
+  coverageOwnerId,
+  requiredBehaviorIds,
+  rationale
+) {
+  return {
+    filePath,
+    categoryId,
+    normalPath,
+    coverageOwnerId,
+    requiredBehaviorIds,
+    rationale,
+  };
+}
+
+const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
+  presentationTestRecord(
+    'client/src/__tests__/PolicyBuilderAdvancedSettings.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
+    [],
+    'Compatibility-only advanced settings remain outside native authoring until native intent storage replaces legacy policy storage.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyBuilderDestinationQuestions.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.OBSERVED_EVIDENCE_DISTINCT_FROM_DECLARED_INTENT,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.READINESS_LINKS_TO_NEXT_ACTION,
+    ],
+    'Destination questions keep library observations and the recommended authoring action in a clear operator sequence.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyBuilderFooterActions.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_READINESS_NEXT_ACTIONS,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.READINESS_LINKS_TO_NEXT_ACTION,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+    ],
+    'Footer actions explain save readiness and preserve a clear defer path without creating another workflow state.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyBuilderLibraryContext.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.OBSERVED_EVIDENCE_DISTINCT_FROM_DECLARED_INTENT,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+    ],
+    'Library context preserves observed evidence as suggestions rather than declared intent.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyBuilderModal.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.STARTER_TEMPLATES_SECONDARY_TO_DESTINATION,
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.INTERNAL_DIAGNOSTIC_PANELS_ABSENT,
     ],
-    rationale: 'Protect modal assertions around destination-first workflow instead of legacy layout shape.',
-  },
-  {
-    filePath: 'client/src/__tests__/PolicyBuilderLibraryContext.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
-    normalPath: true,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
-    requiredBehaviorIds: [
+    'The modal protects destination-first authoring rather than compatibility layout shape.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyBuilderRoutingReadinessCard.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_READINESS_NEXT_ACTIONS,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.READINESS_LINKS_TO_NEXT_ACTION,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+    ],
+    'Routing readiness presents one bounded status and one resolving action without executing routing.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyBuilderSetupCards.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
+    [],
+    'The setup-card grid is a superseded compatibility surface and must not become the native destination-first workflow.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.OBSERVED_EVIDENCE_DISTINCT_FROM_DECLARED_INTENT,
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
-    ],
-    rationale: 'Keep as destination context regression while ensuring observed evidence is not declared automatically.',
-  },
-  {
-    filePath: 'client/src/__tests__/PolicyStarterTemplateBrowser.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
-    normalPath: true,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
-    requiredBehaviorIds: [
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.STARTER_TEMPLATES_SECONDARY_TO_DESTINATION,
-    ],
-    rationale: 'Protect starter-template browsing around optional post-destination acceleration.',
-  },
-  {
-    filePath: 'client/src/__tests__/PolicyStarterTemplateAccelerator.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
-    normalPath: true,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
-    requiredBehaviorIds: [
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.STARTER_TEMPLATES_SECONDARY_TO_DESTINATION,
-    ],
-    rationale: 'Accelerator assertions keep template selection optional, disclosed, and free of raw mechanics.',
-  },
-  {
-    filePath: 'client/src/__tests__/PolicyIntentGenreControl.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_EVIDENCE_BACKED_OPTIONS,
-    normalPath: true,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
-    requiredBehaviorIds: [
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.OBSERVED_EVIDENCE_DISTINCT_FROM_DECLARED_INTENT,
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.MULTI_SELECT_EMITS_TYPED_DRAFT_COMMANDS,
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
-    ],
-    rationale: 'Genre controls should prove observed options stay suggestions until accepted through typed commands.',
-  },
-  {
-    filePath: 'client/src/__tests__/PolicyIntentOptionSelect.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_EVIDENCE_BACKED_OPTIONS,
-    normalPath: true,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
-    requiredBehaviorIds: [
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.MULTI_SELECT_EMITS_TYPED_DRAFT_COMMANDS,
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
-    ],
-    rationale: 'Option selection should protect source grouping, selected state, and disabled reasons.',
-  },
-  {
-    filePath: 'client/src/__tests__/PolicyIntentChip.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_ACCESSIBILITY_DECISION_LOAD,
-    normalPath: true,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
-    requiredBehaviorIds: [
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
-    ],
-    rationale: 'Chip removal tests should assert accessible removal names and command routing.',
-  },
-  {
-    filePath: 'client/src/__tests__/PolicyIntentCertificationControl.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_EVIDENCE_BACKED_OPTIONS,
-    normalPath: true,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
-    requiredBehaviorIds: [
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.HARD_LIMITS_REQUIRE_EXPLICIT_ACTION,
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
-    ],
-    rationale: 'Certification tests should separate max-rating hard limits from avoid-rating hints.',
-  },
-  {
-    filePath: 'client/src/__tests__/PolicyIntentReadinessSummary.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_READINESS_NEXT_ACTIONS,
-    normalPath: true,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
-    requiredBehaviorIds: [
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.READINESS_LINKS_TO_NEXT_ACTION,
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.INTERNAL_DIAGNOSTIC_PANELS_ABSENT,
     ],
-    rationale: 'Readiness tests should assert one next action instead of diagnostic detail.',
-  },
-  {
-    filePath: 'client/src/__tests__/PolicyIntentEditorParity.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE,
-    normalPath: false,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.DRAFT_BRIDGE,
-    requiredBehaviorIds: [],
-    rationale: 'Draft bridge parity belongs to the draft bridge contract and should not be duplicated by presentation tests.',
-  },
-  {
-    filePath: 'client/src/__tests__/composables/usePolicyIntentDraft.test.js',
-    categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE,
-    normalPath: false,
-    coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.DRAFT_BRIDGE,
-    requiredBehaviorIds: [],
-    rationale: 'Draft command internals remain draft bridge coverage, not policy-authoring presentation shape.',
-  },
+    'The workflow shell proves library-first authoring, one readiness outcome, and no diagnostic control path.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyDestinationEmptyStateNotice.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_READINESS_NEXT_ACTIONS,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.READINESS_LINKS_TO_NEXT_ACTION,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+    ],
+    'Empty destination states retain a scoped recovery action and explain why authoring cannot proceed yet.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentActionButton.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_ACCESSIBILITY_DECISION_LOAD,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS],
+    'Primary authoring actions retain an explicit accessible name and a single public activation contract.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentCertificationControl.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_EVIDENCE_BACKED_OPTIONS,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.HARD_LIMITS_REQUIRE_EXPLICIT_ACTION,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+    ],
+    'Certification controls separate explicit hard limits from advisory avoid values.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentChip.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_ACCESSIBILITY_DECISION_LOAD,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS],
+    'Chip removal keeps an accessible name and a typed command boundary.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentConstraintControlSurface.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_EVIDENCE_BACKED_OPTIONS,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.HARD_LIMITS_REQUIRE_EXPLICIT_ACTION,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+    ],
+    'Native constraint controls expose only server-approved values and require an explicit staged action.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentCustomSignalEntry.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_EVIDENCE_BACKED_OPTIONS,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.OBSERVED_EVIDENCE_DISTINCT_FROM_DECLARED_INTENT,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+    ],
+    'Optional custom evidence remains unaccepted until it is validated and explicitly accepted.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentEditor.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.DRAFT_BRIDGE,
+    [],
+    'Compatibility-editor command serialization remains draft-bridge coverage rather than native workflow shape.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentEditorParity.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.DRAFT_BRIDGE,
+    [],
+    'Draft bridge parity belongs to the bridge contract and must not be duplicated by presentation tests.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentGenreControl.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_EVIDENCE_BACKED_OPTIONS,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.OBSERVED_EVIDENCE_DISTINCT_FROM_DECLARED_INTENT,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.MULTI_SELECT_EMITS_TYPED_DRAFT_COMMANDS,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+    ],
+    'Genre controls prove observed choices remain suggestions until selected through typed commands.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentOptionActionGroup.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_EVIDENCE_BACKED_OPTIONS,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.MULTI_SELECT_EMITS_TYPED_DRAFT_COMMANDS,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+    ],
+    'Shared option actions preserve labelled selection and one explicit typed activation boundary.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentOptionSelect.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_EVIDENCE_BACKED_OPTIONS,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.MULTI_SELECT_EMITS_TYPED_DRAFT_COMMANDS,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+    ],
+    'Option selection protects source grouping, selected state, and disabled reasons.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentReadinessSummary.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_READINESS_NEXT_ACTIONS,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.READINESS_LINKS_TO_NEXT_ACTION,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.INTERNAL_DIAGNOSTIC_PANELS_ABSENT,
+    ],
+    'Readiness keeps the highest-priority next action visible instead of detailed diagnostics.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentReviewTriggerControl.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_ACCESSIBILITY_DECISION_LOAD,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.MULTI_SELECT_EMITS_TYPED_DRAFT_COMMANDS,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+    ],
+    'Review triggers expose selected values and duplicate reasons without creating another readiness model.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentSecondaryActionButton.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_ACCESSIBILITY_DECISION_LOAD,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS],
+    'Secondary actions keep a visible and programmatic name without competing with the primary action.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentSectionCard.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_ACCESSIBILITY_DECISION_LOAD,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS],
+    'Section cards expose a bounded destination-authoring step with readable status and action context.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyIntentSummaryCard.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
+    [],
+    'The compatibility-policy summary remains read-only while native authoring uses one automation-readiness outcome.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyNativeCreateHandoff.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.READINESS_LINKS_TO_NEXT_ACTION],
+    'Native creation handoff confirms the saved outcome with a bounded follow-up rather than unsaved browser state.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyNativeEvidenceRecovery.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_READINESS_NEXT_ACTIONS,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.READINESS_LINKS_TO_NEXT_ACTION,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+    ],
+    'Native evidence recovery keeps refresh and retry actions scoped to the failing evidence state.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyNativeIntentReconciliation.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
+    [],
+    'Reconciliation status is runtime verification feedback and remains outside policy authoring setup.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyPresetMigrationNotice.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
+    [],
+    'Preset migration notices are compatibility-only until native storage cleanup removes the legacy policy path.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyStarterTemplateAccelerator.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.STARTER_TEMPLATES_SECONDARY_TO_DESTINATION],
+    'Template selection remains optional, disclosed, and free of raw mechanics.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyStarterTemplateBrowser.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.STARTER_TEMPLATES_SECONDARY_TO_DESTINATION],
+    'Template browsing stays an optional post-destination accelerator.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/composables/usePolicyIntentDraft.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.DRAFT_BRIDGE,
+    [],
+    'Draft command internals remain bridge coverage, not policy-authoring presentation shape.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/utils/policyIntentDraftBridge.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.DRAFT_BRIDGE,
+    [],
+    'Legacy payload translation remains an isolated compatibility bridge concern.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/utils/policyIntentDraftView.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.DRAFT_BRIDGE,
+    [],
+    'Draft-view projection belongs to the compatibility bridge and must not define native authoring behavior.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/utils/policyIntentModel.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.DRAFT_BRIDGE,
+    [],
+    'The legacy intent data model remains bridge-owned until native storage replaces compatibility payloads.'
+  ),
 ]);
 
 function listPolicyAuthoringPresentationTestRecords() {
   return POLICY_AUTHORING_PRESENTATION_TEST_RECORDS;
+}
+
+function listPolicyAuthoringPresentationTestInventoryFilePaths() {
+  return POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS;
+}
+
+function listPolicyAuthoringPresentationTestExclusionRecords() {
+  return POLICY_AUTHORING_PRESENTATION_TEST_EXCLUSION_RECORDS;
 }
 
 function listRequiredPolicyAuthoringPresentationBehaviors() {
@@ -286,6 +572,24 @@ function validatePolicyAuthoringPresentationTestRecord(record = {}) {
     }
   }
 
+  if (typeof candidate.normalPath !== 'boolean') {
+    issues.push({
+      riskId: POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.INVALID_NORMAL_PATH_FLAG,
+      filePath: candidate.filePath || null,
+      message: 'Presentation test records must explicitly state whether they cover the normal authoring path.',
+    });
+  }
+
+  if (candidate.normalPath === true &&
+      candidate.coverageOwnerId !== POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING) {
+    issues.push({
+      riskId: POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.NON_AUTHORING_OWNER_IN_NORMAL_PATH,
+      filePath: candidate.filePath || null,
+      coverageOwnerId: candidate.coverageOwnerId || null,
+      message: 'Compatibility, bridge, and verifier owners cannot define the normal authoring path.',
+    });
+  }
+
   if (candidate.categoryId?.startsWith('protect_') && requiredBehaviorIds.length === 0) {
     issues.push({
       riskId: POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.MISSING_PROTECTED_BEHAVIOR,
@@ -343,6 +647,99 @@ function validatePolicyAuthoringPresentationTestRecord(record = {}) {
   };
 }
 
+function findDuplicateFilePaths(records) {
+  const seen = new Set();
+  const duplicates = new Set();
+
+  for (const record of asArray(records)) {
+    const filePath = cleanString(record?.filePath);
+
+    if (!filePath) {
+      continue;
+    }
+
+    if (seen.has(filePath)) {
+      duplicates.add(filePath);
+    }
+
+    seen.add(filePath);
+  }
+
+  return [...duplicates];
+}
+
+function buildPolicyAuthoringPresentationTestInventoryAudit(
+  records = POLICY_AUTHORING_PRESENTATION_TEST_RECORDS,
+  inventoryFilePaths = POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS,
+  exclusions = POLICY_AUTHORING_PRESENTATION_TEST_EXCLUSION_RECORDS
+) {
+  const candidates = asArray(records);
+  const expectedFilePaths = asArray(inventoryFilePaths).map(cleanString).filter(Boolean);
+  const expectedFilePathSet = new Set(expectedFilePaths);
+  const classifiedFilePathSet = new Set(
+    candidates.map(record => cleanString(record?.filePath)).filter(Boolean)
+  );
+  const issues = [];
+
+  for (const filePath of findDuplicateFilePaths(candidates)) {
+    issues.push({
+      riskId: POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.DUPLICATE_INVENTORY_CLASSIFICATION,
+      filePath,
+      message: 'Each in-scope presentation test file must have one classification record.',
+    });
+  }
+
+  for (const filePath of expectedFilePaths) {
+    if (!classifiedFilePathSet.has(filePath)) {
+      issues.push({
+        riskId: POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.MISSING_INVENTORY_CLASSIFICATION,
+        filePath,
+        message: 'Every in-scope presentation test file must have a durable classification.',
+      });
+    }
+  }
+
+  for (const filePath of classifiedFilePathSet) {
+    if (!expectedFilePathSet.has(filePath)) {
+      issues.push({
+        riskId: POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.CLASSIFICATION_OUTSIDE_INVENTORY,
+        filePath,
+        message: 'Presentation test records must be added to the bounded inventory before they can define workflow coverage.',
+      });
+    }
+  }
+
+  for (const exclusion of asArray(exclusions)) {
+    const filePath = cleanString(exclusion?.filePath);
+    const rationale = cleanString(exclusion?.rationale);
+
+    if (!filePath || !rationale) {
+      issues.push({
+        riskId: POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.INVALID_EXCLUSION,
+        filePath: filePath || null,
+        message: 'Presentation-test exclusions must identify the excluded file and why it is outside authoring scope.',
+      });
+      continue;
+    }
+
+    if (expectedFilePathSet.has(filePath) || classifiedFilePathSet.has(filePath)) {
+      issues.push({
+        riskId: POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.EXCLUDED_FILE_IS_CLASSIFIED,
+        filePath,
+        message: 'An excluded test file cannot also be classified as policy-authoring presentation coverage.',
+      });
+    }
+  }
+
+  return {
+    ok: issues.length === 0,
+    checkedRecordCount: candidates.length,
+    inventoryFilePathCount: expectedFilePaths.length,
+    exclusionCount: asArray(exclusions).length,
+    issues,
+  };
+}
+
 function buildPolicyAuthoringPresentationTestAudit(records = POLICY_AUTHORING_PRESENTATION_TEST_RECORDS) {
   const candidates = Array.isArray(records) ? records : [];
   const results = candidates.map(record => validatePolicyAuthoringPresentationTestRecord(record));
@@ -360,12 +757,17 @@ function buildPolicyAuthoringPresentationTestAudit(records = POLICY_AUTHORING_PR
     });
   }
 
+  const inventoryAudit = buildPolicyAuthoringPresentationTestInventoryAudit(candidates);
+  issues.push(...inventoryAudit.issues);
+
   return {
     ok: issues.length === 0,
     checkedRecordCount: results.length,
     requiredBehaviorCount: REQUIRED_POLICY_AUTHORING_PRESENTATION_BEHAVIORS.length,
     coveredBehaviorIds: [...coveredBehaviorIds],
     missingRequiredBehaviorIds,
+    inventoryFilePathCount: inventoryAudit.inventoryFilePathCount,
+    exclusionCount: inventoryAudit.exclusionCount,
     issueCount: issues.length,
     results,
     issues,
@@ -381,6 +783,8 @@ function summarizePolicyAuthoringPresentationTests() {
   return {
     recordCount: POLICY_AUTHORING_PRESENTATION_TEST_RECORDS.length,
     requiredBehaviorCount: REQUIRED_POLICY_AUTHORING_PRESENTATION_BEHAVIORS.length,
+    inventoryFilePathCount: POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS.length,
+    exclusionCount: POLICY_AUTHORING_PRESENTATION_TEST_EXCLUSION_RECORDS.length,
     countsByCategory,
     normalPathRecordCount: POLICY_AUTHORING_PRESENTATION_TEST_RECORDS
       .filter(record => record.normalPath).length,
@@ -392,13 +796,18 @@ function summarizePolicyAuthoringPresentationTests() {
 export {
   POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS,
   POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS,
+  POLICY_AUTHORING_PRESENTATION_TEST_EXCLUSION_RECORDS,
+  POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS,
   POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS,
   POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS,
   buildPolicyAuthoringPresentationTestAudit,
+  buildPolicyAuthoringPresentationTestInventoryAudit,
   getPolicyAuthoringPresentationTestRecord,
   getRequiredPolicyAuthoringPresentationBehavior,
   includesInternalPresentationLanguage,
   listPolicyAuthoringPresentationTestRecords,
+  listPolicyAuthoringPresentationTestExclusionRecords,
+  listPolicyAuthoringPresentationTestInventoryFilePaths,
   listRequiredPolicyAuthoringPresentationBehaviors,
   summarizePolicyAuthoringPresentationTests,
   validatePolicyAuthoringPresentationTestRecord,

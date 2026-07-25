@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Policy Authoring Test Cutline** - policy-authoring presentation coverage
+  now has a complete bounded inventory with clear workflow, compatibility,
+  draft-bridge, and verifier ownership. The audit rejects missing or duplicate
+  classifications, undocumented scope changes, invalid exclusions, and
+  compatibility or verifier coverage appearing in the normal authoring path.
+
 - **Predictable Keyboard Recovery Flow** - policy-authoring modals now keep
   keyboard focus contained and restore it after normal close. Library evidence
   refresh, retry, and sync actions retain a logical focus target after their

@@ -1,12 +1,27 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
+ */
+
+import { readdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import {
   POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS,
   POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS,
+  POLICY_AUTHORING_PRESENTATION_TEST_EXCLUSION_RECORDS,
+  POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS,
   POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS,
   POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS,
   buildPolicyAuthoringPresentationTestAudit,
+  buildPolicyAuthoringPresentationTestInventoryAudit,
   getPolicyAuthoringPresentationTestRecord,
   getRequiredPolicyAuthoringPresentationBehavior,
   includesInternalPresentationLanguage,
+  listPolicyAuthoringPresentationTestExclusionRecords,
+  listPolicyAuthoringPresentationTestInventoryFilePaths,
   listPolicyAuthoringPresentationTestRecords,
   listRequiredPolicyAuthoringPresentationBehaviors,
   summarizePolicyAuthoringPresentationTests,
@@ -14,20 +29,22 @@ import {
 } from '../../services/policyAuthoringPresentationTests.mjs';
 
 describe('policyAuthoringPresentationTests', () => {
-  test('categorizes current policy-builder presentation tests by reset action', () => {
-    expect(listPolicyAuthoringPresentationTestRecords().map(record => record.filePath)).toEqual([
-      'client/src/__tests__/PolicyBuilderModal.test.js',
-      'client/src/__tests__/PolicyBuilderLibraryContext.test.js',
-      'client/src/__tests__/PolicyStarterTemplateBrowser.test.js',
-      'client/src/__tests__/PolicyStarterTemplateAccelerator.test.js',
-      'client/src/__tests__/PolicyIntentGenreControl.test.js',
-      'client/src/__tests__/PolicyIntentOptionSelect.test.js',
-      'client/src/__tests__/PolicyIntentChip.test.js',
-      'client/src/__tests__/PolicyIntentCertificationControl.test.js',
-      'client/src/__tests__/PolicyIntentReadinessSummary.test.js',
-      'client/src/__tests__/PolicyIntentEditorParity.test.js',
-      'client/src/__tests__/composables/usePolicyIntentDraft.test.js',
-    ]);
+  test('classifies every in-scope presentation test once and documents adjacent policy test exclusions', async () => {
+    const testDirectory = resolve(import.meta.dirname, '../../../..', 'client/src/__tests__');
+    const directPolicyTestPaths = (await readdir(testDirectory))
+      .filter(fileName => /^Policy.*\.test\.js$/.test(fileName))
+      .map(fileName => `client/src/__tests__/${fileName}`)
+      .sort();
+    const documentedPolicyTestPaths = [
+      ...listPolicyAuthoringPresentationTestInventoryFilePaths().filter(filePath => !filePath.includes('/composables/') && !filePath.includes('/utils/')),
+      ...listPolicyAuthoringPresentationTestExclusionRecords().map(record => record.filePath),
+    ].sort();
+
+    expect(listPolicyAuthoringPresentationTestRecords().map(record => record.filePath).sort())
+      .toEqual([...POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS].sort());
+    expect(documentedPolicyTestPaths).toEqual(directPolicyTestPaths);
+    expect(listPolicyAuthoringPresentationTestExclusionRecords())
+      .toEqual(POLICY_AUTHORING_PRESENTATION_TEST_EXCLUSION_RECORDS);
   });
 
   test('defines required presentation behaviors from the policy authoring roadmap', () => {
@@ -55,7 +72,7 @@ describe('policyAuthoringPresentationTests', () => {
     const ownerIds = Object.values(POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS);
 
     expect(listPolicyAuthoringPresentationTestRecords().map(record => record.coverageOwnerId))
-      .not.toContain(POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER);
+      .toContain(POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER);
     listPolicyAuthoringPresentationTestRecords().forEach(record => {
       expect(ownerIds).toContain(record.coverageOwnerId);
       expect(record.coverageOwnerId).not.toMatch(/^\d+R$/);
@@ -76,6 +93,8 @@ describe('policyAuthoringPresentationTests', () => {
       ok: true,
       checkedRecordCount: listPolicyAuthoringPresentationTestRecords().length,
       requiredBehaviorCount: listRequiredPolicyAuthoringPresentationBehaviors().length,
+      inventoryFilePathCount: listPolicyAuthoringPresentationTestInventoryFilePaths().length,
+      exclusionCount: listPolicyAuthoringPresentationTestExclusionRecords().length,
       missingRequiredBehaviorIds: [],
       issueCount: 0,
     }));
@@ -119,6 +138,8 @@ describe('policyAuthoringPresentationTests', () => {
 
     expect(diagnosticResult.issues.map(issue => issue.riskId))
       .toContain(POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.NORMAL_PATH_DIAGNOSTIC_TEST);
+    expect(diagnosticResult.issues.map(issue => issue.riskId))
+      .toContain(POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.NON_AUTHORING_OWNER_IN_NORMAL_PATH);
 
     const draftResult = validatePolicyAuthoringPresentationTestRecord({
       ...getPolicyAuthoringPresentationTestRecord('client/src/__tests__/PolicyIntentEditorParity.test.js'),
@@ -148,20 +169,54 @@ describe('policyAuthoringPresentationTests', () => {
     expect(summarizePolicyAuthoringPresentationTests()).toEqual(expect.objectContaining({
       recordCount: listPolicyAuthoringPresentationTestRecords().length,
       requiredBehaviorCount: listRequiredPolicyAuthoringPresentationBehaviors().length,
-      normalPathRecordCount: 9,
-      draftBridgeOwnedRecordCount: 2,
+      inventoryFilePathCount: listPolicyAuthoringPresentationTestInventoryFilePaths().length,
+      exclusionCount: listPolicyAuthoringPresentationTestExclusionRecords().length,
+      normalPathRecordCount: 23,
+      draftBridgeOwnedRecordCount: 6,
       countsByCategory: expect.objectContaining({
-        [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE]: 2,
+        [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE]: 6,
       }),
     }));
   });
 
+  test('fails incomplete, duplicate, out-of-scope, and invalid inventory classifications', () => {
+    const records = listPolicyAuthoringPresentationTestRecords();
+    const oneRecord = records[0];
+    const result = buildPolicyAuthoringPresentationTestInventoryAudit(
+      [
+        ...records.slice(1),
+        oneRecord,
+        oneRecord,
+        { ...oneRecord, filePath: 'client/src/__tests__/UnexpectedPolicyTest.test.js' },
+      ],
+      [...listPolicyAuthoringPresentationTestInventoryFilePaths(), 'client/src/__tests__/MissingPolicyTest.test.js'],
+      [
+        ...listPolicyAuthoringPresentationTestExclusionRecords(),
+        { filePath: oneRecord.filePath, rationale: 'Invalid overlap.' },
+        { filePath: '', rationale: '' },
+      ]
+    );
+
+    expect(result.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
+      POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.MISSING_INVENTORY_CLASSIFICATION,
+      POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.DUPLICATE_INVENTORY_CLASSIFICATION,
+      POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.CLASSIFICATION_OUTSIDE_INVENTORY,
+      POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.EXCLUDED_FILE_IS_CLASSIFIED,
+      POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.INVALID_EXCLUSION,
+    ]));
+  });
+
   test('exposes immutable records and returns null for unknown lookups', () => {
     const records = listPolicyAuthoringPresentationTestRecords();
+    const inventoryFilePaths = listPolicyAuthoringPresentationTestInventoryFilePaths();
+    const exclusions = listPolicyAuthoringPresentationTestExclusionRecords();
     const behaviors = listRequiredPolicyAuthoringPresentationBehaviors();
 
     expect(Object.isFrozen(records)).toBe(true);
     expect(Object.isFrozen(records[0])).toBe(true);
+    expect(Object.isFrozen(inventoryFilePaths)).toBe(true);
+    expect(Object.isFrozen(exclusions)).toBe(true);
+    expect(Object.isFrozen(exclusions[0])).toBe(true);
     expect(Object.isFrozen(behaviors)).toBe(true);
     expect(Object.isFrozen(behaviors[0])).toBe(true);
     expect(getPolicyAuthoringPresentationTestRecord('unknown')).toBeNull();
