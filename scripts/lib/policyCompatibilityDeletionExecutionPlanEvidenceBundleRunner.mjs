@@ -150,6 +150,10 @@ function buildExecutionEvidenceInput(input = {}) {
     'convertedPolicies',
     'unconvertedPolicy',
     'unconvertedPolicies',
+    'rollbackAvailable',
+    'legacyDeletionBlocked',
+    'supportDiagnosticsSafe',
+    'supportStanceId',
   ]);
 
   return Object.fromEntries(

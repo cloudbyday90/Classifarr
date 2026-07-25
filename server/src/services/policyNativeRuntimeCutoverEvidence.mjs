@@ -22,6 +22,9 @@ import {
 import {
   buildPolicyNativeRuntimeCutoverVerification,
 } from './policyNativeRuntimeCutoverVerification.mjs';
+import {
+  loadPolicyNativeRuntimeRecoveryEvidence,
+} from './policyNativeRuntimeRecoveryEvidence.mjs';
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -56,24 +59,41 @@ async function loadEnabledPolicyNativeRuntimeReadModels(dbClient) {
 async function loadPolicyNativeRuntimeCutoverVerification(
   dbClient,
   {
-    rollbackAvailable = false,
-    legacyDeletionBlocked = true,
-    supportDiagnosticsSafe = true,
     generatedAt = null,
   } = {}
 ) {
-  const policies = await loadEnabledPolicyNativeRuntimeReadModels(dbClient);
+  const [policies, recoveryEvidence] = await Promise.all([
+    loadEnabledPolicyNativeRuntimeReadModels(dbClient),
+    loadPolicyNativeRuntimeRecoveryEvidence(dbClient, { generatedAt }),
+  ]);
   const convertedPolicies = policies.filter(hasAuthoritativeNativeIntent);
   const unconvertedPolicies = policies.filter(policy => !hasAuthoritativeNativeIntent(policy));
 
-  return buildPolicyNativeRuntimeCutoverVerification({
+  const verification = buildPolicyNativeRuntimeCutoverVerification({
     convertedPolicies,
     unconvertedPolicies,
-    rollbackAvailable,
-    legacyDeletionBlocked,
-    supportDiagnosticsSafe,
+    rollbackAvailable: recoveryEvidence.rollbackAvailable,
+    legacyDeletionBlocked: true,
+    supportDiagnosticsSafe: true,
     generatedAt,
   });
+
+  return {
+    ...verification,
+    recoveryEvidence: {
+      version: recoveryEvidence.version,
+      statusId: recoveryEvidence.statusId,
+      generatedAt: recoveryEvidence.generatedAt,
+      rollbackAvailable: recoveryEvidence.rollbackAvailable,
+      validationOk: recoveryEvidence.validation?.ok === true,
+      assessedNativePolicyCount:
+        recoveryEvidence.recovery?.assessedNativePolicyCount ?? null,
+      unavailablePolicyCount:
+        recoveryEvidence.recovery?.unavailablePolicyCount ?? null,
+      sampleUnavailablePolicyIds:
+        recoveryEvidence.recovery?.sampleUnavailablePolicyIds ?? [],
+    },
+  };
 }
 
 export {

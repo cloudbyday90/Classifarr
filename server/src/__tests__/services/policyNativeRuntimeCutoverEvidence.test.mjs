@@ -62,6 +62,18 @@ function createDbClient() {
     async query(query) {
       queries.push(query);
 
+      if (query.includes('WITH active_intent_counts')) {
+        return {
+          rows: [{
+            policy_id: 14,
+            native_intent_id: 501,
+            rollback_snapshot_id: 901,
+            rollback_payload_redacted: false,
+            rollback_restored_at: null,
+            rollback_expires_at: '2026-08-01T12:00:00.000Z',
+          }],
+        };
+      }
       if (query.includes('FROM library_policies policy')) {
         return { rows: [policy(), policy({ id: 15, name: 'Unconverted Policy' })] };
       }
@@ -115,9 +127,9 @@ describe('policyNativeRuntimeCutoverEvidence', () => {
   test('verifies every enabled policy from database rows without exposing policy names', async () => {
     const dbClient = createDbClient();
     const verification = await loadPolicyNativeRuntimeCutoverVerification(dbClient, {
-      rollbackAvailable: true,
-      legacyDeletionBlocked: true,
-      supportDiagnosticsSafe: true,
+      rollbackAvailable: false,
+      legacyDeletionBlocked: false,
+      supportDiagnosticsSafe: false,
       generatedAt: '2026-07-25T12:00:00.000Z',
     });
 
@@ -132,6 +144,15 @@ describe('policyNativeRuntimeCutoverEvidence', () => {
       assessedPolicyCount: 1,
       invalidPolicyCount: 0,
       sourceId: 'compatibility_bridge',
+    }));
+    expect(verification).toEqual(expect.objectContaining({
+      rollbackAvailable: true,
+      legacyDeletionBlocked: true,
+      supportDiagnosticsSafe: true,
+      recoveryEvidence: expect.objectContaining({
+        rollbackAvailable: true,
+        assessedNativePolicyCount: 1,
+      }),
     }));
     expect(JSON.stringify(verification)).not.toContain('Animated Movies');
     expect(JSON.stringify(verification)).not.toContain('Animated Policy');

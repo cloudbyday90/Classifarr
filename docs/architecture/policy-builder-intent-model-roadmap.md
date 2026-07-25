@@ -6771,6 +6771,15 @@ Implementation status:
   handoff summaries still agree. Source freshness remains owned by the
   bounded Phase 8R.15 evidence bundle rather than a caller-supplied readiness
   report.
+- **8R.14c Database-Owned Runtime Recovery Evidence** - native runtime cutover
+  now derives rollback availability from the latest persisted snapshot linked
+  to each enabled authoritative native intent. Collection is bounded to the
+  existing read-only repeatable-read evidence window and returns only status,
+  aggregate counts, and bounded numeric policy-ID samples. Caller-supplied
+  rollback, compatibility-deletion, and support safety claims are ignored;
+  compatibility-code deletion remains separately fail-closed pending explicit
+  release evidence. The design and implementation outcome are documented in
+  [Policy Native Runtime Recovery Evidence](policy-native-runtime-recovery-evidence.md).
 
 ### 8R.15 Compatibility Path Deletion Execution Plan
 

@@ -105,6 +105,13 @@ Deletion readiness requires:
 - bounded support diagnostics,
 - deletion manifest approval.
 
+This remains a deletion-specific control. Native runtime cutover separately
+derives each converted policy's rollback availability from its current linked
+rollback snapshot in the database. That automated runtime evidence does not
+replace the backup/restore, release-support, or manifest evidence required
+before compatibility code could be removed. See
+[Policy Native Runtime Recovery Evidence](policy-native-runtime-recovery-evidence.md).
+
 Pros:
 
 - keeps recovery proof ahead of deletion,
@@ -146,12 +153,15 @@ Use this stack:
    deletion gates and coverage.
 2. `policyCompatibilityDeletionCurrentInventory.mjs` measures whether every
    enabled policy has one valid active native intent.
-3. `policyNativeRuntimeCutoverVerification.mjs` proves converted
-   and unconverted runtime read behavior.
-4. `policyCompatibilityDeletionReadiness.mjs` composes all three
+3. `policyNativeRuntimeRecoveryEvidence.mjs` proves that each active native
+   policy has a currently usable, bounded rollback record without exposing the
+   snapshot payload.
+4. `policyNativeRuntimeCutoverVerification.mjs` proves converted
+   and unconverted runtime read behavior using that recovery result.
+5. `policyCompatibilityDeletionReadiness.mjs` composes the prior evidence
    outputs with residual-reference and safety confirmations, then revalidates
    serialized summaries before they can claim readiness.
-5. A later component should create an execution manifest from a fresh,
+6. A later component should create an execution manifest from a fresh,
    coherent evidence bundle before any
    compatibility path is removed.
 

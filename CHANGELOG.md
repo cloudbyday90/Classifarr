@@ -1000,6 +1000,12 @@ unchanged operator or runtime outcome.
   compatibility runtime read within one read-only repeatable-read snapshot.
   Operator input can no longer manufacture converted or unconverted policy
   samples, and the bounded report omits policy names and raw payloads.
+- **Database-Owned Native Rollback Evidence** - native runtime cutover now
+  derives recovery availability from the current rollback snapshot linked to
+  each active authoritative native intent. Caller-supplied rollback, deletion,
+  and support safety claims are ignored; output remains bounded and omits
+  snapshot payloads, names, and paths while compatibility-code deletion stays
+  fail-closed pending its separate release evidence.
 - **Policy Authoring Model** - routine policy work now prioritizes destination
   meaning, observed library evidence, constraints, review behavior, and routing
   readiness. Scoring, provider state, metadata coverage, and migration analysis

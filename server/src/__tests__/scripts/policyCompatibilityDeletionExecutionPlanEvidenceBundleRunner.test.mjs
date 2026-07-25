@@ -24,6 +24,7 @@ import { jest } from '@jest/globals';
 
 import {
   POLICY_COMPATIBILITY_DELETION_EVIDENCE_CLI_EXIT_CODES,
+  buildExecutionEvidenceInput,
   runPolicyCompatibilityDeletionExecutionPlanEvidenceBundleCli,
 } from '../../../../scripts/lib/policyCompatibilityDeletionExecutionPlanEvidenceBundleRunner.mjs';
 
@@ -105,6 +106,16 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundleRunner', () => {
     expect(stdout).toEqual([JSON.stringify(evidenceBundle, null, 2)]);
     expect(stderr).toEqual([]);
     expect(closeDatabasePool).toHaveBeenCalledWith(database);
+  });
+
+  test('removes caller-supplied recovery and support-gate claims before collection', () => {
+    expect(buildExecutionEvidenceInput({
+      rollbackAvailable: true,
+      legacyDeletionBlocked: false,
+      supportDiagnosticsSafe: false,
+      supportStanceId: 'unsupported_after_window',
+      backupRestoreVerified: true,
+    })).toEqual({ backupRestoreVerified: true });
   });
 
   test('writes a blocked diagnostic but exits non-zero only when readiness is required', async () => {

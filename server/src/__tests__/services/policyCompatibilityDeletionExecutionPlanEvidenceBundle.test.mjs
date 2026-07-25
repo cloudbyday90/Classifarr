@@ -127,6 +127,18 @@ function createLiveRuntimeEvidenceDbClient() {
       if (query === 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY') {
         return { rows: [] };
       }
+      if (query.includes('WITH active_intent_counts')) {
+        return {
+          rows: [{
+            policy_id: 14,
+            native_intent_id: 501,
+            rollback_snapshot_id: 901,
+            rollback_payload_redacted: false,
+            rollback_restored_at: null,
+            rollback_expires_at: '2026-08-01T12:00:00.000Z',
+          }],
+        };
+      }
       if (query.includes('WITH active_intents')) {
         return { rows: [authoritativePolicy()] };
       }
@@ -340,25 +352,14 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
   });
 
   test('collects the live enabled-policy inventory and derives gate counts from it', async () => {
-    const transactionClient = {
-      query: jest.fn(async query => ({
-        rows: query.includes('WHERE policy.enabled = TRUE')
-          ? [authoritativePolicy()]
-          : [{ requires_maintenance_state_count: 0 }],
-      })),
-    };
+    const transactionClient = createLiveRuntimeEvidenceDbClient();
     const dbClient = {
       query: jest.fn(),
       withTransaction: jest.fn(async callback => callback(transactionClient)),
     };
 
     const bundle = await loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClient, {
-      convertedPolicy: nativePolicy(),
-      unconvertedPolicy: policy({ id: 15 }),
-      rollbackAvailable: true,
       coverage: buildCompleteCoverage(),
-      supportStanceId:
-        POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
       backupRestoreVerified: true,
       rollbackSupportVerified: true,
       supportDiagnosticsVerified: true,
@@ -369,8 +370,10 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
     expect(transactionClient.query).toHaveBeenCalledWith(
       expect.stringContaining('WHERE policy.enabled = TRUE')
     );
-    expect(bundle.statusId)
-      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS.READY);
+    expect(bundle.statusId).toBe(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS
+        .BLOCKED_BY_DELETION_GATES
+    );
     expect(bundle.deletionGatePlan.unconvertedPolicyCount)
       .toBe(bundle.evidence.currentPolicyInventory.unconvertedPolicyCount);
     expect(bundle.deletionGatePlan.requiresMaintenanceStateCount)
@@ -385,31 +388,14 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
   });
 
   test('collects both database inventories in one read-only repeatable-read transaction', async () => {
-    const transactionClient = {
-      query: jest.fn(async query => {
-        if (query === 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY') {
-          return { rows: [] };
-        }
-
-        return {
-          rows: query.includes('WHERE policy.enabled = TRUE')
-            ? [authoritativePolicy()]
-            : [{ requires_maintenance_state_count: 0 }],
-        };
-      }),
-    };
+    const transactionClient = createLiveRuntimeEvidenceDbClient();
     const dbClient = {
       query: jest.fn(),
       withTransaction: jest.fn(async callback => callback(transactionClient)),
     };
 
     const bundle = await loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClient, {
-      convertedPolicy: nativePolicy(),
-      unconvertedPolicy: policy({ id: 15 }),
-      rollbackAvailable: true,
       coverage: buildCompleteCoverage(),
-      supportStanceId:
-        POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
       backupRestoreVerified: true,
       rollbackSupportVerified: true,
       supportDiagnosticsVerified: true,
@@ -423,10 +409,10 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
       'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY'
     );
     expect(dbClient.query).not.toHaveBeenCalled();
-    expect(bundle.readyForExecutionPlan).toBe(true);
+    expect(bundle.readyForExecutionPlan).toBe(false);
   });
 
-  test('derives runtime cutover evidence from the transaction snapshot instead of caller samples', async () => {
+  test('derives runtime recovery evidence from the transaction snapshot and ignores caller safety flags', async () => {
     const transactionClient = createLiveRuntimeEvidenceDbClient();
     const dbClient = {
       query: jest.fn(),
@@ -436,7 +422,9 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
     const bundle = await loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClient, {
       convertedPolicy: policy({ id: 99 }),
       unconvertedPolicy: policy({ id: 100 }),
-      rollbackAvailable: true,
+      rollbackAvailable: false,
+      legacyDeletionBlocked: false,
+      supportDiagnosticsSafe: false,
       coverage: buildCompleteCoverage(),
       supportStanceId:
         POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.UNSUPPORTED_AFTER_WINDOW,
@@ -447,14 +435,20 @@ describe('policyCompatibilityDeletionExecutionPlanEvidenceBundle', () => {
       now: COLLECTION_TIME,
     });
 
-    expect(bundle.statusId)
-      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS.READY);
+    expect(bundle.statusId).toBe(
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_EVIDENCE_BUNDLE_STATUS_IDS
+        .BLOCKED_BY_DELETION_GATES
+    );
     expect(bundle.evidence.cutoverVerification).toEqual(expect.objectContaining({
       convertedReadAssessedPolicyCount: 1,
       convertedReadInvalidPolicyCount: 0,
       unconvertedReadAssessedPolicyCount: 0,
       unconvertedReadInvalidPolicyCount: 0,
     }));
+    expect(bundle.evidence.cutoverVerification.statusId)
+      .toBe('ready_for_cutover_monitoring');
+    expect(bundle.deletionGatePlan.supportStanceId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.BLOCK_DELETION);
     expect(transactionClient.query).toHaveBeenCalledWith(
       expect.stringContaining('FROM library_policies policy')
     );

@@ -17,6 +17,7 @@
  */
 
 import {
+  POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS,
   POLICY_COMPATIBILITY_DELETION_GATES_VERSION,
   POLICY_COMPATIBILITY_DELETION_STATUS_IDS,
   buildPolicyCompatibilityDeletionGates,
@@ -771,13 +772,9 @@ function validatePolicyCompatibilityDeletionExecutionPlanEvidenceBundle(bundle =
 }
 
 async function loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClient, {
-  rollbackAvailable = false,
-  legacyDeletionBlocked = true,
-  supportDiagnosticsSafe = true,
   compatibilityModules = undefined,
   compatibilityDeletionGates = undefined,
   coverage = {},
-  supportStanceId = undefined,
   residualCompatibilityReferences = [],
   backupRestoreVerified = false,
   rollbackSupportVerified = false,
@@ -810,9 +807,6 @@ async function loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClie
         generatedAt: collectionTimestamp,
       });
     const cutoverVerification = await loadPolicyNativeRuntimeCutoverVerification(client, {
-      rollbackAvailable,
-      legacyDeletionBlocked,
-      supportDiagnosticsSafe,
       generatedAt: collectionTimestamp,
     });
 
@@ -839,7 +833,7 @@ async function loadPolicyCompatibilityDeletionExecutionPlanEvidenceBundle(dbClie
       currentPolicyInventory.policyCounts?.unconvertedPolicyCount ?? null,
     requiresMaintenanceStateCount:
       reconciliationStateInventory.requiresMaintenanceStateCount ?? null,
-    supportStanceId,
+    supportStanceId: POLICY_COMPATIBILITY_DELETION_SUPPORT_STANCE_IDS.BLOCK_DELETION,
     generatedAt: collectionTimestamp,
   });
 
