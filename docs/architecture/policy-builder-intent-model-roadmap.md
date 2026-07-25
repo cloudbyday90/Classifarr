@@ -4546,9 +4546,10 @@ Implementation status:
   and missing-mapping outcomes retain their validated route state when they pass
   through the learning guard; neither event can claim direct learning or a
   policy write.
-- Current implementation normalizes four runtime event types:
-  `user_requested_destination`, `operator_manual_destination_change`,
-  `route_succeeded`, and `route_failed_missing_mapping`.
+- Current implementation normalizes five runtime event types:
+  `user_requested_destination`, `operator_confirmed_destination`,
+  `operator_manual_destination_change`, `route_succeeded`, and
+  `route_failed_missing_mapping`.
 - Destination selection is recorded separately from final outcome so request
   preference, operator change, and routed result cannot be conflated.
 - Request-time and manual decisions are passed through the policy learning
@@ -4585,16 +4586,17 @@ Implementation status:
   admit it. The endpoint no longer accepts caller-controlled audit actors or
   reinforces broad metadata patterns from one correction. Its design record is
   [Policy Manual-Correction Learning Admission](policy-manual-correction-learning-admission.md).
-- Discord pending-item answers now resolve through the authoritative policy
-  resolver with legacy rule generation disabled. The runtime adapter in
-  `policyDiscordPendingAnswerLearning.mjs` validates the persisted normalized
-  question, its complete question-reduction fingerprint chain, and the selected
-  allowlisted outcome before it evaluates the learning guard. Legacy, stale, or
-  fingerprint-drifted questions remain outcome-only; Discord labels, identities,
-  and interaction metadata cannot create exact-item or broad policy evidence.
-  Resolver failures now stop with a retry-safe response instead of using the
-  former direct SQL and pattern-extraction fallback. Its design record is
-  [Policy Discord Pending-Answer Learning Admission](policy-discord-pending-answer-learning-admission.md).
+- Native pending-item answers now resolve through the authoritative policy
+  resolver with legacy rule generation disabled. Before browser or Discord
+  routing can begin, `policyNativePendingResolutionProvenance.mjs` validates the
+  persisted normalized question, selected allowlisted outcome, alternate
+  destination binding, and complete question-reduction fingerprint chain. It
+  records the bounded selection as a separate request-time transition and passes
+  it through the learning guard. Current outcomes remain outcome-only; Discord
+  labels, identities, and interaction metadata cannot create exact-item or broad
+  policy evidence. Malformed native selections fail retry-safe rather than using
+  a legacy fallback. Its design record is [Policy Native Pending-Resolution
+  Provenance](policy-native-pending-resolution-provenance.md).
 - Valid native `create_operator_question` plans now pass through
   `policyRuntimeQuestionPersistenceAdmission.mjs` immediately before the
   existing classification persistence call. It re-audits the native handoff,
@@ -4614,6 +4616,13 @@ Implementation status:
   explains that alternate destinations must be chosen in Classifarr instead of
   reusing the legacy correction workflow. The design record is [Policy Native
   Pending-Question Presentation](policy-native-pending-question-presentation.md).
+- Native pending resolutions now append a bounded
+  `native_pending_resolution` transition before the existing `resolved`
+  transition. The transition distinguishes a suggested destination from an
+  operator confirmation or explicit alternate destination, carries only the
+  normalized outcome and guarded request-time summary, and never claims that
+  routing succeeded. The Discord-specific post-route guard adapter was removed
+  so browser and Discord share this one resolver-owned provenance boundary.
 - Request-time learning decisions now preserve the upstream sanitized evidence
   fingerprint through the decision, bounded learning-guard context, and trace;
   validation rejects missing or mismatched fingerprint handoffs.

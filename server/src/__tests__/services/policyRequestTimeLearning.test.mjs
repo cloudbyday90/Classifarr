@@ -474,7 +474,7 @@ describe('policyRequestTimeLearning', () => {
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
-    expect(audit.checkedEventTypeCount).toBe(4);
+    expect(audit.checkedEventTypeCount).toBe(5);
     expect(audit.nextStep).toEqual(expect.objectContaining({
       stepId: 'library_policy_rebuild',
       label: 'Library-Derived Policy Rebuild',

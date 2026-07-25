@@ -2,6 +2,7 @@ const POLICY_REQUEST_TIME_EVENT_VERSION = 'policy.request_time_event.v1';
 
 const POLICY_REQUEST_EVENT_TYPE_IDS = Object.freeze({
   USER_REQUESTED_DESTINATION: 'user_requested_destination',
+  OPERATOR_CONFIRMED_DESTINATION: 'operator_confirmed_destination',
   OPERATOR_MANUAL_DESTINATION_CHANGE: 'operator_manual_destination_change',
   ROUTE_SUCCEEDED: 'route_succeeded',
   ROUTE_FAILED_MISSING_MAPPING: 'route_failed_missing_mapping',

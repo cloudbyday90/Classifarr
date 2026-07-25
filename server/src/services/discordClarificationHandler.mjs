@@ -13,7 +13,6 @@ import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
 import * as notificationBuilder from './discordNotificationBuilder.mjs';
 import { routeAfterClarification } from './discordPatternExtractionService.mjs';
-import { policyDiscordPendingAnswerLearningService } from './policyDiscordPendingAnswerLearning.mjs';
 import { buildNativePendingQuestionPresentation } from './policyNativePendingQuestionPresentation.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 
@@ -46,6 +45,7 @@ export async function processClarificationResponse(
     let libraryId = classification.library_id;
     let routingOutcome = { routed: false, reason: null, error: null };
     let policyQuestion = null;
+    let nativeResolutionProvenance = null;
 
     if (classification.policy_question) {
       policyQuestion =
@@ -115,6 +115,7 @@ export async function processClarificationResponse(
       if (resolveResult.shouldRoute) {
         routingOutcome = await routeAfterClarification(classificationId);
       }
+      nativeResolutionProvenance = resolveResult.nativeResolutionProvenance || null;
     } catch (resolveError) {
       if (resolveError?.statusCode === 404) {
         await interaction.followUp({
@@ -169,27 +170,16 @@ export async function processClarificationResponse(
       libraryName = libResult.rows[0]?.name || selectedLabel;
     }
 
-    const learningResult = policyDiscordPendingAnswerLearningService.build({
-      classification: {
-        id: classification.id,
-      },
-      destination: {
-        libraryId,
-        libraryName,
-      },
-      persistedQuestion: policyQuestion || {},
-      selectedOptionIndex: optionIndex,
-      finalOutcomeRecorded: true,
-    });
-
-    logger.info('Discord pending answer evaluated for guarded learning', {
-      classificationId,
-      statusId: learningResult.statusId,
-      selectedAnswerOutcomeId: learningResult.selectedAnswerOutcomeId,
-      learningDecisionId: learningResult.decision.learning.decisionId,
-      learningTierId: learningResult.decision.learning.tierId,
-      reasonCodes: learningResult.reasonCodes,
-    });
+    if (nativeResolutionProvenance) {
+      logger.info('Discord native pending resolution provenance recorded before routing', {
+        classificationId,
+        statusId: nativeResolutionProvenance.statusId,
+        eventTypeId: nativeResolutionProvenance.selection?.eventTypeId || null,
+        selectedOutcomeId: nativeResolutionProvenance.selection?.selectedOutcomeId || null,
+        learningDecisionId: nativeResolutionProvenance.learningGuard?.decisionId || null,
+        reasonCodes: nativeResolutionProvenance.reasonCodes || [],
+      });
+    }
 
     const routingStatusText = routingOutcome.routed
       ? `\u2705 Routed to ${libraryName}`

@@ -136,10 +136,11 @@ Cons:
    classification persistence call and returns a bounded admission summary.
 4. `classificationPersistenceService.mjs` persists the pending row and sends
    existing app and Discord notifications.
-5. `clarificationPolicyResolution.mjs` records the final outcome while forcing
-   native envelopes to stay outcome-only.
-6. `policyDiscordPendingAnswerLearning.mjs` validates the normalized question
-   proof while preserving its no-learning decision.
+5. `policyNativePendingResolutionProvenance.mjs` validates the normalized
+   selection and request-time proof while preserving its outcome-only decision.
+6. `clarificationPolicyResolution.mjs` stores the native selection transition
+   before the final classification outcome while forcing native envelopes to
+   stay outcome-only.
 
 ## Verification
 
@@ -155,8 +156,15 @@ Browser and Discord views render the two normalized outcomes without legacy
 duplicate controls; the browser exposes an explicit alternate-destination
 choice, and all native resolutions remain outcome-only.
 
+## Implemented Follow-Through
+
+The native pending-resolution provenance adapter is now implemented in
+[Policy Native Pending-Resolution Provenance](policy-native-pending-resolution-provenance.md).
+The resolver records the normalized outcome and alternate destination, when
+present, before routing begins and passes the result through the learning guard.
+
 ## Next Step
 
-Implement a **native pending-resolution provenance adapter** that records the
-normalized selected outcome and any alternate destination separately from the
-eventual routing result before the learning guard evaluates it.
+Append actual native route outcomes after browser or Discord routing completes;
+classification resolution must remain distinct from route success or a missing
+mapping.

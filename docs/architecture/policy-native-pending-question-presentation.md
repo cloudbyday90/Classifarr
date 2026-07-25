@@ -139,7 +139,8 @@ Cons:
 5. `useNeedsAttentionActions.js` forces native resolutions to remain
    outcome-only and excludes them from bulk confirmation.
 6. `clarificationPolicyResolution.mjs` remains the final server authority for
-   destination validity, transaction state, outcome recording, and routing.
+   destination validity, transaction state, normalized selection provenance,
+   and outcome recording before routing.
 
 ## Verification
 
@@ -154,9 +155,9 @@ Cons:
 
 ## Next Step
 
-Implement a **native pending-resolution provenance adapter**. It should record
-the selected normalized outcome and any alternate destination as a separate
-request-time decision before routing completes, then pass that event through
-the learning guard. That closes the remaining audit distinction between the
-suggested destination, the operator's choice, and the final route result while
-keeping all of them outcome-only by default.
+The native pending-resolution provenance adapter is now implemented in
+[Policy Native Pending-Resolution Provenance](policy-native-pending-resolution-provenance.md).
+It records the normalized selected outcome and any alternate destination before
+routing starts, passes the event through the learning guard, and keeps it
+outcome-only. The remaining boundary is to append actual route results without
+conflating them with selection or classification resolution.

@@ -25,6 +25,9 @@ import {
   createServiceStubs,
   createTransactionalDbMock,
 } from './helpers/mockFactory.mjs';
+import {
+  buildPolicyRuntimeQuestionReductionFromRuntimeInput,
+} from '../services/policyRuntimeQuestionReduction.mjs';
 
 const mockDb = createTransactionalDbMock();
 const mockLogger = createMockLogger();
@@ -699,7 +702,7 @@ describe('ClarificationService', () => {
       expect(updateCall[0]).toContain('policy_question = NULL');
     });
 
-    test('keeps native runtime question answers outcome-only when a legacy caller requests learning', async () => {
+    test('rejects malformed native runtime questions before any legacy rule path can run', async () => {
       const nativeQuestion = {
         version: 'policy.runtime_question_persistence.v1',
         question: 'Should this item be resolved here?',
@@ -744,18 +747,110 @@ describe('ClarificationService', () => {
 
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
-      const result = await clarificationService.resolvePolicyQuestion(
+      await expect(clarificationService.resolvePolicyQuestion(
         1,
         2,
         'Resolve current item',
         'test-user',
         true,
+      )).rejects.toMatchObject({
+        statusCode: 409,
+        code: 'native_policy_question_invalid',
+      });
+      expect(mockClient.query.mock.calls.some(([sql]) =>
+        typeof sql === 'string' && sql.includes('INSERT INTO classification_evidence')
+      )).toBe(false);
+    });
+
+    test('persists native request-time provenance before the resolved outcome', async () => {
+      const plan = buildPolicyRuntimeQuestionReductionFromRuntimeInput({
+        libraryProfile: {
+          identityCandidates: [{ label: 'Animation', count: 1, confidence: 0.6 }],
+        },
+        metadataSignals: [{ label: 'Family', confidence: 0.7 }],
+      });
+      const nativeQuestion = {
+        version: 'policy.runtime_question_persistence.v1',
+        question: plan.question.operatorQuestion,
+        options: [
+          {
+            label: 'Resolve current item',
+            outcomeId: 'resolve_current_item',
+            library_id: 2,
+          },
+          {
+            label: 'Do not learn',
+            outcomeId: 'do_not_learn',
+          },
+        ],
+        runtimeQuestion: plan.question,
+        runtimeQuestionReductionPlan: plan,
+        meta: {
+          runtime_question_persistence: {
+            destinationLibraryId: 2,
+            destinationLibraryName: 'Movies',
+          },
+        },
+      };
+      const mockClassification = {
+        id: 1,
+        title: 'Test Movie',
+        media_type: 'movie',
+        library_name: 'Movies',
+        policy_question: nativeQuestion,
+        metadata: JSON.stringify({ tmdb_id: 12345, title: 'Test Movie' }),
+      };
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
+          .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
+          .mockResolvedValueOnce({ rows: [{ context_version: null }] }) // Question context
+          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification
+          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
+        release: jest.fn(),
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      const result = await clarificationService.resolvePolicyQuestion(
+        1,
+        2,
+        'Resolve current item',
+        'test-user',
+        false,
       );
 
-      expect(result).toEqual(expect.objectContaining({
-        success: true,
-        generatedPattern: null,
+      expect(result.nativeResolutionProvenance).toEqual(expect.objectContaining({
+        statusId: 'outcome_only',
+        selection: expect.objectContaining({
+          eventTypeId: 'operator_confirmed_destination',
+          selectedOutcomeId: 'resolve_current_item',
+          alternateDestination: false,
+        }),
+        requestTimeDecision: expect.objectContaining({ validationOk: true }),
+        learningGuard: expect.objectContaining({ canWriteLearning: false }),
       }));
+      expect(classificationOutcomeService.recordOutcome).toHaveBeenNthCalledWith(
+        1,
+        1,
+        expect.objectContaining({
+          type: 'native_pending_resolution',
+          source: 'policy_request_time',
+          event_type_id: 'operator_confirmed_destination',
+          selected_outcome_id: 'resolve_current_item',
+          suggested_library_id: 2,
+          selected_library_id: 2,
+          alternate_destination: false,
+        }),
+        { client: mockClient },
+      );
+      expect(classificationOutcomeService.recordOutcome).toHaveBeenNthCalledWith(
+        2,
+        1,
+        expect.objectContaining({ type: 'resolved', source: 'policy_question' }),
+        { client: mockClient },
+      );
       expect(mockClient.query.mock.calls.some(([sql]) =>
         typeof sql === 'string' && sql.includes('INSERT INTO classification_evidence')
       )).toBe(false);

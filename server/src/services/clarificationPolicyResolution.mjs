@@ -5,6 +5,7 @@ import { classificationEvidenceService } from './classificationEvidenceService.m
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptionLibraryIds } from './clarificationUtils.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
+import { policyNativePendingResolutionProvenanceService } from './policyNativePendingResolutionProvenance.mjs';
 
 const logger = createLogger('PolicyResolution');
 
@@ -102,8 +103,8 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
         }
 
         const policyQuestion = parsePolicyQuestion(classification.policy_question);
-        const allowLegacyRuleGeneration = generateRule === true &&
-            !isPolicyRuntimeQuestionPersistenceEnvelope(policyQuestion);
+        const isNativeRuntimeQuestion = isPolicyRuntimeQuestionPersistenceEnvelope(policyQuestion);
+        const allowLegacyRuleGeneration = generateRule === true && !isNativeRuntimeQuestion;
         if (policyQuestion) {
             const {
                 extractQuestionContext,
@@ -137,6 +138,42 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
         const metadata = typeof classification.metadata === 'string'
             ? (safeParseJson(classification.metadata) || {})
             : (classification.metadata || {});
+        let nativeResolutionProvenance = null;
+
+        if (isNativeRuntimeQuestion) {
+            nativeResolutionProvenance = policyNativePendingResolutionProvenanceService.build({
+                classification: { id: classificationId },
+                persistedQuestion: policyQuestion,
+                selectedDestination: {
+                    libraryId: selectedLibraryId,
+                    libraryName: selectedLibraryName,
+                },
+                selectedOption,
+            });
+
+            if (nativeResolutionProvenance.audit.ok !== true) {
+                throw createStatusError(
+                    'Native policy question cannot be safely resolved and must be retried',
+                    409,
+                    'native_policy_question_invalid'
+                );
+            }
+
+            const provenanceWrite = await classificationOutcomeService.recordOutcome(
+                classificationId,
+                policyNativePendingResolutionProvenanceService.toOutcomePatch(
+                    nativeResolutionProvenance
+                ),
+                { client }
+            );
+            if (provenanceWrite.updated !== true) {
+                throw createStatusError(
+                    'Could not record the native pending-resolution decision',
+                    500,
+                    'native_pending_resolution_record_failed'
+                );
+            }
+        }
 
         await client.query(
             `UPDATE classification_history 
@@ -221,6 +258,15 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             libraryId: selectedLibraryId,
             libraryName: selectedLibraryName,
             generatedPattern: learnedPattern,
+            nativeResolutionProvenance: nativeResolutionProvenance
+                ? {
+                    statusId: nativeResolutionProvenance.statusId,
+                    selection: nativeResolutionProvenance.selection,
+                    requestTimeDecision: nativeResolutionProvenance.requestTimeDecision,
+                    learningGuard: nativeResolutionProvenance.learningGuard,
+                    reasonCodes: nativeResolutionProvenance.reasonCodes,
+                }
+                : null,
             shouldRoute: true,
         };
         }); // end withTransaction

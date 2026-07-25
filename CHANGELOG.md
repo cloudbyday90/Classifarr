@@ -742,6 +742,13 @@ unchanged operator or runtime outcome.
   and retry. The Command Center no longer renders generic duplicate controls or
   bulk-confirms native reviews, and Discord uses matching action labels while
   directing alternate destinations back to the authoritative web workflow.
+- **Auditable Native Pending Resolutions** - native pending-item confirmation,
+  do-not-learn, and alternate-destination choices now produce a bounded
+  request-time transition before final classification resolution and any later
+  routing. The shared resolver validates the persisted question and selection,
+  keeps every current outcome guarded and outcome-only, rejects malformed native
+  selections safely, and no longer maintains a duplicate Discord-only learning
+  path.
 - **Question and Learning Controls** - added deterministic question reduction,
   permitted-action checks, answer-shape validation, and learning eligibility
   checks so automation asks only destination-relevant questions and manual

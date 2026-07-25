@@ -33,6 +33,7 @@ const POLICY_REQUEST_LEARNING_DISPOSITION_IDS = Object.freeze({
 
 const POLICY_REQUEST_LEARNING_REASON_IDS = Object.freeze({
   REQUEST_CHOICE_RECORDED: 'request_choice_recorded',
+  OPERATOR_CONFIRMATION_RECORDED: 'operator_confirmation_recorded',
   MANUAL_DESTINATION_CHANGE_RECORDED: 'manual_destination_change_recorded',
   ROUTE_SUCCESS_RECORDED: 'route_success_recorded',
   ROUTE_FAILURE_RECORDED: 'route_failure_recorded',
@@ -71,6 +72,8 @@ const POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS = Object.freeze({
 const EVENT_SOURCE_BY_TYPE = Object.freeze({
   [POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION]:
     POLICY_LEARNING_EVENT_SOURCE_IDS.REQUEST_DESTINATION_CHOICE,
+  [POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_CONFIRMED_DESTINATION]:
+    POLICY_LEARNING_EVENT_SOURCE_IDS.OPERATOR_CONFIRMATION,
   [POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE]:
     POLICY_LEARNING_EVENT_SOURCE_IDS.MANUAL_CLASSIFICATION_CHANGE,
   [POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED]:
@@ -82,6 +85,8 @@ const EVENT_SOURCE_BY_TYPE = Object.freeze({
 const EVENT_REASON_BY_TYPE = Object.freeze({
   [POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION]:
     POLICY_REQUEST_LEARNING_REASON_IDS.REQUEST_CHOICE_RECORDED,
+  [POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_CONFIRMED_DESTINATION]:
+    POLICY_REQUEST_LEARNING_REASON_IDS.OPERATOR_CONFIRMATION_RECORDED,
   [POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE]:
     POLICY_REQUEST_LEARNING_REASON_IDS.MANUAL_DESTINATION_CHANGE_RECORDED,
   [POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED]:
@@ -276,6 +281,9 @@ function buildSelection({
   return {
     requestDestinationChoice: eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION
       ? requestedDestination
+      : null,
+    operatorConfirmedDestination: eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_CONFIRMED_DESTINATION
+      ? operatorDestination
       : null,
     operatorSelectedDestination: eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE
       ? operatorDestination
@@ -490,11 +498,17 @@ function buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan(input =
       queuedByLearningGuard: learningDecision.profileRefresh?.queue === true,
     },
     audit: {
-      reversible: eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
+      reversible: [
+        POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_CONFIRMED_DESTINATION,
+        POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
+      ].includes(eventTypeId),
       actorId: requestEvent.actorId,
       sourceEventId: requestEvent.sourceEventId,
-      rollbackHint: eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE
-        ? 'manual_destination_change_can_be_reverted_by_final_outcome_history'
+      rollbackHint: [
+        POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_CONFIRMED_DESTINATION,
+        POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
+      ].includes(eventTypeId)
+        ? 'operator_destination_choice_can_be_reverted_by_final_outcome_history'
         : null,
     },
     sideEffects: {
