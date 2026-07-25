@@ -44,6 +44,7 @@ Sources:
 - PostgreSQL, [Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
 - NIST, [SP 800-204D](https://csrc.nist.gov/pubs/sp/800/204/d/final)
 - OWASP, [Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
+- OWASP, [Improper Artifact Integrity Validation](https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-09-Improper-Artifact-Integrity-Validation)
 
 ## Options Considered
 
@@ -133,10 +134,39 @@ Not implemented here:
 - no cryptographic signing or cross-host trust service;
 - no file, route, test, storage, or Git mutation.
 
-## Next Step
+## Downstream Chain Verification
 
-Proceed with **Phase 8R.21, Task 8R.21.1 Completion Audit Artifact
-Integrity**. It should require the completion audit to consume the existing
-fingerprint-valid next-batch authorization artifact, replay its embedded
-runtime evidence and review context, and reject detached or cross-manifest
-completion claims before reporting the compatibility-deletion loop complete.
+The current controlled-removal chain already carries this recovery contract
+through post-removal verification, next-batch authorization, completion-audit
+integrity, completion-audit export, and the storage completion checkpoint.
+Focused chain tests validate those consumers with the v4 execution gate and
+its recovery-evidence fixture. No parallel or legacy recovery boolean remains
+for a later consumer to trust.
+
+The SHA-256 fingerprint and deterministic replay protect a trusted local
+artifact chain from accidental or in-process alteration. They do not establish
+cross-host signer identity. Following OWASP artifact-integrity guidance, a
+future distributed evidence exchange would need a separate signing and trusted
+verification boundary rather than treating this local artifact contract as a
+signature system.
+
+## Current Follow-Through
+
+There is no remaining source-code successor for this component: Phase 8R's
+mapped contracts, including the former 8R.21.1 completion-audit boundary, are
+already implemented. The next action is installation-specific, not a new
+contract: run the compatibility-removal evidence regeneration chain against a
+current ready execution-plan artifact, next-batch authorization artifact,
+applied-review fingerprint, and validation-evidence artifact.
+
+The diagnostic command can report missing prerequisites without authorizing
+deletion or producing completion evidence:
+
+```powershell
+npm run policy:compatibility-removal-evidence -- --cwd . --allow-blocked --output .tmp/policy-storage/compatibility-removal-evidence-diagnostic.json
+```
+
+For the current checkout, the diagnostic correctly reported all four required
+inputs absent. That is a safe blocked state. It must be resolved through the
+existing policy compatibility-deletion readiness workflow, never by creating
+synthetic evidence or weakening the gate.
