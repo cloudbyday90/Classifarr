@@ -69,13 +69,19 @@ function buildCompletionAuditExecutionPlanArtifact({
   return buildReadyExecutionPlanArtifact({ executionPlan, generatedAt });
 }
 
-function buildCompletionAuditRuntimeEvidenceArtifact(appliedPaths = MANIFEST_PATHS) {
+function buildCompletionAuditRuntimeEvidenceArtifact(
+  appliedPaths = MANIFEST_PATHS,
+  executionPlanArtifactFingerprint = 'b'.repeat(64)
+) {
   return buildPolicyPostRemovalRuntimeEvidenceArtifact({
     applyEvidence: {
       statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
       applied: true,
       validation: { ok: true, issueCount: 0, issues: [] },
-      removalReview: { reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT },
+      removalReview: {
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        executionPlanArtifactFingerprint,
+      },
       applyBatch: {
         requestedCount: appliedPaths.length,
         results: appliedPaths.map(path => ({ path, actionId: 'delete_file', applied: true })),
@@ -140,7 +146,10 @@ async function buildCompletionAuditNextBatchAuthorizationArtifact({
   });
 
   return buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-    runtimeEvidenceArtifact: buildCompletionAuditRuntimeEvidenceArtifact(appliedPaths),
+    runtimeEvidenceArtifact: buildCompletionAuditRuntimeEvidenceArtifact(
+      appliedPaths,
+      source.executionPlanArtifact.artifactFingerprint.fingerprint
+    ),
     ...source,
     input: {
       requestedPaths: remainingPaths,

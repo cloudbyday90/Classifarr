@@ -19,7 +19,7 @@
 import { createHash } from 'node:crypto';
 
 const POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_VERSION =
-  'policy.post_removal_runtime_evidence_artifact.v1';
+  'policy.post_removal_runtime_evidence_artifact.v2';
 
 const POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS = Object.freeze({
   MISSING_RUNTIME_EVIDENCE_ARTIFACT: 'missing_runtime_evidence_artifact',
@@ -28,6 +28,10 @@ const POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS = Object.freeze({
   RUNTIME_EVIDENCE_PROVENANCE_MISMATCH: 'runtime_evidence_provenance_mismatch',
   APPLIED_REVIEW_FINGERPRINT_MISSING: 'applied_review_fingerprint_missing',
   APPLIED_REVIEW_FINGERPRINT_MALFORMED: 'applied_review_fingerprint_malformed',
+  APPLIED_EXECUTION_PLAN_FINGERPRINT_MISSING:
+    'applied_execution_plan_fingerprint_missing',
+  APPLIED_EXECUTION_PLAN_FINGERPRINT_MALFORMED:
+    'applied_execution_plan_fingerprint_malformed',
   IMPORT_SCAN_REVIEW_BINDING_MISSING: 'import_scan_review_binding_missing',
   IMPORT_SCAN_REVIEW_BINDING_MISMATCH: 'import_scan_review_binding_mismatch',
   RUNTIME_CHECK_REVIEW_BINDING_MISSING: 'runtime_check_review_binding_missing',
@@ -89,6 +93,12 @@ function reviewArtifactFingerprintFromApplyEvidence(applyEvidence = {}) {
   );
 }
 
+function executionPlanArtifactFingerprintFromApplyEvidence(applyEvidence = {}) {
+  return normalizeFingerprint(
+    asObject(applyEvidence.removalReview).executionPlanArtifactFingerprint
+  );
+}
+
 function buildPolicyPostRemovalRuntimeEvidenceArtifactProjection({
   applyEvidence = {},
   importScan = {},
@@ -121,6 +131,10 @@ function buildPolicyPostRemovalRuntimeEvidenceArtifact({
   const reviewArtifactFingerprint = reviewArtifactFingerprintFromApplyEvidence(
     projection.evidence.applyEvidence
   );
+  const executionPlanArtifactFingerprint =
+    executionPlanArtifactFingerprintFromApplyEvidence(
+      projection.evidence.applyEvidence
+    );
   const normalizedImportScan = asObject(projection.evidence.importScan);
   const normalizedValidationEvidence = asObject(projection.evidence.validationEvidence);
 
@@ -133,6 +147,8 @@ function buildPolicyPostRemovalRuntimeEvidenceArtifact({
     evidence: projection.evidence,
     provenance: {
       reviewArtifactFingerprint: reviewArtifactFingerprint || null,
+      executionPlanArtifactFingerprint:
+        executionPlanArtifactFingerprint || null,
       appliedPaths: listAppliedPaths(projection.evidence.applyEvidence),
       importScanReviewArtifactFingerprint:
         normalizeFingerprint(normalizedImportScan.reviewArtifactFingerprint) || null,
@@ -188,6 +204,8 @@ function validateEvidenceBindings(evidence = {}) {
   const issues = [];
   const applyEvidence = asObject(evidence.applyEvidence);
   const reviewArtifactFingerprint = reviewArtifactFingerprintFromApplyEvidence(applyEvidence);
+  const executionPlanArtifactFingerprint =
+    executionPlanArtifactFingerprintFromApplyEvidence(applyEvidence);
 
   if (!reviewArtifactFingerprint) {
     issues.push(buildIssue(
@@ -196,7 +214,11 @@ function validateEvidenceBindings(evidence = {}) {
       'Runtime evidence requires the applied removal review artifact fingerprint.'
     ));
 
-    return { reviewArtifactFingerprint: null, issues };
+    return {
+      reviewArtifactFingerprint: null,
+      executionPlanArtifactFingerprint: null,
+      issues,
+    };
   }
 
   if (!SHA256_FINGERPRINT_PATTERN.test(reviewArtifactFingerprint)) {
@@ -207,7 +229,26 @@ function validateEvidenceBindings(evidence = {}) {
       { actualReviewArtifactFingerprint: reviewArtifactFingerprint }
     ));
 
-    return { reviewArtifactFingerprint, issues };
+    return {
+      reviewArtifactFingerprint,
+      executionPlanArtifactFingerprint: null,
+      issues,
+    };
+  }
+
+  if (!executionPlanArtifactFingerprint) {
+    issues.push(buildIssue(
+      POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS
+        .APPLIED_EXECUTION_PLAN_FINGERPRINT_MISSING,
+      'Runtime evidence requires the applied execution-plan artifact fingerprint.'
+    ));
+  } else if (!SHA256_FINGERPRINT_PATTERN.test(executionPlanArtifactFingerprint)) {
+    issues.push(buildIssue(
+      POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS
+        .APPLIED_EXECUTION_PLAN_FINGERPRINT_MALFORMED,
+      'Applied execution-plan artifact fingerprint must be a SHA-256 digest.',
+      { actualExecutionPlanArtifactFingerprint: executionPlanArtifactFingerprint }
+    ));
   }
 
   const importScan = asObject(evidence.importScan);
@@ -270,7 +311,7 @@ function validateEvidenceBindings(evidence = {}) {
     if (fullValidationIssue) issues.push(fullValidationIssue);
   }
 
-  return { reviewArtifactFingerprint, issues };
+  return { reviewArtifactFingerprint, executionPlanArtifactFingerprint, issues };
 }
 
 function validatePolicyPostRemovalRuntimeEvidenceArtifact(
@@ -292,6 +333,7 @@ function validatePolicyPostRemovalRuntimeEvidenceArtifact(
         'Post-removal verification requires a runtime evidence artifact.'
       )],
       reviewArtifactFingerprint: null,
+      executionPlanArtifactFingerprint: null,
     };
   }
 
@@ -341,6 +383,8 @@ function validatePolicyPostRemovalRuntimeEvidenceArtifact(
     issueCount: issues.length,
     issues,
     reviewArtifactFingerprint: bindingEvaluation.reviewArtifactFingerprint,
+    executionPlanArtifactFingerprint:
+      bindingEvaluation.executionPlanArtifactFingerprint,
   };
 }
 

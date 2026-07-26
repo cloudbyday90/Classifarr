@@ -8342,6 +8342,14 @@ Tasks:
     plans, raw nested plans, altered wrappers, and live operational imports fail
     closed without output unless an operator explicitly requests a blocked
     diagnostic.
+  - Completed: derives manifest path state from the current checkout, scans
+    operational source references without treating control-plane inventories as
+    runtime dependencies, and requires current focused and full validation
+    evidence.
+  - Completed: emits complete, remaining-inventory, or blocked completion-audit
+    evidence without synthesizing deletion approval or performing a destructive
+    action, then feeds the nested artifact to the current closure and
+    requirement audits.
 - **8R.36.2 Missing Evidence-Chain Diagnostics**
   - Completed: default collection still refuses to write an artifact when a
     current execution plan, next-batch authorization artifact, applied review
@@ -8399,15 +8407,31 @@ Tasks:
     existing evidence boundary. Do not reintroduce it as a caller boolean or
     make routine native policy automation wait for compatibility-code removal
     release evidence.
-- Require the current compatibility-deletion execution-plan artifact and bind
-  its fingerprint through authorization, completion evidence, and replay.
-- Derive manifest path state from the current checkout.
-- Scan operational source references without treating named control-plane
-  manifest inventories as runtime dependencies.
-- Require current focused and full validation evidence.
-- Emit complete, remaining-inventory, or blocked completion-audit evidence
-  without synthesizing deletion approval or performing a destructive action.
-- Feed the nested artifact to the current closure and requirement audits.
+- **8R.36.8 Execution-Plan Artifact Binding**
+  - Require the current compatibility-deletion execution-plan artifact and bind
+    its fingerprint directly through runtime evidence, authorization,
+    completion evidence, and replay. A review fingerprint remains necessary
+    but is not the sole downstream plan identity.
+  - Reject absent, malformed, or cross-plan runtime evidence before another
+    removal batch is authorized. Completion integrity must replay the same
+    binding from the retained current artifact rather than trusting nested plan
+    data or caller-supplied booleans.
+- **8R.36.9 Public Artifact Exporter Cutover**
+  - Require every public compatibility-removal exporter to emit the current
+    runtime-evidence contract and carry its direct execution-plan fingerprint
+    into its public artifact chain. A legacy runtime-evidence artifact must
+    fail closed before a ready authorization, completion, or regeneration
+    artifact can be written.
+  - Keep blocked diagnostics bounded: expose fixed contract-version or binding
+    reason IDs and one next step, never raw artifact payloads, local checkout
+    paths, policy names, library names, secrets, or recovery controls.
+  - Cover the cutover with isolated public-command tests for a current artifact,
+    a pre-v2 runtime artifact, a missing digest, and an artifact bound to a
+    different plan. The check must be deterministic and must not call a media
+    server, provider, database, Docker daemon, or network service.
+  - Keep the contract platform-agnostic and read-only: it cannot depend on a
+    local checkout, policy name, library name, Docker state, database state,
+    external provider, or media server.
 
 Acceptance criteria:
 
@@ -8472,6 +8496,12 @@ Implementation status:
   remains independent. The design and outcome record is [Policy Compatibility
   Deletion Release-Prerequisite Evidence
   Contracts](policy-compatibility-deletion-release-prerequisite-evidence-contracts.md).
+- Task 8R.36.8 is implemented. Runtime evidence now retains the SHA-256 digest
+  of the applied execution-plan artifact, next-batch authorization compares it
+  to its verified current plan source, and authorization-artifact integrity
+  repeats that comparison during completion replay. The design and outcome
+  record is [Compatibility-Deletion Execution-Plan Artifact
+  Binding](policy-compatibility-deletion-execution-plan-artifact-binding.md).
 
 ## Phase 8R Work Sequence
 

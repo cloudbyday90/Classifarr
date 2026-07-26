@@ -65,6 +65,7 @@ function applyResult(overrides = {}) {
     },
     removalReview: {
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      executionPlanArtifactFingerprint: EXECUTION_PLAN_ARTIFACT_FINGERPRINT,
     },
     applyBatch: {
       requestedCount: REMOVED_PATHS.length,

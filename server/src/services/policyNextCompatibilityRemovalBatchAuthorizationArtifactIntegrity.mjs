@@ -30,7 +30,7 @@ import {
 } from './policyPostRemovalRuntimeEvidenceArtifact.mjs';
 
 const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_VERSION =
-  'policy.next_compatibility_removal_batch_authorization_artifact_integrity.v1';
+  'policy.next_compatibility_removal_batch_authorization_artifact_integrity.v2';
 
 const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS =
   Object.freeze({
@@ -38,6 +38,10 @@ const POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_R
     AUTHORIZATION_ARTIFACT_INVALID: 'authorization_artifact_invalid',
     AUTHORIZATION_ARTIFACT_NOT_AUTHORIZABLE: 'authorization_artifact_not_authorizable',
     RUNTIME_EVIDENCE_ARTIFACT_INVALID: 'runtime_evidence_artifact_invalid',
+    RUNTIME_EVIDENCE_EXECUTION_PLAN_FINGERPRINT_MISSING:
+      'runtime_evidence_execution_plan_fingerprint_missing',
+    RUNTIME_EVIDENCE_EXECUTION_PLAN_FINGERPRINT_MISMATCH:
+      'runtime_evidence_execution_plan_fingerprint_mismatch',
     REVIEW_ARTIFACT_FINGERPRINT_MISSING: 'review_artifact_fingerprint_missing',
     REVIEW_ARTIFACT_FINGERPRINT_MISMATCH: 'review_artifact_fingerprint_mismatch',
     EXECUTION_PLAN_ARTIFACT_FINGERPRINT_MISSING:
@@ -197,6 +201,9 @@ async function validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactI
 
   const expectedReviewArtifactFingerprint =
     runtimeEvidenceValidation.reviewArtifactFingerprint || null;
+  const runtimeEvidenceExecutionPlanArtifactFingerprint = normalizeFingerprint(
+    runtimeEvidenceValidation.executionPlanArtifactFingerprint
+  );
   const artifactExecutionPlanArtifactFingerprint = normalizeFingerprint(
     artifact.executionPlanArtifact?.artifactFingerprint?.fingerprint
   );
@@ -266,6 +273,30 @@ async function validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactI
     ));
   }
 
+  if (!runtimeEvidenceExecutionPlanArtifactFingerprint) {
+    risks.push(buildRisk(
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
+        .RUNTIME_EVIDENCE_EXECUTION_PLAN_FINGERPRINT_MISSING,
+      'Next-batch authorization artifact must retain runtime evidence bound to the applied execution-plan artifact.'
+    ));
+  } else if (
+    !artifactExecutionPlanArtifactFingerprint ||
+    runtimeEvidenceExecutionPlanArtifactFingerprint !==
+      artifactExecutionPlanArtifactFingerprint
+  ) {
+    risks.push(buildRisk(
+      POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
+        .RUNTIME_EVIDENCE_EXECUTION_PLAN_FINGERPRINT_MISMATCH,
+      'Next-batch authorization runtime evidence must be bound to the same execution-plan artifact retained by authorization.',
+      {
+        expectedExecutionPlanArtifactFingerprint:
+          artifactExecutionPlanArtifactFingerprint || null,
+        actualExecutionPlanArtifactFingerprint:
+          runtimeEvidenceExecutionPlanArtifactFingerprint,
+      }
+    ));
+  }
+
   const replayedAuthorization = await buildPolicyNextCompatibilityRemovalBatchAuthorization({
     runtimeEvidenceArtifact: artifact.runtimeEvidenceArtifact,
     executionPlanArtifact: artifact.executionPlanArtifact,
@@ -313,6 +344,8 @@ async function validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactI
     },
     reviewArtifactFingerprint: expectedReviewArtifactFingerprint,
     executionPlanArtifactFingerprint: artifactExecutionPlanArtifactFingerprint || null,
+    runtimeEvidenceExecutionPlanArtifactFingerprint:
+      runtimeEvidenceExecutionPlanArtifactFingerprint || null,
     pathStateEvidenceFingerprint:
       replayedAuthorization.pathStateEvidence?.fingerprint || null,
     appliedPaths: runtimeEvidenceValidation.ok
@@ -321,6 +354,7 @@ async function validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactI
     policy: {
       requireFingerprintValidAuthorizationArtifact: true,
       requireRuntimeEvidenceArtifactIntegrity: true,
+      requireRuntimeEvidenceExecutionPlanArtifactBinding: true,
       requireReviewArtifactContext: true,
       requireExecutionPlanArtifactBinding: true,
       requireReplayVerifiedPathStateEvidence: true,

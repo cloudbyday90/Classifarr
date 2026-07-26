@@ -409,6 +409,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     designDocPaths: [
       'docs/architecture/policy-post-removal-runtime-verification.md',
       'docs/architecture/policy-post-removal-runtime-evidence-integrity.md',
+      'docs/architecture/policy-compatibility-deletion-execution-plan-artifact-binding.md',
     ],
     contractPaths: [
       'server/src/services/policyPostRemovalRuntimeVerification.mjs',
@@ -426,6 +427,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'docs/architecture/policy-next-compatibility-removal-batch-authorization.md',
       'docs/architecture/policy-next-compatibility-removal-batch-authorization-artifact-integrity.md',
       'docs/architecture/policy-next-compatibility-removal-batch-authorization-artifact-exporter.md',
+      'docs/architecture/policy-compatibility-deletion-execution-plan-artifact-binding.md',
     ],
     contractPaths: [
       'server/src/services/policyNextCompatibilityRemovalBatchAuthorization.mjs',
@@ -450,6 +452,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'docs/architecture/policy-compatibility-removal-completion-audit-artifact-exporter.md',
       'docs/architecture/policy-compatibility-removal-completion-audit-artifact-integrity.md',
       'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity.md',
+      'docs/architecture/policy-compatibility-deletion-execution-plan-artifact-binding.md',
     ],
     contractPaths: [
       'server/src/services/policyCompatibilityRemovalCompletionAudit.mjs',

@@ -57,13 +57,19 @@ function executionPlan(paths = MANIFEST_PATHS) {
   };
 }
 
-function runtimeEvidenceArtifact(paths = MANIFEST_PATHS) {
+function runtimeEvidenceArtifact(
+  paths = MANIFEST_PATHS,
+  executionPlanArtifactFingerprint = 'b'.repeat(64)
+) {
   return buildPolicyPostRemovalRuntimeEvidenceArtifact({
     applyEvidence: {
       statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
       applied: true,
       validation: { ok: true, issueCount: 0, issues: [] },
-      removalReview: { reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT },
+      removalReview: {
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        executionPlanArtifactFingerprint,
+      },
       applyBatch: {
         requestedCount: paths.length,
         results: paths.map(path => ({ path, actionId: 'delete_file', applied: true })),
@@ -101,9 +107,13 @@ async function authorizationArtifact({
 } = {}) {
   const authorizationSource = source ||
     buildNextBatchAuthorizationPathStateSource({ executionPlan: plan });
+  const runtimeEvidence = runtimeEvidenceArtifact(
+    MANIFEST_PATHS,
+    authorizationSource.executionPlanArtifact.artifactFingerprint.fingerprint
+  );
 
   return buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-    runtimeEvidenceArtifact: runtimeEvidenceArtifact(),
+    runtimeEvidenceArtifact: runtimeEvidence,
     ...authorizationSource,
     input: {
       requestedPaths: [],
@@ -178,5 +188,41 @@ describe('policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity', ()
       POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
         .EXECUTION_PLAN_ARTIFACT_FINGERPRINT_MISMATCH
     );
+  });
+
+  test('rejects authorization evidence whose runtime evidence names another plan artifact', async () => {
+    const plan = executionPlan();
+    const source = buildNextBatchAuthorizationPathStateSource({ executionPlan: plan });
+    const artifact = await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
+      runtimeEvidenceArtifact: runtimeEvidenceArtifact(
+        MANIFEST_PATHS,
+        'c'.repeat(64)
+      ),
+      ...source,
+      input: {
+        requestedPaths: [],
+        maxBatchSize: 2,
+        authorizationReason: '',
+        authorizedBy: '',
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+      generatedAt: '2026-07-14T10:00:00.000Z',
+    });
+    const integrity =
+      await validatePolicyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity({
+        authorizationArtifact: artifact,
+        expectedExecutionPlanArtifactFingerprint:
+          source.executionPlanArtifact.artifactFingerprint.fingerprint,
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      });
+
+    expect(integrity.ok).toBe(false);
+    expect(integrity.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_ARTIFACT_INTEGRITY_RISK_IDS
+            .RUNTIME_EVIDENCE_EXECUTION_PLAN_FINGERPRINT_MISMATCH,
+      }),
+    ]));
   });
 });

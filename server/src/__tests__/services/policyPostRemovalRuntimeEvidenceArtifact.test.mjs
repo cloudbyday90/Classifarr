@@ -24,11 +24,13 @@ import {
 } from '../../services/policyPostRemovalRuntimeEvidenceArtifact.mjs';
 
 const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
+const EXECUTION_PLAN_ARTIFACT_FINGERPRINT = 'b'.repeat(64);
 
 function applyEvidence(overrides = {}) {
   return {
     removalReview: {
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      executionPlanArtifactFingerprint: EXECUTION_PLAN_ARTIFACT_FINGERPRINT,
     },
     applyBatch: {
       results: [{
@@ -65,6 +67,7 @@ function validationEvidence(overrides = {}) {
       command: 'npm --prefix server test -- policyIntentMapper',
       passed: true,
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      executionPlanArtifactFingerprint: EXECUTION_PLAN_ARTIFACT_FINGERPRINT,
     },
     full: {
       command: 'npm --prefix server test',
@@ -125,6 +128,26 @@ describe('policyPostRemovalRuntimeEvidenceArtifact', () => {
         .RUNTIME_CHECK_REVIEW_BINDING_MISMATCH,
       POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS
         .FOCUSED_VALIDATION_REVIEW_BINDING_MISSING,
+    ]));
+  });
+
+  test('rejects runtime evidence without the execution-plan artifact binding', () => {
+    const artifact = evidenceArtifact({
+      applyEvidence: applyEvidence({
+        removalReview: {
+          reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        },
+      }),
+    });
+
+    const validation = validatePolicyPostRemovalRuntimeEvidenceArtifact(artifact);
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS
+          .APPLIED_EXECUTION_PLAN_FINGERPRINT_MISSING,
+      }),
     ]));
   });
 

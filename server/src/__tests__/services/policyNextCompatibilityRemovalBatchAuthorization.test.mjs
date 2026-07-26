@@ -110,6 +110,7 @@ function pathStateEvidence({
 function runtimeEvidenceArtifact({
   appliedPaths = [MANIFEST_PATHS[0]],
   reviewArtifactFingerprint = REVIEW_ARTIFACT_FINGERPRINT,
+  executionPlanArtifactFingerprint = executionPlanArtifact().artifactFingerprint.fingerprint,
   ...overrides
 } = {}) {
   return buildPolicyPostRemovalRuntimeEvidenceArtifact({
@@ -123,6 +124,7 @@ function runtimeEvidenceArtifact({
       },
       removalReview: {
         reviewArtifactFingerprint,
+        executionPlanArtifactFingerprint,
       },
       applyBatch: {
         requestedCount: appliedPaths.length,
@@ -160,7 +162,9 @@ function runtimeEvidenceArtifact({
   });
 }
 
-function partialRuntimeEvidenceArtifact() {
+function partialRuntimeEvidenceArtifact({
+  executionPlanArtifactFingerprint = executionPlanArtifact().artifactFingerprint.fingerprint,
+} = {}) {
   const appliedPath = MANIFEST_PATHS[0];
 
   return buildPolicyPostRemovalRuntimeEvidenceArtifact({
@@ -176,7 +180,7 @@ function partialRuntimeEvidenceArtifact() {
         readyForRemovalReview: true,
         selectedCount: MANIFEST_PATHS.length,
         reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
-        executionPlanArtifactFingerprint: 'b'.repeat(64),
+        executionPlanArtifactFingerprint,
         executionGateArtifactFingerprint: 'c'.repeat(64),
       },
       applyBatch: {
@@ -228,7 +232,9 @@ function partialRuntimeEvidenceArtifact() {
 async function readyAuthorization(overrides = {}) {
   const plan = overrides.executionPlan || executionPlan();
   const planArtifact = overrides.executionPlanArtifact || executionPlanArtifact(plan);
-  const runtimeArtifact = overrides.runtimeEvidenceArtifact || runtimeEvidenceArtifact();
+  const runtimeArtifact = overrides.runtimeEvidenceArtifact || runtimeEvidenceArtifact({
+    executionPlanArtifactFingerprint: planArtifact.artifactFingerprint.fingerprint,
+  });
   const appliedPaths = runtimeArtifact.provenance?.appliedPaths || [];
   const snapshot = overrides.pathStateEvidence || pathStateEvidence({
     planArtifact,
@@ -335,6 +341,29 @@ describe('policyNextCompatibilityRemovalBatchAuthorization', () => {
       expect.objectContaining({
         riskId: POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
           .REVIEW_ARTIFACT_FINGERPRINT_MISMATCH,
+      }),
+    ]));
+  });
+
+  test('rejects runtime evidence bound to a different execution-plan artifact', async () => {
+    const planArtifact = executionPlanArtifact();
+    const authorization = await readyAuthorization({
+      executionPlanArtifact: planArtifact,
+      runtimeEvidenceArtifact: runtimeEvidenceArtifact({
+        executionPlanArtifactFingerprint: 'c'.repeat(64),
+      }),
+    });
+
+    expect(authorization.statusId)
+      .toBe(POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_STATUS_IDS
+        .BLOCKED_BY_RUNTIME_EVIDENCE_INTEGRITY);
+    expect(authorization.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_NEXT_COMPATIBILITY_REMOVAL_BATCH_AUTHORIZATION_RISK_IDS
+          .RUNTIME_EVIDENCE_EXECUTION_PLAN_FINGERPRINT_MISMATCH,
+        expectedExecutionPlanArtifactFingerprint:
+          planArtifact.artifactFingerprint.fingerprint,
+        actualExecutionPlanArtifactFingerprint: 'c'.repeat(64),
       }),
     ]));
   });

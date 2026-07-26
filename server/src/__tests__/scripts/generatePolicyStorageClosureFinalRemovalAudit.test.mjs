@@ -102,13 +102,16 @@ function buildExecutionPlan() {
   };
 }
 
-function buildRuntimeEvidenceArtifact() {
+function buildRuntimeEvidenceArtifact(executionPlanArtifactFingerprint) {
   return buildPolicyPostRemovalRuntimeEvidenceArtifact({
     applyEvidence: {
       statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
       applied: true,
       validation: { ok: true, issueCount: 0, issues: [] },
-      removalReview: { reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT },
+      removalReview: {
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        executionPlanArtifactFingerprint,
+      },
       applyBatch: {
         requestedCount: MANIFEST_PATHS.length,
         results: MANIFEST_PATHS.map(path => ({
@@ -160,7 +163,9 @@ async function buildArtifactChain({
   });
   const nextBatchAuthorizationArtifact =
     await buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
-      runtimeEvidenceArtifact: buildRuntimeEvidenceArtifact(),
+      runtimeEvidenceArtifact: buildRuntimeEvidenceArtifact(
+        executionPlanArtifact.artifactFingerprint.fingerprint
+      ),
       ...pathStateSource,
       input: {
         requestedPaths: [],

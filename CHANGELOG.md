@@ -175,6 +175,13 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Direct Compatibility-Removal Plan Binding** - post-removal runtime evidence
+  now retains the exact execution-plan artifact digest used by the applied
+  review. Next-batch authorization and completion replay require that digest to
+  match the current verified plan artifact, blocking missing or cross-plan
+  evidence without issuing commands, mutating storage, or depending on local
+  deployment configuration.
+
 - **Bound Release-Prerequisite Evidence** - compatibility-code retirement now
   requires one fresh, versioned, subject-bound attestation contract tied to the
   current deletion-readiness context. Legacy approval booleans and unsupported

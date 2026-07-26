@@ -56,6 +56,11 @@ const MANIFEST_PATHS = Object.freeze([
   'server/src/services/policyIntentImpactPreview.mjs',
   'server/src/services/policyIntentReplayPreview.mjs',
 ]);
+const DEFAULT_EXECUTION_PLAN_ARTIFACT_FINGERPRINT =
+  buildReadyExecutionPlanArtifact({
+    executionPlan: executionPlan(),
+    generatedAt: GENERATED_AT,
+  }).artifactFingerprint.fingerprint;
 
 function writeJson(rootPath, fileName, value) {
   const filePath = path.join(rootPath, '.artifacts', fileName);
@@ -99,7 +104,10 @@ function executionPlan(overrides = {}) {
   };
 }
 
-function runtimeEvidenceArtifact(appliedPaths = [MANIFEST_PATHS[0]]) {
+function runtimeEvidenceArtifact(
+  appliedPaths = [MANIFEST_PATHS[0]],
+  executionPlanArtifactFingerprint = DEFAULT_EXECUTION_PLAN_ARTIFACT_FINGERPRINT
+) {
   return buildPolicyPostRemovalRuntimeEvidenceArtifact({
     applyEvidence: {
       statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
@@ -107,6 +115,7 @@ function runtimeEvidenceArtifact(appliedPaths = [MANIFEST_PATHS[0]]) {
       validation: { ok: true, issueCount: 0, issues: [] },
       removalReview: {
         reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        executionPlanArtifactFingerprint,
       },
       applyBatch: {
         requestedCount: appliedPaths.length,

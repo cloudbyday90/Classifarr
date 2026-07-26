@@ -70,7 +70,12 @@ function executionPlan(overrides = {}) {
   };
 }
 
-function runtimeEvidenceArtifact(appliedPaths = [MANIFEST_PATHS[0]]) {
+function runtimeEvidenceArtifact(
+  appliedPaths = [MANIFEST_PATHS[0]],
+  executionPlanArtifactFingerprint = buildNextBatchAuthorizationPathStateSource({
+    executionPlan: executionPlan(),
+  }).executionPlanArtifact.artifactFingerprint.fingerprint
+) {
   return buildPolicyPostRemovalRuntimeEvidenceArtifact({
     applyEvidence: {
       statusId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS.APPLIED,
@@ -78,6 +83,7 @@ function runtimeEvidenceArtifact(appliedPaths = [MANIFEST_PATHS[0]]) {
       validation: { ok: true, issueCount: 0, issues: [] },
       removalReview: {
         reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+        executionPlanArtifactFingerprint,
       },
       applyBatch: {
         requestedCount: appliedPaths.length,

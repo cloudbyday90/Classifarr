@@ -41,6 +41,7 @@ function applyEvidence(overrides = {}) {
     },
     removalReview: {
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      executionPlanArtifactFingerprint: EXECUTION_PLAN_ARTIFACT_FINGERPRINT,
     },
     applyBatch: {
       requestedCount: 2,

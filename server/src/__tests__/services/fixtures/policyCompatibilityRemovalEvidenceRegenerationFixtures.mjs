@@ -114,7 +114,8 @@ function buildEvidenceRegenerationReferenceScan(overrides = {}) {
 }
 
 function buildEvidenceRegenerationRuntimeEvidenceArtifact(
-  appliedPaths = EVIDENCE_REGENERATION_MANIFEST_PATHS
+  appliedPaths = EVIDENCE_REGENERATION_MANIFEST_PATHS,
+  executionPlanArtifactFingerprint = 'b'.repeat(64)
 ) {
   return buildPolicyPostRemovalRuntimeEvidenceArtifact({
     applyEvidence: {
@@ -123,6 +124,7 @@ function buildEvidenceRegenerationRuntimeEvidenceArtifact(
       validation: { ok: true, issueCount: 0, issues: [] },
       removalReview: {
         reviewArtifactFingerprint: EVIDENCE_REGENERATION_REVIEW_ARTIFACT_FINGERPRINT,
+        executionPlanArtifactFingerprint,
       },
       applyBatch: {
         requestedCount: appliedPaths.length,
@@ -176,7 +178,10 @@ async function buildEvidenceRegenerationNextBatchAuthorizationArtifact({
 
   return buildPolicyNextCompatibilityRemovalBatchAuthorizationArtifact({
     runtimeEvidenceArtifact:
-      buildEvidenceRegenerationRuntimeEvidenceArtifact(appliedPaths),
+      buildEvidenceRegenerationRuntimeEvidenceArtifact(
+        appliedPaths,
+        source.executionPlanArtifact.artifactFingerprint.fingerprint
+      ),
     ...source,
     input: {
       requestedPaths: remainingPaths,
