@@ -2,6 +2,11 @@ import {
   AUTHORITY_SOURCE_IDS,
 } from './policyAuthorityVocabulary.mjs';
 import {
+  POLICY_BROAD_GENRE_LABELS,
+  evaluatePolicyBroadGenreIdentityEligibility,
+  isPolicyBroadGenreEvidence,
+} from './policyBroadGenreIdentityEligibility.mjs';
+import {
   POLICY_EVIDENCE_BUCKET_IDS,
   POLICY_EVIDENCE_SOURCE_IDS,
 } from './policyEvidenceEngine.mjs';
@@ -69,32 +74,7 @@ const POLICY_PROFILE_INTENT_SUGGESTION_AUDIT_RISK_IDS = Object.freeze({
   SUGGESTION_PLAN_MISMATCH: 'suggestion_plan_mismatch',
 });
 
-const POLICY_PROFILE_INTENT_BROAD_GENRE_LABELS = Object.freeze([
-  'action',
-  'adventure',
-  'animation',
-  'comedy',
-  'crime',
-  'documentary',
-  'drama',
-  'family',
-  'fantasy',
-  'history',
-  'horror',
-  'music',
-  'mystery',
-  'reality',
-  'romance',
-  'science fiction',
-  'sci-fi',
-  'sport',
-  'sports',
-  'thriller',
-  'war',
-  'western',
-]);
-
-const BROAD_GENRE_LABELS = new Set(POLICY_PROFILE_INTENT_BROAD_GENRE_LABELS);
+const POLICY_PROFILE_INTENT_BROAD_GENRE_LABELS = POLICY_BROAD_GENRE_LABELS;
 
 const RULES = Object.freeze({
   [POLICY_PROFILE_INTENT_SUGGESTION_RULE_IDS.OBSERVED_IDENTITY]: {
@@ -122,7 +102,7 @@ const RULES = Object.freeze({
   [POLICY_PROFILE_INTENT_SUGGESTION_RULE_IDS.BROAD_GENRE_IDENTITY_DEMOTED]: {
     fieldId: POLICY_PROFILE_INTENT_SUGGESTION_FIELD_IDS.HELPFUL_MATCHES,
     reasonCode: 'broad_genre_identity_demoted_to_compatibility',
-    explanation: 'A broad genre lacks specific identity support, so it is helpful evidence only.',
+    explanation: 'A broad genre lacks eligible specific identity support, so it is helpful evidence only.',
     inferred: true,
     operatorDeclared: false,
     effectiveEvidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
@@ -196,14 +176,6 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-function normalizeString(value) {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
-function normalizeKey(value) {
-  return normalizeString(value).toLowerCase();
-}
-
 function getEvidenceEntries(projection, bucketId) {
   return asArray(projection?.buckets?.[bucketId]);
 }
@@ -231,20 +203,6 @@ function isMetadataEvidence(entry = {}) {
 function isOperatorDeclared(entry = {}) {
   return entry.sourceId === POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT &&
     entry.authoritySourceId === AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT;
-}
-
-function isPolicyBroadGenreEvidence(entry = {}) {
-  const key = normalizeKey(entry.key);
-  const label = normalizeKey(entry.label);
-
-  return key.startsWith('genre:') || key.startsWith('genres:') || BROAD_GENRE_LABELS.has(label);
-}
-
-function hasSpecificIdentitySupport(identityEntries) {
-  return identityEntries.some(entry => (
-    isOperatorDeclared(entry) ||
-    (!isPolicyBroadGenreEvidence(entry) && !isMetadataEvidence(entry))
-  ));
 }
 
 function normalizeConfidence(value) {
@@ -296,6 +254,7 @@ function buildSuggestedIntentEntry(entry = {}, ruleId) {
     reasonCode: rule.reasonCode,
     evidenceCount: Number.isFinite(Number(entry.count)) ? Number(entry.count) : null,
     evidenceConfidence: normalizeConfidence(entry.confidence),
+    evidenceStale: entry.stale === true,
     inferred: rule.inferred,
     operatorDeclared: rule.operatorDeclared,
     suggestion,
@@ -453,7 +412,12 @@ function buildPolicyProfileIntentSuggestionPlan(projection = {}) {
     evidenceProjection,
     POLICY_EVIDENCE_BUCKET_IDS.IDENTITY
   );
-  const hasSpecificSupport = hasSpecificIdentitySupport(identityEntries);
+  const broadGenreEligibility = evaluatePolicyBroadGenreIdentityEligibility(
+    identityEntries.map(entry => ({
+      ...entry,
+      operatorDeclared: isOperatorDeclared(entry),
+    }))
+  );
   const entries = {
     [POLICY_PROFILE_INTENT_SUGGESTION_FIELD_IDS.BELONGS_HERE]: [],
     [POLICY_PROFILE_INTENT_SUGGESTION_FIELD_IDS.HELPFUL_MATCHES]: [],
@@ -478,10 +442,12 @@ function buildPolicyProfileIntentSuggestionPlan(projection = {}) {
       return;
     }
 
-    if (isPolicyBroadGenreEvidence(entry) && !isOperatorDeclared(entry) && !hasSpecificSupport) {
+    if (isPolicyBroadGenreEvidence(entry) &&
+        !isOperatorDeclared(entry) &&
+        !broadGenreEligibility.eligible) {
       warnings.push(buildWarning(
         POLICY_PROFILE_INTENT_SUGGESTION_WARNING_IDS.BROAD_GENRE_IDENTITY_NEEDS_SUPPORT,
-        'Broad genre evidence was kept as helpful evidence until specific support or operator intent confirms destination identity.',
+        'Broad genre evidence was kept as helpful evidence until eligible specific support or operator intent confirms destination identity.',
         { evidenceBucketId: entry.bucketId, evidenceSourceId: entry.sourceId }
       ));
       entries.helpful_matches.push(buildSuggestedIntentEntry(

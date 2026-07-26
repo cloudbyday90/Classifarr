@@ -2,8 +2,8 @@ import {
   AUTHORITY_SOURCE_IDS,
 } from './policyAuthorityVocabulary.mjs';
 import {
-  BROAD_GENRE_LABELS,
-} from './policyIntentEngine.mjs';
+  POLICY_BROAD_GENRE_LABELS,
+} from './policyBroadGenreIdentityEligibility.mjs';
 import {
   POLICY_EVIDENCE_BUCKET_IDS,
   POLICY_EVIDENCE_SOURCE_IDS,
@@ -83,7 +83,7 @@ const POLICY_RUNTIME_EVIDENCE_AUDIT_RISK_IDS = Object.freeze({
 const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/;
 const MAX_OPERATOR_INTENT_BOUNDARY_RISK_IDS = 16;
 
-const BROAD_GENRE_SET = new Set(BROAD_GENRE_LABELS.map(label => label.toLowerCase()));
+const BROAD_GENRE_SET = new Set(POLICY_BROAD_GENRE_LABELS);
 const AUTHORITY_IDS = Object.freeze(Object.values(AUTHORITY_SOURCE_IDS));
 const VALID_POLICY_EVIDENCE_BUCKET_IDS = Object.freeze(
   Object.values(POLICY_EVIDENCE_BUCKET_IDS)

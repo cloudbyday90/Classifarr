@@ -69,6 +69,12 @@ unchanged operator or runtime outcome.
   review trigger, and only operator-declared evidence can propose hard limits
   or avoid values.
 
+- **Broad-Genre Identity Eligibility** - observed broad genres now need an
+  eligible specific identity before they can define a destination: non-stale
+  media-server evidence, at least two observed items, and `0.70` confidence.
+  The server rechecks the same rule when it audits an intent draft; metadata,
+  weak, stale, or malformed supporting evidence remains non-authoritative.
+
 - **Server-Owned Constraint Decisions** - the native policy workflow now
   publishes a bounded, display-only decision model that keeps hard limits,
   avoid values, and review warnings semantically distinct. Hard limits can

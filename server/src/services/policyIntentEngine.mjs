@@ -24,6 +24,9 @@ import {
   buildPolicyStrictConstraintDescriptor,
 } from './policyStrictConstraintDescriptor.mjs';
 import {
+  evaluatePolicyBroadGenreIdentityEligibility,
+} from './policyBroadGenreIdentityEligibility.mjs';
+import {
   POLICY_PROFILE_INTENT_BROAD_GENRE_LABELS as BROAD_GENRE_LABELS,
   POLICY_PROFILE_INTENT_SUGGESTION_ASSUMPTION_IDS,
   POLICY_PROFILE_INTENT_SUGGESTION_WARNING_IDS,
@@ -593,6 +596,19 @@ function validatePolicyIntentDraft(intent = {}) {
     }
   });
 
+  const broadGenreEligibility = evaluatePolicyBroadGenreIdentityEligibility(
+    asArray(intent?.belongs_here).map(entry => ({
+      key: entry?.key,
+      label: entry?.label,
+      sourceId: entry?.evidenceSourceId,
+      authoritySourceId: entry?.authoritySourceId,
+      count: entry?.evidenceCount,
+      confidence: entry?.evidenceConfidence,
+      stale: entry?.evidenceStale === true,
+      operatorDeclared: entry?.operatorDeclared === true,
+    }))
+  );
+
   asArray(intent?.belongs_here).forEach(entry => {
     if (entry.authoritySourceId === AUTHORITY_SOURCE_IDS.METADATA_PROVIDER) {
       issues.push({
@@ -602,7 +618,7 @@ function validatePolicyIntentDraft(intent = {}) {
     }
     if (isPolicyBroadGenreEvidence(entry) &&
         entry.operatorDeclared !== true &&
-        !asArray(intent.belongs_here).some(candidate => !isPolicyBroadGenreEvidence(candidate))) {
+        !broadGenreEligibility.eligible) {
       issues.push({
         riskId: POLICY_INTENT_AUDIT_RISK_IDS.BROAD_GENRE_IDENTITY_WITHOUT_SUPPORT,
         message: 'Broad genre identity requires specific supporting evidence or operator-declared intent.',

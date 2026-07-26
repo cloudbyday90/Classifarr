@@ -157,6 +157,63 @@ describe('policyProfileIntentSuggestionRules', () => {
     ]));
   });
 
+  test('requires eligible observed specific identity before promoting a broad genre', () => {
+    const weakPlan = buildPlan({
+      libraryProfile: {
+        identityCandidates: [
+          { key: 'genre:animation', label: 'Animation', count: 24, confidence: 0.92 },
+          { key: 'studio:ghibli', label: 'Studio Ghibli', count: 1, confidence: 0.99 },
+        ],
+      },
+    });
+    const eligiblePlan = buildPlan({
+      libraryProfile: {
+        identityCandidates: [
+          { key: 'genre:animation', label: 'Animation', count: 24, confidence: 0.92 },
+          { key: 'studio:ghibli', label: 'Studio Ghibli', count: 2, confidence: 0.7 },
+        ],
+      },
+    });
+
+    expect(weakPlan.entries.belongs_here.map(entry => entry.label))
+      .not.toContain('Animation');
+    expect(weakPlan.entries.helpful_matches).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: 'Animation',
+        suggestion: expect.objectContaining({
+          ruleId: POLICY_PROFILE_INTENT_SUGGESTION_RULE_IDS.BROAD_GENRE_IDENTITY_DEMOTED,
+        }),
+      }),
+    ]));
+    expect(eligiblePlan.entries.belongs_here).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'Animation' }),
+      expect.objectContaining({ label: 'Studio Ghibli' }),
+    ]));
+  });
+
+  test('does not use stale specific identity as broad-genre support', () => {
+    const plan = buildPlan({
+      libraryProfile: {
+        identityCandidates: [
+          { key: 'genre:animation', label: 'Animation', count: 24, confidence: 0.92 },
+          {
+            key: 'studio:ghibli',
+            label: 'Studio Ghibli',
+            count: 12,
+            confidence: 0.94,
+            stale: true,
+          },
+        ],
+      },
+    });
+
+    expect(plan.entries.belongs_here.map(entry => entry.label))
+      .not.toContain('Animation');
+    expect(plan.entries.helpful_matches).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'Animation' }),
+    ]));
+  });
+
   test('keeps observed absence as review evidence instead of creating avoid rules', () => {
     const plan = buildPlan({
       profileFreshness: {

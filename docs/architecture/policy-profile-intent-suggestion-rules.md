@@ -88,13 +88,15 @@ Cons:
 
 1. Bounded evidence projection:
    `server/src/services/policyEvidenceBoundary.mjs`
-2. Deterministic suggestion rules:
+2. Broad-genre identity eligibility:
+   `server/src/services/policyBroadGenreIdentityEligibility.mjs`
+3. Deterministic suggestion rules:
    `server/src/services/policyProfileIntentSuggestionRules.mjs`
-3. Intent draft and bounded handoff:
+4. Intent draft and bounded handoff:
    `server/src/services/policyIntentEngine.mjs`
-4. Explicit operator acceptance and declared-intent command:
+5. Explicit operator acceptance and declared-intent command:
    `server/src/services/policyDeclaredIntentCommand.mjs`
-5. Native persistence only after the existing authority and transaction gates.
+6. Native persistence only after the existing authority and transaction gates.
 
 The rule plan is proposal-only. It cannot bypass declared-intent commands,
 learning eligibility, automation readiness, routing readiness, or native
@@ -121,7 +123,7 @@ The implemented rules are:
 | Specific observed library identity | `belongs_here` proposal | Remains inferred until accepted |
 | Operator-declared identity | `belongs_here` proposal | Durable authority is preserved |
 | Metadata offered as identity | `helpful_matches` proposal | Metadata cannot define identity |
-| Broad observed genre without specific support | `helpful_matches` proposal | Warning explains the demotion |
+| Broad observed genre without eligible support | `helpful_matches` proposal | Warning explains the demotion |
 | Observed compatibility evidence | `helpful_matches` proposal | Supports fit after identity is plausible |
 | Operator-declared hard limit or avoid value | Constraint proposal | Observed values cannot create either field |
 | Outlier, stale, or insufficient evidence | `ask_when` proposal | Never becomes an automatic exclusion |
@@ -131,6 +133,12 @@ The plan is sorted deterministically by field, key, and authority. It reports
 the applied rule IDs and provides an audit that recomputes the expected plan.
 A changed explanation, field, reason code, or rule causes descriptor or plan
 validation to fail.
+
+Broad observed genres require a separate, non-stale specific identity with the
+media-server profile source and authority, at least two observed items, and at
+least `0.70` confidence. A declared specific identity is the explicit override.
+The full rationale and reason-code contract are in
+[Policy Broad-Genre Identity Eligibility](policy-broad-genre-identity-eligibility.md).
 
 ## Security Outcome
 
@@ -147,7 +155,8 @@ validation to fail.
 
 Focused coverage is in
 `server/src/__tests__/services/policyProfileIntentSuggestionRules.test.mjs` and
-protects deterministic ordering, source authority, broad-genre and metadata
-demotion, absence handling, object-payload redaction, descriptor tampering, and
-raw-input rejection. `policyIntentEngine.test.mjs` verifies that the draft
-retains and audits the descriptor.
+protects deterministic ordering, source authority, threshold-based broad-genre
+and metadata demotion, absence handling, object-payload redaction, descriptor
+tampering, and raw-input rejection. `policyIntentEngine.test.mjs` verifies that
+the draft retains and audits the descriptor and cannot use a weak specific entry
+to support a broad genre.

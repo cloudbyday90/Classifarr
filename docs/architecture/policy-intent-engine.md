@@ -76,8 +76,9 @@ The important boundary is authority:
 
 3. **Demote unsupported broad genre identity.**
    A broad genre such as `Animation` can be helpful evidence by itself, but it
-   becomes `belongs_here` only when the operator declares it or specific
-   supporting identity evidence also exists.
+   becomes `belongs_here` only when the operator declares it or a separate
+   non-stale observed specific identity has the authoritative media-server
+   source/authority, at least two items, and confidence of at least `0.70`.
 
 4. **Treat absence as review, not exclusion.**
    Missing, stale, or conflicting evidence creates `ask_when` entries and
@@ -169,6 +170,10 @@ Cons:
   `server/src/services/policyIntentEngine.mjs`
 - Profile-to-intent suggestion rules:
   `server/src/services/policyProfileIntentSuggestionRules.mjs`
+- Broad-genre identity eligibility:
+  `server/src/services/policyBroadGenreIdentityEligibility.mjs`
+- Broad-genre eligibility design:
+  `docs/architecture/policy-broad-genre-identity-eligibility.md`
 - Profile-to-intent suggestion-rule tests:
   `server/src/__tests__/services/policyProfileIntentSuggestionRules.test.mjs`
 - Profile-to-intent suggestion-rule design:
@@ -238,6 +243,7 @@ evidenceSourceId
 authoritySourceId
 reasonCode
 evidenceCount
+evidenceStale
 evidenceConfidence
 inferred
 operatorDeclared

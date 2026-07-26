@@ -605,6 +605,60 @@ describe('policyIntentEngine', () => {
       ]));
   });
 
+  test('rejects weak or unproven specific entries as broad-genre support', () => {
+    const invalidIntent = buildIntentFromEvidenceInput({
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+      },
+    });
+    invalidIntent.belongs_here = [
+      {
+        fieldId: POLICY_INTENT_FIELD_IDS.BELONGS_HERE,
+        key: 'genre:animation',
+        label: 'Animation',
+        evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
+        evidenceSourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+        authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+        evidenceCount: 24,
+        evidenceConfidence: 0.92,
+        operatorDeclared: false,
+      },
+      {
+        fieldId: POLICY_INTENT_FIELD_IDS.BELONGS_HERE,
+        key: 'studio:ghibli',
+        label: 'Studio Ghibli',
+        evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
+        evidenceSourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
+        authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+        evidenceCount: 1,
+        evidenceConfidence: 0.99,
+        operatorDeclared: false,
+      },
+    ];
+
+    expect(validatePolicyIntentDraft(invalidIntent).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_INTENT_AUDIT_RISK_IDS.BROAD_GENRE_IDENTITY_WITHOUT_SUPPORT,
+        }),
+      ]));
+
+    const staleSupportIntent = structuredClone(invalidIntent);
+    staleSupportIntent.belongs_here[1] = {
+      ...staleSupportIntent.belongs_here[1],
+      evidenceCount: 12,
+      evidenceConfidence: 0.94,
+      evidenceStale: true,
+    };
+
+    expect(validatePolicyIntentDraft(staleSupportIntent).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_INTENT_AUDIT_RISK_IDS.BROAD_GENRE_IDENTITY_WITHOUT_SUPPORT,
+        }),
+      ]));
+  });
+
   test('rejects non-operator hard limits and direct learning side effects', () => {
     const invalidIntent = buildIntentFromEvidenceInput({
       operatorIntent: {

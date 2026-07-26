@@ -3724,6 +3724,13 @@ Implementation status:
   rule ID and explanation to every derived entry, keeps observed constraints
   out of declared fields, and exposes a recomputation audit. Its design record
   is [Policy Profile Intent Suggestion Rules](policy-profile-intent-suggestion-rules.md).
+- Broad-genre promotion now has a separate versioned eligibility contract in
+  `server/src/services/policyBroadGenreIdentityEligibility.mjs`. A broad
+  observed genre needs a non-stale specific media-server identity with at least
+  two observed items and `0.70` confidence, or an operator-declared specific
+  identity. The suggestion reducer and draft audit both recompute this contract;
+  metadata, stale, weak, or malformed provenance cannot qualify. Its design
+  record is [Policy Broad-Genre Identity Eligibility](policy-broad-genre-identity-eligibility.md).
 - Intent-entry projection is normalized by
   `server/src/services/policyIntentEntryNormalizer.mjs`, which excludes
   object-valued evidence and lets the intent audit reject tampered primitive
