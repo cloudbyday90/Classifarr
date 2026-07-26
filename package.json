@@ -45,6 +45,7 @@
     "policy:storage-closure-validation-evidence": "node scripts/generate-policy-storage-closure-validation-evidence.mjs",
     "policy:storage-closure-path-state-evidence": "node scripts/generate-policy-storage-closure-path-state-evidence.mjs",
     "policy:storage-closure-final-removal-audit": "node scripts/generate-policy-storage-closure-final-removal-audit.mjs",
+    "policy:storage-closure-instance-evidence": "node scripts/assemble-policy-storage-closure-instance-evidence.mjs",
     "policy:production-naming-inventory": "node scripts/generate-policy-builder-production-name-inventory.mjs --require-valid",
     "policy:production-naming-gate": "node scripts/run-policy-production-naming-gate.mjs --require-valid",
     "policy:product-language-audit": "node scripts/run-policy-product-language-audit.mjs --require-valid",

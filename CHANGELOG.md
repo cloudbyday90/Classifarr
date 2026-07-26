@@ -175,6 +175,16 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Policy Engine Artifact Inventory** - extracted the policy-engine cutline
+  into a dedicated validated inventory of active artifacts and retired
+  diagnostic surfaces, with explicit owner, replacement, and test decisions.
+
+- **Automatic Instance Closure-Evidence Assembly** - added a read-only,
+  platform-agnostic command that derives current-closure and requirement-audit
+  artifacts from existing fingerprint-valid completion and validation evidence.
+  It fails closed without evidence synthesis, validation execution, source or
+  storage mutation, Git commands, or network calls.
+
 - **Public Compatibility-Removal Artifact Cutover** - all public
   compatibility-removal exporters now require current, plan-bound runtime
   evidence before they produce downstream authorization, completion,

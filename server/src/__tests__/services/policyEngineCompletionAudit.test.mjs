@@ -12,10 +12,12 @@ import {
   POLICY_EVIDENCE_QUALITY_STATUS_IDS,
 } from '../../services/policyEvidenceQuality.mjs';
 import {
-  POLICY_MIGRATION_ARTIFACT_DECISION_IDS,
-  buildPolicyMigrationDeletionPlan,
-  listPolicyMigrationDeletionArtifacts,
-} from '../../services/policyMigrationDeletionPath.mjs';
+  POLICY_ENGINE_ARTIFACT_CATEGORY_IDS,
+  POLICY_ENGINE_ARTIFACT_INVENTORY_RISK_IDS,
+  listPolicyEngineArtifactInventoryArtifacts,
+  listPolicyEngineArtifactInventoryGroups,
+  listPolicyEngineLegacySurfaceCoverage,
+} from '../../services/policyEngineArtifactInventory.mjs';
 import {
   POLICY_DECISION_HANDOFF_SOURCE_IDS,
   POLICY_DECISION_HANDOFF_SOURCE_VERSION,
@@ -90,16 +92,16 @@ describe('policyEngineCompletionAudit', () => {
       ]);
   });
 
-  test('requires legacy replay, impact, provider, and TMDB artifacts to have cutline decisions', () => {
+  test('requires current scoring, summary, and template artifacts to have cutline decisions', () => {
     const requiredPaths = listPolicyEngineRequiredLegacyCutlineArtifacts();
-    const classifiedPaths = listPolicyMigrationDeletionArtifacts()
+    const classifiedPaths = listPolicyEngineArtifactInventoryArtifacts()
       .map(artifact => artifact.path);
 
     expect(requiredPaths).toEqual(expect.arrayContaining([
-      'client/src/components/policies/PolicyIntentImpactPreviewCard.vue',
-      'client/src/components/policies/PolicyIntentReplayPreviewCard.vue',
-      'server/src/services/policyIntentReplayTmdbMetadataExecutionSwitch.mjs',
-      'server/src/services/policyIntentReplayTmdbProviderClient.mjs',
+      'client/src/components/policies/PolicyBuilderAdvancedSettings.vue',
+      'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
+      'server/src/services/policyEngine.mjs',
+      'server/src/services/policyAuthoringStarterTemplates.mjs',
     ]));
     expect(classifiedPaths).toEqual(expect.arrayContaining(requiredPaths));
   });
@@ -109,8 +111,8 @@ describe('policyEngineCompletionAudit', () => {
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
-    expect(audit.checkedArtifactCount).toBeGreaterThanOrEqual(20);
-    expect(audit.classifiedArtifactCount).toBeGreaterThan(audit.checkedArtifactCount);
+    expect(audit.groupCount).toBeGreaterThanOrEqual(8);
+    expect(audit.artifactCount).toBeGreaterThanOrEqual(35);
     expect(audit.nextStep).toEqual(expect.objectContaining({
       stepId: 'evidence_engine',
       label: 'Evidence Engine',
@@ -733,40 +735,37 @@ describe('policyEngineCompletionAudit', () => {
     ]));
   });
 
-  test('rejects missing legacy cutline decisions and premature native storage migration', () => {
-    const migrationPlan = buildPolicyMigrationDeletionPlan();
-    const artifacts = migrationPlan.artifacts
-      .filter(artifact =>
-        artifact.path !== 'client/src/components/policies/PolicyIntentImpactPreviewCard.vue' &&
-        artifact.decisionId !== POLICY_MIGRATION_ARTIFACT_DECISION_IDS.NATIVE_STORAGE_BLOCKER
+  test('rejects active surfaces that lose their current artifact inventory', () => {
+    const groups = listPolicyEngineArtifactInventoryGroups()
+      .filter(group =>
+        group.categoryId !== POLICY_ENGINE_ARTIFACT_CATEGORY_IDS.PARITY_DELTA
       );
     const audit = buildPolicyEngineArtifactInventoryCutlineAudit({
-      artifacts,
+      groups,
+      surfaceCoverage: listPolicyEngineLegacySurfaceCoverage(),
     });
 
     expect(audit.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.LEGACY_ARTIFACT_WITHOUT_CUTLINE,
-      }),
-      expect.objectContaining({
-        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.NATIVE_STORAGE_NOT_BLOCKED,
+        riskId: POLICY_ENGINE_ARTIFACT_INVENTORY_RISK_IDS.ACTIVE_SURFACE_WITHOUT_ARTIFACTS,
       }),
     ]));
   });
 
-  test('rejects legacy diagnostic artifacts still allowed in normal workflow', () => {
-    const artifacts = listPolicyMigrationDeletionArtifacts().map(artifact =>
-      artifact.path === 'client/src/components/policies/PolicyIntentReplayPreviewCard.vue'
-        ? { ...artifact, normalWorkflowAllowed: true }
-        : artifact
+  test('rejects inventory groups that return legacy diagnostics to normal workflow', () => {
+    const groups = listPolicyEngineArtifactInventoryGroups().map(group =>
+      group.id === 'advanced_builder_controls'
+        ? { ...group, normalWorkflowAllowed: true }
+        : group
     );
     const audit = buildPolicyEngineArtifactInventoryCutlineAudit({
-      artifacts,
+      groups,
+      surfaceCoverage: listPolicyEngineLegacySurfaceCoverage(),
     });
 
     expect(audit.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        riskId: POLICY_ENGINE_COMPLETION_RISK_IDS.LEGACY_ARTIFACT_ALLOWED_IN_NORMAL_WORKFLOW,
+        riskId: POLICY_ENGINE_ARTIFACT_INVENTORY_RISK_IDS.LEGACY_SURFACE_IN_NORMAL_WORKFLOW,
       }),
     ]));
   });

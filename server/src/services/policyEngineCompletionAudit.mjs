@@ -25,11 +25,13 @@ import {
   buildPolicyLearningGuardAudit,
 } from './policyLearningGuard.mjs';
 import {
-  POLICY_MIGRATION_ARTIFACT_DECISION_IDS,
   buildPolicyMigrationDeletionAudit,
   buildPolicyMigrationDeletionPlanFromBoundedWorkflow,
-  listPolicyMigrationDeletionArtifacts,
 } from './policyMigrationDeletionPath.mjs';
+import {
+  buildPolicyEngineArtifactInventoryAudit,
+  listPolicyEngineArtifactInventoryArtifacts,
+} from './policyEngineArtifactInventory.mjs';
 import {
   buildPolicyOperatorWorkflowFromBoundedReadiness,
   buildPolicyOperatorWorkflowAudit,
@@ -65,9 +67,6 @@ const POLICY_ENGINE_COMPLETION_RISK_IDS = Object.freeze({
   ARTIFACT_PATH_NOT_FOUND: 'artifact_path_not_found',
   COMPONENT_AUDIT_FAILED: 'component_audit_failed',
   NEXT_STEP_MISMATCH: 'next_step_mismatch',
-  LEGACY_ARTIFACT_WITHOUT_CUTLINE: 'legacy_artifact_without_cutline',
-  LEGACY_ARTIFACT_ALLOWED_IN_NORMAL_WORKFLOW: 'legacy_artifact_allowed_in_normal_workflow',
-  NATIVE_STORAGE_NOT_BLOCKED: 'native_storage_not_blocked',
   BOUNDED_CHAIN_FAILED: 'bounded_chain_failed',
   BOUNDED_CHAIN_AUDIT_NOT_PASSING: 'bounded_chain_audit_not_passing',
   BOUNDED_CHAIN_PROVENANCE_MISMATCH: 'bounded_chain_provenance_mismatch',
@@ -86,11 +85,11 @@ const POLICY_ENGINE_COMPONENT_RECORDS = Object.freeze([
   {
     id: POLICY_ENGINE_COMPLETION_COMPONENT_IDS.ARTIFACT_INVENTORY_CUTLINE,
     label: 'Artifact inventory and cutline',
-    docPath: 'docs/architecture/policy-builder-intent-model-roadmap.md',
-    servicePath: 'server/src/services/policyMigrationDeletionPath.mjs',
-    testPath: 'server/src/__tests__/services/policyMigrationDeletionPath.test.mjs',
+    docPath: 'docs/architecture/policy-engine-artifact-inventory.md',
+    servicePath: 'server/src/services/policyEngineArtifactInventory.mjs',
+    testPath: 'server/src/__tests__/services/policyEngineArtifactInventory.test.mjs',
     expectedNextStepId: 'evidence_engine',
-    evidence: 'Legacy policy-builder diagnostics have explicit verifier, deletion, keep, or native storage blocker decisions.',
+    evidence: 'Active legacy policy-engine artifacts and retired diagnostic surfaces have explicit owner, cutline, and test decisions.',
   },
   {
     id: POLICY_ENGINE_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE,
@@ -148,33 +147,6 @@ const POLICY_ENGINE_COMPONENT_RECORDS = Object.freeze([
   },
 ]);
 
-
-const REQUIRED_LEGACY_CUTLINE_ARTIFACT_PATHS = Object.freeze([
-  'client/src/components/policies/PolicyIntentImpactPreviewCard.vue',
-  'client/src/components/policies/PolicyIntentReplayPreviewCard.vue',
-  'client/src/composables/usePolicyIntentImpactPreview.js',
-  'client/src/composables/usePolicyIntentReplayPreview.js',
-  'client/src/utils/policyIntentImpactPreview.js',
-  'client/src/utils/policyIntentReplayPreview.js',
-  'server/src/routes/policiesRouteMigrationVerifier.mjs',
-  'server/src/services/policyIntentImpactPreview.mjs',
-  'server/src/services/policyImpactPreviewMigrationVerifier.mjs',
-  'server/src/services/policyIntentReplayEngineComparison.mjs',
-  'server/src/services/policyIntentReplayEnrichmentAdapterContract.mjs',
-  'server/src/services/policyIntentReplayEnrichmentEligibility.mjs',
-  'server/src/services/policyIntentReplayEvidenceCompleteness.mjs',
-  'server/src/services/policyIntentReplayExecutionContext.mjs',
-  'server/src/services/policyIntentReplayItemAdapter.mjs',
-  'server/src/services/policyIntentReplayParityDelta.mjs',
-  'server/src/services/policyIntentReplayPreview.mjs',
-  'server/src/services/policyIntentReplayProviderReadiness.mjs',
-  'server/src/services/policyIntentReplaySampleDiagnostics.mjs',
-  'server/src/services/policyIntentReplayScoring.mjs',
-  'server/src/services/policyIntentReplayTmdbMetadataAdapter.mjs',
-  'server/src/services/policyIntentReplayTmdbMetadataCoverageComparison.mjs',
-  'server/src/services/policyIntentReplayTmdbMetadataExecutionSwitch.mjs',
-  'server/src/services/policyIntentReplayTmdbProviderClient.mjs',
-]);
 
 function defaultPathExists(relativePath) {
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- completion records use repo-owned relative paths.
@@ -258,66 +230,10 @@ function validatePolicyEngineCompletionRecord(record = {}, {
   };
 }
 
-function buildPolicyEngineArtifactInventoryCutlineAudit({
-  artifactPaths = REQUIRED_LEGACY_CUTLINE_ARTIFACT_PATHS,
-  artifacts = listPolicyMigrationDeletionArtifacts(),
-} = {}) {
-  const artifactByPath = new Map(asArray(artifacts).map(artifact => [artifact.path, artifact]));
-  const issues = [];
-
-  artifactPaths.forEach(path => {
-    if (!artifactByPath.has(path)) {
-      issues.push(buildIssue(
-        POLICY_ENGINE_COMPLETION_RISK_IDS.LEGACY_ARTIFACT_WITHOUT_CUTLINE,
-        `Legacy policy-builder artifact lacks a policy engine cutline decision: ${path}.`,
-        { path }
-      ));
-    }
-  });
-
-  asArray(artifacts)
-    .filter(artifact =>
-      artifact.decisionId !== POLICY_MIGRATION_ARTIFACT_DECISION_IDS.KEEP_ENGINE_PRIMITIVE &&
-      artifact.normalWorkflowAllowed === true
-    )
-    .forEach(artifact => {
-      issues.push(buildIssue(
-        POLICY_ENGINE_COMPLETION_RISK_IDS.LEGACY_ARTIFACT_ALLOWED_IN_NORMAL_WORKFLOW,
-        `Legacy diagnostic artifact is still allowed in the normal workflow: ${artifact.path}.`,
-        { path: artifact.path }
-      ));
-    });
-
-  const nativeStorageBlocked = asArray(artifacts).some(artifact =>
-    artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.NATIVE_STORAGE_BLOCKER &&
-    artifact.rollbackPlan?.nativeStorageMigrationAllowed !== true
-  );
-
-  if (!nativeStorageBlocked) {
-    issues.push(buildIssue(
-      POLICY_ENGINE_COMPLETION_RISK_IDS.NATIVE_STORAGE_NOT_BLOCKED,
-      'Policy engine completion requires native storage migration to remain blocked.'
-    ));
-  }
-
-  return {
-    ok: issues.length === 0,
-    issueCount: issues.length,
-    checkedArtifactCount: artifactPaths.length,
-    classifiedArtifactCount: artifactByPath.size,
-    issues,
-    nextStep: {
-      stepId: 'evidence_engine',
-      label: 'Evidence Engine',
-      reason: 'Legacy diagnostics have cutline decisions, so the engine can normalize destination evidence without extending the old product model.',
-    },
-  };
-}
-
 function buildComponentAuditMap() {
   return {
     [POLICY_ENGINE_COMPLETION_COMPONENT_IDS.ARTIFACT_INVENTORY_CUTLINE]:
-      buildPolicyEngineArtifactInventoryCutlineAudit(),
+      buildPolicyEngineArtifactInventoryAudit(),
     [POLICY_ENGINE_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE]:
       buildPolicyEvidenceEngineAudit(),
     [POLICY_ENGINE_COMPLETION_COMPONENT_IDS.INTENT_ENGINE]:
@@ -948,13 +864,13 @@ function listPolicyEngineCompletionComponents() {
 }
 
 function listPolicyEngineRequiredLegacyCutlineArtifacts() {
-  return REQUIRED_LEGACY_CUTLINE_ARTIFACT_PATHS;
+  return listPolicyEngineArtifactInventoryArtifacts().map(artifact => artifact.path);
 }
 
 export {
   POLICY_ENGINE_COMPLETION_COMPONENT_IDS,
   POLICY_ENGINE_COMPLETION_RISK_IDS,
-  buildPolicyEngineArtifactInventoryCutlineAudit,
+  buildPolicyEngineArtifactInventoryAudit as buildPolicyEngineArtifactInventoryCutlineAudit,
   buildPolicyEngineBoundedChainCompletionAudit,
   buildPolicyEngineCompletionAudit,
   buildPolicyEngineDecisionSourceChainAudit,

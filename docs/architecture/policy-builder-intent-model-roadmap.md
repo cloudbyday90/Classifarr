@@ -3363,6 +3363,14 @@ Acceptance criteria:
 - Every old Phase 6 surface has an owner decision.
 - The roadmap and implementation doc agree on what will be removed.
 
+Implementation status:
+
+- The checked-in [Policy Engine Artifact Inventory](policy-engine-artifact-inventory.md)
+  records the current scoring, summary, template, and retired diagnostic
+  cutline. It is consumed by the policy-engine completion audit and rejects
+  missing decisions, duplicate paths, unowned active surfaces, and legacy
+  controls in the normal workflow.
+
 ### 6R.1 Evidence Engine
 
 Intent: normalize what Classifarr knows about a destination without deciding the
@@ -8432,6 +8440,17 @@ Tasks:
   - Keep the contract platform-agnostic and read-only: it cannot depend on a
     local checkout, policy name, library name, Docker state, database state,
     external provider, or media server.
+- **8R.36.10 Instance Closure-Evidence Assembly**
+  - Assemble the current-closure and requirement-audit artifacts from existing
+    fingerprint-valid completion and validation evidence in one public,
+    selected-checkout command.
+  - Preserve evidence-production boundaries: assembly must not run validation
+    commands, infer removal results, create missing approval evidence, write
+    files inside its service, mutate storage, run Git, or call a provider,
+    media server, Docker daemon, or network service.
+  - Default blocked execution writes nothing. Explicit blocked output may
+    write the same bounded assembly chain for diagnostic inspection, never a
+    synthetic complete audit.
 
 Acceptance criteria:
 
@@ -8509,6 +8528,12 @@ Implementation status:
   only a fixed-ID, non-authoritative diagnostic and one regeneration step. The
   design and outcome record is [Compatibility-Removal Public Artifact Exporter
   Cutover](policy-compatibility-removal-public-artifact-exporter-cutover.md).
+- Task 8R.36.10 is implemented. A platform-agnostic public assembler now
+  derives current-closure and requirement-audit artifacts together from the
+  same fingerprint-valid completion and validation evidence. It remains
+  read-only and fails closed when the assembled closure chain is incomplete.
+  The design and outcome record is [Policy Storage Instance Closure-Evidence
+  Assembly](policy-storage-instance-closure-evidence-assembly.md).
 
 ## Phase 8R Work Sequence
 
