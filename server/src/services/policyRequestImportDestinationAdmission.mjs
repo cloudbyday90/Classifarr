@@ -25,10 +25,15 @@ import {
   QUESTION_FRAME_IDS,
 } from './policyQuestionLearningVocabulary.mjs';
 import {
-  POLICY_LEARNING_EVENT_SOURCE_IDS,
   buildPolicyLearningDecision,
   buildPolicyLearningGuardAudit,
 } from './policyLearningGuard.mjs';
+import {
+  POLICY_LEARNING_EVENT_SOURCE_IDS,
+  buildPolicyLearningGuardInput,
+  buildPolicyLearningIntakeEvent,
+  validatePolicyLearningIntakeEvent,
+} from './policyLearningIntakeContract.mjs';
 import {
   POLICY_REQUEST_EVENT_TYPE_IDS,
   buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan,
@@ -68,6 +73,8 @@ const POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_AUDIT_RISK_IDS = Object.freeze
   INVALID_VERSION: 'invalid_request_import_destination_admission_version',
   INVALID_STATUS: 'invalid_request_import_destination_admission_status',
   INVALID_OUTCOME: 'invalid_request_import_destination_admission_outcome',
+  INVALID_LEARNING_INTAKE: 'invalid_request_import_destination_admission_learning_intake',
+  INTAKE_OUTCOME_MISMATCH: 'request_import_destination_admission_intake_outcome_mismatch',
   INVALID_LEARNING_GUARD: 'invalid_request_import_destination_admission_learning_guard',
   LEARNING_WRITE_ALLOWED: 'request_import_destination_admission_learning_write_allowed',
   PROFILE_REFRESH_QUEUED: 'request_import_destination_admission_profile_refresh_queued',
@@ -110,6 +117,7 @@ function buildNotApplicableResult(reasonCode) {
     reasonCodes: [reasonCode],
     event: null,
     finalOutcome: null,
+    learningIntake: null,
     learning: null,
     questionReduction: {
       statusId: 'not_required',
@@ -162,8 +170,10 @@ function buildOutcomeOnlyLearningDecision(requestEvent) {
   const isMissingMapping =
     requestEvent.eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING;
 
-  return buildPolicyLearningDecision({
+  const intake = buildPolicyLearningIntakeEvent({
     sourceId: POLICY_LEARNING_EVENT_SOURCE_IDS.ARR_ROUTING_OUTCOME,
+    sourceEventId: requestEvent.sourceEventId,
+    itemId: requestEvent.item.itemId,
     answerOutcomeId: ANSWER_OUTCOME_IDS.DO_NOT_LEARN,
     question: {
       frameId: isMissingMapping ? QUESTION_FRAME_IDS.ROUTING_GAP : QUESTION_FRAME_IDS.DESTINATION_FIT,
@@ -184,6 +194,15 @@ function buildOutcomeOnlyLearningDecision(requestEvent) {
       recorded: true,
     },
   });
+  const intakeAudit = validatePolicyLearningIntakeEvent(intake);
+  const guardInput = buildPolicyLearningGuardInput(intake);
+
+  return {
+    intake,
+    decision: intakeAudit.ok && guardInput
+      ? buildPolicyLearningDecision(guardInput)
+      : null,
+  };
 }
 
 function buildQuestionReductionSummary(questionReductionPlan) {
@@ -235,6 +254,17 @@ function buildLearningSummary(learningDecision) {
     decisionId: normalizeString(learning.decisionId, 80) || null,
     canWriteLearning: learning.canWriteLearning === true,
     profileRefreshQueued: profileRefresh.queue === true,
+  };
+}
+
+function buildLearningIntakeSummary(intake = {}) {
+  const source = asObject(intake);
+
+  return {
+    version: normalizeString(source.version, 80) || null,
+    sourceId: normalizeString(source.sourceId, 80) || null,
+    sourceEventId: normalizeString(source.sourceEventId, 120) || null,
+    answerOutcomeId: normalizeString(source.answerOutcomeId, 80) || null,
   };
 }
 
@@ -308,6 +338,7 @@ function buildPolicyRequestImportDestinationAdmission({
       : POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.MISSING_MAPPING_RECORDED,
   ];
   let learningDecision;
+  let learningIntake;
   let requestTimeDecision = null;
 
   if (questionReduction.statusId === 'valid') {
@@ -316,9 +347,12 @@ function buildPolicyRequestImportDestinationAdmission({
       requestEvent,
     });
     learningDecision = requestTimeDecision.learningDecision;
+    learningIntake = requestTimeDecision.intake;
     reasonCodes.push(POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.VALID_QUESTION_REDUCTION_PROOF);
   } else {
-    learningDecision = buildOutcomeOnlyLearningDecision(requestEvent);
+    const fallbackResult = buildOutcomeOnlyLearningDecision(requestEvent);
+    learningDecision = fallbackResult.decision;
+    learningIntake = fallbackResult.intake;
     reasonCodes.push(
       questionReduction.statusId === 'invalid'
         ? POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.INVALID_QUESTION_REDUCTION_PROOF
@@ -332,7 +366,8 @@ function buildPolicyRequestImportDestinationAdmission({
     statusId: POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_STATUS_IDS.OUTCOME_ONLY,
     reasonCodes: uniqueReasonCodes(reasonCodes),
     event: buildEventSummary(requestEvent),
-    finalOutcome: learningDecision.finalOutcome,
+    finalOutcome: learningIntake.finalOutcome,
+    learningIntake: buildLearningIntakeSummary(learningIntake),
     learningGuard: buildLearningGuardSnapshot(learningDecision),
     learning: buildLearningSummary(learningDecision),
     questionReduction,
@@ -354,13 +389,18 @@ function buildPolicyRequestImportDestinationAdmission({
 
   return {
     ...result,
-    audit: buildPolicyRequestImportDestinationAdmissionAudit(result, { learningDecision, requestTimeDecision }),
+    audit: buildPolicyRequestImportDestinationAdmissionAudit(result, {
+      learningDecision,
+      learningIntake,
+      requestTimeDecision,
+    }),
   };
 }
 
 function buildPolicyRequestImportDestinationAdmissionAudit(result = {}, internal = {}) {
   const source = asObject(result);
-  const learningDecision = source.learningGuard || internal.learningDecision;
+  const learningDecision = internal.learningDecision || source.learningGuard;
+  const learningIntake = internal.learningIntake;
   const requestTimeDecision = internal.requestTimeDecision;
   const issues = [];
 
@@ -383,6 +423,21 @@ function buildPolicyRequestImportDestinationAdmissionAudit(result = {}, internal
       issues.push({
         riskId: POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_AUDIT_RISK_IDS.INVALID_OUTCOME,
         message: 'A terminal routing admission must contain a valid final outcome.',
+      });
+    }
+
+    if (Object.hasOwn(internal, 'learningIntake') &&
+        (!learningIntake || validatePolicyLearningIntakeEvent(learningIntake).ok !== true)) {
+      issues.push({
+        riskId: POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_AUDIT_RISK_IDS.INVALID_LEARNING_INTAKE,
+        message: 'A terminal request/import routing admission requires valid canonical learning intake.',
+      });
+    }
+
+    if (learningIntake?.finalOutcome && learningIntake.finalOutcome !== source.finalOutcome) {
+      issues.push({
+        riskId: POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_AUDIT_RISK_IDS.INTAKE_OUTCOME_MISMATCH,
+        message: 'Request/import final outcome must be the canonical learning-intake outcome.',
       });
     }
 

@@ -158,6 +158,11 @@ Native pending route-outcome adoption is documented in
 It derives canonical route intake from the server-owned terminal request-time
 event and keeps route success and missing mapping outcome-only.
 
+Request-import fallback adoption is documented in
+[Policy Request-Import Fallback Learning Intake Adoption](policy-request-import-fallback-learning-intake-adoption.md).
+It reuses valid request-time intake and normalizes missing or invalid-proof
+terminal routing through the same contract without inferring requester intent.
+
 ## Next Step
 
 Proceed to **Phase 6R.3.2: Learning Intake Adapter Adoption**. Migrate the

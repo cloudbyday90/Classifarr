@@ -17,6 +17,7 @@
  */
 
 import {
+  POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_AUDIT_RISK_IDS,
   POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS,
   POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_STATUS_IDS,
   buildPolicyRequestImportDestinationAdmission,
@@ -28,6 +29,9 @@ import {
 import {
   POLICY_REQUEST_EVENT_TYPE_IDS,
 } from '../../services/policyRequestTimeLearning.mjs';
+import {
+  buildPolicyLearningIntakeEvent,
+} from '../../services/policyLearningIntakeContract.mjs';
 
 function questionReductionPlan(overrides = {}) {
   return buildPolicyRuntimeQuestionReductionFromRuntimeInput({
@@ -90,6 +94,12 @@ describe('policyRequestImportDestinationAdmission', () => {
         status: 'routed',
         destinationLibraryId: 6,
       }),
+      learningIntake: {
+        version: 'policy.learning_intake.v1',
+        sourceId: 'arr_routing_outcome',
+        sourceEventId: 'classification:87',
+        answerOutcomeId: 'resolve_current_item',
+      },
       learning: {
         decisionId: 'outcome_only',
         canWriteLearning: false,
@@ -144,6 +154,12 @@ describe('policyRequestImportDestinationAdmission', () => {
         missingMapping: true,
       }),
     }));
+    expect(result.learningIntake).toEqual({
+      version: 'policy.learning_intake.v1',
+      sourceId: 'arr_routing_outcome',
+      sourceEventId: 'classification:87',
+      answerOutcomeId: 'do_not_learn',
+    });
     expect(result.learning).toEqual(expect.objectContaining({
       canWriteLearning: false,
       profileRefreshQueued: false,
@@ -174,6 +190,12 @@ describe('policyRequestImportDestinationAdmission', () => {
       evidenceFingerprint: null,
     });
     expect(result.requestTimeDecision).toBeNull();
+    expect(result.learningIntake).toEqual({
+      version: 'policy.learning_intake.v1',
+      sourceId: 'arr_routing_outcome',
+      sourceEventId: 'classification:87',
+      answerOutcomeId: 'do_not_learn',
+    });
     expect(result.learning.canWriteLearning).toBe(false);
     expect(result.reasonCodes).toContain(
       POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.MISSING_QUESTION_REDUCTION_PROOF
@@ -208,6 +230,50 @@ describe('policyRequestImportDestinationAdmission', () => {
       POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.INVALID_QUESTION_REDUCTION_PROOF
     );
     expect(result.audit.ok).toBe(true);
+  });
+
+  test('flags an invalid fallback intake in the admission audit', () => {
+    const result = buildPolicyRequestImportDestinationAdmission({
+      task: task(),
+      classification: classification(),
+    });
+    const audit = buildPolicyRequestImportDestinationAdmissionAudit(result, {
+      learningIntake: {},
+    });
+
+    expect(audit).toEqual(expect.objectContaining({ ok: false }));
+    expect(audit.issues.map(issue => issue.riskId)).toContain(
+      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_AUDIT_RISK_IDS.INVALID_LEARNING_INTAKE,
+    );
+  });
+
+  test('rejects a final outcome that is detached from canonical fallback intake', () => {
+    const result = buildPolicyRequestImportDestinationAdmission({
+      task: task(),
+      classification: classification(),
+    });
+    const detachedIntake = buildPolicyLearningIntakeEvent({
+      sourceId: 'arr_routing_outcome',
+      sourceEventId: 'classification:87',
+      itemId: 87,
+      answerOutcomeId: 'do_not_learn',
+      question: { frameId: 'destination_fit', stale: false },
+      answer: {
+        label: 'Animated Movies',
+        destinationLibraryId: 6,
+        destinationLibraryName: 'Animated Movies',
+        ambiguous: false,
+      },
+      finalOutcome: result.finalOutcome,
+    });
+    const audit = buildPolicyRequestImportDestinationAdmissionAudit(result, {
+      learningIntake: detachedIntake,
+    });
+
+    expect(audit).toEqual(expect.objectContaining({ ok: false }));
+    expect(audit.issues.map(issue => issue.riskId)).toContain(
+      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_AUDIT_RISK_IDS.INTAKE_OUTCOME_MISMATCH,
+    );
   });
 
   test.each([

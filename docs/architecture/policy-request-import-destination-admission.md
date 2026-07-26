@@ -73,8 +73,10 @@ the request-time reducer. The live classifier now emits that plan only when the
 selected destination has a matching, validated native runtime candidate. The
 plan is built from declared native intent, persisted library-profile evidence,
 and stored routing configuration. Legacy, mismatched, and malformed results
-remain outcome-only through a `do_not_learn` learning-guard decision; the
-adapter still does not synthesize evidence from a legacy result or label.
+remain outcome-only through canonical learning intake and a `do_not_learn`
+learning-guard decision; the adapter still does not synthesize evidence from a
+legacy result or label. The design record is [Policy Request-Import Fallback
+Learning Intake Adoption](policy-request-import-fallback-learning-intake-adoption.md).
 
 The queue stores the bounded admission result in the existing completed task
 payload after the classification path has already persisted the classification

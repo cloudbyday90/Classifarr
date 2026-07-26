@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Request-Import Fallback Intake Gate** - terminal request/import routing
+  now sends missing or invalid native-plan fallback outcomes through canonical
+  server-owned learning intake before the guard evaluates them. Valid plans
+  retain their existing request-time semantics; neither path infers requester
+  intent or adds learning, routing, provider, quota, or refresh activity.
+
 - **Native Pending Route-Outcome Intake Gate** - terminal native route success
   and missing-mapping outcomes now use canonical server-owned learning intake
   before the guard can run. Their compact outcome history remains distinct from

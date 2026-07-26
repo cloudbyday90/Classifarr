@@ -3888,6 +3888,12 @@ Implementation status:
   missing mapping remain outcome-only; malformed intake blocks persistence,
   and no provider, quota, refresh, or routing capability was added.
   Request-import fallback and Discord answers remain separate components.
+- Phase 6R.3.2e is complete for request/import terminal-routing admission.
+  Valid native question proof retains the request-time intake, while missing
+  or invalid proof now passes through canonical fallback intake before the
+  guard. The admission remains outcome-only, excludes queue payload and raw
+  route data, and adds no provider, quota, refresh, route, or learning side
+  effect. Discord pending answers remain the final source-adapter component.
 - The contract supports explicit learning tiers for no learning,
   exact-item memory, compatibility evidence, identity evidence, and hard-limit
   evidence; every candidate includes reason codes and write permission is
