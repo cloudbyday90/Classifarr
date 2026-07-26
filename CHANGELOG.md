@@ -36,6 +36,12 @@ unchanged operator or runtime outcome.
   outcome projection, and eligible exact-item memory together. Failed
   authorization, state validation, or persistence rolls back the full change.
 
+- **Profile Refresh Command Validation** - Classifarr now rejects refresh plans
+  unless they are tied to authorized compatibility or identity evidence, the
+  locked final destination, and the learning guard's refresh reason. This
+  contract is side-effect free while durable evidence and queue consumers are
+  completed separately.
+
 - **Authorized Outcome Persistence Commands** - Classifarr now validates a
   pure, server-owned persistence plan against canonical intake, learning guard,
   revalidated actor authority, and transaction-locked current state. A valid

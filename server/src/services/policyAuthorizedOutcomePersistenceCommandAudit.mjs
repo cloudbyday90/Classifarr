@@ -12,6 +12,9 @@ import {
   buildPolicyFinalOutcomeAudit,
 } from './policyFinalOutcomeNormalizer.mjs';
 import {
+  POLICY_LEARNING_REASON_IDS,
+} from './policyLearningGuard.mjs';
+import {
   LEARNING_OPERATION_BY_TIER,
   POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS,
   POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_COMMAND_VERSION,
@@ -100,6 +103,45 @@ function buildPolicyAuthorizedOutcomePersistenceCommandAudit(command = {}) {
       riskId: POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS.OUTCOME_ONLY_HAS_LEARNING_OPERATION,
       message: 'Outcome-only commands cannot carry learning or profile-refresh operations.',
     });
+  }
+
+  if (profileRefreshOperation) {
+    const supportsProfileRefresh = [
+      POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_COMPATIBILITY_EVIDENCE,
+      POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_IDENTITY_EVIDENCE,
+    ].includes(learningOperation?.operationId);
+    const destinationMatches = normalizeIdentifier(profileRefreshOperation.destinationLibraryId) ===
+        normalizeIdentifier(finalOutcome.destinationLibraryId) &&
+      normalizeIdentifier(profileRefreshOperation.destinationLibraryId) ===
+        normalizeIdentifier(currentState.destinationLibraryId) &&
+      normalizeIdentifier(profileRefreshOperation.destinationLibraryId) ===
+        normalizeIdentifier(learningOperation?.candidate?.destinationLibraryId);
+    const hasRefreshReason = Array.isArray(profileRefreshOperation.reasonCodes) &&
+      profileRefreshOperation.reasonCodes.includes(
+        POLICY_LEARNING_REASON_IDS.PROFILE_REFRESH_REQUIRED,
+      );
+
+    if (source.statusId !== POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_STATUS_IDS.READY ||
+        profileRefreshOperation.operationId !==
+          POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.QUEUE_PROFILE_REFRESH ||
+        !supportsProfileRefresh) {
+      issues.push({
+        riskId: POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS.INVALID_PROFILE_REFRESH_OPERATION,
+        message: 'Profile refresh requires an authorized destination-evidence learning operation.',
+      });
+    }
+    if (!destinationMatches) {
+      issues.push({
+        riskId: POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS.PROFILE_REFRESH_DESTINATION_MISMATCH,
+        message: 'Profile refresh must target the locked final-outcome destination.',
+      });
+    }
+    if (!hasRefreshReason) {
+      issues.push({
+        riskId: POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS.PROFILE_REFRESH_REASON_MISSING,
+        message: 'Profile refresh requires the learning guard refresh reason.',
+      });
+    }
   }
 
   if (source.statusId !== POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_STATUS_IDS.BLOCKED &&

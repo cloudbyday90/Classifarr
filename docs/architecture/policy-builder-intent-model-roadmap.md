@@ -3828,6 +3828,24 @@ Implementation task sequence:
 5. **6R.3.3e Profile Refresh Command Consumer:** persist and consume approved
    refresh commands only after compatibility and identity evidence writers are
    ready; exact-item memory must not queue a refresh.
+   - **6R.3.3e.1 Profile Refresh Command Contract:** validate a compact,
+     side-effect-free refresh command against the authorized outcome command.
+     It must require compatibility or identity evidence, the locked final
+     destination, and the guard's refresh reason. Complete; documented in
+     [Policy Profile Refresh Command Contract](policy-profile-refresh-command-contract.md).
+   - **6R.3.3e.2 Compatibility Evidence Writer:** define and persist a bounded
+     compatibility evidence record for a command-authorized manual outcome.
+     It must not alter declared intent or infer a hard limit.
+   - **6R.3.3e.3 Identity Evidence Authority Writer:** define the stricter
+     identity admission path. Manual outcome authority alone must not turn one
+     answer into destination identity; require the allowed observed or
+     operator-declared authority before persistence.
+   - **6R.3.3e.4 Refresh Outbox Persistence:** insert a compact profile-refresh
+     outbox row in the same transaction as an admitted evidence mutation and
+     deduplicate by the authorized source event.
+   - **6R.3.3e.5 Refresh Worker Consumer:** claim committed outbox rows with a
+     bounded retry policy and idempotently invoke the existing library-profile
+     generator. It must never run on rollback or on exact-item memory.
 6. **6R.3.3f Concurrency And Recovery Audit:** prove replay, state drift,
    authorization loss, writer failure, and transaction rollback behavior with
    focused unit and integration tests.
@@ -3892,6 +3910,11 @@ Implementation status:
   legacy-compatible corrected outcome, and admitted exact-item memory in one
   transaction. Its source-specific design record is
   [Policy Manual Correction Transaction Adoption](policy-manual-correction-transaction-adoption.md).
+- Phase 6R.3.3e.1 is complete. The pure profile-refresh command and authorized
+  parent-command audit allow only compatibility or identity learning plans that
+  target the locked final destination and carry the guard refresh reason. It
+  performs no queue, profile, or evidence write. Its design record is
+  [Policy Profile Refresh Command Contract](policy-profile-refresh-command-contract.md).
 - The focused learning-guard test suite lives in
   `server/src/__tests__/services/policyLearningGuard.test.mjs`.
 - Final-outcome shaping and route-transition validation now live in

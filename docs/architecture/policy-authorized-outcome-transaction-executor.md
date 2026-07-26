@@ -152,6 +152,8 @@ integration suite verifies this boundary with a durable receipt.
 
 ## Next Step
 
-Proceed to **Phase 6R.3.3e: Profile Refresh Command Consumer**. It must keep
-refresh work durable, idempotent, and unavailable by default until its
-dedicated consumer can prove a compatible evidence change.
+Phase 6R.3.3e.1 now validates the pure refresh command in
+[Policy Profile Refresh Command Contract](policy-profile-refresh-command-contract.md).
+Proceed to **Phase 6R.3.3e.2: Compatibility Evidence Writer**. Refresh work
+remains unavailable until an admitted evidence mutation can create its outbox
+record in the same transaction.
