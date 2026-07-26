@@ -3370,6 +3370,12 @@ Implementation status:
   cutline. It is consumed by the policy-engine completion audit and rejects
   missing decisions, duplicate paths, unowned active surfaces, and legacy
   controls in the normal workflow.
+- The inventory contract lives in
+  `server/src/services/policyEngineArtifactInventory.mjs`; focused coverage
+  lives in `server/src/__tests__/services/policyEngineArtifactInventory.test.mjs`.
+- Retired impact, replay, TMDB-preview, and provider-readiness categories are
+  ledger-backed but never counted as active checkout artifacts. The later
+  migration/deletion component retains rollback and native-storage ownership.
 
 ### 6R.1 Evidence Engine
 
@@ -8451,6 +8457,18 @@ Tasks:
   - Default blocked execution writes nothing. Explicit blocked output may
     write the same bounded assembly chain for diagnostic inspection, never a
     synthetic complete audit.
+- **8R.36.11 Bounded Closure-Evidence Launcher**
+  - Execute only the repository-owned validation-evidence producer and
+    instance-evidence assembler with fixed Node paths, argument arrays, and
+    `shell: false`. A caller cannot choose an executable or construct a shell
+    command.
+  - Require a current completion-audit artifact explicitly. The launcher may
+    generate fresh validation evidence, but it must never infer, regenerate,
+    or treat a local installation as authority for completion evidence.
+  - Resolve all generated outputs under the selected checkout, use fixed
+    command timeouts, report only compact stage progress and result IDs, and
+    stop after the first failed or timed-out command. It must not call Docker,
+    a database, a media server, a provider, Git, or the network.
 
 Acceptance criteria:
 
@@ -8534,6 +8552,13 @@ Implementation status:
   read-only and fails closed when the assembled closure chain is incomplete.
   The design and outcome record is [Policy Storage Instance Closure-Evidence
   Assembly](policy-storage-instance-closure-evidence-assembly.md).
+- Task 8R.36.11 is implemented. The bounded launcher now runs only the fixed
+  validation-evidence producer and instance assembler using direct Node
+  processes with argument arrays and bounded timeouts. Completion-audit
+  provenance remains explicit, generated files must remain inside the selected
+  checkout, and a failed command stops the chain without relaying raw process
+  output. The design and outcome record is [Policy Storage Closure Evidence
+  Launcher](policy-storage-closure-evidence-launcher.md).
 
 ## Phase 8R Work Sequence
 

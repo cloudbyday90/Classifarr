@@ -185,6 +185,12 @@ unchanged operator or runtime outcome.
   It fails closed without evidence synthesis, validation execution, source or
   storage mutation, Git commands, or network calls.
 
+- **Bounded Closure-Evidence Launcher** - added a fixed-command launcher that
+  generates validation evidence and assembles the closure chain without shell
+  execution or inferred completion evidence. Generated output remains inside
+  the selected checkout, and failed or timed-out commands stop the run with
+  compact diagnostic identifiers.
+
 - **Public Compatibility-Removal Artifact Cutover** - all public
   compatibility-removal exporters now require current, plan-bound runtime
   evidence before they produce downstream authorization, completion,
