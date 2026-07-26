@@ -28,25 +28,29 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
     purgeAll.mockReset();
   });
 
-  test('clears runtime identity admissions and source-event receipts only through guarded replace-restore settings', async () => {
+  test('clears runtime refresh work, identity admissions, and source-event receipts during replace restore', async () => {
     const client = { query: jest.fn().mockResolvedValue({ rows: [] }) };
 
     await clearExistingConfig(client);
 
     expect(client.query).toHaveBeenNthCalledWith(
       1,
-      "SELECT set_config('classifarr.policy_identity_evidence_admission_maintenance', 'replace_restore', true)"
+      'DELETE FROM policy_profile_refresh_outbox'
     );
     expect(client.query).toHaveBeenNthCalledWith(
       2,
-      'DELETE FROM policy_identity_evidence_admissions'
+      "SELECT set_config('classifarr.policy_identity_evidence_admission_maintenance', 'replace_restore', true)"
     );
     expect(client.query).toHaveBeenNthCalledWith(
       3,
-      "SELECT set_config('classifarr.policy_authorized_outcome_receipt_maintenance', 'replace_restore', true)"
+      'DELETE FROM policy_identity_evidence_admissions'
     );
     expect(client.query).toHaveBeenNthCalledWith(
       4,
+      "SELECT set_config('classifarr.policy_authorized_outcome_receipt_maintenance', 'replace_restore', true)"
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      5,
       'DELETE FROM policy_authorized_outcome_source_event_receipts'
     );
   });

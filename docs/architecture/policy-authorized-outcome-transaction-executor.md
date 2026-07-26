@@ -86,9 +86,10 @@ does not expose a completed-write flag through the pure command.
   media type, target library, and actor identifier. It never forwards raw
   intake, provider, Discord, AI, question, or route payloads to evidence
   storage.
-- Compatibility evidence, identity evidence, and profile refresh are not
-  silently ignored. They fail the transaction as unavailable until their
-  dedicated writers and consumers are implemented.
+- Compatibility and identity evidence now use their dedicated writers and
+  append a compact refresh-outbox record through the same transaction. The
+  profile generator remains outside this boundary until the dedicated worker is
+  implemented.
 - A replayed receipt performs no new write. A source-event mismatch performs
   no new write and is returned as a rejected execution gate.
 - The executor does not select a source-specific lifecycle status such as
@@ -146,8 +147,8 @@ task; selected.
 
 Focused tests cover lock order, missing or inactive destinations, media-type
 drift, authorization loss, command blocking, exact replay, source-event
-mismatch, caller-owned transaction reuse, unavailable learning operations, and
-rollback propagation from every writer. The manual correction lifecycle
+mismatch, caller-owned transaction reuse, refresh-backed evidence composition,
+and rollback propagation from every writer. The manual correction lifecycle
 integration suite verifies this boundary with a durable receipt.
 
 ## Next Step
@@ -156,8 +157,7 @@ Phase 6R.3.3e.1 now validates the pure refresh command in
 [Policy Profile Refresh Command Contract](policy-profile-refresh-command-contract.md).
 Phase 6R.3.3e.2 is implemented in
 [Policy Compatibility Evidence Writer](policy-compatibility-evidence-writer.md).
-Phase 6R.3.3e.3 is implemented in
-[Policy Identity Evidence Authority Writer](policy-identity-evidence-authority-writer.md).
-Proceed to **Phase 6R.3.3e.4: Refresh Outbox Persistence**. Refresh work
-remains unavailable until compatibility or identity evidence can create its
-outbox record in the same transaction.
+Phase 6R.3.3e.4 is implemented in
+[Policy Profile Refresh Outbox Persistence](policy-profile-refresh-outbox-persistence.md).
+Proceed to **Phase 6R.3.3e.5: Refresh Worker Consumer**. It must consume only
+committed refresh records outside this transaction.

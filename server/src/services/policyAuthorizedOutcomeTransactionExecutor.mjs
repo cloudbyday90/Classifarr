@@ -21,6 +21,9 @@ import {
   writePolicyAuthorizedExactItemMemory,
 } from './policyAuthorizedOutcomeExecutionEffects.mjs';
 import {
+  persistPolicyRefreshBackedEvidence,
+} from './policyRefreshBackedEvidencePersistence.mjs';
+import {
   lockPolicyAuthorizedOutcomeExecutionState,
 } from './policyAuthorizedOutcomeExecutionState.mjs';
 import {
@@ -105,6 +108,7 @@ class PolicyAuthorizedOutcomeTransactionExecutor {
     claimReceipt = claimPolicyAuthorizedOutcomeSourceEventReceipt,
     persistFinalOutcome = persistPolicyAuthorizedFinalOutcome,
     writeExactItemMemory = writePolicyAuthorizedExactItemMemory,
+    persistRefreshBackedEvidence = persistPolicyRefreshBackedEvidence,
   } = {}) {
     this.db = db;
     this.lockExecutionState = lockExecutionState;
@@ -113,6 +117,7 @@ class PolicyAuthorizedOutcomeTransactionExecutor {
     this.claimReceipt = claimReceipt;
     this.persistFinalOutcome = persistFinalOutcome;
     this.writeExactItemMemory = writeExactItemMemory;
+    this.persistRefreshBackedEvidence = persistRefreshBackedEvidence;
   }
 
   async execute({
@@ -223,12 +228,13 @@ class PolicyAuthorizedOutcomeTransactionExecutor {
       command,
       executionState,
     });
-    const learning = await this.executeLearningOperation({
+    const executionEffects = await this.executeLearningOperation({
       client,
       command,
       executionState,
     });
-    const profileRefresh = this.executeProfileRefreshOperation(command);
+    const learning = executionEffects?.learning || null;
+    const profileRefresh = this.executeProfileRefreshOperation(command, executionEffects);
 
     return buildExecutionResult({
       statusId: POLICY_AUTHORIZED_OUTCOME_EXECUTION_STATUS_IDS.APPLIED,
@@ -247,7 +253,17 @@ class PolicyAuthorizedOutcomeTransactionExecutor {
 
     if (operation.operationId ===
         POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_EXACT_ITEM_MEMORY) {
-      return this.writeExactItemMemory({ client, command, executionState });
+      return {
+        learning: await this.writeExactItemMemory({ client, command, executionState }),
+        profileRefresh: null,
+      };
+    }
+
+    if ([
+      POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_COMPATIBILITY_EVIDENCE,
+      POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_IDENTITY_EVIDENCE,
+    ].includes(operation.operationId)) {
+      return this.persistRefreshBackedEvidence({ client, command, executionState });
     }
 
     throw new Error(
@@ -256,8 +272,13 @@ class PolicyAuthorizedOutcomeTransactionExecutor {
     );
   }
 
-  executeProfileRefreshOperation(command = {}) {
+  executeProfileRefreshOperation(command = {}, executionEffects = null) {
     if (!command.operations?.profileRefresh) return null;
+
+    if (executionEffects?.profileRefresh?.operationId ===
+        POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.QUEUE_PROFILE_REFRESH) {
+      return executionEffects.profileRefresh;
+    }
 
     throw new Error(POLICY_AUTHORIZED_OUTCOME_EXECUTION_REASON_IDS.PROFILE_REFRESH_UNAVAILABLE);
   }

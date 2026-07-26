@@ -147,8 +147,8 @@ Selected.
 5. Persist a compact, append-only admission with source-event uniqueness.
 6. Keep admissions separate from native intent, compatibility evidence, and
    route changes.
-7. In Phase 6R.3.3e.4, commit the admitted evidence mutation and refresh
-   outbox row in the same transaction; do not activate the writer earlier.
+7. Commit the admitted evidence mutation and refresh outbox row in the same
+   transaction; do not invoke the profile generator from that transaction.
 
 ## Verification
 
@@ -160,6 +160,6 @@ ordering, and migration constraints.
 
 ## Next Step
 
-Proceed to **Phase 6R.3.3e.4: Refresh Outbox Persistence**. It must compose
-the supported evidence writer or this identity admission with the validated
-refresh command in one transaction, keyed by the authorized source event.
+Phase 6R.3.3e.4 is implemented in
+[Policy Profile Refresh Outbox Persistence](policy-profile-refresh-outbox-persistence.md).
+Proceed to **Phase 6R.3.3e.5: Refresh Worker Consumer**.

@@ -16,6 +16,9 @@ import {
   POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_STATUS_IDS,
 } from './policyAuthorizedOutcomePersistenceVocabulary.mjs';
 import {
+  POLICY_LEARNING_REASON_IDS,
+} from './policyLearningGuard.mjs';
+import {
   asObject,
   normalizeIdentifier,
   normalizeString,
@@ -88,6 +91,9 @@ function buildPolicyProfileRefreshCommand(authorizedCommand = {}) {
 
   const currentState = asObject(source.currentState);
   const candidate = asObject(learningOperation.candidate);
+  const refreshReasonId = refreshOperation.reasonCodes.find(reasonId => (
+    reasonId === POLICY_LEARNING_REASON_IDS.PROFILE_REFRESH_REQUIRED
+  ));
   return buildProfileRefreshCommandResult({
     statusId: POLICY_PROFILE_REFRESH_COMMAND_STATUS_IDS.READY,
     reasonCodes: refreshOperation.reasonCodes,
@@ -99,6 +105,7 @@ function buildPolicyProfileRefreshCommand(authorizedCommand = {}) {
       learningOperationId: learningOperation.operationId,
       learningTierId: normalizeString(learningOperation.tierId, 40) || null,
       candidateKey: normalizeString(candidate.key, 160) || null,
+      refreshReasonId: normalizeString(refreshReasonId, 80) || null,
     },
   });
 }

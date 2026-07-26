@@ -32,6 +32,9 @@ import {
 const logger = createLogger('BackupRestore');
 
 export async function clearExistingConfig(client) {
+  // Refresh outbox rows describe runtime work rather than portable policy
+  // configuration. Replace restore starts from a clean operational queue.
+  await client.query('DELETE FROM policy_profile_refresh_outbox');
   // Runtime identity admissions are not user configuration. Their append-only
   // guard permits deletion only while a replace restore explicitly opts in.
   await client.query(

@@ -92,6 +92,7 @@ describe('policyProfileRefreshCommand', () => {
         learningOperationId: 'write_compatibility_evidence',
         learningTierId: 'compatibility_evidence',
         candidateKey: 'studio:pixar',
+        refreshReasonId: 'profile_refresh_required',
       },
     });
   });

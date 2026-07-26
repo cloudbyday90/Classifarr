@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-26T22:23:05.851Z
--- Latest Migration: 20260726_110000_add_policy_identity_evidence_admissions.sql
+-- Generated: 2026-07-26T23:01:51.777Z
+-- Latest Migration: 20260726_120000_add_policy_profile_refresh_outbox.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4945,6 +4945,52 @@ ALTER SEQUENCE public.policy_presets_id_seq OWNED BY public.policy_presets.id;
 
 
 --
+-- Name: policy_profile_refresh_outbox; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_profile_refresh_outbox (
+    id bigint NOT NULL,
+    outbox_version smallint DEFAULT 1 NOT NULL,
+    source_id character varying(80) NOT NULL,
+    source_event_id character varying(160) NOT NULL,
+    classification_id bigint NOT NULL,
+    library_id bigint NOT NULL,
+    learning_operation_id character varying(80) NOT NULL,
+    learning_tier_id character varying(40) NOT NULL,
+    candidate_key character varying(160) NOT NULL,
+    refresh_reason_id character varying(80) NOT NULL,
+    source_system character varying(80) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_profile_refresh_outbox_candidate_key_chk CHECK (((char_length(btrim((candidate_key)::text)) >= 3) AND (char_length(btrim((candidate_key)::text)) <= 160))),
+    CONSTRAINT policy_profile_refresh_outbox_identifiers_chk CHECK (((classification_id > 0) AND (library_id > 0))),
+    CONSTRAINT policy_profile_refresh_outbox_learning_operation_chk CHECK ((((learning_operation_id)::text = ANY (ARRAY[('write_compatibility_evidence'::character varying)::text, ('write_identity_evidence'::character varying)::text])) AND ((learning_tier_id)::text = ANY (ARRAY[('compatibility_evidence'::character varying)::text, ('identity_evidence'::character varying)::text])) AND ((((learning_operation_id)::text = 'write_compatibility_evidence'::text) AND ((learning_tier_id)::text = 'compatibility_evidence'::text)) OR (((learning_operation_id)::text = 'write_identity_evidence'::text) AND ((learning_tier_id)::text = 'identity_evidence'::text))))),
+    CONSTRAINT policy_profile_refresh_outbox_reason_chk CHECK (((refresh_reason_id)::text = 'profile_refresh_required'::text)),
+    CONSTRAINT policy_profile_refresh_outbox_source_event_chk CHECK (((char_length(btrim((source_id)::text)) >= 1) AND (char_length(btrim((source_id)::text)) <= 80) AND ((char_length(btrim((source_event_id)::text)) >= 1) AND (char_length(btrim((source_event_id)::text)) <= 160)))),
+    CONSTRAINT policy_profile_refresh_outbox_source_system_chk CHECK (((source_system)::text = 'policy_authorized_profile_refresh'::text)),
+    CONSTRAINT policy_profile_refresh_outbox_version_chk CHECK ((outbox_version = 1))
+);
+
+
+--
+-- Name: policy_profile_refresh_outbox_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_profile_refresh_outbox_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_profile_refresh_outbox_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_profile_refresh_outbox_id_seq OWNED BY public.policy_profile_refresh_outbox.id;
+
+
+--
 -- Name: policy_tuning_suggestions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6778,6 +6824,13 @@ ALTER TABLE ONLY public.policy_presets ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: policy_profile_refresh_outbox id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_profile_refresh_outbox ALTER COLUMN id SET DEFAULT nextval('public.policy_profile_refresh_outbox_id_seq'::regclass);
+
+
+--
 -- Name: policy_tuning_suggestions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7944,6 +7997,22 @@ ALTER TABLE ONLY public.policy_presets
 
 ALTER TABLE ONLY public.policy_presets
     ADD CONSTRAINT policy_presets_policy_id_preset_id_key UNIQUE (policy_id, preset_id);
+
+
+--
+-- Name: policy_profile_refresh_outbox policy_profile_refresh_outbox_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_profile_refresh_outbox
+    ADD CONSTRAINT policy_profile_refresh_outbox_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_profile_refresh_outbox policy_profile_refresh_outbox_source_event_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_profile_refresh_outbox
+    ADD CONSTRAINT policy_profile_refresh_outbox_source_event_unique UNIQUE (source_id, source_event_id);
 
 
 --
@@ -9484,6 +9553,13 @@ CREATE INDEX idx_policy_presets_policy_id ON public.policy_presets USING btree (
 --
 
 CREATE INDEX idx_policy_presets_preset_id ON public.policy_presets USING btree (preset_id);
+
+
+--
+-- Name: idx_policy_profile_refresh_outbox_library_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_profile_refresh_outbox_library_created ON public.policy_profile_refresh_outbox USING btree (library_id, created_at, id);
 
 
 --
@@ -12972,6 +13048,7 @@ FROM unnest(ARRAY[
     '20260722_120000_add_policy_observed_evidence_provenance.sql',
     '20260725_190000_add_policy_backup_restore_verifications.sql',
     '20260726_090000_add_policy_authorized_outcome_source_event_receipts.sql',
-    '20260726_110000_add_policy_identity_evidence_admissions.sql'
+    '20260726_110000_add_policy_identity_evidence_admissions.sql',
+    '20260726_120000_add_policy_profile_refresh_outbox.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

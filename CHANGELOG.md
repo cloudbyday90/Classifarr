@@ -27,9 +27,9 @@ unchanged operator or runtime outcome.
 - **Authorized Outcome Transaction Executor** - Classifarr now has one
   rollback-safe execution boundary that locks the classification and target
   library, revalidates authority, claims the source-event receipt, records a
-  compact final outcome, and applies only the exact-item learning writer that
-  is currently implemented. Unavailable compatibility, identity, and refresh
-  operations fail closed instead of being silently skipped.
+  compact final outcome, and applies only command-approved learning effects.
+  Compatibility and identity evidence now append their refresh intent with the
+  same transaction; profile regeneration remains deferred to a worker.
 
 - **Atomic Manual Corrections** - authenticated manual corrections now commit
   the locked correction lifecycle, source-event receipt, legacy-compatible
@@ -53,6 +53,12 @@ unchanged operator or runtime outcome.
   identity. It cannot change declared intent, and raw library distributions,
   AI output, provider data, labels, and manual outcomes alone cannot establish
   a destination identity.
+
+- **Atomic Profile Refresh Outbox** - Classifarr now persists a compact,
+  source-event-deduplicated profile-refresh request in the same transaction as
+  admitted compatibility or identity evidence. It contains only server-derived
+  correlation and operation data, is cleared during replace restore, and does
+  not invoke profile generation until the dedicated worker is introduced.
 
 - **Authorized Outcome Persistence Commands** - Classifarr now validates a
   pure, server-owned persistence plan against canonical intake, learning guard,

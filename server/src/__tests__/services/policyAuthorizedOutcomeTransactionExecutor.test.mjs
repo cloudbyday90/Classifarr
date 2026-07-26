@@ -89,6 +89,7 @@ function createExecutor(overrides = {}) {
     persisted: true,
     reasonId: 'authorized_outcome_execution_exact_item_memory_persisted',
   });
+  const persistRefreshBackedEvidence = jest.fn();
   const dependencies = {
     db,
     lockExecutionState,
@@ -96,6 +97,7 @@ function createExecutor(overrides = {}) {
     claimReceipt,
     persistFinalOutcome,
     writeExactItemMemory,
+    persistRefreshBackedEvidence,
     ...overrides,
   };
   const service = new PolicyAuthorizedOutcomeTransactionExecutor(dependencies);
@@ -250,7 +252,7 @@ describe('PolicyAuthorizedOutcomeTransactionExecutor', () => {
     expect(writeExactItemMemory).not.toHaveBeenCalled();
   });
 
-  test('fails closed for an approved writer that does not exist yet', async () => {
+  test('persists admitted compatibility evidence and its refresh outbox inside the executor transaction', async () => {
     const intake = buildPolicyLearningIntakeEvent({
       sourceId: 'manual_classification_change',
       sourceEventId: 'classification_correction:991',
@@ -281,10 +283,29 @@ describe('PolicyAuthorizedOutcomeTransactionExecutor', () => {
       },
     });
     const learningDecision = buildPolicyLearningDecision(buildPolicyLearningGuardInput(intake));
-    const { service } = createExecutor();
+    const persistRefreshBackedEvidence = jest.fn().mockResolvedValue({
+      learning: {
+        operationId: 'write_compatibility_evidence',
+        persisted: true,
+        reasonId: 'authorized_outcome_execution_compatibility_evidence_persisted',
+      },
+      profileRefresh: {
+        operationId: 'queue_profile_refresh',
+        persisted: true,
+        reasonId: 'authorized_outcome_execution_profile_refresh_outbox_persisted',
+        outbox: { id: '91', libraryId: '8' },
+      },
+    });
+    const { service, client } = createExecutor({ persistRefreshBackedEvidence });
 
-    await expect(service.execute({ intake, learningDecision })).rejects.toThrow(
-      'authorized_outcome_execution_learning_operation_unavailable',
+    const result = await service.execute({ intake, learningDecision });
+
+    expect(persistRefreshBackedEvidence).toHaveBeenCalledWith(
+      expect.objectContaining({ client }),
     );
+    expect(result.operations).toMatchObject({
+      learning: { operationId: 'write_compatibility_evidence', persisted: true },
+      profileRefresh: { operationId: 'queue_profile_refresh', outbox: { id: '91' } },
+    });
   });
 });

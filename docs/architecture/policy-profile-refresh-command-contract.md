@@ -126,10 +126,8 @@ persist or execute it.
 
 ## Next Step
 
-Phase 6R.3.3e.2 is implemented in
-[Policy Compatibility Evidence Writer](policy-compatibility-evidence-writer.md),
-and Phase 6R.3.3e.3 is implemented in
-[Policy Identity Evidence Authority Writer](policy-identity-evidence-authority-writer.md).
-Proceed to **Phase 6R.3.3e.4: Refresh Outbox Persistence**. It must create a
-durable refresh request only in the transaction that admits compatibility or
-identity evidence.
+Phase 6R.3.3e.4 is implemented in
+[Policy Profile Refresh Outbox Persistence](policy-profile-refresh-outbox-persistence.md).
+Proceed to **Phase 6R.3.3e.5: Refresh Worker Consumer**. It must claim only a
+committed outbox row and invoke the profile generator outside the evidence
+transaction.

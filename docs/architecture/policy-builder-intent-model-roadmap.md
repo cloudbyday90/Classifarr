@@ -3844,7 +3844,8 @@ Implementation task sequence:
      [Policy Identity Evidence Authority Writer](policy-identity-evidence-authority-writer.md).
    - **6R.3.3e.4 Refresh Outbox Persistence:** insert a compact profile-refresh
      outbox row in the same transaction as an admitted evidence mutation and
-     deduplicate by the authorized source event.
+     deduplicate by the authorized source event. Complete; documented in
+     [Policy Profile Refresh Outbox Persistence](policy-profile-refresh-outbox-persistence.md).
    - **6R.3.3e.5 Refresh Worker Consumer:** claim committed outbox rows with a
      bounded retry policy and idempotently invoke the existing library-profile
      generator. It must never run on rollback or on exact-item memory.
