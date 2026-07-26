@@ -3882,6 +3882,12 @@ Implementation status:
   outcome-only with no persistence, routing, provider, or profile-refresh
   side effect. Native route outcomes, request-import fallback, and Discord
   answers remain separate adapter components.
+- Phase 6R.3.2d is complete for native pending route outcomes. Its two
+  admitted terminal route states now derive canonical intake from the existing
+  server-owned request-time event before guard evaluation. Route success and
+  missing mapping remain outcome-only; malformed intake blocks persistence,
+  and no provider, quota, refresh, or routing capability was added.
+  Request-import fallback and Discord answers remain separate components.
 - The contract supports explicit learning tiers for no learning,
   exact-item memory, compatibility evidence, identity evidence, and hard-limit
   evidence; every candidate includes reason codes and write permission is

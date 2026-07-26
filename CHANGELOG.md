@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Native Pending Route-Outcome Intake Gate** - terminal native route success
+  and missing-mapping outcomes now use canonical server-owned learning intake
+  before the guard can run. Their compact outcome history remains distinct from
+  learning, excludes raw routing diagnostics, and cannot queue a refresh or
+  initiate a route, provider, or quota operation.
+
 - **Native Pending Resolution Intake Gate** - native pending-resolution
   provenance now sends both validated and malformed-plan fallback selections
   through canonical server-owned learning intake before evaluating the guard.

@@ -70,6 +70,12 @@ describe('policyNativePendingRouteOutcome', () => {
       finalOutcome: {
         status: 'routed',
       },
+      learningIntake: {
+        version: 'policy.learning_intake.v1',
+        sourceId: 'arr_routing_outcome',
+        sourceEventId: 'classification:42',
+        answerOutcomeId: 'do_not_learn',
+      },
       learningGuard: {
         decisionId: 'outcome_only',
         tierId: 'none',
@@ -109,6 +115,12 @@ describe('policyNativePendingRouteOutcome', () => {
       },
       finalOutcome: {
         status: 'route_failed_missing_mapping',
+      },
+      learningIntake: {
+        version: 'policy.learning_intake.v1',
+        sourceId: 'arr_routing_outcome',
+        sourceEventId: 'classification:42',
+        answerOutcomeId: 'do_not_learn',
       },
       learningGuard: {
         canWriteLearning: false,
@@ -202,6 +214,18 @@ describe('policyNativePendingRouteOutcome', () => {
     expect(audit).toMatchObject({ ok: false, issueCount: 1 });
     expect(audit.issues[0].riskId).toBe(
       POLICY_NATIVE_PENDING_ROUTE_OUTCOME_AUDIT_RISK_IDS.SIDE_EFFECT_REPORTED,
+    );
+  });
+
+  test('rejects an invalid canonical intake before a route outcome can be persisted', () => {
+    const result = buildPolicyNativePendingRouteOutcome(buildInput());
+    const audit = buildPolicyNativePendingRouteOutcomeAudit(result, {
+      learningIntake: {},
+    });
+
+    expect(audit).toEqual(expect.objectContaining({ ok: false }));
+    expect(audit.issues.map(issue => issue.riskId)).toContain(
+      POLICY_NATIVE_PENDING_ROUTE_OUTCOME_AUDIT_RISK_IDS.INVALID_LEARNING_INTAKE,
     );
   });
 });

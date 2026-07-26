@@ -153,6 +153,11 @@ It removes the malformed-plan fallback's direct guard input, retains the
 validated request-time intake when available, and exposes only compact intake
 provenance while preserving its no-write behavior.
 
+Native pending route-outcome adoption is documented in
+[Policy Native Pending Route-Outcome Learning Intake Adoption](policy-native-pending-route-outcome-learning-intake-adoption.md).
+It derives canonical route intake from the server-owned terminal request-time
+event and keeps route success and missing mapping outcome-only.
+
 ## Next Step
 
 Proceed to **Phase 6R.3.2: Learning Intake Adapter Adoption**. Migrate the

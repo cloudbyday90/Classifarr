@@ -13,10 +13,15 @@ import {
   QUESTION_FRAME_IDS,
 } from './policyQuestionLearningVocabulary.mjs';
 import {
-  POLICY_LEARNING_EVENT_SOURCE_IDS,
   buildPolicyLearningDecision,
   buildPolicyLearningGuardAudit,
 } from './policyLearningGuard.mjs';
+import {
+  POLICY_LEARNING_EVENT_SOURCE_IDS,
+  buildPolicyLearningGuardInput,
+  buildPolicyLearningIntakeEvent,
+  validatePolicyLearningIntakeEvent,
+} from './policyLearningIntakeContract.mjs';
 import {
   POLICY_FINAL_OUTCOME_STATUS_IDS,
   buildPolicyFinalOutcomeAudit,
@@ -51,6 +56,7 @@ const POLICY_NATIVE_PENDING_ROUTE_OUTCOME_AUDIT_RISK_IDS = Object.freeze({
   INVALID_STATUS: 'invalid_native_pending_route_outcome_status',
   INVALID_EVENT: 'invalid_native_pending_route_outcome_event',
   INVALID_FINAL_OUTCOME: 'invalid_native_pending_route_outcome_final_outcome',
+  INVALID_LEARNING_INTAKE: 'invalid_native_pending_route_outcome_learning_intake',
   INVALID_LEARNING_GUARD: 'invalid_native_pending_route_outcome_learning_guard',
   LEARNING_WRITE_ALLOWED: 'native_pending_route_outcome_learning_write_allowed',
   PROFILE_REFRESH_QUEUED: 'native_pending_route_outcome_profile_refresh_queued',
@@ -99,6 +105,7 @@ function buildNotApplicableResult(reasonCode) {
     statusId: POLICY_NATIVE_PENDING_ROUTE_OUTCOME_STATUS_IDS.NOT_APPLICABLE,
     event: null,
     finalOutcome: null,
+    learningIntake: null,
     learningGuard: null,
     reasonCodes: [reasonCode],
     sideEffects: {
@@ -158,8 +165,10 @@ function buildLearningDecision(requestEvent) {
     requestEvent.eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_FAILED_MISSING_MAPPING;
   const destination = asObject(requestEvent.finalDestination);
 
-  return buildPolicyLearningDecision({
+  const intake = buildPolicyLearningIntakeEvent({
     sourceId: POLICY_LEARNING_EVENT_SOURCE_IDS.ARR_ROUTING_OUTCOME,
+    sourceEventId: requestEvent.sourceEventId,
+    itemId: requestEvent.item.itemId,
     answerOutcomeId: ANSWER_OUTCOME_IDS.DO_NOT_LEARN,
     question: {
       frameId: routeFailed
@@ -185,6 +194,15 @@ function buildLearningDecision(requestEvent) {
       recorded: true,
     },
   });
+  const intakeAudit = validatePolicyLearningIntakeEvent(intake);
+  const guardInput = buildPolicyLearningGuardInput(intake);
+
+  return {
+    intake,
+    decision: intakeAudit.ok && guardInput
+      ? buildPolicyLearningDecision(guardInput)
+      : null,
+  };
 }
 
 function buildEventSummary(event = {}) {
@@ -224,6 +242,17 @@ function buildLearningGuardSummary(learningDecision = {}) {
   };
 }
 
+function buildLearningIntakeSummary(intake = {}) {
+  const source = asObject(intake);
+
+  return {
+    version: normalizeString(source.version, 80) || null,
+    sourceId: normalizeString(source.sourceId, 80) || null,
+    sourceEventId: normalizeString(source.sourceEventId, 120) || null,
+    answerOutcomeId: normalizeString(source.answerOutcomeId, 80) || null,
+  };
+}
+
 function buildPolicyNativePendingRouteOutcome({
   classification = {},
   nativeResolutionProvenance = null,
@@ -255,7 +284,8 @@ function buildPolicyNativePendingRouteOutcome({
     );
   }
 
-  const learningDecision = buildLearningDecision(requestEvent);
+  const learningResult = buildLearningDecision(requestEvent);
+  const learningDecision = learningResult.decision;
   const reasonCodes = [
     requestEvent.eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED
       ? POLICY_NATIVE_PENDING_ROUTE_OUTCOME_REASON_IDS.ROUTE_SUCCEEDED_RECORDED
@@ -266,7 +296,8 @@ function buildPolicyNativePendingRouteOutcome({
     ok: true,
     statusId: POLICY_NATIVE_PENDING_ROUTE_OUTCOME_STATUS_IDS.OUTCOME_ONLY,
     event: buildEventSummary(requestEvent),
-    finalOutcome: learningDecision.finalOutcome,
+    finalOutcome: learningResult.intake.finalOutcome,
+    learningIntake: buildLearningIntakeSummary(learningResult.intake),
     learningGuard: buildLearningGuardSummary(learningDecision),
     reasonCodes: uniqueReasonCodes(reasonCodes),
     sideEffects: {
@@ -283,6 +314,7 @@ function buildPolicyNativePendingRouteOutcome({
     ...result,
     audit: buildPolicyNativePendingRouteOutcomeAudit(result, {
       learningDecision,
+      learningIntake: learningResult.intake,
       requestEvent,
     }),
   };
@@ -294,6 +326,7 @@ function buildPolicyNativePendingRouteOutcomeAudit(result = {}, internal = {}) {
   const destination = asObject(event.finalDestination);
   const learningGuard = asObject(source.learningGuard);
   const learningDecision = internal.learningDecision;
+  const learningIntake = internal.learningIntake;
   const requestEvent = internal.requestEvent;
   const sideEffects = asObject(source.sideEffects);
   const issues = [];
@@ -335,6 +368,14 @@ function buildPolicyNativePendingRouteOutcomeAudit(result = {}, internal = {}) {
       issues.push({
         riskId: POLICY_NATIVE_PENDING_ROUTE_OUTCOME_AUDIT_RISK_IDS.INVALID_FINAL_OUTCOME,
         message: 'A native pending-route outcome must contain a valid final outcome.',
+      });
+    }
+
+    if (Object.hasOwn(internal, 'learningIntake') &&
+        (!learningIntake || validatePolicyLearningIntakeEvent(learningIntake).ok !== true)) {
+      issues.push({
+        riskId: POLICY_NATIVE_PENDING_ROUTE_OUTCOME_AUDIT_RISK_IDS.INVALID_LEARNING_INTAKE,
+        message: 'A native pending-route outcome requires a valid canonical learning intake.',
       });
     }
 

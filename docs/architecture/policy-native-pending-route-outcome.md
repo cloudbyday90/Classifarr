@@ -87,12 +87,15 @@ normalizes a terminal route event as attempted even when the mapping preflight
 prevented an outbound Arr request. Here, "attempted" means Classifarr reached
 and evaluated the routing boundary; it does not claim a remote Arr API call.
 
-The adapter always passes the normalized route event through the policy learning
-guard with `do_not_learn`. It emits no policy evidence, profile refresh,
-provider call, quota read, routing call, or persistence write itself. The thin
-persistence wrapper appends a compact `native_pending_route` transition only
-when the pure result passes audit. A persistence failure is logged and reported
-to the caller but does not reverse an actual Arr route or alter its status.
+The adapter first passes the normalized route event through
+`policy.learning_intake.v1`, then through the policy learning guard with
+`do_not_learn`. It emits no policy evidence, profile refresh, provider call,
+quota read, routing call, or persistence write itself. The thin persistence
+wrapper appends a compact `native_pending_route` transition only when the pure
+result passes audit. A persistence failure is logged and reported to the caller
+but does not reverse an actual Arr route or alter its status. The intake
+adoption record is [Policy Native Pending Route-Outcome Learning Intake
+Adoption](policy-native-pending-route-outcome-learning-intake-adoption.md).
 
 ## Security And Behavior Guarantees
 
