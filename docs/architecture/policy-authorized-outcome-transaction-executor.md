@@ -154,6 +154,8 @@ integration suite verifies this boundary with a durable receipt.
 
 Phase 6R.3.3e.1 now validates the pure refresh command in
 [Policy Profile Refresh Command Contract](policy-profile-refresh-command-contract.md).
-Proceed to **Phase 6R.3.3e.2: Compatibility Evidence Writer**. Refresh work
-remains unavailable until an admitted evidence mutation can create its outbox
-record in the same transaction.
+Phase 6R.3.3e.2 is implemented in
+[Policy Compatibility Evidence Writer](policy-compatibility-evidence-writer.md).
+Proceed to **Phase 6R.3.3e.3: Identity Evidence Authority Writer**. Refresh
+work remains unavailable until compatibility or identity evidence can create
+its outbox record in the same transaction.

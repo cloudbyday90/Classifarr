@@ -126,6 +126,8 @@ persist or execute it.
 
 ## Next Step
 
-Proceed to **Phase 6R.3.3e.2: Compatibility Evidence Writer**. It must add a
-durable, authority-bounded compatibility evidence record before the outbox can
-persist a profile refresh request.
+Phase 6R.3.3e.2 is implemented in
+[Policy Compatibility Evidence Writer](policy-compatibility-evidence-writer.md).
+Proceed to **Phase 6R.3.3e.3: Identity Evidence Authority Writer**. It must
+require observed or operator-declared authority before a destination identity
+record can persist.

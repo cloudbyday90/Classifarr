@@ -121,4 +121,6 @@ Phase 6R.3.3d is implemented in
 [Policy Manual Correction Transaction Adoption](policy-manual-correction-transaction-adoption.md).
 Phase 6R.3.3e.1 is implemented in
 [Policy Profile Refresh Command Contract](policy-profile-refresh-command-contract.md).
-Proceed to **Phase 6R.3.3e.2: Compatibility Evidence Writer**.
+Phase 6R.3.3e.2 is implemented in
+[Policy Compatibility Evidence Writer](policy-compatibility-evidence-writer.md).
+Proceed to **Phase 6R.3.3e.3: Identity Evidence Authority Writer**.

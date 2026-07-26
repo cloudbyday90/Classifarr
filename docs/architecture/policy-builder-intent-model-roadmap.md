@@ -3835,7 +3835,8 @@ Implementation task sequence:
      [Policy Profile Refresh Command Contract](policy-profile-refresh-command-contract.md).
    - **6R.3.3e.2 Compatibility Evidence Writer:** define and persist a bounded
      compatibility evidence record for a command-authorized manual outcome.
-     It must not alter declared intent or infer a hard limit.
+     It must not alter declared intent or infer a hard limit. Complete;
+     documented in [Policy Compatibility Evidence Writer](policy-compatibility-evidence-writer.md).
    - **6R.3.3e.3 Identity Evidence Authority Writer:** define the stricter
      identity admission path. Manual outcome authority alone must not turn one
      answer into destination identity; require the allowed observed or
@@ -3915,6 +3916,13 @@ Implementation status:
   target the locked final destination and carry the guard refresh reason. It
   performs no queue, profile, or evidence write. Its design record is
   [Policy Profile Refresh Command Contract](policy-profile-refresh-command-contract.md).
+- Phase 6R.3.3e.2 is complete. The modular compatibility writer compiles only
+  command-authorized, locked-state `genre`, `studio`, `franchise`, or
+  `certification` support into the existing canonical evidence store at a fixed
+  supporting confidence. It cannot create identity, hard-limit, avoid, or
+  declared-intent data, and remains uninvoked until refresh outbox persistence
+  can be atomic. Its design record is
+  [Policy Compatibility Evidence Writer](policy-compatibility-evidence-writer.md).
 - The focused learning-guard test suite lives in
   `server/src/__tests__/services/policyLearningGuard.test.mjs`.
 - Final-outcome shaping and route-transition validation now live in

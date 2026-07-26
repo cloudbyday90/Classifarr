@@ -42,6 +42,11 @@ unchanged operator or runtime outcome.
   contract is side-effect free while durable evidence and queue consumers are
   completed separately.
 
+- **Compatibility Evidence Writer** - Classifarr now compiles and persists
+  command-authorized supporting evidence only for canonical genre, studio,
+  franchise, or certification signals. The writer cannot create destination
+  identity, hard limits, avoid rules, or declared policy intent.
+
 - **Authorized Outcome Persistence Commands** - Classifarr now validates a
   pure, server-owned persistence plan against canonical intake, learning guard,
   revalidated actor authority, and transaction-locked current state. A valid
