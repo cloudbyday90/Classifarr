@@ -119,6 +119,9 @@ function buildPolicyAuthorizedOutcomePersistenceCommand({
   if (!authorization.authorizedSourceIds.includes(intake.sourceId)) {
     reasonCodes.push(POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_REASON_IDS.SOURCE_NOT_AUTHORIZED);
   }
+  if (intake.actorId && authorization.actorId !== intake.actorId) {
+    reasonCodes.push(POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_REASON_IDS.ACTOR_MISMATCH);
+  }
 
   if (reasonCodes.length > 0) {
     return buildBlockedCommand({
@@ -171,6 +174,23 @@ function buildPolicyAuthorizedOutcomePersistenceCommand({
       reasonCodes: [
         ...reasonCodes,
         POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_REASON_IDS.LEARNING_CANDIDATE_MISSING,
+      ],
+    });
+  }
+
+  if (learningRequested &&
+      (normalizeIdentifier(learning.candidate?.destinationLibraryId) !==
+        normalizeIdentifier(finalOutcome.destinationLibraryId) ||
+       normalizeString(learning.candidate?.destinationLibraryName) !==
+        normalizeString(finalOutcome.destinationLibraryName))) {
+    return buildBlockedCommand({
+      intake,
+      learningDecision,
+      authorization,
+      currentState,
+      reasonCodes: [
+        ...reasonCodes,
+        POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_REASON_IDS.LEARNING_DESTINATION_MISMATCH,
       ],
     });
   }

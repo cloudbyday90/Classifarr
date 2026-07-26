@@ -2,9 +2,8 @@
 
 ## Status
 
-Implemented as Phase 6R.3.3b. This is an inactive persistence foundation: no
-live route claims a receipt until the Phase 6R.3.3c transaction executor is
-implemented.
+Implemented as Phase 6R.3.3b. Phase 6R.3.3c now consumes this receipt inside a
+rollback-safe executor, but no active route has adopted that executor yet.
 
 ## Problem
 
@@ -127,7 +126,6 @@ append-only trigger in the schema snapshot.
 
 ## Next Step
 
-Proceed to **Phase 6R.3.3c: Transaction Executor**. It must lock current
-classification state, revalidate authority and destination, claim this receipt,
-and execute all approved writes in one rollback-safe transaction before any
-active route is adopted.
+Proceed to **Phase 6R.3.3d: Manual Correction Adoption**. It must use the
+transaction executor to claim this receipt and commit the correction lifecycle,
+outcome projection, and exact-item write together.

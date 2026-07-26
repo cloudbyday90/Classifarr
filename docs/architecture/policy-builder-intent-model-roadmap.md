@@ -3877,6 +3877,14 @@ Implementation status:
   restore explicitly discards this runtime state rather than restoring stale
   idempotency receipts. Its design record is
   [Policy Authorized Outcome Idempotency Ledger](policy-authorized-outcome-idempotency-ledger.md).
+- Phase 6R.3.3c is complete. The modular executor in
+  `server/src/services/policyAuthorizedOutcomeTransactionExecutor.mjs` locks
+  classification and destination state in a consistent order, revalidates
+  server-derived authority, rebuilds the command, claims the receipt, records
+  a compact outcome projection, and writes only exact-item memory. Missing
+  compatibility, identity, or refresh consumers fail closed, and no active
+  route has adopted the executor yet. Its design record is
+  [Policy Authorized Outcome Transaction Executor](policy-authorized-outcome-transaction-executor.md).
 - The focused learning-guard test suite lives in
   `server/src/__tests__/services/policyLearningGuard.test.mjs`.
 - Final-outcome shaping and route-transition validation now live in

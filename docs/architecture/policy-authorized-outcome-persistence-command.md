@@ -95,7 +95,9 @@ operations and reason codes, never completed writes.
    authorization and locked current-state alignment, then emits a pure plan.
 4. `policyAuthorizedOutcomeReceiptRepository.mjs` now claims an append-only,
    fingerprint-bound source-event receipt inside a caller-owned transaction.
-5. Phase 6R.3.3c adds the transaction executor and adopts manual correction.
+5. `policyAuthorizedOutcomeTransactionExecutor.mjs` now rebuilds and executes
+   the command in one rollback-safe transaction. Manual correction remains the
+   next, separate live-route adoption task.
 
 ## Security Outcome
 
@@ -115,8 +117,8 @@ tampering.
 
 ## Next Step
 
-Phase 6R.3.3b is implemented in
-[Policy Authorized Outcome Idempotency Ledger](policy-authorized-outcome-idempotency-ledger.md).
-Proceed to **Phase 6R.3.3c: Transaction Executor**. It must claim the receipt
-inside the same rollback-safe transaction as the permitted writes; do not
-invoke it from an active route until that boundary lands.
+Phase 6R.3.3c is implemented in
+[Policy Authorized Outcome Transaction Executor](policy-authorized-outcome-transaction-executor.md).
+Proceed to **Phase 6R.3.3d: Manual Correction Adoption**. It must use this
+executor for the active correction route and move its lifecycle transition into
+the same transaction before removing the legacy exact-item write.

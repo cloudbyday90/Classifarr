@@ -202,6 +202,37 @@ describe('policyAuthorizedOutcomePersistenceCommand', () => {
     ]));
   });
 
+  test('blocks actor and learning-destination drift before it can form a write plan', () => {
+    const admission = manualCorrectionAdmission();
+    const actorMismatch = buildPolicyAuthorizedOutcomePersistenceCommand({
+      intake: admission.intake,
+      learningDecision: admission.decision,
+      authorization: authorization({ actorId: 'operator-8' }),
+      currentState: currentState(),
+    });
+    const destinationMismatch = buildPolicyAuthorizedOutcomePersistenceCommand({
+      intake: admission.intake,
+      learningDecision: {
+        ...admission.decision,
+        learning: {
+          ...admission.decision.learning,
+          candidate: {
+            ...admission.decision.learning.candidate,
+            destinationLibraryId: 9,
+            destinationLibraryName: 'Movies',
+          },
+        },
+      },
+      authorization: authorization(),
+      currentState: currentState(),
+    });
+
+    expect(actorMismatch.reasonCodes).toContain('authorized_persistence_actor_mismatch');
+    expect(destinationMismatch.reasonCodes).toContain(
+      'authorized_persistence_learning_destination_mismatch',
+    );
+  });
+
   test('rejects a tampered command that reports a durable side effect', () => {
     const admission = manualCorrectionAdmission();
     const command = buildPolicyAuthorizedOutcomePersistenceCommand({

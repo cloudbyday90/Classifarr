@@ -50,8 +50,10 @@ const POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_REASON_IDS = Object.freeze({
   AUTHORIZATION_REVALIDATION_REQUIRED: 'authorized_persistence_authorization_revalidation_required',
   OUTCOME_NOT_AUTHORIZED: 'authorized_persistence_outcome_not_authorized',
   SOURCE_NOT_AUTHORIZED: 'authorized_persistence_source_not_authorized',
+  ACTOR_MISMATCH: 'authorized_persistence_actor_mismatch',
   UNSUPPORTED_LEARNING_TIER: 'authorized_persistence_unsupported_learning_tier',
   LEARNING_CANDIDATE_MISSING: 'authorized_persistence_learning_candidate_missing',
+  LEARNING_DESTINATION_MISMATCH: 'authorized_persistence_learning_destination_mismatch',
 });
 
 const POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS = Object.freeze({
@@ -63,6 +65,8 @@ const POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS = Object.freeze({
   OUTCOME_ONLY_HAS_LEARNING_OPERATION: 'outcome_only_authorized_persistence_has_learning_operation',
   UNAUTHORIZED_OUTCOME_OPERATION: 'unauthorized_outcome_persistence_outcome_operation',
   UNAUTHORIZED_LEARNING_OPERATION: 'unauthorized_outcome_persistence_learning_operation',
+  ACTOR_MISMATCH: 'authorized_outcome_persistence_actor_mismatch',
+  LEARNING_DESTINATION_MISMATCH: 'authorized_outcome_persistence_learning_destination_mismatch',
   SOURCE_EVENT_MISMATCH: 'authorized_outcome_persistence_source_event_mismatch',
   CURRENT_STATE_MISMATCH: 'authorized_outcome_persistence_current_state_mismatch',
   SIDE_EFFECT_REPORTED: 'authorized_outcome_persistence_side_effect_reported',

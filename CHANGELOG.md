@@ -19,10 +19,17 @@ unchanged operator or runtime outcome.
 #### Policy Authoring
 
 - **Authorized Outcome Idempotency Receipts** - Classifarr now has a durable,
-  append-only source-event receipt foundation for future authorized outcome and
+  append-only source-event receipt foundation for authorized outcome and
   learning writes. It returns an existing receipt only for an exact replay and
-  rejects a changed command reusing the same event; no live route consumes the
-  foundation until its transaction executor is complete.
+  rejects a changed command reusing the same event; live-route adoption remains
+  separately staged.
+
+- **Authorized Outcome Transaction Executor** - Classifarr now has one
+  rollback-safe execution boundary that locks the classification and target
+  library, revalidates authority, claims the source-event receipt, records a
+  compact final outcome, and applies only the exact-item learning writer that
+  is currently implemented. Unavailable compatibility, identity, and refresh
+  operations fail closed instead of being silently skipped.
 
 - **Authorized Outcome Persistence Commands** - Classifarr now validates a
   pure, server-owned persistence plan against canonical intake, learning guard,

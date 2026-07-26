@@ -83,6 +83,15 @@ function buildPolicyAuthorizedOutcomePersistenceCommandAudit(command = {}) {
         message: 'Ready commands require revalidated learning-write authority.',
       });
     }
+    if (normalizeIdentifier(learningOperation?.candidate?.destinationLibraryId) !==
+          normalizeIdentifier(finalOutcome.destinationLibraryId) ||
+        normalizeString(learningOperation?.candidate?.destinationLibraryName) !==
+          normalizeString(finalOutcome.destinationLibraryName)) {
+      issues.push({
+        riskId: POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS.LEARNING_DESTINATION_MISMATCH,
+        message: 'Ready commands require learning evidence for the final-outcome destination.',
+      });
+    }
   }
 
   if (source.statusId === POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_STATUS_IDS.OUTCOME_ONLY &&
