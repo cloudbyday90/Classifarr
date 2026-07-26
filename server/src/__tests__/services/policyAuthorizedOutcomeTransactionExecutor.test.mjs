@@ -149,6 +149,34 @@ describe('PolicyAuthorizedOutcomeTransactionExecutor', () => {
     expect(JSON.stringify(result)).not.toContain('operator-session-context');
   });
 
+  test('uses a caller-owned transaction client without opening a nested transaction', async () => {
+    const { service, db, client } = createExecutor();
+    const admission = manualAdmission();
+
+    const result = await service.execute({
+      client,
+      intake: admission.intake,
+      learningDecision: admission.decision,
+    });
+
+    expect(result).toMatchObject({ statusId: 'applied', applied: true });
+    expect(db.withTransaction).not.toHaveBeenCalled();
+  });
+
+  test('validates intake when a caller-owned transaction invokes the shared execution path', async () => {
+    const { service, client, lockExecutionState } = createExecutor();
+
+    const result = await service.executeWithinTransaction({
+      client,
+      intake: {},
+      learningDecision: {},
+    });
+
+    expect(result).toMatchObject({ statusId: 'blocked', accepted: false });
+    expect(result.reasonCodes).toContain('authorized_outcome_execution_invalid_intake');
+    expect(lockExecutionState).not.toHaveBeenCalled();
+  });
+
   test('returns an exact replay without executing outcome or learning writers', async () => {
     const { service, claimReceipt, persistFinalOutcome, writeExactItemMemory } = createExecutor({
       claimReceipt: jest.fn().mockResolvedValue({

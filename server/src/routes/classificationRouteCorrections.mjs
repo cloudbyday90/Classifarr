@@ -9,18 +9,55 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import {
-  policyManualCorrectionLearningService as defaultPolicyManualCorrectionLearningService,
-} from '../services/policyManualCorrectionLearning.mjs';
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from '../utils/appError.mjs';
+import {
+  buildPolicyManualCorrectionExecutionAuthorizationContext,
+} from '../services/policyManualCorrectionExecutionAuthorization.mjs';
+import {
+  POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS,
+} from '../services/policyManualCorrectionExecutionLifecycle.mjs';
+import {
+  PolicyManualCorrectionTransactionError,
+  PolicyManualCorrectionTransactionService,
+} from '../services/policyManualCorrectionTransactionService.mjs';
 
 function getCorrectionActor(req) {
-  const actor = req.user?.username || req.user?.email || req.user?.id || 'operator';
+  const actor = req.user?.username || req.user?.email || req.user?.id ||
+    (req.apiKey?.id ? `api-key:${req.apiKey.id}` : 'operator');
   return String(actor).trim().slice(0, 100) || 'operator';
 }
 
-function normalizeMediaType(value) {
-  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+function buildCorrectionAuthorizationContext(req, actorId) {
+  return buildPolicyManualCorrectionExecutionAuthorizationContext({
+    actorId,
+    authenticated: Boolean(req.user || req.apiKey),
+  });
+}
+
+function rethrowManualCorrectionExecutionError(error) {
+  if (!(error instanceof PolicyManualCorrectionTransactionError)) {
+    throw error;
+  }
+
+  switch (error.reasonId) {
+    case POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.CLASSIFICATION_NOT_FOUND:
+      throw new NotFoundError('Classification not found');
+    case POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.DESTINATION_NOT_FOUND:
+      throw new NotFoundError('Corrected library not found');
+    case POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.DESTINATION_INACTIVE:
+      throw new ValidationError('Corrected library must be active');
+    case POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.DESTINATION_MEDIA_TYPE_MISMATCH:
+      throw new ValidationError('Corrected library media type must match classification media type');
+    case POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.EXECUTION_BLOCKED:
+    case POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.LEARNING_ADMISSION_INVALID:
+      throw new ForbiddenError('Manual correction is not currently authorized');
+    default:
+      throw error;
+  }
 }
 
 function buildCorrectionLearningResponse(learningResult, exactItemMemoryRecorded) {
@@ -37,117 +74,46 @@ function buildCorrectionLearningResponse(learningResult, exactItemMemoryRecorded
 
 export function registerCorrectionRoutes(router, {
   db,
-  classificationOutcomeService,
-  classificationEvidenceService,
   reclassificationService,
   logger,
-  policyManualCorrectionLearningService = defaultPolicyManualCorrectionLearningService,
+  requireReadWrite,
+  policyManualCorrectionTransactionService = new PolicyManualCorrectionTransactionService({ db }),
 }) {
-  router.post('/corrections', asyncHandler(async (req, res) => {
+  router.post('/corrections', requireReadWrite, asyncHandler(async (req, res) => {
     const { classification_id, corrected_library_id } = req.body;
 
     if (!classification_id || !corrected_library_id) {
       throw new ValidationError('classification_id and corrected_library_id are required');
     }
 
-    const classResult = await db.query(
-      'SELECT library_id, tmdb_id, media_type, metadata FROM classification_history WHERE id = $1',
-      [classification_id]
-    );
-
-    if (classResult.rows.length === 0) {
-      throw new NotFoundError('Classification not found');
-    }
-
-    const { library_id: original_library_id, tmdb_id, media_type, metadata } = classResult.rows[0];
-    const correctedLibraryLookup = await db.query(
-      'SELECT id, name, media_type FROM libraries WHERE id = $1',
-      [corrected_library_id]
-    );
-    const correctedLibrary = correctedLibraryLookup.rows[0];
-
-    if (!correctedLibrary) {
-      throw new NotFoundError('Corrected library not found');
-    }
-
-    if (normalizeMediaType(media_type) !== normalizeMediaType(correctedLibrary.media_type)) {
-      throw new ValidationError('Corrected library media type must match classification media type');
-    }
-
     const correctedBy = getCorrectionActor(req);
-
-    await db.query(
-      `UPDATE classification_history 
-       SET library_id = $1, 
-           library_name = (SELECT name FROM libraries WHERE id = $1),
-           status = $2 
-       WHERE id = $3`,
-      [corrected_library_id, 'corrected', classification_id]
-    );
-
-    const correctionResult = await db.query(
-      `INSERT INTO classification_corrections 
-       (classification_id, original_library_id, corrected_library_id, corrected_by)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [classification_id, original_library_id, corrected_library_id, correctedBy]
-    );
-
-    const outcomeResult = await classificationOutcomeService.recordOutcome(classification_id, {
-      type: 'corrected',
-      source: 'api_correction',
-      actor: correctedBy,
-      final_library_id: corrected_library_id,
-      final_library_name: correctedLibrary.name,
-    });
-
-    const learningResult = policyManualCorrectionLearningService.build({
-      classification: {
-        id: classification_id,
-        tmdbId: tmdb_id,
-        mediaType: media_type,
-      },
-      destination: {
-        libraryId: correctedLibrary.id,
-        libraryName: correctedLibrary.name,
-      },
-      finalOutcomeRecorded: outcomeResult.updated === true,
-      sourceEventId: `classification_correction:${correctionResult.rows[0].id}`,
-      actorId: correctedBy,
-    });
-
-    let exactItemMemoryRecorded = false;
-    if (learningResult.audit.ok && learningResult.exactItemMemory.eligible) {
-      try {
-        const evidence = await classificationEvidenceService.rememberExactMatch({
-          tmdbId: learningResult.exactItemMemory.tmdbId,
-          mediaType: learningResult.exactItemMemory.mediaType,
-          libraryId: learningResult.exactItemMemory.libraryId,
-          payload: metadata,
-          createdBy: correctedBy,
-          conflictMode: 'do_nothing',
-        });
-        exactItemMemoryRecorded = Boolean(evidence);
-      } catch (error) {
-        logger.warn('Manual correction exact-item memory persistence failed', {
-          classification_id,
-          error: error.message,
-        });
-      }
+    let correctionResult;
+    try {
+      correctionResult = await policyManualCorrectionTransactionService.execute({
+        classificationId: classification_id,
+        destinationLibraryId: corrected_library_id,
+        actorId: correctedBy,
+        authorizationContext: buildCorrectionAuthorizationContext(req, correctedBy),
+      });
+    } catch (error) {
+      rethrowManualCorrectionExecutionError(error);
     }
+    const { learning: learningResult, execution } = correctionResult;
+    const exactItemMemoryRecorded = execution.operations.learning?.persisted === true;
 
-    logger.info('Manual correction learning admission evaluated', {
+    logger.info('Manual correction authorized outcome applied', {
       classification_id,
       learning_status: learningResult.statusId,
       learning_decision_id: learningResult.decision.learning.decisionId,
       learning_tier_id: learningResult.decision.learning.tierId,
       exact_item_memory_eligible: learningResult.exactItemMemory.eligible,
       exact_item_memory_recorded: exactItemMemoryRecorded,
+      execution_status: execution.statusId,
       learning_reason_codes: learningResult.exactItemMemory.reasonCodes,
     });
 
     res.json({
-      ...correctionResult.rows[0],
+      ...correctionResult.correction,
       policy_learning: buildCorrectionLearningResponse(
         learningResult,
         exactItemMemoryRecorded

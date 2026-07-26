@@ -202,6 +202,19 @@ describe('Classification Corrections Integration Tests', () => {
             expect(corrections.rows).toHaveLength(1);
             expect(corrections.rows[0].original_library_id).toBe(libraryA.id);
             expect(corrections.rows[0].corrected_library_id).toBe(libraryC.id);
+
+            const receipts = await db.query(`
+                SELECT source_id, source_event_id, classification_id
+                FROM policy_authorized_outcome_source_event_receipts
+                WHERE classification_id = $1
+            `, [cls.id]);
+            expect(receipts.rows).toEqual([
+                expect.objectContaining({
+                    source_id: 'manual_classification_change',
+                    source_event_id: `classification_correction:${res.body.id}`,
+                    classification_id: cls.id,
+                }),
+            ]);
         });
 
         it('rejects a corrected library with a different media type', async () => {

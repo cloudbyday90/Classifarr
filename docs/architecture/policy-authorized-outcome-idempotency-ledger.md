@@ -2,8 +2,9 @@
 
 ## Status
 
-Implemented as Phase 6R.3.3b. Phase 6R.3.3c now consumes this receipt inside a
-rollback-safe executor, but no active route has adopted that executor yet.
+Implemented as Phase 6R.3.3b. Phase 6R.3.3c consumes this receipt inside a
+rollback-safe executor, and Phase 6R.3.3d adopts it for active manual
+corrections.
 
 ## Problem
 
@@ -126,6 +127,5 @@ append-only trigger in the schema snapshot.
 
 ## Next Step
 
-Proceed to **Phase 6R.3.3d: Manual Correction Adoption**. It must use the
-transaction executor to claim this receipt and commit the correction lifecycle,
-outcome projection, and exact-item write together.
+Proceed to **Phase 6R.3.3e: Profile Refresh Command Consumer**. It must use
+the same receipt discipline before it can make refresh work durable.

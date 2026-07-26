@@ -29,9 +29,7 @@ export function createClassificationRouter({
   db,
   classificationService,
   classificationRetryService,
-  classificationOutcomeService,
   clarificationService,
-  classificationEvidenceService,
   createLogger,
   requireReadWrite,
   STALE_AWAITING_DECISION_DAYS,
@@ -63,10 +61,9 @@ export function createClassificationRouter({
   registerSecondPassRoute(router, { db });
   registerCorrectionRoutes(router, {
     db,
-    classificationOutcomeService,
-    classificationEvidenceService,
     reclassificationService,
     logger,
+    requireReadWrite,
   });
   registerPendingRoutes(router, { db, clarificationService, classificationService, STALE_AWAITING_DECISION_DAYS, logger });
 

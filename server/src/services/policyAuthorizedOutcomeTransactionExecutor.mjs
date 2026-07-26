@@ -120,6 +120,7 @@ class PolicyAuthorizedOutcomeTransactionExecutor {
     learningDecision = {},
     authorizationContext = null,
     dbClient = this.db,
+    client = null,
   } = {}) {
     const intakeAudit = validatePolicyLearningIntakeEvent(intake);
     if (!intakeAudit.ok) {
@@ -128,84 +129,115 @@ class PolicyAuthorizedOutcomeTransactionExecutor {
         reasonCodes: [POLICY_AUTHORIZED_OUTCOME_EXECUTION_REASON_IDS.INVALID_INTAKE],
       });
     }
+    if (client) {
+      return this.executeWithinTransaction({
+        client,
+        intake,
+        learningDecision,
+        authorizationContext,
+      });
+    }
     if (typeof dbClient?.withTransaction !== 'function') {
       throw new TypeError('Authorized outcome execution requires a transaction boundary.');
     }
 
-    return dbClient.withTransaction(async client => {
-      const executionState = await this.lockExecutionState({ client, intake });
-      if (executionState?.ok !== true) {
-        return buildExecutionResult({
-          statusId: POLICY_AUTHORIZED_OUTCOME_EXECUTION_STATUS_IDS.BLOCKED,
-          reasonCodes: [executionState?.reasonId],
-        });
-      }
+    return dbClient.withTransaction(transactionClient => this.executeWithinTransaction({
+      client: transactionClient,
+      intake,
+      learningDecision,
+      authorizationContext,
+    }));
+  }
 
-      const authorization = await this.revalidateAuthorization({
-        client,
-        intake,
-        executionState,
-        authorizationContext,
-      });
-      const command = this.buildCommand({
-        intake,
-        learningDecision,
-        authorization,
-        currentState: executionState.currentState,
-      });
-      if (command.ok !== true || command.audit?.ok !== true) {
-        return buildExecutionResult({
-          statusId: POLICY_AUTHORIZED_OUTCOME_EXECUTION_STATUS_IDS.BLOCKED,
-          reasonCodes: [
-            POLICY_AUTHORIZED_OUTCOME_EXECUTION_REASON_IDS.COMMAND_BLOCKED,
-            ...(Array.isArray(command.reasonCodes) ? command.reasonCodes : []),
-          ],
-          command,
-        });
-      }
-
-      const receiptClaim = await this.claimReceipt({ client, command });
-      if (receiptClaim.statusId === POLICY_AUTHORIZED_OUTCOME_RECEIPT_CLAIM_STATUS_IDS.REPLAYED) {
-        return buildExecutionResult({
-          statusId: POLICY_AUTHORIZED_OUTCOME_EXECUTION_STATUS_IDS.REPLAYED,
-          reasonCodes: [receiptClaim.reasonId],
-          command,
-          receipt: receiptClaim.receipt,
-        });
-      }
-      if (receiptClaim.accepted !== true) {
-        return buildExecutionResult({
-          statusId: POLICY_AUTHORIZED_OUTCOME_EXECUTION_STATUS_IDS.SOURCE_EVENT_MISMATCH,
-          reasonCodes: [
-            POLICY_AUTHORIZED_OUTCOME_EXECUTION_REASON_IDS.SOURCE_EVENT_MISMATCH,
-            receiptClaim.reasonId,
-          ],
-          command,
-          receipt: receiptClaim.receipt,
-        });
-      }
-
-      const finalOutcome = await this.persistFinalOutcome({
-        client,
-        command,
-        executionState,
-      });
-      const learning = await this.executeLearningOperation({
-        client,
-        command,
-        executionState,
-      });
-      const profileRefresh = this.executeProfileRefreshOperation(command);
-
+  async executeWithinTransaction({
+    client,
+    intake = {},
+    learningDecision = {},
+    authorizationContext = null,
+  } = {}) {
+    if (!client || typeof client.query !== 'function') {
+      throw new TypeError('Authorized outcome execution requires a transaction client.');
+    }
+    const intakeAudit = validatePolicyLearningIntakeEvent(intake);
+    if (!intakeAudit.ok) {
       return buildExecutionResult({
-        statusId: POLICY_AUTHORIZED_OUTCOME_EXECUTION_STATUS_IDS.APPLIED,
-        reasonCodes: [receiptClaim.reasonId, finalOutcome.reasonId, learning?.reasonId],
+        statusId: POLICY_AUTHORIZED_OUTCOME_EXECUTION_STATUS_IDS.BLOCKED,
+        reasonCodes: [POLICY_AUTHORIZED_OUTCOME_EXECUTION_REASON_IDS.INVALID_INTAKE],
+      });
+    }
+
+    const executionState = await this.lockExecutionState({ client, intake });
+    if (executionState?.ok !== true) {
+      return buildExecutionResult({
+        statusId: POLICY_AUTHORIZED_OUTCOME_EXECUTION_STATUS_IDS.BLOCKED,
+        reasonCodes: [executionState?.reasonId],
+      });
+    }
+
+    const authorization = await this.revalidateAuthorization({
+      client,
+      intake,
+      executionState,
+      authorizationContext,
+    });
+    const command = this.buildCommand({
+      intake,
+      learningDecision,
+      authorization,
+      currentState: executionState.currentState,
+    });
+    if (command.ok !== true || command.audit?.ok !== true) {
+      return buildExecutionResult({
+        statusId: POLICY_AUTHORIZED_OUTCOME_EXECUTION_STATUS_IDS.BLOCKED,
+        reasonCodes: [
+          POLICY_AUTHORIZED_OUTCOME_EXECUTION_REASON_IDS.COMMAND_BLOCKED,
+          ...(Array.isArray(command.reasonCodes) ? command.reasonCodes : []),
+        ],
+        command,
+      });
+    }
+
+    const receiptClaim = await this.claimReceipt({ client, command });
+    if (receiptClaim.statusId === POLICY_AUTHORIZED_OUTCOME_RECEIPT_CLAIM_STATUS_IDS.REPLAYED) {
+      return buildExecutionResult({
+        statusId: POLICY_AUTHORIZED_OUTCOME_EXECUTION_STATUS_IDS.REPLAYED,
+        reasonCodes: [receiptClaim.reasonId],
         command,
         receipt: receiptClaim.receipt,
-        finalOutcome,
-        learning,
-        profileRefresh,
       });
+    }
+    if (receiptClaim.accepted !== true) {
+      return buildExecutionResult({
+        statusId: POLICY_AUTHORIZED_OUTCOME_EXECUTION_STATUS_IDS.SOURCE_EVENT_MISMATCH,
+        reasonCodes: [
+          POLICY_AUTHORIZED_OUTCOME_EXECUTION_REASON_IDS.SOURCE_EVENT_MISMATCH,
+          receiptClaim.reasonId,
+        ],
+        command,
+        receipt: receiptClaim.receipt,
+      });
+    }
+
+    const finalOutcome = await this.persistFinalOutcome({
+      client,
+      command,
+      executionState,
+    });
+    const learning = await this.executeLearningOperation({
+      client,
+      command,
+      executionState,
+    });
+    const profileRefresh = this.executeProfileRefreshOperation(command);
+
+    return buildExecutionResult({
+      statusId: POLICY_AUTHORIZED_OUTCOME_EXECUTION_STATUS_IDS.APPLIED,
+      reasonCodes: [receiptClaim.reasonId, finalOutcome.reasonId, learning?.reasonId],
+      command,
+      receipt: receiptClaim.receipt,
+      finalOutcome,
+      learning,
+      profileRefresh,
     });
   }
 

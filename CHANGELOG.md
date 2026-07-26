@@ -21,8 +21,8 @@ unchanged operator or runtime outcome.
 - **Authorized Outcome Idempotency Receipts** - Classifarr now has a durable,
   append-only source-event receipt foundation for authorized outcome and
   learning writes. It returns an existing receipt only for an exact replay and
-  rejects a changed command reusing the same event; live-route adoption remains
-  separately staged.
+  rejects a changed command reusing the same event; manual corrections are the
+  first live route to use the receipt.
 
 - **Authorized Outcome Transaction Executor** - Classifarr now has one
   rollback-safe execution boundary that locks the classification and target
@@ -30,6 +30,11 @@ unchanged operator or runtime outcome.
   compact final outcome, and applies only the exact-item learning writer that
   is currently implemented. Unavailable compatibility, identity, and refresh
   operations fail closed instead of being silently skipped.
+
+- **Atomic Manual Corrections** - authenticated manual corrections now commit
+  the locked correction lifecycle, source-event receipt, legacy-compatible
+  outcome projection, and eligible exact-item memory together. Failed
+  authorization, state validation, or persistence rolls back the full change.
 
 - **Authorized Outcome Persistence Commands** - Classifarr now validates a
   pure, server-owned persistence plan against canonical intake, learning guard,

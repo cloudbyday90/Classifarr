@@ -96,8 +96,8 @@ operations and reason codes, never completed writes.
 4. `policyAuthorizedOutcomeReceiptRepository.mjs` now claims an append-only,
    fingerprint-bound source-event receipt inside a caller-owned transaction.
 5. `policyAuthorizedOutcomeTransactionExecutor.mjs` now rebuilds and executes
-   the command in one rollback-safe transaction. Manual correction remains the
-   next, separate live-route adoption task.
+   the command in one rollback-safe transaction. The manual correction adapter
+   is its first live-route consumer.
 
 ## Security Outcome
 
@@ -117,8 +117,6 @@ tampering.
 
 ## Next Step
 
-Phase 6R.3.3c is implemented in
-[Policy Authorized Outcome Transaction Executor](policy-authorized-outcome-transaction-executor.md).
-Proceed to **Phase 6R.3.3d: Manual Correction Adoption**. It must use this
-executor for the active correction route and move its lifecycle transition into
-the same transaction before removing the legacy exact-item write.
+Phase 6R.3.3d is implemented in
+[Policy Manual Correction Transaction Adoption](policy-manual-correction-transaction-adoption.md).
+Proceed to **Phase 6R.3.3e: Profile Refresh Command Consumer**.

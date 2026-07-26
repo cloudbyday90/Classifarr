@@ -2,9 +2,9 @@
 
 ## Status
 
-Implemented as Phase 6R.3.3c. The executor is a reusable server-side
-transaction boundary and has no active route consumer yet. Phase 6R.3.3d will
-adopt the manual-correction route through this boundary.
+Implemented as Phase 6R.3.3c and adopted by Phase 6R.3.3d. The active manual
+correction route composes its locked lifecycle transition with this reusable
+server-side transaction boundary through one caller-owned transaction client.
 
 ## Problem
 
@@ -53,6 +53,11 @@ canonical intake + pure guard decision + server-only authority context
   -> execute only allowlisted, implemented learning operation
   -> COMMIT
 ```
+
+A source adapter may already hold a transaction for a source-specific lifecycle
+transition. In that case, `execute({ client })` reuses the provided client
+rather than opening a nested transaction; the shared execution path validates
+canonical intake again before it locks or writes.
 
 The executor accepts a canonical intake, a pure learning decision, and an
 opaque authorization context. It never trusts a prebuilt command or an
@@ -126,7 +131,7 @@ task; selected.
 6. Persist the compact final-outcome projection and only implemented,
    command-approved writers.
 7. Roll back on every unavailable writer or persistence failure.
-8. Adopt one live source at a time, beginning with manual correction.
+8. Adopt one live source at a time; manual correction is the first consumer.
 
 ## Security Outcome
 
@@ -141,12 +146,12 @@ task; selected.
 
 Focused tests cover lock order, missing or inactive destinations, media-type
 drift, authorization loss, command blocking, exact replay, source-event
-mismatch, unavailable learning operations, and rollback propagation from every
-writer. The full server unit suite, static security lint, typecheck,
-documentation lint, and ESM check are run before merge.
+mismatch, caller-owned transaction reuse, unavailable learning operations, and
+rollback propagation from every writer. The manual correction lifecycle
+integration suite verifies this boundary with a durable receipt.
 
 ## Next Step
 
-Proceed to **Phase 6R.3.3d: Manual Correction Adoption**. It must move the
-active correction route through this executor and replace its independent
-outcome and exact-item writes with one transaction.
+Proceed to **Phase 6R.3.3e: Profile Refresh Command Consumer**. It must keep
+refresh work durable, idempotent, and unavailable by default until its
+dedicated consumer can prove a compatible evidence change.

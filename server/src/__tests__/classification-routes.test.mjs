@@ -892,6 +892,26 @@ describe('Classification Routes - Pending Resolution', () => {
     });
   });
 
+  describe('POST /api/classification/corrections authorization', () => {
+    test('blocks read-only API keys before a manual correction can mutate state', async () => {
+      const appWithReadOnlyKey = express();
+      appWithReadOnlyKey.use(express.json());
+      appWithReadOnlyKey.use((req, _res, next) => {
+        req.apiKey = { permissions: 'read_only' };
+        next();
+      });
+      appWithReadOnlyKey.use('/api/classification', buildClassificationRouter());
+      appWithReadOnlyKey.use(errorHandler);
+
+      const response = await request(appWithReadOnlyKey)
+        .post('/api/classification/corrections')
+        .send({ classification_id: 201, corrected_library_id: 8 });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toContain('requires read-write permissions');
+    });
+  });
+
   describe('GET /api/classification/pending/count', () => {
     test('excludes rows older than 7 days from the count', async () => {
       db.query.mockResolvedValueOnce({ rows: [{ count: '3' }] });

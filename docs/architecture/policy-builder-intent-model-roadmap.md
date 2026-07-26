@@ -3882,9 +3882,16 @@ Implementation status:
   classification and destination state in a consistent order, revalidates
   server-derived authority, rebuilds the command, claims the receipt, records
   a compact outcome projection, and writes only exact-item memory. Missing
-  compatibility, identity, or refresh consumers fail closed, and no active
-  route has adopted the executor yet. Its design record is
+  compatibility, identity, or refresh consumers fail closed. It supports a
+  caller-owned transaction for source lifecycle adapters, and the active
+  manual correction route adopts it through Phase 6R.3.3d. Its design record is
   [Policy Authorized Outcome Transaction Executor](policy-authorized-outcome-transaction-executor.md).
+- Phase 6R.3.3d is complete. The active manual correction route now requires a
+  read-write authenticated principal and composes its locked classification
+  transition, persisted correction-row source event, authorized receipt,
+  legacy-compatible corrected outcome, and admitted exact-item memory in one
+  transaction. Its source-specific design record is
+  [Policy Manual Correction Transaction Adoption](policy-manual-correction-transaction-adoption.md).
 - The focused learning-guard test suite lives in
   `server/src/__tests__/services/policyLearningGuard.test.mjs`.
 - Final-outcome shaping and route-transition validation now live in

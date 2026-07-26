@@ -2,9 +2,10 @@
 
 ## Status
 
-Implemented as the first component of Phase 6R.3.2. The live manual
-classification-correction route now constructs a canonical learning intake from
-the persisted correction record before it evaluates exact-item-memory learning.
+Implemented as the first component of Phase 6R.3.2 and adopted by the Phase
+6R.3.3d atomic correction transaction. The live correction route constructs
+canonical learning intake from the correction row it inserts inside that
+transaction before it evaluates and persists exact-item memory.
 
 ## Problem
 
@@ -38,8 +39,8 @@ Official sources reviewed July 2026 against the requested June 2026 baseline:
 
 ```text
 authenticated correction request
-  -> server validates classification and target library
-  -> persisted classification_corrections row
+  -> server locks and validates classification and target library
+  -> persisted classification_corrections row in the transaction
   -> classification_correction:<row id> intake correlation
   -> policy.learning_intake.v1 audit
   -> policy.learning_guard.v1
@@ -64,10 +65,9 @@ The service retains the existing behavior:
 
 1. Keep correction event correlation server-derived from the persisted row.
 2. Preserve the intake audit beside the guard audit in internal result data.
-3. Do not treat this correlation ID as completed idempotency protection yet;
-   Phase 6R.3.3 must enforce a unique transactional persistence key.
-4. Preserve existing route authorization and revalidate final state in the
-   later transaction boundary.
+3. Use the correlation ID as the source-event key for the transactional receipt.
+4. Preserve route authorization and revalidate final state in the transaction
+   boundary.
 
 ## Pros And Cons
 
@@ -80,8 +80,6 @@ The service retains the existing behavior:
 
 ### Cons
 
-- The route’s current correction, outcome, and evidence writes are still not
-  the future unified transactional persistence boundary.
 - Request, native pending, routing, and Discord adapters remain to be adopted
   independently.
 
@@ -92,7 +90,8 @@ The service retains the existing behavior:
 2. `policyManualCorrectionLearning.mjs` builds and audits canonical intake.
 3. `policyLearningIntakeContract.mjs` bounds the handoff.
 4. `policyLearningGuard.mjs` decides exact-item eligibility.
-5. Phase 6R.3.3 introduces authorized, idempotent persistence.
+5. Phase 6R.3.3d commits correction, authorized outcome, receipt, and admitted
+   exact-item memory atomically.
 
 ## Security Outcome
 
@@ -107,11 +106,10 @@ The service retains the existing behavior:
 
 Focused tests cover valid manual correction intake, exact-item admission,
 outcome-only and unrecorded outcomes, missing source-event rejection, and a
-tampered intake audit. Existing route integration tests continue to exercise
-the correction lifecycle.
+tampered intake audit. The correction lifecycle integration test also verifies
+the durable source-event receipt created by the same transaction.
 
 ## Next Step
 
-Proceed to **Phase 6R.3.2b: Request-Time Learning Intake Adoption**. That
-component should adapt the existing request-time event builder without changing
-its question-reduction or bounded-intent invariants.
+This intake adoption is complete. Continue the current persistence sequence at
+**Phase 6R.3.3e: Profile Refresh Command Consumer**.

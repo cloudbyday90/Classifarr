@@ -12,9 +12,7 @@ import express from 'express';
 import * as db from '../config/database.mjs';
 import { classificationService } from '../services/classification.mjs';
 import { classificationRetryService } from '../services/classificationRetryService.mjs';
-import { classificationOutcomeService } from '../services/classificationOutcomeService.mjs';
 import { clarificationService } from '../services/clarificationService.mjs';
-import { classificationEvidenceService } from '../services/classificationEvidenceService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { requireReadWrite } from '../middleware/apiKeyAuth.mjs';
 import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
@@ -26,9 +24,7 @@ export const router = createClassificationRouter({
   db,
   classificationService,
   classificationRetryService,
-  classificationOutcomeService,
   clarificationService,
-  classificationEvidenceService,
   createLogger,
   requireReadWrite,
   STALE_AWAITING_DECISION_DAYS,
