@@ -3859,10 +3859,9 @@ Implementation status:
   test suite. It allowlists the five sources, requires a bounded source-event
   identifier, strips raw AI/provider payloads, binds final outcome to source and
   answer outcome, and performs no writes.
-- Manual correction, request-time, native pending, routing, and Discord
-  adapter adoption remains Phase 6R.3.2. Discord source vocabulary exists, but
-  production Discord intake must not be claimed until that adapter is built and
-  tested through the shared contract.
+- Manual correction, request-time, native pending, routing, request/import,
+  and Discord adapter adoption now use the canonical intake contract. Their
+  decisions remain pure and must not be mistaken for authorized durable writes.
 - Phase 6R.3.2a is complete for manual classification correction. The route
   derives `classification_correction:<persisted row id>` after it records the
   correction, and `policyManualCorrectionLearning.mjs` now requires valid
@@ -3893,7 +3892,16 @@ Implementation status:
   or invalid proof now passes through canonical fallback intake before the
   guard. The admission remains outcome-only, excludes queue payload and raw
   route data, and adds no provider, quota, refresh, route, or learning side
-  effect. Discord pending answers remain the final source-adapter component.
+  effect.
+- Phase 6R.3.2f is complete for Discord verification and correction answers.
+  The server derives bounded correlation from persisted pending state, retains
+  the native persisted-question fingerprint when available, requires a
+  recorded final outcome, and sends both actions through canonical
+  `discord_pending_answer` intake. Both actions are outcome-only: direct
+  Discord preference and exact-match writes were removed, while status,
+  outcome, routing, idempotency, and reply behavior remain intact. Post-answer
+  routing is isolated in `discordClarificationRouting.mjs` and no adapter gains
+  provider, quota, profile-refresh, route, or learning-write authority.
 - The contract supports explicit learning tiers for no learning,
   exact-item memory, compatibility evidence, identity evidence, and hard-limit
   evidence; every candidate includes reason codes and write permission is

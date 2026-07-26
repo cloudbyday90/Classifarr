@@ -13,11 +13,6 @@ import { processCorrection as correctionHandlerProcessCorrection } from './disco
 import { processVerification as verificationHandlerProcessVerification } from './discordVerificationHandler.mjs';
 import { processClarificationResponse as clarificationHandlerProcessClarificationResponse } from './discordClarificationHandler.mjs';
 import { showLibrarySelection as librarySelectionShowLibrarySelection, processQuestionResponse as librarySelectionProcessQuestionResponse } from './discordLibrarySelectionHandler.mjs';
-import {
-  extractLearningPatterns,
-  extractClarificationPatterns,
-  routeAfterClarification,
-} from './discordPatternExtractionService.mjs';
 
 const logger = createLogger('discordInteractionHandler');
 
@@ -106,8 +101,6 @@ export async function processCorrection(classificationId, newLibraryId, interact
   return correctionHandlerProcessCorrection(classificationId, newLibraryId, interaction);
 }
 
-export { extractLearningPatterns, extractClarificationPatterns, routeAfterClarification };
-
 export async function processClarificationResponse(
   classificationId,
   optionIndex,
@@ -127,4 +120,3 @@ export async function showLibrarySelection(classificationId, interaction) {
 export async function processQuestionResponse(classificationId, questionId, responseKey, interaction) {
   return librarySelectionProcessQuestionResponse(classificationId, questionId, responseKey, interaction);
 }
-

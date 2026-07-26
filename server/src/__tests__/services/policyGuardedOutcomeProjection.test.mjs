@@ -28,6 +28,7 @@ function requestTimeDecision() {
   });
   const requestEvent = buildPolicyRequestTimeEvent({
     eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
+    sourceEventId: 'test:policy-guarded-outcome-projection:manual-destination-change',
     operatorDestination: {
       libraryId: 6,
       libraryName: 'Animated Movies',

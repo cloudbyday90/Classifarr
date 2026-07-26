@@ -56,6 +56,7 @@ function questionReductionPlan(overrides = {}) {
 function guardedOutcome(overrides = {}) {
   const requestEvent = buildPolicyRequestTimeEvent({
     eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE,
+    sourceEventId: 'test:policy-library-policy-rebuild:manual-destination-change',
     operatorDestination: destination(),
     answerOutcomeId: ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE,
     candidate: {

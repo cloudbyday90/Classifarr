@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Discord Pending-Answer Intake Gate** - Discord verification and correction
+  now record the existing item outcome before passing server-owned pending
+  state through canonical learning intake. They remain outcome-only and cannot
+  create preference, exact-match, routing, provider, quota, or profile-refresh
+  side effects; legacy direct Discord learning writes have been removed.
+
 - **Request-Import Fallback Intake Gate** - terminal request/import routing
   now sends missing or invalid native-plan fallback outcomes through canonical
   server-owned learning intake before the guard evaluates them. Valid plans

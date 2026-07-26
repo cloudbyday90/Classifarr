@@ -38,18 +38,16 @@ const mockClarificationService = {
     resolvePolicyQuestion: jest.fn(),
     recordResponse: jest.fn()
 };
-const mockAutoLearningService = { learnFromFeedback: jest.fn() };
 const mockClassificationOutcomeService = { recordOutcome: jest.fn().mockResolvedValue({ updated: true }) };
 const mockClassificationRoutingService = { routeToArr: jest.fn() };
 const mockNativePendingRouteOutcomePersistence = {
     recordNativePendingRouteOutcome: jest.fn(),
 };
+const mockDiscordPendingAnswerIntakeService = { build: jest.fn() };
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../services/clarificationService.mjs', () => createNamedMockModule('clarificationService', mockClarificationService));
-
-jest.unstable_mockModule('../services/autoLearningService.mjs', () => createNamedMockModule('autoLearningService', mockAutoLearningService));
 
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
     ...mockClassificationOutcomeService,
@@ -61,6 +59,14 @@ jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => (
 jest.unstable_mockModule('../services/policyNativePendingRouteOutcomePersistence.mjs', () => ({
     ...mockNativePendingRouteOutcomePersistence,
 }));
+
+jest.unstable_mockModule('../services/policyDiscordPendingAnswerIntake.mjs', () => ({
+    DISCORD_PENDING_ANSWER_ACTION_IDS: {
+        VERIFY_DESTINATION: 'verify_destination',
+        CORRECT_DESTINATION: 'correct_destination',
+    },
+    policyDiscordPendingAnswerIntakeService: mockDiscordPendingAnswerIntakeService,
+}));
 const {
     handleInteraction,
     processVerification,
@@ -71,10 +77,10 @@ const {
 } = await import('../services/discordInteractionHandler.mjs');
 const db = mockDb;
 const clarificationService = mockClarificationService;
-const autoLearningService = mockAutoLearningService;
 const classificationOutcomeService = mockClassificationOutcomeService;
 const classificationRoutingService = mockClassificationRoutingService;
 const nativePendingRouteOutcomePersistence = mockNativePendingRouteOutcomePersistence;
+const discordPendingAnswerIntakeService = mockDiscordPendingAnswerIntakeService;
 
 const MOCK_CLASSIFICATION = {
     id: 100,
@@ -109,13 +115,20 @@ function makeInteraction(overrides = {}) {
 beforeEach(() => {
     jest.clearAllMocks();
     db.query.mockReset();
-    autoLearningService.learnFromFeedback.mockReset();
     clarificationService.resolvePolicyQuestion.mockReset();
     clarificationService.recordResponse.mockReset();
     classificationRoutingService.routeToArr.mockReset();
     nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockReset();
+    discordPendingAnswerIntakeService.build.mockReset();
     db.query.mockResolvedValue({ rows: [], rowCount: 0 });
-    autoLearningService.learnFromFeedback.mockResolvedValue({ learned: false, preferences: [] });
+    discordPendingAnswerIntakeService.build.mockReturnValue({
+        statusId: 'outcome_only',
+        sourceStateId: 'legacy_pending_state',
+        learningIntake: { sourceEventId: 'classification:100:discord_pending_answer:legacy' },
+        learningGuard: { learning: { decisionId: 'outcome_only' } },
+        audit: { ok: true },
+        reasonCodes: [],
+    });
     clarificationService.resolvePolicyQuestion.mockResolvedValue({ shouldRoute: false });
     clarificationService.recordResponse.mockResolvedValue(undefined);
     classificationRoutingService.routeToArr.mockResolvedValue({ routed: true, reason: 'routed' });
@@ -186,6 +199,11 @@ describe('processVerification', () => {
         expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(100, expect.objectContaining({
             type: 'verified',
             source: 'discord_verification',
+        }));
+        expect(discordPendingAnswerIntakeService.build).toHaveBeenCalledWith(expect.objectContaining({
+            classification: MOCK_CLASSIFICATION,
+            actionId: 'verify_destination',
+            finalOutcomeRecorded: true,
         }));
     });
 
@@ -298,6 +316,15 @@ describe('processCorrection', () => {
             source: 'discord_correction',
             final_library_id: 11,
             final_library_name: 'Series'
+        }));
+        expect(discordPendingAnswerIntakeService.build).toHaveBeenCalledWith(expect.objectContaining({
+            classification: MOCK_CLASSIFICATION,
+            destination: {
+                libraryId: 11,
+                libraryName: 'Series',
+            },
+            actionId: 'correct_destination',
+            finalOutcomeRecorded: true,
         }));
     });
 

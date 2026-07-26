@@ -10,10 +10,12 @@
 import { EmbedBuilder } from 'discord.js';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
-import { autoLearningService } from './autoLearningService.mjs';
-import { extractLearningPatterns, routeAfterClarification } from './discordPatternExtractionService.mjs';
+import { routeAfterClarification } from './discordClarificationRouting.mjs';
+import {
+  DISCORD_PENDING_ANSWER_ACTION_IDS,
+  policyDiscordPendingAnswerIntakeService,
+} from './policyDiscordPendingAnswerIntake.mjs';
 
 const logger = createLogger('discordVerificationHandler');
 
@@ -58,64 +60,37 @@ export async function processVerification(classificationId, isCorrect, interacti
        WHERE id = $1`,
       [classificationId],
     );
-    await classificationOutcomeService.recordOutcome(classificationId, {
+    const outcomeRecord = await classificationOutcomeService.recordOutcome(classificationId, {
       type: 'verified',
       source: 'discord_verification',
       actor: interaction.user.username,
       final_library_id: classification.library_id || null,
       final_library_name: classification.library_name || null,
     });
-
-    try {
-      const metadata = classification.item_metadata || {};
-      const learningResult = await autoLearningService.learnFromFeedback({
-        tmdbId: classification.tmdb_id,
+    const pendingAnswerIntake = policyDiscordPendingAnswerIntakeService.build({
+      classification,
+      destination: {
         libraryId: classification.library_id,
-        genres: normalizeMetadataList(metadata.genres),
-        keywords: normalizeMetadataList(metadata.keywords),
-        studio: metadata.studio,
-        wasCorrection: false,
-        userId: interaction.user.id,
-      });
+        libraryName: classification.library_name,
+      },
+      actionId: DISCORD_PENDING_ANSWER_ACTION_IDS.VERIFY_DESTINATION,
+      finalOutcomeRecorded: outcomeRecord.updated === true,
+    });
 
-      logger.info('[Discord] Auto-learning result', {
-        classificationId,
-        learned: learningResult.learned,
-        preferences: learningResult.preferences,
-      });
-    } catch (learningError) {
-      logger.error('[Discord] Auto-learning failed:', learningError);
-    }
-
-    const libraryIdToLearn =
-      classification.library_id === undefined
-        ? null
-        : classification.library_id;
-    await extractLearningPatterns(classificationId, libraryIdToLearn);
+    logger.info('Discord verification pending-answer intake evaluated', {
+      classificationId,
+      statusId: pendingAnswerIntake.statusId,
+      sourceStateId: pendingAnswerIntake.sourceStateId,
+      sourceEventId: pendingAnswerIntake.learningIntake?.sourceEventId || null,
+      guardDecisionId: pendingAnswerIntake.learningGuard?.learning?.decisionId || null,
+      auditOk: pendingAnswerIntake.audit.ok,
+      reasonCodes: pendingAnswerIntake.reasonCodes,
+    });
 
     try {
       await routeAfterClarification(classificationId);
     } catch (routeError) {
       logger.error('Error routing after verification:', routeError);
-    }
-
-    const metadata = classification.item_metadata || {};
-    let feedbackMessage = '\u2705 **Verified!** System learned from your confirmation.';
-
-    try {
-      const learnedItems = [];
-      const learnedGenres = normalizeMetadataList(metadata.genres);
-      const learnedKeywords = normalizeMetadataList(metadata.keywords);
-      if (learnedGenres.length > 0) {
-        learnedItems.push(`Genres: ${learnedGenres.slice(0, 3).join(', ')}`);
-      }
-      if (learnedKeywords.length > 0) {
-        learnedItems.push(`Keywords: ${learnedKeywords.slice(0, 3).join(', ')}`);
-      }
-      if (learnedItems.length > 0) {
-        feedbackMessage += `\n\n_System is learning these preferences for this library:_\n${learnedItems.join('\n')}`;
-      }
-    } catch (_error) {
     }
 
     await interaction.editReply({
@@ -124,13 +99,13 @@ export async function processVerification(classificationId, isCorrect, interacti
         EmbedBuilder.from(interaction.message.embeds[0])
           .setColor(0x22c55e)
           .setFooter({
-            text: `\u2705 Verified by ${interaction.user.username} \u2022 Will auto-route same title next time`,
+            text: `\u2705 Verified by ${interaction.user.username} \u2022 Outcome recorded`,
           }),
       ],
     });
 
     await interaction.followUp({
-      content: feedbackMessage,
+      content: '\u2705 **Verified.** The outcome was recorded for this item.',
       ephemeral: true,
     });
   } catch (error) {

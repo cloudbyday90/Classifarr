@@ -284,6 +284,7 @@ function buildPassingRequestTimeLearningAudit() {
   });
   const requestEvent = buildPolicyRequestTimeEvent({
     eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+    sourceEventId: 'runtime-completion-audit:request-time-learning',
     item: {
       itemId: 10674,
       title: 'Mulan',

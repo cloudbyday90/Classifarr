@@ -15,9 +15,10 @@ request-time, native pending, and future Discord adapters. That makes it too
 easy for an adapter to omit a source correlation ID, carry raw model text, or
 shape a final outcome differently before it reaches the guard.
 
-The Discord source was defined in the guard vocabulary but did not yet have a
-canonical runtime producer. The former roadmap wording overstated that all
-five sources were already routed through one live intake path.
+Discord verification and correction now have a canonical runtime producer. The
+former duplicate Discord preference and exact-match write paths are removed;
+the adapter remains outcome-only until an authorized persistence transaction
+exists.
 
 ## Research Inputs
 
@@ -163,8 +164,15 @@ Request-import fallback adoption is documented in
 It reuses valid request-time intake and normalizes missing or invalid-proof
 terminal routing through the same contract without inferring requester intent.
 
+Discord pending-answer adoption is documented in
+[Policy Discord Pending-Answer Intake Adoption](policy-discord-pending-answer-intake-adoption.md).
+It derives bounded source-event correlation from persisted pending state,
+requires a confirmed final outcome, and replaces the active direct Discord
+preference and exact-match write paths with an outcome-only guard decision.
+
 ## Next Step
 
-Proceed to **Phase 6R.3.2: Learning Intake Adapter Adoption**. Migrate the
-manual correction, request-time, native pending, routing outcome, and Discord
-answer adapters one at a time, then remove their duplicate pre-guard shaping.
+Proceed to **Phase 6R.3.3: Authorized Outcome And Learning Persistence**.
+Revalidate current state, source-event idempotency, and authorization in one
+transaction before any guarded candidate, final outcome, or refresh command is
+written durably.

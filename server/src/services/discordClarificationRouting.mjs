@@ -7,69 +7,13 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
+
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { routeToArr } from './classificationRoutingService.mjs';
 import * as notificationBuilder from './discordNotificationBuilder.mjs';
 
-const logger = createLogger('discordPatternExtraction');
-
-export async function extractLearningPatterns(classificationId, libraryId) {
-  try {
-    const result = await db.query(
-      'SELECT tmdb_id, media_type, metadata FROM classification_history WHERE id = $1',
-      [classificationId],
-    );
-
-    if (result.rows.length > 0) {
-      const { tmdb_id, media_type, metadata } = result.rows[0];
-
-      await classificationEvidenceService.rememberExactMatch({
-        tmdbId: tmdb_id,
-        mediaType: media_type || 'unknown',
-        libraryId,
-        payload: metadata,
-        payloadColumn: 'pattern_data',
-        conflictMode: 'do_nothing',
-      });
-    }
-  } catch (error) {
-    logger.error('Error extracting learning patterns:', error);
-  }
-}
-
-export async function extractClarificationPatterns(
-  classificationId,
-  libraryId,
-  selectedOption,
-) {
-  try {
-    const result = await db.query(
-      'SELECT tmdb_id, media_type, metadata, title FROM classification_history WHERE id = $1',
-      [classificationId],
-    );
-
-    if (result.rows.length > 0) {
-      const { tmdb_id, media_type, metadata, title } = result.rows[0];
-
-      await classificationEvidenceService.rememberExactMatch({
-        tmdbId: tmdb_id,
-        mediaType: media_type || 'unknown',
-        libraryId,
-        payload: { ...metadata, clarification_response: selectedOption },
-        payloadColumn: 'pattern_data',
-        conflictMode: 'update_payload',
-      });
-
-      logger.info(
-        `Learned: ${title} (TMDB: ${tmdb_id}) -> Library ${libraryId} via clarification`,
-      );
-    }
-  } catch (error) {
-    logger.error('Error extracting clarification patterns:', error);
-  }
-}
+const logger = createLogger('discordClarificationRouting');
 
 export async function routeAfterClarification(classificationId) {
   const outcome = {
@@ -141,7 +85,7 @@ export async function routeAfterClarification(classificationId) {
     }
 
     await db.query(
-      "UPDATE classification_history SET status = $1 WHERE id = $2",
+      'UPDATE classification_history SET status = $1 WHERE id = $2',
       ['routed', classificationId],
     );
 

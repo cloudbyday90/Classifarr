@@ -10,11 +10,13 @@
 import { EmbedBuilder } from 'discord.js';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
-import { autoLearningService } from './autoLearningService.mjs';
 import * as notificationBuilder from './discordNotificationBuilder.mjs';
-import { extractLearningPatterns, routeAfterClarification } from './discordPatternExtractionService.mjs';
+import { routeAfterClarification } from './discordClarificationRouting.mjs';
+import {
+  DISCORD_PENDING_ANSWER_ACTION_IDS,
+  policyDiscordPendingAnswerIntakeService,
+} from './policyDiscordPendingAnswerIntake.mjs';
 
 const logger = createLogger('discordCorrectionHandler');
 
@@ -97,42 +99,34 @@ export async function processCorrection(classificationId, newLibraryId, interact
         interaction.user.username,
       ],
     );
-    await classificationOutcomeService.recordOutcome(classificationId, {
+    const outcomeRecord = await classificationOutcomeService.recordOutcome(classificationId, {
       type: 'corrected',
       source: 'discord_correction',
       actor: interaction.user.username,
       final_library_id: newLibraryId,
       final_library_name: newLibraryName,
     });
-
-    try {
-      const metadata = classification.item_metadata || {};
-      const learningResult = await autoLearningService.learnFromFeedback({
-        tmdbId: classification.tmdb_id,
+    const pendingAnswerIntake = policyDiscordPendingAnswerIntakeService.build({
+      classification,
+      destination: {
         libraryId: newLibraryId,
-        genres: normalizeMetadataList(metadata.genres),
-        keywords: normalizeMetadataList(metadata.keywords),
-        studio: metadata.studio,
-        wasCorrection: true,
-        userId: interaction.user.id,
-      });
+        libraryName: newLibraryName,
+      },
+      actionId: DISCORD_PENDING_ANSWER_ACTION_IDS.CORRECT_DESTINATION,
+      finalOutcomeRecorded: outcomeRecord.updated === true,
+    });
 
-      logger.info('[Discord] Auto-learning from correction', {
-        classificationId,
-        originalLibrary: originalLibraryId,
-        newLibrary: newLibraryId,
-        learned: learningResult.learned,
-        preferences: learningResult.preferences,
-      });
-    } catch (learningError) {
-      logger.error('[Discord] Auto-learning from correction failed:', learningError);
-    }
-
-    try {
-      await extractLearningPatterns(classificationId, newLibraryId);
-    } catch (patternError) {
-      logger.error('Error extracting patterns during correction:', patternError);
-    }
+    logger.info('Discord correction pending-answer intake evaluated', {
+      classificationId,
+      originalLibraryId,
+      newLibraryId,
+      statusId: pendingAnswerIntake.statusId,
+      sourceStateId: pendingAnswerIntake.sourceStateId,
+      sourceEventId: pendingAnswerIntake.learningIntake?.sourceEventId || null,
+      guardDecisionId: pendingAnswerIntake.learningGuard?.learning?.decisionId || null,
+      auditOk: pendingAnswerIntake.audit.ok,
+      reasonCodes: pendingAnswerIntake.reasonCodes,
+    });
 
     try {
       routingOutcome = await routeAfterClarification(classificationId);

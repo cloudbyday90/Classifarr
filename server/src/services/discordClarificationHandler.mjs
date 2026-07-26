@@ -12,7 +12,7 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
 import * as notificationBuilder from './discordNotificationBuilder.mjs';
-import { routeAfterClarification } from './discordPatternExtractionService.mjs';
+import { routeAfterClarification } from './discordClarificationRouting.mjs';
 import { buildNativePendingQuestionPresentation } from './policyNativePendingQuestionPresentation.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 import { recordNativePendingRouteOutcome } from './policyNativePendingRouteOutcomePersistence.mjs';
