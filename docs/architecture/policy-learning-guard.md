@@ -35,6 +35,12 @@ guard audits that bounded record before it evaluates learning eligibility, so a
 routed or missing-mapping outcome cannot lose its route semantics while moving
 through the learning boundary.
 
+Every new source adapter must first use the
+[Policy Learning Intake Contract](policy-learning-intake-contract.md). That
+contract owns the bounded event correlation, source, answer, question,
+guard-context, and final-outcome handoff. The guard remains the eligibility
+decision point; intake does not create authority or persistence rights.
+
 ## Official Guidance Reviewed
 
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
@@ -138,6 +144,8 @@ Cons:
   `server/src/services/policyQuestionLearningVocabulary.mjs`
 - Learning guard:
   `server/src/services/policyLearningGuard.mjs`
+- Learning intake contract:
+  `server/src/services/policyLearningIntakeContract.mjs`
 - Bounded intent input:
   `server/src/services/policyIntentEngine.mjs`
 - Test module:
@@ -247,12 +255,15 @@ blocked_by_learning_audit
   persistence adapter cannot accidentally authorize learning after its outcome
   write failed. The manual-correction adapter uses that boundary before it
   considers an exact-item memory write.
+- Learning intake requires a known source, bounded source-event correlation,
+  known answer outcome, known question frame, and a final outcome that matches
+  the source and answer before it can project data into this guard.
+- Raw AI explanation text and arbitrary provider payloads are excluded at the
+  intake boundary while retaining only the guard-blocking state needed to
+  reject unsafe learning.
 
 ## Next Step
 
-Proceed to **Policy Automation Readiness** architecture cutover. That component
-should consume only quality-gated bounded learning results while combining
-evidence, intent, routing, profile freshness, and learning state into a small
-readiness answer such as `ready`, `needs_more_examples`,
-`needs_operator_review`, `needs_routing`, `blocked_by_hard_limit`, or
-`stale_profile`.
+Proceed to **Phase 6R.3.2 Learning Intake Adapter Adoption**. That component
+should route each live manual, request-time, native pending, routing, and
+Discord path through the intake contract before it reaches this guard.

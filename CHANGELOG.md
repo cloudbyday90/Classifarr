@@ -18,6 +18,14 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Canonical Policy Learning Intake** - Classifarr now has a versioned,
+  server-owned intake contract for manual, confirmation, Discord, request, and
+  routing learning sources. It requires bounded event correlation, allowlisted
+  source/question/answer values, and a final outcome bound to that event while
+  excluding raw AI and provider payloads. The contract is side-effect free;
+  live adapter adoption and authorized persistence remain separate follow-up
+  work.
+
 - **Policy Authoring Test Cutline** - policy-authoring presentation coverage
   now has a complete bounded inventory with clear workflow, compatibility,
   draft-bridge, and verifier ownership. The audit rejects missing or duplicate

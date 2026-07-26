@@ -3796,8 +3796,20 @@ exact-item memory, profile evidence, or only outcome history.
 
 Tasks:
 
-- Route manual classification changes, confirmations, Discord answers, request
-  destination choices, and routing outcomes through one learning guard.
+- **6R.3.1 Canonical Learning Intake Contract:** normalize all five learning
+  source classes into one source/event/answer/question/outcome envelope before
+  guard evaluation. The contract must be side-effect free, retain a bounded
+  source event identifier, exclude raw AI/provider payloads, and fail closed
+  for unknown source, answer, frame, or outcome drift.
+- **6R.3.2 Learning Intake Adapter Adoption:** move manual classification
+  changes, confirmations, Discord answers, request destination choices, and
+  routing outcomes through the canonical intake contract one adapter at a time.
+  Re-derive actor, source, and workflow state server-side; remove duplicate
+  pre-guard normalization only after each adapter's replacement passes.
+- **6R.3.3 Authorized Outcome And Learning Persistence:** add the later
+  transaction boundary that validates current state, authorization, and
+  idempotency before it writes final outcomes, approved learning, or profile
+  refresh commands. Intake and the guard remain pure.
 - Store final outcome separately from learning decision.
 - Add explicit learning tiers:
   - `none`,
@@ -3837,9 +3849,20 @@ Implementation status:
   guard and request-time learning use its bounded `policy.final_outcome.v1`
   contract before they evaluate learning eligibility. Its design record is
   [Policy Final Outcome Normalizer](policy-final-outcome-normalizer.md).
-- Current implementation evaluates manual classification changes, operator
-  confirmations, Discord pending answers, request destination choices, and Arr
-  routing outcomes into separate final-outcome and learning decisions.
+- The guard vocabulary and focused reducer can evaluate manual classification
+  changes, operator confirmations, Discord pending answers, request destination
+  choices, and Arr routing outcomes into separate final-outcome and learning
+  decisions. That is not yet a claim that every live adapter converges through
+  one runtime intake path.
+- Phase 6R.3.1 now provides the shared
+  `server/src/services/policyLearningIntakeContract.mjs` envelope and focused
+  test suite. It allowlists the five sources, requires a bounded source-event
+  identifier, strips raw AI/provider payloads, binds final outcome to source and
+  answer outcome, and performs no writes.
+- Manual correction, request-time, native pending, routing, and Discord
+  adapter adoption remains Phase 6R.3.2. Discord source vocabulary exists, but
+  production Discord intake must not be claimed until that adapter is built and
+  tested through the shared contract.
 - The contract supports explicit learning tiers for no learning,
   exact-item memory, compatibility evidence, identity evidence, and hard-limit
   evidence; every candidate includes reason codes and write permission is
