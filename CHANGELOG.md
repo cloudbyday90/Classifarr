@@ -47,6 +47,13 @@ unchanged operator or runtime outcome.
   franchise, or certification signals. The writer cannot create destination
   identity, hard limits, avoid rules, or declared policy intent.
 
+- **Identity Evidence Authority Admissions** - Classifarr now has an
+  append-only identity-admission foundation that requires a manual outcome to
+  match independently declared native purpose authority before it can reinforce
+  identity. It cannot change declared intent, and raw library distributions,
+  AI output, provider data, labels, and manual outcomes alone cannot establish
+  a destination identity.
+
 - **Authorized Outcome Persistence Commands** - Classifarr now validates a
   pure, server-owned persistence plan against canonical intake, learning guard,
   revalidated actor authority, and transaction-locked current state. A valid

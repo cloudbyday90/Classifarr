@@ -3840,7 +3840,8 @@ Implementation task sequence:
    - **6R.3.3e.3 Identity Evidence Authority Writer:** define the stricter
      identity admission path. Manual outcome authority alone must not turn one
      answer into destination identity; require the allowed observed or
-     operator-declared authority before persistence.
+     operator-declared authority before persistence. Complete; documented in
+     [Policy Identity Evidence Authority Writer](policy-identity-evidence-authority-writer.md).
    - **6R.3.3e.4 Refresh Outbox Persistence:** insert a compact profile-refresh
      outbox row in the same transaction as an admitted evidence mutation and
      deduplicate by the authorized source event.
@@ -3923,6 +3924,14 @@ Implementation status:
   declared-intent data, and remains uninvoked until refresh outbox persistence
   can be atomic. Its design record is
   [Policy Compatibility Evidence Writer](policy-compatibility-evidence-writer.md).
+- Phase 6R.3.3e.3 is complete. The identity writer creates an append-only,
+  source-event-keyed admission only after an eligible manual outcome matches
+  exactly one active declared native purpose rule. It never changes native
+  intent; raw library distributions are not observed authority. The defined
+  observed extension path requires a server-qualified current projection and
+  fingerprint. It remains uninvoked until Phase 6R.3.3e.4 can atomically write
+  an evidence mutation and refresh outbox row. Its design record is
+  [Policy Identity Evidence Authority Writer](policy-identity-evidence-authority-writer.md).
 - The focused learning-guard test suite lives in
   `server/src/__tests__/services/policyLearningGuard.test.mjs`.
 - Final-outcome shaping and route-transition validation now live in

@@ -129,6 +129,8 @@ admission, parameterized upsert shape, and transaction-client enforcement.
 
 ## Next Step
 
-Proceed to **Phase 6R.3.3e.3: Identity Evidence Authority Writer**. It must
-require the narrower observed or operator-declared authority path and must not
-use manual-outcome authority as a substitute for destination identity.
+Phase 6R.3.3e.3 is implemented in
+[Policy Identity Evidence Authority Writer](policy-identity-evidence-authority-writer.md).
+Proceed to **Phase 6R.3.3e.4: Refresh Outbox Persistence**. It must commit an
+admitted compatibility or identity change with the validated refresh command
+in one transaction.

@@ -28,17 +28,25 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
     purgeAll.mockReset();
   });
 
-  test('clears runtime source-event receipts only through the guarded replace-restore setting', async () => {
+  test('clears runtime identity admissions and source-event receipts only through guarded replace-restore settings', async () => {
     const client = { query: jest.fn().mockResolvedValue({ rows: [] }) };
 
     await clearExistingConfig(client);
 
     expect(client.query).toHaveBeenNthCalledWith(
       1,
-      "SELECT set_config('classifarr.policy_authorized_outcome_receipt_maintenance', 'replace_restore', true)"
+      "SELECT set_config('classifarr.policy_identity_evidence_admission_maintenance', 'replace_restore', true)"
     );
     expect(client.query).toHaveBeenNthCalledWith(
       2,
+      'DELETE FROM policy_identity_evidence_admissions'
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      3,
+      "SELECT set_config('classifarr.policy_authorized_outcome_receipt_maintenance', 'replace_restore', true)"
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      4,
       'DELETE FROM policy_authorized_outcome_source_event_receipts'
     );
   });

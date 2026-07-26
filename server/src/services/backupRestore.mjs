@@ -32,6 +32,12 @@ import {
 const logger = createLogger('BackupRestore');
 
 export async function clearExistingConfig(client) {
+  // Runtime identity admissions are not user configuration. Their append-only
+  // guard permits deletion only while a replace restore explicitly opts in.
+  await client.query(
+    "SELECT set_config('classifarr.policy_identity_evidence_admission_maintenance', 'replace_restore', true)"
+  );
+  await client.query('DELETE FROM policy_identity_evidence_admissions');
   // Runtime idempotency receipts must not survive a replace restore. The
   // database guard permits this one transaction-local maintenance action only.
   await client.query(

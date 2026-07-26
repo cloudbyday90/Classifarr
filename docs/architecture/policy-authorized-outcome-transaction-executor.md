@@ -156,6 +156,8 @@ Phase 6R.3.3e.1 now validates the pure refresh command in
 [Policy Profile Refresh Command Contract](policy-profile-refresh-command-contract.md).
 Phase 6R.3.3e.2 is implemented in
 [Policy Compatibility Evidence Writer](policy-compatibility-evidence-writer.md).
-Proceed to **Phase 6R.3.3e.3: Identity Evidence Authority Writer**. Refresh
-work remains unavailable until compatibility or identity evidence can create
-its outbox record in the same transaction.
+Phase 6R.3.3e.3 is implemented in
+[Policy Identity Evidence Authority Writer](policy-identity-evidence-authority-writer.md).
+Proceed to **Phase 6R.3.3e.4: Refresh Outbox Persistence**. Refresh work
+remains unavailable until compatibility or identity evidence can create its
+outbox record in the same transaction.

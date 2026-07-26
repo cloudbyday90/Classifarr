@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-26T19:47:08.290Z
--- Latest Migration: 20260726_090000_add_policy_authorized_outcome_source_event_receipts.sql
+-- Generated: 2026-07-26T22:23:05.851Z
+-- Latest Migration: 20260726_110000_add_policy_identity_evidence_admissions.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -209,6 +209,27 @@ CREATE FUNCTION public.guard_policy_backup_restore_verification_mutation() RETUR
     AS $$
 BEGIN
     RAISE EXCEPTION 'Backup restore verification evidence is append-only';
+END;
+$$;
+
+
+--
+-- Name: guard_policy_identity_evidence_admission_mutation(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_policy_identity_evidence_admission_mutation() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF TG_OP = 'DELETE'
+       AND current_setting(
+           'classifarr.policy_identity_evidence_admission_maintenance',
+           true
+       ) = 'replace_restore' THEN
+        RETURN OLD;
+    END IF;
+
+    RAISE EXCEPTION 'Policy identity evidence admissions are append-only';
 END;
 $$;
 
@@ -3950,6 +3971,60 @@ ALTER SEQUENCE public.policy_feedback_log_id_seq OWNED BY public.policy_feedback
 
 
 --
+-- Name: policy_identity_evidence_admissions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_identity_evidence_admissions (
+    id bigint NOT NULL,
+    admission_version smallint DEFAULT 1 NOT NULL,
+    source_id character varying(80) NOT NULL,
+    source_event_id character varying(160) NOT NULL,
+    classification_id bigint NOT NULL,
+    library_id bigint NOT NULL,
+    media_type character varying(20) NOT NULL,
+    signal_type character varying(50) NOT NULL,
+    evidence_key character varying(160) NOT NULL,
+    authority_source_id character varying(64) CONSTRAINT policy_identity_evidence_admission_authority_source_id_not_null NOT NULL,
+    authority_reference character varying(160) CONSTRAINT policy_identity_evidence_admission_authority_reference_not_null NOT NULL,
+    authority_policy_id bigint,
+    authority_intent_id bigint,
+    authority_intent_version integer,
+    authority_fingerprint character(64),
+    actor_reference character varying(128),
+    source_system character varying(80) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_identity_evidence_admissions_authority_shape_chk CHECK (((((authority_source_id)::text = 'operator_declared_intent'::text) AND (authority_policy_id IS NOT NULL) AND (authority_intent_id IS NOT NULL) AND (authority_intent_version IS NOT NULL) AND (authority_intent_version > 0) AND (authority_fingerprint IS NULL)) OR (((authority_source_id)::text = 'media_server_contents'::text) AND (authority_policy_id IS NULL) AND (authority_intent_id IS NULL) AND (authority_intent_version IS NULL) AND (authority_fingerprint ~ '^[a-f0-9]{64}$'::text)))),
+    CONSTRAINT policy_identity_evidence_admissions_authority_source_chk CHECK (((authority_source_id)::text = ANY (ARRAY[('media_server_contents'::character varying)::text, ('operator_declared_intent'::character varying)::text]))),
+    CONSTRAINT policy_identity_evidence_admissions_evidence_key_chk CHECK (((char_length(btrim((evidence_key)::text)) >= 3) AND (char_length(btrim((evidence_key)::text)) <= 160))),
+    CONSTRAINT policy_identity_evidence_admissions_identifiers_chk CHECK (((classification_id > 0) AND (library_id > 0))),
+    CONSTRAINT policy_identity_evidence_admissions_media_type_chk CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text]))),
+    CONSTRAINT policy_identity_evidence_admissions_signal_type_chk CHECK (((signal_type)::text = ANY (ARRAY[('genres'::character varying)::text, ('keywords'::character varying)::text, ('studios'::character varying)::text, ('media_type'::character varying)::text]))),
+    CONSTRAINT policy_identity_evidence_admissions_source_event_chk CHECK (((char_length(btrim((source_id)::text)) >= 1) AND (char_length(btrim((source_id)::text)) <= 80) AND ((char_length(btrim((source_event_id)::text)) >= 1) AND (char_length(btrim((source_event_id)::text)) <= 160)))),
+    CONSTRAINT policy_identity_evidence_admissions_source_system_chk CHECK (((source_system)::text = 'policy_authorized_identity_admission'::text)),
+    CONSTRAINT policy_identity_evidence_admissions_version_chk CHECK ((admission_version = 1))
+);
+
+
+--
+-- Name: policy_identity_evidence_admissions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_identity_evidence_admissions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_identity_evidence_admissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_identity_evidence_admissions_id_seq OWNED BY public.policy_identity_evidence_admissions.id;
+
+
+--
 -- Name: policy_initial_intent_establishments; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6577,6 +6652,13 @@ ALTER TABLE ONLY public.policy_feedback_log ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: policy_identity_evidence_admissions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_identity_evidence_admissions ALTER COLUMN id SET DEFAULT nextval('public.policy_identity_evidence_admissions_id_seq'::regclass);
+
+
+--
 -- Name: policy_initial_intent_establishments id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7574,6 +7656,22 @@ ALTER TABLE ONLY public.policy_change_log
 
 ALTER TABLE ONLY public.policy_feedback_log
     ADD CONSTRAINT policy_feedback_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_identity_evidence_admissions policy_identity_evidence_admissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_identity_evidence_admissions
+    ADD CONSTRAINT policy_identity_evidence_admissions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_identity_evidence_admissions policy_identity_evidence_admissions_source_event_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_identity_evidence_admissions
+    ADD CONSTRAINT policy_identity_evidence_admissions_source_event_unique UNIQUE (source_id, source_event_id);
 
 
 --
@@ -9137,6 +9235,13 @@ CREATE INDEX idx_policy_feedback_was_correction ON public.policy_feedback_log US
 
 
 --
+-- Name: idx_policy_identity_evidence_admissions_library_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_identity_evidence_admissions_library_created ON public.policy_identity_evidence_admissions USING btree (library_id, created_at DESC, id DESC);
+
+
+--
 -- Name: idx_policy_initial_intent_establishments_library; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9876,6 +9981,13 @@ CREATE TRIGGER policy_authorized_outcome_receipt_mutation_guard BEFORE DELETE OR
 --
 
 CREATE TRIGGER policy_backup_restore_verification_mutation_guard BEFORE DELETE OR UPDATE ON public.policy_backup_restore_verifications FOR EACH ROW EXECUTE FUNCTION public.guard_policy_backup_restore_verification_mutation();
+
+
+--
+-- Name: policy_identity_evidence_admissions policy_identity_evidence_admission_mutation_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER policy_identity_evidence_admission_mutation_guard BEFORE DELETE OR UPDATE ON public.policy_identity_evidence_admissions FOR EACH ROW EXECUTE FUNCTION public.guard_policy_identity_evidence_admission_mutation();
 
 
 --
@@ -12859,6 +12971,7 @@ FROM unnest(ARRAY[
     '20260716_050000_add_policy_initial_intent_establishments.sql',
     '20260722_120000_add_policy_observed_evidence_provenance.sql',
     '20260725_190000_add_policy_backup_restore_verifications.sql',
-    '20260726_090000_add_policy_authorized_outcome_source_event_receipts.sql'
+    '20260726_090000_add_policy_authorized_outcome_source_event_receipts.sql',
+    '20260726_110000_add_policy_identity_evidence_admissions.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

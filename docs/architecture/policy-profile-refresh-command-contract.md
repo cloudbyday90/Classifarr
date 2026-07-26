@@ -127,7 +127,9 @@ persist or execute it.
 ## Next Step
 
 Phase 6R.3.3e.2 is implemented in
-[Policy Compatibility Evidence Writer](policy-compatibility-evidence-writer.md).
-Proceed to **Phase 6R.3.3e.3: Identity Evidence Authority Writer**. It must
-require observed or operator-declared authority before a destination identity
-record can persist.
+[Policy Compatibility Evidence Writer](policy-compatibility-evidence-writer.md),
+and Phase 6R.3.3e.3 is implemented in
+[Policy Identity Evidence Authority Writer](policy-identity-evidence-authority-writer.md).
+Proceed to **Phase 6R.3.3e.4: Refresh Outbox Persistence**. It must create a
+durable refresh request only in the transaction that admits compatibility or
+identity evidence.

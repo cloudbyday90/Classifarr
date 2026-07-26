@@ -31,6 +31,8 @@ const POLICY_AUTHORIZED_OUTCOME_EXECUTION_REASON_IDS = Object.freeze({
   EXACT_ITEM_MEMORY_PERSISTED: 'authorized_outcome_execution_exact_item_memory_persisted',
   EXACT_ITEM_MEMORY_ALREADY_PRESENT: 'authorized_outcome_execution_exact_item_memory_already_present',
   COMPATIBILITY_EVIDENCE_PERSISTED: 'authorized_outcome_execution_compatibility_evidence_persisted',
+  IDENTITY_EVIDENCE_ADMISSION_PERSISTED:
+    'authorized_outcome_execution_identity_evidence_admission_persisted',
   LEARNING_OPERATION_UNAVAILABLE: 'authorized_outcome_execution_learning_operation_unavailable',
   PROFILE_REFRESH_UNAVAILABLE: 'authorized_outcome_execution_profile_refresh_unavailable',
 });
