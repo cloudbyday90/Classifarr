@@ -35,12 +35,10 @@ describe('policyEvidenceArtifactCutline', () => {
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
-      reconciledGroupCount: 7,
-      successorCount: 7,
-      evidenceMappingCount: 3,
+      reconciledGroupCount: 4,
+      successorCount: 4,
+      evidenceMappingCount: 0,
       successorIds: expect.arrayContaining([
-        POLICY_EVIDENCE_ARTIFACT_SUCCESSOR_IDS.EVIDENCE_PROJECTION,
-        POLICY_EVIDENCE_ARTIFACT_SUCCESSOR_IDS.MIGRATION_DELETION,
         POLICY_EVIDENCE_ARTIFACT_SUCCESSOR_IDS.RUNTIME_DECISION_CHAIN,
       ]),
       sideEffects: {
@@ -55,7 +53,7 @@ describe('policyEvidenceArtifactCutline', () => {
 
   test('requires every active rewrite, replacement, and deletion group to have a successor', () => {
     const successorMappings = listPolicyEvidenceArtifactSuccessors()
-      .filter(mapping => mapping.groupId !== 'template_name_suggestion_heuristics');
+      .filter(mapping => mapping.groupId !== 'legacy_scoring_runtime');
 
     const audit = buildPolicyEvidenceArtifactCutlineAudit({
       successorMappings,
@@ -66,32 +64,31 @@ describe('policyEvidenceArtifactCutline', () => {
     expect(audit.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: POLICY_EVIDENCE_ARTIFACT_CUTLINE_RISK_IDS.MISSING_SUCCESSOR,
-        groupId: 'template_name_suggestion_heuristics',
+        groupId: 'legacy_scoring_runtime',
       }),
     ]));
   });
 
   test('requires evidence successors to use admitted source-to-bucket mappings', () => {
-    const successorMappings = listPolicyEvidenceArtifactSuccessors().map(mapping => (
-      mapping.groupId === 'template_name_suggestion_heuristics'
-        ? {
-          ...mapping,
-          evidenceMappings: [
-            {
-              bucketId: 'unknown_bucket',
-              sourceId: 'unknown_source',
-            },
-            {
-              bucketId: 'identity_evidence',
-              sourceId: 'metadata_enrichment',
-            },
-          ],
-        }
-        : mapping
-    ));
-
     const audit = buildPolicyEvidenceArtifactCutlineAudit({
-      successorMappings,
+      groups: [{
+        id: 'evidence_projection_group',
+        decisionId: POLICY_ENGINE_ARTIFACT_DECISION_IDS.REPLACE_WITH_ENGINE,
+      }],
+      successorMappings: [{
+        groupId: 'evidence_projection_group',
+        successorId: POLICY_EVIDENCE_ARTIFACT_SUCCESSOR_IDS.EVIDENCE_PROJECTION,
+        evidenceMappings: [
+          {
+            bucketId: 'unknown_bucket',
+            sourceId: 'unknown_source',
+          },
+          {
+            bucketId: 'identity_evidence',
+            sourceId: 'metadata_enrichment',
+          },
+        ],
+      }],
       buildInventoryAudit: buildPassingInventoryAudit,
     });
 

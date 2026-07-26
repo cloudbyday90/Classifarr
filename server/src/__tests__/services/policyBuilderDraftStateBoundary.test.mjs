@@ -67,9 +67,6 @@ describe('policyBuilderDraftStateBoundary', () => {
     expect(listDraftStateOperationRecords().map(record => record.id)).toEqual([
       DRAFT_STATE_OPERATION_IDS.LOAD_OR_RESET_POLICY,
       DRAFT_STATE_OPERATION_IDS.SET_FORM_FIELD,
-      DRAFT_STATE_OPERATION_IDS.TOGGLE_PRESET_SELECTION,
-      DRAFT_STATE_OPERATION_IDS.SET_PRESET_WEIGHT,
-      DRAFT_STATE_OPERATION_IDS.TOGGLE_PRESET_EXPANSION,
       DRAFT_STATE_OPERATION_IDS.DRAFT_SIGNAL_COMMAND,
       DRAFT_STATE_OPERATION_IDS.LEGACY_CUSTOM_SIGNAL_ALIAS,
       DRAFT_STATE_OPERATION_IDS.BUILD_SAVE_PAYLOAD,
@@ -104,10 +101,6 @@ describe('policyBuilderDraftStateBoundary', () => {
   });
 
   test('classifies UI-only and server projection fields as never serialized', () => {
-    expect(getDraftStateFieldRecord('expandedPresetIds')).toEqual(expect.objectContaining({
-      category: DRAFT_STATE_FIELD_CATEGORIES.UI_ONLY_TRANSIENT_STATE,
-      saveBehavior: 'never serialized',
-    }));
     expect(getDraftStateFieldRecord('libraryProfile')).toEqual(expect.objectContaining({
       category: DRAFT_STATE_FIELD_CATEGORIES.SERVER_PROJECTION_DISPLAY,
       saveBehavior: 'never serialized as policy intent',
@@ -129,7 +122,6 @@ describe('policyBuilderDraftStateBoundary', () => {
       'combinedSignals',
       'impactPreview',
       'replayPreview',
-      'expandedPresetIds',
     ]));
   });
 

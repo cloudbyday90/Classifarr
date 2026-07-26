@@ -32,7 +32,7 @@ describe('policyAuthoringPresentationTests', () => {
   test('classifies every in-scope presentation test once and documents adjacent policy test exclusions', async () => {
     const testDirectory = resolve(import.meta.dirname, '../../../..', 'client/src/__tests__');
     const directPolicyTestPaths = (await readdir(testDirectory))
-      .filter(fileName => /^Policy.*\.test\.js$/.test(fileName))
+      .filter(fileName => /^(Policy|IntentSignal).*\.test\.js$/.test(fileName))
       .map(fileName => `client/src/__tests__/${fileName}`)
       .sort();
     const documentedPolicyTestPaths = [
@@ -49,7 +49,7 @@ describe('policyAuthoringPresentationTests', () => {
 
   test('defines required presentation behaviors from the policy authoring roadmap', () => {
     expect(listRequiredPolicyAuthoringPresentationBehaviors().map(behavior => behavior.id)).toEqual([
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.STARTER_TEMPLATES_SECONDARY_TO_DESTINATION,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.TEMPLATE_DERIVED_VALUES_REQUIRE_EXPLICIT_ACCEPTANCE,
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.OBSERVED_EVIDENCE_DISTINCT_FROM_DECLARED_INTENT,
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.MULTI_SELECT_EMITS_TYPED_DRAFT_COMMANDS,
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
@@ -171,7 +171,7 @@ describe('policyAuthoringPresentationTests', () => {
       requiredBehaviorCount: listRequiredPolicyAuthoringPresentationBehaviors().length,
       inventoryFilePathCount: listPolicyAuthoringPresentationTestInventoryFilePaths().length,
       exclusionCount: listPolicyAuthoringPresentationTestExclusionRecords().length,
-      normalPathRecordCount: 23,
+      normalPathRecordCount: 22,
       draftBridgeOwnedRecordCount: 6,
       countsByCategory: expect.objectContaining({
         [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE]: 6,

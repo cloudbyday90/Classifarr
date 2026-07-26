@@ -232,7 +232,7 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
       statusId: 'ready_for_execution_gate',
       validationOk: true,
       readyForExecutionGate: true,
-      manifestEntryCount: 18,
+      manifestEntryCount: 16,
     }));
     expect(gate.preflightAttestation).toEqual(expect.objectContaining({
       executionPlanArtifactFingerprint:

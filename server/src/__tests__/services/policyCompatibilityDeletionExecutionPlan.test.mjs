@@ -208,13 +208,13 @@ describe('policyCompatibilityDeletionExecutionPlan', () => {
     expect(plan.manifest).toEqual(expect.objectContaining({
       approved: true,
       approvedBy: 'policy-maintainer',
-      entryCount: 18,
+      entryCount: 16,
     }));
     expect(plan.manifest.entries).toEqual(expect.arrayContaining([
       expect.objectContaining({
         categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI,
         actionId: POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
-        path: 'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
+        path: 'client/src/components/policies/PolicyPresetMigrationNotice.vue',
         ready: true,
       }),
       expect.objectContaining({

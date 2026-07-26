@@ -25,7 +25,7 @@ vi.mock('../../api/core', () => ({
 }))
 
 import {
-  getAttachablePresets,
+  getPresetReferenceValues,
   getSystemPresets,
   getPresetUsageCount,
 } from '../../api/presetCatalogApi'
@@ -35,18 +35,18 @@ describe('presetCatalogApi', () => {
     vi.clearAllMocks()
   })
 
-  it('getAttachablePresets calls getDataRequest with correct URL and params', async () => {
+  it('getPresetReferenceValues calls getDataRequest with correct URL and params', async () => {
     mockGetDataRequest.mockResolvedValueOnce([{ id: 1 }])
-    const result = await getAttachablePresets({ search: 'sci-fi' })
+    const result = await getPresetReferenceValues({ search: 'sci-fi' })
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/presets/all', {
       params: { search: 'sci-fi' },
     })
     expect(result).toEqual([{ id: 1 }])
   })
 
-  it('getAttachablePresets defaults params to empty object', async () => {
+  it('getPresetReferenceValues defaults params to empty object', async () => {
     mockGetDataRequest.mockResolvedValueOnce([])
-    await getAttachablePresets()
+    await getPresetReferenceValues()
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/presets/all', { params: {} })
   })
 

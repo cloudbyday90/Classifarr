@@ -22,9 +22,8 @@ describe('policyBuilderReferenceDataBoundary', () => {
     const summary = summarizeReferenceDataBoundary();
 
     expect(summary.countsByCategory).toEqual({
-      [REFERENCE_DATA_CATEGORY_IDS.STATIC_OPTION]: 2,
+      [REFERENCE_DATA_CATEGORY_IDS.STATIC_OPTION]: 3,
       [REFERENCE_DATA_CATEGORY_IDS.CONFIGURED_LIBRARY]: 1,
-      [REFERENCE_DATA_CATEGORY_IDS.STARTER_TEMPLATE]: 2,
       [REFERENCE_DATA_CATEGORY_IDS.OBSERVED_PROFILE_SUGGESTION]: 2,
       [REFERENCE_DATA_CATEGORY_IDS.SERVER_PROJECTION_DISPLAY]: 2,
       [REFERENCE_DATA_CATEGORY_IDS.ROUTING_MAPPING_STATUS]: 1,
@@ -37,6 +36,7 @@ describe('policyBuilderReferenceDataBoundary', () => {
     expect(summary.staticOptionRecordIds).toEqual([
       'available_ratings',
       'preset_genres',
+      'legacy_preset_reference',
     ]);
   });
 
@@ -60,19 +60,15 @@ describe('policyBuilderReferenceDataBoundary', () => {
     }));
   });
 
-  test('marks starter templates as draft seeds, not durable policy authority', () => {
-    [
-      'attachable_presets',
-      'preset_suggestions',
-    ].forEach(recordId => {
-      expect(getReferenceDataRecord(recordId)).toEqual(expect.objectContaining({
-        category: REFERENCE_DATA_CATEGORY_IDS.STARTER_TEMPLATE,
-        authorityId: REFERENCE_DATA_AUTHORITY_IDS.DRAFT_SEED,
-        maySuggestIntent: true,
-        mayComputeReadiness: false,
-        mayPersistPolicy: false,
-      }));
-    });
+  test('keeps legacy preset reference values out of template selection and policy authority', () => {
+    expect(getReferenceDataRecord('legacy_preset_reference')).toEqual(expect.objectContaining({
+      category: REFERENCE_DATA_CATEGORY_IDS.STATIC_OPTION,
+      authorityId: REFERENCE_DATA_AUTHORITY_IDS.OPTION_ONLY,
+      currentPath: 'allPresets',
+      maySuggestIntent: false,
+      mayComputeReadiness: false,
+      mayPersistPolicy: false,
+    }));
   });
 
   test('reserves routing status for future server-owned readiness projection', () => {
@@ -184,7 +180,7 @@ describe('policyBuilderReferenceDataBoundary', () => {
     })).toEqual({
       valid: true,
       authorityId: REFERENCE_DATA_AUTHORITY_IDS.OPTION_ONLY,
-      reason: 'Option is a static starter-template value, not observed evidence.',
+      reason: 'Option is a static compatibility-reference value, not observed evidence.',
     });
   });
 

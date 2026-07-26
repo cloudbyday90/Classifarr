@@ -302,12 +302,12 @@ function validateTestBoundaryRule(ruleId) {
       const result = validatePolicyBuilderSavePayloadBoundary({
         name: 'Movies policy',
         presets: [],
-        expandedPresetIds: [1, 2],
+        libraryProfileFreshness: { state: 'current' },
         libraryProfile: { genres: ['Animation'] },
       });
       return {
         valid: result.valid === false
-          && result.prohibitedFields.includes('expandedPresetIds')
+          && result.prohibitedFields.includes('libraryProfileFreshness')
           && result.prohibitedFields.includes('libraryProfile'),
         evidence: result,
       };

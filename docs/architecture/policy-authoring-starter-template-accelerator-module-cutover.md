@@ -1,6 +1,8 @@
 # Policy Authoring Starter Template Accelerator Module Cutover
 
-Status: implemented.
+Status: superseded. The accelerator was deleted by the
+[Policy Starter Template Intent Boundary](policy-starter-template-intent-boundary.md).
+This document is a historical cutover record only.
 
 ## Scope
 

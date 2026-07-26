@@ -14,8 +14,6 @@ import {
   listPolicyEngineArtifactInventoryGroups,
 } from './policyEngineArtifactInventory.mjs';
 import {
-  POLICY_EVIDENCE_BUCKET_IDS,
-  POLICY_EVIDENCE_SOURCE_IDS,
   listPolicyEvidenceBuckets,
   listPolicyEvidenceSources,
 } from './policyEvidenceEngine.mjs';
@@ -77,32 +75,6 @@ const DEFAULT_POLICY_EVIDENCE_ARTIFACT_SUCCESSORS = freezeSuccessorMappings([
   {
     groupId: 'policy_builder_summary_shell',
     successorId: POLICY_EVIDENCE_ARTIFACT_SUCCESSOR_IDS.OPERATOR_WORKFLOW,
-  },
-  {
-    groupId: 'starter_template_accelerator_ui',
-    successorId: POLICY_EVIDENCE_ARTIFACT_SUCCESSOR_IDS.INTENT_ENGINE,
-  },
-  {
-    groupId: 'preset_selection_compatibility_ui',
-    successorId: POLICY_EVIDENCE_ARTIFACT_SUCCESSOR_IDS.MIGRATION_DELETION,
-  },
-  {
-    groupId: 'template_name_suggestion_heuristics',
-    successorId: POLICY_EVIDENCE_ARTIFACT_SUCCESSOR_IDS.EVIDENCE_PROJECTION,
-    evidenceMappings: [
-      {
-        bucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
-        sourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
-      },
-      {
-        bucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-        sourceId: POLICY_EVIDENCE_SOURCE_IDS.MEDIA_SERVER_LIBRARY_PROFILE,
-      },
-      {
-        bucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
-        sourceId: POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
-      },
-    ],
   },
 ]);
 

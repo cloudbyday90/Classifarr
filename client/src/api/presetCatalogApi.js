@@ -18,7 +18,7 @@
 
 import { getDataRequest } from './core'
 
-export function getAttachablePresets(params = {}) {
+export function getPresetReferenceValues(params = {}) {
   return getDataRequest('/policies/presets/all', { params })
 }
 
@@ -41,7 +41,7 @@ export function getAllPresets() {
 }
 
 const presetCatalogApi = {
-  getAttachablePresets,
+  getPresetReferenceValues,
   getSystemPresets,
   getPresetUsageCount,
   getAllPresets,

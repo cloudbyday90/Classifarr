@@ -67,12 +67,10 @@ const DELETION_CATEGORY_DEFINITIONS = Object.freeze([
     categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI,
     label: 'Client bridge-only UI surfaces',
     paths: [
-      'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
-      'client/src/components/policies/PolicyStarterTemplateBrowser.vue',
       'client/src/components/policies/PolicyPresetMigrationNotice.vue',
     ],
     deletionIntent:
-      'Delete legacy compatibility UI after native authoring provides equivalent optional seed and migration support.',
+      'Delete the remaining legacy compatibility UI after native storage migration provides equivalent migration support.',
   },
   {
     categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.LEGACY_SERIALIZER_DESERIALIZER,

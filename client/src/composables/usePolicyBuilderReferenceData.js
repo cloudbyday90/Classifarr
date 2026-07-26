@@ -85,44 +85,12 @@ export function usePolicyBuilderReferenceData({
 } = {}) {
   const libraries = ref([])
   const allPresets = ref([])
-  const suggestedPresets = ref([])
   const libraryProfile = ref(null)
   const libraryProfileLoading = ref(false)
   const libraryProfileRefreshing = ref(false)
   const libraryProfileError = ref('')
   const libraryProfileRefreshResult = ref(null)
-  const searchQuery = ref('')
-  const selectedCategory = ref('all')
   const presetMigrationNotice = ref(null)
-
-  const categoryTabs = computed(() => {
-    const categories = [
-      { value: 'all', label: 'All', count: allPresets.value.length },
-    ]
-
-    const customCount = allPresets.value.filter(preset => preset.source === 'custom').length
-    if (customCount > 0) {
-      categories.push({ value: 'custom', label: 'My Presets', count: customCount })
-    }
-
-    const categoryCounts = {}
-    allPresets.value.forEach((preset) => {
-      const category = preset.category || 'uncategorized'
-      if (preset.source !== 'custom' && category !== 'custom') {
-        categoryCounts[category] = (categoryCounts[category] || 0) + 1
-      }
-    })
-
-    Object.entries(categoryCounts).forEach(([category, count]) => {
-      categories.push({
-        value: category,
-        label: category.charAt(0).toUpperCase() + category.slice(1),
-        count,
-      })
-    })
-
-    return categories
-  })
 
   const collectPresetSignalValues = (signalType, keys) => {
     const values = new Set()
@@ -166,29 +134,6 @@ export function usePolicyBuilderReferenceData({
     error: libraryProfileError.value,
   }))
 
-  const getFilteredAvailablePresets = (selectedPresets = []) => {
-    let presets = allPresets.value
-    const selectedIds = selectedPresets.map(preset => preset.id || preset.preset_id)
-
-    presets = presets.filter(preset => !selectedIds.includes(preset.id))
-
-    if (selectedCategory.value !== 'all') {
-      presets = selectedCategory.value === 'custom'
-        ? presets.filter(preset => preset.source === 'custom')
-        : presets.filter(preset => preset.category === selectedCategory.value)
-    }
-
-    if (searchQuery.value) {
-      const query = searchQuery.value.toLowerCase()
-      presets = presets.filter(preset =>
-        preset.name.toLowerCase().includes(query) ||
-        (preset.description || '').toLowerCase().includes(query)
-      )
-    }
-
-    return presets
-  }
-
   const loadLibraries = async () => {
     try {
       libraries.value = await apiClient.getLibraries()
@@ -199,7 +144,7 @@ export function usePolicyBuilderReferenceData({
 
   const loadPresets = async () => {
     try {
-      allPresets.value = await presetsClient.getAttachablePresets()
+      allPresets.value = await presetsClient.getPresetReferenceValues()
     } catch (error) {
       console.error('Failed to fetch presets:', error)
     }
@@ -239,21 +184,6 @@ export function usePolicyBuilderReferenceData({
     }
 
     presetMigrationNotice.value = null
-  }
-
-  const loadSuggestions = async (libraryId) => {
-    if (!libraryId) {
-      suggestedPresets.value = []
-      return
-    }
-
-    try {
-      const response = await apiClient.getPresetSuggestions(libraryId)
-      suggestedPresets.value = normalizeArray(response?.suggestions)
-    } catch (error) {
-      console.error('Failed to fetch suggested presets:', error)
-      suggestedPresets.value = []
-    }
   }
 
   const loadLibraryProfile = async (libraryId) => {
@@ -319,14 +249,6 @@ export function usePolicyBuilderReferenceData({
     }
   }
 
-  const watchSuggestedPresets = (libraryIdSource) => {
-    return watch(
-      () => unref(libraryIdSource),
-      loadSuggestions,
-      { immediate: true }
-    )
-  }
-
   const watchLibraryProfile = (libraryIdSource) => {
     return watch(
       () => unref(libraryIdSource),
@@ -338,22 +260,17 @@ export function usePolicyBuilderReferenceData({
   return {
     libraries,
     allPresets,
-    suggestedPresets,
     libraryProfile,
     libraryProfileLoading,
     libraryProfileRefreshing,
     libraryProfileError,
     libraryProfileRefreshResult,
-    searchQuery,
-    selectedCategory,
     presetMigrationNotice,
-    categoryTabs,
     availableRatings,
     availableGenres,
     availableGenreOptions,
     libraryProfileGenreSummary,
     libraryProfileFreshness,
-    getFilteredAvailablePresets,
     collectPresetSignalValues,
     loadLibraries,
     loadPresets,
@@ -363,8 +280,6 @@ export function usePolicyBuilderReferenceData({
     loadInitialData,
     loadLibraryContext,
     dismissPresetMigrationNotice,
-    loadSuggestions,
-    watchSuggestedPresets,
     watchLibraryProfile,
   }
 }

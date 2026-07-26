@@ -144,23 +144,19 @@ describe('policyAuthoringWorkflowInventory', () => {
       }));
   });
 
-  test('keeps starter templates out of the normal authoring path', () => {
-    [
-      'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
-      'client/src/components/policies/PolicyStarterTemplateBrowser.vue',
-    ].forEach((filePath) => {
-      const record = classifyPolicyAuthoringWorkflowSurface(filePath);
-
-      expect(record).toEqual(expect.objectContaining({
-        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
-        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.STARTER_TEMPLATE_ACCELERATOR,
-        normalAuthoringAllowed: false,
-        migrationSupportOnly: true,
+  test('keeps typed template-derived candidates in normal declared-intent editing without raw selection surfaces', () => {
+    expect(classifyPolicyAuthoringWorkflowSurface('client/src/components/policies/IntentSignalPicker.vue'))
+      .toEqual(expect.objectContaining({
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DECLARED_INTENT_EDITING,
+        normalAuthoringAllowed: true,
+        migrationSupportOnly: false,
       }));
-      expect(record.riskIds).toEqual(expect.arrayContaining([
-        POLICY_AUTHORING_WORKFLOW_RISK_IDS.STARTER_TEMPLATE_FIRST_MODEL,
-      ]));
-    });
+
+    expect(classifyPolicyAuthoringWorkflowSurface('client/src/components/policies/PolicyStarterTemplateAccelerator.vue'))
+      .toEqual(expect.objectContaining({
+        ruleId: null,
+      }));
   });
 
   test('keeps migration notices as compatibility bridge support', () => {
@@ -237,7 +233,7 @@ describe('policyAuthoringWorkflowInventory', () => {
     });
   });
 
-  test('validates the normal authoring path excludes diagnostics, provider readiness, raw weights, templates, and tests', () => {
+  test('validates the normal authoring path excludes diagnostics, provider readiness, raw weights, raw templates, and tests', () => {
     const policyBuilderPaths = collectClientFiles(clientSrcRoot)
       .filter(isPolicyAuthoringBuilderPath);
 
@@ -246,7 +242,7 @@ describe('policyAuthoringWorkflowInventory', () => {
       POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.NORMAL_PATH_EXCLUDES_DIAGNOSTICS,
       POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.NORMAL_PATH_EXCLUDES_PROVIDER_READINESS,
       POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.NORMAL_PATH_EXCLUDES_RAW_SCORING_WEIGHTS,
-      POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.STARTER_TEMPLATES_ARE_ACCELERATORS,
+      POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.TEMPLATE_SUGGESTIONS_REQUIRE_EXPLICIT_ACCEPTANCE,
       POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.TESTS_DO_NOT_FREEZE_OLD_UI,
     ].forEach((requirementId) => {
       expect(validatePolicyAuthoringWorkflowRequirement(requirementId, policyBuilderPaths))

@@ -23,8 +23,8 @@
           Policy Behavior Summary
         </h4>
         <p class="text-xs text-gray-400 mt-1 max-w-2xl">
-          A read-only summary of what this policy currently means. Starter
-          templates remain the compatibility layer, but intent is the product
+          A read-only summary of what this policy currently means. Existing
+          compatibility data is preserved while intent remains the product
           model operators should reason about.
         </p>
       </div>

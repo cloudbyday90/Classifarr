@@ -22,7 +22,6 @@ function createApiClient(overrides = {}) {
   return {
     getLibraries: vi.fn().mockResolvedValue([{ id: 1, name: 'Movies' }]),
     getGeneralSettings: vi.fn().mockResolvedValue({}),
-    getPresetSuggestions: vi.fn().mockResolvedValue({ suggestions: [] }),
     getLibraryProfile: vi.fn().mockResolvedValue(null),
     refreshLibraryProfile: vi.fn().mockResolvedValue({ data: { profile: null } }),
     ...overrides,
@@ -31,7 +30,7 @@ function createApiClient(overrides = {}) {
 
 function createPresetsClient(overrides = {}) {
   return {
-    getAttachablePresets: vi.fn().mockResolvedValue([
+    getPresetReferenceValues: vi.fn().mockResolvedValue([
       {
         id: 1,
         name: 'Family',
@@ -122,7 +121,7 @@ describe('usePolicyBuilderReferenceData composable', () => {
     await referenceData.loadInitialData()
 
     expect(apiClient.getLibraries).toHaveBeenCalledOnce()
-    expect(presetsClient.getAttachablePresets).toHaveBeenCalledOnce()
+    expect(presetsClient.getPresetReferenceValues).toHaveBeenCalledOnce()
     expect(referenceData.libraries.value).toEqual([{ id: 1, name: 'Movies' }])
     expect(referenceData.allPresets.value).toHaveLength(2)
     expect(referenceData.presetMigrationNotice.value.summary).toContain('1 incompatible preset attachment was removed')
@@ -141,10 +140,10 @@ describe('usePolicyBuilderReferenceData composable', () => {
 
     expect(apiClient.getLibraries).toHaveBeenCalledOnce()
     expect(apiClient.getGeneralSettings).not.toHaveBeenCalled()
-    expect(presetsClient.getAttachablePresets).not.toHaveBeenCalled()
+    expect(presetsClient.getPresetReferenceValues).not.toHaveBeenCalled()
   })
 
-  it('builds tabs, filters presets, and derives available intent options', async () => {
+  it('derives static compatibility reference values without exposing template selection state', async () => {
     const referenceData = usePolicyBuilderReferenceData({
       apiClient: createApiClient(),
       presetsClient: createPresetsClient(),
@@ -153,11 +152,6 @@ describe('usePolicyBuilderReferenceData composable', () => {
 
     await referenceData.loadPresets()
 
-    expect(referenceData.categoryTabs.value).toEqual([
-      { value: 'all', label: 'All', count: 2 },
-      { value: 'custom', label: 'My Presets', count: 1 },
-      { value: 'audience', label: 'Audience', count: 1 },
-    ])
     expect(referenceData.availableGenres.value).toEqual(['Animation', 'Comedy', 'Family'])
     expect(referenceData.availableGenreOptions.value).toEqual([
       expect.objectContaining({ value: 'Animation', source: 'preset_reference' }),
@@ -165,14 +159,8 @@ describe('usePolicyBuilderReferenceData composable', () => {
       expect.objectContaining({ value: 'Family', source: 'preset_reference' }),
     ])
     expect(referenceData.availableRatings.value).toEqual(['G', 'PG', 'PG-13'])
-
-    referenceData.selectedCategory.value = 'custom'
-    expect(referenceData.getFilteredAvailablePresets([]).map(preset => preset.name)).toEqual(['Custom Comedy'])
-
-    referenceData.selectedCategory.value = 'all'
-    referenceData.searchQuery.value = 'family'
-    expect(referenceData.getFilteredAvailablePresets([]).map(preset => preset.name)).toEqual(['Family'])
-    expect(referenceData.getFilteredAvailablePresets([{ id: 1 }]).map(preset => preset.name)).toEqual([])
+    expect(referenceData).not.toHaveProperty('suggestedPresets')
+    expect(referenceData).not.toHaveProperty('getFilteredAvailablePresets')
   })
 
   it('loads library profile genres as prioritized intent options', async () => {
@@ -282,28 +270,6 @@ describe('usePolicyBuilderReferenceData composable', () => {
       label: 'Refresh failed',
       message: 'Profile refresh queue is unavailable.',
     })
-  })
-
-  it('loads and clears suggestions without leaking errors to callers', async () => {
-    const apiClient = createApiClient({
-      getPresetSuggestions: vi.fn()
-        .mockResolvedValueOnce({ suggestions: [{ id: 10, name: 'Suggested' }] })
-        .mockRejectedValueOnce(new Error('network down')),
-    })
-    const referenceData = usePolicyBuilderReferenceData({
-      apiClient,
-      presetsClient: createPresetsClient(),
-      storage: createStorage(),
-    })
-
-    await referenceData.loadSuggestions(14)
-    expect(referenceData.suggestedPresets.value).toEqual([{ id: 10, name: 'Suggested' }])
-
-    await referenceData.loadSuggestions(14)
-    expect(referenceData.suggestedPresets.value).toEqual([])
-
-    await referenceData.loadSuggestions(null)
-    expect(referenceData.suggestedPresets.value).toEqual([])
   })
 
   it('persists migration notice dismissal through the injected storage boundary', async () => {

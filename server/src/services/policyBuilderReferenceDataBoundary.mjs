@@ -1,7 +1,6 @@
 const REFERENCE_DATA_CATEGORY_IDS = Object.freeze({
   STATIC_OPTION: 'static_option',
   CONFIGURED_LIBRARY: 'configured_library',
-  STARTER_TEMPLATE: 'starter_template',
   OBSERVED_PROFILE_SUGGESTION: 'observed_profile_suggestion',
   ROUTING_MAPPING_STATUS: 'routing_mapping_status',
   MIGRATION_NOTICE: 'migration_notice',
@@ -11,8 +10,6 @@ const REFERENCE_DATA_CATEGORY_IDS = Object.freeze({
 const REFERENCE_DATA_SOURCE_IDS = Object.freeze({
   STATIC_PRESET_SIGNAL_VALUES: 'static_preset_signal_values',
   MEDIA_SERVER_LIBRARY_LIST: 'media_server_library_list',
-  ATTACHABLE_PRESETS: 'attachable_presets',
-  PRESET_SUGGESTIONS: 'preset_suggestions',
   LIBRARY_PROFILE: 'library_profile',
   LIBRARY_PROFILE_REFRESH: 'library_profile_refresh',
   GENERAL_SETTINGS_MIGRATION_REPORT: 'general_settings_migration_report',
@@ -22,7 +19,6 @@ const REFERENCE_DATA_SOURCE_IDS = Object.freeze({
 const REFERENCE_DATA_AUTHORITY_IDS = Object.freeze({
   OPTION_ONLY: 'option_only',
   CONFIGURATION_CONTEXT: 'configuration_context',
-  DRAFT_SEED: 'draft_seed',
   OBSERVED_EVIDENCE: 'observed_evidence',
   READINESS_CONTEXT: 'readiness_context',
   MIGRATION_CONTEXT: 'migration_context',
@@ -72,11 +68,11 @@ const REFERENCE_DATA_RECORDS = deepFreeze([
     maySuggestIntent: false,
     mayComputeReadiness: false,
     mayPersistPolicy: false,
-    notes: 'Static rating values collected from attachable starter-template signals.',
+    notes: 'Static rating values retained for compatibility-reference metadata only.',
   },
   {
     id: 'preset_genres',
-    label: 'Starter-template genres',
+    label: 'Compatibility-reference genres',
     category: REFERENCE_DATA_CATEGORY_IDS.STATIC_OPTION,
     sourceId: REFERENCE_DATA_SOURCE_IDS.STATIC_PRESET_SIGNAL_VALUES,
     authorityId: REFERENCE_DATA_AUTHORITY_IDS.OPTION_ONLY,
@@ -85,7 +81,7 @@ const REFERENCE_DATA_RECORDS = deepFreeze([
     maySuggestIntent: false,
     mayComputeReadiness: false,
     mayPersistPolicy: false,
-    notes: 'Static genre values available from starter-template signals.',
+    notes: 'Static genre values retained for compatibility-reference metadata only.',
   },
   {
     id: 'libraries',
@@ -101,30 +97,17 @@ const REFERENCE_DATA_RECORDS = deepFreeze([
     notes: 'Configured destination context only; contents and observed profile are separate.',
   },
   {
-    id: 'attachable_presets',
-    label: 'Attachable starter templates',
-    category: REFERENCE_DATA_CATEGORY_IDS.STARTER_TEMPLATE,
-    sourceId: REFERENCE_DATA_SOURCE_IDS.ATTACHABLE_PRESETS,
-    authorityId: REFERENCE_DATA_AUTHORITY_IDS.DRAFT_SEED,
+    id: 'legacy_preset_reference',
+    label: 'Legacy preset reference',
+    category: REFERENCE_DATA_CATEGORY_IDS.STATIC_OPTION,
+    sourceId: REFERENCE_DATA_SOURCE_IDS.STATIC_PRESET_SIGNAL_VALUES,
+    authorityId: REFERENCE_DATA_AUTHORITY_IDS.OPTION_ONLY,
     owner: 'usePolicyBuilderReferenceData',
     currentPath: 'allPresets',
-    maySuggestIntent: true,
+    maySuggestIntent: false,
     mayComputeReadiness: false,
     mayPersistPolicy: false,
-    notes: 'Starter templates seed draft intent but are not durable authority.',
-  },
-  {
-    id: 'preset_suggestions',
-    label: 'Suggested starter templates',
-    category: REFERENCE_DATA_CATEGORY_IDS.STARTER_TEMPLATE,
-    sourceId: REFERENCE_DATA_SOURCE_IDS.PRESET_SUGGESTIONS,
-    authorityId: REFERENCE_DATA_AUTHORITY_IDS.DRAFT_SEED,
-    owner: 'usePolicyBuilderReferenceData',
-    currentPath: 'suggestedPresets',
-    maySuggestIntent: true,
-    mayComputeReadiness: false,
-    mayPersistPolicy: false,
-    notes: 'Suggestions can seed operator review, not write policy by themselves.',
+    notes: 'Provides bounded static values and labels for existing compatibility attachments; it cannot attach templates or seed intent.',
   },
   {
     id: 'library_profile',
@@ -150,7 +133,7 @@ const REFERENCE_DATA_RECORDS = deepFreeze([
     maySuggestIntent: true,
     mayComputeReadiness: false,
     mayPersistPolicy: false,
-    notes: 'Evidence-backed options must remain distinguishable from static starter-template options.',
+    notes: 'Evidence-backed options must remain distinguishable from static compatibility-reference options.',
   },
   {
     id: 'library_profile_freshness',
@@ -359,7 +342,7 @@ function validateReferenceDataOption(option = {}) {
     return {
       valid: true,
       authorityId: REFERENCE_DATA_AUTHORITY_IDS.OPTION_ONLY,
-      reason: 'Option is a static starter-template value, not observed evidence.',
+      reason: 'Option is a static compatibility-reference value, not observed evidence.',
     };
   }
 

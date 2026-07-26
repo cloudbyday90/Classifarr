@@ -148,7 +148,6 @@ vi.mock('../api', () => ({
     getData: vi.fn(),
     getLibraries: vi.fn(),
     getGeneralSettings: vi.fn(),
-    getPresetSuggestions: vi.fn(),
     getLibraryProfile: vi.fn(),
     refreshLibraryProfile: vi.fn(),
   }
@@ -255,15 +254,6 @@ describe('PolicyBuilderModal.vue', () => {
     },
   });
 
-  async function openStarterTemplateAccelerator() {
-    const templateMechanicsButton = Array.from(document.body.querySelectorAll('button'))
-      .find(button => button.textContent.includes('Starter Template Accelerator'));
-
-    expect(templateMechanicsButton).toBeTruthy();
-    templateMechanicsButton.click();
-    await flushPromises();
-  }
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockToast.success.mockClear();
@@ -273,7 +263,6 @@ describe('PolicyBuilderModal.vue', () => {
     mockRouterPush.mockResolvedValue(undefined);
     api.getLibraries.mockImplementation((...args) => api.get('/libraries', ...args).then((response) => response.data));
     api.getGeneralSettings.mockImplementation((...args) => api.get('/settings', ...args).then((response) => response.data));
-    api.getPresetSuggestions.mockImplementation((libraryId) => api.get(`/policies/presets/suggest/${libraryId}`).then((response) => response.data));
     api.getLibraryProfile.mockImplementation((libraryId) => api.get(`/libraries/${libraryId}/profile`).then((response) => response.data));
     api.refreshLibraryProfile.mockImplementation((libraryId) => api.get(`/libraries/${libraryId}/profile/refresh`).then((response) => response.data));
     getDataRequest.mockImplementation((url, config) => api.get(url, config).then((response) => response.data));
@@ -326,7 +315,7 @@ describe('PolicyBuilderModal.vue', () => {
     });
   });
 
-  it('keeps template usage counts out of the policy-authoring surface', async () => {
+  it('keeps raw template attachment controls and suggestion requests out of compatibility editing', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
@@ -349,39 +338,12 @@ describe('PolicyBuilderModal.vue', () => {
     });
 
     await flushPromises();
-    await openStarterTemplateAccelerator();
-
+    expect(document.body.textContent).not.toContain('Starter Template Accelerator');
+    expect(document.body.textContent).not.toContain('My Presets');
+    expect(document.body.textContent).not.toContain('Family Remix');
     expect(document.body.textContent).not.toContain('Used in 4 policies');
     expect(document.body.textContent).not.toContain('Used in 1 policy');
-  });
-
-  it('shows My Presets when attachable custom presets exist', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
-      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
-      if (url === '/settings') return Promise.resolve({ data: {} });
-      return Promise.resolve({ data: { suggestions: [] } });
-    });
-
-    mount(PolicyBuilderModal, {
-      props: {
-        modelValue: true,
-        libraryId: 1,
-        policy: {
-          id: 1,
-          library_id: 1,
-          name: 'Sci-Fi Movies Policy',
-          presets: []
-        }
-      },
-      attachTo: document.body
-    });
-
-    await flushPromises();
-    await openStarterTemplateAccelerator();
-
-    expect(document.body.textContent).toContain('My Presets');
-    expect(document.body.textContent).toContain('Family Remix');
+    expect(api.get).not.toHaveBeenCalledWith('/policies/presets/suggest/1');
   });
 
   it('includes profile weight in the advanced total and save payload', async () => {
@@ -929,160 +891,6 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).not.toContain('Preview Replay');
   });
 
-  it('shows suggested templates without ranking or usage mechanics', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
-      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
-      if (url === '/settings') return Promise.resolve({ data: {} });
-      if (url === '/policies/presets/suggest/1') {
-        return Promise.resolve({
-          data: {
-            suggestions: [
-              {
-                id: 1,
-                name: 'Sci-Fi',
-                icon: '🚀',
-                suggestion_score: 95,
-                match_score: 95
-              }
-            ]
-          }
-        });
-      }
-      return Promise.resolve({ data: [] });
-    });
-
-    mount(PolicyBuilderModal, {
-      props: {
-        modelValue: true,
-        libraryId: 1,
-        policy: {
-          id: 1,
-          library_id: 1,
-          name: 'Sci-Fi Movies Policy',
-          presets: [
-            { id: 1, name: 'Sci-Fi', icon: '🚀', weight: 1.0 }
-          ]
-        }
-      },
-      attachTo: document.body
-    });
-
-    await flushPromises();
-
-    await openStarterTemplateAccelerator();
-
-    expect(document.body.textContent).toContain('Sci-Fi');
-    expect(document.body.textContent).not.toContain('Used in 4 policies');
-    expect(api.getPresetSuggestions).toHaveBeenCalledWith(1);
-  });
-
-  it('marks suggested custom presets as My Preset', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
-      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
-      if (url === '/settings') return Promise.resolve({ data: {} });
-      if (url === '/policies/presets/suggest/1') {
-        return Promise.resolve({
-          data: {
-            suggestions: [
-              {
-                id: 9,
-                name: 'Family Remix',
-                icon: '⚙️',
-                source: 'custom',
-                suggestion_score: 88,
-                match_score: 88
-              }
-            ]
-          }
-        });
-      }
-      return Promise.resolve({ data: [] });
-    });
-
-    mount(PolicyBuilderModal, {
-      props: {
-        modelValue: true,
-        libraryId: 1,
-        policy: {
-          id: 1,
-          library_id: 1,
-          name: 'Sci-Fi Movies Policy',
-          presets: []
-        }
-      },
-      attachTo: document.body
-    });
-
-    await flushPromises();
-
-    await openStarterTemplateAccelerator();
-
-    expect(document.body.textContent).toContain('My Preset');
-    expect(document.body.textContent).toContain('Family Remix');
-  });
-
-  it('keeps raw template runtime mechanics out of the legacy accelerator', async () => {
-    const languagePreset = {
-      id: 3,
-      name: 'Scandinavian',
-      icon: '🇸🇪',
-      category: 'regional',
-      description: 'Nordic language content',
-      usage_count: 2,
-      source: 'builtin',
-      suggestion_warnings: ['runtime_semantics_review_recommended'],
-      signals: {
-        language: {
-          require_any: ['sv', 'no', 'da', 'fi']
-        }
-      }
-    };
-
-    api.get.mockImplementation((url) => {
-      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
-      if (url === '/policies/presets/all') return Promise.resolve({ data: [languagePreset] });
-      if (url === '/settings') return Promise.resolve({ data: {} });
-      if (url === '/policies/presets/suggest/1') {
-        return Promise.resolve({
-          data: {
-            suggestions: [
-              {
-                ...languagePreset,
-                suggestion_score: 78
-              }
-            ]
-          }
-        });
-      }
-      return Promise.resolve({ data: [] });
-    });
-
-    mount(PolicyBuilderModal, {
-      props: {
-        modelValue: true,
-        libraryId: 1,
-        policy: {
-          id: 1,
-          library_id: 1,
-          name: 'Sci-Fi Movies Policy',
-          presets: []
-        }
-      },
-      attachTo: document.body
-    });
-
-    await flushPromises();
-
-    await openStarterTemplateAccelerator();
-
-    expect(document.body.textContent).toContain('Scandinavian');
-    expect(document.body.textContent).not.toContain('Review runtime behavior');
-    expect(document.body.textContent).not.toContain('Close details');
-    expect(document.querySelector('input[type="number"]')).toBeNull();
-  });
-
   it('shows the intent-first editor and saves intent edits as structured custom signals', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
@@ -1129,10 +937,7 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).toContain('The media server shows how this library is used today');
     expect(document.body.textContent).toContain('Belongs Here');
     expect(document.body.textContent).toContain('Hard Limits');
-
-    await openStarterTemplateAccelerator();
-
-    expect(document.body.textContent).toContain('Saving without a starter template is allowed.');
+    expect(document.body.textContent).not.toContain('Starter Template Accelerator');
     expect(document.body.textContent).not.toContain('Combined Signals');
 
     wrapper.vm.addIntentSignal({
@@ -1183,7 +988,7 @@ describe('PolicyBuilderModal.vue', () => {
     });
   });
 
-  it('orders policy behavior and intent editing before starter-template mechanics', async () => {
+  it('orders policy behavior and intent editing before advanced compatibility settings', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
@@ -1212,11 +1017,11 @@ describe('PolicyBuilderModal.vue', () => {
     const text = document.body.textContent;
     const summaryIndex = text.indexOf('Policy Behavior Summary');
     const editorIndex = text.indexOf('Policy Intent Builder');
-    const templateIndex = text.indexOf('Starter Template Accelerator');
+    const advancedSettingsIndex = text.indexOf('Advanced Settings');
 
     expect(summaryIndex).toBeGreaterThan(-1);
     expect(editorIndex).toBeGreaterThan(summaryIndex);
-    expect(templateIndex).toBeGreaterThan(editorIndex);
+    expect(advancedSettingsIndex).toBeGreaterThan(editorIndex);
   });
 
   it('preserves unchanged legacy custom signals when saving through the draft bridge', async () => {

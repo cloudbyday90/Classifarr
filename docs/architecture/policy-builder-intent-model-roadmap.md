@@ -974,7 +974,7 @@ The compatibility rules are:
 - Opening an existing policy must not rewrite it.
 - Saving unrelated fields such as name, thresholds, weights, or enabled state must preserve preset attachments and `customSignals`.
 - Intent edits may serialize into `customSignals`, but they must not silently remove preset attachments.
-- Removing a starter template in the UI is the only action that should remove the underlying preset attachment.
+- Policy authoring must not add, remove, or replace a preset attachment; existing attachments are round-trip compatibility context only.
 - Existing backup/restore behavior must remain valid until a later explicit storage migration exists.
 - The server remains the validation authority for signal semantics, strict/advisory behavior, and unsupported aliases.
 
@@ -1090,11 +1090,11 @@ components/policies/PolicyIntentSummary.vue
 components/policies/PolicyIntentEditor.vue
   Edits the intent draft.
 
-components/policies/PolicyTemplatePicker.vue
-  Searches and applies starter templates.
+components/policies/IntentSignalPicker.vue
+  Presents server-projected, source-labelled candidates for explicit typed intent acceptance.
 
-components/policies/AppliedTemplateList.vue
-  Shows starter-template provenance and advanced template details.
+utils/policyIntentDraftBridge.js
+  Preserves existing preset attachments as compatibility context without exposing attachment editing.
 ```
 
 Refactor rule:
@@ -2571,8 +2571,8 @@ model.
 
 Tasks:
 
-- Present starter templates as optional accelerators after destination context.
-- Show what a template would add in product vocabulary:
+- Permit optional template-derived values only after destination context.
+- Project template-derived values into product vocabulary:
   - belongs-here suggestions,
   - helpful suggestions,
   - hard-limit suggestions,
@@ -2585,34 +2585,21 @@ Tasks:
 Acceptance criteria:
 
 - Users can build a policy without selecting a template.
-- Applying a template mutates the intent draft through typed commands.
-- Template internals are not the normal editing surface.
+- Accepting a template-derived candidate mutates the intent draft through typed
+  commands.
+- Raw templates and their internals are not normal editing surfaces.
 
 Implementation status:
 
-- Policy authoring starter templates are documented in
-  [Policy Authoring Starter Templates](policy-authoring-starter-templates.md).
-- The starter-template module cutover is documented in
-  [Policy Authoring Starter Templates Module Cutover](policy-authoring-starter-templates-module-cutover.md).
-- The server-side policy authoring starter-template contract lives in
-  `server/src/services/policyAuthoringStarterTemplates.mjs`.
-- Starter templates are now modeled as optional post-destination accelerators
-  with secondary provenance, not required policy authority.
-- Template suggestions map into product vocabulary buckets: Belongs Here,
-  Helpful Matches, Hard Limits, and Avoid.
-- Applying a template suggestion emits existing `add_signal` draft
-  commands instead of mutating raw template mechanics.
-- Template mechanics, weights, raw custom signals, removed markers, and
-  strict/advisory metadata are classified as bridge-only or
-  delete-after-native-storage targets.
-- **3R.7 role reset is complete.** Existing compatibility-policy editing now
-  exposes only an optional, accessible template selector. The raw detail,
-  combined-signal, and template-signal presentation surfaces were deleted;
-  weights, raw `customSignals`, removals, strictness, runtime warnings,
-  rankings, and usage counts are no longer operator controls. Native creation
-  continues to use server-owned typed `add_signal` suggestions.
-- The implementation and outcome are documented in
-  [Policy Authoring Starter Template Role Reset](policy-authoring-starter-template-role-reset.md).
+- The implemented boundary is documented in
+  [Policy Starter Template Intent Boundary](policy-starter-template-intent-boundary.md).
+- Template-derived values are server-projected, source-labelled candidates;
+  the browser never receives a raw template attachment payload.
+- Candidate acceptance emits existing typed intent-signal commands rather than
+  mutating template mechanics.
+- Raw selection, browser, and suggestion endpoint surfaces are deleted.
+- Existing preset attachments remain read and round-trip compatibility context
+  only until native storage migration; they are not current intent authority.
 
 ### 3R.8 Accessibility And Decision Load
 
@@ -3707,8 +3694,9 @@ Tasks:
 - Require supporting evidence before broad genres can become identity.
 - Treat observed absence as a warning or review suggestion, never automatic
   exclusion.
-- Keep starter templates as optional accelerators that mutate an intent draft,
-  not as hidden policy containers.
+- Allow template-derived values only as server-projected, source-labelled
+  candidates that require explicit typed intent acceptance, never as hidden
+  policy containers.
 - Preserve legacy preset/custom-signal compatibility only as a bridge until
   native intent storage is ready.
 

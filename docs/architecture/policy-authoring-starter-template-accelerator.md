@@ -1,6 +1,8 @@
 # Policy Authoring Starter Template Accelerator
 
-Status: implemented as bounded compatibility-only template selection.
+Status: superseded. The optional template selector described below was removed
+by the [Policy Starter Template Intent Boundary](policy-starter-template-intent-boundary.md).
+This document is a historical record only and does not describe active UI.
 
 ## Scope
 

@@ -56,12 +56,11 @@ unchanged operator or runtime outcome.
   status. Operators no longer need a hover tooltip to understand what must be
   corrected, and no duplicate warning panel is added.
 
-- **Bounded Starter Template Selection** - existing compatibility-policy
-  editing now keeps starter templates as an optional, accessible selection
-  accelerator only. Removed raw template-detail editors, combined-signal
-  summaries, weights, custom-signal/removal/strictness controls, runtime
-  warnings, ranking scores, and policy-usage counts from the operator path;
-  legacy payload preservation remains isolated in the compatibility bridge.
+- **Starter Template Intent Boundary** - removed raw starter-template
+  selection, browser, and suggestion endpoint from policy authoring. Optional
+  template-derived values now arrive only through server-owned, source-labelled
+  candidate projection and explicit typed intent commands; existing preset
+  attachments remain compatibility-only context in the legacy draft bridge.
 
 - **Server-Owned Constraint Decisions** - the native policy workflow now
   publishes a bounded, display-only decision model that keeps hard limits,

@@ -11,7 +11,6 @@ const POLICY_AUTHORING_WORKFLOW_ROLE_IDS = Object.freeze({
   DESTINATION_CONTEXT: 'destination_context',
   DECLARED_INTENT_EDITING: 'declared_intent_editing',
   READINESS_NEXT_ACTION: 'readiness_next_action',
-  STARTER_TEMPLATE_ACCELERATOR: 'starter_template_accelerator',
   ADVANCED_SUPPORT_ONLY: 'advanced_support_only',
   COMPATIBILITY_BRIDGE: 'compatibility_bridge',
   FUTURE_SERVER_ENGINE_INPUT: 'future_server_engine_input',
@@ -34,7 +33,7 @@ const POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS = Object.freeze({
   NORMAL_PATH_EXCLUDES_DIAGNOSTICS: 'normal_path_excludes_diagnostics',
   NORMAL_PATH_EXCLUDES_PROVIDER_READINESS: 'normal_path_excludes_provider_readiness',
   NORMAL_PATH_EXCLUDES_RAW_SCORING_WEIGHTS: 'normal_path_excludes_raw_scoring_weights',
-  STARTER_TEMPLATES_ARE_ACCELERATORS: 'starter_templates_are_accelerators',
+  TEMPLATE_SUGGESTIONS_REQUIRE_EXPLICIT_ACCEPTANCE: 'template_suggestions_require_explicit_acceptance',
   TESTS_DO_NOT_FREEZE_OLD_UI: 'tests_do_not_freeze_old_ui',
 });
 
@@ -227,22 +226,6 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
       '/policyBuilderActionBoundary.js',
       '/policyBuilderRoutingReadiness.js',
       '/policyIntentSummary.js',
-    ]),
-  },
-  {
-    id: 'starter_template_surfaces',
-    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
-    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.STARTER_TEMPLATE_ACCELERATOR,
-    normalAuthoringAllowed: false,
-    migrationSupportOnly: true,
-    riskIds: [
-      POLICY_AUTHORING_WORKFLOW_RISK_IDS.STARTER_TEMPLATE_FIRST_MODEL,
-      POLICY_AUTHORING_WORKFLOW_RISK_IDS.LEGACY_PAYLOAD_EXPOSURE,
-    ],
-    notes: 'Templates can accelerate intent, but they must sit behind destination context and never define the normal model.',
-    matches: filePath => hasAnySegment(filePath, [
-      '/PolicyStarterTemplateAccelerator.vue',
-      '/PolicyStarterTemplateBrowser.vue',
     ]),
   },
   {
@@ -514,17 +497,20 @@ function validatePolicyAuthoringWorkflowRequirement(requirementId, filePaths = [
     };
   }
 
-  if (requirementId === POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.STARTER_TEMPLATES_ARE_ACCELERATORS) {
-    const starterTemplateNormalPaths = summary.normalAuthoringPaths
-      .filter(filePath => filePath.includes('StarterTemplate') || filePath.includes('SelectedStarter'));
+  if (requirementId === POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS.TEMPLATE_SUGGESTIONS_REQUIRE_EXPLICIT_ACCEPTANCE) {
+    const rawTemplateSurfacePaths = (Array.isArray(filePaths) ? filePaths : [])
+      .filter(filePath => filePath.includes('PolicyStarterTemplate') || filePath.includes('SelectedStarter'));
+    const hasTypedCandidateControl = summary.normalAuthoringPaths
+      .some(filePath => filePath.endsWith('/IntentSignalPicker.vue'));
 
     return {
-      valid: starterTemplateNormalPaths.length === 0,
-      riskId: starterTemplateNormalPaths.length === 0
+      valid: rawTemplateSurfacePaths.length === 0 && hasTypedCandidateControl,
+      riskId: rawTemplateSurfacePaths.length === 0 && hasTypedCandidateControl
         ? null
         : POLICY_AUTHORING_WORKFLOW_RISK_IDS.STARTER_TEMPLATE_FIRST_MODEL,
       evidence: {
-        violationPaths: starterTemplateNormalPaths,
+        rawTemplateSurfacePaths,
+        hasTypedCandidateControl,
       },
     };
   }

@@ -46,10 +46,6 @@ export function deletePolicy(id) {
   return apiClient.delete(`/policies/${id}`)
 }
 
-export function getPresetSuggestions(libraryId) {
-  return getDataRequest(`/policies/presets/suggest/${libraryId}`)
-}
-
 export function getNativeIntentReconciliationStatus() {
   return getDataRequest('/policies/native-intent-reconciliation/status')
 }
@@ -62,7 +58,6 @@ const policiesApi = {
   createPolicy,
   updatePolicy,
   deletePolicy,
-  getPresetSuggestions,
   getNativeIntentReconciliationStatus,
 }
 

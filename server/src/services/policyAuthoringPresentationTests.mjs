@@ -16,7 +16,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS = Object.freeze({
 });
 
 const POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS = Object.freeze({
-  STARTER_TEMPLATES_SECONDARY_TO_DESTINATION: 'starter_templates_secondary_to_destination',
+  TEMPLATE_DERIVED_VALUES_REQUIRE_EXPLICIT_ACCEPTANCE: 'template_derived_values_require_explicit_acceptance',
   OBSERVED_EVIDENCE_DISTINCT_FROM_DECLARED_INTENT: 'observed_evidence_distinct_from_declared_intent',
   MULTI_SELECT_EMITS_TYPED_DRAFT_COMMANDS: 'multi_select_emits_typed_draft_commands',
   ACCESSIBLE_NAMES_AND_DISABLED_REASONS: 'accessible_names_and_disabled_reasons',
@@ -86,8 +86,8 @@ function includesInternalPresentationLanguage(text) {
 
 const REQUIRED_POLICY_AUTHORING_PRESENTATION_BEHAVIORS = deepFreeze([
   {
-    id: POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.STARTER_TEMPLATES_SECONDARY_TO_DESTINATION,
-    description: 'Starter templates appear after destination context and do not own the policy mental model.',
+    id: POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.TEMPLATE_DERIVED_VALUES_REQUIRE_EXPLICIT_ACCEPTANCE,
+    description: 'Template-derived values remain source-labelled candidates until explicitly accepted into typed declared intent.',
   },
   {
     id: POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.OBSERVED_EVIDENCE_DISTINCT_FROM_DECLARED_INTENT,
@@ -144,8 +144,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyNativeEvidenceRecovery.test.js',
   'client/src/__tests__/PolicyNativeIntentReconciliation.test.js',
   'client/src/__tests__/PolicyPresetMigrationNotice.test.js',
-  'client/src/__tests__/PolicyStarterTemplateAccelerator.test.js',
-  'client/src/__tests__/PolicyStarterTemplateBrowser.test.js',
+  'client/src/__tests__/IntentSignalPicker.test.js',
   'client/src/__tests__/composables/usePolicyIntentDraft.test.js',
   'client/src/__tests__/utils/policyIntentDraftBridge.test.js',
   'client/src/__tests__/utils/policyIntentDraftView.test.js',
@@ -225,7 +224,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     true,
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
     [
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.STARTER_TEMPLATES_SECONDARY_TO_DESTINATION,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.TEMPLATE_DERIVED_VALUES_REQUIRE_EXPLICIT_ACCEPTANCE,
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.INTERNAL_DIAGNOSTIC_PANELS_ABSENT,
     ],
     'The modal protects destination-first authoring rather than compatibility layout shape.'
@@ -453,20 +452,12 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     'Preset migration notices are compatibility-only until native storage cleanup removes the legacy policy path.'
   ),
   presentationTestRecord(
-    'client/src/__tests__/PolicyStarterTemplateAccelerator.test.js',
+    'client/src/__tests__/IntentSignalPicker.test.js',
     POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
     true,
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
-    [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.STARTER_TEMPLATES_SECONDARY_TO_DESTINATION],
-    'Template selection remains optional, disclosed, and free of raw mechanics.'
-  ),
-  presentationTestRecord(
-    'client/src/__tests__/PolicyStarterTemplateBrowser.test.js',
-    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
-    true,
-    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
-    [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.STARTER_TEMPLATES_SECONDARY_TO_DESTINATION],
-    'Template browsing stays an optional post-destination accelerator.'
+    [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.TEMPLATE_DERIVED_VALUES_REQUIRE_EXPLICIT_ACCEPTANCE],
+    'Canonical, source-labelled candidates require explicit acceptance before they become typed intent commands.'
   ),
   presentationTestRecord(
     'client/src/__tests__/composables/usePolicyIntentDraft.test.js',

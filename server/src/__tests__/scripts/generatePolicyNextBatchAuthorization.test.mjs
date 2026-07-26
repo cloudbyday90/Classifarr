@@ -52,7 +52,7 @@ const GENERATED_AT = '2026-07-15T15:20:00.000Z';
 const REVIEW_ARTIFACT_FINGERPRINT = 'a'.repeat(64);
 const OTHER_REVIEW_ARTIFACT_FINGERPRINT = 'b'.repeat(64);
 const MANIFEST_PATHS = Object.freeze([
-  'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
+  'client/src/components/policies/PolicyPresetMigrationNotice.vue',
   'server/src/services/policyIntentImpactPreview.mjs',
   'server/src/services/policyIntentReplayPreview.mjs',
 ]);

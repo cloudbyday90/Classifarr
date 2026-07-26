@@ -35,7 +35,7 @@ import {
 } from '../helpers/policyCompatibilityDeletionReleasePrerequisiteEvidence.mjs';
 
 const MANIFEST_PATH =
-  'client/src/components/policies/PolicyStarterTemplateAccelerator.vue';
+  'client/src/components/policies/PolicyPresetMigrationNotice.vue';
 
 const COLLECTION_TIME = '2026-07-14T20:00:00.000Z';
 

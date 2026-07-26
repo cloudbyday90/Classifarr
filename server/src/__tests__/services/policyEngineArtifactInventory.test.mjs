@@ -16,8 +16,8 @@ describe('policyEngineArtifactInventory', () => {
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
-    expect(audit.groupCount).toBeGreaterThanOrEqual(8);
-    expect(audit.artifactCount).toBeGreaterThanOrEqual(35);
+    expect(audit.groupCount).toBeGreaterThanOrEqual(6);
+    expect(audit.artifactCount).toBeGreaterThanOrEqual(40);
     expect(audit.coveredCategoryIds).toEqual(expect.arrayContaining([
       POLICY_ENGINE_ARTIFACT_CATEGORY_IDS.IMPACT_PREVIEW,
       POLICY_ENGINE_ARTIFACT_CATEGORY_IDS.REPRESENTATIVE_REPLAY,
@@ -65,7 +65,7 @@ describe('policyEngineArtifactInventory', () => {
     )).toBe(false);
   });
 
-  test('gives current advanced scoring and template compatibility surfaces explicit decisions', () => {
+  test('gives current advanced scoring and bounded template intent surfaces explicit decisions', () => {
     const artifacts = listPolicyEngineArtifactInventoryArtifacts();
     const byPath = new Map(artifacts.map(artifact => [artifact.path, artifact]));
 
@@ -73,14 +73,14 @@ describe('policyEngineArtifactInventory', () => {
       .toEqual(expect.objectContaining({
         decisionId: POLICY_ENGINE_ARTIFACT_DECISION_IDS.REPLACE_WITH_ENGINE,
       }));
-    expect(byPath.get('server/src/services/policyAuthoringStarterTemplates.mjs'))
+    expect(byPath.get('server/src/services/policyIntentSignalOptionProjection.mjs'))
       .toEqual(expect.objectContaining({
         decisionId: POLICY_ENGINE_ARTIFACT_DECISION_IDS.KEEP_ENGINE_PRIMITIVE,
       }));
-    expect(byPath.get('client/src/components/policies/PresetSelectionModal.vue'))
-      .toEqual(expect.objectContaining({
-        decisionId: POLICY_ENGINE_ARTIFACT_DECISION_IDS.DELETE_AFTER_CUTOVER,
-      }));
+    expect(byPath.has('client/src/components/policies/PolicyStarterTemplateAccelerator.vue'))
+      .toBe(false);
+    expect(byPath.has('client/src/components/policies/PresetSelectionModal.vue'))
+      .toBe(false);
   });
 
   test('identifies source layers without exposing a filesystem dependency to callers', () => {

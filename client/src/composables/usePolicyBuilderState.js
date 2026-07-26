@@ -209,35 +209,6 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     }
   }, { immediate: true })
 
-  const isPresetSelected = (presetId) => {
-    return selectedPresets.value.some(preset => preset.id === presetId || preset.preset_id === presetId)
-  }
-
-  const togglePresetSelection = (preset) => {
-    const id = preset.id || preset.preset_id
-    const index = selectedPresets.value.findIndex(item => item.id === id || item.preset_id === id)
-
-    if (index >= 0) {
-      selectedPresets.value.splice(index, 1)
-      return
-    }
-
-    selectedPresets.value.push({
-      ...preset,
-      id: preset.id ?? preset.preset_id,
-      preset_id: preset.preset_id ?? preset.id,
-      weight: preset.weight ?? 1.0,
-    })
-  }
-
-  const addAllSuggested = (suggestedPresets = []) => {
-    suggestedPresets.forEach((preset) => {
-      if (!isPresetSelected(preset.id)) {
-        togglePresetSelection(preset)
-      }
-    })
-  }
-
   const setFormField = ({ field, value }) => {
     const normalizedValue = normalizePolicyFormField(field, value)
     if (normalizedValue === null) return false
@@ -275,9 +246,6 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     isValid,
     resetForm,
     loadPolicy,
-    isPresetSelected,
-    togglePresetSelection,
-    addAllSuggested,
     setFormField,
     addIntentSignal,
     removeIntentSignalValue,

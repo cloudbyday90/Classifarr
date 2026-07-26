@@ -43,7 +43,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_constraint_decision_model',
       'policy_constraint_value_eligibility',
       'policy_authoring_readiness',
-      'policy_authoring_starter_templates',
+      'policy_authoring_starter_template_intent_boundary',
       'policy_authoring_accessibility',
       'policy_authoring_presentation_tests',
     ]);
@@ -55,7 +55,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_authoring_workflow_readiness',
       'policy_authoring_workflow_read_boundary',
       'policy_authoring_save_defer_action_boundary',
-      'policy_authoring_starter_template_accelerator',
+      'policy_authoring_starter_template_intent_boundary',
       'policy_authoring_accessibility_decision_load_audit',
       'policy_authoring_presentation_test_reset',
       'policy_authoring_constraint_draft_command_boundary',
@@ -106,7 +106,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
     const rules = listPolicyAuthoringNormalWorkflowRules();
 
     expect(rules.map(rule => rule.id)).toEqual([
-      'destination_context_before_templates',
+      'destination_context_before_template_suggestions',
       'observed_evidence_requires_acceptance',
       'hard_limits_explicit',
       'one_recommended_next_action',

@@ -73,7 +73,7 @@ describe('PolicyIntentEditor.vue', () => {
     expect(text).toContain('Policy Readiness')
     expect(text).toContain('Needs review')
     expect(text).toContain('Belongs Here: Add at least one belongs-here signal so this policy has a clear destination identity.')
-    expect(text.indexOf('Policy Readiness')).toBeLessThan(text.indexOf('Edit starter template'))
+    expect(text.indexOf('Policy Readiness')).toBeLessThan(text.indexOf('Edit existing policy context'))
     expect(text.indexOf('Policy Readiness')).toBeLessThan(text.indexOf('Belongs Here'))
     expect(wrapper.find('#policy-builder-review-behavior').exists()).toBe(true)
     expect(wrapper.find('#policy-builder-destination-identity').exists()).toBe(true)
@@ -82,7 +82,7 @@ describe('PolicyIntentEditor.vue', () => {
     expect(text.indexOf('What should always or never belong here?')).toBeLessThan(text.indexOf('Helpful Matches'))
   })
 
-  it('keeps the no-template empty state as a focusable setup action target', () => {
+  it('keeps the no-compatibility-context empty state as a focusable setup action target', () => {
     const wrapper = mount(PolicyIntentEditor, {
       props: {
         selectedPresets: [],
@@ -98,7 +98,7 @@ describe('PolicyIntentEditor.vue', () => {
     expect(emptyState.exists()).toBe(true)
     expect(emptyState.attributes('tabindex')).toBe('-1')
     expect(emptyState.attributes('aria-label')).toBe('Destination rules unavailable')
-    expect(emptyState.text()).toContain('Starter templates are optional accelerators.')
+    expect(emptyState.text()).toContain('New policy intent is established from the connected library')
   })
 
   it('emits review trigger draft commands from the review behavior section', async () => {

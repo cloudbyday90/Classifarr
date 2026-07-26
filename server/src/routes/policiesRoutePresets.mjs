@@ -10,7 +10,7 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
-import { ValidationError, NotFoundError } from '../utils/appError.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
 import { requireValidId } from './routeHelpers.mjs';
 import {
@@ -19,9 +19,6 @@ import {
   fetchPolicyPresetAttachments,
 } from './policiesRouteHelpers.mjs';
 import {
-  buildPolicyStarterTemplateSuggestions,
-} from '../services/policyStarterTemplateSuggestions.mjs';
-import {
   POLICY_LEGACY_WRITE_OPERATION_IDS,
 } from '../services/policyLegacyWriteBoundary.mjs';
 import {
@@ -29,7 +26,7 @@ import {
   lockPolicyAuthorityForWrite,
 } from '../services/policyLegacyWriteGuard.mjs';
 
-export function registerPresetRoutes(router, { db, listPresets, normalizeSignalConfig, describePresetRuntimeSemantics, logger }) {
+export function registerPresetRoutes(router, { db, listPresets, normalizeSignalConfig, describePresetRuntimeSemantics }) {
   function annotate(preset) {
     return annotatePresetAttachment(preset, normalizeSignalConfig, describePresetRuntimeSemantics);
   }
@@ -74,44 +71,6 @@ export function registerPresetRoutes(router, { db, listPresets, normalizeSignalC
     `, [presetIdNum]);
 
     return sendData(res, { count: parseInt(result.rows[0].count, 10) });
-  }));
-
-  router.get('/presets/suggest/:libraryId', asyncHandler(async (req, res) => {
-    const { libraryId } = req.params;
-
-    const libraryResult = await db.query(
-      'SELECT id, name, media_type FROM libraries WHERE id = $1',
-      [libraryId],
-    );
-
-    if (libraryResult.rows.length === 0) {
-      throw new NotFoundError('Library not found');
-    }
-
-    const library = libraryResult.rows[0];
-
-    const presetRows = await listPresets({
-      includeCustom: true,
-      orderBy: 'policy',
-    });
-
-    const topSuggestions = buildPolicyStarterTemplateSuggestions({
-      library,
-      presets: presetRows,
-    });
-
-    logger.info('Preset suggestions generated', {
-      libraryId,
-      libraryName: library.name,
-      suggestionCount: topSuggestions.length,
-      topMatch: topSuggestions[0]?.name,
-    });
-
-    return sendData(res, {
-      library_id: library.id,
-      library_name: library.name,
-      suggestions: topSuggestions,
-    });
   }));
 
   router.get('/presets/migration/incompatible', asyncHandler(async (req, res) => {

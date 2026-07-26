@@ -40,7 +40,6 @@ import {
   createPolicy,
   updatePolicy,
   deletePolicy,
-  getPresetSuggestions,
   getNativeIntentReconciliationStatus,
 } from '../../api/policiesApi'
 
@@ -103,12 +102,6 @@ describe('policiesApi', () => {
     mockDelete.mockResolvedValueOnce({ data: {} })
     await deletePolicy(3)
     expect(mockDelete).toHaveBeenCalledWith('/policies/3')
-  })
-
-  it('getPresetSuggestions calls getDataRequest with library id', async () => {
-    mockGetDataRequest.mockResolvedValueOnce({ suggestions: [] })
-    await getPresetSuggestions(7)
-    expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/presets/suggest/7')
   })
 
   it('getNativeIntentReconciliationStatus calls the read-only status endpoint', async () => {

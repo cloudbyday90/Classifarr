@@ -251,9 +251,9 @@ describe('policyBuilderBoundaryInventory', () => {
     });
   });
 
-  test('keeps starter template accelerator as presentation-only support', () => {
+  test('keeps the typed candidate picker as presentation-only support', () => {
     const record = classifyPolicyBuilderClientPath(
-      'client/src/components/policies/PolicyStarterTemplateAccelerator.vue'
+      'client/src/components/policies/IntentSignalPicker.vue'
     );
 
     expect(record).toEqual(expect.objectContaining({

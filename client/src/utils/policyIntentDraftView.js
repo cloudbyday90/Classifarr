@@ -26,8 +26,8 @@ const SOURCE_PROVENANCE = Object.freeze({
   },
   legacy_preset: {
     id: POLICY_INTENT_DRAFT_VIEW_PROVENANCE.STARTER_TEMPLATE,
-    label: 'Starter template',
-    help: 'Inherited from the selected starter template.',
+    label: 'Existing policy context',
+    help: 'Inherited from a compatibility attachment on this existing policy.',
   },
   legacy_custom_signals: {
     id: POLICY_INTENT_DRAFT_VIEW_PROVENANCE.COMPATIBILITY_FALLBACK,

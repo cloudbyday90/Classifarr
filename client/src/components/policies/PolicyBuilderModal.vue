@@ -85,17 +85,6 @@
             />
           </div>
 
-          <PolicyStarterTemplateAccelerator
-            v-model:search-query="searchQuery"
-            v-model:selected-category="selectedCategory"
-            :suggested-presets="suggestedPresets"
-            :available-presets="filteredAvailablePresets"
-            :selected-presets="selectedPresets"
-            :category-tabs="categoryTabs"
-            @add-all-suggested="addAllSuggested"
-            @toggle-preset="togglePresetSelection"
-          />
-
           <div class="border-t border-gray-700 my-4" />
 
           <div id="policy-builder-advanced-settings">
@@ -136,7 +125,6 @@ import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
-import PolicyStarterTemplateAccelerator from '@/components/policies/PolicyStarterTemplateAccelerator.vue'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderLibrarySync } from '@/composables/usePolicyBuilderLibrarySync'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
@@ -206,26 +194,20 @@ const referenceData = usePolicyBuilderReferenceData()
 const {
   libraries,
   allPresets,
-  suggestedPresets,
   libraryProfile,
   libraryProfileLoading,
   libraryProfileRefreshing,
   libraryProfileRefreshResult,
-  searchQuery,
-  selectedCategory,
   presetMigrationNotice,
-  categoryTabs,
   availableRatings,
   availableGenres,
   availableGenreOptions,
   libraryProfileGenreSummary,
   libraryProfileFreshness,
-  getFilteredAvailablePresets,
   loadInitialData,
   loadLibraryContext,
   loadLibraryProfile,
   dismissPresetMigrationNotice,
-  watchSuggestedPresets,
   watchLibraryProfile,
   refreshLibraryProfile,
 } = referenceData
@@ -236,8 +218,6 @@ const {
   intentDraft,
   totalWeight,
   currentLibrary,
-  togglePresetSelection,
-  addAllSuggested: addPresetSuggestions,
   setFormField,
   addIntentSignal,
   removeIntentSignalValue,
@@ -308,11 +288,6 @@ const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({
   routingReadiness: routingReadiness.value,
 }))
 
-// Filtered available presets (not yet selected)
-const filteredAvailablePresets = computed(() => {
-  return getFilteredAvailablePresets(selectedPresets.value)
-})
-
 onMounted(() => {
   if (experienceMode.value.isLegacyEdit) {
     return loadInitialData()
@@ -321,9 +296,6 @@ onMounted(() => {
   return loadLibraryContext()
 })
 
-if (experienceMode.value.isLegacyEdit) {
-  watchSuggestedPresets(computed(() => form.value.library_id))
-}
 watchLibraryProfile(computed(() => form.value.library_id))
 watchOperatorWorkflow(computed(() => form.value.library_id))
 
@@ -431,10 +403,6 @@ const reloadActiveLibraryWorkflow = async () => {
 
 const validateActiveCustomIntentSignal = async (payload) => {
   await validateCustomIntentSignal(form.value.library_id, payload)
-}
-
-const addAllSuggested = () => {
-  addPresetSuggestions(suggestedPresets.value)
 }
 
 const defer = () => {

@@ -222,7 +222,7 @@ function readyRemoval(overrides = {}) {
     executionPlanArtifact,
     executionGate: readyGate(executionPlanArtifact),
     selectedPaths: [
-      'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
+      'client/src/components/policies/PolicyPresetMigrationNotice.vue',
       'server/src/services/policyIntentMapper.mjs',
     ],
     removalReason: 'First narrow removal review batch after native runtime parity.',
@@ -249,7 +249,7 @@ describe('policyControlledCompatibilityPathRemoval', () => {
       statusId: 'ready',
       validationOk: true,
       ready: true,
-      manifestEntryCount: 18,
+      manifestEntryCount: 16,
     }));
     expect(removal.executionGate).toEqual(expect.objectContaining({
       statusId: 'ready_for_controlled_deletion',
@@ -264,7 +264,7 @@ describe('policyControlledCompatibilityPathRemoval', () => {
     }));
     expect(removal.removalBatch.entries).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        path: 'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
+        path: 'client/src/components/policies/PolicyPresetMigrationNotice.vue',
       }),
       expect.objectContaining({
         path: 'server/src/services/policyIntentMapper.mjs',
@@ -374,7 +374,7 @@ describe('policyControlledCompatibilityPathRemoval', () => {
       executionPlan,
       executionGate: readyGate(executionPlanArtifact),
       selectedPaths: [
-        'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
+        'client/src/components/policies/PolicyPresetMigrationNotice.vue',
       ],
       removalReason: 'Raw plans must not bypass artifact-bound manifest selection.',
       reviewedBy: 'policy-maintainer',
@@ -414,7 +414,7 @@ describe('policyControlledCompatibilityPathRemoval', () => {
   });
 
   test('blocks noncanonical and duplicate selected paths instead of normalizing them silently', () => {
-    const selectedPath = 'client/src/components/policies/PolicyStarterTemplateAccelerator.vue';
+    const selectedPath = 'client/src/components/policies/PolicyPresetMigrationNotice.vue';
     const duplicate = readyRemoval({
       selectedPaths: [selectedPath, selectedPath],
     });
@@ -504,9 +504,9 @@ describe('policyControlledCompatibilityPathRemoval', () => {
     const removal = readyRemoval({
       maxBatchSize: 2,
       selectedPaths: [
-        'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
-        'client/src/components/policies/PolicyStarterTemplateBrowser.vue',
         'client/src/components/policies/PolicyPresetMigrationNotice.vue',
+        'client/src/utils/policyIntentDraftBridge.js',
+        'server/src/routes/policiesRoutePolicyWrite.mjs',
       ],
     });
 

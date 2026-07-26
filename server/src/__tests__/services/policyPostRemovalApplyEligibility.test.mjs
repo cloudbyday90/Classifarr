@@ -17,7 +17,7 @@ const EXECUTION_GATE_ARTIFACT_FINGERPRINT = 'c'.repeat(64);
 
 const ENTRIES = [
   {
-    path: 'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
+    path: 'client/src/components/policies/PolicyPresetMigrationNotice.vue',
     actionId: 'delete_file',
   },
   {

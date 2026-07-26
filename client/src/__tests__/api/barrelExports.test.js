@@ -152,7 +152,6 @@ describe('api/index.js barrel export validation', () => {
       expectFunction('createPolicy')
       expectFunction('updatePolicy')
       expectFunction('deletePolicy')
-      expectFunction('getPresetSuggestions')
     })
   })
 

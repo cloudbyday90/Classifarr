@@ -92,12 +92,12 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Replaces dense diagnostics with action-oriented readiness states and one primary next action.',
   },
   {
-    id: 'policy_authoring_starter_templates',
-    label: 'Policy authoring starter templates',
-    docPath: 'docs/architecture/policy-authoring-starter-templates.md',
-    servicePath: 'server/src/services/policyAuthoringStarterTemplates.mjs',
-    testPath: 'server/src/__tests__/services/policyAuthoringStarterTemplates.test.mjs',
-    evidence: 'Keeps starter templates as optional accelerators after destination context.',
+    id: 'policy_authoring_starter_template_intent_boundary',
+    label: 'Policy authoring starter template intent boundary',
+    docPath: 'docs/architecture/policy-starter-template-intent-boundary.md',
+    servicePath: 'server/src/services/policyIntentSignalOptionProjection.mjs',
+    testPath: 'server/src/__tests__/services/policyIntentSignalOptionProjection.test.mjs',
+    evidence: 'Projects optional template-derived values server-side with source labels; raw templates cannot attach or seed intent.',
   },
   {
     id: 'policy_authoring_accessibility',
@@ -161,11 +161,11 @@ const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
     evidence: 'Exposes save readiness, disabled reasons, and defer-without-saving while preserving event contracts.',
   },
   {
-    id: 'policy_authoring_starter_template_accelerator',
-    label: 'Policy authoring starter template accelerator',
-    docPath: 'docs/architecture/policy-authoring-starter-template-accelerator.md',
-    testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
-    evidence: 'Makes starter templates optional accelerators collapsed behind an accessible disclosure.',
+    id: 'policy_authoring_starter_template_intent_boundary',
+    label: 'Policy authoring starter template intent boundary',
+    docPath: 'docs/architecture/policy-starter-template-intent-boundary.md',
+    testPath: 'client/src/__tests__/IntentSignalPicker.test.js',
+    evidence: 'Allows only explicit acceptance of canonical, source-labelled template suggestions into typed draft commands.',
   },
   {
     id: 'policy_authoring_accessibility_decision_load_audit',
@@ -199,11 +199,11 @@ const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
 
 const POLICY_AUTHORING_NORMAL_WORKFLOW_RULES = Object.freeze([
   {
-    id: 'destination_context_before_templates',
-    label: 'Destination context appears before starter-template mechanics',
+    id: 'destination_context_before_template_suggestions',
+    label: 'Destination context appears before optional template suggestions',
     docPath: 'docs/architecture/policy-authoring-destination-flow.md',
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
-    evidence: 'Normal workflow starts from library and destination meaning; templates are secondary.',
+    evidence: 'Normal workflow starts from library and destination meaning; template-derived values are secondary and require acceptance.',
   },
   {
     id: 'observed_evidence_requires_acceptance',

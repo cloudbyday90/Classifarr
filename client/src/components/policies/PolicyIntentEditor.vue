@@ -22,7 +22,7 @@
         </p>
       </div>
       <div class="text-xs text-gray-400">
-        {{ selectedPresets.length }} starter template{{ selectedPresets.length === 1 ? '' : 's' }}
+        {{ selectedPresets.length }} existing policy context{{ selectedPresets.length === 1 ? '' : 's' }}
       </div>
     </div>
 
@@ -33,7 +33,9 @@
       class="rounded-lg border border-gray-700 bg-background-light p-3 text-sm text-gray-400"
       aria-label="Destination rules unavailable"
     >
-      Starter templates are optional accelerators. Add one only when it helps seed draft values; otherwise use library context, readiness, and explicit save or defer actions.
+      This existing policy has no editable compatibility context. New policy
+      intent is established from the connected library, not by attaching a
+      starter template.
     </div>
 
     <template v-else>
@@ -76,7 +78,7 @@
       </section>
 
       <label class="block text-xs font-medium text-gray-300">
-        Edit starter template
+        Edit existing policy context
         <select
           v-model="activePresetId"
           class="mt-1 w-full px-2 py-1 bg-background border border-gray-700 rounded-sm text-sm"

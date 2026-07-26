@@ -58,7 +58,7 @@ const GENERATOR_PATH = fileURLToPath(
 );
 const GENERATED_AT = POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME;
 const MANIFEST_PATH =
-  'client/src/components/policies/PolicyStarterTemplateAccelerator.vue';
+  'client/src/components/policies/PolicyPresetMigrationNotice.vue';
 
 function writeJson(rootPath, fileName, value) {
   const filePath = path.join(rootPath, '.artifacts', fileName);

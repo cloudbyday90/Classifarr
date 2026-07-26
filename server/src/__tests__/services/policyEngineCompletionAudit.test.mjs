@@ -93,16 +93,16 @@ describe('policyEngineCompletionAudit', () => {
       ]);
   });
 
-  test('requires current scoring, summary, and template artifacts to have cutline decisions', () => {
+  test('requires current scoring, summary, and bounded template intent artifacts to have cutline decisions', () => {
     const requiredPaths = listPolicyEngineRequiredLegacyCutlineArtifacts();
     const classifiedPaths = listPolicyEngineArtifactInventoryArtifacts()
       .map(artifact => artifact.path);
 
     expect(requiredPaths).toEqual(expect.arrayContaining([
       'client/src/components/policies/PolicyBuilderAdvancedSettings.vue',
-      'client/src/components/policies/PolicyStarterTemplateAccelerator.vue',
       'server/src/services/policyEngine.mjs',
-      'server/src/services/policyAuthoringStarterTemplates.mjs',
+      'server/src/services/policyIntentSignalOptionProjection.mjs',
+      'client/src/components/policies/IntentSignalPicker.vue',
     ]));
     expect(classifiedPaths).toEqual(expect.arrayContaining(requiredPaths));
   });
@@ -112,8 +112,8 @@ describe('policyEngineCompletionAudit', () => {
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
-    expect(audit.groupCount).toBeGreaterThanOrEqual(8);
-    expect(audit.artifactCount).toBeGreaterThanOrEqual(35);
+    expect(audit.groupCount).toBeGreaterThanOrEqual(6);
+    expect(audit.artifactCount).toBeGreaterThanOrEqual(40);
     expect(audit.nextStep).toEqual(expect.objectContaining({
       stepId: 'evidence_engine',
       label: 'Evidence Engine',
