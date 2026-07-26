@@ -33,6 +33,9 @@ import {
   listPolicyEngineArtifactInventoryArtifacts,
 } from './policyEngineArtifactInventory.mjs';
 import {
+  buildPolicyEvidenceArtifactCutlineAudit,
+} from './policyEvidenceArtifactCutline.mjs';
+import {
   buildPolicyOperatorWorkflowFromBoundedReadiness,
   buildPolicyOperatorWorkflowAudit,
 } from './policyOperatorWorkflow.mjs';
@@ -48,6 +51,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 const POLICY_ENGINE_COMPLETION_COMPONENT_IDS = Object.freeze({
   ARTIFACT_INVENTORY_CUTLINE: 'artifact_inventory_cutline',
+  EVIDENCE_ARTIFACT_CUTLINE: 'evidence_artifact_cutline',
   EVIDENCE_ENGINE: 'evidence_engine',
   INTENT_ENGINE: 'intent_engine',
   LEARNING_GUARD: 'learning_guard',
@@ -90,6 +94,15 @@ const POLICY_ENGINE_COMPONENT_RECORDS = Object.freeze([
     testPath: 'server/src/__tests__/services/policyEngineArtifactInventory.test.mjs',
     expectedNextStepId: 'evidence_engine',
     evidence: 'Active legacy policy-engine artifacts and retired diagnostic surfaces have explicit owner, cutline, and test decisions.',
+  },
+  {
+    id: POLICY_ENGINE_COMPLETION_COMPONENT_IDS.EVIDENCE_ARTIFACT_CUTLINE,
+    label: 'Evidence artifact cutline',
+    docPath: 'docs/architecture/policy-evidence-artifact-cutline.md',
+    servicePath: 'server/src/services/policyEvidenceArtifactCutline.mjs',
+    testPath: 'server/src/__tests__/services/policyEvidenceArtifactCutline.test.mjs',
+    expectedNextStepId: 'evidence_engine',
+    evidence: 'Every active rewrite, replacement, or deletion group has one allowlisted bounded engine successor; evidence successors also satisfy source-to-bucket admission.',
   },
   {
     id: POLICY_ENGINE_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE,
@@ -234,6 +247,8 @@ function buildComponentAuditMap() {
   return {
     [POLICY_ENGINE_COMPLETION_COMPONENT_IDS.ARTIFACT_INVENTORY_CUTLINE]:
       buildPolicyEngineArtifactInventoryAudit(),
+    [POLICY_ENGINE_COMPLETION_COMPONENT_IDS.EVIDENCE_ARTIFACT_CUTLINE]:
+      buildPolicyEvidenceArtifactCutlineAudit(),
     [POLICY_ENGINE_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE]:
       buildPolicyEvidenceEngineAudit(),
     [POLICY_ENGINE_COMPLETION_COMPONENT_IDS.INTENT_ENGINE]:

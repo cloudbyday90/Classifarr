@@ -83,6 +83,7 @@ describe('policyEngineCompletionAudit', () => {
     expect(listPolicyEngineCompletionComponents().map(component => component.id))
       .toEqual([
         POLICY_ENGINE_COMPLETION_COMPONENT_IDS.ARTIFACT_INVENTORY_CUTLINE,
+        POLICY_ENGINE_COMPLETION_COMPONENT_IDS.EVIDENCE_ARTIFACT_CUTLINE,
         POLICY_ENGINE_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE,
         POLICY_ENGINE_COMPLETION_COMPONENT_IDS.INTENT_ENGINE,
         POLICY_ENGINE_COMPLETION_COMPONENT_IDS.LEARNING_GUARD,
@@ -124,8 +125,8 @@ describe('policyEngineCompletionAudit', () => {
 
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
-    expect(audit.checkedComponentCount).toBe(7);
-    expect(audit.requiredComponentCount).toBe(7);
+    expect(audit.checkedComponentCount).toBe(8);
+    expect(audit.requiredComponentCount).toBe(8);
     expect(audit.boundedChainOk).toBe(true);
     expect(audit.boundedChainAudit.checkedStepCount).toBe(6);
     expect(audit.boundedChainAudit.issueCount).toBe(0);

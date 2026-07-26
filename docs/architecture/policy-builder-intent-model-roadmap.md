@@ -3679,6 +3679,13 @@ Implementation status:
   persisted, public, or downstream caller, so it was removed instead of
   retaining compatibility debt. Its outcome record is
   [Policy Migration Native Intent Criterion Cutover](policy-migration-native-intent-criterion-cutover.md).
+- The evidence artifact cutline now reconciles every active Rewrite, Replace,
+  and Delete inventory group with one bounded engine successor. Direct evidence
+  mappings must use admitted evidence bucket/source pairs, while scoring,
+  workflow, intent, readiness, and migration groups stay explicitly owned by
+  their respective engines. The completion audit consumes this static contract;
+  runtime library evidence loading remains checkout-independent. Its design
+  record is [Policy Evidence Artifact Cutline](policy-evidence-artifact-cutline.md).
 
 ### 6R.2 Intent Engine
 

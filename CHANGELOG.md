@@ -175,6 +175,11 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Policy Evidence Artifact Cutline** - reconciled each active legacy
+  rewrite, replacement, or deletion group with an allowlisted bounded engine
+  successor. Evidence mappings must use admitted source-to-bucket pairs, while
+  runtime library evidence remains independent of checkout validation.
+
 - **Policy Engine Artifact Inventory** - extracted the policy-engine cutline
   into a dedicated validated inventory of active artifacts and retired
   diagnostic surfaces, with explicit owner, replacement, and test decisions.
