@@ -13,10 +13,15 @@ import {
   QUESTION_FRAME_IDS,
 } from './policyQuestionLearningVocabulary.mjs';
 import {
-  POLICY_LEARNING_EVENT_SOURCE_IDS,
   buildPolicyLearningDecision,
   buildPolicyLearningGuardAudit,
 } from './policyLearningGuard.mjs';
+import {
+  POLICY_LEARNING_EVENT_SOURCE_IDS,
+  buildPolicyLearningGuardInput,
+  buildPolicyLearningIntakeEvent,
+  validatePolicyLearningIntakeEvent,
+} from './policyLearningIntakeContract.mjs';
 import {
   POLICY_REQUEST_EVENT_TYPE_IDS,
   buildPolicyRequestTimeEvent,
@@ -56,6 +61,7 @@ const POLICY_NATIVE_PENDING_RESOLUTION_PROVENANCE_AUDIT_RISK_IDS = Object.freeze
   INVALID_VERSION: 'invalid_native_pending_resolution_provenance_version',
   INVALID_STATUS: 'invalid_native_pending_resolution_provenance_status',
   INVALID_GUARD: 'invalid_native_pending_resolution_provenance_guard',
+  INVALID_LEARNING_INTAKE: 'invalid_native_pending_resolution_provenance_learning_intake',
   LEARNING_WRITE_ALLOWED: 'native_pending_resolution_provenance_learning_write_allowed',
   PROFILE_REFRESH_QUEUED: 'native_pending_resolution_provenance_profile_refresh_queued',
   INVALID_REQUEST_TIME_DECISION: 'invalid_native_pending_resolution_provenance_request_time_decision',
@@ -164,19 +170,21 @@ function buildSelection({ persistedQuestion, selectedDestination, selectedOption
 function buildOutcomeOnlyGuard({ classificationId, selection, persistedQuestion }) {
   const runtimeQuestion = asObject(asObject(persistedQuestion).runtimeQuestion);
   const selectedDestination = selection?.selectedDestination || { libraryId: null, libraryName: null };
-
-  return buildPolicyLearningDecision({
-    sourceId: selection?.eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE
-      ? POLICY_LEARNING_EVENT_SOURCE_IDS.MANUAL_CLASSIFICATION_CHANGE
-      : POLICY_LEARNING_EVENT_SOURCE_IDS.OPERATOR_CONFIRMATION,
-    answerOutcomeId: selection?.selectedOutcomeId || ANSWER_OUTCOME_IDS.DO_NOT_LEARN,
+  const sourceId = selection?.eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.OPERATOR_MANUAL_DESTINATION_CHANGE
+    ? POLICY_LEARNING_EVENT_SOURCE_IDS.MANUAL_CLASSIFICATION_CHANGE
+    : POLICY_LEARNING_EVENT_SOURCE_IDS.OPERATOR_CONFIRMATION;
+  const answerOutcomeId = selection?.selectedOutcomeId || ANSWER_OUTCOME_IDS.DO_NOT_LEARN;
+  const intake = buildPolicyLearningIntakeEvent({
+    sourceId,
+    sourceEventId: buildNativePendingSourceEventId(classificationId),
+    itemId: classificationId,
+    answerOutcomeId,
     question: {
       frameId: normalizeString(runtimeQuestion.frameId, 80) || QUESTION_FRAME_IDS.DESTINATION_FIT,
       stale: runtimeQuestion.stale === true,
     },
     answer: {
-      // The outcome id is server-owned vocabulary; never persist a caller label.
-      label: selection?.selectedOutcomeId || ANSWER_OUTCOME_IDS.DO_NOT_LEARN,
+      label: answerOutcomeId,
       destinationLibraryId: selectedDestination.libraryId,
       destinationLibraryName: selectedDestination.libraryName,
       ambiguous: false,
@@ -188,6 +196,23 @@ function buildOutcomeOnlyGuard({ classificationId, selection, persistedQuestion 
       recorded: true,
     },
   });
+  const intakeAudit = validatePolicyLearningIntakeEvent(intake);
+  const guardInput = buildPolicyLearningGuardInput(intake);
+
+  return {
+    intake,
+    decision: intakeAudit.ok && guardInput
+      ? buildPolicyLearningDecision(guardInput)
+      : null,
+  };
+}
+
+function buildNativePendingSourceEventId(classificationId) {
+  const normalizedClassificationId = normalizePositiveInteger(classificationId);
+
+  return normalizedClassificationId
+    ? `classification:${normalizedClassificationId}`
+    : 'classification:unknown';
 }
 
 function buildSelectionSummary(selection = null) {
@@ -211,16 +236,28 @@ function buildSelectionSummary(selection = null) {
 }
 
 function buildGuardSummary(decision = {}) {
-  const learning = asObject(decision.learning);
-  const profileRefresh = asObject(decision.profileRefresh);
+  const source = asObject(decision);
+  const learning = asObject(source.learning);
+  const profileRefresh = asObject(source.profileRefresh);
 
   return {
-    version: normalizeString(decision.version, 80) || null,
-    sourceId: normalizeString(decision.sourceId, 80) || null,
+    version: normalizeString(source.version, 80) || null,
+    sourceId: normalizeString(source.sourceId, 80) || null,
     decisionId: normalizeString(learning.decisionId, 80) || null,
     tierId: normalizeString(learning.tierId, 80) || null,
     canWriteLearning: learning.canWriteLearning === true,
     profileRefreshQueued: profileRefresh.queue === true,
+  };
+}
+
+function buildLearningIntakeSummary(intake = {}) {
+  const source = asObject(intake);
+
+  return {
+    version: normalizeString(source.version, 80) || null,
+    sourceId: normalizeString(source.sourceId, 80) || null,
+    sourceEventId: normalizeString(source.sourceEventId, 120) || null,
+    answerOutcomeId: normalizeString(source.answerOutcomeId, 80) || null,
   };
 }
 
@@ -251,7 +288,7 @@ function buildRequestTimeDecision({ selection, persistedQuestion, classification
         destinationLibraryId: selection.selectedDestination.libraryId,
         destinationLibraryName: selection.selectedDestination.libraryName,
       },
-      sourceEventId: `classification:${classificationId}`,
+      sourceEventId: buildNativePendingSourceEventId(classificationId),
     });
     const decision = buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan({
       questionReductionPlan,
@@ -296,11 +333,15 @@ function buildPolicyNativePendingResolutionProvenance({
     persistedQuestion,
     classificationId,
   });
-  const learningDecision = requestTimeResult.decision?.learningDecision || buildOutcomeOnlyGuard({
-    classificationId,
-    selection: selectionResult.selection,
-    persistedQuestion,
-  });
+  const fallbackResult = requestTimeResult.decision
+    ? null
+    : buildOutcomeOnlyGuard({
+      classificationId,
+      selection: selectionResult.selection,
+      persistedQuestion,
+    });
+  const learningIntake = requestTimeResult.decision?.intake || fallbackResult?.intake || null;
+  const learningDecision = requestTimeResult.decision?.learningDecision || fallbackResult?.decision || null;
   const reasonCodes = uniqueReasonCodes([
     selectionResult.reasonCode,
     requestTimeResult.reasonCode,
@@ -327,6 +368,7 @@ function buildPolicyNativePendingResolutionProvenance({
         validationOk: true,
       }
       : null,
+    learningIntake: buildLearningIntakeSummary(learningIntake),
     learningGuard: guardSummary,
     reasonCodes: uniqueReasonCodes(reasonCodes),
     sideEffects: {
@@ -341,7 +383,10 @@ function buildPolicyNativePendingResolutionProvenance({
 
   return {
     ...result,
-    audit: buildPolicyNativePendingResolutionProvenanceAudit(result, { learningDecision }),
+    audit: buildPolicyNativePendingResolutionProvenanceAudit(result, {
+      learningDecision,
+      learningIntake,
+    }),
   };
 }
 
@@ -352,6 +397,7 @@ function buildNotApplicableResult() {
     statusId: POLICY_NATIVE_PENDING_RESOLUTION_PROVENANCE_STATUS_IDS.NOT_APPLICABLE,
     selection: buildSelectionSummary(),
     requestTimeDecision: null,
+    learningIntake: null,
     learningGuard: null,
     reasonCodes: [
       POLICY_NATIVE_PENDING_RESOLUTION_PROVENANCE_REASON_IDS.NOT_NATIVE_PENDING_QUESTION,
@@ -377,6 +423,7 @@ function buildPolicyNativePendingResolutionProvenanceAudit(result = {}, internal
   const selection = asObject(source.selection);
   const learningGuard = asObject(source.learningGuard);
   const learningDecision = internal.learningDecision;
+  const learningIntake = internal.learningIntake;
   const sideEffects = asObject(source.sideEffects);
   const issues = [];
 
@@ -406,6 +453,14 @@ function buildPolicyNativePendingResolutionProvenanceAudit(result = {}, internal
       issues.push({
         riskId: POLICY_NATIVE_PENDING_RESOLUTION_PROVENANCE_AUDIT_RISK_IDS.INVALID_GUARD,
         message: 'Native pending-resolution provenance must pass through a valid learning guard decision.',
+      });
+    }
+
+    if (Object.hasOwn(internal, 'learningIntake') &&
+        (!learningIntake || validatePolicyLearningIntakeEvent(learningIntake).ok !== true)) {
+      issues.push({
+        riskId: POLICY_NATIVE_PENDING_RESOLUTION_PROVENANCE_AUDIT_RISK_IDS.INVALID_LEARNING_INTAKE,
+        message: 'Native pending-resolution provenance requires a valid canonical learning intake.',
       });
     }
 

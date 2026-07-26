@@ -99,6 +99,12 @@ describe('policyNativePendingResolutionProvenance', () => {
         sourceId: 'operator_confirmation',
         dispositionId: 'outcome_only',
       },
+      learningIntake: {
+        version: 'policy.learning_intake.v1',
+        sourceId: 'operator_confirmation',
+        sourceEventId: 'classification:42',
+        answerOutcomeId: 'resolve_current_item',
+      },
       learningGuard: {
         decisionId: 'outcome_only',
         tierId: 'none',
@@ -178,10 +184,52 @@ describe('policyNativePendingResolutionProvenance', () => {
         canWriteLearning: false,
         profileRefreshQueued: false,
       },
+      learningIntake: {
+        version: 'policy.learning_intake.v1',
+        sourceId: 'operator_confirmation',
+        sourceEventId: 'classification:42',
+      },
       audit: { ok: true },
     });
     expect(result.reasonCodes).toContain(
       POLICY_NATIVE_PENDING_RESOLUTION_PROVENANCE_REASON_IDS.INVALID_QUESTION_REDUCTION_PLAN,
+    );
+  });
+
+  test('fails closed when fallback intake cannot normalize a tampered question frame', () => {
+    const persistedQuestion = buildNativeQuestion();
+    persistedQuestion.runtimeQuestion = {
+      ...persistedQuestion.runtimeQuestion,
+      frameId: 'caller_supplied_unknown_frame',
+    };
+    persistedQuestion.runtimeQuestionReductionPlan = {
+      ...persistedQuestion.runtimeQuestionReductionPlan,
+      trace: {
+        ...persistedQuestion.runtimeQuestionReductionPlan.trace,
+        attributes: {
+          ...persistedQuestion.runtimeQuestionReductionPlan.trace.attributes,
+          'classifarr.runtime.question.decision_evidence_projection_fingerprint': 'tampered',
+        },
+      },
+    };
+
+    const result = buildPolicyNativePendingResolutionProvenance(buildInput({ persistedQuestion }));
+
+    expect(result.requestTimeDecision).toBeNull();
+    expect(result.learningIntake).toEqual({
+      version: 'policy.learning_intake.v1',
+      sourceId: 'operator_confirmation',
+      sourceEventId: 'classification:42',
+      answerOutcomeId: 'resolve_current_item',
+    });
+    expect(result.learningGuard).toEqual(expect.objectContaining({
+      decisionId: null,
+      canWriteLearning: false,
+      profileRefreshQueued: false,
+    }));
+    expect(result.audit).toEqual(expect.objectContaining({ ok: false }));
+    expect(result.audit.issues.map(issue => issue.riskId)).toContain(
+      POLICY_NATIVE_PENDING_RESOLUTION_PROVENANCE_AUDIT_RISK_IDS.INVALID_LEARNING_INTAKE,
     );
   });
 

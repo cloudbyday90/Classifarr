@@ -18,6 +18,13 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Native Pending Resolution Intake Gate** - native pending-resolution
+  provenance now sends both validated and malformed-plan fallback selections
+  through canonical server-owned learning intake before evaluating the guard.
+  The compact audit trail retains only bounded source-event provenance; unknown
+  frames fail closed, and the flow remains outcome-only with no routing,
+  learning, provider, or profile-refresh side effect.
+
 - **Request-Time Learning Intake Gate** - request, confirmation, manual
   destination, and routing learning decisions now require a bounded
   server-provided event correlation and canonical intake before the learning

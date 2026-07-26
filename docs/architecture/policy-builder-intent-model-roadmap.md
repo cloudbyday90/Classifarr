@@ -3874,6 +3874,14 @@ Implementation status:
   question-reduction/evidence-fingerprint proof chain, and retains the
   intake's final outcome as the decision outcome. Native pending, routing, and
   Discord adapters remain separate adoption components.
+- Phase 6R.3.2c is complete for native pending-resolution provenance. Its
+  validated question-reduction path retains the request-time intake, while the
+  missing or invalid-plan fallback now builds and audits the same canonical
+  intake before guard evaluation. It exposes only compact source-event
+  provenance, fails closed for an unknown fallback question frame, and remains
+  outcome-only with no persistence, routing, provider, or profile-refresh
+  side effect. Native route outcomes, request-import fallback, and Discord
+  answers remain separate adapter components.
 - The contract supports explicit learning tiers for no learning,
   exact-item memory, compatibility evidence, identity evidence, and hard-limit
   evidence; every candidate includes reason codes and write permission is

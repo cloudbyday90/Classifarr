@@ -147,6 +147,12 @@ It requires a server-provided source event, retains the independent
 question-reduction fingerprint proof, and exposes the intake's canonical final
 outcome in the resulting no-write decision.
 
+Native pending-resolution adoption is documented in
+[Policy Native Pending-Resolution Learning Intake Adoption](policy-native-pending-resolution-learning-intake-adoption.md).
+It removes the malformed-plan fallback's direct guard input, retains the
+validated request-time intake when available, and exposes only compact intake
+provenance while preserving its no-write behavior.
+
 ## Next Step
 
 Proceed to **Phase 6R.3.2: Learning Intake Adapter Adoption**. Migrate the
