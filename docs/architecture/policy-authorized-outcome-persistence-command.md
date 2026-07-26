@@ -93,7 +93,8 @@ operations and reason codes, never completed writes.
 2. `policyLearningGuard.mjs` decides whether learning is eligible.
 3. `policyAuthorizedOutcomePersistenceCommand.mjs` validates server-derived
    authorization and locked current-state alignment, then emits a pure plan.
-4. Phase 6R.3.3b adds an append-only unique source-event ledger.
+4. `policyAuthorizedOutcomeReceiptRepository.mjs` now claims an append-only,
+   fingerprint-bound source-event receipt inside a caller-owned transaction.
 5. Phase 6R.3.3c adds the transaction executor and adopts manual correction.
 
 ## Security Outcome
@@ -114,6 +115,8 @@ tampering.
 
 ## Next Step
 
-Proceed to **Phase 6R.3.3b: Source-Event Idempotency Ledger**. Add the
-append-only storage migration and repository with a unique source-event key;
-do not invoke it from an active route until the transaction executor lands.
+Phase 6R.3.3b is implemented in
+[Policy Authorized Outcome Idempotency Ledger](policy-authorized-outcome-idempotency-ledger.md).
+Proceed to **Phase 6R.3.3c: Transaction Executor**. It must claim the receipt
+inside the same rollback-safe transaction as the permitted writes; do not
+invoke it from an active route until that boundary lands.

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-25T19:21:11.630Z
--- Latest Migration: 20260725_190000_add_policy_backup_restore_verifications.sql
+-- Generated: 2026-07-26T19:47:08.290Z
+-- Latest Migration: 20260726_090000_add_policy_authorized_outcome_source_event_receipts.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -173,6 +173,30 @@ CREATE FUNCTION public.extract_jsonb_name_text(arr jsonb) RETURNS text
     FROM jsonb_array_elements(
         CASE WHEN arr IS NOT NULL AND jsonb_typeof(arr) = 'array' THEN arr ELSE '[]'::jsonb END
     ) AS elem
+$$;
+
+
+--
+-- Name: guard_policy_authorized_outcome_receipt_mutation(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_policy_authorized_outcome_receipt_mutation() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    -- A replace restore starts a new runtime boundary. The caller must opt in
+    -- locally inside its transaction; normal application paths cannot rewrite
+    -- or remove receipts.
+    IF TG_OP = 'DELETE'
+       AND current_setting(
+           'classifarr.policy_authorized_outcome_receipt_maintenance',
+           true
+       ) = 'replace_restore' THEN
+        RETURN OLD;
+    END IF;
+
+    RAISE EXCEPTION 'Authorized outcome source-event receipts are append-only';
+END;
 $$;
 
 
@@ -3731,6 +3755,53 @@ ALTER SEQUENCE public.pattern_match_log_id_seq OWNED BY public.pattern_match_log
 
 
 --
+-- Name: policy_authorized_outcome_source_event_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_authorized_outcome_source_event_receipts (
+    id bigint NOT NULL,
+    receipt_version smallint DEFAULT 1 CONSTRAINT policy_authorized_outcome_source_event_receipt_version_not_null NOT NULL,
+    source_id character varying(80) CONSTRAINT policy_authorized_outcome_source_event_recei_source_id_not_null NOT NULL,
+    source_event_id character varying(160) CONSTRAINT policy_authorized_outcome_source_event_source_event_id_not_null NOT NULL,
+    command_fingerprint character(64) CONSTRAINT policy_authorized_outcome_source_e_command_fingerprint_not_null NOT NULL,
+    classification_id bigint CONSTRAINT policy_authorized_outcome_source_eve_classification_id_not_null NOT NULL,
+    destination_library_id bigint,
+    final_outcome_status_id character varying(80) CONSTRAINT policy_authorized_outcome_sour_final_outcome_status_id_not_null NOT NULL,
+    persistence_status_id character varying(32) CONSTRAINT policy_authorized_outcome_source_persistence_status_id_not_null NOT NULL,
+    learning_tier_id character varying(40),
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT policy_authorized_outcome_source_event_rece_created_at_not_null NOT NULL,
+    CONSTRAINT policy_authorized_outcome_receipts_classification_chk CHECK ((classification_id > 0)),
+    CONSTRAINT policy_authorized_outcome_receipts_destination_chk CHECK (((destination_library_id IS NULL) OR (destination_library_id > 0))),
+    CONSTRAINT policy_authorized_outcome_receipts_fingerprint_chk CHECK ((command_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_authorized_outcome_receipts_learning_shape_chk CHECK (((((persistence_status_id)::text = 'outcome_only'::text) AND (learning_tier_id IS NULL)) OR (((persistence_status_id)::text = 'ready'::text) AND ((learning_tier_id)::text = ANY (ARRAY[('exact_item_memory'::character varying)::text, ('compatibility_evidence'::character varying)::text, ('identity_evidence'::character varying)::text]))))),
+    CONSTRAINT policy_authorized_outcome_receipts_outcome_status_chk CHECK (((final_outcome_status_id)::text = ANY (ARRAY[('resolved'::character varying)::text, ('routed'::character varying)::text, ('route_failed_missing_mapping'::character varying)::text]))),
+    CONSTRAINT policy_authorized_outcome_receipts_persistence_status_chk CHECK (((persistence_status_id)::text = ANY (ARRAY[('ready'::character varying)::text, ('outcome_only'::character varying)::text]))),
+    CONSTRAINT policy_authorized_outcome_receipts_source_chk CHECK (((source_id)::text = ANY (ARRAY[('manual_classification_change'::character varying)::text, ('operator_confirmation'::character varying)::text, ('discord_pending_answer'::character varying)::text, ('request_destination_choice'::character varying)::text, ('arr_routing_outcome'::character varying)::text]))),
+    CONSTRAINT policy_authorized_outcome_receipts_source_event_chk CHECK (((char_length(btrim((source_event_id)::text)) >= 1) AND (char_length(btrim((source_event_id)::text)) <= 160))),
+    CONSTRAINT policy_authorized_outcome_receipts_version_chk CHECK ((receipt_version = 1))
+);
+
+
+--
+-- Name: policy_authorized_outcome_source_event_receipts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_authorized_outcome_source_event_receipts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_authorized_outcome_source_event_receipts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_authorized_outcome_source_event_receipts_id_seq OWNED BY public.policy_authorized_outcome_source_event_receipts.id;
+
+
+--
 -- Name: policy_backup_restore_verifications; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6478,6 +6549,13 @@ ALTER TABLE ONLY public.pattern_match_log ALTER COLUMN id SET DEFAULT nextval('p
 
 
 --
+-- Name: policy_authorized_outcome_source_event_receipts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_authorized_outcome_source_event_receipts ALTER COLUMN id SET DEFAULT nextval('public.policy_authorized_outcome_source_event_receipts_id_seq'::regclass);
+
+
+--
 -- Name: policy_backup_restore_verifications id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7456,6 +7534,22 @@ ALTER TABLE ONLY public.pattern_analysis_config
 
 ALTER TABLE ONLY public.pattern_match_log
     ADD CONSTRAINT pattern_match_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_authorized_outcome_source_event_receipts policy_authorized_outcome_receipts_source_event_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_authorized_outcome_source_event_receipts
+    ADD CONSTRAINT policy_authorized_outcome_receipts_source_event_unique UNIQUE (source_id, source_event_id);
+
+
+--
+-- Name: policy_authorized_outcome_source_event_receipts policy_authorized_outcome_source_event_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_authorized_outcome_source_event_receipts
+    ADD CONSTRAINT policy_authorized_outcome_source_event_receipts_pkey PRIMARY KEY (id);
 
 
 --
@@ -8966,6 +9060,13 @@ CREATE INDEX idx_patterns_type_status ON public.discovered_patterns USING btree 
 
 
 --
+-- Name: idx_policy_authorized_outcome_receipts_classification; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_authorized_outcome_receipts_classification ON public.policy_authorized_outcome_source_event_receipts USING btree (classification_id, created_at DESC, id DESC);
+
+
+--
 -- Name: idx_policy_backup_restore_verifications_verified; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9761,6 +9862,13 @@ CREATE TRIGGER classification_history_totals_sync_trigger AFTER INSERT OR DELETE
 --
 
 CREATE TRIGGER classification_search_text_trigger BEFORE INSERT OR UPDATE ON public.classification_history FOR EACH ROW EXECUTE FUNCTION public.update_classification_search_text();
+
+
+--
+-- Name: policy_authorized_outcome_source_event_receipts policy_authorized_outcome_receipt_mutation_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER policy_authorized_outcome_receipt_mutation_guard BEFORE DELETE OR UPDATE ON public.policy_authorized_outcome_source_event_receipts FOR EACH ROW EXECUTE FUNCTION public.guard_policy_authorized_outcome_receipt_mutation();
 
 
 --
@@ -12750,6 +12858,7 @@ FROM unnest(ARRAY[
     '20260716_040000_enforce_semantic_native_intent_authority.sql',
     '20260716_050000_add_policy_initial_intent_establishments.sql',
     '20260722_120000_add_policy_observed_evidence_provenance.sql',
-    '20260725_190000_add_policy_backup_restore_verifications.sql'
+    '20260725_190000_add_policy_backup_restore_verifications.sql',
+    '20260726_090000_add_policy_authorized_outcome_source_event_receipts.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

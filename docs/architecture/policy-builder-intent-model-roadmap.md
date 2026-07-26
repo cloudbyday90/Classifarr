@@ -3869,6 +3869,14 @@ Implementation status:
   final outcome, revalidated actor authority, and transaction-locked current
   state agree. It can plan an outcome-only resolution when learning authority
   is absent, performs no writes, and is not yet wired into active routes.
+- Phase 6R.3.3b is complete. The append-only source-event ledger in
+  `server/src/services/policyAuthorizedOutcomeReceiptRepository.mjs` requires
+  a caller-owned transaction, binds compact authorized command semantics to a
+  SHA-256 fingerprint, returns the original receipt for exact replay, and
+  rejects source-event mismatches. It has no active route consumer; a replace
+  restore explicitly discards this runtime state rather than restoring stale
+  idempotency receipts. Its design record is
+  [Policy Authorized Outcome Idempotency Ledger](policy-authorized-outcome-idempotency-ledger.md).
 - The focused learning-guard test suite lives in
   `server/src/__tests__/services/policyLearningGuard.test.mjs`.
 - Final-outcome shaping and route-transition validation now live in

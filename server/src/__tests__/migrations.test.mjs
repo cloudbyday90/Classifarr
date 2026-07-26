@@ -330,6 +330,10 @@ describe('Schema snapshot freshness', () => {
             __dirname,
             '../../../database/migrations/20260725_190000_add_policy_backup_restore_verifications.sql'
         );
+        const authorizedOutcomeReceiptMigrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260726_090000_add_policy_authorized_outcome_source_event_receipts.sql'
+        );
         const migrationSql = fs.readFileSync(migrationPath, 'utf8');
         const integrityMigrationSql = fs.readFileSync(integrityMigrationPath, 'utf8');
         const retentionMigrationSql = fs.readFileSync(retentionMigrationPath, 'utf8');
@@ -355,6 +359,10 @@ describe('Schema snapshot freshness', () => {
         );
         const backupRestoreVerificationMigrationSql = fs.readFileSync(
             backupRestoreVerificationMigrationPath,
+            'utf8'
+        );
+        const authorizedOutcomeReceiptMigrationSql = fs.readFileSync(
+            authorizedOutcomeReceiptMigrationPath,
             'utf8'
         );
         const policyIntents = getCreateTableBlock(schemaSql, 'policy_intents');
@@ -408,6 +416,10 @@ describe('Schema snapshot freshness', () => {
         const backupRestoreVerifications = getCreateTableBlock(
             schemaSql,
             'policy_backup_restore_verifications'
+        );
+        const authorizedOutcomeReceipts = getCreateTableBlock(
+            schemaSql,
+            'policy_authorized_outcome_source_event_receipts'
         );
 
         [
@@ -499,6 +511,21 @@ describe('Schema snapshot freshness', () => {
         expect(backupRestoreVerifications).toContain(
             'policy_backup_restore_verifications_verified_shape_chk'
         );
+        expect(authorizedOutcomeReceipts).toMatch(
+            /receipt_version smallint DEFAULT 1(?: CONSTRAINT \S+)? NOT NULL/
+        );
+        expect(authorizedOutcomeReceipts).toMatch(
+            /source_event_id character varying\(160\)(?: CONSTRAINT \S+)? NOT NULL/
+        );
+        expect(authorizedOutcomeReceipts).toMatch(
+            /command_fingerprint character\(64\)(?: CONSTRAINT \S+)? NOT NULL/
+        );
+        expect(schemaSql).toContain(
+            'ADD CONSTRAINT policy_authorized_outcome_receipts_source_event_unique UNIQUE (source_id, source_event_id)'
+        );
+        expect(authorizedOutcomeReceipts).toContain(
+            'policy_authorized_outcome_receipts_learning_shape_chk'
+        );
         expect(integrityMigrationSql).toContain('LOCK TABLE policy_intents IN SHARE ROW EXCLUSIVE MODE');
         expect(integrityMigrationSql).toContain('active_intent_integrity_repaired');
         expect(integrityMigrationSql).toContain('CREATE UNIQUE INDEX idx_policy_intents_one_active_policy');
@@ -545,6 +572,15 @@ describe('Schema snapshot freshness', () => {
         );
         expect(backupRestoreVerificationMigrationSql).toContain(
             'guard_policy_backup_restore_verification_mutation'
+        );
+        expect(authorizedOutcomeReceiptMigrationSql).toContain(
+            'CREATE TABLE IF NOT EXISTS policy_authorized_outcome_source_event_receipts'
+        );
+        expect(authorizedOutcomeReceiptMigrationSql).toContain(
+            'idx_policy_authorized_outcome_receipts_classification'
+        );
+        expect(authorizedOutcomeReceiptMigrationSql).toContain(
+            'guard_policy_authorized_outcome_receipt_mutation'
         );
         expect(observedEvidenceProvenanceMigrationSql).toContain(
             'idx_policy_observed_evidence_provenance_expiry'

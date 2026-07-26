@@ -172,8 +172,8 @@ preference and exact-match write paths with an outcome-only guard decision.
 
 ## Next Step
 
-Phase 6R.3.3a is implemented in
-[Policy Authorized Outcome Persistence Command](policy-authorized-outcome-persistence-command.md).
-Proceed to **Phase 6R.3.3b: Source-Event Idempotency Ledger**. Add one
-append-only unique receipt for a source event before a transaction executor can
-write any guarded candidate, final outcome, or refresh command durably.
+Phase 6R.3.3b is implemented in
+[Policy Authorized Outcome Idempotency Ledger](policy-authorized-outcome-idempotency-ledger.md).
+Proceed to **Phase 6R.3.3c: Transaction Executor**. It must claim the
+fingerprint-bound source-event receipt inside the same rollback-safe
+transaction as any guarded candidate, final outcome, or refresh command.
