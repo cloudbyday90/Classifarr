@@ -17,6 +17,12 @@ assessment and blocks intent inference when evidence quality is insufficient.
 Raw evidence has a separate bounded adapter, while the pure reducer accepts
 only an already-built `policy.evidence.v1` projection.
 
+The reducer now delegates all evidence-to-field decisions to the versioned
+[Policy Profile Intent Suggestion Rules](policy-profile-intent-suggestion-rules.md)
+service. Each derived entry carries a server-owned rule ID and explanation so
+the draft explains why the value was proposed without granting it policy
+authority.
+
 ## Problem
 
 Classifarr needs to move from policy-builder diagnostics to destination meaning.
@@ -118,6 +124,12 @@ The important boundary is authority:
     library-derived callers must not construct a generic evidence-boundary
     result or call the reducer directly.
 
+13. **Keep profile-to-intent rules deterministic and explainable.**
+    The profile suggestion service accepts only a `policy.evidence.v1`
+    projection, applies an allowlisted rule catalog, sorts its output, and
+    attaches a static rule descriptor to each derived entry. A rule audit can
+    recompute the plan and detect descriptor or plan tampering.
+
 ## Pros And Cons
 
 Pros:
@@ -155,6 +167,12 @@ Cons:
   `server/src/services/policyEvidenceBoundary.mjs`
 - Intent engine:
   `server/src/services/policyIntentEngine.mjs`
+- Profile-to-intent suggestion rules:
+  `server/src/services/policyProfileIntentSuggestionRules.mjs`
+- Profile-to-intent suggestion-rule tests:
+  `server/src/__tests__/services/policyProfileIntentSuggestionRules.test.mjs`
+- Profile-to-intent suggestion-rule design:
+  `docs/architecture/policy-profile-intent-suggestion-rules.md`
 - Test module:
   `server/src/__tests__/services/policyIntentEngine.test.mjs`
 - Documentation:
@@ -223,6 +241,7 @@ evidenceCount
 evidenceConfidence
 inferred
 operatorDeclared
+suggestion
 ```
 
 The contract intentionally keeps `learningSideEffects` empty. The policy
@@ -257,6 +276,8 @@ blocked_by_intent_audit
 - Raw provider payloads are not read by this layer.
 - Metadata evidence is demoted away from destination identity.
 - Broad genre identity requires operator declaration or specific support.
+- Every derived entry has a fixed server-owned rule ID and explanation; a
+  tampered descriptor is rejected by the intent audit.
 - Observed absence creates review warnings only.
 - Hard limits and avoid rules require durable operator-declared authority.
 - Evidence provenance is valid only when its bucket, source, and authority

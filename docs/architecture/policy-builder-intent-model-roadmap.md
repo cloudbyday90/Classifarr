@@ -3718,6 +3718,12 @@ Implementation status:
   `server/src/services/policyIntentEngine.mjs`.
 - The focused intent-engine test suite lives in
   `server/src/__tests__/services/policyIntentEngine.test.mjs`.
+- Deterministic profile-to-intent suggestion rules now live in
+  `server/src/services/policyProfileIntentSuggestionRules.mjs`. The pure
+  server-owned plan accepts only bounded evidence projection, attaches a stable
+  rule ID and explanation to every derived entry, keeps observed constraints
+  out of declared fields, and exposes a recomputation audit. Its design record
+  is [Policy Profile Intent Suggestion Rules](policy-profile-intent-suggestion-rules.md).
 - Intent-entry projection is normalized by
   `server/src/services/policyIntentEntryNormalizer.mjs`, which excludes
   object-valued evidence and lets the intent audit reject tampered primitive

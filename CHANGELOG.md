@@ -62,6 +62,13 @@ unchanged operator or runtime outcome.
   candidate projection and explicit typed intent commands; existing preset
   attachments remain compatibility-only context in the legacy draft bridge.
 
+- **Deterministic Profile Intent Suggestions** - policy intent now derives
+  evidence-backed proposals through a versioned server-owned rule plan. Every
+  suggested entry includes a stable rule ID and explanation; metadata and
+  unsupported broad genres remain helpful evidence, observed absence remains a
+  review trigger, and only operator-declared evidence can propose hard limits
+  or avoid values.
+
 - **Server-Owned Constraint Decisions** - the native policy workflow now
   publishes a bounded, display-only decision model that keeps hard limits,
   avoid values, and review warnings semantically distinct. Hard limits can

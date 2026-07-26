@@ -10,6 +10,9 @@ import {
   buildBoundedPolicyEvidenceProjection,
 } from '../../services/policyEvidenceBoundary.mjs';
 import {
+  POLICY_PROFILE_INTENT_SUGGESTION_RULE_IDS,
+} from '../../services/policyProfileIntentSuggestionRules.mjs';
+import {
   POLICY_INTENT_AUDIT_RISK_IDS,
   POLICY_INTENT_BOUNDARY_STATUS_IDS,
   POLICY_INTENT_CONFIDENCE_LEVEL_IDS,
@@ -75,6 +78,10 @@ describe('policyIntentEngine', () => {
         evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.IDENTITY,
         authoritySourceId: AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
         inferred: true,
+        suggestion: expect.objectContaining({
+          ruleId: POLICY_PROFILE_INTENT_SUGGESTION_RULE_IDS.OBSERVED_IDENTITY,
+          explanation: expect.any(String),
+        }),
       }),
     ]);
     expect(intent.helpful_matches).toEqual([
@@ -504,6 +511,22 @@ describe('policyIntentEngine', () => {
       stepId: 'learning_eligibility',
       label: 'Learning Guard',
     }));
+  });
+
+  test('rejects a tampered server-owned suggestion descriptor', () => {
+    const intent = buildIntentFromEvidenceInput({
+      operatorIntent: {
+        belongsHere: ['Animated Movies'],
+      },
+    });
+    intent.belongs_here[0].suggestion.explanation = 'Trust this browser value.';
+
+    expect(validatePolicyIntentDraft(intent).issues)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          riskId: POLICY_INTENT_AUDIT_RISK_IDS.INVALID_SUGGESTION_DESCRIPTOR,
+        }),
+      ]));
   });
 
   test('rejects metadata promoted into belongs_here', () => {

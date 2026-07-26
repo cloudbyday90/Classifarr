@@ -5,7 +5,6 @@ import {
 } from './policyAuthorityVocabulary.mjs';
 import {
   POLICY_EVIDENCE_BUCKET_IDS,
-  POLICY_EVIDENCE_SOURCE_IDS,
   getPolicyEvidenceBucket,
   getPolicyEvidenceSource,
 } from './policyEvidenceEngine.mjs';
@@ -20,11 +19,18 @@ import {
 } from './policyEvidenceQuality.mjs';
 import {
   buildPolicyIntentEntryAudit,
-  normalizePolicyIntentEntry,
 } from './policyIntentEntryNormalizer.mjs';
 import {
   buildPolicyStrictConstraintDescriptor,
 } from './policyStrictConstraintDescriptor.mjs';
+import {
+  POLICY_PROFILE_INTENT_BROAD_GENRE_LABELS as BROAD_GENRE_LABELS,
+  POLICY_PROFILE_INTENT_SUGGESTION_ASSUMPTION_IDS,
+  POLICY_PROFILE_INTENT_SUGGESTION_WARNING_IDS,
+  buildPolicyProfileIntentSuggestionPlan,
+  isPolicyBroadGenreEvidence,
+  validatePolicyProfileIntentSuggestionDescriptor,
+} from './policyProfileIntentSuggestionRules.mjs';
 
 const POLICY_INTENT_BOUNDARY_STATUS_IDS = Object.freeze({
   READY: 'ready',
@@ -52,22 +58,8 @@ const POLICY_INTENT_CONFIDENCE_LEVEL_IDS = Object.freeze({
   BLOCKED: 'blocked',
 });
 
-const POLICY_INTENT_WARNING_IDS = Object.freeze({
-  BROAD_GENRE_IDENTITY_NEEDS_SUPPORT: 'broad_genre_identity_needs_support',
-  OBSERVED_ABSENCE_NOT_EXCLUSION: 'observed_absence_not_exclusion',
-  INSUFFICIENT_EVIDENCE: 'insufficient_evidence',
-  STALE_PROFILE: 'stale_profile',
-  METADATA_NOT_IDENTITY_AUTHORITY: 'metadata_not_identity_authority',
-  LEGACY_TEMPLATE_BRIDGE_ONLY: 'legacy_template_bridge_only',
-});
-
-const POLICY_INTENT_ASSUMPTION_IDS = Object.freeze({
-  OBSERVED_IDENTITY_ACCEPTANCE_REQUIRED: 'observed_identity_acceptance_required',
-  DECLARED_CONSTRAINTS_ARE_OPERATOR_AUTHORITY: 'declared_constraints_are_operator_authority',
-  FINAL_OUTCOMES_REQUIRE_LEARNING_GUARD: 'final_outcomes_require_learning_guard',
-  METADATA_SUPPORTS_COMPATIBILITY_ONLY: 'metadata_supports_compatibility_only',
-  LEGACY_TEMPLATE_IS_DRAFT_SEED_ONLY: 'legacy_template_is_draft_seed_only',
-});
+const POLICY_INTENT_WARNING_IDS = POLICY_PROFILE_INTENT_SUGGESTION_WARNING_IDS;
+const POLICY_INTENT_ASSUMPTION_IDS = POLICY_PROFILE_INTENT_SUGGESTION_ASSUMPTION_IDS;
 
 const POLICY_INTENT_AUDIT_RISK_IDS = Object.freeze({
   MISSING_FIELD: 'missing_field',
@@ -96,32 +88,8 @@ const POLICY_INTENT_AUDIT_RISK_IDS = Object.freeze({
   MISSING_EVIDENCE_QUALITY: 'missing_evidence_quality',
   INTENT_ENTRY_FIELD_CONTRACT: 'intent_entry_field_contract',
   INVALID_STRICT_CONSTRAINT_DESCRIPTOR: 'invalid_strict_constraint_descriptor',
+  INVALID_SUGGESTION_DESCRIPTOR: 'invalid_suggestion_descriptor',
 });
-
-const BROAD_GENRE_LABELS = Object.freeze([
-  'action',
-  'adventure',
-  'animation',
-  'comedy',
-  'crime',
-  'documentary',
-  'drama',
-  'family',
-  'fantasy',
-  'history',
-  'horror',
-  'music',
-  'mystery',
-  'reality',
-  'romance',
-  'science fiction',
-  'sci-fi',
-  'sport',
-  'sports',
-  'thriller',
-  'war',
-  'western',
-]);
 
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -189,26 +157,8 @@ function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function normalizeKey(value) {
-  return normalizeString(value).toLowerCase();
-}
-
 function asArray(value) {
   return Array.isArray(value) ? value : [];
-}
-
-function getEvidenceEntries(projection, bucketId) {
-  return asArray(projection?.buckets?.[bucketId]);
-}
-
-function requirePolicyEvidenceProjection(projection = {}) {
-  if (projection?.version !== 'policy.evidence.v1') {
-    throw new TypeError(
-      'Intent inference requires a policy.evidence.v1 projection; pass raw evidence through buildPolicyIntentDraftFromEvidenceInput.'
-    );
-  }
-
-  return projection;
 }
 
 function createEmptyPolicyEvidenceProjection() {
@@ -219,103 +169,6 @@ function createEmptyPolicyEvidenceProjection() {
   };
 }
 
-function isMetadataEvidence(entry = {}) {
-  return entry.sourceId === POLICY_EVIDENCE_SOURCE_IDS.METADATA_ENRICHMENT ||
-    entry.authoritySourceId === AUTHORITY_SOURCE_IDS.METADATA_PROVIDER;
-}
-
-function isOperatorDeclared(entry = {}) {
-  return entry.sourceId === POLICY_EVIDENCE_SOURCE_IDS.OPERATOR_DECLARED_INTENT &&
-    entry.authoritySourceId === AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT;
-}
-
-function isBroadGenreEvidence(entry = {}) {
-  const key = normalizeKey(entry.key);
-  const label = normalizeKey(entry.label);
-
-  if (key.startsWith('genre:') || key.startsWith('genres:')) {
-    return true;
-  }
-
-  return BROAD_GENRE_LABELS.includes(label);
-}
-
-function hasSpecificIdentitySupport(identityEntries) {
-  return identityEntries.some(entry => !isBroadGenreEvidence(entry) || isOperatorDeclared(entry));
-}
-
-function normalizeConfidence(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return null;
-  if (numeric > 1) return Math.max(0, Math.min(1, numeric / 100));
-  return Math.max(0, Math.min(1, numeric));
-}
-
-function buildIntentEntry(entry = {}, {
-  fieldId,
-  reasonCode,
-  inferred = true,
-  operatorDeclared = false,
-} = {}) {
-  const normalizedEntry = normalizePolicyIntentEntry({
-    key: entry.key,
-    label: entry.label,
-    value: entry.value,
-    reasonCode: reasonCode || entry.reasonCode || 'policy_evidence',
-  });
-  if (!normalizedEntry) return null;
-  const strictConstraintResult = entry.strictConstraint === undefined
-    ? null
-    : buildPolicyStrictConstraintDescriptor(entry.strictConstraint);
-  if (strictConstraintResult && !strictConstraintResult.ok) return null;
-
-  const intentEntry = {
-    fieldId,
-    ...normalizedEntry,
-    evidenceBucketId: entry.bucketId,
-    evidenceSourceId: entry.sourceId,
-    authoritySourceId: entry.authoritySourceId,
-    reasonCode: reasonCode || entry.reasonCode || 'policy_evidence',
-    evidenceCount: Number.isFinite(Number(entry.count)) ? Number(entry.count) : null,
-    evidenceConfidence: normalizeConfidence(entry.confidence),
-    inferred: Boolean(inferred),
-    operatorDeclared: Boolean(operatorDeclared),
-  };
-
-  if (strictConstraintResult?.descriptor) {
-    intentEntry.strictConstraint = strictConstraintResult.descriptor;
-  }
-
-  return intentEntry;
-}
-
-function uniqueByKey(entries) {
-  const seen = new Set();
-  return entries.filter(entry => {
-    if (!entry) return false;
-    const key = `${entry.fieldId}:${entry.key}:${entry.authoritySourceId}:${JSON.stringify(entry.strictConstraint || null)}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function buildWarning(reasonCode, summary, details = {}) {
-  return {
-    reasonCode,
-    severity: details.severity || 'warning',
-    summary,
-    evidenceBucketId: details.evidenceBucketId || null,
-    evidenceSourceId: details.evidenceSourceId || null,
-  };
-}
-
-function buildAssumption(reasonCode, summary) {
-  return {
-    reasonCode,
-    summary,
-  };
-}
 
 function countEntries(intent) {
   return [
@@ -458,177 +311,17 @@ function buildEvidenceQualityIssues(quality = null) {
 }
 
 function buildPolicyIntentDraftFromEvidenceProjection(projection = {}) {
-  const evidenceProjection = requirePolicyEvidenceProjection(projection);
   const intent = createEmptyIntentDraft();
-  const identityEntries = getEvidenceEntries(
-    evidenceProjection,
-    POLICY_EVIDENCE_BUCKET_IDS.IDENTITY
-  );
-  const hasSpecificSupport = hasSpecificIdentitySupport(identityEntries);
+  const suggestionPlan = buildPolicyProfileIntentSuggestionPlan(projection);
 
-  const belongsHere = [];
-  const helpfulMatches = [];
-
-  identityEntries.forEach(entry => {
-    if (isMetadataEvidence(entry)) {
-      intent.warnings.push(buildWarning(
-        POLICY_INTENT_WARNING_IDS.METADATA_NOT_IDENTITY_AUTHORITY,
-        'Metadata evidence can support compatibility, but cannot define destination identity.',
-        { evidenceBucketId: entry.bucketId, evidenceSourceId: entry.sourceId }
-      ));
-      helpfulMatches.push(buildIntentEntry({
-        ...entry,
-        bucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-      }, {
-        fieldId: POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES,
-        reasonCode: 'metadata_identity_demoted_to_compatibility',
-        inferred: true,
-        operatorDeclared: false,
-      }));
-      return;
-    }
-
-    if (isBroadGenreEvidence(entry) && !isOperatorDeclared(entry) && !hasSpecificSupport) {
-      intent.warnings.push(buildWarning(
-        POLICY_INTENT_WARNING_IDS.BROAD_GENRE_IDENTITY_NEEDS_SUPPORT,
-        'Broad genre evidence was kept as helpful evidence until specific support or operator intent confirms destination identity.',
-        { evidenceBucketId: entry.bucketId, evidenceSourceId: entry.sourceId }
-      ));
-      helpfulMatches.push(buildIntentEntry({
-        ...entry,
-        bucketId: POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY,
-      }, {
-        fieldId: POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES,
-        reasonCode: 'broad_genre_identity_demoted_to_compatibility',
-        inferred: true,
-        operatorDeclared: false,
-      }));
-      return;
-    }
-
-    belongsHere.push(buildIntentEntry(entry, {
-      fieldId: POLICY_INTENT_FIELD_IDS.BELONGS_HERE,
-      reasonCode: isOperatorDeclared(entry)
-        ? 'operator_declared_destination_identity'
-        : 'observed_destination_identity',
-      inferred: !isOperatorDeclared(entry),
-      operatorDeclared: isOperatorDeclared(entry),
-    }));
-  });
-
-  helpfulMatches.push(...getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.COMPATIBILITY)
-    .map(entry => buildIntentEntry(entry, {
-      fieldId: POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES,
-      reasonCode: isOperatorDeclared(entry)
-        ? 'operator_declared_helpful_match'
-        : 'evidence_supported_helpful_match',
-      inferred: !isOperatorDeclared(entry),
-      operatorDeclared: isOperatorDeclared(entry),
-    })));
-
-  intent.belongs_here = uniqueByKey(belongsHere);
-  intent.helpful_matches = uniqueByKey(helpfulMatches);
-  intent.hard_limits = uniqueByKey(getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.HARD_LIMIT)
-    .filter(isOperatorDeclared)
-    .map(entry => buildIntentEntry(entry, {
-      fieldId: POLICY_INTENT_FIELD_IDS.HARD_LIMITS,
-      reasonCode: 'operator_declared_hard_limit',
-      inferred: false,
-      operatorDeclared: true,
-    })));
-  intent.avoid = uniqueByKey(getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.AVOID)
-    .filter(isOperatorDeclared)
-    .map(entry => buildIntentEntry(entry, {
-      fieldId: POLICY_INTENT_FIELD_IDS.AVOID,
-      reasonCode: 'operator_declared_avoid',
-      inferred: false,
-      operatorDeclared: true,
-    })));
-  intent.ask_when = uniqueByKey([
-    ...getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.OUTLIER)
-      .map(entry => buildIntentEntry(entry, {
-        fieldId: POLICY_INTENT_FIELD_IDS.ASK_WHEN,
-        reasonCode: 'outlier_needs_review',
-      })),
-    ...getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT)
-      .map(entry => buildIntentEntry(entry, {
-        fieldId: POLICY_INTENT_FIELD_IDS.ASK_WHEN,
-        reasonCode: entry.reasonCode === 'stale_profile'
-          ? 'stale_profile_needs_review'
-          : 'insufficient_evidence_needs_review',
-      })),
-  ]);
-  intent.routing_target = uniqueByKey(getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.ROUTING)
-    .map(entry => buildIntentEntry(entry, {
-      fieldId: POLICY_INTENT_FIELD_IDS.ROUTING_TARGET,
-      reasonCode: isOperatorDeclared(entry)
-        ? 'operator_declared_routing_target'
-        : 'routing_outcome_observed',
-      inferred: !isOperatorDeclared(entry),
-      operatorDeclared: isOperatorDeclared(entry),
-    })));
-
-  if (intent.ask_when.length > 0) {
-    intent.warnings.push(buildWarning(
-      POLICY_INTENT_WARNING_IDS.OBSERVED_ABSENCE_NOT_EXCLUSION,
-      'Missing, stale, or conflicting evidence created review triggers, not exclusions.',
-      { evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT }
-    ));
-  }
-
-  if (getEvidenceEntries(evidenceProjection, POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT).length > 0 ||
-      evidenceProjection.warnings?.length > 0) {
-    intent.warnings.push(buildWarning(
-      POLICY_INTENT_WARNING_IDS.INSUFFICIENT_EVIDENCE,
-      'Some evidence is insufficient for confident automation.',
-      { evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT }
-    ));
-  }
-
-  if (evidenceProjection.quality?.statusId === POLICY_EVIDENCE_QUALITY_STATUS_IDS.INSUFFICIENT) {
-    intent.warnings.push(buildWarning(
-      POLICY_INTENT_WARNING_IDS.INSUFFICIENT_EVIDENCE,
-      'Evidence quality is insufficient; intent inference must wait for more evidence or operator confirmation.',
-      { evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT }
-    ));
-  }
-
-  if (intent.ask_when.some(entry => entry.reasonCode === 'stale_profile_needs_review')) {
-    intent.warnings.push(buildWarning(
-      POLICY_INTENT_WARNING_IDS.STALE_PROFILE,
-      'The destination profile should be refreshed before treating this intent as current.',
-      { evidenceBucketId: POLICY_EVIDENCE_BUCKET_IDS.INSUFFICIENT }
-    ));
-  }
-
-  intent.assumptions = [
-    buildAssumption(
-      POLICY_INTENT_ASSUMPTION_IDS.OBSERVED_IDENTITY_ACCEPTANCE_REQUIRED,
-      'Observed identity evidence remains a suggestion until operator intent or later automation gates accept it.'
-    ),
-    buildAssumption(
-      POLICY_INTENT_ASSUMPTION_IDS.DECLARED_CONSTRAINTS_ARE_OPERATOR_AUTHORITY,
-      'Hard limits and avoid values are accepted only from operator-declared intent.'
-    ),
-    buildAssumption(
-      POLICY_INTENT_ASSUMPTION_IDS.FINAL_OUTCOMES_REQUIRE_LEARNING_GUARD,
-      'Manual outcomes can inform evidence, but durable learning waits for the learning eligibility guard.'
-    ),
-    buildAssumption(
-      POLICY_INTENT_ASSUMPTION_IDS.METADATA_SUPPORTS_COMPATIBILITY_ONLY,
-      'Metadata evidence supports compatibility and freshness, not policy identity by itself.'
-    ),
-    buildAssumption(
-      POLICY_INTENT_ASSUMPTION_IDS.LEGACY_TEMPLATE_IS_DRAFT_SEED_ONLY,
-      'Starter templates remain draft seeds and bridge inputs, not the durable intent authority.'
-    ),
-  ];
-
-  intent.warnings.push(buildWarning(
-    POLICY_INTENT_WARNING_IDS.LEGACY_TEMPLATE_BRIDGE_ONLY,
-    'Legacy presets and custom signals remain compatibility bridges until native intent storage is ready.',
-    { severity: 'info' }
-  ));
+  intent.belongs_here = suggestionPlan.entries[POLICY_INTENT_FIELD_IDS.BELONGS_HERE];
+  intent.helpful_matches = suggestionPlan.entries[POLICY_INTENT_FIELD_IDS.HELPFUL_MATCHES];
+  intent.hard_limits = suggestionPlan.entries[POLICY_INTENT_FIELD_IDS.HARD_LIMITS];
+  intent.avoid = suggestionPlan.entries[POLICY_INTENT_FIELD_IDS.AVOID];
+  intent.ask_when = suggestionPlan.entries[POLICY_INTENT_FIELD_IDS.ASK_WHEN];
+  intent.routing_target = suggestionPlan.entries[POLICY_INTENT_FIELD_IDS.ROUTING_TARGET];
+  intent.assumptions = suggestionPlan.assumptions;
+  intent.warnings = suggestionPlan.warnings;
   intent.confidence = calculateConfidence(intent);
 
   return intent;
@@ -751,6 +444,20 @@ function validateIntentEntry(entry = {}, fieldId) {
       fieldId,
       entryRiskIds: entryFieldAudit.issues.map(issue => issue.riskId),
     });
+  }
+
+  if (Object.prototype.hasOwnProperty.call(entry, 'suggestion')) {
+    const suggestionAudit = validatePolicyProfileIntentSuggestionDescriptor(entry.suggestion, {
+      fieldId,
+      reasonCode: entry.reasonCode,
+    });
+    if (!suggestionAudit.ok) {
+      issues.push({
+        riskId: POLICY_INTENT_AUDIT_RISK_IDS.INVALID_SUGGESTION_DESCRIPTOR,
+        fieldId,
+        suggestionRiskIds: suggestionAudit.issues.map(issue => issue.riskId),
+      });
+    }
   }
 
   if (fieldId === POLICY_INTENT_FIELD_IDS.HARD_LIMITS &&
@@ -893,9 +600,9 @@ function validatePolicyIntentDraft(intent = {}) {
         message: 'Metadata evidence cannot be promoted to destination identity.',
       });
     }
-    if (isBroadGenreEvidence(entry) &&
+    if (isPolicyBroadGenreEvidence(entry) &&
         entry.operatorDeclared !== true &&
-        !asArray(intent.belongs_here).some(candidate => !isBroadGenreEvidence(candidate))) {
+        !asArray(intent.belongs_here).some(candidate => !isPolicyBroadGenreEvidence(candidate))) {
       issues.push({
         riskId: POLICY_INTENT_AUDIT_RISK_IDS.BROAD_GENRE_IDENTITY_WITHOUT_SUPPORT,
         message: 'Broad genre identity requires specific supporting evidence or operator-declared intent.',
