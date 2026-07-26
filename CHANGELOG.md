@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Authorized Outcome Persistence Commands** - Classifarr now validates a
+  pure, server-owned persistence plan against canonical intake, learning guard,
+  revalidated actor authority, and transaction-locked current state. A valid
+  final outcome can remain outcome-only when learning authority is absent; the
+  new component performs no direct storage or provider side effects.
+
 - **Discord Pending-Answer Intake Gate** - Discord verification and correction
   now record the existing item outcome before passing server-owned pending
   state through canonical learning intake. They remain outcome-only and cannot

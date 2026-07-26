@@ -3810,6 +3810,27 @@ Tasks:
   transaction boundary that validates current state, authorization, and
   idempotency before it writes final outcomes, approved learning, or profile
   refresh commands. Intake and the guard remain pure.
+
+Implementation task sequence:
+
+1. **6R.3.3a Authorized Persistence Command Contract:** define and test the
+   pure command that requires canonical intake, guard decision, server-derived
+   authorization, and transaction-locked current state to agree before it can
+   plan an outcome, learning, or refresh operation.
+2. **6R.3.3b Source-Event Idempotency Ledger:** add an append-only unique
+   source-event receipt and repository. It must return an existing receipt for
+   an exact replay and reject a source-event payload mismatch.
+3. **6R.3.3c Transaction Executor:** lock current state, revalidate actor and
+   destination, claim the source-event receipt, persist the final outcome, and
+   apply only command-approved operations in one rollback-safe transaction.
+4. **6R.3.3d Manual Correction Adoption:** move the active API manual
+   correction path through the executor and remove its direct exact-item write.
+5. **6R.3.3e Profile Refresh Command Consumer:** persist and consume approved
+   refresh commands only after compatibility and identity evidence writers are
+   ready; exact-item memory must not queue a refresh.
+6. **6R.3.3f Concurrency And Recovery Audit:** prove replay, state drift,
+   authorization loss, writer failure, and transaction rollback behavior with
+   focused unit and integration tests.
 - Store final outcome separately from learning decision.
 - Add explicit learning tiers:
   - `none`,
@@ -3842,6 +3863,12 @@ Implementation status:
   [Policy Learning Guard Architecture Cutover](policy-learning-guard-architecture-cutover.md).
 - The server-owned learning guard contract lives in
   `server/src/services/policyLearningGuard.mjs`.
+- Phase 6R.3.3a is complete. The pure command in
+  `server/src/services/policyAuthorizedOutcomePersistenceCommand.mjs` accepts
+  only canonical intake and guard decisions whose bounded source, source event,
+  final outcome, revalidated actor authority, and transaction-locked current
+  state agree. It can plan an outcome-only resolution when learning authority
+  is absent, performs no writes, and is not yet wired into active routes.
 - The focused learning-guard test suite lives in
   `server/src/__tests__/services/policyLearningGuard.test.mjs`.
 - Final-outcome shaping and route-transition validation now live in

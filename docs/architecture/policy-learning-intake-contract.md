@@ -172,7 +172,8 @@ preference and exact-match write paths with an outcome-only guard decision.
 
 ## Next Step
 
-Proceed to **Phase 6R.3.3: Authorized Outcome And Learning Persistence**.
-Revalidate current state, source-event idempotency, and authorization in one
-transaction before any guarded candidate, final outcome, or refresh command is
-written durably.
+Phase 6R.3.3a is implemented in
+[Policy Authorized Outcome Persistence Command](policy-authorized-outcome-persistence-command.md).
+Proceed to **Phase 6R.3.3b: Source-Event Idempotency Ledger**. Add one
+append-only unique receipt for a source event before a transaction executor can
+write any guarded candidate, final outcome, or refresh command durably.
