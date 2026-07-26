@@ -22,6 +22,11 @@ import {
   buildPolicyFinalOutcome,
   buildPolicyFinalOutcomeAudit,
 } from './policyFinalOutcomeNormalizer.mjs';
+import {
+  buildPolicyLearningGuardInput,
+  buildPolicyLearningIntakeEvent,
+  validatePolicyLearningIntakeEvent,
+} from './policyLearningIntakeContract.mjs';
 
 const POLICY_REQUEST_LEARNING_DISPOSITION_IDS = Object.freeze({
   OUTCOME_ONLY: 'outcome_only',
@@ -47,6 +52,8 @@ const POLICY_REQUEST_LEARNING_REASON_IDS = Object.freeze({
 const POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_EVENT_TYPE: 'unknown_event_type',
   UNKNOWN_SOURCE: 'unknown_source',
+  INVALID_LEARNING_INTAKE: 'invalid_request_time_learning_intake',
+  INTAKE_OUTCOME_MISMATCH: 'request_time_learning_intake_outcome_mismatch',
   MISSING_DESTINATION_CHOICE: 'missing_destination_choice',
   MISSING_FINAL_OUTCOME: 'missing_final_outcome',
   INVALID_FINAL_OUTCOME: 'invalid_final_outcome',
@@ -461,15 +468,25 @@ function buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan(input =
       : null,
   };
   const answerOutcomeId = requestEvent.answerOutcomeId || defaultAnswerOutcomeForEvent(eventTypeId);
-  const learningDecision = buildPolicyLearningDecision({
+  const intake = buildPolicyLearningIntakeEvent({
     sourceId,
+    sourceEventId: requestEvent.sourceEventId,
+    actorId: requestEvent.actorId,
+    itemId: item.itemId,
     answerOutcomeId,
     question: buildQuestionForLearning(questionReductionPlan),
     answer: buildAnswerFromDestination(finalDestination, requestEvent.answer),
     candidate: requestEvent.candidate,
-    context: learningGuardContext,
+    context: requestEvent.learningContext,
     finalOutcome,
   });
+  const intakeAudit = validatePolicyLearningIntakeEvent(intake);
+  const learningInput = buildPolicyLearningGuardInput(intake);
+  if (!intakeAudit.ok || !learningInput) {
+    throw new TypeError('Request-time learning requires a valid canonical intake event.');
+  }
+
+  const learningDecision = buildPolicyLearningDecision(learningInput);
   const learningValidation = validatePolicyLearningDecision(learningDecision);
   const dispositionId = mapDisposition(learningDecision, eventTypeId);
 
@@ -486,7 +503,8 @@ function buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan(input =
       routeResult,
     }),
     item,
-    finalOutcome,
+    intake,
+    finalOutcome: intake.finalOutcome,
     upstreamEvidenceFingerprint,
     questionReductionProof,
     learningGuardContext,
@@ -572,6 +590,7 @@ function validatePolicyRequestTimeLearningDecision(decision = {}) {
     upstreamEvidenceFingerprint: decision.upstreamEvidenceFingerprint,
     questionReductionProof: decision.questionReductionProof,
   });
+  const intakeAudit = validatePolicyLearningIntakeEvent(decision.intake);
 
   if (stableJson(decision.trace) !== stableJson(expectedTrace)) {
     issues.push({
@@ -591,6 +610,20 @@ function validatePolicyRequestTimeLearningDecision(decision = {}) {
     issues.push({
       riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.UNKNOWN_SOURCE,
       message: 'Request-time learning decision must map to a supported policy learning source.',
+    });
+  }
+
+  if (!intakeAudit.ok) {
+    issues.push({
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.INVALID_LEARNING_INTAKE,
+      message: 'Request-time learning requires a valid canonical intake event.',
+    });
+  }
+
+  if (decision.intake?.finalOutcome !== decision.finalOutcome) {
+    issues.push({
+      riskId: POLICY_REQUEST_LEARNING_AUDIT_RISK_IDS.INTAKE_OUTCOME_MISMATCH,
+      message: 'Request-time final outcome must be the canonical intake outcome.',
     });
   }
 

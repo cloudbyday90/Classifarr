@@ -49,7 +49,12 @@ function questionReductionPlan(overrides = {}) {
 
 function buildRequestTimeLearningDecisionForTest(input = {}) {
   const { questionReductionPlan: plan = questionReductionPlan(), ...eventInput } = input;
-  const requestEvent = buildPolicyRequestTimeEvent(eventInput);
+  const eventTypeId = eventInput.eventTypeId || POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION;
+  const itemId = eventInput.item?.itemId ?? 'unknown';
+  const requestEvent = buildPolicyRequestTimeEvent({
+    ...eventInput,
+    sourceEventId: eventInput.sourceEventId || `request_time:${eventTypeId}:${itemId}`,
+  });
 
   return buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan({
     questionReductionPlan: plan,
@@ -139,6 +144,7 @@ describe('policyRequestTimeLearning', () => {
     const decision = buildPolicyRequestTimeLearningDecisionFromRuntimeInput({
       eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
       requestedDestination: destination(),
+      sourceEventId: 'request_time:user_requested_destination:10674',
     });
 
     expect(decision.questionReductionProof.validation.ok).toBe(true);
@@ -191,6 +197,19 @@ describe('policyRequestTimeLearning', () => {
       }),
     ]));
     expect(validatePolicyRequestTimeLearningDecision(decision).ok).toBe(true);
+  });
+
+  test('requires a server-derived request event before it evaluates the learning guard', () => {
+    const requestEvent = buildPolicyRequestTimeEvent({
+      eventTypeId: POLICY_REQUEST_EVENT_TYPE_IDS.USER_REQUESTED_DESTINATION,
+      item: { itemId: 10674 },
+      requestedDestination: destination(),
+    });
+
+    expect(() => buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan({
+      questionReductionPlan: questionReductionPlan(),
+      requestEvent,
+    })).toThrow('valid canonical intake event');
   });
 
   test('records successful Arr routing as final outcome without direct learning', () => {

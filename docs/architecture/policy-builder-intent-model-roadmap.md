@@ -3869,6 +3869,11 @@ Implementation status:
   canonical intake before guard evaluation. The adapter remains side-effect
   free; the later exact-item persistence path and all remaining source adapters
   are separate work.
+- Phase 6R.3.2b is complete for request-time learning. It now requires valid
+  canonical intake before the guard runs, keeps the existing
+  question-reduction/evidence-fingerprint proof chain, and retains the
+  intake's final outcome as the decision outcome. Native pending, routing, and
+  Discord adapters remain separate adoption components.
 - The contract supports explicit learning tiers for no learning,
   exact-item memory, compatibility evidence, identity evidence, and hard-limit
   evidence; every candidate includes reason codes and write permission is

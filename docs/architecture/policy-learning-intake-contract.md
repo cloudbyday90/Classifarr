@@ -141,6 +141,12 @@ The manual correction route derives a bounded source-event ID from the
 persisted correction row and the exact-item-memory adapter now validates this
 contract before it calls the learning guard.
 
+Request-time adoption is documented in
+[Policy Request-Time Learning Intake Adoption](policy-request-time-learning-intake-adoption.md).
+It requires a server-provided source event, retains the independent
+question-reduction fingerprint proof, and exposes the intake's canonical final
+outcome in the resulting no-write decision.
+
 ## Next Step
 
 Proceed to **Phase 6R.3.2: Learning Intake Adapter Adoption**. Migrate the

@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Request-Time Learning Intake Gate** - request, confirmation, manual
+  destination, and routing learning decisions now require a bounded
+  server-provided event correlation and canonical intake before the learning
+  guard can run. Existing question-reduction fingerprint, route-failure, and
+  no-write guarantees remain intact; durable persistence remains separate work.
+
 - **Manual Correction Learning Provenance** - manual classification corrections
   now derive a server-owned event identifier from the persisted correction row
   before exact-item learning is evaluated. The shared intake and learning-guard
