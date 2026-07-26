@@ -3863,6 +3863,12 @@ Implementation status:
   adapter adoption remains Phase 6R.3.2. Discord source vocabulary exists, but
   production Discord intake must not be claimed until that adapter is built and
   tested through the shared contract.
+- Phase 6R.3.2a is complete for manual classification correction. The route
+  derives `classification_correction:<persisted row id>` after it records the
+  correction, and `policyManualCorrectionLearning.mjs` now requires valid
+  canonical intake before guard evaluation. The adapter remains side-effect
+  free; the later exact-item persistence path and all remaining source adapters
+  are separate work.
 - The contract supports explicit learning tiers for no learning,
   exact-item memory, compatibility evidence, identity evidence, and hard-limit
   evidence; every candidate includes reason codes and write permission is

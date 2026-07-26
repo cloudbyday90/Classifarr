@@ -18,6 +18,8 @@ import {
 
 describe('policyManualCorrectionLearning', () => {
   const validInput = {
+    sourceEventId: 'classification_correction:14',
+    actorId: 'operator:7',
     classification: {
       id: 42,
       tmdbId: 10674,
@@ -58,6 +60,10 @@ describe('policyManualCorrectionLearning', () => {
         profileRefresh: {
           queue: false,
         },
+      },
+      intake: {
+        sourceId: 'manual_classification_change',
+        sourceEventId: 'classification_correction:14',
       },
       sideEffects: {
         learningMutationPerformed: false,
@@ -176,6 +182,29 @@ describe('policyManualCorrectionLearning', () => {
     });
     expect(audit.issues[0].riskId).toBe(
       POLICY_MANUAL_CORRECTION_LEARNING_AUDIT_RISK_IDS.PROFILE_REFRESH_QUEUED
+    );
+  });
+
+  it('requires a server-derived correction event before it evaluates learning', () => {
+    expect(() => buildPolicyManualCorrectionLearning({
+      ...validInput,
+      sourceEventId: '',
+    })).toThrow('valid canonical intake event');
+  });
+
+  it('detects a tampered intake independently from the learning-guard audit', () => {
+    const result = buildPolicyManualCorrectionLearning(validInput);
+    const audit = buildPolicyManualCorrectionLearningAudit({
+      ...result,
+      intake: {
+        ...result.intake,
+        sourceEventId: null,
+      },
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.issues[0].riskId).toBe(
+      POLICY_MANUAL_CORRECTION_LEARNING_AUDIT_RISK_IDS.INVALID_INTAKE_EVENT
     );
   });
 });

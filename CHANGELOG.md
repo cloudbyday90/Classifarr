@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Manual Correction Learning Provenance** - manual classification corrections
+  now derive a server-owned event identifier from the persisted correction row
+  before exact-item learning is evaluated. The shared intake and learning-guard
+  audits fail closed when correlation is missing or tampered with; the change
+  adds no new learning, routing, provider, or profile-refresh side effect.
+
 - **Canonical Policy Learning Intake** - Classifarr now has a versioned,
   server-owned intake contract for manual, confirmation, Discord, request, and
   routing learning sources. It requires bounded event correlation, allowlisted

@@ -133,6 +133,14 @@ provider payloads, recognized rejected question frames, unknown source/answer
 rejection, missing source-event correlation, and tampered final-outcome
 consistency.
 
+## Adoption Record
+
+The first live adoption is documented in
+[Policy Manual Correction Learning Intake Adoption](policy-manual-correction-learning-intake-adoption.md).
+The manual correction route derives a bounded source-event ID from the
+persisted correction row and the exact-item-memory adapter now validates this
+contract before it calls the learning guard.
+
 ## Next Step
 
 Proceed to **Phase 6R.3.2: Learning Intake Adapter Adoption**. Migrate the

@@ -19,6 +19,11 @@ import {
   buildPolicyLearningDecision,
   buildPolicyLearningGuardAudit,
 } from './policyLearningGuard.mjs';
+import {
+  buildPolicyLearningGuardInput,
+  buildPolicyLearningIntakeEvent,
+  validatePolicyLearningIntakeEvent,
+} from './policyLearningIntakeContract.mjs';
 
 const POLICY_MANUAL_CORRECTION_LEARNING_VERSION = 'policy.manual_correction_learning.v1';
 
@@ -40,6 +45,7 @@ const POLICY_MANUAL_CORRECTION_LEARNING_REASON_IDS = Object.freeze({
 const POLICY_MANUAL_CORRECTION_LEARNING_AUDIT_RISK_IDS = Object.freeze({
   INVALID_VERSION: 'invalid_manual_correction_learning_version',
   INVALID_STATUS: 'invalid_manual_correction_learning_status',
+  INVALID_INTAKE_EVENT: 'invalid_manual_correction_learning_intake_event',
   INVALID_GUARD_DECISION: 'invalid_manual_correction_learning_guard_decision',
   INVALID_EXACT_ITEM_MEMORY: 'invalid_manual_correction_exact_item_memory',
   READY_WITHOUT_EXACT_ITEM_MEMORY: 'ready_manual_correction_requires_exact_item_memory',
@@ -111,10 +117,20 @@ function buildExactItemMemory({ classification = {}, destination = {} } = {}) {
   };
 }
 
-function buildOutcomeOnlyDecision({ exactItemMemory, finalOutcomeRecorded }) {
-  return buildPolicyLearningDecision({
+function buildManualCorrectionDecision({
+  exactItemMemory,
+  finalOutcomeRecorded,
+  sourceEventId,
+  actorId,
+  answerOutcomeId,
+  candidate = {},
+} = {}) {
+  const intake = buildPolicyLearningIntakeEvent({
     sourceId: POLICY_LEARNING_EVENT_SOURCE_IDS.MANUAL_CLASSIFICATION_CHANGE,
-    answerOutcomeId: ANSWER_OUTCOME_IDS.DO_NOT_LEARN,
+    sourceEventId,
+    actorId,
+    itemId: exactItemMemory.classificationId,
+    answerOutcomeId,
     question: {
       frameId: QUESTION_FRAME_IDS.DESTINATION_FIT,
       stale: false,
@@ -125,6 +141,7 @@ function buildOutcomeOnlyDecision({ exactItemMemory, finalOutcomeRecorded }) {
       destinationLibraryName: exactItemMemory.libraryName,
       ambiguous: false,
     },
+    candidate,
     finalOutcome: {
       itemId: exactItemMemory.classificationId,
       destinationLibraryId: exactItemMemory.libraryId,
@@ -132,47 +149,60 @@ function buildOutcomeOnlyDecision({ exactItemMemory, finalOutcomeRecorded }) {
       recorded: finalOutcomeRecorded,
     },
   });
+  const intakeAudit = validatePolicyLearningIntakeEvent(intake);
+  const learningInput = buildPolicyLearningGuardInput(intake);
+
+  if (!intakeAudit.ok || !learningInput) {
+    throw new TypeError('Manual correction learning requires a valid canonical intake event.');
+  }
+
+  return {
+    intake,
+    decision: buildPolicyLearningDecision(learningInput),
+  };
 }
 
 function buildPolicyManualCorrectionLearning({
   classification = {},
   destination = {},
   finalOutcomeRecorded = false,
+  sourceEventId,
+  actorId = null,
 } = {}) {
   const exactItemMemory = buildExactItemMemory({ classification, destination });
   const outcomeRecorded = finalOutcomeRecorded === true;
   const reasonCodes = [];
+  let intake;
   let decision;
   let statusId;
 
   if (!outcomeRecorded) {
     reasonCodes.push(POLICY_MANUAL_CORRECTION_LEARNING_REASON_IDS.FINAL_OUTCOME_NOT_RECORDED);
-    decision = buildOutcomeOnlyDecision({
+    ({ intake, decision } = buildManualCorrectionDecision({
       exactItemMemory,
       finalOutcomeRecorded: false,
-    });
+      sourceEventId,
+      actorId,
+      answerOutcomeId: ANSWER_OUTCOME_IDS.DO_NOT_LEARN,
+    }));
     statusId = POLICY_MANUAL_CORRECTION_LEARNING_STATUS_IDS.BLOCKED;
   } else if (!exactItemMemory.eligible) {
     reasonCodes.push(...exactItemMemory.reasonCodes);
-    decision = buildOutcomeOnlyDecision({
+    ({ intake, decision } = buildManualCorrectionDecision({
       exactItemMemory,
       finalOutcomeRecorded: true,
-    });
+      sourceEventId,
+      actorId,
+      answerOutcomeId: ANSWER_OUTCOME_IDS.DO_NOT_LEARN,
+    }));
     statusId = POLICY_MANUAL_CORRECTION_LEARNING_STATUS_IDS.OUTCOME_ONLY;
   } else {
-    decision = buildPolicyLearningDecision({
-      sourceId: POLICY_LEARNING_EVENT_SOURCE_IDS.MANUAL_CLASSIFICATION_CHANGE,
+    ({ intake, decision } = buildManualCorrectionDecision({
+      exactItemMemory,
+      finalOutcomeRecorded: true,
+      sourceEventId,
+      actorId,
       answerOutcomeId: ANSWER_OUTCOME_IDS.REMEMBER_EXACT_ITEM,
-      question: {
-        frameId: QUESTION_FRAME_IDS.DESTINATION_FIT,
-        stale: false,
-      },
-      answer: {
-        label: exactItemMemory.libraryName,
-        destinationLibraryId: exactItemMemory.libraryId,
-        destinationLibraryName: exactItemMemory.libraryName,
-        ambiguous: false,
-      },
       candidate: {
         key: `manual_correction:${exactItemMemory.classificationId}:${exactItemMemory.mediaType}:${exactItemMemory.tmdbId}`,
         label: 'Manual correction exact-item memory',
@@ -182,13 +212,7 @@ function buildPolicyManualCorrectionLearning({
         evidenceCount: 1,
         evidenceSource: 'manual_correction',
       },
-      finalOutcome: {
-        itemId: exactItemMemory.classificationId,
-        destinationLibraryId: exactItemMemory.libraryId,
-        destinationLibraryName: exactItemMemory.libraryName,
-        recorded: true,
-      },
-    });
+    }));
 
     const guardAudit = buildPolicyLearningGuardAudit(decision);
     const admitted = guardAudit.ok === true &&
@@ -210,6 +234,7 @@ function buildPolicyManualCorrectionLearning({
     version: POLICY_MANUAL_CORRECTION_LEARNING_VERSION,
     ok: statusId !== POLICY_MANUAL_CORRECTION_LEARNING_STATUS_IDS.BLOCKED,
     statusId,
+    intake,
     decision,
     exactItemMemory: {
       ...exactItemMemory,
@@ -241,6 +266,7 @@ function buildPolicyManualCorrectionLearningAudit(result = {}) {
   const source = asObject(result);
   const exactItemMemory = asObject(source.exactItemMemory);
   const sideEffects = asObject(source.sideEffects);
+  const intakeAudit = validatePolicyLearningIntakeEvent(source.intake);
   const decisionAudit = buildPolicyLearningGuardAudit(source.decision);
   const issues = [];
 
@@ -255,6 +281,13 @@ function buildPolicyManualCorrectionLearningAudit(result = {}) {
     issues.push({
       riskId: POLICY_MANUAL_CORRECTION_LEARNING_AUDIT_RISK_IDS.INVALID_STATUS,
       message: 'Manual-correction learning must use a supported status.',
+    });
+  }
+
+  if (!intakeAudit.ok) {
+    issues.push({
+      riskId: POLICY_MANUAL_CORRECTION_LEARNING_AUDIT_RISK_IDS.INVALID_INTAKE_EVENT,
+      message: 'Manual-correction learning requires a valid canonical intake event.',
     });
   }
 
@@ -321,6 +354,10 @@ function buildPolicyManualCorrectionLearningAudit(result = {}) {
     guardAudit: {
       ok: decisionAudit.ok,
       issueCount: decisionAudit.issueCount,
+    },
+    intakeAudit: {
+      ok: intakeAudit.ok,
+      issueCount: intakeAudit.issueCount,
     },
   };
 }

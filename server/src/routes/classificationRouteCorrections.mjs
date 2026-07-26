@@ -112,6 +112,8 @@ export function registerCorrectionRoutes(router, {
         libraryName: correctedLibrary.name,
       },
       finalOutcomeRecorded: outcomeResult.updated === true,
+      sourceEventId: `classification_correction:${correctionResult.rows[0].id}`,
+      actorId: correctedBy,
     });
 
     let exactItemMemoryRecorded = false;
