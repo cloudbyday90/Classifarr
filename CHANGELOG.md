@@ -175,6 +175,13 @@ unchanged operator or runtime outcome.
 
 #### Platform Integrity
 
+- **Public Compatibility-Removal Artifact Cutover** - all public
+  compatibility-removal exporters now require current, plan-bound runtime
+  evidence before they produce downstream authorization, completion,
+  regeneration, or storage-closure artifacts. Legacy, missing, or cross-plan
+  evidence fails closed; explicit blocked output is a bounded,
+  non-authoritative diagnostic with fixed reason IDs and one next step.
+
 - **Direct Compatibility-Removal Plan Binding** - post-removal runtime evidence
   now retains the exact execution-plan artifact digest used by the applied
   review. Next-batch authorization and completion replay require that digest to

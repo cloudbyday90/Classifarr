@@ -410,14 +410,21 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'docs/architecture/policy-post-removal-runtime-verification.md',
       'docs/architecture/policy-post-removal-runtime-evidence-integrity.md',
       'docs/architecture/policy-compatibility-deletion-execution-plan-artifact-binding.md',
+      'docs/architecture/policy-compatibility-removal-public-artifact-exporter-cutover.md',
     ],
     contractPaths: [
       'server/src/services/policyPostRemovalRuntimeVerification.mjs',
       'server/src/services/policyPostRemovalRuntimeEvidenceArtifact.mjs',
+      'server/src/services/policyCompatibilityRemovalRuntimeEvidenceCutover.mjs',
+      'scripts/lib/policyCompatibilityRemovalExporterDiagnostic.mjs',
+      'scripts/generate-policy-post-removal-verification.mjs',
     ],
     testPaths: [
       'server/src/__tests__/services/policyPostRemovalRuntimeVerification.test.mjs',
       'server/src/__tests__/services/policyPostRemovalRuntimeEvidenceArtifact.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityRemovalRuntimeEvidenceCutover.test.mjs',
+      'server/src/__tests__/scripts/policyCompatibilityRemovalExporterDiagnostic.test.mjs',
+      'server/src/__tests__/scripts/generatePolicyPostRemovalVerification.test.mjs',
     ],
   },
   {
@@ -428,6 +435,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'docs/architecture/policy-next-compatibility-removal-batch-authorization-artifact-integrity.md',
       'docs/architecture/policy-next-compatibility-removal-batch-authorization-artifact-exporter.md',
       'docs/architecture/policy-compatibility-deletion-execution-plan-artifact-binding.md',
+      'docs/architecture/policy-compatibility-removal-public-artifact-exporter-cutover.md',
     ],
     contractPaths: [
       'server/src/services/policyNextCompatibilityRemovalBatchAuthorization.mjs',
@@ -435,6 +443,8 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.mjs',
       'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactFingerprint.mjs',
       'server/src/services/policyPostRemovalRuntimeEvidenceArtifact.mjs',
+      'server/src/services/policyCompatibilityRemovalRuntimeEvidenceCutover.mjs',
+      'scripts/lib/policyCompatibilityRemovalExporterDiagnostic.mjs',
       'scripts/generate-policy-next-batch-authorization.mjs',
     ],
     testPaths: [
@@ -442,6 +452,8 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationPathStateSource.test.mjs',
       'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifact.test.mjs',
       'server/src/__tests__/scripts/generatePolicyNextBatchAuthorization.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityRemovalRuntimeEvidenceCutover.test.mjs',
+      'server/src/__tests__/scripts/policyCompatibilityRemovalExporterDiagnostic.test.mjs',
     ],
   },
   {
@@ -453,6 +465,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'docs/architecture/policy-compatibility-removal-completion-audit-artifact-integrity.md',
       'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity.md',
       'docs/architecture/policy-compatibility-deletion-execution-plan-artifact-binding.md',
+      'docs/architecture/policy-compatibility-removal-public-artifact-exporter-cutover.md',
     ],
     contractPaths: [
       'server/src/services/policyCompatibilityRemovalCompletionAudit.mjs',
@@ -460,6 +473,8 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'server/src/services/policyCompatibilityRemovalCompletionAuditArtifactFingerprint.mjs',
       'server/src/services/policyCompatibilityRemovalCompletionAuditArtifactIntegrity.mjs',
       'server/src/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.mjs',
+      'server/src/services/policyCompatibilityRemovalRuntimeEvidenceCutover.mjs',
+      'scripts/lib/policyCompatibilityRemovalExporterDiagnostic.mjs',
       'scripts/generate-policy-compatibility-removal-completion-audit.mjs',
     ],
     testPaths: [
@@ -468,6 +483,8 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'server/src/__tests__/services/policyCompatibilityRemovalCompletionAuditArtifactIntegrity.test.mjs',
       'server/src/__tests__/services/policyNextCompatibilityRemovalBatchAuthorizationArtifactIntegrity.test.mjs',
       'server/src/__tests__/scripts/generatePolicyCompatibilityRemovalCompletionAudit.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityRemovalRuntimeEvidenceCutover.test.mjs',
+      'server/src/__tests__/scripts/policyCompatibilityRemovalExporterDiagnostic.test.mjs',
     ],
   },
   {
@@ -475,15 +492,20 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     label: 'Compatibility-Removal Evidence Regeneration',
     designDocPaths: [
       'docs/architecture/policy-compatibility-removal-evidence-regeneration.md',
+      'docs/architecture/policy-compatibility-removal-public-artifact-exporter-cutover.md',
     ],
     contractPaths: [
       'server/src/services/policyCompatibilityRemovalEvidenceRegeneration.mjs',
+      'server/src/services/policyCompatibilityRemovalRuntimeEvidenceCutover.mjs',
       'scripts/generate-policy-compatibility-removal-evidence.mjs',
+      'scripts/lib/policyCompatibilityRemovalExporterDiagnostic.mjs',
       'scripts/lib/policyStorageClosureReferenceScanner.mjs',
     ],
     testPaths: [
       'server/src/__tests__/services/policyCompatibilityRemovalEvidenceRegeneration.test.mjs',
       'server/src/__tests__/scripts/generatePolicyCompatibilityRemovalEvidence.test.mjs',
+      'server/src/__tests__/services/policyCompatibilityRemovalRuntimeEvidenceCutover.test.mjs',
+      'server/src/__tests__/scripts/policyCompatibilityRemovalExporterDiagnostic.test.mjs',
       'server/src/__tests__/scripts/policyStorageClosureReferenceScanner.test.mjs',
     ],
   },

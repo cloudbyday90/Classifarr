@@ -28,6 +28,13 @@ import {
 import {
   resolvePolicyStorageClosureExecutionPlanSource,
 } from '../server/src/services/policyStorageClosureExecutionPlanSource.mjs';
+import {
+  evaluatePolicyCompatibilityRemovalRuntimeEvidenceCutover,
+} from '../server/src/services/policyCompatibilityRemovalRuntimeEvidenceCutover.mjs';
+import {
+  POLICY_COMPATIBILITY_REMOVAL_EXPORTER_IDS,
+  buildPolicyCompatibilityRemovalExporterDiagnostic,
+} from './lib/policyCompatibilityRemovalExporterDiagnostic.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -227,6 +234,42 @@ async function main() {
   } catch (err) {
     console.error(err.message);
     process.exit(2);
+  }
+
+  if (executionPlanArtifact && nextBatchAuthorizationArtifact) {
+    const runtimeEvidenceCutover =
+      evaluatePolicyCompatibilityRemovalRuntimeEvidenceCutover({
+        runtimeEvidenceArtifact:
+          nextBatchAuthorizationArtifact.runtimeEvidenceArtifact,
+        expectedExecutionPlanArtifactFingerprint:
+          executionPlanArtifact?.artifactFingerprint?.fingerprint,
+      });
+
+    if (runtimeEvidenceCutover.ready !== true) {
+      const diagnostic = buildPolicyCompatibilityRemovalExporterDiagnostic({
+        exporterId:
+          POLICY_COMPATIBILITY_REMOVAL_EXPORTER_IDS.EVIDENCE_REGENERATION,
+        runtimeEvidenceCutover,
+      });
+
+      if (options.allowBlocked === true) {
+        try {
+          writeJsonFile(cwd, options.outputPath, diagnostic);
+        } catch (err) {
+          console.error(`Could not write compatibility-removal diagnostic JSON: ${err.message}`);
+          process.exit(2);
+        }
+
+        console.log(JSON.stringify(diagnostic, null, 2));
+      } else {
+        console.error(
+          'Compatibility-removal evidence regeneration requires current runtime evidence; pass --allow-blocked to write a bounded diagnostic.'
+        );
+        console.error(JSON.stringify(diagnostic, null, 2));
+      }
+
+      process.exit(1);
+    }
   }
 
   const referenceScan = collectPolicyCompatibilityRemovalReferenceScan({

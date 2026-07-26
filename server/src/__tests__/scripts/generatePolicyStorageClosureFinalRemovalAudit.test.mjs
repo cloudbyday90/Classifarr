@@ -202,6 +202,7 @@ async function buildArtifactChain({
 function runGenerator({
   fixtureRoot,
   artifactChain,
+  allowBlocked = false,
 } = {}) {
   const executionPlanArtifactPath = writeJson(
     fixtureRoot,
@@ -234,6 +235,7 @@ function runGenerator({
     '--validation-evidence', validationEvidencePath,
     '--output', outputPath,
     '--require-complete',
+    ...(allowBlocked ? ['--allow-blocked'] : []),
   ], {
     encoding: 'utf8',
   });
@@ -353,5 +355,54 @@ describe('generate-policy-storage-closure-final-removal-audit', () => {
         ok: false,
       }),
     }));
+  });
+
+  test('fails closed without a final-removal audit when runtime evidence uses a predecessor contract', async () => {
+    const artifactChain = await buildArtifactChain();
+    artifactChain.nextBatchAuthorizationArtifact = structuredClone(
+      artifactChain.nextBatchAuthorizationArtifact
+    );
+    artifactChain.nextBatchAuthorizationArtifact.runtimeEvidenceArtifact.version =
+      'policy.post_removal_runtime_evidence_artifact.v1';
+
+    const result = runGenerator({ fixtureRoot, artifactChain });
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    expect(result.stdoutJson).toBeNull();
+    expect(result.stderr).toContain('requires current runtime evidence');
+    expect(result.stderr).toContain('runtime_evidence_contract_unsupported');
+    expect(fs.existsSync(result.outputPath)).toBe(false);
+  });
+
+  test('writes only a bounded diagnostic when blocked output is explicitly requested', async () => {
+    const artifactChain = await buildArtifactChain();
+    artifactChain.nextBatchAuthorizationArtifact = structuredClone(
+      artifactChain.nextBatchAuthorizationArtifact
+    );
+    artifactChain.nextBatchAuthorizationArtifact.runtimeEvidenceArtifact.version =
+      'policy.post_removal_runtime_evidence_artifact.v1';
+
+    const result = runGenerator({
+      fixtureRoot,
+      artifactChain,
+      allowBlocked: true,
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toBe('');
+    expect(result.stdoutJson).toEqual(expect.objectContaining({
+      authoritative: false,
+      exporterId: 'storage_closure_final_removal_audit',
+      runtimeEvidenceContract: expect.objectContaining({
+        reasonIds: ['runtime_evidence_contract_unsupported'],
+      }),
+    }));
+    expect(JSON.parse(fs.readFileSync(result.outputPath, 'utf8'))).toEqual(
+      result.stdoutJson
+    );
+    expect(result.stdoutJson).not.toHaveProperty('runtimeEvidenceArtifact');
+    expect(result.stdoutJson).not.toHaveProperty('audit');
   });
 });

@@ -16,6 +16,13 @@ import process from 'node:process';
 import {
   buildPolicyPostRemovalRuntimeVerificationArtifact,
 } from '../server/src/services/policyPostRemovalRuntimeVerificationArtifact.mjs';
+import {
+  evaluatePolicyCompatibilityRemovalRuntimeEvidenceCutover,
+} from '../server/src/services/policyCompatibilityRemovalRuntimeEvidenceCutover.mjs';
+import {
+  POLICY_COMPATIBILITY_REMOVAL_EXPORTER_IDS,
+  buildPolicyCompatibilityRemovalExporterDiagnostic,
+} from './lib/policyCompatibilityRemovalExporterDiagnostic.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -157,6 +164,36 @@ async function main() {
     input,
     generatedAt: options.generatedAt,
   });
+  const runtimeEvidenceCutover =
+    evaluatePolicyCompatibilityRemovalRuntimeEvidenceCutover({
+      runtimeEvidenceArtifact: artifact.runtimeEvidenceArtifact,
+    });
+
+  if (runtimeEvidenceCutover.ready !== true) {
+    const diagnostic = buildPolicyCompatibilityRemovalExporterDiagnostic({
+      exporterId:
+        POLICY_COMPATIBILITY_REMOVAL_EXPORTER_IDS.POST_REMOVAL_VERIFICATION,
+      runtimeEvidenceCutover,
+    });
+
+    if (options.allowBlocked === true) {
+      try {
+        writeJsonFile(options.outputPath, diagnostic);
+      } catch (err) {
+        console.error(`Could not write post-removal verification diagnostic JSON: ${err.message}`);
+        process.exit(2);
+      }
+
+      console.log(JSON.stringify(diagnostic, null, 2));
+    } else {
+      console.error(
+        'Post-removal runtime evidence contract is blocked; pass --allow-blocked to write a bounded diagnostic.'
+      );
+      console.error(JSON.stringify(diagnostic, null, 2));
+    }
+
+    process.exit(1);
+  }
 
   if (artifact.verified !== true && options.allowBlocked !== true) {
     console.error(

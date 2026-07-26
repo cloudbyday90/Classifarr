@@ -151,6 +151,21 @@ describe('policyPostRemovalRuntimeEvidenceArtifact', () => {
     ]));
   });
 
+  test('rejects a predecessor runtime-evidence contract version explicitly', () => {
+    const artifact = evidenceArtifact();
+    artifact.version = 'policy.post_removal_runtime_evidence_artifact.v1';
+
+    const validation = validatePolicyPostRemovalRuntimeEvidenceArtifact(artifact);
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS
+          .RUNTIME_EVIDENCE_VERSION_UNSUPPORTED,
+      }),
+    ]));
+  });
+
   test('rejects evidence altered after its artifact is generated', () => {
     const artifact = evidenceArtifact();
     artifact.evidence.importScan.references.push({

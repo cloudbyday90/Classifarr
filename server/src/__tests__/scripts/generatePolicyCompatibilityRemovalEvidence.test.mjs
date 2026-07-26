@@ -401,4 +401,70 @@ describe('generate-policy-compatibility-removal-evidence', () => {
     expect(fs.existsSync(result.outputPath)).toBe(false);
     expect(fs.existsSync(result.artifactOutputPath)).toBe(false);
   });
+
+  test.each([
+    ['pre-v2', artifact => {
+      artifact.version = 'policy.post_removal_runtime_evidence_artifact.v1';
+    }, 'runtime_evidence_contract_unsupported'],
+    ['missing-plan-binding', artifact => {
+      delete artifact.evidence.applyEvidence.removalReview
+        .executionPlanArtifactFingerprint;
+    }, 'execution_plan_fingerprint_missing'],
+    ['cross-plan-binding', artifact => {
+      artifact.evidence.applyEvidence.removalReview
+        .executionPlanArtifactFingerprint = 'c'.repeat(64);
+    }, 'execution_plan_fingerprint_mismatch'],
+  ])(
+    'does not regenerate public evidence from %s runtime evidence',
+    async (caseId, alterRuntimeEvidence, expectedReasonId) => {
+      const inputs = await buildGeneratorInputs();
+      const nextBatchAuthorizationArtifact = structuredClone(
+        inputs.nextBatchAuthorizationArtifact
+      );
+      alterRuntimeEvidence(nextBatchAuthorizationArtifact.runtimeEvidenceArtifact);
+      const strictRoot = path.join(fixtureRoot, `${caseId}-strict`);
+      const strictResult = runGenerator({
+        fixtureRoot: strictRoot,
+        ...inputs,
+        nextBatchAuthorizationArtifact,
+      });
+
+      expect(strictResult.error).toBeUndefined();
+      expect(strictResult.status).toBe(1);
+      expect(strictResult.stdoutJson).toBeNull();
+      expect(strictResult.stderr).toContain('requires current runtime evidence');
+      expect(strictResult.stderr).toContain(expectedReasonId);
+      expect(fs.existsSync(strictResult.outputPath)).toBe(false);
+      expect(fs.existsSync(strictResult.artifactOutputPath)).toBe(false);
+
+      const diagnosticRoot = path.join(fixtureRoot, `${caseId}-diagnostic`);
+      const diagnosticResult = runGenerator({
+        fixtureRoot: diagnosticRoot,
+        ...inputs,
+        nextBatchAuthorizationArtifact,
+        allowBlocked: true,
+      });
+      const diagnostic = JSON.parse(
+        fs.readFileSync(diagnosticResult.outputPath, 'utf8')
+      );
+
+      expect(diagnosticResult.error).toBeUndefined();
+      expect(diagnosticResult.status).toBe(1);
+      expect(diagnostic).toEqual(expect.objectContaining({
+        statusId: 'blocked',
+        authoritative: false,
+        exporterId: 'evidence_regeneration',
+        runtimeEvidenceContract: expect.objectContaining({
+          reasonIds: expect.arrayContaining([expectedReasonId]),
+        }),
+        nextStep: expect.objectContaining({
+          stepId: 'regenerate_current_runtime_evidence',
+        }),
+      }));
+      expect(JSON.stringify(diagnostic)).not.toContain(
+        EVIDENCE_REGENERATION_MANIFEST_PATHS[0]
+      );
+      expect(fs.existsSync(diagnosticResult.artifactOutputPath)).toBe(false);
+    }
+  );
 });

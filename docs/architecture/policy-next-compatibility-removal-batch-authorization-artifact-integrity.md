@@ -4,9 +4,10 @@
 
 Next compatibility-removal batch authorization must not trust a detached
 `verified` status summary. It must consume the fingerprint-valid
-`policy.post_removal_runtime_evidence_artifact.v1` produced for the exact
+`policy.post_removal_runtime_evidence_artifact.v2` produced for the exact
 previous controlled-removal review, re-run post-removal verification from that
-artifact, and bind the authorization context to the same review fingerprint.
+artifact, and bind the authorization context to the same review and
+execution-plan artifact fingerprints.
 
 The authorization also consumes replay-verified checkout path-state evidence
 bound to the exact ready execution-plan artifact retained in the authorization

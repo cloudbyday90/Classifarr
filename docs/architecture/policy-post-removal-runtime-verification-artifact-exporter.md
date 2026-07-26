@@ -159,9 +159,9 @@ Implemented:
   - `buildPolicyPostRemovalRuntimeVerificationArtifact`,
   - `validatePolicyPostRemovalRuntimeVerificationArtifact`.
 - Replaced runtime `nextPhase.phaseId` with semantic `nextStep.stepId`.
-- Added a nested `policy.post_removal_runtime_evidence_artifact.v1` evidence
+- Added a nested `policy.post_removal_runtime_evidence_artifact.v2` evidence
   artifact so the verifier receives only review-bound scan, check, and
-  validation evidence.
+  validation evidence with the applied execution-plan artifact fingerprint.
 - Added focused tests for:
   - verified post-removal runtime artifact generation,
   - blocked removed-path reference evidence,

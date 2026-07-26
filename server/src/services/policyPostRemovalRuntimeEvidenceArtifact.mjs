@@ -23,6 +23,8 @@ const POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_VERSION =
 
 const POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS = Object.freeze({
   MISSING_RUNTIME_EVIDENCE_ARTIFACT: 'missing_runtime_evidence_artifact',
+  RUNTIME_EVIDENCE_VERSION_UNSUPPORTED:
+    'runtime_evidence_version_unsupported',
   MALFORMED_RUNTIME_EVIDENCE_ARTIFACT: 'malformed_runtime_evidence_artifact',
   RUNTIME_EVIDENCE_ARTIFACT_MISMATCH: 'runtime_evidence_artifact_mismatch',
   RUNTIME_EVIDENCE_PROVENANCE_MISMATCH: 'runtime_evidence_provenance_mismatch',
@@ -343,7 +345,20 @@ function validatePolicyPostRemovalRuntimeEvidenceArtifact(
 
   if (
     runtimeEvidenceArtifact.version !==
-      POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_VERSION ||
+    POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_VERSION
+  ) {
+    issues.push(buildIssue(
+      POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_RISK_IDS
+        .RUNTIME_EVIDENCE_VERSION_UNSUPPORTED,
+      'Runtime evidence artifact must use the current runtime-evidence contract version.',
+      {
+        expectedVersion: POLICY_POST_REMOVAL_RUNTIME_EVIDENCE_ARTIFACT_VERSION,
+        receivedVersion: runtimeEvidenceArtifact.version || null,
+      }
+    ));
+  }
+
+  if (
     runtimeEvidenceArtifact.algorithm !== 'sha256' ||
     !SHA256_FINGERPRINT_PATTERN.test(actualFingerprint)
   ) {

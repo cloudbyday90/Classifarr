@@ -339,6 +339,66 @@ describe('generate-policy-next-batch-authorization', () => {
     expect(fs.existsSync(result.artifactOutputPath)).toBe(false);
   });
 
+  test.each([
+    ['pre-v2', inputs => {
+      const artifact = structuredClone(inputs.runtimeArtifact);
+      artifact.version = 'policy.post_removal_runtime_evidence_artifact.v1';
+      return artifact;
+    }, 'runtime_evidence_contract_unsupported'],
+    ['missing-plan-binding', () => runtimeEvidenceArtifact([], ''),
+      'execution_plan_fingerprint_missing'],
+    ['cross-plan-binding', () => runtimeEvidenceArtifact([], 'c'.repeat(64)),
+      'execution_plan_fingerprint_mismatch'],
+  ])(
+    'fails closed for %s runtime evidence and emits only a bounded diagnostic',
+    (caseId, buildRuntimeArtifact, expectedReasonId) => {
+      const inputs = buildArtifactInputs();
+      const runtimeArtifact = buildRuntimeArtifact(inputs);
+      const strictRoot = path.join(fixtureRoot, `${caseId}-strict`);
+      const strictResult = runGenerator({
+        fixtureRoot: strictRoot,
+        ...inputs,
+        runtimeArtifact,
+      });
+
+      expect(strictResult.error).toBeUndefined();
+      expect(strictResult.status).toBe(1);
+      expect(strictResult.stdoutJson).toBeNull();
+      expect(strictResult.stderr).toContain('requires current runtime evidence');
+      expect(strictResult.stderr).toContain(expectedReasonId);
+      expect(fs.existsSync(strictResult.outputPath)).toBe(false);
+      expect(fs.existsSync(strictResult.artifactOutputPath)).toBe(false);
+
+      const diagnosticRoot = path.join(fixtureRoot, `${caseId}-diagnostic`);
+      const diagnosticResult = runGenerator({
+        fixtureRoot: diagnosticRoot,
+        ...inputs,
+        runtimeArtifact,
+        allowBlocked: true,
+      });
+      const diagnostic = JSON.parse(
+        fs.readFileSync(diagnosticResult.outputPath, 'utf8')
+      );
+
+      expect(diagnosticResult.error).toBeUndefined();
+      expect(diagnosticResult.status).toBe(1);
+      expect(diagnostic).toEqual(expect.objectContaining({
+        statusId: 'blocked',
+        authoritative: false,
+        exporterId: 'next_batch_authorization',
+        runtimeEvidenceContract: expect.objectContaining({
+          requiredVersion: 'policy.post_removal_runtime_evidence_artifact.v2',
+          reasonIds: expect.arrayContaining([expectedReasonId]),
+        }),
+        nextStep: expect.objectContaining({
+          stepId: 'regenerate_current_runtime_evidence',
+        }),
+      }));
+      expect(JSON.stringify(diagnostic)).not.toContain(MANIFEST_PATHS[0]);
+      expect(fs.existsSync(diagnosticResult.artifactOutputPath)).toBe(false);
+    }
+  );
+
   test('writes a blocked diagnostic only with explicit allowance for an already removed path', () => {
     const inputs = buildArtifactInputs({
       input: authorizationInput({

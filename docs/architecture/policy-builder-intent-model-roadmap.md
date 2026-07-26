@@ -8502,6 +8502,13 @@ Implementation status:
   repeats that comparison during completion replay. The design and outcome
   record is [Compatibility-Deletion Execution-Plan Artifact
   Binding](policy-compatibility-deletion-execution-plan-artifact-binding.md).
+- Task 8R.36.9 is implemented. Every public compatibility-removal exporter
+  now checks the current v2 runtime-evidence contract and direct execution-plan
+  binding before it writes a downstream artifact. Legacy, missing, malformed,
+  and cross-plan evidence fails closed; an explicit blocked request receives
+  only a fixed-ID, non-authoritative diagnostic and one regeneration step. The
+  design and outcome record is [Compatibility-Removal Public Artifact Exporter
+  Cutover](policy-compatibility-removal-public-artifact-exporter-cutover.md).
 
 ## Phase 8R Work Sequence
 

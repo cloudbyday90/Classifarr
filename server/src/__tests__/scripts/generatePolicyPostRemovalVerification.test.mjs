@@ -259,6 +259,8 @@ describe('generate-policy-post-removal-verification', () => {
     expect(runtimeEvidence).toEqual(artifact.runtimeEvidenceArtifact);
     expect(runtimeEvidence.provenance).toEqual(expect.objectContaining({
       reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      executionPlanArtifactFingerprint:
+        EXECUTION_PLAN_ARTIFACT_FINGERPRINT,
       appliedPaths: REMOVED_PATHS,
     }));
     expect(artifact.nextStep).toEqual(expect.objectContaining({
@@ -369,10 +371,53 @@ describe('generate-policy-post-removal-verification', () => {
     expect(result.error).toBeUndefined();
     expect(result.status).toBe(1);
     expect(result.stdoutJson).toBeNull();
-    expect(result.stderr).toContain('artifact is blocked');
-    expect(result.stderr).toContain('blocked_by_evidence_integrity');
+    expect(result.stderr).toContain('runtime evidence contract is blocked');
+    expect(result.stderr).toContain('runtime_evidence_invalid');
     expect(fs.existsSync(result.outputPath)).toBe(false);
     expect(fs.existsSync(result.runtimeEvidenceOutputPath)).toBe(false);
     expect(fs.existsSync(result.artifactOutputPath)).toBe(false);
+  });
+
+  test('exports a bounded diagnostic instead of runtime evidence without a plan binding', () => {
+    const applyEvidence = applyResult({
+      removalReview: {
+        reviewArtifactFingerprint: REVIEW_ARTIFACT_FINGERPRINT,
+      },
+    });
+    const strictResult = runGenerator({ fixtureRoot, applyEvidence });
+
+    expect(strictResult.error).toBeUndefined();
+    expect(strictResult.status).toBe(1);
+    expect(strictResult.stdoutJson).toBeNull();
+    expect(strictResult.stderr).toContain('runtime evidence contract is blocked');
+    expect(strictResult.stderr).toContain('execution_plan_fingerprint_missing');
+    expect(fs.existsSync(strictResult.outputPath)).toBe(false);
+    expect(fs.existsSync(strictResult.runtimeEvidenceOutputPath)).toBe(false);
+    expect(fs.existsSync(strictResult.artifactOutputPath)).toBe(false);
+
+    const diagnosticResult = runGenerator({
+      fixtureRoot,
+      applyEvidence,
+      allowBlocked: true,
+    });
+    const diagnostic = JSON.parse(
+      fs.readFileSync(diagnosticResult.outputPath, 'utf8')
+    );
+
+    expect(diagnosticResult.status).toBe(1);
+    expect(diagnostic).toEqual(expect.objectContaining({
+      statusId: 'blocked',
+      authoritative: false,
+      exporterId: 'post_removal_verification',
+      runtimeEvidenceContract: expect.objectContaining({
+        reasonIds: expect.arrayContaining(['execution_plan_fingerprint_missing']),
+      }),
+      nextStep: expect.objectContaining({
+        stepId: 'regenerate_current_runtime_evidence',
+      }),
+    }));
+    expect(JSON.stringify(diagnostic)).not.toContain(REMOVED_PATHS[0]);
+    expect(fs.existsSync(diagnosticResult.runtimeEvidenceOutputPath)).toBe(false);
+    expect(fs.existsSync(diagnosticResult.artifactOutputPath)).toBe(false);
   });
 });

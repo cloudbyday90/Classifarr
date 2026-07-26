@@ -22,6 +22,13 @@ import {
 import {
   resolvePolicyStorageClosureExecutionPlanSource,
 } from '../server/src/services/policyStorageClosureExecutionPlanSource.mjs';
+import {
+  evaluatePolicyCompatibilityRemovalRuntimeEvidenceCutover,
+} from '../server/src/services/policyCompatibilityRemovalRuntimeEvidenceCutover.mjs';
+import {
+  POLICY_COMPATIBILITY_REMOVAL_EXPORTER_IDS,
+  buildPolicyCompatibilityRemovalExporterDiagnostic,
+} from './lib/policyCompatibilityRemovalExporterDiagnostic.mjs';
 
 function parseArgs(argv = []) {
   const options = {
@@ -32,6 +39,7 @@ function parseArgs(argv = []) {
     reviewArtifactFingerprint: '',
     validationEvidencePath: null,
     outputPath: null,
+    allowBlocked: false,
     requireComplete: false,
   };
 
@@ -73,6 +81,10 @@ function parseArgs(argv = []) {
       index += 1;
       continue;
     }
+    if (arg === '--allow-blocked') {
+      options.allowBlocked = true;
+      continue;
+    }
     if (arg === '--require-complete') {
       options.requireComplete = true;
       continue;
@@ -100,6 +112,7 @@ function usage() {
     '  --review-artifact-fingerprint <sha256> Required applied removal-review artifact fingerprint.',
     '  --validation-evidence <json>    Optional policy storage closure validation evidence JSON.',
     '  --output <json>                 Write final-removal-audit JSON to this path.',
+    '  --allow-blocked                  Write a bounded diagnostic when runtime evidence is not current.',
     '  --require-complete              Exit non-zero unless the audit completes.',
     '  --help                          Print this help message.',
   ].join('\n');
@@ -192,6 +205,39 @@ async function main() {
       issues: executionPlanSource.issues,
     }, null, 2));
     process.exit(2);
+  }
+
+  const runtimeEvidenceCutover =
+    evaluatePolicyCompatibilityRemovalRuntimeEvidenceCutover({
+      runtimeEvidenceArtifact:
+        nextBatchAuthorizationArtifact?.runtimeEvidenceArtifact,
+      expectedExecutionPlanArtifactFingerprint:
+        executionPlanSource.artifactFingerprint,
+    });
+
+  if (runtimeEvidenceCutover.ready !== true) {
+    const diagnostic = buildPolicyCompatibilityRemovalExporterDiagnostic({
+      exporterId:
+        POLICY_COMPATIBILITY_REMOVAL_EXPORTER_IDS
+          .STORAGE_CLOSURE_FINAL_REMOVAL_AUDIT,
+      runtimeEvidenceCutover,
+    });
+    if (options.allowBlocked === true) {
+      try {
+        writeJsonFile(options.outputPath, diagnostic);
+      } catch (err) {
+        console.error(`Could not write final-removal-audit diagnostic JSON: ${err.message}`);
+        process.exit(2);
+      }
+
+      console.log(JSON.stringify(diagnostic, null, 2));
+    } else {
+      console.error(
+        'Storage-closure final-removal audit requires current runtime evidence; pass --allow-blocked to write a bounded diagnostic.'
+      );
+      console.error(JSON.stringify(diagnostic, null, 2));
+    }
+    process.exit(1);
   }
 
   const evidence = await buildPolicyStorageClosureFinalRemovalAudit({
