@@ -19,7 +19,8 @@ unchanged operator or runtime outcome.
 #### Policy Authoring
 
 - **Compact Persisted Native Summary** - Established native policies now show
-  their stored purpose, current library readiness, and one server-provided next
+  their stored purpose, policy-specific readiness from active native intent,
+  cached profile freshness, and stored routing, plus one server-provided next
   action instead of reopening the multi-section policy setup workflow.
 
 - **Persisted Native Policy View** - Saved policies now select their builder

@@ -8,14 +8,14 @@ contains three bounded facts:
 
 1. Display-safe declared purpose from the server-returned native policy
    contract.
-2. Current **library** readiness from the existing server-owned workflow read.
-3. The workflow read's one next-action label.
+2. Current **policy** readiness from a server-owned active-native-intent,
+   cached-profile, and routing read.
+3. The policy-specific read's one next-action label.
 
-The summary deliberately does not call library-first readiness a policy-native
-automation decision. The current endpoint derives its readiness from the
-library's cached evidence and routing state, not from the persisted native
-intent. It is therefore labelled *Current library readiness* until a dedicated
-policy-native summary contract exists.
+The summary deliberately separates declared policy authority from observed
+library context. Native intent establishes destination identity; cached profile
+state contributes freshness only. The summary is labelled *Current policy
+readiness* because its server contract evaluates both sources and routing.
 
 ## Official Guidance Reviewed
 
@@ -52,31 +52,34 @@ Pros: the summary could call its result policy-specific immediately.
 Cons: duplicates server semantics, can become stale, and would make browser
 state look authoritative. Rejected.
 
-### Compact Summary With Stored Purpose And Existing Library Readiness
+### Compact Summary With Stored Purpose And Policy-Specific Readiness
 
-Pros: removes setup noise now, accurately labels the available server result,
-retains one server-provided next action, and adds no mutation path. Selected.
+Pros: removes setup noise, evaluates persisted native authority rather than a
+creation draft, retains one server-provided next action, and adds no mutation
+path. Selected.
 
-Cons: readiness is library-specific rather than an active-native-intent
-evaluation. A dedicated server contract remains necessary.
+Cons: adds a dedicated read endpoint and leaves every executable next action
+to its own server command boundary.
 
 ## Implementation
 
-- `policyNativePolicySummary.js` creates bounded display lines from only the
-  exact server-reported native contract and exposes a safe unavailable state
-  without rendering a workflow error.
-- `PolicyNativePolicySummary.vue` renders declared purpose, current library
+- `policyNativeReadinessSummaryService.mjs` evaluates active native intent,
+  cached profile freshness, and stored routing as a read-only server contract.
+- `policyNativePolicySummary.js` creates bounded display lines and safe
+  readiness/unavailable states without rendering a raw service error.
+- `PolicyNativePolicySummary.vue` renders declared purpose, current policy
   readiness, and one next action with semantic definition-list markup.
-- `PolicyBuilderModal.vue` renders this summary for `native_view`; the generic
-  workflow shell remains available for native creation and compatibility edit.
-- The previous transient native-status component was deleted rather than kept
-  beside its complete replacement.
+- `PolicyBuilderModal.vue` renders this summary for `native_view` and does not
+  request the generic operator workflow; native creation and compatibility edit
+  retain their appropriate workflow surfaces.
 
 ## Security And Accessibility Outcome
 
 - No client code authorizes policy writes, routing, or automation.
 - Only canonical native-contract purpose is displayed; malformed or legacy
-  contracts do not become a native summary.
+  contracts do not become native authority.
+- The policy-specific read validates native authority and cannot fall back to a
+  library-derived draft when authority is unavailable.
 - Raw workflow failures are replaced with a stable availability message.
 - The next action is advisory display text from the server read, not an
   executable browser transition.
@@ -94,16 +97,13 @@ evaluation. A dedicated server contract remains necessary.
 
 1. Keep creation and established-native views separate.
 2. Present stored native purpose only from the policy detail read contract.
-3. Label the current server workflow result as library readiness until its
-   inputs include active native intent.
+3. Evaluate cached profile freshness and stored routing only on the server.
 4. Keep the displayed next action advisory and server-sourced.
-5. Add a dedicated policy-native readiness read contract before displaying a
-   policy-specific automation claim.
+5. Fail closed when native authority or the read contract is unavailable.
 
 ## Next Item
 
-Implement the policy-specific server readiness summary contract. It must load
-the active native intent, current stored profile evidence, and routing state;
-evaluate them on the server; return bounded state and exactly one next action;
-and remain read-only with no provider, quota, classification, routing, or
-policy-write side effect.
+Implement automatic, server-owned profile refresh handling for the existing
+`refresh_profile` readiness action. It must be scheduler/outbox driven,
+deduplicated, lease-protected, retry-bounded, and independent of browser
+interaction or policy writes.

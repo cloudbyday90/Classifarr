@@ -4200,12 +4200,12 @@ Implementation status:
   Surface](policy-native-first-create-surface.md).
 - Persisted native policies now use a compact, read-only summary instead of
   reopening the five-section creation workflow. It shows display-safe stored
-  purpose from the policy detail contract, current **library** readiness, and
-  one next action from the existing server workflow read. It deliberately does
-  not claim that library-first readiness is a policy-specific native-intent
-  decision. The implementation and follow-on contract requirement are
-  documented in [Persisted Native Policy
-  Summary](policy-persisted-native-summary.md).
+  purpose from the policy detail contract and **policy** readiness from active
+  native intent, cached profile freshness, and stored routing. It does not
+  reopen the library-first creation workflow or authorize an action. The
+  implementation is documented in [Persisted Native Policy
+  Summary](policy-persisted-native-summary.md) and [Policy Native Readiness
+  Summary Contract](policy-native-readiness-summary-contract.md).
 - Native creation now recovers insufficient profile evidence through one
   bounded action: unavailable, stale, empty, and failed-refresh states hide
   observed candidates, offer an explicit profile refresh or a display-only

@@ -6,6 +6,7 @@ import { registerPolicyNativeIntentReversionRoutes } from './policiesRouteNative
 import { registerPolicyNativeIntentReconciliationRoutes } from './policiesRouteNativeIntentReconciliation.mjs';
 import { registerPolicyInitialIntentEstablishmentRoutes } from './policiesRouteInitialIntentEstablishment.mjs';
 import { registerPolicyInitialIntentEstablishmentReadinessRoutes } from './policiesRouteInitialIntentEstablishmentReadiness.mjs';
+import { registerPolicyNativeIntentReadinessSummaryRoutes } from './policiesRouteNativeIntentReadinessSummary.mjs';
 import { registerPolicyWriteRoutes } from './policiesRoutePolicyWrite.mjs';
 import { registerPolicyPresetRoutes } from './policiesRoutePolicyPresets.mjs';
 
@@ -18,6 +19,7 @@ export function registerPolicyCrudRoutes(router, deps) {
   registerPolicyNativeIntentReconciliationRoutes(router, deps);
   registerPolicyInitialIntentEstablishmentRoutes(router, deps);
   registerPolicyInitialIntentEstablishmentReadinessRoutes(router, deps);
+  registerPolicyNativeIntentReadinessSummaryRoutes(router, deps);
   registerPolicyWriteRoutes(router, deps);
   registerPolicyPresetRoutes(router, deps);
 }

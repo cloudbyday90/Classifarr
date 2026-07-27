@@ -40,9 +40,9 @@
         <PolicyNativePolicySummary
           v-if="experienceMode.isNativeView"
           :policy="policy"
-          :workflow-read="operatorWorkflowRead"
-          :loading="operatorWorkflowLoading"
-          :error="operatorWorkflowError"
+          :readiness-summary="nativeReadinessSummary"
+          :loading="nativeReadinessLoading"
+          :error="nativeReadinessError"
         />
 
         <PolicyBuilderWorkflowShell
@@ -139,6 +139,7 @@ import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderRef
 import { usePolicyBuilderLibrarySync } from '@/composables/usePolicyBuilderLibrarySync'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 import { usePolicyOperatorWorkflow } from '@/composables/usePolicyOperatorWorkflow'
+import { usePolicyNativeReadinessSummary } from '@/composables/usePolicyNativeReadinessSummary'
 import { usePolicyIntentSignalDraft } from '@/composables/usePolicyIntentSignalDraft'
 import { usePolicyIntentConstraintDraft } from '@/composables/usePolicyIntentConstraintDraft'
 import { usePolicyNativeCreateHandoff } from '@/composables/usePolicyNativeCreateHandoff'
@@ -267,6 +268,14 @@ const {
   validateCustomIntentSignal,
 } = usePolicyOperatorWorkflow()
 
+const {
+  readinessSummary: nativeReadinessSummary,
+  loading: nativeReadinessLoading,
+  error: nativeReadinessError,
+  loadSummary: loadNativeReadinessSummary,
+  watchSummary: watchNativeReadinessSummary,
+} = usePolicyNativeReadinessSummary()
+
 const constraintValueEligibility = computed(() => (
   operatorWorkflowRead.value?.constraintValueEligibility || null
 ))
@@ -311,7 +320,12 @@ onMounted(() => {
 })
 
 watchLibraryProfile(computed(() => form.value.library_id))
-watchOperatorWorkflow(computed(() => form.value.library_id))
+watchOperatorWorkflow(computed(() => (
+  experienceMode.value.isNativeView ? null : form.value.library_id
+)))
+watchNativeReadinessSummary(computed(() => (
+  experienceMode.value.isNativeView ? props.policy?.id : null
+)))
 
 watch(() => props.modelValue, isOpen => {
   if (isOpen) restoreFocusAfterClose.value = true
@@ -327,7 +341,11 @@ const refreshActiveLibraryProfile = async () => {
   try {
     const refreshed = await refreshLibraryProfile(form.value.library_id)
     if (refreshed) {
-      await loadOperatorWorkflow(form.value.library_id)
+      if (experienceMode.value.isNativeView) {
+        await loadNativeReadinessSummary(props.policy?.id)
+      } else {
+        await loadOperatorWorkflow(form.value.library_id)
+      }
     }
   } finally {
     await restoreRecoveryFocus(recoveryFocusTrigger)

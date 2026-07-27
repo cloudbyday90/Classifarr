@@ -17,7 +17,7 @@
       aria-live="polite"
       aria-atomic="true"
     >
-      Native policy summary loaded. {{ readiness.label }}.
+      Policy readiness: {{ readiness.label }}.
     </p>
     <h4
       id="policy-native-summary-title"
@@ -26,7 +26,7 @@
       Native policy summary
     </h4>
     <p class="mt-1 text-sm text-blue-50">
-      This destination uses stored native intent. Classifarr shows its declared purpose and the current library readiness without reopening policy setup.
+      This destination uses stored native intent. Classifarr shows its declared purpose and current policy readiness without reopening policy setup.
     </p>
 
     <dl class="mt-4 grid gap-3 text-sm md:grid-cols-3">
@@ -54,7 +54,7 @@
 
       <div class="rounded border border-blue-800/70 bg-gray-900/30 p-3">
         <dt class="font-medium text-blue-200">
-          Current library readiness
+          Current policy readiness
         </dt>
         <dd class="mt-2 text-blue-50">
           <p class="font-medium">
@@ -81,7 +81,7 @@
 <script setup>
 import { computed } from 'vue'
 import {
-  buildNativeLibraryReadinessSummary,
+  buildNativePolicyReadinessSummary,
   buildNativePurposeSummary,
 } from '@/utils/policyNativePolicySummary'
 
@@ -94,7 +94,7 @@ const props = defineProps({
     type: Object,
     required: true,
   },
-  workflowRead: {
+  readinessSummary: {
     type: Object,
     default: null,
   },
@@ -109,8 +109,8 @@ const props = defineProps({
 })
 
 const purposeLines = computed(() => buildNativePurposeSummary(props.policy))
-const readiness = computed(() => buildNativeLibraryReadinessSummary({
-  workflowRead: props.workflowRead,
+const readiness = computed(() => buildNativePolicyReadinessSummary({
+  readinessSummary: props.readinessSummary,
   loading: props.loading,
   error: props.error,
 }))

@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest'
 import {
-  buildNativeLibraryReadinessSummary,
+  buildNativePolicyReadinessSummary,
   buildNativePurposeSummary,
 } from '@/utils/policyNativePolicySummary'
 
@@ -34,31 +34,43 @@ describe('policyNativePolicySummary', () => {
     })).toEqual([])
   })
 
-  it('uses the server workflow as a current library readiness display', () => {
-    expect(buildNativeLibraryReadinessSummary({
-      workflowRead: {
-        workflow: {
-          readiness: {
-            ready: false,
-            nextAction: { label: 'Configure routing' },
-          },
+  it('uses the stored native policy readiness summary rather than a library workflow', () => {
+    expect(buildNativePolicyReadinessSummary({
+      readinessSummary: {
+        statusId: 'native_policy_readiness_available',
+        readiness: {
+          ready: false,
+          nextAction: { label: 'Configure routing' },
         },
       },
     })).toEqual({
       statusId: 'needs_action',
       label: 'Needs action',
-      message: 'The server reports that the current library needs attention before automation continues.',
+      message: 'The stored policy needs attention before automation continues.',
       nextActionLabel: 'Configure routing',
     })
   })
 
   it('reports a bounded unavailable state instead of exposing a workflow error', () => {
-    expect(buildNativeLibraryReadinessSummary({
+    expect(buildNativePolicyReadinessSummary({
       error: 'Unsafe raw failure detail',
     })).toEqual({
       statusId: 'unavailable',
       label: 'Readiness unavailable',
-      message: 'Classifarr could not load the current library readiness.',
+      message: 'Classifarr could not load the current policy readiness.',
+      nextActionLabel: '',
+    })
+  })
+
+  it('reports missing authoritative native intent without displaying untrusted readiness', () => {
+    expect(buildNativePolicyReadinessSummary({
+      readinessSummary: {
+        statusId: 'native_policy_readiness_native_intent_unavailable',
+      },
+    })).toEqual({
+      statusId: 'native_intent_unavailable',
+      label: 'Native intent unavailable',
+      message: 'Classifarr could not confirm one authoritative stored native intent for this policy.',
       nextActionLabel: '',
     })
   })

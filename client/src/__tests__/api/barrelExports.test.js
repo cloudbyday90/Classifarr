@@ -149,6 +149,7 @@ describe('api/index.js barrel export validation', () => {
     it('exposes policiesApi functions', () => {
       expectFunction('getPolicy')
       expectFunction('getPolicies')
+      expectFunction('getPolicyNativeReadinessSummary')
       expectFunction('createPolicy')
       expectFunction('updatePolicy')
       expectFunction('deletePolicy')

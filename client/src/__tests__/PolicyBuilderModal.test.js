@@ -254,6 +254,43 @@ describe('PolicyBuilderModal.vue', () => {
     },
   });
 
+  const buildNativeReadinessSummary = () => ({
+    version: 'policy.native_readiness_summary.v1',
+    statusId: 'native_policy_readiness_available',
+    policyId: 1,
+    nativeIntent: {
+      authorityStateId: 'single_active_native_intent',
+      authoritative: true,
+      intentVersion: 1,
+      purposeRuleCount: 1,
+      validationStateId: 'valid',
+    },
+    readiness: {
+      stateId: 'needs_routing',
+      label: 'Needs routing',
+      ready: false,
+      nextAction: {
+        actionId: 'configure_routing',
+        label: 'Configure routing',
+      },
+      reasonCodes: ['routing_not_ready'],
+    },
+    authority: {
+      displayProjection: true,
+      automationDecision: false,
+      policyPersistence: false,
+      routingExecution: false,
+    },
+    sideEffects: {
+      liveMediaServerLookupPerformed: false,
+      liveProviderLookupPerformed: false,
+      providerQuotaRead: false,
+      policyStorageMutated: false,
+      routingExecuted: false,
+    },
+    rawPayloadExposed: false,
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockToast.success.mockClear();
@@ -349,8 +386,8 @@ describe('PolicyBuilderModal.vue', () => {
   it('renders a persisted native policy as a server-reported read-only view', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
-      if (url === '/policies/operator-workflow/libraries/1') {
-        return Promise.resolve({ data: buildOperatorWorkflowRead() });
+      if (url === '/policies/1/native-intent/readiness-summary') {
+        return Promise.resolve({ data: buildNativeReadinessSummary() });
       }
       return Promise.resolve({ data: { suggestions: [] } });
     });
@@ -379,14 +416,15 @@ describe('PolicyBuilderModal.vue', () => {
 
     expect(document.body.textContent).toContain('Native policy summary');
     expect(document.body.textContent).toContain('Genres: Science Fiction');
-    expect(document.body.textContent).toContain('Current library readiness');
-    expect(document.body.textContent).toContain('Connect a routing target');
+    expect(document.body.textContent).toContain('Current policy readiness');
+    expect(document.body.textContent).toContain('Configure routing');
     expect(document.body.textContent).not.toContain('What belongs here');
     expect(wrapper.find('#policy-builder-intent-editor').exists()).toBe(false);
     expect(wrapper.find('#policy-builder-advanced-settings').exists()).toBe(false);
     expect(wrapper.find('#policy-builder-save-status').exists()).toBe(false);
     expect(api.get).not.toHaveBeenCalledWith('/policies/presets/all');
     expect(api.get).not.toHaveBeenCalledWith('/settings');
+    expect(api.get).not.toHaveBeenCalledWith('/policies/operator-workflow/libraries/1', undefined);
   });
 
   it('includes profile weight in the advanced total and save payload', async () => {

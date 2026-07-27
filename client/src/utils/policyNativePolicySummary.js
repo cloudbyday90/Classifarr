@@ -73,33 +73,42 @@ function buildNativePurposeSummary(policy = {}) {
     .slice(0, MAX_PURPOSE_RULES)
 }
 
-function buildNativeLibraryReadinessSummary({ workflowRead, loading = false, error = '' } = {}) {
+function buildNativePolicyReadinessSummary({ readinessSummary, loading = false, error = '' } = {}) {
   if (loading) {
     return {
       statusId: 'loading',
       label: 'Checking readiness',
-      message: 'Classifarr is checking the current library readiness.',
+      message: 'Classifarr is checking the stored policy intent, cached profile, and routing readiness.',
       nextActionLabel: '',
     }
   }
 
-  if (error || !workflowRead?.workflow?.readiness) {
+  if (error || !readinessSummary) {
     return {
       statusId: 'unavailable',
       label: 'Readiness unavailable',
-      message: 'Classifarr could not load the current library readiness.',
+      message: 'Classifarr could not load the current policy readiness.',
       nextActionLabel: '',
     }
   }
 
-  const readiness = workflowRead.workflow.readiness
+  if (readinessSummary.statusId !== 'native_policy_readiness_available') {
+    return {
+      statusId: 'native_intent_unavailable',
+      label: 'Native intent unavailable',
+      message: 'Classifarr could not confirm one authoritative stored native intent for this policy.',
+      nextActionLabel: '',
+    }
+  }
+
+  const readiness = readinessSummary.readiness
   const nextActionLabel = normalizeSummaryText(readiness?.nextAction?.label)
 
   if (readiness.ready === true) {
     return {
       statusId: 'ready',
       label: 'Ready',
-      message: 'The server reports that the current library is ready for automation.',
+      message: 'The stored policy intent, cached profile, and routing state are ready for automation.',
       nextActionLabel,
     }
   }
@@ -107,12 +116,12 @@ function buildNativeLibraryReadinessSummary({ workflowRead, loading = false, err
   return {
     statusId: 'needs_action',
     label: 'Needs action',
-    message: 'The server reports that the current library needs attention before automation continues.',
+    message: 'The stored policy needs attention before automation continues.',
     nextActionLabel,
   }
 }
 
 export {
-  buildNativeLibraryReadinessSummary,
+  buildNativePolicyReadinessSummary,
   buildNativePurposeSummary,
 }

@@ -36,6 +36,7 @@ import {
   getPolicy,
   getPolicies,
   getPolicyOperatorWorkflow,
+  getPolicyNativeReadinessSummary,
   validatePolicyOperatorWorkflowCustomIntentSignal,
   createPolicy,
   updatePolicy,
@@ -66,6 +67,14 @@ describe('policiesApi', () => {
     await getPolicyOperatorWorkflow(7)
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/operator-workflow/libraries/7')
+  })
+
+  it('getPolicyNativeReadinessSummary calls the read-only stored-native readiness endpoint', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ statusId: 'native_policy_readiness_available' })
+
+    await getPolicyNativeReadinessSummary(7)
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/7/native-intent/readiness-summary')
   })
 
   it('validatePolicyOperatorWorkflowCustomIntentSignal posts only the explicit custom-entry payload', async () => {
