@@ -3853,7 +3853,9 @@ Implementation task sequence:
      Consumer](policy-profile-refresh-worker-consumer.md).
 6. **6R.3.3f Concurrency And Recovery Audit:** prove replay, state drift,
    authorization loss, writer failure, and transaction rollback behavior with
-   focused unit and integration tests.
+   focused unit and integration tests. Complete; documented in [Policy
+   Authorized Outcome Concurrency And Recovery
+   Audit](policy-authorized-outcome-concurrency-recovery-audit.md).
 - Store final outcome separately from learning decision.
 - Add explicit learning tiers:
   - `none`,
@@ -3946,6 +3948,12 @@ Implementation status:
   claim commit, and uses token-guarded completion or three-attempt bounded
   retry. It cannot claim exact-item memory or a rolled-back record. Its design
   record is [Policy Profile Refresh Worker Consumer](policy-profile-refresh-worker-consumer.md).
+- Phase 6R.3.3f is complete. The isolated PostgreSQL integration audit proves
+  one exact source event yields one durable effect under concurrent execution,
+  state drift and authorization loss write no receipt, writer failure rolls
+  back outcome/evidence/outbox state, and expired outbox leases reject stale
+  completion tokens. Its design record is [Policy Authorized Outcome
+  Concurrency And Recovery Audit](policy-authorized-outcome-concurrency-recovery-audit.md).
 - The focused learning-guard test suite lives in
   `server/src/__tests__/services/policyLearningGuard.test.mjs`.
 - Final-outcome shaping and route-transition validation now live in

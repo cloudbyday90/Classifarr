@@ -122,7 +122,7 @@ handling, scheduler coordination, and application-start wiring.
 
 ## Next Step
 
-Proceed to **Phase 6R.3.3f: Concurrency And Recovery Audit**. It should add
-database-backed tests for concurrent workers, rollback visibility, stale-lease
-reclaim, source-event replay, and writer failure before another live outcome
-source adopts the transaction executor.
+Phase 6R.3.3f is complete. The database-backed concurrency, replay, rollback,
+and stale-lease audit is documented in [Policy Authorized Outcome Concurrency
+And Recovery Audit](policy-authorized-outcome-concurrency-recovery-audit.md).
+Proceed to **Phase 6R.4: Automation Readiness Engine**.

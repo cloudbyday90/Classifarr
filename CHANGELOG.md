@@ -60,6 +60,12 @@ unchanged operator or runtime outcome.
   correlation and operation data, is cleared during replace restore, and is
   consumed automatically by a lease-protected worker with bounded retries.
 
+- **Authorized Outcome Recovery Guarantees** - Classifarr now verifies with
+  isolated PostgreSQL transactions that concurrent source-event replays produce
+  one durable effect, stale authorization or destination state cannot write,
+  evidence/outbox failures roll back atomically, and recovered outbox leases
+  reject stale worker completion.
+
 - **Authorized Outcome Persistence Commands** - Classifarr now validates a
   pure, server-owned persistence plan against canonical intake, learning guard,
   revalidated actor authority, and transaction-locked current state. A valid
