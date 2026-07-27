@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-26T23:01:51.777Z
--- Latest Migration: 20260726_120000_add_policy_profile_refresh_outbox.sql
+-- Generated: 2026-07-27T00:03:06.482Z
+-- Latest Migration: 20260726_130000_add_policy_profile_refresh_outbox_worker_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4961,13 +4961,26 @@ CREATE TABLE public.policy_profile_refresh_outbox (
     refresh_reason_id character varying(80) NOT NULL,
     source_system character varying(80) NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    processing_state character varying(16) DEFAULT 'pending'::character varying NOT NULL,
+    attempt_count smallint DEFAULT 0 NOT NULL,
+    available_at timestamp with time zone DEFAULT now() NOT NULL,
+    claim_token uuid,
+    claimed_at timestamp with time zone,
+    lease_expires_at timestamp with time zone,
+    completed_at timestamp with time zone,
+    failure_code character varying(80),
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_profile_refresh_outbox_attempt_count_chk CHECK (((attempt_count >= 0) AND (attempt_count <= 3))),
     CONSTRAINT policy_profile_refresh_outbox_candidate_key_chk CHECK (((char_length(btrim((candidate_key)::text)) >= 3) AND (char_length(btrim((candidate_key)::text)) <= 160))),
+    CONSTRAINT policy_profile_refresh_outbox_failure_code_chk CHECK (((failure_code IS NULL) OR ((char_length(btrim((failure_code)::text)) >= 1) AND (char_length(btrim((failure_code)::text)) <= 80)))),
     CONSTRAINT policy_profile_refresh_outbox_identifiers_chk CHECK (((classification_id > 0) AND (library_id > 0))),
     CONSTRAINT policy_profile_refresh_outbox_learning_operation_chk CHECK ((((learning_operation_id)::text = ANY (ARRAY[('write_compatibility_evidence'::character varying)::text, ('write_identity_evidence'::character varying)::text])) AND ((learning_tier_id)::text = ANY (ARRAY[('compatibility_evidence'::character varying)::text, ('identity_evidence'::character varying)::text])) AND ((((learning_operation_id)::text = 'write_compatibility_evidence'::text) AND ((learning_tier_id)::text = 'compatibility_evidence'::text)) OR (((learning_operation_id)::text = 'write_identity_evidence'::text) AND ((learning_tier_id)::text = 'identity_evidence'::text))))),
+    CONSTRAINT policy_profile_refresh_outbox_processing_state_chk CHECK (((processing_state)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text]))),
     CONSTRAINT policy_profile_refresh_outbox_reason_chk CHECK (((refresh_reason_id)::text = 'profile_refresh_required'::text)),
     CONSTRAINT policy_profile_refresh_outbox_source_event_chk CHECK (((char_length(btrim((source_id)::text)) >= 1) AND (char_length(btrim((source_id)::text)) <= 80) AND ((char_length(btrim((source_event_id)::text)) >= 1) AND (char_length(btrim((source_event_id)::text)) <= 160)))),
     CONSTRAINT policy_profile_refresh_outbox_source_system_chk CHECK (((source_system)::text = 'policy_authorized_profile_refresh'::text)),
-    CONSTRAINT policy_profile_refresh_outbox_version_chk CHECK ((outbox_version = 1))
+    CONSTRAINT policy_profile_refresh_outbox_version_chk CHECK ((outbox_version = 1)),
+    CONSTRAINT policy_profile_refresh_outbox_worker_lifecycle_chk CHECK (((((processing_state)::text = 'pending'::text) AND (claim_token IS NULL) AND (claimed_at IS NULL) AND (lease_expires_at IS NULL) AND (completed_at IS NULL)) OR (((processing_state)::text = 'processing'::text) AND (claim_token IS NOT NULL) AND (claimed_at IS NOT NULL) AND (lease_expires_at IS NOT NULL) AND (completed_at IS NULL)) OR (((processing_state)::text = 'completed'::text) AND (claim_token IS NULL) AND (claimed_at IS NULL) AND (lease_expires_at IS NULL) AND (completed_at IS NOT NULL)) OR (((processing_state)::text = 'failed'::text) AND (claim_token IS NULL) AND (claimed_at IS NULL) AND (lease_expires_at IS NULL) AND (completed_at IS NULL))))
 );
 
 
@@ -9563,6 +9576,20 @@ CREATE INDEX idx_policy_profile_refresh_outbox_library_created ON public.policy_
 
 
 --
+-- Name: idx_policy_profile_refresh_outbox_pending_available; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_profile_refresh_outbox_pending_available ON public.policy_profile_refresh_outbox USING btree (available_at, created_at, id) WHERE ((processing_state)::text = 'pending'::text);
+
+
+--
+-- Name: idx_policy_profile_refresh_outbox_processing_lease; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_profile_refresh_outbox_processing_lease ON public.policy_profile_refresh_outbox USING btree (lease_expires_at, id) WHERE ((processing_state)::text = 'processing'::text);
+
+
+--
 -- Name: idx_post_upgrade_tasks_task_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13049,6 +13076,7 @@ FROM unnest(ARRAY[
     '20260725_190000_add_policy_backup_restore_verifications.sql',
     '20260726_090000_add_policy_authorized_outcome_source_event_receipts.sql',
     '20260726_110000_add_policy_identity_evidence_admissions.sql',
-    '20260726_120000_add_policy_profile_refresh_outbox.sql'
+    '20260726_120000_add_policy_profile_refresh_outbox.sql',
+    '20260726_130000_add_policy_profile_refresh_outbox_worker_state.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

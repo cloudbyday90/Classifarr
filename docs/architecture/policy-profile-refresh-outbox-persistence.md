@@ -107,7 +107,7 @@ replace-restore cleanup.
 
 ## Next Step
 
-Proceed to **Phase 6R.3.3e.5: Refresh Worker Consumer**. It should claim only
-committed outbox rows with a bounded retry policy, use a short-lived claim
-lease, invoke the existing `LibraryProfileService.generateProfile` idempotently,
-and record a bounded terminal state without ever processing exact-item memory.
+Phase 6R.3.3e.5 is complete. The worker lifecycle, claim lease, bounded retry,
+and scheduler integration are documented in [Policy Profile Refresh Worker
+Consumer](policy-profile-refresh-worker-consumer.md). Proceed to
+**Phase 6R.3.3f: Concurrency And Recovery Audit**.

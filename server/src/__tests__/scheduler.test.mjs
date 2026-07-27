@@ -29,6 +29,7 @@ const mockDb = {
         ENRICHMENT_RETRY_QUEUE: 2004, RATING_NORMALIZATION_CHECK: 2005, STALE_CLEANUP: 2006,
         POLICY_ROLLBACK_SNAPSHOT_RETENTION: 2007, NATIVE_INTENT_RECONCILIATION: 2008,
         NATIVE_INTENT_RECONCILIATION_LEDGER_RETENTION: 2009,
+        POLICY_PROFILE_REFRESH_OUTBOX: 2011,
     }
 };
 
@@ -64,6 +65,10 @@ const mockRatingNormalizationQueueService = {
 };
 
 const mockNativeIntentReconciliationService = {
+    run: jest.fn(),
+};
+
+const mockPolicyProfileRefreshOutboxWorker = {
     run: jest.fn(),
 };
 
@@ -106,6 +111,8 @@ jest.unstable_mockModule('../services/ratingNormalizationQueueService.mjs', () =
 
 jest.unstable_mockModule('../services/nativeIntentReconciliationService.mjs', () => createNamedMockModule('nativeIntentReconciliationService', mockNativeIntentReconciliationService));
 
+jest.unstable_mockModule('../services/policyProfileRefreshOutboxWorker.mjs', () => createNamedMockModule('policyProfileRefreshOutboxWorker', mockPolicyProfileRefreshOutboxWorker));
+
 jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
@@ -140,6 +147,7 @@ describe('SchedulerService', () => {
         mockClassificationMaintenanceService.cleanupStaleAwaitingDecisions.mockReset();
         mockRatingNormalizationQueueService.queueDailyBackfill.mockReset();
         mockNativeIntentReconciliationService.run.mockReset();
+        mockPolicyProfileRefreshOutboxWorker.run.mockReset();
         mockMediaSync.syncLibrary.mockReset();
         mockClassification.retryClassification.mockReset();
         logger.info.mockReset();
@@ -626,6 +634,39 @@ describe('SchedulerService', () => {
             await jest.advanceTimersByTimeAsync(90_000);
 
             expect(mockNativeIntentReconciliationService.run).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('policy profile refresh outbox scheduling', () => {
+        afterEach(() => {
+            jest.useRealTimers();
+        });
+
+        it('runs one lock-protected periodic worker and one delayed startup worker', async () => {
+            jest.useFakeTimers();
+            mockDb.withSessionAdvisoryLock.mockImplementation(async (_key, handler) => {
+                await handler();
+                return true;
+            });
+            mockPolicyProfileRefreshOutboxWorker.run.mockResolvedValue({ claimed: 1 });
+
+            expect(scheduler.startPolicyProfileRefreshOutboxWorker()).toBe(true);
+            expect(scheduler.startPolicyProfileRefreshOutboxWorker()).toBe(false);
+            expect(mockNodeCron.schedule).toHaveBeenCalledWith(
+                '* * * * *',
+                expect.any(Function),
+                { noOverlap: true },
+            );
+
+            const cronHandler = mockNodeCron.schedule.mock.calls.at(-1)[1];
+            await cronHandler();
+            await jest.advanceTimersByTimeAsync(90_000);
+
+            expect(mockDb.withSessionAdvisoryLock).toHaveBeenCalledWith(
+                2011,
+                expect.any(Function),
+            );
+            expect(mockPolicyProfileRefreshOutboxWorker.run).toHaveBeenCalledTimes(2);
         });
     });
 

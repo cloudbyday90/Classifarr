@@ -23,6 +23,14 @@ import {
     NATIVE_INTENT_RECONCILIATION_TASK_NAME,
 } from './nativeIntentReconciliationSchedule.mjs';
 import {
+    policyProfileRefreshOutboxWorker,
+} from './policyProfileRefreshOutboxWorker.mjs';
+import {
+    POLICY_PROFILE_REFRESH_OUTBOX_CRON,
+    POLICY_PROFILE_REFRESH_OUTBOX_INITIAL_DELAY_MS,
+    POLICY_PROFILE_REFRESH_OUTBOX_TASK_NAME,
+} from './policyProfileRefreshOutboxSchedule.mjs';
+import {
     runGapAnalysis as _runGapAnalysis,
     runPeriodicLibrarySync as _runPeriodicLibrarySync,
     runLibraryWatchdog as _runLibraryWatchdog,
@@ -285,6 +293,34 @@ class SchedulerService {
 
     async runNativeIntentReconciliation() {
         return nativeIntentReconciliationService.run();
+    }
+
+    startPolicyProfileRefreshOutboxWorker() {
+        if (this.tasks.has(POLICY_PROFILE_REFRESH_OUTBOX_TASK_NAME)) {
+            return false;
+        }
+
+        const handler = () => this.runPolicyProfileRefreshOutboxWorker();
+        this.schedule(
+            POLICY_PROFILE_REFRESH_OUTBOX_TASK_NAME,
+            POLICY_PROFILE_REFRESH_OUTBOX_CRON,
+            handler,
+            DB_ADVISORY_LOCKS.POLICY_PROFILE_REFRESH_OUTBOX,
+            { noOverlap: true },
+        );
+        this.scheduleInitial(
+            POLICY_PROFILE_REFRESH_OUTBOX_TASK_NAME,
+            POLICY_PROFILE_REFRESH_OUTBOX_INITIAL_DELAY_MS,
+            handler,
+            DB_ADVISORY_LOCKS.POLICY_PROFILE_REFRESH_OUTBOX,
+        );
+
+        logger.info('Policy profile refresh outbox worker scheduled after application readiness');
+        return true;
+    }
+
+    async runPolicyProfileRefreshOutboxWorker() {
+        return policyProfileRefreshOutboxWorker.run();
     }
 
     /**

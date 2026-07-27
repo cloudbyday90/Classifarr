@@ -57,8 +57,8 @@ unchanged operator or runtime outcome.
 - **Atomic Profile Refresh Outbox** - Classifarr now persists a compact,
   source-event-deduplicated profile-refresh request in the same transaction as
   admitted compatibility or identity evidence. It contains only server-derived
-  correlation and operation data, is cleared during replace restore, and does
-  not invoke profile generation until the dedicated worker is introduced.
+  correlation and operation data, is cleared during replace restore, and is
+  consumed automatically by a lease-protected worker with bounded retries.
 
 - **Authorized Outcome Persistence Commands** - Classifarr now validates a
   pure, server-owned persistence plan against canonical intake, learning guard,

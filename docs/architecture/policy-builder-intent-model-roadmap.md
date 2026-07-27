@@ -3848,7 +3848,9 @@ Implementation task sequence:
      [Policy Profile Refresh Outbox Persistence](policy-profile-refresh-outbox-persistence.md).
    - **6R.3.3e.5 Refresh Worker Consumer:** claim committed outbox rows with a
      bounded retry policy and idempotently invoke the existing library-profile
-     generator. It must never run on rollback or on exact-item memory.
+     generator. It must never run on rollback or on exact-item memory. Complete;
+     documented in [Policy Profile Refresh Worker
+     Consumer](policy-profile-refresh-worker-consumer.md).
 6. **6R.3.3f Concurrency And Recovery Audit:** prove replay, state drift,
    authorization loss, writer failure, and transaction rollback behavior with
    focused unit and integration tests.
@@ -3933,6 +3935,17 @@ Implementation status:
   fingerprint. It remains uninvoked until Phase 6R.3.3e.4 can atomically write
   an evidence mutation and refresh outbox row. Its design record is
   [Policy Identity Evidence Authority Writer](policy-identity-evidence-authority-writer.md).
+- Phase 6R.3.3e.4 is complete. The transaction executor persists a compact,
+  source-event-deduplicated profile-refresh record atomically with admitted
+  compatibility or identity evidence. Replace restore clears the operational
+  outbox rather than importing runtime work. Its design record is
+  [Policy Profile Refresh Outbox Persistence](policy-profile-refresh-outbox-persistence.md).
+- Phase 6R.3.3e.5 is complete. The scheduled worker claims committed,
+  allowlisted outbox rows with a short UUID lease and deterministic ordered
+  `SKIP LOCKED` batches, calls the existing idempotent profile generator after
+  claim commit, and uses token-guarded completion or three-attempt bounded
+  retry. It cannot claim exact-item memory or a rolled-back record. Its design
+  record is [Policy Profile Refresh Worker Consumer](policy-profile-refresh-worker-consumer.md).
 - The focused learning-guard test suite lives in
   `server/src/__tests__/services/policyLearningGuard.test.mjs`.
 - Final-outcome shaping and route-transition validation now live in

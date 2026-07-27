@@ -106,6 +106,19 @@ function startNativeIntentReconciliation(schedulerService, runtimeWiringStatus) 
   }
 }
 
+function startPolicyProfileRefreshOutboxWorker(schedulerService, runtimeWiringStatus) {
+  if (!runtimeWiringStatus.ok || typeof schedulerService.startPolicyProfileRefreshOutboxWorker !== 'function') {
+    return;
+  }
+
+  try {
+    schedulerService.startPolicyProfileRefreshOutboxWorker();
+    logger.info('Policy profile refresh outbox worker started successfully');
+  } catch (error) {
+    logger.warn('Policy profile refresh outbox worker failed to start:', { error: error.message });
+  }
+}
+
 async function initializeProviderLock(providerLock) {
   try {
     await providerLock.init();
@@ -258,4 +271,5 @@ export async function initializeServices({
   await ensureDefaultApiKey(apiKeyService);
   await ensureWebhookSecret(webhookService);
   startNativeIntentReconciliation(schedulerService, runtimeWiringStatus);
+  startPolicyProfileRefreshOutboxWorker(schedulerService, runtimeWiringStatus);
 }

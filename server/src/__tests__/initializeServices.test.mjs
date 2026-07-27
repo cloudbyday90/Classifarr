@@ -54,6 +54,7 @@ describe('initializeServices', () => {
     schedulerService = {
       init: jest.fn(),
       startNativeIntentReconciliation: jest.fn(),
+      startPolicyProfileRefreshOutboxWorker: jest.fn(),
     };
 
     healthCheckService = {
@@ -141,6 +142,7 @@ describe('initializeServices', () => {
     expect(queueService.startWorker).toHaveBeenCalled();
     expect(schedulerService.init).toHaveBeenCalled();
     expect(schedulerService.startNativeIntentReconciliation).toHaveBeenCalledTimes(1);
+    expect(schedulerService.startPolicyProfileRefreshOutboxWorker).toHaveBeenCalledTimes(1);
     expect(providerLock.init).toHaveBeenCalled();
     expect(backfillOrchestrator.init).toHaveBeenCalled();
     expect(graphRelationshipBackfillService.checkAndBackfill).toHaveBeenCalled();
@@ -180,6 +182,7 @@ describe('initializeServices', () => {
     expect(queueService.startWorker).not.toHaveBeenCalled();
     expect(schedulerService.init).not.toHaveBeenCalled();
     expect(schedulerService.startNativeIntentReconciliation).not.toHaveBeenCalled();
+    expect(schedulerService.startPolicyProfileRefreshOutboxWorker).not.toHaveBeenCalled();
     expect(mockLogger.error).toHaveBeenCalledWith(
       'Runtime wiring validation failed; queue and scheduler startup skipped',
       expect.objectContaining({ runtimeWiringStatus: expect.objectContaining({ ok: false }) })
