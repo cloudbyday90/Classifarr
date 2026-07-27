@@ -67,7 +67,54 @@ describe('policyProfileRefreshOutboxRepository', () => {
       'profile_refresh_required',
       'policy_authorized_profile_refresh',
       'learning_evidence',
+      null,
     ]);
+  });
+
+  test('persists a delayed native refresh only for the server-owned native source', async () => {
+    const client = {
+      query: jest.fn().mockResolvedValue({ rows: [row({
+        source_id: 'native_policy_profile_readiness',
+        source_event_id: 'library-profile:8:missing_profile:items:4:high-water:8:retry:91',
+        classification_id: null,
+        learning_operation_id: null,
+        learning_tier_id: null,
+        candidate_key: null,
+        refresh_reason_id: 'stale_library_profile',
+        source_system: 'policy_native_readiness_profile_refresh',
+        request_type: 'native_readiness',
+        available_at: '2026-07-26T12:30:00.000Z',
+      })] }),
+    };
+
+    const nativeRecord = {
+      ...record(),
+      sourceId: 'native_policy_profile_readiness',
+      sourceEventId: 'library-profile:8:missing_profile:items:4:high-water:8:retry:91',
+      classificationId: null,
+      learningOperationId: null,
+      learningTierId: null,
+      candidateKey: null,
+      refreshReasonId: 'stale_library_profile',
+      sourceSystem: 'policy_native_readiness_profile_refresh',
+      requestType: 'native_readiness',
+      availableAt: '2026-07-26T12:30:00.000Z',
+    };
+
+    await expect(enqueuePolicyProfileRefresh({ client, record: nativeRecord })).resolves.toMatchObject({
+      outbox: { availableAt: '2026-07-26T12:30:00.000Z' },
+    });
+    expect(client.query.mock.calls[0][1].at(-1)).toBe('2026-07-26T12:30:00.000Z');
+  });
+
+  test('rejects caller-shaped delayed learning refreshes before querying the database', async () => {
+    const client = { query: jest.fn() };
+
+    await expect(enqueuePolicyProfileRefresh({
+      client,
+      record: { ...record(), availableAt: '2026-07-26T12:30:00.000Z' },
+    })).rejects.toThrow('Only server-owned native profile recovery');
+    expect(client.query).not.toHaveBeenCalled();
   });
 
   test('returns the existing compact row when the authorized source event already has one', async () => {

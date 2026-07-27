@@ -35,6 +35,17 @@ describe('policyNativeProfileRecoveryStatus', () => {
     }).stateId).toBe(stateId);
   });
 
+  test('presents a delayed native retry as scheduled rather than immediately queued', () => {
+    expect(buildNativeProfileRecoveryStatus({
+      readiness: { stateId: 'stale_profile' },
+      activeRefresh: {
+        processingState: 'pending',
+        availableAt: '2026-07-26T12:30:00.000Z',
+      },
+      now: '2026-07-26T12:00:00.000Z',
+    }).stateId).toBe('scheduled');
+  });
+
   test('shows stale profiles without active work as scheduler-owned recovery', () => {
     const profileRecovery = buildNativeProfileRecoveryStatus({
       readiness: { stateId: 'stale_profile' },

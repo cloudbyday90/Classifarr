@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Self-Healing Native Profile Recovery**: terminal native profile-refresh
+  failures now create one delayed, idempotent server-owned successor per failed
+  outbox row. Future recovery work remains automatic and appears as scheduled
+  rather than as a browser retry action.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action.

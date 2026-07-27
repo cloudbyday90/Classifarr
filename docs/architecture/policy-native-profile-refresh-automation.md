@@ -16,6 +16,14 @@ not polled and a later media import can trigger one new recovery request. The
 existing outbox worker then claims and processes that request using its existing advisory lock, short lease,
 `SKIP LOCKED` claim, and capped retry policy.
 
+When a native-readiness row reaches the terminal `failed` state, the planner
+does not reopen it or immediately retry it. It can instead enqueue one
+idempotent delayed successor keyed by that failed outbox ID. The successor
+uses capped exponential delay and a stable per-library phase offset, then
+flows through the same worker and active-library coalescing boundary. The
+detailed design is [Native Profile Refresh Terminal
+Recovery](policy-native-profile-refresh-terminal-recovery.md).
+
 The policy-read endpoint stays read-only. A policy view can report a stale
 profile immediately, including a bounded automatic-recovery state, but it
 cannot enqueue work, generate a profile, mutate a policy, or depend on a
@@ -88,7 +96,9 @@ Selected.
    concurrent successful refresh completes the claim without redundant work.
 6. Retain the existing advisory lock, short claim transaction, UUID lease,
    `SKIP LOCKED` batch, and bounded retry policy.
-7. Allow a planner failure to be observable but not to block delivery of
+7. After a terminal native worker failure, schedule one delayed, deduplicated
+   successor rather than reopening the terminal record or requiring a browser.
+8. Allow a planner failure to be observable but not to block delivery of
    already committed outbox work.
 
 ## Implementation
@@ -111,7 +121,10 @@ eligible active-native libraries with observed items.
 persisted profile state into a compact outbox record. Missing-profile requests
 also require the bounded item revision, preventing a completed empty-library
 request from suppressing a later import. `policyNativeProfileRefreshPlanner.mjs` writes those records in one
-short transaction and reports queued, replayed, coalesced, or invalid counts.
+short transaction and reports queued, replayed, coalesced, invalid, and
+terminal-successor counts. The planner reads only bounded terminal-failure
+history before it creates a new delayed successor; failed source events remain
+terminal audit records.
 
 `PolicyProfileRefreshAutomationService` runs that planner immediately before
 the existing outbox worker in the existing lock-protected schedule. A planner
@@ -135,6 +148,9 @@ the claim as `completedAlreadyCurrent` instead of generating again.
 - Stored and logged data remain bounded to identifiers, timestamps, states,
   and counts. No raw profile distributions, media labels, or exception text are
   added.
+- A scheduled successor is accepted only for the fixed server-owned native
+  request source and source system; learning records cannot provide an
+  `available_at` value.
 - The planner performs no provider, TMDB, AI, routing, or policy-intent write.
   Profile generation remains the existing local media-item aggregation path.
 
@@ -142,12 +158,12 @@ the claim as `completedAlreadyCurrent` instead of generating again.
 
 Focused unit coverage verifies request construction, active-native candidate
 selection, transactional queue planning, exact replay, active-library
-coalescing, scheduler delegation, planner-failure isolation, and the worker's
-already-current and stale-profile race paths.
+coalescing, terminal successor scheduling, scheduler delegation,
+planner-failure isolation, and the worker's already-current and stale-profile
+race paths.
 
 ## Next Step
 
-Make terminal native-refresh failures self-healing by allowing the planner to
-create a bounded successor request after the worker exhausts its retry budget.
-This must remain server-owned, deduplicated per library, and independent of
-browser activity.
+Add terminal-failure classification, aggregation, retention, and an automatic
+circuit policy so known persistent native profile-refresh failures stop
+creating recovery successors while transient failures remain hands-off.

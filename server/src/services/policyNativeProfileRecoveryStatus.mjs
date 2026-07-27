@@ -57,7 +57,14 @@ function isStaleProfileReadiness(readiness = {}) {
   return readiness?.stateId === 'stale_profile';
 }
 
-function resolveRecoveryState(activeRefresh = null) {
+function isFutureRefresh(activeRefresh = null, now = new Date()) {
+  const availableAt = Date.parse(activeRefresh?.availableAt);
+  const evaluatedAt = now instanceof Date ? now.getTime() : Date.parse(now);
+
+  return Number.isFinite(availableAt) && Number.isFinite(evaluatedAt) && availableAt > evaluatedAt;
+}
+
+function resolveRecoveryState(activeRefresh = null, now = new Date()) {
   const processingState = activeRefresh?.processingState;
 
   if (processingState === POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS.PROCESSING) {
@@ -65,15 +72,17 @@ function resolveRecoveryState(activeRefresh = null) {
   }
 
   if (processingState === POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS.PENDING) {
-    return POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS.QUEUED;
+    return isFutureRefresh(activeRefresh, now)
+      ? POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS.SCHEDULED
+      : POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS.QUEUED;
   }
 
   return POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS.SCHEDULED;
 }
 
-function buildNativeProfileRecoveryStatus({ readiness = {}, activeRefresh = null } = {}) {
+function buildNativeProfileRecoveryStatus({ readiness = {}, activeRefresh = null, now = new Date() } = {}) {
   const stateId = isStaleProfileReadiness(readiness)
-    ? resolveRecoveryState(activeRefresh)
+    ? resolveRecoveryState(activeRefresh, now)
     : POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS.NOT_REQUIRED;
   const presentation = PROFILE_RECOVERY_PRESENTATION[stateId];
 
@@ -105,5 +114,6 @@ export {
   applyAutomaticProfileRecoveryToReadiness,
   buildNativeProfileRecoveryStatus,
   isStaleProfileReadiness,
+  isFutureRefresh,
   resolveRecoveryState,
 };

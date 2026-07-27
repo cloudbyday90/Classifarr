@@ -17,7 +17,11 @@ import {
   isPolicyProfileRefreshOutboxRequestType,
   POLICY_PROFILE_REFRESH_OUTBOX_ACTIVE_STATE_IDS,
   POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS,
+  POLICY_PROFILE_REFRESH_OUTBOX_SOURCE_SYSTEM_IDS,
 } from './policyProfileRefreshOutboxVocabulary.mjs';
+import {
+  POLICY_NATIVE_PROFILE_REFRESH_SOURCE_ID,
+} from './policyNativeProfileRefreshRequest.mjs';
 
 const POLICY_PROFILE_REFRESH_OUTBOX_TABLE = 'policy_profile_refresh_outbox';
 
@@ -53,6 +57,7 @@ function normalizeOutboxRow(row = {}) {
     requestType: normalizeString(source.request_type ?? source.requestType, 40) ||
       POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS.LEARNING_EVIDENCE,
     processingState: normalizeString(source.processing_state ?? source.processingState, 40) || null,
+    availableAt: normalizeOutboxTimestamp(source.available_at ?? source.availableAt),
     createdAt: source.created_at ?? source.createdAt ?? null,
   };
 }
@@ -61,9 +66,15 @@ function normalizeOutboxRecord(record = {}) {
   const source = asObject(record);
   const requestType = normalizeString(source.requestType, 40) ||
     POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS.LEARNING_EVIDENCE;
+  const availableAt = source.availableAt === null || source.availableAt === undefined
+    ? null
+    : normalizeScheduledTimestamp(source.availableAt);
 
   if (!isPolicyProfileRefreshOutboxRequestType(requestType)) {
     throw new TypeError('Profile refresh outbox persistence requires a known request type.');
+  }
+  if (availableAt && !isServerOwnedNativeProfileRefresh(source, requestType)) {
+    throw new TypeError('Only server-owned native profile recovery may schedule a profile refresh.');
   }
 
   return {
@@ -77,7 +88,30 @@ function normalizeOutboxRecord(record = {}) {
     refreshReasonId: normalizeString(source.refreshReasonId, 80),
     sourceSystem: normalizeString(source.sourceSystem, 80),
     requestType,
+    availableAt,
   };
+}
+
+function normalizeScheduledTimestamp(value) {
+  const timestamp = value instanceof Date ? value.getTime() : Date.parse(value);
+  if (!Number.isFinite(timestamp)) {
+    throw new TypeError('Profile refresh scheduling requires a valid timestamp.');
+  }
+
+  return new Date(timestamp).toISOString();
+}
+
+function normalizeOutboxTimestamp(value) {
+  if (!value) return null;
+
+  const timestamp = value instanceof Date ? value.getTime() : Date.parse(value);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
+}
+
+function isServerOwnedNativeProfileRefresh(source, requestType) {
+  return requestType === POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS.NATIVE_READINESS &&
+    source.sourceId === POLICY_NATIVE_PROFILE_REFRESH_SOURCE_ID &&
+    source.sourceSystem === POLICY_PROFILE_REFRESH_OUTBOX_SOURCE_SYSTEM_IDS.NATIVE_READINESS;
 }
 
 async function insertPolicyProfileRefreshOutboxRecord({ client, record = {} } = {}) {
@@ -95,9 +129,10 @@ async function insertPolicyProfileRefreshOutboxRecord({ client, record = {} } = 
        candidate_key,
        refresh_reason_id,
        source_system,
-       request_type
+       request_type,
+       available_at
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, COALESCE($11::timestamptz, NOW()))
      ON CONFLICT DO NOTHING
      RETURNING
        id,
@@ -111,6 +146,7 @@ async function insertPolicyProfileRefreshOutboxRecord({ client, record = {} } = 
        refresh_reason_id,
        request_type,
        processing_state,
+       available_at,
        created_at`,
     [
       source.sourceId,
@@ -123,6 +159,7 @@ async function insertPolicyProfileRefreshOutboxRecord({ client, record = {} } = 
       source.refreshReasonId,
       source.sourceSystem,
       source.requestType,
+      source.availableAt,
     ],
   );
 
@@ -149,6 +186,7 @@ async function findPolicyProfileRefreshOutboxRecord({
        refresh_reason_id,
        request_type,
        processing_state,
+       available_at,
        created_at
      FROM ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE}
      WHERE source_id = $1
@@ -175,6 +213,7 @@ async function findActivePolicyProfileRefreshOutboxRecord({ client, libraryId } 
        refresh_reason_id,
        request_type,
        processing_state,
+       available_at,
        created_at
      FROM ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE}
      WHERE library_id = $1
@@ -234,6 +273,8 @@ export {
   insertPolicyProfileRefreshOutboxRecord,
   normalizeOutboxRow,
   normalizeOutboxRecord,
+  normalizeOutboxTimestamp,
+  normalizeScheduledTimestamp,
   policyProfileRefreshOutboxRepository,
   requireTransactionClient,
 };

@@ -74,8 +74,9 @@ through client polling. Selected.
 `policyNativeProfileRecoveryStatus.mjs` derives a fixed state from the
 readiness result and any active persisted profile-refresh work for the policy's
 library. The service reads the outbox only when profile freshness is stale or
-missing. It returns no request identifiers, lease tokens, errors, timestamps,
-or media data.
+missing. A pending row with a future server-owned `available_at` is shown as
+`scheduled`; a claimable pending row is shown as `queued`. It returns no
+request identifiers, lease tokens, errors, timestamps, or media data.
 
 The native readiness contract validates the recovery projection and records
 whether the stored outbox was read. For a stale profile, the presentation-only
@@ -99,13 +100,13 @@ outside this native persisted-policy surface.
 
 ## Verification
 
-Focused tests cover current, scheduled, queued, and processing projections;
-the replacement of the manual stale-profile action; client fail-closed
-validation; and the rendered live region's lack of controls.
+Focused tests cover current, scheduled, queued, and processing projections,
+including delayed terminal-recovery successors; the replacement of the manual
+stale-profile action; client fail-closed validation; and the rendered live
+region's lack of controls.
 
 ## Next Step
 
-Make terminal native-refresh failures self-healing by allowing the planner to
-create a bounded successor request after the worker exhausts its retry budget.
-The status surface can then distinguish a newly scheduled recovery from an
-already queued or processing request without operator intervention.
+Add terminal-failure classification and an automatic circuit policy so the
+status remains truthful for recurring transient recovery without exposing a
+browser retry control for persistent failure.

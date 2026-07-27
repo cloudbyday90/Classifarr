@@ -4226,9 +4226,13 @@ Implementation status:
   Persisted native-policy status now projects bounded scheduled, queued,
   processing, or current recovery state with no browser refresh control. Its
   design record is [Native Policy Profile-Recovery
-  Status](policy-native-profile-recovery-status.md). The next recovery task is
-  to make terminal native-refresh failures produce a bounded successor request
-  without operator intervention.
+  Status](policy-native-profile-recovery-status.md). Terminal native-refresh
+  failure now produces one delayed, idempotent successor per failed outbox row
+  without operator intervention; pending future successors remain `scheduled`
+  in the bounded status projection. The design and outcome record is [Native
+  Profile Refresh Terminal Recovery](policy-native-profile-refresh-terminal-recovery.md).
+  The next recovery task is fixed terminal-failure classification, aggregation,
+  retention, and automatic circuit policy for known persistent failure.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

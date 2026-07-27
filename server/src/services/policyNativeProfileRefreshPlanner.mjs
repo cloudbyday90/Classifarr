@@ -17,6 +17,15 @@ import {
   buildPolicyNativeProfileRefreshRequest,
 } from './policyNativeProfileRefreshRequest.mjs';
 import {
+  policyNativeProfileRefreshFailureRepository,
+} from './policyNativeProfileRefreshFailureRepository.mjs';
+import {
+  buildPolicyNativeProfileRefreshSuccessor,
+} from './policyNativeProfileRefreshSuccessor.mjs';
+import {
+  POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS,
+} from './policyProfileRefreshOutboxWorkerVocabulary.mjs';
+import {
   enqueuePolicyProfileRefresh,
 } from './policyProfileRefreshOutboxRepository.mjs';
 
@@ -25,7 +34,18 @@ const POLICY_NATIVE_PROFILE_REFRESH_PLANNER_VERSION =
 
 const logger = createLogger('PolicyNativeProfileRefreshPlanner');
 
-function buildResult({ scanned = 0, eligible = 0, queued = 0, replayed = 0, coalesced = 0, invalid = 0 } = {}) {
+function buildResult({
+  scanned = 0,
+  eligible = 0,
+  queued = 0,
+  replayed = 0,
+  coalesced = 0,
+  invalid = 0,
+  successorQueued = 0,
+  successorReplayed = 0,
+  successorCoalesced = 0,
+  successorInvalid = 0,
+} = {}) {
   return {
     version: POLICY_NATIVE_PROFILE_REFRESH_PLANNER_VERSION,
     statusId: 'completed',
@@ -35,6 +55,10 @@ function buildResult({ scanned = 0, eligible = 0, queued = 0, replayed = 0, coal
     replayed,
     coalesced,
     invalid,
+    successorQueued,
+    successorReplayed,
+    successorCoalesced,
+    successorInvalid,
   };
 }
 
@@ -43,13 +67,19 @@ class PolicyNativeProfileRefreshPlanner {
     dbClient = database,
     candidateRepository = policyNativeProfileRefreshCandidateRepository,
     buildRequest = buildPolicyNativeProfileRefreshRequest,
+    failureRepository = policyNativeProfileRefreshFailureRepository,
+    buildSuccessor = buildPolicyNativeProfileRefreshSuccessor,
     enqueue = enqueuePolicyProfileRefresh,
+    now = () => new Date(),
     loggerInstance = logger,
   } = {}) {
     this.dbClient = dbClient;
     this.candidateRepository = candidateRepository;
     this.buildRequest = buildRequest;
+    this.failureRepository = failureRepository;
+    this.buildSuccessor = buildSuccessor;
     this.enqueue = enqueue;
+    this.now = now;
     this.logger = loggerInstance;
   }
 
@@ -63,7 +93,30 @@ class PolicyNativeProfileRefreshPlanner {
     return this.dbClient.withTransaction(async client => {
       const results = [];
       for (const request of requests) {
-        results.push(await this.enqueue({ client, record: request.record }));
+        const primary = await this.enqueue({ client, record: request.record });
+        let successor = null;
+
+        if (primary?.outbox?.processingState === POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS.FAILED) {
+          const failureHistory = await this.failureRepository.findHistory({
+            client,
+            libraryId: request.record.libraryId,
+            sourceEventId: request.record.sourceEventId,
+          });
+          const successorRequest = this.buildSuccessor({
+            record: request.record,
+            failedOutboxId: failureHistory?.failedOutboxId,
+            failureCount: failureHistory?.failureCount,
+            now: this.now(),
+          });
+
+          if (successorRequest.ready === true) {
+            successor = await this.enqueue({ client, record: successorRequest.record });
+          } else {
+            successor = { invalid: true };
+          }
+        }
+
+        results.push({ primary, successor });
       }
       return results;
     });
@@ -80,10 +133,18 @@ class PolicyNativeProfileRefreshPlanner {
     const result = buildResult({
       scanned: candidates.length,
       eligible: readyRequests.length,
-      queued: persisted.filter(entry => entry.replayed !== true && entry.coalesced !== true).length,
-      replayed: persisted.filter(entry => entry.replayed === true).length,
-      coalesced: persisted.filter(entry => entry.coalesced === true).length,
+      queued: persisted.filter(entry =>
+        entry.primary.replayed !== true && entry.primary.coalesced !== true
+      ).length,
+      replayed: persisted.filter(entry => entry.primary.replayed === true).length,
+      coalesced: persisted.filter(entry => entry.primary.coalesced === true).length,
       invalid: requests.filter(({ request }) => request.ready !== true).length,
+      successorQueued: persisted.filter(entry =>
+        entry.successor && entry.successor.replayed !== true && entry.successor.coalesced !== true
+      ).length,
+      successorReplayed: persisted.filter(entry => entry.successor?.replayed === true).length,
+      successorCoalesced: persisted.filter(entry => entry.successor?.coalesced === true).length,
+      successorInvalid: persisted.filter(entry => entry.successor?.invalid === true).length,
     });
 
     this.logger.info('Native policy profile refresh planning completed', result);
