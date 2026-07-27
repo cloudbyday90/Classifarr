@@ -17,6 +17,17 @@ validated evidence and intent contracts for focused internal composition, while
 runtime callers use the bounded readiness entry point. Raw evidence is rejected
 by the lower-level reducer.
 
+## Native Creation Adoption
+
+The native-create footer is intentionally narrower than a readiness result. It
+may state only whether the operator selected a library and explicitly accepted
+destination purpose in the unsaved local draft. It cannot infer routing,
+provider, replay, TMDB, scoring, or automation state. The transaction-owning
+server path validates and establishes native intent, and the post-create
+handoff reports the resulting server-derived routing state. The implementation
+and outcome are documented in [Policy Native Create Readiness
+Boundary](policy-native-create-readiness-boundary.md).
+
 Operational routing, freshness, and hard-limit input is normalized by
 [Policy Automation Readiness Input Normalizer](policy-automation-readiness-input-normalizer.md)
 before the engine evaluates readiness. The readiness result retains only the

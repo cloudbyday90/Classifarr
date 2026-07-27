@@ -18,6 +18,12 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Native Create Readiness Boundary** - Native policy creation now limits its
+  footer to selected-library and explicitly accepted-purpose checks. Routing,
+  provider, replay, TMDB, scoring, and automation state remain server-owned;
+  compatibility-policy save warnings remain isolated until the migration path
+  retires them.
+
 - **Authorized Outcome Idempotency Receipts** - Classifarr now has a durable,
   append-only source-event receipt foundation for authorized outcome and
   learning writes. It returns an existing receipt only for an exact replay and

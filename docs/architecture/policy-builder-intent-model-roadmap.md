@@ -4096,6 +4096,12 @@ Implementation status:
   issues with next actions, treats profile refresh as stale readiness, and
   ignores replay, impact preview, provider, TMDB, and raw scoring diagnostic
   inputs instead of allowing them to become product gates.
+- Native policy creation now has a separate local draft-completeness boundary:
+  its footer checks only selected library and explicitly accepted purpose, never
+  locally inferred routing or diagnostic state. Server establishment and the
+  post-create handoff remain authoritative. The implementation and outcome are
+  documented in [Policy Native Create Readiness
+  Boundary](policy-native-create-readiness-boundary.md).
 - Readiness now exposes a bounded entry point for new runtime/rebuild callers:
   it requires successful bounded evidence, intent, and learning results,
   verifies their shared sanitized evidence projection fingerprint, and attaches

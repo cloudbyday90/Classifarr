@@ -443,6 +443,7 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).not.toContain('Policy Intent Builder');
     expect(document.body.textContent).not.toContain('Starter Template Accelerator');
     expect(document.body.textContent).not.toContain('Advanced Settings');
+    expect(document.body.textContent).not.toContain('routing still needs setup');
     expect(api.get).not.toHaveBeenCalledWith('/policies/presets/all');
     expect(api.get).not.toHaveBeenCalledWith('/settings');
     expect(api.get).not.toHaveBeenCalledWith('/policies/presets/suggest/1');

@@ -234,10 +234,16 @@ const intentSummary = computed(() => buildPolicyIntentSummary(
   buildPolicyIntentViewFromDraft(intentDraft.value),
 ))
 
-const routingReadiness = computed(() => buildPolicyBuilderRoutingReadiness({
-  library: currentLibrary.value,
-  form: form.value,
-}))
+const experienceMode = computed(() => buildPolicyBuilderExperienceMode(props.policy))
+
+const compatibilityRoutingReadiness = computed(() => (
+  experienceMode.value.isLegacyEdit
+    ? buildPolicyBuilderRoutingReadiness({
+      library: currentLibrary.value,
+      form: form.value,
+    })
+    : null
+))
 
 const {
   workflowRead: operatorWorkflowRead,
@@ -272,8 +278,6 @@ const {
   constraintValueEligibility,
 })
 
-const experienceMode = computed(() => buildPolicyBuilderExperienceMode(props.policy))
-
 const {
   handoff: nativeCreateHandoff,
   establishHandoff: establishNativeCreateHandoff,
@@ -285,7 +289,7 @@ const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({
   totalWeight: totalWeight.value,
   hasExistingPolicy: experienceMode.value.isLegacyEdit,
   nativeIntentEstablishment: nativeIntentEstablishment.value,
-  routingReadiness: routingReadiness.value,
+  compatibilityRoutingReadiness: compatibilityRoutingReadiness.value,
 }))
 
 onMounted(() => {

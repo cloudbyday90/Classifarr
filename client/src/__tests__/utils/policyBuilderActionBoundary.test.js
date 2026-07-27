@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 
 describe('policyBuilderActionBoundary', () => {
-  it('requires a selected library before saving', () => {
+  it('requires a selected library before creating a native policy', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: {},
       selectedPresets: [{ id: 1 }],
@@ -17,8 +17,8 @@ describe('policyBuilderActionBoundary', () => {
     expect(boundary).toMatchObject({
       canSave: false,
       status: 'blocked',
-      statusLabel: 'Choose a library before saving',
-      disabledReason: 'Choose a destination library before saving.',
+      statusLabel: 'Choose a library before creating',
+      disabledReason: 'Choose a destination library before creating a policy.',
     })
   })
 
@@ -69,7 +69,7 @@ describe('policyBuilderActionBoundary', () => {
     expect(boundary.statusMessage).toContain('85%')
   })
 
-  it('allows save with a non-blocking routing warning', () => {
+  it('does not derive native creation readiness from local routing data', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
       totalWeight: 1,
@@ -78,16 +78,16 @@ describe('policyBuilderActionBoundary', () => {
           purpose: [{ signal_type: 'genres' }],
         },
       },
-      routingReadiness: {
+      compatibilityRoutingReadiness: {
         canRoute: false,
       },
     })
 
     expect(boundary).toMatchObject({
       canSave: true,
-      status: 'ready_with_warning',
-      tone: 'info',
-      statusLabel: 'Ready to create; routing still needs setup',
+      status: 'ready',
+      tone: 'success',
+      statusLabel: 'Ready to create',
       disabledReason: '',
     })
   })
@@ -98,7 +98,7 @@ describe('policyBuilderActionBoundary', () => {
       selectedPresets: [{ id: 1 }],
       totalWeight: 1,
       hasExistingPolicy: true,
-      routingReadiness: {
+      compatibilityRoutingReadiness: {
         canRoute: true,
       },
     })
