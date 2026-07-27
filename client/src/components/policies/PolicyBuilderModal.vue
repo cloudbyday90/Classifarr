@@ -33,6 +33,7 @@
             :refreshing="libraryProfileRefreshing"
             :can-refresh="Boolean(form.library_id)"
             :show-refresh-action="experienceMode.isLegacyEdit"
+            :show-freshness="!experienceMode.isNativeView"
             @refresh-profile="refreshActiveLibraryProfile"
           />
         </div>

@@ -80,27 +80,37 @@ function createService({
   context = buildContext(),
   nativeIntent = buildNativeIntent(),
   profileHandoff = buildProfileHandoff(),
+  activeProfileRefresh = null,
 } = {}) {
   const fetchContext = jest.fn().mockResolvedValue(context);
   const fetchNativeIntent = jest.fn().mockResolvedValue(nativeIntent);
   const loadProfileEvidence = jest.fn().mockResolvedValue(profileHandoff);
+  const findActiveProfileRefresh = jest.fn().mockResolvedValue(activeProfileRefresh);
   const service = createPolicyNativeReadinessSummaryService({
     fetchContext,
     fetchNativeIntent,
     loadProfileEvidence,
+    findActiveProfileRefresh,
   });
 
   return {
     fetchContext,
     fetchNativeIntent,
     loadProfileEvidence,
+    findActiveProfileRefresh,
     service,
   };
 }
 
 describe('policyNativeReadinessSummaryService', () => {
   test('reads authoritative native intent, cached profile freshness, and routing without side effects', async () => {
-    const { service, fetchContext, fetchNativeIntent, loadProfileEvidence } = createService();
+    const {
+      service,
+      fetchContext,
+      fetchNativeIntent,
+      loadProfileEvidence,
+      findActiveProfileRefresh,
+    } = createService();
     const dbClient = { query: jest.fn() };
 
     const result = await service.getSummary({ dbClient, policyId: 42 });
@@ -127,6 +137,7 @@ describe('policyNativeReadinessSummaryService', () => {
         storedPolicyRead: true,
         storedNativeIntentRead: true,
         cachedProfileRead: true,
+        profileRefreshOutboxRead: false,
         routingConfigurationRead: true,
         liveMediaServerLookupPerformed: false,
         liveProviderLookupPerformed: false,
@@ -139,11 +150,12 @@ describe('policyNativeReadinessSummaryService', () => {
     expect(fetchContext).toHaveBeenCalledWith(dbClient, 42);
     expect(fetchNativeIntent).toHaveBeenCalledWith(dbClient, 42);
     expect(loadProfileEvidence).toHaveBeenCalledWith({ libraryId: 7 });
+    expect(findActiveProfileRefresh).not.toHaveBeenCalled();
     expect(dbClient.query).not.toHaveBeenCalled();
   });
 
-  test('degrades an unavailable cached profile to a bounded refresh action', async () => {
-    const { service } = createService({
+  test('reports automatic recovery instead of a browser-facing refresh action for an unavailable cached profile', async () => {
+    const { service, findActiveProfileRefresh } = createService({
       profileHandoff: {
         ok: false,
         statusId: 'profile_not_found',
@@ -159,11 +171,42 @@ describe('policyNativeReadinessSummaryService', () => {
         stateId: 'stale_profile',
         ready: false,
         nextAction: {
-          actionId: 'refresh_profile',
-          label: 'Refresh profile',
+          actionId: 'await_automatic_profile_recovery',
+          label: 'Profile recovery is automatic',
         },
       }),
+      profileRecovery: {
+        stateId: 'scheduled',
+        label: 'Recovery scheduled',
+        message: 'Classifarr will refresh this library profile automatically in the background. No action is needed.',
+      },
       sideEffects: expect.objectContaining({ cachedProfileRead: true }),
+    }));
+    expect(findActiveProfileRefresh).toHaveBeenCalledWith({
+      client: expect.any(Object),
+      libraryId: 7,
+    });
+  });
+
+  test('projects queued background recovery from the persisted refresh outbox', async () => {
+    const { service } = createService({
+      profileHandoff: {
+        ok: false,
+        statusId: 'profile_not_found',
+        sideEffects: { libraryProfileRead: true },
+      },
+      activeProfileRefresh: { processingState: 'pending' },
+    });
+
+    const result = await service.getSummary({ dbClient: { query: jest.fn() }, policyId: 42 });
+
+    expect(result).toEqual(expect.objectContaining({
+      profileRecovery: {
+        stateId: 'queued',
+        label: 'Recovery queued',
+        message: 'Classifarr has queued an automatic library-profile refresh. No action is needed.',
+      },
+      sideEffects: expect.objectContaining({ profileRefreshOutboxRead: true }),
     }));
   });
 

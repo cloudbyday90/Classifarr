@@ -85,6 +85,17 @@ describe('PolicyBuilderLibraryContext.vue', () => {
     expect(wrapper.find('button').exists()).toBe(false)
   })
 
+  it('can leave profile freshness to the native automatic recovery status', () => {
+    const wrapper = mount(PolicyBuilderLibraryContext, {
+      props: {
+        library: { id: 14, name: 'Family' },
+        showFreshness: false,
+      },
+    })
+
+    expect(wrapper.text()).not.toContain('No profile yet:')
+  })
+
   it('shows refreshing state and blocks duplicate refreshes', () => {
     const wrapper = mount(PolicyBuilderLibraryContext, {
       props: {

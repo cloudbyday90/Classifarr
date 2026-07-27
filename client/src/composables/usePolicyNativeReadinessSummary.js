@@ -22,6 +22,12 @@ const READINESS_STATE_IDS = new Set([
   'blocked_by_hard_limit',
   'stale_profile',
 ])
+const PROFILE_RECOVERY_STATE_IDS = new Set([
+  'not_required',
+  'scheduled',
+  'queued',
+  'processing',
+])
 const ALLOWED_STATUS_IDS = new Set([
   AVAILABLE_STATUS_ID,
   'native_policy_readiness_native_intent_unavailable',
@@ -40,7 +46,8 @@ function hasReadOnlyAuthority(authority = {}) {
 }
 
 function hasReadOnlySideEffects(sideEffects = {}) {
-  return sideEffects?.liveMediaServerLookupPerformed === false &&
+  return typeof sideEffects?.profileRefreshOutboxRead === 'boolean' &&
+    sideEffects?.liveMediaServerLookupPerformed === false &&
     sideEffects?.liveProviderLookupPerformed === false &&
     sideEffects?.providerQuotaRead === false &&
     sideEffects?.policyStorageMutated === false &&
@@ -57,6 +64,14 @@ function hasBoundedReadiness(readiness = {}) {
     Array.isArray(readiness?.reasonCodes)
 }
 
+function hasBoundedProfileRecovery(profileRecovery = {}) {
+  return PROFILE_RECOVERY_STATE_IDS.has(profileRecovery?.stateId) &&
+    typeof profileRecovery?.label === 'string' &&
+    profileRecovery.label.length > 0 &&
+    typeof profileRecovery?.message === 'string' &&
+    profileRecovery.message.length > 0
+}
+
 function isNativeReadinessSummary(value, expectedPolicyId) {
   if (
     !value ||
@@ -71,7 +86,10 @@ function isNativeReadinessSummary(value, expectedPolicyId) {
     return false
   }
 
-  return value.statusId !== AVAILABLE_STATUS_ID || hasBoundedReadiness(value.readiness)
+  return value.statusId !== AVAILABLE_STATUS_ID || (
+    hasBoundedReadiness(value.readiness) &&
+    hasBoundedProfileRecovery(value.profileRecovery)
+  )
 }
 
 export function usePolicyNativeReadinessSummary({
@@ -144,5 +162,6 @@ export function usePolicyNativeReadinessSummary({
 export {
   NATIVE_READINESS_SUMMARY_ERROR,
   NATIVE_READINESS_SUMMARY_VERSION,
+  hasBoundedProfileRecovery,
   isNativeReadinessSummary,
 }

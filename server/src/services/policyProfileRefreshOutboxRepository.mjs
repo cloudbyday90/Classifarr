@@ -52,6 +52,7 @@ function normalizeOutboxRow(row = {}) {
     ) || null,
     requestType: normalizeString(source.request_type ?? source.requestType, 40) ||
       POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS.LEARNING_EVIDENCE,
+    processingState: normalizeString(source.processing_state ?? source.processingState, 40) || null,
     createdAt: source.created_at ?? source.createdAt ?? null,
   };
 }
@@ -109,6 +110,7 @@ async function insertPolicyProfileRefreshOutboxRecord({ client, record = {} } = 
        candidate_key,
        refresh_reason_id,
        request_type,
+       processing_state,
        created_at`,
     [
       source.sourceId,
@@ -146,6 +148,7 @@ async function findPolicyProfileRefreshOutboxRecord({
        candidate_key,
        refresh_reason_id,
        request_type,
+       processing_state,
        created_at
      FROM ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE}
      WHERE source_id = $1
@@ -171,6 +174,7 @@ async function findActivePolicyProfileRefreshOutboxRecord({ client, libraryId } 
        candidate_key,
        refresh_reason_id,
        request_type,
+       processing_state,
        created_at
      FROM ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE}
      WHERE library_id = $1

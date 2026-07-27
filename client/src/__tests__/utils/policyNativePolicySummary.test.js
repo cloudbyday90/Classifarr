@@ -38,6 +38,11 @@ describe('policyNativePolicySummary', () => {
     expect(buildNativePolicyReadinessSummary({
       readinessSummary: {
         statusId: 'native_policy_readiness_available',
+        profileRecovery: {
+          stateId: 'scheduled',
+          label: 'Recovery scheduled',
+          message: 'Classifarr will refresh this library profile automatically in the background. No action is needed.',
+        },
         readiness: {
           ready: false,
           nextAction: { label: 'Configure routing' },
@@ -48,6 +53,11 @@ describe('policyNativePolicySummary', () => {
       label: 'Needs action',
       message: 'The stored policy needs attention before automation continues.',
       nextActionLabel: 'Configure routing',
+      profileRecovery: {
+        stateId: 'scheduled',
+        label: 'Recovery scheduled',
+        message: 'Classifarr will refresh this library profile automatically in the background. No action is needed.',
+      },
     })
   })
 
@@ -59,6 +69,11 @@ describe('policyNativePolicySummary', () => {
       label: 'Readiness unavailable',
       message: 'Classifarr could not load the current policy readiness.',
       nextActionLabel: '',
+      profileRecovery: {
+        stateId: 'unavailable',
+        label: 'Recovery status unavailable',
+        message: 'Classifarr could not confirm automatic profile recovery status.',
+      },
     })
   })
 
@@ -72,6 +87,11 @@ describe('policyNativePolicySummary', () => {
       label: 'Native intent unavailable',
       message: 'Classifarr could not confirm one authoritative stored native intent for this policy.',
       nextActionLabel: '',
+      profileRecovery: {
+        stateId: 'unavailable',
+        label: 'Recovery status unavailable',
+        message: 'Classifarr could not confirm automatic profile recovery status.',
+      },
     })
   })
 })

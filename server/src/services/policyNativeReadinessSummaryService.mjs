@@ -23,6 +23,11 @@ import {
   buildNativeReadinessIntent,
 } from './policyNativeReadinessIntent.mjs';
 import {
+  applyAutomaticProfileRecoveryToReadiness,
+  buildNativeProfileRecoveryStatus,
+  isStaleProfileReadiness,
+} from './policyNativeProfileRecoveryStatus.mjs';
+import {
   buildAvailableNativeReadinessSummary,
   buildNativeIntentUnavailableResult,
   buildPolicyNativeReadinessSummaryAudit,
@@ -33,6 +38,9 @@ import {
 import {
   fetchPolicyNativeReadinessContext,
 } from './policyNativeReadinessPersistence.mjs';
+import {
+  findActivePolicyProfileRefreshOutboxRecord,
+} from './policyProfileRefreshOutboxRepository.mjs';
 
 function resolveProfileFreshness(profileHandoff = {}) {
   if (profileHandoff?.ok === true && profileHandoff.profileFreshness) {
@@ -43,9 +51,10 @@ function resolveProfileFreshness(profileHandoff = {}) {
   return { stale: true };
 }
 
-function buildSummarySideEffects({ profileHandoff } = {}) {
+function buildSummarySideEffects({ profileHandoff, profileRefreshOutboxRead = false } = {}) {
   return {
     cachedProfileRead: profileHandoff?.sideEffects?.libraryProfileRead === true,
+    profileRefreshOutboxRead,
     routingConfigurationRead: true,
   };
 }
@@ -54,6 +63,7 @@ function createPolicyNativeReadinessSummaryService({
   fetchContext = fetchPolicyNativeReadinessContext,
   fetchNativeIntent = fetchActiveNativeIntentForPolicy,
   loadProfileEvidence = loadPolicyLibraryProfileEvidence,
+  findActiveProfileRefresh = findActivePolicyProfileRefreshOutboxRecord,
   buildReadiness = buildPolicyAutomationReadinessFromContracts,
   validateReadiness = validatePolicyAutomationReadiness,
 } = {}) {
@@ -98,7 +108,6 @@ function createPolicyNativeReadinessSummaryService({
         readinessInput.evidenceProjection = profileHandoff.evidenceBoundary.projection;
       }
       const readiness = buildReadiness(readinessInput);
-
       if (validateReadiness(readiness).ok !== true) {
         return buildReadUnavailableResult({
           policyId: normalizedPolicyId,
@@ -106,19 +115,42 @@ function createPolicyNativeReadinessSummaryService({
         });
       }
 
+      const profileRefreshOutboxRead = isStaleProfileReadiness(readiness);
+      const activeRefresh = profileRefreshOutboxRead
+        ? await findActiveProfileRefresh({
+          client: dbClient,
+          libraryId: context.policy.libraryId,
+        })
+        : null;
+      const profileRecovery = buildNativeProfileRecoveryStatus({
+        readiness,
+        activeRefresh,
+      });
+      const displayReadiness = applyAutomaticProfileRecoveryToReadiness({
+        readiness,
+        profileRecovery,
+      });
+
       const summary = buildAvailableNativeReadinessSummary({
         policyId: normalizedPolicyId,
         nativeIntent,
         nativeContract,
-        readiness,
-        sideEffects: buildSummarySideEffects({ profileHandoff }),
+        readiness: displayReadiness,
+        profileRecovery,
+        sideEffects: buildSummarySideEffects({
+          profileHandoff,
+          profileRefreshOutboxRead,
+        }),
       });
 
       return buildPolicyNativeReadinessSummaryAudit(summary).ok
         ? summary
         : buildReadUnavailableResult({
           policyId: normalizedPolicyId,
-          sideEffects: buildSummarySideEffects({ profileHandoff }),
+          sideEffects: buildSummarySideEffects({
+            profileHandoff,
+            profileRefreshOutboxRead,
+          }),
         });
     } catch {
       return buildReadUnavailableResult({ policyId: normalizedPolicyId });

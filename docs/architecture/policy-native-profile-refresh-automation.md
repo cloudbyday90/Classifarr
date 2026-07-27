@@ -17,9 +17,9 @@ existing outbox worker then claims and processes that request using its existing
 `SKIP LOCKED` claim, and capped retry policy.
 
 The policy-read endpoint stays read-only. A policy view can report a stale
-profile immediately, but it cannot enqueue work, generate a profile, mutate a
-policy, or depend on a browser session. The scheduled planner is the sole
-native-readiness producer.
+profile immediately, including a bounded automatic-recovery state, but it
+cannot enqueue work, generate a profile, mutate a policy, or depend on a
+browser session. The scheduled planner is the sole native-readiness producer.
 
 ## Research
 
@@ -147,7 +147,7 @@ already-current and stale-profile race paths.
 
 ## Next Step
 
-Update the native policy status surface to present a stale profile as
-background recovery in progress instead of offering it as an operator action.
-That UI task should consume only the existing read-only readiness summary and
-must not add a browser-triggered refresh path.
+Make terminal native-refresh failures self-healing by allowing the planner to
+create a bounded successor request after the worker exhausts its retry budget.
+This must remain server-owned, deduplicated per library, and independent of
+browser activity.

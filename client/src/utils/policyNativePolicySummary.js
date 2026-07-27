@@ -11,6 +11,13 @@ import { hasServerReportedNativePolicyIntent } from './policyNativePolicyAuthori
 const MAX_PURPOSE_RULES = 8
 const MAX_PURPOSE_VALUES_PER_RULE = 4
 const MAX_SUMMARY_TEXT_LENGTH = 80
+const MAX_PROFILE_RECOVERY_MESSAGE_LENGTH = 160
+const PROFILE_RECOVERY_STATE_IDS = new Set([
+  'not_required',
+  'scheduled',
+  'queued',
+  'processing',
+])
 
 function replaceControlCharacters(value) {
   return Array.from(value, (character) => {
@@ -73,6 +80,32 @@ function buildNativePurposeSummary(policy = {}) {
     .slice(0, MAX_PURPOSE_RULES)
 }
 
+function buildNativeProfileRecoverySummary(readinessSummary = {}) {
+  const profileRecovery = readinessSummary?.profileRecovery
+  const stateId = normalizeSummaryText(profileRecovery?.stateId)
+  const label = normalizeSummaryText(profileRecovery?.label)
+  const message = normalizeProfileRecoveryText(profileRecovery?.message)
+
+  if (!PROFILE_RECOVERY_STATE_IDS.has(stateId) || !label || !message) {
+    return {
+      stateId: 'unavailable',
+      label: 'Recovery status unavailable',
+      message: 'Classifarr could not confirm automatic profile recovery status.',
+    }
+  }
+
+  return { stateId, label, message }
+}
+
+function normalizeProfileRecoveryText(value) {
+  if (typeof value !== 'string' && typeof value !== 'number') return ''
+
+  return replaceControlCharacters(String(value).normalize('NFKC'))
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_PROFILE_RECOVERY_MESSAGE_LENGTH)
+}
+
 function buildNativePolicyReadinessSummary({ readinessSummary, loading = false, error = '' } = {}) {
   if (loading) {
     return {
@@ -80,6 +113,11 @@ function buildNativePolicyReadinessSummary({ readinessSummary, loading = false, 
       label: 'Checking readiness',
       message: 'Classifarr is checking the stored policy intent, cached profile, and routing readiness.',
       nextActionLabel: '',
+      profileRecovery: {
+        stateId: 'checking',
+        label: 'Checking recovery',
+        message: 'Classifarr is checking automatic profile recovery status.',
+      },
     }
   }
 
@@ -89,6 +127,11 @@ function buildNativePolicyReadinessSummary({ readinessSummary, loading = false, 
       label: 'Readiness unavailable',
       message: 'Classifarr could not load the current policy readiness.',
       nextActionLabel: '',
+      profileRecovery: {
+        stateId: 'unavailable',
+        label: 'Recovery status unavailable',
+        message: 'Classifarr could not confirm automatic profile recovery status.',
+      },
     }
   }
 
@@ -98,6 +141,11 @@ function buildNativePolicyReadinessSummary({ readinessSummary, loading = false, 
       label: 'Native intent unavailable',
       message: 'Classifarr could not confirm one authoritative stored native intent for this policy.',
       nextActionLabel: '',
+      profileRecovery: {
+        stateId: 'unavailable',
+        label: 'Recovery status unavailable',
+        message: 'Classifarr could not confirm automatic profile recovery status.',
+      },
     }
   }
 
@@ -110,6 +158,7 @@ function buildNativePolicyReadinessSummary({ readinessSummary, loading = false, 
       label: 'Ready',
       message: 'The stored policy intent, cached profile, and routing state are ready for automation.',
       nextActionLabel,
+      profileRecovery: buildNativeProfileRecoverySummary(readinessSummary),
     }
   }
 
@@ -118,10 +167,12 @@ function buildNativePolicyReadinessSummary({ readinessSummary, loading = false, 
     label: 'Needs action',
     message: 'The stored policy needs attention before automation continues.',
     nextActionLabel,
+    profileRecovery: buildNativeProfileRecoverySummary(readinessSummary),
   }
 }
 
 export {
+  buildNativeProfileRecoverySummary,
   buildNativePolicyReadinessSummary,
   buildNativePurposeSummary,
 }

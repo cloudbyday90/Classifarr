@@ -275,6 +275,11 @@ describe('PolicyBuilderModal.vue', () => {
       },
       reasonCodes: ['routing_not_ready'],
     },
+    profileRecovery: {
+      stateId: 'not_required',
+      label: 'Profile current',
+      message: 'No automatic profile recovery is needed.',
+    },
     authority: {
       displayProjection: true,
       automationDecision: false,
@@ -282,6 +287,7 @@ describe('PolicyBuilderModal.vue', () => {
       routingExecution: false,
     },
     sideEffects: {
+      profileRefreshOutboxRead: false,
       liveMediaServerLookupPerformed: false,
       liveProviderLookupPerformed: false,
       providerQuotaRead: false,
@@ -418,6 +424,9 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).toContain('Genres: Science Fiction');
     expect(document.body.textContent).toContain('Current policy readiness');
     expect(document.body.textContent).toContain('Configure routing');
+    expect(document.body.textContent).toContain('Profile recovery');
+    expect(document.body.textContent).toContain('Profile current');
+    expect(document.body.textContent).not.toContain('Refresh profile');
     expect(document.body.textContent).not.toContain('What belongs here');
     expect(wrapper.find('#policy-builder-intent-editor').exists()).toBe(false);
     expect(wrapper.find('#policy-builder-advanced-settings').exists()).toBe(false);

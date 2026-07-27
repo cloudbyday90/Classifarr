@@ -41,6 +41,7 @@ function row(overrides = {}) {
     candidate_key: 'studio:pixar',
     refresh_reason_id: 'profile_refresh_required',
     request_type: 'learning_evidence',
+    processing_state: 'pending',
     created_at: '2026-07-26T12:00:00.000Z',
     ...overrides,
   };
@@ -99,7 +100,7 @@ describe('policyProfileRefreshOutboxRepository', () => {
     await expect(enqueuePolicyProfileRefresh({ client, record: record() })).resolves.toMatchObject({
       replayed: false,
       coalesced: true,
-      outbox: { id: '91', libraryId: '8' },
+      outbox: { id: '91', libraryId: '8', processingState: 'pending' },
     });
     expect(client.query.mock.calls[2][0]).toContain('processing_state = ANY($2::text[])');
     expect(client.query.mock.calls[2][1]).toEqual(['8', ['pending', 'processing']]);

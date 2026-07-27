@@ -9,6 +9,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ## [Unreleased]
 
+### Changed
+
+- **Native Policy Recovery Status**: Persisted native policy views now show
+  server-derived automatic profile-recovery status instead of presenting stale
+  profiles as a browser refresh action.
+
 The entries below describe distinct product behavior and operational guarantees
 intended for the next release. They consolidate intermediate implementation work,
 temporary diagnostics, and refactors only when those changes resulted in one

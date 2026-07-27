@@ -4223,8 +4223,12 @@ Implementation status:
 - The native-readiness recovery action is now scheduler-owned. Missing and stale
   active-native profiles are queued automatically through the durable profile
   refresh outbox, while the current read-only summary remains side-effect free.
-  The next workflow task is to replace the remaining browser-facing refresh
-  affordance with compact background-recovery status.
+  Persisted native-policy status now projects bounded scheduled, queued,
+  processing, or current recovery state with no browser refresh control. Its
+  design record is [Native Policy Profile-Recovery
+  Status](policy-native-profile-recovery-status.md). The next recovery task is
+  to make terminal native-refresh failures produce a bounded successor request
+  without operator intervention.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

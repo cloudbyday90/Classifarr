@@ -40,6 +40,7 @@
         </button>
       </div>
       <p
+        v-if="showFreshness"
         class="mt-2 rounded border px-2 py-1 text-xs"
         :class="freshnessClass"
       >
@@ -49,7 +50,7 @@
         {{ freshness.message }}
       </p>
       <p
-        v-if="freshness.updatedAtLabel"
+        v-if="showFreshness && freshness.updatedAtLabel"
         class="mt-1 text-[11px] text-gray-500"
       >
         {{ freshness.updatedAtLabel }}
@@ -123,6 +124,10 @@ const props = defineProps({
     default: false,
   },
   showRefreshAction: {
+    type: Boolean,
+    default: true,
+  },
+  showFreshness: {
     type: Boolean,
     default: true,
   },

@@ -33,6 +33,11 @@ function buildReadinessSummary(policyId = 7) {
       },
       reasonCodes: ['ready_for_automation'],
     },
+    profileRecovery: {
+      stateId: 'not_required',
+      label: 'Profile current',
+      message: 'No automatic profile recovery is needed.',
+    },
     authority: {
       displayProjection: true,
       automationDecision: false,
@@ -40,6 +45,7 @@ function buildReadinessSummary(policyId = 7) {
       routingExecution: false,
     },
     sideEffects: {
+      profileRefreshOutboxRead: false,
       liveMediaServerLookupPerformed: false,
       liveProviderLookupPerformed: false,
       providerQuotaRead: false,
@@ -97,6 +103,23 @@ describe('usePolicyNativeReadinessSummary', () => {
       readiness: {
         ...buildReadinessSummary().readiness,
         ready: false,
+      },
+    })
+    const readiness = usePolicyNativeReadinessSummary({ loadSummaryRequest })
+
+    await expect(readiness.loadSummary(7)).resolves.toBe(false)
+
+    expect(readiness.readinessSummary.value).toBeNull()
+    expect(readiness.error.value).toContain('could not load the current policy readiness')
+  })
+
+  it('fails closed when automatic profile recovery is not bounded', async () => {
+    const loadSummaryRequest = vi.fn().mockResolvedValue({
+      ...buildReadinessSummary(),
+      profileRecovery: {
+        stateId: 'manual_refresh',
+        label: 'Refresh now',
+        message: 'Untrusted action.',
       },
     })
     const readiness = usePolicyNativeReadinessSummary({ loadSummaryRequest })

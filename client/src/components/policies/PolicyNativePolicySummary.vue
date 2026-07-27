@@ -75,6 +75,8 @@
         </dd>
       </div>
     </dl>
+
+    <PolicyNativeProfileRecoveryStatus :recovery="readiness.profileRecovery" />
   </section>
 </template>
 
@@ -84,6 +86,7 @@ import {
   buildNativePolicyReadinessSummary,
   buildNativePurposeSummary,
 } from '@/utils/policyNativePolicySummary'
+import PolicyNativeProfileRecoveryStatus from '@/components/policies/PolicyNativeProfileRecoveryStatus.vue'
 
 defineOptions({
   name: 'PolicyNativePolicySummary',

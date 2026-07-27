@@ -11,6 +11,9 @@
 import {
   getPolicyAutomationReadinessState,
 } from './policyAutomationReadinessEngine.mjs';
+import {
+  POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS,
+} from './policyNativeProfileRecoveryStatus.mjs';
 
 const POLICY_NATIVE_READINESS_SUMMARY_VERSION = 'policy.native_readiness_summary.v1';
 const MAX_REASON_CODES = 8;
@@ -77,12 +80,14 @@ function buildSideEffects({
   storedPolicyRead = false,
   storedNativeIntentRead = false,
   cachedProfileRead = false,
+  profileRefreshOutboxRead = false,
   routingConfigurationRead = false,
 } = {}) {
   return {
     storedPolicyRead,
     storedNativeIntentRead,
     cachedProfileRead,
+    profileRefreshOutboxRead,
     routingConfigurationRead,
     liveMediaServerLookupPerformed: false,
     liveProviderLookupPerformed: false,
@@ -97,6 +102,7 @@ function buildBaseResult({
   policyId = null,
   nativeIntent = null,
   readiness = null,
+  profileRecovery = null,
   sideEffects,
 } = {}) {
   return {
@@ -105,6 +111,7 @@ function buildBaseResult({
     policyId: normalizePositiveInteger(policyId),
     nativeIntent,
     readiness,
+    profileRecovery,
     authority: buildAuthority(),
     sideEffects: buildSideEffects(sideEffects),
     rawPayloadExposed: false,
@@ -167,6 +174,25 @@ function buildReadinessSummary(readiness = {}) {
   };
 }
 
+function buildProfileRecoverySummary(profileRecovery = {}) {
+  const source = asObject(profileRecovery);
+  const stateId = normalizeString(source.stateId, 80);
+
+  if (!Object.values(POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS).includes(stateId)) {
+    return null;
+  }
+
+  const label = normalizeString(source.label);
+  const message = normalizeString(source.message);
+  if (!label || !message) return null;
+
+  return {
+    stateId,
+    label,
+    message,
+  };
+}
+
 function buildPolicyNotFoundResult(policyId = null) {
   return buildBaseResult({
     statusId: POLICY_NATIVE_READINESS_SUMMARY_STATUS_IDS.POLICY_NOT_FOUND,
@@ -209,10 +235,12 @@ function buildAvailableNativeReadinessSummary({
   nativeIntent = {},
   nativeContract = {},
   readiness = {},
+  profileRecovery = {},
   sideEffects = {},
 } = {}) {
   const boundedReadiness = buildReadinessSummary(readiness);
-  if (!boundedReadiness) {
+  const boundedProfileRecovery = buildProfileRecoverySummary(profileRecovery);
+  if (!boundedReadiness || !boundedProfileRecovery) {
     return buildReadUnavailableResult({ policyId, sideEffects });
   }
 
@@ -221,6 +249,7 @@ function buildAvailableNativeReadinessSummary({
     policyId,
     nativeIntent: buildNativeIntentSummary({ nativeIntent, nativeContract }),
     readiness: boundedReadiness,
+    profileRecovery: boundedProfileRecovery,
     sideEffects: {
       storedPolicyRead: true,
       storedNativeIntentRead: true,
@@ -264,6 +293,7 @@ function buildPolicyNativeReadinessSummaryAudit(result = {}) {
   if (source.statusId === POLICY_NATIVE_READINESS_SUMMARY_STATUS_IDS.AVAILABLE) {
     const nativeIntent = asObject(source.nativeIntent);
     const readiness = asObject(source.readiness);
+    const profileRecovery = asObject(source.profileRecovery);
     const state = getPolicyAutomationReadinessState(readiness.stateId);
 
     if (
@@ -291,6 +321,24 @@ function buildPolicyNativeReadinessSummaryAudit(result = {}) {
       issues.push({
         riskId: POLICY_NATIVE_READINESS_SUMMARY_RISK_IDS.INVALID_READINESS,
         message: 'Available native readiness requires one bounded readiness state and next action.',
+      });
+    }
+
+    const recoveryStateId = normalizeString(profileRecovery.stateId, 80);
+    const validRecoveryState = Object.values(POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS)
+      .includes(recoveryStateId);
+    const recoveryMatchesReadiness = readiness.stateId === 'stale_profile'
+      ? recoveryStateId !== POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS.NOT_REQUIRED
+      : recoveryStateId === POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS.NOT_REQUIRED;
+    if (
+      !validRecoveryState ||
+      !normalizeString(profileRecovery.label) ||
+      !normalizeString(profileRecovery.message) ||
+      !recoveryMatchesReadiness
+    ) {
+      issues.push({
+        riskId: POLICY_NATIVE_READINESS_SUMMARY_RISK_IDS.INVALID_READINESS,
+        message: 'Available native readiness requires bounded automatic profile-recovery status.',
       });
     }
   }
@@ -330,6 +378,7 @@ export {
   buildNativeIntentUnavailableResult,
   buildPolicyNativeReadinessSummaryAudit,
   buildPolicyNotFoundResult,
+  buildProfileRecoverySummary,
   buildReadUnavailableResult,
   normalizePositiveInteger,
 };
