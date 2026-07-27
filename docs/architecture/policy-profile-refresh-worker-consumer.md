@@ -86,8 +86,9 @@ failure code, and partial indexes for pending and expired claims.
 
 `policyProfileRefreshOutboxWorkerRepository.mjs` owns the conditional SQL
 transitions. It first terminates an expired final-attempt lease, then claims
-eligible compatibility or identity rows. Completion and failure updates both
-require the current claim token. No worker method accepts client input.
+only allowlisted `learning_evidence` or `native_readiness` rows. Completion and
+failure updates both require the current claim token. No worker method accepts
+client input.
 
 `policyProfileRefreshOutboxWorker.mjs` contains the bounded orchestration. It
 opens a short transaction only for recovery and claiming, calls the existing
@@ -101,9 +102,11 @@ existing PostgreSQL advisory-lock mechanism coordinates separate processes.
 
 ## Security Outcome
 
-- Only the authorized evidence executor can append a refresh event.
-- The worker repeats the source-system, reason, and operation/tier allowlist in
-  its claim query; exact-item memory cannot meet those conditions.
+- Only the authorized evidence executor or the scheduler-owned native-readiness
+  planner can append a refresh event.
+- The worker repeats the request-type allowlist in its claim query. Database
+  request-shape constraints enforce the corresponding provenance fields, so
+  exact-item memory and browser actions cannot meet either shape.
 - A rolled-back evidence transaction has no visible outbox row, so it cannot
   be claimed.
 - UUID tokens and conditional updates prevent stale ownership from completing
@@ -111,7 +114,9 @@ existing PostgreSQL advisory-lock mechanism coordinates separate processes.
 - Database state stores fixed failure identifiers, not exception messages,
   provider payloads, operator labels, or media metadata.
 - A failed profile generator never prevents the already-committed authorized
-  outcome from remaining durable.
+  outcome or native readiness state from remaining durable.
+- Native-readiness claims recheck stored profile freshness after the claim;
+  already-current profiles complete without a second generation.
 
 ## Verification
 
@@ -122,7 +127,9 @@ handling, scheduler coordination, and application-start wiring.
 
 ## Next Step
 
-Phase 6R.3.3f is complete. The database-backed concurrency, replay, rollback,
-and stale-lease audit is documented in [Policy Authorized Outcome Concurrency
-And Recovery Audit](policy-authorized-outcome-concurrency-recovery-audit.md).
-Proceed to **Phase 6R.4: Automation Readiness Engine**.
+Native active-policy discovery and per-library work coalescing are documented
+in [Native Policy Profile Refresh
+Automation](policy-native-profile-refresh-automation.md). The database-backed
+concurrency, replay, rollback, and stale-lease audit remains documented in
+[Policy Authorized Outcome Concurrency And Recovery
+Audit](policy-authorized-outcome-concurrency-recovery-audit.md).

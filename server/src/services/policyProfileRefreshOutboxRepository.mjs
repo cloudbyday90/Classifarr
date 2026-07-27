@@ -13,6 +13,11 @@ import {
   normalizeIdentifier,
   normalizeString,
 } from './policyAuthorizedOutcomePersistenceCommandValues.mjs';
+import {
+  isPolicyProfileRefreshOutboxRequestType,
+  POLICY_PROFILE_REFRESH_OUTBOX_ACTIVE_STATE_IDS,
+  POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS,
+} from './policyProfileRefreshOutboxVocabulary.mjs';
 
 const POLICY_PROFILE_REFRESH_OUTBOX_TABLE = 'policy_profile_refresh_outbox';
 
@@ -45,14 +50,39 @@ function normalizeOutboxRow(row = {}) {
       source.refresh_reason_id ?? source.refreshReasonId,
       80,
     ) || null,
+    requestType: normalizeString(source.request_type ?? source.requestType, 40) ||
+      POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS.LEARNING_EVIDENCE,
     createdAt: source.created_at ?? source.createdAt ?? null,
+  };
+}
+
+function normalizeOutboxRecord(record = {}) {
+  const source = asObject(record);
+  const requestType = normalizeString(source.requestType, 40) ||
+    POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS.LEARNING_EVIDENCE;
+
+  if (!isPolicyProfileRefreshOutboxRequestType(requestType)) {
+    throw new TypeError('Profile refresh outbox persistence requires a known request type.');
+  }
+
+  return {
+    sourceId: normalizeString(source.sourceId, 80),
+    sourceEventId: normalizeString(source.sourceEventId, 160),
+    classificationId: normalizeIdentifier(source.classificationId),
+    libraryId: normalizeIdentifier(source.libraryId),
+    learningOperationId: normalizeString(source.learningOperationId, 80) || null,
+    learningTierId: normalizeString(source.learningTierId, 40) || null,
+    candidateKey: normalizeString(source.candidateKey, 160) || null,
+    refreshReasonId: normalizeString(source.refreshReasonId, 80),
+    sourceSystem: normalizeString(source.sourceSystem, 80),
+    requestType,
   };
 }
 
 async function insertPolicyProfileRefreshOutboxRecord({ client, record = {} } = {}) {
   requireTransactionClient(client);
 
-  const source = asObject(record);
+  const source = normalizeOutboxRecord(record);
   const result = await client.query(
     `INSERT INTO ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE} (
        source_id,
@@ -63,10 +93,11 @@ async function insertPolicyProfileRefreshOutboxRecord({ client, record = {} } = 
        learning_tier_id,
        candidate_key,
        refresh_reason_id,
-       source_system
+       source_system,
+       request_type
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-     ON CONFLICT (source_id, source_event_id) DO NOTHING
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     ON CONFLICT DO NOTHING
      RETURNING
        id,
        source_id,
@@ -77,6 +108,7 @@ async function insertPolicyProfileRefreshOutboxRecord({ client, record = {} } = 
        learning_tier_id,
        candidate_key,
        refresh_reason_id,
+       request_type,
        created_at`,
     [
       source.sourceId,
@@ -88,6 +120,7 @@ async function insertPolicyProfileRefreshOutboxRecord({ client, record = {} } = 
       source.candidateKey,
       source.refreshReasonId,
       source.sourceSystem,
+      source.requestType,
     ],
   );
 
@@ -112,6 +145,7 @@ async function findPolicyProfileRefreshOutboxRecord({
        learning_tier_id,
        candidate_key,
        refresh_reason_id,
+       request_type,
        created_at
      FROM ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE}
      WHERE source_id = $1
@@ -122,10 +156,40 @@ async function findPolicyProfileRefreshOutboxRecord({
   return normalizeOutboxRow(firstRow(result));
 }
 
+async function findActivePolicyProfileRefreshOutboxRecord({ client, libraryId } = {}) {
+  requireTransactionClient(client);
+
+  const result = await client.query(
+    `SELECT
+       id,
+       source_id,
+       source_event_id,
+       classification_id,
+       library_id,
+       learning_operation_id,
+       learning_tier_id,
+       candidate_key,
+       refresh_reason_id,
+       request_type,
+       created_at
+     FROM ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE}
+     WHERE library_id = $1
+       AND processing_state = ANY($2::text[])
+     ORDER BY created_at ASC, id ASC
+     LIMIT 1`,
+    [
+      normalizeIdentifier(libraryId),
+      POLICY_PROFILE_REFRESH_OUTBOX_ACTIVE_STATE_IDS,
+    ],
+  );
+
+  return normalizeOutboxRow(firstRow(result));
+}
+
 async function enqueuePolicyProfileRefresh({ client, record = {} } = {}) {
   const inserted = await insertPolicyProfileRefreshOutboxRecord({ client, record });
   if (inserted.id) {
-    return { outbox: inserted, replayed: false };
+    return { outbox: inserted, replayed: false, coalesced: false };
   }
 
   const existing = await findPolicyProfileRefreshOutboxRecord({
@@ -134,10 +198,23 @@ async function enqueuePolicyProfileRefresh({ client, record = {} } = {}) {
     sourceEventId: record.sourceEventId,
   });
   if (!existing.id) {
+    const active = await findActivePolicyProfileRefreshOutboxRecord({
+      client,
+      libraryId: record.libraryId,
+    });
+    if (active.id) {
+      return { outbox: active, replayed: false, coalesced: true };
+    }
+
+    const retried = await insertPolicyProfileRefreshOutboxRecord({ client, record });
+    if (retried.id) {
+      return { outbox: retried, replayed: false, coalesced: false };
+    }
+
     throw new Error('Profile refresh outbox conflict did not yield an existing record.');
   }
 
-  return { outbox: existing, replayed: true };
+  return { outbox: existing, replayed: true, coalesced: false };
 }
 
 const policyProfileRefreshOutboxRepository = Object.freeze({
@@ -148,9 +225,11 @@ const policyProfileRefreshOutboxRepository = Object.freeze({
 export {
   POLICY_PROFILE_REFRESH_OUTBOX_TABLE,
   enqueuePolicyProfileRefresh,
+  findActivePolicyProfileRefreshOutboxRecord,
   findPolicyProfileRefreshOutboxRecord,
   insertPolicyProfileRefreshOutboxRecord,
   normalizeOutboxRow,
+  normalizeOutboxRecord,
   policyProfileRefreshOutboxRepository,
   requireTransactionClient,
 };

@@ -21,6 +21,8 @@ function createWorker({
   expired = 0,
   profileResult = {},
   profileError = null,
+  storedProfile = null,
+  storedProfileError = null,
   completeResult = true,
   failResult = { updated: true, terminal: false },
 } = {}) {
@@ -35,6 +37,9 @@ function createWorker({
     failClaim: jest.fn().mockResolvedValue(failResult),
   };
   const profileService = {
+    getProfile: storedProfileError
+      ? jest.fn().mockRejectedValue(storedProfileError)
+      : jest.fn().mockResolvedValue(storedProfile),
     generateProfile: profileError
       ? jest.fn().mockRejectedValue(profileError)
       : jest.fn().mockResolvedValue(profileResult),
@@ -137,5 +142,42 @@ describe('PolicyProfileRefreshOutboxWorker', () => {
       lostClaims: 1,
     });
     expect(fixture.outboxRepository.failClaim).not.toHaveBeenCalled();
+  });
+
+  test('does not regenerate a native-readiness profile that another worker already made current', async () => {
+    const fixture = createWorker({
+      records: [{
+        id: '91',
+        libraryId: '8',
+        attemptCount: 1,
+        requestType: 'native_readiness',
+      }],
+      storedProfile: { last_generated_at: new Date().toISOString() },
+    });
+
+    await expect(fixture.worker.run()).resolves.toMatchObject({
+      completed: 1,
+      completedAlreadyCurrent: 1,
+      completedWithoutProfile: 0,
+    });
+    expect(fixture.profileService.getProfile).toHaveBeenCalledWith('8');
+    expect(fixture.profileService.generateProfile).not.toHaveBeenCalled();
+  });
+
+  test('regenerates a stale native-readiness profile after the claim is committed', async () => {
+    const fixture = createWorker({
+      records: [{
+        id: '91',
+        libraryId: '8',
+        attemptCount: 1,
+        requestType: 'native_readiness',
+      }],
+      storedProfile: { last_generated_at: '2026-06-01T00:00:00.000Z' },
+    });
+
+    await fixture.worker.run();
+
+    expect(fixture.profileService.getProfile).toHaveBeenCalledWith('8');
+    expect(fixture.profileService.generateProfile).toHaveBeenCalledWith('8');
   });
 });

@@ -23,8 +23,8 @@ import {
     NATIVE_INTENT_RECONCILIATION_TASK_NAME,
 } from './nativeIntentReconciliationSchedule.mjs';
 import {
-    policyProfileRefreshOutboxWorker,
-} from './policyProfileRefreshOutboxWorker.mjs';
+    policyProfileRefreshAutomationService,
+} from './policyProfileRefreshAutomationService.mjs';
 import {
     POLICY_PROFILE_REFRESH_OUTBOX_CRON,
     POLICY_PROFILE_REFRESH_OUTBOX_INITIAL_DELAY_MS,
@@ -320,7 +320,7 @@ class SchedulerService {
     }
 
     async runPolicyProfileRefreshOutboxWorker() {
-        return policyProfileRefreshOutboxWorker.run();
+        return policyProfileRefreshAutomationService.run();
     }
 
     /**

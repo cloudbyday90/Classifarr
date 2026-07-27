@@ -2,10 +2,11 @@
 
 ## Decision
 
-Phase 6R.3.3e.4 makes a profile refresh durable without invoking a profile
-generator in the request transaction. When a canonical, authorized outcome
-admits compatibility or identity evidence, Classifarr appends one compact
-`policy_profile_refresh_outbox` row through that same transaction.
+Phase 6R.3.3e.4 made a learning-origin profile refresh durable without invoking
+a profile generator in the request transaction. The outbox now supports a
+second server-owned `native_readiness` request that the scheduler produces for
+an active native policy whose persisted profile is missing or stale. Both forms
+use the same compact `policy_profile_refresh_outbox` table and worker.
 
 The row is keyed by the already-authorized `(source_id, source_event_id)` and
 contains only the correlation IDs needed by a later worker:
@@ -16,9 +17,11 @@ contains only the correlation IDs needed by a later worker:
 - canonical candidate key and `profile_refresh_required` reason; and
 - a fixed, server-owned source-system ID.
 
-It deliberately excludes operator labels, raw answers, AI output, provider
-payloads, Discord data, route diagnostics, and authentication context. An
-exact-item-memory decision never produces this record.
+The native-readiness record deliberately contains no classification, learning
+operation, candidate, operator label, raw answer, AI output, provider payload,
+Discord data, route diagnostic, or authentication context. Its source event is
+derived only from the library ID and the persisted profile state/version. An
+exact-item-memory decision never produces either record type.
 
 ## Research
 
@@ -107,7 +110,7 @@ replace-restore cleanup.
 
 ## Next Step
 
-Phase 6R.3.3e.5 is complete. The worker lifecycle, claim lease, bounded retry,
-and scheduler integration are documented in [Policy Profile Refresh Worker
-Consumer](policy-profile-refresh-worker-consumer.md). Proceed to
-**Phase 6R.3.3f: Concurrency And Recovery Audit**.
+The generalized scheduler-owned producer is documented in [Native Policy
+Profile Refresh Automation](policy-native-profile-refresh-automation.md). The
+worker lifecycle remains documented in [Policy Profile Refresh Worker
+Consumer](policy-profile-refresh-worker-consumer.md).

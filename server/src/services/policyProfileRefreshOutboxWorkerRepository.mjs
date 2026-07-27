@@ -17,8 +17,8 @@ import {
   requireTransactionClient,
 } from './policyProfileRefreshOutboxRepository.mjs';
 import {
-  POLICY_PROFILE_REFRESH_OUTBOX_SOURCE_SYSTEM,
-} from './policyProfileRefreshOutboxRecord.mjs';
+  POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS,
+} from './policyProfileRefreshOutboxVocabulary.mjs';
 import {
   POLICY_PROFILE_REFRESH_OUTBOX_WORKER_FAILURE_IDS,
   POLICY_PROFILE_REFRESH_OUTBOX_WORKER_MAX_ATTEMPTS,
@@ -58,6 +58,7 @@ function normalizeClaimedOutboxRow(row = {}) {
     id: normalizeIdentifier(row.id),
     libraryId: normalizeIdentifier(row.library_id),
     attemptCount: Number(row.attempt_count) || 0,
+    requestType: normalizeString(row.request_type, 40),
   };
 }
 
@@ -102,38 +103,29 @@ async function claimPolicyProfileRefreshOutboxBatch({
     `WITH eligible AS (
        SELECT id
        FROM ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE}
-       WHERE source_system = $1
-         AND refresh_reason_id = $2
+       WHERE request_type = ANY($1::text[])
+         AND attempt_count < $2
          AND (
-           (learning_operation_id = 'write_compatibility_evidence'
-            AND learning_tier_id = 'compatibility_evidence')
+           (processing_state = $3 AND available_at <= NOW())
            OR
-           (learning_operation_id = 'write_identity_evidence'
-            AND learning_tier_id = 'identity_evidence')
-         )
-         AND attempt_count < $3
-         AND (
-           (processing_state = $4 AND available_at <= NOW())
-           OR
-           (processing_state = $5 AND lease_expires_at <= NOW())
+           (processing_state = $4 AND lease_expires_at <= NOW())
          )
        ORDER BY created_at ASC, id ASC
        FOR UPDATE SKIP LOCKED
-       LIMIT $6
+       LIMIT $5
      )
      UPDATE ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE} AS outbox
-     SET processing_state = $5,
+     SET processing_state = $4,
          attempt_count = outbox.attempt_count + 1,
-         claim_token = $7::uuid,
+         claim_token = $6::uuid,
          claimed_at = NOW(),
-         lease_expires_at = NOW() + ($8::integer * INTERVAL '1 second'),
+         lease_expires_at = NOW() + ($7::integer * INTERVAL '1 second'),
          updated_at = NOW()
      FROM eligible
      WHERE outbox.id = eligible.id
-     RETURNING outbox.id, outbox.library_id, outbox.attempt_count`,
+     RETURNING outbox.id, outbox.library_id, outbox.attempt_count, outbox.request_type`,
     [
-      POLICY_PROFILE_REFRESH_OUTBOX_SOURCE_SYSTEM,
-      'profile_refresh_required',
+      Object.values(POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS),
       normalizePositiveInteger(maxAttempts, POLICY_PROFILE_REFRESH_OUTBOX_WORKER_MAX_ATTEMPTS),
       POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS.PENDING,
       POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS.PROCESSING,

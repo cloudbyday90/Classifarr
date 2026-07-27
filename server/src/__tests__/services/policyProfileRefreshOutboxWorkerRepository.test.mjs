@@ -25,7 +25,12 @@ function clientWith(rows) {
 
 describe('policyProfileRefreshOutboxWorkerRepository', () => {
   test('claims only eligible committed records with a deterministic SKIP LOCKED batch', async () => {
-    const client = clientWith([{ id: '91', library_id: '8', attempt_count: 2 }]);
+    const client = clientWith([{
+      id: '91',
+      library_id: '8',
+      attempt_count: 2,
+      request_type: 'learning_evidence',
+    }]);
 
     const records = await claimPolicyProfileRefreshOutboxBatch({
       client,
@@ -34,13 +39,17 @@ describe('policyProfileRefreshOutboxWorkerRepository', () => {
       leaseSeconds: 120,
     });
 
-    expect(records).toEqual([{ id: '91', libraryId: '8', attemptCount: 2 }]);
+    expect(records).toEqual([{
+      id: '91',
+      libraryId: '8',
+      attemptCount: 2,
+      requestType: 'learning_evidence',
+    }]);
     expect(client.query.mock.calls[0][0]).toContain('FOR UPDATE SKIP LOCKED');
     expect(client.query.mock.calls[0][0]).toContain('ORDER BY created_at ASC, id ASC');
-    expect(client.query.mock.calls[0][0]).toContain("source_system = $1");
+    expect(client.query.mock.calls[0][0]).toContain('request_type = ANY($1::text[])');
     expect(client.query.mock.calls[0][1]).toEqual([
-      'policy_authorized_profile_refresh',
-      'profile_refresh_required',
+      ['learning_evidence', 'native_readiness'],
       3,
       'pending',
       'processing',

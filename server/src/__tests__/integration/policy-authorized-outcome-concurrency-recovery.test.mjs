@@ -321,16 +321,17 @@ describe('Policy authorized outcome concurrency and recovery audit', () => {
     expect(history.rows[0].metadata.classification_details?.outcome_link).toBeUndefined();
   });
 
-  test('distributes concurrent claims and rejects stale completion after lease recovery', async () => {
-    const destination = await seedLibrary('Audit Worker Movies');
+  test('distributes concurrent different-library claims and rejects stale completion after lease recovery', async () => {
+    const firstDestination = await seedLibrary('Audit Worker Movies');
+    const secondDestination = await seedLibrary('Audit Worker Secondary Movies');
     const firstOutbox = await seedRefreshOutbox({
       classificationId: 810004,
-      libraryId: destination.id,
+      libraryId: firstDestination.id,
       sourceEventId: 'audit-worker:first',
     });
     const secondOutbox = await seedRefreshOutbox({
       classificationId: 810005,
-      libraryId: destination.id,
+      libraryId: secondDestination.id,
       sourceEventId: 'audit-worker:second',
     });
     const firstClient = await db.pool.connect();
@@ -430,5 +431,20 @@ describe('Policy authorized outcome concurrency and recovery audit', () => {
       firstClient.release();
       secondClient.release();
     }
+  });
+
+  test('rejects another active profile refresh for the same library at the database boundary', async () => {
+    const destination = await seedLibrary('Audit Worker Coalesced Movies');
+    await seedRefreshOutbox({
+      classificationId: 810006,
+      libraryId: destination.id,
+      sourceEventId: 'audit-worker:coalesced:first',
+    });
+
+    await expect(seedRefreshOutbox({
+      classificationId: 810007,
+      libraryId: destination.id,
+      sourceEventId: 'audit-worker:coalesced:second',
+    })).rejects.toMatchObject({ code: '23505' });
   });
 });

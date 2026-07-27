@@ -76,6 +76,12 @@ unchanged operator or runtime outcome.
   correlation and operation data, is cleared during replace restore, and is
   consumed automatically by a lease-protected worker with bounded retries.
 
+- **Automatic Native Profile Recovery** - Active native-policy libraries with a
+  missing or stale stored profile now queue server-owned background refresh
+  work automatically. Requests are coalesced per library, preserve the
+  existing lease and retry guarantees, and recheck freshness before generation
+  so policy reads and browser actions remain side-effect free.
+
 - **Authorized Outcome Recovery Guarantees** - Classifarr now verifies with
   isolated PostgreSQL transactions that concurrent source-event replays produce
   one durable effect, stale authorization or destination state cannot write,

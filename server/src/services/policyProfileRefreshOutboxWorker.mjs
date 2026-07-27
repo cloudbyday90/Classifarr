@@ -13,8 +13,14 @@ import * as database from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
 import {
+  buildPolicyLibraryProfileFreshness,
+} from './policyLibraryProfileEvidenceLoader.mjs';
+import {
   policyProfileRefreshOutboxWorkerRepository,
 } from './policyProfileRefreshOutboxWorkerRepository.mjs';
+import {
+  POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS,
+} from './policyProfileRefreshOutboxVocabulary.mjs';
 import {
   getPolicyProfileRefreshOutboxRetryDelaySeconds,
   POLICY_PROFILE_REFRESH_OUTBOX_WORKER_BATCH_SIZE,
@@ -32,6 +38,7 @@ function buildResult({ claimed = 0, expired = 0 } = {}) {
     claimed,
     completed: 0,
     completedWithoutProfile: 0,
+    completedAlreadyCurrent: 0,
     retried: 0,
     failed: expired,
     lostClaims: 0,
@@ -80,7 +87,7 @@ class PolicyProfileRefreshOutboxWorker {
 
   async processClaim(record, claimToken, result) {
     try {
-      const profile = await this.profileService.generateProfile(record.libraryId);
+      const refreshResult = await this.refreshProfile(record);
       const completed = await this.outboxRepository.completeClaim({
         client: this.dbClient,
         outboxId: record.id,
@@ -92,7 +99,9 @@ class PolicyProfileRefreshOutboxWorker {
       }
 
       result.completed += 1;
-      if (profile === null) {
+      if (refreshResult.alreadyCurrent) {
+        result.completedAlreadyCurrent += 1;
+      } else if (refreshResult.profile === null) {
         result.completedWithoutProfile += 1;
       }
     } catch {
@@ -122,6 +131,25 @@ class PolicyProfileRefreshOutboxWorker {
         failureCode: POLICY_PROFILE_REFRESH_OUTBOX_WORKER_FAILURE_IDS.EXECUTION_FAILED,
       });
     }
+  }
+
+  async refreshProfile(record = {}) {
+    if (record.requestType === POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS.NATIVE_READINESS) {
+      if (typeof this.profileService.getProfile !== 'function') {
+        throw new TypeError('Native profile refresh requires a stored profile reader.');
+      }
+
+      const storedProfile = await this.profileService.getProfile(record.libraryId);
+      const freshness = buildPolicyLibraryProfileFreshness({ profile: storedProfile || {} });
+      if (freshness.stale !== true) {
+        return { profile: storedProfile, alreadyCurrent: true };
+      }
+    }
+
+    return {
+      profile: await this.profileService.generateProfile(record.libraryId),
+      alreadyCurrent: false,
+    };
   }
 
   async run() {

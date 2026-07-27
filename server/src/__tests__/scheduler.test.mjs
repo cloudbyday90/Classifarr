@@ -68,7 +68,7 @@ const mockNativeIntentReconciliationService = {
     run: jest.fn(),
 };
 
-const mockPolicyProfileRefreshOutboxWorker = {
+const mockPolicyProfileRefreshAutomationService = {
     run: jest.fn(),
 };
 
@@ -111,7 +111,7 @@ jest.unstable_mockModule('../services/ratingNormalizationQueueService.mjs', () =
 
 jest.unstable_mockModule('../services/nativeIntentReconciliationService.mjs', () => createNamedMockModule('nativeIntentReconciliationService', mockNativeIntentReconciliationService));
 
-jest.unstable_mockModule('../services/policyProfileRefreshOutboxWorker.mjs', () => createNamedMockModule('policyProfileRefreshOutboxWorker', mockPolicyProfileRefreshOutboxWorker));
+jest.unstable_mockModule('../services/policyProfileRefreshAutomationService.mjs', () => createNamedMockModule('policyProfileRefreshAutomationService', mockPolicyProfileRefreshAutomationService));
 
 jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
@@ -147,7 +147,7 @@ describe('SchedulerService', () => {
         mockClassificationMaintenanceService.cleanupStaleAwaitingDecisions.mockReset();
         mockRatingNormalizationQueueService.queueDailyBackfill.mockReset();
         mockNativeIntentReconciliationService.run.mockReset();
-        mockPolicyProfileRefreshOutboxWorker.run.mockReset();
+        mockPolicyProfileRefreshAutomationService.run.mockReset();
         mockMediaSync.syncLibrary.mockReset();
         mockClassification.retryClassification.mockReset();
         logger.info.mockReset();
@@ -648,7 +648,10 @@ describe('SchedulerService', () => {
                 await handler();
                 return true;
             });
-            mockPolicyProfileRefreshOutboxWorker.run.mockResolvedValue({ claimed: 1 });
+            mockPolicyProfileRefreshAutomationService.run.mockResolvedValue({
+                planning: { statusId: 'completed' },
+                delivery: { claimed: 1 },
+            });
 
             expect(scheduler.startPolicyProfileRefreshOutboxWorker()).toBe(true);
             expect(scheduler.startPolicyProfileRefreshOutboxWorker()).toBe(false);
@@ -666,7 +669,7 @@ describe('SchedulerService', () => {
                 2011,
                 expect.any(Function),
             );
-            expect(mockPolicyProfileRefreshOutboxWorker.run).toHaveBeenCalledTimes(2);
+            expect(mockPolicyProfileRefreshAutomationService.run).toHaveBeenCalledTimes(2);
         });
     });
 

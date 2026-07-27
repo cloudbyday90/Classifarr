@@ -4096,6 +4096,14 @@ Implementation status:
   issues with next actions, treats profile refresh as stale readiness, and
   ignores replay, impact preview, provider, TMDB, and raw scoring diagnostic
   inputs instead of allowing them to become product gates.
+- Active native-policy libraries with a missing or stale stored profile are now
+  recovered independently of readiness reads: a bounded scheduler planner adds
+  a compact server-owned request to the existing durable profile-refresh
+  outbox, and the existing leased worker rechecks freshness before generating.
+  It coalesces active work per library, never fabricates learning provenance,
+  and does not require a browser, dialog, policy write, provider, or quota
+  interaction. The design and outcome record is [Native Policy Profile Refresh
+  Automation](policy-native-profile-refresh-automation.md).
 - Native policy creation now has a separate local draft-completeness boundary:
   its footer checks only selected library and explicitly accepted purpose, never
   locally inferred routing or diagnostic state. Server establishment and the
@@ -4212,6 +4220,11 @@ Implementation status:
   reread, and remain safe to defer. It does not reopen legacy templates or raw
   authoring controls. Its design record is [Policy Native Evidence
   Recovery](policy-native-evidence-recovery.md).
+- The native-readiness recovery action is now scheduler-owned. Missing and stale
+  active-native profiles are queued automatically through the durable profile
+  refresh outbox, while the current read-only summary remains side-effect free.
+  The next workflow task is to replace the remaining browser-facing refresh
+  affordance with compact background-recovery status.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

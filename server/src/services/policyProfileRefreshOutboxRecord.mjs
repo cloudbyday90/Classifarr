@@ -22,6 +22,10 @@ import {
   normalizeIdentifier,
   normalizeString,
 } from './policyAuthorizedOutcomePersistenceCommandValues.mjs';
+import {
+  POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS,
+  POLICY_PROFILE_REFRESH_OUTBOX_SOURCE_SYSTEM_IDS,
+} from './policyProfileRefreshOutboxVocabulary.mjs';
 
 const POLICY_PROFILE_REFRESH_OUTBOX_RECORD_VERSION =
   'policy.profile_refresh_outbox_record.v1';
@@ -39,7 +43,7 @@ const POLICY_PROFILE_REFRESH_OUTBOX_RECORD_REASON_IDS = Object.freeze({
 });
 
 const POLICY_PROFILE_REFRESH_OUTBOX_SOURCE_SYSTEM =
-  'policy_authorized_profile_refresh';
+  POLICY_PROFILE_REFRESH_OUTBOX_SOURCE_SYSTEM_IDS.LEARNING_EVIDENCE;
 
 function buildResult({ statusId, reasonCodes = [], record = null } = {}) {
   return {
@@ -113,6 +117,7 @@ function buildPolicyProfileRefreshOutboxRecord(refreshCommand = {}) {
       learningTierId,
       candidateKey,
       refreshReasonId,
+      requestType: POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS.LEARNING_EVIDENCE,
       sourceSystem: POLICY_PROFILE_REFRESH_OUTBOX_SOURCE_SYSTEM,
     },
   });

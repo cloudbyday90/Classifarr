@@ -25,6 +25,7 @@ function record() {
     candidateKey: 'studio:pixar',
     refreshReasonId: 'profile_refresh_required',
     sourceSystem: 'policy_authorized_profile_refresh',
+    requestType: 'learning_evidence',
   };
 }
 
@@ -39,6 +40,7 @@ function row(overrides = {}) {
     learning_tier_id: 'compatibility_evidence',
     candidate_key: 'studio:pixar',
     refresh_reason_id: 'profile_refresh_required',
+    request_type: 'learning_evidence',
     created_at: '2026-07-26T12:00:00.000Z',
     ...overrides,
   };
@@ -52,9 +54,7 @@ describe('policyProfileRefreshOutboxRepository', () => {
 
     expect(result).toMatchObject({ replayed: false, outbox: { id: '91', libraryId: '8' } });
     expect(client.query).toHaveBeenCalledTimes(1);
-    expect(client.query.mock.calls[0][0]).toContain(
-      'ON CONFLICT (source_id, source_event_id) DO NOTHING',
-    );
+    expect(client.query.mock.calls[0][0]).toContain('ON CONFLICT DO NOTHING');
     expect(client.query.mock.calls[0][1]).toEqual([
       'discord_pending_answer',
       'classification:42:discord:991',
@@ -65,6 +65,7 @@ describe('policyProfileRefreshOutboxRepository', () => {
       'studio:pixar',
       'profile_refresh_required',
       'policy_authorized_profile_refresh',
+      'learning_evidence',
     ]);
   });
 
@@ -83,5 +84,24 @@ describe('policyProfileRefreshOutboxRepository', () => {
       'discord_pending_answer',
       'classification:42:discord:991',
     ]);
+  });
+
+  test('coalesces another active refresh for the same library without inventing a replay', async () => {
+    const client = {
+      query: jest.fn()
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [row({
+          source_event_id: 'classification:43:manual:1',
+        })] }),
+    };
+
+    await expect(enqueuePolicyProfileRefresh({ client, record: record() })).resolves.toMatchObject({
+      replayed: false,
+      coalesced: true,
+      outbox: { id: '91', libraryId: '8' },
+    });
+    expect(client.query.mock.calls[2][0]).toContain('processing_state = ANY($2::text[])');
+    expect(client.query.mock.calls[2][1]).toEqual(['8', ['pending', 'processing']]);
   });
 });
