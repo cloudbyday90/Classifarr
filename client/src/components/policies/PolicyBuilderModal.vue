@@ -61,6 +61,10 @@
           @empty-state-action="handleEmptyStateAction"
         />
 
+        <PolicyNativeAuthorityStatus
+          v-if="experienceMode.isNativeView"
+        />
+
         <template v-if="experienceMode.isLegacyEdit">
           <PolicyPresetMigrationNotice
             v-if="presetMigrationNotice"
@@ -99,7 +103,7 @@
     </div>
 
     <template
-      v-if="!nativeCreateHandoff"
+      v-if="!nativeCreateHandoff && !experienceMode.isNativeView"
       #footer
     >
       <PolicyBuilderFooterActions
@@ -121,6 +125,7 @@ import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAd
 import PolicyBuilderFooterActions from '@/components/policies/PolicyBuilderFooterActions.vue'
 import PolicyBuilderWorkflowShell from '@/components/policies/PolicyBuilderWorkflowShell.vue'
 import PolicyNativeCreateHandoff from '@/components/policies/PolicyNativeCreateHandoff.vue'
+import PolicyNativeAuthorityStatus from '@/components/policies/PolicyNativeAuthorityStatus.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'

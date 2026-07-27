@@ -98,9 +98,20 @@ by the footer. Selected.
 5. Delete the compatibility boundary only through the Phase 6R.6/8R migration
    and deletion gates.
 
+## Follow-On Outcome
+
+The persisted-policy modal boundary now treats a policy as native only when the
+full server read model reports `policy_intent_contract.source` as
+`native_intent`. A database ID alone no longer selects compatibility editing.
+Persisted native policies show the server-owned workflow and a read-only native
+status without compatibility controls or a save footer. Existing and malformed
+contracts fail closed to the compatibility editor; server routes still enforce
+the authority decision for every mutation.
+
 ## Next Item
 
-Audit persisted native-policy detection in the modal entry point. A persisted
-policy must enter the native workflow because of its server-owned authority
-source, not merely because it has an ID; otherwise native policies can fall
-back into the compatibility editor after creation.
+Phase 6R.5 should replace the persisted native policy's generic five-section
+setup view with a compact declared-intent and readiness summary. Creation needs
+the setup workflow; an established destination should show its stored purpose,
+current readiness, and one server-provided next action instead of reopening the
+authoring journey.

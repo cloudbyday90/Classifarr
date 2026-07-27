@@ -18,6 +18,11 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Persisted Native Policy View** - Saved policies now select their builder
+  surface from the server-returned intent contract rather than their ID alone.
+  Native-intent policies show a read-only native status and no compatibility
+  editing or save controls; legacy contracts retain the compatibility editor.
+
 - **Native Create Readiness Boundary** - Native policy creation now limits its
   footer to selected-library and explicitly accepted-purpose checks. Routing,
   provider, replay, TMDB, scoring, and automation state remain server-owned;

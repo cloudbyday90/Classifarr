@@ -14,11 +14,13 @@ describe('policyBuilderExperienceMode', () => {
     expect(buildPolicyBuilderExperienceMode()).toEqual({
       mode: POLICY_BUILDER_EXPERIENCE_MODES.NATIVE_CREATE,
       isNativeCreate: true,
+      isNativeView: false,
       isLegacyEdit: false,
     })
     expect(buildPolicyBuilderExperienceMode({ id: 'invalid' })).toEqual({
       mode: POLICY_BUILDER_EXPERIENCE_MODES.NATIVE_CREATE,
       isNativeCreate: true,
+      isNativeView: false,
       isLegacyEdit: false,
     })
   })
@@ -27,6 +29,29 @@ describe('policyBuilderExperienceMode', () => {
     expect(buildPolicyBuilderExperienceMode({ id: 12 })).toEqual({
       mode: POLICY_BUILDER_EXPERIENCE_MODES.LEGACY_EDIT,
       isNativeCreate: false,
+      isNativeView: false,
+      isLegacyEdit: true,
+    })
+  })
+
+  it('uses the native policy view only for a server-reported native contract', () => {
+    expect(buildPolicyBuilderExperienceMode({
+      id: 12,
+      policy_intent_contract: { source: 'native_intent' },
+    })).toEqual({
+      mode: POLICY_BUILDER_EXPERIENCE_MODES.NATIVE_VIEW,
+      isNativeCreate: false,
+      isNativeView: true,
+      isLegacyEdit: false,
+    })
+
+    expect(buildPolicyBuilderExperienceMode({
+      id: 12,
+      policy_intent_contract: { source: 'unknown' },
+    })).toEqual({
+      mode: POLICY_BUILDER_EXPERIENCE_MODES.LEGACY_EDIT,
+      isNativeCreate: false,
+      isNativeView: false,
       isLegacyEdit: true,
     })
   })

@@ -346,6 +346,39 @@ describe('PolicyBuilderModal.vue', () => {
     expect(api.get).not.toHaveBeenCalledWith('/policies/presets/suggest/1');
   });
 
+  it('renders a persisted native policy as a server-reported read-only view', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/operator-workflow/libraries/1') {
+        return Promise.resolve({ data: buildOperatorWorkflowRead() });
+      }
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          id: 1,
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          policy_intent_contract: { source: 'native_intent' },
+        },
+      },
+      attachTo: document.body,
+    });
+
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('Native destination intent');
+    expect(wrapper.find('#policy-builder-intent-editor').exists()).toBe(false);
+    expect(wrapper.find('#policy-builder-advanced-settings').exists()).toBe(false);
+    expect(wrapper.find('#policy-builder-save-status').exists()).toBe(false);
+    expect(api.get).not.toHaveBeenCalledWith('/policies/presets/all');
+    expect(api.get).not.toHaveBeenCalledWith('/settings');
+  });
+
   it('includes profile weight in the advanced total and save payload', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });

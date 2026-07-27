@@ -4192,9 +4192,11 @@ Implementation status:
 - New policy creation now uses a dedicated native-first surface: it loads only
   the library context, presents unchecked observed destination values, requires
   explicit accepted purpose before creation, and omits legacy templates,
-  migration notices, raw preset controls, and scoring thresholds. Persisted
-  policies retain the compatibility editor until the migration-and-deletion
-  cutover. Its design record is [Policy Native-First Create
+  migration notices, raw preset controls, and scoring thresholds. A persisted
+  policy now selects its surface from the full server read model: an explicit
+  `policy_intent_contract.source` of `native_intent` enters a read-only native
+  view, while compatibility contracts retain the compatibility editor. Its
+  design record is [Policy Native-First Create
   Surface](policy-native-first-create-surface.md).
 - Native creation now recovers insufficient profile evidence through one
   bounded action: unavailable, stale, empty, and failed-refresh states hide
