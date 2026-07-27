@@ -4198,6 +4198,14 @@ Implementation status:
   view, while compatibility contracts retain the compatibility editor. Its
   design record is [Policy Native-First Create
   Surface](policy-native-first-create-surface.md).
+- Persisted native policies now use a compact, read-only summary instead of
+  reopening the five-section creation workflow. It shows display-safe stored
+  purpose from the policy detail contract, current **library** readiness, and
+  one next action from the existing server workflow read. It deliberately does
+  not claim that library-first readiness is a policy-specific native-intent
+  decision. The implementation and follow-on contract requirement are
+  documented in [Persisted Native Policy
+  Summary](policy-persisted-native-summary.md).
 - Native creation now recovers insufficient profile evidence through one
   bounded action: unavailable, stale, empty, and failed-refresh states hide
   observed candidates, offer an explicit profile refresh or a display-only

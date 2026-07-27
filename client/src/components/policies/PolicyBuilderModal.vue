@@ -37,7 +37,16 @@
           />
         </div>
 
+        <PolicyNativePolicySummary
+          v-if="experienceMode.isNativeView"
+          :policy="policy"
+          :workflow-read="operatorWorkflowRead"
+          :loading="operatorWorkflowLoading"
+          :error="operatorWorkflowError"
+        />
+
         <PolicyBuilderWorkflowShell
+          v-else
           ref="workflowShellRef"
           :workflow-read="operatorWorkflowRead"
           :loading="operatorWorkflowLoading"
@@ -59,10 +68,6 @@
           @refresh-profile="refreshActiveLibraryProfile"
           @reload-workflow="reloadActiveLibraryWorkflow"
           @empty-state-action="handleEmptyStateAction"
-        />
-
-        <PolicyNativeAuthorityStatus
-          v-if="experienceMode.isNativeView"
         />
 
         <template v-if="experienceMode.isLegacyEdit">
@@ -125,7 +130,7 @@ import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAd
 import PolicyBuilderFooterActions from '@/components/policies/PolicyBuilderFooterActions.vue'
 import PolicyBuilderWorkflowShell from '@/components/policies/PolicyBuilderWorkflowShell.vue'
 import PolicyNativeCreateHandoff from '@/components/policies/PolicyNativeCreateHandoff.vue'
-import PolicyNativeAuthorityStatus from '@/components/policies/PolicyNativeAuthorityStatus.vue'
+import PolicyNativePolicySummary from '@/components/policies/PolicyNativePolicySummary.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'

@@ -110,8 +110,16 @@ the authority decision for every mutation.
 
 ## Next Item
 
-Phase 6R.5 should replace the persisted native policy's generic five-section
-setup view with a compact declared-intent and readiness summary. Creation needs
-the setup workflow; an established destination should show its stored purpose,
-current readiness, and one server-provided next action instead of reopening the
-authoring journey.
+The Phase 6R.5 compact persisted-native view is now implemented in
+[Persisted Native Policy Summary](policy-persisted-native-summary.md). It keeps
+the five-section setup workflow for creation and compatibility editing, while
+an established native policy shows stored purpose, current library readiness,
+and one server-provided next action.
+
+## Next Item
+
+Create a policy-specific server readiness summary that evaluates the active
+native intent against current stored profile and routing state. The present
+compact view deliberately labels the existing server result as *library*
+readiness because the library-first workflow endpoint does not yet evaluate the
+stored native intent itself.

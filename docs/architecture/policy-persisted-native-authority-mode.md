@@ -64,10 +64,10 @@ avoid making a mode decision from list-summary data.
 - `PolicyList.vue` continues to fetch `GET /api/policies/:id` before opening an
   editor. The route attaches an active native intent and projects the contract
   before returning it.
-- `PolicyBuilderModal.vue` renders native status and server workflow for a
-  persisted native policy, but excludes compatibility settings, legacy intent
-  controls, and the save footer.
-- `PolicyNativeAuthorityStatus.vue` uses a short polite, atomic live status to
+- `PolicyBuilderModal.vue` renders the compact native-policy summary for a
+  persisted native policy, but excludes the setup workflow, compatibility
+  settings, legacy intent controls, and the save footer.
+- `PolicyNativePolicySummary.vue` uses a short polite, atomic live status to
   explain the read-only state without changing focus.
 
 ## Security And Accessibility Outcome

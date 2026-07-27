@@ -363,7 +363,13 @@ describe('PolicyBuilderModal.vue', () => {
           id: 1,
           library_id: 1,
           name: 'Sci-Fi Movies Policy',
-          policy_intent_contract: { source: 'native_intent' },
+          policy_intent_contract: {
+            source: 'native_intent',
+            purpose: [{
+              signal_type: 'genres',
+              values: { require_any: ['Science Fiction'] },
+            }],
+          },
         },
       },
       attachTo: document.body,
@@ -371,7 +377,11 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    expect(document.body.textContent).toContain('Native destination intent');
+    expect(document.body.textContent).toContain('Native policy summary');
+    expect(document.body.textContent).toContain('Genres: Science Fiction');
+    expect(document.body.textContent).toContain('Current library readiness');
+    expect(document.body.textContent).toContain('Connect a routing target');
+    expect(document.body.textContent).not.toContain('What belongs here');
     expect(wrapper.find('#policy-builder-intent-editor').exists()).toBe(false);
     expect(wrapper.find('#policy-builder-advanced-settings').exists()).toBe(false);
     expect(wrapper.find('#policy-builder-save-status').exists()).toBe(false);

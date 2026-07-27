@@ -18,6 +18,10 @@ unchanged operator or runtime outcome.
 
 #### Policy Authoring
 
+- **Compact Persisted Native Summary** - Established native policies now show
+  their stored purpose, current library readiness, and one server-provided next
+  action instead of reopening the multi-section policy setup workflow.
+
 - **Persisted Native Policy View** - Saved policies now select their builder
   surface from the server-returned intent contract rather than their ID alone.
   Native-intent policies show a read-only native status and no compatibility
