@@ -14,6 +14,43 @@ import {
   PolicyNativeProfileRefreshPlanner,
 } from '../../services/policyNativeProfileRefreshPlanner.mjs';
 
+const SOURCE_EVENT_ID = 'library-profile:8:stale_profile:2026-07-25T12:00:00.000Z';
+
+function createCircuitRepository({
+  circuit = null,
+  failureTransition = {
+    ready: true,
+    opened: false,
+    circuit: { circuitState: 'closed' },
+  },
+  probeTransition = {
+    ready: true,
+    circuit: { circuitState: 'half_open' },
+  },
+} = {}) {
+  return {
+    lock: jest.fn().mockResolvedValue(circuit),
+    recordFailure: jest.fn().mockResolvedValue(failureTransition),
+    startProbe: jest.fn().mockResolvedValue(probeTransition),
+    deferProbe: jest.fn().mockResolvedValue({
+      ready: true,
+      circuit: { circuitState: 'open' },
+    }),
+  };
+}
+
+function createOpenCircuit({ nextProbeAt = '2026-07-28T14:00:00.000Z' } = {}) {
+  return {
+    circuitState: 'open',
+    consecutiveFailureCount: 3,
+    lastTerminalOutboxId: 93,
+    lastFailureCode: 'profile_refresh_unknown_failed',
+    openedAt: '2026-07-28T12:00:00.000Z',
+    nextProbeAt,
+    probeOutboxId: null,
+  };
+}
+
 describe('PolicyNativeProfileRefreshPlanner', () => {
   test('persists only valid server-derived requests and reports replay or per-library coalescing', async () => {
     const client = { query: jest.fn() };
@@ -43,6 +80,7 @@ describe('PolicyNativeProfileRefreshPlanner', () => {
     const planner = new PolicyNativeProfileRefreshPlanner({
       dbClient,
       candidateRepository,
+      circuitRepository: createCircuitRepository(),
       enqueue,
       loggerInstance: logger,
     });
@@ -75,6 +113,7 @@ describe('PolicyNativeProfileRefreshPlanner', () => {
     const planner = new PolicyNativeProfileRefreshPlanner({
       dbClient,
       candidateRepository: { findCandidates: jest.fn().mockResolvedValue([]) },
+      circuitRepository: createCircuitRepository(),
       enqueue: jest.fn(),
       loggerInstance: { info: jest.fn() },
     });
@@ -118,6 +157,7 @@ describe('PolicyNativeProfileRefreshPlanner', () => {
       },
       enqueue,
       failureRepository,
+      circuitRepository: createCircuitRepository(),
       now: () => new Date('2026-07-26T00:00:00.000Z'),
       loggerInstance: { info: jest.fn() },
     });
@@ -159,6 +199,7 @@ describe('PolicyNativeProfileRefreshPlanner', () => {
       },
       enqueue,
       failureRepository: { findHistory: jest.fn().mockResolvedValue(null) },
+      circuitRepository: createCircuitRepository(),
       loggerInstance: { info: jest.fn() },
     });
 
@@ -189,6 +230,13 @@ describe('PolicyNativeProfileRefreshPlanner', () => {
           failureCount: 1,
         }),
       },
+      circuitRepository: createCircuitRepository({
+        failureTransition: {
+          ready: true,
+          opened: true,
+          circuit: createOpenCircuit(),
+        },
+      }),
       loggerInstance: { info: jest.fn() },
     });
 
@@ -197,6 +245,135 @@ describe('PolicyNativeProfileRefreshPlanner', () => {
       successorQueued: 0,
       successorBlocked: 1,
     });
+    expect(enqueue).toHaveBeenCalledTimes(1);
+  });
+
+  test('blocks ordinary enqueue while a native refresh circuit is open', async () => {
+    const circuitRepository = createCircuitRepository({
+      circuit: createOpenCircuit({ nextProbeAt: '2026-07-28T14:00:00.000Z' }),
+    });
+    const enqueue = jest.fn();
+    const planner = new PolicyNativeProfileRefreshPlanner({
+      dbClient: { withTransaction: jest.fn(callback => callback({ query: jest.fn() })) },
+      candidateRepository: {
+        findCandidates: jest.fn().mockResolvedValue([{
+          libraryId: 8,
+          profileState: 'stale_profile',
+          profileGeneratedAt: '2026-07-25T12:00:00.000Z',
+        }]),
+      },
+      circuitRepository,
+      enqueue,
+      now: () => new Date('2026-07-28T13:00:00.000Z'),
+      loggerInstance: { info: jest.fn() },
+    });
+
+    await expect(planner.run()).resolves.toMatchObject({
+      circuitBlocked: 1,
+      queued: 0,
+    });
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(circuitRepository.lock).toHaveBeenCalledWith(expect.objectContaining({
+      libraryId: 8,
+      sourceEventId: SOURCE_EVENT_ID,
+    }));
+  });
+
+  test('enqueues one successor-backed automatic probe when an open circuit is due', async () => {
+    const client = { query: jest.fn() };
+    const circuitRepository = createCircuitRepository({
+      circuit: createOpenCircuit(),
+    });
+    const enqueue = jest.fn().mockResolvedValue({
+      outbox: { id: '94', processingState: 'pending' },
+      replayed: false,
+      coalesced: false,
+    });
+    const planner = new PolicyNativeProfileRefreshPlanner({
+      dbClient: { withTransaction: jest.fn(callback => callback(client)) },
+      candidateRepository: {
+        findCandidates: jest.fn().mockResolvedValue([{
+          libraryId: 8,
+          profileState: 'stale_profile',
+          profileGeneratedAt: '2026-07-25T12:00:00.000Z',
+        }]),
+      },
+      circuitRepository,
+      failureRepository: {
+        findHistory: jest.fn().mockResolvedValue({
+          failedOutboxId: '93',
+          failureCode: 'profile_refresh_unknown_failed',
+          failureCount: 3,
+        }),
+      },
+      enqueue,
+      now: () => new Date('2026-07-28T14:00:00.000Z'),
+      loggerInstance: { info: jest.fn() },
+    });
+
+    await expect(planner.run()).resolves.toMatchObject({
+      circuitProbeQueued: 1,
+      circuitBlocked: 0,
+      queued: 0,
+    });
+    expect(enqueue).toHaveBeenCalledWith(expect.objectContaining({
+      client,
+      record: expect.objectContaining({ sourceEventId: `${SOURCE_EVENT_ID}:retry:93` }),
+    }));
+    expect(circuitRepository.startProbe).toHaveBeenCalledWith({
+      client,
+      libraryId: 8,
+      sourceEventId: SOURCE_EVENT_ID,
+      probeOutboxId: '94',
+      now: new Date('2026-07-28T14:00:00.000Z'),
+    });
+  });
+
+  test('opens the circuit after the terminal threshold and skips an ordinary successor', async () => {
+    const circuitRepository = createCircuitRepository({
+      failureTransition: {
+        ready: true,
+        opened: true,
+        circuit: createOpenCircuit(),
+      },
+    });
+    const enqueue = jest.fn().mockResolvedValue({
+      outbox: { id: '93', processingState: 'failed' },
+      replayed: true,
+      coalesced: false,
+    });
+    const planner = new PolicyNativeProfileRefreshPlanner({
+      dbClient: { withTransaction: jest.fn(callback => callback({ query: jest.fn() })) },
+      candidateRepository: {
+        findCandidates: jest.fn().mockResolvedValue([{
+          libraryId: 8,
+          profileState: 'stale_profile',
+          profileGeneratedAt: '2026-07-25T12:00:00.000Z',
+        }]),
+      },
+      circuitRepository,
+      failureRepository: {
+        findHistory: jest.fn().mockResolvedValue({
+          failedOutboxId: '93',
+          failureCode: 'profile_refresh_unknown_failed',
+          failureCount: 3,
+        }),
+      },
+      enqueue,
+      now: () => new Date('2026-07-28T12:00:00.000Z'),
+      loggerInstance: { info: jest.fn() },
+    });
+
+    await expect(planner.run()).resolves.toMatchObject({
+      circuitOpened: 1,
+      successorBlocked: 1,
+      successorQueued: 0,
+    });
+    expect(circuitRepository.recordFailure).toHaveBeenCalledWith(expect.objectContaining({
+      failedOutboxId: '93',
+      failureCount: 3,
+      failureCode: 'profile_refresh_unknown_failed',
+    }));
     expect(enqueue).toHaveBeenCalledTimes(1);
   });
 });

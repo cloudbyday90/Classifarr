@@ -175,6 +175,8 @@ race paths.
 
 ## Next Step
 
-Add durable terminal-failure aggregation, retention, and an automatic circuit
-policy so recurring unknown native profile-refresh failures stop creating
-successors while transient failures remain hands-off.
+Extend the existing bounded recovery-status projection with a fixed
+display-only state for an open automatic circuit. It must keep recovery
+scheduler-owned and must not add a browser retry or reset action. The durable
+circuit design is [Native Profile Refresh Automatic Circuit
+Policy](policy-native-profile-refresh-circuit-policy.md).

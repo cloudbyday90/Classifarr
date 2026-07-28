@@ -10,15 +10,16 @@ media-server payloads.
 It recognizes three classes:
 
 - `permanent_configuration`: a Classifarr-owned missing profile-service
-  capability. It is terminal on the current claim and cannot create a native
-  recovery successor.
+  capability. It is terminal on the current claim and cannot create an
+  ordinary native recovery successor. It opens the durable circuit so a later
+  scheduler-owned probe is the only automatic recovery path.
 - `transient_dependency`: a bounded allowlist of network timeouts, connection
   failures, aborts, and retryable HTTP status codes. It uses the normal bounded
   worker retry and may create a delayed native successor after a terminal row.
 - `unknown`: all other errors. It uses the existing bounded retry and delayed
-  successor behavior for backward-compatible hands-off recovery. The following
-  circuit-policy component will aggregate repeated unknown terminal failures
-  and stop recovery at a durable threshold.
+  successor behavior for backward-compatible hands-off recovery. Repeated
+  terminal records feed the durable circuit and eventually replace ordinary
+  successors with one cooldown-bound automatic probe.
 
 Persisted failure codes are fixed identifiers, not a serialization of the
 error. The native planner reads the newest fixed identifier with terminal
@@ -79,8 +80,8 @@ Pros: stops known local configuration failures immediately, keeps transient
 and existing unknown failures hands-off, preserves upgrade behavior, and gives
 the next durable circuit a stable input.
 
-Cons: unknown failures can continue through the current delayed successor path
-until the aggregation/circuit component is added. Selected.
+Cons: unknown failures use bounded successors until the durable threshold is
+reached. Selected.
 
 ## Final Recommendation Stack
 
@@ -90,12 +91,12 @@ until the aggregation/circuit component is added. Selected.
    component. Do not infer permanence from arbitrary `TypeError` messages or
    provider text.
 3. Continue the existing finite worker retry and delayed successor for known
-   transient and legacy/unknown failures.
+   transient and legacy/unknown failures until the durable circuit opens.
 4. Read the persisted failure identifier in the same planner transaction that
    would enqueue a successor; block unrecognized identifiers rather than
    guessing their meaning.
-5. Add a durable per-library/source-revision aggregation and circuit state
-   before declaring unknown recurring failure recovery complete.
+5. Use the durable per-library/source-revision circuit state to bound recurring
+   terminal recovery and permit only scheduler-owned cooldown probes.
 
 ## Implementation Outcome
 
@@ -111,6 +112,12 @@ remains retryable for all existing callers. The failure-history repository now
 returns a bounded fixed failure code with the terminal count, and the native
 planner records a blocked successor result when a permanent or unrecognized
 failure is found.
+
+The durable circuit records fixed terminal codes by library and source revision.
+Configuration failures stop ordinary successors immediately and recur only
+through the scheduler-owned probe; recoverable and legacy/unknown failures
+remain bounded until the circuit threshold opens. Its design record is [Native
+Profile Refresh Automatic Circuit Policy](policy-native-profile-refresh-circuit-policy.md).
 
 ## Security Outcome
 
@@ -128,12 +135,12 @@ failure is found.
 Focused tests cover configuration, dependency, and unknown classifications;
 raw error exclusion from worker logs; immediate terminal persistence for a
 non-retryable error; failure-code history retrieval; legacy recovery; and
-blocked native successor scheduling for permanent configuration failure.
+blocked ordinary successor scheduling for permanent configuration failure.
 
 ## Next Step
 
-Implement **durable native profile-refresh failure aggregation and automatic
-circuit policy**: store a compact per-library/source-revision failure state,
-open it at a fixed threshold, delay half-open probes, reset it after a success
-or source revision change, and compact obsolete terminal history without
-requiring an operator or browser action.
+Extend the bounded native recovery-status projection with a fixed display-only
+automatic-circuit state. It must not expose a retry control, internal failure
+code, outbox identifier, timestamp, or browser write path. The circuit design
+and outcome is [Native Profile Refresh Automatic Circuit
+Policy](policy-native-profile-refresh-circuit-policy.md).

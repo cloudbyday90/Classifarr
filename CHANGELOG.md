@@ -12,14 +12,20 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 ### Changed
 
 - **Self-Healing Native Profile Recovery**: terminal native profile-refresh
-  failures now create one delayed, idempotent server-owned successor per failed
-  outbox row. Future recovery work remains automatic and appears as scheduled
-  rather than as a browser retry action.
+  failures create bounded, idempotent server-owned successors. Repeated or
+  known configuration failures now enter an automatic cooldown-and-probe
+  recovery circuit rather than creating unbounded follow-up work.
 
 - **Native Refresh Failure Boundaries**: Profile-refresh failures now use fixed
-  server-owned classifications. Known local configuration errors stop on their
-  first attempt and cannot schedule another native recovery job, while
-  transient and unknown failures retain bounded automatic recovery.
+  server-owned classifications. Known local configuration errors stop their
+  immediate successor path on the first attempt; transient and unknown failures
+  retain bounded automatic recovery through the durable circuit policy.
+
+- **Durable Native Recovery Circuit**: Native profile refreshes persist
+  per-library, per-source-revision recovery state across scheduler runs and
+  restarts. The system limits retries, runs one automatic probe after cooldown,
+  clears recovery state after a successful refresh, and safely removes obsolete
+  runtime history without adding operator controls.
 
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale

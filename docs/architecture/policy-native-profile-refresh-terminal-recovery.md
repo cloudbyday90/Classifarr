@@ -87,8 +87,7 @@ worker, applies backoff, coalesces active work by library, and needs no
 operator or browser action. Selected.
 
 Cons: repeated terminal failures create retained audit rows and require a
-separate terminal-failure eligibility and circuit policy. The next task owns
-that operational boundary.
+separate terminal-failure eligibility and circuit policy.
 
 ## Final Recommendation Stack
 
@@ -107,12 +106,13 @@ that operational boundary.
    future successor is presented as `scheduled`; it exposes no outbox ID,
    failure detail, or retry control.
 7. Use the fixed failure classification contract before a terminal row can
-   create a successor. Known configuration failures are terminal immediately;
-   unknown and transient failures preserve the bounded automatic path. The
+   create a successor. Known configuration failures are terminal immediately
+   and open the durable circuit; unknown and transient failures preserve the
+   bounded automatic path until that circuit opens. The
    detailed design is [Native Profile Refresh Failure
    Classification](policy-native-profile-refresh-failure-classification.md).
-8. Add terminal-failure aggregation, retention, and an automatic circuit
-   policy before treating recurring unknown recovery as complete.
+8. Retain terminal-failure aggregation, revision-aware compaction, and one
+   automatic half-open circuit probe for recurring failure recovery.
 
 ## Implementation Outcome
 
@@ -164,8 +164,8 @@ scheduled timestamp validation, and scheduled-versus-queued status rendering.
 
 ## Next Step
 
-Implement **durable native profile-refresh failure aggregation and automatic
-circuit policy**. It must aggregate consecutive terminal failures per
-library/source revision, retain or compact completed recovery history safely,
-and open a durable circuit for recurring unknown failures while retaining the
-no-browser, no-operator recovery path for transient failures.
+Extend the bounded native recovery-status projection with a fixed,
+display-only state for an open automatic circuit. It must not expose terminal
+history, timestamps, retry controls, or another browser write path. The
+implemented circuit design is [Native Profile Refresh Automatic Circuit
+Policy](policy-native-profile-refresh-circuit-policy.md).

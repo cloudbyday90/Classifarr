@@ -4231,13 +4231,20 @@ Implementation status:
   without operator intervention; pending future successors remain `scheduled`
   in the bounded status projection. The design and outcome record is [Native
   Profile Refresh Terminal Recovery](policy-native-profile-refresh-terminal-recovery.md).
-  Native refresh failure classification now uses fixed server-owned codes:
-  known local configuration failures are terminal immediately and cannot create
-  successors, while transient, legacy, and unknown failures keep the bounded
-  automatic recovery path. Its design record is [Native Profile Refresh Failure
-  Classification](policy-native-profile-refresh-failure-classification.md).
-  The next recovery task is durable terminal-failure aggregation, retention,
-  and automatic circuit policy for recurring unknown failure.
+  Native refresh failure classification now uses fixed server-owned codes.
+  A durable per-library/source-revision circuit opens immediately for known
+  local configuration failures and after three recurring recoverable terminal
+  failures. It suppresses ordinary work, waits two hours, and lets the existing
+  scheduler create one successor-backed probe; a successful profile refresh
+  clears the runtime state automatically. Circuits and retained terminal
+  history compact only after current source-revision protection and a bounded
+  retention window. No browser retry, reset, or manual recovery action is
+  introduced. The design and outcome records are [Native Profile Refresh
+  Failure Classification](policy-native-profile-refresh-failure-classification.md)
+  and [Native Profile Refresh Automatic Circuit
+  Policy](policy-native-profile-refresh-circuit-policy.md). The next task is a
+  bounded read-only recovery-status projection for an open circuit, with no
+  error or outbox detail exposed to the browser.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

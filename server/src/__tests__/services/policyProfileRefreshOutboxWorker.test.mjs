@@ -25,6 +25,7 @@ function createWorker({
   storedProfileError = null,
   completeResult = true,
   failResult = { updated: true, terminal: false },
+  circuitClearError = null,
 } = {}) {
   const client = { query: jest.fn() };
   const dbClient = {
@@ -48,15 +49,29 @@ function createWorker({
     info: jest.fn(),
     warn: jest.fn(),
   };
+  const nativeCircuitRepository = {
+    clearForLibrary: circuitClearError
+      ? jest.fn().mockRejectedValue(circuitClearError)
+      : jest.fn().mockResolvedValue(0),
+  };
   const worker = new PolicyProfileRefreshOutboxWorker({
     dbClient,
     outboxRepository,
     profileService,
+    nativeCircuitRepository,
     createClaimToken: () => claimToken,
     loggerInstance: logger,
   });
 
-  return { client, dbClient, logger, outboxRepository, profileService, worker };
+  return {
+    client,
+    dbClient,
+    logger,
+    nativeCircuitRepository,
+    outboxRepository,
+    profileService,
+    worker,
+  };
 }
 
 describe('PolicyProfileRefreshOutboxWorker', () => {
@@ -80,6 +95,10 @@ describe('PolicyProfileRefreshOutboxWorker', () => {
       client: fixture.dbClient,
       outboxId: '91',
       claimToken,
+    });
+    expect(fixture.nativeCircuitRepository.clearForLibrary).toHaveBeenCalledWith({
+      client: fixture.dbClient,
+      libraryId: '8',
     });
   });
 
@@ -179,6 +198,29 @@ describe('PolicyProfileRefreshOutboxWorker', () => {
       lostClaims: 1,
     });
     expect(fixture.outboxRepository.failClaim).not.toHaveBeenCalled();
+  });
+
+  test('preserves a completed refresh when a best-effort circuit reset cannot persist', async () => {
+    const fixture = createWorker({
+      records: [{ id: '91', libraryId: '8', attemptCount: 1 }],
+      circuitClearError: new Error('database detail must not be logged'),
+    });
+
+    await expect(fixture.worker.run()).resolves.toMatchObject({
+      completed: 1,
+      circuitClearFailures: 1,
+    });
+    expect(fixture.logger.warn).toHaveBeenCalledWith(
+      'Native profile refresh circuit reset failed',
+      expect.objectContaining({
+        libraryId: '8',
+        reasonId: 'native_profile_refresh_circuit_reset_failed',
+      }),
+    );
+    expect(fixture.logger.warn).toHaveBeenCalledWith(
+      'Native profile refresh circuit reset failed',
+      expect.not.objectContaining({ error: 'database detail must not be logged' }),
+    );
   });
 
   test('does not regenerate a native-readiness profile that another worker already made current', async () => {

@@ -23,6 +23,9 @@ import {
   createPolicyProfileRefreshConfigurationError,
 } from './policyProfileRefreshFailureClassification.mjs';
 import {
+  policyNativeProfileRefreshCircuitRepository,
+} from './policyNativeProfileRefreshCircuitRepository.mjs';
+import {
   POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS,
 } from './policyProfileRefreshOutboxVocabulary.mjs';
 import {
@@ -46,6 +49,8 @@ function buildResult({ claimed = 0, expired = 0 } = {}) {
     retried: 0,
     failed: expired,
     lostClaims: 0,
+    circuitsCleared: 0,
+    circuitClearFailures: 0,
   };
 }
 
@@ -53,6 +58,7 @@ class PolicyProfileRefreshOutboxWorker {
   constructor({
     dbClient = database,
     outboxRepository = policyProfileRefreshOutboxWorkerRepository,
+    nativeCircuitRepository = policyNativeProfileRefreshCircuitRepository,
     profileService = libraryProfileService,
     createClaimToken = randomUUID,
     loggerInstance = logger,
@@ -62,12 +68,29 @@ class PolicyProfileRefreshOutboxWorker {
   } = {}) {
     this.dbClient = dbClient;
     this.outboxRepository = outboxRepository;
+    this.nativeCircuitRepository = nativeCircuitRepository;
     this.profileService = profileService;
     this.createClaimToken = createClaimToken;
     this.logger = loggerInstance;
     this.batchSize = batchSize;
     this.leaseSeconds = leaseSeconds;
     this.maxAttempts = maxAttempts;
+  }
+
+  async clearNativeCircuit(record, result) {
+    try {
+      const cleared = await this.nativeCircuitRepository.clearForLibrary({
+        client: this.dbClient,
+        libraryId: record.libraryId,
+      });
+      result.circuitsCleared += Number(cleared) || 0;
+    } catch {
+      result.circuitClearFailures += 1;
+      this.logger.warn('Native profile refresh circuit reset failed', {
+        libraryId: record.libraryId,
+        reasonId: 'native_profile_refresh_circuit_reset_failed',
+      });
+    }
   }
 
   async claimBatch(claimToken) {
@@ -101,6 +124,8 @@ class PolicyProfileRefreshOutboxWorker {
         result.lostClaims += 1;
         return;
       }
+
+      await this.clearNativeCircuit(record, result);
 
       result.completed += 1;
       if (refreshResult.alreadyCurrent) {

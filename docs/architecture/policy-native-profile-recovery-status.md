@@ -107,8 +107,8 @@ region's lack of controls.
 
 ## Next Step
 
-Add durable terminal-failure aggregation and an automatic circuit policy so
-the status remains truthful for recurring transient recovery without exposing
-a browser retry control for persistent failure. The fixed classification
-boundary is documented in [Native Profile Refresh Failure
-Classification](policy-native-profile-refresh-failure-classification.md).
+Extend the recovery projection with one fixed display-only state for a native
+circuit that is awaiting its automatic probe. It must not disclose a failure
+code, cooldown timestamp, outbox ID, or a retry/reset control. The durable
+recovery boundary is documented in [Native Profile Refresh Automatic Circuit
+Policy](policy-native-profile-refresh-circuit-policy.md).
