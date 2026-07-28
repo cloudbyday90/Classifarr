@@ -61,6 +61,27 @@ describe('policyNativePolicySummary', () => {
     })
   })
 
+  it('keeps an automatic circuit wait bounded to fixed recovery copy', () => {
+    expect(buildNativePolicyReadinessSummary({
+      readinessSummary: {
+        statusId: 'native_policy_readiness_available',
+        profileRecovery: {
+          stateId: 'awaiting_automatic_probe',
+          label: 'Recovery awaiting automatic probe',
+          message: 'Classifarr is waiting before its next automatic profile recovery check. No action is needed.',
+        },
+        readiness: {
+          ready: false,
+          nextAction: { label: 'Profile recovery is automatic' },
+        },
+      },
+    }).profileRecovery).toEqual({
+      stateId: 'awaiting_automatic_probe',
+      label: 'Recovery awaiting automatic probe',
+      message: 'Classifarr is waiting before its next automatic profile recovery check. No action is needed.',
+    })
+  })
+
   it('reports a bounded unavailable state instead of exposing a workflow error', () => {
     expect(buildNativePolicyReadinessSummary({
       error: 'Unsafe raw failure detail',

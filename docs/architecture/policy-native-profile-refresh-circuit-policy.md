@@ -142,7 +142,10 @@ behavior, successful worker reset, and replace-restore cleanup.
 
 ## Next Step
 
-Extend the existing bounded native recovery-status projection with a fixed
-display-only automatic-circuit state, such as `awaiting_automatic_probe`. It
-must provide no internal timestamp, failure code, outbox ID, retry action, or
-browser write path.
+Exercise the complete automatic recovery lifecycle through the existing
+scheduler, outbox, and read-only readiness-summary boundaries. It should prove
+that a terminal failure opens the circuit, the current source revision reports
+only a fixed automatic-wait status, one scheduler-owned probe occurs after the
+cooldown, and a successful refresh clears the runtime circuit without browser
+intervention. The display projection is documented in [Native Profile Recovery
+Circuit Status Projection](policy-native-profile-recovery-circuit-status-projection.md).

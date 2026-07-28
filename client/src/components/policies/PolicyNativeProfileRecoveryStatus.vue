@@ -57,6 +57,10 @@ const toneClass = computed(() => {
     return 'border-blue-800/70 bg-blue-950/30 text-blue-100'
   }
 
+  if (props.recovery?.stateId === 'awaiting_automatic_probe') {
+    return 'border-amber-800/70 bg-amber-950/30 text-amber-100'
+  }
+
   return 'border-gray-700 bg-gray-900/30 text-gray-200'
 })
 </script>

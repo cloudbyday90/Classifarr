@@ -44,6 +44,25 @@ function normalizeCircuitRow(row) {
   return normalizePolicyNativeProfileRefreshCircuit(row);
 }
 
+async function findPolicyNativeProfileRefreshCircuit({
+  client,
+  libraryId,
+  sourceEventId,
+} = {}) {
+  requireTransactionClient(client);
+  const key = requireCircuitKey({ libraryId, sourceEventId });
+  const result = await client.query(
+    `SELECT circuit_state, consecutive_failure_count, last_terminal_outbox_id,
+            last_failure_code, opened_at, next_probe_at, probe_outbox_id
+     FROM ${POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_TABLE}
+     WHERE library_id = $1
+       AND source_event_id = $2`,
+    [key.libraryId, key.sourceEventId],
+  );
+
+  return normalizeCircuitRow(firstRow(result));
+}
+
 async function lockPolicyNativeProfileRefreshCircuit({
   client,
   libraryId,
@@ -228,6 +247,7 @@ async function clearPolicyNativeProfileRefreshCircuitsForLibrary({ client, libra
 const policyNativeProfileRefreshCircuitRepository = Object.freeze({
   clearForLibrary: clearPolicyNativeProfileRefreshCircuitsForLibrary,
   deferProbe: deferPolicyNativeProfileRefreshCircuitProbe,
+  find: findPolicyNativeProfileRefreshCircuit,
   lock: lockPolicyNativeProfileRefreshCircuit,
   recordFailure: recordPolicyNativeProfileRefreshCircuitFailure,
   startProbe: startPolicyNativeProfileRefreshCircuitProbe,
@@ -237,6 +257,7 @@ export {
   clearPolicyNativeProfileRefreshCircuitsForLibrary,
   deferPolicyNativeProfileRefreshCircuitProbe,
   ensurePolicyNativeProfileRefreshCircuit,
+  findPolicyNativeProfileRefreshCircuit,
   lockPolicyNativeProfileRefreshCircuit,
   normalizeCircuitRow,
   policyNativeProfileRefreshCircuitRepository,

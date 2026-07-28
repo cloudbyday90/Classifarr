@@ -11,6 +11,7 @@ profile freshness and the durable profile-refresh outbox:
 - `scheduled`
 - `queued`
 - `processing`
+- `awaiting_automatic_probe`
 
 The browser consumes this display-only projection. It cannot enqueue work,
 refresh a profile, retry a worker, or derive state from a local timer.
@@ -88,6 +89,14 @@ polite, atomic live region. It intentionally has no refresh, retry, or reload
 control. The existing policy builder keeps its legacy edit refresh control
 outside this native persisted-policy surface.
 
+When no active refresh outbox record exists, the summary derives the current
+library's scheduler candidate and reads a circuit only for that exact
+server-derived source revision. A valid `open` or `half_open` circuit produces
+`awaiting_automatic_probe`. The projection contains only fixed copy; it does
+not expose a circuit timestamp, failure code, outbox identifier, count, or
+state transition detail. If the optional circuit status read is unavailable,
+the summary safely retains the normal `scheduled` recovery projection.
+
 ## Security Outcome
 
 - The recovery projection is an allowlist of fixed states and fixed copy.
@@ -100,15 +109,16 @@ outside this native persisted-policy surface.
 
 ## Verification
 
-Focused tests cover current, scheduled, queued, and processing projections,
-including delayed terminal-recovery successors; the replacement of the manual
-stale-profile action; client fail-closed validation; and the rendered live
-region's lack of controls.
+Focused tests cover current, scheduled, queued, processing, and automatic
+circuit projections, including active-outbox precedence, source-revision
+matching, optional-read fallback, delayed terminal-recovery successors, client
+fail-closed validation, and the rendered live region's lack of controls.
 
 ## Next Step
 
-Extend the recovery projection with one fixed display-only state for a native
-circuit that is awaiting its automatic probe. It must not disclose a failure
-code, cooldown timestamp, outbox ID, or a retry/reset control. The durable
-recovery boundary is documented in [Native Profile Refresh Automatic Circuit
-Policy](policy-native-profile-refresh-circuit-policy.md).
+Exercise the complete automatic recovery lifecycle through an integration
+boundary: terminal failure, circuit open, scheduled probe, successful refresh,
+and recovery-status return to `not_required`. The lifecycle test must keep the
+browser contract display-only and use only scheduler-owned transitions. The
+source-revision projection design is documented in [Native Profile Recovery
+Circuit Status Projection](policy-native-profile-recovery-circuit-status-projection.md).

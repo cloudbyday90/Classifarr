@@ -4242,9 +4242,17 @@ Implementation status:
   introduced. The design and outcome records are [Native Profile Refresh
   Failure Classification](policy-native-profile-refresh-failure-classification.md)
   and [Native Profile Refresh Automatic Circuit
-  Policy](policy-native-profile-refresh-circuit-policy.md). The next task is a
-  bounded read-only recovery-status projection for an open circuit, with no
-  error or outbox detail exposed to the browser.
+  Policy](policy-native-profile-refresh-circuit-policy.md). The readiness
+  summary now derives the current scheduler candidate and, only when there is
+  no active refresh, projects a valid exact-source-revision open or half-open
+  circuit as fixed `awaiting_automatic_probe` copy. It exposes no failure,
+  cooldown timestamp, outbox data, retry, or reset control. Optional circuit
+  lookup failure falls back to normal scheduled recovery. The design and
+  outcome record is [Native Profile Recovery Circuit Status
+  Projection](policy-native-profile-recovery-circuit-status-projection.md).
+  The next task is a scheduler/outbox/readiness integration lifecycle test for
+  terminal failure, cooldown probe, successful circuit reset, and the return
+  to current profile status without browser intervention.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

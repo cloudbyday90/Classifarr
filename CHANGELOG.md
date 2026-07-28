@@ -29,7 +29,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
-  profiles as a browser refresh action.
+  profiles as a browser refresh action. When an automatic recovery circuit is
+  cooling down or probing, the view reports that recovery is automatic without
+  exposing retry timing, failure data, or controls.
 
 The entries below describe distinct product behavior and operational guarantees
 intended for the next release. They consolidate intermediate implementation work,

@@ -81,6 +81,7 @@ function buildSideEffects({
   storedNativeIntentRead = false,
   cachedProfileRead = false,
   profileRefreshOutboxRead = false,
+  profileRefreshCircuitRead = false,
   routingConfigurationRead = false,
 } = {}) {
   return {
@@ -88,6 +89,7 @@ function buildSideEffects({
     storedNativeIntentRead,
     cachedProfileRead,
     profileRefreshOutboxRead,
+    profileRefreshCircuitRead,
     routingConfigurationRead,
     liveMediaServerLookupPerformed: false,
     liveProviderLookupPerformed: false,

@@ -11,6 +11,7 @@
 import { jest } from '@jest/globals';
 
 import {
+  findPolicyNativeProfileRefreshCandidateForLibrary,
   findPolicyNativeProfileRefreshCandidates,
 } from '../../services/policyNativeProfileRefreshCandidateRepository.mjs';
 
@@ -66,6 +67,34 @@ describe('policyNativeProfileRefreshCandidateRepository', () => {
     expect(client.query.mock.calls[0][0]).toContain('ON observed_items.item_count > 0');
     expect(client.query.mock.calls[0][0]).toContain('COALESCE(policy.enabled, TRUE) = TRUE');
     expect(client.query.mock.calls[0][0]).toContain("INTERVAL '1 millisecond'");
-    expect(client.query.mock.calls[0][1]).toEqual([604800000, 10]);
+    expect(client.query.mock.calls[0][1]).toEqual([604800000, 10, null]);
+  });
+
+  test('reads one current scheduler candidate for an exact native library', async () => {
+    const client = {
+      query: jest.fn().mockResolvedValue({
+        rows: [{
+          library_id: '8',
+          profile_state: 'missing_profile',
+          profile_last_generated_at: null,
+          observed_item_count: '12',
+          observed_item_high_water_mark: '91',
+        }],
+      }),
+    };
+
+    await expect(findPolicyNativeProfileRefreshCandidateForLibrary({
+      client,
+      libraryId: '8',
+    })).resolves.toEqual({
+      libraryId: 8,
+      profileState: 'missing_profile',
+      profileGeneratedAt: null,
+      observedItemCount: 12,
+      observedItemHighWaterMark: 91,
+    });
+
+    expect(client.query.mock.calls[0][0]).toContain('policy.library_id = $3');
+    expect(client.query.mock.calls[0][1]).toEqual([604800000, 1, 8]);
   });
 });

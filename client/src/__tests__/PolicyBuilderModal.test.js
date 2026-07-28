@@ -288,6 +288,7 @@ describe('PolicyBuilderModal.vue', () => {
     },
     sideEffects: {
       profileRefreshOutboxRead: false,
+      profileRefreshCircuitRead: false,
       liveMediaServerLookupPerformed: false,
       liveProviderLookupPerformed: false,
       providerQuotaRead: false,

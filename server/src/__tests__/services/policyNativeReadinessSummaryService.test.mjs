@@ -81,16 +81,25 @@ function createService({
   nativeIntent = buildNativeIntent(),
   profileHandoff = buildProfileHandoff(),
   activeProfileRefresh = null,
+  profileRefreshCandidate = null,
+  profileRefreshCircuit = null,
+  profileRefreshCircuitError = null,
 } = {}) {
   const fetchContext = jest.fn().mockResolvedValue(context);
   const fetchNativeIntent = jest.fn().mockResolvedValue(nativeIntent);
   const loadProfileEvidence = jest.fn().mockResolvedValue(profileHandoff);
   const findActiveProfileRefresh = jest.fn().mockResolvedValue(activeProfileRefresh);
+  const findProfileRefreshCandidate = jest.fn().mockResolvedValue(profileRefreshCandidate);
+  const findProfileRefreshCircuit = profileRefreshCircuitError
+    ? jest.fn().mockRejectedValue(profileRefreshCircuitError)
+    : jest.fn().mockResolvedValue(profileRefreshCircuit);
   const service = createPolicyNativeReadinessSummaryService({
     fetchContext,
     fetchNativeIntent,
     loadProfileEvidence,
     findActiveProfileRefresh,
+    findProfileRefreshCandidate,
+    findProfileRefreshCircuit,
   });
 
   return {
@@ -98,6 +107,8 @@ function createService({
     fetchNativeIntent,
     loadProfileEvidence,
     findActiveProfileRefresh,
+    findProfileRefreshCandidate,
+    findProfileRefreshCircuit,
     service,
   };
 }
@@ -110,6 +121,8 @@ describe('policyNativeReadinessSummaryService', () => {
       fetchNativeIntent,
       loadProfileEvidence,
       findActiveProfileRefresh,
+      findProfileRefreshCandidate,
+      findProfileRefreshCircuit,
     } = createService();
     const dbClient = { query: jest.fn() };
 
@@ -138,6 +151,7 @@ describe('policyNativeReadinessSummaryService', () => {
         storedNativeIntentRead: true,
         cachedProfileRead: true,
         profileRefreshOutboxRead: false,
+        profileRefreshCircuitRead: false,
         routingConfigurationRead: true,
         liveMediaServerLookupPerformed: false,
         liveProviderLookupPerformed: false,
@@ -151,6 +165,8 @@ describe('policyNativeReadinessSummaryService', () => {
     expect(fetchNativeIntent).toHaveBeenCalledWith(dbClient, 42);
     expect(loadProfileEvidence).toHaveBeenCalledWith({ libraryId: 7 });
     expect(findActiveProfileRefresh).not.toHaveBeenCalled();
+    expect(findProfileRefreshCandidate).not.toHaveBeenCalled();
+    expect(findProfileRefreshCircuit).not.toHaveBeenCalled();
     expect(dbClient.query).not.toHaveBeenCalled();
   });
 
@@ -189,7 +205,7 @@ describe('policyNativeReadinessSummaryService', () => {
   });
 
   test('projects queued background recovery from the persisted refresh outbox', async () => {
-    const { service } = createService({
+    const { service, findProfileRefreshCandidate, findProfileRefreshCircuit } = createService({
       profileHandoff: {
         ok: false,
         statusId: 'profile_not_found',
@@ -208,6 +224,86 @@ describe('policyNativeReadinessSummaryService', () => {
       },
       sideEffects: expect.objectContaining({ profileRefreshOutboxRead: true }),
     }));
+    expect(findProfileRefreshCandidate).not.toHaveBeenCalled();
+    expect(findProfileRefreshCircuit).not.toHaveBeenCalled();
+  });
+
+  test('projects only the current circuit state without exposing circuit internals', async () => {
+    const { service, findProfileRefreshCandidate, findProfileRefreshCircuit } = createService({
+      profileHandoff: {
+        ok: false,
+        statusId: 'profile_not_found',
+        sideEffects: { libraryProfileRead: true },
+      },
+      profileRefreshCandidate: {
+        libraryId: 7,
+        profileState: 'missing_profile',
+        profileGeneratedAt: null,
+        observedItemCount: 12,
+        observedItemHighWaterMark: 91,
+      },
+      profileRefreshCircuit: {
+        valid: true,
+        circuitState: 'open',
+        consecutiveFailureCount: 3,
+        lastTerminalOutboxId: 93,
+        lastFailureCode: 'profile_refresh_unknown_failed',
+        nextProbeAt: '2026-07-28T14:00:00.000Z',
+      },
+    });
+
+    const result = await service.getSummary({ dbClient: { query: jest.fn() }, policyId: 42 });
+
+    expect(result).toEqual(expect.objectContaining({
+      readiness: expect.objectContaining({
+        nextAction: {
+          actionId: 'await_automatic_profile_recovery',
+          label: 'Profile recovery is automatic',
+        },
+      }),
+      profileRecovery: {
+        stateId: 'awaiting_automatic_probe',
+        label: 'Recovery awaiting automatic probe',
+        message: 'Classifarr is waiting before its next automatic profile recovery check. No action is needed.',
+      },
+      sideEffects: expect.objectContaining({ profileRefreshCircuitRead: true }),
+    }));
+    expect(findProfileRefreshCandidate).toHaveBeenCalledWith({
+      client: expect.any(Object),
+      libraryId: 7,
+    });
+    expect(findProfileRefreshCircuit).toHaveBeenCalledWith({
+      client: expect.any(Object),
+      libraryId: 7,
+      sourceEventId: 'library-profile:7:missing_profile:items:12:high-water:91',
+    });
+    expect(JSON.stringify(result)).not.toMatch(/profile_refresh_unknown_failed|2026-07-28|outboxId/i);
+  });
+
+  test('falls back to scheduled recovery when optional circuit status cannot be read', async () => {
+    const { service } = createService({
+      profileHandoff: {
+        ok: false,
+        statusId: 'profile_not_found',
+        sideEffects: { libraryProfileRead: true },
+      },
+      profileRefreshCandidate: {
+        libraryId: 7,
+        profileState: 'missing_profile',
+        observedItemCount: 12,
+        observedItemHighWaterMark: 91,
+      },
+      profileRefreshCircuitError: new Error('database temporarily unavailable'),
+    });
+
+    const result = await service.getSummary({ dbClient: { query: jest.fn() }, policyId: 42 });
+
+    expect(result).toEqual(expect.objectContaining({
+      statusId: POLICY_NATIVE_READINESS_SUMMARY_STATUS_IDS.AVAILABLE,
+      profileRecovery: expect.objectContaining({ stateId: 'scheduled' }),
+      sideEffects: expect.objectContaining({ profileRefreshCircuitRead: false }),
+    }));
+    expect(JSON.stringify(result)).not.toContain('database temporarily unavailable');
   });
 
   test('reports non-authoritative stored intent without falling back to legacy workflow state', async () => {

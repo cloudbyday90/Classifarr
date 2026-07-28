@@ -46,6 +46,24 @@ describe('policyNativeProfileRecoveryStatus', () => {
     }).stateId).toBe('scheduled');
   });
 
+  test('projects a valid current circuit as automatic recovery while active outbox work takes priority', () => {
+    const circuit = { valid: true, circuitState: 'open' };
+
+    expect(buildNativeProfileRecoveryStatus({
+      readiness: { stateId: 'stale_profile' },
+      circuit,
+    })).toEqual({
+      stateId: 'awaiting_automatic_probe',
+      label: 'Recovery awaiting automatic probe',
+      message: 'Classifarr is waiting before its next automatic profile recovery check. No action is needed.',
+    });
+    expect(buildNativeProfileRecoveryStatus({
+      readiness: { stateId: 'stale_profile' },
+      activeRefresh: { processingState: 'pending' },
+      circuit,
+    }).stateId).toBe('queued');
+  });
+
   test('shows stale profiles without active work as scheduler-owned recovery', () => {
     const profileRecovery = buildNativeProfileRecoveryStatus({
       readiness: { stateId: 'stale_profile' },

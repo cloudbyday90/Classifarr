@@ -12,6 +12,7 @@ import { jest } from '@jest/globals';
 
 import {
   clearPolicyNativeProfileRefreshCircuitsForLibrary,
+  findPolicyNativeProfileRefreshCircuit,
   recordPolicyNativeProfileRefreshCircuitFailure,
   startPolicyNativeProfileRefreshCircuitProbe,
 } from '../../services/policyNativeProfileRefreshCircuitRepository.mjs';
@@ -33,6 +34,36 @@ function circuitRow(overrides = {}) {
 }
 
 describe('policyNativeProfileRefreshCircuitRepository', () => {
+  test('reads an exact circuit without taking a scheduler lock', async () => {
+    const client = {
+      query: jest.fn().mockResolvedValue({
+        rows: [circuitRow({
+          circuit_state: 'open',
+          consecutive_failure_count: 3,
+          last_terminal_outbox_id: '93',
+          last_failure_code: 'profile_refresh_unknown_failed',
+          opened_at: '2026-07-28T12:00:00.000Z',
+          next_probe_at: '2026-07-28T14:00:00.000Z',
+        })],
+      }),
+    };
+
+    await expect(findPolicyNativeProfileRefreshCircuit({
+      client,
+      libraryId: 8,
+      sourceEventId: SOURCE_EVENT_ID,
+    })).resolves.toMatchObject({
+      valid: true,
+      circuitState: 'open',
+      lastTerminalOutboxId: 93,
+    });
+
+    expect(client.query).toHaveBeenCalledWith(
+      expect.not.stringContaining('FOR UPDATE'),
+      [8, SOURCE_EVENT_ID],
+    );
+  });
+
   test('records and locks a terminal failure with parameterized circuit persistence', async () => {
     const client = {
       query: jest.fn()

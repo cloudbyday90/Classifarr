@@ -27,6 +27,7 @@ const PROFILE_RECOVERY_STATE_IDS = new Set([
   'scheduled',
   'queued',
   'processing',
+  'awaiting_automatic_probe',
 ])
 const ALLOWED_STATUS_IDS = new Set([
   AVAILABLE_STATUS_ID,
@@ -47,6 +48,7 @@ function hasReadOnlyAuthority(authority = {}) {
 
 function hasReadOnlySideEffects(sideEffects = {}) {
   return typeof sideEffects?.profileRefreshOutboxRead === 'boolean' &&
+    typeof sideEffects?.profileRefreshCircuitRead === 'boolean' &&
     sideEffects?.liveMediaServerLookupPerformed === false &&
     sideEffects?.liveProviderLookupPerformed === false &&
     sideEffects?.providerQuotaRead === false &&

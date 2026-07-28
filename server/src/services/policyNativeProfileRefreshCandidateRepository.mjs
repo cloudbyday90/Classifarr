@@ -22,6 +22,11 @@ function normalizePositiveInteger(value, fallback) {
   return Number.isInteger(numeric) && numeric > 0 ? numeric : fallback;
 }
 
+function normalizeLibraryId(value) {
+  const libraryId = Number(value);
+  return Number.isInteger(libraryId) && libraryId > 0 ? libraryId : null;
+}
+
 function normalizeTimestamp(value) {
   if (!value) return null;
 
@@ -54,9 +59,17 @@ async function findPolicyNativeProfileRefreshCandidates({
   client,
   limit = POLICY_NATIVE_PROFILE_REFRESH_CANDIDATE_BATCH_SIZE,
   maximumAgeMs = POLICY_LIBRARY_PROFILE_FRESHNESS_MAX_AGE_MS,
+  libraryId = null,
 } = {}) {
   if (!client || typeof client.query !== 'function') {
     throw new TypeError('Native profile refresh candidate discovery requires a database client.');
+  }
+
+  const normalizedLibraryId = libraryId === null || libraryId === undefined
+    ? null
+    : normalizeLibraryId(libraryId);
+  if (libraryId !== null && libraryId !== undefined && !normalizedLibraryId) {
+    return [];
   }
 
   const result = await client.query(
@@ -65,11 +78,12 @@ async function findPolicyNativeProfileRefreshCandidates({
        FROM library_policies AS policy
        JOIN libraries AS library
          ON library.id = policy.library_id
-       JOIN policy_intents AS intent
+      JOIN policy_intents AS intent
          ON intent.policy_id = policy.id
         AND intent.active = TRUE
-       WHERE policy.library_id IS NOT NULL
-         AND COALESCE(policy.enabled, TRUE) = TRUE
+      WHERE policy.library_id IS NOT NULL
+        AND ($3::bigint IS NULL OR policy.library_id = $3)
+        AND COALESCE(policy.enabled, TRUE) = TRUE
          AND COALESCE(library.is_active, TRUE) = TRUE
      )
      SELECT
@@ -104,6 +118,7 @@ async function findPolicyNativeProfileRefreshCandidates({
         POLICY_LIBRARY_PROFILE_FRESHNESS_MAX_AGE_MS,
       ),
       normalizePositiveInteger(limit, POLICY_NATIVE_PROFILE_REFRESH_CANDIDATE_BATCH_SIZE),
+      normalizedLibraryId,
     ],
   );
 
@@ -112,11 +127,28 @@ async function findPolicyNativeProfileRefreshCandidates({
     : [];
 }
 
+async function findPolicyNativeProfileRefreshCandidateForLibrary({
+  client,
+  libraryId,
+  maximumAgeMs = POLICY_LIBRARY_PROFILE_FRESHNESS_MAX_AGE_MS,
+} = {}) {
+  const candidates = await findPolicyNativeProfileRefreshCandidates({
+    client,
+    libraryId,
+    limit: 1,
+    maximumAgeMs,
+  });
+
+  return candidates[0] || null;
+}
+
 const policyNativeProfileRefreshCandidateRepository = Object.freeze({
+  findCandidateForLibrary: findPolicyNativeProfileRefreshCandidateForLibrary,
   findCandidates: findPolicyNativeProfileRefreshCandidates,
 });
 
 export {
+  findPolicyNativeProfileRefreshCandidateForLibrary,
   findPolicyNativeProfileRefreshCandidates,
   normalizeCandidate,
   policyNativeProfileRefreshCandidateRepository,

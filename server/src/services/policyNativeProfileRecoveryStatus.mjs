@@ -11,12 +11,16 @@
 import {
   POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS,
 } from './policyProfileRefreshOutboxWorkerVocabulary.mjs';
+import {
+  POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_STATE_IDS,
+} from './policyNativeProfileRefreshCircuitVocabulary.mjs';
 
 const POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS = Object.freeze({
   NOT_REQUIRED: 'not_required',
   SCHEDULED: 'scheduled',
   QUEUED: 'queued',
   PROCESSING: 'processing',
+  AWAITING_AUTOMATIC_PROBE: 'awaiting_automatic_probe',
 });
 
 const PROFILE_RECOVERY_PRESENTATION = Object.freeze({
@@ -36,6 +40,10 @@ const PROFILE_RECOVERY_PRESENTATION = Object.freeze({
     label: 'Refreshing profile',
     message: 'Classifarr is refreshing this library profile automatically. No action is needed.',
   }),
+  [POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS.AWAITING_AUTOMATIC_PROBE]: Object.freeze({
+    label: 'Recovery awaiting automatic probe',
+    message: 'Classifarr is waiting before its next automatic profile recovery check. No action is needed.',
+  }),
 });
 
 const AUTOMATIC_RECOVERY_ACTIONS = Object.freeze({
@@ -51,6 +59,10 @@ const AUTOMATIC_RECOVERY_ACTIONS = Object.freeze({
     actionId: 'await_automatic_profile_recovery',
     label: 'Profile refresh is in progress',
   }),
+  [POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS.AWAITING_AUTOMATIC_PROBE]: Object.freeze({
+    actionId: 'await_automatic_profile_recovery',
+    label: 'Profile recovery is automatic',
+  }),
 });
 
 function isStaleProfileReadiness(readiness = {}) {
@@ -64,7 +76,14 @@ function isFutureRefresh(activeRefresh = null, now = new Date()) {
   return Number.isFinite(availableAt) && Number.isFinite(evaluatedAt) && availableAt > evaluatedAt;
 }
 
-function resolveRecoveryState(activeRefresh = null, now = new Date()) {
+function isAwaitingAutomaticProbe(circuit = null) {
+  return [
+    POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_STATE_IDS.OPEN,
+    POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_STATE_IDS.HALF_OPEN,
+  ].includes(circuit?.circuitState) && circuit?.valid === true;
+}
+
+function resolveRecoveryState(activeRefresh = null, now = new Date(), circuit = null) {
   const processingState = activeRefresh?.processingState;
 
   if (processingState === POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS.PROCESSING) {
@@ -77,12 +96,21 @@ function resolveRecoveryState(activeRefresh = null, now = new Date()) {
       : POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS.QUEUED;
   }
 
+  if (isAwaitingAutomaticProbe(circuit)) {
+    return POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS.AWAITING_AUTOMATIC_PROBE;
+  }
+
   return POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS.SCHEDULED;
 }
 
-function buildNativeProfileRecoveryStatus({ readiness = {}, activeRefresh = null, now = new Date() } = {}) {
+function buildNativeProfileRecoveryStatus({
+  readiness = {},
+  activeRefresh = null,
+  circuit = null,
+  now = new Date(),
+} = {}) {
   const stateId = isStaleProfileReadiness(readiness)
-    ? resolveRecoveryState(activeRefresh, now)
+    ? resolveRecoveryState(activeRefresh, now, circuit)
     : POLICY_NATIVE_PROFILE_RECOVERY_STATE_IDS.NOT_REQUIRED;
   const presentation = PROFILE_RECOVERY_PRESENTATION[stateId];
 
@@ -114,6 +142,7 @@ export {
   applyAutomaticProfileRecoveryToReadiness,
   buildNativeProfileRecoveryStatus,
   isStaleProfileReadiness,
+  isAwaitingAutomaticProbe,
   isFutureRefresh,
   resolveRecoveryState,
 };

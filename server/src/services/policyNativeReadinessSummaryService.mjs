@@ -28,6 +28,15 @@ import {
   isStaleProfileReadiness,
 } from './policyNativeProfileRecoveryStatus.mjs';
 import {
+  policyNativeProfileRefreshCandidateRepository,
+} from './policyNativeProfileRefreshCandidateRepository.mjs';
+import {
+  buildPolicyNativeProfileRefreshRequest,
+} from './policyNativeProfileRefreshRequest.mjs';
+import {
+  policyNativeProfileRefreshCircuitRepository,
+} from './policyNativeProfileRefreshCircuitRepository.mjs';
+import {
   buildAvailableNativeReadinessSummary,
   buildNativeIntentUnavailableResult,
   buildPolicyNativeReadinessSummaryAudit,
@@ -51,12 +60,46 @@ function resolveProfileFreshness(profileHandoff = {}) {
   return { stale: true };
 }
 
-function buildSummarySideEffects({ profileHandoff, profileRefreshOutboxRead = false } = {}) {
+function buildSummarySideEffects({
+  profileHandoff,
+  profileRefreshOutboxRead = false,
+  profileRefreshCircuitRead = false,
+} = {}) {
   return {
     cachedProfileRead: profileHandoff?.sideEffects?.libraryProfileRead === true,
     profileRefreshOutboxRead,
+    profileRefreshCircuitRead,
     routingConfigurationRead: true,
   };
+}
+
+async function readCurrentProfileRefreshCircuit({
+  dbClient,
+  libraryId,
+  findProfileRefreshCandidate,
+  buildProfileRefreshRequest,
+  findProfileRefreshCircuit,
+} = {}) {
+  try {
+    const candidate = await findProfileRefreshCandidate({
+      client: dbClient,
+      libraryId,
+    });
+    const request = buildProfileRefreshRequest(candidate || {});
+    if (request.ready !== true) {
+      return { circuit: null, profileRefreshCircuitRead: false };
+    }
+
+    const circuit = await findProfileRefreshCircuit({
+      client: dbClient,
+      libraryId,
+      sourceEventId: request.record.sourceEventId,
+    });
+    return { circuit, profileRefreshCircuitRead: true };
+  } catch {
+    // This optional status enrichment must not make the core readiness read unavailable.
+    return { circuit: null, profileRefreshCircuitRead: false };
+  }
 }
 
 function createPolicyNativeReadinessSummaryService({
@@ -64,6 +107,10 @@ function createPolicyNativeReadinessSummaryService({
   fetchNativeIntent = fetchActiveNativeIntentForPolicy,
   loadProfileEvidence = loadPolicyLibraryProfileEvidence,
   findActiveProfileRefresh = findActivePolicyProfileRefreshOutboxRecord,
+  findProfileRefreshCandidate =
+    policyNativeProfileRefreshCandidateRepository.findCandidateForLibrary,
+  buildProfileRefreshRequest = buildPolicyNativeProfileRefreshRequest,
+  findProfileRefreshCircuit = policyNativeProfileRefreshCircuitRepository.find,
   buildReadiness = buildPolicyAutomationReadinessFromContracts,
   validateReadiness = validatePolicyAutomationReadiness,
 } = {}) {
@@ -122,9 +169,21 @@ function createPolicyNativeReadinessSummaryService({
           libraryId: context.policy.libraryId,
         })
         : null;
+      let circuit = null;
+      let profileRefreshCircuitRead = false;
+      if (profileRefreshOutboxRead && !activeRefresh) {
+        ({ circuit, profileRefreshCircuitRead } = await readCurrentProfileRefreshCircuit({
+          dbClient,
+          libraryId: context.policy.libraryId,
+          findProfileRefreshCandidate,
+          buildProfileRefreshRequest,
+          findProfileRefreshCircuit,
+        }));
+      }
       const profileRecovery = buildNativeProfileRecoveryStatus({
         readiness,
         activeRefresh,
+        circuit,
       });
       const displayReadiness = applyAutomaticProfileRecoveryToReadiness({
         readiness,
@@ -140,6 +199,7 @@ function createPolicyNativeReadinessSummaryService({
         sideEffects: buildSummarySideEffects({
           profileHandoff,
           profileRefreshOutboxRead,
+          profileRefreshCircuitRead,
         }),
       });
 
@@ -150,6 +210,7 @@ function createPolicyNativeReadinessSummaryService({
           sideEffects: buildSummarySideEffects({
             profileHandoff,
             profileRefreshOutboxRead,
+            profileRefreshCircuitRead,
           }),
         });
     } catch {
@@ -165,5 +226,6 @@ const policyNativeReadinessSummaryService = createPolicyNativeReadinessSummarySe
 export {
   createPolicyNativeReadinessSummaryService,
   policyNativeReadinessSummaryService,
+  readCurrentProfileRefreshCircuit,
   resolveProfileFreshness,
 };

@@ -17,6 +17,7 @@ const PROFILE_RECOVERY_STATE_IDS = new Set([
   'scheduled',
   'queued',
   'processing',
+  'awaiting_automatic_probe',
 ])
 
 function replaceControlCharacters(value) {

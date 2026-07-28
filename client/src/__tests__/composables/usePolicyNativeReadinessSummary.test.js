@@ -46,6 +46,7 @@ function buildReadinessSummary(policyId = 7) {
     },
     sideEffects: {
       profileRefreshOutboxRead: false,
+      profileRefreshCircuitRead: false,
       liveMediaServerLookupPerformed: false,
       liveProviderLookupPerformed: false,
       providerQuotaRead: false,
@@ -128,6 +129,27 @@ describe('usePolicyNativeReadinessSummary', () => {
 
     expect(readiness.readinessSummary.value).toBeNull()
     expect(readiness.error.value).toContain('could not load the current policy readiness')
+  })
+
+  it('accepts the bounded automatic-circuit recovery state without granting browser control', async () => {
+    const loadSummaryRequest = vi.fn().mockResolvedValue({
+      ...buildReadinessSummary(),
+      profileRecovery: {
+        stateId: 'awaiting_automatic_probe',
+        label: 'Recovery awaiting automatic probe',
+        message: 'Classifarr is waiting before its next automatic profile recovery check. No action is needed.',
+      },
+      sideEffects: {
+        ...buildReadinessSummary().sideEffects,
+        profileRefreshCircuitRead: true,
+      },
+    })
+    const readiness = usePolicyNativeReadinessSummary({ loadSummaryRequest })
+
+    await expect(readiness.loadSummary(7)).resolves.toBe(true)
+    expect(readiness.readinessSummary.value.profileRecovery.stateId).toBe('awaiting_automatic_probe')
+    expect(readiness.readinessSummary.value.readiness.nextAction.actionId)
+      .toBe('continue_automation')
   })
 
   it('watches policy changes through the same bounded request path', async () => {
