@@ -106,8 +106,13 @@ that operational boundary.
 6. Return only the existing bounded recovery state to the browser. A pending
    future successor is presented as `scheduled`; it exposes no outbox ID,
    failure detail, or retry control.
-7. Add terminal-failure classification, aggregation, retention, and an
-   automatic circuit policy before treating recurring recovery as complete.
+7. Use the fixed failure classification contract before a terminal row can
+   create a successor. Known configuration failures are terminal immediately;
+   unknown and transient failures preserve the bounded automatic path. The
+   detailed design is [Native Profile Refresh Failure
+   Classification](policy-native-profile-refresh-failure-classification.md).
+8. Add terminal-failure aggregation, retention, and an automatic circuit
+   policy before treating recurring unknown recovery as complete.
 
 ## Implementation Outcome
 
@@ -126,6 +131,10 @@ request. Only when that result is persistently `failed` does it read failure
 history and enqueue a ready successor. A missing or invalid history fails
 closed and is reported as an invalid successor, rather than guessing an ID or
 writing unbounded work.
+
+The planner now also reads the fixed failure code. It blocks a successor for a
+known permanent configuration failure or an unrecognized code, while retaining
+the automatic delayed recovery path for transient, legacy, and unknown errors.
 
 `policyProfileRefreshOutboxRepository.mjs` now persists `available_at` only
 for the exact server-owned native-readiness source and returns that timestamp
@@ -155,9 +164,8 @@ scheduled timestamp validation, and scheduled-versus-queued status rendering.
 
 ## Next Step
 
-Implement **native profile refresh terminal-failure policy**: classify fixed
-retryable and non-retryable failure identifiers, aggregate consecutive terminal
-failures per library/source revision, retain or compact completed recovery
-history safely, and open an automatic circuit for known persistent failures.
-That policy must preserve the no-browser, no-operator recovery path for
-transient failures while preventing indefinite retry of a known bad state.
+Implement **durable native profile-refresh failure aggregation and automatic
+circuit policy**. It must aggregate consecutive terminal failures per
+library/source revision, retain or compact completed recovery history safely,
+and open a durable circuit for recurring unknown failures while retaining the
+no-browser, no-operator recovery path for transient failures.

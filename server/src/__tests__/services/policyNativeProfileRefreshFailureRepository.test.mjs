@@ -17,14 +17,22 @@ import {
 describe('policyNativeProfileRefreshFailureRepository', () => {
   test('loads the newest terminal native-refresh failure and its bounded history count', async () => {
     const client = {
-      query: jest.fn().mockResolvedValue({ rows: [{ id: '91', failure_count: '2' }] }),
+      query: jest.fn().mockResolvedValue({ rows: [{
+        id: '91',
+        failure_code: 'profile_refresh_execution_failed',
+        failure_count: '2',
+      }] }),
     };
 
     await expect(findPolicyNativeProfileRefreshFailureHistory({
       client,
       libraryId: 8,
       sourceEventId: 'library-profile:8:stale_profile:2026-07-25T12:00:00.000Z',
-    })).resolves.toEqual({ failedOutboxId: '91', failureCount: 2 });
+    })).resolves.toEqual({
+      failedOutboxId: '91',
+      failureCode: 'profile_refresh_execution_failed',
+      failureCount: 2,
+    });
 
     expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining('starts_with(source_event_id, $5 || \':retry:\')'),
@@ -36,6 +44,7 @@ describe('policyNativeProfileRefreshFailureRepository', () => {
         'library-profile:8:stale_profile:2026-07-25T12:00:00.000Z',
       ],
     );
+    expect(client.query.mock.calls[0][0]).toContain('failure_code');
   });
 
   test('does not turn a retry event or malformed identifier into a database query', async () => {

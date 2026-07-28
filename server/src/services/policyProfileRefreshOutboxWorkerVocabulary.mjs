@@ -19,8 +19,11 @@ const POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS = Object.freeze({
 });
 
 const POLICY_PROFILE_REFRESH_OUTBOX_WORKER_FAILURE_IDS = Object.freeze({
+  CONFIGURATION_INVALID: 'profile_refresh_configuration_invalid',
   EXECUTION_FAILED: 'profile_refresh_execution_failed',
   LEASE_EXPIRED: 'profile_refresh_lease_expired',
+  TRANSIENT_DEPENDENCY_FAILED: 'profile_refresh_transient_dependency_failed',
+  UNKNOWN_FAILED: 'profile_refresh_unknown_failed',
 });
 
 const POLICY_PROFILE_REFRESH_OUTBOX_WORKER_BATCH_SIZE = 10;

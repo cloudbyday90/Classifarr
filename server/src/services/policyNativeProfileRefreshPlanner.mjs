@@ -23,6 +23,9 @@ import {
   buildPolicyNativeProfileRefreshSuccessor,
 } from './policyNativeProfileRefreshSuccessor.mjs';
 import {
+  evaluatePolicyNativeProfileRefreshTerminalFailure,
+} from './policyProfileRefreshFailureClassification.mjs';
+import {
   POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS,
 } from './policyProfileRefreshOutboxWorkerVocabulary.mjs';
 import {
@@ -45,6 +48,7 @@ function buildResult({
   successorReplayed = 0,
   successorCoalesced = 0,
   successorInvalid = 0,
+  successorBlocked = 0,
 } = {}) {
   return {
     version: POLICY_NATIVE_PROFILE_REFRESH_PLANNER_VERSION,
@@ -59,6 +63,7 @@ function buildResult({
     successorReplayed,
     successorCoalesced,
     successorInvalid,
+    successorBlocked,
   };
 }
 
@@ -69,6 +74,7 @@ class PolicyNativeProfileRefreshPlanner {
     buildRequest = buildPolicyNativeProfileRefreshRequest,
     failureRepository = policyNativeProfileRefreshFailureRepository,
     buildSuccessor = buildPolicyNativeProfileRefreshSuccessor,
+    evaluateTerminalFailure = evaluatePolicyNativeProfileRefreshTerminalFailure,
     enqueue = enqueuePolicyProfileRefresh,
     now = () => new Date(),
     loggerInstance = logger,
@@ -78,6 +84,7 @@ class PolicyNativeProfileRefreshPlanner {
     this.buildRequest = buildRequest;
     this.failureRepository = failureRepository;
     this.buildSuccessor = buildSuccessor;
+    this.evaluateTerminalFailure = evaluateTerminalFailure;
     this.enqueue = enqueue;
     this.now = now;
     this.logger = loggerInstance;
@@ -102,17 +109,28 @@ class PolicyNativeProfileRefreshPlanner {
             libraryId: request.record.libraryId,
             sourceEventId: request.record.sourceEventId,
           });
-          const successorRequest = this.buildSuccessor({
-            record: request.record,
-            failedOutboxId: failureHistory?.failedOutboxId,
-            failureCount: failureHistory?.failureCount,
-            now: this.now(),
-          });
-
-          if (successorRequest.ready === true) {
-            successor = await this.enqueue({ client, record: successorRequest.record });
-          } else {
+          if (!failureHistory) {
             successor = { invalid: true };
+          } else {
+            const terminalFailure = this.evaluateTerminalFailure({
+              failureCode: failureHistory.failureCode,
+            });
+            if (terminalFailure.scheduleSuccessor !== true) {
+              successor = { blocked: true, reasonCodes: terminalFailure.reasonCodes };
+            } else {
+              const successorRequest = this.buildSuccessor({
+                record: request.record,
+                failedOutboxId: failureHistory.failedOutboxId,
+                failureCount: failureHistory.failureCount,
+                now: this.now(),
+              });
+
+              if (successorRequest.ready === true) {
+                successor = await this.enqueue({ client, record: successorRequest.record });
+              } else {
+                successor = { invalid: true };
+              }
+            }
           }
         }
 
@@ -140,11 +158,16 @@ class PolicyNativeProfileRefreshPlanner {
       coalesced: persisted.filter(entry => entry.primary.coalesced === true).length,
       invalid: requests.filter(({ request }) => request.ready !== true).length,
       successorQueued: persisted.filter(entry =>
-        entry.successor && entry.successor.replayed !== true && entry.successor.coalesced !== true
+        entry.successor &&
+        entry.successor.invalid !== true &&
+        entry.successor.blocked !== true &&
+        entry.successor.replayed !== true &&
+        entry.successor.coalesced !== true
       ).length,
       successorReplayed: persisted.filter(entry => entry.successor?.replayed === true).length,
       successorCoalesced: persisted.filter(entry => entry.successor?.coalesced === true).length,
       successorInvalid: persisted.filter(entry => entry.successor?.invalid === true).length,
+      successorBlocked: persisted.filter(entry => entry.successor?.blocked === true).length,
     });
 
     this.logger.info('Native policy profile refresh planning completed', result);

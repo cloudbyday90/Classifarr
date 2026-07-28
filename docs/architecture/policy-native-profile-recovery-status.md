@@ -107,6 +107,8 @@ region's lack of controls.
 
 ## Next Step
 
-Add terminal-failure classification and an automatic circuit policy so the
-status remains truthful for recurring transient recovery without exposing a
-browser retry control for persistent failure.
+Add durable terminal-failure aggregation and an automatic circuit policy so
+the status remains truthful for recurring transient recovery without exposing
+a browser retry control for persistent failure. The fixed classification
+boundary is documented in [Native Profile Refresh Failure
+Classification](policy-native-profile-refresh-failure-classification.md).

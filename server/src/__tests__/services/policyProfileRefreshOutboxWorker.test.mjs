@@ -97,7 +97,7 @@ describe('PolicyProfileRefreshOutboxWorker', () => {
     expect(fixture.outboxRepository.failClaim).not.toHaveBeenCalled();
   });
 
-  test('reschedules an unsuccessful profile refresh with bounded server-owned retry data', async () => {
+  test('reschedules an unclassified profile refresh failure with bounded server-owned retry data', async () => {
     const fixture = createWorker({
       records: [{ id: '91', libraryId: '8', attemptCount: 1 }],
       profileError: new Error('database unavailable'),
@@ -110,7 +110,8 @@ describe('PolicyProfileRefreshOutboxWorker', () => {
       claimToken,
       maxAttempts: 3,
       retryDelaySeconds: 60,
-      failureCode: 'profile_refresh_execution_failed',
+      retryable: true,
+      failureCode: 'profile_refresh_unknown_failed',
     });
     expect(fixture.logger.warn).toHaveBeenCalledWith(
       'Policy profile refresh attempt failed',
@@ -128,6 +129,42 @@ describe('PolicyProfileRefreshOutboxWorker', () => {
     await expect(fixture.worker.run()).resolves.toMatchObject({ retried: 0, failed: 1 });
     expect(fixture.outboxRepository.failClaim).toHaveBeenCalledWith(expect.objectContaining({
       retryDelaySeconds: 300,
+    }));
+  });
+
+  test('classifies a dependency timeout as retryable without logging its raw error detail', async () => {
+    const profileError = Object.assign(new Error('private dependency detail'), { code: 'ETIMEDOUT' });
+    const fixture = createWorker({
+      records: [{ id: '91', libraryId: '8', attemptCount: 1 }],
+      profileError,
+    });
+
+    await fixture.worker.run();
+
+    expect(fixture.outboxRepository.failClaim).toHaveBeenCalledWith(expect.objectContaining({
+      retryable: true,
+      failureCode: 'profile_refresh_transient_dependency_failed',
+    }));
+    expect(fixture.logger.warn).toHaveBeenCalledWith(
+      'Policy profile refresh attempt failed',
+      expect.not.objectContaining({ error: 'private dependency detail' }),
+    );
+  });
+
+  test('marks a missing profile generator terminal on its first claim', async () => {
+    const fixture = createWorker({
+      records: [{ id: '91', libraryId: '8', attemptCount: 1 }],
+      failResult: { updated: true, terminal: true },
+    });
+    fixture.profileService.generateProfile = undefined;
+
+    await expect(fixture.worker.run()).resolves.toMatchObject({
+      retried: 0,
+      failed: 1,
+    });
+    expect(fixture.outboxRepository.failClaim).toHaveBeenCalledWith(expect.objectContaining({
+      retryable: false,
+      failureCode: 'profile_refresh_configuration_invalid',
     }));
   });
 

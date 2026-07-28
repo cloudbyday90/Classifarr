@@ -16,6 +16,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   outbox row. Future recovery work remains automatic and appears as scheduled
   rather than as a browser retry action.
 
+- **Native Refresh Failure Boundaries**: Profile-refresh failures now use fixed
+  server-owned classifications. Known local configuration errors stop on their
+  first attempt and cannot schedule another native recovery job, while
+  transient and unknown failures retain bounded automatic recovery.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action.

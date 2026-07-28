@@ -42,6 +42,7 @@ function normalizeFailureHistory(row = {}) {
   return {
     failedOutboxId,
     failureCount,
+    failureCode: normalizeString(row.failure_code, 80) || null,
   };
 }
 
@@ -61,6 +62,7 @@ async function findPolicyNativeProfileRefreshFailureHistory({
   const result = await client.query(
     `SELECT
        id,
+       failure_code,
        COUNT(*) OVER ()::integer AS failure_count
      FROM ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE}
      WHERE library_id = $1

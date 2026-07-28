@@ -4231,8 +4231,13 @@ Implementation status:
   without operator intervention; pending future successors remain `scheduled`
   in the bounded status projection. The design and outcome record is [Native
   Profile Refresh Terminal Recovery](policy-native-profile-refresh-terminal-recovery.md).
-  The next recovery task is fixed terminal-failure classification, aggregation,
-  retention, and automatic circuit policy for known persistent failure.
+  Native refresh failure classification now uses fixed server-owned codes:
+  known local configuration failures are terminal immediately and cannot create
+  successors, while transient, legacy, and unknown failures keep the bounded
+  automatic recovery path. Its design record is [Native Profile Refresh Failure
+  Classification](policy-native-profile-refresh-failure-classification.md).
+  The next recovery task is durable terminal-failure aggregation, retention,
+  and automatic circuit policy for recurring unknown failure.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

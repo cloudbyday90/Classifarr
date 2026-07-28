@@ -103,9 +103,10 @@ describe('policyProfileRefreshOutboxWorkerRepository', () => {
     });
 
     expect(result).toEqual({ updated: true, terminal: true });
-    expect(client.query.mock.calls[0][0]).toContain('WHEN attempt_count >= $1 THEN $2');
+    expect(client.query.mock.calls[0][0]).toContain('WHEN attempt_count >= $1 OR NOT $2::boolean THEN $3');
     expect(client.query.mock.calls[0][1]).toEqual([
       3,
+      true,
       'failed',
       'pending',
       60,
@@ -114,5 +115,23 @@ describe('policyProfileRefreshOutboxWorkerRepository', () => {
       'processing',
       claimToken,
     ]);
+  });
+
+  test('makes a fixed non-retryable failure terminal before the attempt limit', async () => {
+    const client = clientWith([{ id: '91', processing_state: 'failed', attempt_count: 1 }]);
+
+    await expect(failPolicyProfileRefreshOutboxClaim({
+      client,
+      outboxId: '91',
+      claimToken,
+      retryDelaySeconds: 60,
+      retryable: false,
+      failureCode: 'profile_refresh_configuration_invalid',
+    })).resolves.toEqual({ updated: true, terminal: true });
+
+    expect(client.query.mock.calls[0][1]).toEqual(expect.arrayContaining([
+      false,
+      'profile_refresh_configuration_invalid',
+    ]));
   });
 });

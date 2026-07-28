@@ -19,6 +19,10 @@ import {
   policyProfileRefreshOutboxWorkerRepository,
 } from './policyProfileRefreshOutboxWorkerRepository.mjs';
 import {
+  classifyPolicyProfileRefreshFailure,
+  createPolicyProfileRefreshConfigurationError,
+} from './policyProfileRefreshFailureClassification.mjs';
+import {
   POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS,
 } from './policyProfileRefreshOutboxVocabulary.mjs';
 import {
@@ -104,14 +108,16 @@ class PolicyProfileRefreshOutboxWorker {
       } else if (refreshResult.profile === null) {
         result.completedWithoutProfile += 1;
       }
-    } catch {
+    } catch (error) {
+      const failureClassification = classifyPolicyProfileRefreshFailure(error);
       const failure = await this.outboxRepository.failClaim({
         client: this.dbClient,
         outboxId: record.id,
         claimToken,
         maxAttempts: this.maxAttempts,
         retryDelaySeconds: getPolicyProfileRefreshOutboxRetryDelaySeconds(record.attemptCount),
-        failureCode: POLICY_PROFILE_REFRESH_OUTBOX_WORKER_FAILURE_IDS.EXECUTION_FAILED,
+        retryable: failureClassification.retryable,
+        failureCode: failureClassification.failureCode,
       });
       if (!failure.updated) {
         result.lostClaims += 1;
@@ -128,7 +134,8 @@ class PolicyProfileRefreshOutboxWorker {
         libraryId: record.libraryId,
         attemptCount: record.attemptCount,
         terminal: failure.terminal,
-        failureCode: POLICY_PROFILE_REFRESH_OUTBOX_WORKER_FAILURE_IDS.EXECUTION_FAILED,
+        failureCode: failureClassification.failureCode,
+        failureClassId: failureClassification.classId,
       });
     }
   }
@@ -136,7 +143,9 @@ class PolicyProfileRefreshOutboxWorker {
   async refreshProfile(record = {}) {
     if (record.requestType === POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS.NATIVE_READINESS) {
       if (typeof this.profileService.getProfile !== 'function') {
-        throw new TypeError('Native profile refresh requires a stored profile reader.');
+        throw createPolicyProfileRefreshConfigurationError({
+          methodName: 'a stored profile reader',
+        });
       }
 
       const storedProfile = await this.profileService.getProfile(record.libraryId);
@@ -144,6 +153,12 @@ class PolicyProfileRefreshOutboxWorker {
       if (freshness.stale !== true) {
         return { profile: storedProfile, alreadyCurrent: true };
       }
+    }
+
+    if (typeof this.profileService.generateProfile !== 'function') {
+      throw createPolicyProfileRefreshConfigurationError({
+        methodName: 'a profile generator',
+      });
     }
 
     return {

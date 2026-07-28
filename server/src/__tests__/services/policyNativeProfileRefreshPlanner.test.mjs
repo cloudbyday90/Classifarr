@@ -101,7 +101,11 @@ describe('PolicyNativeProfileRefreshPlanner', () => {
         coalesced: false,
       });
     const failureRepository = {
-      findHistory: jest.fn().mockResolvedValue({ failedOutboxId: '91', failureCount: 2 }),
+      findHistory: jest.fn().mockResolvedValue({
+        failedOutboxId: '91',
+        failureCode: 'profile_refresh_execution_failed',
+        failureCount: 2,
+      }),
     };
     const planner = new PolicyNativeProfileRefreshPlanner({
       dbClient: { withTransaction: jest.fn(callback => callback(client)) },
@@ -159,6 +163,40 @@ describe('PolicyNativeProfileRefreshPlanner', () => {
     });
 
     await expect(planner.run()).resolves.toMatchObject({ successorInvalid: 1 });
+    expect(enqueue).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not enqueue a native successor for a known permanent configuration failure', async () => {
+    const enqueue = jest.fn().mockResolvedValue({
+      outbox: { id: '91', processingState: 'failed' },
+      replayed: true,
+      coalesced: false,
+    });
+    const planner = new PolicyNativeProfileRefreshPlanner({
+      dbClient: { withTransaction: jest.fn(callback => callback({ query: jest.fn() })) },
+      candidateRepository: {
+        findCandidates: jest.fn().mockResolvedValue([{
+          libraryId: 8,
+          profileState: 'stale_profile',
+          profileGeneratedAt: '2026-07-25T12:00:00.000Z',
+        }]),
+      },
+      enqueue,
+      failureRepository: {
+        findHistory: jest.fn().mockResolvedValue({
+          failedOutboxId: '91',
+          failureCode: 'profile_refresh_configuration_invalid',
+          failureCount: 1,
+        }),
+      },
+      loggerInstance: { info: jest.fn() },
+    });
+
+    await expect(planner.run()).resolves.toMatchObject({
+      replayed: 1,
+      successorQueued: 0,
+      successorBlocked: 1,
+    });
     expect(enqueue).toHaveBeenCalledTimes(1);
   });
 });

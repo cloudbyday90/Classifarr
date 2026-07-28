@@ -53,6 +53,10 @@ function normalizeFailureCode(value) {
   return normalized;
 }
 
+function normalizeRetryable(value) {
+  return value !== false;
+}
+
 function normalizeClaimedOutboxRow(row = {}) {
   return {
     id: normalizeIdentifier(row.id),
@@ -176,30 +180,32 @@ async function failPolicyProfileRefreshOutboxClaim({
   claimToken,
   maxAttempts = POLICY_PROFILE_REFRESH_OUTBOX_WORKER_MAX_ATTEMPTS,
   retryDelaySeconds,
+  retryable = true,
   failureCode = POLICY_PROFILE_REFRESH_OUTBOX_WORKER_FAILURE_IDS.EXECUTION_FAILED,
 } = {}) {
   requireTransactionClient(client);
   const result = await client.query(
     `UPDATE ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE}
      SET processing_state = CASE
-           WHEN attempt_count >= $1 THEN $2
-           ELSE $3
+           WHEN attempt_count >= $1 OR NOT $2::boolean THEN $3
+           ELSE $4
          END,
          available_at = CASE
-           WHEN attempt_count >= $1 THEN available_at
-           ELSE NOW() + ($4::integer * INTERVAL '1 second')
+           WHEN attempt_count >= $1 OR NOT $2::boolean THEN available_at
+           ELSE NOW() + ($5::integer * INTERVAL '1 second')
          END,
          claim_token = NULL,
          claimed_at = NULL,
          lease_expires_at = NULL,
-         failure_code = $5,
+         failure_code = $6,
          updated_at = NOW()
-     WHERE id = $6
-       AND processing_state = $7
-       AND claim_token = $8::uuid
+     WHERE id = $7
+       AND processing_state = $8
+       AND claim_token = $9::uuid
      RETURNING id, processing_state, attempt_count`,
     [
       normalizePositiveInteger(maxAttempts, POLICY_PROFILE_REFRESH_OUTBOX_WORKER_MAX_ATTEMPTS),
+      normalizeRetryable(retryable),
       POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS.FAILED,
       POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS.PENDING,
       normalizePositiveInteger(retryDelaySeconds, 1),

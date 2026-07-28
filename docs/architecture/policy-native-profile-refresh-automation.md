@@ -13,8 +13,16 @@ older than the shared seven-day freshness limit. It creates a compact request
 keyed to the library and observed profile version. A missing profile is instead
 keyed to a bounded item-count/high-water-mark revision, so an empty library is
 not polled and a later media import can trigger one new recovery request. The
-existing outbox worker then claims and processes that request using its existing advisory lock, short lease,
-`SKIP LOCKED` claim, and capped retry policy.
+existing outbox worker then claims and processes that request using its
+existing advisory lock, short lease, `SKIP LOCKED` claim, and capped retry
+policy.
+
+The worker classifies each failure to a fixed server-owned identifier without
+persisting raw error details. A Classifarr-owned missing profile-service
+capability is terminal on its first claim and cannot create a native successor;
+known transient and unknown failures retain the bounded automatic path. The
+detailed decision is [Native Profile Refresh Failure
+Classification](policy-native-profile-refresh-failure-classification.md).
 
 When a native-readiness row reaches the terminal `failed` state, the planner
 does not reopen it or immediately retry it. It can instead enqueue one
@@ -100,6 +108,9 @@ Selected.
    successor rather than reopening the terminal record or requiring a browser.
 8. Allow a planner failure to be observable but not to block delivery of
    already committed outbox work.
+9. Classify failures with fixed server-owned identifiers before retrying or
+   scheduling recovery; do not persist error text or make a browser decide
+   whether a failure is transient.
 
 ## Implementation
 
@@ -164,6 +175,6 @@ race paths.
 
 ## Next Step
 
-Add terminal-failure classification, aggregation, retention, and an automatic
-circuit policy so known persistent native profile-refresh failures stop
-creating recovery successors while transient failures remain hands-off.
+Add durable terminal-failure aggregation, retention, and an automatic circuit
+policy so recurring unknown native profile-refresh failures stop creating
+successors while transient failures remain hands-off.
