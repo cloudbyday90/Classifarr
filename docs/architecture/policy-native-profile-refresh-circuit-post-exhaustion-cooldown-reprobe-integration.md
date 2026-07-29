@@ -97,7 +97,6 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Add native profile-refresh recovery retention-compaction integration coverage.
-It must prove stale terminal circuit and outbox history is removed only after
-the retention window, while active circuits and protected current revisions
-remain intact.
+Add concurrent planner-and-compaction interleaving integration coverage. It
+must prove an overlapping scheduler cannot compact a current source revision
+while another scheduler is planning its active recovery work.

@@ -4309,10 +4309,17 @@ Implementation status:
   retention compaction and never needs browser or operator action. Its design
   and outcome record is [Native Profile Refresh Circuit Repeated-Probe-Failure
   Integration](policy-native-profile-refresh-circuit-repeated-probe-failure-integration.md).
-  The next task is native profile-refresh recovery retention-compaction
-  integration coverage proving stale terminal circuit and outbox history is
-  removed only after the retention window, while active circuits and protected
-  current revisions remain intact.
+  A native profile-refresh recovery retention-compaction database integration
+  case now proves expired inactive closed circuit state and its terminal outbox
+  history are removed together after retention. Open and half-open circuits,
+  pending-probe revisions, protected current revisions, and recent closed
+  history remain intact. Its materialized retained-set design avoids partial
+  cleanup under PostgreSQL's data-modifying CTE snapshot rules. Its design and
+  outcome record is [Native Profile Refresh Circuit Retention-Compaction
+  Integration](policy-native-profile-refresh-circuit-retention-compaction-integration.md).
+  The next task is concurrent planner-and-compaction interleaving integration
+  coverage proving an overlapping scheduler cannot compact a current source
+  revision while another scheduler is planning its active recovery work.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

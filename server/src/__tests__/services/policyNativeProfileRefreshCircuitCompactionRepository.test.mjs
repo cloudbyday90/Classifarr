@@ -33,12 +33,17 @@ describe('policyNativeProfileRefreshCircuitCompactionRepository', () => {
 
     expect(client.query.mock.calls[0][0]).toContain('split_part(outbox.source_event_id, \':retry:\', 1)');
     expect(client.query.mock.calls[0][0]).toContain('protected_revisions');
+    expect(client.query.mock.calls[0][0]).toContain('retained_circuits AS MATERIALIZED');
+    expect(client.query.mock.calls[0][0]).toContain('circuit.circuit_state <> $6');
+    expect(client.query.mock.calls[0][0]).toContain('active_outbox.processing_state = ANY($7::text[])');
     expect(client.query.mock.calls[0][1]).toEqual([
       [8],
       ['library-profile:8:stale_profile:2026-07-25T12:00:00.000Z'],
       30,
       'native_readiness',
       ['completed', 'failed'],
+      'closed',
+      ['pending', 'processing'],
     ]);
   });
 });

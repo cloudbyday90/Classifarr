@@ -69,6 +69,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   Concurrent schedulers cannot duplicate that recovery work, while terminal
   outbox history remains under the existing server-side retention boundary.
 
+- **Atomic Native Recovery Retention**: Expired inactive closed recovery
+  circuits and their terminal outbox history now compact together. Active
+  circuits, pending probes, protected current revisions, and recent history
+  remain server-owned and intact.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action. When an automatic recovery circuit is

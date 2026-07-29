@@ -13,6 +13,7 @@ import {
 } from './policyNativeProfileRefreshCircuit.mjs';
 import {
   POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_RETENTION_DAYS,
+  POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_STATE_IDS,
 } from './policyNativeProfileRefreshCircuitVocabulary.mjs';
 import {
   POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_TABLE,
@@ -21,6 +22,7 @@ import {
   POLICY_PROFILE_REFRESH_OUTBOX_TABLE,
 } from './policyProfileRefreshOutboxRepository.mjs';
 import {
+  POLICY_PROFILE_REFRESH_OUTBOX_ACTIVE_STATE_IDS,
   POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS,
 } from './policyProfileRefreshOutboxVocabulary.mjs';
 import {
@@ -65,14 +67,34 @@ async function compactPolicyNativeProfileRefreshCircuitHistory({
        SELECT library_id, source_event_id
        FROM unnest($1::bigint[], $2::text[]) AS protected_revision(library_id, source_event_id)
      ),
+     retained_circuits AS MATERIALIZED (
+       SELECT circuit.library_id, circuit.source_event_id
+       FROM ${POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_TABLE} AS circuit
+       WHERE circuit.circuit_state <> $6
+          OR circuit.updated_at >= NOW() - ($3::integer * INTERVAL '1 day')
+          OR EXISTS (
+            SELECT 1
+            FROM protected_revisions AS protected_revision
+            WHERE protected_revision.library_id = circuit.library_id
+              AND protected_revision.source_event_id = circuit.source_event_id
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE} AS active_outbox
+            WHERE active_outbox.library_id = circuit.library_id
+              AND active_outbox.request_type = $4
+              AND active_outbox.processing_state = ANY($7::text[])
+              AND split_part(active_outbox.source_event_id, ':retry:', 1) =
+                circuit.source_event_id
+          )
+     ),
      removed_circuits AS (
        DELETE FROM ${POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_TABLE} AS circuit
-       WHERE circuit.updated_at < NOW() - ($3::integer * INTERVAL '1 day')
-         AND NOT EXISTS (
-           SELECT 1
-           FROM protected_revisions AS protected_revision
-           WHERE protected_revision.library_id = circuit.library_id
-             AND protected_revision.source_event_id = circuit.source_event_id
+       WHERE NOT EXISTS (
+         SELECT 1
+         FROM retained_circuits AS retained_circuit
+         WHERE retained_circuit.library_id = circuit.library_id
+           AND retained_circuit.source_event_id = circuit.source_event_id
          )
        RETURNING 1
      ),
@@ -83,9 +105,10 @@ async function compactPolicyNativeProfileRefreshCircuitHistory({
          AND outbox.updated_at < NOW() - ($3::integer * INTERVAL '1 day')
          AND NOT EXISTS (
            SELECT 1
-           FROM ${POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_TABLE} AS circuit
-           WHERE circuit.library_id = outbox.library_id
-             AND circuit.source_event_id = split_part(outbox.source_event_id, ':retry:', 1)
+           FROM retained_circuits AS retained_circuit
+           WHERE retained_circuit.library_id = outbox.library_id
+             AND retained_circuit.source_event_id =
+               split_part(outbox.source_event_id, ':retry:', 1)
          )
          AND NOT EXISTS (
            SELECT 1
@@ -107,6 +130,8 @@ async function compactPolicyNativeProfileRefreshCircuitHistory({
         POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS.COMPLETED,
         POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS.FAILED,
       ],
+      POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_STATE_IDS.CLOSED,
+      POLICY_PROFILE_REFRESH_OUTBOX_ACTIVE_STATE_IDS,
     ],
   );
   const row = Array.isArray(result?.rows) ? result.rows[0] || {} : {};
