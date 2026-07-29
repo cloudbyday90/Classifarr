@@ -2,6 +2,7 @@ import { jest } from '@jest/globals';
 
 import {
   POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS,
+  loadPolicyLibraryRebuildExecutionVerificationRunBinding,
   loadPolicyLibraryRebuildVerificationRunBinding,
   validatePolicyLibraryRebuildVerificationRunBinding,
 } from '../../services/policyLibraryRebuildVerificationRunBinding.mjs';
@@ -66,6 +67,14 @@ function verificationRun(overrides = {}) {
   };
 }
 
+function execution(overrides = {}) {
+  return {
+    verification_run_id: 701,
+    verification_run_fingerprint: 'b'.repeat(64),
+    ...overrides,
+  };
+}
+
 describe('policyLibraryRebuildVerificationRunBinding', () => {
   test('accepts one matching audited no-difference receipt and projects only its binding', () => {
     const result = validatePolicyLibraryRebuildVerificationRunBinding({
@@ -122,5 +131,72 @@ describe('policyLibraryRebuildVerificationRunBinding', () => {
       expect.stringContaining('FOR KEY SHARE'),
       [44, 101, 6],
     );
+  });
+
+  test('locks and validates the exact receipt recorded by the execution gate', async () => {
+    const client = {
+      query: jest.fn().mockResolvedValue({ rows: [verificationRun()] }),
+    };
+
+    const result = await loadPolicyLibraryRebuildExecutionVerificationRunBinding({
+      client,
+      execution: execution(),
+      transition: transition(),
+      proposal: proposal(),
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: true,
+      verificationRun: {
+        id: 701,
+        verifierFingerprint: 'b'.repeat(64),
+        verifierStatusId: 'no_migration_differences',
+      },
+    }));
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE id = $1'),
+      [701],
+    );
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('FOR KEY SHARE'),
+      [701],
+    );
+  });
+
+  test.each([
+    [
+      'missing execution receipt binding',
+      execution({ verification_run_id: null, verification_run_fingerprint: null }),
+      verificationRun(),
+      POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS.VERIFICATION_RUN_EXECUTION_BINDING_MISSING,
+    ],
+    [
+      'mismatched execution receipt fingerprint',
+      execution({ verification_run_fingerprint: 'c'.repeat(64) }),
+      verificationRun(),
+      POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS.VERIFICATION_RUN_EXECUTION_BINDING_MISMATCH,
+    ],
+  ])('rejects %s without projecting verification authority', async (
+    _name,
+    persistedExecution,
+    persistedVerificationRun,
+    riskId,
+  ) => {
+    const client = {
+      query: jest.fn().mockResolvedValue({ rows: [persistedVerificationRun] }),
+    };
+
+    const result = await loadPolicyLibraryRebuildExecutionVerificationRunBinding({
+      client,
+      execution: persistedExecution,
+      transition: transition(),
+      proposal: proposal(),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.verificationRun).toBeNull();
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ riskId }),
+    ]));
   });
 });

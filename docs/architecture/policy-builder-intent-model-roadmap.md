@@ -4448,6 +4448,12 @@ Tasks:
   native-intent, routing, or migration-event writes when any binding is missing
   or invalid. Do not rerun verification, expose a browser control, or retain
   raw samples or differences.
+- **6R.6.7 Library Rebuild Server-Owned Cutover Orchestration**: compose an
+  accepted transition, its persisted verification receipt, rollback snapshot,
+  and replacement only through one idempotent server-owned workflow. Expose
+  bounded stop states only, never a browser control or raw verification output;
+  do not rerun completed receipts, write routing outside the replacement
+  transaction, or authorize legacy deletion.
 - Use old impact/replay/parity tooling only as migration verification machinery,
   not product workflow.
 - Define a migration preview that compares legacy policy behavior to generated
@@ -4517,6 +4523,14 @@ Implementation status:
   `policy_migration_verification_runs` table has a server-derived unique key,
   contains no raw samples or verifier differences, and is runtime-only during
   replace restore.
+- The replacement-gate receipt-binding decision, design, and outcome are
+  documented in [Policy Library-Rebuild Replacement-Gate Verification
+  Binding](policy-library-rebuild-replacement-gate-verification-binding.md).
+  `policyLibraryRebuildReplacementGate.mjs` now ignores caller-supplied
+  verifier reports and locks the exact verification receipt recorded by the
+  persisted execution gate before it can write native intent, routing, or a
+  migration event. The receipt ID and verifier fingerprint must agree, and the
+  event retains only receipt provenance rather than raw verification output.
 - `server/src/services/policyMigrationVerifierRollback.mjs` consumes the
   preview contract while retaining rebuild acceptance, rollback, fingerprint,
   trace, and deletion gates. It rejects ambiguous old/new sample input names.

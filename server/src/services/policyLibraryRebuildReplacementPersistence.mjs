@@ -10,6 +10,7 @@ const POLICY_LIBRARY_REBUILD_REPLACEMENT_STATE_IDS = Object.freeze({
   SNAPSHOT_PERSISTED: 'snapshot_persisted',
   REPLACEMENT_APPLIED: 'replacement_applied',
 });
+const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -32,6 +33,27 @@ function nextIntentVersion(intent) {
   return current + 1;
 }
 
+function projectVerificationRunMetadata(verificationRun = {}) {
+  const verificationRunId = Number(verificationRun.id);
+  const verifierFingerprint = typeof verificationRun.verifierFingerprint === 'string'
+    ? verificationRun.verifierFingerprint.trim()
+    : '';
+  const verifierStatusId = typeof verificationRun.verifierStatusId === 'string'
+    ? verificationRun.verifierStatusId.trim()
+    : '';
+
+  if (!Number.isInteger(verificationRunId) || verificationRunId < 1 ||
+      !SHA256_FINGERPRINT_PATTERN.test(verifierFingerprint) || !verifierStatusId) {
+    throw new TypeError('Replacement migration events require a validated verification receipt binding.');
+  }
+
+  return {
+    verificationRunId,
+    verificationRunFingerprint: verifierFingerprint,
+    verificationRunStatusId: verifierStatusId,
+  };
+}
+
 async function lockExecutionGateByIdempotencyKey(client, idempotencyKey) {
   const result = await client.query(
     `SELECT
@@ -44,6 +66,8 @@ async function lockExecutionGateByIdempotencyKey(client, idempotencyKey) {
        transition_fingerprint,
        proposal_fingerprint,
        rollback_plan_fingerprint,
+       verification_run_id,
+       verification_run_fingerprint,
        acceptance_expires_at,
        rollback_snapshot_id,
        migration_event_id,
@@ -252,8 +276,9 @@ async function insertReplacementMigrationEvent({
   replacementIntent,
   previousIntent,
   execution,
-  verifierReport,
+  verificationRun,
 }) {
+  const verificationReceipt = projectVerificationRunMetadata(verificationRun);
   const result = await client.query(
     `INSERT INTO policy_intent_migration_events (
        intent_id,
@@ -275,14 +300,14 @@ async function insertReplacementMigrationEvent({
       previousIntent.intent_version,
       replacementIntent.intentVersion,
       'library_rebuild_replacement_applied',
-      'Accepted library rebuild replacement applied from a persisted rollback snapshot.',
+      'Accepted library rebuild replacement applied from persisted rollback and verification evidence.',
       JSON.stringify({
         executionGateId: Number(execution.id),
         transitionFingerprint: execution.transition_fingerprint,
         proposalFingerprint: execution.proposal_fingerprint,
         rollbackPlanFingerprint: execution.rollback_plan_fingerprint,
         rollbackSnapshotId: Number(execution.rollback_snapshot_id),
-        sampleSetFingerprint: verifierReport.sampleSetFingerprint?.fingerprint ?? null,
+        ...verificationReceipt,
       }),
     ]
   );

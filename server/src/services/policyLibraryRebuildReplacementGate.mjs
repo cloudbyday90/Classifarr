@@ -31,9 +31,9 @@ import {
   markExecutionReplacementApplied,
 } from './policyLibraryRebuildReplacementPersistence.mjs';
 import {
-  POLICY_MIGRATION_VERIFIER_STATUS_IDS,
-  validatePolicyMigrationVerifierReport,
-} from './policyMigrationVerifierRollback.mjs';
+  POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS,
+  loadPolicyLibraryRebuildExecutionVerificationRunBinding,
+} from './policyLibraryRebuildVerificationRunBinding.mjs';
 
 const POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_VERSION =
   'policy.library_rebuild_replacement_gate.v1';
@@ -42,7 +42,7 @@ const POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS = Object.freeze({
   REPLACEMENT_APPLIED: 'replacement_applied',
   ALREADY_APPLIED: 'already_applied',
   BLOCKED_BY_INPUT: 'blocked_by_input',
-  BLOCKED_BY_VERIFIER: 'blocked_by_verifier',
+  BLOCKED_BY_VERIFICATION_RUN: 'blocked_by_verification_run',
   BLOCKED_BY_CURRENT_STATE: 'blocked_by_current_state',
   BLOCKED_BY_TRANSACTION_BOUNDARY: 'blocked_by_transaction_boundary',
   FAILED_ROLLED_BACK: 'failed_rolled_back',
@@ -50,11 +50,12 @@ const POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS = Object.freeze({
 
 const POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_REASON_IDS = Object.freeze({
   PERSISTED_SNAPSHOT_VERIFIED: 'persisted_snapshot_verified',
-  VERIFIER_REVALIDATED: 'verifier_revalidated',
+  VERIFICATION_RECEIPT_REVALIDATED: 'verification_receipt_revalidated',
   POLICY_AND_INTENT_LOCKED: 'policy_and_intent_locked',
   NATIVE_INTENT_REPLACED: 'native_intent_replaced',
   REPLACEMENT_EVENT_PERSISTED: 'replacement_event_persisted',
   EXISTING_REPLACEMENT_REUSED: 'existing_replacement_reused',
+  VERIFICATION_RECEIPT_REQUIRED: 'verification_receipt_required',
   REPLACEMENT_BLOCKED: 'replacement_blocked',
   TRANSACTION_REQUIRED: 'transaction_required',
   TRANSACTION_ROLLED_BACK: 'transaction_rolled_back',
@@ -62,14 +63,12 @@ const POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_REASON_IDS = Object.freeze({
 
 const POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS = Object.freeze({
   INVALID_PROPOSAL_OR_TRANSITION: 'invalid_proposal_or_transition',
-  INVALID_VERIFIER_REPORT: 'invalid_verifier_report',
-  VERIFIER_DIFFERENCES_REMAIN: 'verifier_differences_remain',
-  VERIFIER_BINDING_MISMATCH: 'verifier_binding_mismatch',
   TRANSACTION_BOUNDARY_REQUIRED: 'transaction_boundary_required',
   POLICY_CONTEXT_NOT_CURRENT: 'policy_context_not_current',
   EXECUTION_GATE_NOT_FOUND: 'execution_gate_not_found',
   EXECUTION_GATE_BINDING_MISMATCH: 'execution_gate_binding_mismatch',
   EXECUTION_GATE_NOT_SNAPSHOT_PERSISTED: 'execution_gate_not_snapshot_persisted',
+  ...POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS,
   ROLLBACK_SNAPSHOT_NOT_CURRENT: 'rollback_snapshot_not_current',
   INTENT_CONTEXT_NOT_CURRENT: 'intent_context_not_current',
   REPLACEMENT_CONTRACT_INVALID: 'replacement_contract_invalid',
@@ -126,7 +125,9 @@ function buildBlockedResult({ statusId, now, riskId, message }) {
         ? POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_REASON_IDS.TRANSACTION_REQUIRED
         : statusId === POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.FAILED_ROLLED_BACK
           ? POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_REASON_IDS.TRANSACTION_ROLLED_BACK
-          : POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_REASON_IDS.REPLACEMENT_BLOCKED,
+          : statusId === POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_VERIFICATION_RUN
+            ? POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_REASON_IDS.VERIFICATION_RECEIPT_REQUIRED
+            : POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_REASON_IDS.REPLACEMENT_BLOCKED,
       severity: 'blocker',
       message,
     }],
@@ -138,7 +139,14 @@ function buildBlockedResult({ statusId, now, riskId, message }) {
   };
 }
 
-function buildAppliedResult({ statusId, now, execution, idempotent, rulesInserted = 0 }) {
+function buildAppliedResult({
+  statusId,
+  now,
+  execution,
+  verificationRun,
+  idempotent,
+  rulesInserted = 0,
+}) {
   return {
     version: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_VERSION,
     statusId,
@@ -152,6 +160,9 @@ function buildAppliedResult({ statusId, now, execution, idempotent, rulesInserte
       rollbackSnapshotId: Number(execution.rollback_snapshot_id),
       transitionFingerprint: execution.transition_fingerprint,
       proposalFingerprint: execution.proposal_fingerprint,
+      verificationRunId: Number(verificationRun.id),
+      verificationRunFingerprint: verificationRun.verifierFingerprint,
+      verificationRunStatusId: verificationRun.verifierStatusId,
       appliedAt: execution.replacement_applied_at ?? now.toISOString(),
       idempotent,
     },
@@ -177,7 +188,8 @@ function buildAppliedResult({ statusId, now, execution, idempotent, rulesInserte
         severity: 'info',
       },
       {
-        reasonId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_REASON_IDS.VERIFIER_REVALIDATED,
+        reasonId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_REASON_IDS
+          .VERIFICATION_RECEIPT_REVALIDATED,
         severity: 'info',
       },
       {
@@ -199,30 +211,6 @@ function buildAppliedResult({ statusId, now, execution, idempotent, rulesInserte
       issues: [],
     },
   };
-}
-
-function validateVerifierBinding({ transition, verifierReport }) {
-  const transitionFingerprint = transition?.transitionFingerprint?.fingerprint;
-  const proposalFingerprint = transition?.proposalFingerprint?.fingerprint;
-  const reportTransitionFingerprint =
-    verifierReport?.acceptanceTransition?.transitionFingerprint?.fingerprint;
-  const reportProposalFingerprint =
-    verifierReport?.acceptanceTransition?.proposalFingerprint?.fingerprint;
-
-  if (
-    !hasFingerprint(transitionFingerprint) ||
-    !hasFingerprint(proposalFingerprint) ||
-    reportTransitionFingerprint !== transitionFingerprint ||
-    reportProposalFingerprint !== proposalFingerprint
-  ) {
-    return false;
-  }
-
-  return verifierReport?.statusId === POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES &&
-    Number(verifierReport?.differenceSummary?.totalCount) === 0 &&
-    Number(verifierReport?.differenceSummary?.emittedCount) === 0 &&
-    verifierReport?.differenceSummary?.truncated === false &&
-    Array.isArray(verifierReport?.differences) && verifierReport.differences.length === 0;
 }
 
 function executionMatchesTransition(execution, transition) {
@@ -257,12 +245,15 @@ function validatePolicyLibraryRebuildReplacementGate(result = {}) {
       !Number.isInteger(execution.replacementEventId) ||
       !Number.isInteger(execution.rollbackSnapshotId) ||
       !hasFingerprint(execution.transitionFingerprint) ||
+      !Number.isInteger(execution.verificationRunId) ||
+      !hasFingerprint(execution.verificationRunFingerprint) ||
+      execution.verificationRunStatusId !== 'no_migration_differences' ||
       result.application?.replacementApplied !== true ||
       result.application?.canApplyReplacement !== false)
   ) {
     issues.push({
       riskId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.UNSAFE_GATE_OUTPUT,
-      message: 'Applied replacement output must retain bounded gate, intent, event, snapshot, and fingerprint identifiers.',
+      message: 'Applied replacement output must retain bounded gate, receipt, intent, event, snapshot, and fingerprint identifiers.',
     });
   }
 
@@ -284,6 +275,9 @@ function buildPolicyLibraryRebuildReplacementGateAudit(result = null) {
       replacementEventId: 1,
       rollbackSnapshotId: 1,
       transitionFingerprint: 'a'.repeat(64),
+      verificationRunId: 1,
+      verificationRunFingerprint: 'b'.repeat(64),
+      verificationRunStatusId: 'no_migration_differences',
     },
     application: {
       replacementApplied: true,
@@ -311,7 +305,6 @@ async function applyPolicyLibraryRebuildReplacement({
   dbClient,
   transition = {},
   proposal = {},
-  verifierReport = {},
   now = new Date(),
 } = {}) {
   const executionTime = normalizeDate(now);
@@ -320,27 +313,12 @@ async function applyPolicyLibraryRebuildReplacement({
     proposal,
     now: transition?.evaluatedAt || executionTime,
   });
-  const verifierValidation = validatePolicyMigrationVerifierReport(verifierReport);
-
-  if (!suppliedTransitionValidation.ok || verifierValidation.ok !== true) {
+  if (!suppliedTransitionValidation.ok) {
     return buildBlockedResult({
       statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_INPUT,
       now: executionTime,
-      riskId: suppliedTransitionValidation.ok
-        ? POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.INVALID_VERIFIER_REPORT
-        : POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.INVALID_PROPOSAL_OR_TRANSITION,
-      message: 'Replacement requires a valid accepted transition, rebuild proposal, and migration verifier report.',
-    });
-  }
-
-  if (!validateVerifierBinding({ transition, verifierReport })) {
-    return buildBlockedResult({
-      statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_VERIFIER,
-      now: executionTime,
-      riskId: verifierReport?.statusId === POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES
-        ? POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.VERIFIER_BINDING_MISMATCH
-        : POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.VERIFIER_DIFFERENCES_REMAIN,
-      message: 'Replacement requires a no-difference migration verifier report bound to the accepted rebuild transition.',
+      riskId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.INVALID_PROPOSAL_OR_TRANSITION,
+      message: 'Replacement requires a valid accepted transition and rebuild proposal.',
     });
   }
 
@@ -355,7 +333,6 @@ async function applyPolicyLibraryRebuildReplacement({
 
   const trustedTransition = deepClone(transition);
   const trustedProposal = deepClone(proposal);
-  const trustedVerifierReport = deepClone(verifierReport);
 
   try {
     const result = await dbClient.withTransaction(async client => {
@@ -392,16 +369,10 @@ async function applyPolicyLibraryRebuildReplacement({
         });
       }
 
-      if (execution.state === POLICY_LIBRARY_REBUILD_REPLACEMENT_STATE_IDS.REPLACEMENT_APPLIED) {
-        return buildAppliedResult({
-          statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.ALREADY_APPLIED,
-          now: executionTime,
-          execution,
-          idempotent: true,
-        });
-      }
-
-      if (execution.state !== POLICY_LIBRARY_REBUILD_REPLACEMENT_STATE_IDS.SNAPSHOT_PERSISTED) {
+      if (![
+        POLICY_LIBRARY_REBUILD_REPLACEMENT_STATE_IDS.REPLACEMENT_APPLIED,
+        POLICY_LIBRARY_REBUILD_REPLACEMENT_STATE_IDS.SNAPSHOT_PERSISTED,
+      ].includes(execution.state)) {
         return buildBlockedResult({
           statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_CURRENT_STATE,
           now: executionTime,
@@ -410,21 +381,49 @@ async function applyPolicyLibraryRebuildReplacement({
         });
       }
 
-      const currentTransitionValidation = validatePolicyLibraryRebuildAcceptanceTransition({
+      if (execution.state === POLICY_LIBRARY_REBUILD_REPLACEMENT_STATE_IDS.SNAPSHOT_PERSISTED) {
+        const currentTransitionValidation = validatePolicyLibraryRebuildAcceptanceTransition({
+          transition: trustedTransition,
+          proposal: trustedProposal,
+          now: executionTime,
+        });
+        if (
+          !currentTransitionValidation.ok ||
+          trustedTransition.statusId !== POLICY_LIBRARY_REBUILD_ACCEPTANCE_STATUS_IDS.READY_FOR_MIGRATION_VERIFICATION
+        ) {
+          return buildBlockedResult({
+            statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_CURRENT_STATE,
+            now: executionTime,
+            riskId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.INVALID_PROPOSAL_OR_TRANSITION,
+            message: 'Accepted rebuild transition is no longer current for replacement.',
+          });
+        }
+      }
+
+      const verificationBinding = await loadPolicyLibraryRebuildExecutionVerificationRunBinding({
+        client,
+        execution,
         transition: trustedTransition,
         proposal: trustedProposal,
-        now: executionTime,
       });
-      if (
-        !currentTransitionValidation.ok ||
-        trustedTransition.statusId !== POLICY_LIBRARY_REBUILD_ACCEPTANCE_STATUS_IDS.READY_FOR_MIGRATION_VERIFICATION ||
-        !validateVerifierBinding({ transition: trustedTransition, verifierReport: trustedVerifierReport })
-      ) {
+      if (verificationBinding.ok !== true || !verificationBinding.verificationRun) {
+        const issue = verificationBinding.issues?.[0] || {};
         return buildBlockedResult({
-          statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_CURRENT_STATE,
+          statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_VERIFICATION_RUN,
           now: executionTime,
-          riskId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.VERIFIER_BINDING_MISMATCH,
-          message: 'Accepted rebuild or migration verifier evidence is no longer current for replacement.',
+          riskId: issue.riskId || POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS
+            .VERIFICATION_RUN_EXECUTION_BINDING_MISSING,
+          message: issue.message || 'Replacement requires the verification receipt bound to its persisted rebuild execution gate.',
+        });
+      }
+
+      if (execution.state === POLICY_LIBRARY_REBUILD_REPLACEMENT_STATE_IDS.REPLACEMENT_APPLIED) {
+        return buildAppliedResult({
+          statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.ALREADY_APPLIED,
+          now: executionTime,
+          execution,
+          verificationRun: verificationBinding.verificationRun,
+          idempotent: true,
         });
       }
 
@@ -508,7 +507,7 @@ async function applyPolicyLibraryRebuildReplacement({
         replacementIntent,
         previousIntent: currentIntent,
         execution,
-        verifierReport: trustedVerifierReport,
+        verificationRun: verificationBinding.verificationRun,
       });
       if (!replacementEventId) {
         throw new Error('Replacement migration event insert did not return an identifier.');
@@ -534,6 +533,7 @@ async function applyPolicyLibraryRebuildReplacement({
           replacement_event_id: replacementEventId,
           replacement_applied_at: executionTime.toISOString(),
         },
+        verificationRun: verificationBinding.verificationRun,
         idempotent: false,
         rulesInserted,
       });

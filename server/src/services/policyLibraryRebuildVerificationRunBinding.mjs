@@ -24,9 +24,40 @@ const POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS = Object.freeze({
   VERIFICATION_RUN_REVIEW_REQUIRED: 'verification_run_review_required',
   VERIFICATION_RUN_RISK_BLOCKED: 'verification_run_risk_blocked',
   VERIFICATION_RUN_STATUS_INVALID: 'verification_run_status_invalid',
+  VERIFICATION_RUN_EXECUTION_BINDING_MISSING: 'verification_run_execution_binding_missing',
+  VERIFICATION_RUN_EXECUTION_BINDING_MISMATCH: 'verification_run_execution_binding_mismatch',
 });
 
 const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
+const VERIFICATION_RUN_SELECT_COLUMNS = `
+  id,
+  run_version,
+  policy_id,
+  intent_id,
+  library_id,
+  acceptance_transition_fingerprint,
+  source_id,
+  source_media_type,
+  source_deterministic_order_id,
+  source_maximum_classifications,
+  source_rows_read,
+  source_rows_considered,
+  source_representative_classification_count,
+  source_unusable_source_row_count,
+  source_coverage_sufficient,
+  source_audit_ok,
+  source_audit_issue_count,
+  verifier_status_id,
+  verifier_fingerprint,
+  verifier_difference_count,
+  verifier_emitted_difference_count,
+  verifier_differences_truncated,
+  verifier_audit_ok,
+  verifier_audit_issue_count,
+  coordinator_audit_ok,
+  coordinator_audit_issue_count,
+  evaluated_at,
+  created_at`;
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -232,35 +263,7 @@ async function lockLatestPolicyMigrationVerificationRun({ client, transition } =
 
   const context = asObject(transition.policyContext);
   const result = await client.query(
-    `SELECT
-       id,
-       run_version,
-       policy_id,
-       intent_id,
-       library_id,
-       acceptance_transition_fingerprint,
-       source_id,
-       source_media_type,
-       source_deterministic_order_id,
-       source_maximum_classifications,
-       source_rows_read,
-       source_rows_considered,
-       source_representative_classification_count,
-       source_unusable_source_row_count,
-       source_coverage_sufficient,
-       source_audit_ok,
-       source_audit_issue_count,
-       verifier_status_id,
-       verifier_fingerprint,
-       verifier_difference_count,
-       verifier_emitted_difference_count,
-       verifier_differences_truncated,
-       verifier_audit_ok,
-       verifier_audit_issue_count,
-       coordinator_audit_ok,
-       coordinator_audit_issue_count,
-       evaluated_at,
-       created_at
+    `SELECT ${VERIFICATION_RUN_SELECT_COLUMNS}
      FROM policy_migration_verification_runs
      WHERE policy_id = $1
        AND intent_id = $2
@@ -269,6 +272,27 @@ async function lockLatestPolicyMigrationVerificationRun({ client, transition } =
      LIMIT 1
      FOR KEY SHARE`,
     [context.policyId, context.intentId, context.libraryId],
+  );
+
+  return firstRow(result);
+}
+
+async function lockPolicyMigrationVerificationRunById({ client, verificationRunId } = {}) {
+  if (!client || typeof client.query !== 'function') {
+    throw new TypeError('Library rebuild verification binding requires a transaction client.');
+  }
+
+  const normalizedVerificationRunId = normalizePositiveInteger(verificationRunId);
+  if (!normalizedVerificationRunId) {
+    return null;
+  }
+
+  const result = await client.query(
+    `SELECT ${VERIFICATION_RUN_SELECT_COLUMNS}
+     FROM policy_migration_verification_runs
+     WHERE id = $1
+     FOR KEY SHARE`,
+    [normalizedVerificationRunId],
   );
 
   return firstRow(result);
@@ -292,9 +316,69 @@ async function loadPolicyLibraryRebuildVerificationRunBinding({
   };
 }
 
+async function loadPolicyLibraryRebuildExecutionVerificationRunBinding({
+  client,
+  execution,
+  transition,
+  proposal,
+} = {}) {
+  const expectedVerificationRunId = normalizePositiveInteger(execution?.verification_run_id);
+  const expectedVerifierFingerprint = normalizeString(execution?.verification_run_fingerprint, 64);
+
+  if (!expectedVerificationRunId || !SHA256_FINGERPRINT_PATTERN.test(expectedVerifierFingerprint)) {
+    return {
+      ok: false,
+      issueCount: 1,
+      issues: [buildBindingIssue(
+        POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS
+          .VERIFICATION_RUN_EXECUTION_BINDING_MISSING,
+        'The persisted rebuild execution gate does not retain a valid migration verification receipt binding.',
+      )],
+      verificationRun: null,
+    };
+  }
+
+  const verificationRun = await lockPolicyMigrationVerificationRunById({
+    client,
+    verificationRunId: expectedVerificationRunId,
+  });
+  const validation = validatePolicyLibraryRebuildVerificationRunBinding({
+    verificationRun,
+    transition,
+    proposal,
+  });
+
+  if (validation.ok !== true || !validation.verificationRun) {
+    return {
+      ...validation,
+      verificationRun: null,
+    };
+  }
+
+  if (
+    validation.verificationRun.id !== expectedVerificationRunId ||
+    validation.verificationRun.verifierFingerprint !== expectedVerifierFingerprint
+  ) {
+    return {
+      ok: false,
+      issueCount: 1,
+      issues: [buildBindingIssue(
+        POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS
+          .VERIFICATION_RUN_EXECUTION_BINDING_MISMATCH,
+        'The migration verification receipt does not match the receipt binding recorded on the rebuild execution gate.',
+      )],
+      verificationRun: null,
+    };
+  }
+
+  return validation;
+}
+
 export {
   POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS,
+  loadPolicyLibraryRebuildExecutionVerificationRunBinding,
   loadPolicyLibraryRebuildVerificationRunBinding,
+  lockPolicyMigrationVerificationRunById,
   lockLatestPolicyMigrationVerificationRun,
   validatePolicyLibraryRebuildVerificationRunBinding,
 };

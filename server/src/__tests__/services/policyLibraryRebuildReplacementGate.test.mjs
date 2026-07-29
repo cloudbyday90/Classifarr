@@ -21,9 +21,6 @@ import {
   buildPolicyLibraryRebuildReplacementGateAudit,
 } from '../../services/policyLibraryRebuildReplacementGate.mjs';
 import {
-  buildPolicyMigrationVerifierReportFromRebuildProposal,
-} from '../../services/policyMigrationVerifierRollback.mjs';
-import {
   buildPolicyRollbackSnapshotWindow,
 } from '../../services/policyRollbackSnapshotWindow.mjs';
 
@@ -99,27 +96,7 @@ function rebuildProposal(overrides = {}) {
   });
 }
 
-function matchingRepresentativeClassification(proposal) {
-  const outcome = {
-    destinationLibraryId: proposal.library.libraryId,
-    destinationLibraryName: proposal.library.libraryName,
-    statusId: proposal.statusId,
-    routeReady: proposal.readiness.ready === true,
-    blocked: false,
-    needsReview: false,
-    confidenceScore: proposal.confidence.score,
-    confidenceLevel: proposal.confidence.level,
-  };
-
-  return {
-    itemId: 10674,
-    title: 'Mulan',
-    legacy: outcome,
-    proposed: outcome,
-  };
-}
-
-function buildFixture({ samples } = {}) {
+function buildFixture() {
   const proposal = rebuildProposal();
   const transition = buildPolicyLibraryRebuildAcceptanceTransition({
     proposal,
@@ -152,14 +129,7 @@ function buildFixture({ samples } = {}) {
     },
     now: NOW,
   });
-  const verifierReport = buildPolicyMigrationVerifierReportFromRebuildProposal({
-    proposal,
-    acceptanceTransition: transition,
-    legacyComparisonSamples: samples ?? [matchingRepresentativeClassification(proposal)],
-    now: NOW,
-  });
-
-  return { proposal, transition, verifierReport };
+  return { proposal, transition };
 }
 
 function execution(transition, overrides = {}) {
@@ -173,6 +143,8 @@ function execution(transition, overrides = {}) {
     transition_fingerprint: transition.transitionFingerprint.fingerprint,
     proposal_fingerprint: transition.proposalFingerprint.fingerprint,
     rollback_plan_fingerprint: transition.rollbackPlanFingerprint.fingerprint,
+    verification_run_id: 701,
+    verification_run_fingerprint: 'b'.repeat(64),
     acceptance_expires_at: '2026-07-12T12:30:00.000Z',
     rollback_snapshot_id: 901,
     migration_event_id: 951,
@@ -183,7 +155,45 @@ function execution(transition, overrides = {}) {
   };
 }
 
-function createClient({ gate, failRules = false } = {}) {
+function verificationReceipt(gate, overrides = {}) {
+  return {
+    id: 701,
+    run_version: 1,
+    policy_id: gate.policy_id,
+    intent_id: gate.intent_id,
+    library_id: gate.library_id,
+    acceptance_transition_fingerprint: gate.transition_fingerprint,
+    source_id: 'persisted_destination_library_final_outcomes',
+    source_media_type: 'movie',
+    source_deterministic_order_id: 'created_at_desc_id_desc',
+    source_maximum_classifications: 5,
+    source_rows_read: 5,
+    source_rows_considered: 5,
+    source_representative_classification_count: 5,
+    source_unusable_source_row_count: 0,
+    source_coverage_sufficient: true,
+    source_audit_ok: true,
+    source_audit_issue_count: 0,
+    verifier_status_id: 'no_migration_differences',
+    verifier_fingerprint: 'b'.repeat(64),
+    verifier_difference_count: 0,
+    verifier_emitted_difference_count: 0,
+    verifier_differences_truncated: false,
+    verifier_audit_ok: true,
+    verifier_audit_issue_count: 0,
+    coordinator_audit_ok: true,
+    coordinator_audit_issue_count: 0,
+    evaluated_at: '2026-07-12T12:01:00.000Z',
+    created_at: '2026-07-12T12:01:00.000Z',
+    ...overrides,
+  };
+}
+
+function createClient({
+  gate,
+  verificationRun = gate ? verificationReceipt(gate) : null,
+  failRules = false,
+} = {}) {
   return {
     query: jest.fn(async sql => {
       const statement = String(sql);
@@ -201,6 +211,10 @@ function createClient({ gate, failRules = false } = {}) {
 
       if (statement.includes('FROM policy_library_rebuild_execution_gates')) {
         return { rows: gate ? [gate] : [], rowCount: gate ? 1 : 0 };
+      }
+
+      if (statement.includes('FROM policy_migration_verification_runs')) {
+        return { rows: verificationRun ? [verificationRun] : [], rowCount: verificationRun ? 1 : 0 };
       }
 
       if (statement.includes('FROM policy_intents')) {
@@ -282,7 +296,7 @@ describe('policyLibraryRebuildReplacementGate', () => {
   });
 
   test('replaces a locked native intent from persisted rollback evidence in one transaction', async () => {
-    const { proposal, transition, verifierReport } = buildFixture();
+    const { proposal, transition } = buildFixture();
     const client = createClient({ gate: execution(transition) });
     const dbClient = { withTransaction: jest.fn(async work => work(client)) };
 
@@ -290,7 +304,6 @@ describe('policyLibraryRebuildReplacementGate', () => {
       dbClient,
       transition,
       proposal,
-      verifierReport,
       now: NOW,
     });
 
@@ -304,6 +317,9 @@ describe('policyLibraryRebuildReplacementGate', () => {
       replacementIntentId: 202,
       replacementEventId: 303,
       rollbackSnapshotId: 901,
+      verificationRunId: 701,
+      verificationRunFingerprint: 'b'.repeat(64),
+      verificationRunStatusId: 'no_migration_differences',
       idempotent: false,
     }));
     expect(result.sideEffects).toEqual(expect.objectContaining({
@@ -324,10 +340,16 @@ describe('policyLibraryRebuildReplacementGate', () => {
       String(sql).includes('INSERT INTO policy_intent_migration_events')
     );
     expect(eventCall[1][6]).not.toContain('admin:1');
+    expect(JSON.parse(eventCall[1][6])).toEqual(expect.objectContaining({
+      verificationRunId: 701,
+      verificationRunFingerprint: 'b'.repeat(64),
+      verificationRunStatusId: 'no_migration_differences',
+    }));
+    expect(JSON.parse(eventCall[1][6])).not.toHaveProperty('sampleSetFingerprint');
   });
 
   test('returns an existing terminal replacement without writing a second intent', async () => {
-    const { proposal, transition, verifierReport } = buildFixture();
+    const { proposal, transition } = buildFixture();
     const client = createClient({
       gate: execution(transition, {
         state: 'replacement_applied',
@@ -341,7 +363,6 @@ describe('policyLibraryRebuildReplacementGate', () => {
       dbClient: { withTransaction: async work => work(client) },
       transition,
       proposal,
-      verifierReport,
       now: NOW,
     });
 
@@ -355,7 +376,7 @@ describe('policyLibraryRebuildReplacementGate', () => {
   });
 
   test('returns the terminal replacement safely after the original acceptance expires', async () => {
-    const { proposal, transition, verifierReport } = buildFixture();
+    const { proposal, transition } = buildFixture();
     const client = createClient({
       gate: execution(transition, {
         state: 'replacement_applied',
@@ -369,7 +390,6 @@ describe('policyLibraryRebuildReplacementGate', () => {
       dbClient: { withTransaction: async work => work(client) },
       transition,
       proposal,
-      verifierReport,
       now: '2026-07-12T12:31:00.000Z',
     });
 
@@ -383,12 +403,11 @@ describe('policyLibraryRebuildReplacementGate', () => {
   });
 
   test('requires a transaction before replacement can write state', async () => {
-    const { proposal, transition, verifierReport } = buildFixture();
+    const { proposal, transition } = buildFixture();
 
     const result = await applyPolicyLibraryRebuildReplacement({
       transition,
       proposal,
-      verifierReport,
       now: NOW,
     });
 
@@ -401,37 +420,96 @@ describe('policyLibraryRebuildReplacementGate', () => {
     ]));
   });
 
-  test('rejects a verifier report with migration differences before opening a transaction', async () => {
-    const { proposal, transition, verifierReport } = buildFixture({
-      samples: [{
-        itemId: 7,
-        title: 'Different destination',
-        legacy: { destinationLibraryId: 99, routeReady: true },
-        proposed: { destinationLibraryId: 6, routeReady: true },
-      }],
-    });
-    const dbClient = { withTransaction: jest.fn() };
+  test('ignores a caller-supplied verifier report and uses the persisted receipt instead', async () => {
+    const { proposal, transition } = buildFixture();
+    const gate = execution(transition);
+    const client = createClient({ gate });
+    const dbClient = { withTransaction: jest.fn(async work => work(client)) };
 
     const result = await applyPolicyLibraryRebuildReplacement({
       dbClient,
       transition,
       proposal,
-      verifierReport,
+      verifierReport: {
+        statusId: 'blocked_by_migration_risk',
+        differences: [{ itemId: 7 }],
+      },
       now: NOW,
     });
 
     expect(result.statusId)
-      .toBe(POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_VERIFIER);
-    expect(result.validation.issues).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        riskId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.VERIFIER_DIFFERENCES_REMAIN,
+      .toBe(POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.REPLACEMENT_APPLIED);
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM policy_migration_verification_runs'),
+      [701],
+    );
+  });
+
+  test.each([
+    [
+      'missing receipt reference',
+      ({ transition }) => execution(transition, {
+        verification_run_id: null,
+        verification_run_fingerprint: null,
       }),
+      () => null,
+      POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.VERIFICATION_RUN_EXECUTION_BINDING_MISSING,
+    ],
+    [
+      'mismatched receipt fingerprint',
+      ({ transition }) => execution(transition, {
+        verification_run_fingerprint: 'c'.repeat(64),
+      }),
+      gate => verificationReceipt(gate),
+      POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.VERIFICATION_RUN_EXECUTION_BINDING_MISMATCH,
+    ],
+    [
+      'review-required receipt',
+      ({ transition }) => execution(transition),
+      gate => verificationReceipt(gate, { verifier_status_id: 'review_required' }),
+      POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.VERIFICATION_RUN_REVIEW_REQUIRED,
+    ],
+  ])('blocks %s before native-intent, routing, or migration-event writes', async (
+    _name,
+    buildGate,
+    buildVerificationRun,
+    riskId,
+  ) => {
+    const { proposal, transition } = buildFixture();
+    const gate = buildGate({ transition });
+    const client = createClient({
+      gate,
+      verificationRun: buildVerificationRun(gate),
+    });
+
+    const result = await applyPolicyLibraryRebuildReplacement({
+      dbClient: { withTransaction: async work => work(client) },
+      transition,
+      proposal,
+      now: NOW,
+    });
+
+    expect(result.statusId)
+      .toBe(POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_VERIFICATION_RUN);
+    expect(result.validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ riskId }),
     ]));
-    expect(dbClient.withTransaction).not.toHaveBeenCalled();
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_intents'),
+      expect.anything(),
+    );
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_intent_routing_targets'),
+      expect.anything(),
+    );
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_intent_migration_events'),
+      expect.anything(),
+    );
   });
 
   test('blocks an expired persisted execution without creating native rows', async () => {
-    const { proposal, transition, verifierReport } = buildFixture();
+    const { proposal, transition } = buildFixture();
     const client = createClient({
       gate: execution(transition, { state: 'acceptance_expired' }),
     });
@@ -440,7 +518,6 @@ describe('policyLibraryRebuildReplacementGate', () => {
       dbClient: { withTransaction: async work => work(client) },
       transition,
       proposal,
-      verifierReport,
       now: '2026-07-12T12:31:00.000Z',
     });
 
@@ -458,14 +535,13 @@ describe('policyLibraryRebuildReplacementGate', () => {
   });
 
   test('reports a rollback-safe failure when native rule persistence fails', async () => {
-    const { proposal, transition, verifierReport } = buildFixture();
+    const { proposal, transition } = buildFixture();
     const client = createClient({ gate: execution(transition), failRules: true });
 
     const result = await applyPolicyLibraryRebuildReplacement({
       dbClient: { withTransaction: async work => work(client) },
       transition,
       proposal,
-      verifierReport,
       now: NOW,
     });
 

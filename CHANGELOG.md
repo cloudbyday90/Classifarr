@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Verified Rebuild Replacement**: Native library-rebuild replacement now
+  consumes only the immutable migration-verification receipt bound to its
+  persisted execution gate. Missing, mismatched, review-required, stale, or
+  audit-invalid evidence stops before native intent, routing, or migration
+  writes; replacement events retain compact receipt provenance only.
+
 - **Verified Rebuild Snapshots**: Library-rebuild rollback snapshots now bind
   atomically to a current, immutable, zero-difference migration-verification
   receipt. Missing, stale, mismatched, review-required, risk-blocked, or

@@ -188,16 +188,18 @@ schema-check container.
 
 ## Follow-Through
 
-Phase 6R.6 Task 6R.6.5 now consumes this receipt in the snapshot transaction.
-See [Policy Library-Rebuild Snapshot-Gate Verification
-Binding](policy-library-rebuild-snapshot-gate-verification-binding.md). The
-snapshot gate locks and validates one matching no-difference receipt before it
-creates rollback evidence, then retains the receipt ID and verifier fingerprint
-on the execution gate for the later replacement boundary.
+The snapshot transaction and replacement transaction now both consume this
+receipt. [Policy Library-Rebuild Snapshot-Gate Verification
+Binding](policy-library-rebuild-snapshot-gate-verification-binding.md) defines
+how snapshot persistence locks a matching no-difference receipt before it
+creates rollback evidence. [Policy Library-Rebuild Replacement-Gate
+Verification Binding](policy-library-rebuild-replacement-gate-verification-binding.md)
+defines how replacement locks exactly that bound receipt and validates it again
+before native-intent, routing, or migration-event writes.
 
 ## Next Task
 
-Phase 6R.6 Task 6R.6.6 is **Library Rebuild Replacement-Gate Receipt
-Binding**. It should consume the receipt bound to the persisted execution gate
-inside the replacement transaction and eliminate caller-supplied verifier
-reports as replacement authority.
+Phase 6R.6 Task 6R.6.7 is **Library Rebuild Server-Owned Cutover
+Orchestration**. It should compose accepted transition, persisted receipt,
+snapshot, and replacement through one bounded, idempotent server-owned
+workflow without a browser control, a verification rerun, or legacy deletion.
