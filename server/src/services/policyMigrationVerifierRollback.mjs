@@ -15,20 +15,19 @@ import {
   POLICY_LIBRARY_REBUILD_ACCEPTANCE_TRANSITION_VERSION,
   validatePolicyLibraryRebuildAcceptanceTransition,
 } from './policyLibraryRebuildAcceptanceTransition.mjs';
+import {
+  POLICY_MIGRATION_PREVIEW_DIFFERENCE_TYPE_IDS,
+  POLICY_MIGRATION_PREVIEW_STATUS_IDS,
+  buildPolicyMigrationPreview,
+  normalizePolicyMigrationPreviewClassification,
+  normalizePolicyMigrationPreviewOptions,
+  validatePolicyMigrationPreview,
+} from './policyMigrationPreviewContract.mjs';
 
-const POLICY_MIGRATION_DIFFERENCE_TYPE_IDS = Object.freeze({
-  DESTINATION_CHANGE: 'destination_change',
-  NEWLY_BLOCKED_ITEM: 'newly_blocked_item',
-  NEWLY_REVIEW_REQUIRED_ITEM: 'newly_review_required_item',
-  ROUTE_READINESS_CHANGE: 'route_readiness_change',
-  EVIDENCE_CONFIDENCE_CHANGE: 'evidence_confidence_change',
-});
+const POLICY_MIGRATION_DIFFERENCE_TYPE_IDS =
+  POLICY_MIGRATION_PREVIEW_DIFFERENCE_TYPE_IDS;
 
-const POLICY_MIGRATION_VERIFIER_STATUS_IDS = Object.freeze({
-  NO_MIGRATION_DIFFERENCES: 'no_migration_differences',
-  REVIEW_REQUIRED: 'review_required',
-  BLOCKED_BY_MIGRATION_RISK: 'blocked_by_migration_risk',
-});
+const POLICY_MIGRATION_VERIFIER_STATUS_IDS = POLICY_MIGRATION_PREVIEW_STATUS_IDS;
 
 const POLICY_MIGRATION_VERIFIER_REASON_IDS = Object.freeze({
   PROPOSAL_VALIDATED: 'proposal_validated',
@@ -57,6 +56,8 @@ const POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS = Object.freeze({
   MISSING_PROPOSAL_VALIDATION: 'missing_proposal_validation',
   PROPOSAL_VALIDATION_MISMATCH: 'proposal_validation_mismatch',
   INVALID_MIGRATION_PLAN: 'invalid_migration_plan',
+  INVALID_MIGRATION_PREVIEW: 'invalid_migration_preview',
+  MIGRATION_PREVIEW_REPORT_MISMATCH: 'migration_preview_report_mismatch',
   UNKNOWN_DIFFERENCE_TYPE: 'unknown_difference_type',
   NON_MIGRATION_RELEVANT_DIFFERENCE: 'non_migration_relevant_difference',
   UNBOUNDED_DIFFERENCE_OUTPUT: 'unbounded_difference_output',
@@ -80,8 +81,6 @@ const POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS = Object.freeze({
   SAMPLE_SET_PROVENANCE_MISMATCH: 'sample_set_provenance_mismatch',
 });
 
-const MAX_DIFFERENCES_DEFAULT = 25;
-const CONFIDENCE_DELTA_THRESHOLD_DEFAULT = 0.15;
 const SAMPLE_SET_FINGERPRINT_VERSION = 'policy.migration_verifier_sample_set_fingerprint.v1';
 const SAMPLE_SET_FINGERPRINT_TRACE_ATTRIBUTE =
   'classifarr.policy.migration_verifier.sample_set_fingerprint';
@@ -97,6 +96,7 @@ const MIGRATION_VERIFIER_REDUCER_INPUT_KEYS = new Set([
   'migrationPlan',
   'maxDifferences',
   'confidenceDeltaThreshold',
+  'representativeClassifications',
   'legacyComparisonSamples',
   'acceptanceTransition',
   'deletionCriteria',
@@ -141,64 +141,6 @@ function sha256(value) {
     .digest('hex');
 }
 
-function normalizeNumber(value) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
-}
-
-function normalizeConfidence(value) {
-  const numeric = normalizeNumber(value);
-  if (numeric === null) return null;
-  if (numeric > 1) return Math.max(0, Math.min(1, numeric / 100));
-  return Math.max(0, Math.min(1, numeric));
-}
-
-function normalizeBoolean(value) {
-  return value === true;
-}
-
-function normalizeOutcome(value = {}) {
-  const outcome = asObject(value);
-
-  return {
-    destinationLibraryId: outcome.destinationLibraryId ?? outcome.libraryId ?? null,
-    destinationLibraryName: normalizeString(outcome.destinationLibraryName ?? outcome.libraryName),
-    statusId: normalizeString(outcome.statusId ?? outcome.status),
-    routeReady: normalizeBoolean(outcome.routeReady ?? outcome.routingReady),
-    blocked: normalizeBoolean(outcome.blocked),
-    needsReview: normalizeBoolean(outcome.needsReview ?? outcome.reviewRequired),
-    confidenceScore: normalizeConfidence(outcome.confidenceScore ?? outcome.confidence),
-    confidenceLevel: normalizeString(outcome.confidenceLevel),
-  };
-}
-
-function normalizeSample(value = {}, proposal = {}) {
-  const sample = asObject(value);
-  const proposedDefault = {
-    destinationLibraryId: proposal.library?.libraryId ?? null,
-    destinationLibraryName: proposal.library?.libraryName ?? '',
-    statusId: proposal.statusId,
-    routeReady: proposal.readiness?.ready === true,
-    blocked: proposal.statusId === POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED,
-    needsReview: proposal.statusId !== POLICY_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW,
-    confidenceScore: proposal.confidence?.score ?? null,
-    confidenceLevel: proposal.confidence?.level ?? '',
-  };
-
-  return {
-    itemId: sample.itemId ?? sample.id ?? null,
-    title: normalizeString(sample.title ?? sample.name),
-    year: sample.year ?? null,
-    mediaType: normalizeString(sample.mediaType ?? sample.media_type),
-    legacy: normalizeOutcome(sample.legacy),
-    proposed: normalizeOutcome({
-      ...proposedDefault,
-      ...asObject(sample.proposed),
-    }),
-    exposesRawPayload: Boolean(sample.rawPayload || sample.providerPayload || sample.prompt || sample.embedding),
-  };
-}
-
 function buildSampleSetFingerprint({
   samples,
   proposal,
@@ -238,7 +180,7 @@ function buildSampleSetFingerprint({
       year: sample.year,
       mediaType: sample.mediaType,
       legacy: sample.legacy,
-      proposed: sample.proposed,
+      proposed: sample.generatedIntent,
       exposesRawPayload: sample.exposesRawPayload,
     })),
   };
@@ -266,122 +208,6 @@ function buildSampleSetFingerprint({
         acceptanceTransition.transitionFingerprint?.fingerprint || null,
     },
   };
-}
-
-function valuesDiffer(left, right) {
-  const leftValue = left ?? null;
-  const rightValue = right ?? null;
-  return leftValue !== rightValue;
-}
-
-function buildDifference({
-  typeId,
-  sample,
-  summary,
-  legacyValue,
-  proposedValue,
-  severity = 'review',
-}) {
-  return {
-    typeId,
-    itemId: sample.itemId,
-    title: sample.title,
-    year: sample.year,
-    mediaType: sample.mediaType,
-    severity,
-    summary,
-    legacyValue,
-    proposedValue,
-    exposesRawPayload: false,
-  };
-}
-
-function compareSample(sample, confidenceDeltaThreshold) {
-  const differences = [];
-  const legacyDestination = sample.legacy.destinationLibraryId || sample.legacy.destinationLibraryName;
-  const proposedDestination = sample.proposed.destinationLibraryId || sample.proposed.destinationLibraryName;
-
-  if (valuesDiffer(legacyDestination, proposedDestination)) {
-    differences.push(buildDifference({
-      typeId: POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.DESTINATION_CHANGE,
-      sample,
-      summary: 'Generated intent would choose a different destination than legacy behavior.',
-      legacyValue: legacyDestination,
-      proposedValue: proposedDestination,
-    }));
-  }
-
-  if (sample.legacy.blocked !== true && sample.proposed.blocked === true) {
-    differences.push(buildDifference({
-      typeId: POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_BLOCKED_ITEM,
-      sample,
-      severity: 'blocker',
-      summary: 'Generated intent would newly block an item legacy behavior did not block.',
-      legacyValue: sample.legacy.statusId || 'not_blocked',
-      proposedValue: sample.proposed.statusId || 'blocked',
-    }));
-  }
-
-  if (sample.legacy.needsReview !== true && sample.proposed.needsReview === true) {
-    differences.push(buildDifference({
-      typeId: POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_REVIEW_REQUIRED_ITEM,
-      sample,
-      summary: 'Generated intent would require review for an item legacy behavior allowed.',
-      legacyValue: sample.legacy.statusId || 'no_review',
-      proposedValue: sample.proposed.statusId || 'review_required',
-    }));
-  }
-
-  if (sample.legacy.routeReady !== sample.proposed.routeReady) {
-    differences.push(buildDifference({
-      typeId: POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.ROUTE_READINESS_CHANGE,
-      sample,
-      summary: 'Generated intent changes route readiness compared with legacy behavior.',
-      legacyValue: sample.legacy.routeReady,
-      proposedValue: sample.proposed.routeReady,
-    }));
-  }
-
-  const legacyConfidence = sample.legacy.confidenceScore;
-  const proposedConfidence = sample.proposed.confidenceScore;
-  const confidenceDelta = legacyConfidence !== null && proposedConfidence !== null
-    ? Math.abs(legacyConfidence - proposedConfidence)
-    : 0;
-  if (confidenceDelta >= confidenceDeltaThreshold ||
-      valuesDiffer(sample.legacy.confidenceLevel, sample.proposed.confidenceLevel)) {
-    differences.push(buildDifference({
-      typeId: POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.EVIDENCE_CONFIDENCE_CHANGE,
-      sample,
-      summary: 'Generated intent changes evidence confidence compared with legacy behavior.',
-      legacyValue: sample.legacy.confidenceLevel || legacyConfidence,
-      proposedValue: sample.proposed.confidenceLevel || proposedConfidence,
-    }));
-  }
-
-  return differences;
-}
-
-function summarizeDifferences(differences) {
-  return Object.fromEntries(
-    MIGRATION_RELEVANT_DIFFERENCE_TYPES.map(typeId => [
-      typeId,
-      differences.filter(difference => difference.typeId === typeId).length,
-    ])
-  );
-}
-
-function determineStatus(differences) {
-  if (differences.some(difference =>
-    difference.typeId === POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_BLOCKED_ITEM
-  )) {
-    return POLICY_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK;
-  }
-
-  if (differences.length > 0) {
-    return POLICY_MIGRATION_VERIFIER_STATUS_IDS.REVIEW_REQUIRED;
-  }
-
-  return POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES;
 }
 
 function buildApplicationGate({ acceptanceTransition, statusId }) {
@@ -415,13 +241,17 @@ function buildApplicationGate({ acceptanceTransition, statusId }) {
     requiresPersistedRollbackSnapshot: true,
     replacementBlockedReason: statusId === POLICY_MIGRATION_VERIFIER_STATUS_IDS.BLOCKED_BY_MIGRATION_RISK
       ? 'migration_risk_blocked'
+      : statusId === POLICY_MIGRATION_VERIFIER_STATUS_IDS.INSUFFICIENT_REPRESENTATIVE_COVERAGE
+        ? 'representative_coverage_required'
       : 'persisted_rollback_snapshot_required',
   };
 }
 
-function buildDeletionCriteria({ input, differences, migrationPlan, applicationGate }) {
+function buildDeletionCriteria({ input, migrationPreview, migrationPlan, applicationGate }) {
   const criteriaInput = asObject(input.deletionCriteria);
-  const verifierPassed = differences.length === 0;
+  const verifierPassed =
+    migrationPreview.statusId === POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES &&
+    migrationPreview.representativeSummary?.coverageSufficient === true;
   const deleteTargetCount = asArray(migrationPlan.artifacts)
     .filter(artifact =>
       artifact.decisionId === POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION
@@ -474,7 +304,7 @@ function buildDeletionCriteria({ input, differences, migrationPlan, applicationG
 
 function buildTrace({
   statusId,
-  differences,
+  differenceSummary,
   boundedDifferences,
   sampleSetFingerprint,
   acceptanceTransition,
@@ -494,9 +324,9 @@ function buildTrace({
     attributes: {
       'classifarr.policy.migration_verifier.version': 'policy.migration_verifier.v1',
       'classifarr.policy.migration_verifier.status': statusId,
-      'classifarr.policy.migration_verifier.difference_count': differences.length,
+      'classifarr.policy.migration_verifier.difference_count': differenceSummary.totalCount,
       'classifarr.policy.migration_verifier.emitted_difference_count': boundedDifferences.length,
-      'classifarr.policy.migration_verifier.truncated': differences.length > boundedDifferences.length,
+      'classifarr.policy.migration_verifier.truncated': differenceSummary.truncated === true,
       [SAMPLE_SET_FINGERPRINT_TRACE_ATTRIBUTE]: sampleSetFingerprint.fingerprint,
       [ACCEPTANCE_TRANSITION_FINGERPRINT_TRACE_ATTRIBUTE]:
         acceptanceTransition.transitionFingerprint.fingerprint,
@@ -558,6 +388,34 @@ function requireValidAcceptanceTransition(input = {}, proposal = {}) {
   return acceptanceTransition;
 }
 
+function buildGeneratedIntentDefault(proposal = {}) {
+  return {
+    destinationLibraryId: proposal.library?.libraryId ?? null,
+    destinationLibraryName: proposal.library?.libraryName ?? '',
+    statusId: proposal.statusId,
+    routeReady: proposal.readiness?.ready === true,
+    blocked: proposal.statusId === POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED,
+    needsReview: proposal.statusId !== POLICY_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW,
+    confidenceScore: proposal.confidence?.score ?? null,
+    confidenceLevel: proposal.confidence?.level ?? '',
+  };
+}
+
+function getRepresentativeClassifications(input = {}) {
+  const hasContractInput = Object.hasOwn(input, 'representativeClassifications');
+  const hasLegacyInput = Object.hasOwn(input, 'legacyComparisonSamples');
+
+  if (hasContractInput && hasLegacyInput) {
+    throw new TypeError(
+      'Migration verifier accepts either representativeClassifications or legacyComparisonSamples, not both.'
+    );
+  }
+
+  return hasContractInput
+    ? input.representativeClassifications
+    : input.legacyComparisonSamples;
+}
+
 function buildPolicyMigrationVerifierReportFromRebuildProposal(input = {}) {
   const verifierInput = asObject(input);
   const proposal = requireValidRebuildProposal(verifierInput);
@@ -565,33 +423,32 @@ function buildPolicyMigrationVerifierReportFromRebuildProposal(input = {}) {
   const migrationPlan = verifierInput.migrationPlan?.version === 'policy.migration_deletion_path.v1'
     ? verifierInput.migrationPlan
     : buildPolicyMigrationDeletionPlan();
-  const maxDifferences = Number.isFinite(Number(verifierInput.maxDifferences))
-    ? Math.max(1, Math.trunc(Number(verifierInput.maxDifferences)))
-    : MAX_DIFFERENCES_DEFAULT;
-  const confidenceDeltaThreshold = Number.isFinite(Number(verifierInput.confidenceDeltaThreshold))
-    ? Math.max(0, Math.min(1, Number(verifierInput.confidenceDeltaThreshold)))
-    : CONFIDENCE_DELTA_THRESHOLD_DEFAULT;
-  const samples = asArray(verifierInput.legacyComparisonSamples)
-    .map(sample => normalizeSample(sample, proposal));
+  const previewOptions = normalizePolicyMigrationPreviewOptions({
+    maxDifferences: verifierInput.maxDifferences,
+    confidenceDeltaThreshold: verifierInput.confidenceDeltaThreshold,
+  });
+  const generatedIntentDefault = buildGeneratedIntentDefault(proposal);
+  const samples = asArray(getRepresentativeClassifications(verifierInput))
+    .map(sample => normalizePolicyMigrationPreviewClassification(sample, generatedIntentDefault));
   const sampleSetFingerprint = buildSampleSetFingerprint({
     samples,
     proposal,
     acceptanceTransition,
-    maxDifferences,
-    confidenceDeltaThreshold,
+    ...previewOptions,
   });
-  const differences = samples.flatMap(sample =>
-    compareSample(sample, confidenceDeltaThreshold)
-  );
-  const boundedDifferences = differences.slice(0, maxDifferences);
-  const statusId = determineStatus(differences);
+  const migrationPreview = buildPolicyMigrationPreview({
+    representativeClassifications: samples,
+    generatedIntentDefault,
+    ...previewOptions,
+  });
+  const statusId = migrationPreview.statusId;
   const applicationGate = buildApplicationGate({
     acceptanceTransition,
     statusId,
   });
   const deletionReadiness = buildDeletionCriteria({
     input: verifierInput,
-    differences,
+    migrationPreview,
     migrationPlan,
     applicationGate,
   });
@@ -603,18 +460,14 @@ function buildPolicyMigrationVerifierReportFromRebuildProposal(input = {}) {
     acceptanceTransition,
     proposalValidation: validatePolicyLibraryPolicyRebuildProposal(proposal),
     migrationPlanValidation: validatePolicyMigrationDeletionPlan(migrationPlan),
+    migrationPreview,
     sampleSummary: {
-      comparedCount: samples.length,
-      rawPayloadSuppressed: samples.some(sample => sample.exposesRawPayload),
+      comparedCount: migrationPreview.representativeSummary.comparedCount,
+      rawPayloadSuppressed: migrationPreview.representativeSummary.rawPayloadSuppressed,
     },
     sampleSetFingerprint,
-    differenceSummary: {
-      totalCount: differences.length,
-      emittedCount: boundedDifferences.length,
-      truncated: differences.length > boundedDifferences.length,
-      byType: summarizeDifferences(differences),
-    },
-    differences: boundedDifferences,
+    differenceSummary: migrationPreview.differenceSummary,
+    differences: migrationPreview.differences,
     applicationGate,
     deletionReadiness,
     normalWorkflowSurface: false,
@@ -629,8 +482,8 @@ function buildPolicyMigrationVerifierReportFromRebuildProposal(input = {}) {
     },
     trace: buildTrace({
       statusId,
-      differences,
-      boundedDifferences,
+      differenceSummary: migrationPreview.differenceSummary,
+      boundedDifferences: migrationPreview.differences,
       sampleSetFingerprint,
       acceptanceTransition,
     }),
@@ -700,6 +553,30 @@ function validatePolicyMigrationVerifierReport(report = {}) {
     issues.push({
       riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_MIGRATION_PLAN,
       message: 'Migration verifier report must include a valid migration plan.',
+    });
+  }
+
+  const migrationPreviewValidation = validatePolicyMigrationPreview(
+    asObject(report.migrationPreview)
+  );
+  if (!migrationPreviewValidation.ok) {
+    issues.push({
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.INVALID_MIGRATION_PREVIEW,
+      message: 'Migration verifier report must include a valid bounded migration preview.',
+      previewRiskIds: migrationPreviewValidation.issues.map(issue => issue.riskId),
+    });
+  } else if (
+    report.statusId !== report.migrationPreview.statusId ||
+    Number(report.differenceSummary?.totalCount) !==
+      Number(report.migrationPreview.differenceSummary?.totalCount) ||
+    Number(report.differenceSummary?.emittedCount) !==
+      Number(report.migrationPreview.differenceSummary?.emittedCount) ||
+    JSON.stringify(asArray(report.differences)) !==
+      JSON.stringify(asArray(report.migrationPreview.differences))
+  ) {
+    issues.push({
+      riskId: POLICY_MIGRATION_VERIFIER_AUDIT_RISK_IDS.MIGRATION_PREVIEW_REPORT_MISMATCH,
+      message: 'Migration verifier report must preserve the bounded migration preview result.',
     });
   }
 

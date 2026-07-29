@@ -5,6 +5,10 @@ import {
   validatePolicyDecisionHandoffAdmission,
   validatePolicyDecisionHandoffSourceSummary,
 } from './policyDecisionHandoffSource.mjs';
+import {
+  buildPolicyMigrationPreviewContract,
+  validatePolicyMigrationPreviewContract,
+} from './policyMigrationPreviewContract.mjs';
 
 const POLICY_MIGRATION_ARTIFACT_DECISION_IDS = Object.freeze({
   KEEP_ENGINE_PRIMITIVE: 'keep_engine_primitive',
@@ -53,6 +57,8 @@ const POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS = Object.freeze({
   BOUNDED_QUALITY_MISMATCH: 'bounded_quality_mismatch',
   UNAPPROVED_BOUNDED_DECISION_SOURCE: 'unapproved_bounded_decision_source',
   INVALID_MIGRATION_DECISION_SOURCE: 'invalid_migration_decision_source',
+  MISSING_MIGRATION_PREVIEW_CONTRACT: 'missing_migration_preview_contract',
+  INVALID_MIGRATION_PREVIEW_CONTRACT: 'invalid_migration_preview_contract',
 });
 
 const POLICY_MIGRATION_BOUNDARY_STATUS_IDS = Object.freeze({
@@ -82,6 +88,26 @@ const DEFAULT_REMOVAL_GATES = Object.freeze([
 ]);
 
 const DEFAULT_MIGRATION_ARTIFACTS = Object.freeze([
+  {
+    path: 'client/src/components/policies/PolicyNativeEvidenceRecovery.vue',
+    owner: 'policy-builder-ui',
+    decisionId: POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
+    verifierKindId: POLICY_MIGRATION_VERIFIER_KIND_IDS.REPRESENTATIVE_REPLAY,
+    replacement: 'Server-owned profile readiness prerequisite for policy establishment',
+    normalWorkflowAllowed: false,
+    removalGateIds: DEFAULT_REMOVAL_GATES,
+    rollbackPlan: DEFAULT_ROLLBACK_PLAN,
+  },
+  {
+    path: 'client/src/utils/policyNativeEvidenceRecovery.js',
+    owner: 'policy-builder-ui',
+    decisionId: POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
+    verifierKindId: POLICY_MIGRATION_VERIFIER_KIND_IDS.REPRESENTATIVE_REPLAY,
+    replacement: 'Server-owned profile readiness prerequisite for policy establishment',
+    normalWorkflowAllowed: false,
+    removalGateIds: DEFAULT_REMOVAL_GATES,
+    rollbackPlan: DEFAULT_ROLLBACK_PLAN,
+  },
   {
     path: 'client/src/components/policies/PolicyIntentImpactPreviewCard.vue',
     owner: 'policy-builder-ui',
@@ -747,6 +773,7 @@ function buildPolicyMigrationDeletionPlan({
   artifacts = DEFAULT_MIGRATION_ARTIFACTS,
   requiredGateIds = REQUIRED_GATE_IDS,
   rollbackPlan = DEFAULT_ROLLBACK_PLAN,
+  migrationPreviewContract = buildPolicyMigrationPreviewContract(),
 } = {}) {
   const normalizedArtifacts = artifacts.map(normalizeMigrationArtifact);
   const gateIds = asArray(requiredGateIds);
@@ -764,10 +791,21 @@ function buildPolicyMigrationDeletionPlan({
       message: 'Native storage migration must remain blocked by policy engine gates.',
     }]
     : [];
+  const migrationPreviewValidation = validatePolicyMigrationPreviewContract(
+    migrationPreviewContract
+  );
+  const migrationPreviewIssues = migrationPreviewValidation.ok
+    ? []
+    : [{
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.INVALID_MIGRATION_PREVIEW_CONTRACT,
+        message: 'Migration plan requires a valid bounded representative-preview contract.',
+        previewRiskIds: migrationPreviewValidation.issues.map(issue => issue.riskId),
+      }];
   const issues = [
     ...artifactIssues,
     ...gateIssues,
     ...nativeStorageIssues,
+    ...migrationPreviewIssues,
   ];
 
   return {
@@ -779,6 +817,7 @@ function buildPolicyMigrationDeletionPlan({
       ...rollbackPlan,
       nativeStorageMigrationAllowed: rollbackPlan.nativeStorageMigrationAllowed === true,
     },
+    migrationPreviewContract,
     artifacts: normalizedArtifacts,
     normalWorkflowAllowsDiagnostics: false,
     nativeStorageMigrationBlocked: rollbackPlan.nativeStorageMigrationAllowed !== true,
@@ -953,6 +992,7 @@ function buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
   artifacts = DEFAULT_MIGRATION_ARTIFACTS,
   requiredGateIds = REQUIRED_GATE_IDS,
   rollbackPlan = DEFAULT_ROLLBACK_PLAN,
+  migrationPreviewContract = buildPolicyMigrationPreviewContract(),
 } = {}) {
   const boundaryIssues = [];
   const decisionSourceProvenanceAudit =
@@ -1027,6 +1067,7 @@ function buildPolicyMigrationDeletionPlanFromBoundedWorkflow({
     artifacts,
     requiredGateIds,
     rollbackPlan,
+    migrationPreviewContract,
   });
   plan.boundaryContext = boundaryContext;
   plan.engineContractBoundary = {
@@ -1085,6 +1126,24 @@ function validatePolicyMigrationDeletionPlan(plan = {}) {
       riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_ROLLBACK_PLAN,
       message: 'Migration plan must require backup snapshots and a restore path.',
     });
+  }
+
+  if (!plan.migrationPreviewContract) {
+    issues.push({
+      riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_MIGRATION_PREVIEW_CONTRACT,
+      message: 'Migration plan must include a bounded representative-preview contract.',
+    });
+  } else {
+    const migrationPreviewValidation = validatePolicyMigrationPreviewContract(
+      plan.migrationPreviewContract
+    );
+    if (!migrationPreviewValidation.ok) {
+      issues.push({
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.INVALID_MIGRATION_PREVIEW_CONTRACT,
+        message: 'Migration plan must include a valid bounded representative-preview contract.',
+        previewRiskIds: migrationPreviewValidation.issues.map(issue => issue.riskId),
+      });
+    }
   }
 
   issues.push(...collectMigrationBoundaryContextDecisionSourceIssues(plan.boundaryContext));

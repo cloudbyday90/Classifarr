@@ -4418,6 +4418,11 @@ Tasks:
   evidence-refresh path as a replace-or-delete target, preserve rollback data
   and its explicit window, and keep all preview output out of the normal
   operator workflow.
+- **6R.6.2 Representative Classification Source Adapter**: select one
+  deterministic, bounded, server-only set of usable legacy/native outcome pairs
+  from persisted policy and classification records. Carry compact source
+  provenance, treat missing legacy baselines as insufficient coverage, and do
+  not call providers, render browser controls, route media, or write state.
 - Use old impact/replay/parity tooling only as migration verification machinery,
   not product workflow.
 - Define a migration preview that compares legacy policy behavior to generated
@@ -4439,6 +4444,19 @@ Implementation status:
 
 - Policy migration deletion path is documented in
   [Policy Migration Deletion Path](policy-migration-deletion-path.md).
+- The migration-preview decision, design, and outcome are documented in
+  [Policy Migration Preview Contract](policy-migration-preview-contract.md).
+- `server/src/services/policyMigrationPreviewContract.mjs` now owns bounded,
+  comparison-only legacy/native outcome evaluation. It requires at least one
+  usable legacy baseline, caps emitted differences, suppresses raw payloads,
+  and returns explicit insufficient coverage instead of claiming parity from
+  no comparison.
+- `server/src/services/policyMigrationVerifierRollback.mjs` consumes the
+  preview contract while retaining rebuild acceptance, rollback, fingerprint,
+  trace, and deletion gates. It rejects ambiguous old/new sample input names.
+- The deletion plan now embeds the versioned preview contract and classifies
+  the creation-only browser evidence-refresh component and utility as
+  delete-after-migration targets; no normal workflow surface was added.
 - The server-owned migration cutline lives in
   `server/src/services/policyMigrationDeletionPath.mjs`.
 - The focused migration/deletion test suite lives in

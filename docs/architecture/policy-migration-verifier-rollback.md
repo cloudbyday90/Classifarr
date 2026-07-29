@@ -4,6 +4,13 @@
 
 Implemented as a durable migration-verifier and rollback contract.
 
+The verifier now consumes the separate
+[Policy Migration Preview Contract](policy-migration-preview-contract.md). The
+preview owns bounded representative comparison and requires a usable legacy
+baseline before it can report no migration differences. The verifier retains
+proposal acceptance, sample-set fingerprinting, rollback, trace, and deletion
+responsibilities.
+
 This contract compares a library-derived rebuild proposal against sanitized legacy
 behavior samples, emits only migration-relevant differences, and binds the
 comparison to both a stable sample-set fingerprint and a verified rebuild
@@ -130,26 +137,29 @@ Cons:
 ## Final Recommendation Stack
 
 1. Consume a valid library-derived rebuild proposal.
-2. Consume sanitized representative legacy/proposed comparison samples.
-3. Generate a stable SHA-256 sample-set fingerprint from normalized samples,
+2. Consume exactly one server-side representative-classification input name;
+   reject ambiguous old/new aliases.
+3. Require the migration-preview contract to find at least one usable legacy
+   baseline before it can report no differences.
+4. Generate a stable SHA-256 sample-set fingerprint from normalized samples,
    verifier options, and bounded rebuild proposal evidence metadata.
-4. Mirror that fingerprint into bounded trace attributes.
-5. Recompute rebuild proposal validation during report validation and reject
+5. Mirror that fingerprint into bounded trace attributes.
+6. Recompute rebuild proposal validation during report validation and reject
    stale or missing proposal-validation proof.
-6. Bind sample-set provenance to the embedded rebuild proposal version, status,
+7. Bind sample-set provenance to the embedded rebuild proposal version, status,
    guarded-outcome fingerprint counts, and request-proof counts.
-7. Emit only these migration-relevant difference types:
+8. Emit only these migration-relevant difference types:
    - `destination_change`,
    - `newly_blocked_item`,
    - `newly_review_required_item`,
    - `route_readiness_change`,
    - `evidence_confidence_change`.
-8. Bound emitted differences with a configured maximum.
-9. Suppress raw payloads, prompts, embeddings, and provider payloads.
-10. Require a current, verified manual acceptance transition before comparison.
-11. Require a same-policy rollback-window plan and restore path before
+9. Bound emitted differences with a configured maximum.
+10. Suppress raw payloads, prompts, embeddings, and provider payloads.
+11. Require a current, verified manual acceptance transition before comparison.
+12. Require a same-policy rollback-window plan and restore path before
     comparison; require a later persisted snapshot before replacement.
-12. Define deletion criteria for old preset/custom-signal runtime paths:
+13. Define deletion criteria for old preset/custom-signal runtime paths:
    - native intent storage stable,
    - verifier passed,
    - rollback snapshot created,
@@ -157,15 +167,17 @@ Cons:
    - delete checklist approved,
    - legacy artifacts classified,
    - custom-signal replacement defined.
-13. Leave all replacement, deletion, rollback creation, learning, and routing
+14. Leave all replacement, deletion, rollback creation, learning, and routing
    writes disabled in this verifier.
-14. Use a raw runtime adapter or a validated rebuild proposal reducer; do not
+15. Use a raw runtime adapter or a validated rebuild proposal reducer; do not
     infer authority from a proposal version field alone.
 
 ## Implemented Files
 
 - Migration verifier and rollback contract:
   `server/src/services/policyMigrationVerifierRollback.mjs`
+- Migration-preview comparison contract:
+  `server/src/services/policyMigrationPreviewContract.mjs`
 - Focused tests:
   `server/src/__tests__/services/policyMigrationVerifierRollback.test.mjs`
 - Rebuild proposal dependency:
@@ -204,12 +216,18 @@ The service exports:
 : At least one sample would become newly blocked, so replacement cannot proceed
   without explicit remediation.
 
+`insufficient_representative_coverage`
+: No usable legacy baseline was available for comparison. This is not parity and
+  cannot satisfy the deletion verifier gate.
+
 ## Security And Data Handling
 
 - The verifier does not call providers.
 - The verifier does not run live replay.
 - The verifier does not expose raw provider payloads, prompts, or embeddings.
 - The verifier output is bounded by `maxDifferences`.
+- The underlying preview counts only classifications with usable legacy
+  baselines; empty or malformed samples cannot claim no-difference parity.
 - The verifier carries a SHA-256 sample-set fingerprint with bounded provenance:
   sample count, raw-payload suppression flag, verifier options, proposal
   version/status, sanitized proposal evidence digests, guarded-outcome

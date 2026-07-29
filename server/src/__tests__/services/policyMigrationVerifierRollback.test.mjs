@@ -235,6 +235,60 @@ describe('policyMigrationVerifierRollback', () => {
     expect(validatePolicyMigrationVerifierReport(report).ok).toBe(true);
   });
 
+  test('requires representative coverage and accepts the preview-contract input name', () => {
+    const proposal = acceptedProposal();
+    const noCoverageReport = buildPolicyMigrationVerifierReport({
+      proposal,
+    });
+    const previewInputReport = buildPolicyMigrationVerifierReport({
+      proposal,
+      representativeClassifications: [{
+        classificationId: 10674,
+        legacyOutcome: {
+          destinationLibraryId: 6,
+          destinationLibraryName: 'Animated Movies',
+          statusId: proposal.statusId,
+          routeReady: true,
+          blocked: false,
+          needsReview: false,
+          confidenceScore: proposal.confidence.score,
+          confidenceLevel: proposal.confidence.level,
+        },
+        generatedIntentOutcome: {
+          destinationLibraryId: 6,
+          destinationLibraryName: 'Animated Movies',
+          statusId: proposal.statusId,
+          routeReady: true,
+          blocked: false,
+          needsReview: false,
+          confidenceScore: proposal.confidence.score,
+          confidenceLevel: proposal.confidence.level,
+        },
+      }],
+    });
+
+    expect(noCoverageReport.statusId)
+      .toBe(POLICY_MIGRATION_VERIFIER_STATUS_IDS.INSUFFICIENT_REPRESENTATIVE_COVERAGE);
+    expect(noCoverageReport.deletionReadiness.criteria).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        criterionId: POLICY_MIGRATION_DELETION_CRITERION_IDS.VERIFIER_PASSED,
+        met: false,
+      }),
+    ]));
+    expect(previewInputReport.statusId)
+      .toBe(POLICY_MIGRATION_VERIFIER_STATUS_IDS.NO_MIGRATION_DIFFERENCES);
+    expect(previewInputReport.migrationPreview.representativeSummary.coverageSufficient).toBe(true);
+    expect(validatePolicyMigrationVerifierReport(previewInputReport).ok).toBe(true);
+  });
+
+  test('rejects ambiguous representative comparison aliases', () => {
+    expect(() => buildPolicyMigrationVerifierReport({
+      proposal: acceptedProposal(),
+      representativeClassifications: [],
+      legacyComparisonSamples: [],
+    })).toThrow('representativeClassifications or legacyComparisonSamples, not both');
+  });
+
   test('emits only migration-relevant bounded differences', () => {
     const report = buildPolicyMigrationVerifierReport({
       proposal: acceptedProposal(),

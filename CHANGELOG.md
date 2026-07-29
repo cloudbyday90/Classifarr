@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Bounded Native-Intent Migration Preview**: migration verification now uses
+  a server-owned, comparison-only contract. It requires a usable legacy
+  baseline before reporting parity, caps and sanitizes emitted differences, and
+  keeps preview mechanics out of browser policy authoring.
+
+- **Migration Deletion Safety**: legacy browser profile-refresh controls are
+  now explicit delete-after-migration targets, and migration plans require the
+  bounded preview contract alongside existing rollback and storage-stability
+  gates.
+
 - **Self-Healing Native Profile Recovery**: terminal native profile-refresh
   failures create bounded, idempotent server-owned successors. Repeated or
   known configuration failures now enter an automatic cooldown-and-probe

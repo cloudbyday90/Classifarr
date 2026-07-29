@@ -103,6 +103,8 @@ describe('policyMigrationDeletionPath', () => {
     expect(paths).toEqual(expect.arrayContaining([
       'client/src/components/policies/PolicyIntentImpactPreviewCard.vue',
       'client/src/components/policies/PolicyIntentReplayPreviewCard.vue',
+      'client/src/components/policies/PolicyNativeEvidenceRecovery.vue',
+      'client/src/utils/policyNativeEvidenceRecovery.js',
       'client/src/composables/usePolicyIntentImpactPreview.js',
       'client/src/composables/usePolicyIntentReplayPreview.js',
       'server/src/routes/policiesRouteMigrationVerifier.mjs',
@@ -139,6 +141,11 @@ describe('policyMigrationDeletionPath', () => {
       stepId: 'migration_deletion_path',
       normalWorkflowAllowsDiagnostics: false,
       nativeStorageMigrationBlocked: true,
+      migrationPreviewContract: expect.objectContaining({
+        serverOwned: true,
+        representativeClassificationsRequired: true,
+        normalWorkflowSurface: false,
+      }),
     }));
     expect(plan.requiredGateIds).toEqual([
       POLICY_MIGRATION_GATE_IDS.POLICY_ENGINE_CONTRACTS_STABLE,
@@ -155,6 +162,20 @@ describe('policyMigrationDeletionPath', () => {
       nativeStorageMigrationAllowed: false,
     }));
     expect(plan.validation.ok).toBe(true);
+  });
+
+  test('rejects a deletion plan without the bounded migration-preview contract', () => {
+    const plan = buildPolicyMigrationDeletionPlan();
+    const validation = validatePolicyMigrationDeletionPlan({
+      ...plan,
+      migrationPreviewContract: null,
+    });
+
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_MIGRATION_DELETION_AUDIT_RISK_IDS.MISSING_MIGRATION_PREVIEW_CONTRACT,
+      }),
+    ]));
   });
 
   test('builds a bounded migration plan from a bounded operator workflow result', () => {

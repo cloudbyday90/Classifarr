@@ -99,7 +99,27 @@ function rebuildProposal(overrides = {}) {
   });
 }
 
-function buildFixture({ samples = [] } = {}) {
+function matchingRepresentativeClassification(proposal) {
+  const outcome = {
+    destinationLibraryId: proposal.library.libraryId,
+    destinationLibraryName: proposal.library.libraryName,
+    statusId: proposal.statusId,
+    routeReady: proposal.readiness.ready === true,
+    blocked: false,
+    needsReview: false,
+    confidenceScore: proposal.confidence.score,
+    confidenceLevel: proposal.confidence.level,
+  };
+
+  return {
+    itemId: 10674,
+    title: 'Mulan',
+    legacy: outcome,
+    proposed: outcome,
+  };
+}
+
+function buildFixture({ samples } = {}) {
   const proposal = rebuildProposal();
   const transition = buildPolicyLibraryRebuildAcceptanceTransition({
     proposal,
@@ -135,7 +155,7 @@ function buildFixture({ samples = [] } = {}) {
   const verifierReport = buildPolicyMigrationVerifierReportFromRebuildProposal({
     proposal,
     acceptanceTransition: transition,
-    legacyComparisonSamples: samples,
+    legacyComparisonSamples: samples ?? [matchingRepresentativeClassification(proposal)],
     now: NOW,
   });
 

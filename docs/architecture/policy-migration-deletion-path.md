@@ -28,6 +28,12 @@ migration/deletion plan. It also requires the workflow's approved readiness
 source-admission result to match both workflow-context source summaries before
 returning the migration/deletion plan.
 
+The plan now embeds the versioned, server-owned
+[Policy Migration Preview Contract](policy-migration-preview-contract.md). A
+plan cannot pass validation without that bounded representative-comparison
+contract, and the creation-only browser profile-refresh component and utility
+are explicit delete-after-migration targets.
+
 ## Problem
 
 The re-imagined policy builder cannot keep the old diagnostic UX as a permanent
@@ -108,6 +114,11 @@ delete replaced surfaces after gates pass
    The workflow's approved readiness admission must agree with the outer and
    embedded workflow source summaries. Migration retains only the verified
    source ID, decision version, and admission state in its boundary context.
+
+9. **Require bounded representative comparison before deletion.**
+   The plan must carry the server-owned preview contract. It requires at least
+   one usable legacy baseline, reports insufficient coverage rather than
+   inferred parity, and cannot be a browser workflow or write path.
 
 ## Pros And Cons
 
@@ -191,6 +202,9 @@ Default decisions:
   old diagnostic tests, provider-readiness replay helpers, TMDB adapter
   execution helpers, and legacy replay execution adapters for deletion after
   migration gates pass.
+- Mark the creation-only `PolicyNativeEvidenceRecovery` component and utility
+  for deletion after server-owned policy-establishment readiness fully replaces
+  their browser refresh behavior.
 - Treat `database/schema/current.sql` as a native-storage blocker.
 
 Default gates:
@@ -247,6 +261,9 @@ projectionFingerprintMatch
 - Rollback snapshots and restore path are mandatory before migration deletion.
 - Native intent storage remains blocked until the native storage schema plan
   owns the migration path.
+- The migration plan must carry a valid server-owned preview contract; a
+  missing or invalid contract fails validation before deletion readiness can
+  advance.
 - The bounded wrapper rejects failed workflow contracts, missing bounded
   provenance, mismatched projection fingerprints, and non-passing bounded
   workflow audits before returning a migration/deletion plan.
