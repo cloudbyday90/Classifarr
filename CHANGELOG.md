@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Migration Verification Coordination**: accepted policy rebuilds now have a
+  server-only, fail-closed path from persisted representative evidence through
+  bounded verification. Invalid acceptance, missing coverage, or invalid audit
+  output stops the process without exposing samples or performing policy,
+  routing, rollback, or deletion writes.
+
 - **Persisted Migration Samples**: migration verification can now select a
   bounded, deterministic set of finalized destination-library outcomes from
   persisted policy context. Missing usable history stays an explicit

@@ -191,8 +191,7 @@ Focused server tests cover:
 
 ## Next Task
 
-Phase 6R.6 Task 6R.6.3 should add a server-only migration verification
-coordinator. It should invoke this adapter for an accepted rebuild proposal,
-pass ready samples to the preview/verifier contracts, and stop at insufficient
-coverage or audit failure. It must remain outside normal policy authoring and
-must not route, write policy state, or expose browser controls.
+Phase 6R.6 Task 6R.6.4 should add a persisted, replay-protected verification
+run handoff. It must record only bounded source/verifier provenance after the
+coordinator succeeds, never raw samples, and must remain unable to create a
+snapshot, replace policy state, route media, or expose browser controls.

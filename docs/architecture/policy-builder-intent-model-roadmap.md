@@ -4428,6 +4428,11 @@ Tasks:
   through preview and verifier contracts; and stop on insufficient coverage or
   an audit failure. Keep coordination server-only and prohibit browser
   controls, routing, and policy writes.
+- **6R.6.4 Persisted Verification-Run Handoff**: persist only the bounded,
+  replay-protected coordinator result required by the snapshot gate: accepted
+  transition fingerprint, source provenance/summary, verifier fingerprint and
+  status, and audit summaries. Prohibit raw samples, snapshot creation, policy
+  replacement, routing, and browser controls.
 - Use old impact/replay/parity tooling only as migration verification machinery,
   not product workflow.
 - Define a migration preview that compares legacy policy behavior to generated
@@ -4469,6 +4474,17 @@ Implementation status:
 - `server/src/services/policyMigrationGeneratedIntentOutcome.mjs` provides the
   shared generated-outcome projection used by the representative source and
   verifier so default outcome semantics remain aligned.
+- The migration-verification coordinator decision, design, and outcome are
+  documented in [Policy Migration Verification Coordinator](policy-migration-verification-coordinator.md).
+- `server/src/services/policyMigrationVerificationCoordinator.mjs` now derives
+  policy context only from a validated, current accepted rebuild transition,
+  then invokes the persisted source and verifier in sequence. It stops before
+  verification on invalid acceptance, source audit failure, or insufficient
+  coverage and suppresses invalid verifier output.
+- `server/src/services/policyMigrationVerificationCoordinatorContract.mjs`
+  owns the coordinator's versioned stop states, sanitized result, and audit.
+  Coordinator output excludes raw representative classifications and cannot
+  apply a replacement, delete legacy paths, route media, or write state.
 - `server/src/services/policyMigrationVerifierRollback.mjs` consumes the
   preview contract while retaining rebuild acceptance, rollback, fingerprint,
   trace, and deletion gates. It rejects ambiguous old/new sample input names.

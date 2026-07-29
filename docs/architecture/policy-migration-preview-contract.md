@@ -152,8 +152,7 @@ Focused server tests cover:
 
 ## Next Task
 
-Phase 6R.6 Task 6R.6.3: add a server-only migration verification coordinator.
-It must invoke the persisted representative-classification source only for a
-validated accepted rebuild, pass ready samples into this preview contract and
-the verifier, and stop on insufficient coverage or an audit failure. It must
-not expose a browser control, route media, or write policy state.
+Phase 6R.6 Task 6R.6.4: add a persisted, replay-protected verification-run
+handoff. It must retain only bounded source/verifier provenance after the
+coordinator succeeds and supply the existing snapshot gate without storing raw
+samples, writing policy state, routing media, or exposing a browser control.
