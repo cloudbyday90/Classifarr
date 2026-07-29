@@ -430,4 +430,87 @@ describe('Native profile refresh circuit lifecycle integration', () => {
     }));
     expect(JSON.stringify(current)).not.toContain('awaiting_automatic_probe');
   });
+
+  test('allows concurrent planners to create only one due circuit probe', async () => {
+    const fixture = await createNativeProfileRefreshFixture();
+    libraryIds.push(fixture.libraryId);
+    const request = buildPolicyNativeProfileRefreshRequest({
+      libraryId: fixture.libraryId,
+      profileState: 'missing_profile',
+      observedItemCount: 1,
+      observedItemHighWaterMark: fixture.observedItemHighWaterMark,
+    });
+    expect(request.ready).toBe(true);
+
+    await db.withTransaction(client => enqueuePolicyProfileRefresh({
+      client,
+      record: request.record,
+    }));
+    const terminalWorker = createWorker({
+      claimToken: '44444444-4444-4444-8444-444444444444',
+      profileService: {
+        getProfile: jest.fn().mockResolvedValue(null),
+      },
+    });
+    await expect(terminalWorker.run()).resolves.toMatchObject({ failed: 1 });
+    await expect(createPlanner({ now: CIRCUIT_OPENED_AT }).run()).resolves.toMatchObject({
+      circuitOpened: 1,
+      successorBlocked: 1,
+    });
+
+    const plannerResults = await Promise.all([
+      createPlanner({ now: CIRCUIT_PROBE_DUE_AT }).run(),
+      createPlanner({ now: CIRCUIT_PROBE_DUE_AT }).run(),
+    ]);
+    expect(plannerResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        circuitProbeQueued: 1,
+        circuitBlocked: 0,
+        circuitProbeDeferred: 0,
+      }),
+      expect.objectContaining({
+        circuitProbeQueued: 0,
+        circuitBlocked: 1,
+        circuitProbeDeferred: 0,
+      }),
+    ]));
+
+    const [circuitRows, probeRows] = await Promise.all([
+      db.query(
+        `SELECT source_event_id, circuit_state, probe_outbox_id
+         FROM policy_native_profile_refresh_circuits
+         WHERE library_id = $1`,
+        [fixture.libraryId],
+      ),
+      db.query(
+        `SELECT source_event_id, processing_state
+         FROM policy_profile_refresh_outbox
+         WHERE library_id = $1
+           AND source_event_id LIKE $2`,
+        [fixture.libraryId, `${request.record.sourceEventId}:retry:%`],
+      ),
+    ]);
+    expect(circuitRows.rows).toEqual([expect.objectContaining({
+      source_event_id: request.record.sourceEventId,
+      circuit_state: 'half_open',
+      probe_outbox_id: expect.anything(),
+    })]);
+    expect(probeRows.rows).toEqual([{
+      source_event_id: expect.stringMatching(new RegExp(`^${request.record.sourceEventId}:retry:`)),
+      processing_state: 'pending',
+    }]);
+
+    const readinessService = createReadinessSummaryService(fixture);
+    const recovery = await readinessService.getSummary({
+      dbClient: db,
+      policyId: fixture.policyId,
+    });
+    expect(recovery).toEqual(expect.objectContaining({
+      profileRecovery: {
+        stateId: 'queued',
+        label: 'Recovery queued',
+        message: 'Classifarr has queued an automatic library-profile refresh. No action is needed.',
+      },
+    }));
+  });
 });

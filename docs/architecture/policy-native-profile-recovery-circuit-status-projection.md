@@ -132,9 +132,8 @@ buttons or internal circuit terms.
 
 ## Next Step
 
-Add a concurrent-planner integration case. It must prove that two scheduler
-instances cannot create duplicate probes for the same due current circuit and
-that readiness projects only the resulting server-owned state. The completed
-source-revision isolation verification is documented in [Native Profile Refresh
-Circuit Source-Revision
-Integration](policy-native-profile-refresh-circuit-source-revision-integration.md).
+Add a concurrent-worker claim integration case. It must prove that two workers
+cannot generate a profile or clear a circuit twice for the same pending probe.
+The completed planner concurrency verification is documented in [Native Profile
+Refresh Circuit Concurrent-Planner
+Integration](policy-native-profile-refresh-circuit-concurrent-planner-integration.md).

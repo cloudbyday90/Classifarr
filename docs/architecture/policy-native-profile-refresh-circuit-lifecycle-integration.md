@@ -113,9 +113,8 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Add a concurrent-planner integration case. Two scheduler instances must race
-for one due circuit and create at most one probe, with the read-only readiness
-summary projecting only the resulting current recovery state. The completed
-source-revision isolation verification is documented in [Native Profile Refresh
-Circuit Source-Revision
-Integration](policy-native-profile-refresh-circuit-source-revision-integration.md).
+Add a concurrent-worker claim integration case. Two workers must race for one
+pending probe and permit only one profile generation and circuit clear. The
+completed planner concurrency verification is documented in [Native Profile
+Refresh Circuit Concurrent-Planner
+Integration](policy-native-profile-refresh-circuit-concurrent-planner-integration.md).

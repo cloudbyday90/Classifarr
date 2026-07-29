@@ -99,6 +99,9 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Add a concurrent-planner integration case. It must run two scheduler instances
-against one due circuit and prove that PostgreSQL locking creates at most one
-probe and never leaks a duplicate recovery state to readiness.
+Add a concurrent-worker claim integration case. It must run two workers against
+the one pending probe and prove exactly one can claim, generate, and clear the
+circuit while the other exits without duplicate profile generation. The
+completed scheduler concurrency verification is documented in [Native Profile
+Refresh Circuit Concurrent-Planner
+Integration](policy-native-profile-refresh-circuit-concurrent-planner-integration.md).

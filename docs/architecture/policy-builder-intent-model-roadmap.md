@@ -4262,8 +4262,15 @@ Implementation status:
   source revision queues independently and projects only current work. Its
   design and outcome record is [Native Profile Refresh Circuit Source-Revision
   Integration](policy-native-profile-refresh-circuit-source-revision-integration.md).
-  The next task is a concurrent-planner integration case proving two scheduler
-  instances create at most one due probe for the same current circuit.
+  A concurrent-planner database integration case now proves two scheduler
+  instances create at most one due probe for the same current circuit. Exact
+  PostgreSQL circuit locking and the durable outbox leave one half-open circuit
+  and one queued successor, while the losing planner observes the committed
+  state and blocks. Its design and outcome record is [Native Profile Refresh
+  Circuit Concurrent-Planner
+  Integration](policy-native-profile-refresh-circuit-concurrent-planner-integration.md).
+  The next task is a concurrent-worker claim integration case proving two
+  workers execute the single pending probe at most once.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

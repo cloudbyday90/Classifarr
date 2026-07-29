@@ -116,8 +116,8 @@ fail-closed validation, and the rendered live region's lack of controls.
 
 ## Next Step
 
-Add a concurrent-planner integration case. It must prove that two scheduler
-instances create at most one probe for a due current circuit and preserve the
-read-only automatic recovery display. Source-revision isolation is documented
-in [Native Profile Refresh Circuit Source-Revision
-Integration](policy-native-profile-refresh-circuit-source-revision-integration.md).
+Add a concurrent-worker claim integration case. It must prove that two workers
+claim and generate a pending probe at most once while preserving the read-only
+automatic recovery display. Planner concurrency is documented in [Native
+Profile Refresh Circuit Concurrent-Planner
+Integration](policy-native-profile-refresh-circuit-concurrent-planner-integration.md).
