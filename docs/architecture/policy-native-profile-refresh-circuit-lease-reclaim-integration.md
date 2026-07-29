@@ -97,4 +97,7 @@ The post-generation claim-loss case is complete. It proves a replacement worker
 recognizes a current persisted profile and completes without a second generation;
 see [Native Profile Refresh Circuit Post-Generation Claim-Loss
 Integration](policy-native-profile-refresh-circuit-post-generation-claim-loss-integration.md).
-Next, add lease-exhaustion terminalization coverage for a maxed expired claim.
+Lease-exhaustion terminalization is complete; see [Native Profile Refresh
+Circuit Lease-Exhaustion Terminalization
+Integration](policy-native-profile-refresh-circuit-lease-exhaustion-terminalization-integration.md).
+Next, prove one later cooldown probe returns the circuit to current automatically.

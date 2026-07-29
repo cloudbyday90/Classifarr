@@ -55,6 +55,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   worker recognizes the durable profile, completes the probe, and clears
   recovery state without generating the profile again.
 
+- **Exhausted Recovery Lease Safety**: An automatic probe that exhausts its
+  lease-attempt budget now terminalizes without profile work or circuit cleanup.
+  The scheduler recognizes only its matching failed probe and reopens the
+  bounded recovery cooldown.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action. When an automatic recovery circuit is

@@ -137,6 +137,22 @@ function buildCircuitDecision({ circuit, now = new Date() } = {}) {
   };
 }
 
+function isPolicyNativeProfileRefreshCircuitFailedProbe({
+  circuit,
+  failedOutboxId,
+  failureCode,
+} = {}) {
+  const normalizedCircuit = normalizePolicyNativeProfileRefreshCircuit(circuit);
+  const normalizedFailedOutboxId = normalizePositiveInteger(failedOutboxId);
+
+  return Boolean(
+    normalizedCircuit?.valid &&
+    normalizedCircuit.circuitState === POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_STATE_IDS.HALF_OPEN &&
+    normalizedCircuit.probeOutboxId === normalizedFailedOutboxId &&
+    isPolicyNativeProfileRefreshCircuitFailureCode(failureCode),
+  );
+}
+
 function buildPolicyNativeProfileRefreshCircuitFailureTransition({
   circuit,
   failedOutboxId,
@@ -278,6 +294,7 @@ export {
   buildPolicyNativeProfileRefreshCircuitFailureTransition,
   buildPolicyNativeProfileRefreshCircuitProbeDeferral,
   buildPolicyNativeProfileRefreshCircuitProbeTransition,
+  isPolicyNativeProfileRefreshCircuitFailedProbe,
   normalizeBaseSourceEventId,
   normalizePolicyNativeProfileRefreshCircuit,
 };

@@ -105,7 +105,9 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Add lease-exhaustion terminalization integration coverage. It must prove that
-an already-maxed expired claim becomes a terminal `lease_expired` failure,
-performs no profile work, cannot clear its circuit, and leaves the planner to
-make the next bounded recovery decision.
+Lease-exhaustion terminalization is complete. It proves a maxed expired claim
+does no profile work or circuit cleanup, while the planner reopens only its
+matching active probe; see [Native Profile Refresh Circuit Lease-Exhaustion
+Terminalization
+Integration](policy-native-profile-refresh-circuit-lease-exhaustion-terminalization-integration.md).
+Next, prove one later cooldown probe returns the circuit to current automatically.

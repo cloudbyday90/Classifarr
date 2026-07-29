@@ -24,6 +24,7 @@ import {
 } from './policyNativeProfileRefreshSuccessor.mjs';
 import {
   buildCircuitDecision,
+  isPolicyNativeProfileRefreshCircuitFailedProbe,
 } from './policyNativeProfileRefreshCircuit.mjs';
 import {
   policyNativeProfileRefreshCircuitCompactionRepository,
@@ -183,6 +184,35 @@ class PolicyNativeProfileRefreshPlanner {
     return { ...probe, started: true };
   }
 
+  async reconcileFailedCircuitProbe({ client, request, circuit, now }) {
+    if (circuit?.circuitState !== POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_STATE_IDS.HALF_OPEN) {
+      return null;
+    }
+
+    const failureHistory = await this.failureRepository.findHistory({
+      client,
+      libraryId: request.record.libraryId,
+      sourceEventId: request.record.sourceEventId,
+    });
+    if (!isPolicyNativeProfileRefreshCircuitFailedProbe({
+      circuit,
+      failedOutboxId: failureHistory?.failedOutboxId,
+      failureCode: failureHistory?.failureCode,
+    })) {
+      return null;
+    }
+
+    return this.circuitRepository.recordFailure({
+      client,
+      libraryId: request.record.libraryId,
+      sourceEventId: request.record.sourceEventId,
+      failedOutboxId: failureHistory.failedOutboxId,
+      failureCount: failureHistory.failureCount,
+      failureCode: failureHistory.failureCode,
+      now,
+    });
+  }
+
   async persistRequests(requests) {
     if (requests.length === 0) return [];
 
@@ -194,14 +224,28 @@ class PolicyNativeProfileRefreshPlanner {
       const results = [];
       for (const request of requests) {
         const now = this.now();
-        const circuit = await this.circuitRepository.lock({
+        let circuit = await this.circuitRepository.lock({
           client,
           libraryId: request.record.libraryId,
           sourceEventId: request.record.sourceEventId,
         });
+        const failedProbeTransition = await this.reconcileFailedCircuitProbe({
+          client,
+          request,
+          circuit,
+          now,
+        });
+        if (failedProbeTransition?.circuit) {
+          circuit = failedProbeTransition.circuit;
+        }
         const circuitDecision = buildCircuitDecision({ circuit, now });
         if (circuitDecision.actionId === POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_ACTION_IDS.BLOCK) {
-          results.push({ primary: null, successor: null, circuitBlocked: true });
+          results.push({
+            primary: null,
+            successor: null,
+            circuitBlocked: true,
+            circuitTransition: failedProbeTransition,
+          });
           continue;
         }
         if (circuitDecision.actionId === POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_ACTION_IDS.ENQUEUE_PROBE) {
@@ -212,7 +256,7 @@ class PolicyNativeProfileRefreshPlanner {
 
         const primary = await this.enqueue({ client, record: request.record });
         let successor = null;
-        let circuitTransition = null;
+        let circuitTransition = failedProbeTransition;
 
         if (primary?.outbox?.processingState === POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS.FAILED) {
           const failureHistory = await this.failureRepository.findHistory({

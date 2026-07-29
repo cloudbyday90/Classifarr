@@ -13,6 +13,7 @@ import {
   buildPolicyNativeProfileRefreshCircuitFailureTransition,
   buildPolicyNativeProfileRefreshCircuitProbeDeferral,
   buildPolicyNativeProfileRefreshCircuitProbeTransition,
+  isPolicyNativeProfileRefreshCircuitFailedProbe,
 } from '../../services/policyNativeProfileRefreshCircuit.mjs';
 
 const NOW = new Date('2026-07-28T12:00:00.000Z');
@@ -87,6 +88,35 @@ describe('policyNativeProfileRefreshCircuit', () => {
       actionId: 'block',
       reasonCodes: ['native_profile_refresh_circuit_probe_in_progress'],
     });
+  });
+
+  test('recognizes only a known terminal failure for the active half-open probe', () => {
+    const halfOpenCircuit = buildPolicyNativeProfileRefreshCircuitProbeTransition({
+      circuit: buildPolicyNativeProfileRefreshCircuitFailureTransition({
+        failedOutboxId: 93,
+        failureCount: 3,
+        failureCode: 'profile_refresh_unknown_failed',
+        now: NOW,
+      }).circuit,
+      probeOutboxId: 94,
+      now: new Date('2026-07-28T14:00:00.000Z'),
+    }).circuit;
+
+    expect(isPolicyNativeProfileRefreshCircuitFailedProbe({
+      circuit: halfOpenCircuit,
+      failedOutboxId: 94,
+      failureCode: 'profile_refresh_lease_expired',
+    })).toBe(true);
+    expect(isPolicyNativeProfileRefreshCircuitFailedProbe({
+      circuit: halfOpenCircuit,
+      failedOutboxId: 95,
+      failureCode: 'profile_refresh_lease_expired',
+    })).toBe(false);
+    expect(isPolicyNativeProfileRefreshCircuitFailedProbe({
+      circuit: halfOpenCircuit,
+      failedOutboxId: 94,
+      failureCode: 'untrusted_failure_code',
+    })).toBe(false);
   });
 
   test('defers a due probe when active work coalesces it instead of retrying every scheduler tick', () => {

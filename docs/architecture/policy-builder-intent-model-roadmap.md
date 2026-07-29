@@ -4288,9 +4288,16 @@ Implementation status:
   then clears the circuit. Its design and outcome record is [Native Profile
   Refresh Circuit Post-Generation Claim-Loss
   Integration](policy-native-profile-refresh-circuit-post-generation-claim-loss-integration.md).
-  The next task is a lease-exhaustion terminalization integration case proving
-  a maxed expired claim becomes terminal without profile work or circuit
-  cleanup, leaving the planner to make the next bounded recovery decision.
+  A lease-exhaustion terminalization database integration case now proves an
+  exhausted expired probe becomes a fixed terminal failure before it can do
+  profile work or clear recovery state. The planner recognizes only the
+  matching active failed probe, reopens the circuit through its normal bounded
+  transition, and blocks work until cooldown. Its design and outcome record is
+  [Native Profile Refresh Circuit Lease-Exhaustion Terminalization
+  Integration](policy-native-profile-refresh-circuit-lease-exhaustion-terminalization-integration.md).
+  The next task is a post-exhaustion cooldown re-probe integration case proving
+  the reopened circuit queues exactly one later automatic probe and returns to
+  current after that probe succeeds without browser or operator intervention.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

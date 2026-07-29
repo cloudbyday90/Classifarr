@@ -51,6 +51,18 @@ function createOpenCircuit({ nextProbeAt = '2026-07-28T14:00:00.000Z' } = {}) {
   };
 }
 
+function createHalfOpenCircuit({ probeOutboxId = 94 } = {}) {
+  return {
+    circuitState: 'half_open',
+    consecutiveFailureCount: 1,
+    lastTerminalOutboxId: 93,
+    lastFailureCode: 'profile_refresh_configuration_invalid',
+    openedAt: '2026-07-28T12:00:00.000Z',
+    nextProbeAt: null,
+    probeOutboxId,
+  };
+}
+
 describe('PolicyNativeProfileRefreshPlanner', () => {
   test('persists only valid server-derived requests and reports replay or per-library coalescing', async () => {
     const client = { query: jest.fn() };
@@ -277,6 +289,57 @@ describe('PolicyNativeProfileRefreshPlanner', () => {
       libraryId: 8,
       sourceEventId: SOURCE_EVENT_ID,
     }));
+  });
+
+  test('reopens a half-open circuit when its active probe reaches terminal failure', async () => {
+    const client = { query: jest.fn() };
+    const circuitRepository = createCircuitRepository({
+      circuit: createHalfOpenCircuit(),
+      failureTransition: {
+        ready: true,
+        opened: true,
+        circuit: createOpenCircuit({ nextProbeAt: '2026-07-28T14:00:00.000Z' }),
+      },
+    });
+    const enqueue = jest.fn();
+    const failureRepository = {
+      findHistory: jest.fn().mockResolvedValue({
+        failedOutboxId: '94',
+        failureCode: 'profile_refresh_lease_expired',
+        failureCount: 2,
+      }),
+    };
+    const planner = new PolicyNativeProfileRefreshPlanner({
+      dbClient: { withTransaction: jest.fn(callback => callback(client)) },
+      candidateRepository: {
+        findCandidates: jest.fn().mockResolvedValue([{
+          libraryId: 8,
+          profileState: 'stale_profile',
+          profileGeneratedAt: '2026-07-25T12:00:00.000Z',
+        }]),
+      },
+      circuitRepository,
+      failureRepository,
+      enqueue,
+      now: () => new Date('2026-07-28T12:00:00.000Z'),
+      loggerInstance: { info: jest.fn() },
+    });
+
+    await expect(planner.run()).resolves.toMatchObject({
+      circuitOpened: 1,
+      circuitBlocked: 1,
+      queued: 0,
+    });
+    expect(circuitRepository.recordFailure).toHaveBeenCalledWith({
+      client,
+      libraryId: 8,
+      sourceEventId: SOURCE_EVENT_ID,
+      failedOutboxId: '94',
+      failureCount: 2,
+      failureCode: 'profile_refresh_lease_expired',
+      now: new Date('2026-07-28T12:00:00.000Z'),
+    });
+    expect(enqueue).not.toHaveBeenCalled();
   });
 
   test('enqueues one successor-backed automatic probe when an open circuit is due', async () => {
