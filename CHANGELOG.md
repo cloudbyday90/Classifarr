@@ -34,6 +34,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   now also distinguishes an absent active outbox record from real pending work,
   so a current open circuit remains visible during its automatic cooldown.
 
+- **Source-Revision Recovery Isolation**: New library content now receives its
+  own automatic profile-recovery revision. An older cooldown circuit cannot
+  block, relabel, or otherwise leak into the current content's queued recovery.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action. When an automatic recovery circuit is

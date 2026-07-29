@@ -132,8 +132,9 @@ buttons or internal circuit terms.
 
 ## Next Step
 
-Add an isolated cross-source-revision integration case: after an old source
-revision opens a circuit, new observed library content must create a new source
-revision that neither blocks normal scheduling nor receives the old circuit's
-`awaiting_automatic_probe` display state. The test must remain server-owned
-and require no browser dialog, operator action, or local-time inference.
+Add a concurrent-planner integration case. It must prove that two scheduler
+instances cannot create duplicate probes for the same due current circuit and
+that readiness projects only the resulting server-owned state. The completed
+source-revision isolation verification is documented in [Native Profile Refresh
+Circuit Source-Revision
+Integration](policy-native-profile-refresh-circuit-source-revision-integration.md).

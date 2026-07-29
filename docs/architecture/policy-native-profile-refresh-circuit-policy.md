@@ -142,8 +142,8 @@ behavior, successful worker reset, and replace-restore cleanup.
 
 ## Next Step
 
-Add a cross-source-revision integration case. It must prove that an open circuit
-for old observed library content cannot block or label a new current source
-revision. The completed lifecycle verification is documented in [Native Profile
-Refresh Circuit Lifecycle
-Integration](policy-native-profile-refresh-circuit-lifecycle-integration.md).
+Add a concurrent-planner integration case. It must prove that two scheduler
+instances create at most one probe for a due current circuit. The completed
+source-revision isolation verification is documented in [Native Profile Refresh
+Circuit Source-Revision
+Integration](policy-native-profile-refresh-circuit-source-revision-integration.md).

@@ -4256,8 +4256,14 @@ Implementation status:
   runtime state, and readiness returns to current without browser intervention.
   Its design and outcome record is [Native Profile Refresh Circuit Lifecycle
   Integration](policy-native-profile-refresh-circuit-lifecycle-integration.md).
-  The next task is a cross-source-revision integration case proving that an old
-  open circuit cannot block or label a new current content revision.
+  A cross-source-revision database integration case now proves that an old open
+  circuit cannot block or label a new current content revision. The old circuit
+  remains retained for bounded recovery history while a new server-derived
+  source revision queues independently and projects only current work. Its
+  design and outcome record is [Native Profile Refresh Circuit Source-Revision
+  Integration](policy-native-profile-refresh-circuit-source-revision-integration.md).
+  The next task is a concurrent-planner integration case proving two scheduler
+  instances create at most one due probe for the same current circuit.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

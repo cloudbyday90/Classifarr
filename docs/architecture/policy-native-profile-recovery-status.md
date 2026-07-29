@@ -116,8 +116,8 @@ fail-closed validation, and the rendered live region's lack of controls.
 
 ## Next Step
 
-Add a cross-source-revision integration case. It must prove that a circuit for
-old observed library content neither blocks scheduling nor changes the recovery
-status after current library content establishes a new source revision. The
-lifecycle verification is documented in [Native Profile Refresh Circuit
-Lifecycle Integration](policy-native-profile-refresh-circuit-lifecycle-integration.md).
+Add a concurrent-planner integration case. It must prove that two scheduler
+instances create at most one probe for a due current circuit and preserve the
+read-only automatic recovery display. Source-revision isolation is documented
+in [Native Profile Refresh Circuit Source-Revision
+Integration](policy-native-profile-refresh-circuit-source-revision-integration.md).

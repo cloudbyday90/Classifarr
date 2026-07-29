@@ -66,6 +66,20 @@ function buildNativeIntent({ policyId, libraryId }) {
   };
 }
 
+async function insertObservedItem({ libraryId, suffix, titleSuffix = '' }) {
+  const itemResult = await db.query(
+    `INSERT INTO media_server_items (library_id, external_id, title, media_type)
+     VALUES ($1, $2, $3, 'movie')
+     RETURNING id`,
+    [
+      libraryId,
+      `native-circuit-item-${suffix}${titleSuffix}`,
+      `Native Circuit Item ${suffix}${titleSuffix}`,
+    ],
+  );
+  return itemResult.rows[0].id;
+}
+
 async function createNativeProfileRefreshFixture() {
   const suffix = randomUUID().replaceAll('-', '');
   const libraryResult = await db.query(
@@ -102,17 +116,12 @@ async function createNativeProfileRefreshFixture() {
     [intentResult.rows[0].id, JSON.stringify({ require_any: ['Animation'] })],
   );
   await db.query('UPDATE policy_intents SET active = TRUE WHERE id = $1', [intentResult.rows[0].id]);
-  const itemResult = await db.query(
-    `INSERT INTO media_server_items (library_id, external_id, title, media_type)
-     VALUES ($1, $2, $3, 'movie')
-     RETURNING id`,
-    [libraryId, `native-circuit-item-${suffix}`, `Native Circuit Item ${suffix}`],
-  );
+  const observedItemHighWaterMark = await insertObservedItem({ libraryId, suffix });
 
   return {
     libraryId,
     policyId,
-    observedItemHighWaterMark: itemResult.rows[0].id,
+    observedItemHighWaterMark,
   };
 }
 
@@ -324,5 +333,101 @@ describe('Native profile refresh circuit lifecycle integration', () => {
         message: 'No automatic profile recovery is needed.',
       },
     }));
+  });
+
+  test('does not let an old open circuit block or label a new content revision', async () => {
+    const fixture = await createNativeProfileRefreshFixture();
+    libraryIds.push(fixture.libraryId);
+    const oldRequest = buildPolicyNativeProfileRefreshRequest({
+      libraryId: fixture.libraryId,
+      profileState: 'missing_profile',
+      observedItemCount: 1,
+      observedItemHighWaterMark: fixture.observedItemHighWaterMark,
+    });
+    expect(oldRequest.ready).toBe(true);
+
+    await db.withTransaction(client => enqueuePolicyProfileRefresh({
+      client,
+      record: oldRequest.record,
+    }));
+    const terminalWorker = createWorker({
+      claimToken: '33333333-3333-4333-8333-333333333333',
+      profileService: {
+        getProfile: jest.fn().mockResolvedValue(null),
+      },
+    });
+    await expect(terminalWorker.run()).resolves.toMatchObject({ failed: 1 });
+    await expect(createPlanner({ now: CIRCUIT_OPENED_AT }).run()).resolves.toMatchObject({
+      circuitOpened: 1,
+      circuitBlocked: 0,
+      successorBlocked: 1,
+    });
+
+    const nextObservedItemHighWaterMark = await insertObservedItem({
+      libraryId: fixture.libraryId,
+      suffix: randomUUID().replaceAll('-', ''),
+      titleSuffix: '-new-revision',
+    });
+    const currentRequest = buildPolicyNativeProfileRefreshRequest({
+      libraryId: fixture.libraryId,
+      profileState: 'missing_profile',
+      observedItemCount: 2,
+      observedItemHighWaterMark: nextObservedItemHighWaterMark,
+    });
+    expect(currentRequest).toEqual(expect.objectContaining({ ready: true }));
+    expect(currentRequest.record.sourceEventId).not.toBe(oldRequest.record.sourceEventId);
+
+    await expect(createPlanner({ now: CIRCUIT_OPENED_AT }).run()).resolves.toMatchObject({
+      queued: 1,
+      circuitBlocked: 0,
+      circuitProbeQueued: 0,
+    });
+
+    const [circuitRows, outboxRows] = await Promise.all([
+      db.query(
+        `SELECT source_event_id, circuit_state
+         FROM policy_native_profile_refresh_circuits
+         WHERE library_id = $1`,
+        [fixture.libraryId],
+      ),
+      db.query(
+        `SELECT source_event_id, processing_state
+         FROM policy_profile_refresh_outbox
+         WHERE library_id = $1
+         ORDER BY id`,
+        [fixture.libraryId],
+      ),
+    ]);
+    expect(circuitRows.rows).toEqual([{
+      source_event_id: oldRequest.record.sourceEventId,
+      circuit_state: 'open',
+    }]);
+    expect(outboxRows.rows).toEqual([
+      {
+        source_event_id: oldRequest.record.sourceEventId,
+        processing_state: 'failed',
+      },
+      {
+        source_event_id: currentRequest.record.sourceEventId,
+        processing_state: 'pending',
+      },
+    ]);
+
+    const readinessService = createReadinessSummaryService(fixture);
+    const current = await readinessService.getSummary({
+      dbClient: db,
+      policyId: fixture.policyId,
+    });
+    expect(current).toEqual(expect.objectContaining({
+      profileRecovery: {
+        stateId: 'queued',
+        label: 'Recovery queued',
+        message: 'Classifarr has queued an automatic library-profile refresh. No action is needed.',
+      },
+      sideEffects: expect.objectContaining({
+        profileRefreshCircuitRead: false,
+      }),
+    }));
+    expect(JSON.stringify(current)).not.toContain('awaiting_automatic_probe');
   });
 });

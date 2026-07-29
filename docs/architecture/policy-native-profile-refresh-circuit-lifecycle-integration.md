@@ -113,8 +113,9 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Add an isolated cross-source-revision integration case: after an old source
-revision opens a circuit, new observed library content must produce a new
-source revision that is not blocked or labelled as awaiting the old circuit.
-That protects automatic recovery when library content changes during a
-cooldown.
+Add a concurrent-planner integration case. Two scheduler instances must race
+for one due circuit and create at most one probe, with the read-only readiness
+summary projecting only the resulting current recovery state. The completed
+source-revision isolation verification is documented in [Native Profile Refresh
+Circuit Source-Revision
+Integration](policy-native-profile-refresh-circuit-source-revision-integration.md).
