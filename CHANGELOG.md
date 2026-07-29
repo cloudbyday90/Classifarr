@@ -74,6 +74,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   circuits, pending probes, protected current revisions, and recent history
   remain server-owned and intact.
 
+- **Concurrent Recovery Retention Safety**: Overlapping scheduler planners now
+  have integration coverage proving an expired current source revision remains
+  protected through compaction while exactly one automatic recovery successor
+  is durably scheduled.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action. When an automatic recovery circuit is

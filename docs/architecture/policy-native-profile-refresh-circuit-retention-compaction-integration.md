@@ -102,6 +102,8 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Add concurrent planner-and-compaction interleaving integration coverage. It
-must prove an overlapping scheduler cannot compact a current source revision
-while another scheduler is planning its active recovery work.
+The completed planner-and-compaction interleaving integration is documented in
+[Native Profile Refresh Circuit Planner-Compaction Interleaving
+Integration](policy-native-profile-refresh-circuit-planner-compaction-interleaving-integration.md).
+Next, add compaction-failure isolation integration coverage so cleanup failure
+cannot interrupt durable automatic recovery scheduling.

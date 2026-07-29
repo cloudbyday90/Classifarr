@@ -4317,9 +4317,16 @@ Implementation status:
   cleanup under PostgreSQL's data-modifying CTE snapshot rules. Its design and
   outcome record is [Native Profile Refresh Circuit Retention-Compaction
   Integration](policy-native-profile-refresh-circuit-retention-compaction-integration.md).
-  The next task is concurrent planner-and-compaction interleaving integration
-  coverage proving an overlapping scheduler cannot compact a current source
-  revision while another scheduler is planning its active recovery work.
+  A concurrent planner-and-compaction database integration case now proves
+  overlapping scheduler instances retain an otherwise expired current source
+  revision while scheduling its automatic recovery. Exact circuit locking and
+  durable outbox source identity leave one pending successor; the second
+  planner safely replays it. Its design and outcome record is [Native Profile
+  Refresh Circuit Planner-Compaction Interleaving
+  Integration](policy-native-profile-refresh-circuit-planner-compaction-interleaving-integration.md).
+  The next task is compaction-failure isolation integration coverage proving a
+  cleanup error cannot interrupt current automatic recovery scheduling and a
+  later successful scheduler run resumes cleanup without operator action.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read
