@@ -92,11 +92,16 @@ async function createNativeProfileRefreshCandidateFixture() {
   };
 }
 
-function createPlanner({ now = new Date() } = {}) {
+function createPlanner({
+  now = new Date(),
+  circuitCompactionRepository,
+  loggerInstance = { info: jest.fn(), warn: jest.fn() },
+} = {}) {
   return new PolicyNativeProfileRefreshPlanner({
     dbClient: db,
     now: () => now,
-    loggerInstance: { info: jest.fn(), warn: jest.fn() },
+    circuitCompactionRepository,
+    loggerInstance,
   });
 }
 
@@ -404,6 +409,88 @@ describe('Native profile refresh circuit retention-compaction integration', () =
         source_event_id: `${request.record.sourceEventId}:retry:${terminalOutboxId}`,
         processing_state: 'pending',
         attempt_count: 0,
+      },
+    ]);
+  });
+
+  test('keeps automatic recovery durable when one compaction pass fails and resumes cleanup later', async () => {
+    const expiredInactive = await createRevision();
+    const fixture = await createNativeProfileRefreshCandidateFixture();
+    libraryIds.push(expiredInactive.libraryId, fixture.libraryId);
+    const compactionFailure = new Error('simulated compaction outage');
+    const circuitCompactionRepository = {
+      compact: jest.fn()
+        .mockRejectedValueOnce(compactionFailure)
+        .mockImplementation(({ client, protectedRevisions }) =>
+          compactPolicyNativeProfileRefreshCircuitHistory({ client, protectedRevisions })),
+    };
+    const logger = { info: jest.fn(), warn: jest.fn() };
+    const planner = createPlanner({ circuitCompactionRepository, loggerInstance: logger });
+
+    await expect(planner.run()).resolves.toMatchObject({
+      statusId: 'completed',
+      queued: 1,
+      replayed: 0,
+      circuitsCompacted: 0,
+      outboxRowsCompacted: 0,
+      compactionFailed: true,
+    });
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Native profile refresh circuit compaction failed',
+      { reasonId: 'native_profile_refresh_circuit_compaction_failed' },
+    );
+
+    const firstRunRows = await db.query(
+      `SELECT library_id, source_event_id, processing_state
+       FROM policy_profile_refresh_outbox
+       WHERE library_id = ANY($1::bigint[])
+       ORDER BY library_id, id`,
+      [[expiredInactive.libraryId, fixture.libraryId]],
+    );
+    expect(firstRunRows.rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        library_id: expiredInactive.libraryId,
+        source_event_id: expiredInactive.sourceEventId,
+        processing_state: 'failed',
+      }),
+      expect.objectContaining({
+        library_id: fixture.libraryId,
+        processing_state: 'pending',
+      }),
+    ]));
+
+    await expect(planner.run()).resolves.toMatchObject({
+      statusId: 'completed',
+      queued: 0,
+      replayed: 1,
+      circuitsCompacted: 1,
+      outboxRowsCompacted: 1,
+      compactionFailed: false,
+    });
+    expect(circuitCompactionRepository.compact).toHaveBeenCalledTimes(2);
+
+    const [circuitRows, outboxRows] = await Promise.all([
+      db.query(
+        `SELECT library_id, source_event_id
+         FROM policy_native_profile_refresh_circuits
+         WHERE library_id = ANY($1::bigint[])`,
+        [[expiredInactive.libraryId, fixture.libraryId]],
+      ),
+      db.query(
+        `SELECT library_id, source_event_id, processing_state
+         FROM policy_profile_refresh_outbox
+         WHERE library_id = ANY($1::bigint[])
+         ORDER BY library_id, id`,
+        [[expiredInactive.libraryId, fixture.libraryId]],
+      ),
+    ]);
+    expect(circuitRows.rows).toEqual([]);
+    expect(outboxRows.rows).toEqual([
+      {
+        library_id: fixture.libraryId,
+        source_event_id:
+          `library-profile:${fixture.libraryId}:missing_profile:items:1:high-water:${fixture.observedItemHighWaterMark}`,
+        processing_state: 'pending',
       },
     ]);
   });

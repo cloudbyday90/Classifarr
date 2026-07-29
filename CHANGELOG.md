@@ -79,6 +79,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   protected through compaction while exactly one automatic recovery successor
   is durably scheduled.
 
+- **Automatic Recovery Cleanup Resilience**: A compaction outage no longer
+  interrupts durable native recovery scheduling. The next scheduler run retries
+  cleanup automatically while current pending work remains idempotent and
+  server-owned.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action. When an automatic recovery circuit is

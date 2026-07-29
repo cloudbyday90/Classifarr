@@ -4324,9 +4324,16 @@ Implementation status:
   planner safely replays it. Its design and outcome record is [Native Profile
   Refresh Circuit Planner-Compaction Interleaving
   Integration](policy-native-profile-refresh-circuit-planner-compaction-interleaving-integration.md).
-  The next task is compaction-failure isolation integration coverage proving a
-  cleanup error cannot interrupt current automatic recovery scheduling and a
-  later successful scheduler run resumes cleanup without operator action.
+  A compaction-failure isolation database integration case now proves a cleanup
+  outage cannot interrupt durable current automatic recovery scheduling. The
+  planner returns its fixed failure signal while the next successful scheduler
+  run replays current work and removes expired inactive history automatically.
+  Its design and outcome record is [Native Profile Refresh Circuit
+  Compaction-Failure Isolation
+  Integration](policy-native-profile-refresh-circuit-compaction-failure-isolation-integration.md).
+  The next task is concurrent retention-compaction idempotency integration
+  coverage proving overlapping cleanup callers remove stale history at most
+  once, leave no orphaned records, and do not affect retained current revisions.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

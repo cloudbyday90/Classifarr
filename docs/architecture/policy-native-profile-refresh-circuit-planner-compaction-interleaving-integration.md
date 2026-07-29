@@ -102,7 +102,8 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Add compaction-failure isolation integration coverage. It must prove a cleanup
-failure is reported and does not prevent the planner from durably scheduling
-current automatic recovery; the following successful scheduler run must resume
-cleanup without an operator action.
+The completed compaction-failure isolation integration is documented in [Native
+Profile Refresh Circuit Compaction-Failure Isolation
+Integration](policy-native-profile-refresh-circuit-compaction-failure-isolation-integration.md).
+Next, add concurrent retention-compaction idempotency integration coverage so
+overlapping cleanup callers cannot create partial or duplicate history removal.
