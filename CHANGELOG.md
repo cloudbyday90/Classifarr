@@ -50,6 +50,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   reclaimed by a new worker, while the old claim token cannot complete the
   probe or clear its circuit.
 
+- **Post-Generation Recovery Idempotency**: When a worker persists a current
+  native library profile but stops before acknowledgement, the reclaiming
+  worker recognizes the durable profile, completes the probe, and clears
+  recovery state without generating the profile again.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action. When an automatic recovery circuit is

@@ -142,7 +142,8 @@ behavior, successful worker reset, and replace-restore cleanup.
 
 ## Next Step
 
-Add a post-generation claim-loss integration case. It must prove a replacement
-worker completes a current profile without generating it twice. Lease-reclaim
-verification is documented in [Native Profile Refresh Circuit Lease-Reclaim
-Integration](policy-native-profile-refresh-circuit-lease-reclaim-integration.md).
+The post-generation claim-loss case now proves a replacement worker completes a
+durably current profile without a second generation; see [Native Profile Refresh
+Circuit Post-Generation Claim-Loss
+Integration](policy-native-profile-refresh-circuit-post-generation-claim-loss-integration.md).
+Next, verify terminal handling after the final reclaim lease expires.

@@ -4281,8 +4281,16 @@ Implementation status:
   to complete the second attempt and clear recovery state. Its design and
   outcome record is [Native Profile Refresh Circuit Lease-Reclaim
   Integration](policy-native-profile-refresh-circuit-lease-reclaim-integration.md).
-  The next task is a post-generation claim-loss integration case proving a
-  replacement worker completes a current profile without generating it twice.
+  A post-generation claim-loss database integration case now proves a worker
+  that persisted a current profile before disappearing does not cause duplicate
+  generation. The replacement worker reclaims the expired probe, derives the
+  current stored profile, completes the second attempt as already current, and
+  then clears the circuit. Its design and outcome record is [Native Profile
+  Refresh Circuit Post-Generation Claim-Loss
+  Integration](policy-native-profile-refresh-circuit-post-generation-claim-loss-integration.md).
+  The next task is a lease-exhaustion terminalization integration case proving
+  a maxed expired claim becomes terminal without profile work or circuit
+  cleanup, leaving the planner to make the next bounded recovery decision.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

@@ -93,7 +93,8 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Add a post-generation claim-loss integration case. It must simulate a worker
-that persists a current profile but disappears before completing its probe, then
-prove the reclaiming worker recognizes that current profile and completes
-without a second profile generation.
+The post-generation claim-loss case is complete. It proves a replacement worker
+recognizes a current persisted profile and completes without a second generation;
+see [Native Profile Refresh Circuit Post-Generation Claim-Loss
+Integration](policy-native-profile-refresh-circuit-post-generation-claim-loss-integration.md).
+Next, add lease-exhaustion terminalization coverage for a maxed expired claim.

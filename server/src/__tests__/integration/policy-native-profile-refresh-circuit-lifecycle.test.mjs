@@ -83,6 +83,25 @@ async function insertObservedItem({ libraryId, suffix, titleSuffix = '' }) {
   return itemResult.rows[0].id;
 }
 
+async function persistCurrentProfile({ libraryId }) {
+  const profile = await db.query(
+    `INSERT INTO library_profiles (
+       library_id, rating_distribution, genre_distribution, studio_distribution,
+       keyword_distribution, item_count, last_generated_at
+     )
+     VALUES ($1, '{}'::jsonb, '{"Animation": 100}'::jsonb, '{}'::jsonb,
+       '{}'::jsonb, 1, NOW())
+     ON CONFLICT (library_id) DO UPDATE
+     SET genre_distribution = EXCLUDED.genre_distribution,
+         item_count = EXCLUDED.item_count,
+         last_generated_at = EXCLUDED.last_generated_at,
+         updated_at = NOW()
+     RETURNING library_id, last_generated_at`,
+    [libraryId],
+  );
+  return profile.rows[0];
+}
+
 async function createNativeProfileRefreshFixture() {
   const suffix = randomUUID().replaceAll('-', '');
   const libraryResult = await db.query(
@@ -281,24 +300,7 @@ describe('Native profile refresh circuit lifecycle integration', () => {
           );
           return profile.rows[0] || null;
         },
-        generateProfile: async libraryId => {
-          const profile = await db.query(
-            `INSERT INTO library_profiles (
-               library_id, rating_distribution, genre_distribution, studio_distribution,
-               keyword_distribution, item_count, last_generated_at
-             )
-             VALUES ($1, '{}'::jsonb, '{"Animation": 100}'::jsonb, '{}'::jsonb,
-               '{}'::jsonb, 1, NOW())
-             ON CONFLICT (library_id) DO UPDATE
-             SET genre_distribution = EXCLUDED.genre_distribution,
-                 item_count = EXCLUDED.item_count,
-                 last_generated_at = EXCLUDED.last_generated_at,
-                 updated_at = NOW()
-             RETURNING library_id, last_generated_at`,
-            [libraryId],
-          );
-          return profile.rows[0];
-        },
+        generateProfile: libraryId => persistCurrentProfile({ libraryId }),
       },
     });
     await expect(successfulWorker.run()).resolves.toMatchObject({
@@ -564,24 +566,7 @@ describe('Native profile refresh circuit lifecycle integration', () => {
         );
         return result.rows[0] || null;
       }),
-      generateProfile: jest.fn(async libraryId => {
-        const result = await db.query(
-          `INSERT INTO library_profiles (
-             library_id, rating_distribution, genre_distribution, studio_distribution,
-             keyword_distribution, item_count, last_generated_at
-           )
-           VALUES ($1, '{}'::jsonb, '{"Animation": 100}'::jsonb, '{}'::jsonb,
-             '{}'::jsonb, 1, NOW())
-           ON CONFLICT (library_id) DO UPDATE
-           SET genre_distribution = EXCLUDED.genre_distribution,
-               item_count = EXCLUDED.item_count,
-               last_generated_at = EXCLUDED.last_generated_at,
-               updated_at = NOW()
-           RETURNING library_id, last_generated_at`,
-          [libraryId],
-        );
-        return result.rows[0];
-      }),
+      generateProfile: jest.fn(libraryId => persistCurrentProfile({ libraryId })),
     };
     const workerResults = await Promise.all([
       createWorker({
@@ -697,22 +682,7 @@ describe('Native profile refresh circuit lifecycle integration', () => {
       generateProfile: jest.fn(async libraryId => {
         generationStarted.resolve();
         await continueGeneration.promise;
-        const result = await db.query(
-          `INSERT INTO library_profiles (
-             library_id, rating_distribution, genre_distribution, studio_distribution,
-             keyword_distribution, item_count, last_generated_at
-           )
-           VALUES ($1, '{}'::jsonb, '{"Animation": 100}'::jsonb, '{}'::jsonb,
-             '{}'::jsonb, 1, NOW())
-           ON CONFLICT (library_id) DO UPDATE
-           SET genre_distribution = EXCLUDED.genre_distribution,
-               item_count = EXCLUDED.item_count,
-               last_generated_at = EXCLUDED.last_generated_at,
-               updated_at = NOW()
-           RETURNING library_id, last_generated_at`,
-          [libraryId],
-        );
-        return result.rows[0];
+        return persistCurrentProfile({ libraryId });
       }),
     };
     const reclaimRun = createWorker({
@@ -763,5 +733,109 @@ describe('Native profile refresh circuit lifecycle integration', () => {
       attempt_count: 2,
       claim_token: null,
     }]);
+  });
+
+  test('completes an expired probe after profile persistence without generating it again', async () => {
+    const fixture = await createNativeProfileRefreshFixture();
+    libraryIds.push(fixture.libraryId);
+    const request = buildPolicyNativeProfileRefreshRequest({
+      libraryId: fixture.libraryId,
+      profileState: 'missing_profile',
+      observedItemCount: 1,
+      observedItemHighWaterMark: fixture.observedItemHighWaterMark,
+    });
+    expect(request.ready).toBe(true);
+
+    await db.withTransaction(client => enqueuePolicyProfileRefresh({
+      client,
+      record: request.record,
+    }));
+    const terminalWorker = createWorker({
+      claimToken: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      profileService: {
+        getProfile: jest.fn().mockResolvedValue(null),
+      },
+    });
+    await expect(terminalWorker.run()).resolves.toMatchObject({ failed: 1 });
+    await expect(createPlanner({ now: CIRCUIT_OPENED_AT }).run()).resolves.toMatchObject({
+      circuitOpened: 1,
+      successorBlocked: 1,
+    });
+    await expect(createPlanner({ now: CIRCUIT_PROBE_DUE_AT }).run()).resolves.toMatchObject({
+      circuitProbeQueued: 1,
+      circuitProbeDeferred: 0,
+    });
+
+    const abandonedClaimToken = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    const abandonedWorker = createWorker({
+      claimToken: abandonedClaimToken,
+      profileService: {},
+    });
+    const abandonedClaim = await abandonedWorker.claimBatch(abandonedClaimToken);
+    expect(abandonedClaim.records).toEqual([expect.objectContaining({
+      libraryId: String(fixture.libraryId),
+      requestType: 'native_readiness',
+    })]);
+    const abandonedProbeId = abandonedClaim.records[0].id;
+
+    // The original worker completed the durable profile write but exited before claim completion.
+    await persistCurrentProfile({ libraryId: fixture.libraryId });
+    await db.query(
+      `UPDATE policy_profile_refresh_outbox
+       SET lease_expires_at = NOW() - INTERVAL '1 second'
+       WHERE id = $1
+         AND claim_token = $2::uuid`,
+      [abandonedProbeId, abandonedClaimToken],
+    );
+
+    const profileService = {
+      getProfile: jest.fn(async libraryId => {
+        const result = await db.query(
+          'SELECT * FROM library_profiles WHERE library_id = $1',
+          [libraryId],
+        );
+        return result.rows[0] || null;
+      }),
+      generateProfile: jest.fn(() => {
+        throw new Error('A current profile must not be generated again after claim recovery.');
+      }),
+    };
+    const result = await createWorker({
+      claimToken: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      profileService,
+    }).run();
+
+    expect(result).toMatchObject({
+      claimed: 1,
+      completed: 1,
+      completedAlreadyCurrent: 1,
+      circuitsCleared: 1,
+    });
+    expect(profileService.getProfile).toHaveBeenCalledTimes(1);
+    expect(profileService.generateProfile).not.toHaveBeenCalled();
+
+    const [circuitRows, probeRows, profileRows] = await Promise.all([
+      db.query(
+        'SELECT source_event_id FROM policy_native_profile_refresh_circuits WHERE library_id = $1',
+        [fixture.libraryId],
+      ),
+      db.query(
+        `SELECT processing_state, attempt_count, claim_token
+         FROM policy_profile_refresh_outbox
+         WHERE id = $1`,
+        [abandonedProbeId],
+      ),
+      db.query(
+        'SELECT library_id FROM library_profiles WHERE library_id = $1',
+        [fixture.libraryId],
+      ),
+    ]);
+    expect(circuitRows.rows).toEqual([]);
+    expect(probeRows.rows).toEqual([{
+      processing_state: 'completed',
+      attempt_count: 2,
+      claim_token: null,
+    }]);
+    expect(profileRows.rows).toEqual([{ library_id: fixture.libraryId }]);
   });
 });
