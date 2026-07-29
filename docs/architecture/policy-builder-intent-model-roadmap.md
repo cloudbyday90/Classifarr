@@ -4275,9 +4275,14 @@ Implementation status:
   probe, and clears the circuit. Its design and outcome record is [Native
   Profile Refresh Circuit Concurrent-Worker
   Integration](policy-native-profile-refresh-circuit-concurrent-worker-integration.md).
-  The next task is a lease-expiry reclaim integration case proving a crashed
+  A lease-expiry reclaim database integration case now proves a crashed
   worker's expired probe can be reclaimed safely without a stale token clearing
-  the circuit.
+  the circuit. The replacement worker owns a new claim token and is solely able
+  to complete the second attempt and clear recovery state. Its design and
+  outcome record is [Native Profile Refresh Circuit Lease-Reclaim
+  Integration](policy-native-profile-refresh-circuit-lease-reclaim-integration.md).
+  The next task is a post-generation claim-loss integration case proving a
+  replacement worker completes a current profile without generating it twice.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

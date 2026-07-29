@@ -93,6 +93,9 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Add a lease-expiry reclaim integration case. It must simulate a claimed probe
-whose worker disappears, prove a later worker safely reclaims it after expiry,
-and prove the original claim token cannot complete or clear the circuit.
+Add a post-generation claim-loss integration case. It must simulate a worker
+that persists a current profile but disappears before completion, then prove a
+replacement worker completes without generating a second profile. The completed
+lease-reclaim verification is documented in [Native Profile Refresh Circuit
+Lease-Reclaim
+Integration](policy-native-profile-refresh-circuit-lease-reclaim-integration.md).

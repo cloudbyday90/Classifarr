@@ -31,6 +31,9 @@ const {
 const {
   enqueuePolicyProfileRefresh,
 } = await import('../../services/policyProfileRefreshOutboxRepository.mjs');
+const {
+  completePolicyProfileRefreshOutboxClaim,
+} = await import('../../services/policyProfileRefreshOutboxWorkerRepository.mjs');
 
 const CIRCUIT_OPENED_AT = new Date('2000-01-01T00:00:00.000Z');
 const CIRCUIT_PROBE_DUE_AT = new Date('2000-01-01T02:00:00.000Z');
@@ -183,6 +186,14 @@ function createPlanner({ now }) {
     now: () => now,
     loggerInstance: { info: jest.fn(), warn: jest.fn() },
   });
+}
+
+function createDeferred() {
+  let resolve;
+  const promise = new Promise(nextResolve => {
+    resolve = nextResolve;
+  });
+  return { promise, resolve };
 }
 
 describe('Native profile refresh circuit lifecycle integration', () => {
@@ -621,5 +632,136 @@ describe('Native profile refresh circuit lifecycle integration', () => {
       claim_token: null,
     }]);
     expect(profileRows.rows).toEqual([{ library_id: fixture.libraryId }]);
+  });
+
+  test('reclaims an expired probe without allowing its stale token to clear the circuit', async () => {
+    const fixture = await createNativeProfileRefreshFixture();
+    libraryIds.push(fixture.libraryId);
+    const request = buildPolicyNativeProfileRefreshRequest({
+      libraryId: fixture.libraryId,
+      profileState: 'missing_profile',
+      observedItemCount: 1,
+      observedItemHighWaterMark: fixture.observedItemHighWaterMark,
+    });
+    expect(request.ready).toBe(true);
+
+    await db.withTransaction(client => enqueuePolicyProfileRefresh({
+      client,
+      record: request.record,
+    }));
+    const terminalWorker = createWorker({
+      claimToken: '88888888-8888-4888-8888-888888888888',
+      profileService: {
+        getProfile: jest.fn().mockResolvedValue(null),
+      },
+    });
+    await expect(terminalWorker.run()).resolves.toMatchObject({ failed: 1 });
+    await expect(createPlanner({ now: CIRCUIT_OPENED_AT }).run()).resolves.toMatchObject({
+      circuitOpened: 1,
+      successorBlocked: 1,
+    });
+    await expect(createPlanner({ now: CIRCUIT_PROBE_DUE_AT }).run()).resolves.toMatchObject({
+      circuitProbeQueued: 1,
+      circuitProbeDeferred: 0,
+    });
+
+    const abandonedClaimToken = '99999999-9999-4999-8999-999999999999';
+    const abandonedWorker = createWorker({
+      claimToken: abandonedClaimToken,
+      profileService: {},
+    });
+    const abandonedClaim = await abandonedWorker.claimBatch(abandonedClaimToken);
+    expect(abandonedClaim.records).toEqual([expect.objectContaining({
+      libraryId: String(fixture.libraryId),
+      requestType: 'native_readiness',
+    })]);
+    const abandonedProbeId = abandonedClaim.records[0].id;
+    await db.query(
+      `UPDATE policy_profile_refresh_outbox
+       SET lease_expires_at = NOW() - INTERVAL '1 second'
+       WHERE id = $1
+         AND claim_token = $2::uuid`,
+      [abandonedProbeId, abandonedClaimToken],
+    );
+
+    const generationStarted = createDeferred();
+    const continueGeneration = createDeferred();
+    const profileService = {
+      getProfile: jest.fn(async libraryId => {
+        const result = await db.query(
+          'SELECT * FROM library_profiles WHERE library_id = $1',
+          [libraryId],
+        );
+        return result.rows[0] || null;
+      }),
+      generateProfile: jest.fn(async libraryId => {
+        generationStarted.resolve();
+        await continueGeneration.promise;
+        const result = await db.query(
+          `INSERT INTO library_profiles (
+             library_id, rating_distribution, genre_distribution, studio_distribution,
+             keyword_distribution, item_count, last_generated_at
+           )
+           VALUES ($1, '{}'::jsonb, '{"Animation": 100}'::jsonb, '{}'::jsonb,
+             '{}'::jsonb, 1, NOW())
+           ON CONFLICT (library_id) DO UPDATE
+           SET genre_distribution = EXCLUDED.genre_distribution,
+               item_count = EXCLUDED.item_count,
+               last_generated_at = EXCLUDED.last_generated_at,
+               updated_at = NOW()
+           RETURNING library_id, last_generated_at`,
+          [libraryId],
+        );
+        return result.rows[0];
+      }),
+    };
+    const reclaimRun = createWorker({
+      claimToken: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      profileService,
+    }).run();
+    await generationStarted.promise;
+
+    await expect(completePolicyProfileRefreshOutboxClaim({
+      client: db,
+      outboxId: abandonedProbeId,
+      claimToken: abandonedClaimToken,
+    })).resolves.toBe(false);
+    const circuitBeforeCompletion = await db.query(
+      `SELECT source_event_id, circuit_state
+       FROM policy_native_profile_refresh_circuits
+       WHERE library_id = $1`,
+      [fixture.libraryId],
+    );
+    expect(circuitBeforeCompletion.rows).toEqual([{
+      source_event_id: request.record.sourceEventId,
+      circuit_state: 'half_open',
+    }]);
+
+    continueGeneration.resolve();
+    await expect(reclaimRun).resolves.toMatchObject({
+      claimed: 1,
+      completed: 1,
+      circuitsCleared: 1,
+    });
+    expect(profileService.generateProfile).toHaveBeenCalledTimes(1);
+
+    const [circuitRows, probeRows] = await Promise.all([
+      db.query(
+        'SELECT source_event_id FROM policy_native_profile_refresh_circuits WHERE library_id = $1',
+        [fixture.libraryId],
+      ),
+      db.query(
+        `SELECT processing_state, attempt_count, claim_token
+         FROM policy_profile_refresh_outbox
+         WHERE id = $1`,
+        [abandonedProbeId],
+      ),
+    ]);
+    expect(circuitRows.rows).toEqual([]);
+    expect(probeRows.rows).toEqual([{
+      processing_state: 'completed',
+      attempt_count: 2,
+      claim_token: null,
+    }]);
   });
 });

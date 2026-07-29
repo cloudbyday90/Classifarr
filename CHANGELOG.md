@@ -46,6 +46,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   integration coverage proving only one can claim, generate, complete, and
   clear a pending automatic recovery probe.
 
+- **Recovery Lease Reclaim Safety**: An expired automatic recovery probe can be
+  reclaimed by a new worker, while the old claim token cannot complete the
+  probe or clear its circuit.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action. When an automatic recovery circuit is

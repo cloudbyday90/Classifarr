@@ -116,7 +116,7 @@ fail-closed validation, and the rendered live region's lack of controls.
 
 ## Next Step
 
-Add a lease-expiry reclaim integration case. It must prove an abandoned probe
-is reclaimed safely and that an old claim token cannot clear the circuit. Worker
-concurrency is documented in [Native Profile Refresh Circuit Concurrent-Worker
-Integration](policy-native-profile-refresh-circuit-concurrent-worker-integration.md).
+Add a post-generation claim-loss integration case. It must prove a replacement
+worker completes a current profile without generating it twice. Lease reclaim
+verification is documented in [Native Profile Refresh Circuit Lease-Reclaim
+Integration](policy-native-profile-refresh-circuit-lease-reclaim-integration.md).
