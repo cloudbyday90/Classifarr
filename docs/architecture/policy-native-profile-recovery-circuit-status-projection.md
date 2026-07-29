@@ -132,8 +132,8 @@ buttons or internal circuit terms.
 
 ## Next Step
 
-Add a concurrent-worker claim integration case. It must prove that two workers
-cannot generate a profile or clear a circuit twice for the same pending probe.
-The completed planner concurrency verification is documented in [Native Profile
-Refresh Circuit Concurrent-Planner
-Integration](policy-native-profile-refresh-circuit-concurrent-planner-integration.md).
+Add a lease-expiry reclaim integration case. It must prove an abandoned probe
+can be reclaimed safely and that its prior claim token cannot clear the circuit.
+Worker concurrency is documented in [Native Profile Refresh Circuit
+Concurrent-Worker
+Integration](policy-native-profile-refresh-circuit-concurrent-worker-integration.md).

@@ -4269,8 +4269,15 @@ Implementation status:
   state and blocks. Its design and outcome record is [Native Profile Refresh
   Circuit Concurrent-Planner
   Integration](policy-native-profile-refresh-circuit-concurrent-planner-integration.md).
-  The next task is a concurrent-worker claim integration case proving two
-  workers execute the single pending probe at most once.
+  A concurrent-worker database integration case now proves two workers execute
+  the single pending probe at most once. PostgreSQL skip-locked claiming gives
+  one worker durable ownership; it alone generates the profile, completes the
+  probe, and clears the circuit. Its design and outcome record is [Native
+  Profile Refresh Circuit Concurrent-Worker
+  Integration](policy-native-profile-refresh-circuit-concurrent-worker-integration.md).
+  The next task is a lease-expiry reclaim integration case proving a crashed
+  worker's expired probe can be reclaimed safely without a stale token clearing
+  the circuit.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

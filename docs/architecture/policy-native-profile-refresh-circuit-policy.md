@@ -142,7 +142,7 @@ behavior, successful worker reset, and replace-restore cleanup.
 
 ## Next Step
 
-Add a concurrent-worker claim integration case. It must prove that two workers
-execute a pending probe at most once. The completed planner concurrency
-verification is documented in [Native Profile Refresh Circuit Concurrent-Planner
-Integration](policy-native-profile-refresh-circuit-concurrent-planner-integration.md).
+Add a lease-expiry reclaim integration case. It must prove an abandoned probe is
+reclaimed safely and that a stale claim token cannot clear the circuit. Worker
+concurrency is documented in [Native Profile Refresh Circuit Concurrent-Worker
+Integration](policy-native-profile-refresh-circuit-concurrent-worker-integration.md).

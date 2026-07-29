@@ -513,4 +513,113 @@ describe('Native profile refresh circuit lifecycle integration', () => {
       },
     }));
   });
+
+  test('allows concurrent workers to claim and execute one pending circuit probe', async () => {
+    const fixture = await createNativeProfileRefreshFixture();
+    libraryIds.push(fixture.libraryId);
+    const request = buildPolicyNativeProfileRefreshRequest({
+      libraryId: fixture.libraryId,
+      profileState: 'missing_profile',
+      observedItemCount: 1,
+      observedItemHighWaterMark: fixture.observedItemHighWaterMark,
+    });
+    expect(request.ready).toBe(true);
+
+    await db.withTransaction(client => enqueuePolicyProfileRefresh({
+      client,
+      record: request.record,
+    }));
+    const terminalWorker = createWorker({
+      claimToken: '55555555-5555-4555-8555-555555555555',
+      profileService: {
+        getProfile: jest.fn().mockResolvedValue(null),
+      },
+    });
+    await expect(terminalWorker.run()).resolves.toMatchObject({ failed: 1 });
+    await expect(createPlanner({ now: CIRCUIT_OPENED_AT }).run()).resolves.toMatchObject({
+      circuitOpened: 1,
+      successorBlocked: 1,
+    });
+    await expect(createPlanner({ now: CIRCUIT_PROBE_DUE_AT }).run()).resolves.toMatchObject({
+      circuitProbeQueued: 1,
+      circuitProbeDeferred: 0,
+    });
+
+    const profileService = {
+      getProfile: jest.fn(async libraryId => {
+        const result = await db.query(
+          'SELECT * FROM library_profiles WHERE library_id = $1',
+          [libraryId],
+        );
+        return result.rows[0] || null;
+      }),
+      generateProfile: jest.fn(async libraryId => {
+        const result = await db.query(
+          `INSERT INTO library_profiles (
+             library_id, rating_distribution, genre_distribution, studio_distribution,
+             keyword_distribution, item_count, last_generated_at
+           )
+           VALUES ($1, '{}'::jsonb, '{"Animation": 100}'::jsonb, '{}'::jsonb,
+             '{}'::jsonb, 1, NOW())
+           ON CONFLICT (library_id) DO UPDATE
+           SET genre_distribution = EXCLUDED.genre_distribution,
+               item_count = EXCLUDED.item_count,
+               last_generated_at = EXCLUDED.last_generated_at,
+               updated_at = NOW()
+           RETURNING library_id, last_generated_at`,
+          [libraryId],
+        );
+        return result.rows[0];
+      }),
+    };
+    const workerResults = await Promise.all([
+      createWorker({
+        claimToken: '66666666-6666-4666-8666-666666666666',
+        profileService,
+      }).run(),
+      createWorker({
+        claimToken: '77777777-7777-4777-8777-777777777777',
+        profileService,
+      }).run(),
+    ]);
+    expect(workerResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        claimed: 1,
+        completed: 1,
+        circuitsCleared: 1,
+      }),
+      expect.objectContaining({
+        claimed: 0,
+        completed: 0,
+        circuitsCleared: 0,
+      }),
+    ]));
+    expect(profileService.getProfile).toHaveBeenCalledTimes(1);
+    expect(profileService.generateProfile).toHaveBeenCalledTimes(1);
+
+    const [circuitRows, probeRows, profileRows] = await Promise.all([
+      db.query(
+        'SELECT source_event_id FROM policy_native_profile_refresh_circuits WHERE library_id = $1',
+        [fixture.libraryId],
+      ),
+      db.query(
+        `SELECT processing_state, attempt_count, claim_token
+         FROM policy_profile_refresh_outbox
+         WHERE library_id = $1
+           AND source_event_id LIKE $2`,
+        [fixture.libraryId, `${request.record.sourceEventId}:retry:%`],
+      ),
+      db.query(
+        'SELECT library_id FROM library_profiles WHERE library_id = $1',
+        [fixture.libraryId],
+      ),
+    ]);
+    expect(circuitRows.rows).toEqual([]);
+    expect(probeRows.rows).toEqual([{
+      processing_state: 'completed',
+      attempt_count: 1,
+      claim_token: null,
+    }]);
+    expect(profileRows.rows).toEqual([{ library_id: fixture.libraryId }]);
+  });
 });

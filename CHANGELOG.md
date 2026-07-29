@@ -42,6 +42,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   integration coverage proving they create at most one automatic cooldown probe
   for a source revision and preserve one queued recovery state.
 
+- **Concurrent Recovery Worker Safety**: Concurrent workers now have
+  integration coverage proving only one can claim, generate, complete, and
+  clear a pending automatic recovery probe.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action. When an automatic recovery circuit is

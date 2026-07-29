@@ -113,8 +113,8 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Add a concurrent-worker claim integration case. Two workers must race for one
-pending probe and permit only one profile generation and circuit clear. The
-completed planner concurrency verification is documented in [Native Profile
-Refresh Circuit Concurrent-Planner
-Integration](policy-native-profile-refresh-circuit-concurrent-planner-integration.md).
+Add a lease-expiry reclaim integration case. It must prove that a later worker
+safely reclaims an abandoned pending probe while the original token cannot
+complete or clear the circuit. Worker concurrency is documented in [Native
+Profile Refresh Circuit Concurrent-Worker
+Integration](policy-native-profile-refresh-circuit-concurrent-worker-integration.md).
