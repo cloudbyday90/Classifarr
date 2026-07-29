@@ -148,6 +148,8 @@ function existingExecution(overrides = {}) {
     transition_fingerprint: 'a'.repeat(64),
     proposal_fingerprint: 'b'.repeat(64),
     rollback_plan_fingerprint: 'c'.repeat(64),
+    verification_run_id: '701',
+    verification_run_fingerprint: 'd'.repeat(64),
     acceptance_expires_at: '2026-07-12T12:30:00.000Z',
     rollback_snapshot_id: '901',
     migration_event_id: '951',
@@ -155,9 +157,44 @@ function existingExecution(overrides = {}) {
   };
 }
 
+function verificationRun(transition, overrides = {}) {
+  return {
+    id: 701,
+    run_version: 1,
+    policy_id: 44,
+    intent_id: 101,
+    library_id: 6,
+    acceptance_transition_fingerprint: transition.transitionFingerprint.fingerprint,
+    source_id: 'persisted_destination_library_final_outcomes',
+    source_media_type: 'movie',
+    source_deterministic_order_id: 'created_at_desc_id_desc',
+    source_maximum_classifications: 5,
+    source_rows_read: 5,
+    source_rows_considered: 5,
+    source_representative_classification_count: 5,
+    source_unusable_source_row_count: 0,
+    source_coverage_sufficient: true,
+    source_audit_ok: true,
+    source_audit_issue_count: 0,
+    verifier_status_id: 'no_migration_differences',
+    verifier_fingerprint: 'd'.repeat(64),
+    verifier_difference_count: 0,
+    verifier_emitted_difference_count: 0,
+    verifier_differences_truncated: false,
+    verifier_audit_ok: true,
+    verifier_audit_issue_count: 0,
+    coordinator_audit_ok: true,
+    coordinator_audit_issue_count: 0,
+    evaluated_at: NOW,
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
 function createClient({
   existing = null,
   active = null,
+  verificationRun: persistedVerificationRun = null,
   intentPresent = true,
   failSnapshotInsert = false,
 } = {}) {
@@ -193,6 +230,10 @@ function createClient({
             ? [{ id: 101, policy_id: 44, library_id: 6, intent_version: 1, active: true }]
             : [],
         };
+      }
+
+      if (statement.includes('FROM policy_migration_verification_runs')) {
+        return { rows: persistedVerificationRun ? [persistedVerificationRun] : [] };
       }
 
       if (statement.includes('WHERE idempotency_key = $1')) {
@@ -265,7 +306,7 @@ describe('policyLibraryRebuildSnapshotGate', () => {
 
   test('persists an accepted rebuild rollback snapshot and replay state atomically', async () => {
     const { rebuildProposal, transition } = acceptedTransition();
-    const client = createClient();
+    const client = createClient({ verificationRun: verificationRun(transition) });
     const dbClient = {
       withTransaction: jest.fn(async work => work(client)),
     };
@@ -289,6 +330,8 @@ describe('policyLibraryRebuildSnapshotGate', () => {
       stateId: 'snapshot_persisted',
       rollbackSnapshotId: 901,
       migrationEventId: 951,
+      verificationRunId: 701,
+      verificationRunFingerprint: 'd'.repeat(64),
       idempotent: false,
     }));
     expect(result.application).toEqual({
@@ -322,6 +365,10 @@ describe('policyLibraryRebuildSnapshotGate', () => {
     ]).toBeLessThan(client.query.mock.invocationCallOrder[
       client.query.mock.calls.indexOf(snapshotCall)
     ]);
+    expect(gateCall[1]).toEqual(expect.arrayContaining([
+      701,
+      'd'.repeat(64),
+    ]));
     expect(snapshotCall[1][3]).toContain('custom_signals');
     expect(snapshotCall[1][3]).not.toContain('admin:1');
     expect(eventCall[1][5]).not.toContain('admin:1');
@@ -331,6 +378,7 @@ describe('policyLibraryRebuildSnapshotGate', () => {
   test('returns the existing persisted execution without creating a second snapshot', async () => {
     const { rebuildProposal, transition } = acceptedTransition();
     const client = createClient({
+      verificationRun: verificationRun(transition),
       existing: existingExecution({
         transition_fingerprint: transition.transitionFingerprint.fingerprint,
         proposal_fingerprint: transition.proposalFingerprint.fingerprint,
@@ -419,7 +467,10 @@ describe('policyLibraryRebuildSnapshotGate', () => {
 
   test('blocks a second active accepted rebuild for the same policy without writing another snapshot', async () => {
     const { rebuildProposal, transition } = acceptedTransition();
-    const client = createClient({ active: existingExecution() });
+    const client = createClient({
+      active: existingExecution(),
+      verificationRun: verificationRun(transition),
+    });
 
     const result = await persistPolicyLibraryRebuildRollbackSnapshot({
       dbClient: {
@@ -445,7 +496,10 @@ describe('policyLibraryRebuildSnapshotGate', () => {
 
   test('reports a rollback-safe failure when an insert fails inside the transaction', async () => {
     const { rebuildProposal, transition } = acceptedTransition();
-    const client = createClient({ failSnapshotInsert: true });
+    const client = createClient({
+      failSnapshotInsert: true,
+      verificationRun: verificationRun(transition),
+    });
 
     const result = await persistPolicyLibraryRebuildRollbackSnapshot({
       dbClient: {
@@ -467,5 +521,39 @@ describe('policyLibraryRebuildSnapshotGate', () => {
       migrationEventWritten: false,
       policyReplaced: false,
     }));
+  });
+
+  test('blocks before creating rollback evidence when no verification receipt exists', async () => {
+    const { rebuildProposal, transition } = acceptedTransition();
+    const client = createClient();
+
+    const result = await persistPolicyLibraryRebuildRollbackSnapshot({
+      dbClient: {
+        withTransaction: async work => work(client),
+      },
+      transition,
+      proposal: rebuildProposal,
+      now: NOW,
+    });
+
+    expect(result.statusId)
+      .toBe(POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS.BLOCKED_BY_VERIFICATION_RUN);
+    expect(result.validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS.VERIFICATION_RUN_MISSING,
+      }),
+    ]));
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('FOR KEY SHARE'),
+      expect.anything(),
+    );
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_library_rebuild_execution_gates'),
+      expect.anything(),
+    );
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_intent_rollback_snapshots'),
+      expect.anything(),
+    );
   });
 });

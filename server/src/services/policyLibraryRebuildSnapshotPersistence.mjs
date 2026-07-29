@@ -166,6 +166,8 @@ async function findExecutionByIdempotencyKey(client, idempotencyKey) {
        transition_fingerprint,
        proposal_fingerprint,
        rollback_plan_fingerprint,
+       verification_run_id,
+       verification_run_fingerprint,
        acceptance_expires_at,
        rollback_snapshot_id,
        migration_event_id
@@ -187,6 +189,8 @@ async function findActiveExecutionForPolicy(client, policyId) {
        library_id,
        state,
        transition_fingerprint,
+       verification_run_id,
+       verification_run_fingerprint,
        acceptance_expires_at,
        rollback_snapshot_id,
        migration_event_id
@@ -206,7 +210,7 @@ async function findActiveExecutionForPolicy(client, policyId) {
   return getFirstRow(result);
 }
 
-async function createExecutionGate(client, transition, now) {
+async function createExecutionGate(client, transition, verificationRun, now) {
   const context = transition.policyContext;
   const result = await client.query(
     `INSERT INTO policy_library_rebuild_execution_gates (
@@ -218,13 +222,15 @@ async function createExecutionGate(client, transition, now) {
        transition_fingerprint,
        proposal_fingerprint,
        rollback_plan_fingerprint,
+       verification_run_id,
+       verification_run_fingerprint,
        actor_source_id,
        actor_reference,
        acceptance_expires_at,
        created_at,
        updated_at
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $12)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $14)
      RETURNING id`,
     [
       context.policyId,
@@ -235,6 +241,8 @@ async function createExecutionGate(client, transition, now) {
       transition.transitionFingerprint.fingerprint,
       transition.proposalFingerprint.fingerprint,
       transition.rollbackPlanFingerprint.fingerprint,
+      verificationRun.id,
+      verificationRun.verifierFingerprint,
       transition.acceptance.actorSourceId,
       transition.acceptance.actorReference,
       transition.acceptance.expiresAt,

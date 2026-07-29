@@ -24,6 +24,10 @@ import {
   lockPolicy,
   markExecutionSnapshotPersisted,
 } from './policyLibraryRebuildSnapshotPersistence.mjs';
+import {
+  POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS,
+  loadPolicyLibraryRebuildVerificationRunBinding,
+} from './policyLibraryRebuildVerificationRunBinding.mjs';
 
 const POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_VERSION =
   'policy.library_rebuild_snapshot_gate.v1';
@@ -33,6 +37,7 @@ const POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS = Object.freeze({
   ALREADY_PERSISTED: 'already_persisted',
   BLOCKED_BY_TRANSITION: 'blocked_by_transition',
   BLOCKED_BY_CURRENT_STATE: 'blocked_by_current_state',
+  BLOCKED_BY_VERIFICATION_RUN: 'blocked_by_verification_run',
   BLOCKED_BY_TRANSACTION_BOUNDARY: 'blocked_by_transaction_boundary',
   FAILED_ROLLED_BACK: 'failed_rolled_back',
 });
@@ -46,6 +51,7 @@ const POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_REASON_IDS = Object.freeze({
   REPLACEMENT_STILL_DISABLED: 'replacement_still_disabled',
   EXISTING_EXECUTION_REUSED: 'existing_execution_reused',
   CURRENT_STATE_BLOCKED: 'current_state_blocked',
+  VERIFICATION_RUN_REQUIRED: 'verification_run_required',
   TRANSACTION_BOUNDARY_REQUIRED: 'transaction_boundary_required',
   TRANSACTION_ROLLED_BACK: 'transaction_rolled_back',
 });
@@ -57,6 +63,7 @@ const POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS = Object.freeze({
   POLICY_CONTEXT_NOT_CURRENT: 'policy_context_not_current',
   INTENT_CONTEXT_NOT_CURRENT: 'intent_context_not_current',
   ACTIVE_EXECUTION_EXISTS: 'active_execution_exists',
+  ...POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS,
   SNAPSHOT_INSERT_FAILED: 'snapshot_insert_failed',
   MIGRATION_EVENT_INSERT_FAILED: 'migration_event_insert_failed',
   EXECUTION_GATE_INSERT_FAILED: 'execution_gate_insert_failed',
@@ -121,6 +128,8 @@ function buildBlockedResult({
         ? POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_REASON_IDS.TRANSACTION_BOUNDARY_REQUIRED
         : statusId === POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS.FAILED_ROLLED_BACK
           ? POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_REASON_IDS.TRANSACTION_ROLLED_BACK
+          : statusId === POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS.BLOCKED_BY_VERIFICATION_RUN
+            ? POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_REASON_IDS.VERIFICATION_RUN_REQUIRED
           : POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_REASON_IDS.CURRENT_STATE_BLOCKED,
       severity: 'blocker',
       message,
@@ -154,6 +163,8 @@ function buildPersistedResult({
       transitionFingerprint: execution.transition_fingerprint,
       proposalFingerprint: execution.proposal_fingerprint,
       rollbackPlanFingerprint: execution.rollback_plan_fingerprint,
+      verificationRunId: Number(execution.verification_run_id),
+      verificationRunFingerprint: execution.verification_run_fingerprint,
       acceptanceExpiresAt: execution.acceptance_expires_at,
       rollbackSnapshotId: Number(execution.rollback_snapshot_id),
       migrationEventId: Number(execution.migration_event_id),
@@ -237,6 +248,8 @@ function validatePolicyLibraryRebuildSnapshotGate(result = {}) {
     if (!hasFingerprint(execution.transitionFingerprint) ||
         !hasFingerprint(execution.proposalFingerprint) ||
         !hasFingerprint(execution.rollbackPlanFingerprint) ||
+        !Number.isInteger(execution.verificationRunId) ||
+        !hasFingerprint(execution.verificationRunFingerprint) ||
         !Number.isInteger(execution.rollbackSnapshotId) ||
         !Number.isInteger(execution.migrationEventId) ||
         result.application?.persistedRollbackSnapshotPresent !== true) {
@@ -262,6 +275,8 @@ function buildPolicyLibraryRebuildSnapshotGateAudit(result = null) {
       transitionFingerprint: 'a'.repeat(64),
       proposalFingerprint: 'b'.repeat(64),
       rollbackPlanFingerprint: 'c'.repeat(64),
+      verificationRunId: 1,
+      verificationRunFingerprint: 'd'.repeat(64),
       rollbackSnapshotId: 1,
       migrationEventId: 1,
     },
@@ -369,6 +384,22 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
         });
       }
 
+      const verificationBinding = await loadPolicyLibraryRebuildVerificationRunBinding({
+        client,
+        transition: trustedTransition,
+        proposal: trustedProposal,
+      });
+      if (verificationBinding.ok !== true || !verificationBinding.verificationRun) {
+        const issue = verificationBinding.issues?.[0] || {};
+        return buildBlockedResult({
+          statusId: POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS.BLOCKED_BY_VERIFICATION_RUN,
+          now: executionTime,
+          riskId: issue.riskId || POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS.VERIFICATION_RUN_MISSING,
+          message: issue.message || 'A current no-difference migration verification receipt is required before rollback evidence can be created.',
+          transition: trustedTransition,
+        });
+      }
+
       await expirePriorExecutionGates(client, trustedTransition.policyContext.policyId, executionTime);
 
       const priorExecution = await findExecutionByIdempotencyKey(
@@ -400,7 +431,12 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
         });
       }
 
-      const gateId = await createExecutionGate(client, trustedTransition, executionTime);
+      const gateId = await createExecutionGate(
+        client,
+        trustedTransition,
+        verificationBinding.verificationRun,
+        executionTime,
+      );
       if (!gateId) {
         const error = new Error('Library rebuild execution gate insert did not return an identifier.');
         error.riskId = POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS.EXECUTION_GATE_INSERT_FAILED;
@@ -458,6 +494,8 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
           transition_fingerprint: trustedTransition.transitionFingerprint.fingerprint,
           proposal_fingerprint: trustedTransition.proposalFingerprint.fingerprint,
           rollback_plan_fingerprint: trustedTransition.rollbackPlanFingerprint.fingerprint,
+          verification_run_id: verificationBinding.verificationRun.id,
+          verification_run_fingerprint: verificationBinding.verificationRun.verifierFingerprint,
           acceptance_expires_at: trustedTransition.acceptance.expiresAt,
           rollback_snapshot_id: snapshotId,
           migration_event_id: eventId,

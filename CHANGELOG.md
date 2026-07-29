@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Verified Rebuild Snapshots**: Library-rebuild rollback snapshots now bind
+  atomically to a current, immutable, zero-difference migration-verification
+  receipt. Missing, stale, mismatched, review-required, risk-blocked, or
+  audit-invalid evidence stops before rollback evidence is created; active
+  legacy snapshot gates without this provenance are invalidated.
+
 - **Persisted Migration Verification Receipts**: audited server-side migration
   verification now records only replay-protected fingerprints, source
   provenance/counts, verifier status/counts, and audit summaries. Receipts are

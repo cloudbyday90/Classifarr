@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-29T22:03:21.336Z
--- Latest Migration: 20260729_140000_add_policy_migration_verification_runs.sql
+-- Generated: 2026-07-29T22:58:51.319Z
+-- Latest Migration: 20260729_150000_bind_policy_library_rebuild_verification_runs.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4469,6 +4469,8 @@ CREATE TABLE public.policy_library_rebuild_execution_gates (
     replacement_intent_id bigint,
     replacement_event_id bigint,
     replacement_applied_at timestamp with time zone,
+    verification_run_id bigint,
+    verification_run_fingerprint character(64),
     CONSTRAINT policy_library_rebuild_execution_gates_acceptance_window_chk CHECK ((acceptance_expires_at > created_at)),
     CONSTRAINT policy_library_rebuild_execution_gates_actor_reference_chk CHECK (((actor_reference)::text ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT policy_library_rebuild_execution_gates_idempotency_key_chk CHECK (((idempotency_key)::text ~ '^policy:library_rebuild_acceptance:[a-f0-9]{64}$'::text)),
@@ -4478,7 +4480,9 @@ CREATE TABLE public.policy_library_rebuild_execution_gates (
     CONSTRAINT policy_library_rebuild_execution_gates_replacement_intent_chk CHECK (((replacement_intent_id IS NULL) OR (replacement_intent_id <> intent_id))),
     CONSTRAINT policy_library_rebuild_execution_gates_rollback_plan_fingerprin CHECK (((rollback_plan_fingerprint)::text ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT policy_library_rebuild_execution_gates_state_chk CHECK (((state)::text = ANY (ARRAY[('snapshot_persisting'::character varying)::text, ('snapshot_persisted'::character varying)::text, ('acceptance_expired'::character varying)::text, ('replacement_applied'::character varying)::text, ('rollback_applied'::character varying)::text, ('invalidated'::character varying)::text]))),
-    CONSTRAINT policy_library_rebuild_execution_gates_transition_fingerprint_c CHECK (((transition_fingerprint)::text ~ '^[a-f0-9]{64}$'::text))
+    CONSTRAINT policy_library_rebuild_execution_gates_transition_fingerprint_c CHECK (((transition_fingerprint)::text ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_library_rebuild_execution_gates_verification_run_pair_ch CHECK ((((verification_run_id IS NULL) AND (verification_run_fingerprint IS NULL)) OR ((verification_run_id IS NOT NULL) AND (verification_run_fingerprint ~ '^[a-f0-9]{64}$'::text)))),
+    CONSTRAINT policy_library_rebuild_execution_gates_verified_snapshot_chk CHECK ((((state)::text <> ALL (ARRAY[('snapshot_persisting'::character varying)::text, ('snapshot_persisted'::character varying)::text])) OR ((verification_run_id IS NOT NULL) AND (verification_run_fingerprint ~ '^[a-f0-9]{64}$'::text))))
 );
 
 
@@ -9593,6 +9597,13 @@ CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_transition ON pub
 
 
 --
+-- Name: idx_policy_library_rebuild_execution_gates_verification_run; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_library_rebuild_execution_gates_verification_run ON public.policy_library_rebuild_execution_gates USING btree (verification_run_id) WHERE (verification_run_id IS NOT NULL);
+
+
+--
 -- Name: idx_policy_migration_verification_runs_idempotency; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11046,6 +11057,14 @@ ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
 
 ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
     ADD CONSTRAINT policy_library_rebuild_execution_gates_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_library_rebuild_execution_gates policy_library_rebuild_execution_gates_verification_run_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
+    ADD CONSTRAINT policy_library_rebuild_execution_gates_verification_run_id_fkey FOREIGN KEY (verification_run_id) REFERENCES public.policy_migration_verification_runs(id) ON DELETE RESTRICT;
 
 
 --
@@ -13289,6 +13308,7 @@ FROM unnest(ARRAY[
     '20260726_130000_add_policy_profile_refresh_outbox_worker_state.sql',
     '20260726_140000_generalize_policy_profile_refresh_outbox.sql',
     '20260728_120000_add_policy_native_profile_refresh_circuits.sql',
-    '20260729_140000_add_policy_migration_verification_runs.sql'
+    '20260729_140000_add_policy_migration_verification_runs.sql',
+    '20260729_150000_bind_policy_library_rebuild_verification_runs.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

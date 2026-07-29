@@ -4440,6 +4440,14 @@ Tasks:
   missing, stale, mismatched, review-required, and risk-blocked evidence
   without rerunning verification, replacing policy, routing media, or exposing
   a browser control.
+- **6R.6.6 Library Rebuild Replacement-Gate Receipt Binding**: replace the
+  replacement gate's caller-supplied verifier report with the immutable receipt
+  bound to its persisted execution gate. In the replacement transaction, lock
+  the gate and receipt, require their IDs and verifier fingerprints to agree,
+  revalidate a current `no_migration_differences` result, and stop before all
+  native-intent, routing, or migration-event writes when any binding is missing
+  or invalid. Do not rerun verification, expose a browser control, or retain
+  raw samples or differences.
 - Use old impact/replay/parity tooling only as migration verification machinery,
   not product workflow.
 - Define a migration preview that compares legacy policy behavior to generated

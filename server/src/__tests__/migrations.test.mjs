@@ -642,8 +642,16 @@ describe('Schema snapshot freshness', () => {
             __dirname,
             '../../../database/migrations/20260712_130000_add_policy_library_rebuild_replacement_references.sql'
         );
+        const verificationBindingMigrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260729_150000_bind_policy_library_rebuild_verification_runs.sql'
+        );
         const snapshotMigrationSql = fs.readFileSync(snapshotMigrationPath, 'utf8');
         const replacementMigrationSql = fs.readFileSync(replacementMigrationPath, 'utf8');
+        const verificationBindingMigrationSql = fs.readFileSync(
+            verificationBindingMigrationPath,
+            'utf8'
+        );
         const executionGates = getCreateTableBlock(
             schemaSql,
             'policy_library_rebuild_execution_gates'
@@ -674,6 +682,17 @@ describe('Schema snapshot freshness', () => {
             expect(replacementMigrationSql).toContain(expectedSnippet);
         });
 
+        [
+            'verification_run_id BIGINT',
+            'verification_run_fingerprint CHAR(64)',
+            'policy_library_rebuild_execution_gates_verification_run_pair_chk',
+            'policy_library_rebuild_execution_gates_verified_snapshot_chk',
+            "SET state = 'invalidated'",
+            'idx_policy_library_rebuild_execution_gates_verification_run',
+        ].forEach(expectedSnippet => {
+            expect(verificationBindingMigrationSql).toContain(expectedSnippet);
+        });
+
         expect(executionGates).toContain('idempotency_key character varying(160) NOT NULL');
         expect(executionGates).toMatch(
             /transition_fingerprint character varying\(64\).*NOT NULL/
@@ -683,11 +702,18 @@ describe('Schema snapshot freshness', () => {
         expect(executionGates).toContain('replacement_intent_id bigint');
         expect(executionGates).toContain('replacement_event_id bigint');
         expect(executionGates).toContain('replacement_applied_at timestamp with time zone');
+        expect(executionGates).toContain('verification_run_id bigint');
+        expect(executionGates).toMatch(
+            /verification_run_fingerprint character\(64\)/
+        );
         expect(executionGates).toContain('policy_library_rebuild_execution_gates_persisted_snapshot_chk');
         expect(executionGates).toContain('policy_library_rebuild_execution_gates_replacement_applied_chk');
+        expect(executionGates).toContain('policy_library_rebuild_execution_gates_verification_run_pair_ch');
+        expect(executionGates).toContain('policy_library_rebuild_execution_gates_verified_snapshot_chk');
         expect(schemaSql).toContain('CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_idempotency');
         expect(schemaSql).toContain('CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_active_policy');
         expect(schemaSql).toContain('CREATE INDEX idx_policy_library_rebuild_execution_gates_replacement_intent');
+        expect(schemaSql).toContain('CREATE INDEX idx_policy_library_rebuild_execution_gates_verification_run');
         expect(policyIntentMigrationEvents).toContain('library_rebuild_replacement_applied');
     });
 

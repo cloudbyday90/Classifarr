@@ -51,7 +51,6 @@ export async function clearExistingConfig(client) {
   await client.query(
     "SELECT set_config('classifarr.policy_migration_verification_run_maintenance', 'replace_restore', true)"
   );
-  await client.query('DELETE FROM policy_migration_verification_runs');
   await client.query('DELETE FROM policy_native_intent_reconciliation_states');
   await client.query('DELETE FROM policy_native_intent_reconciliation_outcomes');
   await client.query('DELETE FROM policy_native_intent_reconciliation_runs');
@@ -60,6 +59,7 @@ export async function clearExistingConfig(client) {
   await client.query('DELETE FROM policy_initial_intent_establishments');
   await client.query('DELETE FROM policy_intent_validation_status');
   await client.query('DELETE FROM policy_library_rebuild_execution_gates');
+  await client.query('DELETE FROM policy_migration_verification_runs');
   await client.query('DELETE FROM policy_intent_rollback_snapshots');
   await client.query('DELETE FROM policy_intent_migration_events');
   await client.query('DELETE FROM policy_intent_template_applications');

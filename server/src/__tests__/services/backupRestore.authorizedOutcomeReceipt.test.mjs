@@ -61,9 +61,16 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
       7,
       "SELECT set_config('classifarr.policy_migration_verification_run_maintenance', 'replace_restore', true)"
     );
-    expect(client.query).toHaveBeenNthCalledWith(
-      8,
-      'DELETE FROM policy_migration_verification_runs'
+    expect(client.query).toHaveBeenCalledWith(
+      "SELECT set_config('classifarr.policy_migration_verification_run_maintenance', 'replace_restore', true)"
     );
+    const executionGateDelete = client.query.mock.calls.findIndex(([sql]) =>
+      sql === 'DELETE FROM policy_library_rebuild_execution_gates'
+    );
+    const verificationRunDelete = client.query.mock.calls.findIndex(([sql]) =>
+      sql === 'DELETE FROM policy_migration_verification_runs'
+    );
+
+    expect(verificationRunDelete).toBeGreaterThan(executionGateDelete);
   });
 });

@@ -186,13 +186,18 @@ The focused suite passes with 8 suites and 40 tests. The authoritative schema
 snapshot was regenerated from the migrated local Compose service and a clean
 schema-check container.
 
+## Follow-Through
+
+Phase 6R.6 Task 6R.6.5 now consumes this receipt in the snapshot transaction.
+See [Policy Library-Rebuild Snapshot-Gate Verification
+Binding](policy-library-rebuild-snapshot-gate-verification-binding.md). The
+snapshot gate locks and validates one matching no-difference receipt before it
+creates rollback evidence, then retains the receipt ID and verifier fingerprint
+on the execution gate for the later replacement boundary.
+
 ## Next Task
 
-Phase 6R.6 Task 6R.6.5 is **Library Rebuild Snapshot-Gate Verification
-Binding**. It should make the existing snapshot gate load a receipt by the
-accepted transition fingerprint inside its transaction, require matching policy,
-intent, library, source, verifier fingerprint, and a
-`no_migration_differences` verifier status, then create rollback evidence. It
-must reject missing, stale, mismatched, review-required, and risk-blocked
-receipts without rerunning verification, writing a replacement, routing media,
-or exposing a browser control.
+Phase 6R.6 Task 6R.6.6 is **Library Rebuild Replacement-Gate Receipt
+Binding**. It should consume the receipt bound to the persisted execution gate
+inside the replacement transaction and eliminate caller-supplied verifier
+reports as replacement authority.
