@@ -132,8 +132,8 @@ buttons or internal circuit terms.
 
 ## Next Step
 
-Add one scheduler/outbox/readiness integration lifecycle test that proves a
-terminal failure opens the circuit, recovery status waits automatically during
-the cooldown, the scheduler performs one probe, a successful refresh clears
-the circuit, and readiness returns to `not_required`. The test must require no
-browser dialog, operator action, or local-time inference.
+Add an isolated cross-source-revision integration case: after an old source
+revision opens a circuit, new observed library content must create a new source
+revision that neither blocks normal scheduling nor receives the old circuit's
+`awaiting_automatic_probe` display state. The test must remain server-owned
+and require no browser dialog, operator action, or local-time inference.

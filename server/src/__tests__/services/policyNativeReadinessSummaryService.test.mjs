@@ -211,7 +211,7 @@ describe('policyNativeReadinessSummaryService', () => {
         statusId: 'profile_not_found',
         sideEffects: { libraryProfileRead: true },
       },
-      activeProfileRefresh: { processingState: 'pending' },
+      activeProfileRefresh: { id: 88, processingState: 'pending' },
     });
 
     const result = await service.getSummary({ dbClient: { query: jest.fn() }, policyId: 42 });
@@ -278,6 +278,34 @@ describe('policyNativeReadinessSummaryService', () => {
       sourceEventId: 'library-profile:7:missing_profile:items:12:high-water:91',
     });
     expect(JSON.stringify(result)).not.toMatch(/profile_refresh_unknown_failed|2026-07-28|outboxId/i);
+  });
+
+  test('reads the current circuit when the outbox lookup finds no persisted active row', async () => {
+    const { service, findProfileRefreshCandidate, findProfileRefreshCircuit } = createService({
+      profileHandoff: {
+        ok: false,
+        statusId: 'profile_not_found',
+        sideEffects: { libraryProfileRead: true },
+      },
+      // Repository normalization preserves its stable empty-record shape.
+      activeProfileRefresh: { id: null, processingState: null },
+      profileRefreshCandidate: {
+        libraryId: 7,
+        profileState: 'missing_profile',
+        observedItemCount: 12,
+        observedItemHighWaterMark: 91,
+      },
+      profileRefreshCircuit: {
+        valid: true,
+        circuitState: 'open',
+      },
+    });
+
+    const result = await service.getSummary({ dbClient: { query: jest.fn() }, policyId: 42 });
+
+    expect(result.profileRecovery.stateId).toBe('awaiting_automatic_probe');
+    expect(findProfileRefreshCandidate).toHaveBeenCalledTimes(1);
+    expect(findProfileRefreshCircuit).toHaveBeenCalledTimes(1);
   });
 
   test('falls back to scheduled recovery when optional circuit status cannot be read', async () => {

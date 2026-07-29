@@ -142,10 +142,8 @@ behavior, successful worker reset, and replace-restore cleanup.
 
 ## Next Step
 
-Exercise the complete automatic recovery lifecycle through the existing
-scheduler, outbox, and read-only readiness-summary boundaries. It should prove
-that a terminal failure opens the circuit, the current source revision reports
-only a fixed automatic-wait status, one scheduler-owned probe occurs after the
-cooldown, and a successful refresh clears the runtime circuit without browser
-intervention. The display projection is documented in [Native Profile Recovery
-Circuit Status Projection](policy-native-profile-recovery-circuit-status-projection.md).
+Add a cross-source-revision integration case. It must prove that an open circuit
+for old observed library content cannot block or label a new current source
+revision. The completed lifecycle verification is documented in [Native Profile
+Refresh Circuit Lifecycle
+Integration](policy-native-profile-refresh-circuit-lifecycle-integration.md).

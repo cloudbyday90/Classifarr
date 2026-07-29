@@ -171,7 +171,7 @@ function createPolicyNativeReadinessSummaryService({
         : null;
       let circuit = null;
       let profileRefreshCircuitRead = false;
-      if (profileRefreshOutboxRead && !activeRefresh) {
+      if (profileRefreshOutboxRead && !activeRefresh?.id) {
         ({ circuit, profileRefreshCircuitRead } = await readCurrentProfileRefreshCircuit({
           dbClient,
           libraryId: context.policy.libraryId,

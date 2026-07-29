@@ -116,9 +116,8 @@ fail-closed validation, and the rendered live region's lack of controls.
 
 ## Next Step
 
-Exercise the complete automatic recovery lifecycle through an integration
-boundary: terminal failure, circuit open, scheduled probe, successful refresh,
-and recovery-status return to `not_required`. The lifecycle test must keep the
-browser contract display-only and use only scheduler-owned transitions. The
-source-revision projection design is documented in [Native Profile Recovery
-Circuit Status Projection](policy-native-profile-recovery-circuit-status-projection.md).
+Add a cross-source-revision integration case. It must prove that a circuit for
+old observed library content neither blocks scheduling nor changes the recovery
+status after current library content establishes a new source revision. The
+lifecycle verification is documented in [Native Profile Refresh Circuit
+Lifecycle Integration](policy-native-profile-refresh-circuit-lifecycle-integration.md).

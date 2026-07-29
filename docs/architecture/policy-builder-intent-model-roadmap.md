@@ -4250,9 +4250,14 @@ Implementation status:
   lookup failure falls back to normal scheduled recovery. The design and
   outcome record is [Native Profile Recovery Circuit Status
   Projection](policy-native-profile-recovery-circuit-status-projection.md).
-  The next task is a scheduler/outbox/readiness integration lifecycle test for
-  terminal failure, cooldown probe, successful circuit reset, and the return
-  to current profile status without browser intervention.
+  A database-backed lifecycle integration test now proves a terminal failure
+  opens the circuit, the fixed automatic-wait state is projected during
+  cooldown, one scheduler-owned probe runs, a successful worker refresh clears
+  runtime state, and readiness returns to current without browser intervention.
+  Its design and outcome record is [Native Profile Refresh Circuit Lifecycle
+  Integration](policy-native-profile-refresh-circuit-lifecycle-integration.md).
+  The next task is a cross-source-revision integration case proving that an old
+  open circuit cannot block or label a new current content revision.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

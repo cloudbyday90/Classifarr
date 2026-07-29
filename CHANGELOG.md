@@ -27,6 +27,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   clears recovery state after a successful refresh, and safely removes obsolete
   runtime history without adding operator controls.
 
+- **Automatic Recovery Lifecycle**: Native profile recovery now has an
+  integration-tested server-owned lifecycle from terminal failure through one
+  cooldown probe, successful profile regeneration, circuit cleanup, and return
+  to current policy readiness without a browser or operator action. Readiness
+  now also distinguishes an absent active outbox record from real pending work,
+  so a current open circuit remains visible during its automatic cooldown.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action. When an automatic recovery circuit is
