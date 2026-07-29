@@ -105,5 +105,8 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 The completed compaction-failure isolation integration is documented in [Native
 Profile Refresh Circuit Compaction-Failure Isolation
 Integration](policy-native-profile-refresh-circuit-compaction-failure-isolation-integration.md).
-Next, add concurrent retention-compaction idempotency integration coverage so
-overlapping cleanup callers cannot create partial or duplicate history removal.
+The completed concurrent retention-compaction integration is documented in
+[Native Profile Refresh Circuit Concurrent Retention-Compaction
+Integration](policy-native-profile-refresh-circuit-concurrent-retention-compaction-integration.md).
+Next, perform the Phase 6R.5 native recovery-retention completion audit before
+advancing to Phase 6R.6 migration and deletion work.

@@ -102,7 +102,8 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Add concurrent retention-compaction idempotency integration coverage. It must
-prove two cleanup invocations against the same expired inactive revision remove
-at most one circuit and one terminal outbox row, leave no orphaned history, and
-do not affect retained current revisions.
+The completed concurrent retention-compaction integration is documented in
+[Native Profile Refresh Circuit Concurrent Retention-Compaction
+Integration](policy-native-profile-refresh-circuit-concurrent-retention-compaction-integration.md).
+Next, perform the Phase 6R.5 native recovery-retention completion audit before
+advancing to Phase 6R.6 migration and deletion work.

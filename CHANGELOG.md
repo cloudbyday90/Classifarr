@@ -84,6 +84,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   cleanup automatically while current pending work remains idempotent and
   server-owned.
 
+- **Concurrent Recovery Retention Idempotency**: Overlapping cleanup callers
+  now have integration coverage proving expired inactive circuit and terminal
+  history compact exactly once while protected current revisions remain intact.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action. When an automatic recovery circuit is

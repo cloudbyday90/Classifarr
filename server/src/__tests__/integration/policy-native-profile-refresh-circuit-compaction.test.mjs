@@ -105,6 +105,33 @@ function createPlanner({
   });
 }
 
+function createOverlappingCompactionClient() {
+  return {
+    query(statement, values) {
+      const concurrentStatement = statement
+        .replace(
+          'WITH protected_revisions AS (',
+          `WITH compaction_barrier AS MATERIALIZED (
+       SELECT pg_sleep(0.05)
+     ),
+     protected_revisions AS (`,
+        )
+        .replace(
+          'FROM unnest($1::bigint[], $2::text[]) AS protected_revision(library_id, source_event_id)',
+          `FROM unnest($1::bigint[], $2::text[]) AS protected_revision(library_id, source_event_id)
+       CROSS JOIN compaction_barrier`,
+        );
+
+      if (!concurrentStatement.includes('compaction_barrier AS MATERIALIZED') ||
+        !concurrentStatement.includes('CROSS JOIN compaction_barrier')) {
+        throw new Error('Native compaction test could not establish its PostgreSQL overlap barrier.');
+      }
+
+      return db.query(concurrentStatement, values);
+    },
+  };
+}
+
 async function insertNativeOutbox({
   libraryId,
   sourceEventId,
@@ -493,5 +520,62 @@ describe('Native profile refresh circuit retention-compaction integration', () =
         processing_state: 'pending',
       },
     ]);
+  });
+
+  test('compacts expired history once when cleanup callers overlap and retains protected revisions', async () => {
+    const expiredInactive = await createRevision();
+    const protectedRevision = await createRevision();
+    libraryIds.push(expiredInactive.libraryId, protectedRevision.libraryId);
+    const client = createOverlappingCompactionClient();
+
+    const results = await Promise.all([
+      compactPolicyNativeProfileRefreshCircuitHistory({
+        client,
+        protectedRevisions: [protectedRevision],
+      }),
+      compactPolicyNativeProfileRefreshCircuitHistory({
+        client,
+        protectedRevisions: [protectedRevision],
+      }),
+    ]);
+
+    expect(results).toEqual(expect.arrayContaining([
+      { circuitsCompacted: 1, outboxRowsCompacted: 1 },
+      { circuitsCompacted: 0, outboxRowsCompacted: 0 },
+    ]));
+    expect(results.reduce((totals, result) => ({
+      circuitsCompacted: totals.circuitsCompacted + result.circuitsCompacted,
+      outboxRowsCompacted: totals.outboxRowsCompacted + result.outboxRowsCompacted,
+    }), { circuitsCompacted: 0, outboxRowsCompacted: 0 })).toEqual({
+      circuitsCompacted: 1,
+      outboxRowsCompacted: 1,
+    });
+
+    const [circuitRows, outboxRows] = await Promise.all([
+      db.query(
+        `SELECT library_id, source_event_id, circuit_state
+         FROM policy_native_profile_refresh_circuits
+         WHERE library_id = ANY($1::bigint[])
+         ORDER BY library_id`,
+        [[expiredInactive.libraryId, protectedRevision.libraryId]],
+      ),
+      db.query(
+        `SELECT library_id, source_event_id, processing_state
+         FROM policy_profile_refresh_outbox
+         WHERE library_id = ANY($1::bigint[])
+         ORDER BY library_id, id`,
+        [[expiredInactive.libraryId, protectedRevision.libraryId]],
+      ),
+    ]);
+    expect(circuitRows.rows).toEqual([{
+      library_id: protectedRevision.libraryId,
+      source_event_id: protectedRevision.sourceEventId,
+      circuit_state: 'closed',
+    }]);
+    expect(outboxRows.rows).toEqual([{
+      library_id: protectedRevision.libraryId,
+      source_event_id: protectedRevision.sourceEventId,
+      processing_state: 'failed',
+    }]);
   });
 });

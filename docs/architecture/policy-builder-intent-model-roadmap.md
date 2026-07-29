@@ -4331,9 +4331,17 @@ Implementation status:
   Its design and outcome record is [Native Profile Refresh Circuit
   Compaction-Failure Isolation
   Integration](policy-native-profile-refresh-circuit-compaction-failure-isolation-integration.md).
-  The next task is concurrent retention-compaction idempotency integration
-  coverage proving overlapping cleanup callers remove stale history at most
-  once, leave no orphaned records, and do not affect retained current revisions.
+  A concurrent retention-compaction database integration case now proves two
+  overlapping cleanup callers remove expired inactive history exactly once. The
+  materialized retained set preserves protected current revisions; the losing
+  caller safely reports zero work with no orphaned circuit or terminal outbox
+  history. Its design and outcome record is [Native Profile Refresh Circuit
+  Concurrent Retention-Compaction
+  Integration](policy-native-profile-refresh-circuit-concurrent-retention-compaction-integration.md).
+  The next task is the Phase 6R.5 native recovery-retention completion audit.
+  It must inventory production compaction callers, reconcile all recovery and
+  retention contracts, and identify only concrete remaining gaps before Phase
+  6R.6 migration and deletion work advances.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read
