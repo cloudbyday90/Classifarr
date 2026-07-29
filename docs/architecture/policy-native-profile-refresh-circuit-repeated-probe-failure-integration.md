@@ -112,5 +112,7 @@ Integration](policy-native-profile-refresh-circuit-compaction-failure-isolation-
 The completed concurrent retention-compaction integration is documented in
 [Native Profile Refresh Circuit Concurrent Retention-Compaction
 Integration](policy-native-profile-refresh-circuit-concurrent-retention-compaction-integration.md).
-Next, perform the Phase 6R.5 native recovery-retention completion audit before
-advancing to Phase 6R.6 migration and deletion work.
+The [Native Profile Refresh Recovery-Retention Completion
+Audit](policy-native-profile-refresh-recovery-retention-completion-audit.md)
+now closes this recovery-retention sequence. Next, start Phase 6R.6 Task
+6R.6.1: the server-owned migration preview contract.

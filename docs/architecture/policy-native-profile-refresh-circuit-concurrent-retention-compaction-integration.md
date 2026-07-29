@@ -103,8 +103,9 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Perform the Phase 6R.5 native recovery-retention completion audit. It must
-inventory every production compaction caller, verify all automatic recovery and
-retention boundaries remain server-owned, reconcile the related integration
-records, and identify only concrete gaps before moving Phase 6R.6 migration and
-deletion work forward.
+The completed [Native Profile Refresh Recovery-Retention Completion
+Audit](policy-native-profile-refresh-recovery-retention-completion-audit.md)
+confirms the scheduler, planner, worker, compactor, read-only status, and
+replace-restore boundaries. Next, start Phase 6R.6 Task 6R.6.1: the
+server-owned migration preview contract and its replace-or-delete cutline for
+the creation-only browser evidence-refresh path.

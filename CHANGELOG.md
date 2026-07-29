@@ -88,6 +88,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   now have integration coverage proving expired inactive circuit and terminal
   history compact exactly once while protected current revisions remain intact.
 
+- **Recovery-Retention Completion Audit**: Verified the complete persisted
+  native profile-recovery path from bootstrap scheduling through planning,
+  lease-protected delivery, atomic retention, read-only status, and replace
+  restore. The remaining creation-only browser evidence-refresh control is now
+  an explicit migration cutline rather than a persisted-policy recovery
+  mechanism.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action. When an automatic recovery circuit is

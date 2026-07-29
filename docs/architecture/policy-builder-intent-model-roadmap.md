@@ -4338,10 +4338,17 @@ Implementation status:
   history. Its design and outcome record is [Native Profile Refresh Circuit
   Concurrent Retention-Compaction
   Integration](policy-native-profile-refresh-circuit-concurrent-retention-compaction-integration.md).
-  The next task is the Phase 6R.5 native recovery-retention completion audit.
-  It must inventory production compaction callers, reconcile all recovery and
-  retention contracts, and identify only concrete remaining gaps before Phase
-  6R.6 migration and deletion work advances.
+  The Phase 6R.5 native recovery-retention completion audit now confirms one
+  server-owned persisted-policy path: bootstrap starts the advisory-lock
+  scheduler, the automation service plans before delivering durable outbox
+  work, the planner is the sole production compaction caller, and the
+  persisted recovery projection is read-only. Its design and outcome record is
+  [Native Profile Refresh Recovery-Retention Completion
+  Audit](policy-native-profile-refresh-recovery-retention-completion-audit.md).
+  The audit identified one separate Phase 6R.6 cutline: the initial native
+  creation workflow still contains a browser-triggered evidence-refresh path.
+  It is not part of persisted recovery or retention and must be classified as
+  replace or delete by the migration preview rather than changed incidentally.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read
@@ -4405,6 +4412,12 @@ without carrying both systems permanently.
 
 Tasks:
 
+- **6R.6.1 Migration Preview Contract**: define one bounded, server-owned
+  comparison of legacy policy behavior and generated native intent for
+  representative classifications. Inventory the creation-only browser
+  evidence-refresh path as a replace-or-delete target, preserve rollback data
+  and its explicit window, and keep all preview output out of the normal
+  operator workflow.
 - Use old impact/replay/parity tooling only as migration verification machinery,
   not product workflow.
 - Define a migration preview that compares legacy policy behavior to generated
