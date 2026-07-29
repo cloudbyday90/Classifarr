@@ -48,6 +48,10 @@ export async function clearExistingConfig(client) {
     "SELECT set_config('classifarr.policy_authorized_outcome_receipt_maintenance', 'replace_restore', true)"
   );
   await client.query('DELETE FROM policy_authorized_outcome_source_event_receipts');
+  await client.query(
+    "SELECT set_config('classifarr.policy_migration_verification_run_maintenance', 'replace_restore', true)"
+  );
+  await client.query('DELETE FROM policy_migration_verification_runs');
   await client.query('DELETE FROM policy_native_intent_reconciliation_states');
   await client.query('DELETE FROM policy_native_intent_reconciliation_outcomes');
   await client.query('DELETE FROM policy_native_intent_reconciliation_runs');

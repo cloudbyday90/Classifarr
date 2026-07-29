@@ -180,9 +180,9 @@ Focused server tests cover:
 
 ## Next Task
 
-Phase 6R.6 Task 6R.6.4 should add a persisted, replay-protected verification
-run handoff. It should record only the accepted-transition fingerprint, source
-summary/provenance, verifier fingerprint/status, and bounded audit summaries.
-It must not persist raw samples, replace policy state, create a snapshot, or
-surface a browser control. That record can then become the sole input to the
-existing snapshot gate.
+Phase 6R.6 Task 6R.6.4 is complete in
+[Policy Migration Verification-Run Handoff](policy-migration-verification-run-handoff.md).
+The coordinator now has a separate immutable receipt boundary that persists
+only accepted-transition, source-summary, verifier-fingerprint, and audit
+evidence. The next task, 6R.6.5, must bind the snapshot-gate transaction to
+that receipt rather than accepting an in-memory verifier report.

@@ -57,5 +57,13 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
       6,
       'DELETE FROM policy_authorized_outcome_source_event_receipts'
     );
+    expect(client.query).toHaveBeenNthCalledWith(
+      7,
+      "SELECT set_config('classifarr.policy_migration_verification_run_maintenance', 'replace_restore', true)"
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      8,
+      'DELETE FROM policy_migration_verification_runs'
+    );
   });
 });

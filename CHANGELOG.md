@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Persisted Migration Verification Receipts**: audited server-side migration
+  verification now records only replay-protected fingerprints, source
+  provenance/counts, verifier status/counts, and audit summaries. Receipts are
+  immutable, exclude raw media and verifier differences, and do not create
+  snapshots, replace policies, route media, or add browser controls.
+
 - **Migration Verification Coordination**: accepted policy rebuilds now have a
   server-only, fail-closed path from persisted representative evidence through
   bounded verification. Invalid acceptance, missing coverage, or invalid audit

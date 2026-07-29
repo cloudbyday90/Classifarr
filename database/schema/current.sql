@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-28T23:28:32.390Z
--- Latest Migration: 20260728_120000_add_policy_native_profile_refresh_circuits.sql
+-- Generated: 2026-07-29T22:03:21.336Z
+-- Latest Migration: 20260729_140000_add_policy_migration_verification_runs.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -230,6 +230,29 @@ BEGIN
     END IF;
 
     RAISE EXCEPTION 'Policy identity evidence admissions are append-only';
+END;
+$$;
+
+
+--
+-- Name: guard_policy_migration_verification_run_mutation(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_policy_migration_verification_run_mutation() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    -- A replace restore starts a new runtime boundary. Normal runtime paths
+    -- must not rewrite or delete migration verification evidence.
+    IF TG_OP = 'DELETE'
+       AND current_setting(
+           'classifarr.policy_migration_verification_run_maintenance',
+           true
+       ) = 'replace_restore' THEN
+        RETURN OLD;
+    END IF;
+
+    RAISE EXCEPTION 'Policy migration verification runs are append-only';
 END;
 $$;
 
@@ -4479,6 +4502,71 @@ ALTER SEQUENCE public.policy_library_rebuild_execution_gates_id_seq OWNED BY pub
 
 
 --
+-- Name: policy_migration_verification_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_migration_verification_runs (
+    id bigint NOT NULL,
+    run_version smallint DEFAULT 1 NOT NULL,
+    policy_id integer NOT NULL,
+    intent_id bigint NOT NULL,
+    library_id integer NOT NULL,
+    acceptance_transition_fingerprint character(64) CONSTRAINT policy_migration_verificati_acceptance_transition_fing_not_null NOT NULL,
+    source_id character varying(120) NOT NULL,
+    source_media_type character varying(20) NOT NULL,
+    source_deterministic_order_id character varying(120) CONSTRAINT policy_migration_verificati_source_deterministic_order_not_null NOT NULL,
+    source_maximum_classifications smallint CONSTRAINT policy_migration_verificati_source_maximum_classificat_not_null NOT NULL,
+    source_rows_read integer NOT NULL,
+    source_rows_considered integer CONSTRAINT policy_migration_verification_r_source_rows_considered_not_null NOT NULL,
+    source_representative_classification_count smallint CONSTRAINT policy_migration_verificati_source_representative_clas_not_null NOT NULL,
+    source_unusable_source_row_count integer CONSTRAINT policy_migration_verificati_source_unusable_source_row_not_null NOT NULL,
+    source_rows_truncated boolean CONSTRAINT policy_migration_verification_ru_source_rows_truncated_not_null NOT NULL,
+    source_coverage_sufficient boolean CONSTRAINT policy_migration_verificati_source_coverage_sufficient_not_null NOT NULL,
+    source_audit_ok boolean NOT NULL,
+    source_audit_issue_count smallint CONSTRAINT policy_migration_verification_source_audit_issue_count_not_null NOT NULL,
+    verifier_status_id character varying(120) NOT NULL,
+    verifier_fingerprint character(64) CONSTRAINT policy_migration_verification_run_verifier_fingerprint_not_null NOT NULL,
+    verifier_difference_count integer CONSTRAINT policy_migration_verificatio_verifier_difference_count_not_null NOT NULL,
+    verifier_emitted_difference_count integer CONSTRAINT policy_migration_verificati_verifier_emitted_differenc_not_null NOT NULL,
+    verifier_differences_truncated boolean CONSTRAINT policy_migration_verificati_verifier_differences_trunc_not_null NOT NULL,
+    verifier_audit_ok boolean NOT NULL,
+    verifier_audit_issue_count smallint CONSTRAINT policy_migration_verificati_verifier_audit_issue_count_not_null NOT NULL,
+    coordinator_audit_ok boolean CONSTRAINT policy_migration_verification_run_coordinator_audit_ok_not_null NOT NULL,
+    coordinator_audit_issue_count smallint CONSTRAINT policy_migration_verificati_coordinator_audit_issue_co_not_null NOT NULL,
+    idempotency_key character varying(160) NOT NULL,
+    evaluated_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_migration_verification_runs_coordinator_audit_chk CHECK (((coordinator_audit_ok = true) AND (coordinator_audit_issue_count = 0))),
+    CONSTRAINT policy_migration_verification_runs_idempotency_chk CHECK (((idempotency_key)::text ~ '^policy:migration_verification:[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_migration_verification_runs_policy_context_chk CHECK (((policy_id > 0) AND (intent_id > 0) AND (library_id > 0))),
+    CONSTRAINT policy_migration_verification_runs_source_chk CHECK ((((source_id)::text = 'persisted_destination_library_final_outcomes'::text) AND ((source_media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text])) AND ((source_deterministic_order_id)::text = 'created_at_desc_id_desc'::text))),
+    CONSTRAINT policy_migration_verification_runs_source_summary_chk CHECK (((source_maximum_classifications >= 1) AND (source_maximum_classifications <= 100) AND (source_rows_read >= 0) AND (source_rows_considered >= source_representative_classification_count) AND ((source_representative_classification_count >= 1) AND (source_representative_classification_count <= source_maximum_classifications)) AND (source_unusable_source_row_count >= 0) AND (source_coverage_sufficient = true) AND (source_audit_ok = true) AND (source_audit_issue_count = 0))),
+    CONSTRAINT policy_migration_verification_runs_transition_fingerprint_chk CHECK ((acceptance_transition_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_migration_verification_runs_verifier_chk CHECK ((((verifier_status_id)::text = ANY (ARRAY[('no_migration_differences'::character varying)::text, ('review_required'::character varying)::text, ('blocked_by_migration_risk'::character varying)::text])) AND (verifier_fingerprint ~ '^[a-f0-9]{64}$'::text) AND (verifier_difference_count >= 0) AND ((verifier_emitted_difference_count >= 0) AND (verifier_emitted_difference_count <= verifier_difference_count)) AND (verifier_audit_ok = true) AND (verifier_audit_issue_count = 0))),
+    CONSTRAINT policy_migration_verification_runs_version_chk CHECK ((run_version = 1))
+);
+
+
+--
+-- Name: policy_migration_verification_runs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_migration_verification_runs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_migration_verification_runs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_migration_verification_runs_id_seq OWNED BY public.policy_migration_verification_runs.id;
+
+
+--
 -- Name: policy_native_intent_reconciliation_alert_states; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6813,6 +6901,13 @@ ALTER TABLE ONLY public.policy_library_rebuild_execution_gates ALTER COLUMN id S
 
 
 --
+-- Name: policy_migration_verification_runs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_migration_verification_runs ALTER COLUMN id SET DEFAULT nextval('public.policy_migration_verification_runs_id_seq'::regclass);
+
+
+--
 -- Name: policy_native_intent_reconciliation_control_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7891,6 +7986,14 @@ ALTER TABLE ONLY public.policy_learning_stats
 
 ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
     ADD CONSTRAINT policy_library_rebuild_execution_gates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_migration_verification_runs policy_migration_verification_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_migration_verification_runs
+    ADD CONSTRAINT policy_migration_verification_runs_pkey PRIMARY KEY (id);
 
 
 --
@@ -9490,6 +9593,27 @@ CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_transition ON pub
 
 
 --
+-- Name: idx_policy_migration_verification_runs_idempotency; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_policy_migration_verification_runs_idempotency ON public.policy_migration_verification_runs USING btree (idempotency_key);
+
+
+--
+-- Name: idx_policy_migration_verification_runs_snapshot_gate; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_migration_verification_runs_snapshot_gate ON public.policy_migration_verification_runs USING btree (policy_id, intent_id, library_id, verifier_status_id, created_at DESC, id DESC);
+
+
+--
+-- Name: idx_policy_migration_verification_runs_transition; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_migration_verification_runs_transition ON public.policy_migration_verification_runs USING btree (policy_id, acceptance_transition_fingerprint, created_at DESC, id DESC);
+
+
+--
 -- Name: idx_policy_native_intent_reconciliation_control_events_occurred; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10159,6 +10283,13 @@ CREATE CONSTRAINT TRIGGER policy_intent_rules_active_purpose_rule_chk AFTER INSE
 --
 
 CREATE CONSTRAINT TRIGGER policy_intents_active_purpose_rule_chk AFTER INSERT OR UPDATE OF active, source, inference_state, validation_status ON public.policy_intents DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.enforce_policy_intent_active_purpose_rule();
+
+
+--
+-- Name: policy_migration_verification_runs policy_migration_verification_run_mutation_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER policy_migration_verification_run_mutation_guard BEFORE DELETE OR UPDATE ON public.policy_migration_verification_runs FOR EACH ROW EXECUTE FUNCTION public.guard_policy_migration_verification_run_mutation();
 
 
 --
@@ -10915,6 +11046,30 @@ ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
 
 ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
     ADD CONSTRAINT policy_library_rebuild_execution_gates_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_migration_verification_runs policy_migration_verification_runs_intent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_migration_verification_runs
+    ADD CONSTRAINT policy_migration_verification_runs_intent_id_fkey FOREIGN KEY (intent_id) REFERENCES public.policy_intents(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_migration_verification_runs policy_migration_verification_runs_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_migration_verification_runs
+    ADD CONSTRAINT policy_migration_verification_runs_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_migration_verification_runs policy_migration_verification_runs_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_migration_verification_runs
+    ADD CONSTRAINT policy_migration_verification_runs_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
 
 
 --
@@ -13133,6 +13288,7 @@ FROM unnest(ARRAY[
     '20260726_120000_add_policy_profile_refresh_outbox.sql',
     '20260726_130000_add_policy_profile_refresh_outbox_worker_state.sql',
     '20260726_140000_generalize_policy_profile_refresh_outbox.sql',
-    '20260728_120000_add_policy_native_profile_refresh_circuits.sql'
+    '20260728_120000_add_policy_native_profile_refresh_circuits.sql',
+    '20260729_140000_add_policy_migration_verification_runs.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

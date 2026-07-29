@@ -4433,6 +4433,13 @@ Tasks:
   transition fingerprint, source provenance/summary, verifier fingerprint and
   status, and audit summaries. Prohibit raw samples, snapshot creation, policy
   replacement, routing, and browser controls.
+- **6R.6.5 Library Rebuild Snapshot-Gate Verification Binding**: require the
+  snapshot gate to load and validate one matching immutable verification
+  receipt in its transaction before it creates rollback evidence. Accept only a
+  current accepted transition and a `no_migration_differences` receipt; reject
+  missing, stale, mismatched, review-required, and risk-blocked evidence
+  without rerunning verification, replacing policy, routing media, or exposing
+  a browser control.
 - Use old impact/replay/parity tooling only as migration verification machinery,
   not product workflow.
 - Define a migration preview that compares legacy policy behavior to generated
@@ -4485,6 +4492,23 @@ Implementation status:
   owns the coordinator's versioned stop states, sanitized result, and audit.
   Coordinator output excludes raw representative classifications and cannot
   apply a replacement, delete legacy paths, route media, or write state.
+- The persisted verification-run handoff decision, design, and outcome are
+  documented in [Policy Migration Verification-Run Handoff](policy-migration-verification-run-handoff.md).
+- `server/src/services/policyMigrationVerificationRunHandoff.mjs` now invokes
+  the coordinator and enters a transaction only for its audited `ready`
+  result. It records a fixed receipt or a safe replay outcome and never creates
+  a rollback snapshot, replacement, route, learning mutation, or browser
+  control.
+- `server/src/services/policyMigrationVerificationRunContract.mjs` reduces
+  coordinator data to the accepted-transition digest, source
+  provenance/summary, verifier fingerprint/status/difference counts, and audit
+  summaries. It rejects unsafe coordinator output and strips unexpected receipt
+  fields before a result is returned.
+- `server/src/services/policyMigrationVerificationRunRepository.mjs` owns the
+  parameterized PostgreSQL claim and conflict lookup. The immutable
+  `policy_migration_verification_runs` table has a server-derived unique key,
+  contains no raw samples or verifier differences, and is runtime-only during
+  replace restore.
 - `server/src/services/policyMigrationVerifierRollback.mjs` consumes the
   preview contract while retaining rebuild acceptance, rollback, fingerprint,
   trace, and deletion gates. It rejects ambiguous old/new sample input names.

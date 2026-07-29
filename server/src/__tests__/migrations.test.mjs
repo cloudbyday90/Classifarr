@@ -691,6 +691,50 @@ describe('Schema snapshot freshness', () => {
         expect(policyIntentMigrationEvents).toContain('library_rebuild_replacement_applied');
     });
 
+    test('current.sql includes immutable bounded policy migration verification runs', () => {
+        const schemaSql = readSchemaSnapshot();
+        const migrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260729_140000_add_policy_migration_verification_runs.sql'
+        );
+        const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+        const verificationRuns = getCreateTableBlock(
+            schemaSql,
+            'policy_migration_verification_runs'
+        );
+
+        [
+            'CREATE TABLE IF NOT EXISTS policy_migration_verification_runs',
+            'idx_policy_migration_verification_runs_idempotency',
+            'idx_policy_migration_verification_runs_transition',
+            'idx_policy_migration_verification_runs_snapshot_gate',
+            'guard_policy_migration_verification_run_mutation',
+        ].forEach(expectedSnippet => {
+            expect(migrationSql).toContain(expectedSnippet);
+        });
+
+        expect(verificationRuns).toMatch(
+            /acceptance_transition_fingerprint character\(64\).*NOT NULL/
+        );
+        expect(verificationRuns).toMatch(
+            /source_representative_classification_count smallint.*NOT NULL/
+        );
+        expect(verificationRuns).toMatch(
+            /verifier_fingerprint character\(64\).*NOT NULL/
+        );
+        expect(verificationRuns).toMatch(
+            /coordinator_audit_issue_count smallint.*NOT NULL/
+        );
+        expect(verificationRuns).not.toContain('representative_classifications');
+        expect(verificationRuns).not.toContain('verifier_report');
+        expect(schemaSql).toContain(
+            'CREATE UNIQUE INDEX idx_policy_migration_verification_runs_idempotency'
+        );
+        expect(schemaSql).toContain(
+            'CREATE TRIGGER policy_migration_verification_run_mutation_guard'
+        );
+    });
+
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {
         const schemaSql = readSchemaSnapshot();
         const originalMigrationPath = path.resolve(
